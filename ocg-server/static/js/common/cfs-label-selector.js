@@ -514,8 +514,8 @@ export class CfsLabelSelector extends LitWrapper {
                     const eventCfsLabelId = String(label.event_cfs_label_id);
                     return html`
                       <span
-                        class="inline-flex items-center gap-2 rounded-full border border-stone-300 px-2.5 py-1 text-xs font-medium text-stone-900"
-                        style="background-color:${label.color};"
+                        class="inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-xs font-medium text-stone-900"
+                        style="--label-color:${label.color};border-color:var(--label-color);background-color:color-mix(in srgb, var(--label-color) 30%, transparent);"
                         title=${label.name}
                       >
                         <span class="truncate max-w-[200px]">${label.name}</span>

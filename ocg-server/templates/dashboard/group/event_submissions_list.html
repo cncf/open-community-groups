@@ -99,8 +99,7 @@ description = "Review and manage call for speakers submissions.") -}}
                 {% if !submission.labels.is_empty() -%}
                   <div class="mt-2 flex flex-wrap gap-1.5">
                     {% for label in submission.labels -%}
-                      <span class="inline-flex items-center rounded-full border border-stone-300 px-2 py-0.5 text-[11px] font-medium text-stone-900"
-                            style="background-color: {{ label.color }}">{{ label.name }}</span>
+                      {{ badges::cfs_label_chip(name = &label.name, color = &label.color) -}}
                     {% endfor -%}
                   </div>
                 {% endif -%}

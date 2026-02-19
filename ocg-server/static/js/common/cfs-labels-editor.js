@@ -1,19 +1,6 @@
 import { html, repeat } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 
-const DEFAULT_COLORS = [
-  "#CCFBF1",
-  "#CFFAFE",
-  "#DBEAFE",
-  "#DCFCE7",
-  "#ECFCCB",
-  "#EDE9FE",
-  "#FCE7F3",
-  "#FEE2E2",
-  "#FEF3C7",
-  "#FFEDD5",
-];
-
 /**
  * CfsLabelsEditor manages event-level CFS labels in event forms.
  *
@@ -31,24 +18,32 @@ export class CfsLabelsEditor extends LitWrapper {
     labels: { type: Array, attribute: "labels" },
     maxItems: { type: Number, attribute: "max-items" },
 
+    _openColorPopoverRowId: { state: true },
     _rows: { state: true },
   };
 
   constructor() {
     super();
-    this.colors = DEFAULT_COLORS;
+    this.colors = [];
     this.disabled = false;
     this.fieldName = "cfs_labels";
     this.labels = [];
     this.maxItems = 200;
 
+    this._openColorPopoverRowId = null;
     this._rows = [];
     this._nextId = 0;
+    this._documentClickHandler = null;
   }
 
   connectedCallback() {
     super.connectedCallback();
     this._applyInitialLabels(this.labels);
+  }
+
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    this._removeDocumentListener();
   }
 
   updated(changedProperties) {
@@ -59,6 +54,10 @@ export class CfsLabelsEditor extends LitWrapper {
       if (previous !== this.labels) {
         this._applyInitialLabels(this.labels);
       }
+    }
+
+    if (changedProperties.has("disabled") && this.disabled) {
+      this._closeColorPopover();
     }
   }
 
@@ -79,16 +78,20 @@ export class CfsLabelsEditor extends LitWrapper {
       return;
     }
 
-    const defaultColor = this._paletteColors[0];
-    this._rows = [
-      ...this._rows,
-      {
-        _row_id: this._nextRowId(),
-        color: defaultColor,
-        event_cfs_label_id: "",
-        name: "",
-      },
-    ];
+    this._rows = [...this._rows, this._createEmptyRow()];
+  }
+
+  /**
+   * Creates an empty row with the first configured color when available.
+   * @returns {Object}
+   */
+  _createEmptyRow() {
+    return {
+      _row_id: this._nextRowId(),
+      color: this._paletteColors[0] || "",
+      event_cfs_label_id: "",
+      name: "",
+    };
   }
 
   /**
@@ -99,16 +102,24 @@ export class CfsLabelsEditor extends LitWrapper {
     const normalized = this._normalizeRows(labels);
     this._rows = normalized;
     this._nextId = normalized.reduce((acc, row) => Math.max(acc, row._row_id + 1), 0);
+    if (normalized.length === 0) {
+      this._rows = [this._createEmptyRow()];
+    }
+    if (
+      this._openColorPopoverRowId !== null &&
+      !this._rows.some((row) => row._row_id === this._openColorPopoverRowId)
+    ) {
+      this._closeColorPopover();
+    }
   }
 
   /**
-   * Gets the configured palette with a safe fallback.
+   * Gets the configured palette.
    * @returns {Array<string>}
    */
   get _paletteColors() {
     const palette = Array.isArray(this.colors) ? this.colors : [];
-    const normalized = palette.map((value) => String(value || "").trim()).filter((value) => value.length > 0);
-    return normalized.length > 0 ? normalized : DEFAULT_COLORS;
+    return palette.map((value) => String(value || "").trim()).filter((value) => value.length > 0);
   }
 
   /**
@@ -145,7 +156,7 @@ export class CfsLabelsEditor extends LitWrapper {
         const eventCfsLabelId = String(label?.event_cfs_label_id || "").trim();
         const name = String(label?.name || "").trim();
         const rawColor = String(label?.color || "").trim();
-        const color = palette.has(rawColor) ? rawColor : this._paletteColors[0];
+        const color = palette.has(rawColor) ? rawColor : this._paletteColors[0] || rawColor;
 
         if (!name) {
           return null;
@@ -173,7 +184,11 @@ export class CfsLabelsEditor extends LitWrapper {
       return;
     }
 
-    this._rows = this._rows.filter((row) => row._row_id !== rowId);
+    const remainingRows = this._rows.filter((row) => row._row_id !== rowId);
+    this._rows = remainingRows.length > 0 ? remainingRows : [this._createEmptyRow()];
+    if (this._openColorPopoverRowId === rowId) {
+      this._closeColorPopover();
+    }
   }
 
   /**
@@ -192,6 +207,7 @@ export class CfsLabelsEditor extends LitWrapper {
       }
       return { ...row, color };
     });
+    this._closeColorPopover();
   }
 
   /**
@@ -213,34 +229,75 @@ export class CfsLabelsEditor extends LitWrapper {
     });
   }
 
+  _toggleColorPopover(rowId) {
+    if (this.disabled) {
+      return;
+    }
+
+    if (this._openColorPopoverRowId === rowId) {
+      this._closeColorPopover();
+      return;
+    }
+
+    this._openColorPopoverRowId = rowId;
+    this._addDocumentListener();
+  }
+
+  _closeColorPopover() {
+    this._openColorPopoverRowId = null;
+    this._removeDocumentListener();
+  }
+
+  _addDocumentListener() {
+    if (this._documentClickHandler) {
+      return;
+    }
+
+    this._documentClickHandler = (event) => {
+      const path = event.composedPath();
+      if (!path.includes(this)) {
+        this._closeColorPopover();
+      }
+    };
+    document.addEventListener("click", this._documentClickHandler);
+  }
+
+  _removeDocumentListener() {
+    if (!this._documentClickHandler) {
+      return;
+    }
+
+    document.removeEventListener("click", this._documentClickHandler);
+    this._documentClickHandler = null;
+  }
+
   render() {
     const maxReached = this._isMaxReached();
+    const paletteColors = this._paletteColors;
 
     return html`
       <div class="space-y-4">
-        ${this._rows.length === 0
-          ? html`
-              <div
-                class="rounded-lg border border-dashed border-stone-300 bg-stone-50 px-4 py-3 text-sm text-stone-600"
-              >
-                No labels yet. Add labels to help categorize submissions.
-              </div>
-            `
-          : ""}
         ${repeat(
           this._rows,
           (row) => row._row_id,
           (row, index) => {
             const trimmedName = row.name.trim();
+            const hasPaletteColors = paletteColors.length > 0;
+            const isColorPopoverOpen = this._openColorPopoverRowId === row._row_id;
+            const isDeleteDisabled =
+              this.disabled ||
+              (this._rows.length === 1 &&
+                trimmedName.length === 0 &&
+                String(row.event_cfs_label_id || "").length === 0);
             return html`
-              <div class="rounded-lg border border-stone-200 bg-white p-3">
-                <div class="flex flex-col gap-3 md:flex-row md:items-start">
+              <div class="py-1">
+                <div class="flex items-center gap-2">
                   <div class="flex-1">
-                    <label class="form-label" for="cfs-label-name-${row._row_id}">Label name</label>
+                    <label class="sr-only" for="cfs-label-name-${row._row_id}">Label</label>
                     <input
                       id="cfs-label-name-${row._row_id}"
                       type="text"
-                      class="input-primary mt-2"
+                      class="input-primary w-full"
                       maxlength="80"
                       placeholder="track / ai + ml"
                       .value=${row.name}
@@ -250,45 +307,75 @@ export class CfsLabelsEditor extends LitWrapper {
                     />
                   </div>
 
-                  <div class="w-full md:w-auto">
-                    <div class="form-label">Color</div>
-                    <div class="mt-2 flex flex-wrap gap-2">
-                      ${repeat(
-                        this._paletteColors,
-                        (color) => color,
-                        (color) => {
-                          const selected = row.color === color;
-                          return html`
-                            <button
-                              type="button"
-                              class="inline-flex h-8 w-8 items-center justify-center rounded-full border ${selected
-                                ? "border-stone-700 ring-2 ring-stone-300"
-                                : "border-stone-300 hover:border-stone-500"}"
-                              style="background-color:${color};"
-                              title="${color}"
-                              ?disabled=${this.disabled}
-                              @click=${() => this._setRowColor(row._row_id, color)}
-                            >
-                              ${selected
-                                ? html`<div class="svg-icon size-3 icon-check bg-stone-700"></div>`
-                                : ""}
-                            </button>
-                          `;
-                        },
-                      )}
-                    </div>
-                  </div>
-
-                  <div class="md:pt-7">
+                  <div class="relative shrink-0">
                     <button
                       type="button"
-                      class="btn-primary-outline btn-mini"
-                      ?disabled=${this.disabled}
-                      @click=${() => this._removeRow(row._row_id)}
+                      class="inline-flex size-[38px] items-center justify-center rounded-full border border-stone-200 bg-white hover:bg-stone-50"
+                      title="Pick label color"
+                      aria-label="Pick label color. Selected color is ${row.color}"
+                      aria-expanded=${isColorPopoverOpen}
+                      aria-controls="cfs-label-color-popover-${row._row_id}"
+                      ?disabled=${this.disabled || !hasPaletteColors}
+                      @click=${() => this._toggleColorPopover(row._row_id)}
                     >
-                      Remove
+                      <span
+                        class="inline-flex size-[30px] rounded-full border border-white"
+                        style="background-color:${row.color || "transparent"};"
+                      ></span>
                     </button>
+                    ${isColorPopoverOpen && hasPaletteColors
+                      ? html`
+                          <div
+                            id="cfs-label-color-popover-${row._row_id}"
+                            class="absolute top-full right-0 z-50 mt-2 w-[220px] rounded-xl border border-stone-200 bg-white p-2 shadow-lg"
+                            role="listbox"
+                            aria-label="Label colors"
+                          >
+                            <div class="grid grid-cols-5 gap-2 place-items-center">
+                              ${repeat(
+                                paletteColors,
+                                (color) => color,
+                                (color) => {
+                                  const selected = row.color === color;
+                                  return html`
+                                    <button
+                                      type="button"
+                                      class="inline-flex h-8 w-8 items-center justify-center rounded-full border ${selected
+                                        ? "border-stone-700 ring-1 ring-stone-300"
+                                        : "border-stone-200 hover:border-stone-500"}"
+                                      style="background-color:${color};"
+                                      title="${color}"
+                                      role="option"
+                                      aria-selected=${selected}
+                                      aria-label="Select color ${color}"
+                                      ?disabled=${this.disabled}
+                                      @click=${() => this._setRowColor(row._row_id, color)}
+                                    >
+                                      ${selected
+                                        ? html`<div class="svg-icon size-3 icon-check bg-stone-700"></div>`
+                                        : ""}
+                                    </button>
+                                  `;
+                                },
+                              )}
+                            </div>
+                          </div>
+                        `
+                      : ""}
                   </div>
+
+                  <button
+                    type="button"
+                    class="inline-flex size-[38px] shrink-0 items-center justify-center rounded-full border border-stone-200 ${isDeleteDisabled
+                      ? ""
+                      : "hover:bg-stone-100"}"
+                    title="Remove label"
+                    aria-label="Remove label"
+                    ?disabled=${isDeleteDisabled}
+                    @click=${() => this._removeRow(row._row_id)}
+                  >
+                    <div class="svg-icon size-4 icon-trash bg-stone-600"></div>
+                  </button>
                 </div>
 
                 ${trimmedName

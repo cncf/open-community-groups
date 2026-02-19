@@ -15,9 +15,8 @@ use garde::rules::email::parse_email;
 use reqwest::Url;
 
 /// Allowed CFS label colors.
-pub const CFS_LABEL_COLORS: [&str; 10] = [
-    "#CCFBF1", "#CFFAFE", "#DBEAFE", "#DCFCE7", "#ECFCCB", "#EDE9FE", "#FCE7F3", "#FEE2E2", "#FEF3C7",
-    "#FFEDD5",
+pub const CFS_LABEL_COLORS: [&str; 7] = [
+    "#FFD866", "#FC9867", "#FF6188", "#AB9DF2", "#78DCE8", "#A9DC76", "#A88F6A",
 ];
 
 // Maximum length constants for validation.

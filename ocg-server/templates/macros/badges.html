@@ -95,6 +95,17 @@
 {% endmacro submission_status_action_required_icon_styles -%}
 {# End submission action required icon styles -#}
 
+{# CFS label chip -#}
+{% macro cfs_label_chip(name, color, extra_styles = None) -%}
+  {% let extra_styles_ = extra_styles.unwrap_or("") -%}
+
+  <span class="inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium text-stone-900 {{ extra_styles_ }}"
+        style="--label-color: {{ color }};
+               border-color: var(--label-color);
+               background-color: color-mix(in srgb, var(--label-color) 30%, transparent)">{{ name }}</span>
+{% endmacro cfs_label_chip -%}
+{# End CFS label chip -#}
+
 {# Sold out overlay badge -#}
 {% macro sold_out_overlay(remaining_capacity, capacity = None, outer_classes = None, inner_classes = None, label = "Sold out", orientation = "top-left") -%}
   {% let outer_classes_ = outer_classes.unwrap_or("") -%}

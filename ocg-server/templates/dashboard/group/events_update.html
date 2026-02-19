@@ -413,13 +413,9 @@
         {# CFS labels -#}
         <div class="col-span-full">
           <label for="cfs-labels-editor" class="form-label">Submission labels</label>
-          <div class="mt-2">
+          <div class="w-1/2 mt-2">
             <cfs-labels-editor id="cfs-labels-editor" field-name="cfs_labels" labels="{{ event.cfs_labels|json }}" max-items="{{ crate::validation::MAX_LEN_EVENT_LABELS_PER_EVENT }}" colors="{{ crate::validation::CFS_LABEL_COLORS|json }}"></cfs-labels-editor>
           </div>
-          <p class="form-legend">
-            Updating a label name or color updates it across all submissions using it.
-            Deleting a label also removes it from those submissions.
-          </p>
           <p class="form-legend mt-1">
             If you need a different category, create a new label instead.
             Use prefixes like <span class="font-semibold">track / ai + ml</span> and keep
