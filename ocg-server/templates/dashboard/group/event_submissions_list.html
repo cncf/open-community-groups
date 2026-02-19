@@ -13,48 +13,57 @@ description = "Review and manage call for speakers submissions.") -}}
 
 <div class="mt-6">
   <form id="submissions-filters-form"
-        class="rounded-lg border border-stone-200 bg-stone-50 px-4 py-4"
+        class="w-full"
         hx-get="/dashboard/group/events/{{ event_id }}/submissions"
         hx-target="#submissions-content"
         hx-swap="innerHTML"
         hx-indicator="#dashboard-spinner">
-    <div class="flex flex-col gap-4 lg:flex-row lg:items-start">
+    <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
       {% if !event_cfs_labels.is_empty() -%}
-        <div class="flex-1 min-w-0">
-          <label for="submissions-label-filter" class="form-label">Filter by labels</label>
-          <div class="mt-2">
-            <cfs-label-selector id="submissions-label-filter" name="label_ids" labels="{{ event_cfs_labels|json }}" selected="{{ selected_event_cfs_label_ids|json }}" placeholder="Search labels" compact></cfs-label-selector>
-          </div>
+        <div class="min-w-0 w-full md:w-1/2 md:pe-6">
+          <label for="submissions-label-filter" class="sr-only">Filter by labels</label>
+          <cfs-label-selector id="submissions-label-filter" name="label_ids" labels="{{ event_cfs_labels|json }}" selected="{{ selected_event_cfs_label_ids|json }}" placeholder="Search labels" compact selected-in-input></cfs-label-selector>
         </div>
       {% endif -%}
-      <div class="w-full lg:w-56">
-        <label for="submissions-sort" class="form-label">Sort by</label>
-        <div class="mt-2">
-          <select id="submissions-sort" name="sort" class="input-primary">
-            <option value="created-desc"
-                    {% if sort == "created-desc" %}selected{% endif %}>Submitted (newest)</option>
-            <option value="created-asc" {% if sort == "created-asc" %}selected{% endif %}>Submitted (oldest)</option>
-            <option value="ratings-count-desc"
-                    {% if sort == "ratings-count-desc" %}selected{% endif %}>Ratings count (high to low)</option>
-            <option value="ratings-count-asc"
-                    {% if sort == "ratings-count-asc" %}selected{% endif %}>Ratings count (low to high)</option>
-            <option value="stars-desc" {% if sort == "stars-desc" %}selected{% endif %}>Stars (high to low)</option>
-            <option value="stars-asc" {% if sort == "stars-asc" %}selected{% endif %}>Stars (low to high)</option>
-          </select>
-        </div>
-      </div>
-      <div class="flex items-center gap-2 lg:pt-7">
-        <button type="submit" class="btn-primary">Apply</button>
-        <button type="button"
-                class="btn-primary-outline"
-                hx-get="/dashboard/group/events/{{ event_id }}/submissions"
-                hx-target="#submissions-content"
-                hx-swap="innerHTML"
-                hx-indicator="#dashboard-spinner">Clear</button>
+      <div class="flex items-center justify-end gap-2 whitespace-nowrap">
+        <label for="submissions-sort"
+               class="font-semibold text-[0.775rem] text-nowrap text-black leading-6">Sort by</label>
+        <select id="submissions-sort"
+                name="sort"
+                class="block w-48 px-3 text-sm h-[42px] text-stone-900 bg-white border border-stone-200 rounded-full focus:outline-none focus:ring-0 focus:border-stone-200 hover:border-primary-500 focus:hover:border-primary-500 transition-colors">
+          <option value="created-desc"
+                  {% if sort == "created-desc" %}selected{% endif %}>Submitted (newest)</option>
+          <option value="created-asc" {% if sort == "created-asc" %}selected{% endif %}>Submitted (oldest)</option>
+          <option value="ratings-count-desc"
+                  {% if sort == "ratings-count-desc" %}selected{% endif %}>Ratings count (high to low)</option>
+          <option value="ratings-count-asc"
+                  {% if sort == "ratings-count-asc" %}selected{% endif %}>Ratings count (low to high)</option>
+          <option value="stars-desc" {% if sort == "stars-desc" %}selected{% endif %}>Stars (high to low)</option>
+          <option value="stars-asc" {% if sort == "stars-asc" %}selected{% endif %}>Stars (low to high)</option>
+        </select>
       </div>
     </div>
   </form>
 </div>
+<script type="module">
+  const submissionsFiltersForm = document.getElementById("submissions-filters-form");
+  const submissionsSort = document.getElementById("submissions-sort");
+  const submissionsLabelFilter = document.getElementById("submissions-label-filter");
+  const submitFilters = () => {
+    if (!submissionsFiltersForm) {
+      return;
+    }
+    window.requestAnimationFrame(() => submissionsFiltersForm.requestSubmit());
+  };
+
+  if (submissionsFiltersForm && submissionsSort) {
+    submissionsSort.addEventListener("change", () => submitFilters());
+  }
+
+  if (submissionsFiltersForm && submissionsLabelFilter) {
+    submissionsLabelFilter.addEventListener("change", () => submitFilters());
+  }
+</script>
 
 <div class="mt-10">
   <div class="relative overflow-visible">

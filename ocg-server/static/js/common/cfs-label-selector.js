@@ -22,6 +22,7 @@ export class CfsLabelSelector extends LitWrapper {
     name: { type: String, attribute: "name" },
     placeholder: { type: String, attribute: "placeholder" },
     selected: { type: Array, attribute: "selected" },
+    selectedInInput: { type: Boolean, attribute: "selected-in-input", reflect: true },
 
     _activeIndex: { state: true },
     _isOpen: { state: true },
@@ -37,6 +38,7 @@ export class CfsLabelSelector extends LitWrapper {
     this.name = "label_ids";
     this.placeholder = DEFAULT_PLACEHOLDER;
     this.selected = [];
+    this.selectedInInput = false;
 
     this._activeIndex = null;
     this._isOpen = false;
@@ -397,6 +399,19 @@ export class CfsLabelSelector extends LitWrapper {
   }
 
   /**
+   * Clears all selected labels.
+   * @param {Event} event
+   */
+  _clearSelections(event) {
+    event?.stopPropagation();
+    if (this.disabled || this.selected.length === 0) {
+      return;
+    }
+    this.selected = [];
+    this._emitChange();
+  }
+
+  /**
    * Closes the dropdown.
    */
   _closeDropdown() {
@@ -440,31 +455,99 @@ export class CfsLabelSelector extends LitWrapper {
     const selectionLimitReached = !this._canAddSelection();
     const inputDisabled = this.disabled || this.labels.length === 0;
     const selectedChipClass = this.compact
-      ? "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium text-stone-900"
+      ? "inline-flex h-[22px] items-center gap-0.5 rounded-full border px-2 py-0.5 text-[11px] font-medium text-stone-900"
       : "inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-xs font-medium text-stone-900";
     const selectedChipIconSizeClass = this.compact ? "size-2.5" : "size-3";
+    const inputPlaceholder =
+      selectedLabels.length === 0 ? this.placeholder || DEFAULT_PLACEHOLDER : "Add labels";
 
     return html`
-      <div class="space-y-3">
+      <div class=${this.selectedInInput ? "space-y-0" : "space-y-3"}>
         <div class="relative">
           <div class="absolute inset-y-0 start-0 flex items-center ps-3 pointer-events-none">
             <div class="svg-icon size-4 icon-search bg-stone-300"></div>
           </div>
-          <input
-            type="search"
-            class="input-primary w-full ps-9 pe-9"
-            placeholder=${this.placeholder || DEFAULT_PLACEHOLDER}
-            autocomplete="off"
-            autocorrect="off"
-            autocapitalize="off"
-            spellcheck="false"
-            .value=${this._query}
-            ?disabled=${inputDisabled}
-            @pointerdown=${(event) => this._handleInputPointerDown(event)}
-            @focus=${() => this._handleFocus()}
-            @input=${(event) => this._handleSearchInput(event)}
-          />
-          ${this._query
+          ${this.selectedInInput
+            ? html`
+                <div
+                  class="input-primary min-h-[42px] w-full ps-9 pe-2 py-1 flex flex-wrap items-center gap-1.5"
+                >
+                  ${selectedLabels.length > 0
+                    ? repeat(
+                        selectedLabels,
+                        (label) => label.event_cfs_label_id,
+                        (label) => {
+                          const eventCfsLabelId = String(label.event_cfs_label_id);
+                          return html`
+                            <span
+                              class=${selectedChipClass}
+                              style="--label-color:${label.color};border-color:var(--label-color);background-color:color-mix(in srgb, var(--label-color) 30%, transparent);"
+                              title=${label.name}
+                            >
+                              <span class="truncate max-w-[160px]">${label.name}</span>
+                              <button
+                                type="button"
+                                class="inline-flex size-3 items-center justify-center rounded-full border-0 bg-transparent text-stone-700 hover:text-stone-900"
+                                @click=${(event) => this._removeSelection(eventCfsLabelId, event)}
+                                ?disabled=${this.disabled}
+                                aria-label="Remove ${label.name}"
+                              >
+                                <div
+                                  class="svg-icon ${selectedChipIconSizeClass} icon-close bg-current"
+                                ></div>
+                              </button>
+                            </span>
+                          `;
+                        },
+                      )
+                    : ""}
+                  <input
+                    type="search"
+                    class="min-w-[120px] flex-1 border-0 bg-transparent p-0 text-sm text-stone-900 placeholder:text-stone-400 focus:outline-none focus:ring-0"
+                    placeholder=${inputPlaceholder}
+                    autocomplete="off"
+                    autocorrect="off"
+                    autocapitalize="off"
+                    spellcheck="false"
+                    .value=${this._query}
+                    ?disabled=${inputDisabled}
+                    @pointerdown=${(event) => this._handleInputPointerDown(event)}
+                    @focus=${() => this._handleFocus()}
+                    @input=${(event) => this._handleSearchInput(event)}
+                  />
+                  ${selectedLabels.length > 0
+                    ? html`
+                        <button
+                          type="button"
+                          class="inline-flex shrink-0 items-center justify-center rounded-full bg-transparent p-1 text-stone-400 hover:text-stone-700"
+                          @click=${(event) => this._clearSelections(event)}
+                          ?disabled=${this.disabled}
+                          aria-label="Clear selected labels"
+                          title="Clear selected labels"
+                        >
+                          <div class="svg-icon size-4 icon-close bg-current"></div>
+                        </button>
+                      `
+                    : ""}
+                </div>
+              `
+            : html`
+                <input
+                  type="search"
+                  class="input-primary w-full ps-9 pe-9"
+                  placeholder=${this.placeholder || DEFAULT_PLACEHOLDER}
+                  autocomplete="off"
+                  autocorrect="off"
+                  autocapitalize="off"
+                  spellcheck="false"
+                  .value=${this._query}
+                  ?disabled=${inputDisabled}
+                  @pointerdown=${(event) => this._handleInputPointerDown(event)}
+                  @focus=${() => this._handleFocus()}
+                  @input=${(event) => this._handleSearchInput(event)}
+                />
+              `}
+          ${this._query && !this.selectedInInput
             ? html`
                 <button
                   type="button"
@@ -526,7 +609,7 @@ export class CfsLabelSelector extends LitWrapper {
               `
             : ""}
         </div>
-        ${selectedLabels.length > 0
+        ${!this.selectedInInput && selectedLabels.length > 0
           ? html`
               <div class="flex flex-wrap gap-2">
                 ${repeat(
@@ -543,7 +626,7 @@ export class CfsLabelSelector extends LitWrapper {
                         <span class="truncate max-w-[200px]">${label.name}</span>
                         <button
                           type="button"
-                          class="inline-flex items-center justify-center rounded-full text-stone-700 hover:text-stone-900"
+                          class="inline-flex size-3 items-center justify-center rounded-full border-0 bg-transparent text-stone-700 hover:text-stone-900"
                           @click=${(event) => this._removeSelection(eventCfsLabelId, event)}
                           ?disabled=${this.disabled}
                           aria-label="Remove ${label.name}"
