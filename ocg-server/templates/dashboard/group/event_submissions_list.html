@@ -69,12 +69,12 @@ description = "Review and manage call for speakers submissions.") -}}
   <div class="relative overflow-visible">
     <table class="table-fixed w-full text-xs lg:text-sm text-left text-stone-500">
       <colgroup>
+        <col class="xl:w-[250px]" />
         <col />
-        <col />
-        <col class="w-[170px]" />
-        <col class="hidden xl:table-column w-[130px]" />
+        <col class="w-[190px]" />
+        <col class="hidden xl:table-column w-[150px]" />
         <col class="hidden 2xl:table-column w-[110px]" />
-        <col class="w-24" />
+        <col class="w-20" />
       </colgroup>
       <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
         <tr>
@@ -106,7 +106,7 @@ description = "Review and manage call for speakers submissions.") -}}
                   {% endif -%}
                   size="size-8" placeholder="{{ self::user_initials(submission.speaker.name.as_deref() , submission.speaker.username.as_str()) }}">
                   </logo-image>
-                  <div class="font-medium text-stone-900">
+                  <div class="font-medium text-stone-900 truncate">
                     {{ submission.speaker.name.as_deref().unwrap_or(&submission.speaker.username) }}
                   </div>
                 </div>
