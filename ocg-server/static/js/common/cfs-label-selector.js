@@ -639,7 +639,7 @@ export class CfsLabelSelector extends LitWrapper {
                         style="--label-color:${label.color};border-color:var(--label-color);background-color:color-mix(in srgb, var(--label-color) 30%, transparent);"
                         title=${label.name}
                       >
-                        <span class="truncate max-w-[200px]">${label.name}</span>
+                        <span class="truncate max-w-full">${label.name}</span>
                         <button
                           type="button"
                           class="inline-flex size-3 items-center justify-center rounded-full border-0 bg-transparent text-stone-700 hover:text-stone-900"

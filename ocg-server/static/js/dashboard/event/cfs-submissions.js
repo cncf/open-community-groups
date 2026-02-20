@@ -201,7 +201,6 @@ export class ReviewSubmissionModal extends LitWrapper {
   syncLabelsFromFilter() {
     const labelsFilter = document.getElementById(SUBMISSIONS_FILTER_ID);
     if (!labelsFilter) {
-      this.labels = [];
       return;
     }
 
@@ -390,7 +389,7 @@ export class ReviewSubmissionModal extends LitWrapper {
     const ratings = this._getSubmissionRatings();
     const currentUserId = String(this.currentUserId || "");
     if (!currentUserId) {
-      return ratings;
+      return [];
     }
     return ratings.filter((rating) => String(rating?.reviewer?.user_id || "") !== currentUserId);
   }

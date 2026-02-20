@@ -54,7 +54,7 @@ description = "Track and manage your call for speakers submissions.") -}}
               <td class="px-3 xl:px-5 py-4">
                 <div class="font-medium text-stone-900 line-clamp-1">{{ submission.session_proposal.title }}</div>
                 {% if !submission.labels.is_empty() -%}
-                  <div class="mt-2 flex flex-wrap gap-1.5">
+                  <div class="mt-2 flex flex-wrap gap-1.5 min-w-0">
                     {% for label in submission.labels -%}
                       {{ badges::cfs_label_chip(name = &label.name, color = &label.color) -}}
                     {% endfor -%}

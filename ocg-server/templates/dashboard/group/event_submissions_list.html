@@ -67,15 +67,23 @@ description = "Review and manage call for speakers submissions.") -}}
 
 <div class="mt-10">
   <div class="relative overflow-visible">
-    <table class="table-auto w-full text-xs lg:text-sm text-left text-stone-500">
+    <table class="table-fixed w-full text-xs lg:text-sm text-left text-stone-500">
+      <colgroup>
+        <col />
+        <col />
+        <col class="w-[170px]" />
+        <col class="hidden xl:table-column w-[130px]" />
+        <col class="hidden 2xl:table-column w-[110px]" />
+        <col class="w-24" />
+      </colgroup>
       <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
         <tr>
           <th scope="col" class="px-3 xl:px-5 py-3">Speaker</th>
           <th scope="col" class="px-3 xl:px-5 py-3">Proposal</th>
           <th scope="col" class="px-3 xl:px-5 py-3">Status</th>
-          <th scope="col" class="px-3 xl:px-5 py-3">Ratings</th>
-          <th scope="col" class="px-3 xl:px-5 py-3">Submitted</th>
-          <th scope="col" class="px-3 xl:px-5 py-3 w-24"></th>
+          <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3">Ratings</th>
+          <th scope="col" class="hidden 2xl:table-cell px-3 xl:px-5 py-3">Submitted</th>
+          <th scope="col" class="px-3 xl:px-5 py-3"></th>
         </tr>
       </thead>
       <tbody>
@@ -104,9 +112,11 @@ description = "Review and manage call for speakers submissions.") -}}
                 </div>
               </td>
               <td class="px-3 xl:px-5 py-4">
-                <div class="font-medium text-stone-900 line-clamp-1">{{ submission.session_proposal.title }}</div>
+                <div class="font-medium text-stone-900 line-clamp-2 xl:line-clamp-1">
+                  {{ submission.session_proposal.title }}
+                </div>
                 {% if !submission.labels.is_empty() -%}
-                  <div class="mt-2 flex flex-wrap gap-1.5">
+                  <div class="hidden mt-2 xl:flex flex-wrap gap-1.5 min-w-0">
                     {% for label in submission.labels -%}
                       {{ badges::cfs_label_chip(name = &label.name, color = &label.color) -}}
                     {% endfor -%}
@@ -116,14 +126,14 @@ description = "Review and manage call for speakers submissions.") -}}
               <td class="px-3 xl:px-5 py-4">
                 {{ badges::submission_status_badge(status_id = submission.status_id, label = submission.status_name, extra_styles = Some("px-2.5 py-0.5 uppercase") ) -}}
               </td>
-              <td class="px-3 xl:px-5 py-4 whitespace-nowrap">
+              <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap">
                 {% if let Some(average_rating) = submission.average_rating -%}
-                  <div class="mt-1 inline-flex items-center gap-2 text-stone-700">
+                  <div class="inline-flex items-center gap-2 text-stone-700">
                     <rating-stars average-rating="{{ average_rating }}" size="size-3"></rating-stars>
-                    <span class="text-sm leading-none">{{ average_rating }}</span>
+                    <span class="text-xs/3 font-semibold -mb-1">{{ average_rating }}</span>
                   </div>
                 {% else -%}
-                  <div class="mt-1 inline-flex items-center gap-2 text-stone-500">
+                  <div class="inline-flex items-center gap-2 text-stone-500">
                     <rating-stars average-rating="0" size="size-3"></rating-stars>
                   </div>
                 {% endif -%}
@@ -136,7 +146,9 @@ description = "Review and manage call for speakers submissions.") -}}
                   {% endif -%}
                 </div>
               </td>
-              <td class="px-3 xl:px-5 py-4 whitespace-nowrap">{{ submission.created_at.format("%b %d, %Y") }}</td>
+              <td class="hidden 2xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap">
+                {{ submission.created_at.format("%b %d, %Y") }}
+              </td>
               <td class="px-3 xl:px-5 py-4">
                 <button type="button"
                         class="btn-tertiary p-2"
