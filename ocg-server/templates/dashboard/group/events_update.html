@@ -412,14 +412,17 @@
 
         {# CFS labels -#}
         <div class="col-span-full">
-          <label for="cfs-labels-editor" class="form-label">Submission labels</label>
-          <div class="mt-2">
+          <label for="cfs-labels-editor" class="form-label">Labels</label>
+          <p class="form-legend mt-1">
+            Labels help categorize submitted session proposals. For example, you can use them to organize sessions by track, topic, or theme. Submitters can select one or more labels when submitting their proposals. Organizers can review and update the labels on submissions during the review process, if needed.
+          </p>
+          <div class="mt-3">
             <cfs-labels-editor id="cfs-labels-editor" field-name="cfs_labels" labels="{{ event.cfs_labels|json }}" max-items="{{ crate::validation::MAX_LEN_EVENT_LABELS_PER_EVENT }}" colors="{{ crate::validation::CFS_LABEL_COLORS|json }}">
             <p slot="legend" class="form-legend">
-              Editing an existing label renames it in all submissions that use it.
-              If you need a different label without renaming existing ones, remove the old label and add a new one.
               Use prefixes like <span class="font-semibold">track / ai + ml</span> and keep
               <span class="font-semibold">/</span> as the separator for consistency.
+              Editing an existing label renames it in all submissions that use it.
+              If you need a different label without renaming existing ones, remove the old label and add a new one.
             </p>
             </cfs-labels-editor>
           </div>

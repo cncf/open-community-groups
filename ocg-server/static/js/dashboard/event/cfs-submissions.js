@@ -493,7 +493,7 @@ export class ReviewSubmissionModal extends LitWrapper {
           })}
           <button
             type="button"
-            class="btn-primary-outline btn-mini inline-flex items-center justify-center self-center"
+            class="btn-primary-outline btn-mini inline-flex items-center justify-center self-center ms-2"
             @click=${() => this._clearRating()}
             ?disabled=${!hasRating}
           >
@@ -733,15 +733,15 @@ export class ReviewSubmissionModal extends LitWrapper {
             </div>
             <div class="text-xs text-stone-500 text-center">out of 5</div>
           </div>
-          <div class="sm:border-l sm:border-stone-200 sm:pl-5 min-w-0">
+          <div class="sm:border-l sm:border-stone-200 sm:pl-5 min-w-0 flex flex-col gap-1">
             <div class="form-label text-stone-700">Summary rating</div>
-            <div class="mt-1">
+            <div>
               <rating-stars
                 .averageRating=${ratingsCount > 0 ? averageRating : 0}
                 size="size-5"
               ></rating-stars>
             </div>
-            <div class="mt-1 text-sm text-stone-600">
+            <div class="text-sm/6 mt-1 text-stone-600">
               (${ratingsCount} ${ratingsCount === 1 ? "rating" : "ratings"})
             </div>
           </div>

@@ -467,8 +467,8 @@ export class CfsLabelSelector extends LitWrapper {
     const selectionLimitReached = !this._canAddSelection();
     const inputDisabled = this.disabled || this.labels.length === 0;
     const selectedChipClass = this.compact
-      ? "inline-flex h-[22px] items-center gap-0.5 rounded-full border px-2 py-0.5 text-[11px] font-medium text-stone-900"
-      : "inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-xs font-medium text-stone-900";
+      ? "inline-flex h-[22px] items-center gap-0.5 rounded-full border px-2 py-0.5 text-[11px] font-medium text-stone-900 max-w-full"
+      : "inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-xs font-medium text-stone-900 max-w-full";
     const selectedChipIconSizeClass = this.compact ? "size-2.5" : "size-3";
     const inputPlaceholder =
       selectedLabels.length === 0 ? this.placeholder || DEFAULT_PLACEHOLDER : "Add labels";
