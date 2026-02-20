@@ -28,7 +28,7 @@ impl DBDashboardCommon for PgDB {
 
         let db = self.pool.get().await?;
         let row = db.query_one("select search_user($1::text)", &[&query]).await?;
-        let users = serde_json::from_value(row.get::<_, serde_json::Value>(0))?;
+        let users = row.try_get::<_, Json<Vec<User>>>(0)?.0;
 
         Ok(users)
     }

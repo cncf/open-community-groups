@@ -176,9 +176,9 @@ impl DBDashboardCommunity for PgDB {
             trace!(community_id = ?community_id, "db: get community stats");
 
             let row = db
-                .query_one("select get_community_stats($1::uuid)::text", &[&community_id])
+                .query_one("select get_community_stats($1::uuid)", &[&community_id])
                 .await?;
-            let stats: CommunityStats = serde_json::from_str(&row.get::<_, String>(0))?;
+            let stats = row.try_get::<_, Json<CommunityStats>>(0)?.0;
 
             Ok(stats)
         }
@@ -199,11 +199,11 @@ impl DBDashboardCommunity for PgDB {
         let db = self.pool.get().await?;
         let row = db
             .query_one(
-                "select list_community_team_members($1::uuid, $2::jsonb)::text",
+                "select list_community_team_members($1::uuid, $2::jsonb)",
                 &[&community_id, &Json(filters)],
             )
             .await?;
-        let output: CommunityTeamOutput = serde_json::from_str(&row.get::<_, String>(0))?;
+        let output = row.try_get::<_, Json<CommunityTeamOutput>>(0)?.0;
 
         Ok(output)
     }
@@ -215,9 +215,9 @@ impl DBDashboardCommunity for PgDB {
 
         let db = self.pool.get().await?;
         let row = db
-            .query_one("select list_group_categories($1::uuid)::text", &[&community_id])
+            .query_one("select list_group_categories($1::uuid)", &[&community_id])
             .await?;
-        let categories: Vec<GroupCategory> = serde_json::from_str(&row.get::<_, String>(0))?;
+        let categories = row.try_get::<_, Json<Vec<GroupCategory>>>(0)?.0;
 
         Ok(categories)
     }
@@ -229,9 +229,9 @@ impl DBDashboardCommunity for PgDB {
 
         let db = self.pool.get().await?;
         let row = db
-            .query_one("select list_regions($1::uuid)::text", &[&community_id])
+            .query_one("select list_regions($1::uuid)", &[&community_id])
             .await?;
-        let regions: Vec<GroupRegion> = serde_json::from_str(&row.get::<_, String>(0))?;
+        let regions = row.try_get::<_, Json<Vec<GroupRegion>>>(0)?.0;
 
         Ok(regions)
     }
@@ -243,9 +243,9 @@ impl DBDashboardCommunity for PgDB {
 
         let db = self.pool.get().await?;
         let row = db
-            .query_one("select list_user_communities($1::uuid)::text", &[&user_id])
+            .query_one("select list_user_communities($1::uuid)", &[&user_id])
             .await?;
-        let communities: Vec<CommunitySummary> = serde_json::from_str(&row.get::<_, String>(0))?;
+        let communities = row.try_get::<_, Json<Vec<CommunitySummary>>>(0)?.0;
 
         Ok(communities)
     }

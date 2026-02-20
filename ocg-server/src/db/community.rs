@@ -6,6 +6,7 @@ use anyhow::Result;
 use async_trait::async_trait;
 use cached::proc_macro::cached;
 use deadpool_postgres::Client;
+use tokio_postgres::types::Json;
 use tracing::{instrument, trace};
 use uuid::Uuid;
 
@@ -104,11 +105,11 @@ impl DBCommunity for PgDB {
         let db = self.pool.get().await?;
         let row = db
             .query_one(
-                "select get_community_recently_added_groups($1::uuid)::text",
+                "select get_community_recently_added_groups($1::uuid)",
                 &[&community_id],
             )
             .await?;
-        let groups: Vec<GroupSummary> = serde_json::from_str(&row.get::<_, String>(0))?;
+        let groups = row.try_get::<_, Json<Vec<GroupSummary>>>(0)?.0;
 
         Ok(groups)
     }
@@ -120,12 +121,9 @@ impl DBCommunity for PgDB {
 
         let db = self.pool.get().await?;
         let row = db
-            .query_one(
-                "select get_community_site_stats($1::uuid)::text",
-                &[&community_id],
-            )
+            .query_one("select get_community_site_stats($1::uuid)", &[&community_id])
             .await?;
-        let stats: community::Stats = serde_json::from_str(&row.get::<_, String>(0))?;
+        let stats = row.try_get::<_, Json<community::Stats>>(0)?.0;
 
         Ok(stats)
     }
@@ -143,11 +141,11 @@ impl DBCommunity for PgDB {
         let db = self.pool.get().await?;
         let row = db
             .query_one(
-                "select get_community_upcoming_events($1::uuid, $2::text[])::text",
+                "select get_community_upcoming_events($1::uuid, $2::text[])",
                 &[&community_id, &event_kinds],
             )
             .await?;
-        let events: Vec<EventSummary> = serde_json::from_str(&row.get::<_, String>(0))?;
+        let events = row.try_get::<_, Json<Vec<EventSummary>>>(0)?.0;
 
         Ok(events)
     }

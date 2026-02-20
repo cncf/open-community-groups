@@ -2,6 +2,7 @@
 
 use anyhow::Result;
 use async_trait::async_trait;
+use tokio_postgres::types::Json;
 use tracing::{instrument, trace};
 use uuid::Uuid;
 
@@ -150,11 +151,11 @@ impl DBEvent for PgDB {
         let db = self.pool.get().await?;
         let row = db
             .query_one(
-                "select get_event_full_by_slug($1::uuid, $2::text, $3::text)::text",
+                "select get_event_full_by_slug($1::uuid, $2::text, $3::text)",
                 &[&community_id, &group_slug, &event_slug],
             )
             .await?;
-        let event: EventFull = serde_json::from_str(row.get(0))?;
+        let event = row.try_get::<_, Json<EventFull>>(0)?.0;
 
         Ok(event)
     }
@@ -167,11 +168,11 @@ impl DBEvent for PgDB {
         let db = self.pool.get().await?;
         let row = db
             .query_one(
-                "select get_event_summary_by_id($1::uuid, $2::uuid)::text",
+                "select get_event_summary_by_id($1::uuid, $2::uuid)",
                 &[&community_id, &event_id],
             )
             .await?;
-        let event: EventSummary = serde_json::from_str(row.get(0))?;
+        let event = row.try_get::<_, Json<EventSummary>>(0)?.0;
 
         Ok(event)
     }
@@ -243,12 +244,11 @@ impl DBEvent for PgDB {
         let db = self.pool.get().await?;
         let row = db
             .query_one(
-                "select list_user_session_proposals_for_cfs_event($1::uuid, $2::uuid)::text",
+                "select list_user_session_proposals_for_cfs_event($1::uuid, $2::uuid)",
                 &[&user_id, &event_id],
             )
             .await?;
-        let proposals_json: String = row.get(0);
-        let proposals: Vec<SessionProposal> = serde_json::from_str(&proposals_json)?;
+        let proposals = row.try_get::<_, Json<Vec<SessionProposal>>>(0)?.0;
 
         Ok(proposals)
     }

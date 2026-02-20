@@ -2,6 +2,7 @@
 
 use anyhow::Result;
 use async_trait::async_trait;
+use tokio_postgres::types::Json;
 use tracing::{instrument, trace};
 use uuid::Uuid;
 
@@ -57,11 +58,11 @@ impl DBGroup for PgDB {
         let db = self.pool.get().await?;
         let row = db
             .query_one(
-                "select get_group_full_by_slug($1::uuid, $2::text)::text",
+                "select get_group_full_by_slug($1::uuid, $2::text)",
                 &[&community_id, &group_slug],
             )
             .await?;
-        let group: GroupFull = serde_json::from_str(&row.get::<_, String>(0))?;
+        let group = row.try_get::<_, Json<GroupFull>>(0)?.0;
 
         Ok(group)
     }
@@ -81,11 +82,11 @@ impl DBGroup for PgDB {
         let db = self.pool.get().await?;
         let row = db
             .query_one(
-                "select get_group_past_events($1::uuid, $2::text, $3::text[], $4::int)::text",
+                "select get_group_past_events($1::uuid, $2::text, $3::text[], $4::int)",
                 &[&community_id, &group_slug, &event_kind_ids, &limit],
             )
             .await?;
-        let events: Vec<EventSummary> = serde_json::from_str(&row.get::<_, String>(0))?;
+        let events = row.try_get::<_, Json<Vec<EventSummary>>>(0)?.0;
 
         Ok(events)
     }
@@ -105,11 +106,11 @@ impl DBGroup for PgDB {
         let db = self.pool.get().await?;
         let row = db
             .query_one(
-                "select get_group_upcoming_events($1::uuid, $2::text, $3::text[], $4::int)::text",
+                "select get_group_upcoming_events($1::uuid, $2::text, $3::text[], $4::int)",
                 &[&community_id, &group_slug, &event_kind_ids, &limit],
             )
             .await?;
-        let events: Vec<EventSummary> = serde_json::from_str(&row.get::<_, String>(0))?;
+        let events = row.try_get::<_, Json<Vec<EventSummary>>>(0)?.0;
 
         Ok(events)
     }
