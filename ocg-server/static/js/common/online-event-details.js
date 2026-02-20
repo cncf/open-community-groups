@@ -179,9 +179,9 @@ export class OnlineEventDetails extends LitWrapper {
    */
   _getMeetingHostsLegend() {
     if (this._isSession()) {
-      return "By default, hosts and session speakers are added as meeting hosts. Add additional emails here if their meeting provider email differs from their user email (optional).";
+      return "By default, hosts and session speakers are included in this host email list. Add extra emails when needed (optional). These emails are saved for coordination and are not assigned as Zoom hosts automatically.";
     }
-    return "By default, hosts and event speakers are added as meeting hosts. Add additional emails here if their meeting provider email differs from their user email (optional).";
+    return "By default, hosts and event speakers are included in this host email list. Add extra emails when needed (optional). These emails are saved for coordination and are not assigned as Zoom hosts automatically.";
   }
 
   /**
@@ -846,7 +846,7 @@ export class OnlineEventDetails extends LitWrapper {
                   </select>
                 </div>
                 <div class="space-y-2 lg:w-1/2">
-                  <label class="form-label text-sm font-medium text-stone-900">Meeting hosts</label>
+                  <label class="form-label text-sm font-medium text-stone-900"> Meeting host emails </label>
                   <multiple-inputs
                     id="meeting-hosts-input"
                     .items="${this._hosts}"

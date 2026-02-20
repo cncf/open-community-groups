@@ -262,7 +262,7 @@ impl TryFrom<&Meeting> for CreateMeetingRequest {
 
             default_password: Some(true),
             duration: m.duration.map(Minutes::try_from_duration).transpose()?,
-            settings: Some(default_meeting_settings(m.hosts.as_deref())),
+            settings: Some(default_meeting_settings()),
             start_time: m.starts_at,
             timezone: m.timezone.clone(),
         })
@@ -273,9 +273,6 @@ impl TryFrom<&Meeting> for CreateMeetingRequest {
 #[skip_serializing_none]
 #[derive(Clone, Debug, Default, Serialize)]
 pub(crate) struct MeetingSettings {
-    pub alternative_host_manage_meeting_summary: Option<bool>,
-    pub alternative_host_update_polls: Option<bool>,
-    pub alternative_hosts: Option<String>,
     pub auto_recording: Option<String>,
     pub jbh_time: Option<i32>,
     pub join_before_host: Option<bool>,
@@ -311,7 +308,6 @@ struct TokenResponse {
 #[skip_serializing_none]
 #[derive(Debug, Default, Serialize)]
 pub(crate) struct UpdateMeetingRequest {
-    pub default_password: Option<bool>,
     pub duration: Option<Minutes>,
     pub settings: Option<MeetingSettings>,
     pub start_time: Option<DateTime<Utc>>,
@@ -324,9 +320,8 @@ impl TryFrom<&Meeting> for UpdateMeetingRequest {
 
     fn try_from(m: &Meeting) -> Result<Self, Self::Error> {
         Ok(Self {
-            default_password: Some(true),
             duration: m.duration.map(Minutes::try_from_duration).transpose()?,
-            settings: Some(default_meeting_settings(m.hosts.as_deref())),
+            settings: Some(default_meeting_settings()),
             start_time: m.starts_at,
             timezone: m.timezone.clone(),
             topic: m.topic.clone(),
@@ -446,11 +441,8 @@ pub(crate) struct ZoomMeeting {
 }
 
 /// Returns the default settings applied to all meetings.
-fn default_meeting_settings(hosts: Option<&[String]>) -> MeetingSettings {
+fn default_meeting_settings() -> MeetingSettings {
     MeetingSettings {
-        alternative_host_manage_meeting_summary: Some(true),
-        alternative_host_update_polls: Some(true),
-        alternative_hosts: hosts.map(|h| h.join(",")),
         auto_recording: Some("cloud".to_string()),
         jbh_time: Some(15),
         join_before_host: Some(true),
