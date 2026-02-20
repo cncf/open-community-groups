@@ -100,6 +100,7 @@ mock! {
             event_id: Uuid,
         )
             -> Result<crate::types::event::EventSummary>;
+        async fn list_event_cfs_labels(&self, event_id: Uuid) -> Result<Vec<crate::types::event::EventCfsLabel>>;
         async fn get_group_full(
             &self,
             community_id: Uuid,
@@ -337,7 +338,7 @@ mock! {
             event_id: Uuid,
             cfs_submission_id: Uuid,
             submission: &crate::templates::dashboard::group::submissions::CfsSubmissionUpdate,
-        ) -> Result<()>;
+        ) -> Result<bool>;
         async fn update_group_sponsor(
             &self,
             group_id: Uuid,
@@ -446,6 +447,7 @@ mock! {
             event_id: Uuid,
             user_id: Uuid,
             session_proposal_id: Uuid,
+            label_ids: &[Uuid],
         ) -> Result<Uuid>;
         async fn attend_event(
             &self,

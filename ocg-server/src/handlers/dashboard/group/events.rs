@@ -129,12 +129,16 @@ pub(crate) async fn list_page(
 /// Displays the page to update an existing event.
 #[instrument(skip_all, err)]
 pub(crate) async fn update_page(
+    auth_session: AuthSession,
     SelectedCommunityId(community_id): SelectedCommunityId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     State(meetings_cfg): State<Option<MeetingsConfig>>,
     Path(event_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
+    // Get user from session (endpoint is behind login_required)
+    let user = auth_session.user.expect("user to be logged in");
+
     // Prepare template
     let meetings_enabled = meetings_cfg.as_ref().is_some_and(MeetingsConfig::meetings_enabled);
     let meetings_max_participants = build_meetings_max_participants(meetings_cfg.as_ref());
@@ -162,6 +166,7 @@ pub(crate) async fn update_page(
         group_id,
         approved_submissions,
         cfs_submission_statuses: cfs_statuses,
+        current_user_id: user.user_id,
         event,
         categories,
         event_kinds,

@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(61);
+select plan(67);
 
 -- ============================================================================
 -- VARIABLES
@@ -20,8 +20,11 @@ select plan(61);
 \set event9ID '00000000-0000-0000-0000-000000000009'
 \set event10ID '00000000-0000-0000-0000-000000000010'
 \set event11ID '00000000-0000-0000-0000-000000000013'
+\set event12ID '00000000-0000-0000-0000-000000000014'
 \set group1ID '00000000-0000-0000-0000-000000000002'
 \set invalidUserID '99999999-9999-9999-9999-999999999999'
+\set label1ID '00000000-0000-0000-0000-000000000401'
+\set label2ID '00000000-0000-0000-0000-000000000402'
 \set meeting1ID '00000000-0000-0000-0000-000000000301'
 \set session1ID '00000000-0000-0000-0000-000000000101'
 \set session2ID '00000000-0000-0000-0000-000000000102'
@@ -386,6 +389,43 @@ insert into event (
     true
 );
 
+-- Event used for CFS labels update checks
+insert into event (
+    event_id,
+    group_id,
+    name,
+    slug,
+    description,
+    timezone,
+    event_category_id,
+    event_kind_id,
+    cfs_description,
+    cfs_enabled,
+    cfs_ends_at,
+    cfs_starts_at,
+    starts_at,
+    ends_at
+) values (
+    :'event12ID',
+    :'group1ID',
+    'Event With Labels',
+    'opq67rs',
+    'Event seeded for CFS labels update tests',
+    'UTC',
+    :'category1ID',
+    'virtual',
+    'Initial CFS description',
+    true,
+    '2030-01-05 00:00:00+00',
+    '2029-12-20 00:00:00+00',
+    '2030-01-15 10:00:00+00',
+    '2030-01-15 12:00:00+00'
+);
+
+insert into event_cfs_label (event_cfs_label_id, event_id, color, name) values
+    (:'label1ID', :'event12ID', '#CCFBF1', 'track / backend'),
+    (:'label2ID', :'event12ID', '#FEE2E2', 'track / frontend');
+
 -- ============================================================================
 -- TESTS
 -- ============================================================================
@@ -416,7 +456,7 @@ select is(
             :'community1ID'::uuid,
             :'group1ID'::uuid,
             :'event1ID'::uuid
-        )::jsonb - 'community' - 'created_at' - 'event_id' - 'organizers' - 'group' - 'legacy_hosts' - 'legacy_speakers'
+        )::jsonb - 'community' - 'created_at' - 'event_id' - 'organizers' - 'group' - 'legacy_hosts' - 'legacy_speakers' - 'cfs_labels'
     )),
     '{
         "canceled": false,
@@ -525,7 +565,7 @@ select is(
             :'community1ID'::uuid,
             :'group1ID'::uuid,
             :'event1ID'::uuid
-        )::jsonb - 'community' - 'created_at' - 'event_id' - 'organizers' - 'group' - 'legacy_hosts' - 'legacy_speakers' - 'sessions'
+        )::jsonb - 'community' - 'created_at' - 'event_id' - 'organizers' - 'group' - 'legacy_hosts' - 'legacy_speakers' - 'sessions' - 'cfs_labels'
     )),
     '{
         "canceled": false,
@@ -634,6 +674,145 @@ select is(
         }
     }'::jsonb,
     'Should set meeting_in_sync=false when meeting disabled to trigger deletion'
+);
+
+-- Should clear CFS labels when payload omits cfs_labels
+select lives_ok(
+    $$select update_event(
+        '00000000-0000-0000-0000-000000000002'::uuid,
+        '00000000-0000-0000-0000-000000000014'::uuid,
+        '{
+            "name": "Event With Labels",
+            "description": "Event seeded for CFS labels update tests",
+            "timezone": "UTC",
+            "category_id": "00000000-0000-0000-0000-000000000011",
+            "kind_id": "virtual",
+            "cfs_description": "Initial CFS description",
+            "cfs_enabled": true,
+            "cfs_starts_at": "2029-12-20T00:00:00",
+            "cfs_ends_at": "2030-01-05T00:00:00",
+            "starts_at": "2030-01-15T10:00:00",
+            "ends_at": "2030-01-15T12:00:00"
+        }'::jsonb
+    )$$,
+    'Should clear CFS labels when payload omits cfs_labels'
+);
+
+-- Should delete all CFS labels when payload omits cfs_labels
+select is(
+    (select count(*) from event_cfs_label where event_id = :'event12ID'::uuid),
+    0::bigint,
+    'Should delete all CFS labels when payload omits cfs_labels'
+);
+
+-- Re-seed labels for upsert tests
+insert into event_cfs_label (event_cfs_label_id, event_id, color, name) values
+    (:'label1ID', :'event12ID', '#CCFBF1', 'track / backend'),
+    (:'label2ID', :'event12ID', '#FEE2E2', 'track / frontend');
+
+-- Should update CFS labels for an event
+select lives_ok(
+    $$select update_event(
+        '00000000-0000-0000-0000-000000000002'::uuid,
+        '00000000-0000-0000-0000-000000000014'::uuid,
+        '{
+            "name": "Event With Labels",
+            "description": "Event seeded for CFS labels update tests",
+            "timezone": "UTC",
+            "category_id": "00000000-0000-0000-0000-000000000011",
+            "kind_id": "virtual",
+            "cfs_description": "Updated CFS description",
+            "cfs_enabled": true,
+            "cfs_starts_at": "2029-12-22T00:00:00",
+            "cfs_ends_at": "2030-01-07T00:00:00",
+            "starts_at": "2030-01-15T10:00:00",
+            "ends_at": "2030-01-15T12:00:00",
+            "cfs_labels": [
+                {
+                    "event_cfs_label_id": "00000000-0000-0000-0000-000000000401",
+                    "name": "track / ai + ml",
+                    "color": "#DBEAFE"
+                },
+                {
+                    "name": "track / web",
+                    "color": "#FEE2E2"
+                }
+            ]
+        }'::jsonb
+    )$$,
+    'Should update CFS labels for an event'
+);
+
+-- Should upsert and prune CFS labels in event_cfs_label
+select is(
+    (
+        select jsonb_agg(
+            jsonb_build_object(
+                'color', color,
+                'name', name
+            )
+            order by name
+        )
+        from event_cfs_label
+        where event_id = :'event12ID'::uuid
+    ),
+    '[
+        {"color": "#DBEAFE", "name": "track / ai + ml"},
+        {"color": "#FEE2E2", "name": "track / web"}
+    ]'::jsonb,
+    'Should upsert and prune CFS labels in event_cfs_label'
+);
+
+-- Should return updated CFS labels in event payload
+select is(
+    (
+        select jsonb_agg(
+            jsonb_build_object(
+                'color', label->>'color',
+                'name', label->>'name'
+            )
+            order by label->>'name'
+        )
+        from jsonb_array_elements(
+            get_event_full(
+                :'community1ID'::uuid,
+                :'group1ID'::uuid,
+                :'event12ID'::uuid
+            )::jsonb->'cfs_labels'
+        ) as label
+    ),
+    '[
+        {"color": "#DBEAFE", "name": "track / ai + ml"},
+        {"color": "#FEE2E2", "name": "track / web"}
+    ]'::jsonb,
+    'Should return updated CFS labels in event payload'
+);
+
+-- Should throw error when CFS labels contain duplicate names
+select throws_ok(
+    $$select update_event(
+        '00000000-0000-0000-0000-000000000002'::uuid,
+        '00000000-0000-0000-0000-000000000014'::uuid,
+        '{
+            "name": "Event With Labels",
+            "description": "Event seeded for CFS labels update tests",
+            "timezone": "UTC",
+            "category_id": "00000000-0000-0000-0000-000000000011",
+            "kind_id": "virtual",
+            "cfs_description": "Updated CFS description",
+            "cfs_enabled": true,
+            "cfs_starts_at": "2029-12-22T00:00:00",
+            "cfs_ends_at": "2030-01-07T00:00:00",
+            "starts_at": "2030-01-15T10:00:00",
+            "ends_at": "2030-01-15T12:00:00",
+            "cfs_labels": [
+                {"name": "track / data", "color": "#DBEAFE"},
+                {"name": "track / data", "color": "#FEE2E2"}
+            ]
+        }'::jsonb
+    )$$,
+    'duplicate cfs label names',
+    'Should throw error when CFS labels contain duplicate names'
 );
 
 -- Should throw error when group_id does not match

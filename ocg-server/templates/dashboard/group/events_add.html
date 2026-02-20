@@ -384,6 +384,23 @@
           <p class="form-legend">Shown on the event page to invite speakers.</p>
         </div>
         {# End CFS description -#}
+
+        {# CFS labels -#}
+        <div class="col-span-full">
+          <label for="cfs-labels-editor" class="form-label">Labels</label>
+          <p class="form-legend mt-1">
+            Labels help categorize submitted session proposals. For example, you can use them to organize sessions by track, topic, or theme. Submitters can select one or more labels when submitting their proposals. Organizers can review and update the labels on submissions during the review process, if needed.
+          </p>
+          <div class="mt-3">
+            <cfs-labels-editor id="cfs-labels-editor" field-name="cfs_labels" max-items="{{ crate::validation::MAX_LEN_EVENT_LABELS_PER_EVENT }}" colors="{{ crate::validation::CFS_LABEL_COLORS|json }}">
+            <p slot="legend" class="form-legend">
+              Use prefixes like <span class="font-semibold">track / ai + ml</span> and keep
+              <span class="font-semibold">/</span> as the separator for consistency.
+            </p>
+            </cfs-labels-editor>
+          </div>
+        </div>
+        {# End CFS labels -#}
       </div>
     </div>
   </form>
@@ -748,6 +765,7 @@
   const cfsStartsAtInput = document.getElementById('cfs_starts_at');
   const cfsEndsAtInput = document.getElementById('cfs_ends_at');
   const cfsDescriptionInput = document.getElementById('cfs_description');
+  const cfsLabelsEditor = document.getElementById('cfs-labels-editor');
 
   const updateCfsFields = (enabled) => {
     if (cfsEnabledInput) {
@@ -764,6 +782,9 @@
     if (cfsDescriptionInput) {
       cfsDescriptionInput.disabled = !enabled;
       cfsDescriptionInput.required = enabled;
+    }
+    if (cfsLabelsEditor) {
+      cfsLabelsEditor.disabled = !enabled;
     }
   };
 

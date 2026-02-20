@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(363);
+select plan(376);
 
 -- ============================================================================
 -- TESTS
@@ -17,6 +17,8 @@ select has_extension('postgis');
 select has_table('attachment');
 select has_table('auth_session');
 select has_table('cfs_submission');
+select has_table('cfs_submission_label');
+select has_table('cfs_submission_rating');
 select has_table('cfs_submission_status');
 select has_table('community');
 select has_table('community_site_layout');
@@ -28,6 +30,7 @@ select has_table('event_attendee');
 select has_table('event_category');
 select has_table('event_host');
 select has_table('event_kind');
+select has_table('event_cfs_label');
 select has_table('event_speaker');
 select has_table('event_sponsor');
 select has_table('group');
@@ -83,6 +86,24 @@ select columns_are('cfs_submission', array[
 
     'action_required_message',
     'reviewed_by',
+    'updated_at'
+]);
+
+-- Test: cfs_submission_label columns should match expected
+select columns_are('cfs_submission_label', array[
+    'cfs_submission_id',
+    'created_at',
+    'event_cfs_label_id'
+]);
+
+-- Test: cfs_submission_rating columns should match expected
+select columns_are('cfs_submission_rating', array[
+    'cfs_submission_id',
+    'reviewer_id',
+    'stars',
+
+    'comments',
+    'created_at',
     'updated_at'
 ]);
 
@@ -242,6 +263,15 @@ select columns_are('event_host', array[
 select columns_are('event_kind', array[
     'event_kind_id',
     'display_name'
+]);
+
+-- Test: event_cfs_label columns should match expected
+select columns_are('event_cfs_label', array[
+    'color',
+    'created_at',
+    'event_id',
+    'event_cfs_label_id',
+    'name'
 ]);
 
 -- Test: event_speaker columns should match expected
@@ -560,6 +590,7 @@ select columns_are('user', array[
 select has_pk('attachment');
 select has_pk('auth_session');
 select has_pk('cfs_submission');
+select has_pk('cfs_submission_rating');
 select has_pk('cfs_submission_status');
 select has_pk('community');
 select has_pk('community_site_layout');
@@ -610,6 +641,8 @@ select col_is_fk('cfs_submission', 'event_id', 'event');
 select col_is_fk('cfs_submission', 'reviewed_by', 'user');
 select col_is_fk('cfs_submission', 'session_proposal_id', 'session_proposal');
 select col_is_fk('cfs_submission', 'status_id', 'cfs_submission_status');
+select col_is_fk('cfs_submission_rating', 'cfs_submission_id', 'cfs_submission');
+select col_is_fk('cfs_submission_rating', 'reviewer_id', 'user');
 select col_is_fk('email_verification_code', 'user_id', 'user');
 select col_is_fk('event', 'event_category_id', 'event_category');
 select col_is_fk('event', 'event_kind_id', 'event_kind');
@@ -678,6 +711,18 @@ select indexes_are('cfs_submission', array[
     'cfs_submission_reviewed_by_idx',
     'cfs_submission_session_proposal_id_idx',
     'cfs_submission_status_id_idx'
+]);
+
+-- Test: cfs_submission_label indexes should match expected
+select indexes_are('cfs_submission_label', array[
+    'cfs_submission_label_pkey',
+    'cfs_submission_label_event_cfs_label_id_idx'
+]);
+
+-- Test: cfs_submission_rating indexes should match expected
+select indexes_are('cfs_submission_rating', array[
+    'cfs_submission_rating_pkey',
+    'cfs_submission_rating_reviewer_id_idx'
 ]);
 
 -- Test: cfs_submission_status indexes should match expected
@@ -765,6 +810,13 @@ select indexes_are('event_host', array[
 select indexes_are('event_kind', array[
     'event_kind_pkey',
     'event_kind_display_name_key'
+]);
+
+-- Test: event_cfs_label indexes should match expected
+select indexes_are('event_cfs_label', array[
+    'event_cfs_label_pkey',
+    'event_cfs_label_event_id_name_key',
+    'event_cfs_label_event_id_idx'
 ]);
 
 -- Test: group indexes should match expected
@@ -1022,6 +1074,7 @@ select has_function('list_event_attendees_ids');
 select has_function('list_event_categories');
 select has_function('list_event_cfs_submissions');
 select has_function('list_event_kinds');
+select has_function('list_event_cfs_labels');
 select has_function('list_group_categories');
 select has_function('list_group_events');
 select has_function('list_group_members');

@@ -4,6 +4,7 @@ use std::collections::{BTreeMap, HashSet};
 
 use chrono::{DateTime, NaiveDate, Utc};
 use chrono_tz::Tz;
+use garde::Validate;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use uuid::Uuid;
@@ -15,6 +16,7 @@ use crate::{
         helpers::location::{LocationParts, build_location},
     },
     types::{community::CommunitySummary, group::GroupSummary},
+    validation::{MAX_LEN_EVENT_LABEL_NAME, trimmed_non_empty, valid_cfs_label_color},
 };
 
 // Event types: summary and full.
@@ -169,6 +171,9 @@ pub struct EventFull {
     /// Call for speakers end time in UTC.
     #[serde(default, with = "chrono::serde::ts_seconds_option")]
     pub cfs_ends_at: Option<DateTime<Utc>>,
+    /// Call for speakers labels.
+    #[serde(default)]
+    pub cfs_labels: Vec<EventCfsLabel>,
     /// Call for speakers start time in UTC.
     #[serde(default, with = "chrono::serde::ts_seconds_option")]
     pub cfs_starts_at: Option<DateTime<Utc>>,
@@ -380,6 +385,23 @@ pub struct EventCategory {
     pub name: String,
     /// URL-friendly identifier.
     pub slug: String,
+}
+
+/// Event CFS label used for submissions.
+#[skip_serializing_none]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, Validate)]
+pub struct EventCfsLabel {
+    /// Label color.
+    #[garde(custom(valid_cfs_label_color))]
+    pub color: String,
+    /// Label name.
+    #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_EVENT_LABEL_NAME))]
+    pub name: String,
+
+    /// Event CFS label identifier.
+    #[serde(default)]
+    #[garde(skip)]
+    pub event_cfs_label_id: Option<Uuid>,
 }
 
 /// Categorization of event attendance modes.

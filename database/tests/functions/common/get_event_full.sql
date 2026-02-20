@@ -18,6 +18,8 @@ select plan(6);
 \set groupCategoryID '00000000-0000-0000-0000-000000000011'
 \set groupID '00000000-0000-0000-0000-000000000021'
 \set groupInactiveID '00000000-0000-0000-0000-000000000022'
+\set label1ID '00000000-0000-0000-0000-000000000075'
+\set label2ID '00000000-0000-0000-0000-000000000076'
 \set legacyHost1ID '00000000-0000-0000-0000-000000000071'
 \set legacyHost2ID '00000000-0000-0000-0000-000000000072'
 \set legacySpeaker1ID '00000000-0000-0000-0000-000000000073'
@@ -192,6 +194,12 @@ insert into event (
     array['https://example.com/photo1.jpg', 'https://example.com/photo2.jpg'],
     '2024-04-01 10:00:00+00'
 );
+
+-- Event CFS labels
+insert into event_cfs_label (event_cfs_label_id, event_id, name, color)
+values
+    (:'label1ID', :'eventID', 'track / ai + ml', '#DBEAFE'),
+    (:'label2ID', :'eventID', 'track / web', '#FEE2E2');
 
 -- Session proposal linked to a session
 insert into session_proposal (
@@ -495,6 +503,18 @@ select is(
         "timezone": "America/New_York",
         "banner_url": "https://example.com/event-banner.png",
         "capacity": 500,
+        "cfs_labels": [
+            {
+                "color": "#DBEAFE",
+                "event_cfs_label_id": "00000000-0000-0000-0000-000000000075",
+                "name": "track / ai + ml"
+            },
+            {
+                "color": "#FEE2E2",
+                "event_cfs_label_id": "00000000-0000-0000-0000-000000000076",
+                "name": "track / web"
+            }
+        ],
         "description_short": "Annual Kubernetes conference",
         "ends_at": 1718557200,
         "latitude": 47.6062,

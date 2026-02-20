@@ -95,6 +95,37 @@
 {% endmacro submission_status_action_required_icon_styles -%}
 {# End submission action required icon styles -#}
 
+{# Submission status with action required indicator -#}
+{% macro submission_status_with_action_required(status_id, label, action_required_message, extra_styles = None) -%}
+  <div class="inline-flex items-center gap-2">
+    {{ submission_status_badge(status_id = status_id.to_string() , label = label, extra_styles = extra_styles) -}}
+    {% if let Some(message) = &action_required_message -%}
+      <span class="relative inline-flex">
+        <button type="button"
+                class="inline-flex items-center justify-center size-5 border rounded-full {{ submission_status_action_required_icon_button_styles(status_id = status_id.to_string() ) }}"
+                data-action="open-action-required-modal"
+                data-action-required-message="{{ message }}"
+                aria-label="View action required details">
+          <div class="svg-icon size-2.5 icon-info {{ submission_status_action_required_icon_styles(status_id = status_id.to_string() ) }}">
+          </div>
+        </button>
+      </span>
+    {% endif -%}
+  </div>
+{% endmacro submission_status_with_action_required -%}
+{# End submission status with action required indicator -#}
+
+{# CFS label chip -#}
+{% macro cfs_label_chip(name, color, extra_styles = None) -%}
+  {% let extra_styles_ = extra_styles.unwrap_or("") -%}
+
+  <span class="inline-block truncate rounded-full border px-2 py-0.5 text-[11px] font-medium text-stone-900 max-w-full {{ extra_styles_ }}"
+        style="--label-color: {{ color }};
+               border-color: var(--label-color);
+               background-color: color-mix(in srgb, var(--label-color) 30%, transparent)">{{ name }}</span>
+{% endmacro cfs_label_chip -%}
+{# End CFS label chip -#}
+
 {# Sold out overlay badge -#}
 {% macro sold_out_overlay(remaining_capacity, capacity = None, outer_classes = None, inner_classes = None, label = "Sold out", orientation = "top-left") -%}
   {% let outer_classes_ = outer_classes.unwrap_or("") -%}

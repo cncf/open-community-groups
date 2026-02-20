@@ -261,6 +261,7 @@ select is(
         ],
         "starts_at": 1718442000,
         "banner_url": "https://example.com/event-banner.png",
+        "cfs_labels": [],
         "meetup_url": "https://meetup.com/event123",
         "organizers": [
             {

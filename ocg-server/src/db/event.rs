@@ -21,6 +21,7 @@ pub(crate) trait DBEvent {
         event_id: Uuid,
         user_id: Uuid,
         session_proposal_id: Uuid,
+        label_ids: &[Uuid],
     ) -> Result<Uuid>;
 
     /// Adds a user as an attendee of an event.
@@ -78,14 +79,21 @@ impl DBEvent for PgDB {
         event_id: Uuid,
         user_id: Uuid,
         session_proposal_id: Uuid,
+        label_ids: &[Uuid],
     ) -> Result<Uuid> {
         trace!("db: add cfs submission");
 
         let db = self.pool.get().await?;
         let id = db
             .query_one(
-                "select add_cfs_submission($1::uuid, $2::uuid, $3::uuid, $4::uuid)::uuid",
-                &[&community_id, &event_id, &user_id, &session_proposal_id],
+                "select add_cfs_submission($1::uuid, $2::uuid, $3::uuid, $4::uuid, $5::uuid[])::uuid",
+                &[
+                    &community_id,
+                    &event_id,
+                    &user_id,
+                    &session_proposal_id,
+                    &label_ids,
+                ],
             )
             .await?
             .get(0);

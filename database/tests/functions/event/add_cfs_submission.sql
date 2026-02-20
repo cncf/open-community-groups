@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(8);
+select plan(11);
 
 -- ============================================================================
 -- VARIABLES
@@ -18,7 +18,11 @@ select plan(8);
 \set eventUnpublishedID '00000000-0000-0000-0000-000000000054'
 \set groupCategoryID '00000000-0000-0000-0000-000000000021'
 \set groupID '00000000-0000-0000-0000-000000000031'
+\set label1ID '00000000-0000-0000-0000-000000000101'
+\set label2ID '00000000-0000-0000-0000-000000000102'
+\set labelInvalidID '00000000-0000-0000-0000-000000000103'
 \set proposalID '00000000-0000-0000-0000-000000000061'
+\set proposalWithLabelsID '00000000-0000-0000-0000-000000000063'
 \set proposalPendingID '00000000-0000-0000-0000-000000000062'
 \set userID '00000000-0000-0000-0000-000000000071'
 
@@ -64,6 +68,25 @@ insert into session_proposal (
     make_interval(mins => 45),
     'beginner',
     'Rust Intro',
+    :'userID'
+);
+
+-- Session proposal
+insert into session_proposal (
+    session_proposal_id,
+    created_at,
+    description,
+    duration,
+    session_proposal_level_id,
+    title,
+    user_id
+) values (
+    :'proposalWithLabelsID',
+    '2024-01-03 00:00:00+00',
+    'Talk about labels',
+    make_interval(mins => 30),
+    'beginner',
+    'Labels Intro',
     :'userID'
 );
 
@@ -157,6 +180,12 @@ insert into event (
     current_timestamp + interval '10 days',
     current_timestamp + interval '11 days'
 );
+
+-- Event CFS labels
+insert into event_cfs_label (event_cfs_label_id, event_id, name, color) values
+    (:'label1ID', :'eventID', 'track / backend', '#DBEAFE'),
+    (:'label2ID', :'eventID', 'track / frontend', '#FEE2E2'),
+    (:'labelInvalidID', :'eventClosedID', 'track / closed-event', '#CCFBF1');
 
 -- Event (CFS disabled)
 insert into event (
@@ -332,6 +361,47 @@ select throws_ok(
     ),
     'session proposal not ready for submission',
     'Should reject submissions for proposals not ready for submission'
+);
+
+-- Should reject labels that do not belong to the event
+select throws_ok(
+    format(
+        'select add_cfs_submission(%L::uuid, %L::uuid, %L::uuid, %L::uuid, array[%L::uuid])',
+        :'communityID',
+        :'eventID',
+        :'userID',
+        :'proposalWithLabelsID',
+        :'labelInvalidID'
+    ),
+    'invalid event CFS labels',
+    'Should reject labels that do not belong to the event'
+);
+
+-- Should execute add_cfs_submission with labels successfully
+select lives_ok(
+    format(
+        'select add_cfs_submission(%L::uuid, %L::uuid, %L::uuid, %L::uuid, array[%L::uuid, %L::uuid])',
+        :'communityID',
+        :'eventID',
+        :'userID',
+        :'proposalWithLabelsID',
+        :'label1ID',
+        :'label2ID'
+    ),
+    'Should execute add_cfs_submission with labels successfully'
+);
+
+-- Should add labels to the CFS submission
+select is(
+    (
+        select count(*)
+        from cfs_submission_label csl
+        join cfs_submission cs on cs.cfs_submission_id = csl.cfs_submission_id
+        where cs.event_id = :'eventID'::uuid
+        and cs.session_proposal_id = :'proposalWithLabelsID'::uuid
+    ),
+    2::bigint,
+    'Should add labels to the CFS submission'
 );
 
 -- ============================================================================

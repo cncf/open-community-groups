@@ -17,14 +17,15 @@ use crate::{
         pagination::{self, Pagination, ToRawQuery},
     },
     types::event::{
-        EventCategory, EventFull, EventKindSummary, EventSummary, SessionKind, SessionKindSummary,
+        EventCategory, EventCfsLabel, EventFull, EventKindSummary, EventSummary, SessionKind,
+        SessionKindSummary,
     },
     types::group::GroupSponsor,
     validation::{
-        MAX_LEN_COUNTRY_CODE, MAX_LEN_DESCRIPTION, MAX_LEN_DESCRIPTION_SHORT, MAX_LEN_ENTITY_NAME, MAX_LEN_L,
-        MAX_LEN_S, MAX_LEN_TIMEZONE, MAX_PAGINATION_LIMIT, email_vec, image_url_opt, trimmed_non_empty,
-        trimmed_non_empty_opt, trimmed_non_empty_tag_vec, trimmed_non_empty_vec, valid_latitude,
-        valid_longitude,
+        MAX_LEN_COUNTRY_CODE, MAX_LEN_DESCRIPTION, MAX_LEN_DESCRIPTION_SHORT, MAX_LEN_ENTITY_NAME,
+        MAX_LEN_EVENT_LABELS_PER_EVENT, MAX_LEN_L, MAX_LEN_S, MAX_LEN_TIMEZONE, MAX_PAGINATION_LIMIT,
+        email_vec, image_url_opt, trimmed_non_empty, trimmed_non_empty_opt, trimmed_non_empty_tag_vec,
+        trimmed_non_empty_vec, valid_latitude, valid_longitude,
     },
 };
 
@@ -83,6 +84,8 @@ pub(crate) struct UpdatePage {
     pub categories: Vec<EventCategory>,
     /// CFS submission status options.
     pub cfs_submission_statuses: Vec<CfsSubmissionStatus>,
+    /// Current authenticated user identifier.
+    pub current_user_id: Uuid,
     /// Event details to update.
     pub event: EventFull,
     /// List of available event kinds.
@@ -132,6 +135,10 @@ pub(crate) struct Event {
     /// Category this event belongs to.
     #[garde(skip)]
     pub category_id: Uuid,
+    /// Call for speakers labels.
+    #[serde(default)]
+    #[garde(length(max = MAX_LEN_EVENT_LABELS_PER_EVENT), dive)]
+    pub cfs_labels: Vec<EventCfsLabel>,
     /// Event description.
     #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_DESCRIPTION))]
     pub description: String,

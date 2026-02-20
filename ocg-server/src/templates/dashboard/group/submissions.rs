@@ -14,7 +14,11 @@ use crate::{
         dashboard,
         pagination::{self, Pagination, ToRawQuery},
     },
-    validation::{MAX_LEN_DESCRIPTION, MAX_PAGINATION_LIMIT, trimmed_non_empty},
+    types::event::EventCfsLabel,
+    validation::{
+        MAX_LEN_DESCRIPTION, MAX_LEN_EVENT_LABELS_PER_EVENT, MAX_LEN_EVENT_LABELS_PER_SUBMISSION,
+        MAX_LEN_SORT_KEY, MAX_PAGINATION_LIMIT, trimmed_non_empty, trimmed_non_empty_opt,
+    },
 };
 
 use super::events::CfsSubmissionStatus;
@@ -27,10 +31,16 @@ use super::events::CfsSubmissionStatus;
 pub(crate) struct ListPage {
     /// Event identifier.
     pub event_id: Uuid,
+    /// Event CFS labels available for filtering and submission updates.
+    pub event_cfs_labels: Vec<EventCfsLabel>,
     /// Pagination navigation links.
     pub navigation_links: pagination::NavigationLinks,
     /// URL used to refresh the submissions list.
     pub refresh_url: String,
+    /// Selected CFS label identifiers used to filter submissions.
+    pub selected_event_cfs_label_ids: Option<Vec<Uuid>>,
+    /// Sort option used to order submissions.
+    pub sort: String,
     /// Submission status options.
     pub statuses: Vec<CfsSubmissionStatus>,
     /// List of submissions.
@@ -76,6 +86,12 @@ pub(crate) struct CfsSubmission {
     /// Submission creation time.
     #[serde(with = "chrono::serde::ts_seconds")]
     pub created_at: DateTime<Utc>,
+    /// Labels assigned to the submission.
+    pub labels: Vec<EventCfsLabel>,
+    /// Ratings for this submission.
+    pub ratings: Vec<CfsSubmissionRating>,
+    /// Total number of ratings.
+    pub ratings_count: usize,
     /// Session proposal summary information.
     pub session_proposal: CfsSessionProposal,
     /// Speaker information.
@@ -87,6 +103,8 @@ pub(crate) struct CfsSubmission {
 
     /// Action required message for the speaker.
     pub action_required_message: Option<String>,
+    /// Average stars across all ratings.
+    pub average_rating: Option<f64>,
     /// Linked session identifier.
     pub linked_session_id: Option<Uuid>,
     /// Reviewer information.
@@ -111,10 +129,26 @@ pub(crate) struct CfsSubmissionNotificationData {
     pub action_required_message: Option<String>,
 }
 
+/// Submission rating details.
+#[skip_serializing_none]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct CfsSubmissionRating {
+    /// Reviewer information.
+    pub reviewer: UserSummary,
+    /// Number of stars assigned by the reviewer.
+    pub stars: i16,
+
+    /// Optional rating comments.
+    pub comments: Option<String>,
+}
+
 /// Filter parameters for submissions pagination.
 #[skip_serializing_none]
 #[derive(Debug, Clone, Default, Serialize, Deserialize, Validate)]
 pub(crate) struct CfsSubmissionsFilters {
+    /// Labels to filter by.
+    #[garde(length(max = MAX_LEN_EVENT_LABELS_PER_EVENT))]
+    pub label_ids: Option<Vec<Uuid>>,
     /// Number of results per page.
     #[serde(default = "dashboard::default_limit")]
     #[garde(range(max = MAX_PAGINATION_LIMIT))]
@@ -123,6 +157,9 @@ pub(crate) struct CfsSubmissionsFilters {
     #[serde(default = "dashboard::default_offset")]
     #[garde(skip)]
     pub offset: Option<usize>,
+    /// Sort option used to order submissions.
+    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_SORT_KEY))]
+    pub sort: Option<String>,
 }
 
 crate::impl_pagination_and_raw_query!(CfsSubmissionsFilters, limit, offset);
@@ -140,6 +177,10 @@ pub(crate) struct CfsSubmissionsOutput {
 #[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize, Validate)]
 pub(crate) struct CfsSubmissionUpdate {
+    /// Labels assigned to the submission.
+    #[serde(default)]
+    #[garde(length(max = MAX_LEN_EVENT_LABELS_PER_SUBMISSION))]
+    pub label_ids: Vec<Uuid>,
     /// Submission status identifier.
     #[garde(custom(trimmed_non_empty))]
     pub status_id: String,
@@ -147,4 +188,10 @@ pub(crate) struct CfsSubmissionUpdate {
     /// Action required message for the speaker.
     #[garde(length(max = MAX_LEN_DESCRIPTION))]
     pub action_required_message: Option<String>,
+    /// Optional comment attached to the reviewer's rating.
+    #[garde(length(max = MAX_LEN_DESCRIPTION))]
+    pub rating_comment: Option<String>,
+    /// Reviewer stars value, where `0` clears the existing rating.
+    #[garde(range(min = 0, max = 5))]
+    pub rating_stars: Option<i16>,
 }

@@ -11,22 +11,85 @@ description = "Review and manage call for speakers submissions.") -}}
      hx-target="#submissions-content"
      hx-swap="innerHTML"></div>
 
+<div class="mt-6">
+  <form id="submissions-filters-form"
+        class="w-full"
+        hx-get="/dashboard/group/events/{{ event_id }}/submissions"
+        hx-target="#submissions-content"
+        hx-swap="innerHTML"
+        hx-indicator="#dashboard-spinner">
+    <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+      {% if !event_cfs_labels.is_empty() -%}
+        <div class="min-w-0 w-full md:w-1/2 md:pe-6">
+          <label for="submissions-label-filter" class="sr-only">Filter by labels</label>
+          <cfs-label-selector id="submissions-label-filter" name="label_ids" labels="{{ event_cfs_labels|json }}" selected="{{ selected_event_cfs_label_ids|json }}" placeholder="Search labels" compact selected-in-input></cfs-label-selector>
+        </div>
+      {% endif -%}
+      <div class="flex items-center justify-end gap-2 whitespace-nowrap">
+        <label for="submissions-sort"
+               class="font-semibold text-[0.775rem] text-nowrap text-black leading-6">Sort by</label>
+        <select id="submissions-sort"
+                name="sort"
+                class="block w-48 px-3 text-sm h-[42px] text-stone-900 bg-white border border-stone-200 rounded-full focus:outline-none focus:ring-0 focus:border-stone-200 hover:border-primary-500 focus:hover:border-primary-500 transition-colors">
+          <option value="created-desc"
+                  {% if sort == "created-desc" %}selected{% endif %}>Submitted (newest)</option>
+          <option value="created-asc" {% if sort == "created-asc" %}selected{% endif %}>Submitted (oldest)</option>
+          <option value="ratings-count-desc"
+                  {% if sort == "ratings-count-desc" %}selected{% endif %}>Ratings count (high to low)</option>
+          <option value="ratings-count-asc"
+                  {% if sort == "ratings-count-asc" %}selected{% endif %}>Ratings count (low to high)</option>
+          <option value="stars-desc" {% if sort == "stars-desc" %}selected{% endif %}>Stars (high to low)</option>
+          <option value="stars-asc" {% if sort == "stars-asc" %}selected{% endif %}>Stars (low to high)</option>
+        </select>
+      </div>
+    </div>
+  </form>
+</div>
+<script type="module">
+  const submissionsFiltersForm = document.getElementById("submissions-filters-form");
+  const submissionsSort = document.getElementById("submissions-sort");
+  const submissionsLabelFilter = document.getElementById("submissions-label-filter");
+  const submitFilters = () => {
+    if (!submissionsFiltersForm) {
+      return;
+    }
+    window.requestAnimationFrame(() => submissionsFiltersForm.requestSubmit());
+  };
+
+  if (submissionsFiltersForm && submissionsSort) {
+    submissionsSort.addEventListener("change", () => submitFilters());
+  }
+
+  if (submissionsFiltersForm && submissionsLabelFilter) {
+    submissionsLabelFilter.addEventListener("change", () => submitFilters());
+  }
+</script>
+
 <div class="mt-10">
   <div class="relative overflow-visible">
-    <table class="table-auto w-full text-xs lg:text-sm text-left text-stone-500">
+    <table class="table-fixed w-full text-xs lg:text-sm text-left text-stone-500">
+      <colgroup>
+        <col />
+        <col />
+        <col class="w-[170px]" />
+        <col class="hidden xl:table-column w-[130px]" />
+        <col class="hidden 2xl:table-column w-[110px]" />
+        <col class="w-24" />
+      </colgroup>
       <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
         <tr>
           <th scope="col" class="px-3 xl:px-5 py-3">Speaker</th>
           <th scope="col" class="px-3 xl:px-5 py-3">Proposal</th>
           <th scope="col" class="px-3 xl:px-5 py-3">Status</th>
-          <th scope="col" class="px-3 xl:px-5 py-3">Updated</th>
-          <th scope="col" class="px-3 xl:px-5 py-3 w-24"></th>
+          <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3">Ratings</th>
+          <th scope="col" class="hidden 2xl:table-cell px-3 xl:px-5 py-3">Submitted</th>
+          <th scope="col" class="px-3 xl:px-5 py-3"></th>
         </tr>
       </thead>
       <tbody>
         {% if submissions.is_empty() -%}
           <tr class="bg-white border-b border-stone-200">
-            <td class="px-8 py-16 text-center" colspan="5">
+            <td class="px-8 py-16 text-center" colspan="6">
               <div class="flex flex-col items-center justify-center min-h-[125px]">
                 <div class="text-lg lg:text-xl">No submissions have been received yet.</div>
               </div>
@@ -49,17 +112,42 @@ description = "Review and manage call for speakers submissions.") -}}
                 </div>
               </td>
               <td class="px-3 xl:px-5 py-4">
-                <div class="font-medium text-stone-900 line-clamp-1">{{ submission.session_proposal.title }}</div>
+                <div class="font-medium text-stone-900 line-clamp-2 xl:line-clamp-1">
+                  {{ submission.session_proposal.title }}
+                </div>
+                {% if !submission.labels.is_empty() -%}
+                  <div class="hidden mt-2 xl:flex flex-wrap gap-1.5 min-w-0">
+                    {% for label in submission.labels -%}
+                      {{ badges::cfs_label_chip(name = &label.name, color = &label.color) -}}
+                    {% endfor -%}
+                  </div>
+                {% endif -%}
               </td>
               <td class="px-3 xl:px-5 py-4">
                 {{ badges::submission_status_badge(status_id = submission.status_id, label = submission.status_name, extra_styles = Some("px-2.5 py-0.5 uppercase") ) -}}
               </td>
-              <td class="px-3 xl:px-5 py-4 whitespace-nowrap">
-                {% if let Some(updated_at) = &submission.updated_at -%}
-                  {{ updated_at.format("%b %d, %Y") }}
+              <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap">
+                {% if let Some(average_rating) = submission.average_rating -%}
+                  <div class="inline-flex items-center gap-2 text-stone-700">
+                    <rating-stars average-rating="{{ average_rating }}" size="size-3"></rating-stars>
+                    <span class="text-xs/3 font-semibold -mb-1">{{ average_rating }}</span>
+                  </div>
                 {% else -%}
-                  {{ submission.created_at.format("%b %d, %Y") }}
+                  <div class="inline-flex items-center gap-2 text-stone-500">
+                    <rating-stars average-rating="0" size="size-3"></rating-stars>
+                  </div>
                 {% endif -%}
+                <div class="mt-1 text-xs text-stone-500">
+                  {{ submission.ratings_count }}
+                  {% if submission.ratings_count == 1 -%}
+                    rating
+                  {% else -%}
+                    ratings
+                  {% endif -%}
+                </div>
+              </td>
+              <td class="hidden 2xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap">
+                {{ submission.created_at.format("%b %d, %Y") }}
               </td>
               <td class="px-3 xl:px-5 py-4">
                 <button type="button"

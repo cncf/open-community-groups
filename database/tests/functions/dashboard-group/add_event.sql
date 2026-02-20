@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(22);
+select plan(25);
 
 -- ============================================================================
 -- VARIABLES
@@ -95,7 +95,7 @@ select ok(
                 :'groupID'::uuid,
                 '{"name": "Kubernetes Fundamentals Workshop", "description": "Learn the basics of Kubernetes deployment and management", "timezone": "America/New_York", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person"}'::jsonb
             )
-        )::jsonb - 'community' - 'created_at' - 'event_id' - 'organizers' - 'group' - 'legacy_hosts' - 'legacy_speakers' - 'slug'
+        )::jsonb - 'community' - 'created_at' - 'event_id' - 'organizers' - 'group' - 'legacy_hosts' - 'legacy_speakers' - 'slug' - 'cfs_labels'
     )) = '{
         "canceled": false,
         "category_name": "Conference",
@@ -188,7 +188,7 @@ select ok(
         :'communityID'::uuid,
         :'groupID'::uuid,
         :'eventID'::uuid
-    )::jsonb - 'community' - 'created_at' - 'event_id' - 'organizers' - 'group' - 'legacy_hosts' - 'legacy_speakers' - 'sessions' - 'slug') = '{
+    )::jsonb - 'community' - 'created_at' - 'event_id' - 'organizers' - 'group' - 'legacy_hosts' - 'legacy_speakers' - 'sessions' - 'slug' - 'cfs_labels') = '{
         "canceled": false,
         "category_name": "Conference",
         "description": "Premier conference for cloud native technologies and community collaboration",
@@ -272,6 +272,96 @@ select ok(
         ]'::jsonb
     ),
     'Sessions contain expected rows (ignoring session_id)'
+);
+
+-- Should create event with CFS labels
+with cfs_labels_event as (
+    select add_event(
+        :'groupID'::uuid,
+        '{
+            "name": "CloudNativeCon Labels Event",
+            "description": "Event with labels for CFS",
+            "timezone": "UTC",
+            "category_id": "00000000-0000-0000-0000-000000000011",
+            "kind_id": "virtual",
+            "cfs_description": "Submit your talk",
+            "cfs_enabled": true,
+            "cfs_ends_at": "2030-01-05T00:00:00",
+            "cfs_starts_at": "2029-12-20T00:00:00",
+            "starts_at": "2030-01-10T10:00:00",
+            "ends_at": "2030-01-10T12:00:00",
+            "cfs_labels": [
+                {"name": "track / web", "color": "#FEE2E2"},
+                {"name": "track / ai + ml", "color": "#DBEAFE"}
+            ]
+        }'::jsonb
+    ) as event_id
+)
+select event_id as "eventWithCfsLabelsID" from cfs_labels_event \gset
+
+-- Should persist CFS labels in the event_cfs_label table
+select is(
+    (
+        select jsonb_agg(
+            jsonb_build_object(
+                'color', color,
+                'name', name
+            )
+            order by name
+        )
+        from event_cfs_label
+        where event_id = :'eventWithCfsLabelsID'::uuid
+    ),
+    '[
+        {"color": "#DBEAFE", "name": "track / ai + ml"},
+        {"color": "#FEE2E2", "name": "track / web"}
+    ]'::jsonb,
+    'Should persist CFS labels in event_cfs_label'
+);
+
+-- Should return created CFS labels in event payload
+select is(
+    (
+        select jsonb_agg(
+            jsonb_build_object(
+                'color', label->>'color',
+                'name', label->>'name'
+            )
+            order by label->>'name'
+        )
+        from jsonb_array_elements(
+            get_event_full(
+                :'communityID'::uuid,
+                :'groupID'::uuid,
+                :'eventWithCfsLabelsID'::uuid
+            )::jsonb->'cfs_labels'
+        ) as label
+    ),
+    '[
+        {"color": "#DBEAFE", "name": "track / ai + ml"},
+        {"color": "#FEE2E2", "name": "track / web"}
+    ]'::jsonb,
+    'Should return created CFS labels in event payload'
+);
+
+-- Should throw error when CFS labels contain duplicate names
+select throws_ok(
+    $$select add_event(
+        '00000000-0000-0000-0000-000000000002'::uuid,
+        '{
+            "name": "CloudNativeCon Duplicate Labels Event",
+            "description": "Event with duplicate CFS labels",
+            "timezone": "UTC",
+            "category_id": "00000000-0000-0000-0000-000000000011",
+            "kind_id": "virtual",
+            "cfs_labels": [
+                {"name": "track / web", "color": "#FEE2E2"},
+                {"name": "track / web", "color": "#DBEAFE"}
+            ]
+        }'::jsonb
+    )$$,
+    'duplicate cfs label names',
+    'Should throw error when CFS labels contain duplicate names'
 );
 
 -- Should set meeting flags consistently for events and sessions when requested

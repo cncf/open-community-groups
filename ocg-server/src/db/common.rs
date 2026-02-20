@@ -16,7 +16,7 @@ use crate::{
     templates::site::explore::{SearchEventsFilters, SearchGroupsFilters},
     types::{
         community::{CommunityFull, CommunitySummary},
-        event::{EventFull, EventSummary},
+        event::{EventCfsLabel, EventFull, EventSummary},
         group::{GroupFull, GroupSummary},
     },
 };
@@ -46,6 +46,9 @@ pub(crate) trait DBCommon {
 
     /// Gets group summary details.
     async fn get_group_summary(&self, community_id: Uuid, group_id: Uuid) -> Result<GroupSummary>;
+
+    /// Lists labels configured for an event.
+    async fn list_event_cfs_labels(&self, event_id: Uuid) -> Result<Vec<EventCfsLabel>>;
 
     /// Lists all available timezones.
     async fn list_timezones(&self) -> Result<Vec<String>>;
@@ -158,6 +161,20 @@ impl DBCommon for PgDB {
         let group: GroupSummary = serde_json::from_str(&row.get::<_, String>(0))?;
 
         Ok(group)
+    }
+
+    /// [`DBCommon::list_event_cfs_labels`]
+    #[instrument(skip(self), err)]
+    async fn list_event_cfs_labels(&self, event_id: Uuid) -> Result<Vec<EventCfsLabel>> {
+        trace!("db: list event cfs labels");
+
+        let db = self.pool.get().await?;
+        let row = db
+            .query_one("select list_event_cfs_labels($1::uuid)::text", &[&event_id])
+            .await?;
+        let labels: Vec<EventCfsLabel> = serde_json::from_str(&row.get::<_, String>(0))?;
+
+        Ok(labels)
     }
 
     /// [`DBCommon::list_timezones`]

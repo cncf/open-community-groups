@@ -15,7 +15,7 @@ use crate::{
     db::DynDB,
     handlers::{
         error::HandlerError,
-        extractors::{SelectedCommunityId, SelectedGroupId, ValidatedForm},
+        extractors::{SelectedCommunityId, SelectedGroupId, ValidatedFormQs},
     },
     router::serde_qs_config,
     services::notifications::{DynNotificationsManager, NewNotification, NotificationKind},
@@ -40,8 +40,9 @@ pub(crate) async fn list_page(
     // Fetch event submissions (checking event belongs to group)
     let filters: CfsSubmissionsFilters =
         serde_qs_config().deserialize_str(raw_query.as_deref().unwrap_or_default())?;
-    let (_event, statuses, submissions) = tokio::try_join!(
+    let (_event, labels, statuses, submissions) = tokio::try_join!(
         db.get_event_summary(community_id, group_id, event_id), // ensure event belongs to group
+        db.list_event_cfs_labels(event_id),
         db.list_cfs_submission_statuses_for_review(),
         db.list_event_cfs_submissions(event_id, &filters)
     )?;
@@ -53,10 +54,13 @@ pub(crate) async fn list_page(
     let refresh_url = pagination::build_url(&base_path, &filters)?;
     let template = submissions::ListPage {
         event_id,
+        event_cfs_labels: labels,
         statuses,
         submissions: submissions.submissions,
         navigation_links,
         refresh_url,
+        selected_event_cfs_label_ids: filters.label_ids.clone(),
+        sort: filters.sort.clone().unwrap_or_else(|| "created-desc".to_string()),
         total: submissions.total,
         limit: filters.limit,
         offset: filters.offset,
@@ -78,7 +82,7 @@ pub(crate) async fn update(
     State(notifications_manager): State<DynNotificationsManager>,
     State(server_cfg): State<HttpServerConfig>,
     Path((event_id, cfs_submission_id)): Path<(Uuid, Uuid)>,
-    ValidatedForm(update): ValidatedForm<CfsSubmissionUpdate>,
+    ValidatedFormQs(update): ValidatedFormQs<CfsSubmissionUpdate>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Get user from session (endpoint is behind login_required)
     let reviewer = auth_session.user.expect("user to be logged in");
@@ -87,30 +91,33 @@ pub(crate) async fn update(
     let event = db.get_event_summary(community_id, group_id, event_id).await?;
 
     // Update submission in database
-    db.update_cfs_submission(reviewer.user_id, event_id, cfs_submission_id, &update)
+    let should_notify = db
+        .update_cfs_submission(reviewer.user_id, event_id, cfs_submission_id, &update)
         .await?;
 
-    // Enqueue notification to submission author
-    let (notification_data, site_settings) = tokio::try_join!(
-        db.get_cfs_submission_notification_data(event_id, cfs_submission_id),
-        db.get_site_settings(),
-    )?;
-    let base_url = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
-    let link = format!("{base_url}/dashboard/user?tab=submissions");
-    let template_data = CfsSubmissionUpdated {
-        action_required_message: notification_data.action_required_message,
-        event,
-        link,
-        status_name: notification_data.status_name,
-        theme: site_settings.theme,
-    };
-    let notification = NewNotification {
-        attachments: vec![],
-        kind: NotificationKind::CfsSubmissionUpdated,
-        recipients: vec![notification_data.user_id],
-        template_data: Some(serde_json::to_value(&template_data)?),
-    };
-    notifications_manager.enqueue(&notification).await?;
+    if should_notify {
+        // Enqueue notification to submission author
+        let (notification_data, site_settings) = tokio::try_join!(
+            db.get_cfs_submission_notification_data(event_id, cfs_submission_id),
+            db.get_site_settings(),
+        )?;
+        let base_url = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
+        let link = format!("{base_url}/dashboard/user?tab=submissions");
+        let template_data = CfsSubmissionUpdated {
+            action_required_message: notification_data.action_required_message,
+            event,
+            link,
+            status_name: notification_data.status_name,
+            theme: site_settings.theme,
+        };
+        let notification = NewNotification {
+            attachments: vec![],
+            kind: NotificationKind::CfsSubmissionUpdated,
+            recipients: vec![notification_data.user_id],
+            template_data: Some(serde_json::to_value(&template_data)?),
+        };
+        notifications_manager.enqueue(&notification).await?;
+    }
 
     Ok((
         StatusCode::NO_CONTENT,
@@ -191,6 +198,10 @@ mod tests {
             .times(1)
             .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
             .returning(move |_, _, _| Ok(event.clone()));
+        db.expect_list_event_cfs_labels()
+            .times(1)
+            .withf(move |eid| *eid == event_id)
+            .returning(|_| Ok(vec![]));
         db.expect_list_cfs_submission_statuses_for_review()
             .times(1)
             .returning(move || Ok(statuses.clone()));
@@ -272,6 +283,10 @@ mod tests {
             .times(1)
             .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
             .returning(move |_, _, _| Ok(event.clone()));
+        db.expect_list_event_cfs_labels()
+            .times(1)
+            .withf(move |eid| *eid == event_id)
+            .returning(|_| Ok(vec![]));
         db.expect_list_cfs_submission_statuses_for_review()
             .times(1)
             .returning(move || Ok(statuses.clone()));
@@ -350,6 +365,9 @@ mod tests {
         db.expect_list_cfs_submission_statuses_for_review()
             .times(0..=1)
             .returning(|| Ok(vec![]));
+        db.expect_list_event_cfs_labels()
+            .times(0..=1)
+            .returning(|_| Ok(vec![]));
         db.expect_list_event_cfs_submissions().times(0..=1).returning(|_, _| {
             Ok(
                 crate::templates::dashboard::group::submissions::CfsSubmissionsOutput {
@@ -400,8 +418,11 @@ mod tests {
         );
         let event = sample_event_summary(event_id, group_id);
         let update = crate::templates::dashboard::group::submissions::CfsSubmissionUpdate {
+            label_ids: vec![],
             status_id: "approved".to_string(),
             action_required_message: Some("Please update your slides.".to_string()),
+            rating_comment: None,
+            rating_stars: None,
         };
         let form_data = serde_qs::to_string(&update).unwrap();
         let notification_data =
@@ -441,9 +462,10 @@ mod tests {
                     && *eid == event_id
                     && *sid == cfs_submission_id
                     && submission.status_id == "approved"
+                    && submission.label_ids.is_empty()
                     && submission.action_required_message.as_deref() == Some("Please update your slides.")
             })
-            .returning(|_, _, _, _| Ok(()));
+            .returning(|_, _, _, _| Ok(true));
         db.expect_get_cfs_submission_notification_data()
             .times(1)
             .withf(move |eid, sid| *eid == event_id && *sid == cfs_submission_id)

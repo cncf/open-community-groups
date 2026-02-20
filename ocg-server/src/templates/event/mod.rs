@@ -9,7 +9,7 @@ use uuid::Uuid;
 use crate::{
     templates::{PageId, auth::User, common::UserSummary, filters, helpers::user_initials},
     types::{
-        event::{EventFull, EventKind, EventSummary},
+        event::{EventCfsLabel, EventFull, EventKind, EventSummary},
         site::SiteSettings,
     },
 };
@@ -60,6 +60,8 @@ pub(crate) struct CheckInPage {
 pub(crate) struct CfsModal {
     /// Event summary information.
     pub event: EventSummary,
+    /// Labels available for the event.
+    pub labels: Vec<EventCfsLabel>,
     /// List of session proposals for the current user.
     pub session_proposals: Vec<SessionProposal>,
     /// Authenticated user information.

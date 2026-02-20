@@ -6,6 +6,7 @@ create or replace function add_event(
 )
 returns uuid as $$
 declare
+    v_cfs_label jsonb;
     v_ends_at timestamptz;
     v_event_id uuid;
     v_event_speaker jsonb;
@@ -68,6 +69,26 @@ begin
         then
             raise exception 'event capacity (%) exceeds maximum participants allowed (%)',
                 (p_event->>'capacity')::int, v_provider_max_participants;
+        end if;
+    end if;
+
+    -- Validate CFS labels payload
+    if p_event->'cfs_labels' is not null then
+        if jsonb_array_length(p_event->'cfs_labels') > 200 then
+            raise exception 'too many cfs labels';
+        end if;
+
+        if exists (
+            select 1
+            from (
+                select nullif(cfs_label->>'name', '') as cfs_label_name
+                from jsonb_array_elements(p_event->'cfs_labels') as cfs_label
+            ) cfs_labels
+            where cfs_labels.cfs_label_name is not null
+            group by cfs_labels.cfs_label_name
+            having count(*) > 1
+        ) then
+            raise exception 'duplicate cfs label names';
         end if;
     end if;
 
@@ -172,6 +193,19 @@ begin
             end if;
         end;
     end loop;
+
+    -- Insert CFS labels
+    if p_event->'cfs_labels' is not null then
+        for v_cfs_label in select jsonb_array_elements(p_event->'cfs_labels')
+        loop
+            insert into event_cfs_label (event_id, name, color)
+            values (
+                v_event_id,
+                nullif(v_cfs_label->>'name', ''),
+                v_cfs_label->>'color'
+            );
+        end loop;
+    end if;
 
     -- Insert event hosts
     if p_event->'hosts' is not null then
