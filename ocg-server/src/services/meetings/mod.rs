@@ -15,7 +15,7 @@ use tokio_util::{sync::CancellationToken, task::TaskTracker};
 use tracing::{error, instrument};
 use uuid::Uuid;
 
-use crate::db::DynDB;
+use crate::{config::MeetingsZoomConfig, db::DynDB};
 
 pub(crate) mod zoom;
 
@@ -76,6 +76,8 @@ pub(crate) enum MeetingProviderError {
     Network(String),
     /// Meeting not found (for delete - treat as success).
     NotFound,
+    /// No meeting slot is available for automatic creation.
+    NoSlotsAvailable,
     /// Rate limit exceeded (retryable after delay).
     RateLimit { retry_after: Duration },
     /// Server errors (retryable).
@@ -90,6 +92,7 @@ impl std::fmt::Display for MeetingProviderError {
             Self::Client(msg) => write!(f, "provider client error: {msg}"),
             Self::Network(msg) => write!(f, "provider network error: {msg}"),
             Self::NotFound => write!(f, "meeting not found"),
+            Self::NoSlotsAvailable => write!(f, "no meeting slots available for automatic creation"),
             Self::RateLimit { retry_after } => {
                 write!(f, "rate limit exceeded (retry after {}s)", retry_after.as_secs())
             }
@@ -128,6 +131,7 @@ impl MeetingsManager {
     pub(crate) fn new(
         providers: DynMeetingsProviders,
         db: DynDB,
+        zoom_cfg: Option<MeetingsZoomConfig>,
         task_tracker: &TaskTracker,
         cancellation_token: &CancellationToken,
     ) -> Self {
@@ -137,6 +141,7 @@ impl MeetingsManager {
                 cancellation_token: cancellation_token.clone(),
                 db: db.clone(),
                 providers: providers.clone(),
+                zoom_cfg: zoom_cfg.clone(),
             };
             task_tracker.spawn(async move {
                 worker.run().await;
@@ -155,6 +160,8 @@ struct MeetingsManagerWorker {
     db: DynDB,
     /// Providers map for meeting operations.
     providers: DynMeetingsProviders,
+    /// Zoom configuration.
+    zoom_cfg: Option<MeetingsZoomConfig>,
 }
 
 impl MeetingsManagerWorker {
@@ -261,15 +268,18 @@ impl MeetingsManagerWorker {
         meeting: &Meeting,
         provider: &DynMeetingsProvider,
     ) -> Result<(), SyncError> {
+        // Assign provider host user ID when needed before creating the provider meeting
+        let meeting = self.assign_provider_host_user(client_id, meeting).await?;
+
         // Call provider to create meeting
-        let provider_meeting = provider.create_meeting(meeting).await?;
+        let provider_meeting = provider.create_meeting(&meeting).await?;
 
         // Update meeting with provider details
         let meeting = Meeting {
             join_url: Some(provider_meeting.join_url),
             password: provider_meeting.password,
             provider_meeting_id: Some(provider_meeting.id),
-            ..meeting.clone()
+            ..meeting
         };
 
         // Add meeting to database
@@ -344,6 +354,61 @@ impl MeetingsManagerWorker {
 
         Ok(())
     }
+
+    /// Assign provider-specific host user information before meeting creation.
+    async fn assign_provider_host_user(
+        &self,
+        client_id: Uuid,
+        meeting: &Meeting,
+    ) -> Result<Meeting, SyncError> {
+        match meeting.provider {
+            MeetingProvider::Zoom => self.assign_zoom_host_user(client_id, meeting).await,
+        }
+    }
+
+    /// Assign a Zoom host user from the configured pool based on overlapping load.
+    async fn assign_zoom_host_user(&self, client_id: Uuid, meeting: &Meeting) -> Result<Meeting, SyncError> {
+        // Ensure Zoom configuration is available
+        let zoom_cfg = self
+            .zoom_cfg
+            .as_ref()
+            .ok_or(SyncError::ProviderNotConfigured(MeetingProvider::Zoom))?;
+
+        // Ensure meeting has necessary timing information for slot allocation
+        let starts_at = meeting.starts_at.ok_or_else(|| {
+            SyncError::Provider(MeetingProviderError::Client(
+                "missing meeting starts_at".to_string(),
+            ))
+        })?;
+        let ends_at = meeting.ends_at().ok_or_else(|| {
+            SyncError::Provider(MeetingProviderError::Client(
+                "missing meeting duration".to_string(),
+            ))
+        })?;
+
+        // Query database for an available host user with capacity for this meeting's time slot
+        let provider_host_user_id = self
+            .db
+            .get_available_zoom_host_user(
+                client_id,
+                &zoom_cfg.host_pool_users,
+                zoom_cfg.max_simultaneous_meetings_per_host,
+                starts_at,
+                ends_at,
+            )
+            .await
+            .map_err(SyncError::Other)?;
+
+        // No host user available, cannot create meeting
+        let Some(provider_host_user_id) = provider_host_user_id else {
+            return Err(SyncError::Provider(MeetingProviderError::NoSlotsAvailable));
+        };
+
+        Ok(Meeting {
+            provider_host_user_id: Some(provider_host_user_id),
+            ..meeting.clone()
+        })
+    }
 }
 
 /// Represents a meeting to be synced with the provider.
@@ -359,6 +424,7 @@ pub(crate) struct Meeting {
     pub join_url: Option<String>,
     pub meeting_id: Option<Uuid>,
     pub password: Option<String>,
+    pub provider_host_user_id: Option<String>,
     pub provider_meeting_id: Option<String>,
     pub session_id: Option<Uuid>,
     pub starts_at: Option<DateTime<Utc>>,
@@ -376,6 +442,15 @@ impl Meeting {
         } else {
             SyncAction::Update
         }
+    }
+
+    /// Returns the end timestamp.
+    fn ends_at(&self) -> Option<DateTime<Utc>> {
+        let starts_at = self.starts_at?;
+        let duration = self.duration?;
+        let duration = chrono::Duration::from_std(duration).ok()?;
+
+        starts_at.checked_add_signed(duration)
     }
 }
 
@@ -457,7 +532,10 @@ mod tests {
     use tokio_util::sync::CancellationToken;
     use uuid::Uuid;
 
-    use crate::db::{DynDB, mock::MockDB};
+    use crate::{
+        config::MeetingsZoomConfig,
+        db::{DynDB, mock::MockDB},
+    };
 
     use super::{
         DynMeetingsProvider, Meeting, MeetingProvider, MeetingProviderError, MeetingProviderMeeting,
@@ -481,6 +559,12 @@ mod tests {
     #[test]
     fn test_meeting_provider_error_is_retryable_not_found() {
         let err = MeetingProviderError::NotFound;
+        assert!(!err.is_retryable());
+    }
+
+    #[test]
+    fn test_meeting_provider_error_is_retryable_no_slots_available() {
+        let err = MeetingProviderError::NoSlotsAvailable;
         assert!(!err.is_retryable());
     }
 
@@ -584,9 +668,12 @@ mod tests {
         // Setup identifiers and data structures
         let client_id = Uuid::new_v4();
         let meeting_id = Uuid::new_v4();
+        let starts_at = chrono::DateTime::from_timestamp(1_900_000_000, 0).unwrap();
         let meeting = Meeting {
+            duration: Some(Duration::from_secs(1800)),
             meeting_id: Some(meeting_id),
             provider_meeting_id: None,
+            starts_at: Some(starts_at),
             topic: Some("Test Meeting".to_string()),
             ..Default::default()
         };
@@ -598,12 +685,23 @@ mod tests {
             .times(1)
             .withf(move |cid| *cid == client_id)
             .returning(move |_| Ok(Some(meeting.clone())));
+        db.expect_get_available_zoom_host_user()
+            .times(1)
+            .withf(move |cid, pool_users, max, start, end| {
+                *cid == client_id
+                    && pool_users == vec!["host@example.com".to_string()]
+                    && *max == 1
+                    && *start == starts_at
+                    && *end == starts_at + chrono::Duration::minutes(30)
+            })
+            .returning(|_, _, _, _, _| Ok(Some("host@example.com".to_string())));
         db.expect_add_meeting()
             .times(1)
             .withf(move |cid, m| {
                 *cid == client_id
                     && m.meeting_id == Some(meeting_id)
                     && m.provider_meeting_id == Some("zoom-123".to_string())
+                    && m.provider_host_user_id == Some("host@example.com".to_string())
                     && m.join_url == Some("https://zoom.us/j/123".to_string())
             })
             .returning(|_, _| Ok(()));
@@ -826,9 +924,12 @@ mod tests {
     async fn test_worker_sync_meeting_retryable_error_rollback() {
         // Setup identifiers and data structures
         let client_id = Uuid::new_v4();
+        let starts_at = chrono::DateTime::from_timestamp(1_900_010_000, 0).unwrap();
         let meeting = Meeting {
+            duration: Some(Duration::from_secs(1800)),
             meeting_id: Some(Uuid::new_v4()),
             provider_meeting_id: None,
+            starts_at: Some(starts_at),
             ..Default::default()
         };
 
@@ -839,6 +940,16 @@ mod tests {
             .times(1)
             .withf(move |cid| *cid == client_id)
             .returning(move |_| Ok(Some(meeting.clone())));
+        db.expect_get_available_zoom_host_user()
+            .times(1)
+            .withf(move |cid, pool_users, max, start, end| {
+                *cid == client_id
+                    && pool_users == vec!["host@example.com".to_string()]
+                    && *max == 1
+                    && *start == starts_at
+                    && *end == starts_at + chrono::Duration::minutes(30)
+            })
+            .returning(|_, _, _, _, _| Ok(Some("host@example.com".to_string())));
         db.expect_tx_rollback()
             .times(1)
             .withf(move |cid| *cid == client_id)
@@ -868,9 +979,12 @@ mod tests {
         // Setup identifiers and data structures
         let client_id = Uuid::new_v4();
         let meeting_id = Uuid::new_v4();
+        let starts_at = chrono::DateTime::from_timestamp(1_900_020_000, 0).unwrap();
         let meeting = Meeting {
+            duration: Some(Duration::from_secs(1800)),
             meeting_id: Some(meeting_id),
             provider_meeting_id: None,
+            starts_at: Some(starts_at),
             ..Default::default()
         };
 
@@ -881,6 +995,16 @@ mod tests {
             .times(1)
             .withf(move |cid| *cid == client_id)
             .returning(move |_| Ok(Some(meeting.clone())));
+        db.expect_get_available_zoom_host_user()
+            .times(1)
+            .withf(move |cid, pool_users, max, start, end| {
+                *cid == client_id
+                    && pool_users == vec!["host@example.com".to_string()]
+                    && *max == 1
+                    && *start == starts_at
+                    && *end == starts_at + chrono::Duration::minutes(30)
+            })
+            .returning(|_, _, _, _, _| Ok(Some("host@example.com".to_string())));
         db.expect_set_meeting_error()
             .times(1)
             .withf(move |cid, m, err| {
@@ -905,6 +1029,64 @@ mod tests {
         let synced = worker.sync_meeting().await.unwrap();
 
         // Check result matches expectations (non-retryable error is recorded)
+        assert!(synced);
+    }
+
+    #[tokio::test]
+    async fn test_worker_sync_meeting_no_slots_available_records_error() {
+        // Setup identifiers and data structures
+        let client_id = Uuid::new_v4();
+        let meeting_id = Uuid::new_v4();
+        let starts_at = chrono::DateTime::from_timestamp(1_900_030_000, 0).unwrap();
+        let meeting = Meeting {
+            duration: Some(Duration::from_secs(1800)),
+            meeting_id: Some(meeting_id),
+            provider_meeting_id: None,
+            starts_at: Some(starts_at),
+            ..Default::default()
+        };
+
+        // Setup database mock
+        let mut db = MockDB::new();
+        db.expect_tx_begin().times(1).returning(move || Ok(client_id));
+        db.expect_get_meeting_out_of_sync()
+            .times(1)
+            .withf(move |cid| *cid == client_id)
+            .returning(move |_| Ok(Some(meeting.clone())));
+        db.expect_get_available_zoom_host_user()
+            .times(1)
+            .withf(move |cid, pool_users, max, start, end| {
+                *cid == client_id
+                    && pool_users == vec!["host@example.com".to_string()]
+                    && *max == 1
+                    && *start == starts_at
+                    && *end == starts_at + chrono::Duration::minutes(30)
+            })
+            .returning(|_, _, _, _, _| Ok(None));
+        db.expect_set_meeting_error()
+            .times(1)
+            .withf(move |cid, m, err| {
+                *cid == client_id
+                    && m.meeting_id == Some(meeting_id)
+                    && err.contains("no meeting slots available")
+            })
+            .returning(|_, _, _| Ok(()));
+        db.expect_tx_commit()
+            .times(1)
+            .withf(move |cid| *cid == client_id)
+            .returning(|_| Ok(()));
+        let db: DynDB = Arc::new(db);
+
+        // Setup meetings provider mock (should not be called)
+        let mut mp = MockMeetingsProvider::new();
+        mp.expect_create_meeting().never();
+        let mp: DynMeetingsProvider = Arc::new(mp);
+
+        // Setup worker and sync meeting
+        let mut worker = sample_worker(db, mp);
+        let synced = worker.sync_meeting().await.unwrap();
+
+        // Check result matches expectations (no slots is recorded and marked synced)
         assert!(synced);
     }
 
@@ -1032,6 +1214,7 @@ mod tests {
             cancellation_token: CancellationToken::new(),
             db,
             providers: Arc::new(providers),
+            zoom_cfg: Some(sample_zoom_cfg()),
         }
     }
 
@@ -1041,6 +1224,21 @@ mod tests {
             cancellation_token: CancellationToken::new(),
             db,
             providers: Arc::new(HashMap::new()),
+            zoom_cfg: Some(sample_zoom_cfg()),
+        }
+    }
+
+    /// Create a sample Zoom configuration for testing.
+    fn sample_zoom_cfg() -> MeetingsZoomConfig {
+        MeetingsZoomConfig {
+            account_id: "account-id".to_string(),
+            client_id: "client-id".to_string(),
+            client_secret: "client-secret".to_string(),
+            enabled: true,
+            host_pool_users: vec!["host@example.com".to_string()],
+            max_participants: 100,
+            max_simultaneous_meetings_per_host: 1,
+            webhook_secret_token: "webhook-secret".to_string(),
         }
     }
 }

@@ -4,7 +4,7 @@ use std::{sync::Arc, time::Duration};
 
 use anyhow::{Result, bail};
 use async_trait::async_trait;
-use chrono::DateTime;
+use chrono::{DateTime, Utc};
 use tracing::{instrument, trace};
 use uuid::Uuid;
 
@@ -22,6 +22,16 @@ pub(crate) trait DBMeetings {
 
     /// Deletes a meeting.
     async fn delete_meeting(&self, client_id: Uuid, meeting: &Meeting) -> Result<()>;
+
+    /// Finds an available Zoom host user for a meeting time window.
+    async fn get_available_zoom_host_user(
+        &self,
+        client_id: Uuid,
+        pool_users: &[String],
+        max_simultaneous_meetings_per_user: i32,
+        starts_at: DateTime<Utc>,
+        ends_at: DateTime<Utc>,
+    ) -> Result<Option<String>>;
 
     /// Retrieves a meeting that is out of sync.
     async fn get_meeting_out_of_sync(&self, client_id: Uuid) -> Result<Option<Meeting>>;
@@ -58,10 +68,11 @@ impl DBMeetings for PgDB {
 
         // Add meeting
         tx.execute(
-            "select add_meeting($1, $2, $3, $4, $5, $6)",
+            "select add_meeting($1, $2, $3, $4, $5, $6, $7)",
             &[
                 &meeting.provider.as_ref(),
                 &meeting.provider_meeting_id,
+                &meeting.provider_host_user_id,
                 &meeting.join_url,
                 &meeting.password,
                 &meeting.event_id,
@@ -96,6 +107,42 @@ impl DBMeetings for PgDB {
         Ok(())
     }
 
+    #[instrument(skip(self, pool_users), err)]
+    async fn get_available_zoom_host_user(
+        &self,
+        client_id: Uuid,
+        pool_users: &[String],
+        max_simultaneous_meetings_per_user: i32,
+        starts_at: DateTime<Utc>,
+        ends_at: DateTime<Utc>,
+    ) -> Result<Option<String>> {
+        trace!("db: get available zoom host user");
+
+        // Get transaction client
+        let tx = {
+            let clients = self.txs_clients.read().await;
+            let Some((tx, _)) = clients.get(&client_id) else {
+                bail!(TX_CLIENT_NOT_FOUND);
+            };
+            Arc::clone(tx)
+        };
+
+        // Find one host user with available slots
+        let row = tx
+            .query_one(
+                "select get_available_zoom_host_user($1::text[], $2::int4, $3::timestamptz, $4::timestamptz)",
+                &[
+                    &pool_users,
+                    &max_simultaneous_meetings_per_user,
+                    &starts_at,
+                    &ends_at,
+                ],
+            )
+            .await?;
+
+        Ok(row.get("get_available_zoom_host_user"))
+    }
+
     #[instrument(skip(self), err)]
     async fn get_meeting_out_of_sync(&self, client_id: Uuid) -> Result<Option<Meeting>> {
         trace!("db: get meeting out of sync");
@@ -119,11 +166,6 @@ impl DBMeetings for PgDB {
             .get::<_, Option<f64>>("duration_secs")
             .map(Duration::from_secs_f64);
 
-        // Convert time::OffsetDateTime to chrono::DateTime<Utc>
-        let starts_at = row
-            .get::<_, Option<time::OffsetDateTime>>("starts_at")
-            .and_then(|t| DateTime::from_timestamp(t.unix_timestamp(), t.nanosecond()));
-
         // Build meeting
         let meeting = Meeting {
             delete: row.get("delete"),
@@ -137,9 +179,10 @@ impl DBMeetings for PgDB {
                 .get::<_, Option<String>>("meeting_provider_id")
                 .and_then(|s| s.parse().ok())
                 .unwrap_or_default(),
+            provider_host_user_id: None,
             provider_meeting_id: row.get("provider_meeting_id"),
             session_id: row.get("session_id"),
-            starts_at,
+            starts_at: row.get("starts_at"),
             timezone: row.get("timezone"),
             topic: row.get("topic"),
         };

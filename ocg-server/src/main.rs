@@ -116,6 +116,9 @@ async fn main() -> Result<()> {
         let _meetings_manager = Arc::new(MeetingsManager::new(
             Arc::new(meetings_providers),
             db.clone(),
+            cfg.meetings
+                .as_ref()
+                .and_then(|meetings_cfg| meetings_cfg.zoom.clone()),
             &task_tracker,
             &cancellation_token,
         ));

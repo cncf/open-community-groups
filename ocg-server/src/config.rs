@@ -6,14 +6,18 @@
 //! - YAML configuration file
 //! - Environment variables (with OCG_ prefix)
 
-use std::{collections::HashMap, path::PathBuf};
+use std::{
+    collections::{HashMap, HashSet},
+    path::PathBuf,
+};
 
-use anyhow::Result;
+use anyhow::{Result, bail};
 use deadpool_postgres::Config as DbConfig;
 use figment::{
     Figment,
     providers::{Env, Format, Serialized, Yaml},
 };
+use garde::rules::email::parse_email;
 use serde::{Deserialize, Serialize};
 use tracing::instrument;
 
@@ -54,10 +58,25 @@ impl Config {
             figment = figment.merge(Yaml::file(config_file));
         }
 
-        figment
+        let cfg: Self = figment
             .merge(Env::prefixed("OCG_").split("__"))
             .extract()
-            .map_err(Into::into)
+            .map_err(anyhow::Error::from)?;
+
+        cfg.validate()?;
+
+        Ok(cfg)
+    }
+
+    /// Validate configuration consistency after loading from all sources.
+    fn validate(&self) -> Result<()> {
+        if let Some(meetings_cfg) = &self.meetings
+            && let Some(zoom_cfg) = &meetings_cfg.zoom
+        {
+            zoom_cfg.validate()?;
+        }
+
+        Ok(())
     }
 }
 
@@ -130,10 +149,51 @@ pub(crate) struct MeetingsZoomConfig {
     pub client_secret: String,
     /// Whether this provider is enabled.
     pub enabled: bool,
+    /// Pool of Zoom users used as meeting hosts.
+    pub host_pool_users: Vec<String>,
     /// Maximum number of participants allowed in a meeting (Zoom plan limit).
     pub max_participants: i32,
+    /// Maximum overlapping meetings allowed for each Zoom host user.
+    pub max_simultaneous_meetings_per_host: i32,
     /// Webhook secret token for signature verification.
     pub webhook_secret_token: String,
+}
+
+impl MeetingsZoomConfig {
+    /// Validate Zoom meetings configuration.
+    fn validate(&self) -> Result<()> {
+        // If Zoom meetings are not enabled, skip validation.
+        if !self.enabled {
+            return Ok(());
+        }
+
+        // Validate max overlapping meetings allowed for each host.
+        if self.max_simultaneous_meetings_per_host < 1 {
+            bail!("meetings.zoom.max_simultaneous_meetings_per_host must be >= 1");
+        }
+
+        // Validate that the user pool is not empty and contains valid, unique email addresses.
+        let mut seen = HashSet::new();
+        if self.host_pool_users.is_empty() {
+            bail!("meetings.zoom.host_pool_users cannot be empty when zoom is enabled");
+        }
+        for email in &self.host_pool_users {
+            if email.trim().is_empty() {
+                bail!("meetings.zoom.host_pool_users cannot contain empty values");
+            }
+
+            parse_email(email).map_err(|err| {
+                anyhow::anyhow!("meetings.zoom.host_pool_users has invalid email '{email}': {err}")
+            })?;
+
+            let normalized = email.to_lowercase();
+            if !seen.insert(normalized) {
+                bail!("meetings.zoom.host_pool_users contains duplicate email '{email}'");
+            }
+        }
+
+        Ok(())
+    }
 }
 
 /// SMTP server configuration.
