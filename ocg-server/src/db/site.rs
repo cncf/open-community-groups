@@ -2,6 +2,7 @@
 
 use anyhow::Result;
 use async_trait::async_trait;
+use tokio_postgres::types::Json;
 use tracing::{instrument, trace};
 
 use crate::{
@@ -62,11 +63,11 @@ impl DBSite for PgDB {
         let db = self.pool.get().await?;
         let row = db
             .query_one(
-                "select get_filters_options($1::text, $2::text)::text",
+                "select get_filters_options($1::text, $2::text)",
                 &[&community_name, &entity.map(|e| e.to_string())],
             )
             .await?;
-        let filters_options: FiltersOptions = serde_json::from_str(&row.get::<_, String>(0))?;
+        let filters_options = row.try_get::<_, Json<FiltersOptions>>(0)?.0;
 
         Ok(filters_options)
     }
@@ -76,8 +77,8 @@ impl DBSite for PgDB {
         trace!("db: get site home stats");
 
         let db = self.pool.get().await?;
-        let row = db.query_one("select get_site_home_stats()::text", &[]).await?;
-        let stats: SiteHomeStats = serde_json::from_str(&row.get::<_, String>(0))?;
+        let row = db.query_one("select get_site_home_stats()", &[]).await?;
+        let stats = row.try_get::<_, Json<SiteHomeStats>>(0)?.0;
 
         Ok(stats)
     }
@@ -87,10 +88,8 @@ impl DBSite for PgDB {
         trace!("db: get site recently added groups");
 
         let db = self.pool.get().await?;
-        let row = db
-            .query_one("select get_site_recently_added_groups()::text", &[])
-            .await?;
-        let groups: Vec<GroupSummary> = serde_json::from_str(&row.get::<_, String>(0))?;
+        let row = db.query_one("select get_site_recently_added_groups()", &[]).await?;
+        let groups = row.try_get::<_, Json<Vec<GroupSummary>>>(0)?.0;
 
         Ok(groups)
     }
@@ -100,8 +99,8 @@ impl DBSite for PgDB {
         trace!("db: get site settings");
 
         let db = self.pool.get().await?;
-        let row = db.query_one("select get_site_settings()::text", &[]).await?;
-        let settings: SiteSettings = serde_json::from_str(&row.get::<_, String>(0))?;
+        let row = db.query_one("select get_site_settings()", &[]).await?;
+        let settings = row.try_get::<_, Json<SiteSettings>>(0)?.0;
 
         Ok(settings)
     }
@@ -111,8 +110,8 @@ impl DBSite for PgDB {
         trace!("db: get site stats");
 
         let db = self.pool.get().await?;
-        let row = db.query_one("select get_site_stats()::text", &[]).await?;
-        let stats: SiteStats = serde_json::from_str(&row.get::<_, String>(0))?;
+        let row = db.query_one("select get_site_stats()", &[]).await?;
+        let stats = row.try_get::<_, Json<SiteStats>>(0)?.0;
 
         Ok(stats)
     }
@@ -124,12 +123,9 @@ impl DBSite for PgDB {
         let event_kinds = event_kinds.into_iter().map(|k| k.to_string()).collect::<Vec<_>>();
         let db = self.pool.get().await?;
         let row = db
-            .query_one(
-                "select get_site_upcoming_events($1::text[])::text",
-                &[&event_kinds],
-            )
+            .query_one("select get_site_upcoming_events($1::text[])", &[&event_kinds])
             .await?;
-        let events: Vec<EventSummary> = serde_json::from_str(&row.get::<_, String>(0))?;
+        let events = row.try_get::<_, Json<Vec<EventSummary>>>(0)?.0;
 
         Ok(events)
     }
@@ -139,8 +135,8 @@ impl DBSite for PgDB {
         trace!("db: list communities");
 
         let db = self.pool.get().await?;
-        let row = db.query_one("select list_communities()::text;", &[]).await?;
-        let communities: Vec<CommunitySummary> = serde_json::from_str(&row.get::<_, String>(0))?;
+        let row = db.query_one("select list_communities();", &[]).await?;
+        let communities = row.try_get::<_, Json<Vec<CommunitySummary>>>(0)?.0;
 
         Ok(communities)
     }

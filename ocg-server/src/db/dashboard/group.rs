@@ -309,11 +309,11 @@ impl DBDashboardGroup for PgDB {
         let db = self.pool.get().await?;
         let row = db
             .query_one(
-                "select get_cfs_submission_notification_data($1::uuid, $2::uuid)::text",
+                "select get_cfs_submission_notification_data($1::uuid, $2::uuid)",
                 &[&event_id, &cfs_submission_id],
             )
             .await?;
-        let data: CfsSubmissionNotificationData = serde_json::from_str(&row.get::<_, String>(0))?;
+        let data = row.try_get::<_, Json<CfsSubmissionNotificationData>>(0)?.0;
 
         Ok(data)
     }
@@ -326,11 +326,11 @@ impl DBDashboardGroup for PgDB {
         let db = self.pool.get().await?;
         let row = db
             .query_one(
-                "select get_group_sponsor($1::uuid, $2::uuid)::text",
+                "select get_group_sponsor($1::uuid, $2::uuid)",
                 &[&group_sponsor_id, &group_id],
             )
             .await?;
-        let sponsor: GroupSponsor = serde_json::from_str(&row.get::<_, String>(0))?;
+        let sponsor = row.try_get::<_, Json<GroupSponsor>>(0)?.0;
 
         Ok(sponsor)
     }
@@ -350,11 +350,11 @@ impl DBDashboardGroup for PgDB {
 
             let row = db
                 .query_one(
-                    "select get_group_stats($1::uuid, $2::uuid)::text",
+                    "select get_group_stats($1::uuid, $2::uuid)",
                     &[&community_id, &group_id],
                 )
                 .await?;
-            let stats: GroupStats = serde_json::from_str(&row.get::<_, String>(0))?;
+            let stats = row.try_get::<_, Json<GroupStats>>(0)?.0;
 
             Ok(stats)
         }
@@ -370,9 +370,9 @@ impl DBDashboardGroup for PgDB {
 
         let db = self.pool.get().await?;
         let row = db
-            .query_one("select list_cfs_submission_statuses_for_review()::text", &[])
+            .query_one("select list_cfs_submission_statuses_for_review()", &[])
             .await?;
-        let statuses: Vec<CfsSubmissionStatus> = serde_json::from_str(&row.get::<_, String>(0))?;
+        let statuses = row.try_get::<_, Json<Vec<CfsSubmissionStatus>>>(0)?.0;
 
         Ok(statuses)
     }
@@ -388,11 +388,11 @@ impl DBDashboardGroup for PgDB {
         let db = self.pool.get().await?;
         let row = db
             .query_one(
-                "select list_event_approved_cfs_submissions($1::uuid)::text",
+                "select list_event_approved_cfs_submissions($1::uuid)",
                 &[&event_id],
             )
             .await?;
-        let submissions: Vec<ApprovedSubmissionSummary> = serde_json::from_str(&row.get::<_, String>(0))?;
+        let submissions = row.try_get::<_, Json<Vec<ApprovedSubmissionSummary>>>(0)?.0;
 
         Ok(submissions)
     }
@@ -405,11 +405,11 @@ impl DBDashboardGroup for PgDB {
         let db = self.pool.get().await?;
         let row = db
             .query_one(
-                "select list_event_attendees_ids($1::uuid, $2::uuid)::text",
+                "select list_event_attendees_ids($1::uuid, $2::uuid)",
                 &[&group_id, &event_id],
             )
             .await?;
-        let ids: Vec<Uuid> = serde_json::from_str(&row.get::<_, String>(0))?;
+        let ids = row.try_get::<_, Json<Vec<Uuid>>>(0)?.0;
 
         Ok(ids)
     }
@@ -421,9 +421,9 @@ impl DBDashboardGroup for PgDB {
 
         let db = self.pool.get().await?;
         let row = db
-            .query_one("select list_event_categories($1::uuid)::text", &[&community_id])
+            .query_one("select list_event_categories($1::uuid)", &[&community_id])
             .await?;
-        let categories: Vec<EventCategory> = serde_json::from_str(&row.get::<_, String>(0))?;
+        let categories = row.try_get::<_, Json<Vec<EventCategory>>>(0)?.0;
 
         Ok(categories)
     }
@@ -440,11 +440,11 @@ impl DBDashboardGroup for PgDB {
         let db = self.pool.get().await?;
         let row = db
             .query_one(
-                "select list_event_cfs_submissions($1::uuid, $2::jsonb)::text",
+                "select list_event_cfs_submissions($1::uuid, $2::jsonb)",
                 &[&event_id, &Json(filters)],
             )
             .await?;
-        let submissions: CfsSubmissionsOutput = serde_json::from_str(&row.get::<_, String>(0))?;
+        let submissions = row.try_get::<_, Json<CfsSubmissionsOutput>>(0)?.0;
 
         Ok(submissions)
     }
@@ -455,8 +455,8 @@ impl DBDashboardGroup for PgDB {
         trace!("db: list event kinds");
 
         let db = self.pool.get().await?;
-        let row = db.query_one("select list_event_kinds()::text", &[]).await?;
-        let kinds: Vec<EventKind> = serde_json::from_str(&row.get::<_, String>(0))?;
+        let row = db.query_one("select list_event_kinds()", &[]).await?;
+        let kinds = row.try_get::<_, Json<Vec<EventKind>>>(0)?.0;
 
         Ok(kinds)
     }
@@ -469,11 +469,11 @@ impl DBDashboardGroup for PgDB {
         let db = self.pool.get().await?;
         let row = db
             .query_one(
-                "select list_group_events($1::uuid, $2::jsonb)::text",
+                "select list_group_events($1::uuid, $2::jsonb)",
                 &[&group_id, &Json(filters)],
             )
             .await?;
-        let events: GroupEvents = serde_json::from_str(&row.get::<_, String>(0))?;
+        let events = row.try_get::<_, Json<GroupEvents>>(0)?.0;
 
         Ok(events)
     }
@@ -490,11 +490,11 @@ impl DBDashboardGroup for PgDB {
         let db = self.pool.get().await?;
         let row = db
             .query_one(
-                "select list_group_members($1::uuid, $2::jsonb)::text",
+                "select list_group_members($1::uuid, $2::jsonb)",
                 &[&group_id, &Json(filters)],
             )
             .await?;
-        let output: GroupMembersOutput = serde_json::from_str(&row.get::<_, String>(0))?;
+        let output = row.try_get::<_, Json<GroupMembersOutput>>(0)?.0;
 
         Ok(output)
     }
@@ -506,9 +506,9 @@ impl DBDashboardGroup for PgDB {
 
         let db = self.pool.get().await?;
         let row = db
-            .query_one("select list_group_members_ids($1::uuid)::text", &[&group_id])
+            .query_one("select list_group_members_ids($1::uuid)", &[&group_id])
             .await?;
-        let ids: Vec<Uuid> = serde_json::from_str(&row.get::<_, String>(0))?;
+        let ids = row.try_get::<_, Json<Vec<Uuid>>>(0)?.0;
 
         Ok(ids)
     }
@@ -519,8 +519,8 @@ impl DBDashboardGroup for PgDB {
         trace!("db: list group roles");
 
         let db = self.pool.get().await?;
-        let row = db.query_one("select list_group_roles()::text", &[]).await?;
-        let roles: Vec<GroupRoleSummary> = serde_json::from_str(&row.get::<_, String>(0))?;
+        let row = db.query_one("select list_group_roles()", &[]).await?;
+        let roles = row.try_get::<_, Json<Vec<GroupRoleSummary>>>(0)?.0;
 
         Ok(roles)
     }
@@ -538,11 +538,11 @@ impl DBDashboardGroup for PgDB {
         let db = self.pool.get().await?;
         let row = db
             .query_one(
-                "select list_group_sponsors($1::uuid, $2::jsonb, $3::bool)::text",
+                "select list_group_sponsors($1::uuid, $2::jsonb, $3::bool)",
                 &[&group_id, &Json(filters), &full_list],
             )
             .await?;
-        let output: GroupSponsorsOutput = serde_json::from_str(&row.get::<_, String>(0))?;
+        let output = row.try_get::<_, Json<GroupSponsorsOutput>>(0)?.0;
 
         Ok(output)
     }
@@ -559,11 +559,11 @@ impl DBDashboardGroup for PgDB {
         let db = self.pool.get().await?;
         let row = db
             .query_one(
-                "select list_group_team_members($1::uuid, $2::jsonb)::text",
+                "select list_group_team_members($1::uuid, $2::jsonb)",
                 &[&group_id, &Json(filters)],
             )
             .await?;
-        let output: GroupTeamOutput = serde_json::from_str(&row.get::<_, String>(0))?;
+        let output = row.try_get::<_, Json<GroupTeamOutput>>(0)?.0;
 
         Ok(output)
     }
@@ -575,9 +575,9 @@ impl DBDashboardGroup for PgDB {
 
         let db = self.pool.get().await?;
         let row = db
-            .query_one("select list_group_team_members_ids($1::uuid)::text", &[&group_id])
+            .query_one("select list_group_team_members_ids($1::uuid)", &[&group_id])
             .await?;
-        let ids: Vec<Uuid> = serde_json::from_str(&row.get::<_, String>(0))?;
+        let ids = row.try_get::<_, Json<Vec<Uuid>>>(0)?.0;
 
         Ok(ids)
     }
@@ -588,8 +588,8 @@ impl DBDashboardGroup for PgDB {
         trace!("db: list session kinds");
 
         let db = self.pool.get().await?;
-        let row = db.query_one("select list_session_kinds()::text", &[]).await?;
-        let kinds: Vec<SessionKind> = serde_json::from_str(&row.get::<_, String>(0))?;
+        let row = db.query_one("select list_session_kinds()", &[]).await?;
+        let kinds = row.try_get::<_, Json<Vec<SessionKind>>>(0)?.0;
 
         Ok(kinds)
     }
@@ -600,10 +600,8 @@ impl DBDashboardGroup for PgDB {
         trace!("db: list user groups");
 
         let db = self.pool.get().await?;
-        let row = db
-            .query_one("select list_user_groups($1::uuid)::text", &[&user_id])
-            .await?;
-        let groups = serde_json::from_str(&row.get::<_, String>(0))?;
+        let row = db.query_one("select list_user_groups($1::uuid)", &[&user_id]).await?;
+        let groups = row.try_get::<_, Json<Vec<UserGroupsByCommunity>>>(0)?.0;
 
         Ok(groups)
     }
@@ -635,11 +633,11 @@ impl DBDashboardGroup for PgDB {
         let db = self.pool.get().await?;
         let row = db
             .query_one(
-                "select search_event_attendees($1::uuid, $2::jsonb)::text",
+                "select search_event_attendees($1::uuid, $2::jsonb)",
                 &[&group_id, &Json(filters)],
             )
             .await?;
-        let output: AttendeesOutput = serde_json::from_str(&row.get::<_, String>(0))?;
+        let output = row.try_get::<_, Json<AttendeesOutput>>(0)?.0;
 
         Ok(output)
     }

@@ -123,7 +123,7 @@ impl DBAuth for PgDB {
         if let Some(row) = row {
             let record = session::Record {
                 id: *session_id,
-                data: serde_json::from_value(row.get("data"))?,
+                data: row.try_get::<_, Json<_>>("data")?.0,
                 expiry_date: row.get("expires_at"),
             };
             return Ok(Some(record));
@@ -140,9 +140,8 @@ impl DBAuth for PgDB {
         let user = db
             .query_one("select get_user_by_email($1::text);", &[&email])
             .await?
-            .get::<_, Option<serde_json::Value>>(0)
-            .map(serde_json::from_value)
-            .transpose()?;
+            .try_get::<_, Option<Json<User>>>(0)?
+            .map(|user| user.0);
 
         Ok(user)
     }
@@ -155,9 +154,8 @@ impl DBAuth for PgDB {
         let user = db
             .query_one("select get_user_by_id_verified($1::uuid);", &[&user_id])
             .await?
-            .get::<_, Option<serde_json::Value>>(0)
-            .map(serde_json::from_value)
-            .transpose()?;
+            .try_get::<_, Option<Json<User>>>(0)?
+            .map(|user| user.0);
 
         Ok(user)
     }
@@ -170,9 +168,8 @@ impl DBAuth for PgDB {
         let user = db
             .query_one("select get_user_by_username($1::text);", &[&username])
             .await?
-            .get::<_, Option<serde_json::Value>>(0)
-            .map(serde_json::from_value)
-            .transpose()?;
+            .try_get::<_, Option<Json<User>>>(0)?
+            .map(|user| user.0);
 
         Ok(user)
     }
@@ -209,7 +206,7 @@ impl DBAuth for PgDB {
             )
             .await?;
 
-        let user = serde_json::from_value(row.get(0))?;
+        let user = row.try_get::<_, Json<User>>(0)?.0;
         let verification_code: Option<Uuid> = row.get(1);
 
         Ok((user, verification_code))

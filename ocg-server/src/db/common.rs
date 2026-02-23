@@ -69,9 +69,9 @@ impl DBCommon for PgDB {
 
         let db = self.pool.get().await?;
         let row = db
-            .query_one("select get_community_full($1::uuid)::text", &[&community_id])
+            .query_one("select get_community_full($1::uuid)", &[&community_id])
             .await?;
-        let community: CommunityFull = serde_json::from_str(&row.get::<_, String>(0))?;
+        let community = row.try_get::<_, Json<CommunityFull>>(0)?.0;
 
         Ok(community)
     }
@@ -83,9 +83,9 @@ impl DBCommon for PgDB {
 
         let db = self.pool.get().await?;
         let row = db
-            .query_one("select get_community_summary($1::uuid)::text", &[&community_id])
+            .query_one("select get_community_summary($1::uuid)", &[&community_id])
             .await?;
-        let community: CommunitySummary = serde_json::from_str(&row.get::<_, String>(0))?;
+        let community = row.try_get::<_, Json<CommunitySummary>>(0)?.0;
 
         Ok(community)
     }
@@ -98,11 +98,11 @@ impl DBCommon for PgDB {
         let db = self.pool.get().await?;
         let row = db
             .query_one(
-                "select get_event_full($1::uuid, $2::uuid, $3::uuid)::text",
+                "select get_event_full($1::uuid, $2::uuid, $3::uuid)",
                 &[&community_id, &group_id, &event_id],
             )
             .await?;
-        let event: EventFull = serde_json::from_str(&row.get::<_, String>(0))?;
+        let event = row.try_get::<_, Json<EventFull>>(0)?.0;
 
         Ok(event)
     }
@@ -120,11 +120,11 @@ impl DBCommon for PgDB {
         let db = self.pool.get().await?;
         let row = db
             .query_one(
-                "select get_event_summary($1::uuid, $2::uuid, $3::uuid)::text",
+                "select get_event_summary($1::uuid, $2::uuid, $3::uuid)",
                 &[&community_id, &group_id, &event_id],
             )
             .await?;
-        let event: EventSummary = serde_json::from_str(&row.get::<_, String>(0))?;
+        let event = row.try_get::<_, Json<EventSummary>>(0)?.0;
 
         Ok(event)
     }
@@ -137,11 +137,11 @@ impl DBCommon for PgDB {
         let db = self.pool.get().await?;
         let row = db
             .query_one(
-                "select get_group_full($1::uuid, $2::uuid)::text",
+                "select get_group_full($1::uuid, $2::uuid)",
                 &[&community_id, &group_id],
             )
             .await?;
-        let group: GroupFull = serde_json::from_str(&row.get::<_, String>(0))?;
+        let group = row.try_get::<_, Json<GroupFull>>(0)?.0;
 
         Ok(group)
     }
@@ -154,11 +154,11 @@ impl DBCommon for PgDB {
         let db = self.pool.get().await?;
         let row = db
             .query_one(
-                "select get_group_summary($1::uuid, $2::uuid)::text",
+                "select get_group_summary($1::uuid, $2::uuid)",
                 &[&community_id, &group_id],
             )
             .await?;
-        let group: GroupSummary = serde_json::from_str(&row.get::<_, String>(0))?;
+        let group = row.try_get::<_, Json<GroupSummary>>(0)?.0;
 
         Ok(group)
     }
@@ -170,9 +170,9 @@ impl DBCommon for PgDB {
 
         let db = self.pool.get().await?;
         let row = db
-            .query_one("select list_event_cfs_labels($1::uuid)::text", &[&event_id])
+            .query_one("select list_event_cfs_labels($1::uuid)", &[&event_id])
             .await?;
-        let labels: Vec<EventCfsLabel> = serde_json::from_str(&row.get::<_, String>(0))?;
+        let labels = row.try_get::<_, Json<Vec<EventCfsLabel>>>(0)?.0;
 
         Ok(labels)
     }
@@ -223,14 +223,14 @@ impl DBCommon for PgDB {
         let row = db
             .query_one(
                 "
-                select search_events($1::jsonb)::text
+                select search_events($1::jsonb)
                 ",
                 &[&Json(filters)],
             )
             .await?;
 
         // Prepare search output
-        let output = serde_json::from_str(&row.get::<_, String>(0))?;
+        let output = row.try_get::<_, Json<SearchEventsOutput>>(0)?.0;
 
         Ok(output)
     }
@@ -245,14 +245,14 @@ impl DBCommon for PgDB {
         let row = db
             .query_one(
                 "
-                select search_groups($1::jsonb)::text
+                select search_groups($1::jsonb)
                 ",
                 &[&Json(filters)],
             )
             .await?;
 
         // Prepare search output
-        let output = serde_json::from_str(&row.get::<_, String>(0))?;
+        let output = row.try_get::<_, Json<SearchGroupsOutput>>(0)?.0;
 
         Ok(output)
     }

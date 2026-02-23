@@ -225,10 +225,8 @@ impl DBDashboardUser for PgDB {
         trace!("db: list session proposal levels");
 
         let db = self.pool.get().await?;
-        let row = db
-            .query_one("select list_session_proposal_levels()::text", &[])
-            .await?;
-        let levels: Vec<SessionProposalLevel> = serde_json::from_str(&row.get::<_, String>(0))?;
+        let row = db.query_one("select list_session_proposal_levels()", &[]).await?;
+        let levels = row.try_get::<_, Json<Vec<SessionProposalLevel>>>(0)?.0;
 
         Ok(levels)
     }
@@ -245,11 +243,11 @@ impl DBDashboardUser for PgDB {
         let db = self.pool.get().await?;
         let row = db
             .query_one(
-                "select list_user_cfs_submissions($1::uuid, $2::jsonb)::text",
+                "select list_user_cfs_submissions($1::uuid, $2::jsonb)",
                 &[&user_id, &Json(filters)],
             )
             .await?;
-        let submissions: CfsSubmissionsOutput = serde_json::from_str(&row.get::<_, String>(0))?;
+        let submissions = row.try_get::<_, Json<CfsSubmissionsOutput>>(0)?.0;
 
         Ok(submissions)
     }
@@ -265,11 +263,11 @@ impl DBDashboardUser for PgDB {
         let db = self.pool.get().await?;
         let row = db
             .query_one(
-                "select list_user_community_team_invitations($1::uuid)::text",
+                "select list_user_community_team_invitations($1::uuid)",
                 &[&user_id],
             )
             .await?;
-        let invitations: Vec<CommunityTeamInvitation> = serde_json::from_str(&row.get::<_, String>(0))?;
+        let invitations = row.try_get::<_, Json<Vec<CommunityTeamInvitation>>>(0)?.0;
 
         Ok(invitations)
     }
@@ -281,12 +279,9 @@ impl DBDashboardUser for PgDB {
 
         let db = self.pool.get().await?;
         let row = db
-            .query_one(
-                "select list_user_group_team_invitations($1::uuid)::text",
-                &[&user_id],
-            )
+            .query_one("select list_user_group_team_invitations($1::uuid)", &[&user_id])
             .await?;
-        let invitations: Vec<GroupTeamInvitation> = serde_json::from_str(&row.get::<_, String>(0))?;
+        let invitations = row.try_get::<_, Json<Vec<GroupTeamInvitation>>>(0)?.0;
 
         Ok(invitations)
     }
@@ -302,11 +297,11 @@ impl DBDashboardUser for PgDB {
         let db = self.pool.get().await?;
         let row = db
             .query_one(
-                "select list_user_pending_session_proposal_co_speaker_invitations($1::uuid)::text",
+                "select list_user_pending_session_proposal_co_speaker_invitations($1::uuid)",
                 &[&user_id],
             )
             .await?;
-        let invitations: Vec<PendingCoSpeakerInvitation> = serde_json::from_str(&row.get::<_, String>(0))?;
+        let invitations = row.try_get::<_, Json<Vec<PendingCoSpeakerInvitation>>>(0)?.0;
 
         Ok(invitations)
     }
@@ -323,12 +318,11 @@ impl DBDashboardUser for PgDB {
         let db = self.pool.get().await?;
         let row = db
             .query_one(
-                "select list_user_session_proposals($1::uuid, $2::jsonb)::text",
+                "select list_user_session_proposals($1::uuid, $2::jsonb)",
                 &[&user_id, &Json(filters)],
             )
             .await?;
-        let session_proposals_output: SessionProposalsOutput =
-            serde_json::from_str(&row.get::<_, String>(0))?;
+        let session_proposals_output = row.try_get::<_, Json<SessionProposalsOutput>>(0)?.0;
 
         Ok(session_proposals_output)
     }
