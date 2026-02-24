@@ -4,11 +4,10 @@ import {
   validateMeetingRequest,
   MIN_MEETING_MINUTES,
   MAX_MEETING_MINUTES,
+  DEFAULT_MEETING_PROVIDER,
 } from "/static/js/dashboard/group/meeting-validations.js";
 import { showErrorAlert, showInfoAlert } from "/static/js/common/alerts.js";
 import "/static/js/common/multiple-inputs.js";
-
-const DEFAULT_MEETING_PROVIDER = "zoom";
 
 /**
  * Online event details component for managing meeting information. Supports
@@ -603,6 +602,20 @@ export class OnlineEventDetails extends LitWrapper {
   }
 
   /**
+   * Returns meeting fields in the same shape used by session/event payloads.
+   * @returns {object} Meeting field values.
+   */
+  getMeetingData() {
+    const isAutomatic = this._mode === "automatic" && this._createMeeting;
+    return {
+      meeting_join_url: isAutomatic ? "" : (this._joinUrl || "").trim(),
+      meeting_recording_url: isAutomatic ? "" : (this._recordingUrl || "").trim(),
+      meeting_requested: isAutomatic,
+      meeting_provider_id: isAutomatic ? (this._providerId || DEFAULT_MEETING_PROVIDER).trim() : "",
+    };
+  }
+
+  /**
    * Resets component to initial manual mode state.
    */
   reset() {
@@ -620,10 +633,12 @@ export class OnlineEventDetails extends LitWrapper {
    * @returns {import('lit').TemplateResult} Hidden input elements
    */
   _renderHiddenInputs() {
-    const isAutomatic = this._mode === "automatic" && this._createMeeting;
-    const joinUrlValue = isAutomatic ? "" : (this._joinUrl || "").trim();
-    const recordingUrlValue = isAutomatic ? "" : (this._recordingUrl || "").trim();
-    const providerIdValue = isAutomatic ? (this._providerId || "").trim() : "";
+    const {
+      meeting_join_url: joinUrlValue,
+      meeting_recording_url: recordingUrlValue,
+      meeting_requested: isAutomatic,
+      meeting_provider_id: providerIdValue,
+    } = this.getMeetingData();
 
     return html`
       <input type="hidden" name="${this._getFieldName("meeting_join_url")}" value="${joinUrlValue}" />
@@ -756,7 +771,7 @@ export class OnlineEventDetails extends LitWrapper {
           : ""}
         ${this.meetingError
           ? html`
-              <div class="text-sm text-red-700 bg-red-50 border border-red-100 rounded p-3">
+              <div class="text-sm text-red-700 bg-red-50 border border-red-100 rounded p-3" role="alert">
                 <div class="flex items-start gap-2">
                   <div class="svg-icon size-4 icon-error shrink-0 mt-0.5"></div>
                   <span>${this.meetingError}</span>

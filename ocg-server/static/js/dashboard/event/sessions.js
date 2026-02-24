@@ -12,6 +12,7 @@ import "/static/js/common/logo-image.js";
 import "/static/js/common/speakers-selector.js";
 import "/static/js/common/online-event-details.js";
 import { normalizeSpeakers } from "/static/js/dashboard/event/speaker-utils.js";
+import { DEFAULT_MEETING_PROVIDER } from "/static/js/dashboard/group/meeting-validations.js";
 
 /**
  * Extracts date part from datetime-local string.
@@ -594,7 +595,7 @@ export class SessionsSection extends LitWrapper {
         const meetingProviderId =
           session.meeting_provider_id ||
           session.meeting_provider ||
-          (automaticMeetingRequested ? "zoom" : "");
+          (automaticMeetingRequested ? DEFAULT_MEETING_PROVIDER : "");
 
         return html`
           <input type="hidden" name="sessions[${index}][session_id]" value=${session.session_id || ""} />
@@ -1020,32 +1021,12 @@ class SessionFormModal extends LitWrapper {
     }
 
     if (sessionItem) {
-      const getSessionFieldValue = (fieldName) => {
-        const field = sessionItem.querySelector(`[name="sessions[0][${fieldName}]"]`);
-        if (!field || typeof field.value === "undefined" || field.value === null) {
-          return null;
-        }
-        return String(field.value).trim();
-      };
-
-      const joinUrl = getSessionFieldValue("meeting_join_url");
-      if (joinUrl !== null) {
-        this._session.meeting_join_url = joinUrl;
-      }
-
-      const recordingUrl = getSessionFieldValue("meeting_recording_url");
-      if (recordingUrl !== null) {
-        this._session.meeting_recording_url = recordingUrl;
-      }
-
-      const meetingRequested = getSessionFieldValue("meeting_requested");
-      if (meetingRequested !== null) {
-        this._session.meeting_requested = meetingRequested === "true";
-      }
-
-      const meetingProviderId = getSessionFieldValue("meeting_provider_id");
-      if (meetingProviderId !== null) {
-        this._session.meeting_provider_id = meetingProviderId;
+      const onlineEventDetails = sessionItem.querySelector("online-event-details");
+      if (onlineEventDetails && typeof onlineEventDetails.getMeetingData === "function") {
+        this._session = {
+          ...this._session,
+          ...onlineEventDetails.getMeetingData(),
+        };
       }
     }
 
