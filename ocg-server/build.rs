@@ -1,8 +1,14 @@
-use std::{collections::HashMap, fs, path::Path, process::Command};
+use std::{collections::HashMap, env, fs, path::Path, process::Command};
 
 use anyhow::{Result, bail};
 use sha2::{Digest, Sha256};
 use which::which;
+
+/// Path to the documentation source directory.
+const DOCS_PATH: &str = "../docs";
+
+/// Path to the generated documentation static files directory.
+const DOCS_STATIC_DIST_PATH: &str = "dist/static/docs";
 
 /// Path to the static assets distribution directory. This path contains a copy
 /// of the static assets with some modifications applied (e.g. assets hashed
@@ -20,7 +26,16 @@ const TEMPLATES_DIST_PATH: &str = "dist/templates";
 const TEMPLATES_PATH: &str = "templates";
 
 fn main() -> Result<()> {
+    let manifest_dir = env::var("CARGO_MANIFEST_DIR")?;
+    let docs_path = Path::new(&manifest_dir).join(DOCS_PATH);
+    let docs_static_dist_path = Path::new(&manifest_dir).join(DOCS_STATIC_DIST_PATH);
+
+    // Ensure all relative paths are resolved from the crate root regardless of
+    // where cargo is invoked from.
+    env::set_current_dir(&manifest_dir)?;
+
     // Rerun this build script if changes are detected in the following paths.
+    println!("cargo:rerun-if-changed={}", docs_path.display());
     println!("cargo:rerun-if-changed=static");
     println!("cargo:rerun-if-changed=templates");
 
@@ -71,6 +86,32 @@ fn main() -> Result<()> {
 
     // Replace assets paths references with their hashed versions
     replace_hashed_assets_refs(Path::new(TEMPLATES_DIST_PATH), &assets_manifest)?;
+
+    // Prepare documentation static site.
+    // This runs after static assets preparation because STATIC_DIST_PATH is
+    // recreated during the build and would otherwise remove docs output.
+    prepare_docs_site(&docs_path, &docs_static_dist_path)?;
+
+    Ok(())
+}
+
+/// Prepare docs files for the docsify frontend.
+fn prepare_docs_site(docs_path: &Path, docs_static_dist_path: &Path) -> Result<()> {
+    if !docs_path.is_dir() {
+        println!(
+            "cargo:warning=Docs source directory '{}' not found; skipping docs packaging",
+            docs_path.display()
+        );
+        return Ok(());
+    }
+
+    if let Err(err) = fs::remove_dir_all(docs_static_dist_path)
+        && err.kind() != std::io::ErrorKind::NotFound
+    {
+        bail!(err);
+    }
+
+    copy_dir(docs_path, docs_static_dist_path)?;
 
     Ok(())
 }

@@ -41,6 +41,7 @@ pub(crate) enum PageId {
     GroupDashboard,
     LogIn,
     SignUp,
+    SiteDocs,
     SiteExplore,
     SiteHome,
     SiteStats,

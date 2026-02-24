@@ -13,6 +13,7 @@ jobs:
     outputs:
       database: ${{ steps.filter.outputs.database }}
       javascript: ${{ steps.filter.outputs.javascript }}
+      markdown: ${{ steps.filter.outputs.markdown }}
       server: ${{ steps.filter.outputs.server }}
       templates: ${{ steps.filter.outputs.templates }}
     steps:
@@ -29,6 +30,8 @@ jobs:
               - '.github/workflows/ci.yml'
               - 'ocg-server/static/js/**'
               - 'ocg-server/static/js/.prettierrc.yaml'
+            markdown:
+              - '**/*.md'
             server:
               - '.github/workflows/ci.yml'
               - '.rustfmt.toml'
@@ -94,6 +97,19 @@ jobs:
         with:
           dry: true
           prettier_options: --check ocg-server/static/js/**/*.js --config ocg-server/static/js/.prettierrc.yaml
+
+  lint-markdown-files:
+    needs: changes
+    if: needs.changes.outputs.markdown == 'true'
+    runs-on:
+      labels: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+      - name: Run markdownlint
+        uses: DavidAnson/markdownlint-cli2-action@v22
+        with:
+          globs: '**/*.md'
 
   test-database:
     needs: changes

@@ -152,6 +152,7 @@ pub(crate) async fn setup(
         )
         .route("/explore/events/search", get(site::explore::search_events))
         .route("/explore/groups/search", get(site::explore::search_groups))
+        .route("/docs", get(site::docs::page))
         .route("/stats", get(site::stats::page))
         .route("/health-check", get(health_check))
         .route("/images/{file_name}", get(images::serve))
@@ -477,7 +478,27 @@ async fn health_check() -> impl IntoResponse {
 #[instrument]
 async fn static_handler(uri: Uri) -> impl IntoResponse {
     // Extract file path from URI
-    let path = uri.path().trim_start_matches("/static/");
+    let requested_path = uri.path().trim_start_matches("/static/");
+    let requested_path = if requested_path.is_empty() {
+        "index.html"
+    } else {
+        requested_path
+    };
+
+    let (path, file) = if let Some(file) = StaticFile::get(requested_path) {
+        (requested_path.to_string(), file)
+    } else {
+        let index_path = if requested_path.ends_with('/') {
+            format!("{requested_path}index.html")
+        } else {
+            format!("{requested_path}/index.html")
+        };
+
+        match StaticFile::get(&index_path) {
+            Some(file) => (index_path, file),
+            None => return StatusCode::NOT_FOUND.into_response(),
+        }
+    };
 
     // Set cache duration based on resource type
     #[cfg(not(debug_assertions))]
@@ -496,16 +517,11 @@ async fn static_handler(uri: Uri) -> impl IntoResponse {
     #[cfg(debug_assertions)]
     let cache_max_age = 0;
 
-    // Get file content and return it (if available)
-    match StaticFile::get(path) {
-        Some(file) => {
-            let mime = mime_guess::from_path(path).first_or_octet_stream();
-            let cache = format!("max-age={cache_max_age}");
-            let headers = [(CONTENT_TYPE, mime.as_ref()), (CACHE_CONTROL, &cache)];
-            (headers, file.data).into_response()
-        }
-        None => StatusCode::NOT_FOUND.into_response(),
-    }
+    // Get file content and return it
+    let mime = mime_guess::from_path(&path).first_or_octet_stream();
+    let cache = format!("max-age={cache_max_age}");
+    let headers = [(CONTENT_TYPE, mime.as_ref()), (CACHE_CONTROL, &cache)];
+    (headers, file.data).into_response()
 }
 
 /// Returns the `serde_qs` configuration for query string parsing.
@@ -584,6 +600,24 @@ mod tests {
             response.headers().get(LOCATION).unwrap(),
             &HeaderValue::from_static("https://example.com")
         );
+    }
+
+    #[tokio::test]
+    async fn test_static_handler_docs_directory_serves_index_file() {
+        let uri = Uri::from_static("/static/docs/");
+        let response = static_handler(uri).await.into_response();
+        let (parts, body) = response.into_parts();
+        let bytes = to_bytes(body, usize::MAX).await.unwrap();
+        let body = String::from_utf8_lossy(&bytes);
+
+        assert_eq!(parts.status, StatusCode::OK);
+        assert_eq!(
+            parts.headers.get(CONTENT_TYPE).unwrap(),
+            &HeaderValue::from_static("text/html")
+        );
+        assert!(body.contains("window.$docsify"));
+        assert!(body.contains("basePath: '/static/docs/'"));
+        assert!(body.contains("homepage: 'index.md'"));
     }
 
     #[tokio::test]

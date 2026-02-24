@@ -1,0 +1,364 @@
+@font-face {
+  font-display: swap;
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 100 900;
+  src: url('/static/vendor/fonts/inter-latin.woff2') format('woff2');
+}
+
+@font-face {
+  font-display: swap;
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 100 900;
+  src: url('/static/vendor/fonts/inter-latin-ext.woff2') format('woff2');
+}
+
+:root {
+  --theme-color: #0094ff;
+}
+
+html,
+body {
+  background: #fff;
+  color: #1c1917;
+}
+
+body,
+.sidebar,
+.markdown-section {
+  font-family:
+    'Inter',
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    Helvetica,
+    Arial,
+    sans-serif,
+    Roboto,
+    Ubuntu;
+}
+
+.markdown-section code,
+.markdown-section pre,
+.markdown-section pre code {
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+}
+
+.sidebar {
+  background: #f5f5f4;
+  border-right: 0;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.sidebar::-webkit-scrollbar {
+  display: none;
+}
+
+.sidebar > h1.app-name {
+  display: block;
+  font-size: 1.35rem;
+  font-weight: 600;
+  line-height: 1.15;
+  margin: 0 1rem 0.45rem;
+  padding: 0;
+  text-align: left;
+}
+
+.app-name-link {
+  color: #292524 !important;
+  display: block;
+  text-decoration: none;
+  text-align: left;
+}
+
+.search {
+  display: none;
+  border-bottom: 0 !important;
+  padding: 14px 0 4px;
+}
+
+.search .input-wrap {
+  border-bottom: 0 !important;
+  margin: 0 40px;
+}
+
+.search input {
+  background: #fff;
+  border: 0 !important;
+  border-radius: 8px;
+  box-sizing: border-box;
+  box-shadow: none;
+  color: #1c1917;
+  font-size: 0.95rem;
+  padding: 0.8rem 0.95rem;
+  width: 100%;
+}
+
+.search > input {
+  margin: 0 40px;
+  width: calc(100% - 80px);
+}
+
+.sidebar-nav {
+  padding: 0.35rem 0.25rem 1.25rem;
+}
+
+.sidebar-nav > ul {
+  margin: 0 1rem;
+}
+
+.sidebar ul li a {
+  border-bottom: 1px solid transparent;
+  color: #57534e;
+  font-size: 0.9rem;
+  font-weight: 500;
+  padding-right: 0.85rem;
+}
+
+.sidebar li > p {
+  color: #1c1917;
+  font-size: 0.94rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1.35;
+  margin: 1rem 0 0.45rem;
+}
+
+.sidebar li > p + ul {
+  margin-top: 0.45rem;
+}
+
+.sidebar-nav > ul > li > p + ul {
+  margin-top: 0.95rem;
+}
+
+.sidebar ul li strong > a,
+.sidebar ul li p > a {
+  color: #292524;
+}
+
+.sidebar ul li.active > a {
+  border-right: 3px solid var(--theme-color);
+  color: var(--theme-color);
+  font-weight: 600;
+}
+
+.sidebar ul li ul li a {
+  font-size: 0.86rem;
+  padding-right: 0.45rem;
+}
+
+.sidebar ul li {
+  margin: 3px 0;
+}
+
+.sidebar .app-sub-sidebar li a {
+  font-size: 0.82rem;
+  line-height: 1.9;
+  padding-left: 0.15rem;
+  padding-bottom: 0.05rem;
+  padding-top: 0.05rem;
+}
+
+.sidebar .app-sub-sidebar {
+  margin-top: 3px;
+}
+
+.sidebar .app-sub-sidebar li {
+  clear: none;
+  margin: 3px 0;
+}
+
+.sidebar .app-sub-sidebar li::before {
+  content: none;
+}
+
+.content {
+  background: #fff;
+  padding-top: 0.8rem;
+}
+
+.markdown-section {
+  color: #292524;
+  font-size: 0.95rem;
+  line-height: 1.65;
+  max-width: 920px;
+}
+
+.markdown-section h1,
+.markdown-section h2,
+.markdown-section h3 {
+  color: #1c1917;
+  letter-spacing: -0.01em;
+}
+
+.markdown-section h1 {
+  font-size: 2rem;
+  font-weight: 650;
+  margin-bottom: 1rem;
+}
+
+.markdown-section h2 {
+  border-top: 0;
+  font-size: 1.55rem;
+  font-weight: 620;
+  margin-top: 2.1rem;
+  padding-top: 0;
+}
+
+.markdown-section h3 {
+  font-size: 1.15rem;
+  font-weight: 620;
+}
+
+.markdown-section a {
+  color: #0077cc;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.markdown-section a:hover {
+  color: #005999;
+  text-decoration: underline;
+}
+
+.markdown-section table {
+  background: #fff;
+  border: 1px solid #e7e5e4;
+  border-collapse: separate;
+  border-radius: 0;
+  border-spacing: 0;
+  display: table;
+  margin: 3rem 0 4.2rem;
+  overflow: visible;
+  max-width: 100%;
+  table-layout: auto;
+  width: auto;
+}
+
+.markdown-section table td,
+.markdown-section table th {
+  border: 0;
+  border-right: 1px solid #e7e5e4;
+  border-top: 1px solid #e7e5e4;
+  padding: 0.62rem 0.75rem;
+}
+
+.markdown-section table tr:first-child td,
+.markdown-section table tr:first-child th {
+  border-top: 0;
+}
+
+.markdown-section table td:last-child,
+.markdown-section table th:last-child {
+  border-right: 0;
+}
+
+.markdown-section table th {
+  background: #fafaf9;
+  border-bottom: 1px solid #e7e5e4;
+  color: #292524;
+  font-weight: 600;
+}
+
+.markdown-section table tbody tr:first-child td {
+  border-top: 0;
+}
+
+.markdown-section blockquote {
+  background: #ebf5ff;
+  border-left: 4px solid var(--theme-color);
+  color: #1e293b;
+  margin: 2rem 0 2.8rem;
+  padding: 0.9rem 1rem;
+}
+
+.markdown-section img {
+  border: 1px solid #d6d3d1;
+  border-radius: 12px;
+  box-shadow: 0 10px 22px rgba(28, 25, 23, 0.08);
+  display: block;
+  margin: 3.4rem 0 4.8rem;
+  max-width: 100%;
+}
+
+.markdown-section img[src*='screenshots/'] {
+  margin-left: auto;
+  margin-right: auto;
+  max-width: 80%;
+  width: 80%;
+}
+
+.markdown-section p:has(> img) {
+  margin: 3.4rem 0 4.8rem;
+}
+
+.markdown-section p:has(> img) > img {
+  margin: 0;
+}
+
+.markdown-section pre {
+  margin: 2rem 0 2.8rem;
+}
+
+.markdown-section table + p,
+.markdown-section img + p {
+  margin-top: 2.4rem;
+}
+
+.app-name-link img {
+  border: 0;
+  box-shadow: none;
+}
+
+.pagination-item-label {
+  color: #57534e;
+}
+
+/* Align Docsify code/syntax highlights with OCG blue accents */
+.markdown-section code {
+  background-color: #eef6ff;
+  color: #0077cc;
+}
+
+.token.boolean,
+.token.function,
+.token.important,
+.token.keyword,
+.token.number,
+.token.property {
+  color: #0077cc;
+}
+
+.token.attr-value,
+.token.control,
+.token.directive,
+.token.string,
+.token.unit {
+  color: #0094ff;
+}
+
+@media screen and (max-width: 768px) {
+  .markdown-section img[src*='screenshots/'] {
+    max-width: 100%;
+    width: 100%;
+  }
+}
+
+@media screen and (min-width: 769px) {
+  .sidebar {
+    width: 336px;
+  }
+
+  .content {
+    left: 336px;
+  }
+
+  .markdown-section {
+    margin: 0 4rem 0 3.2rem;
+    max-width: none;
+    padding: 2rem 0 3rem;
+  }
+}
