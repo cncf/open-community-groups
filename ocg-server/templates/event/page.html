@@ -32,7 +32,7 @@
         {# Event header with name and group -#}
         <div>
           {# Main flex container for logo, name/group, and social networks -#}
-          <div class="flex flex-1 flex-row items-stretch md:gap-6">
+          <div class="flex flex-1 flex-row flex-wrap items-stretch md:gap-6 lg:flex-nowrap">
             {# Event logo -#}
             <div class="relative">
               {{ ui::logo(logo_url = event.logo_url, classes = "hidden md:block size-24 md:size-28", size = 112) -}}
@@ -83,7 +83,7 @@
                 {# End event status and social networks -#}
               </div>
 
-              <div class="mt-2 md:mt-auto flex flex-col md:flex-row md:items-end md:justify-between w-full">
+              <div class="mt-2 md:mt-auto flex flex-col md:flex-row md:flex-wrap md:items-end md:justify-between w-full">
                 {# Event details and date -#}
                 <div class="flex items-end gap-4 text-stone-600">
                   {% if let Some(capacity) = &event.capacity -%}
@@ -121,17 +121,18 @@
                 {% endif -%}
                 {# End social networks (mobile) -#}
 
-                <div class="mt-4 md:mt-0 flex flex-row flex-wrap gap-4 items-end md:ml-auto">
-                  {# Share button -#}
-                  <share-modal title="{{ event.group.name }} · {{ event.name }}" url="/{{ event.community.name }}/group/{{ event.group.slug }}/event/{{ event.slug }}">
-                  </share-modal>
-                  {# End share button -#}
-
-                  {# Attend button section -#}
-                  {% include "event/attend_button.html" %}
-                  {# End attend button section -#}
-                </div>
               </div>
+            </div>
+
+            <div class="mt-4 flex flex-row flex-wrap gap-4 items-end w-full shrink-0 lg:mt-0 lg:w-auto lg:shrink lg:ml-auto">
+              {# Share button -#}
+              <share-modal title="{{ event.group.name }} · {{ event.name }}" url="/{{ event.community.name }}/group/{{ event.group.slug }}/event/{{ event.slug }}">
+              </share-modal>
+              {# End share button -#}
+
+              {# Attend button section -#}
+              {% include "event/attend_button.html" %}
+              {# End attend button section -#}
             </div>
 
           </div>
