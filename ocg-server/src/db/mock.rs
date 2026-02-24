@@ -565,6 +565,14 @@ mock! {
             client_id: Uuid,
             meeting: &crate::services::meetings::Meeting,
         ) -> Result<()>;
+        async fn get_available_zoom_host_user(
+            &self,
+            client_id: Uuid,
+            pool_users: &[String],
+            max_simultaneous_meetings_per_user: i32,
+            starts_at: chrono::DateTime<chrono::Utc>,
+            ends_at: chrono::DateTime<chrono::Utc>,
+        ) -> Result<Option<String>>;
         async fn get_meeting_out_of_sync(
             &self,
             client_id: Uuid,

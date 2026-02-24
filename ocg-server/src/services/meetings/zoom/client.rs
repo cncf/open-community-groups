@@ -5,6 +5,7 @@ use std::time::{Duration, Instant};
 use anyhow::{Result, anyhow};
 use base64::{Engine, engine::general_purpose::STANDARD as BASE64};
 use chrono::{DateTime, Utc};
+use percent_encoding::{NON_ALPHANUMERIC, utf8_percent_encode};
 use reqwest::Client as HttpClient;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
@@ -36,9 +37,6 @@ const MIN_DURATION_MINUTES: i64 = 5;
 /// Margin before token expiry to trigger refresh.
 const TOKEN_EXPIRY_MARGIN: Duration = Duration::from_secs(300);
 
-/// Zoom user ID for Server-to-Server app owner.
-const USER_ID: &str = "me";
-
 /// Zoom OAuth token endpoint.
 const ZOOM_TOKEN_URL: &str = "https://zoom.us/oauth/token";
 
@@ -66,9 +64,10 @@ impl ZoomClient {
     }
 
     /// Create a new meeting.
-    #[instrument(skip(self, req), err)]
+    #[instrument(skip(self, host_user_id, req), err)]
     pub(crate) async fn create_meeting(
         &self,
+        host_user_id: &str,
         req: &CreateMeetingRequest,
     ) -> Result<ZoomMeeting, ZoomClientError> {
         trace!("zoom client: create meeting");
@@ -77,7 +76,8 @@ impl ZoomClient {
             .get_token()
             .await
             .map_err(|e| ZoomClientError::Token(e.to_string()))?;
-        let url = format!("{BASE_URL}/users/{USER_ID}/meetings");
+        let encoded_host_user_id = utf8_percent_encode(host_user_id, NON_ALPHANUMERIC).to_string();
+        let url = format!("{BASE_URL}/users/{encoded_host_user_id}/meetings");
         let response = self
             .http_client
             .post(&url)

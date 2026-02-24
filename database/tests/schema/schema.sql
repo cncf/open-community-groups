@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(376);
+select plan(377);
 
 -- ============================================================================
 -- TESTS
@@ -300,6 +300,7 @@ select columns_are('meeting', array[
 
     'event_id',
     'password',
+    'provider_host_user_id',
     'recording_url',
     'session_id',
     'updated_at'
@@ -912,6 +913,7 @@ select indexes_are('meeting', array[
     'meeting_event_id_idx',
     'meeting_meeting_provider_id_idx',
     'meeting_meeting_provider_id_provider_meeting_id_idx',
+    'meeting_meeting_provider_id_provider_host_user_id_idx',
     'meeting_pkey',
     'meeting_session_id_idx'
 ]);
@@ -1037,6 +1039,7 @@ select has_function('delete_group_team_member');
 select has_function('delete_session_proposal');
 select has_function('generate_slug');
 select has_function('generate_slug_from_source');
+select has_function('get_available_zoom_host_user');
 select has_function('get_cfs_submission_notification_data');
 select has_function('get_community_full');
 select has_function('get_community_id_by_name');

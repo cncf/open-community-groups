@@ -180,15 +180,54 @@ insert into session (
 -- Should create meeting record when linked to event
 select lives_ok(
     format(
-        'select add_meeting(''zoom'', ''123456789'', ''https://zoom.us/j/123456789'', ''pass123'', %L, null)',
+        'select add_meeting(''zoom'', ''123456789'', ''host-event@example.com'', ''https://zoom.us/j/123456789'', ''pass123'', %L, null)',
         :'eventID'
     ),
     'Should create meeting record when linked to event'
 );
-select is(
-    (select count(*) from meeting where event_id = :'eventID'),
-    1::bigint,
-    'Meeting record created for event'
+select results_eq(
+    format(
+        $query$
+        select
+            event_id,
+            join_url,
+            meeting_provider_id,
+            provider_host_user_id,
+            provider_meeting_id,
+
+            password,
+            recording_url,
+            session_id,
+            updated_at,
+
+            created_at is not null as has_created_at,
+            meeting_id is not null as has_meeting_id
+        from meeting
+        where event_id = %L::uuid
+        $query$,
+        :'eventID'
+    ),
+    format(
+        $expected$
+        values (
+            %L::uuid,
+            'https://zoom.us/j/123456789',
+            'zoom',
+            'host-event@example.com',
+            '123456789',
+
+            'pass123',
+            null,
+            null::uuid,
+            null::timestamptz,
+
+            true,
+            true
+        )
+        $expected$,
+        :'eventID'
+    ),
+    'Meeting record created for event with expected fields'
 );
 
 -- Should mark event as synced after adding meeting
@@ -201,15 +240,54 @@ select is(
 -- Should create meeting record when linked to session
 select lives_ok(
     format(
-        'select add_meeting(''zoom'', ''987654321'', ''https://zoom.us/j/987654321'', ''sesspass'', null, %L)',
+        'select add_meeting(''zoom'', ''987654321'', ''host-session@example.com'', ''https://zoom.us/j/987654321'', ''sesspass'', null, %L)',
         :'sessionID'
     ),
     'Should create meeting record when linked to session'
 );
-select is(
-    (select count(*) from meeting where session_id = :'sessionID'),
-    1::bigint,
-    'Meeting record created for session'
+select results_eq(
+    format(
+        $query$
+        select
+            join_url,
+            meeting_provider_id,
+            provider_host_user_id,
+            provider_meeting_id,
+            session_id,
+
+            event_id,
+            password,
+            recording_url,
+            updated_at,
+
+            created_at is not null as has_created_at,
+            meeting_id is not null as has_meeting_id
+        from meeting
+        where session_id = %L::uuid
+        $query$,
+        :'sessionID'
+    ),
+    format(
+        $expected$
+        values (
+            'https://zoom.us/j/987654321',
+            'zoom',
+            'host-session@example.com',
+            '987654321',
+            %L::uuid,
+
+            null::uuid,
+            'sesspass',
+            null,
+            null::timestamptz,
+
+            true,
+            true
+        )
+        $expected$,
+        :'sessionID'
+    ),
+    'Meeting record created for session with expected fields'
 );
 
 -- Should mark session as synced after adding meeting
@@ -221,7 +299,10 @@ select is(
 
 -- Should fail with unique violation when adding duplicate meeting for same event
 select throws_ok(
-    format('select add_meeting(''zoom'', ''duplicate123'', ''https://zoom.us/j/duplicate123'', ''pass'', %L, null)', :'eventID'),
+    format(
+        'select add_meeting(''zoom'', ''duplicate123'', ''host-event@example.com'', ''https://zoom.us/j/duplicate123'', ''pass'', %L, null)',
+        :'eventID'
+    ),
     '23505',
     null,
     'Should fail with unique constraint violation for duplicate event meeting'
@@ -229,7 +310,10 @@ select throws_ok(
 
 -- Should fail with unique violation when adding duplicate meeting for same session
 select throws_ok(
-    format('select add_meeting(''zoom'', ''duplicate456'', ''https://zoom.us/j/duplicate456'', ''pass'', null, %L)', :'sessionID'),
+    format(
+        'select add_meeting(''zoom'', ''duplicate456'', ''host-session@example.com'', ''https://zoom.us/j/duplicate456'', ''pass'', null, %L)',
+        :'sessionID'
+    ),
     '23505',
     null,
     'Should fail with unique constraint violation for duplicate session meeting'
@@ -238,7 +322,7 @@ select throws_ok(
 -- Should clear error when adding meeting to event with previous error
 select lives_ok(
     format(
-        'select add_meeting(''zoom'', ''111111111'', ''https://zoom.us/j/111111111'', ''pass111'', %L, null)',
+        'select add_meeting(''zoom'', ''111111111'', ''host-error-event@example.com'', ''https://zoom.us/j/111111111'', ''pass111'', %L, null)',
         :'eventWithErrorID'
     ),
     'Should clear error when adding meeting to event with previous error'
@@ -252,7 +336,7 @@ select is(
 -- Should clear error when adding meeting to session with previous error
 select lives_ok(
     format(
-        'select add_meeting(''zoom'', ''222222222'', ''https://zoom.us/j/222222222'', ''pass222'', null, %L)',
+        'select add_meeting(''zoom'', ''222222222'', ''host-error-session@example.com'', ''https://zoom.us/j/222222222'', ''pass222'', null, %L)',
         :'sessionWithErrorID'
     ),
     'Should clear error when adding meeting to session with previous error'

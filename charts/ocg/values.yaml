@@ -76,7 +76,9 @@ meetings:
     accountId: ""
     clientId: ""
     clientSecret: ""
+    hostPoolUsers: []
     maxParticipants: 100
+    maxSimultaneousMeetingsPerHost: 1
     webhookSecretToken: ""
 
 # Database migrator configuration

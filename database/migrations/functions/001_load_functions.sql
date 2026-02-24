@@ -113,6 +113,7 @@
 
 {{ template "meetings/add_meeting.sql" }}
 {{ template "meetings/delete_meeting.sql" }}
+{{ template "meetings/get_available_zoom_host_user.sql" }}
 {{ template "meetings/get_meeting_out_of_sync.sql" }}
 {{ template "meetings/set_meeting_error.sql" }}
 {{ template "meetings/update_meeting.sql" }}

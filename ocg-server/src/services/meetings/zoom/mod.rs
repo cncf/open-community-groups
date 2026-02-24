@@ -34,10 +34,14 @@ impl MeetingsProvider for ZoomMeetingsProvider {
         &self,
         meeting: &Meeting,
     ) -> Result<MeetingProviderMeeting, MeetingProviderError> {
+        let host_user_id = meeting
+            .provider_host_user_id
+            .as_deref()
+            .ok_or_else(|| MeetingProviderError::Client("missing provider host user id".to_string()))?;
         let req = CreateMeetingRequest::try_from(meeting).map_err(MeetingProviderError::from)?;
         let zoom_meeting = self
             .client
-            .create_meeting(&req)
+            .create_meeting(host_user_id, &req)
             .await
             .map_err(MeetingProviderError::from)?;
 

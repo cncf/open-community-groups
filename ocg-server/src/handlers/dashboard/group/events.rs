@@ -930,7 +930,9 @@ mod tests {
                 client_id: "test-client".to_string(),
                 client_secret: "test-secret".to_string(),
                 enabled: true,
+                host_pool_users: vec!["host@example.com".to_string()],
                 max_participants: 100,
+                max_simultaneous_meetings_per_host: 1,
                 webhook_secret_token: "test-token".to_string(),
             }),
         };

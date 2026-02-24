@@ -2,6 +2,7 @@
 create or replace function add_meeting(
     p_meeting_provider_id text,
     p_provider_meeting_id text,
+    p_provider_host_user_id text,
     p_url text,
     p_password text,
     p_event_id uuid,
@@ -9,8 +10,24 @@ create or replace function add_meeting(
 ) returns void as $$
 begin
     -- Insert new meeting
-    insert into meeting (meeting_provider_id, provider_meeting_id, join_url, password, event_id, session_id)
-    values (p_meeting_provider_id, p_provider_meeting_id, p_url, p_password, p_event_id, p_session_id);
+    insert into meeting (
+        meeting_provider_id,
+        provider_meeting_id,
+        provider_host_user_id,
+        join_url,
+        password,
+        event_id,
+        session_id
+    )
+    values (
+        p_meeting_provider_id,
+        p_provider_meeting_id,
+        p_provider_host_user_id,
+        p_url,
+        p_password,
+        p_event_id,
+        p_session_id
+    );
 
     -- Mark event as synced (in the case of event meeting)
     if p_event_id is not null then
