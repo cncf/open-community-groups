@@ -197,9 +197,11 @@ export class SessionsSection extends LitWrapper {
           this.timezone
             ? convertTimestampToDateTimeLocalInTz(ts, this.timezone)
             : convertTimestampToDateTimeLocal(ts);
+        const meetingProviderId = item.meeting_provider_id || item.meeting_provider || "";
         return {
           ...this._createEmptySession(),
           ...item,
+          meeting_provider_id: meetingProviderId,
           id: index,
           starts_at: toLocal(item.starts_at),
           ends_at: toLocal(item.ends_at),
@@ -584,8 +586,17 @@ export class SessionsSection extends LitWrapper {
    */
   _renderHiddenInputs() {
     return html`
-      ${this.sessions.map(
-        (session, index) => html`
+      ${this.sessions.map((session, index) => {
+        const automaticMeetingRequested =
+          session.meeting_requested === true || session.meeting_requested === "true";
+        const meetingJoinUrl = automaticMeetingRequested ? "" : session.meeting_join_url || "";
+        const meetingRecordingUrl = automaticMeetingRequested ? "" : session.meeting_recording_url || "";
+        const meetingProviderId =
+          session.meeting_provider_id ||
+          session.meeting_provider ||
+          (automaticMeetingRequested ? "zoom" : "");
+
+        return html`
           <input type="hidden" name="sessions[${index}][session_id]" value=${session.session_id || ""} />
           <input type="hidden" name="sessions[${index}][name]" value=${session.name || ""} />
           <input type="hidden" name="sessions[${index}][kind]" value=${session.kind || ""} />
@@ -598,26 +609,18 @@ export class SessionsSection extends LitWrapper {
             name="sessions[${index}][cfs_submission_id]"
             value=${session.cfs_submission_id || ""}
           />
-          <input
-            type="hidden"
-            name="sessions[${index}][meeting_join_url]"
-            value=${session.meeting_join_url || ""}
-          />
+          <input type="hidden" name="sessions[${index}][meeting_join_url]" value=${meetingJoinUrl} />
           <input
             type="hidden"
             name="sessions[${index}][meeting_recording_url]"
-            value=${session.meeting_recording_url || ""}
+            value=${meetingRecordingUrl}
           />
           <input
             type="hidden"
             name="sessions[${index}][meeting_requested]"
             value=${session.meeting_requested || false}
           />
-          <input
-            type="hidden"
-            name="sessions[${index}][meeting_provider_id]"
-            value=${session.meeting_provider_id || ""}
-          />
+          <input type="hidden" name="sessions[${index}][meeting_provider_id]" value=${meetingProviderId} />
           ${(session.speakers || []).map(
             (speaker, speakerIndex) => html`
               <input
@@ -632,8 +635,8 @@ export class SessionsSection extends LitWrapper {
               />
             `,
           )}
-        `,
-      )}
+        `;
+      })}
     `;
   }
 
@@ -1016,6 +1019,36 @@ class SessionFormModal extends LitWrapper {
       return;
     }
 
+    if (sessionItem) {
+      const getSessionFieldValue = (fieldName) => {
+        const field = sessionItem.querySelector(`[name="sessions[0][${fieldName}]"]`);
+        if (!field || typeof field.value === "undefined" || field.value === null) {
+          return null;
+        }
+        return String(field.value).trim();
+      };
+
+      const joinUrl = getSessionFieldValue("meeting_join_url");
+      if (joinUrl !== null) {
+        this._session.meeting_join_url = joinUrl;
+      }
+
+      const recordingUrl = getSessionFieldValue("meeting_recording_url");
+      if (recordingUrl !== null) {
+        this._session.meeting_recording_url = recordingUrl;
+      }
+
+      const meetingRequested = getSessionFieldValue("meeting_requested");
+      if (meetingRequested !== null) {
+        this._session.meeting_requested = meetingRequested === "true";
+      }
+
+      const meetingProviderId = getSessionFieldValue("meeting_provider_id");
+      if (meetingProviderId !== null) {
+        this._session.meeting_provider_id = meetingProviderId;
+      }
+    }
+
     this.dispatchEvent(
       new CustomEvent("session-saved", {
         detail: {
@@ -1045,6 +1078,7 @@ class SessionFormModal extends LitWrapper {
         role="dialog"
         aria-modal="true"
         aria-labelledby="session-form-modal-title"
+        data-pending-changes-ignore
       >
         <div class="absolute inset-0 bg-stone-950 opacity-35" @click=${() => this.close()}></div>
         <div class="relative p-4 w-full max-w-6xl max-h-[90vh] overflow-hidden">

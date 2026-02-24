@@ -91,31 +91,31 @@ export class OnlineEventDetails extends LitWrapper {
     this._hosts = [];
     this._capacityWarning = "";
     this.disabled = false;
+    this._initializedFromProps = false;
   }
 
   connectedCallback() {
     super.connectedCallback();
-
-    // Initialize state from attributes
-    this._joinUrl = this.meetingJoinUrl || "";
-    this._recordingUrl = this.meetingRecordingUrl || "";
-    this._createMeeting = this.meetingRequested;
-    this._providerId = this.meetingProviderId || DEFAULT_MEETING_PROVIDER;
-    this._hosts = Array.isArray(this.meetingHosts) ? [...this.meetingHosts] : [];
-
-    // Determine mode based on meeting state
-    if (this.meetingRequested || this.meetingInSync) {
-      this._mode = "automatic";
-    } else {
-      this._mode = "manual";
-    }
 
     const capacityField = document.getElementById("capacity");
     capacityField?.addEventListener("input", () => {
       this._checkMeetingCapacity();
       this.requestUpdate();
     });
+  }
+
+  willUpdate() {
+    if (this._initializedFromProps) {
+      return;
+    }
+    this._joinUrl = this.meetingJoinUrl || "";
+    this._recordingUrl = this.meetingRecordingUrl || "";
+    this._createMeeting = this.meetingRequested;
+    this._providerId = this.meetingProviderId || DEFAULT_MEETING_PROVIDER;
+    this._hosts = Array.isArray(this.meetingHosts) ? [...this.meetingHosts] : [];
+    this._mode = this.meetingRequested || this.meetingInSync ? "automatic" : "manual";
     this._checkMeetingCapacity();
+    this._initializedFromProps = true;
   }
 
   /**
@@ -622,7 +622,7 @@ export class OnlineEventDetails extends LitWrapper {
   _renderHiddenInputs() {
     const isAutomatic = this._mode === "automatic" && this._createMeeting;
     const joinUrlValue = isAutomatic ? "" : (this._joinUrl || "").trim();
-    const recordingUrlValue = (this._recordingUrl || "").trim();
+    const recordingUrlValue = isAutomatic ? "" : (this._recordingUrl || "").trim();
     const providerIdValue = isAutomatic ? (this._providerId || "").trim() : "";
 
     return html`
@@ -690,11 +690,13 @@ export class OnlineEventDetails extends LitWrapper {
    * @returns {import('lit').TemplateResult} Status display or empty template
    */
   _renderMeetingStatus() {
-    const shouldShowPending = this._mode === "automatic" && this._createMeeting && !this.meetingInSync;
+    const hasMeetingError = Boolean(this.meetingError);
+    const isMeetingSynced = this.meetingInSync && !hasMeetingError;
+    const shouldShowPending = this._mode === "automatic" && this._createMeeting && !isMeetingSynced;
     const hasMeetingDetails =
-      this.meetingInSync || this.meetingPassword || this.meetingError || this.meetingJoinUrl;
+      isMeetingSynced || this.meetingPassword || this.meetingError || this.meetingJoinUrl;
     const showPendingMessage =
-      !this.meetingInSync && !this.meetingJoinUrl && !this.meetingPassword && !this.meetingError;
+      !isMeetingSynced && !this.meetingJoinUrl && !this.meetingPassword && !this.meetingError;
 
     if (!shouldShowPending && !hasMeetingDetails) {
       return html``;
@@ -702,18 +704,25 @@ export class OnlineEventDetails extends LitWrapper {
 
     return html`
       <div class="rounded-lg border border-stone-200 bg-white p-4 space-y-2 mt-4">
-        <div class="flex items-center gap-3">
-          ${this.meetingInSync
-            ? html`
-                <div class="svg-icon size-4 bg-emerald-500 icon-check"></div>
-                <span class="text-sm font-medium text-emerald-700">Meeting synced</span>
-              `
-            : html`
-                <div class="svg-icon size-4 bg-amber-500 icon-warning"></div>
-                <span class="text-sm font-medium text-amber-700">Meeting not synced yet</span>
-              `}
-        </div>
+      <div class="flex items-center gap-3">
+        ${this.meetingError
+          ? html`
+              <div class="svg-icon size-4 bg-red-500 icon-ban"></div>
+              <span class="text-sm font-medium text-red-700">Meeting not synced</span>
+            `
+          : html`
+                ${isMeetingSynced
+                  ? html`
+                      <div class="svg-icon size-4 bg-emerald-500 icon-check"></div>
+                      <span class="text-sm font-medium text-emerald-700">Meeting synced</span>
+                    `
+                  : html`
+                      <div class="svg-icon size-4 bg-amber-500 icon-warning"></div>
+                      <span class="text-sm font-medium text-amber-700">Meeting not synced yet</span>
+                    `}
 
+            `}
+            </div>
         ${showPendingMessage
           ? html`
               <p class="text-sm text-stone-700">
@@ -749,7 +758,10 @@ export class OnlineEventDetails extends LitWrapper {
         ${this.meetingError
           ? html`
               <div class="text-sm text-red-700 bg-red-50 border border-red-100 rounded p-3">
-                ${this.meetingError}
+                <div class="flex items-start gap-2">
+                  <div class="svg-icon size-4 icon-error shrink-0 mt-0.5"></div>
+                  <span>${this.meetingError}</span>
+                </div>
               </div>
             `
           : ""}
