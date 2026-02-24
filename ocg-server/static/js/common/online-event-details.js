@@ -704,13 +704,13 @@ export class OnlineEventDetails extends LitWrapper {
 
     return html`
       <div class="rounded-lg border border-stone-200 bg-white p-4 space-y-2 mt-4">
-      <div class="flex items-center gap-3">
-        ${this.meetingError
-          ? html`
-              <div class="svg-icon size-4 bg-red-500 icon-ban"></div>
-              <span class="text-sm font-medium text-red-700">Meeting not synced</span>
-            `
-          : html`
+        <div class="flex items-center gap-3">
+          ${this.meetingError
+            ? html`
+                <div class="svg-icon size-4 bg-red-500 icon-ban"></div>
+                <span class="text-sm font-medium text-red-700">Meeting not synced</span>
+              `
+            : html`
                 ${isMeetingSynced
                   ? html`
                       <div class="svg-icon size-4 bg-emerald-500 icon-check"></div>
@@ -720,9 +720,8 @@ export class OnlineEventDetails extends LitWrapper {
                       <div class="svg-icon size-4 bg-amber-500 icon-warning"></div>
                       <span class="text-sm font-medium text-amber-700">Meeting not synced yet</span>
                     `}
-
-            `}
-            </div>
+              `}
+        </div>
         ${showPendingMessage
           ? html`
               <p class="text-sm text-stone-700">
