@@ -323,11 +323,12 @@
           About this event
         </div>
         <div class="text-stone-500 text-sm/6 markdown">{{ event.description|md_to_html|safe }}</div>
-        {% if event.meeting_join_url.is_some() || event.meeting_recording_url.is_some() -%}
-          {% let meeting_join_url = event.meeting_join_url -%}
-          {% let meeting_recording_url = event.meeting_recording_url -%}
-          {% let has_join = meeting_join_url.is_some() -%}
-          {% let has_recording = meeting_recording_url.is_some() -%}
+        {% let meeting_join_url = event.meeting_join_url -%}
+        {% let meeting_recording_url = event.meeting_recording_url -%}
+        {% let has_join = meeting_join_url.is_some() -%}
+        {% let has_recording = meeting_recording_url.is_some() -%}
+        {% let show_join_link = has_join && !has_recording && !event.is_past() -%}
+        {% if show_join_link || has_recording -%}
           <div data-meeting-details
                data-has-recording="{{ has_recording }}"
                class="hidden mt-6 sm:mt-8">
@@ -337,25 +338,25 @@
                 <div class="text-sm font-semibold uppercase tracking-wide text-stone-700">Meeting details</div>
               </div>
               <div class="text-sm text-stone-700 mb-4">
-                {% if has_join && has_recording -%}
-                  Use the links below to join the session or watch the recording.
-                {% elif has_join -%}
+                {% if show_join_link -%}
                   Use the link below to join the session.
                 {% else -%}
                   Use the link below to watch the recording.
                 {% endif -%}
               </div>
               <div class="flex flex-wrap items-center gap-3">
-                {% if let Some(meeting_join_url) = &meeting_join_url -%}
-                  <div data-join-link-always>
-                    <a href="{{ meeting_join_url }}"
-                       target="_blank"
-                       rel="noopener noreferrer"
-                       class="group btn-primary-outline-anchor h-10 md:h-[30px] flex items-center justify-center space-x-2">
-                      <div class="svg-icon size-3 icon-meeting"></div>
-                      <span>Meeting link</span>
-                    </a>
-                  </div>
+                {% if show_join_link -%}
+                  {% if let Some(meeting_join_url) = &meeting_join_url -%}
+                    <div data-join-link-always>
+                      <a href="{{ meeting_join_url }}"
+                         target="_blank"
+                         rel="noopener noreferrer"
+                         class="group btn-primary-outline-anchor h-10 md:h-[30px] flex items-center justify-center space-x-2">
+                        <div class="svg-icon size-3 icon-meeting"></div>
+                        <span>Meeting link</span>
+                      </a>
+                    </div>
+                  {% endif -%}
                 {% endif -%}
                 {% if let Some(meeting_recording_url) = &meeting_recording_url -%}
                   <a href="{{ meeting_recording_url }}"
@@ -622,28 +623,31 @@
     {% if let Some(description) = &session.description -%}
       <div class="text-sm/6 text-stone-600 markdown mt-3">{{ description|md_to_html|safe }}</div>
     {% endif -%}
-    {% if session.meeting_join_url.is_some() || session.meeting_recording_url.is_some() -%}
-      {% let has_join = session.meeting_join_url.is_some() -%}
-      {% let has_recording_session = session.meeting_recording_url.is_some() -%}
+    {% let has_join_session = session.meeting_join_url.is_some() -%}
+    {% let has_recording_session = session.meeting_recording_url.is_some() -%}
+    {% let show_join_link_session = has_join_session && !has_recording_session && !event.is_past() -%}
+    {% if show_join_link_session || has_recording_session -%}
       <div data-meeting-details
            data-has-recording="{{ has_recording_session }}"
            class="hidden mt-3">
         <div class="flex flex-wrap items-center gap-3">
-          {% if let Some(meeting_join_url) = &session.meeting_join_url -%}
-            <a href="{{ meeting_join_url }}"
-               data-join-link-always
-               target="_blank"
-               rel="noopener noreferrer"
-               class="group btn-primary-outline inline-flex items-center gap-2 rounded-full h-10 sm:h-[30px] text-sm">
-              <div class="svg-icon size-3 icon-meeting"></div>
-              <span>Join session</span>
-            </a>
+          {% if show_join_link_session -%}
+            {% if let Some(meeting_join_url) = &session.meeting_join_url -%}
+              <a href="{{ meeting_join_url }}"
+                 data-join-link-always
+                 target="_blank"
+                 rel="noopener noreferrer"
+                 class="group btn-primary-outline inline-flex items-center gap-2 rounded-full h-10 sm:h-[30px] text-sm">
+                <div class="svg-icon size-3 icon-meeting"></div>
+                <span>Join session</span>
+              </a>
+            {% endif -%}
           {% endif -%}
           {% if let Some(meeting_recording_url) = &session.meeting_recording_url -%}
             <a href="{{ meeting_recording_url }}"
                target="_blank"
                rel="noopener noreferrer"
-               class="group btn-secondary-outline-anchor inline-flex items-center gap-2 rounded-full h-10 sm:h-[30px] text-sm">
+               class="group btn-primary-outline-anchor inline-flex items-center gap-2 rounded-full h-10 sm:h-[30px] text-sm">
               <div class="svg-icon size-3 icon-recording"></div>
               <span>View recording</span>
             </a>
