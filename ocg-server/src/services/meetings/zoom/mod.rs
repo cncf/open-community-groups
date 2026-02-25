@@ -9,7 +9,7 @@ use crate::{
     },
 };
 
-use super::{Meeting, MeetingProviderError, MeetingProviderMeeting, MeetingsProvider};
+use super::{Meeting, MeetingEndResult, MeetingProviderError, MeetingProviderMeeting, MeetingsProvider};
 
 pub(crate) mod client;
 
@@ -65,6 +65,34 @@ impl MeetingsProvider for ZoomMeetingsProvider {
             }
             Err(e) => Err(MeetingProviderError::from(e)),
         }
+    }
+
+    /// End a meeting in Zoom after checking it is still running.
+    async fn end_meeting(&self, provider_meeting_id: &str) -> Result<MeetingEndResult, MeetingProviderError> {
+        let meeting_id: i64 = provider_meeting_id
+            .parse()
+            .map_err(|e: std::num::ParseIntError| MeetingProviderError::Client(e.to_string()))?;
+
+        // Check current meeting status first to avoid unnecessary end calls
+        let zoom_meeting = self
+            .client
+            .get_meeting(meeting_id)
+            .await
+            .map_err(MeetingProviderError::from)?;
+        let is_started = zoom_meeting
+            .status
+            .as_deref()
+            .is_some_and(|status| status.eq_ignore_ascii_case("started"));
+        if !is_started {
+            return Ok(MeetingEndResult::AlreadyNotRunning);
+        }
+
+        self.client
+            .end_meeting(meeting_id)
+            .await
+            .map_err(MeetingProviderError::from)?;
+
+        Ok(MeetingEndResult::Ended)
     }
 
     /// Get meeting details from Zoom.

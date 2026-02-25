@@ -573,10 +573,20 @@ mock! {
             starts_at: chrono::DateTime<chrono::Utc>,
             ends_at: chrono::DateTime<chrono::Utc>,
         ) -> Result<Option<String>>;
+        async fn get_meeting_for_auto_end(
+            &self,
+            client_id: Uuid,
+        ) -> Result<Option<crate::db::meetings::MeetingAutoEndCandidate>>;
         async fn get_meeting_out_of_sync(
             &self,
             client_id: Uuid,
         ) -> Result<Option<crate::services::meetings::Meeting>>;
+        async fn set_meeting_auto_end_check_outcome(
+            &self,
+            client_id: Uuid,
+            meeting_id: Uuid,
+            outcome: crate::services::meetings::MeetingAutoEndCheckOutcome,
+        ) -> Result<()>;
         async fn set_meeting_error(
             &self,
             client_id: Uuid,
