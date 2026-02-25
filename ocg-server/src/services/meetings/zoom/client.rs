@@ -120,6 +120,32 @@ impl ZoomClient {
         Ok(())
     }
 
+    /// End a meeting by ID.
+    #[instrument(skip(self), err)]
+    pub(crate) async fn end_meeting(&self, meeting_id: i64) -> Result<(), ZoomClientError> {
+        trace!("zoom client: end meeting");
+
+        let token = self
+            .get_token()
+            .await
+            .map_err(|e| ZoomClientError::Token(e.to_string()))?;
+        let url = format!("{BASE_URL}/meetings/{meeting_id}/status");
+        let req = UpdateMeetingStatusRequest { action: "end" };
+        let response = self
+            .http_client
+            .put(&url)
+            .bearer_auth(token)
+            .json(&req)
+            .send()
+            .await
+            .map_err(|e| ZoomClientError::Network(e.to_string()))?;
+        if !response.status().is_success() {
+            return Err(ZoomClientError::from_response(response).await);
+        }
+
+        Ok(())
+    }
+
     /// Get a meeting by ID.
     #[instrument(skip(self), err)]
     pub(crate) async fn get_meeting(&self, meeting_id: i64) -> Result<ZoomMeeting, ZoomClientError> {
@@ -329,6 +355,12 @@ impl TryFrom<&Meeting> for UpdateMeetingRequest {
     }
 }
 
+/// Request to update a meeting status.
+#[derive(Debug, Serialize)]
+struct UpdateMeetingStatusRequest {
+    action: &'static str,
+}
+
 /// Error types from Zoom client calls.
 #[derive(Debug)]
 pub(crate) enum ZoomClientError {
@@ -438,6 +470,7 @@ pub(crate) struct ZoomMeeting {
     pub id: i64,
     pub join_url: String,
     pub password: Option<String>,
+    pub status: Option<String>,
 }
 
 /// Returns the default settings applied to all meetings.

@@ -11,7 +11,7 @@ use uuid::Uuid;
 use crate::{
     PgDB,
     db::TX_CLIENT_NOT_FOUND,
-    services::meetings::{Meeting, MeetingProvider},
+    services::meetings::{Meeting, MeetingAutoEndCheckOutcome, MeetingProvider},
 };
 
 /// Trait that defines database operations used to manage meetings.
@@ -33,8 +33,19 @@ pub(crate) trait DBMeetings {
         ends_at: DateTime<Utc>,
     ) -> Result<Option<String>>;
 
+    /// Retrieves one overdue meeting for auto-end checks.
+    async fn get_meeting_for_auto_end(&self, client_id: Uuid) -> Result<Option<MeetingAutoEndCandidate>>;
+
     /// Retrieves a meeting that is out of sync.
     async fn get_meeting_out_of_sync(&self, client_id: Uuid) -> Result<Option<Meeting>>;
+
+    /// Records the outcome of an auto-end check for a meeting.
+    async fn set_meeting_auto_end_check_outcome(
+        &self,
+        client_id: Uuid,
+        meeting_id: Uuid,
+        outcome: MeetingAutoEndCheckOutcome,
+    ) -> Result<()>;
 
     /// Records an error for a meeting and marks it as synced.
     async fn set_meeting_error(&self, client_id: Uuid, meeting: &Meeting, error: &str) -> Result<()>;
@@ -144,6 +155,37 @@ impl DBMeetings for PgDB {
     }
 
     #[instrument(skip(self), err)]
+    async fn get_meeting_for_auto_end(&self, client_id: Uuid) -> Result<Option<MeetingAutoEndCandidate>> {
+        trace!("db: get meeting for auto end");
+
+        // Get transaction client
+        let tx = {
+            let clients = self.txs_clients.read().await;
+            let Some((tx, _)) = clients.get(&client_id) else {
+                bail!(TX_CLIENT_NOT_FOUND);
+            };
+            Arc::clone(tx)
+        };
+
+        // Get one overdue meeting for auto-end checks (if any)
+        let Some(row) = tx.query_opt("select * from get_meeting_for_auto_end()", &[]).await? else {
+            return Ok(None);
+        };
+
+        // Parse meeting provider
+        let provider_id: String = row.get("meeting_provider_id");
+        let provider = provider_id
+            .parse()
+            .map_err(|_| anyhow::anyhow!("unsupported meeting provider: {provider_id}"))?;
+
+        Ok(Some(MeetingAutoEndCandidate {
+            meeting_id: row.get("meeting_id"),
+            provider,
+            provider_meeting_id: row.get("provider_meeting_id"),
+        }))
+    }
+
+    #[instrument(skip(self), err)]
     async fn get_meeting_out_of_sync(&self, client_id: Uuid) -> Result<Option<Meeting>> {
         trace!("db: get meeting out of sync");
 
@@ -188,6 +230,34 @@ impl DBMeetings for PgDB {
         };
 
         Ok(Some(meeting))
+    }
+
+    #[instrument(skip(self), err)]
+    async fn set_meeting_auto_end_check_outcome(
+        &self,
+        client_id: Uuid,
+        meeting_id: Uuid,
+        outcome: MeetingAutoEndCheckOutcome,
+    ) -> Result<()> {
+        trace!("db: set meeting auto end check outcome");
+
+        // Get transaction client
+        let tx = {
+            let clients = self.txs_clients.read().await;
+            let Some((tx, _)) = clients.get(&client_id) else {
+                bail!(TX_CLIENT_NOT_FOUND);
+            };
+            Arc::clone(tx)
+        };
+
+        // Record auto-end check outcome
+        tx.execute(
+            "select set_meeting_auto_end_check_outcome($1::uuid, $2::text)",
+            &[&meeting_id, &outcome.as_ref()],
+        )
+        .await?;
+
+        Ok(())
     }
 
     #[instrument(skip(self, meeting), err)]
@@ -266,4 +336,12 @@ impl DBMeetings for PgDB {
 
         Ok(())
     }
+}
+
+/// Candidate meeting to process for auto-end checks.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) struct MeetingAutoEndCandidate {
+    pub meeting_id: Uuid,
+    pub provider: MeetingProvider,
+    pub provider_meeting_id: String,
 }

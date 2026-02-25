@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(377);
+select plan(385);
 
 -- ============================================================================
 -- TESTS
@@ -44,6 +44,7 @@ select has_table('images');
 select has_table('legacy_event_host');
 select has_table('legacy_event_speaker');
 select has_table('meeting');
+select has_table('meeting_auto_end_check_outcome');
 select has_table('meeting_provider');
 select has_table('notification');
 select has_table('notification_attachment');
@@ -298,12 +299,20 @@ select columns_are('meeting', array[
     'meeting_provider_id',
     'provider_meeting_id',
 
+    'auto_end_check_at',
+    'auto_end_check_outcome',
     'event_id',
     'password',
     'provider_host_user_id',
     'recording_url',
     'session_id',
     'updated_at'
+]);
+
+-- Test: meeting_auto_end_check_outcome columns should match expected
+select columns_are('meeting_auto_end_check_outcome', array[
+    'meeting_auto_end_check_outcome_id',
+    'display_name'
 ]);
 
 -- Test: meeting_provider columns should match expected
@@ -616,6 +625,7 @@ select has_pk('images');
 select has_pk('legacy_event_host');
 select has_pk('legacy_event_speaker');
 select has_pk('meeting');
+select has_pk('meeting_auto_end_check_outcome');
 select has_pk('meeting_provider');
 select has_pk('notification');
 select has_pk('notification_attachment');
@@ -673,6 +683,7 @@ select col_is_fk('group_team', 'user_id', 'user');
 select col_is_fk('images', 'created_by', 'user');
 select col_is_fk('legacy_event_host', 'event_id', 'event');
 select col_is_fk('legacy_event_speaker', 'event_id', 'event');
+select col_is_fk('meeting', 'auto_end_check_outcome', 'meeting_auto_end_check_outcome');
 select col_is_fk('meeting', 'event_id', 'event');
 select col_is_fk('meeting', 'meeting_provider_id', 'meeting_provider');
 select col_is_fk('meeting', 'session_id', 'session');
@@ -915,7 +926,14 @@ select indexes_are('meeting', array[
     'meeting_meeting_provider_id_provider_meeting_id_idx',
     'meeting_meeting_provider_id_provider_host_user_id_idx',
     'meeting_pkey',
-    'meeting_session_id_idx'
+    'meeting_session_id_idx',
+    'meeting_zoom_auto_end_pending_idx'
+]);
+
+-- Test: meeting_auto_end_check_outcome indexes should match expected
+select indexes_are('meeting_auto_end_check_outcome', array[
+    'meeting_auto_end_check_outcome_pkey',
+    'meeting_auto_end_check_outcome_display_name_key'
 ]);
 
 -- Test: meeting_provider indexes should match expected
@@ -1059,6 +1077,7 @@ select has_function('get_group_past_events');
 select has_function('get_group_sponsor');
 select has_function('get_group_summary');
 select has_function('get_group_upcoming_events');
+select has_function('get_meeting_for_auto_end');
 select has_function('get_site_home_stats');
 select has_function('get_site_recently_added_groups');
 select has_function('get_site_settings');
@@ -1104,6 +1123,7 @@ select has_function('search_event_attendees');
 select has_function('search_events');
 select has_function('search_groups');
 select has_function('search_user');
+select has_function('set_meeting_auto_end_check_outcome');
 select has_function('sign_up_user');
 select has_function('unpublish_event');
 select has_function('update_cfs_submission');
@@ -1170,6 +1190,18 @@ select results_eq(
         ('virtual', 'Virtual')
     $$,
     'Event kinds should exist'
+);
+
+-- Test: meeting auto end check outcome should match expected values
+select results_eq(
+    'select * from meeting_auto_end_check_outcome order by meeting_auto_end_check_outcome_id',
+    $$ values
+        ('already_not_running', 'Already not running'),
+        ('auto_ended', 'Auto ended'),
+        ('error', 'Error'),
+        ('not_found', 'Not found')
+    $$,
+    'Meeting auto-end check outcomes should exist'
 );
 
 -- Test: meeting providers should match expected values
