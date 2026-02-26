@@ -6,7 +6,7 @@
 <div class="flex justify-between items-end my-5">
   <div class="text-sm text-stone-600">
     {{ regions.len() }} region
-    {% if regions.len() != 1 %}s{% endif %}
+    {%- if regions.len() != 1 -%}s{%- endif -%}
   </div>
   <div>
     <button id="add-region-button"

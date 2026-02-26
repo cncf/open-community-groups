@@ -6,11 +6,11 @@
 <div class="flex justify-between items-end my-5">
   <div class="text-sm text-stone-600">
     {{ categories.len() }} categor
-    {% if categories.len() == 1 %}
+    {%- if categories.len() == 1 -%}
       y
-    {% else %}
+    {%- else -%}
       ies
-    {% endif %}
+    {%- endif -%}
   </div>
   <div>
     <button id="add-group-category-button"
