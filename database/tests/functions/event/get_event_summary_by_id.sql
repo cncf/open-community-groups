@@ -36,8 +36,8 @@ insert into "group" (group_id, community_id, group_category_id, group_site_layou
 values (:'groupID', :'communityID', :'groupCategoryID', 'default', 'Summary Group', 'summary-group');
 
 -- Event category
-insert into event_category (event_category_id, community_id, name, slug)
-values (:'eventCategoryID', :'communityID', 'Summary Events', 'summary-events');
+insert into event_category (event_category_id, community_id, name)
+values (:'eventCategoryID', :'communityID', 'Summary Events');
 
 -- User
 insert into "user" (user_id, auth_hash, email, username, email_verified)

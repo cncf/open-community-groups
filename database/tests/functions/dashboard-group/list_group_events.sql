@@ -43,8 +43,8 @@ insert into community (
 );
 
 -- Event Category
-insert into event_category (event_category_id, name, slug, community_id)
-values (:'category1ID', 'Conference', 'conference', :'community1ID');
+insert into event_category (event_category_id, name, community_id)
+values (:'category1ID', 'Conference', :'community1ID');
 
 -- Group Category
 insert into group_category (group_category_id, name, community_id)

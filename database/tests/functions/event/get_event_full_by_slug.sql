@@ -38,8 +38,8 @@ insert into "group" (group_id, name, slug, community_id, group_category_id, logo
 values (:'groupID', 'Test Group', 'abc1234', :'communityID', :'categoryID', 'https://example.com/group-logo.png', true, '2025-02-11 10:00:00+00');
 
 -- Event Category
-insert into event_category (event_category_id, name, slug, community_id)
-values (:'eventCategoryID', 'Tech Talks', 'tech-talks', :'communityID');
+insert into event_category (event_category_id, name, community_id)
+values (:'eventCategoryID', 'Tech Talks', :'communityID');
 
 -- User
 insert into "user" (user_id, auth_hash, email, username, created_at, bio, company, name, photo_url, title)

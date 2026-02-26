@@ -44,6 +44,14 @@ insert into group_category (group_category_id, name, community_id)
 values 
     (:'category3ID', 'Education', :'community2ID');
 
+-- Groups
+insert into "group" (group_id, community_id, group_category_id, name, slug)
+values
+    ('00000000-0000-0000-0000-000000000031', :'community1ID', :'category1ID', 'Cloud Native Seattle', 'cloud-native-seattle'),
+    ('00000000-0000-0000-0000-000000000032', :'community1ID', :'category2ID', 'Business Builders', 'business-builders'),
+    ('00000000-0000-0000-0000-000000000033', :'community1ID', :'category2ID', 'Startup Founders', 'startup-founders'),
+    ('00000000-0000-0000-0000-000000000034', :'community2ID', :'category3ID', 'Education Collective', 'education-collective');
+
 -- ============================================================================
 -- TESTS
 -- ============================================================================
@@ -53,12 +61,14 @@ select is(
     list_group_categories(:'community1ID'::uuid)::jsonb,
     '[
         {
+            "groups_count": 2,
             "group_category_id": "00000000-0000-0000-0000-000000000012",
             "name": "Business",
             "slug": "business",
             "order": 1
         },
         {
+            "groups_count": 1,
             "group_category_id": "00000000-0000-0000-0000-000000000011",
             "name": "Technology",
             "slug": "technology",

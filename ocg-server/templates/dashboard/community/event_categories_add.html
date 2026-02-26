@@ -1,0 +1,82 @@
+{% import "macros/ui.html" as ui -%}
+{% import "macros/dashboard.html" as dashboard -%}
+
+{# Add Event Category form -#}
+<form id="event-category-form"
+      hx-post="/dashboard/community/event-categories/add"
+      hx-ext="no-empty-vals"
+      hx-target="#dashboard-content"
+      hx-indicator="#dashboard-spinner, #community-event-category-create-spinner"
+      hx-disabled-elt="button[type=submit], #cancel-button">
+  <div class="space-y-12">
+    <div class="border-b border-stone-900/10 pb-12">
+      {{ dashboard::form_title(title = "Event Category Details", description = "Add a new event category for this community.") -}}
+
+      <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-4xl">
+        <div class="col-span-full lg:col-span-5">
+          <label for="name" class="form-label">
+            Name <span class="asterisk">*</span>
+          </label>
+          <div class="mt-2">
+            <input type="text"
+                   name="name"
+                   id="name"
+                   maxlength="{{ crate::validation::MAX_LEN_ENTITY_NAME }}"
+                   class="input-primary"
+                   autocomplete="off"
+                   autocorrect="off"
+                   autocapitalize="off"
+                   spellcheck="false"
+                   required>
+          </div>
+          <p class="form-legend">
+            Category display name. Max {{ crate::validation::MAX_LEN_ENTITY_NAME }} characters.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mt-6 flex items-center justify-end gap-x-6">
+    <button id="cancel-button"
+            type="button"
+            hx-get="/dashboard/community?tab=event-categories"
+            hx-target="body"
+            hx-indicator="#dashboard-spinner"
+            class="btn-primary-outline">Cancel</button>
+
+    <button type="submit" class="btn-primary relative">
+      {{ ui::btn_spinner(id = "community-event-category-create-spinner", spinner_type = "2") -}}
+      Add Event Category
+    </button>
+  </div>
+</form>
+
+<script type="module">
+  import {
+    handleHtmxResponse
+  } from '/static/js/common/alerts.js';
+
+  const eventCategoryForm = document.getElementById('event-category-form');
+  const cancelButton = document.getElementById('cancel-button');
+
+  if (cancelButton) {
+    cancelButton.addEventListener('htmx:afterRequest', () => {
+      history.pushState({}, 'Event categories list', '/dashboard/community?tab=event-categories');
+    });
+  }
+
+  if (eventCategoryForm) {
+    eventCategoryForm.addEventListener('htmx:afterRequest', (e) => {
+      if (e.detail.elt.id === 'event-category-form') {
+        const xhr = e.detail?.xhr;
+        handleHtmxResponse({
+          xhr,
+          successMessage: 'You have successfully added the event category.',
+          errorMessage: 'Something went wrong adding the event category. Please try again later.'
+        });
+      }
+    });
+  }
+</script>
+{# End Add Event Category form -#}

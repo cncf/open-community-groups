@@ -49,10 +49,10 @@ insert into "user" (user_id, auth_hash, email, username, name) values
     (:'user3ID', 'hash3', 'speaker1@example.com', 'speaker1', 'Speaker One');
 
 -- Event Category
-insert into event_category (event_category_id, name, slug, community_id)
+insert into event_category (event_category_id, name, community_id)
 values
-    (:'category1ID', 'Conference', 'conference', :'community1ID'),
-    (:'category2ID', 'Workshop', 'workshop', :'community1ID');
+    (:'category1ID', 'Conference', :'community1ID'),
+    (:'category2ID', 'Workshop', :'community1ID');
 
 -- Group Category
 insert into group_category (group_category_id, name, community_id)

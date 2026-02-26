@@ -385,6 +385,9 @@ pub struct EventCategory {
     pub name: String,
     /// URL-friendly identifier.
     pub slug: String,
+
+    /// Number of events currently using this category.
+    pub events_count: Option<usize>,
 }
 
 /// Event CFS label used for submissions.

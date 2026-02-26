@@ -20,10 +20,10 @@ use crate::{
         PageId,
         auth::User,
         dashboard::community::{
-            analytics,
+            analytics, event_categories, group_categories,
             groups::{self, CommunityGroupsFilters},
             home::{Content, Page, Tab},
-            settings,
+            regions, settings,
             team::{self, CommunityTeamFilters},
         },
         pagination::NavigationLinks,
@@ -63,6 +63,14 @@ pub(crate) async fn page(
             let stats = db.get_community_stats(community_id).await?;
             Content::Analytics(Box::new(analytics::Page { stats }))
         }
+        Tab::EventCategories => {
+            let categories = db.list_event_categories(community_id).await?;
+            Content::EventCategories(event_categories::ListPage { categories })
+        }
+        Tab::GroupCategories => {
+            let categories = db.list_group_categories(community_id).await?;
+            Content::GroupCategories(group_categories::ListPage { categories })
+        }
         Tab::Groups => {
             // Fetch groups
             let page_filters: CommunityGroupsFilters =
@@ -93,6 +101,10 @@ pub(crate) async fn page(
                 offset: page_filters.offset,
                 ts_query: page_filters.ts_query,
             })
+        }
+        Tab::Regions => {
+            let regions = db.list_regions(community_id).await?;
+            Content::Regions(regions::ListPage { regions })
         }
         Tab::Settings => Content::Settings(Box::new(settings::UpdatePage {
             community: community.clone(),
@@ -438,6 +450,213 @@ mod tests {
         let request = Request::builder()
             .method("GET")
             .uri("/dashboard/community?tab=team")
+            .header(HOST, "example.test")
+            .header(COOKIE, format!("id={session_id}"))
+            .body(Body::empty())
+            .unwrap();
+        let response = router.oneshot(request).await.unwrap();
+        let (parts, body) = response.into_parts();
+        let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+        // Check response matches expectations
+        assert_eq!(parts.status, StatusCode::OK);
+        assert_eq!(
+            parts.headers.get(CONTENT_TYPE).unwrap(),
+            &HeaderValue::from_static("text/html; charset=utf-8"),
+        );
+        assert_eq!(
+            parts.headers.get(CACHE_CONTROL).unwrap(),
+            &HeaderValue::from_static(CACHE_CONTROL_NO_CACHE),
+        );
+        assert!(!bytes.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_page_regions_tab_success() {
+        // Setup identifiers and data structures
+        let community_id = Uuid::new_v4();
+        let session_id = session::Id::default();
+        let user_id = Uuid::new_v4();
+        let auth_hash = "hash".to_string();
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+        let regions = vec![sample_group_region()];
+
+        // Setup database mock
+        let mut db = MockDB::new();
+        db.expect_get_session()
+            .times(1)
+            .withf(move |id| *id == session_id)
+            .returning(move |_| Ok(Some(session_record.clone())));
+        db.expect_get_user_by_id()
+            .times(1)
+            .withf(move |id| *id == user_id)
+            .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+        db.expect_user_owns_community()
+            .times(1)
+            .withf(move |cid, uid| *cid == community_id && *uid == user_id)
+            .returning(|_, _| Ok(true));
+        db.expect_get_community_full()
+            .times(1)
+            .withf(move |id| *id == community_id)
+            .returning(move |_| Ok(sample_community_full(community_id)));
+        db.expect_list_user_communities()
+            .times(1)
+            .withf(move |uid| uid == &user_id)
+            .returning(move |_| Ok(sample_user_communities(community_id)));
+        db.expect_list_regions()
+            .times(1)
+            .withf(move |id| *id == community_id)
+            .returning(move |_| Ok(regions.clone()));
+        db.expect_get_site_settings()
+            .times(1)
+            .returning(|| Ok(sample_site_settings()));
+
+        // Setup notifications manager mock
+        let nm = MockNotificationsManager::new();
+
+        // Setup router and send request
+        let router = TestRouterBuilder::new(db, nm).build().await;
+        let request = Request::builder()
+            .method("GET")
+            .uri("/dashboard/community?tab=regions")
+            .header(HOST, "example.test")
+            .header(COOKIE, format!("id={session_id}"))
+            .body(Body::empty())
+            .unwrap();
+        let response = router.oneshot(request).await.unwrap();
+        let (parts, body) = response.into_parts();
+        let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+        // Check response matches expectations
+        assert_eq!(parts.status, StatusCode::OK);
+        assert_eq!(
+            parts.headers.get(CONTENT_TYPE).unwrap(),
+            &HeaderValue::from_static("text/html; charset=utf-8"),
+        );
+        assert_eq!(
+            parts.headers.get(CACHE_CONTROL).unwrap(),
+            &HeaderValue::from_static(CACHE_CONTROL_NO_CACHE),
+        );
+        assert!(!bytes.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_page_group_categories_tab_success() {
+        // Setup identifiers and data structures
+        let community_id = Uuid::new_v4();
+        let session_id = session::Id::default();
+        let user_id = Uuid::new_v4();
+        let auth_hash = "hash".to_string();
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+        let categories = vec![sample_group_category()];
+
+        // Setup database mock
+        let mut db = MockDB::new();
+        db.expect_get_session()
+            .times(1)
+            .withf(move |id| *id == session_id)
+            .returning(move |_| Ok(Some(session_record.clone())));
+        db.expect_get_user_by_id()
+            .times(1)
+            .withf(move |id| *id == user_id)
+            .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+        db.expect_user_owns_community()
+            .times(1)
+            .withf(move |cid, uid| *cid == community_id && *uid == user_id)
+            .returning(|_, _| Ok(true));
+        db.expect_get_community_full()
+            .times(1)
+            .withf(move |id| *id == community_id)
+            .returning(move |_| Ok(sample_community_full(community_id)));
+        db.expect_list_user_communities()
+            .times(1)
+            .withf(move |uid| uid == &user_id)
+            .returning(move |_| Ok(sample_user_communities(community_id)));
+        db.expect_list_group_categories()
+            .times(1)
+            .withf(move |id| *id == community_id)
+            .returning(move |_| Ok(categories.clone()));
+        db.expect_get_site_settings()
+            .times(1)
+            .returning(|| Ok(sample_site_settings()));
+
+        // Setup notifications manager mock
+        let nm = MockNotificationsManager::new();
+
+        // Setup router and send request
+        let router = TestRouterBuilder::new(db, nm).build().await;
+        let request = Request::builder()
+            .method("GET")
+            .uri("/dashboard/community?tab=group-categories")
+            .header(HOST, "example.test")
+            .header(COOKIE, format!("id={session_id}"))
+            .body(Body::empty())
+            .unwrap();
+        let response = router.oneshot(request).await.unwrap();
+        let (parts, body) = response.into_parts();
+        let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+        // Check response matches expectations
+        assert_eq!(parts.status, StatusCode::OK);
+        assert_eq!(
+            parts.headers.get(CONTENT_TYPE).unwrap(),
+            &HeaderValue::from_static("text/html; charset=utf-8"),
+        );
+        assert_eq!(
+            parts.headers.get(CACHE_CONTROL).unwrap(),
+            &HeaderValue::from_static(CACHE_CONTROL_NO_CACHE),
+        );
+        assert!(!bytes.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_page_event_categories_tab_success() {
+        // Setup identifiers and data structures
+        let community_id = Uuid::new_v4();
+        let session_id = session::Id::default();
+        let user_id = Uuid::new_v4();
+        let auth_hash = "hash".to_string();
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+        let categories = vec![sample_event_category()];
+
+        // Setup database mock
+        let mut db = MockDB::new();
+        db.expect_get_session()
+            .times(1)
+            .withf(move |id| *id == session_id)
+            .returning(move |_| Ok(Some(session_record.clone())));
+        db.expect_get_user_by_id()
+            .times(1)
+            .withf(move |id| *id == user_id)
+            .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+        db.expect_user_owns_community()
+            .times(1)
+            .withf(move |cid, uid| *cid == community_id && *uid == user_id)
+            .returning(|_, _| Ok(true));
+        db.expect_get_community_full()
+            .times(1)
+            .withf(move |id| *id == community_id)
+            .returning(move |_| Ok(sample_community_full(community_id)));
+        db.expect_list_user_communities()
+            .times(1)
+            .withf(move |uid| uid == &user_id)
+            .returning(move |_| Ok(sample_user_communities(community_id)));
+        db.expect_list_event_categories()
+            .times(1)
+            .withf(move |id| *id == community_id)
+            .returning(move |_| Ok(categories.clone()));
+        db.expect_get_site_settings()
+            .times(1)
+            .returning(|| Ok(sample_site_settings()));
+
+        // Setup notifications manager mock
+        let nm = MockNotificationsManager::new();
+
+        // Setup router and send request
+        let router = TestRouterBuilder::new(db, nm).build().await;
+        let request = Request::builder()
+            .method("GET")
+            .uri("/dashboard/community?tab=event-categories")
             .header(HOST, "example.test")
             .header(COOKIE, format!("id={session_id}"))
             .body(Body::empty())

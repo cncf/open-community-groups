@@ -49,9 +49,9 @@ insert into group_category (group_category_id, community_id, name) values
     (:'groupCategory2ID', :'community2ID', 'Tech2');
 
 -- Event categories
-insert into event_category (event_category_id, community_id, name, slug) values
-    (:'eventCategoryID', :'communityID', 'Conference', 'conference'),
-    (:'eventCategory2ID', :'community2ID', 'Conference2', 'conference2');
+insert into event_category (event_category_id, community_id, name) values
+    (:'eventCategoryID', :'communityID', 'Conference'),
+    (:'eventCategory2ID', :'community2ID', 'Conference2');
 
 -- Groups (using relative dates within 2-year window)
 insert into "group" (

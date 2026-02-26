@@ -51,8 +51,8 @@ insert into group_sponsor (group_sponsor_id, group_id, name, logo_url, website_u
 values (:'sponsorID', :'groupID', 'Kappa', 'https://ex.com/kappa.png', null);
 
 -- Event category
-insert into event_category (event_category_id, name, slug, community_id)
-values (:'categoryID', 'Conference', 'conference', :'communityID');
+insert into event_category (event_category_id, name, community_id)
+values (:'categoryID', 'Conference', :'communityID');
 
 -- Event
 insert into event (event_id, group_id, name, slug, description, timezone, event_category_id, event_kind_id)

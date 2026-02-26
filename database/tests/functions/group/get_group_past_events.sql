@@ -35,8 +35,8 @@ insert into "group" (group_id, name, slug, community_id, group_category_id, city
 values (:'groupID', 'Test Group', 'test-group', :'communityID', :'categoryID', 'San Francisco', 'CA', 'US', 'United States');
 
 -- Event Category
-insert into event_category (event_category_id, name, slug, community_id)
-values (:'eventCategoryID', 'Tech Talks', 'tech-talks', :'communityID');
+insert into event_category (event_category_id, name, community_id)
+values (:'eventCategoryID', 'Tech Talks', :'communityID');
 
 -- Event
 insert into event (

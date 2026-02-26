@@ -167,10 +167,25 @@ mock! {
             community_id: Uuid,
             user_id: Uuid,
         ) -> Result<()>;
+        async fn add_event_category(
+            &self,
+            community_id: Uuid,
+            event_category: &crate::templates::dashboard::community::event_categories::EventCategoryInput,
+        ) -> Result<Uuid>;
         async fn add_group(
             &self,
             community_id: Uuid,
             group: &crate::templates::dashboard::community::groups::Group,
+        ) -> Result<Uuid>;
+        async fn add_group_category(
+            &self,
+            community_id: Uuid,
+            group_category: &crate::templates::dashboard::community::group_categories::GroupCategoryInput,
+        ) -> Result<Uuid>;
+        async fn add_region(
+            &self,
+            community_id: Uuid,
+            region: &crate::templates::dashboard::community::regions::RegionInput,
         ) -> Result<Uuid>;
         async fn deactivate_group(&self, community_id: Uuid, group_id: Uuid) -> Result<()>;
         async fn delete_community_team_member(
@@ -178,7 +193,18 @@ mock! {
             community_id: Uuid,
             user_id: Uuid,
         ) -> Result<()>;
+        async fn delete_event_category(
+            &self,
+            community_id: Uuid,
+            event_category_id: Uuid,
+        ) -> Result<()>;
         async fn delete_group(&self, community_id: Uuid, group_id: Uuid) -> Result<()>;
+        async fn delete_group_category(
+            &self,
+            community_id: Uuid,
+            group_category_id: Uuid,
+        ) -> Result<()>;
+        async fn delete_region(&self, community_id: Uuid, region_id: Uuid) -> Result<()>;
         async fn get_community_stats(
             &self,
             community_id: Uuid,
@@ -204,6 +230,24 @@ mock! {
             &self,
             community_id: Uuid,
             community: &crate::templates::dashboard::community::settings::CommunityUpdate,
+        ) -> Result<()>;
+        async fn update_event_category(
+            &self,
+            community_id: Uuid,
+            event_category_id: Uuid,
+            event_category: &crate::templates::dashboard::community::event_categories::EventCategoryInput,
+        ) -> Result<()>;
+        async fn update_group_category(
+            &self,
+            community_id: Uuid,
+            group_category_id: Uuid,
+            group_category: &crate::templates::dashboard::community::group_categories::GroupCategoryInput,
+        ) -> Result<()>;
+        async fn update_region(
+            &self,
+            community_id: Uuid,
+            region_id: Uuid,
+            region: &crate::templates::dashboard::community::regions::RegionInput,
         ) -> Result<()>;
     }
 

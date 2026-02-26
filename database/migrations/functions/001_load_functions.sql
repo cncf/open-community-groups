@@ -32,16 +32,25 @@
 
 {{ template "dashboard-community/activate_group.sql" }}
 {{ template "dashboard-community/add_community_team_member.sql" }}
+{{ template "dashboard-community/add_event_category.sql" }}
 {{ template "dashboard-community/add_group.sql" }}
+{{ template "dashboard-community/add_group_category.sql" }}
+{{ template "dashboard-community/add_region.sql" }}
 {{ template "dashboard-community/deactivate_group.sql" }}
 {{ template "dashboard-community/delete_community_team_member.sql" }}
+{{ template "dashboard-community/delete_event_category.sql" }}
 {{ template "dashboard-community/delete_group.sql" }}
+{{ template "dashboard-community/delete_group_category.sql" }}
+{{ template "dashboard-community/delete_region.sql" }}
 {{ template "dashboard-community/get_community_stats.sql" }}
 {{ template "dashboard-community/list_community_team_members.sql" }}
 {{ template "dashboard-community/list_group_categories.sql" }}
 {{ template "dashboard-community/list_regions.sql" }}
 {{ template "dashboard-community/list_user_communities.sql" }}
 {{ template "dashboard-community/update_community.sql" }}
+{{ template "dashboard-community/update_event_category.sql" }}
+{{ template "dashboard-community/update_group_category.sql" }}
+{{ template "dashboard-community/update_region.sql" }}
 
 {{ template "dashboard-group/add_event.sql" }}
 {{ template "dashboard-group/add_group_sponsor.sql" }}
