@@ -107,6 +107,13 @@ Derived badges may also appear:
 
 Not all locks are the same. OCG uses two practical lock levels:
 
+> [!IMPORTANT]
+> `Linked` is a hard lock.
+> Once a proposal is linked to an accepted event session, it can no longer be edited in place.
+> `Submitted` is a partial lock.
+> You can still improve most proposal content, but delete is blocked and co-speaker changes are
+> restricted after submission.
+
 - `Linked` is a hard lock. Once a proposal is linked to an accepted event session, it is treated as
   delivery content and can no longer be edited in place.
 - `Submitted` is a partial lock. You can still improve most proposal content, but some operations
@@ -154,6 +161,9 @@ To understand where submission decisions are made, see
 [Event Operations](event-operations.md).
 
 ## Recommended Working Rhythm
+
+> [!TIP]
+> Keep this cycle active to avoid last-minute blockers around invitations or submission windows.
 
 1. Keep profile current (especially bio, timezone, and links).
 2. Clear invitations quickly so role-based access stays accurate.

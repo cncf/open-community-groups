@@ -77,6 +77,10 @@ Use `Team` to invite or remove community admins.
 OCG blocks removal of the final accepted team member, so a community is never left without an
 accountable owner.
 
+> [!IMPORTANT]
+> The final accepted community team member cannot be removed.
+> Add another accepted member first, then retry removal.
+
 Pending states are visible (`Invitation sent`) so you can tell the difference between invited and
 fully active collaborators.
 
@@ -141,6 +145,9 @@ Group-branding inheritance from this flow:
 When a group is inactive, its public-view shortcut is disabled in the groups table.
 
 ## Recommended Cadence
+
+> [!TIP]
+> Use a recurring monthly or biweekly rhythm so identity, access, and group structure stay healthy.
 
 1. Review [`Settings`](/dashboard/community?tab=settings ':ignore') monthly for brand accuracy.
 2. Keep [`Team`](/dashboard/community?tab=team ':ignore') membership current to avoid operational

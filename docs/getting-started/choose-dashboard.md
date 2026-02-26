@@ -38,6 +38,11 @@ The two organizer dashboards are also context-driven:
 If the right context is not selected yet, some organizer actions stay unavailable until you choose
 the needed community or group.
 
+> [!IMPORTANT]
+> Missing dashboard entries usually mean either missing role access or missing selected context.
+> Community scope needs a selected community.
+> Group scope needs both selected community and selected group.
+
 ## If a Dashboard Is Missing
 
 Use this order to unblock quickly:

@@ -76,6 +76,10 @@ Important protection:
 
 This protects continuity for critical event operations and approvals.
 
+> [!IMPORTANT]
+> The last accepted group team member cannot be removed.
+> Add another accepted team member first, then retry.
+
 When you add a group team member, OCG sends an invitation with a link to
 [`User Dashboard -> Invitations`](/dashboard/user?tab=invitations ':ignore').
 
