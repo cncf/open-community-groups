@@ -147,6 +147,17 @@ body,
   margin: 1rem 0 0.45rem;
 }
 
+.sidebar-nav > ul > li > p > a {
+  font-size: 0.94rem;
+  color: #1c1917;
+  font-weight: 700;
+  margin-bottom: 1rem;
+}
+
+.sidebar-nav > ul > li > p > a:hover {
+  text-decoration: underline;
+}
+
 .sidebar li > p + ul {
   margin-top: 0.45rem;
 }
@@ -155,8 +166,7 @@ body,
   margin-top: 0.95rem;
 }
 
-.sidebar ul li strong > a,
-.sidebar ul li p > a {
+.sidebar ul li > strong > a {
   color: #292524;
 }
 

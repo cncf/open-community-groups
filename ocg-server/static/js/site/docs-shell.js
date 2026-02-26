@@ -22,7 +22,10 @@ const STYLE_IDS = {
 const DOCS_SHELL_OVERRIDES = `
 .ocg-docs-root {
   --ocg-docs-top-offset: 0px;
-  background: #fff;
+  --ocg-docs-sidebar-top-margin: 20px;
+  --ocg-docs-sidebar-bottom-margin: 20px;
+  --ocg-docs-sidebar-inline-margin: 16px;
+  background: transparent;
   min-height: calc(100vh - var(--ocg-docs-top-offset));
   position: relative;
   width: 100%;
@@ -40,26 +43,54 @@ const DOCS_SHELL_OVERRIDES = `
 
 @media screen and (min-width: 769px) {
   .ocg-docs-root .content {
+    background: #fff;
+    border: 1px solid #e7e5e4;
+    border-radius: 0.5rem;
     bottom: auto;
+    box-shadow: 0 1px 2px rgba(28, 25, 23, 0.04);
+    left: 352px;
+    margin-bottom: var(--ocg-docs-sidebar-bottom-margin);
+    margin-right: var(--ocg-docs-sidebar-inline-margin);
+    margin-top: var(--ocg-docs-sidebar-top-margin);
+    min-height: calc(
+      100vh - max(var(--ocg-docs-top-offset), var(--ocg-docs-sidebar-top-margin)) -
+        var(--ocg-docs-sidebar-bottom-margin)
+    );
     position: relative;
     right: auto;
     top: auto;
-    width: calc(100% - 336px);
+    width: calc(100% - 352px - var(--ocg-docs-sidebar-inline-margin));
+  }
+
+  .ocg-docs-root .sidebar {
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    height: auto;
+    left: var(--ocg-docs-sidebar-inline-margin);
+    max-height: calc(
+      100vh - max(var(--ocg-docs-top-offset), var(--ocg-docs-sidebar-top-margin)) -
+        var(--ocg-docs-sidebar-bottom-margin)
+    );
+    top: max(var(--ocg-docs-top-offset), var(--ocg-docs-sidebar-top-margin));
+    width: 320px;
+  }
+
+  .ocg-docs-root .sidebar-toggle {
+    display: none;
   }
 }
 
 .ocg-docs-root .sidebar {
-  height: calc(100vh - var(--ocg-docs-top-offset));
   max-height: none;
   position: fixed;
-  top: var(--ocg-docs-top-offset);
 }
 
 .ocg-docs-root .sidebar-toggle {
   bottom: auto;
   height: auto;
   position: fixed;
-  top: var(--ocg-docs-top-offset);
+  top: max(var(--ocg-docs-top-offset), var(--ocg-docs-sidebar-top-margin));
 }
 
 @media screen and (max-width: 768px) {
@@ -68,11 +99,16 @@ const DOCS_SHELL_OVERRIDES = `
   }
 
   .ocg-docs-root .sidebar {
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
     height: 100vh;
+    left: 0;
     top: 0;
   }
 
   .ocg-docs-root .sidebar-toggle {
+    display: block;
     top: 0;
   }
 
