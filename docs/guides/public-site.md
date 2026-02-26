@@ -40,9 +40,8 @@ If you prefer a faster task-oriented run-through first, use
 For events, begin broad and narrow in this order: community, type, category, and date range.
 Keeping this order avoids over-filtering too early.
 
-> [!TIP]
-> Use this filter sequence for faster discovery with fewer false negatives: community, type,
-> category, then date range.
+?> Use this filter sequence for faster discovery with fewer false negatives: community, type,
+category, then date range.
 
 Explore gives you multiple view styles, and the available options depend on what you are browsing:
 
@@ -92,9 +91,8 @@ Helpful details:
 - Canceling RSVP is immediate through `Cancel attendance`.
 - After RSVP, OCG sends a confirmation message with a calendar file attached.
 
-> [!IMPORTANT]
-> RSVP is only available before event start time.
-> You must RSVP first to be eligible for event-day check-in.
+!> RSVP is only available before event start time.
+You must RSVP first to be eligible for event-day check-in.
 
 ![Event page and attendance actions](../screenshots/event-page.png)
 
@@ -114,8 +112,7 @@ You cannot check in if:
 - The event is not published or active.
 - The check-in window is closed.
 
-> [!IMPORTANT]
-> Check-in is strictly enforced by attendee state, event state, and check-in window timing.
+!> Check-in is strictly enforced by attendee state, event state, and check-in window timing.
 
 ## Submit to Call for Speakers (CFS)
 

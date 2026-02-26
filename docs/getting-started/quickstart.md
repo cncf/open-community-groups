@@ -15,9 +15,8 @@ return to the [home page](/ ':ignore').
 You can skip this step if you only want to browse public content. Sign-in is required for
 membership actions, RSVP, submissions, and dashboard access.
 
-> [!IMPORTANT]
-> Sign-in is optional only for browsing public pages.
-> Membership actions, RSVP, submissions, and dashboard access require login.
+!> Sign-in is optional only for browsing public pages.
+Membership actions, RSVP, submissions, and dashboard access require login.
 
 ![Log in page](../screenshots/login-page.png)
 
@@ -28,8 +27,7 @@ From [Explore](/explore ':ignore'), start with `Events` to see what is happening
 
 A practical pattern is:
 
-> [!TIP]
-> Start broad, then narrow: community first, then one or two filters.
+?> Start broad, then narrow: community first, then one or two filters.
 
 1. Narrow by community first.
 2. Add one or two filters (type, region, category).

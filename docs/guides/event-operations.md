@@ -66,9 +66,8 @@ Recommended flow:
 
 Copying is intentionally partial so stale logistics are not carried forward:
 
-> [!TIP]
-> After copying an event, run a quick logistics sweep before publishing.
-> Time-bound and meeting-specific fields are intentionally not carried forward.
+?> After copying an event, run a quick logistics sweep before publishing.
+Time-bound and meeting-specific fields are intentionally not carried forward.
 
 - Start/end dates are cleared.
 - Sessions are not copied.
@@ -110,8 +109,7 @@ This tab controls delivery constraints:
 Timezone should be set first, then date/time. That avoids accidental scheduling drift and keeps
 CFS windows aligned with the intended audience clock.
 
-> [!TIP]
-> Set timezone first, then start/end timestamps, to avoid accidental schedule drift.
+?> Set timezone first, then start/end timestamps, to avoid accidental schedule drift.
 
 When `Send Event Reminder` is enabled, OCG sends reminder messages about 24 hours before start
 time.
@@ -149,8 +147,7 @@ This tab configures speaker intake:
 Label model tip: if you edit an existing label name, that rename affects submissions already using
 that label.
 
-> [!TIP]
-> Renaming a label updates existing submissions that already reference that label.
+?> Renaming a label updates existing submissions that already reference that label.
 
 ### Submissions
 
@@ -215,9 +212,8 @@ CFS spans organizer setup, speaker submission, and review loop. Treat it as one 
 
 To submit, these requirements must be met:
 
-> [!IMPORTANT]
-> CFS submission requires a published event, enabled/open CFS, and an eligible proposal.
-> Duplicate proposal submission to the same event is blocked.
+!> CFS submission requires a published event, enabled/open CFS, and an eligible proposal.
+Duplicate proposal submission to the same event is blocked.
 
 - Event must be published.
 - CFS must be enabled.
@@ -253,10 +249,8 @@ How automatic mode works:
 
 Requirements for automatic mode:
 
-> [!IMPORTANT]
-> Automatic meetings are supported only for `virtual` and `hybrid` events and require valid
-> schedule/capacity constraints.
-> Manual and automatic meeting modes cannot be used together.
+!> Automatic meetings are supported only for `virtual` and `hybrid` events and require valid
+schedule/capacity constraints. Manual and automatic meeting modes cannot be used together.
 
 - Event type is `virtual` or `hybrid`.
 - Start and end are set, with end after start.
@@ -267,9 +261,8 @@ Requirements for automatic mode:
 
 Important limitations and behavior:
 
-> [!IMPORTANT]
-> Switching meeting modes can replace or remove meeting details.
-> Constraint violations can disable automatic mode until fixed.
+!> Switching meeting modes can replace or remove meeting details.
+Constraint violations can disable automatic mode until fixed.
 
 - In-person events cannot use automatic meetings.
 - Due to current technical limitations, host controls are not available in
@@ -291,9 +284,8 @@ These actions serve different intents:
 
 Message behavior:
 
-> [!IMPORTANT]
-> `Publish` and `Cancel` can notify large participant sets.
-> `Unpublish` and `Delete` do not send broad attendee updates in this flow.
+!> `Publish` and `Cancel` can notify large participant sets.
+`Unpublish` and `Delete` do not send broad attendee updates in this flow.
 
 - `Publish` on a future unpublished event can notify group members/team members and listed
   speakers.
@@ -320,8 +312,7 @@ For attendee/member perspective, see [Public Site Guide](public-site.md).
 
 ## Event-Day Checklist
 
-> [!TIP]
-> Run this checklist shortly before start time to catch delivery issues early.
+?> Run this checklist shortly before start time to catch delivery issues early.
 
 1. Confirm attendee table loads in the `Attendees` tab.
 2. Open QR flow and validate the check-in URL.

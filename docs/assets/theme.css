@@ -275,6 +275,34 @@ body,
   padding: 0.9rem 1rem;
 }
 
+/* Docsify legacy callouts: !> (important) and ?> (tip) */
+.markdown-section p.tip,
+.markdown-section p.warn {
+  border-radius: 2px;
+  color: #1e293b;
+  font-weight: 600;
+  margin: 2rem 0 2.8rem;
+}
+
+.markdown-section p.tip {
+  background: #ebf5ff;
+  border-left: 4px solid var(--theme-color);
+  padding: 0.9rem 1rem 0.9rem 1.85rem;
+}
+
+.markdown-section p.tip:before {
+  background-color: var(--theme-color);
+  color: #fff;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.markdown-section p.warn {
+  background: #eaf4ff;
+  border-left: 4px solid #b7d9ff;
+  padding: 0.9rem 1rem;
+}
+
 .markdown-section img {
   border: 1px solid #d6d3d1;
   border-radius: 12px;
