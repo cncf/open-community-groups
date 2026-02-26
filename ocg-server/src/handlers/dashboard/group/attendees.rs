@@ -15,12 +15,11 @@ use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
-    auth::AuthSession,
     config::HttpServerConfig,
     db::DynDB,
     handlers::{
         error::HandlerError,
-        extractors::{SelectedCommunityId, SelectedGroupId, ValidatedForm},
+        extractors::{CurrentUser, SelectedCommunityId, SelectedGroupId, ValidatedForm},
         prepare_headers,
     },
     router::serde_qs_config,
@@ -140,7 +139,7 @@ pub(crate) async fn manual_check_in(
 #[instrument(skip_all, err)]
 #[allow(clippy::too_many_arguments)]
 pub(crate) async fn send_event_custom_notification(
-    auth_session: AuthSession,
+    CurrentUser(user): CurrentUser,
     SelectedCommunityId(community_id): SelectedCommunityId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
@@ -149,9 +148,6 @@ pub(crate) async fn send_event_custom_notification(
     Path(event_id): Path<Uuid>,
     ValidatedForm(notification): ValidatedForm<EventCustomNotification>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Get user from session (endpoint is behind login_required)
-    let user = auth_session.user.expect("user to be logged in");
-
     // Get event data and site settings
     let (site_settings, event, event_attendees_ids) = tokio::try_join!(
         db.get_site_settings(),

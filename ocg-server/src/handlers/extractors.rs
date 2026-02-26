@@ -9,14 +9,12 @@ use axum::{
 };
 use garde::Validate;
 use serde::de::DeserializeOwned;
-use tower_sessions::Session;
 use tracing::{error, instrument};
 use uuid::Uuid;
 
 use crate::{
-    auth::{AuthSession, OAuth2ProviderDetails, OidcProviderDetails},
+    auth::{AuthSession, OAuth2ProviderDetails, OidcProviderDetails, User as AuthUser},
     config::{OAuth2Provider, OidcProvider},
-    handlers::auth::{SELECTED_COMMUNITY_ID_KEY, SELECTED_GROUP_ID_KEY},
     router,
 };
 
@@ -53,6 +51,25 @@ impl FromRequestParts<router::State> for CommunityId {
         };
 
         Ok(CommunityId(community_id))
+    }
+}
+
+/// Extractor for the authenticated user from the auth session.
+pub(crate) struct CurrentUser(pub AuthUser);
+
+impl FromRequestParts<router::State> for CurrentUser {
+    type Rejection = (StatusCode, &'static str);
+
+    #[instrument(skip_all, err(Debug))]
+    async fn from_request_parts(parts: &mut Parts, state: &router::State) -> Result<Self, Self::Rejection> {
+        let Ok(auth_session) = AuthSession::from_request_parts(parts, state).await else {
+            return Err((StatusCode::UNAUTHORIZED, "user not logged in"));
+        };
+        let Some(user) = auth_session.user else {
+            return Err((StatusCode::UNAUTHORIZED, "user not logged in"));
+        };
+
+        Ok(CurrentUser(user))
     }
 }
 
@@ -98,53 +115,37 @@ impl FromRequestParts<router::State> for Oidc {
     }
 }
 
-/// Extractor for the selected community ID from the session.
-/// Returns the Uuid if present, or an error if not found in the session.
+/// Extractor for the selected community ID from request context.
+/// Returns the Uuid from request extensions populated by middleware.
+#[derive(Clone, Copy)]
 pub(crate) struct SelectedCommunityId(pub Uuid);
 
 impl FromRequestParts<router::State> for SelectedCommunityId {
     type Rejection = (StatusCode, &'static str);
 
     #[instrument(skip_all, err(Debug))]
-    async fn from_request_parts(parts: &mut Parts, state: &router::State) -> Result<Self, Self::Rejection> {
-        let Ok(session) = Session::from_request_parts(parts, state).await else {
-            return Err((StatusCode::UNAUTHORIZED, "user not logged in"));
-        };
-        let community_id: Option<Uuid> = session.get(SELECTED_COMMUNITY_ID_KEY).await.map_err(|_| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "error getting selected community from session",
-            )
-        })?;
-        match community_id {
-            Some(id) => Ok(SelectedCommunityId(id)),
-            None => Err((StatusCode::BAD_REQUEST, "missing community id")),
-        }
+    async fn from_request_parts(parts: &mut Parts, _state: &router::State) -> Result<Self, Self::Rejection> {
+        parts.extensions.get::<SelectedCommunityId>().copied().ok_or((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "missing selected community context",
+        ))
     }
 }
 
-/// Extractor for the selected group ID from the session.
-/// Returns the Uuid if present, or an error if not found in the session.
+/// Extractor for the selected group ID from request context.
+/// Returns the Uuid from request extensions populated by middleware.
+#[derive(Clone, Copy)]
 pub(crate) struct SelectedGroupId(pub Uuid);
 
 impl FromRequestParts<router::State> for SelectedGroupId {
     type Rejection = (StatusCode, &'static str);
 
     #[instrument(skip_all, err(Debug))]
-    async fn from_request_parts(parts: &mut Parts, state: &router::State) -> Result<Self, Self::Rejection> {
-        let Ok(session) = Session::from_request_parts(parts, state).await else {
-            return Err((StatusCode::UNAUTHORIZED, "user not logged in"));
-        };
-        let group_id: Option<Uuid> = session.get(SELECTED_GROUP_ID_KEY).await.map_err(|_| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "error getting selected group from session",
-            )
-        })?;
-        match group_id {
-            Some(id) => Ok(SelectedGroupId(id)),
-            None => Err((StatusCode::BAD_REQUEST, "missing group id")),
-        }
+    async fn from_request_parts(parts: &mut Parts, _state: &router::State) -> Result<Self, Self::Rejection> {
+        parts.extensions.get::<SelectedGroupId>().copied().ok_or((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "missing selected group context",
+        ))
     }
 }
 
@@ -220,20 +221,23 @@ mod tests {
     use axum::{
         Router,
         body::{Body, to_bytes},
-        http::{Request, StatusCode},
+        http::{
+            Request, StatusCode,
+            header::{COOKIE, SET_COOKIE},
+        },
         routing::get,
     };
     use axum_login::AuthManagerLayerBuilder;
     use serde::Deserialize;
     use tower::ServiceExt;
-    use tower_sessions::{MemoryStore, Session, SessionManagerLayer};
+    use tower_sessions::{MemoryStore, SessionManagerLayer};
     use uuid::Uuid;
 
     use crate::{
         auth::AuthnBackend,
         config::{HttpServerConfig, OAuth2ProviderConfig},
         db::{DynDB, mock::MockDB},
-        handlers::auth::{SELECTED_COMMUNITY_ID_KEY, SELECTED_GROUP_ID_KEY},
+        handlers::tests::sample_auth_user,
         router::{self, serde_qs_config},
         services::{
             images::{DynImageStorage, MockImageStorage},
@@ -349,6 +353,174 @@ mod tests {
 
         // Check response matches expectations
         assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
+    }
+
+    #[tokio::test]
+    async fn test_current_user_extractor_missing_auth_session() {
+        // Setup database mock
+        let db: DynDB = Arc::new(MockDB::new());
+
+        // Setup services mocks
+        let is: DynImageStorage = Arc::new(MockImageStorage::new());
+        let nm: DynNotificationsManager = Arc::new(MockNotificationsManager::new());
+
+        // Setup router without auth layer
+        let router = Router::new()
+            .route(
+                "/test",
+                get(|_current_user: CurrentUser| async { StatusCode::OK }),
+            )
+            .with_state(build_state(db, is, nm));
+
+        // Send request
+        let request = Request::builder().uri("/test").body(Body::empty()).unwrap();
+        let response = router.oneshot(request).await.unwrap();
+        let (parts, body) = response.into_parts();
+        let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+        // Check response matches expectations
+        assert_eq!(parts.status, StatusCode::UNAUTHORIZED);
+        assert_eq!(bytes.as_ref(), b"user not logged in");
+    }
+
+    #[tokio::test]
+    async fn test_current_user_extractor_session_without_user() {
+        // Setup database mock
+        let db: DynDB = Arc::new(MockDB::new());
+
+        // Setup services mocks
+        let is: DynImageStorage = Arc::new(MockImageStorage::new());
+        let nm: DynNotificationsManager = Arc::new(MockNotificationsManager::new());
+
+        // Setup auth layer
+        let server_cfg = HttpServerConfig::default();
+        let session_layer = SessionManagerLayer::new(MemoryStore::default());
+        let backend = AuthnBackend::new(db.clone(), &server_cfg.oauth2, &server_cfg.oidc)
+            .await
+            .expect("backend setup should succeed");
+        let auth_layer = AuthManagerLayerBuilder::new(backend, session_layer).build();
+
+        // Setup router
+        let router = Router::new()
+            .route(
+                "/init",
+                get(|auth_session: AuthSession| async move {
+                    auth_session
+                        .session
+                        .insert("marker", "set")
+                        .await
+                        .expect("session insert should succeed");
+                    StatusCode::NO_CONTENT
+                }),
+            )
+            .route(
+                "/test",
+                get(|CurrentUser(_user): CurrentUser| async move { StatusCode::OK }),
+            )
+            .layer(auth_layer)
+            .with_state(build_state(db, is, nm));
+
+        // Initialize session without logging in
+        let init_request = Request::builder().uri("/init").body(Body::empty()).unwrap();
+        let init_response = router.clone().oneshot(init_request).await.unwrap();
+        let set_cookie = init_response
+            .headers()
+            .get(SET_COOKIE)
+            .expect("set-cookie header should be present")
+            .to_str()
+            .expect("set-cookie should be valid utf-8");
+        let cookie = set_cookie
+            .split(';')
+            .next()
+            .expect("set-cookie should contain cookie pair")
+            .to_string();
+
+        // Send request with session cookie
+        let request = Request::builder()
+            .uri("/test")
+            .header(COOKIE, cookie)
+            .body(Body::empty())
+            .unwrap();
+        let response = router.oneshot(request).await.unwrap();
+        let (parts, body) = response.into_parts();
+        let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+        // Check response matches expectations
+        assert_eq!(parts.status, StatusCode::UNAUTHORIZED);
+        assert_eq!(bytes.as_ref(), b"user not logged in");
+    }
+
+    #[tokio::test]
+    async fn test_current_user_extractor_success() {
+        // Setup identifiers and data structures
+        let auth_hash = "auth-hash";
+        let user_id = Uuid::new_v4();
+
+        // Setup database mock
+        let mut db = MockDB::new();
+        db.expect_get_user_by_id()
+            .times(1)
+            .withf(move |id| id == &user_id)
+            .returning(move |_| Ok(Some(sample_auth_user(user_id, auth_hash))));
+        let db: DynDB = Arc::new(db);
+
+        // Setup services mocks
+        let is: DynImageStorage = Arc::new(MockImageStorage::new());
+        let nm: DynNotificationsManager = Arc::new(MockNotificationsManager::new());
+
+        // Setup auth layer
+        let server_cfg = HttpServerConfig::default();
+        let session_layer = SessionManagerLayer::new(MemoryStore::default());
+        let backend = AuthnBackend::new(db.clone(), &server_cfg.oauth2, &server_cfg.oidc)
+            .await
+            .expect("backend setup should succeed");
+        let auth_layer = AuthManagerLayerBuilder::new(backend, session_layer).build();
+
+        // Setup router
+        let router = Router::new()
+            .route(
+                "/log-in",
+                get(move |mut auth_session: AuthSession| async move {
+                    let user = sample_auth_user(user_id, auth_hash);
+                    auth_session.login(&user).await.expect("login should succeed");
+                    StatusCode::NO_CONTENT
+                }),
+            )
+            .route(
+                "/test",
+                get(|CurrentUser(user): CurrentUser| async move { user.username }),
+            )
+            .layer(auth_layer)
+            .with_state(build_state(db, is, nm));
+
+        // Log in to create authenticated session
+        let login_request = Request::builder().uri("/log-in").body(Body::empty()).unwrap();
+        let login_response = router.clone().oneshot(login_request).await.unwrap();
+        let set_cookie = login_response
+            .headers()
+            .get(SET_COOKIE)
+            .expect("set-cookie header should be present")
+            .to_str()
+            .expect("set-cookie should be valid utf-8");
+        let cookie = set_cookie
+            .split(';')
+            .next()
+            .expect("set-cookie should contain cookie pair")
+            .to_string();
+
+        // Send authenticated request
+        let request = Request::builder()
+            .uri("/test")
+            .header(COOKIE, cookie)
+            .body(Body::empty())
+            .unwrap();
+        let response = router.oneshot(request).await.unwrap();
+        let (parts, body) = response.into_parts();
+        let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+        // Check response matches expectations
+        assert_eq!(parts.status, StatusCode::OK);
+        assert_eq!(bytes.as_ref(), b"test-user");
     }
 
     #[tokio::test]
@@ -603,34 +775,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_selected_community_id_extractor_missing_community_id() {
-        // Setup identifiers and data structures
-        let store = Arc::new(MemoryStore::default());
-        let session = Session::new(None, store, None);
-
-        // Setup database mock
-        let db: DynDB = Arc::new(MockDB::new());
-
-        // Setup services mocks
-        let is: DynImageStorage = Arc::new(MockImageStorage::new());
-        let nm: DynNotificationsManager = Arc::new(MockNotificationsManager::new());
-
-        // Setup request parts and state
-        let mut request = Request::builder().uri("/").body(Body::empty()).unwrap();
-        request.extensions_mut().insert(session);
-        let (mut parts, _) = request.into_parts();
-        let state = build_state(db, is, nm);
-
-        // Check extraction matches expectations
-        let result = SelectedCommunityId::from_request_parts(&mut parts, &state).await;
-        assert!(matches!(
-            result,
-            Err((StatusCode::BAD_REQUEST, "missing community id"))
-        ));
-    }
-
-    #[tokio::test]
-    async fn test_selected_community_id_extractor_missing_session() {
+    async fn test_selected_community_id_extractor_missing_context() {
         // Setup database mock
         let db: DynDB = Arc::new(MockDB::new());
 
@@ -647,7 +792,10 @@ mod tests {
         let result = SelectedCommunityId::from_request_parts(&mut parts, &state).await;
         assert!(matches!(
             result,
-            Err((StatusCode::UNAUTHORIZED, "user not logged in"))
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "missing selected community context"
+            ))
         ));
     }
 
@@ -655,12 +803,6 @@ mod tests {
     async fn test_selected_community_id_extractor_success() {
         // Setup identifiers and data structures
         let community_id = Uuid::new_v4();
-        let store = Arc::new(MemoryStore::default());
-        let session = Session::new(None, store, None);
-        session
-            .insert(SELECTED_COMMUNITY_ID_KEY, community_id)
-            .await
-            .expect("session insert should succeed");
 
         // Setup database mock
         let db: DynDB = Arc::new(MockDB::new());
@@ -671,7 +813,7 @@ mod tests {
 
         // Setup request parts and state
         let mut request = Request::builder().uri("/").body(Body::empty()).unwrap();
-        request.extensions_mut().insert(session);
+        request.extensions_mut().insert(SelectedCommunityId(community_id));
         let (mut parts, _) = request.into_parts();
         let state = build_state(db, is, nm);
 
@@ -686,12 +828,6 @@ mod tests {
     async fn test_selected_group_id_extractor_success() {
         // Setup identifiers and data structures
         let group_id = Uuid::new_v4();
-        let store = Arc::new(MemoryStore::default());
-        let session = Session::new(None, store, None);
-        session
-            .insert(SELECTED_GROUP_ID_KEY, group_id)
-            .await
-            .expect("session insert should succeed");
 
         // Setup database mock
         let db: DynDB = Arc::new(MockDB::new());
@@ -702,7 +838,7 @@ mod tests {
 
         // Setup request parts and state
         let mut request = Request::builder().uri("/").body(Body::empty()).unwrap();
-        request.extensions_mut().insert(session);
+        request.extensions_mut().insert(SelectedGroupId(group_id));
         let (mut parts, _) = request.into_parts();
         let state = build_state(db, is, nm);
 
@@ -714,7 +850,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_selected_group_id_extractor_missing_session() {
+    async fn test_selected_group_id_extractor_missing_context() {
         // Setup database mock
         let db: DynDB = Arc::new(MockDB::new());
 
@@ -731,34 +867,10 @@ mod tests {
         let result = SelectedGroupId::from_request_parts(&mut parts, &state).await;
         assert!(matches!(
             result,
-            Err((StatusCode::UNAUTHORIZED, "user not logged in"))
-        ));
-    }
-
-    #[tokio::test]
-    async fn test_selected_group_id_extractor_missing_group_id() {
-        // Setup identifiers and data structures
-        let store = Arc::new(MemoryStore::default());
-        let session = Session::new(None, store, None);
-
-        // Setup database mock
-        let db: DynDB = Arc::new(MockDB::new());
-
-        // Setup services mocks
-        let is: DynImageStorage = Arc::new(MockImageStorage::new());
-        let nm: DynNotificationsManager = Arc::new(MockNotificationsManager::new());
-
-        // Setup request parts and state
-        let mut request = Request::builder().uri("/").body(Body::empty()).unwrap();
-        request.extensions_mut().insert(session);
-        let (mut parts, _) = request.into_parts();
-        let state = build_state(db, is, nm);
-
-        // Check extraction matches expectations
-        let result = SelectedGroupId::from_request_parts(&mut parts, &state).await;
-        assert!(matches!(
-            result,
-            Err((StatusCode::BAD_REQUEST, "missing group id"))
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "missing selected group context"
+            ))
         ));
     }
 

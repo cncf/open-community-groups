@@ -11,9 +11,8 @@ use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
-    auth::AuthSession,
     db::DynDB,
-    handlers::error::HandlerError,
+    handlers::{error::HandlerError, extractors::CurrentUser},
     router::serde_qs_config,
     templates::{dashboard::user::submissions, pagination, pagination::NavigationLinks},
 };
@@ -23,13 +22,10 @@ use crate::{
 /// Returns the submissions list page for the user dashboard.
 #[instrument(skip_all, err)]
 pub(crate) async fn list_page(
-    auth_session: AuthSession,
+    CurrentUser(user): CurrentUser,
     State(db): State<DynDB>,
     RawQuery(raw_query): RawQuery,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Get user from session (endpoint is behind login_required)
-    let user = auth_session.user.expect("user to be logged in");
-
     // Fetch submissions
     let filters: submissions::CfsSubmissionsFilters =
         serde_qs_config().deserialize_str(raw_query.as_deref().unwrap_or_default())?;
@@ -62,14 +58,11 @@ pub(crate) async fn list_page(
 /// Resubmits a CFS submission for the authenticated user.
 #[instrument(skip_all, err)]
 pub(crate) async fn resubmit(
-    auth_session: AuthSession,
     messages: Messages,
+    CurrentUser(user): CurrentUser,
     State(db): State<DynDB>,
     Path(cfs_submission_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Get user from session (endpoint is behind login_required)
-    let user = auth_session.user.expect("user to be logged in");
-
     // Resubmit CFS submission
     db.resubmit_cfs_submission(user.user_id, cfs_submission_id).await?;
     messages.success("Submission resubmitted.");
@@ -83,14 +76,11 @@ pub(crate) async fn resubmit(
 /// Withdraws a CFS submission for the authenticated user.
 #[instrument(skip_all, err)]
 pub(crate) async fn withdraw(
-    auth_session: AuthSession,
     messages: Messages,
+    CurrentUser(user): CurrentUser,
     State(db): State<DynDB>,
     Path(cfs_submission_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Get user from session (endpoint is behind login_required)
-    let user = auth_session.user.expect("user to be logged in");
-
     // Withdraw CFS submission
     db.withdraw_cfs_submission(user.user_id, cfs_submission_id).await?;
     messages.success("Submission withdrawn.");

@@ -7,6 +7,7 @@ use axum::{
 };
 use tower_sessions::Session;
 use tracing::instrument;
+use uuid::Uuid;
 
 use crate::{
     auth::AuthSession,
@@ -32,7 +33,7 @@ pub(crate) async fn select_community(
     auth_session: AuthSession,
     session: Session,
     State(db): State<DynDB>,
-    Path(community_id): Path<uuid::Uuid>,
+    Path(community_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Get user from session (endpoint is behind login_required)
     let user = auth_session.user.expect("user to be logged in");
@@ -48,7 +49,7 @@ pub(crate) async fn select_community(
     if let Some(first_group_id) = community_groups.and_then(|c| c.groups.first()).map(|g| g.group_id) {
         session.insert(SELECTED_GROUP_ID_KEY, first_group_id).await?;
     } else {
-        session.remove::<uuid::Uuid>(SELECTED_GROUP_ID_KEY).await?;
+        session.remove::<Uuid>(SELECTED_GROUP_ID_KEY).await?;
     }
 
     Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-body")]))

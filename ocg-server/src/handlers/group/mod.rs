@@ -13,10 +13,9 @@ use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
-    auth::AuthSession,
     config::HttpServerConfig,
     db::DynDB,
-    handlers::prepare_headers,
+    handlers::{extractors::CurrentUser, prepare_headers},
     services::notifications::{DynNotificationsManager, NewNotification, NotificationKind},
     templates::{
         PageId,
@@ -74,16 +73,13 @@ pub(crate) async fn page(
 /// Handler for joining a group.
 #[instrument(skip_all)]
 pub(crate) async fn join_group(
-    auth_session: AuthSession,
+    CurrentUser(user): CurrentUser,
     State(db): State<DynDB>,
     State(notifications_manager): State<DynNotificationsManager>,
     State(server_cfg): State<HttpServerConfig>,
     CommunityId(community_id): CommunityId,
     Path((_, group_id)): Path<(String, Uuid)>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Get user from session (endpoint is behind login_required)
-    let user = auth_session.user.expect("user to be logged in");
-
     // Join the group
     db.join_group(community_id, group_id, user.user_id).await?;
 
@@ -112,14 +108,11 @@ pub(crate) async fn join_group(
 /// Handler for leaving a group.
 #[instrument(skip_all)]
 pub(crate) async fn leave_group(
-    auth_session: AuthSession,
+    CurrentUser(user): CurrentUser,
     State(db): State<DynDB>,
     CommunityId(community_id): CommunityId,
     Path((_, group_id)): Path<(String, Uuid)>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Get user from session (endpoint is behind login_required)
-    let user = auth_session.user.expect("user to be logged in");
-
     // Leave the group
     db.leave_group(community_id, group_id, user.user_id).await?;
 
@@ -129,14 +122,11 @@ pub(crate) async fn leave_group(
 /// Handler for checking group membership status.
 #[instrument(skip_all)]
 pub(crate) async fn membership_status(
-    auth_session: AuthSession,
+    CurrentUser(user): CurrentUser,
     State(db): State<DynDB>,
     CommunityId(community_id): CommunityId,
     Path((_, group_id)): Path<(String, Uuid)>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Get user from session (endpoint is behind login_required)
-    let user = auth_session.user.expect("user to be logged in");
-
     // Check membership
     let is_member = db.is_group_member(community_id, group_id, user.user_id).await?;
 

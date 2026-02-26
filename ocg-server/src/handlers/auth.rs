@@ -27,7 +27,9 @@ use crate::{
     db::DynDB,
     handlers::{
         error::HandlerError,
-        extractors::{OAuth2, Oidc, ValidatedForm, ValidatedFormQs},
+        extractors::{
+            CurrentUser, OAuth2, Oidc, SelectedCommunityId, SelectedGroupId, ValidatedForm, ValidatedFormQs,
+        },
     },
     services::notifications::{DynNotificationsManager, NewNotification, NotificationKind},
     templates::{
@@ -375,14 +377,11 @@ pub(crate) async fn sign_up(
 /// Handler that updates the user's details.
 #[instrument(skip_all, err)]
 pub(crate) async fn update_user_details(
-    auth_session: AuthSession,
     messages: Messages,
+    CurrentUser(user): CurrentUser,
     State(db): State<DynDB>,
     ValidatedFormQs(user_data): ValidatedFormQs<UserDetails>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Get user from session (endpoint is behind login_required)
-    let user = auth_session.user.expect("user to be logged in");
-
     // Update user in database
     let user_id = user.user_id;
     db.update_user_details(&user_id, &user_data).await?;
@@ -394,13 +393,10 @@ pub(crate) async fn update_user_details(
 /// Handler that updates the user's password.
 #[instrument(skip_all, err)]
 pub(crate) async fn update_user_password(
-    auth_session: AuthSession,
+    CurrentUser(user): CurrentUser,
     State(db): State<DynDB>,
     ValidatedForm(mut input): ValidatedForm<templates::auth::UserPassword>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Get user from session (endpoint is behind login_required)
-    let user = auth_session.user.expect("user to be logged in");
-
     // Check if the old password provided is correct
     let Some(old_password_hash) = db.get_user_password(&user.user_id).await? else {
         return Ok(StatusCode::BAD_REQUEST.into_response());
@@ -837,6 +833,10 @@ pub(crate) async fn user_owns_selected_community(
         return StatusCode::FORBIDDEN.into_response();
     }
 
+    // Store selected community context for downstream extractors
+    let mut request = request;
+    request.extensions_mut().insert(SelectedCommunityId(community_id));
+
     next.run(request).await.into_response()
 }
 
@@ -873,6 +873,11 @@ pub(crate) async fn user_owns_selected_group(
     if !owns {
         return StatusCode::FORBIDDEN.into_response();
     }
+
+    // Store selected community and group context for downstream extractors
+    let mut request = request;
+    request.extensions_mut().insert(SelectedCommunityId(community_id));
+    request.extensions_mut().insert(SelectedGroupId(group_id));
 
     next.run(request).await.into_response()
 }

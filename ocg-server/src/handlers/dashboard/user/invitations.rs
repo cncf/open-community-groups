@@ -12,11 +12,11 @@ use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
-    auth::AuthSession,
     db::DynDB,
     handlers::{
         auth::{SELECTED_COMMUNITY_ID_KEY, select_first_community_and_group},
         error::HandlerError,
+        extractors::CurrentUser,
     },
     templates::dashboard::user::invitations,
 };
@@ -26,12 +26,9 @@ use crate::{
 /// Returns the invitations list page for the user dashboard.
 #[instrument(skip_all, err)]
 pub(crate) async fn list_page(
-    auth_session: AuthSession,
+    CurrentUser(user): CurrentUser,
     State(db): State<DynDB>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Get user from session (endpoint is behind login_required)
-    let user = auth_session.user.expect("user to be logged in");
-
     // Prepare template fetching both lists concurrently
     let (community_invitations, group_invitations) = tokio::try_join!(
         db.list_user_community_team_invitations(user.user_id),
@@ -50,15 +47,12 @@ pub(crate) async fn list_page(
 /// Accepts a pending community team invitation.
 #[instrument(skip_all, err)]
 pub(crate) async fn accept_community_team_invitation(
-    auth_session: AuthSession,
     messages: Messages,
     session: Session,
+    CurrentUser(user): CurrentUser,
     State(db): State<DynDB>,
     Path(community_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Get user from session (endpoint is behind login_required)
-    let user = auth_session.user.expect("user to be logged in");
-
     // Accept community team invitation
     db.accept_community_team_invitation(community_id, user.user_id)
         .await?;
@@ -75,15 +69,12 @@ pub(crate) async fn accept_community_team_invitation(
 /// Accepts a pending group team invitation.
 #[instrument(skip_all, err)]
 pub(crate) async fn accept_group_team_invitation(
-    auth_session: AuthSession,
     messages: Messages,
     session: Session,
+    CurrentUser(user): CurrentUser,
     State(db): State<DynDB>,
     Path(group_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Get user from session (endpoint is behind login_required)
-    let user = auth_session.user.expect("user to be logged in");
-
     // Mark invitation as accepted
     db.accept_group_team_invitation(group_id, user.user_id).await?;
     messages.success("Team invitation accepted.");
@@ -99,14 +90,11 @@ pub(crate) async fn accept_group_team_invitation(
 /// Rejects a pending community team invitation.
 #[instrument(skip_all, err)]
 pub(crate) async fn reject_community_team_invitation(
-    auth_session: AuthSession,
     messages: Messages,
+    CurrentUser(user): CurrentUser,
     State(db): State<DynDB>,
     Path(community_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Get user from session (endpoint is behind login_required)
-    let user = auth_session.user.expect("user to be logged in");
-
     // Delete community team member
     db.delete_community_team_member(community_id, user.user_id).await?;
     messages.success("Team invitation rejected.");
@@ -117,14 +105,11 @@ pub(crate) async fn reject_community_team_invitation(
 /// Rejects a pending group team invitation.
 #[instrument(skip_all, err)]
 pub(crate) async fn reject_group_team_invitation(
-    auth_session: AuthSession,
     messages: Messages,
+    CurrentUser(user): CurrentUser,
     State(db): State<DynDB>,
     Path(group_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Get user from session (endpoint is behind login_required)
-    let user = auth_session.user.expect("user to be logged in");
-
     // Delete group team member from database
     db.delete_group_team_member(group_id, user.user_id).await?;
     messages.success("Team invitation rejected.");
