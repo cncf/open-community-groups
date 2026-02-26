@@ -10,12 +10,11 @@ use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
-    auth::AuthSession,
     config::HttpServerConfig,
     db::DynDB,
     handlers::{
         error::HandlerError,
-        extractors::{SelectedCommunityId, SelectedGroupId, ValidatedFormQs},
+        extractors::{CurrentUser, SelectedCommunityId, SelectedGroupId, ValidatedFormQs},
     },
     router::serde_qs_config,
     services::notifications::{DynNotificationsManager, NewNotification, NotificationKind},
@@ -75,7 +74,7 @@ pub(crate) async fn list_page(
 #[allow(clippy::too_many_arguments)]
 #[instrument(skip_all, err)]
 pub(crate) async fn update(
-    auth_session: AuthSession,
+    CurrentUser(reviewer): CurrentUser,
     SelectedCommunityId(community_id): SelectedCommunityId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
@@ -84,9 +83,6 @@ pub(crate) async fn update(
     Path((event_id, cfs_submission_id)): Path<(Uuid, Uuid)>,
     ValidatedFormQs(update): ValidatedFormQs<CfsSubmissionUpdate>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Get user from session (endpoint is behind login_required)
-    let reviewer = auth_session.user.expect("user to be logged in");
-
     // Ensure event belongs to the group
     let event = db.get_event_summary(community_id, group_id, event_id).await?;
 

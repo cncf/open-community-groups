@@ -19,9 +19,8 @@ use serde_json::json;
 use tracing::instrument;
 
 use crate::{
-    auth::AuthSession,
     config::HttpServerConfig,
-    handlers::error::HandlerError,
+    handlers::{error::HandlerError, extractors::CurrentUser},
     services::images::{DynImageStorage, NewImage},
     util::compute_hash,
 };
@@ -67,7 +66,7 @@ pub(crate) async fn serve(
 /// Handles authenticated image uploads.
 #[instrument(skip_all, err)]
 pub(crate) async fn upload(
-    auth_session: AuthSession,
+    CurrentUser(user): CurrentUser,
     State(server_cfg): State<HttpServerConfig>,
     State(image_storage): State<DynImageStorage>,
     headers: HeaderMap,
@@ -139,7 +138,7 @@ pub(crate) async fn upload(
         bytes: data.as_ref(),
         content_type: mime_type(&format),
         file_name: &format!("{hash}.{extension}"),
-        user_id: auth_session.user.as_ref().expect("user to be logged in").user_id,
+        user_id: user.user_id,
     };
     image_storage.save(&new_image).await?;
 

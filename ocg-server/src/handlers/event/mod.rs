@@ -18,7 +18,10 @@ use crate::{
     auth::AuthSession,
     config::HttpServerConfig,
     db::DynDB,
-    handlers::{extractors::ValidatedFormQs, prepare_headers},
+    handlers::{
+        extractors::{CurrentUser, ValidatedFormQs},
+        prepare_headers,
+    },
     services::notifications::{DynNotificationsManager, NewNotification, NotificationKind},
     templates::{
         PageId,
@@ -137,16 +140,13 @@ pub(crate) async fn cfs_modal(
 /// Handler for attending an event.
 #[instrument(skip_all)]
 pub(crate) async fn attend_event(
-    auth_session: AuthSession,
+    CurrentUser(user): CurrentUser,
     State(db): State<DynDB>,
     State(notifications_manager): State<DynNotificationsManager>,
     State(server_cfg): State<HttpServerConfig>,
     CommunityId(community_id): CommunityId,
     Path((_, event_id)): Path<(String, Uuid)>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Get user from session (endpoint is behind login_required)
-    let user = auth_session.user.expect("user to be logged in");
-
     // Attend event
     db.attend_event(community_id, event_id, user.user_id).await?;
 
@@ -177,14 +177,11 @@ pub(crate) async fn attend_event(
 /// Handler for checking event attendance status.
 #[instrument(skip_all)]
 pub(crate) async fn attendance_status(
-    auth_session: AuthSession,
+    CurrentUser(user): CurrentUser,
     State(db): State<DynDB>,
     CommunityId(community_id): CommunityId,
     Path((_, event_id)): Path<(String, Uuid)>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Get user from session (endpoint is behind login_required)
-    let user = auth_session.user.expect("user to be logged in");
-
     // Check attendance and check-in status
     let (is_attendee, is_checked_in) = db.is_event_attendee(community_id, event_id, user.user_id).await?;
 
@@ -197,14 +194,11 @@ pub(crate) async fn attendance_status(
 /// Handler that marks the authenticated attendee as checked in.
 #[instrument(skip_all)]
 pub(crate) async fn check_in(
-    auth_session: AuthSession,
+    CurrentUser(user): CurrentUser,
     State(db): State<DynDB>,
     CommunityId(community_id): CommunityId,
     Path((_, event_id)): Path<(String, Uuid)>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Get user from session (endpoint is behind login_required)
-    let user = auth_session.user.expect("user to be logged in");
-
     // Check in event (bypass_window = false for user self check-in)
     db.check_in_event(community_id, event_id, user.user_id, false).await?;
 
@@ -214,14 +208,11 @@ pub(crate) async fn check_in(
 /// Handler for leaving an event.
 #[instrument(skip_all)]
 pub(crate) async fn leave_event(
-    auth_session: AuthSession,
+    CurrentUser(user): CurrentUser,
     State(db): State<DynDB>,
     CommunityId(community_id): CommunityId,
     Path((_, event_id)): Path<(String, Uuid)>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Get user from session (endpoint is behind login_required)
-    let user = auth_session.user.expect("user to be logged in");
-
     // Leave event
     db.leave_event(community_id, event_id, user.user_id).await?;
 

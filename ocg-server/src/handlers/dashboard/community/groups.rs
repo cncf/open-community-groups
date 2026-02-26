@@ -12,12 +12,11 @@ use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
-    auth::AuthSession,
     db::DynDB,
     handlers::{
         auth::SELECTED_GROUP_ID_KEY,
         error::HandlerError,
-        extractors::{SelectedCommunityId, ValidatedFormQs},
+        extractors::{CurrentUser, SelectedCommunityId, ValidatedFormQs},
     },
     router::serde_qs_config,
     templates::{
@@ -177,15 +176,12 @@ pub(crate) async fn deactivate(
 /// Deletes a group from the database (soft delete).
 #[instrument(skip_all, err)]
 pub(crate) async fn delete(
-    auth_session: AuthSession,
     session: Session,
+    CurrentUser(user): CurrentUser,
     SelectedCommunityId(community_id): SelectedCommunityId,
     State(db): State<DynDB>,
     Path(group_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Get user from session (endpoint is behind login_required)
-    let user = auth_session.user.expect("user to be logged in");
-
     // Delete group from database (soft delete)
     db.delete_group(community_id, group_id).await?;
 

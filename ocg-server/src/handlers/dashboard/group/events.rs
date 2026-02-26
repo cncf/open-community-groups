@@ -16,12 +16,11 @@ use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
-    auth::AuthSession,
     config::{HttpServerConfig, MeetingsConfig},
     db::DynDB,
     handlers::{
         error::HandlerError,
-        extractors::{SelectedCommunityId, SelectedGroupId, ValidatedFormQs},
+        extractors::{CurrentUser, SelectedCommunityId, SelectedGroupId, ValidatedFormQs},
     },
     router::serde_qs_config,
     services::{
@@ -129,16 +128,13 @@ pub(crate) async fn list_page(
 /// Displays the page to update an existing event.
 #[instrument(skip_all, err)]
 pub(crate) async fn update_page(
-    auth_session: AuthSession,
+    CurrentUser(user): CurrentUser,
     SelectedCommunityId(community_id): SelectedCommunityId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     State(meetings_cfg): State<Option<MeetingsConfig>>,
     Path(event_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Get user from session (endpoint is behind login_required)
-    let user = auth_session.user.expect("user to be logged in");
-
     // Prepare template
     let meetings_enabled = meetings_cfg.as_ref().is_some_and(MeetingsConfig::meetings_enabled);
     let meetings_max_participants = build_meetings_max_participants(meetings_cfg.as_ref());
@@ -286,7 +282,7 @@ pub(crate) async fn cancel(
 /// Publishes an event (sets published=true and records publication metadata).
 #[instrument(skip_all, err)]
 pub(crate) async fn publish(
-    auth_session: AuthSession,
+    CurrentUser(user): CurrentUser,
     SelectedCommunityId(community_id): SelectedCommunityId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
@@ -294,9 +290,6 @@ pub(crate) async fn publish(
     State(server_cfg): State<HttpServerConfig>,
     Path(event_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Get user from session (endpoint is behind login_required)
-    let user = auth_session.user.expect("user to be logged in");
-
     // Load event summary before publishing
     let event = db.get_event_summary(community_id, group_id, event_id).await?;
 

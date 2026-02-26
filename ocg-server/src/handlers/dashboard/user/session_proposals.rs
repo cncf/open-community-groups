@@ -12,10 +12,12 @@ use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
-    auth::AuthSession,
     config::HttpServerConfig,
     db::DynDB,
-    handlers::{error::HandlerError, extractors::ValidatedForm},
+    handlers::{
+        error::HandlerError,
+        extractors::{CurrentUser, ValidatedForm},
+    },
     router::serde_qs_config,
     services::notifications::{DynNotificationsManager, NewNotification, NotificationKind},
     templates::{
@@ -31,13 +33,10 @@ use crate::{
 /// Returns the session proposals list page for the user dashboard.
 #[instrument(skip_all, err)]
 pub(crate) async fn list_page(
-    auth_session: AuthSession,
+    CurrentUser(user): CurrentUser,
     State(db): State<DynDB>,
     RawQuery(raw_query): RawQuery,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Get user from session (endpoint is behind login_required)
-    let user = auth_session.user.expect("user to be logged in");
-
     // Fetch pending invitations, session proposal levels, and session proposals
     let filters: session_proposals::SessionProposalsFilters =
         serde_qs_config().deserialize_str(raw_query.as_deref().unwrap_or_default())?;
@@ -76,14 +75,11 @@ pub(crate) async fn list_page(
 /// Accepts a pending co-speaker invitation.
 #[instrument(skip_all, err)]
 pub(crate) async fn accept_co_speaker_invitation(
-    auth_session: AuthSession,
     messages: Messages,
+    CurrentUser(user): CurrentUser,
     State(db): State<DynDB>,
     Path(session_proposal_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Get user from session (endpoint is behind login_required)
-    let user = auth_session.user.expect("user to be logged in");
-
     // Accept invitation
     db.accept_session_proposal_co_speaker_invitation(user.user_id, session_proposal_id)
         .await?;
@@ -98,16 +94,13 @@ pub(crate) async fn accept_co_speaker_invitation(
 /// Adds a session proposal for the authenticated user.
 #[instrument(skip_all, err)]
 pub(crate) async fn add(
-    auth_session: AuthSession,
     messages: Messages,
+    CurrentUser(user): CurrentUser,
     State(db): State<DynDB>,
     State(notifications_manager): State<DynNotificationsManager>,
     State(server_cfg): State<HttpServerConfig>,
     ValidatedForm(session_proposal): ValidatedForm<SessionProposalInput>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Get user from session (endpoint is behind login_required)
-    let user = auth_session.user.expect("user to be logged in");
-
     // Add session proposal to database
     db.add_session_proposal(user.user_id, &session_proposal).await?;
 
@@ -135,14 +128,11 @@ pub(crate) async fn add(
 /// Deletes a session proposal for the authenticated user.
 #[instrument(skip_all, err)]
 pub(crate) async fn delete(
-    auth_session: AuthSession,
     messages: Messages,
+    CurrentUser(user): CurrentUser,
     State(db): State<DynDB>,
     Path(session_proposal_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Get user from session (endpoint is behind login_required)
-    let user = auth_session.user.expect("user to be logged in");
-
     // Delete session proposal from database
     db.delete_session_proposal(user.user_id, session_proposal_id).await?;
     messages.success("Session proposal deleted.");
@@ -156,14 +146,11 @@ pub(crate) async fn delete(
 /// Rejects a pending co-speaker invitation.
 #[instrument(skip_all, err)]
 pub(crate) async fn reject_co_speaker_invitation(
-    auth_session: AuthSession,
     messages: Messages,
+    CurrentUser(user): CurrentUser,
     State(db): State<DynDB>,
     Path(session_proposal_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Get user from session (endpoint is behind login_required)
-    let user = auth_session.user.expect("user to be logged in");
-
     // Reject invitation
     db.reject_session_proposal_co_speaker_invitation(user.user_id, session_proposal_id)
         .await?;
@@ -179,17 +166,14 @@ pub(crate) async fn reject_co_speaker_invitation(
 #[instrument(skip_all, err)]
 #[allow(clippy::too_many_arguments)]
 pub(crate) async fn update(
-    auth_session: AuthSession,
     messages: Messages,
+    CurrentUser(user): CurrentUser,
     State(db): State<DynDB>,
     State(notifications_manager): State<DynNotificationsManager>,
     State(server_cfg): State<HttpServerConfig>,
     Path(session_proposal_id): Path<Uuid>,
     ValidatedForm(session_proposal): ValidatedForm<SessionProposalInput>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Get user from session (endpoint is behind login_required)
-    let user = auth_session.user.expect("user to be logged in");
-
     // Load proposal record to detect invitation target changes
     let previous_session_proposal = db
         .get_session_proposal_co_speaker_user_id(user.user_id, session_proposal_id)

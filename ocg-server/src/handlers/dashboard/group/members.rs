@@ -12,12 +12,11 @@ use serde::{Deserialize, Serialize};
 use tracing::instrument;
 
 use crate::{
-    auth::AuthSession,
     config::HttpServerConfig,
     db::DynDB,
     handlers::{
         error::HandlerError,
-        extractors::{SelectedCommunityId, SelectedGroupId, ValidatedForm},
+        extractors::{CurrentUser, SelectedCommunityId, SelectedGroupId, ValidatedForm},
     },
     router::serde_qs_config,
     services::notifications::{DynNotificationsManager, NewNotification, NotificationKind},
@@ -71,7 +70,7 @@ pub(crate) async fn list_page(
 /// Sends a custom notification to all group members.
 #[instrument(skip_all, err)]
 pub(crate) async fn send_group_custom_notification(
-    auth_session: AuthSession,
+    CurrentUser(user): CurrentUser,
     SelectedCommunityId(community_id): SelectedCommunityId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
@@ -79,9 +78,6 @@ pub(crate) async fn send_group_custom_notification(
     State(server_cfg): State<HttpServerConfig>,
     ValidatedForm(notification): ValidatedForm<GroupCustomNotification>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Get user from session (endpoint is behind login_required)
-    let user = auth_session.user.expect("user to be logged in");
-
     // Get group data and site settings
     let (site_settings, group, group_members_ids, team_member_ids) = tokio::try_join!(
         db.get_site_settings(),
