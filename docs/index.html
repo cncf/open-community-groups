@@ -1,117 +1,126 @@
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta content="width=device-width, initial-scale=1" name="viewport">
-  <meta
-    content="Open Community Groups documentation for members, speakers, and organizers."
-    name="description"
-  >
-  <title>Documentation</title>
-  <link href="images/logo.svg" rel="icon">
-  <link
-    href="/static/vendor/css/docsify-vue.v4.13.1.min.css"
-    rel="stylesheet"
-  >
-  <link href="assets/theme.css" rel="stylesheet">
-</head>
-<body>
-  <div id="app">Loading Open Community Groups documentation...</div>
-  <script>
-    window.$docsify = {
-      alias: {
-        '/.*/_sidebar.md': '/static/docs/_sidebar.md'
-      },
-      auto2top: true,
-      basePath: '/static/docs/',
-      homepage: 'index.md',
-      loadSidebar: '_sidebar.md',
-      maxLevel: 3,
-      name: 'Documentation',
-      subMaxLevel: 2
-    };
-  </script>
-  <script src="/static/vendor/js/docsify.v4.13.1.min.js"></script>
-  <script src="/static/vendor/js/docsify-copy-code.v3.0.2.min.js"></script>
-  <script>
-    (function() {
-      const hashAppPrefixes = [
-        '#/dashboard',
-        '#/explore',
-        '#/log-in',
-        '#/log-out',
-        '#/sign-up',
-        '#/stats'
-      ];
-      const absoluteAppPrefixes = [
-        '/dashboard',
-        '/explore',
-        '/log-in',
-        '/log-out',
-        '/sign-up',
-        '/stats'
-      ];
+  <head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1" name="viewport" />
+    <meta
+      content="Open Community Groups documentation for members, speakers, and organizers."
+      name="description"
+    />
+    <title>Documentation</title>
+    <link
+      href="/static/vendor/css/docsify-vue.v4.13.1.min.css"
+      rel="stylesheet"
+    />
+    <link href="assets/theme.css" rel="stylesheet" />
+  </head>
+  <body>
+    <div id="app">Loading Open Community Groups documentation...</div>
+    <script>
+      window.$docsify = {
+        alias: {
+          "/.*/_sidebar.md": "/static/docs/_sidebar.md",
+        },
+        auto2top: true,
+        basePath: "/static/docs/",
+        homepage: "index.md",
+        loadSidebar: "_sidebar.md",
+        maxLevel: 3,
+        name: "Documentation",
+        subMaxLevel: 2,
+      };
+    </script>
+    <script src="/static/vendor/js/docsify.v4.13.1.min.js"></script>
+    <script src="/static/vendor/js/docsify-copy-code.v3.0.2.min.js"></script>
+    <script>
+      (function () {
+        const hashAppPrefixes = [
+          "#/dashboard",
+          "#/explore",
+          "#/log-in",
+          "#/log-out",
+          "#/sign-up",
+          "#/stats",
+        ];
+        const absoluteAppPrefixes = [
+          "/dashboard",
+          "/explore",
+          "/log-in",
+          "/log-out",
+          "/sign-up",
+          "/stats",
+        ];
 
-      function startsWithAnyPrefix(value, prefixes) {
-        return prefixes.some(function(prefix) {
-          return value === prefix || value.startsWith(prefix + '/') || value.startsWith(prefix + '?');
-        });
-      }
+        function startsWithAnyPrefix(value, prefixes) {
+          return prefixes.some(function (prefix) {
+            return (
+              value === prefix ||
+              value.startsWith(prefix + "/") ||
+              value.startsWith(prefix + "?")
+            );
+          });
+        }
 
-      function resolveAppPath(href, inMarkdown) {
-        if (!href) {
+        function resolveAppPath(href, inMarkdown) {
+          if (!href) {
+            return null;
+          }
+
+          if (inMarkdown && href === "#/") {
+            return "/";
+          }
+
+          if (startsWithAnyPrefix(href, hashAppPrefixes)) {
+            return href.slice(1);
+          }
+
+          if (startsWithAnyPrefix(href, absoluteAppPrefixes)) {
+            return href;
+          }
+
           return null;
         }
 
-        if (inMarkdown && href === '#/') {
-          return '/';
+        function rewriteAppLinks() {
+          const links = document.querySelectorAll("a[href]");
+          links.forEach(function (link) {
+            const href = link.getAttribute("href");
+            if (!href) {
+              return;
+            }
+
+            // Skip links that were already rewritten unless docsify turned them back into hash links
+            if (
+              link.dataset.ocgAppLinkRewritten === "1" &&
+              !href.startsWith("#/")
+            ) {
+              return;
+            }
+
+            const path = resolveAppPath(
+              href,
+              !!link.closest(".markdown-section"),
+            );
+            if (!path) {
+              return;
+            }
+
+            link.setAttribute("href", path || "/");
+            link.setAttribute("rel", "noopener");
+            link.setAttribute("target", "_top");
+            link.dataset.ocgAppLinkRewritten = "1";
+          });
         }
 
-        if (startsWithAnyPrefix(href, hashAppPrefixes)) {
-          return href.slice(1);
+        function rewriteAfterRender() {
+          window.setTimeout(rewriteAppLinks, 0);
+          window.setTimeout(rewriteAppLinks, 80);
         }
 
-        if (startsWithAnyPrefix(href, absoluteAppPrefixes)) {
-          return href;
-        }
-
-        return null;
-      }
-
-      function rewriteAppLinks() {
-        const links = document.querySelectorAll('a[href]');
-        links.forEach(function(link) {
-          const href = link.getAttribute('href');
-          if (!href) {
-            return;
-          }
-
-          // Skip links that were already rewritten unless docsify turned them back into hash links
-          if (link.dataset.ocgAppLinkRewritten === '1' && !href.startsWith('#/')) {
-            return;
-          }
-
-          const path = resolveAppPath(href, !!link.closest('.markdown-section'));
-          if (!path) {
-            return;
-          }
-
-          link.setAttribute('href', path || '/');
-          link.setAttribute('rel', 'noopener');
-          link.setAttribute('target', '_top');
-          link.dataset.ocgAppLinkRewritten = '1';
-        });
-      }
-
-      function rewriteAfterRender() {
-        window.setTimeout(rewriteAppLinks, 0);
-        window.setTimeout(rewriteAppLinks, 80);
-      }
-
-      document.addEventListener('DOMContentLoaded', rewriteAfterRender);
-      window.addEventListener('hashchange', rewriteAfterRender);
-      rewriteAfterRender();
-    })();
-  </script>
-</body>
+        document.addEventListener("DOMContentLoaded", rewriteAfterRender);
+        window.addEventListener("hashchange", rewriteAfterRender);
+        rewriteAfterRender();
+      })();
+    </script>
+  </body>
 </html>
