@@ -17,7 +17,9 @@ returns json as $$
         select
             g.group_category_id,
             count(*) as groups_count
-        from "group" g
+        from group_category gc_filter
+        join "group" g on g.group_category_id = gc_filter.group_category_id
+        where gc_filter.community_id = p_community_id
         group by g.group_category_id
     ) stats using (group_category_id)
     where gc.community_id = p_community_id;

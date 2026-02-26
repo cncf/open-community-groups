@@ -12,7 +12,9 @@ returns json as $$
         select
             e.event_category_id,
             count(*) as events_count
-        from event e
+        from event_category ec_filter
+        join event e on e.event_category_id = ec_filter.event_category_id
+        where ec_filter.community_id = p_community_id
         group by e.event_category_id
     ) stats using (event_category_id)
     where ec.community_id = p_community_id;

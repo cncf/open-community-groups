@@ -17,8 +17,9 @@ returns json as $$
         select
             g.region_id,
             count(*) as groups_count
-        from "group" g
-        where g.region_id is not null
+        from region r_filter
+        join "group" g on g.region_id = r_filter.region_id
+        where r_filter.community_id = p_community_id
         group by g.region_id
     ) stats using (region_id)
     where r.community_id = p_community_id;

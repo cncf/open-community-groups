@@ -18,7 +18,10 @@ begin
     returning event_category_id into v_event_category_id;
 
     return v_event_category_id;
-exception when unique_violation then
-    raise exception 'event category already exists';
+exception
+    when unique_violation then
+        raise exception 'event category already exists';
+    when check_violation then
+        raise exception 'event category name is invalid';
 end;
 $$ language plpgsql;

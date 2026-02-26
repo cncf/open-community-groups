@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(3);
+select plan(4);
 
 -- ============================================================================
 -- VARIABLES
@@ -66,6 +66,16 @@ select throws_ok(
     ) $$,
     'event category already exists',
     'Should reject duplicate event category names'
+);
+
+-- Should reject names that generate an empty slug
+select throws_ok(
+    $$ select add_event_category(
+        '00000000-0000-0000-0000-000000000001'::uuid,
+        jsonb_build_object('name', '!!!')
+    ) $$,
+    'event category name is invalid',
+    'Should reject event category names that generate empty slugs'
 );
 
 -- ============================================================================

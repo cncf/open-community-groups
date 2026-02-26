@@ -21,7 +21,10 @@ begin
         name = p_event_category->>'name'
     where community_id = p_community_id
       and event_category_id = p_event_category_id;
-exception when unique_violation then
-    raise exception 'event category already exists';
+exception
+    when unique_violation then
+        raise exception 'event category already exists';
+    when check_violation then
+        raise exception 'event category name is invalid';
 end;
 $$ language plpgsql;

@@ -44,6 +44,27 @@ insert into region (region_id, name, community_id)
 values 
     (:'region3ID', 'Asia Pacific', :'community2ID');
 
+-- Group Category
+insert into group_category (group_category_id, name, community_id)
+values
+    ('00000000-0000-0000-0000-000000000021', 'Technology', :'community1ID'),
+    ('00000000-0000-0000-0000-000000000022', 'Business', :'community2ID');
+
+-- Groups
+insert into "group" (
+    group_id,
+    community_id,
+    group_category_id,
+    name,
+    region_id,
+    slug
+)
+values
+    ('00000000-0000-0000-0000-000000000031', :'community1ID', '00000000-0000-0000-0000-000000000021', 'Europe JS', :'region2ID', 'europe-js'),
+    ('00000000-0000-0000-0000-000000000032', :'community1ID', '00000000-0000-0000-0000-000000000021', 'Europe Rust', :'region2ID', 'europe-rust'),
+    ('00000000-0000-0000-0000-000000000033', :'community1ID', '00000000-0000-0000-0000-000000000021', 'North America Go', :'region1ID', 'north-america-go'),
+    ('00000000-0000-0000-0000-000000000034', :'community2ID', '00000000-0000-0000-0000-000000000022', 'APAC DevOps', :'region3ID', 'apac-devops');
+
 -- ============================================================================
 -- TESTS
 -- ============================================================================
@@ -53,14 +74,14 @@ select is(
     list_regions(:'community1ID'::uuid)::jsonb,
     '[
         {
-            "groups_count": 0,
+            "groups_count": 2,
             "region_id": "00000000-0000-0000-0000-000000000012",
             "name": "Europe",
             "normalized_name": "europe",
             "order": 1
         },
         {
-            "groups_count": 0,
+            "groups_count": 1,
             "region_id": "00000000-0000-0000-0000-000000000011",
             "name": "North America",
             "normalized_name": "north-america",
