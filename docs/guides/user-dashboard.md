@@ -53,7 +53,7 @@ your user menu.
 
 Invitation statuses:
 
-- Community and group team invites: `Invitation sent`, accepted, rejected.
+- Community and group team invites: Invitation sent, accepted, rejected.
 - Pending team invites do not grant dashboard access until accepted.
 
 When someone invites you to a team, you receive an in-app and email invitation with a direct path
