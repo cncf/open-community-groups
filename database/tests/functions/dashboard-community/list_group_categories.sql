@@ -53,12 +53,14 @@ select is(
     list_group_categories(:'community1ID'::uuid)::jsonb,
     '[
         {
+            "groups_count": 0,
             "group_category_id": "00000000-0000-0000-0000-000000000012",
             "name": "Business",
             "slug": "business",
             "order": 1
         },
         {
+            "groups_count": 0,
             "group_category_id": "00000000-0000-0000-0000-000000000011",
             "name": "Technology",
             "slug": "technology",

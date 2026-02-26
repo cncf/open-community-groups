@@ -5,6 +5,7 @@ create or replace function list_group_categories(
 returns json as $$
     select coalesce(json_agg(
         json_build_object(
+            'groups_count', coalesce(stats.groups_count, 0),
             'group_category_id', gc.group_category_id,
             'name', gc.name,
             'slug', gc.normalized_name,
@@ -12,5 +13,12 @@ returns json as $$
         ) order by gc."order" nulls last, gc.name
     ), '[]')
     from group_category gc
+    left join (
+        select
+            g.group_category_id,
+            count(*) as groups_count
+        from "group" g
+        group by g.group_category_id
+    ) stats using (group_category_id)
     where gc.community_id = p_community_id;
 $$ language sql;

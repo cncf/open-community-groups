@@ -53,12 +53,14 @@ select is(
     list_regions(:'community1ID'::uuid)::jsonb,
     '[
         {
+            "groups_count": 0,
             "region_id": "00000000-0000-0000-0000-000000000012",
             "name": "Europe",
             "normalized_name": "europe",
             "order": 1
         },
         {
+            "groups_count": 0,
             "region_id": "00000000-0000-0000-0000-000000000011",
             "name": "North America",
             "normalized_name": "north-america",

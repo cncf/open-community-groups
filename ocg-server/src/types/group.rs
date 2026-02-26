@@ -197,6 +197,8 @@ pub struct GroupCategory {
     #[serde(rename = "slug", alias = "normalized_name")]
     pub normalized_name: String,
 
+    /// Number of groups currently using this category.
+    pub groups_count: Option<usize>,
     /// Sort order for display.
     pub order: Option<i32>,
 }
@@ -211,6 +213,8 @@ pub struct GroupRegion {
     /// URL-friendly normalized name.
     pub normalized_name: String,
 
+    /// Number of groups currently using this region.
+    pub groups_count: Option<usize>,
     /// Sort order for display.
     pub order: Option<i32>,
 }

@@ -48,11 +48,11 @@ values
     (:'region2ID', 'Europe', :'community2ID', 2);
 
 -- Event Category
-insert into event_category (event_category_id, name, slug, community_id, "order")
+insert into event_category (event_category_id, name, community_id, "order")
 values
-    ('00000000-0000-0000-0000-000000000061', 'Tech Talks', 'tech-talks', :'community2ID', 1),
-    ('00000000-0000-0000-0000-000000000062', 'Workshops', 'workshops', :'community2ID', 2),
-    ('00000000-0000-0000-0000-000000000063', 'Conferences', 'conferences', :'community2ID', 3);
+    ('00000000-0000-0000-0000-000000000061', 'Tech Talks', :'community2ID', 1),
+    ('00000000-0000-0000-0000-000000000062', 'Workshops', :'community2ID', 2),
+    ('00000000-0000-0000-0000-000000000063', 'Conferences', :'community2ID', 3);
 
 -- Group
 insert into "group" (group_id, name, slug, description, community_id, group_category_id, active)

@@ -1,0 +1,122 @@
+{% import "macros/dashboard.html" as dashboard -%}
+
+{# Group Categories header -#}
+{{ dashboard::form_title(title = "Group Categories") -}}
+
+<div class="flex justify-between items-end my-5">
+  <div class="text-sm text-stone-600">
+    {{ categories.len() }} categor
+    {% if categories.len() == 1 %}
+      y
+    {% else %}
+      ies
+    {% endif %}
+  </div>
+  <div>
+    <button id="add-group-category-button"
+            hx-get="/dashboard/community/group-categories/add"
+            hx-target="#dashboard-content"
+            hx-indicator="#dashboard-spinner"
+            class="btn-primary">Add Group Category</button>
+  </div>
+  <script type="module">
+    const addGroupCategoryButton = document.getElementById('add-group-category-button');
+    if (addGroupCategoryButton) {
+      addGroupCategoryButton.addEventListener('htmx:afterRequest', () => {
+        history.pushState({}, 'Group categories list', '/dashboard/community?tab=group-categories');
+      });
+    }
+  </script>
+</div>
+
+{# Group categories table -#}
+<div class="relative overflow-visible mt-5">
+  <table class="table-auto w-full text-xs lg:text-sm text-left text-stone-500 mb-8">
+    <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
+      <tr>
+        <th scope="col" class="px-3 xl:px-5 py-3">Name</th>
+        <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3">Groups</th>
+        <th scope="col" class="px-3 xl:px-5 py-3 w-27"></th>
+      </tr>
+    </thead>
+    <tbody id="group-categories-list">
+      {% if categories.is_empty() -%}
+        <tr class="bg-white border-b border-stone-200">
+          <td class="px-8 py-12 text-center text-stone-500" colspan="3">
+            No group categories found for this community yet.
+          </td>
+        </tr>
+      {% else -%}
+        {% for category in categories -%}
+          {% let groups_count = category.groups_count.unwrap_or(0) -%}
+          <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
+            <td class="px-3 xl:px-5 py-4">
+              <div class="font-medium text-stone-900">{{ category.name }}</div>
+              <div class="xl:hidden text-xs text-stone-500 mt-1">
+                {{ groups_count }} group
+                {% if groups_count != 1 %}s{% endif %}
+              </div>
+            </td>
+            <td class="hidden xl:table-cell px-3 xl:px-5 py-4">{{ groups_count }}</td>
+            <td class="px-3 xl:px-5 py-4 w-32 xl:w-40">
+              <div class="flex items-center gap-x-3">
+                <button hx-get="/dashboard/community/group-categories/{{ category.group_category_id }}/update"
+                        hx-target="#dashboard-content"
+                        hx-indicator="#dashboard-spinner"
+                        hx-swap="innerHTML show:body:top"
+                        hx-disabled-elt="this"
+                        class="btn-tertiary p-2"
+                        aria-label="Edit group category: {{ category.name }}">
+                  <div class="svg-icon size-4 icon-pencil"></div>
+                </button>
+                <button id="delete-group-category-{{ category.group_category_id }}"
+                        hx-delete="/dashboard/community/group-categories/{{ category.group_category_id }}/delete"
+                        hx-target="#dashboard-content"
+                        hx-indicator="#dashboard-spinner"
+                        hx-trigger="confirmed"
+                        class="btn-tertiary p-2
+                               {% if groups_count > 0 -%}
+                                 opacity-50 cursor-not-allowed
+                               {% endif -%}"
+                        {% if groups_count > 0 -%}
+                          disabled title="This category is in use by one or more groups."
+                        {% endif -%}
+                        aria-label="Delete group category: {{ category.name }}">
+                  <div class="svg-icon size-4 icon-trash"></div>
+                </button>
+                <script type="module">
+                  import {
+                    showConfirmAlert,
+                    handleHtmxResponse,
+                  } from '/static/js/common/alerts.js';
+
+                  const deleteButton = document.getElementById(
+                    'delete-group-category-{{ category.group_category_id }}'
+                  );
+                  if (deleteButton && !deleteButton.disabled) {
+                    deleteButton.addEventListener('click', () => {
+                      showConfirmAlert(
+                        'Are you sure you would like to delete this group category?',
+                        'delete-group-category-{{ category.group_category_id }}',
+                        'Yes',
+                      );
+                    });
+
+                    deleteButton.addEventListener('htmx:afterRequest', (e) => {
+                      const xhr = e.detail?.xhr;
+                      handleHtmxResponse({
+                        xhr,
+                        successMessage: 'You have successfully deleted the group category.',
+                        errorMessage: 'Something went wrong deleting this group category. Please try again later.'
+                      });
+                    });
+                  }
+                </script>
+              </div>
+            </td>
+          </tr>
+        {% endfor -%}
+      {% endif -%}
+    </tbody>
+  </table>
+</div>

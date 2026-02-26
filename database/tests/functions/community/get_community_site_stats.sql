@@ -50,8 +50,8 @@ values
     (:'user3ID', 'u3@e', 'u3', 'U3', true, gen_random_bytes(32), '2024-01-01 00:00:00');
 
 -- Event Category
-insert into event_category (event_category_id, name, slug, community_id)
-values (:'eventCategoryID', 'Cat', 'cat', :'communityID');
+insert into event_category (event_category_id, name, community_id)
+values (:'eventCategoryID', 'Cat', :'communityID');
 
 -- Event
 insert into event (

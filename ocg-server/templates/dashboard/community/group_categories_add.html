@@ -1,0 +1,82 @@
+{% import "macros/ui.html" as ui -%}
+{% import "macros/dashboard.html" as dashboard -%}
+
+{# Add Group Category form -#}
+<form id="group-category-form"
+      hx-post="/dashboard/community/group-categories/add"
+      hx-ext="no-empty-vals"
+      hx-target="#dashboard-content"
+      hx-indicator="#dashboard-spinner, #community-group-category-create-spinner"
+      hx-disabled-elt="button[type=submit], #cancel-button">
+  <div class="space-y-12">
+    <div class="border-b border-stone-900/10 pb-12">
+      {{ dashboard::form_title(title = "Group Category Details", description = "Add a new group category for this community.") -}}
+
+      <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-4xl">
+        <div class="col-span-full lg:col-span-5">
+          <label for="name" class="form-label">
+            Name <span class="asterisk">*</span>
+          </label>
+          <div class="mt-2">
+            <input type="text"
+                   name="name"
+                   id="name"
+                   maxlength="{{ crate::validation::MAX_LEN_ENTITY_NAME }}"
+                   class="input-primary"
+                   autocomplete="off"
+                   autocorrect="off"
+                   autocapitalize="off"
+                   spellcheck="false"
+                   required>
+          </div>
+          <p class="form-legend">
+            Category display name. Max {{ crate::validation::MAX_LEN_ENTITY_NAME }} characters.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mt-6 flex items-center justify-end gap-x-6">
+    <button id="cancel-button"
+            type="button"
+            hx-get="/dashboard/community?tab=group-categories"
+            hx-target="body"
+            hx-indicator="#dashboard-spinner"
+            class="btn-primary-outline">Cancel</button>
+
+    <button type="submit" class="btn-primary relative">
+      {{ ui::btn_spinner(id = "community-group-category-create-spinner", spinner_type = "2") -}}
+      Add Group Category
+    </button>
+  </div>
+</form>
+
+<script type="module">
+  import {
+    handleHtmxResponse
+  } from '/static/js/common/alerts.js';
+
+  const groupCategoryForm = document.getElementById('group-category-form');
+  const cancelButton = document.getElementById('cancel-button');
+
+  if (cancelButton) {
+    cancelButton.addEventListener('htmx:afterRequest', () => {
+      history.pushState({}, 'Group categories list', '/dashboard/community?tab=group-categories');
+    });
+  }
+
+  if (groupCategoryForm) {
+    groupCategoryForm.addEventListener('htmx:afterRequest', (e) => {
+      if (e.detail.elt.id === 'group-category-form') {
+        const xhr = e.detail?.xhr;
+        handleHtmxResponse({
+          xhr,
+          successMessage: 'You have successfully added the group category.',
+          errorMessage: 'Something went wrong adding the group category. Please try again later.'
+        });
+      }
+    });
+  }
+</script>
+{# End Add Group Category form -#}

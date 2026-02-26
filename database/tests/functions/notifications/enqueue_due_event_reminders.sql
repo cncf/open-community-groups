@@ -93,12 +93,12 @@ insert into group_category (group_category_id, name, community_id)
 values (:'groupCategoryInactiveCommunityID', 'Design', :'communityInactiveID');
 
 -- Event category
-insert into event_category (event_category_id, name, slug, community_id)
-values (:'categoryID', 'General', 'general', :'communityID');
+insert into event_category (event_category_id, name, community_id)
+values (:'categoryID', 'General', :'communityID');
 
 -- Event category for inactive community
-insert into event_category (event_category_id, name, slug, community_id)
-values (:'categoryInactiveCommunityID', 'Community', 'community', :'communityInactiveID');
+insert into event_category (event_category_id, name, community_id)
+values (:'categoryInactiveCommunityID', 'Community', :'communityInactiveID');
 
 -- Group
 insert into "group" (

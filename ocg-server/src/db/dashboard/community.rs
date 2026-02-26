@@ -14,7 +14,10 @@ use crate::{
     db::PgDB,
     templates::dashboard::community::{
         analytics::CommunityStats,
+        event_categories::EventCategoryInput,
+        group_categories::GroupCategoryInput,
         groups::Group,
+        regions::RegionInput,
         settings::CommunityUpdate,
         team::{CommunityTeamFilters, CommunityTeamOutput},
     },
@@ -36,6 +39,23 @@ pub(crate) trait DBDashboardCommunity {
     /// Adds a new group to the database.
     async fn add_group(&self, community_id: Uuid, group: &Group) -> Result<Uuid>;
 
+    /// Adds a new event category to the database.
+    async fn add_event_category(
+        &self,
+        community_id: Uuid,
+        event_category: &EventCategoryInput,
+    ) -> Result<Uuid>;
+
+    /// Adds a new group category to the database.
+    async fn add_group_category(
+        &self,
+        community_id: Uuid,
+        group_category: &GroupCategoryInput,
+    ) -> Result<Uuid>;
+
+    /// Adds a new region to the database.
+    async fn add_region(&self, community_id: Uuid, region: &RegionInput) -> Result<Uuid>;
+
     /// Deactivates a group (sets active=false without deleting).
     async fn deactivate_group(&self, community_id: Uuid, group_id: Uuid) -> Result<()>;
 
@@ -44,6 +64,15 @@ pub(crate) trait DBDashboardCommunity {
 
     /// Deletes a group (soft delete by setting active=false).
     async fn delete_group(&self, community_id: Uuid, group_id: Uuid) -> Result<()>;
+
+    /// Deletes an event category from the database.
+    async fn delete_event_category(&self, community_id: Uuid, event_category_id: Uuid) -> Result<()>;
+
+    /// Deletes a group category from the database.
+    async fn delete_group_category(&self, community_id: Uuid, group_category_id: Uuid) -> Result<()>;
+
+    /// Deletes a region from the database.
+    async fn delete_region(&self, community_id: Uuid, region_id: Uuid) -> Result<()>;
 
     /// Retrieves analytics statistics for a community.
     async fn get_community_stats(&self, community_id: Uuid) -> Result<CommunityStats>;
@@ -66,6 +95,25 @@ pub(crate) trait DBDashboardCommunity {
 
     /// Updates a community's settings.
     async fn update_community(&self, community_id: Uuid, community: &CommunityUpdate) -> Result<()>;
+
+    /// Updates an event category in the database.
+    async fn update_event_category(
+        &self,
+        community_id: Uuid,
+        event_category_id: Uuid,
+        event_category: &EventCategoryInput,
+    ) -> Result<()>;
+
+    /// Updates a group category in the database.
+    async fn update_group_category(
+        &self,
+        community_id: Uuid,
+        group_category_id: Uuid,
+        group_category: &GroupCategoryInput,
+    ) -> Result<()>;
+
+    /// Updates a region in the database.
+    async fn update_region(&self, community_id: Uuid, region_id: Uuid, region: &RegionInput) -> Result<()>;
 }
 
 #[async_trait]
@@ -100,6 +148,27 @@ impl DBDashboardCommunity for PgDB {
         Ok(())
     }
 
+    /// [`DBDashboardCommunity::add_event_category`]
+    #[instrument(skip(self, event_category), err)]
+    async fn add_event_category(
+        &self,
+        community_id: Uuid,
+        event_category: &EventCategoryInput,
+    ) -> Result<Uuid> {
+        trace!("db: add event category");
+
+        let db = self.pool.get().await?;
+        let event_category_id = db
+            .query_one(
+                "select add_event_category($1::uuid, $2::jsonb)::uuid",
+                &[&community_id, &Json(event_category)],
+            )
+            .await?
+            .get(0);
+
+        Ok(event_category_id)
+    }
+
     /// [`DBDashboardCommunity::add_group`]
     #[instrument(skip(self, group), err)]
     async fn add_group(&self, community_id: Uuid, group: &Group) -> Result<Uuid> {
@@ -115,6 +184,44 @@ impl DBDashboardCommunity for PgDB {
             .get(0);
 
         Ok(group_id)
+    }
+
+    /// [`DBDashboardCommunity::add_group_category`]
+    #[instrument(skip(self, group_category), err)]
+    async fn add_group_category(
+        &self,
+        community_id: Uuid,
+        group_category: &GroupCategoryInput,
+    ) -> Result<Uuid> {
+        trace!("db: add group category");
+
+        let db = self.pool.get().await?;
+        let group_category_id = db
+            .query_one(
+                "select add_group_category($1::uuid, $2::jsonb)::uuid",
+                &[&community_id, &Json(group_category)],
+            )
+            .await?
+            .get(0);
+
+        Ok(group_category_id)
+    }
+
+    /// [`DBDashboardCommunity::add_region`]
+    #[instrument(skip(self, region), err)]
+    async fn add_region(&self, community_id: Uuid, region: &RegionInput) -> Result<Uuid> {
+        trace!("db: add region");
+
+        let db = self.pool.get().await?;
+        let region_id = db
+            .query_one(
+                "select add_region($1::uuid, $2::jsonb)::uuid",
+                &[&community_id, &Json(region)],
+            )
+            .await?
+            .get(0);
+
+        Ok(region_id)
     }
 
     /// [`DBDashboardCommunity::deactivate_group`]
@@ -147,6 +254,21 @@ impl DBDashboardCommunity for PgDB {
         Ok(())
     }
 
+    /// [`DBDashboardCommunity::delete_event_category`]
+    #[instrument(skip(self), err)]
+    async fn delete_event_category(&self, community_id: Uuid, event_category_id: Uuid) -> Result<()> {
+        trace!("db: delete event category");
+
+        let db = self.pool.get().await?;
+        db.execute(
+            "select delete_event_category($1::uuid, $2::uuid)",
+            &[&community_id, &event_category_id],
+        )
+        .await?;
+
+        Ok(())
+    }
+
     /// [`DBDashboardCommunity::delete_group`]
     #[instrument(skip(self), err)]
     async fn delete_group(&self, community_id: Uuid, group_id: Uuid) -> Result<()> {
@@ -156,6 +278,36 @@ impl DBDashboardCommunity for PgDB {
         db.execute(
             "select delete_group($1::uuid, $2::uuid)",
             &[&community_id, &group_id],
+        )
+        .await?;
+
+        Ok(())
+    }
+
+    /// [`DBDashboardCommunity::delete_group_category`]
+    #[instrument(skip(self), err)]
+    async fn delete_group_category(&self, community_id: Uuid, group_category_id: Uuid) -> Result<()> {
+        trace!("db: delete group category");
+
+        let db = self.pool.get().await?;
+        db.execute(
+            "select delete_group_category($1::uuid, $2::uuid)",
+            &[&community_id, &group_category_id],
+        )
+        .await?;
+
+        Ok(())
+    }
+
+    /// [`DBDashboardCommunity::delete_region`]
+    #[instrument(skip(self), err)]
+    async fn delete_region(&self, community_id: Uuid, region_id: Uuid) -> Result<()> {
+        trace!("db: delete region");
+
+        let db = self.pool.get().await?;
+        db.execute(
+            "select delete_region($1::uuid, $2::uuid)",
+            &[&community_id, &region_id],
         )
         .await?;
 
@@ -259,6 +411,61 @@ impl DBDashboardCommunity for PgDB {
         db.execute(
             "select update_community($1::uuid, $2::jsonb)",
             &[&community_id, &Json(community)],
+        )
+        .await?;
+
+        Ok(())
+    }
+
+    /// [`DBDashboardCommunity::update_event_category`]
+    #[instrument(skip(self, event_category), err)]
+    async fn update_event_category(
+        &self,
+        community_id: Uuid,
+        event_category_id: Uuid,
+        event_category: &EventCategoryInput,
+    ) -> Result<()> {
+        trace!("db: update event category");
+
+        let db = self.pool.get().await?;
+        db.execute(
+            "select update_event_category($1::uuid, $2::uuid, $3::jsonb)",
+            &[&community_id, &event_category_id, &Json(event_category)],
+        )
+        .await?;
+
+        Ok(())
+    }
+
+    /// [`DBDashboardCommunity::update_group_category`]
+    #[instrument(skip(self, group_category), err)]
+    async fn update_group_category(
+        &self,
+        community_id: Uuid,
+        group_category_id: Uuid,
+        group_category: &GroupCategoryInput,
+    ) -> Result<()> {
+        trace!("db: update group category");
+
+        let db = self.pool.get().await?;
+        db.execute(
+            "select update_group_category($1::uuid, $2::uuid, $3::jsonb)",
+            &[&community_id, &group_category_id, &Json(group_category)],
+        )
+        .await?;
+
+        Ok(())
+    }
+
+    /// [`DBDashboardCommunity::update_region`]
+    #[instrument(skip(self, region), err)]
+    async fn update_region(&self, community_id: Uuid, region_id: Uuid, region: &RegionInput) -> Result<()> {
+        trace!("db: update region");
+
+        let db = self.pool.get().await?;
+        db.execute(
+            "select update_region($1::uuid, $2::uuid, $3::jsonb)",
+            &[&community_id, &region_id, &Json(region)],
         )
         .await?;
 

@@ -78,10 +78,10 @@ values
      ST_GeogFromText('POINT(-87.6298 41.8781)'));
 
 -- Event Category
-insert into event_category (event_category_id, name, slug, community_id)
+insert into event_category (event_category_id, name, community_id)
 values
-    (:'eventCategory1ID', 'Tech Talks', 'tech-talks', :'community1ID'),
-    (:'eventCategory2ID', 'Workshops', 'workshops', :'community2ID');
+    (:'eventCategory1ID', 'Tech Talks', :'community1ID'),
+    (:'eventCategory2ID', 'Workshops', :'community2ID');
 
 -- Event
 insert into event (

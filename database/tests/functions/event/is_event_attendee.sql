@@ -32,8 +32,8 @@ insert into group_category (group_category_id, name, community_id)
 values (:'categoryID', 'Technology', :'communityID');
 
 -- Event Category
-insert into event_category (event_category_id, name, slug, community_id)
-values (:'eventCategoryID', 'Tech', 'tech', :'communityID');
+insert into event_category (event_category_id, name, community_id)
+values (:'eventCategoryID', 'Tech', :'communityID');
 
 -- Group
 insert into "group" (group_id, name, slug, community_id, group_category_id, logo_url, active)

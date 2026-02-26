@@ -35,8 +35,8 @@ insert into group_category (group_category_id, name, community_id)
 values (:'categoryID', 'Technology', :'communityID');
 
 -- Event Category
-insert into event_category (event_category_id, name, slug, community_id)
-values (:'eventCategoryID', 'General', 'general', :'communityID');
+insert into event_category (event_category_id, name, community_id)
+values (:'eventCategoryID', 'General', :'communityID');
 
 -- User
 insert into "user" (user_id, auth_hash, email, username)

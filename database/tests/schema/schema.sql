@@ -248,9 +248,8 @@ select columns_are('event_category', array[
     'community_id',
     'created_at',
     'name',
-    'slug',
-
-    'order'
+    'order',
+    'slug'
 ]);
 
 -- Test: event_host columns should match expected

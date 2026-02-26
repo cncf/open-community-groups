@@ -44,8 +44,8 @@ insert into "group" (group_id, community_id, group_category_id, name, slug) valu
     (:'groupID', :'communityID', :'groupCategoryID', 'G1', 'g1');
 
 -- Event category
-insert into event_category (event_category_id, community_id, name, slug) values
-    (:'eventCategoryID', :'communityID', 'Meetup', 'meetup');
+insert into event_category (event_category_id, community_id, name) values
+    (:'eventCategoryID', :'communityID', 'Meetup');
 
 -- Users
 insert into "user" (user_id, auth_hash, email, username, email_verified, name) values

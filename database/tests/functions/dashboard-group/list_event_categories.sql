@@ -23,16 +23,16 @@ values
     (:'community2ID', 'devops-vancouver', 'DevOps Vancouver', 'Building DevOps expertise and community in Vancouver', 'https://example.com/logo2.png', 'https://example.com/banner_mobile2.png', 'https://example.com/banner2.png');
 
 -- Event Category
-insert into event_category (event_category_id, name, slug, community_id, "order")
+insert into event_category (event_category_id, name, community_id, "order")
 values
-    ('00000000-0000-0000-0000-000000000011', 'Workshop', 'workshop', :'community1ID', 2),
-    ('00000000-0000-0000-0000-000000000012', 'Conference', 'conference', :'community1ID', 1),
-    ('00000000-0000-0000-0000-000000000013', 'Meetup', 'meetup', :'community1ID', null);
+    ('00000000-0000-0000-0000-000000000011', 'Workshop', :'community1ID', 2),
+    ('00000000-0000-0000-0000-000000000012', 'Conference', :'community1ID', 1),
+    ('00000000-0000-0000-0000-000000000013', 'Meetup', :'community1ID', null);
 
 -- Event Category (other community)
-insert into event_category (event_category_id, name, slug, community_id)
+insert into event_category (event_category_id, name, community_id)
 values
-    ('00000000-0000-0000-0000-000000000014', 'Seminar', 'seminar', :'community2ID');
+    ('00000000-0000-0000-0000-000000000014', 'Seminar', :'community2ID');
 
 -- ============================================================================
 -- TESTS
@@ -43,16 +43,19 @@ select is(
     list_event_categories('00000000-0000-0000-0000-000000000001'::uuid)::jsonb,
     '[
         {
+            "events_count": 0,
             "event_category_id": "00000000-0000-0000-0000-000000000012",
             "name": "Conference",
             "slug": "conference"
         },
         {
+            "events_count": 0,
             "event_category_id": "00000000-0000-0000-0000-000000000011",
             "name": "Workshop",
             "slug": "workshop"
         },
         {
+            "events_count": 0,
             "event_category_id": "00000000-0000-0000-0000-000000000013",
             "name": "Meetup",
             "slug": "meetup"
@@ -66,6 +69,7 @@ select is(
     list_event_categories('00000000-0000-0000-0000-000000000002'::uuid)::jsonb,
     '[
         {
+            "events_count": 0,
             "event_category_id": "00000000-0000-0000-0000-000000000014",
             "name": "Seminar",
             "slug": "seminar"

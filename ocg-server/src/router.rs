@@ -219,6 +219,42 @@ fn setup_community_dashboard_router(state: State) -> Router<State> {
     Router::new()
         .route("/", get(dashboard::community::home::page))
         .route("/analytics", get(dashboard::community::analytics::page))
+        .route(
+            "/event-categories",
+            get(dashboard::community::event_categories::list_page),
+        )
+        .route(
+            "/event-categories/add",
+            get(dashboard::community::event_categories::add_page)
+                .post(dashboard::community::event_categories::add),
+        )
+        .route(
+            "/event-categories/{event_category_id}/delete",
+            delete(dashboard::community::event_categories::delete),
+        )
+        .route(
+            "/event-categories/{event_category_id}/update",
+            get(dashboard::community::event_categories::update_page)
+                .put(dashboard::community::event_categories::update),
+        )
+        .route(
+            "/group-categories",
+            get(dashboard::community::group_categories::list_page),
+        )
+        .route(
+            "/group-categories/add",
+            get(dashboard::community::group_categories::add_page)
+                .post(dashboard::community::group_categories::add),
+        )
+        .route(
+            "/group-categories/{group_category_id}/delete",
+            delete(dashboard::community::group_categories::delete),
+        )
+        .route(
+            "/group-categories/{group_category_id}/update",
+            get(dashboard::community::group_categories::update_page)
+                .put(dashboard::community::group_categories::update),
+        )
         .route("/groups", get(dashboard::community::groups::list_page))
         .route(
             "/groups/add",
@@ -249,6 +285,19 @@ fn setup_community_dashboard_router(state: State) -> Router<State> {
         .route(
             "/team/{user_id}/delete",
             delete(dashboard::community::team::delete),
+        )
+        .route("/regions", get(dashboard::community::regions::list_page))
+        .route(
+            "/regions/add",
+            get(dashboard::community::regions::add_page).post(dashboard::community::regions::add),
+        )
+        .route(
+            "/regions/{region_id}/delete",
+            delete(dashboard::community::regions::delete),
+        )
+        .route(
+            "/regions/{region_id}/update",
+            get(dashboard::community::regions::update_page).put(dashboard::community::regions::update),
         )
         .route("/users/search", get(dashboard::common::search_user))
         .route_layer(check_user_owns_selected_community)

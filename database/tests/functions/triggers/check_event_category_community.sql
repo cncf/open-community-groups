@@ -30,12 +30,12 @@ insert into community (community_id, name, display_name, description, logo_url, 
 values (:'community2ID', 'community-2', 'Community 2', 'Test community 2', 'https://example.com/logo.png', 'https://example.com/banner_mobile.png', 'https://example.com/banner.png');
 
 -- Event Category 1 (belongs to community 1)
-insert into event_category (event_category_id, name, slug, community_id)
-values (:'category1ID', 'Conference', 'conference', :'community1ID');
+insert into event_category (event_category_id, name, community_id)
+values (:'category1ID', 'Conference', :'community1ID');
 
 -- Event Category 2 (belongs to community 2)
-insert into event_category (event_category_id, name, slug, community_id)
-values (:'category2ID', 'Workshop', 'workshop', :'community2ID');
+insert into event_category (event_category_id, name, community_id)
+values (:'category2ID', 'Workshop', :'community2ID');
 
 -- Group Category
 insert into group_category (group_category_id, name, community_id)

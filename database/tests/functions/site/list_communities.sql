@@ -59,10 +59,10 @@ values
     (:'group2ID', true, :'community2ID', false, :'groupCategory2ID', 'Beta Group', 'beta-group');
 
 -- Event Categories
-insert into event_category (event_category_id, community_id, name, slug)
+insert into event_category (event_category_id, community_id, name)
 values
-    (:'eventCategory1ID', :'community1ID', 'Meetups', 'meetups'),
-    (:'eventCategory2ID', :'community2ID', 'Meetups', 'meetups');
+    (:'eventCategory1ID', :'community1ID', 'Meetups'),
+    (:'eventCategory2ID', :'community2ID', 'Meetups');
 
 -- Events (only community1's group has a published event)
 insert into event (

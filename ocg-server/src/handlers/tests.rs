@@ -268,6 +268,7 @@ pub(crate) fn sample_dashboard_user(user_id: Uuid) -> DashboardUser {
 /// Sample event category used in group event tests.
 pub(crate) fn sample_event_category() -> EventCategory {
     EventCategory {
+        events_count: None,
         event_category_id: Uuid::new_v4(),
         name: "Meetup".to_string(),
         slug: "meetup".to_string(),
@@ -409,6 +410,7 @@ pub(crate) fn sample_filters_options() -> crate::templates::site::explore::Filte
 /// Sample group category reused across tests.
 pub(crate) fn sample_group_category() -> GroupCategory {
     GroupCategory {
+        groups_count: Some(0),
         group_category_id: Uuid::new_v4(),
         name: "Meetup".to_string(),
         normalized_name: "meetup".to_string(),
@@ -549,6 +551,7 @@ pub(crate) fn sample_group_minimal(group_id: Uuid) -> GroupMinimal {
 /// Sample group region definition reused across tests.
 pub(crate) fn sample_group_region() -> GroupRegion {
     GroupRegion {
+        groups_count: Some(0),
         name: "North America".to_string(),
         normalized_name: "north-america".to_string(),
         order: Some(1),
