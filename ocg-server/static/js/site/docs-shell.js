@@ -103,17 +103,55 @@ const DOCS_SHELL_OVERRIDES = `
     border-radius: 0;
     box-shadow: none;
     height: 100vh;
-    left: 0;
+    left: -300px;
     top: 0;
   }
 
   .ocg-docs-root .sidebar-toggle {
     display: block;
-    top: 0;
+    background: #fff;
+    border: 1px solid var(--theme-color, #0094ff);
+    border-radius: 9999px;
+    box-shadow: 0 1px 2px rgba(28, 25, 23, 0.08);
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
+    height: 42px;
+    left: 12px;
+    padding: 0;
+    top: auto;
+    width: 42px;
+    z-index: 35;
+  }
+
+  .ocg-docs-root .sidebar-toggle:hover {
+    background: #f5f9ff;
+  }
+
+  .ocg-docs-root .sidebar-toggle-button {
+    align-items: center;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    height: 100%;
+    justify-content: center;
+    opacity: 1;
+  }
+
+  .ocg-docs-root .sidebar-toggle span {
+    background-color: var(--theme-color, #0094ff);
+    margin-bottom: 0;
   }
 
   .ocg-docs-root.close .sidebar-toggle {
-    width: 284px;
+    background: var(--theme-color, #0094ff);
+    border-color: var(--theme-color, #0094ff);
+  }
+
+  .ocg-docs-root.close .sidebar-toggle span {
+    background-color: #fff;
+  }
+
+  .ocg-docs-root.close .content {
+    transform: none;
   }
 }
 `;
