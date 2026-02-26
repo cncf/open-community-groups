@@ -1,10 +1,13 @@
 {% extends "common/base.html" -%}
 
 {% block content -%}
-  <div class="w-full h-full">
+  <div class="w-full overflow-hidden"
+       style="height: calc(100vh - 80px);
+              overscroll-behavior: none">
     <iframe title="Open Community Groups documentation"
             src="/static/docs/#/"
-            class="w-full min-h-[calc(100vh-80px)] border-0 bg-white"
+            class="block w-full h-full border-0 bg-white"
+            style="overscroll-behavior: contain"
             loading="lazy"></iframe>
   </div>
 {% endblock content -%}

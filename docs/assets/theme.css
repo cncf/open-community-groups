@@ -22,6 +22,7 @@ html,
 body {
   background: #fff;
   color: #1c1917;
+  overscroll-behavior-y: none;
 }
 
 body,
@@ -64,7 +65,12 @@ body,
   background: #f5f5f4;
   border-right: 0;
   -ms-overflow-style: none;
+  overscroll-behavior: contain;
   scrollbar-width: none;
+}
+
+.content {
+  overscroll-behavior: contain;
 }
 
 .sidebar::-webkit-scrollbar {
