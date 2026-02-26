@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(3);
+select plan(6);
 
 -- ============================================================================
 -- VARIABLES
@@ -12,7 +12,10 @@ select plan(3);
 \set categoryID '00000000-0000-0000-0000-000000000011'
 \set communityID '00000000-0000-0000-0000-000000000001'
 \set groupID '00000000-0000-0000-0000-000000000021'
-\set userID '00000000-0000-0000-0000-000000000031'
+\set user1ID '00000000-0000-0000-0000-000000000031'
+\set user2ID '00000000-0000-0000-0000-000000000032'
+\set user3ID '00000000-0000-0000-0000-000000000033'
+\set user4ID '00000000-0000-0000-0000-000000000034'
 
 -- ============================================================================
 -- SEED DATA
@@ -32,32 +35,56 @@ values (:'groupID', :'communityID', :'categoryID', 'G1', 'g1');
 
 -- Users
 insert into "user" (user_id, auth_hash, email, name, username, email_verified)
-values (:'userID', gen_random_bytes(32), 'alice@example.com', 'Alice', 'alice', true);
+values
+    (:'user1ID', gen_random_bytes(32), 'alice@example.com', 'Alice', 'alice', true),
+    (:'user2ID', gen_random_bytes(32), 'bob@example.com', 'Bob', 'bob', true),
+    (:'user3ID', gen_random_bytes(32), 'charlie@example.com', 'Charlie', 'charlie', true);
 
 -- Group team membership
 insert into group_team (group_id, user_id, role, accepted)
-values (:'groupID', :'userID', 'organizer', true);
+values
+    (:'groupID', :'user1ID', 'organizer', true),
+    (:'groupID', :'user2ID', 'organizer', true),
+    (:'groupID', :'user3ID', 'organizer', false);
 
 -- ============================================================================
 -- TESTS
 -- ============================================================================
 
--- Should remove membership
+-- Should allow deleting an accepted member when another accepted member remains
 select lives_ok(
+    $$ select delete_group_team_member('00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000032'::uuid) $$,
+    'Should allow deleting an accepted member when another accepted member exists'
+);
+select results_eq(
+    $$ select count(*) from group_team where group_id = '00000000-0000-0000-0000-000000000021'::uuid and user_id = '00000000-0000-0000-0000-000000000032'::uuid $$,
+    $$ values (0::bigint) $$,
+    'Deleted accepted membership should be removed'
+);
+
+-- Should allow deleting a pending invitation when there is one accepted member left
+select lives_ok(
+    $$ select delete_group_team_member('00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000033'::uuid) $$,
+    'Should allow deleting a pending invitation with only one accepted member left'
+);
+
+-- Should block deleting the last accepted member
+select throws_ok(
     $$ select delete_group_team_member('00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000031'::uuid) $$,
-    'Should succeed'
+    'cannot remove the last accepted group team member',
+    'Should block deleting the last accepted member'
 );
 select results_eq(
     $$ select count(*) from group_team where group_id = '00000000-0000-0000-0000-000000000021'::uuid and user_id = '00000000-0000-0000-0000-000000000031'::uuid $$,
-    $$ values (0::bigint) $$,
-    'Membership should be removed'
+    $$ values (1::bigint) $$,
+    'Last accepted membership should remain after blocked delete'
 );
 
 -- Should raise error when deleting non-existing member
 select throws_ok(
-    $$ select delete_group_team_member('00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000031'::uuid) $$,
+    $$ select delete_group_team_member('00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000034'::uuid) $$,
     'user is not a group team member',
-    'Second delete should fail since member no longer exists'
+    'Should raise error when deleting non-existing member'
 );
 
 -- ============================================================================
