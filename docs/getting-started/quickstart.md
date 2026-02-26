@@ -26,8 +26,9 @@ A practical pattern is:
 
 1. Narrow by community first.
 2. Add one or two filters (type, region, category).
-3. Switch views based on your goal: `List` for scanning, `Calendar` for planning, and `Map` for
-   location-based discovery.
+3. Choose the view that fits your goal:
+   - `Events`: `List` for scanning and `Calendar` for planning.
+   - `Groups`: `List` for scanning and `Map` for location-based discovery.
 
 For deeper discovery patterns and participation mechanics, see
 [Public Site Guide](../guides/public-site.md).
@@ -38,7 +39,7 @@ For deeper discovery patterns and participation mechanics, see
 
 ![Explore groups map view](../screenshots/explore-groups-map.png)
 
-## Join a Group you care about
+## Join a Group You Care About
 
 Open a group page and click `Join group`. This turns your account into an active member of that
 specific group, which unlocks member-level communications and creates a cleaner path to event
@@ -46,8 +47,7 @@ participation.
 
 If you later decide to stop following that group, `Leave group` reverses the membership cleanly.
 
-Notification behavior: joining a group sends a welcome message (`group-welcome`) with a link back
-to that group page.
+After joining, OCG sends a welcome message with a link back to the group page.
 
 ![Group page and membership action](../screenshots/group-page.png)
 
@@ -59,8 +59,7 @@ This action records your attendance intent and is the basis for event-day check-
 virtual/hybrid events that have meeting information configured, attendees can also get `Join
 meeting` access at the right time window.
 
-Notification behavior: RSVP sends an attendee welcome message (`event-welcome`) and includes a
-calendar attachment.
+After RSVP, OCG sends a confirmation message with a calendar attachment.
 
 ![Event page and RSVP action](../screenshots/event-page.png)
 

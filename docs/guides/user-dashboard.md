@@ -1,8 +1,8 @@
 # User Dashboard Guide
 
-Use the User Dashboard as your personal operating system inside OCG. It brings profile,
-invitations, proposal authoring, and submission tracking into one place so you can move from
-participant to speaker without context switching.
+Think of the User Dashboard as your home base inside OCG. It brings profile, invitations,
+proposal writing, and submission tracking into one place so moving from participant to speaker
+feels smooth.
 
 For a fast end-to-end walkthrough first, use
 [Quickstart](../getting-started/quickstart.md).
@@ -20,17 +20,17 @@ Path: [`/dashboard/user`](/dashboard/user ':ignore')
 
 ## User Dashboard Structure
 
-The experience is organized around four tabs:
+The dashboard is organized into four areas:
 
 - [`Profile`](/dashboard/user?tab=account ':ignore')
 - [`Invitations`](/dashboard/user?tab=invitations ':ignore')
 - [`Session proposals`](/dashboard/user?tab=session-proposals ':ignore')
 - [`Submissions`](/dashboard/user?tab=submissions ':ignore')
 
-Each tab maps to a specific phase of your lifecycle: identity, access, content creation,
+Each area maps to a specific phase of your lifecycle: identity, access, content creation,
 and review outcomes.
 
-![User profile tab](../screenshots/dashboard-user-profile.png)
+![User profile area](../screenshots/dashboard-user-profile.png)
 
 ## Profile: Public Identity
 
@@ -51,17 +51,13 @@ When a community or group invites you to help run operations, the invitation app
 Accepting an invitation updates your access model and can surface new dashboard options in
 your user menu.
 
-Status model:
+Invitation statuses:
 
 - Community and group team invites: `Invitation sent`, accepted, rejected.
-- Co-speaker invites: pending, accepted, declined.
 - Pending team invites do not grant dashboard access until accepted.
 
-Notification behavior:
-
-- Community invites send `community-team-invitation`.
-- Group invites send `group-team-invitation`.
-- Co-speaker invites send `session-proposal-co-speaker-invitation`.
+When someone invites you to a team, you receive an in-app and email invitation with a direct path
+to accept or decline.
 
 Typical post-accept behavior:
 
@@ -73,7 +69,7 @@ If organizer dashboards still do not appear, see
 [Choose Your Dashboard](../getting-started/choose-dashboard.md) and
 [Troubleshooting](../support/troubleshooting.md).
 
-![Invitations tab](../screenshots/dashboard-user-invitations.png)
+![Invitations area](../screenshots/dashboard-user-invitations.png)
 
 ## Session Proposals: Reusable Talks
 
@@ -128,14 +124,14 @@ Status-related submission locks:
 If another speaker invites you as co-speaker, OCG shows an in-app alert with actions to view,
 accept, or decline. This keeps proposal ownership clear without hidden side effects.
 
-Notification kind used: `session-proposal-co-speaker-invitation`.
+Co-speaker invite statuses appear with your proposal workflow: pending, accepted, or declined.
 
 ## Submissions: Track and Respond
 
 Once you submit a proposal from an event page, `Submissions` becomes your control center for
 review progress.
 
-![Submissions tab](../screenshots/dashboard-user-submissions-list.png)
+![Submissions area](../screenshots/dashboard-user-submissions-list.png)
 
 Common statuses:
 
@@ -151,8 +147,8 @@ Action behavior:
 - `Withdraw` stays available while the submission is active and not finalized.
 - Withdraw is blocked for finalized or linked outcomes.
 
-When organizers change your submission review state, OCG sends `cfs-submission-updated` with the
-new status and any action-required message.
+When organizers change your submission review state, OCG sends an update message with the new
+status and any action you need to take.
 
 To understand where submission decisions are made, see
 [Event Operations](event-operations.md).
@@ -162,5 +158,5 @@ To understand where submission decisions are made, see
 1. Keep profile current (especially bio, timezone, and links).
 2. Clear invitations quickly so role-based access stays accurate.
 3. Build reusable proposals before deadlines.
-4. Submit only to events where CFS is open.
+4. Submit to events where CFS is open.
 5. Watch `Submissions` and respond fast when information is requested.

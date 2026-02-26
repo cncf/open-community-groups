@@ -1,6 +1,6 @@
 # Troubleshooting
 
-Use this page for fast diagnosis by symptom.
+This page helps you diagnose issues quickly by symptom.
 
 ## I Cannot Access a Dashboard
 
@@ -46,7 +46,8 @@ In modal:
 Submission actions depend on status:
 
 - `Resubmit` is available for `Information requested`.
-- `Withdraw` is disabled for finalized outcomes and approved/linked records.
+- `Withdraw` is available only while the submission is still active in review.
+- After a final outcome (such as approved/linked), withdraw is no longer available.
 
 Confirm current status in [`User Dashboard -> Submissions`](/dashboard/user?tab=submissions ':ignore').
 
@@ -101,7 +102,7 @@ Also verify required fields:
 
 ### Is OCG Mobile Friendly?
 
-Public pages are usable on mobile. Dashboard workflows are best on desktop.
+Public pages are usable on mobile. Dashboards are currently desktop-only.
 
 ### Where Do I Submit a Speaker Proposal?
 
@@ -119,7 +120,8 @@ Likely causes:
 
 ### Can I Undo a Submission?
 
-You can withdraw only when allowed by current status. Finalized outcomes disable withdraw.
+You can withdraw while review is still active. After a final decision, withdraw is no longer
+available.
 
 ### Can I Check In Without RSVP?
 

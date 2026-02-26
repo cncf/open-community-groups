@@ -40,13 +40,16 @@ If you prefer a faster task-oriented run-through first, use
 For events, begin broad and narrow in this order: community, type, category, and date range.
 Keeping this order avoids over-filtering too early.
 
-Three view modes are available for both events and groups:
+Explore gives you multiple view styles, and the available options depend on what you are browsing:
 
-- `List` is the default. Use it for scanning titles, dates, and descriptions linearly.
-- `Calendar` shows events on a time grid. It is the fastest way to evaluate conflicts,
-  clusters, and quiet periods.
-- `Map` plots items geographically with interactive popovers. Use it when location matters
-  — for example, finding nearby groups or in-person events in a specific area.
+- `Events`: `List` and `Calendar`.
+- `Groups`: `List` and `Map`.
+
+Quick guide:
+
+- `List` helps when you want to scan titles, dates, and descriptions quickly.
+- `Calendar` helps when you are planning around time conflicts and busy periods.
+- `Map` helps when place matters, like finding nearby groups.
 
 ![Explore events list](../screenshots/explore-events-list.png)
 
@@ -62,11 +65,11 @@ long-term working community.
 On the group page, `Join group` adds you as a member. If you later step back, `Leave group`
 reverses that state.
 
-Behavior details:
+Helpful details:
 
 - Logged-out users are prompted to sign in with Linux Foundation SSO.
 - Membership state is loaded dynamically after page load.
-- Successful join sends a welcome notification (`group-welcome`).
+- After you join, OCG sends a welcome message with a link back to the group page.
 
 ![Group page and membership controls](../screenshots/group-page.png)
 
@@ -78,12 +81,12 @@ and speaker-program status.
 Click `Attend event` to RSVP. If the event is virtual/hybrid and meeting access is configured,
 attendees can see `Join meeting` when the event is live.
 
-Behavior details:
+Helpful details:
 
 - Attendance state is loaded dynamically after page load.
 - RSVP actions are available only before the event start time.
 - Canceling RSVP is immediate through `Cancel attendance`.
-- Successful RSVP sends an attendee welcome notification (`event-welcome`) with a calendar file.
+- After RSVP, OCG sends a confirmation message with a calendar file attached.
 
 ![Event page and attendance actions](../screenshots/event-page.png)
 

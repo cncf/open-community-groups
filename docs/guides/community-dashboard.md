@@ -20,8 +20,8 @@ Path: [`/dashboard/community`](/dashboard/community ':ignore')
 
 ## What This Dashboard Owns
 
-Think of the community scope as the control plane above groups. You are not running one event
-here; you are shaping how the whole community is represented and governed.
+Think of the community scope as the layer above groups. You are not running one event here; you
+are shaping how the whole community is represented and governed.
 
 Main areas:
 
@@ -36,13 +36,13 @@ Main areas:
 
 ## Access and Context
 
-To use this dashboard successfully, three conditions must be true:
+You are ready to work in this dashboard when:
 
 1. You are logged in.
 2. Your account is on the community team.
 3. A community is selected in dashboard context.
 
-If context is missing, organizer actions can pause until a community is selected.
+If no community is selected yet, some actions stay unavailable until you choose one.
 
 Invitation acceptance and access visibility are managed in
 [User Dashboard Guide](user-dashboard.md).
@@ -57,7 +57,7 @@ Key sections include:
 - General Settings.
 - Branding.
 - Social Links.
-- Advertisement.
+- Advertisement (coming soon on the public site; not displayed yet).
 - Additional Content.
 
 Common use cases:
@@ -68,22 +68,22 @@ Common use cases:
 
 Field requirements, character limits, and list limits are shown inline in the settings UI.
 
-![Community settings tab](../screenshots/dashboard-community-settings.png)
+![Community settings area](../screenshots/dashboard-community-settings.png)
 
 ## Team: Community Access
 
 Use `Team` to invite or remove community admins.
 
-The important guardrail is intentional: OCG blocks removal of the final accepted team member, so
-a community is never left without accountable ownership.
+OCG blocks removal of the final accepted team member, so a community is never left without an
+accountable owner.
 
 Pending states are visible (`Invitation sent`) so you can tell the difference between invited and
 fully active collaborators.
 
-Notification behavior: adding a team member sends `community-team-invitation` with a direct link
-to [`User Dashboard -> Invitations`](/dashboard/user?tab=invitations ':ignore').
+When you add a team member, OCG sends an invitation with a direct link to
+[`User Dashboard -> Invitations`](/dashboard/user?tab=invitations ':ignore').
 
-![Community team tab](../screenshots/dashboard-community-team.png)
+![Community team area](../screenshots/dashboard-community-team.png)
 
 ## Analytics: Momentum
 
@@ -94,8 +94,8 @@ Community analytics shows totals and trends for:
 - Events.
 - Attendees.
 
-Each metric is available as total, running total, and monthly values. Use this to monitor
-trajectory rather than single-point spikes.
+Each metric is available as total, running total, and monthly values. This helps you spot
+steady progress and notice unusual jumps with better context.
 
 Analytics data is cached and may lag for a few minutes.
 
@@ -120,10 +120,10 @@ Activity states:
 - `Active`: group is available for normal public participation.
 - `Inactive`: group is paused and can be reactivated later.
 
-![Community groups tab](../screenshots/dashboard-community-groups.png)
+![Community groups area](../screenshots/dashboard-community-groups.png)
 
-When creating a new group, the `Add Group` flow centralizes the base profile fields first, then
-lets you enrich branding, location, links, and optional content before launch.
+When creating a new group, `Add Group` starts with the basics first. Then you can add branding,
+location, links, and optional content before launch.
 
 Group-branding inheritance from this flow:
 

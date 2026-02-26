@@ -42,8 +42,8 @@ To operate here, you need:
 2. Group-team membership.
 3. Selected community and group context.
 
-If context is missing, organizer actions can pause until the correct community and group are
-selected.
+If the right community or group is not selected yet, some actions stay unavailable until you pick
+them.
 
 ## Settings: Group Identity
 
@@ -64,25 +64,25 @@ Brand inheritance model in this scope:
 
 Field requirements and limits are shown inline in the settings form while editing.
 
-![Group settings tab](../screenshots/dashboard-group-settings.png)
+![Group settings area](../screenshots/dashboard-group-settings.png)
 
 ## Team: Organizer Capacity
 
 `Team` supports invitation-driven organizer management with role updates for existing members.
 
-Guardrail behavior:
+Important protection:
 
 - The last accepted team member cannot be removed.
 
 This protects continuity for critical event operations and approvals.
 
-Notification behavior: adding a group team member sends `group-team-invitation` with a link to
+When you add a group team member, OCG sends an invitation with a link to
 [`User Dashboard -> Invitations`](/dashboard/user?tab=invitations ':ignore').
 
 Invitation acceptance and dashboard visibility details are covered in
 [User Dashboard Guide](user-dashboard.md).
 
-![Group team tab](../screenshots/dashboard-group-team.png)
+![Group team area](../screenshots/dashboard-group-team.png)
 
 ## Analytics: Delivery Health
 
@@ -92,8 +92,8 @@ Group analytics focuses on operational output:
 - Events.
 - Attendees.
 
-Each metric includes running totals and monthly trends. Use it to spot whether growth is
-generative (sustained) or episodic (spike-only).
+Each metric includes running totals and monthly trends, so it is easier to tell whether growth is
+steady over time or mainly tied to isolated spikes.
 
 Analytics values can lag briefly due to caching.
 
@@ -104,10 +104,9 @@ Analytics values can lag briefly due to caching.
 - Browse member list and join dates.
 - Send plain-text email to all group members.
 
-`Send email` uses notification kind `group-custom` and targets both group members and group team
-members.
+`Send email` reaches both group members and group team members.
 
-![Group members tab](../screenshots/dashboard-group-members.png)
+![Group members area](../screenshots/dashboard-group-members.png)
 
 ## Sponsors: Reusable Profiles
 
@@ -119,7 +118,7 @@ Typical flow:
 2. Attach sponsors in event editing (`Hosts & Speakers` section).
 3. Update sponsor details once to keep future events consistent.
 
-![Group sponsors tab](../screenshots/dashboard-group-sponsors.png)
+![Group sponsors area](../screenshots/dashboard-group-sponsors.png)
 
 ## Events: Operations Hub
 
@@ -131,7 +130,7 @@ List classification is based on event start time:
 - `Upcoming events` includes items whose start time has not yet passed.
 - `Past events` includes items whose start time has already passed.
 
-![Group events tab](../screenshots/dashboard-group-events.png)
+![Group events area](../screenshots/dashboard-group-events.png)
 
 Starting from [`Add Event`](/dashboard/group/events/add ':ignore') gives organizers a structured editor with
 tabbed sections that map directly to delivery needs (details, schedule, roles, sessions, CFS,

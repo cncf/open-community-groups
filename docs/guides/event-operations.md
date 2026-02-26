@@ -79,7 +79,7 @@ The editor is organized so you can move from identity, to schedule, to speakers,
 
 ### Details
 
-Use this tab to define attendee-facing identity and enrollment posture: name, event type,
+In this tab, you define attendee-facing identity and enrollment posture: name, event type,
 category, description, branding assets, capacity, registration toggle, tags, and optional links.
 
 Publish readiness checks in this tab:
@@ -106,14 +106,14 @@ This tab controls delivery constraints:
 Timezone should be set first, then date/time. That avoids accidental scheduling drift and keeps
 CFS windows aligned with the intended audience clock.
 
-Notification behavior: when `Send Event Reminder` is enabled, OCG enqueues `event-reminder`
-messages about 24 hours before start time.
+When `Send Event Reminder` is enabled, OCG sends reminder messages about 24 hours before start
+time.
 
 ### Hosts and Speakers
 
-Use this tab for event-level people and sponsor attribution:
+In this tab, you manage event-level people and sponsor attribution:
 
-- Add hosts from organizer users.
+- Add hosts from any user account on the site.
 - Add visible speakers/presenters.
 - Attach event sponsors from reusable sponsor records.
 
@@ -127,7 +127,8 @@ Sessions turns approved content into an actual agenda:
 - Keep session times inside event start/end.
 - Link approved CFS submissions into the schedule.
 
-Use this tab late in preparation, after review decisions stabilize.
+This tab is usually most useful once review outcomes are clearer and your schedule is taking
+final shape.
 
 ### CFS
 
@@ -168,7 +169,7 @@ The submissions list displays the average rating and total rating count for each
 Use the sort options (by stars or rating count) to surface the strongest or most-reviewed
 submissions quickly.
 
-When a reviewer update requires notifying the speaker, OCG sends `cfs-submission-updated`.
+When a reviewer update requires notifying the speaker, OCG sends a submission update message.
 
 ### Attendees
 
@@ -182,7 +183,7 @@ This tab supports delivery-day execution:
 Manual check-in bypasses attendee self-check-in timing windows, but the person must already be
 registered as an attendee and the event must still be published or active.
 
-`Send email` in this tab uses notification kind `event-custom`.
+`Send email` in this tab sends operational updates to attendees.
 
 ## CFS Workflow (End to End)
 
@@ -202,7 +203,7 @@ CFS spans organizer setup, speaker submission, and review loop. Treat it as one 
 
 ![User submissions list](../screenshots/dashboard-user-submissions-list.png)
 
-Submission eligibility guardrails:
+To submit, these requirements must be met:
 
 - Event must be published.
 - CFS must be enabled.
@@ -217,8 +218,7 @@ Response loop behavior:
 - `Resubmit` is used after requested changes are addressed.
 - `Withdrawn` is speaker-initiated and typically ends active review.
 
-Every review-side change that should reach the speaker is delivered through
-`cfs-submission-updated`.
+Every review-side change that should reach the speaker is sent as a submission update message.
 
 For submitter-side perspective, see [User Dashboard Guide](user-dashboard.md).
 
@@ -266,15 +266,14 @@ These actions serve different intents:
 - `Cancel`: mark event as not proceeding.
 - `Delete`: permanently remove from normal operations.
 
-Notification mapping:
+Message behavior:
 
-- `Publish` on a future unpublished event can send:
-  - `event-published` to group members/team members.
-  - `speaker-welcome` to listed speakers.
-- `Cancel` on a future published event sends `event-canceled` to attendees and speakers.
-- Rescheduling a future published event can send `event-rescheduled` to attendees and speakers
-  when the start or end time changes by at least 15 minutes.
-- `Unpublish` and `Delete` do not have attendee broadcast notifications in this flow.
+- `Publish` on a future unpublished event can notify group members/team members and listed
+  speakers.
+- `Cancel` on a future published event notifies attendees and speakers.
+- Rescheduling a future published event can notify attendees and speakers when the start or end
+  time changes by at least 15 minutes.
+- `Unpublish` and `Delete` do not send broad attendee updates in this flow.
 
 Automatic-meeting lifecycle in these actions:
 

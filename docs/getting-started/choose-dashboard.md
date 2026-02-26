@@ -35,7 +35,8 @@ The two organizer dashboards are also context-driven:
 - [`Community Dashboard`](/dashboard/community ':ignore') requires a selected community.
 - [`Group Dashboard`](/dashboard/group ':ignore') requires both a selected community and a selected group.
 
-Without the right context, organizer pages can block actions until selection is complete.
+If the right context is not selected yet, some organizer actions stay unavailable until you choose
+the needed community or group.
 
 ## If a Dashboard Is Missing
 
