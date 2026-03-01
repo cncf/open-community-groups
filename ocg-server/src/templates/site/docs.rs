@@ -8,7 +8,7 @@ use crate::{
     types::site::SiteSettings,
 };
 
-/// Template for rendering the global site docs page.
+/// Template for rendering the documentation page.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "site/docs/page.html")]
 pub struct Page {

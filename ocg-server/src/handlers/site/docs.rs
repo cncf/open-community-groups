@@ -15,7 +15,9 @@ use crate::{
     templates::{PageId, auth::User, site::docs},
 };
 
-/// Handler that renders the global site docs page.
+// Pages handlers.
+
+/// Handler that renders the documentation page.
 #[instrument(skip_all, err)]
 pub(crate) async fn page(State(db): State<DynDB>, uri: Uri) -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
@@ -106,6 +108,6 @@ mod tests {
             parts.headers.get(CACHE_CONTROL).unwrap(),
             &HeaderValue::from_static("max-age=0")
         );
-        assert!(String::from_utf8_lossy(&bytes).contains("/static/docs/#/"));
+        assert!(String::from_utf8_lossy(&bytes).contains("/static/docs/index.html#/"));
     }
 }
