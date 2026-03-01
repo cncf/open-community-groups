@@ -57,6 +57,10 @@ You can manage:
 - Social links.
 - Optional tags, photo gallery, and extra links.
 
+Category and region options in this form come from the defined community's
+[`Group Categories`](/dashboard/community?tab=group-categories ':ignore') and
+[`Regions`](/dashboard/community?tab=regions ':ignore') tabs.
+
 Brand inheritance model in this scope:
 
 - If a group logo is not set, OCG falls back to the community logo.

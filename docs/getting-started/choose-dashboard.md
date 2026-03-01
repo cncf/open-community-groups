@@ -12,7 +12,7 @@ access model, and expected outcomes in one view:
 | If you need to... | Use this dashboard | Who gets it | Core outcomes |
 | --- | --- | --- | --- |
 | Manage your profile, invitations, proposals, and submissions | [`User Dashboard`](/dashboard/user ':ignore') | Any logged-in user | Keep profile current, accept invitations, submit to CFS |
-| Manage community-wide identity, admins, analytics, and groups | [`Community Dashboard`](/dashboard/community ':ignore') | Community team members | Operate the community, team, branding, and group lifecycle |
+| Manage community-wide identity, admins, taxonomy, analytics, and groups | [`Community Dashboard`](/dashboard/community ':ignore') | Community team members | Operate team access, branding, regions, categories, analytics, and group lifecycle |
 | Run events, organizers, members, sponsors, and day-to-day operations | [`Group Dashboard`](/dashboard/group ':ignore') | Group team members | Deliver events, manage members, coordinate organizers and sponsors |
 
 ![Dashboard options from user menu](../screenshots/navigation-all-dashboards.png)
@@ -67,8 +67,10 @@ Continue with [User Dashboard Guide](../guides/user-dashboard.md) and
 ### Community lead path
 
 Start in [`Community Dashboard`](/dashboard/community?tab=settings ':ignore') to verify settings and team
-membership first, then move to [`Groups`](/dashboard/community?tab=groups ':ignore') to ensure structure and
-ownership are correct before scaling activity.
+membership first, then review [`Regions`](/dashboard/community?tab=regions ':ignore'),
+[`Group Categories`](/dashboard/community?tab=group-categories ':ignore'), and
+[`Event Categories`](/dashboard/community?tab=event-categories ':ignore'). Move to
+[`Groups`](/dashboard/community?tab=groups ':ignore') after taxonomy and ownership structure are in place.
 
 Continue with [Community Dashboard Guide](../guides/community-dashboard.md).
 

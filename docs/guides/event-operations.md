@@ -85,6 +85,9 @@ The editor is organized so you can move from identity, to schedule, to speakers,
 In this tab, you define attendee-facing identity and enrollment posture: name, event type,
 category, description, branding assets, capacity, registration toggle, tags, and optional links.
 
+Event category options come from the defined community's
+[`Event Categories`](/dashboard/community?tab=event-categories ':ignore') tab.
+
 Publish readiness checks in this tab:
 
 - Name, type, category, and description are complete and clear.

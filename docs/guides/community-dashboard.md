@@ -1,7 +1,7 @@
 # Community Dashboard Guide
 
 Use the Community Dashboard to manage strategy-level community operations: identity, governance,
-team access, analytics, and group lifecycle.
+taxonomy, team access, analytics, and group lifecycle.
 
 If you are deciding workspace scope first, read
 [Choose Your Dashboard](../getting-started/choose-dashboard.md).
@@ -14,6 +14,9 @@ Path: [`/dashboard/community`](/dashboard/community ':ignore')
 - [Access and Context](#access-and-context)
 - [Settings: Community Identity](#settings-community-identity)
 - [Team: Community Access](#team-community-access)
+- [Regions: Geographic Scope](#regions-geographic-scope)
+- [Group Categories: Group Taxonomy](#group-categories-group-taxonomy)
+- [Event Categories: Event Taxonomy](#event-categories-event-taxonomy)
 - [Analytics: Momentum](#analytics-momentum)
 - [Groups: Portfolio](#groups-portfolio)
 - [Recommended Cadence](#recommended-cadence)
@@ -28,6 +31,9 @@ Main areas:
 - [`Settings`](/dashboard/community?tab=settings ':ignore'): community identity, branding, social presence,
   and long-form content.
 - [`Team`](/dashboard/community?tab=team ':ignore'): community-level admins and invitation flow.
+- [`Regions`](/dashboard/community?tab=regions ':ignore'): community geography model for group classification.
+- [`Group Categories`](/dashboard/community?tab=group-categories ':ignore'): reusable taxonomy for groups.
+- [`Event Categories`](/dashboard/community?tab=event-categories ':ignore'): reusable taxonomy for events.
 - [`Analytics`](/dashboard/community?tab=analytics ':ignore'): community growth trends and volume metrics.
 - [`Groups`](/dashboard/community?tab=groups ':ignore'): group creation, maintenance, activation state,
   and lifecycle transitions.
@@ -88,6 +94,69 @@ When you add a team member, OCG sends an invitation with a direct link to
 
 ![Community team area](../screenshots/dashboard-community-team.png)
 
+## Regions: Geographic Scope
+
+`Regions` is the community-level geography list used by groups.
+
+You can:
+
+- Add regions.
+- Rename existing regions.
+- Delete retired regions.
+
+Operational rules:
+
+- Region names must be unique within the selected community.
+- Deletion is blocked when one or more groups still use that region.
+- The table shows a `Groups` count to make dependencies visible before cleanup.
+
+Where this appears downstream:
+
+- Group setup/edit forms select region values from this list.
+- Public discovery and filtering can use region as a search dimension.
+
+## Group Categories: Group Taxonomy
+
+`Group Categories` defines reusable category values for all groups in the selected community.
+
+You can:
+
+- Add group categories.
+- Rename existing categories.
+- Delete unused categories.
+
+Operational rules:
+
+- Group category names must be unique within the selected community.
+- Deletion is blocked when one or more groups still use that category.
+- The table shows a `Groups` count per category for dependency checks.
+
+Where this appears downstream:
+
+- Group setup/edit forms select category values from this list.
+- Public discovery and filtering can use group category as a search dimension.
+
+## Event Categories: Event Taxonomy
+
+`Event Categories` defines reusable category values for events across the selected community.
+
+You can:
+
+- Add event categories.
+- Rename existing categories.
+- Delete unused categories.
+
+Operational rules:
+
+- Event category names must be unique within the selected community.
+- Deletion is blocked when one or more events still use that category.
+- The table shows an `Events` count per category for dependency checks.
+
+Where this appears downstream:
+
+- Event editor (`Details` tab) uses this list for event categorization.
+- Public event discovery and filtering can use event category.
+
 ## Analytics: Momentum
 
 Community analytics shows totals and trends for:
@@ -106,6 +175,8 @@ Analytics data is cached and may lag for a few minutes.
 
 `Groups` is where community leads create and maintain the collection of groups under the
 community umbrella.
+
+Group records rely on taxonomy values from community-level `Regions` and `Group Categories`.
 
 You can:
 
@@ -150,8 +221,11 @@ When a group is inactive, its public-view shortcut is disabled in the groups tab
 1. Review [`Settings`](/dashboard/community?tab=settings ':ignore') monthly for brand accuracy.
 2. Keep [`Team`](/dashboard/community?tab=team ':ignore') membership current to avoid operational
    bottlenecks.
-3. Check [`Analytics`](/dashboard/community?tab=analytics ':ignore') on a regular cadence for trend shifts.
-4. Use [`Groups`](/dashboard/community?tab=groups ':ignore') to retire stale structures and support active
+3. Review [`Regions`](/dashboard/community?tab=regions ':ignore') so geography labels stay clean and useful.
+4. Review [`Group Categories`](/dashboard/community?tab=group-categories ':ignore') to avoid stale taxonomy.
+5. Review [`Event Categories`](/dashboard/community?tab=event-categories ':ignore') as event programs evolve.
+6. Check [`Analytics`](/dashboard/community?tab=analytics ':ignore') on a regular cadence for trend shifts.
+7. Use [`Groups`](/dashboard/community?tab=groups ':ignore') to retire stale structures and support active
    ones.
 
 For event lifecycle operations after handoff to group teams, see

@@ -61,6 +61,10 @@
 - GitHub and Linux Foundation social login options
 - Invitation inbox to accept/reject team invitations
 
+## Documentation
+
+Start with the [documentation](./docs/index.md) for quickstart guides and dashboard workflows.
+
 ## Contributing
 
 Please see [CONTRIBUTING.md](./CONTRIBUTING.md) for more details.

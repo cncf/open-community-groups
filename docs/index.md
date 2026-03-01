@@ -33,7 +33,8 @@ reusable session proposals, and submission outcomes.
 ### Community Dashboard
 
 The [community workspace](/dashboard/community ':ignore') is strategic and governance-oriented. Use it to
-manage community identity, team access, analytics, and group lifecycle.
+manage community identity, team access, regions, group/event categories, analytics, and group
+lifecycle.
 
 ### Group Dashboard
 
