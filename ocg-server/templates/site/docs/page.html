@@ -1,9 +1,14 @@
 {% extends "common/base.html" -%}
+{% import "macros/ui.html" as ui -%}
 
 {% block content -%}
   <section class="w-full ocg-docs-root relative overflow-hidden">
     <meta name="ocg-docs" content="/static/docs/index.html#/">
-    <div id="ocg-docs-app">Loading Open Community Groups documentation...</div>
+    <div id="ocg-docs-app"
+         class="flex min-h-[50vh] items-center justify-center">
+      {{ ui::main_loading() -}}
+      <span class="sr-only">Loading Open Community Groups documentation...</span>
+    </div>
   </section>
 {% endblock content -%}
 
