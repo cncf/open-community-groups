@@ -96,6 +96,7 @@ const DOCS_SHELL_OVERRIDES = `
 
 @media screen and (max-width: 768px) {
   .ocg-docs-root .content {
+    background: #f5f5f4;
     min-height: calc(100vh - var(--ocg-docs-top-offset));
   }
 
