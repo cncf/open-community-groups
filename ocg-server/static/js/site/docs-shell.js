@@ -2,6 +2,7 @@ const DOCS_ROOT_SELECTOR = ".ocg-docs-root";
 const DOCS_APP_SELECTOR = "#ocg-docs-app";
 const DOCS_SCOPE_SELECTOR = ".ocg-docs-root";
 const DOCSIFY_BODY_CLASSES = ["close", "ready", "sticky"];
+const DOCS_ANCHOR_SCROLL_PADDING_PX = 30;
 
 const STYLE_URLS = {
   docsify: "/static/vendor/css/docsify-vue.v4.13.1.min.css",
@@ -759,7 +760,7 @@ const jumpToElement = (element) => {
   const top = element.getBoundingClientRect().top + window.pageYOffset;
   window.scrollTo({
     behavior: "auto",
-    top,
+    top: Math.max(0, top - DOCS_ANCHOR_SCROLL_PADDING_PX),
   });
 };
 
