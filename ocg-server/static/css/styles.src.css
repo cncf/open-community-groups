@@ -436,6 +436,7 @@ input:placeholder-shown {
 .icon-close { --icon-url: url('/static/images/icons/close.svg'); }
 .icon-copy { --icon-url: url('/static/images/icons/copy.svg'); }
 .icon-date { --icon-url: url('/static/images/icons/date.svg'); }
+.icon-docs { --icon-url: url('/static/images/icons/docs.svg'); }
 .icon-email { --icon-url: url('/static/images/icons/email.svg'); }
 .icon-event { --icon-url: url('/static/images/icons/event.svg'); }
 .icon-events { --icon-url: url('/static/images/icons/events.svg'); }
