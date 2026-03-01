@@ -37,7 +37,7 @@ help you separate work that needs intervention now from historical cleanup.
 
 From each row, you can:
 
-- Create with [Add event](/dashboard/group/events/add ':ignore').
+- Create with [Add event](/dashboard/group?tab=events ':ignore').
 - Open edit mode.
 - Open the public event page (when available).
 - Publish/unpublish.
