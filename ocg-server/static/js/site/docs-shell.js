@@ -98,15 +98,19 @@ const DOCS_SHELL_OVERRIDES = `
   .ocg-docs-root .content {
     background: #f5f5f4;
     min-height: calc(100vh - var(--ocg-docs-top-offset));
+    position: relative;
+    z-index: 10;
   }
 
   .ocg-docs-root .sidebar {
+    background: #f5f5f4;
     border: 0;
     border-radius: 0;
-    box-shadow: none;
+    box-shadow: 0 8px 24px rgba(28, 25, 23, 0.18);
     height: 100vh;
     left: -300px;
     top: 0;
+    z-index: 40;
   }
 
   .ocg-docs-root .sidebar-toggle {
@@ -121,7 +125,7 @@ const DOCS_SHELL_OVERRIDES = `
     padding: 0;
     top: auto;
     width: 42px;
-    z-index: 35;
+    z-index: 45;
   }
 
   .ocg-docs-root .sidebar-toggle:hover {
