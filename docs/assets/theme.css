@@ -64,6 +64,7 @@ body,
   background: transparent;
   border-right: 0;
   -ms-overflow-style: none;
+  padding-top: 30px;
   scrollbar-width: none;
 }
 
@@ -141,13 +142,16 @@ body,
   margin: 1rem 0 0.45rem;
 }
 
+.sidebar-nav > ul > li > a,
 .sidebar-nav > ul > li > p > a {
+  display: block;
   font-size: 0.94rem;
   color: #1c1917;
   font-weight: 700;
   margin-bottom: 1rem;
 }
 
+.sidebar-nav > ul > li > a:hover,
 .sidebar-nav > ul > li > p > a:hover {
   text-decoration: underline;
 }
@@ -189,6 +193,11 @@ body,
 
 .sidebar .app-sub-sidebar {
   margin-top: 3px;
+}
+
+/* Keep in-page section active links visible even if Docsify toggles collapse */
+.active.collapse {
+  visibility: visible !important;
 }
 
 .sidebar .app-sub-sidebar li {

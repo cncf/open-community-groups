@@ -22,7 +22,7 @@ const STYLE_IDS = {
 const DOCS_SHELL_OVERRIDES = `
 .ocg-docs-root {
   --ocg-docs-top-offset: 0px;
-  --ocg-docs-sidebar-top-margin: 20px;
+  --ocg-docs-sidebar-top-margin: 0px;
   --ocg-docs-sidebar-bottom-margin: 20px;
   --ocg-docs-sidebar-inline-margin: 16px;
   background: transparent;
