@@ -2,7 +2,7 @@
 {% import "macros/badges.html" as badges -%}
 {% import "macros/pagination.html" as pagination -%}
 
-{{ dashboard::form_title(title = "Session proposals",
+{{ dashboard::page_title(title = "Session proposals", docs_href = "/docs#/guides/user-dashboard?id=session-proposals-reusable-talks",
 description = "Create reusable session proposals to submit to events.") -}}
 
 {% if !pending_co_speaker_invitations.is_empty() -%}

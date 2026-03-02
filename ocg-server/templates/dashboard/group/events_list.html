@@ -3,32 +3,30 @@
 {% import "macros/pagination.html" as pagination -%}
 
 {# Events list header with title -#}
-<div class="flex justify-between mb-10">
-  {{ dashboard::form_title(title = "Events") -}}
+{{ dashboard::page_title(title = "Events", docs_href = "/docs#/guides/event-operations?id=events-list-work-queue") -}}
 
-  {# Add event button -#}
-  <div>
-    <button id="add-event-button"
-            hx-get="/dashboard/group/events/add"
-            hx-target="#dashboard-content"
-            hx-indicator="#dashboard-spinner"
-            class="btn-primary">Add Event</button>
-  </div>
-  {# End add event button -#}
-
-  <script type="module">
-    const addEventButton = document.getElementById('add-event-button');
-    if (addEventButton) {
-      addEventButton.addEventListener('htmx:afterRequest', () => {
-        try {
-          history.pushState({}, "Events list", '/dashboard/group?tab=events');
-        } catch (error) {
-          console.warn('Failed to update browser history:', error);
-        }
-      });
-    }
-  </script>
+{# Add event button -#}
+<div class="mb-10 mt-5 flex justify-end">
+  <button id="add-event-button"
+          hx-get="/dashboard/group/events/add"
+          hx-target="#dashboard-content"
+          hx-indicator="#dashboard-spinner"
+          class="btn-primary">Add Event</button>
 </div>
+{# End add event button -#}
+
+<script type="module">
+  const addEventButton = document.getElementById('add-event-button');
+  if (addEventButton) {
+    addEventButton.addEventListener('htmx:afterRequest', () => {
+      try {
+        history.pushState({}, "Events list", '/dashboard/group?tab=events');
+      } catch (error) {
+        console.warn('Failed to update browser history:', error);
+      }
+    });
+  }
+</script>
 
 {# Events Tabs Navigation -#}
 <div class="my-10">
