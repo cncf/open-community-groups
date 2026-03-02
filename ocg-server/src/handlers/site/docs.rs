@@ -106,7 +106,7 @@ mod tests {
         );
         assert_eq!(
             parts.headers.get(CACHE_CONTROL).unwrap(),
-            &HeaderValue::from_static("max-age=0")
+            &HeaderValue::from_static("max-age=900")
         );
         assert!(String::from_utf8_lossy(&bytes).contains("/static/docs/index.html#/"));
     }

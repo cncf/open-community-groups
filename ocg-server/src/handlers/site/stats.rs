@@ -111,7 +111,7 @@ mod tests {
         );
         assert_eq!(
             parts.headers.get(CACHE_CONTROL).unwrap(),
-            &HeaderValue::from_static("max-age=0")
+            &HeaderValue::from_static("max-age=21600")
         );
         assert!(!bytes.is_empty());
     }

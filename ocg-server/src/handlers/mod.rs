@@ -39,9 +39,9 @@ pub(crate) fn prepare_headers(cache_duration: Duration, extra_headers: &[(&str, 
     let mut headers = HeaderMap::new();
 
     // Set cache control header
-    #[cfg(debug_assertions)]
+    #[cfg(all(debug_assertions, not(test)))]
     let duration_secs = 0; // Disable caching in debug mode
-    #[cfg(not(debug_assertions))]
+    #[cfg(any(not(debug_assertions), test))]
     let duration_secs = cache_duration.num_seconds();
     headers.insert(
         CACHE_CONTROL,
