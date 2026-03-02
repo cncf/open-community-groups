@@ -1,6 +1,7 @@
 const DOCS_ROOT_SELECTOR = ".ocg-docs-root";
 const DOCS_APP_SELECTOR = "#ocg-docs-app";
 const DOCS_SCOPE_SELECTOR = ".ocg-docs-root";
+const DOCS_SIDEBAR_SELECTOR = ".sidebar-nav";
 const DOCSIFY_BODY_CLASSES = ["close", "ready", "sticky"];
 const DOCS_ANCHOR_SCROLL_PADDING_PX = 30;
 
@@ -202,7 +203,6 @@ let activeDocsRoot = null;
 let cleanupCurrentMount = null;
 let mountRunId = 0;
 let lifecycleListenersBound = false;
-const rewriteTimeoutIds = new Set();
 const DOCS_LOAD_ERROR_MESSAGE = "We could not load the documentation. Please refresh and try again.";
 
 /**
@@ -887,24 +887,6 @@ const handleSamePageAnchorClick = (event) => {
 };
 
 /**
- * Rewrites app links after docs render.
- * @param {HTMLElement} docsRoot Docs root container.
- */
-const rewriteAfterRender = (docsRoot) => {
-  if (!docsRoot || !docsRoot.isConnected) {
-    return;
-  }
-
-  [0, 80].forEach((delay) => {
-    const timeoutId = window.setTimeout(() => {
-      rewriteTimeoutIds.delete(timeoutId);
-      rewriteAppLinks(docsRoot);
-    }, delay);
-    rewriteTimeoutIds.add(timeoutId);
-  });
-};
-
-/**
  * Initializes docs routing hash when visiting /docs without one.
  */
 const ensureInitialDocsHash = () => {
@@ -929,14 +911,6 @@ const renderDocsLoadError = (docsApp) => {
 };
 
 /**
- * Clears scheduled link-rewrite timers.
- */
-const clearRewriteTimeouts = () => {
-  rewriteTimeoutIds.forEach((timeoutId) => window.clearTimeout(timeoutId));
-  rewriteTimeoutIds.clear();
-};
-
-/**
  * Checks whether a mount run is still current.
  * @param {number} runId Mount run ID.
  * @param {HTMLElement} docsRoot Docs root container.
@@ -946,11 +920,28 @@ const isCurrentMount = (runId, docsRoot) =>
   runId === mountRunId && activeDocsRoot === docsRoot && docsRoot.isConnected;
 
 /**
+ * Builds docsify plugins for docs shell behavior.
+ * @param {number} runId Mount run ID.
+ * @param {HTMLElement} docsRoot Docs root container.
+ * @returns {Function[]} Docsify plugins.
+ */
+const createDocsifyPlugins = (runId, docsRoot) => [
+  (hook) => {
+    hook.doneEach(() => {
+      if (!isCurrentMount(runId, docsRoot)) {
+        return;
+      }
+
+      rewriteAppLinks(docsRoot);
+    });
+  },
+];
+
+/**
  * Unmounts docs lifecycle and listeners.
  */
 const unmountDocs = () => {
   mountRunId += 1;
-  clearRewriteTimeouts();
   if (cleanupCurrentMount) {
     cleanupCurrentMount();
     cleanupCurrentMount = null;
@@ -992,6 +983,8 @@ const mountDocs = async (docsRoot, docsApp) => {
     cleanups.push(setupDocsTopOffsetSync(docsRoot));
     cleanups.push(setupMobileSidebarOutsideDismiss());
 
+    const docsifyPlugins = createDocsifyPlugins(runId, docsRoot);
+
     window.$docsify = {
       alias: {
         "/.*/_sidebar.md": "/_sidebar.md",
@@ -1003,6 +996,7 @@ const mountDocs = async (docsRoot, docsApp) => {
       loadSidebar: "_sidebar.md",
       maxLevel: 3,
       name: "Documentation",
+      plugins: docsifyPlugins,
       relativePath: true,
       subMaxLevel: 2,
     };
@@ -1014,7 +1008,7 @@ const mountDocs = async (docsRoot, docsApp) => {
     });
 
     const handleRewriteOnHashChange = () => {
-      rewriteAfterRender(docsRoot);
+      rewriteAppLinks(docsRoot);
     };
     window.addEventListener("hashchange", handleRewriteOnHashChange);
     cleanups.push(() => {
@@ -1031,7 +1025,7 @@ const mountDocs = async (docsRoot, docsApp) => {
       return;
     }
 
-    rewriteAfterRender(docsRoot);
+    rewriteAppLinks(docsRoot);
   } catch (error) {
     if (!isCurrentMount(runId, docsRoot)) {
       return;
