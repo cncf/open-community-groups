@@ -102,8 +102,12 @@ const DOCS_SHELL_OVERRIDES = `
 
 @media screen and (max-width: 768px) {
   .ocg-docs-root .content {
-    background: #f5f5f4;
-    min-height: calc(100vh - var(--ocg-docs-top-offset));
+    background: #fff;
+    border: 1px solid #e7e5e4;
+    border-radius: 0.5rem;
+    box-shadow: 0 1px 2px rgba(28, 25, 23, 0.04);
+    margin: 12px;
+    min-height: calc(100vh - var(--ocg-docs-top-offset) - 24px);
     position: relative;
     z-index: 10;
   }
