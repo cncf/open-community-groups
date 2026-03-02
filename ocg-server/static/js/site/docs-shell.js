@@ -26,7 +26,7 @@ const DOCS_SHELL_OVERRIDES = `
   --ocg-docs-sidebar-top-margin: 0px;
   --ocg-docs-sidebar-bottom-margin: 20px;
   --ocg-docs-sidebar-inline-margin: 16px;
-  --ocg-docs-desktop-sidebar-width: 280px;
+  --ocg-docs-desktop-sidebar-width: 264px;
   --ocg-docs-mobile-sidebar-width: 264px;
   background: transparent;
   min-height: calc(100vh - var(--ocg-docs-top-offset));
@@ -44,7 +44,59 @@ const DOCS_SHELL_OVERRIDES = `
   min-height: calc(100vh - var(--ocg-docs-top-offset));
 }
 
-@media screen and (min-width: 769px) {
+.ocg-docs-root .sidebar .sidebar-nav {
+  padding-bottom: 60px;
+}
+
+.ocg-docs-root .sidebar-toggle {
+  background: #fff;
+  border: 1px solid var(--theme-color, #0094ff);
+  border-radius: 9999px;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
+  box-shadow: 0 1px 2px rgba(28, 25, 23, 0.08);
+  display: block;
+  height: 42px;
+  left: 12px;
+  padding: 0;
+  position: fixed;
+  top: auto;
+  width: 42px;
+  z-index: 45;
+}
+
+.ocg-docs-root .sidebar-toggle:hover {
+  background: #f5f9ff;
+}
+
+.ocg-docs-root .sidebar-toggle-button {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  height: 100%;
+  justify-content: center;
+  opacity: 1;
+}
+
+.ocg-docs-root .sidebar-toggle span {
+  background-color: var(--theme-color, #0094ff);
+  margin-bottom: 0;
+}
+
+.ocg-docs-root.close .sidebar-toggle {
+  background: var(--theme-color, #0094ff);
+  border-color: var(--theme-color, #0094ff);
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
+  height: 42px;
+  left: 12px;
+  padding: 0;
+}
+
+.ocg-docs-root.close .sidebar-toggle span {
+  background-color: #fff;
+}
+
+@media screen and (min-width: 1025px) {
   .ocg-docs-root .content {
     background: #fff;
     border: 1px solid #e7e5e4;
@@ -86,6 +138,19 @@ const DOCS_SHELL_OVERRIDES = `
   .ocg-docs-root .sidebar-toggle {
     display: none;
   }
+
+  .ocg-docs-root.close .sidebar {
+    transform: none;
+  }
+
+  .ocg-docs-root.close .content {
+    left: calc(
+      var(--ocg-docs-desktop-sidebar-width) + (2 * var(--ocg-docs-sidebar-inline-margin))
+    );
+    width: calc(
+      100% - var(--ocg-docs-desktop-sidebar-width) - (3 * var(--ocg-docs-sidebar-inline-margin))
+    );
+  }
 }
 
 .ocg-docs-root .sidebar {
@@ -93,22 +158,18 @@ const DOCS_SHELL_OVERRIDES = `
   position: fixed;
 }
 
-.ocg-docs-root .sidebar-toggle {
-  bottom: auto;
-  height: auto;
-  position: fixed;
-  top: max(var(--ocg-docs-top-offset), var(--ocg-docs-sidebar-top-margin));
-}
-
-@media screen and (max-width: 768px) {
+@media screen and (max-width: 1024px) {
   .ocg-docs-root .content {
     background: #fff;
     border: 1px solid #e7e5e4;
     border-radius: 0.5rem;
     box-shadow: 0 1px 2px rgba(28, 25, 23, 0.04);
+    left: 0;
     margin: 12px;
     min-height: calc(100vh - var(--ocg-docs-top-offset) - 24px);
     position: relative;
+    right: auto;
+    width: auto;
     z-index: 10;
   }
 
@@ -124,56 +185,8 @@ const DOCS_SHELL_OVERRIDES = `
     z-index: 40;
   }
 
-  .ocg-docs-root .sidebar .sidebar-nav {
-    padding-bottom: 60px;
-  }
-
-  .ocg-docs-root .sidebar-toggle {
-    display: block;
-    background: #fff;
-    border: 1px solid var(--theme-color, #0094ff);
-    border-radius: 9999px;
-    box-shadow: 0 1px 2px rgba(28, 25, 23, 0.08);
-    bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
-    height: 42px;
-    left: 12px;
-    padding: 0;
-    top: auto;
-    width: 42px;
-    z-index: 45;
-  }
-
-  .ocg-docs-root .sidebar-toggle:hover {
-    background: #f5f9ff;
-  }
-
-  .ocg-docs-root .sidebar-toggle-button {
-    align-items: center;
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-    height: 100%;
-    justify-content: center;
-    opacity: 1;
-  }
-
-  .ocg-docs-root .sidebar-toggle span {
-    background-color: var(--theme-color, #0094ff);
-    margin-bottom: 0;
-  }
-
   .ocg-docs-root.close .sidebar-toggle {
-    background: var(--theme-color, #0094ff);
-    border-color: var(--theme-color, #0094ff);
-    bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
-    height: 42px;
-    left: 12px;
-    padding: 0;
     width: calc(var(--ocg-docs-mobile-sidebar-width) - 24px);
-  }
-
-  .ocg-docs-root.close .sidebar-toggle span {
-    background-color: #fff;
   }
 
   .ocg-docs-root.close .sidebar {
@@ -616,7 +629,7 @@ const setupMobileSidebarOutsideDismiss = () => {
       return;
     }
 
-    if (!window.matchMedia("(max-width: 768px)").matches) {
+    if (!window.matchMedia("(max-width: 1024px)").matches) {
       return;
     }
 
