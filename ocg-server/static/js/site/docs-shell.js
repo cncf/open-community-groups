@@ -88,7 +88,6 @@ const DOCS_SHELL_OVERRIDES = `
   border-color: var(--theme-color, #0094ff);
   bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
   height: 42px;
-  left: 12px;
   padding: 0;
 }
 
@@ -204,6 +203,7 @@ let cleanupCurrentMount = null;
 let mountRunId = 0;
 let lifecycleListenersBound = false;
 const rewriteTimeoutIds = new Set();
+const DOCS_LOAD_ERROR_MESSAGE = "We could not load the documentation. Please refresh and try again.";
 
 /**
  * Fetches text content from a URL.
@@ -216,6 +216,20 @@ const fetchText = async (url) => {
     throw new Error(`Failed to fetch style asset: ${url}`);
   }
   return response.text();
+};
+
+/**
+ * Returns true when character at index is escaped by odd trailing backslashes.
+ * @param {string} text Source text.
+ * @param {number} index Character index.
+ * @returns {boolean} True when character is escaped.
+ */
+const isEscapedByOddBackslashes = (text, index) => {
+  let backslashCount = 0;
+  for (let cursor = index - 1; cursor >= 0 && text[cursor] === "\\"; cursor -= 1) {
+    backslashCount += 1;
+  }
+  return backslashCount % 2 === 1;
 };
 
 /**
@@ -235,7 +249,7 @@ const splitSelectors = (selectorText) => {
 
     if (quoteChar) {
       current += char;
-      if (char === quoteChar && selectorText[index - 1] !== "\\") {
+      if (char === quoteChar && !isEscapedByOddBackslashes(selectorText, index)) {
         quoteChar = "";
       }
       continue;
@@ -329,7 +343,7 @@ const findMatchingBrace = (cssText, openBraceIndex) => {
     const nextChar = cssText[index + 1];
 
     if (quoteChar) {
-      if (char === quoteChar && cssText[index - 1] !== "\\") {
+      if (char === quoteChar && !isEscapedByOddBackslashes(cssText, index)) {
         quoteChar = "";
       }
       continue;
@@ -381,7 +395,7 @@ const findTopLevelDelimiter = (cssText, startIndex) => {
     const nextChar = cssText[index + 1];
 
     if (quoteChar) {
-      if (char === quoteChar && cssText[index - 1] !== "\\") {
+      if (char === quoteChar && !isEscapedByOddBackslashes(cssText, index)) {
         quoteChar = "";
       }
       continue;
@@ -716,7 +730,7 @@ const rewriteAppLinks = (docsRoot) => {
       return;
     }
 
-    link.setAttribute("href", path || "/");
+    link.setAttribute("href", path);
     link.setAttribute("hx-boost", "true");
     link.setAttribute("hx-target", "body");
     link.removeAttribute("rel");
@@ -900,6 +914,21 @@ const ensureInitialDocsHash = () => {
 };
 
 /**
+ * Renders a docs load error in the shell mount container.
+ * @param {HTMLElement} docsApp Docs app container.
+ */
+const renderDocsLoadError = (docsApp) => {
+  docsApp.replaceChildren();
+
+  const errorMessage = document.createElement("p");
+  errorMessage.className = "px-4 py-8 text-center text-sm text-stone-700";
+  errorMessage.setAttribute("role", "alert");
+  errorMessage.textContent = DOCS_LOAD_ERROR_MESSAGE;
+
+  docsApp.appendChild(errorMessage);
+};
+
+/**
  * Clears scheduled link-rewrite timers.
  */
 const clearRewriteTimeouts = () => {
@@ -952,56 +981,64 @@ const mountDocs = async (docsRoot, docsApp) => {
     }
   };
 
-  ensureInitialDocsHash();
-  await setupScopedStyles();
+  try {
+    ensureInitialDocsHash();
+    await setupScopedStyles();
 
-  if (!isCurrentMount(runId, docsRoot)) {
-    return;
-  }
+    if (!isCurrentMount(runId, docsRoot)) {
+      return;
+    }
 
-  cleanups.push(setupDocsTopOffsetSync(docsRoot));
-  cleanups.push(setupMobileSidebarOutsideDismiss());
+    cleanups.push(setupDocsTopOffsetSync(docsRoot));
+    cleanups.push(setupMobileSidebarOutsideDismiss());
 
-  window.$docsify = {
-    alias: {
-      "/.*/_sidebar.md": "/_sidebar.md",
-    },
-    auto2top: true,
-    basePath: "/static/docs/",
-    el: DOCS_APP_SELECTOR,
-    homepage: "index.md",
-    loadSidebar: "_sidebar.md",
-    maxLevel: 3,
-    name: "Documentation",
-    relativePath: true,
-    subMaxLevel: 2,
-  };
+    window.$docsify = {
+      alias: {
+        "/.*/_sidebar.md": "/_sidebar.md",
+      },
+      auto2top: true,
+      basePath: "/static/docs/",
+      el: DOCS_APP_SELECTOR,
+      homepage: "index.md",
+      loadSidebar: "_sidebar.md",
+      maxLevel: 3,
+      name: "Documentation",
+      relativePath: true,
+      subMaxLevel: 2,
+    };
 
-  cleanups.push(mirrorDocsifyBodyClasses(docsRoot));
-  document.addEventListener("click", handleSamePageAnchorClick);
-  cleanups.push(() => {
-    document.removeEventListener("click", handleSamePageAnchorClick);
-  });
+    cleanups.push(mirrorDocsifyBodyClasses(docsRoot));
+    document.addEventListener("click", handleSamePageAnchorClick);
+    cleanups.push(() => {
+      document.removeEventListener("click", handleSamePageAnchorClick);
+    });
 
-  const handleRewriteOnHashChange = () => {
+    const handleRewriteOnHashChange = () => {
+      rewriteAfterRender(docsRoot);
+    };
+    window.addEventListener("hashchange", handleRewriteOnHashChange);
+    cleanups.push(() => {
+      window.removeEventListener("hashchange", handleRewriteOnHashChange);
+    });
+
+    await loadScript(SCRIPT_URLS.docsify);
+    if (!isCurrentMount(runId, docsRoot)) {
+      return;
+    }
+
+    await loadScript(SCRIPT_URLS.copyCode);
+    if (!isCurrentMount(runId, docsRoot)) {
+      return;
+    }
+
     rewriteAfterRender(docsRoot);
-  };
-  window.addEventListener("hashchange", handleRewriteOnHashChange);
-  cleanups.push(() => {
-    window.removeEventListener("hashchange", handleRewriteOnHashChange);
-  });
+  } catch (error) {
+    if (!isCurrentMount(runId, docsRoot)) {
+      return;
+    }
 
-  await loadScript(SCRIPT_URLS.docsify);
-  if (!isCurrentMount(runId, docsRoot)) {
-    return;
+    renderDocsLoadError(docsApp);
   }
-
-  await loadScript(SCRIPT_URLS.copyCode);
-  if (!isCurrentMount(runId, docsRoot)) {
-    return;
-  }
-
-  rewriteAfterRender(docsRoot);
 };
 
 /**
