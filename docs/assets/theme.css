@@ -432,8 +432,24 @@ body,
   }
 
   .markdown-section {
-    margin: 0 4rem 0 3.2rem;
+    margin: 0 2rem;
     max-width: none;
     padding: 2rem 0 3rem;
+  }
+
+  .markdown-section h1 {
+    font-size: 1.6rem;
+    line-height: 1.2;
+  }
+
+  .markdown-section h2 {
+    font-size: 1.35rem;
+    line-height: 1.25;
+    margin-top: 1.9rem;
+  }
+
+  .markdown-section h3 {
+    font-size: 1.08rem;
+    line-height: 1.3;
   }
 }

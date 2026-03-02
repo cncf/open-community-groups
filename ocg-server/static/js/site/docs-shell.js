@@ -26,6 +26,8 @@ const DOCS_SHELL_OVERRIDES = `
   --ocg-docs-sidebar-top-margin: 0px;
   --ocg-docs-sidebar-bottom-margin: 20px;
   --ocg-docs-sidebar-inline-margin: 16px;
+  --ocg-docs-desktop-sidebar-width: 280px;
+  --ocg-docs-mobile-sidebar-width: 264px;
   background: transparent;
   min-height: calc(100vh - var(--ocg-docs-top-offset));
   position: relative;
@@ -49,7 +51,9 @@ const DOCS_SHELL_OVERRIDES = `
     border-radius: 0.5rem;
     bottom: auto;
     box-shadow: 0 1px 2px rgba(28, 25, 23, 0.04);
-    left: 352px;
+    left: calc(
+      var(--ocg-docs-desktop-sidebar-width) + (2 * var(--ocg-docs-sidebar-inline-margin))
+    );
     margin-bottom: var(--ocg-docs-sidebar-bottom-margin);
     margin-right: var(--ocg-docs-sidebar-inline-margin);
     margin-top: var(--ocg-docs-sidebar-top-margin);
@@ -60,7 +64,9 @@ const DOCS_SHELL_OVERRIDES = `
     position: relative;
     right: auto;
     top: auto;
-    width: calc(100% - 352px - var(--ocg-docs-sidebar-inline-margin));
+    width: calc(
+      100% - var(--ocg-docs-desktop-sidebar-width) - (3 * var(--ocg-docs-sidebar-inline-margin))
+    );
   }
 
   .ocg-docs-root .sidebar {
@@ -74,7 +80,7 @@ const DOCS_SHELL_OVERRIDES = `
         var(--ocg-docs-sidebar-bottom-margin)
     );
     top: max(var(--ocg-docs-top-offset), var(--ocg-docs-sidebar-top-margin));
-    width: 320px;
+    width: var(--ocg-docs-desktop-sidebar-width);
   }
 
   .ocg-docs-root .sidebar-toggle {
@@ -108,9 +114,14 @@ const DOCS_SHELL_OVERRIDES = `
     border-radius: 0;
     box-shadow: 0 8px 24px rgba(28, 25, 23, 0.18);
     height: 100vh;
-    left: -300px;
+    left: calc(-1 * var(--ocg-docs-mobile-sidebar-width));
     top: 0;
+    width: var(--ocg-docs-mobile-sidebar-width);
     z-index: 40;
+  }
+
+  .ocg-docs-root .sidebar .sidebar-nav {
+    padding-bottom: 60px;
   }
 
   .ocg-docs-root .sidebar-toggle {
@@ -150,10 +161,19 @@ const DOCS_SHELL_OVERRIDES = `
   .ocg-docs-root.close .sidebar-toggle {
     background: var(--theme-color, #0094ff);
     border-color: var(--theme-color, #0094ff);
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
+    height: 42px;
+    left: 12px;
+    padding: 0;
+    width: calc(var(--ocg-docs-mobile-sidebar-width) - 24px);
   }
 
   .ocg-docs-root.close .sidebar-toggle span {
     background-color: #fff;
+  }
+
+  .ocg-docs-root.close .sidebar {
+    transform: translateX(var(--ocg-docs-mobile-sidebar-width));
   }
 
   .ocg-docs-root.close .content {
@@ -583,6 +603,38 @@ const setupDocsTopOffsetSync = (docsRoot) => {
 };
 
 /**
+ * Closes mobile docs sidebar when clicking outside sidebar and toggle.
+ * @returns {() => void} Cleanup callback.
+ */
+const setupMobileSidebarOutsideDismiss = () => {
+  const handleOutsideClick = (event) => {
+    if (!document.body.classList.contains("close")) {
+      return;
+    }
+
+    if (!window.matchMedia("(max-width: 768px)").matches) {
+      return;
+    }
+
+    const target = event.target;
+    if (!(target instanceof Element)) {
+      return;
+    }
+
+    if (target.closest(".ocg-docs-root .sidebar, .ocg-docs-root .sidebar-toggle")) {
+      return;
+    }
+
+    document.body.classList.remove("close");
+  };
+
+  document.addEventListener("click", handleOutsideClick);
+  return () => {
+    document.removeEventListener("click", handleOutsideClick);
+  };
+};
+
+/**
  * Checks whether value starts with any given prefix.
  * @param {string} value Input value.
  * @param {string[]} prefixes Candidate prefixes.
@@ -891,10 +943,11 @@ const mountDocs = async (docsRoot, docsApp) => {
   }
 
   cleanups.push(setupDocsTopOffsetSync(docsRoot));
+  cleanups.push(setupMobileSidebarOutsideDismiss());
 
   window.$docsify = {
     alias: {
-      "/.*/_sidebar.md": "/static/docs/_sidebar.md",
+      "/.*/_sidebar.md": "/_sidebar.md",
     },
     auto2top: true,
     basePath: "/static/docs/",
