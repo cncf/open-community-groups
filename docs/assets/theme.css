@@ -351,9 +351,6 @@ body,
 }
 
 .markdown-section img {
-  border: 1px solid #d6d3d1;
-  border-radius: 12px;
-  box-shadow: 0 10px 22px rgba(28, 25, 23, 0.08);
   display: block;
   margin: 3.4rem 0 4.8rem;
   max-width: 100%;
@@ -367,7 +364,7 @@ body,
 }
 
 .markdown-section p:has(> img) {
-  margin: 3.4rem 0 4.8rem;
+  margin: 2.5rem 0 2rem;
 }
 
 .markdown-section p:has(> img) > img {

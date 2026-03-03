@@ -114,6 +114,8 @@ You cannot check in if:
 
 !> Check-in is strictly enforced by attendee state, event state, and check-in window timing.
 
+![Group dashboard check in](../screenshots/dashboard-group-check-in.png)
+
 ## Submit to Call for Speakers (CFS)
 
 The CFS flow intentionally spans two places:
@@ -131,12 +133,14 @@ For full speaker workflow detail, continue with
 [User Dashboard Guide](user-dashboard.md). For organizer-side review and event lifecycle controls,
 see [Event Operations](event-operations.md).
 
+![Avent page CFS](../screenshots/event-page-cfs.png)
+
 ## Use Stats for Platform Context
 
 [`Stats`](/stats ':ignore') helps organizers and contributors understand momentum at a glance: groups,
 members, events, and attendees over time.
 
-![Stats page overview](../screenshots/stats-overview.png)
+![Stats page overview](../screenshots/stats-page.png)
 
 ## Recommended Member Flow
 

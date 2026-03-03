@@ -15,6 +15,8 @@ Check:
 
 If actions still fail, re-select the community/group from dashboard selectors and refresh.
 
+![Group team area](../screenshots/dashboard-user-invitations.png)
+
 ## Join Group or Attend Event Buttons Do Not Work
 
 Check:
@@ -51,6 +53,8 @@ Submission actions depend on status:
 
 Confirm current status in [`User Dashboard -> Submissions`](/dashboard/user?tab=submissions ':ignore').
 
+![User submissions list](../screenshots/dashboard-user-submissions-list.png)
+
 ## Event Cannot Be Published
 
 Check event editor completeness:
@@ -77,6 +81,8 @@ For community/group team tables:
 - You cannot remove the final accepted team member.
 
 Add another accepted team member first, then retry.
+
+![Dashboard group members list](../screenshots/dashboard-group-members-list.png)
 
 ## Analytics Looks Outdated
 
@@ -109,6 +115,8 @@ Public pages are usable on mobile. Dashboards are currently desktop-only.
 Create proposals in
 [`User Dashboard -> Session proposals`](/dashboard/user?tab=session-proposals ':ignore'), then submit from
 each event's public CFS modal.
+
+![Session proposals list](../screenshots/dashboard-user-session-proposals-list.png)
 
 ### Why Is My Proposal Missing in CFS Modal?
 

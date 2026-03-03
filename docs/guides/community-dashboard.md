@@ -115,6 +115,8 @@ Where this appears downstream:
 - Group setup/edit forms select region values from this list.
 - Public discovery and filtering can use region as a search dimension.
 
+![Community dashboard regions](../screenshots/dashboard-community-regions.png)
+
 ## Group Categories: Group Taxonomy
 
 `Group Categories` defines reusable category values for all groups in the selected community.
@@ -135,6 +137,8 @@ Where this appears downstream:
 
 - Group setup/edit forms select category values from this list.
 - Public discovery and filtering can use group category as a search dimension.
+
+![Community dashboard group categories](../screenshots/dashboard-community-group-categories.png)
 
 ## Event Categories: Event Taxonomy
 
@@ -157,6 +161,8 @@ Where this appears downstream:
 - Event editor (`Details` tab) uses this list for event categorization.
 - Public event discovery and filtering can use event category.
 
+![Community dashboard event categories](../screenshots/dashboard-community-event-categories.png)
+
 ## Analytics: Momentum
 
 Community analytics shows totals and trends for:
@@ -170,6 +176,8 @@ Each metric is available as total, running total, and monthly values. This helps
 steady progress and notice unusual jumps with better context.
 
 Analytics data is cached and may lag for a few minutes.
+
+![Community dashboard analytics](../screenshots/dashboard-community-analytics.png)
 
 ## Groups: Portfolio
 
@@ -204,7 +212,7 @@ Group-branding inheritance from this flow:
 - If group logo is empty, the public group view uses the community logo.
 - If group banner/mobile banner is empty, the public group view uses the community banner.
 
-![Add group flow](../screenshots/dashboard-community-add-group-modal.png)
+![Add group flow](../screenshots/dashboard-community-add-group.png)
 
 ### Group Lifecycle
 
@@ -213,6 +221,8 @@ Group-branding inheritance from this flow:
 - `Delete` is permanent retirement for groups that should no longer exist operationally.
 
 When a group is inactive, its public-view shortcut is disabled in the groups table.
+
+![Community groups actions](../screenshots/dashboard-community-groups-actions.png)
 
 ## Recommended Cadence
 

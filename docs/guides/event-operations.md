@@ -100,6 +100,8 @@ Brand inheritance model in event details:
 - If event banner or mobile banner is not provided, OCG falls back to group banner, then
   community banner.
 
+![Event details](../screenshots/dashboard-group-event-details.png)
+
 ### Date and Venue
 
 This tab controls delivery constraints:
@@ -117,6 +119,8 @@ CFS windows aligned with the intended audience clock.
 When `Send Event Reminder` is enabled, OCG sends reminder messages about 24 hours before start
 time.
 
+![Event date and venue](../screenshots/dashboard-group-event-date.png)
+
 ### Hosts and Speakers
 
 In this tab, you manage event-level people and sponsor attribution:
@@ -126,6 +130,8 @@ In this tab, you manage event-level people and sponsor attribution:
 - Attach event sponsors from reusable sponsor records.
 
 This is where attendees understand who is running and presenting the program.
+
+![Event hosts and speakers](../screenshots/dashboard-group-event-hosts.png)
 
 ### Sessions
 
@@ -137,6 +143,10 @@ Sessions turns approved content into an actual agenda:
 
 This tab is usually most useful once review outcomes are clearer and your schedule is taking
 final shape.
+
+![Event sessions](../screenshots/dashboard-group-event-sessions.png)
+
+![Event add session](../screenshots/dashboard-group-event-add-session.png)
 
 ### CFS
 
@@ -151,6 +161,8 @@ Label model tip: if you edit an existing label name, that rename affects submiss
 that label.
 
 ?> Renaming a label updates existing submissions that already reference that label.
+
+![Event CFS](../screenshots/dashboard-group-event-cfs.png)
 
 ### Submissions
 
@@ -168,6 +180,8 @@ Reviewer-facing statuses are:
 - `Approved`
 - `Rejected`
 
+![Event submissions](../screenshots/dashboard-group-event-submissions.png)
+
 #### Rating submissions
 
 Reviewers can rate each submission on a 1–5 star scale with an optional comment. Ratings
@@ -180,6 +194,8 @@ Use the sort options (by stars or rating count) to surface the strongest or most
 submissions quickly.
 
 When a reviewer update requires notifying the speaker, OCG sends a submission update message.
+
+![Event submissions ratings](../screenshots/dashboard-group-event-submissions-ratings.png)
 
 ### Attendees
 
@@ -194,6 +210,8 @@ Manual check-in bypasses attendee self-check-in timing windows, but the person m
 registered as an attendee and the event must still be published or active.
 
 `Send email` in this tab sends operational updates to attendees.
+
+![Event attendees](../screenshots/dashboard-group-event-attendees.png)
 
 ## CFS Workflow (End to End)
 
@@ -276,6 +294,8 @@ Constraint violations can disable automatic mode until fixed.
 - If sync fails, meeting errors surface in the editor until resolved.
 - In deployments without automatic-meeting support, only manual meeting URL fields are available.
 
+![Events automatic meeting](../screenshots/dashboard-group-event-automatic-meeting.png)
+
 ## Publish, Unpublish, Cancel, Delete
 
 These actions serve different intents:
@@ -303,6 +323,8 @@ Automatic-meeting lifecycle in these actions:
 - `Unpublish`, `Cancel`, and `Delete` trigger removal/sync for configured automatic meetings.
 
 Use the least destructive action that matches your operational goal.
+
+![Events actions](../screenshots/dashboard-group-events-actions.png)
 
 ## Public Event Result
 

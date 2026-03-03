@@ -80,6 +80,8 @@ After submission, track lifecycle changes in
 For speaker-side status detail, see [User Dashboard Guide](../guides/user-dashboard.md). For
 organizer-side CFS and review controls, see [Event Operations](../guides/event-operations.md).
 
+![Event page Call for Speakers](../screenshots/event-page-cfs.png)
+
 ## Validate Your Dashboard Access
 
 Open your avatar menu in the top-right corner to confirm which dashboard scopes your account has

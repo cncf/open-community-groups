@@ -32,8 +32,6 @@ Main areas:
 - [`Members`](/dashboard/group?tab=members ':ignore'): membership view and group-wide communication.
 - [`Sponsors`](/dashboard/group?tab=sponsors ':ignore'): reusable sponsor records for event use.
 
-![Group dashboard analytics](../screenshots/dashboard-group-analytics.png)
-
 ## Access and Context
 
 To operate here, you need:
@@ -89,7 +87,7 @@ When you add a group team member, OCG sends an invitation with a link to
 Invitation acceptance and dashboard visibility details are covered in
 [User Dashboard Guide](user-dashboard.md).
 
-![Group team area](../screenshots/dashboard-group-team.png)
+![Group team area](../screenshots/dashboard-user-invitations.png)
 
 ## Analytics: Delivery Health
 
@@ -103,6 +101,8 @@ Each metric includes running totals and monthly trends, so it is easier to tell 
 steady over time or mainly tied to isolated spikes.
 
 Analytics values can lag briefly due to caching.
+
+![Group dashboard analytics](../screenshots/dashboard-group-analytics.png)
 
 ## Members: Communication
 

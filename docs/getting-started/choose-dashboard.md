@@ -15,7 +15,7 @@ access model, and expected outcomes in one view:
 | Manage community-wide identity, admins, taxonomy, analytics, and groups | [`Community Dashboard`](/dashboard/community ':ignore') | Community team members | Operate team access, branding, regions, categories, analytics, and group lifecycle |
 | Run events, organizers, members, sponsors, and day-to-day operations | [`Group Dashboard`](/dashboard/group ':ignore') | Group team members | Deliver events, manage members, coordinate organizers and sponsors |
 
-![Dashboard options from user menu](../screenshots/navigation-all-dashboards.png)
+![Dashboard options from user menu](../screenshots/navigation-user-menu.png)
 
 Guide deep-dives:
 
@@ -53,6 +53,8 @@ Use this order to unblock quickly:
 
 If visibility still does not update, use
 [Troubleshooting](../support/troubleshooting.md).
+
+![User invitations](../screenshots/dashboard-user-invitations.png)
 
 ## Typical Starting Paths
 
