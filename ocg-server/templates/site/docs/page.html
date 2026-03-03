@@ -1,0 +1,18 @@
+{% extends "common/base.html" -%}
+{% import "macros/ui.html" as ui -%}
+
+{% block content -%}
+  <section class="w-full ocg-docs-root relative overflow-hidden"
+           aria-label="Documentation"
+           data-ocg-docs="/static/docs/index.html#/">
+    <div id="ocg-docs-app"
+         class="flex min-h-[50vh] items-center justify-center">
+      {{ ui::main_loading() -}}
+      <span class="sr-only">Loading Open Community Groups documentation...</span>
+    </div>
+  </section>
+{% endblock content -%}
+
+{% block scripts -%}
+  <script type="module" src="/static/js/site/docs-shell.js"></script>
+{% endblock scripts -%}

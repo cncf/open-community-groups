@@ -69,7 +69,7 @@ async fn main() -> Result<()> {
     let ts = tracing_subscriber::fmt()
         .with_env_filter(
             EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| format!("{}=debug,tower_http=debug", env!("CARGO_CRATE_NAME")).into()),
+                .unwrap_or_else(|_| format!("{}=debug", env!("CARGO_CRATE_NAME")).into()),
         )
         .with_file(true)
         .with_line_number(true);

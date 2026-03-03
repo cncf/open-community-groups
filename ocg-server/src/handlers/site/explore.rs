@@ -384,7 +384,7 @@ mod tests {
         );
         assert_eq!(
             parts.headers.get(CACHE_CONTROL).unwrap(),
-            &HeaderValue::from_static("max-age=0")
+            &HeaderValue::from_static("max-age=600")
         );
         assert_eq!(
             parts.headers.get("HX-Push-Url").unwrap().to_str().unwrap(),
@@ -431,7 +431,7 @@ mod tests {
         );
         assert_eq!(
             parts.headers.get(CACHE_CONTROL).unwrap(),
-            &HeaderValue::from_static("max-age=0")
+            &HeaderValue::from_static("max-age=600")
         );
         assert_eq!(
             parts.headers.get("HX-Push-Url").unwrap().to_str().unwrap(),
@@ -508,7 +508,7 @@ mod tests {
         );
         assert_eq!(
             parts.headers.get(CACHE_CONTROL).unwrap(),
-            &HeaderValue::from_static("max-age=0")
+            &HeaderValue::from_static("max-age=600")
         );
         assert_eq!(
             parts.headers.get("HX-Push-Url").unwrap().to_str().unwrap(),
@@ -555,7 +555,7 @@ mod tests {
         );
         assert_eq!(
             parts.headers.get(CACHE_CONTROL).unwrap(),
-            &HeaderValue::from_static("max-age=0")
+            &HeaderValue::from_static("max-age=600")
         );
         assert_eq!(
             parts.headers.get("HX-Push-Url").unwrap().to_str().unwrap(),
@@ -719,7 +719,7 @@ mod tests {
         );
         assert_eq!(
             parts.headers.get(CACHE_CONTROL).unwrap(),
-            &HeaderValue::from_static("max-age=0")
+            &HeaderValue::from_static("max-age=600")
         );
         assert!(!bytes.is_empty());
     }
@@ -764,7 +764,7 @@ mod tests {
         );
         assert_eq!(
             parts.headers.get(CACHE_CONTROL).unwrap(),
-            &HeaderValue::from_static("max-age=0")
+            &HeaderValue::from_static("max-age=600")
         );
         assert!(!bytes.is_empty());
     }
@@ -802,7 +802,7 @@ mod tests {
         );
         assert_eq!(
             parts.headers.get(CACHE_CONTROL).unwrap(),
-            &HeaderValue::from_static("max-age=0")
+            &HeaderValue::from_static("max-age=3600")
         );
         assert!(!bytes.is_empty());
     }
@@ -840,7 +840,7 @@ mod tests {
         );
         assert_eq!(
             parts.headers.get(CACHE_CONTROL).unwrap(),
-            &HeaderValue::from_static("max-age=0")
+            &HeaderValue::from_static("max-age=3600")
         );
         assert!(!bytes.is_empty());
     }

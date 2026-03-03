@@ -4,6 +4,12 @@ use anyhow::{Result, bail};
 use sha2::{Digest, Sha256};
 use which::which;
 
+/// Path to the documentation source directory.
+const DOCS_PATH: &str = "../docs";
+
+/// Path to the generated documentation static files directory.
+const DOCS_STATIC_DIST_PATH: &str = "dist/static/docs";
+
 /// Path to the static assets distribution directory. This path contains a copy
 /// of the static assets with some modifications applied (e.g. assets hashed
 /// paths).
@@ -21,6 +27,7 @@ const TEMPLATES_PATH: &str = "templates";
 
 fn main() -> Result<()> {
     // Rerun this build script if changes are detected in the following paths.
+    println!("cargo:rerun-if-changed={DOCS_PATH}");
     println!("cargo:rerun-if-changed=static");
     println!("cargo:rerun-if-changed=templates");
 
@@ -71,6 +78,9 @@ fn main() -> Result<()> {
 
     // Replace assets paths references with their hashed versions
     replace_hashed_assets_refs(Path::new(TEMPLATES_DIST_PATH), &assets_manifest)?;
+
+    // Copy documentation to the dist directory
+    copy_dir(Path::new(DOCS_PATH), Path::new(DOCS_STATIC_DIST_PATH))?;
 
     Ok(())
 }

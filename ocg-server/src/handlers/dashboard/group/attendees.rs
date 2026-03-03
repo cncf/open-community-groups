@@ -304,13 +304,9 @@ mod tests {
             parts.headers.get(CONTENT_TYPE).unwrap(),
             &HeaderValue::from_static("image/svg+xml")
         );
-        #[cfg(debug_assertions)]
-        let expected_cache_header = "max-age=0";
-        #[cfg(not(debug_assertions))]
-        let expected_cache_header = "max-age=3600";
         assert_eq!(
             parts.headers.get(CACHE_CONTROL).unwrap().to_str().unwrap(),
-            expected_cache_header
+            "max-age=3600"
         );
         assert!(svg_body.contains("<svg"));
         assert!(svg_body.contains("</svg>"));

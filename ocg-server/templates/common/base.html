@@ -125,7 +125,7 @@
       {# End content -#}
 
       {# Footer -#}
-      {% if !path.starts_with("/dashboard") && path != "/log-in" && path != "/sign-up" && !path.contains("/check-in/") -%}
+      {% if !path.starts_with("/dashboard") && path != "/docs" && path != "/log-in" && path != "/sign-up" && !path.contains("/check-in/") -%}
         {% include "common/footer.html" -%}
       {% endif -%}
       {# End footer -#}

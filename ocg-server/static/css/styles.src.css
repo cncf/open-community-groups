@@ -436,6 +436,7 @@ input:placeholder-shown {
 .icon-close { --icon-url: url('/static/images/icons/close.svg'); }
 .icon-copy { --icon-url: url('/static/images/icons/copy.svg'); }
 .icon-date { --icon-url: url('/static/images/icons/date.svg'); }
+.icon-docs { --icon-url: url('/static/images/icons/docs.svg'); }
 .icon-email { --icon-url: url('/static/images/icons/email.svg'); }
 .icon-event { --icon-url: url('/static/images/icons/event.svg'); }
 .icon-events { --icon-url: url('/static/images/icons/events.svg'); }
@@ -479,6 +480,7 @@ input:placeholder-shown {
 .icon-presentation { --icon-url: url('/static/images/icons/presentation.svg'); }
 .icon-proposal { --icon-url: url('/static/images/icons/proposal.svg'); }
 .icon-prev { --icon-url: url('/static/images/icons/prev.svg'); }
+.icon-question { --icon-url: url('/static/images/icons/question.svg'); }
 .icon-question-mark { --icon-url: url('/static/images/icons/question_mark.svg'); }
 .icon-recording { --icon-url: url('/static/images/icons/recording.svg'); }
 .icon-reddit { --icon-url: url('/static/images/icons/reddit.svg'); }

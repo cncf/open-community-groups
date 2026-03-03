@@ -139,6 +139,7 @@ pub(crate) async fn setup(
         ))
         // Global site routes (no community prefix)
         .route("/", get(site::home::page))
+        .route("/docs", get(site::docs::page))
         .route("/explore", get(site::explore::page))
         .route("/explore/events-section", get(site::explore::events_section))
         .route(
@@ -152,10 +153,10 @@ pub(crate) async fn setup(
         )
         .route("/explore/events/search", get(site::explore::search_events))
         .route("/explore/groups/search", get(site::explore::search_groups))
-        .route("/stats", get(site::stats::page))
         .route("/health-check", get(health_check))
         .route("/images/{file_name}", get(images::serve))
         .route("/log-in", get(auth::log_in_page))
+        .route("/stats", get(site::stats::page))
         // Community-prefixed public routes
         .route("/{community}", get(community::page))
         .route("/{community}/group/{group_slug}", get(group::page))
@@ -480,7 +481,7 @@ async fn static_handler(uri: Uri) -> impl IntoResponse {
     let path = uri.path().trim_start_matches("/static/");
 
     // Set cache duration based on resource type
-    #[cfg(not(debug_assertions))]
+    #[cfg(any(not(debug_assertions), test))]
     let cache_max_age = if path.starts_with("js/") || path.starts_with("css/") {
         // These assets are hashed
         60 * 60 * 24 * 365 // 1 year
@@ -493,7 +494,7 @@ async fn static_handler(uri: Uri) -> impl IntoResponse {
         // Default cache duration for other static resources
         60 * 60 // 1 hour
     };
-    #[cfg(debug_assertions)]
+    #[cfg(all(debug_assertions, not(test)))]
     let cache_max_age = 0;
 
     // Get file content and return it (if available)
@@ -600,7 +601,7 @@ mod tests {
         );
         assert_eq!(
             parts.headers.get(CACHE_CONTROL).unwrap(),
-            &HeaderValue::from_static("max-age=0")
+            &HeaderValue::from_static("max-age=604800")
         );
         assert!(!bytes.is_empty());
     }
