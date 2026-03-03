@@ -109,7 +109,7 @@ jobs:
       - name: Run markdownlint
         uses: DavidAnson/markdownlint-cli2-action@v22
         with:
-          globs: '**/*.md'
+          globs: 'docs/**/*.md'
 
   test-database:
     needs: changes

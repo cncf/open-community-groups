@@ -1,7 +1,8 @@
 # Public Site Guide
 
-The public site is the participation layer of OCG. It is where members discover communities,
-choose groups, RSVP to events, check in, and (when enabled) submit talks to Call for Speakers.
+The public site is the participation layer of OCG. It is where members
+discover communities, choose groups, RSVP to events, check in, and (when
+enabled) submit talks to Call for Speakers.
 
 If you are not sure where to start, start here.
 
@@ -21,29 +22,36 @@ If you prefer a faster task-oriented run-through first, use
 
 ## Understand the Core Pages
 
-| Page           | Path                                                 | Why it matters                                                   |
-| -------------- | ---------------------------------------------------- | ---------------------------------------------------------------- |
-| Home           | [`/`](/ ':ignore')                                   | Platform overview, featured communities, curated upcoming events |
-| Explore        | [`/explore`](/explore ':ignore')                     | Search and filter events or groups with multiple views           |
-| Stats          | [`/stats`](/stats ':ignore')                         | Platform-level growth and trend visibility                       |
-| Community page | `/{community}`                                       | Community identity, activity, and top-level context              |
-| Group page     | `/{community}/group/{group_slug}`                    | Membership entry point and group-specific event stream           |
-| Event page     | `/{community}/group/{group_slug}/event/{event_slug}` | RSVP, schedule, CFS, and delivery details                        |
-| Check-in page  | `/{community}/check-in/{event_id}`                   | Event-day attendance confirmation                                |
+- `Home` ([`/`](/ ':ignore')): platform overview, featured communities, and
+  curated upcoming events.
+- `Explore` ([`/explore`](/explore ':ignore')): search and filter events or
+  groups with multiple views.
+- `Stats` ([`/stats`](/stats ':ignore')): platform-level growth and trend
+  visibility.
+- `Community page` (`/{community}`): community identity, activity, and
+  top-level context.
+- `Group page` (`/{community}/group/{group_slug}`): membership entry point and
+  group-specific event stream.
+- `Event page` (`/{community}/group/{group_slug}/event/{event_slug}`): RSVP,
+  schedule, CFS, and delivery details.
+- `Check-in page` (`/{community}/check-in/{event_id}`): event-day attendance
+  confirmation.
 
 ![Home page overview](../screenshots/home-page.png)
 
 ## Discover Quickly in Explore
 
-[`Explore`](/explore ':ignore') is designed to help you move from "too many options" to a confident choice.
+[`Explore`](/explore ':ignore') is designed to help you move from
+"too many options" to a confident choice.
 
-For events, begin broad and narrow in this order: community, type, category, and date range.
-Keeping this order avoids over-filtering too early.
+For events, begin broad and narrow in this order: community, type, category,
+and date range. Keeping this order avoids over-filtering too early.
 
-?> Use this filter sequence for faster discovery with fewer false negatives: community, type,
-category, then date range.
+?> Use this filter sequence for faster discovery with fewer false negatives:
+community, type, category, then date range.
 
-Explore gives you multiple view styles, and the available options depend on what you are browsing:
+Explore gives you multiple view styles, and the available options depend on
+what you are browsing:
 
 - `Events`: `List` and `Calendar`.
 - `Groups`: `List` and `Map`.
@@ -62,11 +70,11 @@ Quick guide:
 
 ## Join Groups Intentionally
 
-Group membership is your durable connection point. Events come and go, but groups define the
-long-term working community.
+Group membership is your durable connection point. Events come and go, but
+groups define the long-term working community.
 
-On the group page, `Join group` adds you as a member. If you later step back, `Leave group`
-reverses that state.
+On the group page, `Join group` adds you as a member. If you later step back,
+`Leave group` reverses that state.
 
 Helpful details:
 
@@ -78,11 +86,11 @@ Helpful details:
 
 ## RSVP and Attend Events
 
-The event page is the source of truth for event delivery. Use it for RSVP, logistics, links,
-and speaker-program status.
+The event page is the source of truth for event delivery. Use it for RSVP,
+logistics, links, and speaker-program status.
 
-Click `Attend event` to RSVP. If the event is virtual/hybrid and meeting access is configured,
-attendees can see `Join meeting` when the event is live.
+Click `Attend event` to RSVP. If the event is virtual/hybrid and meeting access
+is configured, attendees can see `Join meeting` when the event is live.
 
 Helpful details:
 
@@ -98,7 +106,8 @@ You must RSVP first to be eligible for event-day check-in.
 
 ## Check In on Event Day
 
-Check-in is designed to validate real attendance, so timing and eligibility are enforced.
+Check-in is designed to validate real attendance, so timing and eligibility are
+enforced.
 
 Window rules:
 
@@ -112,7 +121,8 @@ You cannot check in if:
 - The event is not published or active.
 - The check-in window is closed.
 
-!> Check-in is strictly enforced by attendee state, event state, and check-in window timing.
+!> Check-in is strictly enforced by attendee state, event state, and check-in
+window timing.
 
 ![Group dashboard check in](../screenshots/dashboard-group-check-in.png)
 
@@ -121,24 +131,26 @@ You cannot check in if:
 The CFS flow intentionally spans two places:
 
 1. Create reusable proposals in
-   [`User Dashboard -> Session proposals`](/dashboard/user?tab=session-proposals ':ignore').
+   [`User Dashboard -> Session proposals`](
+   /dashboard/user?tab=session-proposals ':ignore').
 2. Submit those proposals from event pages where CFS is open.
 
-This split keeps your proposal content reusable while preserving per-event submission context
-(status, reviewer feedback, labels, and outcomes).
+This split keeps your proposal content reusable while preserving per-event
+submission context (status, reviewer feedback, labels, and outcomes).
 
-Track progress in [`User Dashboard -> Submissions`](/dashboard/user?tab=submissions ':ignore').
+Track progress in
+[`User Dashboard -> Submissions`](/dashboard/user?tab=submissions ':ignore').
 
 For full speaker workflow detail, continue with
-[User Dashboard Guide](user-dashboard.md). For organizer-side review and event lifecycle controls,
-see [Event Operations](event-operations.md).
+[User Dashboard Guide](user-dashboard.md). For organizer-side review and event
+lifecycle controls, see [Event Operations](event-operations.md).
 
 ![Avent page CFS](../screenshots/event-page-cfs.png)
 
 ## Use Stats for Platform Context
 
-[`Stats`](/stats ':ignore') helps organizers and contributors understand momentum at a glance: groups,
-members, events, and attendees over time.
+[`Stats`](/stats ':ignore') helps organizers and contributors understand
+momentum at a glance: groups, members, events, and attendees over time.
 
 ![Stats page overview](../screenshots/stats-page.png)
 
