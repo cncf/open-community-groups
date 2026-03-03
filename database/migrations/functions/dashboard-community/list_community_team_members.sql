@@ -12,6 +12,7 @@ returns json as $$
         members as (
             select
                 ct.accepted,
+                ct.role,
                 u.user_id,
                 u.username,
 
@@ -26,11 +27,15 @@ returns json as $$
             offset (select offset_value from filters)
             limit (select limit_value from filters)
         ),
-        -- Count totals for all and accepted members
+        -- Count totals for all members, accepted members and accepted admins
         totals as (
             select
                 count(*)::int as total,
-                count(*) filter (where ct.accepted)::int as approved_total
+                count(*) filter (where ct.accepted)::int as total_accepted,
+                count(*) filter (
+                    where ct.accepted
+                      and ct.role = 'admin'
+                )::int as total_admins_accepted
             from community_team ct
             where ct.community_id = p_community_id
         ),
@@ -41,9 +46,10 @@ returns json as $$
         )
     -- Build final payload
     select json_build_object(
-        'approved_total', totals.approved_total,
         'members', members_json.members,
-        'total', totals.total
+        'total', totals.total,
+        'total_accepted', totals.total_accepted,
+        'total_admins_accepted', totals.total_admins_accepted
     )
     from totals, members_json;
 $$ language sql;

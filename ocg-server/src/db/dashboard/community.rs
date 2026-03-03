@@ -22,7 +22,7 @@ use crate::{
         team::{CommunityTeamFilters, CommunityTeamOutput},
     },
     types::{
-        community::CommunitySummary,
+        community::{CommunityRole, CommunityRoleSummary, CommunitySummary},
         group::{GroupCategory, GroupRegion},
     },
 };
@@ -34,7 +34,12 @@ pub(crate) trait DBDashboardCommunity {
     async fn activate_group(&self, community_id: Uuid, group_id: Uuid) -> Result<()>;
 
     /// Adds a user to the community team.
-    async fn add_community_team_member(&self, community_id: Uuid, user_id: Uuid) -> Result<()>;
+    async fn add_community_team_member(
+        &self,
+        community_id: Uuid,
+        user_id: Uuid,
+        role: &CommunityRole,
+    ) -> Result<()>;
 
     /// Adds a new group to the database.
     async fn add_group(&self, community_id: Uuid, group: &Group) -> Result<Uuid>;
@@ -77,6 +82,9 @@ pub(crate) trait DBDashboardCommunity {
     /// Retrieves analytics statistics for a community.
     async fn get_community_stats(&self, community_id: Uuid) -> Result<CommunityStats>;
 
+    /// Lists all available community roles.
+    async fn list_community_roles(&self) -> Result<Vec<CommunityRoleSummary>>;
+
     /// Lists all community team members.
     async fn list_community_team_members(
         &self,
@@ -95,6 +103,14 @@ pub(crate) trait DBDashboardCommunity {
 
     /// Updates a community's settings.
     async fn update_community(&self, community_id: Uuid, community: &CommunityUpdate) -> Result<()>;
+
+    /// Updates a community team member role.
+    async fn update_community_team_member_role(
+        &self,
+        community_id: Uuid,
+        user_id: Uuid,
+        role: &CommunityRole,
+    ) -> Result<()>;
 
     /// Updates an event category in the database.
     async fn update_event_category(
@@ -135,13 +151,18 @@ impl DBDashboardCommunity for PgDB {
 
     /// [`DBDashboardCommunity::add_community_team_member`]
     #[instrument(skip(self), err)]
-    async fn add_community_team_member(&self, community_id: Uuid, user_id: Uuid) -> Result<()> {
+    async fn add_community_team_member(
+        &self,
+        community_id: Uuid,
+        user_id: Uuid,
+        role: &CommunityRole,
+    ) -> Result<()> {
         trace!("db: add community team member");
 
         let db = self.pool.get().await?;
         db.execute(
-            "select add_community_team_member($1::uuid, $2::uuid)",
-            &[&community_id, &user_id],
+            "select add_community_team_member($1::uuid, $2::uuid, $3::text)",
+            &[&community_id, &user_id, &role.to_string()],
         )
         .await?;
 
@@ -339,6 +360,29 @@ impl DBDashboardCommunity for PgDB {
         inner(db, community_id).await
     }
 
+    /// [`DBDashboardCommunity::list_community_roles`]
+    #[instrument(skip(self), err)]
+    async fn list_community_roles(&self) -> Result<Vec<CommunityRoleSummary>> {
+        #[cached(
+            time = 86400,
+            key = "String",
+            convert = r#"{ String::from("community_roles") }"#,
+            sync_writes = "by_key",
+            result = true
+        )]
+        async fn inner(db: Client) -> Result<Vec<CommunityRoleSummary>> {
+            trace!("db: list community roles");
+
+            let row = db.query_one("select list_community_roles()", &[]).await?;
+            let roles = row.try_get::<_, Json<Vec<CommunityRoleSummary>>>(0)?.0;
+
+            Ok(roles)
+        }
+
+        let db = self.pool.get().await?;
+        inner(db).await
+    }
+
     /// [`DBDashboardCommunity::list_community_team_members`]
     #[instrument(skip(self), err)]
     async fn list_community_team_members(
@@ -411,6 +455,26 @@ impl DBDashboardCommunity for PgDB {
         db.execute(
             "select update_community($1::uuid, $2::jsonb)",
             &[&community_id, &Json(community)],
+        )
+        .await?;
+
+        Ok(())
+    }
+
+    /// [`DBDashboardCommunity::update_community_team_member_role`]
+    #[instrument(skip(self), err)]
+    async fn update_community_team_member_role(
+        &self,
+        community_id: Uuid,
+        user_id: Uuid,
+        role: &CommunityRole,
+    ) -> Result<()> {
+        trace!("db: update community team member role");
+
+        let db = self.pool.get().await?;
+        db.execute(
+            "select update_community_team_member_role($1::uuid, $2::uuid, $3::text)",
+            &[&community_id, &user_id, &role.to_string()],
         )
         .await?;
 

@@ -452,13 +452,24 @@ impl DBDashboardGroup for PgDB {
     /// [`DBDashboardGroup::list_event_kinds`]
     #[instrument(skip(self), err)]
     async fn list_event_kinds(&self) -> Result<Vec<EventKind>> {
-        trace!("db: list event kinds");
+        #[cached(
+            time = 86400,
+            key = "String",
+            convert = r#"{ String::from("event_kinds") }"#,
+            sync_writes = "by_key",
+            result = true
+        )]
+        async fn inner(db: Client) -> Result<Vec<EventKind>> {
+            trace!("db: list event kinds");
+
+            let row = db.query_one("select list_event_kinds()", &[]).await?;
+            let kinds = row.try_get::<_, Json<Vec<EventKind>>>(0)?.0;
+
+            Ok(kinds)
+        }
 
         let db = self.pool.get().await?;
-        let row = db.query_one("select list_event_kinds()", &[]).await?;
-        let kinds = row.try_get::<_, Json<Vec<EventKind>>>(0)?.0;
-
-        Ok(kinds)
+        inner(db).await
     }
 
     /// [`DBDashboardGroup::list_group_events`]
@@ -516,13 +527,24 @@ impl DBDashboardGroup for PgDB {
     /// [`DBDashboardGroup::list_group_roles`]
     #[instrument(skip(self), err)]
     async fn list_group_roles(&self) -> Result<Vec<GroupRoleSummary>> {
-        trace!("db: list group roles");
+        #[cached(
+            time = 86400,
+            key = "String",
+            convert = r#"{ String::from("group_roles") }"#,
+            sync_writes = "by_key",
+            result = true
+        )]
+        async fn inner(db: Client) -> Result<Vec<GroupRoleSummary>> {
+            trace!("db: list group roles");
+
+            let row = db.query_one("select list_group_roles()", &[]).await?;
+            let roles = row.try_get::<_, Json<Vec<GroupRoleSummary>>>(0)?.0;
+
+            Ok(roles)
+        }
 
         let db = self.pool.get().await?;
-        let row = db.query_one("select list_group_roles()", &[]).await?;
-        let roles = row.try_get::<_, Json<Vec<GroupRoleSummary>>>(0)?.0;
-
-        Ok(roles)
+        inner(db).await
     }
 
     /// [`DBDashboardGroup::list_group_sponsors`]
@@ -585,13 +607,24 @@ impl DBDashboardGroup for PgDB {
     /// [`DBDashboardGroup::list_session_kinds`]
     #[instrument(skip(self), err)]
     async fn list_session_kinds(&self) -> Result<Vec<SessionKind>> {
-        trace!("db: list session kinds");
+        #[cached(
+            time = 86400,
+            key = "String",
+            convert = r#"{ String::from("session_kinds") }"#,
+            sync_writes = "by_key",
+            result = true
+        )]
+        async fn inner(db: Client) -> Result<Vec<SessionKind>> {
+            trace!("db: list session kinds");
+
+            let row = db.query_one("select list_session_kinds()", &[]).await?;
+            let kinds = row.try_get::<_, Json<Vec<SessionKind>>>(0)?.0;
+
+            Ok(kinds)
+        }
 
         let db = self.pool.get().await?;
-        let row = db.query_one("select list_session_kinds()", &[]).await?;
-        let kinds = row.try_get::<_, Json<Vec<SessionKind>>>(0)?.0;
-
-        Ok(kinds)
+        inner(db).await
     }
 
     /// [`DBDashboardGroup::list_user_groups`]

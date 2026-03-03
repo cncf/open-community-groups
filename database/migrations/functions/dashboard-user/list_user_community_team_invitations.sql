@@ -6,6 +6,7 @@ returns json as $$
         select
             ct.community_id,
             c.name as community_name,
+            ct.role,
 
             extract(epoch from ct.created_at)::bigint as created_at
         from community_team ct

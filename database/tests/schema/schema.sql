@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(385);
+select plan(391);
 
 -- ============================================================================
 -- TESTS
@@ -21,6 +21,7 @@ select has_table('cfs_submission_label');
 select has_table('cfs_submission_rating');
 select has_table('cfs_submission_status');
 select has_table('community');
+select has_table('community_role');
 select has_table('community_site_layout');
 select has_table('community_team');
 select has_table('custom_notification');
@@ -151,11 +152,18 @@ select columns_are('community_site_layout', array[
     'community_site_layout_id'
 ]);
 
+-- Test: community_role columns should match expected
+select columns_are('community_role', array[
+    'community_role_id',
+    'display_name'
+]);
+
 -- Test: community_team columns should match expected
 select columns_are('community_team', array[
     'community_id',
     'accepted',
     'created_at',
+    'role',
     'user_id'
 ]);
 
@@ -602,6 +610,7 @@ select has_pk('cfs_submission');
 select has_pk('cfs_submission_rating');
 select has_pk('cfs_submission_status');
 select has_pk('community');
+select has_pk('community_role');
 select has_pk('community_site_layout');
 select has_pk('community_team');
 select has_pk('custom_notification');
@@ -755,10 +764,17 @@ select indexes_are('community_site_layout', array[
     'community_site_layout_pkey'
 ]);
 
+-- Test: community_role indexes should match expected
+select indexes_are('community_role', array[
+    'community_role_pkey',
+    'community_role_display_name_key'
+]);
+
 -- Test: community_team indexes should match expected
 select indexes_are('community_team', array[
     'community_team_pkey',
     'community_team_community_id_idx',
+    'community_team_role_idx',
     'community_team_user_id_idx',
     'community_team_pending_user_created_at_idx'
 ]);
@@ -1089,6 +1105,7 @@ select has_function('join_group');
 select has_function('leave_event');
 select has_function('leave_group');
 select has_function('list_community_team_members');
+select has_function('list_community_roles');
 select has_function('list_cfs_submission_statuses_for_review');
 select has_function('list_event_approved_cfs_submissions');
 select has_function('list_event_attendees_ids');
@@ -1127,6 +1144,7 @@ select has_function('sign_up_user');
 select has_function('unpublish_event');
 select has_function('update_cfs_submission');
 select has_function('update_community');
+select has_function('update_community_team_member_role');
 select has_function('update_event');
 select has_function('update_group');
 select has_function('update_group_sponsor');
@@ -1134,9 +1152,8 @@ select has_function('update_group_team_member_role');
 select has_function('update_meeting_recording_url');
 select has_function('update_session_proposal');
 select has_function('update_user_details');
-select has_function('user_owns_community');
-select has_function('user_owns_group');
-select has_function('user_owns_groups_in_community');
+select has_function('user_has_community_permission');
+select has_function('user_has_group_permission');
 select has_function('verify_email');
 select has_function('withdraw_cfs_submission');
 
@@ -1287,11 +1304,24 @@ select results_eq(
     'Community site layout should have default'
 );
 
+-- Test: community role should match expected values
+select results_eq(
+    'select * from community_role order by community_role_id',
+    $$ values
+        ('admin', 'Admin'),
+        ('groups-manager', 'Groups Manager'),
+        ('viewer', 'Viewer')
+    $$,
+    'Community roles should exist'
+);
+
 -- Test: group role should match expected values
 select results_eq(
     'select * from group_role order by group_role_id',
     $$ values
-        ('organizer', 'Organizer')
+        ('admin', 'Admin'),
+        ('events-manager', 'Events Manager'),
+        ('viewer', 'Viewer')
     $$,
     'Group roles should exist'
 );

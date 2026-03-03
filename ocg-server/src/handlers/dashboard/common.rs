@@ -74,10 +74,12 @@ mod tests {
             .times(1)
             .withf(move |id| *id == session_user_id)
             .returning(move |_| Ok(Some(sample_auth_user(session_user_id, &auth_hash))));
-        db.expect_user_owns_community()
+        db.expect_user_has_community_permission()
             .times(1)
-            .withf(move |cid, uid| *cid == community_id && *uid == session_user_id)
-            .returning(|_, _| Ok(true));
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == session_user_id && permission == "community.team.write"
+            })
+            .returning(|_, _, _| Ok(true));
         db.expect_search_user()
             .times(1)
             .withf(move |query| query == "john")
@@ -133,10 +135,12 @@ mod tests {
             .times(1)
             .withf(move |id| *id == session_user_id)
             .returning(move |_| Ok(Some(sample_auth_user(session_user_id, &auth_hash))));
-        db.expect_user_owns_community()
+        db.expect_user_has_community_permission()
             .times(1)
-            .withf(move |cid, uid| *cid == community_id && *uid == session_user_id)
-            .returning(|_, _| Ok(true));
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == session_user_id && permission == "community.team.write"
+            })
+            .returning(|_, _, _| Ok(true));
 
         // Setup notifications manager mock
         let nm = MockNotificationsManager::new();

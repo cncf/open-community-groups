@@ -29,7 +29,7 @@ values (:'user1ID', gen_random_bytes(32), 'alice@example.com', 'alice', true);
 
 -- Pending invite
 insert into group_team (group_id, user_id, role, accepted)
-values (:'groupID', :'user1ID', 'organizer', false);
+values (:'groupID', :'user1ID', 'admin', false);
 
 -- ============================================================================
 -- TESTS

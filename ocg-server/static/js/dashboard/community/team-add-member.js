@@ -5,12 +5,6 @@ import "/static/js/common/logo-image.js";
 import { computeUserInitials, lockBodyScroll, unlockBodyScroll } from "/static/js/common/common.js";
 import { handleHtmxResponse } from "/static/js/common/alerts.js";
 
-// TODO - Hardcoded role options for add endpoint
-const ROLE_OPTIONS = {
-  group: [{ value: "organizer", label: "Organizer" }],
-  community: [],
-};
-
 /**
  * TeamAddMember component for inviting team members.
  *
@@ -32,18 +26,24 @@ export class TeamAddMember extends LitWrapper {
    */
   static properties = {
     dashboardType: { type: String, attribute: "dashboard-type" },
+    canManageTeam: { type: Boolean, attribute: "can-manage-team", reflect: true },
     selectedUsers: { type: Array, attribute: false },
+    roleOptions: { type: Array, attribute: false },
     disabledUserIds: { type: Array, attribute: false },
     _isOpen: { type: Boolean },
+    _selectedRole: { type: String },
     _selectedUser: { type: Object },
   };
 
   constructor() {
     super();
+    this.canManageTeam = true;
     this.dashboardType = "community";
     this.selectedUsers = [];
+    this.roleOptions = [];
     this.disabledUserIds = [];
     this._isOpen = false;
+    this._selectedRole = "";
     this._selectedUser = null;
   }
 
@@ -61,6 +61,22 @@ export class TeamAddMember extends LitWrapper {
         if (Array.isArray(parsed)) {
           this.selectedUsers = parsed;
           this.disabledUserIds = parsed.map((u) => String(u.user_id));
+        }
+      } catch (_) {
+        // ignore parsing errors
+      }
+    }
+
+    // Parse role-options attribute (JSON array)
+    const roleOptionsAttr = this.getAttribute("role-options");
+    if (roleOptionsAttr && typeof roleOptionsAttr === "string") {
+      try {
+        const parsed = JSON.parse(roleOptionsAttr);
+        if (Array.isArray(parsed)) {
+          this.roleOptions = parsed.map((role) => ({
+            label: role.display_name,
+            value: role.community_role_id || role.group_role_id,
+          }));
         }
       } catch (_) {
         // ignore parsing errors
@@ -93,6 +109,7 @@ export class TeamAddMember extends LitWrapper {
    * @private
    */
   _open() {
+    if (!this.canManageTeam) return;
     this._isOpen = true;
     lockBodyScroll();
     this.updateComplete.then(() => {
@@ -122,7 +139,18 @@ export class TeamAddMember extends LitWrapper {
     const userIdInput = this.querySelector("#team-add-user-id");
     const submitBtn = this.querySelector("#team-add-submit");
     if (userIdInput) userIdInput.value = user.user_id;
-    if (submitBtn) submitBtn.disabled = false;
+    if (submitBtn) submitBtn.disabled = !(this._selectedRole && this._selectedUser);
+  }
+
+  /**
+   * Handles role selection changes and updates button state.
+   * @param {Event} e - Change event
+   * @private
+   */
+  _onRoleChanged(e) {
+    this._selectedRole = e.target?.value || "";
+    const submitBtn = this.querySelector("#team-add-submit");
+    if (submitBtn) submitBtn.disabled = !(this._selectedRole && this._selectedUser);
   }
 
   /**
@@ -174,10 +202,13 @@ export class TeamAddMember extends LitWrapper {
    */
   _resetSelection() {
     this._selectedUser = null;
+    this._selectedRole = "";
     const userIdInput = this.querySelector("#team-add-user-id");
+    const roleSelect = this.querySelector("#team-add-role");
     const submitBtn = this.querySelector("#team-add-submit");
     if (userIdInput) userIdInput.value = "";
-    if (submitBtn) submitBtn.disabled = true;
+    if (roleSelect) roleSelect.value = "";
+    if (submitBtn) submitBtn.disabled = !(this._selectedRole && this._selectedUser);
   }
 
   /**
@@ -243,30 +274,26 @@ export class TeamAddMember extends LitWrapper {
                   ></user-search-field>
                   <input type="hidden" name="user_id" id="team-add-user-id" />
                 </div>
-                ${(() => {
-                  const opts = ROLE_OPTIONS[this.dashboardType] || [];
-                  if (!opts.length) return html``;
-                  return html`
-                    <div class="mb-6">
-                      <label for="team-add-role" class="form-label">Role</label>
-                      <select
-                        id="team-add-role"
-                        name="role"
-                        class="input-primary"
-                        ?required=${this.dashboardType === "group"}
-                      >
-                        ${opts.map((o) => html`<option value=${o.value}>${o.label}</option>`)}
-                      </select>
-                    </div>
-                  `;
-                })()}
+                <div class="mb-6">
+                  <label for="team-add-role" class="form-label">Role</label>
+                  <select
+                    id="team-add-role"
+                    name="role"
+                    class="input-primary"
+                    required
+                    @change=${(e) => this._onRoleChanged(e)}
+                  >
+                    <option value="" selected disabled>Select a role</option>
+                    ${this.roleOptions.map((o) => html`<option value=${o.value}>${o.label}</option>`)}
+                  </select>
+                </div>
                 <div class="flex items-center justify-between gap-4">
                   <div>${this._renderSelectedBadge()}</div>
                   <button
                     id="team-add-submit"
                     type="submit"
                     class="btn-primary"
-                    ?disabled=${!this._selectedUser}
+                    ?disabled=${!this._selectedUser || !this._selectedRole}
                   >
                     Add
                   </button>
@@ -280,6 +307,16 @@ export class TeamAddMember extends LitWrapper {
   }
 
   render() {
+    if (!this.canManageTeam) {
+      return html`
+        <div class="inline-flex items-center gap-3">
+          <button class="btn-primary" disabled title="Your role cannot invite team members.">
+            Add member
+          </button>
+        </div>
+      `;
+    }
+
     return html`
       <div class="inline-flex items-center gap-3">
         <button class="btn-primary" @click=${() => this._open()}>Add member</button>

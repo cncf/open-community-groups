@@ -53,14 +53,22 @@ pub(crate) trait DBAuth {
     /// Updates a user's password in the database.
     async fn update_user_password(&self, user_id: &Uuid, new_password: &str) -> Result<()>;
 
-    /// Checks if a user owns a specific community.
-    async fn user_owns_community(&self, community_id: &Uuid, user_id: &Uuid) -> Result<bool>;
+    /// Checks whether a user has a permission in a specific community.
+    async fn user_has_community_permission(
+        &self,
+        community_id: &Uuid,
+        user_id: &Uuid,
+        permission: &str,
+    ) -> Result<bool>;
 
-    /// Checks if a user owns a specific group.
-    async fn user_owns_group(&self, community_id: &Uuid, group_id: &Uuid, user_id: &Uuid) -> Result<bool>;
-
-    /// Checks if a user owns any group in a specific community.
-    async fn user_owns_groups_in_community(&self, community_id: &Uuid, user_id: &Uuid) -> Result<bool>;
+    /// Checks whether a user has a permission in a specific group.
+    async fn user_has_group_permission(
+        &self,
+        community_id: &Uuid,
+        group_id: &Uuid,
+        user_id: &Uuid,
+        permission: &str,
+    ) -> Result<bool>;
 
     /// Verifies a user's email address using a verification code.
     async fn verify_email(&self, code: &Uuid) -> Result<()>;
@@ -260,49 +268,43 @@ impl DBAuth for PgDB {
         Ok(())
     }
 
-    #[instrument(skip(self), err)]
-    async fn user_owns_community(&self, community_id: &Uuid, user_id: &Uuid) -> Result<bool> {
-        trace!("db: check if user owns community");
-
+    #[instrument(skip(self, permission), err)]
+    async fn user_has_community_permission(
+        &self,
+        community_id: &Uuid,
+        user_id: &Uuid,
+        permission: &str,
+    ) -> Result<bool> {
+        trace!("db: check if user has community permission");
         let db = self.pool.get().await?;
         let row = db
             .query_one(
-                "select user_owns_community($1::uuid, $2::uuid) as owns_community;",
-                &[&community_id, &user_id],
+                "select user_has_community_permission($1::uuid, $2::uuid, $3::text) as has_permission;",
+                &[&community_id, &user_id, &permission],
             )
             .await?;
 
-        Ok(row.get("owns_community"))
+        Ok(row.get("has_permission"))
     }
 
-    #[instrument(skip(self), err)]
-    async fn user_owns_group(&self, community_id: &Uuid, group_id: &Uuid, user_id: &Uuid) -> Result<bool> {
-        trace!("db: check if user owns group");
-
+    #[instrument(skip(self, permission), err)]
+    async fn user_has_group_permission(
+        &self,
+        community_id: &Uuid,
+        group_id: &Uuid,
+        user_id: &Uuid,
+        permission: &str,
+    ) -> Result<bool> {
+        trace!("db: check if user has group permission");
         let db = self.pool.get().await?;
         let row = db
             .query_one(
-                "select user_owns_group($1::uuid, $2::uuid, $3::uuid) as owns_group;",
-                &[&community_id, &group_id, &user_id],
+                "select user_has_group_permission($1::uuid, $2::uuid, $3::uuid, $4::text) as has_permission;",
+                &[&community_id, &group_id, &user_id, &permission],
             )
             .await?;
 
-        Ok(row.get("owns_group"))
-    }
-
-    #[instrument(skip(self), err)]
-    async fn user_owns_groups_in_community(&self, community_id: &Uuid, user_id: &Uuid) -> Result<bool> {
-        trace!("db: check if user owns groups in community");
-
-        let db = self.pool.get().await?;
-        let row = db
-            .query_one(
-                "select user_owns_groups_in_community($1::uuid, $2::uuid) as owns_groups;",
-                &[&community_id, &user_id],
-            )
-            .await?;
-
-        Ok(row.get("owns_groups"))
+        Ok(row.get("has_permission"))
     }
 
     #[instrument(skip(self), err)]

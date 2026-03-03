@@ -28,6 +28,8 @@ pub(crate) struct CommunityTeamInvitation {
     pub community_id: Uuid,
     /// Community name (slug).
     pub community_name: String,
+    /// Role within the community.
+    pub role: String,
 
     /// Invitation creation time.
     #[serde(with = "chrono::serde::ts_seconds")]

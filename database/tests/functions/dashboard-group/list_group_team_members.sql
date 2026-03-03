@@ -40,8 +40,8 @@ values
 -- Group team membership
 insert into group_team (group_id, user_id, role, accepted)
 values
-    (:'groupID', :'user1ID', 'organizer', true),
-    (:'groupID', :'user2ID', 'organizer', false);
+    (:'groupID', :'user1ID', 'admin', true),
+    (:'groupID', :'user2ID', 'admin', false);
 
 -- ============================================================================
 -- TESTS
@@ -54,12 +54,13 @@ select is(
         '{"limit": 50, "offset": 0}'::jsonb
     )::jsonb,
     jsonb_build_object(
-        'approved_total', 1,
         'members', '[
-            {"accepted": true, "user_id": "00000000-0000-0000-0000-000000000031", "username": "alice", "company": "Cloud Corp", "name": "Alice", "photo_url": null, "role": "organizer", "title": "Organizer"},
-            {"accepted": false, "user_id": "00000000-0000-0000-0000-000000000032", "username": "bob", "company": null, "name": null, "photo_url": null, "role": "organizer", "title": null}
+            {"accepted": true, "user_id": "00000000-0000-0000-0000-000000000031", "username": "alice", "company": "Cloud Corp", "name": "Alice", "photo_url": null, "role": "admin", "title": "Organizer"},
+            {"accepted": false, "user_id": "00000000-0000-0000-0000-000000000032", "username": "bob", "company": null, "name": null, "photo_url": null, "role": "admin", "title": null}
         ]'::jsonb,
-        'total', 2
+        'total', 2,
+        'total_accepted', 1,
+        'total_admins_accepted', 1
     ),
     'Should return list of group team members with accepted flag'
 );
@@ -71,11 +72,12 @@ select is(
         '{"limit": 1, "offset": 1}'::jsonb
     )::jsonb,
     jsonb_build_object(
-        'approved_total', 1,
         'members', '[
-            {"accepted": false, "user_id": "00000000-0000-0000-0000-000000000032", "username": "bob", "company": null, "name": null, "photo_url": null, "role": "organizer", "title": null}
+            {"accepted": false, "user_id": "00000000-0000-0000-0000-000000000032", "username": "bob", "company": null, "name": null, "photo_url": null, "role": "admin", "title": null}
         ]'::jsonb,
-        'total', 2
+        'total', 2,
+        'total_accepted', 1,
+        'total_admins_accepted', 1
     ),
     'Should return paginated team members when limit and offset are provided'
 );
@@ -87,9 +89,10 @@ select is(
         '{"limit": 50, "offset": 0}'::jsonb
     )::jsonb,
     jsonb_build_object(
-        'approved_total', 0,
         'members', '[]'::jsonb,
-        'total', 0
+        'total', 0,
+        'total_accepted', 0,
+        'total_admins_accepted', 0
     ),
     'Should return empty list for non-existing group'
 );

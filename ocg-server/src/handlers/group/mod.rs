@@ -231,7 +231,6 @@ mod tests {
     async fn test_page_db_error() {
         // Setup identifiers and data structures
         let community_id = Uuid::new_v4();
-        let event_id = Uuid::new_v4();
         let group_id = Uuid::new_v4();
 
         // Setup database mock
@@ -244,17 +243,8 @@ mod tests {
             .times(1)
             .withf(move |id, slug| *id == community_id && slug == "test-group")
             .returning(move |_, _| Ok(sample_group_full(community_id, group_id)));
-        db.expect_get_group_upcoming_events()
-            .times(0..=1)
-            .withf(move |id, slug, kinds, limit| {
-                *id == community_id
-                    && slug == "test-group"
-                    && kinds == &vec![EventKind::InPerson, EventKind::Virtual, EventKind::Hybrid]
-                    && *limit == 9
-            })
-            .returning(move |_, _, _, _| Ok(vec![sample_event_summary(event_id, group_id)]));
         db.expect_get_group_past_events()
-            .times(0..=1)
+            .times(1)
             .withf(move |id, slug, kinds, limit| {
                 *id == community_id
                     && slug == "test-group"

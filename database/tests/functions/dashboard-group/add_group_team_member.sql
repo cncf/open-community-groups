@@ -42,7 +42,7 @@ insert into "user" (user_id, auth_hash, email, name, username, email_verified) v
 
 -- Should create pending membership
 select lives_ok(
-    $$ select add_group_team_member('00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000031'::uuid, 'organizer') $$,
+    $$ select add_group_team_member('00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000031'::uuid, 'admin') $$,
     'Should succeed for valid user'
 );
 select results_eq(
@@ -66,7 +66,7 @@ select throws_ok(
 
 -- Should not allow duplicate group team membership
 select throws_ok(
-    $$ select add_group_team_member('00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000031'::uuid, 'organizer') $$,
+    $$ select add_group_team_member('00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000031'::uuid, 'admin') $$,
     'user is already a group team member',
     'Should not allow duplicate group team membership'
 );

@@ -14,7 +14,7 @@ use tracing::instrument;
 use crate::{
     auth::AuthSession,
     db::DynDB,
-    handlers::{error::HandlerError, extractors::SelectedCommunityId},
+    handlers::{auth::COMMUNITY_TEAM_WRITE_PERMISSION, error::HandlerError, extractors::SelectedCommunityId},
     router::serde_qs_config,
     templates::{
         PageId,
@@ -113,7 +113,16 @@ pub(crate) async fn page(
             // Fetch team members
             let page_filters: CommunityTeamFilters =
                 serde_qs_config().deserialize_str(raw_query.as_deref().unwrap_or_default())?;
-            let results = db.list_community_team_members(community_id, &page_filters).await?;
+            let user = auth_session.user.as_ref().expect("user to be logged in");
+            let (results, roles, can_manage_team) = tokio::try_join!(
+                db.list_community_team_members(community_id, &page_filters),
+                db.list_community_roles(),
+                db.user_has_community_permission(
+                    &community_id,
+                    &user.user_id,
+                    COMMUNITY_TEAM_WRITE_PERMISSION
+                )
+            )?;
 
             // Prepare template content
             let navigation_links = NavigationLinks::from_filters(
@@ -123,10 +132,13 @@ pub(crate) async fn page(
                 "/dashboard/community/team",
             )?;
             Content::Team(team::ListPage {
-                approved_members_count: results.approved_total,
+                can_manage_team,
                 members: results.members,
                 navigation_links,
+                roles,
                 total: results.total,
+                total_accepted: results.total_accepted,
+                total_admins_accepted: results.total_admins_accepted,
                 limit: page_filters.limit,
                 offset: page_filters.offset,
             })
@@ -145,8 +157,7 @@ pub(crate) async fn page(
         user: User::from_session(auth_session).await?,
     };
 
-    let html = Html(page.render()?);
-    Ok(html)
+    Ok(Html(page.render()?))
 }
 
 // Tests.
@@ -193,10 +204,12 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_community()
+        db.expect_user_has_community_permission()
             .times(1)
-            .withf(move |cid, uid| *cid == community_id && *uid == user_id)
-            .returning(|_, _| Ok(true));
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == user_id && permission == "community.read"
+            })
+            .returning(|_, _, _| Ok(true));
         db.expect_get_community_full()
             .times(1)
             .withf(move |id| *id == community_id)
@@ -268,10 +281,12 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_community()
+        db.expect_user_has_community_permission()
             .times(1)
-            .withf(move |cid, uid| *cid == community_id && *uid == user_id)
-            .returning(|_, _| Ok(true));
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == user_id && permission == "community.read"
+            })
+            .returning(|_, _, _| Ok(true));
         db.expect_get_community_full()
             .times(1)
             .withf(move |id| *id == community_id)
@@ -345,10 +360,12 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_community()
+        db.expect_user_has_community_permission()
             .times(1)
-            .withf(move |cid, uid| *cid == community_id && *uid == user_id)
-            .returning(|_, _| Ok(true));
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == user_id && permission == "community.read"
+            })
+            .returning(|_, _, _| Ok(true));
         db.expect_get_community_full()
             .times(1)
             .withf(move |id| *id == community_id)
@@ -403,9 +420,10 @@ mod tests {
             sample_community_team_member(false),
         ];
         let output = crate::templates::dashboard::community::team::CommunityTeamOutput {
-            approved_total: 1,
             members: members.clone(),
             total: members.len(),
+            total_accepted: 1,
+            total_admins_accepted: 1,
         };
 
         // Setup database mock
@@ -418,10 +436,18 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_community()
+        db.expect_user_has_community_permission()
             .times(1)
-            .withf(move |cid, uid| *cid == community_id && *uid == user_id)
-            .returning(|_, _| Ok(true));
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == user_id && permission == "community.read"
+            })
+            .returning(|_, _, _| Ok(true));
+        db.expect_user_has_community_permission()
+            .times(1)
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == user_id && permission == "community.team.write"
+            })
+            .returning(|_, _, _| Ok(true));
         db.expect_get_community_full()
             .times(1)
             .withf(move |id| *id == community_id)
@@ -441,6 +467,9 @@ mod tests {
         db.expect_get_site_settings()
             .times(1)
             .returning(|| Ok(sample_site_settings()));
+        db.expect_list_community_roles()
+            .times(1)
+            .returning(|| Ok(vec![sample_community_role_summary()]));
 
         // Setup notifications manager mock
         let nm = MockNotificationsManager::new();
@@ -491,10 +520,12 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_community()
+        db.expect_user_has_community_permission()
             .times(1)
-            .withf(move |cid, uid| *cid == community_id && *uid == user_id)
-            .returning(|_, _| Ok(true));
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == user_id && permission == "community.read"
+            })
+            .returning(|_, _, _| Ok(true));
         db.expect_get_community_full()
             .times(1)
             .withf(move |id| *id == community_id)
@@ -560,10 +591,12 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_community()
+        db.expect_user_has_community_permission()
             .times(1)
-            .withf(move |cid, uid| *cid == community_id && *uid == user_id)
-            .returning(|_, _| Ok(true));
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == user_id && permission == "community.read"
+            })
+            .returning(|_, _, _| Ok(true));
         db.expect_get_community_full()
             .times(1)
             .withf(move |id| *id == community_id)
@@ -629,10 +662,12 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_community()
+        db.expect_user_has_community_permission()
             .times(1)
-            .withf(move |cid, uid| *cid == community_id && *uid == user_id)
-            .returning(|_, _| Ok(true));
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == user_id && permission == "community.read"
+            })
+            .returning(|_, _, _| Ok(true));
         db.expect_get_community_full()
             .times(1)
             .withf(move |id| *id == community_id)
@@ -697,10 +732,12 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_community()
+        db.expect_user_has_community_permission()
             .times(1)
-            .withf(move |cid, uid| *cid == community_id && *uid == user_id)
-            .returning(|_, _| Ok(true));
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == user_id && permission == "community.read"
+            })
+            .returning(|_, _, _| Ok(true));
         db.expect_get_community_full()
             .times(1)
             .withf(move |id| *id == community_id)

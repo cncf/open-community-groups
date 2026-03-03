@@ -9,7 +9,7 @@ use axum::{
     extract::{Path, Query, Request, State},
     http::StatusCode,
     middleware::Next,
-    response::{Html, IntoResponse, Redirect},
+    response::{Html, IntoResponse, Redirect, Response},
 };
 use axum_messages::Messages;
 use garde::Validate;
@@ -69,6 +69,41 @@ pub(crate) const SIGN_UP_URL: &str = "/sign-up";
 
 /// URL for user dashboard invitations tab.
 pub(crate) const USER_DASHBOARD_INVITATIONS_URL: &str = "/dashboard/user?tab=invitations";
+
+// Permissions.
+
+/// Community read permission.
+pub(crate) const COMMUNITY_READ_PERMISSION: &str = "community.read";
+
+/// Community groups write permission.
+pub(crate) const COMMUNITY_GROUPS_WRITE_PERMISSION: &str = "community.groups.write";
+
+/// Community settings write permission.
+pub(crate) const COMMUNITY_SETTINGS_WRITE_PERMISSION: &str = "community.settings.write";
+
+/// Community taxonomy write permission.
+pub(crate) const COMMUNITY_TAXONOMY_WRITE_PERMISSION: &str = "community.taxonomy.write";
+
+/// Community team write permission.
+pub(crate) const COMMUNITY_TEAM_WRITE_PERMISSION: &str = "community.team.write";
+
+/// Group read permission.
+pub(crate) const GROUP_READ_PERMISSION: &str = "group.read";
+
+/// Group events write permission.
+pub(crate) const GROUP_EVENTS_WRITE_PERMISSION: &str = "group.events.write";
+
+/// Group members write permission.
+pub(crate) const GROUP_MEMBERS_WRITE_PERMISSION: &str = "group.members.write";
+
+/// Group settings write permission.
+pub(crate) const GROUP_SETTINGS_WRITE_PERMISSION: &str = "group.settings.write";
+
+/// Group sponsors write permission.
+pub(crate) const GROUP_SPONSORS_WRITE_PERMISSION: &str = "group.sponsors.write";
+
+/// Group team write permission.
+pub(crate) const GROUP_TEAM_WRITE_PERMISSION: &str = "group.team.write";
 
 // Pages and sections handlers.
 
@@ -701,135 +736,98 @@ pub(crate) struct NextUrl {
 
 // Authorization middleware.
 
-/// Check if the user belongs to any group's team.
+/// Check if the user has a specific community permission in a path community.
 #[instrument(skip_all)]
-pub(crate) async fn user_belongs_to_any_group_team(
-    auth_session: AuthSession,
-    request: Request,
-    next: Next,
-) -> impl IntoResponse {
-    // Check if user is logged in
-    let Some(user) = auth_session.user else {
-        return StatusCode::FORBIDDEN.into_response();
-    };
-
-    // Check if user belongs to any group team
-    if !user.belongs_to_any_group_team.unwrap_or(false) {
-        return StatusCode::FORBIDDEN.into_response();
-    }
-
-    next.run(request).await.into_response()
-}
-
-/// Check if the user owns any group in the community (from path).
-#[instrument(skip_all)]
-pub(crate) async fn user_owns_groups_in_path_community(
-    State(db): State<DynDB>,
+pub(crate) async fn user_has_path_community_permission(
+    State((db, permission)): State<(DynDB, &'static str)>,
     Path(community_id): Path<Uuid>,
     auth_session: AuthSession,
     request: Request,
     next: Next,
 ) -> impl IntoResponse {
-    // Check if user is logged in
+    // Require an authenticated user
     let Some(user) = auth_session.user else {
         return StatusCode::FORBIDDEN.into_response();
     };
 
-    // Check if the user owns groups in the community
-    let Ok(owns) = db.user_owns_groups_in_community(&community_id, &user.user_id).await else {
+    // Check required permission against the community id from the path
+    let Ok(has_permission) = db
+        .user_has_community_permission(&community_id, &user.user_id, permission)
+        .await
+    else {
         return StatusCode::INTERNAL_SERVER_ERROR.into_response();
     };
-    if !owns {
+    if !has_permission {
         return StatusCode::FORBIDDEN.into_response();
     }
 
     next.run(request).await.into_response()
 }
 
-/// Check if the user owns the community (from path).
+/// Check if the user has a specific group permission in a path group.
 #[instrument(skip_all)]
-pub(crate) async fn user_owns_path_community(
-    State(db): State<DynDB>,
-    Path(community_id): Path<Uuid>,
-    auth_session: AuthSession,
-    request: Request,
-    next: Next,
-) -> impl IntoResponse {
-    // Check if user is logged in
-    let Some(user) = auth_session.user else {
-        return StatusCode::FORBIDDEN.into_response();
-    };
-
-    // Check if the user owns the community
-    let Ok(owns) = db.user_owns_community(&community_id, &user.user_id).await else {
-        return StatusCode::INTERNAL_SERVER_ERROR.into_response();
-    };
-    if !owns {
-        return StatusCode::FORBIDDEN.into_response();
-    }
-
-    next.run(request).await.into_response()
-}
-
-/// Check if the user owns the group (from path).
-#[instrument(skip_all)]
-pub(crate) async fn user_owns_path_group(
-    State(db): State<DynDB>,
+pub(crate) async fn user_has_path_group_permission(
+    State((db, permission)): State<(DynDB, &'static str)>,
     Path(group_id): Path<Uuid>,
     auth_session: AuthSession,
     session: Session,
     request: Request,
     next: Next,
 ) -> impl IntoResponse {
-    // Check if user is logged in
+    // Require an authenticated user
     let Some(user) = auth_session.user else {
         return StatusCode::FORBIDDEN.into_response();
     };
 
-    // Get selected community from session
-    let community_id = match session.get::<Uuid>(SELECTED_COMMUNITY_ID_KEY).await {
-        Ok(Some(community_id)) => community_id,
-        Ok(None) => return Redirect::to(USER_DASHBOARD_INVITATIONS_URL).into_response(),
-        Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+    // Resolve selected community to evaluate group permission in that context
+    let community_id = match get_selected_community_id(&session).await {
+        Ok(community_id) => community_id,
+        Err(response) => return response,
     };
 
-    // Check if the user owns the group
-    let Ok(owns) = db.user_owns_group(&community_id, &group_id, &user.user_id).await else {
+    // Check required permission against the group id from the path
+    let Ok(has_permission) = db
+        .user_has_group_permission(&community_id, &group_id, &user.user_id, permission)
+        .await
+    else {
         return StatusCode::INTERNAL_SERVER_ERROR.into_response();
     };
-    if !owns {
+    if !has_permission {
         return StatusCode::FORBIDDEN.into_response();
     }
 
     next.run(request).await.into_response()
 }
 
-/// Check if the user owns the selected community (from session).
+/// Check if the user has a specific community permission in the selected
+/// community.
 #[instrument(skip_all)]
-pub(crate) async fn user_owns_selected_community(
-    State(db): State<DynDB>,
+pub(crate) async fn user_has_selected_community_permission(
+    State((db, permission)): State<(DynDB, &'static str)>,
     auth_session: AuthSession,
     session: Session,
     request: Request,
     next: Next,
 ) -> impl IntoResponse {
-    // Check if user is logged in
+    // Require an authenticated user
     let Some(user) = auth_session.user else {
         return StatusCode::FORBIDDEN.into_response();
     };
 
-    // Get selected community from session
-    let community_id = match session.get::<Uuid>(SELECTED_COMMUNITY_ID_KEY).await {
-        Ok(Some(community_id)) => community_id,
-        Ok(None) => return Redirect::to(USER_DASHBOARD_INVITATIONS_URL).into_response(),
-        Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+    // Resolve selected community from session context
+    let community_id = match get_selected_community_id(&session).await {
+        Ok(community_id) => community_id,
+        Err(response) => return response,
     };
 
-    // Check if the user owns the community
-    let Ok(owns) = db.user_owns_community(&community_id, &user.user_id).await else {
+    // Check required permission in the selected community
+    let Ok(has_permission) = db
+        .user_has_community_permission(&community_id, &user.user_id, permission)
+        .await
+    else {
         return StatusCode::INTERNAL_SERVER_ERROR.into_response();
     };
-    if !owns {
+    if !has_permission {
         return StatusCode::FORBIDDEN.into_response();
     }
 
@@ -840,37 +838,34 @@ pub(crate) async fn user_owns_selected_community(
     next.run(request).await.into_response()
 }
 
-/// Check if the user owns the selected group (from session).
+/// Check if the user has a specific group permission in the selected group.
 #[instrument(skip_all)]
-pub(crate) async fn user_owns_selected_group(
-    State(db): State<DynDB>,
+pub(crate) async fn user_has_selected_group_permission(
+    State((db, permission)): State<(DynDB, &'static str)>,
     auth_session: AuthSession,
     session: Session,
     request: Request,
     next: Next,
 ) -> impl IntoResponse {
-    // Check if user is logged in
+    // Require an authenticated user
     let Some(user) = auth_session.user else {
         return StatusCode::FORBIDDEN.into_response();
     };
 
-    // Get selected community and group from session
-    let community_id = match session.get::<Uuid>(SELECTED_COMMUNITY_ID_KEY).await {
-        Ok(Some(community_id)) => community_id,
-        Ok(None) => return Redirect::to(USER_DASHBOARD_INVITATIONS_URL).into_response(),
-        Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
-    };
-    let group_id = match session.get::<Uuid>(SELECTED_GROUP_ID_KEY).await {
-        Ok(Some(group_id)) => group_id,
-        Ok(None) => return Redirect::to(USER_DASHBOARD_INVITATIONS_URL).into_response(),
-        Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+    // Resolve selected community and group from session context
+    let (community_id, group_id) = match get_selected_community_and_group_ids(&session).await {
+        Ok(ids) => ids,
+        Err(response) => return response,
     };
 
-    // Check if the user owns the group
-    let Ok(owns) = db.user_owns_group(&community_id, &group_id, &user.user_id).await else {
+    // Check required permission in the selected group
+    let Ok(has_permission) = db
+        .user_has_group_permission(&community_id, &group_id, &user.user_id, permission)
+        .await
+    else {
         return StatusCode::INTERNAL_SERVER_ERROR.into_response();
     };
-    if !owns {
+    if !has_permission {
         return StatusCode::FORBIDDEN.into_response();
     }
 
@@ -880,6 +875,29 @@ pub(crate) async fn user_owns_selected_group(
     request.extensions_mut().insert(SelectedGroupId(group_id));
 
     next.run(request).await.into_response()
+}
+
+// Helpers.
+
+/// Resolves the selected community ID from the current session.
+async fn get_selected_community_id(session: &Session) -> Result<Uuid, Response> {
+    match session.get::<Uuid>(SELECTED_COMMUNITY_ID_KEY).await {
+        Ok(Some(community_id)) => Ok(community_id),
+        Ok(None) => Err(Redirect::to(USER_DASHBOARD_INVITATIONS_URL).into_response()),
+        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR.into_response()),
+    }
+}
+
+/// Resolves selected community and group IDs from the current session.
+async fn get_selected_community_and_group_ids(session: &Session) -> Result<(Uuid, Uuid), Response> {
+    let community_id = get_selected_community_id(session).await?;
+    let group_id = match session.get::<Uuid>(SELECTED_GROUP_ID_KEY).await {
+        Ok(Some(group_id)) => group_id,
+        Ok(None) => return Err(Redirect::to(USER_DASHBOARD_INVITATIONS_URL).into_response()),
+        Err(_) => return Err(StatusCode::INTERNAL_SERVER_ERROR.into_response()),
+    };
+
+    Ok((community_id, group_id))
 }
 
 // Tests.
@@ -1150,7 +1168,7 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_community().times(0);
+        db.expect_user_has_community_permission().times(0);
 
         // Setup notifications manager mock
         let nm = MockNotificationsManager::new();
@@ -1194,7 +1212,7 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_group().times(0);
+        db.expect_user_has_group_permission().times(0);
 
         // Setup notifications manager mock
         let nm = MockNotificationsManager::new();
@@ -3050,171 +3068,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_user_belongs_to_any_group_team_allows_request() {
-        // Setup identifiers and data structures
-        let session_id = session::Id::default();
-        let user_id = Uuid::new_v4();
-        let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
-
-        // Setup database mock
-        let mut db = MockDB::new();
-        db.expect_get_session()
-            .times(1)
-            .withf(move |id| *id == session_id)
-            .returning(move |_| Ok(Some(session_record.clone())));
-        db.expect_get_user_by_id()
-            .times(1)
-            .withf(move |id| *id == user_id)
-            .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-
-        // Setup router
-        let server_cfg = HttpServerConfig::default();
-        let db = Arc::new(db);
-        let nm = Arc::new(MockNotificationsManager::new());
-        let state = State {
-            server_cfg: server_cfg.clone(),
-            db: db.clone(),
-            image_storage: Arc::new(MockImageStorage::new()),
-            meetings_cfg: None,
-            notifications_manager: nm.clone(),
-            serde_qs_de: serde_qs_config(),
-        };
-        let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
-        let router = Router::new()
-            .route("/protected", get(|| async { StatusCode::OK }))
-            .layer(middleware::from_fn(user_belongs_to_any_group_team))
-            .layer(auth_layer)
-            .with_state(state);
-
-        // Execute request
-        let request = Request::builder()
-            .method("GET")
-            .uri("/protected")
-            .header(HOST, "example.test")
-            .header(COOKIE, format!("id={session_id}"))
-            .body(Body::empty())
-            .unwrap();
-        let response = router.oneshot(request).await.unwrap();
-        let (parts, body) = response.into_parts();
-        let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-        // Check response matches expectations
-        assert_eq!(parts.status, StatusCode::OK);
-        assert!(bytes.is_empty());
-    }
-
-    #[tokio::test]
-    async fn test_user_belongs_to_any_group_team_forbidden_for_non_member() {
-        // Setup identifiers and data structures
-        let session_id = session::Id::default();
-        let user_id = Uuid::new_v4();
-        let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
-
-        // Setup database mock
-        let mut db = MockDB::new();
-        db.expect_get_session()
-            .times(1)
-            .withf(move |id| *id == session_id)
-            .returning(move |_| Ok(Some(session_record.clone())));
-        db.expect_get_user_by_id()
-            .times(1)
-            .withf(move |id| *id == user_id)
-            .returning(move |_| {
-                let mut user = sample_auth_user(user_id, &auth_hash);
-                user.belongs_to_any_group_team = Some(false);
-                Ok(Some(user))
-            });
-
-        // Setup router
-        let server_cfg = HttpServerConfig::default();
-        let db = Arc::new(db);
-        let nm = Arc::new(MockNotificationsManager::new());
-        let state = State {
-            server_cfg: server_cfg.clone(),
-            db: db.clone(),
-            image_storage: Arc::new(MockImageStorage::new()),
-            meetings_cfg: None,
-            notifications_manager: nm.clone(),
-            serde_qs_de: serde_qs_config(),
-        };
-        let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
-        let router = Router::new()
-            .route("/protected", get(|| async { StatusCode::OK }))
-            .layer(middleware::from_fn(user_belongs_to_any_group_team))
-            .layer(auth_layer)
-            .with_state(state);
-
-        // Execute request
-        let request = Request::builder()
-            .method("GET")
-            .uri("/protected")
-            .header(HOST, "example.test")
-            .header(COOKIE, format!("id={session_id}"))
-            .body(Body::empty())
-            .unwrap();
-        let response = router.oneshot(request).await.unwrap();
-        let (parts, body) = response.into_parts();
-        let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-        // Check response matches expectations
-        assert_eq!(parts.status, StatusCode::FORBIDDEN);
-        assert!(bytes.is_empty());
-    }
-
-    #[tokio::test]
-    async fn test_user_belongs_to_any_group_team_forbidden_when_not_logged_in() {
-        // Setup identifiers and data structures
-        let session_id = session::Id::default();
-        let session_record = empty_session_record(session_id);
-
-        // Setup database mock
-        let mut db = MockDB::new();
-        db.expect_get_session()
-            .times(1)
-            .withf(move |id| *id == session_id)
-            .returning(move |_| Ok(Some(session_record.clone())));
-        db.expect_get_user_by_id().times(0);
-
-        // Setup router
-        let server_cfg = HttpServerConfig::default();
-        let db = Arc::new(db);
-        let nm = Arc::new(MockNotificationsManager::new());
-        let state = State {
-            server_cfg: server_cfg.clone(),
-            db: db.clone(),
-            image_storage: Arc::new(MockImageStorage::new()),
-            meetings_cfg: None,
-            notifications_manager: nm.clone(),
-            serde_qs_de: serde_qs_config(),
-        };
-        let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
-        let router = Router::new()
-            .route("/protected", get(|| async { StatusCode::OK }))
-            .layer(middleware::from_fn(user_belongs_to_any_group_team))
-            .layer(auth_layer)
-            .with_state(state);
-
-        // Execute request
-        let request = Request::builder()
-            .method("GET")
-            .uri("/protected")
-            .header(HOST, "example.test")
-            .header(COOKIE, format!("id={session_id}"))
-            .body(Body::empty())
-            .unwrap();
-        let response = router.oneshot(request).await.unwrap();
-        let (parts, body) = response.into_parts();
-        let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-        // Check response matches expectations
-        assert_eq!(parts.status, StatusCode::FORBIDDEN);
-        assert!(bytes.is_empty());
-    }
-
-    #[tokio::test]
-    async fn test_user_owns_path_community_allows_request() {
+    async fn test_user_has_path_community_permission_select_route_allows_request() {
         // Setup identifiers and data structures
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
@@ -3232,1214 +3086,16 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_community()
+        db.expect_user_has_community_permission()
             .times(1)
-            .withf(move |cid, uid| *cid == community_id && *uid == user_id)
-            .returning(|_, _| Ok(true));
-
-        // Setup router
-        let server_cfg = HttpServerConfig::default();
-        let db = Arc::new(db);
-        let nm = Arc::new(MockNotificationsManager::new());
-        let state = State {
-            server_cfg: server_cfg.clone(),
-            db: db.clone(),
-            image_storage: Arc::new(MockImageStorage::new()),
-            meetings_cfg: None,
-            notifications_manager: nm.clone(),
-            serde_qs_de: serde_qs_config(),
-        };
-        let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
-        let router = Router::new()
-            .route("/{community_id}/protected", get(|| async { StatusCode::OK }))
-            .layer(middleware::from_fn_with_state(
-                state.clone(),
-                user_owns_path_community,
-            ))
-            .layer(auth_layer)
-            .with_state(state);
-
-        // Execute request
-        let request = Request::builder()
-            .method("GET")
-            .uri(format!("/{community_id}/protected"))
-            .header(COOKIE, format!("id={session_id}"))
-            .body(Body::empty())
-            .unwrap();
-        let response = router.oneshot(request).await.unwrap();
-        let (parts, body) = response.into_parts();
-        let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-        // Check response matches expectations
-        assert_eq!(parts.status, StatusCode::OK);
-        assert!(bytes.is_empty());
-    }
-
-    #[tokio::test]
-    async fn test_user_owns_path_community_forbidden_when_not_owner() {
-        // Setup identifiers and data structures
-        let session_id = session::Id::default();
-        let user_id = Uuid::new_v4();
-        let community_id = Uuid::new_v4();
-        let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
-
-        // Setup database mock
-        let mut db = MockDB::new();
-        db.expect_get_session()
-            .times(1)
-            .withf(move |id| *id == session_id)
-            .returning(move |_| Ok(Some(session_record.clone())));
-        db.expect_get_user_by_id()
-            .times(1)
-            .withf(move |id| *id == user_id)
-            .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_community()
-            .times(1)
-            .withf(move |cid, uid| *cid == community_id && *uid == user_id)
-            .returning(|_, _| Ok(false));
-
-        // Setup router
-        let server_cfg = HttpServerConfig::default();
-        let db = Arc::new(db);
-        let nm = Arc::new(MockNotificationsManager::new());
-        let state = State {
-            server_cfg: server_cfg.clone(),
-            db: db.clone(),
-            image_storage: Arc::new(MockImageStorage::new()),
-            meetings_cfg: None,
-            notifications_manager: nm.clone(),
-            serde_qs_de: serde_qs_config(),
-        };
-        let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
-        let router = Router::new()
-            .route("/{community_id}/protected", get(|| async { StatusCode::OK }))
-            .layer(middleware::from_fn_with_state(
-                state.clone(),
-                user_owns_path_community,
-            ))
-            .layer(auth_layer)
-            .with_state(state);
-
-        // Execute request
-        let request = Request::builder()
-            .method("GET")
-            .uri(format!("/{community_id}/protected"))
-            .header(COOKIE, format!("id={session_id}"))
-            .body(Body::empty())
-            .unwrap();
-        let response = router.oneshot(request).await.unwrap();
-        let (parts, body) = response.into_parts();
-        let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-        // Check response matches expectations
-        assert_eq!(parts.status, StatusCode::FORBIDDEN);
-        assert!(bytes.is_empty());
-    }
-
-    #[tokio::test]
-    async fn test_user_owns_path_community_returns_error_on_db_failure() {
-        // Setup identifiers and data structures
-        let session_id = session::Id::default();
-        let user_id = Uuid::new_v4();
-        let community_id = Uuid::new_v4();
-        let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
-
-        // Setup database mock
-        let mut db = MockDB::new();
-        db.expect_get_session()
-            .times(1)
-            .withf(move |id| *id == session_id)
-            .returning(move |_| Ok(Some(session_record.clone())));
-        db.expect_get_user_by_id()
-            .times(1)
-            .withf(move |id| *id == user_id)
-            .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_community()
-            .times(1)
-            .withf(move |cid, uid| *cid == community_id && *uid == user_id)
-            .returning(|_, _| Err(anyhow!("db error")));
-
-        // Setup router
-        let server_cfg = HttpServerConfig::default();
-        let db = Arc::new(db);
-        let nm = Arc::new(MockNotificationsManager::new());
-        let state = State {
-            server_cfg: server_cfg.clone(),
-            db: db.clone(),
-            image_storage: Arc::new(MockImageStorage::new()),
-            meetings_cfg: None,
-            notifications_manager: nm.clone(),
-            serde_qs_de: serde_qs_config(),
-        };
-        let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
-        let router = Router::new()
-            .route("/{community_id}/protected", get(|| async { StatusCode::OK }))
-            .layer(middleware::from_fn_with_state(
-                state.clone(),
-                user_owns_path_community,
-            ))
-            .layer(auth_layer)
-            .with_state(state);
-
-        // Execute request
-        let request = Request::builder()
-            .method("GET")
-            .uri(format!("/{community_id}/protected"))
-            .header(COOKIE, format!("id={session_id}"))
-            .body(Body::empty())
-            .unwrap();
-        let response = router.oneshot(request).await.unwrap();
-        let (parts, body) = response.into_parts();
-        let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-        // Check response matches expectations
-        assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
-        assert!(bytes.is_empty());
-    }
-
-    #[tokio::test]
-    async fn test_user_owns_groups_in_path_community_allows_request() {
-        // Setup identifiers and data structures
-        let session_id = session::Id::default();
-        let user_id = Uuid::new_v4();
-        let community_id = Uuid::new_v4();
-        let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
-
-        // Setup database mock
-        let mut db = MockDB::new();
-        db.expect_get_session()
-            .times(1)
-            .withf(move |id| *id == session_id)
-            .returning(move |_| Ok(Some(session_record.clone())));
-        db.expect_get_user_by_id()
-            .times(1)
-            .withf(move |id| *id == user_id)
-            .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_groups_in_community()
-            .times(1)
-            .withf(move |cid, uid| *cid == community_id && *uid == user_id)
-            .returning(|_, _| Ok(true));
-
-        // Setup router
-        let server_cfg = HttpServerConfig::default();
-        let db = Arc::new(db);
-        let nm = Arc::new(MockNotificationsManager::new());
-        let state = State {
-            server_cfg: server_cfg.clone(),
-            db: db.clone(),
-            image_storage: Arc::new(MockImageStorage::new()),
-            meetings_cfg: None,
-            notifications_manager: nm.clone(),
-            serde_qs_de: serde_qs_config(),
-        };
-        let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
-        let router = Router::new()
-            .route(
-                "/community/{community_id}/select",
-                get(|| async { StatusCode::OK }),
-            )
-            .layer(middleware::from_fn_with_state(
-                state.clone(),
-                user_owns_groups_in_path_community,
-            ))
-            .layer(auth_layer)
-            .with_state(state);
-
-        // Execute request
-        let request = Request::builder()
-            .method("GET")
-            .uri(format!("/community/{community_id}/select"))
-            .header(COOKIE, format!("id={session_id}"))
-            .body(Body::empty())
-            .unwrap();
-        let response = router.oneshot(request).await.unwrap();
-        let (parts, body) = response.into_parts();
-        let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-        // Check response matches expectations
-        assert_eq!(parts.status, StatusCode::OK);
-        assert!(bytes.is_empty());
-    }
-
-    #[tokio::test]
-    async fn test_user_owns_groups_in_path_community_forbidden_when_not_owner() {
-        // Setup identifiers and data structures
-        let session_id = session::Id::default();
-        let user_id = Uuid::new_v4();
-        let community_id = Uuid::new_v4();
-        let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
-
-        // Setup database mock
-        let mut db = MockDB::new();
-        db.expect_get_session()
-            .times(1)
-            .withf(move |id| *id == session_id)
-            .returning(move |_| Ok(Some(session_record.clone())));
-        db.expect_get_user_by_id()
-            .times(1)
-            .withf(move |id| *id == user_id)
-            .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_groups_in_community()
-            .times(1)
-            .withf(move |cid, uid| *cid == community_id && *uid == user_id)
-            .returning(|_, _| Ok(false));
-
-        // Setup router
-        let server_cfg = HttpServerConfig::default();
-        let db = Arc::new(db);
-        let nm = Arc::new(MockNotificationsManager::new());
-        let state = State {
-            server_cfg: server_cfg.clone(),
-            db: db.clone(),
-            image_storage: Arc::new(MockImageStorage::new()),
-            meetings_cfg: None,
-            notifications_manager: nm.clone(),
-            serde_qs_de: serde_qs_config(),
-        };
-        let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
-        let router = Router::new()
-            .route(
-                "/community/{community_id}/select",
-                get(|| async { StatusCode::OK }),
-            )
-            .layer(middleware::from_fn_with_state(
-                state.clone(),
-                user_owns_groups_in_path_community,
-            ))
-            .layer(auth_layer)
-            .with_state(state);
-
-        // Execute request
-        let request = Request::builder()
-            .method("GET")
-            .uri(format!("/community/{community_id}/select"))
-            .header(COOKIE, format!("id={session_id}"))
-            .body(Body::empty())
-            .unwrap();
-        let response = router.oneshot(request).await.unwrap();
-        let (parts, body) = response.into_parts();
-        let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-        // Check response matches expectations
-        assert_eq!(parts.status, StatusCode::FORBIDDEN);
-        assert!(bytes.is_empty());
-    }
-
-    #[tokio::test]
-    async fn test_user_owns_groups_in_path_community_returns_error_on_db_failure() {
-        // Setup identifiers and data structures
-        let session_id = session::Id::default();
-        let user_id = Uuid::new_v4();
-        let community_id = Uuid::new_v4();
-        let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
-
-        // Setup database mock
-        let mut db = MockDB::new();
-        db.expect_get_session()
-            .times(1)
-            .withf(move |id| *id == session_id)
-            .returning(move |_| Ok(Some(session_record.clone())));
-        db.expect_get_user_by_id()
-            .times(1)
-            .withf(move |id| *id == user_id)
-            .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_groups_in_community()
-            .times(1)
-            .withf(move |cid, uid| *cid == community_id && *uid == user_id)
-            .returning(|_, _| Err(anyhow!("db error")));
-
-        // Setup router
-        let server_cfg = HttpServerConfig::default();
-        let db = Arc::new(db);
-        let nm = Arc::new(MockNotificationsManager::new());
-        let state = State {
-            server_cfg: server_cfg.clone(),
-            db: db.clone(),
-            image_storage: Arc::new(MockImageStorage::new()),
-            meetings_cfg: None,
-            notifications_manager: nm.clone(),
-            serde_qs_de: serde_qs_config(),
-        };
-        let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
-        let router = Router::new()
-            .route(
-                "/community/{community_id}/select",
-                get(|| async { StatusCode::OK }),
-            )
-            .layer(middleware::from_fn_with_state(
-                state.clone(),
-                user_owns_groups_in_path_community,
-            ))
-            .layer(auth_layer)
-            .with_state(state);
-
-        // Execute request
-        let request = Request::builder()
-            .method("GET")
-            .uri(format!("/community/{community_id}/select"))
-            .header(COOKIE, format!("id={session_id}"))
-            .body(Body::empty())
-            .unwrap();
-        let response = router.oneshot(request).await.unwrap();
-        let (parts, body) = response.into_parts();
-        let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-        // Check response matches expectations
-        assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
-        assert!(bytes.is_empty());
-    }
-
-    #[tokio::test]
-    async fn test_user_owns_path_group_allows_request() {
-        // Setup identifiers and data structures
-        let session_id = session::Id::default();
-        let user_id = Uuid::new_v4();
-        let community_id = Uuid::new_v4();
-        let group_id = Uuid::new_v4();
-        let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
-
-        // Setup database mock
-        let mut db = MockDB::new();
-        db.expect_get_session()
-            .times(1)
-            .withf(move |id| *id == session_id)
-            .returning(move |_| Ok(Some(session_record.clone())));
-        db.expect_get_user_by_id()
-            .times(1)
-            .withf(move |id| *id == user_id)
-            .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_group()
-            .times(1)
-            .withf(move |cid, gid, uid| *cid == community_id && *gid == group_id && *uid == user_id)
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == user_id && permission == COMMUNITY_READ_PERMISSION
+            })
             .returning(|_, _, _| Ok(true));
 
         // Setup router
         let server_cfg = HttpServerConfig::default();
-        let db = Arc::new(db);
-        let nm = Arc::new(MockNotificationsManager::new());
-        let state = State {
-            server_cfg: server_cfg.clone(),
-            db: db.clone(),
-            image_storage: Arc::new(MockImageStorage::new()),
-            meetings_cfg: None,
-            notifications_manager: nm.clone(),
-            serde_qs_de: serde_qs_config(),
-        };
-        let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
-        let router = Router::new()
-            .route("/groups/{group_id}", get(|| async { StatusCode::OK }))
-            .layer(middleware::from_fn_with_state(
-                state.clone(),
-                user_owns_path_group,
-            ))
-            .layer(auth_layer)
-            .with_state(state);
-
-        // Execute request
-        let request = Request::builder()
-            .method("GET")
-            .uri(format!("/groups/{group_id}"))
-            .header(COOKIE, format!("id={session_id}"))
-            .body(Body::empty())
-            .unwrap();
-        let response = router.oneshot(request).await.unwrap();
-        let (parts, body) = response.into_parts();
-        let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-        // Check response matches expectations
-        assert_eq!(parts.status, StatusCode::OK);
-        assert!(bytes.is_empty());
-    }
-
-    #[tokio::test]
-    async fn test_user_owns_path_group_forbidden_when_not_owner() {
-        // Setup identifiers and data structures
-        let session_id = session::Id::default();
-        let user_id = Uuid::new_v4();
-        let community_id = Uuid::new_v4();
-        let group_id = Uuid::new_v4();
-        let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
-
-        // Setup database mock
-        let mut db = MockDB::new();
-        db.expect_get_session()
-            .times(1)
-            .withf(move |id| *id == session_id)
-            .returning(move |_| Ok(Some(session_record.clone())));
-        db.expect_get_user_by_id()
-            .times(1)
-            .withf(move |id| *id == user_id)
-            .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_group()
-            .times(1)
-            .withf(move |cid, gid, uid| *cid == community_id && *gid == group_id && *uid == user_id)
-            .returning(|_, _, _| Ok(false));
-
-        // Setup router
-        let server_cfg = HttpServerConfig::default();
-        let db = Arc::new(db);
-        let nm = Arc::new(MockNotificationsManager::new());
-        let state = State {
-            server_cfg: server_cfg.clone(),
-            db: db.clone(),
-            image_storage: Arc::new(MockImageStorage::new()),
-            meetings_cfg: None,
-            notifications_manager: nm.clone(),
-            serde_qs_de: serde_qs_config(),
-        };
-        let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
-        let router = Router::new()
-            .route("/groups/{group_id}", get(|| async { StatusCode::OK }))
-            .layer(middleware::from_fn_with_state(
-                state.clone(),
-                user_owns_path_group,
-            ))
-            .layer(auth_layer)
-            .with_state(state);
-
-        // Execute request
-        let request = Request::builder()
-            .method("GET")
-            .uri(format!("/groups/{group_id}"))
-            .header(COOKIE, format!("id={session_id}"))
-            .body(Body::empty())
-            .unwrap();
-        let response = router.oneshot(request).await.unwrap();
-        let (parts, body) = response.into_parts();
-        let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-        // Check response matches expectations
-        assert_eq!(parts.status, StatusCode::FORBIDDEN);
-        assert!(bytes.is_empty());
-    }
-
-    #[tokio::test]
-    async fn test_user_owns_path_group_returns_error_on_db_failure() {
-        // Setup identifiers and data structures
-        let session_id = session::Id::default();
-        let user_id = Uuid::new_v4();
-        let community_id = Uuid::new_v4();
-        let group_id = Uuid::new_v4();
-        let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
-
-        // Setup database mock
-        let mut db = MockDB::new();
-        db.expect_get_session()
-            .times(1)
-            .withf(move |id| *id == session_id)
-            .returning(move |_| Ok(Some(session_record.clone())));
-        db.expect_get_user_by_id()
-            .times(1)
-            .withf(move |id| *id == user_id)
-            .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_group()
-            .times(1)
-            .withf(move |cid, gid, uid| *cid == community_id && *gid == group_id && *uid == user_id)
-            .returning(|_, _, _| Err(anyhow!("db error")));
-
-        // Setup router
-        let server_cfg = HttpServerConfig::default();
-        let db = Arc::new(db);
-        let nm = Arc::new(MockNotificationsManager::new());
-        let state = State {
-            server_cfg: server_cfg.clone(),
-            db: db.clone(),
-            image_storage: Arc::new(MockImageStorage::new()),
-            meetings_cfg: None,
-            notifications_manager: nm.clone(),
-            serde_qs_de: serde_qs_config(),
-        };
-        let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
-        let router = Router::new()
-            .route("/groups/{group_id}", get(|| async { StatusCode::OK }))
-            .layer(middleware::from_fn_with_state(
-                state.clone(),
-                user_owns_path_group,
-            ))
-            .layer(auth_layer)
-            .with_state(state);
-
-        // Execute request
-        let request = Request::builder()
-            .method("GET")
-            .uri(format!("/groups/{group_id}"))
-            .header(COOKIE, format!("id={session_id}"))
-            .body(Body::empty())
-            .unwrap();
-        let response = router.oneshot(request).await.unwrap();
-        let (parts, body) = response.into_parts();
-        let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-        // Check response matches expectations
-        assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
-        assert!(bytes.is_empty());
-    }
-
-    #[tokio::test]
-    async fn test_user_owns_path_group_redirects_when_selected_community_is_missing() {
-        // Setup identifiers and data structures
-        let session_id = session::Id::default();
-        let user_id = Uuid::new_v4();
-        let group_id = Uuid::new_v4();
-        let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
-
-        // Setup database mock
-        let mut db = MockDB::new();
-        db.expect_get_session()
-            .times(1)
-            .withf(move |id| *id == session_id)
-            .returning(move |_| Ok(Some(session_record.clone())));
-        db.expect_get_user_by_id()
-            .times(1)
-            .withf(move |id| *id == user_id)
-            .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_group().times(0);
-
-        // Setup router
-        let server_cfg = HttpServerConfig::default();
-        let db = Arc::new(db);
-        let nm = Arc::new(MockNotificationsManager::new());
-        let state = State {
-            server_cfg: server_cfg.clone(),
-            db: db.clone(),
-            image_storage: Arc::new(MockImageStorage::new()),
-            meetings_cfg: None,
-            notifications_manager: nm.clone(),
-            serde_qs_de: serde_qs_config(),
-        };
-        let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
-        let router = Router::new()
-            .route("/groups/{group_id}", get(|| async { StatusCode::OK }))
-            .layer(middleware::from_fn_with_state(
-                state.clone(),
-                user_owns_path_group,
-            ))
-            .layer(auth_layer)
-            .with_state(state);
-
-        // Execute request
-        let request = Request::builder()
-            .method("GET")
-            .uri(format!("/groups/{group_id}"))
-            .header(COOKIE, format!("id={session_id}"))
-            .body(Body::empty())
-            .unwrap();
-        let response = router.oneshot(request).await.unwrap();
-        let (parts, body) = response.into_parts();
-        let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-        // Check response matches expectations
-        assert_eq!(parts.status, StatusCode::SEE_OTHER);
-        assert_eq!(
-            parts.headers.get(LOCATION).unwrap(),
-            &HeaderValue::from_static(USER_DASHBOARD_INVITATIONS_URL),
-        );
-        assert!(bytes.is_empty());
-    }
-
-    #[tokio::test]
-    async fn test_user_owns_selected_community_allows_request() {
-        // Setup identifiers and data structures
-        let session_id = session::Id::default();
-        let user_id = Uuid::new_v4();
-        let community_id = Uuid::new_v4();
-        let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
-
-        // Setup database mock
-        let mut db = MockDB::new();
-        db.expect_get_session()
-            .times(1)
-            .withf(move |id| *id == session_id)
-            .returning(move |_| Ok(Some(session_record.clone())));
-        db.expect_get_user_by_id()
-            .times(1)
-            .withf(move |id| *id == user_id)
-            .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_community()
-            .times(1)
-            .withf(move |cid, uid| *cid == community_id && *uid == user_id)
-            .returning(|_, _| Ok(true));
-
-        // Setup router
-        let server_cfg = HttpServerConfig::default();
-        let db = Arc::new(db);
-        let nm = Arc::new(MockNotificationsManager::new());
-        let state = State {
-            server_cfg: server_cfg.clone(),
-            db: db.clone(),
-            image_storage: Arc::new(MockImageStorage::new()),
-            meetings_cfg: None,
-            notifications_manager: nm.clone(),
-            serde_qs_de: serde_qs_config(),
-        };
-        let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
-        let router = Router::new()
-            .route("/protected", get(|| async { StatusCode::OK }))
-            .layer(middleware::from_fn_with_state(
-                state.clone(),
-                user_owns_selected_community,
-            ))
-            .layer(auth_layer)
-            .with_state(state);
-
-        // Execute request
-        let request = Request::builder()
-            .method("GET")
-            .uri("/protected")
-            .header(COOKIE, format!("id={session_id}"))
-            .body(Body::empty())
-            .unwrap();
-        let response = router.oneshot(request).await.unwrap();
-        let (parts, body) = response.into_parts();
-        let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-        // Check response matches expectations
-        assert_eq!(parts.status, StatusCode::OK);
-        assert!(bytes.is_empty());
-    }
-
-    #[tokio::test]
-    async fn test_user_owns_selected_community_forbidden_when_not_owner() {
-        // Setup identifiers and data structures
-        let session_id = session::Id::default();
-        let user_id = Uuid::new_v4();
-        let community_id = Uuid::new_v4();
-        let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
-
-        // Setup database mock
-        let mut db = MockDB::new();
-        db.expect_get_session()
-            .times(1)
-            .withf(move |id| *id == session_id)
-            .returning(move |_| Ok(Some(session_record.clone())));
-        db.expect_get_user_by_id()
-            .times(1)
-            .withf(move |id| *id == user_id)
-            .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_community()
-            .times(1)
-            .withf(move |cid, uid| *cid == community_id && *uid == user_id)
-            .returning(|_, _| Ok(false));
-
-        // Setup router
-        let server_cfg = HttpServerConfig::default();
-        let db = Arc::new(db);
-        let nm = Arc::new(MockNotificationsManager::new());
-        let state = State {
-            server_cfg: server_cfg.clone(),
-            db: db.clone(),
-            image_storage: Arc::new(MockImageStorage::new()),
-            meetings_cfg: None,
-            notifications_manager: nm.clone(),
-            serde_qs_de: serde_qs_config(),
-        };
-        let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
-        let router = Router::new()
-            .route("/protected", get(|| async { StatusCode::OK }))
-            .layer(middleware::from_fn_with_state(
-                state.clone(),
-                user_owns_selected_community,
-            ))
-            .layer(auth_layer)
-            .with_state(state);
-
-        // Execute request
-        let request = Request::builder()
-            .method("GET")
-            .uri("/protected")
-            .header(COOKIE, format!("id={session_id}"))
-            .body(Body::empty())
-            .unwrap();
-        let response = router.oneshot(request).await.unwrap();
-        let (parts, body) = response.into_parts();
-        let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-        // Check response matches expectations
-        assert_eq!(parts.status, StatusCode::FORBIDDEN);
-        assert!(bytes.is_empty());
-    }
-
-    #[tokio::test]
-    async fn test_user_owns_selected_community_returns_error_on_db_failure() {
-        // Setup identifiers and data structures
-        let session_id = session::Id::default();
-        let user_id = Uuid::new_v4();
-        let community_id = Uuid::new_v4();
-        let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
-
-        // Setup database mock
-        let mut db = MockDB::new();
-        db.expect_get_session()
-            .times(1)
-            .withf(move |id| *id == session_id)
-            .returning(move |_| Ok(Some(session_record.clone())));
-        db.expect_get_user_by_id()
-            .times(1)
-            .withf(move |id| *id == user_id)
-            .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_community()
-            .times(1)
-            .withf(move |cid, uid| *cid == community_id && *uid == user_id)
-            .returning(|_, _| Err(anyhow!("db error")));
-
-        // Setup router
-        let server_cfg = HttpServerConfig::default();
-        let db = Arc::new(db);
-        let nm = Arc::new(MockNotificationsManager::new());
-        let state = State {
-            server_cfg: server_cfg.clone(),
-            db: db.clone(),
-            image_storage: Arc::new(MockImageStorage::new()),
-            meetings_cfg: None,
-            notifications_manager: nm.clone(),
-            serde_qs_de: serde_qs_config(),
-        };
-        let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
-        let router = Router::new()
-            .route("/protected", get(|| async { StatusCode::OK }))
-            .layer(middleware::from_fn_with_state(
-                state.clone(),
-                user_owns_selected_community,
-            ))
-            .layer(auth_layer)
-            .with_state(state);
-
-        // Execute request
-        let request = Request::builder()
-            .method("GET")
-            .uri("/protected")
-            .header(COOKIE, format!("id={session_id}"))
-            .body(Body::empty())
-            .unwrap();
-        let response = router.oneshot(request).await.unwrap();
-        let (parts, body) = response.into_parts();
-        let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-        // Check response matches expectations
-        assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
-        assert!(bytes.is_empty());
-    }
-
-    #[tokio::test]
-    async fn test_user_owns_selected_community_redirects_when_selected_community_is_missing() {
-        // Setup identifiers and data structures
-        let session_id = session::Id::default();
-        let user_id = Uuid::new_v4();
-        let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
-
-        // Setup database mock
-        let mut db = MockDB::new();
-        db.expect_get_session()
-            .times(1)
-            .withf(move |id| *id == session_id)
-            .returning(move |_| Ok(Some(session_record.clone())));
-        db.expect_get_user_by_id()
-            .times(1)
-            .withf(move |id| *id == user_id)
-            .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_community().times(0);
-
-        // Setup router
-        let server_cfg = HttpServerConfig::default();
-        let db = Arc::new(db);
-        let nm = Arc::new(MockNotificationsManager::new());
-        let state = State {
-            server_cfg: server_cfg.clone(),
-            db: db.clone(),
-            image_storage: Arc::new(MockImageStorage::new()),
-            meetings_cfg: None,
-            notifications_manager: nm.clone(),
-            serde_qs_de: serde_qs_config(),
-        };
-        let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
-        let router = Router::new()
-            .route("/protected", get(|| async { StatusCode::OK }))
-            .layer(middleware::from_fn_with_state(
-                state.clone(),
-                user_owns_selected_community,
-            ))
-            .layer(auth_layer)
-            .with_state(state);
-
-        // Execute request
-        let request = Request::builder()
-            .method("GET")
-            .uri("/protected")
-            .header(COOKIE, format!("id={session_id}"))
-            .body(Body::empty())
-            .unwrap();
-        let response = router.oneshot(request).await.unwrap();
-        let (parts, body) = response.into_parts();
-        let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-        // Check response matches expectations
-        assert_eq!(parts.status, StatusCode::SEE_OTHER);
-        assert_eq!(
-            parts.headers.get(LOCATION).unwrap(),
-            &HeaderValue::from_static(USER_DASHBOARD_INVITATIONS_URL),
-        );
-        assert!(bytes.is_empty());
-    }
-
-    #[tokio::test]
-    async fn test_user_owns_selected_group_allows_request() {
-        // Setup identifiers and data structures
-        let session_id = session::Id::default();
-        let user_id = Uuid::new_v4();
-        let community_id = Uuid::new_v4();
-        let group_id = Uuid::new_v4();
-        let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(
-            session_id,
-            user_id,
-            &auth_hash,
-            Some(community_id),
-            Some(group_id),
-        );
-
-        // Setup database mock
-        let mut db = MockDB::new();
-        db.expect_get_session()
-            .times(1)
-            .withf(move |id| *id == session_id)
-            .returning(move |_| Ok(Some(session_record.clone())));
-        db.expect_get_user_by_id()
-            .times(1)
-            .withf(move |id| *id == user_id)
-            .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_group()
-            .times(1)
-            .withf(move |cid, gid, uid| *cid == community_id && *gid == group_id && *uid == user_id)
-            .returning(|_, _, _| Ok(true));
-
-        // Setup router
-        let server_cfg = HttpServerConfig::default();
-        let db = Arc::new(db);
-        let nm = Arc::new(MockNotificationsManager::new());
-        let state = State {
-            server_cfg: server_cfg.clone(),
-            db: db.clone(),
-            image_storage: Arc::new(MockImageStorage::new()),
-            meetings_cfg: None,
-            notifications_manager: nm.clone(),
-            serde_qs_de: serde_qs_config(),
-        };
-        let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
-        let router = Router::new()
-            .route("/protected", get(|| async { StatusCode::OK }))
-            .layer(middleware::from_fn_with_state(
-                state.clone(),
-                user_owns_selected_group,
-            ))
-            .layer(auth_layer)
-            .with_state(state);
-
-        // Execute request
-        let request = Request::builder()
-            .method("GET")
-            .uri("/protected")
-            .header(COOKIE, format!("id={session_id}"))
-            .body(Body::empty())
-            .unwrap();
-        let response = router.oneshot(request).await.unwrap();
-        let (parts, body) = response.into_parts();
-        let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-        // Check response matches expectations
-        assert_eq!(parts.status, StatusCode::OK);
-        assert!(bytes.is_empty());
-    }
-
-    #[tokio::test]
-    async fn test_user_owns_selected_group_forbidden_when_not_owner() {
-        // Setup identifiers and data structures
-        let session_id = session::Id::default();
-        let user_id = Uuid::new_v4();
-        let community_id = Uuid::new_v4();
-        let group_id = Uuid::new_v4();
-        let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(
-            session_id,
-            user_id,
-            &auth_hash,
-            Some(community_id),
-            Some(group_id),
-        );
-
-        // Setup database mock
-        let mut db = MockDB::new();
-        db.expect_get_session()
-            .times(1)
-            .withf(move |id| *id == session_id)
-            .returning(move |_| Ok(Some(session_record.clone())));
-        db.expect_get_user_by_id()
-            .times(1)
-            .withf(move |id| *id == user_id)
-            .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_group()
-            .times(1)
-            .withf(move |cid, gid, uid| *cid == community_id && *gid == group_id && *uid == user_id)
-            .returning(|_, _, _| Ok(false));
-
-        // Setup router
-        let server_cfg = HttpServerConfig::default();
-        let db = Arc::new(db);
-        let nm = Arc::new(MockNotificationsManager::new());
-        let state = State {
-            server_cfg: server_cfg.clone(),
-            db: db.clone(),
-            image_storage: Arc::new(MockImageStorage::new()),
-            meetings_cfg: None,
-            notifications_manager: nm.clone(),
-            serde_qs_de: serde_qs_config(),
-        };
-        let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
-        let router = Router::new()
-            .route("/protected", get(|| async { StatusCode::OK }))
-            .layer(middleware::from_fn_with_state(
-                state.clone(),
-                user_owns_selected_group,
-            ))
-            .layer(auth_layer)
-            .with_state(state);
-
-        // Execute request
-        let request = Request::builder()
-            .method("GET")
-            .uri("/protected")
-            .header(COOKIE, format!("id={session_id}"))
-            .body(Body::empty())
-            .unwrap();
-        let response = router.oneshot(request).await.unwrap();
-        let (parts, body) = response.into_parts();
-        let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-        // Check response matches expectations
-        assert_eq!(parts.status, StatusCode::FORBIDDEN);
-        assert!(bytes.is_empty());
-    }
-
-    #[tokio::test]
-    async fn test_user_owns_selected_group_returns_error_on_db_failure() {
-        // Setup identifiers and data structures
-        let session_id = session::Id::default();
-        let user_id = Uuid::new_v4();
-        let community_id = Uuid::new_v4();
-        let group_id = Uuid::new_v4();
-        let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(
-            session_id,
-            user_id,
-            &auth_hash,
-            Some(community_id),
-            Some(group_id),
-        );
-
-        // Setup database mock
-        let mut db = MockDB::new();
-        db.expect_get_session()
-            .times(1)
-            .withf(move |id| *id == session_id)
-            .returning(move |_| Ok(Some(session_record.clone())));
-        db.expect_get_user_by_id()
-            .times(1)
-            .withf(move |id| *id == user_id)
-            .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_group()
-            .times(1)
-            .withf(move |cid, gid, uid| *cid == community_id && *gid == group_id && *uid == user_id)
-            .returning(|_, _, _| Err(anyhow!("db error")));
-
-        // Setup router
-        let server_cfg = HttpServerConfig::default();
-        let db = Arc::new(db);
-        let nm = Arc::new(MockNotificationsManager::new());
-        let state = State {
-            server_cfg: server_cfg.clone(),
-            db: db.clone(),
-            image_storage: Arc::new(MockImageStorage::new()),
-            meetings_cfg: None,
-            notifications_manager: nm.clone(),
-            serde_qs_de: serde_qs_config(),
-        };
-        let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
-        let router = Router::new()
-            .route("/protected", get(|| async { StatusCode::OK }))
-            .layer(middleware::from_fn_with_state(
-                state.clone(),
-                user_owns_selected_group,
-            ))
-            .layer(auth_layer)
-            .with_state(state);
-
-        // Execute request
-        let request = Request::builder()
-            .method("GET")
-            .uri("/protected")
-            .header(COOKIE, format!("id={session_id}"))
-            .body(Body::empty())
-            .unwrap();
-        let response = router.oneshot(request).await.unwrap();
-        let (parts, body) = response.into_parts();
-        let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-        // Check response matches expectations
-        assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
-        assert!(bytes.is_empty());
-    }
-
-    #[tokio::test]
-    async fn test_user_owns_selected_group_redirects_when_selected_group_is_missing() {
-        // Setup identifiers and data structures
-        let session_id = session::Id::default();
-        let user_id = Uuid::new_v4();
-        let community_id = Uuid::new_v4();
-        let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
-
-        // Setup database mock
-        let mut db = MockDB::new();
-        db.expect_get_session()
-            .times(1)
-            .withf(move |id| *id == session_id)
-            .returning(move |_| Ok(Some(session_record.clone())));
-        db.expect_get_user_by_id()
-            .times(1)
-            .withf(move |id| *id == user_id)
-            .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_group().times(0);
-
-        // Setup router
-        let server_cfg = HttpServerConfig::default();
-        let db = Arc::new(db);
-        let nm = Arc::new(MockNotificationsManager::new());
-        let state = State {
-            server_cfg: server_cfg.clone(),
-            db: db.clone(),
-            image_storage: Arc::new(MockImageStorage::new()),
-            meetings_cfg: None,
-            notifications_manager: nm.clone(),
-            serde_qs_de: serde_qs_config(),
-        };
-        let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
-        let router = Router::new()
-            .route("/protected", get(|| async { StatusCode::OK }))
-            .layer(middleware::from_fn_with_state(
-                state.clone(),
-                user_owns_selected_group,
-            ))
-            .layer(auth_layer)
-            .with_state(state);
-
-        // Execute request
-        let request = Request::builder()
-            .method("GET")
-            .uri("/protected")
-            .header(COOKIE, format!("id={session_id}"))
-            .body(Body::empty())
-            .unwrap();
-        let response = router.oneshot(request).await.unwrap();
-        let (parts, body) = response.into_parts();
-        let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-        // Check response matches expectations
-        assert_eq!(parts.status, StatusCode::SEE_OTHER);
-        assert_eq!(
-            parts.headers.get(LOCATION).unwrap(),
-            &HeaderValue::from_static(USER_DASHBOARD_INVITATIONS_URL),
-        );
-        assert!(bytes.is_empty());
-    }
-
-    #[tokio::test]
-    async fn test_user_owns_groups_in_path_community_forbidden_when_not_logged_in() {
-        // Setup identifiers and data structures
-        let community_id = Uuid::new_v4();
-        let session_id = session::Id::default();
-        let session_record = empty_session_record(session_id);
-
-        // Setup database mock
-        let mut db = MockDB::new();
-        db.expect_get_session()
-            .times(1)
-            .withf(move |id| *id == session_id)
-            .returning(move |_| Ok(Some(session_record.clone())));
-        db.expect_get_user_by_id().times(0);
-        db.expect_user_owns_groups_in_community().times(0);
-
-        // Setup router
-        let server_cfg = HttpServerConfig::default();
-        let db = Arc::new(db);
-        let nm = Arc::new(MockNotificationsManager::new());
-        let state = State {
-            server_cfg: server_cfg.clone(),
-            db: db.clone(),
-            image_storage: Arc::new(MockImageStorage::new()),
-            meetings_cfg: None,
-            notifications_manager: nm.clone(),
-            serde_qs_de: serde_qs_config(),
-        };
-        let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
-        let router = Router::new()
-            .route(
-                "/community/{community_id}/select",
-                get(|| async { StatusCode::OK }),
-            )
-            .layer(middleware::from_fn_with_state(
-                state.clone(),
-                user_owns_groups_in_path_community,
-            ))
-            .layer(auth_layer)
-            .with_state(state);
-
-        // Execute request
-        let request = Request::builder()
-            .method("GET")
-            .uri(format!("/community/{community_id}/select"))
-            .header(COOKIE, format!("id={session_id}"))
-            .body(Body::empty())
-            .unwrap();
-        let response = router.oneshot(request).await.unwrap();
-        let (parts, body) = response.into_parts();
-        let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-        // Check response matches expectations
-        assert_eq!(parts.status, StatusCode::FORBIDDEN);
-        assert!(bytes.is_empty());
-    }
-
-    #[tokio::test]
-    async fn test_user_owns_path_community_forbidden_when_not_logged_in() {
-        // Setup identifiers and data structures
-        let community_id = Uuid::new_v4();
-        let session_id = session::Id::default();
-        let session_record = empty_session_record(session_id);
-
-        // Setup database mock
-        let mut db = MockDB::new();
-        db.expect_get_session()
-            .times(1)
-            .withf(move |id| *id == session_id)
-            .returning(move |_| Ok(Some(session_record.clone())));
-        db.expect_get_user_by_id().times(0);
-        db.expect_user_owns_community().times(0);
-
-        // Setup router
-        let server_cfg = HttpServerConfig::default();
-        let db = Arc::new(db);
+        let db: DynDB = Arc::new(db);
         let nm = Arc::new(MockNotificationsManager::new());
         let state = State {
             server_cfg: server_cfg.clone(),
@@ -4453,8 +3109,72 @@ mod tests {
         let router = Router::new()
             .route("/{community_id}/protected", get(|| async { StatusCode::OK }))
             .layer(middleware::from_fn_with_state(
-                state.clone(),
-                user_owns_path_community,
+                (db.clone(), COMMUNITY_READ_PERMISSION),
+                user_has_path_community_permission,
+            ))
+            .layer(auth_layer)
+            .with_state(state);
+
+        // Execute request
+        let request = Request::builder()
+            .method("GET")
+            .uri(format!("/{community_id}/protected"))
+            .header(COOKIE, format!("id={session_id}"))
+            .body(Body::empty())
+            .unwrap();
+        let response = router.oneshot(request).await.unwrap();
+        let (parts, body) = response.into_parts();
+        let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+        // Check response matches expectations
+        assert_eq!(parts.status, StatusCode::OK);
+        assert!(bytes.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_user_has_path_community_permission_select_route_forbidden_without_permission() {
+        // Setup identifiers and data structures
+        let session_id = session::Id::default();
+        let user_id = Uuid::new_v4();
+        let community_id = Uuid::new_v4();
+        let auth_hash = "hash".to_string();
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
+
+        // Setup database mock
+        let mut db = MockDB::new();
+        db.expect_get_session()
+            .times(1)
+            .withf(move |id| *id == session_id)
+            .returning(move |_| Ok(Some(session_record.clone())));
+        db.expect_get_user_by_id()
+            .times(1)
+            .withf(move |id| *id == user_id)
+            .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+        db.expect_user_has_community_permission()
+            .times(1)
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == user_id && permission == COMMUNITY_READ_PERMISSION
+            })
+            .returning(|_, _, _| Ok(false));
+
+        // Setup router
+        let server_cfg = HttpServerConfig::default();
+        let db: DynDB = Arc::new(db);
+        let nm = Arc::new(MockNotificationsManager::new());
+        let state = State {
+            server_cfg: server_cfg.clone(),
+            db: db.clone(),
+            image_storage: Arc::new(MockImageStorage::new()),
+            meetings_cfg: None,
+            notifications_manager: nm.clone(),
+            serde_qs_de: serde_qs_config(),
+        };
+        let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
+        let router = Router::new()
+            .route("/{community_id}/protected", get(|| async { StatusCode::OK }))
+            .layer(middleware::from_fn_with_state(
+                (db.clone(), COMMUNITY_READ_PERMISSION),
+                user_has_path_community_permission,
             ))
             .layer(auth_layer)
             .with_state(state);
@@ -4476,7 +3196,1171 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_user_owns_path_group_forbidden_when_not_logged_in() {
+    async fn test_user_has_path_community_permission_select_route_returns_error_on_db_failure() {
+        // Setup identifiers and data structures
+        let session_id = session::Id::default();
+        let user_id = Uuid::new_v4();
+        let community_id = Uuid::new_v4();
+        let auth_hash = "hash".to_string();
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
+
+        // Setup database mock
+        let mut db = MockDB::new();
+        db.expect_get_session()
+            .times(1)
+            .withf(move |id| *id == session_id)
+            .returning(move |_| Ok(Some(session_record.clone())));
+        db.expect_get_user_by_id()
+            .times(1)
+            .withf(move |id| *id == user_id)
+            .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+        db.expect_user_has_community_permission()
+            .times(1)
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == user_id && permission == COMMUNITY_READ_PERMISSION
+            })
+            .returning(|_, _, _| Err(anyhow!("db error")));
+
+        // Setup router
+        let server_cfg = HttpServerConfig::default();
+        let db: DynDB = Arc::new(db);
+        let nm = Arc::new(MockNotificationsManager::new());
+        let state = State {
+            server_cfg: server_cfg.clone(),
+            db: db.clone(),
+            image_storage: Arc::new(MockImageStorage::new()),
+            meetings_cfg: None,
+            notifications_manager: nm.clone(),
+            serde_qs_de: serde_qs_config(),
+        };
+        let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
+        let router = Router::new()
+            .route("/{community_id}/protected", get(|| async { StatusCode::OK }))
+            .layer(middleware::from_fn_with_state(
+                (db.clone(), COMMUNITY_READ_PERMISSION),
+                user_has_path_community_permission,
+            ))
+            .layer(auth_layer)
+            .with_state(state);
+
+        // Execute request
+        let request = Request::builder()
+            .method("GET")
+            .uri(format!("/{community_id}/protected"))
+            .header(COOKIE, format!("id={session_id}"))
+            .body(Body::empty())
+            .unwrap();
+        let response = router.oneshot(request).await.unwrap();
+        let (parts, body) = response.into_parts();
+        let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+        // Check response matches expectations
+        assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
+        assert!(bytes.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_user_has_path_community_permission_allows_request() {
+        // Setup identifiers and data structures
+        let session_id = session::Id::default();
+        let user_id = Uuid::new_v4();
+        let community_id = Uuid::new_v4();
+        let auth_hash = "hash".to_string();
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
+
+        // Setup database mock
+        let mut db = MockDB::new();
+        db.expect_get_session()
+            .times(1)
+            .withf(move |id| *id == session_id)
+            .returning(move |_| Ok(Some(session_record.clone())));
+        db.expect_get_user_by_id()
+            .times(1)
+            .withf(move |id| *id == user_id)
+            .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+        db.expect_user_has_community_permission()
+            .times(1)
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == user_id && permission == COMMUNITY_READ_PERMISSION
+            })
+            .returning(|_, _, _| Ok(true));
+
+        // Setup router
+        let server_cfg = HttpServerConfig::default();
+        let db: DynDB = Arc::new(db);
+        let nm = Arc::new(MockNotificationsManager::new());
+        let state = State {
+            server_cfg: server_cfg.clone(),
+            db: db.clone(),
+            image_storage: Arc::new(MockImageStorage::new()),
+            meetings_cfg: None,
+            notifications_manager: nm.clone(),
+            serde_qs_de: serde_qs_config(),
+        };
+        let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
+        let router = Router::new()
+            .route(
+                "/community/{community_id}/select",
+                get(|| async { StatusCode::OK }),
+            )
+            .layer(middleware::from_fn_with_state(
+                (db.clone(), COMMUNITY_READ_PERMISSION),
+                user_has_path_community_permission,
+            ))
+            .layer(auth_layer)
+            .with_state(state);
+
+        // Execute request
+        let request = Request::builder()
+            .method("GET")
+            .uri(format!("/community/{community_id}/select"))
+            .header(COOKIE, format!("id={session_id}"))
+            .body(Body::empty())
+            .unwrap();
+        let response = router.oneshot(request).await.unwrap();
+        let (parts, body) = response.into_parts();
+        let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+        // Check response matches expectations
+        assert_eq!(parts.status, StatusCode::OK);
+        assert!(bytes.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_user_has_path_community_permission_forbidden_without_permission() {
+        // Setup identifiers and data structures
+        let session_id = session::Id::default();
+        let user_id = Uuid::new_v4();
+        let community_id = Uuid::new_v4();
+        let auth_hash = "hash".to_string();
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
+
+        // Setup database mock
+        let mut db = MockDB::new();
+        db.expect_get_session()
+            .times(1)
+            .withf(move |id| *id == session_id)
+            .returning(move |_| Ok(Some(session_record.clone())));
+        db.expect_get_user_by_id()
+            .times(1)
+            .withf(move |id| *id == user_id)
+            .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+        db.expect_user_has_community_permission()
+            .times(1)
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == user_id && permission == COMMUNITY_READ_PERMISSION
+            })
+            .returning(|_, _, _| Ok(false));
+
+        // Setup router
+        let server_cfg = HttpServerConfig::default();
+        let db: DynDB = Arc::new(db);
+        let nm = Arc::new(MockNotificationsManager::new());
+        let state = State {
+            server_cfg: server_cfg.clone(),
+            db: db.clone(),
+            image_storage: Arc::new(MockImageStorage::new()),
+            meetings_cfg: None,
+            notifications_manager: nm.clone(),
+            serde_qs_de: serde_qs_config(),
+        };
+        let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
+        let router = Router::new()
+            .route(
+                "/community/{community_id}/select",
+                get(|| async { StatusCode::OK }),
+            )
+            .layer(middleware::from_fn_with_state(
+                (db.clone(), COMMUNITY_READ_PERMISSION),
+                user_has_path_community_permission,
+            ))
+            .layer(auth_layer)
+            .with_state(state);
+
+        // Execute request
+        let request = Request::builder()
+            .method("GET")
+            .uri(format!("/community/{community_id}/select"))
+            .header(COOKIE, format!("id={session_id}"))
+            .body(Body::empty())
+            .unwrap();
+        let response = router.oneshot(request).await.unwrap();
+        let (parts, body) = response.into_parts();
+        let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+        // Check response matches expectations
+        assert_eq!(parts.status, StatusCode::FORBIDDEN);
+        assert!(bytes.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_user_has_path_community_permission_returns_error_on_db_failure() {
+        // Setup identifiers and data structures
+        let session_id = session::Id::default();
+        let user_id = Uuid::new_v4();
+        let community_id = Uuid::new_v4();
+        let auth_hash = "hash".to_string();
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
+
+        // Setup database mock
+        let mut db = MockDB::new();
+        db.expect_get_session()
+            .times(1)
+            .withf(move |id| *id == session_id)
+            .returning(move |_| Ok(Some(session_record.clone())));
+        db.expect_get_user_by_id()
+            .times(1)
+            .withf(move |id| *id == user_id)
+            .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+        db.expect_user_has_community_permission()
+            .times(1)
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == user_id && permission == COMMUNITY_READ_PERMISSION
+            })
+            .returning(|_, _, _| Err(anyhow!("db error")));
+
+        // Setup router
+        let server_cfg = HttpServerConfig::default();
+        let db: DynDB = Arc::new(db);
+        let nm = Arc::new(MockNotificationsManager::new());
+        let state = State {
+            server_cfg: server_cfg.clone(),
+            db: db.clone(),
+            image_storage: Arc::new(MockImageStorage::new()),
+            meetings_cfg: None,
+            notifications_manager: nm.clone(),
+            serde_qs_de: serde_qs_config(),
+        };
+        let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
+        let router = Router::new()
+            .route(
+                "/community/{community_id}/select",
+                get(|| async { StatusCode::OK }),
+            )
+            .layer(middleware::from_fn_with_state(
+                (db.clone(), COMMUNITY_READ_PERMISSION),
+                user_has_path_community_permission,
+            ))
+            .layer(auth_layer)
+            .with_state(state);
+
+        // Execute request
+        let request = Request::builder()
+            .method("GET")
+            .uri(format!("/community/{community_id}/select"))
+            .header(COOKIE, format!("id={session_id}"))
+            .body(Body::empty())
+            .unwrap();
+        let response = router.oneshot(request).await.unwrap();
+        let (parts, body) = response.into_parts();
+        let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+        // Check response matches expectations
+        assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
+        assert!(bytes.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_user_has_path_group_permission_allows_request() {
+        // Setup identifiers and data structures
+        let session_id = session::Id::default();
+        let user_id = Uuid::new_v4();
+        let community_id = Uuid::new_v4();
+        let group_id = Uuid::new_v4();
+        let auth_hash = "hash".to_string();
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+
+        // Setup database mock
+        let mut db = MockDB::new();
+        db.expect_get_session()
+            .times(1)
+            .withf(move |id| *id == session_id)
+            .returning(move |_| Ok(Some(session_record.clone())));
+        db.expect_get_user_by_id()
+            .times(1)
+            .withf(move |id| *id == user_id)
+            .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+        db.expect_user_has_group_permission()
+            .times(1)
+            .withf(move |cid, gid, uid, _permission| {
+                *cid == community_id && *gid == group_id && *uid == user_id
+            })
+            .returning(|_, _, _, _| Ok(true));
+
+        // Setup router
+        let server_cfg = HttpServerConfig::default();
+        let db: DynDB = Arc::new(db);
+        let nm = Arc::new(MockNotificationsManager::new());
+        let state = State {
+            server_cfg: server_cfg.clone(),
+            db: db.clone(),
+            image_storage: Arc::new(MockImageStorage::new()),
+            meetings_cfg: None,
+            notifications_manager: nm.clone(),
+            serde_qs_de: serde_qs_config(),
+        };
+        let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
+        let router = Router::new()
+            .route("/groups/{group_id}", get(|| async { StatusCode::OK }))
+            .layer(middleware::from_fn_with_state(
+                (db.clone(), GROUP_READ_PERMISSION),
+                user_has_path_group_permission,
+            ))
+            .layer(auth_layer)
+            .with_state(state);
+
+        // Execute request
+        let request = Request::builder()
+            .method("GET")
+            .uri(format!("/groups/{group_id}"))
+            .header(COOKIE, format!("id={session_id}"))
+            .body(Body::empty())
+            .unwrap();
+        let response = router.oneshot(request).await.unwrap();
+        let (parts, body) = response.into_parts();
+        let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+        // Check response matches expectations
+        assert_eq!(parts.status, StatusCode::OK);
+        assert!(bytes.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_user_has_path_group_permission_forbidden_without_permission() {
+        // Setup identifiers and data structures
+        let session_id = session::Id::default();
+        let user_id = Uuid::new_v4();
+        let community_id = Uuid::new_v4();
+        let group_id = Uuid::new_v4();
+        let auth_hash = "hash".to_string();
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+
+        // Setup database mock
+        let mut db = MockDB::new();
+        db.expect_get_session()
+            .times(1)
+            .withf(move |id| *id == session_id)
+            .returning(move |_| Ok(Some(session_record.clone())));
+        db.expect_get_user_by_id()
+            .times(1)
+            .withf(move |id| *id == user_id)
+            .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+        db.expect_user_has_group_permission()
+            .times(1)
+            .withf(move |cid, gid, uid, _permission| {
+                *cid == community_id && *gid == group_id && *uid == user_id
+            })
+            .returning(|_, _, _, _| Ok(false));
+
+        // Setup router
+        let server_cfg = HttpServerConfig::default();
+        let db: DynDB = Arc::new(db);
+        let nm = Arc::new(MockNotificationsManager::new());
+        let state = State {
+            server_cfg: server_cfg.clone(),
+            db: db.clone(),
+            image_storage: Arc::new(MockImageStorage::new()),
+            meetings_cfg: None,
+            notifications_manager: nm.clone(),
+            serde_qs_de: serde_qs_config(),
+        };
+        let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
+        let router = Router::new()
+            .route("/groups/{group_id}", get(|| async { StatusCode::OK }))
+            .layer(middleware::from_fn_with_state(
+                (db.clone(), GROUP_READ_PERMISSION),
+                user_has_path_group_permission,
+            ))
+            .layer(auth_layer)
+            .with_state(state);
+
+        // Execute request
+        let request = Request::builder()
+            .method("GET")
+            .uri(format!("/groups/{group_id}"))
+            .header(COOKIE, format!("id={session_id}"))
+            .body(Body::empty())
+            .unwrap();
+        let response = router.oneshot(request).await.unwrap();
+        let (parts, body) = response.into_parts();
+        let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+        // Check response matches expectations
+        assert_eq!(parts.status, StatusCode::FORBIDDEN);
+        assert!(bytes.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_user_has_path_group_permission_returns_error_on_db_failure() {
+        // Setup identifiers and data structures
+        let session_id = session::Id::default();
+        let user_id = Uuid::new_v4();
+        let community_id = Uuid::new_v4();
+        let group_id = Uuid::new_v4();
+        let auth_hash = "hash".to_string();
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+
+        // Setup database mock
+        let mut db = MockDB::new();
+        db.expect_get_session()
+            .times(1)
+            .withf(move |id| *id == session_id)
+            .returning(move |_| Ok(Some(session_record.clone())));
+        db.expect_get_user_by_id()
+            .times(1)
+            .withf(move |id| *id == user_id)
+            .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+        db.expect_user_has_group_permission()
+            .times(1)
+            .withf(move |cid, gid, uid, _permission| {
+                *cid == community_id && *gid == group_id && *uid == user_id
+            })
+            .returning(|_, _, _, _| Err(anyhow!("db error")));
+
+        // Setup router
+        let server_cfg = HttpServerConfig::default();
+        let db: DynDB = Arc::new(db);
+        let nm = Arc::new(MockNotificationsManager::new());
+        let state = State {
+            server_cfg: server_cfg.clone(),
+            db: db.clone(),
+            image_storage: Arc::new(MockImageStorage::new()),
+            meetings_cfg: None,
+            notifications_manager: nm.clone(),
+            serde_qs_de: serde_qs_config(),
+        };
+        let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
+        let router = Router::new()
+            .route("/groups/{group_id}", get(|| async { StatusCode::OK }))
+            .layer(middleware::from_fn_with_state(
+                (db.clone(), GROUP_READ_PERMISSION),
+                user_has_path_group_permission,
+            ))
+            .layer(auth_layer)
+            .with_state(state);
+
+        // Execute request
+        let request = Request::builder()
+            .method("GET")
+            .uri(format!("/groups/{group_id}"))
+            .header(COOKIE, format!("id={session_id}"))
+            .body(Body::empty())
+            .unwrap();
+        let response = router.oneshot(request).await.unwrap();
+        let (parts, body) = response.into_parts();
+        let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+        // Check response matches expectations
+        assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
+        assert!(bytes.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_user_has_path_group_permission_redirects_when_selected_community_is_missing() {
+        // Setup identifiers and data structures
+        let session_id = session::Id::default();
+        let user_id = Uuid::new_v4();
+        let group_id = Uuid::new_v4();
+        let auth_hash = "hash".to_string();
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
+
+        // Setup database mock
+        let mut db = MockDB::new();
+        db.expect_get_session()
+            .times(1)
+            .withf(move |id| *id == session_id)
+            .returning(move |_| Ok(Some(session_record.clone())));
+        db.expect_get_user_by_id()
+            .times(1)
+            .withf(move |id| *id == user_id)
+            .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+        db.expect_user_has_group_permission().times(0);
+
+        // Setup router
+        let server_cfg = HttpServerConfig::default();
+        let db: DynDB = Arc::new(db);
+        let nm = Arc::new(MockNotificationsManager::new());
+        let state = State {
+            server_cfg: server_cfg.clone(),
+            db: db.clone(),
+            image_storage: Arc::new(MockImageStorage::new()),
+            meetings_cfg: None,
+            notifications_manager: nm.clone(),
+            serde_qs_de: serde_qs_config(),
+        };
+        let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
+        let router = Router::new()
+            .route("/groups/{group_id}", get(|| async { StatusCode::OK }))
+            .layer(middleware::from_fn_with_state(
+                (db.clone(), GROUP_READ_PERMISSION),
+                user_has_path_group_permission,
+            ))
+            .layer(auth_layer)
+            .with_state(state);
+
+        // Execute request
+        let request = Request::builder()
+            .method("GET")
+            .uri(format!("/groups/{group_id}"))
+            .header(COOKIE, format!("id={session_id}"))
+            .body(Body::empty())
+            .unwrap();
+        let response = router.oneshot(request).await.unwrap();
+        let (parts, body) = response.into_parts();
+        let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+        // Check response matches expectations
+        assert_eq!(parts.status, StatusCode::SEE_OTHER);
+        assert_eq!(
+            parts.headers.get(LOCATION).unwrap(),
+            &HeaderValue::from_static(USER_DASHBOARD_INVITATIONS_URL),
+        );
+        assert!(bytes.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_user_has_selected_community_permission_allows_request() {
+        // Setup identifiers and data structures
+        let session_id = session::Id::default();
+        let user_id = Uuid::new_v4();
+        let community_id = Uuid::new_v4();
+        let auth_hash = "hash".to_string();
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+
+        // Setup database mock
+        let mut db = MockDB::new();
+        db.expect_get_session()
+            .times(1)
+            .withf(move |id| *id == session_id)
+            .returning(move |_| Ok(Some(session_record.clone())));
+        db.expect_get_user_by_id()
+            .times(1)
+            .withf(move |id| *id == user_id)
+            .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+        db.expect_user_has_community_permission()
+            .times(1)
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == user_id && permission == COMMUNITY_READ_PERMISSION
+            })
+            .returning(|_, _, _| Ok(true));
+
+        // Setup router
+        let server_cfg = HttpServerConfig::default();
+        let db: DynDB = Arc::new(db);
+        let nm = Arc::new(MockNotificationsManager::new());
+        let state = State {
+            server_cfg: server_cfg.clone(),
+            db: db.clone(),
+            image_storage: Arc::new(MockImageStorage::new()),
+            meetings_cfg: None,
+            notifications_manager: nm.clone(),
+            serde_qs_de: serde_qs_config(),
+        };
+        let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
+        let router = Router::new()
+            .route("/protected", get(|| async { StatusCode::OK }))
+            .layer(middleware::from_fn_with_state(
+                (db.clone(), COMMUNITY_READ_PERMISSION),
+                user_has_selected_community_permission,
+            ))
+            .layer(auth_layer)
+            .with_state(state);
+
+        // Execute request
+        let request = Request::builder()
+            .method("GET")
+            .uri("/protected")
+            .header(COOKIE, format!("id={session_id}"))
+            .body(Body::empty())
+            .unwrap();
+        let response = router.oneshot(request).await.unwrap();
+        let (parts, body) = response.into_parts();
+        let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+        // Check response matches expectations
+        assert_eq!(parts.status, StatusCode::OK);
+        assert!(bytes.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_user_has_selected_community_permission_forbidden_without_permission() {
+        // Setup identifiers and data structures
+        let session_id = session::Id::default();
+        let user_id = Uuid::new_v4();
+        let community_id = Uuid::new_v4();
+        let auth_hash = "hash".to_string();
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+
+        // Setup database mock
+        let mut db = MockDB::new();
+        db.expect_get_session()
+            .times(1)
+            .withf(move |id| *id == session_id)
+            .returning(move |_| Ok(Some(session_record.clone())));
+        db.expect_get_user_by_id()
+            .times(1)
+            .withf(move |id| *id == user_id)
+            .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+        db.expect_user_has_community_permission()
+            .times(1)
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == user_id && permission == COMMUNITY_READ_PERMISSION
+            })
+            .returning(|_, _, _| Ok(false));
+
+        // Setup router
+        let server_cfg = HttpServerConfig::default();
+        let db: DynDB = Arc::new(db);
+        let nm = Arc::new(MockNotificationsManager::new());
+        let state = State {
+            server_cfg: server_cfg.clone(),
+            db: db.clone(),
+            image_storage: Arc::new(MockImageStorage::new()),
+            meetings_cfg: None,
+            notifications_manager: nm.clone(),
+            serde_qs_de: serde_qs_config(),
+        };
+        let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
+        let router = Router::new()
+            .route("/protected", get(|| async { StatusCode::OK }))
+            .layer(middleware::from_fn_with_state(
+                (db.clone(), COMMUNITY_READ_PERMISSION),
+                user_has_selected_community_permission,
+            ))
+            .layer(auth_layer)
+            .with_state(state);
+
+        // Execute request
+        let request = Request::builder()
+            .method("GET")
+            .uri("/protected")
+            .header(COOKIE, format!("id={session_id}"))
+            .body(Body::empty())
+            .unwrap();
+        let response = router.oneshot(request).await.unwrap();
+        let (parts, body) = response.into_parts();
+        let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+        // Check response matches expectations
+        assert_eq!(parts.status, StatusCode::FORBIDDEN);
+        assert!(bytes.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_user_has_selected_community_permission_returns_error_on_db_failure() {
+        // Setup identifiers and data structures
+        let session_id = session::Id::default();
+        let user_id = Uuid::new_v4();
+        let community_id = Uuid::new_v4();
+        let auth_hash = "hash".to_string();
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+
+        // Setup database mock
+        let mut db = MockDB::new();
+        db.expect_get_session()
+            .times(1)
+            .withf(move |id| *id == session_id)
+            .returning(move |_| Ok(Some(session_record.clone())));
+        db.expect_get_user_by_id()
+            .times(1)
+            .withf(move |id| *id == user_id)
+            .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+        db.expect_user_has_community_permission()
+            .times(1)
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == user_id && permission == COMMUNITY_READ_PERMISSION
+            })
+            .returning(|_, _, _| Err(anyhow!("db error")));
+
+        // Setup router
+        let server_cfg = HttpServerConfig::default();
+        let db: DynDB = Arc::new(db);
+        let nm = Arc::new(MockNotificationsManager::new());
+        let state = State {
+            server_cfg: server_cfg.clone(),
+            db: db.clone(),
+            image_storage: Arc::new(MockImageStorage::new()),
+            meetings_cfg: None,
+            notifications_manager: nm.clone(),
+            serde_qs_de: serde_qs_config(),
+        };
+        let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
+        let router = Router::new()
+            .route("/protected", get(|| async { StatusCode::OK }))
+            .layer(middleware::from_fn_with_state(
+                (db.clone(), COMMUNITY_READ_PERMISSION),
+                user_has_selected_community_permission,
+            ))
+            .layer(auth_layer)
+            .with_state(state);
+
+        // Execute request
+        let request = Request::builder()
+            .method("GET")
+            .uri("/protected")
+            .header(COOKIE, format!("id={session_id}"))
+            .body(Body::empty())
+            .unwrap();
+        let response = router.oneshot(request).await.unwrap();
+        let (parts, body) = response.into_parts();
+        let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+        // Check response matches expectations
+        assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
+        assert!(bytes.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_user_has_selected_community_permission_redirects_when_selected_community_is_missing() {
+        // Setup identifiers and data structures
+        let session_id = session::Id::default();
+        let user_id = Uuid::new_v4();
+        let auth_hash = "hash".to_string();
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
+
+        // Setup database mock
+        let mut db = MockDB::new();
+        db.expect_get_session()
+            .times(1)
+            .withf(move |id| *id == session_id)
+            .returning(move |_| Ok(Some(session_record.clone())));
+        db.expect_get_user_by_id()
+            .times(1)
+            .withf(move |id| *id == user_id)
+            .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+        db.expect_user_has_community_permission().times(0);
+
+        // Setup router
+        let server_cfg = HttpServerConfig::default();
+        let db: DynDB = Arc::new(db);
+        let nm = Arc::new(MockNotificationsManager::new());
+        let state = State {
+            server_cfg: server_cfg.clone(),
+            db: db.clone(),
+            image_storage: Arc::new(MockImageStorage::new()),
+            meetings_cfg: None,
+            notifications_manager: nm.clone(),
+            serde_qs_de: serde_qs_config(),
+        };
+        let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
+        let router = Router::new()
+            .route("/protected", get(|| async { StatusCode::OK }))
+            .layer(middleware::from_fn_with_state(
+                (db.clone(), COMMUNITY_READ_PERMISSION),
+                user_has_selected_community_permission,
+            ))
+            .layer(auth_layer)
+            .with_state(state);
+
+        // Execute request
+        let request = Request::builder()
+            .method("GET")
+            .uri("/protected")
+            .header(COOKIE, format!("id={session_id}"))
+            .body(Body::empty())
+            .unwrap();
+        let response = router.oneshot(request).await.unwrap();
+        let (parts, body) = response.into_parts();
+        let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+        // Check response matches expectations
+        assert_eq!(parts.status, StatusCode::SEE_OTHER);
+        assert_eq!(
+            parts.headers.get(LOCATION).unwrap(),
+            &HeaderValue::from_static(USER_DASHBOARD_INVITATIONS_URL),
+        );
+        assert!(bytes.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_user_has_selected_group_permission_allows_request() {
+        // Setup identifiers and data structures
+        let session_id = session::Id::default();
+        let user_id = Uuid::new_v4();
+        let community_id = Uuid::new_v4();
+        let group_id = Uuid::new_v4();
+        let auth_hash = "hash".to_string();
+        let session_record = sample_session_record(
+            session_id,
+            user_id,
+            &auth_hash,
+            Some(community_id),
+            Some(group_id),
+        );
+
+        // Setup database mock
+        let mut db = MockDB::new();
+        db.expect_get_session()
+            .times(1)
+            .withf(move |id| *id == session_id)
+            .returning(move |_| Ok(Some(session_record.clone())));
+        db.expect_get_user_by_id()
+            .times(1)
+            .withf(move |id| *id == user_id)
+            .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+        db.expect_user_has_group_permission()
+            .times(1)
+            .withf(move |cid, gid, uid, _permission| {
+                *cid == community_id && *gid == group_id && *uid == user_id
+            })
+            .returning(|_, _, _, _| Ok(true));
+
+        // Setup router
+        let server_cfg = HttpServerConfig::default();
+        let db: DynDB = Arc::new(db);
+        let nm = Arc::new(MockNotificationsManager::new());
+        let state = State {
+            server_cfg: server_cfg.clone(),
+            db: db.clone(),
+            image_storage: Arc::new(MockImageStorage::new()),
+            meetings_cfg: None,
+            notifications_manager: nm.clone(),
+            serde_qs_de: serde_qs_config(),
+        };
+        let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
+        let router = Router::new()
+            .route("/protected", get(|| async { StatusCode::OK }))
+            .layer(middleware::from_fn_with_state(
+                (db.clone(), GROUP_READ_PERMISSION),
+                user_has_selected_group_permission,
+            ))
+            .layer(auth_layer)
+            .with_state(state);
+
+        // Execute request
+        let request = Request::builder()
+            .method("GET")
+            .uri("/protected")
+            .header(COOKIE, format!("id={session_id}"))
+            .body(Body::empty())
+            .unwrap();
+        let response = router.oneshot(request).await.unwrap();
+        let (parts, body) = response.into_parts();
+        let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+        // Check response matches expectations
+        assert_eq!(parts.status, StatusCode::OK);
+        assert!(bytes.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_user_has_selected_group_permission_forbidden_without_permission() {
+        // Setup identifiers and data structures
+        let session_id = session::Id::default();
+        let user_id = Uuid::new_v4();
+        let community_id = Uuid::new_v4();
+        let group_id = Uuid::new_v4();
+        let auth_hash = "hash".to_string();
+        let session_record = sample_session_record(
+            session_id,
+            user_id,
+            &auth_hash,
+            Some(community_id),
+            Some(group_id),
+        );
+
+        // Setup database mock
+        let mut db = MockDB::new();
+        db.expect_get_session()
+            .times(1)
+            .withf(move |id| *id == session_id)
+            .returning(move |_| Ok(Some(session_record.clone())));
+        db.expect_get_user_by_id()
+            .times(1)
+            .withf(move |id| *id == user_id)
+            .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+        db.expect_user_has_group_permission()
+            .times(1)
+            .withf(move |cid, gid, uid, _permission| {
+                *cid == community_id && *gid == group_id && *uid == user_id
+            })
+            .returning(|_, _, _, _| Ok(false));
+
+        // Setup router
+        let server_cfg = HttpServerConfig::default();
+        let db: DynDB = Arc::new(db);
+        let nm = Arc::new(MockNotificationsManager::new());
+        let state = State {
+            server_cfg: server_cfg.clone(),
+            db: db.clone(),
+            image_storage: Arc::new(MockImageStorage::new()),
+            meetings_cfg: None,
+            notifications_manager: nm.clone(),
+            serde_qs_de: serde_qs_config(),
+        };
+        let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
+        let router = Router::new()
+            .route("/protected", get(|| async { StatusCode::OK }))
+            .layer(middleware::from_fn_with_state(
+                (db.clone(), GROUP_READ_PERMISSION),
+                user_has_selected_group_permission,
+            ))
+            .layer(auth_layer)
+            .with_state(state);
+
+        // Execute request
+        let request = Request::builder()
+            .method("GET")
+            .uri("/protected")
+            .header(COOKIE, format!("id={session_id}"))
+            .body(Body::empty())
+            .unwrap();
+        let response = router.oneshot(request).await.unwrap();
+        let (parts, body) = response.into_parts();
+        let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+        // Check response matches expectations
+        assert_eq!(parts.status, StatusCode::FORBIDDEN);
+        assert!(bytes.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_user_has_selected_group_permission_returns_error_on_db_failure() {
+        // Setup identifiers and data structures
+        let session_id = session::Id::default();
+        let user_id = Uuid::new_v4();
+        let community_id = Uuid::new_v4();
+        let group_id = Uuid::new_v4();
+        let auth_hash = "hash".to_string();
+        let session_record = sample_session_record(
+            session_id,
+            user_id,
+            &auth_hash,
+            Some(community_id),
+            Some(group_id),
+        );
+
+        // Setup database mock
+        let mut db = MockDB::new();
+        db.expect_get_session()
+            .times(1)
+            .withf(move |id| *id == session_id)
+            .returning(move |_| Ok(Some(session_record.clone())));
+        db.expect_get_user_by_id()
+            .times(1)
+            .withf(move |id| *id == user_id)
+            .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+        db.expect_user_has_group_permission()
+            .times(1)
+            .withf(move |cid, gid, uid, _permission| {
+                *cid == community_id && *gid == group_id && *uid == user_id
+            })
+            .returning(|_, _, _, _| Err(anyhow!("db error")));
+
+        // Setup router
+        let server_cfg = HttpServerConfig::default();
+        let db: DynDB = Arc::new(db);
+        let nm = Arc::new(MockNotificationsManager::new());
+        let state = State {
+            server_cfg: server_cfg.clone(),
+            db: db.clone(),
+            image_storage: Arc::new(MockImageStorage::new()),
+            meetings_cfg: None,
+            notifications_manager: nm.clone(),
+            serde_qs_de: serde_qs_config(),
+        };
+        let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
+        let router = Router::new()
+            .route("/protected", get(|| async { StatusCode::OK }))
+            .layer(middleware::from_fn_with_state(
+                (db.clone(), GROUP_READ_PERMISSION),
+                user_has_selected_group_permission,
+            ))
+            .layer(auth_layer)
+            .with_state(state);
+
+        // Execute request
+        let request = Request::builder()
+            .method("GET")
+            .uri("/protected")
+            .header(COOKIE, format!("id={session_id}"))
+            .body(Body::empty())
+            .unwrap();
+        let response = router.oneshot(request).await.unwrap();
+        let (parts, body) = response.into_parts();
+        let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+        // Check response matches expectations
+        assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
+        assert!(bytes.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_user_has_selected_group_permission_redirects_when_selected_group_is_missing() {
+        // Setup identifiers and data structures
+        let session_id = session::Id::default();
+        let user_id = Uuid::new_v4();
+        let community_id = Uuid::new_v4();
+        let auth_hash = "hash".to_string();
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+
+        // Setup database mock
+        let mut db = MockDB::new();
+        db.expect_get_session()
+            .times(1)
+            .withf(move |id| *id == session_id)
+            .returning(move |_| Ok(Some(session_record.clone())));
+        db.expect_get_user_by_id()
+            .times(1)
+            .withf(move |id| *id == user_id)
+            .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+        db.expect_user_has_group_permission().times(0);
+
+        // Setup router
+        let server_cfg = HttpServerConfig::default();
+        let db: DynDB = Arc::new(db);
+        let nm = Arc::new(MockNotificationsManager::new());
+        let state = State {
+            server_cfg: server_cfg.clone(),
+            db: db.clone(),
+            image_storage: Arc::new(MockImageStorage::new()),
+            meetings_cfg: None,
+            notifications_manager: nm.clone(),
+            serde_qs_de: serde_qs_config(),
+        };
+        let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
+        let router = Router::new()
+            .route("/protected", get(|| async { StatusCode::OK }))
+            .layer(middleware::from_fn_with_state(
+                (db.clone(), GROUP_READ_PERMISSION),
+                user_has_selected_group_permission,
+            ))
+            .layer(auth_layer)
+            .with_state(state);
+
+        // Execute request
+        let request = Request::builder()
+            .method("GET")
+            .uri("/protected")
+            .header(COOKIE, format!("id={session_id}"))
+            .body(Body::empty())
+            .unwrap();
+        let response = router.oneshot(request).await.unwrap();
+        let (parts, body) = response.into_parts();
+        let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+        // Check response matches expectations
+        assert_eq!(parts.status, StatusCode::SEE_OTHER);
+        assert_eq!(
+            parts.headers.get(LOCATION).unwrap(),
+            &HeaderValue::from_static(USER_DASHBOARD_INVITATIONS_URL),
+        );
+        assert!(bytes.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_user_has_path_community_permission_select_route_forbidden_when_not_logged_in() {
+        // Setup identifiers and data structures
+        let community_id = Uuid::new_v4();
+        let session_id = session::Id::default();
+        let session_record = empty_session_record(session_id);
+
+        // Setup database mock
+        let mut db = MockDB::new();
+        db.expect_get_session()
+            .times(1)
+            .withf(move |id| *id == session_id)
+            .returning(move |_| Ok(Some(session_record.clone())));
+        db.expect_get_user_by_id().times(0);
+        db.expect_user_has_community_permission().times(0);
+
+        // Setup router
+        let server_cfg = HttpServerConfig::default();
+        let db: DynDB = Arc::new(db);
+        let nm = Arc::new(MockNotificationsManager::new());
+        let state = State {
+            server_cfg: server_cfg.clone(),
+            db: db.clone(),
+            image_storage: Arc::new(MockImageStorage::new()),
+            meetings_cfg: None,
+            notifications_manager: nm.clone(),
+            serde_qs_de: serde_qs_config(),
+        };
+        let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
+        let router = Router::new()
+            .route(
+                "/community/{community_id}/select",
+                get(|| async { StatusCode::OK }),
+            )
+            .layer(middleware::from_fn_with_state(
+                (db.clone(), COMMUNITY_READ_PERMISSION),
+                user_has_path_community_permission,
+            ))
+            .layer(auth_layer)
+            .with_state(state);
+
+        // Execute request
+        let request = Request::builder()
+            .method("GET")
+            .uri(format!("/community/{community_id}/select"))
+            .header(COOKIE, format!("id={session_id}"))
+            .body(Body::empty())
+            .unwrap();
+        let response = router.oneshot(request).await.unwrap();
+        let (parts, body) = response.into_parts();
+        let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+        // Check response matches expectations
+        assert_eq!(parts.status, StatusCode::FORBIDDEN);
+        assert!(bytes.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_user_has_path_community_permission_protected_route_forbidden_when_not_logged_in() {
+        // Setup identifiers and data structures
+        let community_id = Uuid::new_v4();
+        let session_id = session::Id::default();
+        let session_record = empty_session_record(session_id);
+
+        // Setup database mock
+        let mut db = MockDB::new();
+        db.expect_get_session()
+            .times(1)
+            .withf(move |id| *id == session_id)
+            .returning(move |_| Ok(Some(session_record.clone())));
+        db.expect_get_user_by_id().times(0);
+        db.expect_user_has_community_permission().times(0);
+
+        // Setup router
+        let server_cfg = HttpServerConfig::default();
+        let db: DynDB = Arc::new(db);
+        let nm = Arc::new(MockNotificationsManager::new());
+        let state = State {
+            server_cfg: server_cfg.clone(),
+            db: db.clone(),
+            image_storage: Arc::new(MockImageStorage::new()),
+            meetings_cfg: None,
+            notifications_manager: nm.clone(),
+            serde_qs_de: serde_qs_config(),
+        };
+        let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
+        let router = Router::new()
+            .route("/{community_id}/protected", get(|| async { StatusCode::OK }))
+            .layer(middleware::from_fn_with_state(
+                (db.clone(), COMMUNITY_READ_PERMISSION),
+                user_has_path_community_permission,
+            ))
+            .layer(auth_layer)
+            .with_state(state);
+
+        // Execute request
+        let request = Request::builder()
+            .method("GET")
+            .uri(format!("/{community_id}/protected"))
+            .header(COOKIE, format!("id={session_id}"))
+            .body(Body::empty())
+            .unwrap();
+        let response = router.oneshot(request).await.unwrap();
+        let (parts, body) = response.into_parts();
+        let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+        // Check response matches expectations
+        assert_eq!(parts.status, StatusCode::FORBIDDEN);
+        assert!(bytes.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_user_has_path_group_permission_forbidden_when_not_logged_in() {
         // Setup identifiers and data structures
         let community_id = Uuid::new_v4();
         let group_id = Uuid::new_v4();
@@ -4493,11 +4377,11 @@ mod tests {
             .withf(move |id| *id == session_id)
             .returning(move |_| Ok(Some(session_record.clone())));
         db.expect_get_user_by_id().times(0);
-        db.expect_user_owns_group().times(0);
+        db.expect_user_has_group_permission().times(0);
 
         // Setup router
         let server_cfg = HttpServerConfig::default();
-        let db = Arc::new(db);
+        let db: DynDB = Arc::new(db);
         let nm = Arc::new(MockNotificationsManager::new());
         let state = State {
             server_cfg: server_cfg.clone(),
@@ -4511,8 +4395,8 @@ mod tests {
         let router = Router::new()
             .route("/groups/{group_id}", get(|| async { StatusCode::OK }))
             .layer(middleware::from_fn_with_state(
-                state.clone(),
-                user_owns_path_group,
+                (db.clone(), GROUP_READ_PERMISSION),
+                user_has_path_group_permission,
             ))
             .layer(auth_layer)
             .with_state(state);
@@ -4534,7 +4418,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_user_owns_selected_community_forbidden_when_not_logged_in() {
+    async fn test_user_has_selected_community_permission_forbidden_when_not_logged_in() {
         // Setup identifiers and data structures
         let community_id = Uuid::new_v4();
         let session_id = session::Id::default();
@@ -4550,11 +4434,11 @@ mod tests {
             .withf(move |id| *id == session_id)
             .returning(move |_| Ok(Some(session_record.clone())));
         db.expect_get_user_by_id().times(0);
-        db.expect_user_owns_community().times(0);
+        db.expect_user_has_community_permission().times(0);
 
         // Setup router
         let server_cfg = HttpServerConfig::default();
-        let db = Arc::new(db);
+        let db: DynDB = Arc::new(db);
         let nm = Arc::new(MockNotificationsManager::new());
         let state = State {
             server_cfg: server_cfg.clone(),
@@ -4568,8 +4452,8 @@ mod tests {
         let router = Router::new()
             .route("/protected", get(|| async { StatusCode::OK }))
             .layer(middleware::from_fn_with_state(
-                state.clone(),
-                user_owns_selected_community,
+                (db.clone(), COMMUNITY_READ_PERMISSION),
+                user_has_selected_community_permission,
             ))
             .layer(auth_layer)
             .with_state(state);
@@ -4591,7 +4475,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_user_owns_selected_group_forbidden_when_not_logged_in() {
+    async fn test_user_has_selected_group_permission_forbidden_when_not_logged_in() {
         // Setup identifiers and data structures
         let community_id = Uuid::new_v4();
         let group_id = Uuid::new_v4();
@@ -4611,11 +4495,11 @@ mod tests {
             .withf(move |id| *id == session_id)
             .returning(move |_| Ok(Some(session_record.clone())));
         db.expect_get_user_by_id().times(0);
-        db.expect_user_owns_group().times(0);
+        db.expect_user_has_group_permission().times(0);
 
         // Setup router
         let server_cfg = HttpServerConfig::default();
-        let db = Arc::new(db);
+        let db: DynDB = Arc::new(db);
         let nm = Arc::new(MockNotificationsManager::new());
         let state = State {
             server_cfg: server_cfg.clone(),
@@ -4629,8 +4513,8 @@ mod tests {
         let router = Router::new()
             .route("/protected", get(|| async { StatusCode::OK }))
             .layer(middleware::from_fn_with_state(
-                state.clone(),
-                user_owns_selected_group,
+                (db.clone(), GROUP_READ_PERMISSION),
+                user_has_selected_group_permission,
             ))
             .layer(auth_layer)
             .with_state(state);

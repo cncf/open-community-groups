@@ -15,9 +15,10 @@ use uuid::Uuid;
 use crate::{
     config::HttpServerConfig,
     db::DynDB,
+    handlers::auth::COMMUNITY_TEAM_WRITE_PERMISSION,
     handlers::{
         error::HandlerError,
-        extractors::{SelectedCommunityId, ValidatedForm},
+        extractors::{CurrentUser, SelectedCommunityId, ValidatedForm},
     },
     router::serde_qs_config,
     services::notifications::{DynNotificationsManager, NewNotification, NotificationKind},
@@ -27,6 +28,7 @@ use crate::{
         pagination,
         pagination::NavigationLinks,
     },
+    types::community::CommunityRole,
 };
 
 // Pages handlers.
@@ -34,6 +36,7 @@ use crate::{
 /// Displays the list of community team members.
 #[instrument(skip_all, err)]
 pub(crate) async fn list_page(
+    CurrentUser(user): CurrentUser,
     SelectedCommunityId(community_id): SelectedCommunityId,
     State(db): State<DynDB>,
     RawQuery(raw_query): RawQuery,
@@ -41,7 +44,11 @@ pub(crate) async fn list_page(
     // Fetch team members
     let filters: CommunityTeamFilters =
         serde_qs_config().deserialize_str(raw_query.as_deref().unwrap_or_default())?;
-    let results = db.list_community_team_members(community_id, &filters).await?;
+    let (results, roles, can_manage_team) = tokio::try_join!(
+        db.list_community_team_members(community_id, &filters),
+        db.list_community_roles(),
+        db.user_has_community_permission(&community_id, &user.user_id, COMMUNITY_TEAM_WRITE_PERMISSION)
+    )?;
 
     // Prepare template
     let navigation_links = NavigationLinks::from_filters(
@@ -51,10 +58,13 @@ pub(crate) async fn list_page(
         "/dashboard/community/team",
     )?;
     let template = team::ListPage {
-        approved_members_count: results.approved_total,
+        can_manage_team,
         members: results.members,
         navigation_links,
+        roles,
         total: results.total,
+        total_accepted: results.total_accepted,
+        total_admins_accepted: results.total_admins_accepted,
         limit: filters.limit,
         offset: filters.offset,
     };
@@ -78,7 +88,8 @@ pub(crate) async fn add(
     ValidatedForm(member): ValidatedForm<NewTeamMember>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Add team member to database
-    db.add_community_team_member(community_id, member.user_id).await?;
+    db.add_community_team_member(community_id, member.user_id, &member.role)
+        .await?;
 
     // Enqueue invitation email notification
     let (community, site_settings) =
@@ -121,13 +132,40 @@ pub(crate) async fn delete(
     ))
 }
 
+/// Updates a user role in the community team.
+#[instrument(skip_all, err)]
+pub(crate) async fn update_role(
+    SelectedCommunityId(community_id): SelectedCommunityId,
+    State(db): State<DynDB>,
+    Path(user_id): Path<Uuid>,
+    ValidatedForm(input): ValidatedForm<NewTeamRole>,
+) -> Result<impl IntoResponse, HandlerError> {
+    // Update team member role in database
+    db.update_community_team_member_role(community_id, user_id, &input.role)
+        .await?;
+
+    Ok((
+        StatusCode::NO_CONTENT,
+        [("HX-Trigger", "refresh-community-dashboard-table")],
+    ))
+}
+
 // Types.
 
 /// Data needed to add a new team member.
 #[derive(Debug, Deserialize, Serialize, Validate)]
 pub(crate) struct NewTeamMember {
     #[garde(skip)]
+    role: CommunityRole,
+    #[garde(skip)]
     user_id: Uuid,
+}
+
+/// Data needed to update a team member role.
+#[derive(Debug, Deserialize, Validate)]
+pub(crate) struct NewTeamRole {
+    #[garde(skip)]
+    role: CommunityRole,
 }
 
 // Tests.
@@ -153,6 +191,7 @@ mod tests {
         services::notifications::{MockNotificationsManager, NotificationKind},
         templates::dashboard::DASHBOARD_PAGINATION_LIMIT,
         templates::notifications::CommunityTeamInvitation as CommunityTeamInvitationTemplate,
+        types::community::CommunityRole,
     };
 
     use super::NewTeamMember;
@@ -169,10 +208,15 @@ mod tests {
             sample_community_team_member(true),
             sample_community_team_member(false),
         ];
+        let role = crate::types::community::CommunityRoleSummary {
+            community_role_id: "admin".to_string(),
+            display_name: "Admin".to_string(),
+        };
         let output = crate::templates::dashboard::community::team::CommunityTeamOutput {
-            approved_total: 1,
             members: members.clone(),
             total: members.len(),
+            total_accepted: 1,
+            total_admins_accepted: 1,
         };
 
         // Setup database mock
@@ -185,10 +229,12 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_community()
+        db.expect_user_has_community_permission()
             .times(1)
-            .withf(move |cid, uid| *cid == community_id && *uid == user_id)
-            .returning(|_, _| Ok(true));
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == user_id && permission == "community.read"
+            })
+            .returning(|_, _, _| Ok(true));
         db.expect_list_community_team_members()
             .times(1)
             .withf(move |cid, filters| {
@@ -197,6 +243,15 @@ mod tests {
                     && filters.offset == Some(0)
             })
             .returning(move |_, _| Ok(output.clone()));
+        db.expect_list_community_roles()
+            .times(1)
+            .returning(move || Ok(vec![role.clone()]));
+        db.expect_user_has_community_permission()
+            .times(1)
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == user_id && permission == "community.team.write"
+            })
+            .returning(move |_, _, _| Ok(true));
 
         // Setup notifications manager mock
         let nm = MockNotificationsManager::new();
@@ -225,6 +280,8 @@ mod tests {
             &HeaderValue::from_static(CACHE_CONTROL_NO_CACHE),
         );
         assert!(!bytes.is_empty());
+        let body = String::from_utf8(bytes.to_vec()).unwrap();
+        assert!(body.contains("At least one accepted admin is required."));
     }
 
     #[tokio::test]
@@ -237,12 +294,17 @@ mod tests {
         let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
         let members = vec![
             sample_community_team_member(true),
-            sample_community_team_member(false),
+            sample_community_team_member(true),
         ];
+        let role = crate::types::community::CommunityRoleSummary {
+            community_role_id: "admin".to_string(),
+            display_name: "Admin".to_string(),
+        };
         let output = crate::templates::dashboard::community::team::CommunityTeamOutput {
-            approved_total: 1,
             members: members.clone(),
             total: members.len(),
+            total_accepted: 2,
+            total_admins_accepted: 2,
         };
 
         // Setup database mock
@@ -255,16 +317,27 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_community()
+        db.expect_user_has_community_permission()
             .times(1)
-            .withf(move |cid, uid| *cid == community_id && *uid == user_id)
-            .returning(|_, _| Ok(true));
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == user_id && permission == "community.read"
+            })
+            .returning(|_, _, _| Ok(true));
         db.expect_list_community_team_members()
             .times(1)
             .withf(move |cid, filters| {
                 *cid == community_id && filters.limit == Some(5) && filters.offset == Some(10)
             })
             .returning(move |_, _| Ok(output.clone()));
+        db.expect_list_community_roles()
+            .times(1)
+            .returning(move || Ok(vec![role.clone()]));
+        db.expect_user_has_community_permission()
+            .times(1)
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == user_id && permission == "community.team.write"
+            })
+            .returning(move |_, _, _| Ok(true));
 
         // Setup notifications manager mock
         let nm = MockNotificationsManager::new();
@@ -293,6 +366,8 @@ mod tests {
             &HeaderValue::from_static(CACHE_CONTROL_NO_CACHE),
         );
         assert!(!bytes.is_empty());
+        let body = String::from_utf8(bytes.to_vec()).unwrap();
+        assert!(!body.contains("At least one accepted admin is required."));
     }
 
     #[tokio::test]
@@ -314,10 +389,12 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_community()
+        db.expect_user_has_community_permission()
             .times(1)
-            .withf(move |cid, uid| *cid == community_id && *uid == user_id)
-            .returning(|_, _| Ok(true));
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == user_id && permission == "community.read"
+            })
+            .returning(|_, _, _| Ok(true));
         db.expect_list_community_team_members()
             .times(1)
             .withf(move |cid, filters| {
@@ -362,6 +439,7 @@ mod tests {
         let site_settings = sample_site_settings();
         let site_settings_for_assertions = site_settings.clone();
         let new_member_form = NewTeamMember {
+            role: CommunityRole::Admin,
             user_id: new_member_id,
         };
         let body = serde_qs::to_string(&new_member_form).unwrap();
@@ -376,14 +454,18 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_community()
+        db.expect_user_has_community_permission()
             .times(1)
-            .withf(move |cid, uid| *cid == community_id && *uid == user_id)
-            .returning(|_, _| Ok(true));
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == user_id && permission == "community.team.write"
+            })
+            .returning(move |_, _, _| Ok(true));
         db.expect_add_community_team_member()
             .times(1)
-            .withf(move |cid, uid| *cid == community_id && *uid == new_member_id)
-            .returning(move |_, _| Ok(()));
+            .withf(move |cid, uid, role| {
+                *cid == community_id && *uid == new_member_id && *role == CommunityRole::Admin
+            })
+            .returning(move |_, _, _| Ok(()));
         db.expect_get_community_summary()
             .times(1)
             .withf(move |cid| *cid == community_id)
@@ -445,6 +527,7 @@ mod tests {
         let auth_hash = "hash".to_string();
         let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
         let new_member_form = NewTeamMember {
+            role: CommunityRole::Admin,
             user_id: new_member_id,
         };
         let body = serde_qs::to_string(&new_member_form).unwrap();
@@ -459,14 +542,18 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_community()
+        db.expect_user_has_community_permission()
             .times(1)
-            .withf(move |cid, uid| *cid == community_id && *uid == user_id)
-            .returning(|_, _| Ok(true));
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == user_id && permission == "community.team.write"
+            })
+            .returning(move |_, _, _| Ok(true));
         db.expect_add_community_team_member()
             .times(1)
-            .withf(move |cid, uid| *cid == community_id && *uid == new_member_id)
-            .returning(move |_, _| Err(anyhow!("db error")));
+            .withf(move |cid, uid, role| {
+                *cid == community_id && *uid == new_member_id && *role == CommunityRole::Admin
+            })
+            .returning(move |_, _, _| Err(anyhow!("db error")));
 
         // Setup notifications manager mock
         let nm = MockNotificationsManager::new();
@@ -510,10 +597,12 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_community()
+        db.expect_user_has_community_permission()
             .times(1)
-            .withf(move |cid, uid| *cid == community_id && *uid == user_id)
-            .returning(|_, _| Ok(true));
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == user_id && permission == "community.team.write"
+            })
+            .returning(move |_, _, _| Ok(true));
         db.expect_delete_community_team_member()
             .times(1)
             .withf(move |cid, uid| *cid == community_id && *uid == member_id)

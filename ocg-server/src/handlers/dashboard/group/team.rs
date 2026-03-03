@@ -15,9 +15,10 @@ use uuid::Uuid;
 use crate::{
     config::HttpServerConfig,
     db::DynDB,
+    handlers::auth::GROUP_TEAM_WRITE_PERMISSION,
     handlers::{
         error::HandlerError,
-        extractors::{SelectedCommunityId, SelectedGroupId, ValidatedForm},
+        extractors::{CurrentUser, SelectedCommunityId, SelectedGroupId, ValidatedForm},
     },
     router::serde_qs_config,
     services::notifications::{DynNotificationsManager, NewNotification, NotificationKind},
@@ -35,6 +36,8 @@ use crate::{
 /// Displays the list of group team members.
 #[instrument(skip_all, err)]
 pub(crate) async fn list_page(
+    CurrentUser(user): CurrentUser,
+    SelectedCommunityId(community_id): SelectedCommunityId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     RawQuery(raw_query): RawQuery,
@@ -42,9 +45,15 @@ pub(crate) async fn list_page(
     // Fetch group team members
     let filters: GroupTeamFilters =
         serde_qs_config().deserialize_str(raw_query.as_deref().unwrap_or_default())?;
-    let (results, roles) = tokio::try_join!(
+    let (results, roles, can_manage_team) = tokio::try_join!(
         db.list_group_team_members(group_id, &filters),
-        db.list_group_roles()
+        db.list_group_roles(),
+        db.user_has_group_permission(
+            &community_id,
+            &group_id,
+            &user.user_id,
+            GROUP_TEAM_WRITE_PERMISSION
+        )
     )?;
 
     // Prepare template
@@ -55,11 +64,13 @@ pub(crate) async fn list_page(
         "/dashboard/group/team",
     )?;
     let template = team::ListPage {
-        approved_members_count: results.approved_total,
+        can_manage_team,
         members: results.members,
         navigation_links,
         roles,
         total: results.total,
+        total_accepted: results.total_accepted,
+        total_admins_accepted: results.total_admins_accepted,
         limit: filters.limit,
         offset: filters.offset,
     };
@@ -215,9 +226,10 @@ mod tests {
         let members = vec![member.clone(), sample_team_member(false)];
         let role = sample_group_role_summary();
         let output = crate::templates::dashboard::group::team::GroupTeamOutput {
-            approved_total: 1,
             members: members.clone(),
             total: members.len(),
+            total_accepted: 1,
+            total_admins_accepted: 1,
         };
 
         // Setup database mock
@@ -230,10 +242,12 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_group()
+        db.expect_user_has_group_permission()
             .times(1)
-            .withf(move |cid, gid, uid| *cid == community_id && *gid == group_id && *uid == user_id)
-            .returning(|_, _, _| Ok(true));
+            .withf(move |cid, gid, uid, _permission| {
+                *cid == community_id && *gid == group_id && *uid == user_id
+            })
+            .returning(|_, _, _, _| Ok(true));
         db.expect_list_group_team_members()
             .times(1)
             .withf(move |id, filters| {
@@ -245,6 +259,15 @@ mod tests {
         db.expect_list_group_roles()
             .times(1)
             .returning(move || Ok(vec![role.clone()]));
+        db.expect_user_has_group_permission()
+            .times(1)
+            .withf(move |cid, gid, uid, permission| {
+                *cid == community_id
+                    && *gid == group_id
+                    && *uid == user_id
+                    && permission == "group.team.write"
+            })
+            .returning(move |_, _, _, _| Ok(true));
 
         // Setup notifications manager mock
         let nm = MockNotificationsManager::new();
@@ -272,6 +295,8 @@ mod tests {
             &HeaderValue::from_static(CACHE_CONTROL_NO_CACHE),
         );
         assert!(!bytes.is_empty());
+        let body = String::from_utf8(bytes.to_vec()).unwrap();
+        assert!(body.contains("At least one accepted admin is required."));
     }
 
     #[tokio::test]
@@ -290,12 +315,13 @@ mod tests {
             Some(group_id),
         );
         let member = sample_team_member(true);
-        let members = vec![member.clone(), sample_team_member(false)];
+        let members = vec![member.clone(), sample_team_member(true)];
         let role = sample_group_role_summary();
         let output = crate::templates::dashboard::group::team::GroupTeamOutput {
-            approved_total: 1,
             members: members.clone(),
             total: members.len(),
+            total_accepted: 2,
+            total_admins_accepted: 2,
         };
 
         // Setup database mock
@@ -308,10 +334,12 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_group()
+        db.expect_user_has_group_permission()
             .times(1)
-            .withf(move |cid, gid, uid| *cid == community_id && *gid == group_id && *uid == user_id)
-            .returning(|_, _, _| Ok(true));
+            .withf(move |cid, gid, uid, _permission| {
+                *cid == community_id && *gid == group_id && *uid == user_id
+            })
+            .returning(|_, _, _, _| Ok(true));
         db.expect_list_group_team_members()
             .times(1)
             .withf(move |id, filters| {
@@ -321,6 +349,15 @@ mod tests {
         db.expect_list_group_roles()
             .times(1)
             .returning(move || Ok(vec![role.clone()]));
+        db.expect_user_has_group_permission()
+            .times(1)
+            .withf(move |cid, gid, uid, permission| {
+                *cid == community_id
+                    && *gid == group_id
+                    && *uid == user_id
+                    && permission == "group.team.write"
+            })
+            .returning(move |_, _, _, _| Ok(true));
 
         // Setup notifications manager mock
         let nm = MockNotificationsManager::new();
@@ -348,6 +385,8 @@ mod tests {
             &HeaderValue::from_static(CACHE_CONTROL_NO_CACHE),
         );
         assert!(!bytes.is_empty());
+        let body = String::from_utf8(bytes.to_vec()).unwrap();
+        assert!(!body.contains("At least one accepted admin is required."));
     }
 
     #[tokio::test]
@@ -367,7 +406,7 @@ mod tests {
             Some(group_id),
         );
         let form = NewTeamMember {
-            role: GroupRole::Organizer,
+            role: GroupRole::Admin,
             user_id: new_member_id,
         };
         let body = format!("role={}&user_id={}", form.role, form.user_id);
@@ -386,15 +425,18 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_group()
+        db.expect_user_has_group_permission()
             .times(1)
-            .withf(move |cid, gid, uid| *cid == community_id && *gid == group_id && *uid == user_id)
-            .returning(|_, _, _| Ok(true));
+            .withf(move |cid, gid, uid, permission| {
+                *cid == community_id
+                    && *gid == group_id
+                    && *uid == user_id
+                    && permission == "group.team.write"
+            })
+            .returning(move |_, _, _, _| Ok(true));
         db.expect_add_group_team_member()
             .times(1)
-            .withf(move |id, uid, role| {
-                *id == group_id && *uid == new_member_id && role == &GroupRole::Organizer
-            })
+            .withf(move |id, uid, role| *id == group_id && *uid == new_member_id && role == &GroupRole::Admin)
             .returning(move |_, _, _| Ok(()));
         db.expect_get_group_summary()
             .times(1)
@@ -473,10 +515,15 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_group()
+        db.expect_user_has_group_permission()
             .times(1)
-            .withf(move |cid, gid, uid| *cid == community_id && *gid == group_id && *uid == user_id)
-            .returning(|_, _, _| Ok(true));
+            .withf(move |cid, gid, uid, permission| {
+                *cid == community_id
+                    && *gid == group_id
+                    && *uid == user_id
+                    && permission == "group.team.write"
+            })
+            .returning(move |_, _, _, _| Ok(true));
         db.expect_delete_group_team_member()
             .times(1)
             .withf(move |id, uid| *id == group_id && *uid == member_id)
@@ -523,7 +570,7 @@ mod tests {
             Some(group_id),
         );
         let form = super::NewTeamRole {
-            role: GroupRole::Organizer,
+            role: GroupRole::Admin,
         };
         let body = format!("role={}", form.role);
 
@@ -537,13 +584,18 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_group()
+        db.expect_user_has_group_permission()
             .times(1)
-            .withf(move |cid, gid, uid| *cid == community_id && *gid == group_id && *uid == user_id)
-            .returning(|_, _, _| Ok(true));
+            .withf(move |cid, gid, uid, permission| {
+                *cid == community_id
+                    && *gid == group_id
+                    && *uid == user_id
+                    && permission == "group.team.write"
+            })
+            .returning(move |_, _, _, _| Ok(true));
         db.expect_update_group_team_member_role()
             .times(1)
-            .withf(move |id, uid, role| *id == group_id && *uid == member_id && role == &GroupRole::Organizer)
+            .withf(move |id, uid, role| *id == group_id && *uid == member_id && role == &GroupRole::Admin)
             .returning(move |_, _, _| Ok(()));
 
         // Setup notifications manager mock

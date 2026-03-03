@@ -46,9 +46,9 @@ insert into "user" (user_id, auth_hash, email, username, email_verified, name) v
 
 -- Pending group invitations (two in main community, one in other community)
 insert into group_team (group_id, user_id, role, accepted, created_at) values
-    (:'group1ID', :'userID', 'organizer', false, '2024-01-02 10:00:00+00'),
-    (:'group2ID', :'userID', 'organizer', false, '2024-01-03 10:00:00+00'),
-    (:'group3ID', :'userID', 'organizer', false, '2024-01-04 10:00:00+00');
+    (:'group1ID', :'userID', 'admin', false, '2024-01-02 10:00:00+00'),
+    (:'group2ID', :'userID', 'admin', false, '2024-01-03 10:00:00+00'),
+    (:'group3ID', :'userID', 'admin', false, '2024-01-04 10:00:00+00');
 
 -- Accepted membership should not be listed (mark existing invite as accepted)
 update group_team
@@ -64,8 +64,8 @@ where group_id = :'group2ID'
 select is(
     list_user_group_team_invitations(:'userID'::uuid)::jsonb,
     '[
-        {"community_name": "c2", "group_id": "00000000-0000-0000-0000-000000000023", "group_name": "G3", "role": "organizer", "created_at": 1704362400},
-        {"community_name": "c1", "group_id": "00000000-0000-0000-0000-000000000021", "group_name": "G1", "role": "organizer", "created_at": 1704189600}
+        {"community_name": "c2", "group_id": "00000000-0000-0000-0000-000000000023", "group_name": "G3", "role": "admin", "created_at": 1704362400},
+        {"community_name": "c1", "group_id": "00000000-0000-0000-0000-000000000021", "group_name": "G1", "role": "admin", "created_at": 1704189600}
     ]'::jsonb,
     'Should list all pending invitations for the user ordered by created_at desc'
 );
@@ -85,7 +85,7 @@ where group_id = :'group3ID'
 select is(
     list_user_group_team_invitations(:'userID'::uuid)::jsonb,
     '[
-        {"community_name": "c1", "group_id": "00000000-0000-0000-0000-000000000021", "group_name": "G1", "role": "organizer", "created_at": 1704189600}
+        {"community_name": "c1", "group_id": "00000000-0000-0000-0000-000000000021", "group_name": "G1", "role": "admin", "created_at": 1704189600}
     ]'::jsonb,
     'Should not return accepted invitations'
 );

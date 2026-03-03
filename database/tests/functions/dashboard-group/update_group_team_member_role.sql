@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(4);
+select plan(5);
 
 -- ============================================================================
 -- VARIABLES
@@ -36,7 +36,7 @@ values (:'user1ID', gen_random_bytes(32), 'alice@example.com', 'alice', true);
 
 -- Group team membership
 insert into group_team (group_id, user_id, role, accepted)
-values (:'groupID', :'user1ID', 'organizer', true);
+values (:'groupID', :'user1ID', 'admin', true);
 
 -- ============================================================================
 -- TESTS
@@ -44,18 +44,18 @@ values (:'groupID', :'user1ID', 'organizer', true);
 
 -- Should change existing member role
 select lives_ok(
-    $$ select update_group_team_member_role('00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000031'::uuid, 'organizer') $$,
+    $$ select update_group_team_member_role('00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000031'::uuid, 'admin') $$,
     'Should succeed'
 );
 select results_eq(
     $$ select role from group_team where group_id = '00000000-0000-0000-0000-000000000021'::uuid and user_id = '00000000-0000-0000-0000-000000000031'::uuid $$,
-    $$ values ('organizer'::text) $$,
-    'Role should be updated to organizer'
+    $$ values ('admin'::text) $$,
+    'Role should be updated to admin'
 );
 
 -- Should error when updating role for non-existing member
 select throws_ok(
-    $$ select update_group_team_member_role('00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000099'::uuid, 'organizer') $$,
+    $$ select update_group_team_member_role('00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000099'::uuid, 'admin') $$,
     'user is not a group team member',
     'Should error when updating role for non-existing member'
 );
@@ -66,6 +66,13 @@ select throws_ok(
     '23503',
     'insert or update on table "group_team" violates foreign key constraint "group_team_role_fkey"',
     'Should error when updating role to an invalid value'
+);
+
+-- Should block demoting the last accepted group admin
+select throws_ok(
+    $$ select update_group_team_member_role('00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000031'::uuid, 'viewer') $$,
+    'cannot change role for the last accepted group admin',
+    'Should block demoting the last accepted group admin'
 );
 
 -- ============================================================================

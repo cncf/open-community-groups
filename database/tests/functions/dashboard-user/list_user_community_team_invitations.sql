@@ -32,11 +32,11 @@ insert into "user" (user_id, auth_hash, email, username, email_verified, name) v
 
 -- Invitations
 insert into community_team (
-    accepted, community_id, created_at, user_id
+    accepted, community_id, created_at, role, user_id
 ) values
-    (false, :'community1ID', '2024-01-02 03:04:05+00', :'user1ID'),
-    (false, :'community2ID', '2024-01-03 03:04:05+00', :'user1ID'),
-    (false, :'community2ID', current_timestamp, :'user3ID');
+    (false, :'community1ID', '2024-01-02 03:04:05+00', 'admin', :'user1ID'),
+    (false, :'community2ID', '2024-01-03 03:04:05+00', 'viewer', :'user1ID'),
+    (false, :'community2ID', current_timestamp, 'viewer', :'user3ID');
 
 -- ============================================================================
 -- TESTS
@@ -46,8 +46,8 @@ insert into community_team (
 select results_eq(
     $$ select list_user_community_team_invitations('00000000-0000-0000-0000-000000000011'::uuid)::jsonb $$,
     $$ values ('[
-        {"community_id":"00000000-0000-0000-0000-000000000002","community_name":"c2","created_at":1704251045},
-        {"community_id":"00000000-0000-0000-0000-000000000001","community_name":"c1","created_at":1704164645}
+        {"community_id":"00000000-0000-0000-0000-000000000002","community_name":"c2","role":"viewer","created_at":1704251045},
+        {"community_id":"00000000-0000-0000-0000-000000000001","community_name":"c1","role":"admin","created_at":1704164645}
     ]'::jsonb) $$,
     'Should return all pending invitations for the user ordered by created_at desc'
 );
@@ -64,7 +64,7 @@ update community_team set accepted = true
 where community_id = :'community1ID' and user_id = :'user1ID';
 select results_eq(
     $$ select list_user_community_team_invitations('00000000-0000-0000-0000-000000000011'::uuid)::jsonb $$,
-    $$ values ('[{"community_id":"00000000-0000-0000-0000-000000000002","community_name":"c2","created_at":1704251045}]'::jsonb) $$,
+    $$ values ('[{"community_id":"00000000-0000-0000-0000-000000000002","community_name":"c2","role":"viewer","created_at":1704251045}]'::jsonb) $$,
     'Should not return accepted invitations'
 );
 

@@ -224,8 +224,10 @@ pub struct GroupRegion {
 #[serde(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
 pub enum GroupRole {
+    Admin,
+    EventsManager,
     #[default]
-    Organizer,
+    Viewer,
 }
 
 /// Group role summary information.

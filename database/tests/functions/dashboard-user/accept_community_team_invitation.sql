@@ -28,10 +28,12 @@ values (:'userID', gen_random_bytes(32), 'user@example.com', 'user', true, 'User
 insert into community_team (
     accepted,
     community_id,
+    role,
     user_id
 ) values (
     false,
     :'communityID',
+    'viewer',
     :'userID'
 );
 

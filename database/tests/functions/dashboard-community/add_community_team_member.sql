@@ -34,7 +34,7 @@ insert into "user" (
 
 -- Adding a user should create membership
 select lives_ok(
-    $$ select add_community_team_member('00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000011'::uuid) $$,
+    $$ select add_community_team_member('00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000011'::uuid, 'admin') $$,
     'Should succeed for valid user'
 );
 select results_eq(
@@ -52,7 +52,7 @@ select results_eq(
 
 -- Should not allow duplicate community team membership
 select throws_ok(
-    $$ select add_community_team_member('00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000011'::uuid) $$,
+    $$ select add_community_team_member('00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000011'::uuid, 'admin') $$,
     'user is already a community team member',
     'Should not allow duplicate community team membership'
 );

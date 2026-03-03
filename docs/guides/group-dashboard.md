@@ -1,3 +1,5 @@
+<!-- markdownlint-disable MD013 -->
+
 # Group Dashboard Guide
 
 Use the Group Dashboard for execution-level operations. This is where organizers run the actual
@@ -12,6 +14,7 @@ Path: [`/dashboard/group`](/dashboard/group ':ignore')
 
 - [What This Dashboard Owns](#what-this-dashboard-owns)
 - [Access and Context](#access-and-context)
+- [Roles and Permissions](#roles-and-permissions)
 - [Settings: Group Identity](#settings-group-identity)
 - [Team: Organizer Capacity](#team-organizer-capacity)
 - [Analytics: Delivery Health](#analytics-delivery-health)
@@ -43,6 +46,26 @@ To operate here, you need:
 If the right community or group is not selected yet, some actions stay unavailable until you pick
 them.
 
+## Roles and Permissions
+
+Group role permissions are fixed and enforced by middleware plus database checks:
+
+| Group role | Group read | Events | Members | Settings | Sponsors | Team |
+| --- | --- | --- | --- | --- | --- | --- |
+| `admin` | Yes | Write | Write | Write | Write | Write |
+| `events-manager` | Yes | Write | Read only | Read only | Read only | Read only |
+| `viewer` | Yes | Read only | Read only | Read only | Read only | Read only |
+
+Community role interaction:
+
+- Community `admin` and `groups-manager` also have group write permissions inside that community.
+- Community `viewer` remains read-only at group scope.
+
+UI behavior:
+
+- Controls are disabled when the selected role cannot perform that operation.
+- Authorization middleware is still enforced server-side.
+
 ## Settings: Group Identity
 
 Use `Settings` to maintain the information people rely on before joining or attending.
@@ -72,13 +95,19 @@ Field requirements and limits are shown inline in the settings form while editin
 
 `Team` supports invitation-driven organizer management with role updates for existing members.
 
+Current assignable roles:
+
+- `admin`
+- `events-manager`
+- `viewer`
+
 Important protection:
 
-- The last accepted team member cannot be removed.
+- The last accepted group admin cannot be removed or demoted.
 
 This protects continuity for critical event operations and approvals.
 
-!> The last accepted group team member cannot be removed.
+!> The last accepted group admin cannot be removed or demoted.
 Add another accepted team member first, then retry.
 
 When you add a group team member, OCG sends an invitation with a link to

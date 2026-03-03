@@ -37,9 +37,9 @@ insert into "user" (
     (:'user2ID', gen_random_bytes(32), null, 'bob@example.com', 'Bob', null, 'bob', true, 'https://e/u2.png');
 
 -- Team
-insert into community_team (accepted, community_id, user_id) values
-    (true, :'communityID', :'user2ID'),
-    (true, :'communityID', :'user1ID');
+insert into community_team (accepted, community_id, role, user_id) values
+    (true, :'communityID', 'viewer', :'user2ID'),
+    (true, :'communityID', 'admin', :'user1ID');
 
 -- ============================================================================
 -- TESTS
@@ -52,12 +52,13 @@ select is(
         '{"limit": 50, "offset": 0}'::jsonb
     )::jsonb,
     jsonb_build_object(
-        'approved_total', 2,
         'members', '[
-            {"accepted": true, "user_id": "00000000-0000-0000-0000-000000000011", "username": "alice", "company": "Cloud Corp", "name": "Alice", "photo_url": "https://e/u1.png", "title": "Principal Engineer"},
-            {"accepted": true, "user_id": "00000000-0000-0000-0000-000000000012", "username": "bob", "company": null, "name": "Bob", "photo_url": "https://e/u2.png", "title": null}
+            {"accepted": true, "role": "admin", "user_id": "00000000-0000-0000-0000-000000000011", "username": "alice", "company": "Cloud Corp", "name": "Alice", "photo_url": "https://e/u1.png", "title": "Principal Engineer"},
+            {"accepted": true, "role": "viewer", "user_id": "00000000-0000-0000-0000-000000000012", "username": "bob", "company": null, "name": "Bob", "photo_url": "https://e/u2.png", "title": null}
         ]'::jsonb,
-        'total', 2
+        'total', 2,
+        'total_accepted', 2,
+        'total_admins_accepted', 1
     ),
     'Should return expected members in alphabetical order including accepted flag'
 );
@@ -69,11 +70,12 @@ select is(
         '{"limit": 1, "offset": 1}'::jsonb
     )::jsonb,
     jsonb_build_object(
-        'approved_total', 2,
         'members', '[
-            {"accepted": true, "user_id": "00000000-0000-0000-0000-000000000012", "username": "bob", "company": null, "name": "Bob", "photo_url": "https://e/u2.png", "title": null}
+            {"accepted": true, "role": "viewer", "user_id": "00000000-0000-0000-0000-000000000012", "username": "bob", "company": null, "name": "Bob", "photo_url": "https://e/u2.png", "title": null}
         ]'::jsonb,
-        'total', 2
+        'total', 2,
+        'total_accepted', 2,
+        'total_admins_accepted', 1
     ),
     'Should return paginated members when limit and offset are provided'
 );
@@ -85,9 +87,10 @@ select is(
         '{"limit": 50, "offset": 0}'::jsonb
     )::jsonb,
     jsonb_build_object(
-        'approved_total', 0,
         'members', '[]'::jsonb,
-        'total', 0
+        'total', 0,
+        'total_accepted', 0,
+        'total_admins_accepted', 0
     ),
     'Should return empty array for unknown community'
 );

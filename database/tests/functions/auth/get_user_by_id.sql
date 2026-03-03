@@ -104,7 +104,7 @@ insert into group_team (
 ) values (
     :'categoryID'::uuid,
     :'userWithTeamsID',
-    'organizer',
+    'admin',
     true
 );
 
@@ -112,10 +112,12 @@ insert into group_team (
 insert into community_team (
     accepted,
     community_id,
+    role,
     user_id
 ) values (
     true,
     :'communityID',
+    'admin',
     :'userWithTeamsID'
 );
 
@@ -161,7 +163,7 @@ insert into group_team (
 ) values (
     :'groupID'::uuid,
     :'userGroupOnlyID',
-    'organizer',
+    'admin',
     true
 );
 
@@ -185,10 +187,12 @@ insert into "user" (
 insert into community_team (
     accepted,
     community_id,
+    role,
     user_id
 ) values (
     true,
     :'communityID',
+    'admin',
     :'userCommunityOnlyID'
 );
 
@@ -217,17 +221,19 @@ insert into group_team (
 ) values (
     :'groupID'::uuid,
     :'userBothTeamsID',
-    'organizer',
+    'admin',
     true
 );
 
 insert into community_team (
     accepted,
     community_id,
+    role,
     user_id
 ) values (
     true,
     :'communityID',
+    'admin',
     :'userBothTeamsID'
 );
 

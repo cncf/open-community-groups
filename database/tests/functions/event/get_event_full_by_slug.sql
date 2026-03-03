@@ -130,8 +130,8 @@ values
 -- Group Team
 insert into group_team (group_id, user_id, role, accepted, "order", created_at)
 values
-    (:'groupID', :'user3ID', 'organizer', true, 1, '2024-01-01 00:00:00'),
-    (:'groupID', :'user4ID', 'organizer', true, 2, '2024-01-01 00:00:00');
+    (:'groupID', :'user3ID', 'admin', true, 1, '2024-01-01 00:00:00'),
+    (:'groupID', :'user4ID', 'admin', true, 2, '2024-01-01 00:00:00');
 
 -- Group Sponsors
 insert into group_sponsor (group_sponsor_id, group_id, name, logo_url, website_url)

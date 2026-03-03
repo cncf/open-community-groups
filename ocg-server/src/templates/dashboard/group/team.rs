@@ -22,8 +22,8 @@ use crate::{
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "dashboard/group/team_list.html")]
 pub(crate) struct ListPage {
-    /// Number of members with approved status.
-    pub approved_members_count: usize,
+    /// Whether the current user can update team membership and roles.
+    pub can_manage_team: bool,
     /// List of team members in the group.
     pub members: Vec<GroupTeamMember>,
     /// Pagination navigation links.
@@ -32,6 +32,10 @@ pub(crate) struct ListPage {
     pub roles: Vec<GroupRoleSummary>,
     /// Total number of team members.
     pub total: usize,
+    /// Number of accepted members in the group team.
+    pub total_accepted: usize,
+    /// Number of accepted admins in the group team.
+    pub total_admins_accepted: usize,
 
     /// Number of results per page.
     pub limit: Option<usize>,
@@ -82,10 +86,12 @@ pub struct GroupTeamMember {
 /// Paginated group team response data.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct GroupTeamOutput {
-    /// Total number of approved members.
-    pub approved_total: usize,
     /// List of team members in the group.
     pub members: Vec<GroupTeamMember>,
     /// Total number of team members.
     pub total: usize,
+    /// Total number of accepted members.
+    pub total_accepted: usize,
+    /// Total number of accepted admins.
+    pub total_admins_accepted: usize,
 }
