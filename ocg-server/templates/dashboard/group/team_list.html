@@ -135,6 +135,11 @@
                               hx-target="#dashboard-content"
                               hx-indicator="#dashboard-spinner"
                               hx-trigger="confirmed"
+                              data-confirm-action
+                              data-confirm-message="Are you sure you would like to delete this team member?"
+                              data-confirm-text="Yes"
+                              data-success-message="You have successfully deleted the team member."
+                              data-error-message="Something went wrong deleting this team member. Please try again later."
                               class="btn-tertiary p-2 opacity-50 cursor-not-allowed"
                               disabled
                               title="At least one accepted admin is required.">
@@ -146,6 +151,11 @@
                               hx-target="#dashboard-content"
                               hx-indicator="#dashboard-spinner"
                               hx-trigger="confirmed"
+                              data-confirm-action
+                              data-confirm-message="Are you sure you would like to delete this team member?"
+                              data-confirm-text="Yes"
+                              data-success-message="You have successfully deleted the team member."
+                              data-error-message="Something went wrong deleting this team member. Please try again later."
                               class="btn-tertiary p-2">
                         <div class="svg-icon size-4 icon-trash"></div>
                       </button>
@@ -156,34 +166,15 @@
                             hx-target="#dashboard-content"
                             hx-indicator="#dashboard-spinner"
                             hx-trigger="confirmed"
+                            data-confirm-action
+                            data-confirm-message="Are you sure you would like to delete this team member?"
+                            data-confirm-text="Yes"
+                            data-success-message="You have successfully deleted the team member."
+                            data-error-message="Something went wrong deleting this team member. Please try again later."
                             class="btn-tertiary p-2">
                       <div class="svg-icon size-4 icon-trash"></div>
                     </button>
                   {% endif -%}
-                  <script type="module">
-                    import {
-                      showConfirmAlert,
-                      handleHtmxResponse,
-                    } from '/static/js/common/alerts.js';
-                    const removeMemberButton = document.getElementById('remove-member-{{ member.user_id }}');
-                    if (removeMemberButton && !removeMemberButton.disabled) {
-                      removeMemberButton.addEventListener('click', () => {
-                        showConfirmAlert(
-                          "Are you sure you would like to delete this team member?",
-                          "remove-member-{{ member.user_id }}",
-                          "Yes",
-                        );
-                      });
-                      removeMemberButton.addEventListener('htmx:afterRequest', (e) => {
-                        const xhr = e.detail?.xhr;
-                        handleHtmxResponse({
-                          xhr,
-                          successMessage: 'You have successfully deleted the team member.',
-                          errorMessage: 'Something went wrong deleting this team member. Please try again later.'
-                        });
-                      });
-                    }
-                  </script>
                 </div>
               {% else -%}
                 <span class="text-stone-300">-</span>
