@@ -28,7 +28,9 @@
         <th scope="col" class="px-3 xl:px-5 py-3">Member</th>
         <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3">Position</th>
         <th scope="col" class="px-3 xl:px-5 py-3 w-48">Role</th>
-        <th scope="col" class="p-4 w-20"></th>
+        <th scope="col" class="p-4 w-20">
+          <span class="sr-only">Actions</span>
+        </th>
       </tr>
     </thead>
     <tbody id="team-list">
@@ -59,7 +61,7 @@
                   <div class="flex items-center space-x-3 mb-1">
                     <div class="font-medium text-stone-900 truncate">{{ member.name|assigned_or(member.username) }}</div>
                     {% if !member.accepted -%}
-                      <div class="bg-yellow-100 text-yellow-800 text-xs px-2.5 py-0.5 rounded-full tracking-wide">
+                      <div class="text-nowrap bg-yellow-100 text-yellow-800 text-xs px-2.5 py-0.5 rounded-full tracking-wide">
                         Invitation sent
                       </div>
                     {% endif -%}
@@ -94,6 +96,7 @@
                     {% if member.accepted && role.to_string() == "admin" && total_admins_accepted == 1 -%}
                       <select name="role"
                               class="input-primary py-1.5 text-xs xl:text-sm min-w-[10rem] opacity-50 cursor-not-allowed"
+                              aria-label="Role"
                               disabled
                               title="At least one accepted admin is required."
                               onchange="this.form.requestSubmit()">
@@ -107,6 +110,7 @@
                     {% else -%}
                       <select name="role"
                               class="input-primary py-1.5 text-xs xl:text-sm min-w-[10rem]"
+                              aria-label="Role"
                               onchange="this.form.requestSubmit()">
                         {% for role_option in roles -%}
                           <option value="{{ role_option.group_role_id }}"
@@ -156,6 +160,7 @@
                               data-confirm-text="Yes"
                               data-success-message="You have successfully deleted the team member."
                               data-error-message="Something went wrong deleting this team member. Please try again later."
+                              aria-label="Delete team member"
                               class="btn-tertiary p-2">
                         <div class="svg-icon size-4 icon-trash"></div>
                       </button>
@@ -171,6 +176,7 @@
                             data-confirm-text="Yes"
                             data-success-message="You have successfully deleted the team member."
                             data-error-message="Something went wrong deleting this team member. Please try again later."
+                            aria-label="Delete team member"
                             class="btn-tertiary p-2">
                       <div class="svg-icon size-4 icon-trash"></div>
                     </button>
