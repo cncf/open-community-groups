@@ -184,6 +184,14 @@
     @apply cursor-not-allowed border-stone-300 bg-stone-100 text-stone-400;
   }
 
+  .inert-form[inert] label:has(> input[type="file"]) {
+    @apply cursor-not-allowed opacity-50;
+  }
+
+  .inert-form[inert] input[type="file"]::file-selector-button {
+    @apply cursor-not-allowed opacity-50;
+  }
+
   .inert-form[inert] input[type="checkbox"].peer ~ * {
     @apply cursor-not-allowed;
   }
@@ -786,17 +794,18 @@ input:placeholder-shown {
 }
 
 /* Disabled state */
-textarea:disabled + .EasyMDEContainer {
+:is(textarea:disabled + .EasyMDEContainer, .inert-form[inert] .EasyMDEContainer) {
   pointer-events: none;
   cursor: not-allowed;
 }
 
-textarea:disabled + .EasyMDEContainer .CodeMirror {
+:is(textarea:disabled + .EasyMDEContainer, .inert-form[inert] .EasyMDEContainer) .CodeMirror {
   background-color: var(--color-stone-100);
   color: var(--color-stone-500);
+  border-color: var(--color-stone-200) !important;
 }
 
-textarea:disabled + .EasyMDEContainer .editor-toolbar button {
+:is(textarea:disabled + .EasyMDEContainer, .inert-form[inert] .EasyMDEContainer) .editor-toolbar button {
   color: var(--color-stone-500);
 }
 
