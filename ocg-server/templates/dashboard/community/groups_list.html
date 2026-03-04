@@ -46,7 +46,13 @@
             hx-get="/dashboard/community/groups/add"
             hx-target="#dashboard-content"
             hx-indicator="#dashboard-spinner"
-            class="btn-primary">Add Group</button>
+            {% if !can_manage_groups -%}
+              disabled title="Your role cannot add groups."
+            {% endif -%}
+            class="btn-primary
+                   {% if !can_manage_groups -%}
+                     opacity-50 cursor-not-allowed
+                   {% endif -%}">Add Group</button>
   </div>
   {# End add group button -#}
 
@@ -209,6 +215,9 @@
                 <div class="group relative">
                   <button data-group-id="{{ group.group_id }}"
                           class="btn-group-actions btn-tertiary p-2 group-has-[.dropdown:not(.hidden)]:bg-stone-50"
+                          {% if !can_manage_groups -%}
+                            disabled title="Your role cannot activate, deactivate, or delete groups."
+                          {% endif -%}
                           aria-label="Open actions menu for group {{ group.name }}">
                     <div class="svg-icon size-4 icon-vertical-dots"></div>
                   </button>
@@ -224,7 +233,13 @@
                                   hx-target="#dashboard-content"
                                   hx-indicator="#dashboard-spinner"
                                   hx-trigger="confirmed"
-                                  class="cursor-pointer w-full text-start px-4 py-2 hover:bg-stone-100">
+                                  class="cursor-pointer w-full text-start px-4 py-2 hover:bg-stone-100
+                                         {% if !can_manage_groups -%}
+                                           opacity-50 cursor-not-allowed
+                                         {% endif -%}"
+                                  {% if !can_manage_groups -%}
+                                    disabled title="Your role cannot deactivate groups."
+                                  {% endif -%}>
                             <div class="flex items-center">
                               <div class="svg-icon size-4 icon-cancel bg-stone-600"></div>
                               <div class="ms-2">Deactivate</div>
@@ -264,7 +279,13 @@
                                   hx-target="#dashboard-content"
                                   hx-indicator="#dashboard-spinner"
                                   hx-trigger="confirmed"
-                                  class="cursor-pointer w-full text-start px-4 py-2 hover:bg-stone-100">
+                                  class="cursor-pointer w-full text-start px-4 py-2 hover:bg-stone-100
+                                         {% if !can_manage_groups -%}
+                                           opacity-50 cursor-not-allowed
+                                         {% endif -%}"
+                                  {% if !can_manage_groups -%}
+                                    disabled title="Your role cannot activate groups."
+                                  {% endif -%}>
                             <div class="flex items-center">
                               <div class="svg-icon size-4 icon-power bg-stone-600"></div>
                               <div class="ms-2">Activate</div>
@@ -306,7 +327,13 @@
                                 hx-target="#dashboard-content"
                                 hx-indicator="#dashboard-spinner"
                                 hx-trigger="confirmed"
-                                class="cursor-pointer w-full text-start px-4 py-2 hover:bg-stone-100">
+                                class="cursor-pointer w-full text-start px-4 py-2 hover:bg-stone-100
+                                       {% if !can_manage_groups -%}
+                                         opacity-50 cursor-not-allowed
+                                       {% endif -%}"
+                                {% if !can_manage_groups -%}
+                                  disabled title="Your role cannot delete groups."
+                                {% endif -%}>
                           <div class="flex items-center">
                             <div class="svg-icon size-4 icon-trash bg-stone-600"></div>
                             <div class="ms-2">Delete</div>

@@ -13,7 +13,13 @@
               hx-get="/dashboard/community/regions/add"
               hx-target="#dashboard-content"
               hx-indicator="#dashboard-spinner"
-              class="btn-primary">Add Region</button>
+              {% if !can_manage_taxonomy -%}
+                disabled title="Your role cannot add regions."
+              {% endif -%}
+              class="btn-primary
+                     {% if !can_manage_taxonomy -%}
+                       opacity-50 cursor-not-allowed
+                     {% endif -%}">Add Region</button>
     </div>
     <script type="module">
       const addRegionButton = document.getElementById('add-region-button');
@@ -69,10 +75,12 @@
                           hx-indicator="#dashboard-spinner"
                           hx-trigger="confirmed"
                           class="btn-tertiary p-2
-                                 {% if groups_count > 0 -%}
+                                 {% if groups_count > 0 || !can_manage_taxonomy -%}
                                    opacity-50 cursor-not-allowed
                                  {% endif -%}"
-                          {% if groups_count > 0 -%}
+                          {% if !can_manage_taxonomy -%}
+                            disabled title="Your role cannot delete regions."
+                          {% else if groups_count > 0 -%}
                             disabled title="This region is in use by one or more groups."
                           {% endif -%}
                           aria-label="Delete region: {{ region.name }}">

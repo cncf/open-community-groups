@@ -3,6 +3,11 @@
 
 {# Events update form -#}
 <div class="space-y-12" data-event-past="{{ event.is_past() }}">
+  {% if !can_manage_events -%}
+    <div class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+      You have view-only access. Your role cannot update events.
+    </div>
+  {% endif -%}
   <ul class="flex flex-wrap space-x-1 lg:space-x-2 -mb-px font-medium text-center border-b border-stone-900/10 w-full mb-10">
     <li>
       <button type="button"
@@ -96,20 +101,26 @@
       </div>
       <button id="update-event-button"
               type="button"
-              class="btn-primary w-24 text-nowrap ms-auto"
+              class="btn-primary w-24 text-nowrap ms-auto
+                     {% if !can_manage_events -%}
+                       opacity-50 cursor-not-allowed
+                     {% endif -%}"
               hx-put="/dashboard/group/events/{{ event.event_id }}/update"
               hx-ext="no-empty-vals"
               hx-include="#details-form, #cfs-form, #date-venue-form, #sessions-form, #hosts-sponsors-form"
               hx-target="#dashboard-content"
               hx-indicator="#dashboard-spinner"
               hx-disabled-elt="#update-event-button, #cancel-button"
+              {% if !can_manage_events -%}
+                disabled title="Your role cannot update events."
+              {% endif -%}
               hx-exclude="[name=toggle_registration_required], [name=toggle_meeting_requested], [name=toggle_cfs_enabled], [name=toggle_event_reminder_enabled]">
         Save
       </button>
     </div>
   </div>
 
-  <div>
+  <div class="inert-form" {% if !can_manage_events -%} inert {% endif -%}>
     <div class="space-y-12">
       {# Event Details Tab -#}
       <div data-content="details">
@@ -687,6 +698,9 @@
 </div>
 {# End Hosts & Speakers Tab -#}
 
+</div>
+</div>
+
 {# Attendees Tab -#}
 <div data-content="attendees" class="hidden">
   <div id="attendees-content">
@@ -701,8 +715,6 @@
 </div>
 {# End Attendees Tab -#}
 
-</div>
-
 {# Form buttons -#}
 <div class="flex items-center justify-end mt-6">
   <button id="cancel-button"
@@ -714,7 +726,6 @@
           class="btn-primary-outline w-24">Cancel</button>
 </div>
 {# End form buttons -#}
-</div>
 </div>
 
 <script type="module" src="/static/js/dashboard/group/attendees.js"></script>

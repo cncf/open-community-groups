@@ -9,83 +9,91 @@
       hx-target="#dashboard-content"
       hx-indicator="#dashboard-spinner, #community-settings-spinner"
       hx-disabled-elt="button[type=submit], #cancel-button">
+  {% if !can_manage_settings -%}
+    <div class="mb-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+      You have view-only access. Your role cannot update community settings.
+    </div>
+  {% endif -%}
   <div class="space-y-12">
     <div class="border-b border-stone-900/10 pb-12">
       {{ dashboard::page_title(title = "General Settings", docs_href = "/docs#/guides/community-dashboard?id=settings-community-identity", description = "Configure core community information and basic settings.") -}}
-
-      <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
-        {# Display name -#}
-        <div class="col-span-full lg:col-span-3">
-          <label for="display_name" class="form-label">
-            Display Name <span class="asterisk">*</span>
-          </label>
-          <div class="mt-2">
-            <input type="text"
-                   name="display_name"
-                   id="display_name"
-                   maxlength="{{ crate::validation::MAX_LEN_DISPLAY_NAME }}"
-                   class="input-primary"
-                   autocomplete="off"
-                   autocorrect="off"
-                   autocapitalize="off"
-                   spellcheck="false"
-                   value="{{ community.display_name }}"
-                   required>
-          </div>
-          <p class="form-legend">
-            Public name displayed throughout the community platform. Max {{ crate::validation::MAX_LEN_DISPLAY_NAME }} characters.
-          </p>
-        </div>
-        {# End display name -#}
-
-        {# Description -#}
-        <div class="col-span-full">
-          <label for="description" class="form-label">
-            Description <span class="asterisk">*</span>
-          </label>
-          <div class="mt-2">
-            <markdown-editor id="description" name="description" content="{{ community.description }}" maxlength="{{ crate::validation::MAX_LEN_DESCRIPTION }}" required></markdown-editor>
-          </div>
-          <p class="form-legend">
-            Brief description of the community's purpose or focus. This information will be featured in the community site home page. Max {{ crate::validation::MAX_LEN_DESCRIPTION }} characters.
-          </p>
-        </div>
-        {# End description -#}
-
-        {# Hidden layout field -#}
-        <input type="hidden"
-               name="community_site_layout_id"
-               value="{{ community.community_site_layout_id }}">
-        {# End hidden layout field -#}
-      </div>
     </div>
 
-    {# Branding section -#}
-    <div class="border-b border-stone-900/10 pb-12">
-      {{ dashboard::form_title(title = "Branding", description = "Configure visual identity and copyright information.") -}}
+    <div class="inert-form" {% if !can_manage_settings -%} inert {% endif -%}>
+      <div class="border-b border-stone-900/10 pb-12">
+        <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
+          {# Display name -#}
+          <div class="col-span-full lg:col-span-3">
+            <label for="display_name" class="form-label">
+              Display Name <span class="asterisk">*</span>
+            </label>
+            <div class="mt-2">
+              <input type="text"
+                     name="display_name"
+                     id="display_name"
+                     maxlength="{{ crate::validation::MAX_LEN_DISPLAY_NAME }}"
+                     class="input-primary"
+                     autocomplete="off"
+                     autocorrect="off"
+                     autocapitalize="off"
+                     spellcheck="false"
+                     value="{{ community.display_name }}"
+                     required>
+            </div>
+            <p class="form-legend">
+              Public name displayed throughout the community platform. Max {{ crate::validation::MAX_LEN_DISPLAY_NAME }} characters.
+            </p>
+          </div>
+          {# End display name -#}
 
-      <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
-        {# Logo URL -#}
+          {# Description -#}
+          <div class="col-span-full">
+            <label for="description" class="form-label">
+              Description <span class="asterisk">*</span>
+            </label>
+            <div class="mt-2">
+              <markdown-editor id="description" name="description" content="{{ community.description }}" maxlength="{{ crate::validation::MAX_LEN_DESCRIPTION }}" required></markdown-editor>
+            </div>
+            <p class="form-legend">
+              Brief description of the community's purpose or focus. This information will be featured in the community site home page. Max {{ crate::validation::MAX_LEN_DESCRIPTION }} characters.
+            </p>
+          </div>
+          {# End description -#}
+
+          {# Hidden layout field -#}
+          <input type="hidden"
+                 name="community_site_layout_id"
+                 value="{{ community.community_site_layout_id }}">
+          {# End hidden layout field -#}
+        </div>
+      </div>
+
+      {# Branding section -#}
+      <div class="border-b border-stone-900/10 pb-12">
+        {{ dashboard::form_title(title = "Branding", description = "Configure visual identity and copyright information.") -}}
+
+        <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
+          {# Logo URL -#}
+          <div class="col-span-full">
+            <image-field label="Logo" name="logo_url" value="{{ community.logo_url }}" image-kind="logo" required help-prefix-text="Size required 360 x 360 px." target="logo">
+          </image-field>
+        </div>
+        {# End logo URL -#}
+
+        {# Banner URL -#}
         <div class="col-span-full">
-          <image-field label="Logo" name="logo_url" value="{{ community.logo_url }}" image-kind="logo" required help-prefix-text="Size required 360 x 360 px." target="logo">
+          <image-field label="Banner" name="banner_url" image-kind="banner" value="{{ community.banner_url }}" help-prefix-text="Size required 2428 x 192 px." target="banner" required>
         </image-field>
       </div>
-      {# End logo URL -#}
+      {# End Banner URL -#}
 
-      {# Banner URL -#}
+      {# Banner Mobile URL -#}
       <div class="col-span-full">
-        <image-field label="Banner" name="banner_url" image-kind="banner" value="{{ community.banner_url }}" help-prefix-text="Size required 2428 x 192 px." target="banner" required>
+        <image-field label="Banner Mobile" name="banner_mobile_url" image-kind="banner" value="{{ community.banner_mobile_url }}" help-prefix-text="Size required 1220 x 192 px." target="banner_mobile" required>
       </image-field>
     </div>
-    {# End Banner URL -#}
-
-    {# Banner Mobile URL -#}
-    <div class="col-span-full">
-      <image-field label="Banner Mobile" name="banner_mobile_url" image-kind="banner" value="{{ community.banner_mobile_url }}" help-prefix-text="Size required 1220 x 192 px." target="banner_mobile" required>
-    </image-field>
+    {# End Banner Mobile URL -#}
   </div>
-  {# End Banner Mobile URL -#}
-</div>
 </div>
 {# End branding section -#}
 
@@ -356,9 +364,17 @@
 </div>
 {# End additional content section -#}
 
+</div>
 <div class="mt-6 flex items-center justify-end gap-x-6">
   {# Save button -#}
-  <button type="submit" class="btn-primary relative">
+  <button type="submit"
+          class="btn-primary relative
+                 {% if !can_manage_settings -%}
+                   opacity-50 cursor-not-allowed
+                 {% endif -%}"
+          {% if !can_manage_settings -%}
+            disabled title="Your role cannot update community settings."
+          {% endif -%}>
     {{ ui::btn_spinner(id = "community-settings-spinner", spinner_type = "2") -}}
     Update Settings
   </button>

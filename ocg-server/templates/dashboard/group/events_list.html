@@ -11,7 +11,13 @@
           hx-get="/dashboard/group/events/add"
           hx-target="#dashboard-content"
           hx-indicator="#dashboard-spinner"
-          class="btn-primary">Add Event</button>
+          {% if !can_manage_events -%}
+            disabled title="Your role cannot add events."
+          {% endif -%}
+          class="btn-primary
+                 {% if !can_manage_events -%}
+                   opacity-50 cursor-not-allowed
+                 {% endif -%}">Add Event</button>
 </div>
 {# End add event button -#}
 
@@ -221,7 +227,13 @@
 
                   <div class="group relative">
                     <button data-event-id="{{ event.event_id }}"
-                            class="btn-actions btn-tertiary p-2 group-has-[.dropdown:not(.hidden)]:bg-stone-50">
+                            class="btn-actions btn-tertiary p-2 group-has-[.dropdown:not(.hidden)]:bg-stone-50
+                                   {% if !can_manage_events -%}
+                                     opacity-50 cursor-not-allowed
+                                   {% endif -%}"
+                            {% if !can_manage_events -%}
+                              disabled title="Your role cannot manage events."
+                            {% endif -%}>
                       <div class="svg-icon size-4 icon-vertical-dots"></div>
                     </button>
 
@@ -238,7 +250,13 @@
                                     hx-target="#dashboard-content"
                                     hx-indicator="#dashboard-spinner"
                                     hx-trigger="confirmed"
-                                    class="cursor-pointer w-full text-start px-4 py-2 hover:bg-stone-100">
+                                    class="cursor-pointer w-full text-start px-4 py-2 hover:bg-stone-100
+                                           {% if !can_manage_events -%}
+                                             opacity-50 cursor-not-allowed
+                                           {% endif -%}"
+                                    {% if !can_manage_events -%}
+                                      disabled title="Your role cannot unpublish events."
+                                    {% endif -%}>
                               <div class="flex items-center">
                                 <div class="svg-icon size-4 icon-power bg-stone-600"></div>
                                 <div class="ms-2">Unpublish</div>
@@ -274,7 +292,13 @@
                                     hx-target="#dashboard-content"
                                     hx-indicator="#dashboard-spinner"
                                     hx-trigger="confirmed"
-                                    class="cursor-pointer w-full text-start px-4 py-2 hover:bg-stone-100">
+                                    class="cursor-pointer w-full text-start px-4 py-2 hover:bg-stone-100
+                                           {% if !can_manage_events -%}
+                                             opacity-50 cursor-not-allowed
+                                           {% endif -%}"
+                                    {% if !can_manage_events -%}
+                                      disabled title="Your role cannot publish events."
+                                    {% endif -%}>
                               <div class="flex items-center">
                                 <div class="svg-icon size-4 icon-check bg-stone-600"></div>
                                 <div class="ms-2">Publish</div>
@@ -313,7 +337,13 @@
                                     hx-target="#dashboard-content"
                                     hx-indicator="#dashboard-spinner"
                                     hx-trigger="confirmed"
-                                    class="cursor-pointer w-full text-start px-4 py-2 hover:bg-stone-100">
+                                    class="cursor-pointer w-full text-start px-4 py-2 hover:bg-stone-100
+                                           {% if !can_manage_events -%}
+                                             opacity-50 cursor-not-allowed
+                                           {% endif -%}"
+                                    {% if !can_manage_events -%}
+                                      disabled title="Your role cannot cancel events."
+                                    {% endif -%}>
                               <div class="flex items-center">
                                 <div class="svg-icon size-4 icon-cancel bg-stone-600"></div>
                                 <div class="ms-2">Cancel</div>
@@ -351,7 +381,13 @@
                                   hx-target="#dashboard-content"
                                   hx-indicator="#dashboard-spinner"
                                   hx-trigger="confirmed"
-                                  class="cursor-pointer w-full text-start px-4 py-2 hover:bg-stone-100">
+                                  class="cursor-pointer w-full text-start px-4 py-2 hover:bg-stone-100
+                                         {% if !can_manage_events -%}
+                                           opacity-50 cursor-not-allowed
+                                         {% endif -%}"
+                                  {% if !can_manage_events -%}
+                                    disabled title="Your role cannot delete events."
+                                  {% endif -%}>
                             <div class="flex items-center">
                               <div class="svg-icon size-4 icon-trash bg-stone-600"></div>
                               <div class="ms-2">Delete</div>
@@ -571,7 +607,13 @@
 
                   <div class="group relative">
                     <button data-event-id="{{ event.event_id }}"
-                            class="btn-actions btn-tertiary p-2 group-has-[.dropdown:not(.hidden)]:bg-stone-50">
+                            class="btn-actions btn-tertiary p-2 group-has-[.dropdown:not(.hidden)]:bg-stone-50
+                                   {% if !can_manage_events -%}
+                                     opacity-50 cursor-not-allowed
+                                   {% endif -%}"
+                            {% if !can_manage_events -%}
+                              disabled title="Your role cannot delete events."
+                            {% endif -%}>
                       <div class="svg-icon size-4 icon-vertical-dots"></div>
                     </button>
 
@@ -587,7 +629,13 @@
                                   hx-target="#dashboard-content"
                                   hx-indicator="#dashboard-spinner"
                                   hx-trigger="confirmed"
-                                  class="cursor-pointer w-full text-start px-4 py-2 hover:bg-stone-100">
+                                  class="cursor-pointer w-full text-start px-4 py-2 hover:bg-stone-100
+                                         {% if !can_manage_events -%}
+                                           opacity-50 cursor-not-allowed
+                                         {% endif -%}"
+                                  {% if !can_manage_events -%}
+                                    disabled title="Your role cannot delete events."
+                                  {% endif -%}>
                             <div class="flex items-center">
                               <div class="svg-icon size-4 icon-trash bg-stone-600"></div>
                               <div class="ms-2">Delete</div>

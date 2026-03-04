@@ -17,7 +17,13 @@
             hx-get="/dashboard/community/event-categories/add"
             hx-target="#dashboard-content"
             hx-indicator="#dashboard-spinner"
-            class="btn-primary">Add Event Category</button>
+            {% if !can_manage_taxonomy -%}
+              disabled title="Your role cannot add event categories."
+            {% endif -%}
+            class="btn-primary
+                   {% if !can_manage_taxonomy -%}
+                     opacity-50 cursor-not-allowed
+                   {% endif -%}">Add Event Category</button>
   </div>
   <script type="module">
     const addEventCategoryButton = document.getElementById('add-event-category-button');
@@ -75,10 +81,12 @@
                         hx-indicator="#dashboard-spinner"
                         hx-trigger="confirmed"
                         class="btn-tertiary p-2
-                               {% if events_count > 0 -%}
+                               {% if events_count > 0 || !can_manage_taxonomy -%}
                                  opacity-50 cursor-not-allowed
                                {% endif -%}"
-                        {% if events_count > 0 -%}
+                        {% if !can_manage_taxonomy -%}
+                          disabled title="Your role cannot delete event categories."
+                        {% else if events_count > 0 -%}
                           disabled title="This category is in use by one or more events."
                         {% endif -%}
                         aria-label="Delete event category: {{ category.name }}">

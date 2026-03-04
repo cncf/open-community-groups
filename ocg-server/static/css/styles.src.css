@@ -176,6 +176,56 @@
     @apply mt-1 text-xs/6 text-stone-600;
   }
 
+  .inert-form[inert] :is(.input-primary, .select-primary, textarea) {
+    @apply cursor-not-allowed border-stone-200 bg-stone-100 text-stone-500 placeholder:text-stone-400;
+  }
+
+  .inert-form[inert] :is(.checkbox-primary, .radio-primary) {
+    @apply cursor-not-allowed border-stone-300 bg-stone-100 text-stone-400;
+  }
+
+  .inert-form[inert] input[type="checkbox"].peer ~ * {
+    @apply cursor-not-allowed;
+  }
+
+  .inert-form[inert] input[type="checkbox"].peer ~ div {
+    @apply opacity-50;
+  }
+
+  .inert-form[inert] input[type="checkbox"].peer ~ span {
+    @apply text-stone-500;
+  }
+
+  .inert-form[inert] input[type="radio"].sr-only + div {
+    @apply border-stone-200 bg-stone-100;
+  }
+
+  .inert-form[inert] input[type="radio"].sr-only:checked + div {
+    @apply border-stone-300 ring-0;
+    border-color: var(--color-stone-300) !important;
+    box-shadow: none !important;
+  }
+
+  .inert-form[inert] input[type="radio"].sr-only + div :is(.text-base, .form-legend) {
+    @apply text-stone-500;
+  }
+
+  .inert-form[inert] input[type="radio"].sr-only + div .border-primary-500 {
+    opacity: 0.5;
+  }
+
+  .inert-form[inert] input[type="radio"].sr-only + div .bg-primary-500 {
+    opacity: 0.5;
+  }
+
+  .inert-form[inert] button {
+    @apply cursor-not-allowed opacity-50;
+  }
+
+  .inert-form[inert] :is(.form-label, .form-legend, .asterisk) {
+    @apply text-stone-500;
+  }
+
   /* Shared empty state for dashboard charts */
   .chart-empty-state {
     @apply flex items-center justify-center bg-stone-50 rounded-lg text-stone-500 text-sm p-4 min-h-[220px];
