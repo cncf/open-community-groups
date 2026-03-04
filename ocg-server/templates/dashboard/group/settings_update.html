@@ -9,9 +9,7 @@
       hx-indicator="#dashboard-spinner, #group-settings-update-spinner"
       hx-disabled-elt="button[type=submit], #cancel-button">
   {% if !can_manage_settings -%}
-    <div class="mb-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-      You have view-only access. Your role cannot update group settings.
-    </div>
+    {{ dashboard::permission_warning(message = "Your role cannot update group settings.") -}}
   {% endif -%}
   <div class="space-y-12">
     <div class="border-b border-stone-900/10 pb-12">

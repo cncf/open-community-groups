@@ -4,9 +4,7 @@
 {# Events update form -#}
 <div class="space-y-12" data-event-past="{{ event.is_past() }}">
   {% if !can_manage_events -%}
-    <div class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-      You have view-only access. Your role cannot update events.
-    </div>
+    {{ dashboard::permission_warning(message = "Your role cannot update events.", extra_classes = "") -}}
   {% endif -%}
   <ul class="flex flex-wrap space-x-1 lg:space-x-2 -mb-px font-medium text-center border-b border-stone-900/10 w-full mb-10">
     <li>

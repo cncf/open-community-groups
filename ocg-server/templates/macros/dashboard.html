@@ -126,3 +126,11 @@
   </div>
 {% endmacro page_title -%}
 {# End page title #}
+
+{# Permission warning #}
+{% macro permission_warning(message, extra_classes = "mb-6") -%}
+  <div class="{{ extra_classes }} rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+    {{ message }}
+  </div>
+{% endmacro permission_warning -%}
+{# End permission warning #}
