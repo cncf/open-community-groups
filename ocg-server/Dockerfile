@@ -5,6 +5,7 @@ RUN wget -O /usr/local/bin/tailwindcss https://github.com/tailwindlabs/tailwindc
 RUN chmod +x /usr/local/bin/tailwindcss
 WORKDIR /ocg
 COPY Cargo.* ./
+COPY docs docs
 COPY ocg-server ocg-server
 WORKDIR /ocg/ocg-server
 RUN cargo build --release
