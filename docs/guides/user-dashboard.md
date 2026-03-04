@@ -30,8 +30,6 @@ The dashboard is organized into four areas:
 Each area maps to a specific phase of your lifecycle: identity, access, content creation,
 and review outcomes.
 
-![User profile area](../screenshots/dashboard-user-profile.png)
-
 ## Profile: Public Identity
 
 `Profile` is not just cosmetic. Organizers, co-speakers, and reviewers use this information
@@ -44,6 +42,8 @@ You can maintain:
 - Social links: website, LinkedIn, Bluesky, X, Facebook.
 
 Field requirements and limits are shown inline in the dashboard forms while you edit.
+
+![User profile area](../screenshots/dashboard-user-profile.png)
 
 ## Invitations: Unlock Organizer Access
 
