@@ -1,3 +1,5 @@
+<!-- markdownlint-disable MD013 -->
+
 # Public Site Guide
 
 The public site is the participation layer of OCG. It is where members
@@ -22,20 +24,15 @@ If you prefer a faster task-oriented run-through first, use
 
 ## Understand the Core Pages
 
-- `Home` ([`/`](/ ':ignore')): platform overview, featured communities, and
-  curated upcoming events.
-- `Explore` ([`/explore`](/explore ':ignore')): search and filter events or
-  groups with multiple views.
-- `Stats` ([`/stats`](/stats ':ignore')): platform-level growth and trend
-  visibility.
-- `Community page` (`/{community}`): community identity, activity, and
-  top-level context.
-- `Group page` (`/{community}/group/{group_slug}`): membership entry point and
-  group-specific event stream.
-- `Event page` (`/{community}/group/{group_slug}/event/{event_slug}`): RSVP,
-  schedule, CFS, and delivery details.
-- `Check-in page` (`/{community}/check-in/{event_id}`): event-day attendance
-  confirmation.
+| Page           | Path                                                 | Why it matters                                                   |
+| -------------- | ---------------------------------------------------- | ---------------------------------------------------------------- |
+| Home           | [`/`](/ ':ignore')                                   | Platform overview, featured communities, curated upcoming events |
+| Explore        | [`/explore`](/explore ':ignore')                     | Search and filter events or groups with multiple views           |
+| Stats          | [`/stats`](/stats ':ignore')                         | Platform-level growth and trend visibility                       |
+| Community page | `/{community}`                                       | Community identity, activity, and top-level context              |
+| Group page     | `/{community}/group/{group_slug}`                    | Membership entry point and group-specific event stream           |
+| Event page     | `/{community}/group/{group_slug}/event/{event_slug}` | RSVP, schedule, CFS, and delivery details                        |
+| Check-in page  | `/{community}/check-in/{event_id}`                   | Event-day attendance confirmation                                |
 
 ![Home page overview](../screenshots/home-page.png)
 
