@@ -132,41 +132,24 @@
 
             {# Actions -#}
             <td class="w-12">
-              {% if can_manage_team -%}
-                <div>
-                  {% if let Some(role) = &member.role -%}
-                    {% if member.accepted && role.to_string() == "admin" && total_admins_accepted == 1 -%}
-                      <button id="remove-member-{{ member.user_id }}"
-                              hx-delete="/dashboard/community/team/{{ member.user_id }}/delete"
-                              hx-target="#dashboard-content"
-                              hx-indicator="#dashboard-spinner"
-                              hx-trigger="confirmed"
-                              data-confirm-action
-                              data-confirm-message="Are you sure you would like to delete this team member?"
-                              data-confirm-text="Yes"
-                              data-success-message="You have successfully deleted the team member."
-                              data-error-message="Something went wrong deleting this team member. Please try again later."
-                              class="btn-tertiary p-2 opacity-50 cursor-not-allowed"
-                              disabled
-                              title="At least one accepted admin is required.">
-                        <div class="svg-icon size-4 icon-trash"></div>
-                      </button>
-                    {% else -%}
-                      <button id="remove-member-{{ member.user_id }}"
-                              hx-delete="/dashboard/community/team/{{ member.user_id }}/delete"
-                              hx-target="#dashboard-content"
-                              hx-indicator="#dashboard-spinner"
-                              hx-trigger="confirmed"
-                              data-confirm-action
-                              data-confirm-message="Are you sure you would like to delete this team member?"
-                              data-confirm-text="Yes"
-                              data-success-message="You have successfully deleted the team member."
-                              data-error-message="Something went wrong deleting this team member. Please try again later."
-                              aria-label="Delete team member"
-                              class="btn-tertiary p-2">
-                        <div class="svg-icon size-4 icon-trash"></div>
-                      </button>
-                    {% endif -%}
+              <div>
+                {% if let Some(role) = &member.role -%}
+                  {% if member.accepted && role.to_string() == "admin" && total_admins_accepted == 1 -%}
+                    <button id="remove-member-{{ member.user_id }}"
+                            hx-delete="/dashboard/community/team/{{ member.user_id }}/delete"
+                            hx-target="#dashboard-content"
+                            hx-indicator="#dashboard-spinner"
+                            hx-trigger="confirmed"
+                            data-confirm-action
+                            data-confirm-message="Are you sure you would like to delete this team member?"
+                            data-confirm-text="Yes"
+                            data-success-message="You have successfully deleted the team member."
+                            data-error-message="Something went wrong deleting this team member. Please try again later."
+                            class="btn-tertiary p-2 opacity-50 cursor-not-allowed"
+                            disabled
+                            title="At least one accepted admin is required.">
+                      <div class="svg-icon size-4 icon-trash"></div>
+                    </button>
                   {% else -%}
                     <button id="remove-member-{{ member.user_id }}"
                             hx-delete="/dashboard/community/team/{{ member.user_id }}/delete"
@@ -179,14 +162,33 @@
                             data-success-message="You have successfully deleted the team member."
                             data-error-message="Something went wrong deleting this team member. Please try again later."
                             aria-label="Delete team member"
-                            class="btn-tertiary p-2">
+                            class="btn-tertiary p-2"
+                            {% if !can_manage_team -%}
+                              disabled title="Your role cannot delete team members."
+                            {% endif -%}>
                       <div class="svg-icon size-4 icon-trash"></div>
                     </button>
                   {% endif -%}
-                </div>
-              {% else -%}
-                <span class="text-stone-300">-</span>
-              {% endif -%}
+                {% else -%}
+                  <button id="remove-member-{{ member.user_id }}"
+                          hx-delete="/dashboard/community/team/{{ member.user_id }}/delete"
+                          hx-target="#dashboard-content"
+                          hx-indicator="#dashboard-spinner"
+                          hx-trigger="confirmed"
+                          data-confirm-action
+                          data-confirm-message="Are you sure you would like to delete this team member?"
+                          data-confirm-text="Yes"
+                          data-success-message="You have successfully deleted the team member."
+                          data-error-message="Something went wrong deleting this team member. Please try again later."
+                          aria-label="Delete team member"
+                          class="btn-tertiary p-2"
+                          {% if !can_manage_team -%}
+                            disabled title="Your role cannot delete team members."
+                          {% endif -%}>
+                    <div class="svg-icon size-4 icon-trash"></div>
+                  </button>
+                {% endif -%}
+              </div>
             </td>
             {# End actions -#}
           </tr>
