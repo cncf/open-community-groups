@@ -12,13 +12,13 @@ returns json as $$
         members as (
             select
                 gt.accepted,
+                gt.role,
                 u.user_id,
                 u.username,
 
                 u.company,
                 u.name,
                 u.photo_url,
-                gt.role,
                 u.title
             from group_team gt
             join "user" u using (user_id)

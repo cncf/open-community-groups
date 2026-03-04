@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(5);
+select plan(6);
 
 -- ============================================================================
 -- VARIABLES
@@ -13,6 +13,7 @@ select plan(5);
 \set communityID '00000000-0000-0000-0000-000000000001'
 \set groupID '00000000-0000-0000-0000-000000000021'
 \set user1ID '00000000-0000-0000-0000-000000000031'
+\set user2ID '00000000-0000-0000-0000-000000000032'
 
 -- ============================================================================
 -- SEED DATA
@@ -32,11 +33,15 @@ values (:'groupID', :'communityID', :'categoryID', 'G1', 'g1');
 
 -- Users
 insert into "user" (user_id, auth_hash, email, username, email_verified)
-values (:'user1ID', gen_random_bytes(32), 'alice@example.com', 'alice', true);
+values
+    (:'user1ID', gen_random_bytes(32), 'alice@example.com', 'alice', true),
+    (:'user2ID', gen_random_bytes(32), 'bob@example.com', 'bob', true);
 
 -- Group team membership
 insert into group_team (group_id, user_id, role, accepted)
-values (:'groupID', :'user1ID', 'admin', true);
+values
+    (:'groupID', :'user1ID', 'admin', true),
+    (:'groupID', :'user2ID', 'admin', true);
 
 -- ============================================================================
 -- TESTS
@@ -68,9 +73,15 @@ select throws_ok(
     'Should error when updating role to an invalid value'
 );
 
+-- Should allow demoting an admin when another accepted admin remains
+select lives_ok(
+    $$ select update_group_team_member_role('00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000031'::uuid, 'viewer') $$,
+    'Should allow demotion when another accepted admin exists'
+);
+
 -- Should block demoting the last accepted group admin
 select throws_ok(
-    $$ select update_group_team_member_role('00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000031'::uuid, 'viewer') $$,
+    $$ select update_group_team_member_role('00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000032'::uuid, 'viewer') $$,
     'cannot change role for the last accepted group admin',
     'Should block demoting the last accepted group admin'
 );

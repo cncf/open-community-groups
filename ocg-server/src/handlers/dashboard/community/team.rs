@@ -15,8 +15,8 @@ use uuid::Uuid;
 use crate::{
     config::HttpServerConfig,
     db::DynDB,
-    handlers::auth::COMMUNITY_TEAM_WRITE,
     handlers::{
+        auth::COMMUNITY_TEAM_WRITE,
         error::HandlerError,
         extractors::{CurrentUser, SelectedCommunityId, ValidatedForm},
     },

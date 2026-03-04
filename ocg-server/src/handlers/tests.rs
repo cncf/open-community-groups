@@ -162,7 +162,7 @@ pub(crate) fn sample_community_invitation(community_id: Uuid) -> CommunityTeamIn
     CommunityTeamInvitation {
         community_id,
         community_name: "test-community".to_string(),
-        role: "admin".to_string(),
+        role: CommunityRole::Admin,
         created_at: Utc.with_ymd_and_hms(2024, 1, 1, 0, 0, 0).unwrap(),
     }
 }
