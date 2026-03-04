@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(105);
+select plan(119);
 
 -- ============================================================================
 -- VARIABLES
@@ -11,6 +11,7 @@ select plan(105);
 
 \set categoryID '00000000-0000-0000-0000-000000000031'
 \set communityID '00000000-0000-0000-0000-000000000001'
+\set deletedGroupID '00000000-0000-0000-0000-000000000023'
 \set groupID '00000000-0000-0000-0000-000000000021'
 \set otherCommunityID '00000000-0000-0000-0000-000000000002'
 \set otherGroupID '00000000-0000-0000-0000-000000000022'
@@ -169,7 +170,20 @@ insert into "group" (
     'Open Source Study Group',
     'open-source-study',
     'Weekly open source study and discussion group'
+), (
+    :'deletedGroupID',
+    :'communityID',
+    :'categoryID',
+    'Deleted Study Group',
+    'deleted-study',
+    'Deleted group used for permission checks'
 );
+
+-- Soft-delete one group for permission checks
+update "group" set
+    active = false,
+    deleted = true
+where group_id = :'deletedGroupID';
 
 -- Group team membership
 insert into group_team (
@@ -202,6 +216,11 @@ insert into group_team (
     :'groupID',
     'admin',
     :'userPendingGroupAdminID'
+), (
+    true,
+    :'deletedGroupID',
+    'admin',
+    :'userGroupAdminID'
 ), (
     true,
     :'otherGroupID',
@@ -312,6 +331,20 @@ with actors (
             array[
                 'group.read'
             ]::text[]
+        ),
+        (
+            'deleted-group-community-admin',
+            :'communityID'::uuid,
+            :'deletedGroupID'::uuid,
+            :'userCommunityAdminID'::uuid,
+            array[]::text[]
+        ),
+        (
+            'deleted-group-group-admin',
+            :'communityID'::uuid,
+            :'deletedGroupID'::uuid,
+            :'userGroupAdminID'::uuid,
+            array[]::text[]
         ),
         (
             'dual-role-viewer-and-groups-manager',

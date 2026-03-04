@@ -75,6 +75,7 @@ begin
         join group_category gc using (group_category_id)
         left join region r using (region_id)
         where (g.active = true or v_include_inactive)
+        and g.deleted = false
         and
             case when v_bbox is not null then
             st_intersects(g.location, v_bbox) else true end

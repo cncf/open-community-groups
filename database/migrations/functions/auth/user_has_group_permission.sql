@@ -11,6 +11,7 @@ create or replace function user_has_group_permission(
         from group_team gt
         join "group" g on g.group_id = gt.group_id
         where g.community_id = p_community_id
+          and g.deleted = false
           and gt.group_id = p_group_id
           and gt.user_id = p_user_id
           and gt.accepted = true
@@ -29,6 +30,7 @@ create or replace function user_has_group_permission(
         from community_team ct
         join "group" g on g.community_id = ct.community_id
         where ct.community_id = p_community_id
+          and g.deleted = false
           and g.group_id = p_group_id
           and ct.user_id = p_user_id
           and ct.accepted = true
