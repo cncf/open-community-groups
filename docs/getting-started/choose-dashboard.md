@@ -57,6 +57,8 @@ Community team roles:
 | `groups-manager` | Manage groups and group-level write operations in that community, without community settings/taxonomy/team control |
 | `viewer` | Read-only access |
 
+![Community roles](../screenshots/dashboard-community-team-roles.png)
+
 Group team roles:
 
 | Role | What it can do |
@@ -64,6 +66,8 @@ Group team roles:
 | `admin` | Full group management (`events`, `members`, `settings`, `sponsors`, `team`) |
 | `events-manager` | Event operations only (`events`) |
 | `viewer` | Read-only access |
+
+![Group roles](../screenshots/dashboard-group-members-list-roles.png)
 
 UI behavior:
 

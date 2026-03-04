@@ -56,6 +56,8 @@ Group role permissions are fixed and enforced by middleware plus database checks
 | `events-manager` | Yes | Write | Read only | Read only | Read only | Read only |
 | `viewer` | Yes | Read only | Read only | Read only | Read only | Read only |
 
+![Group roles](../screenshots/dashboard-group-members-list-roles.png)
+
 Community role interaction:
 
 - Community `admin` and `groups-manager` also have group write permissions inside that community.

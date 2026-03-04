@@ -66,6 +66,8 @@ Community role permissions are fixed and enforced by middleware plus database ch
 | `groups-manager` | Yes | Write | Read only | Read only | Read only |
 | `viewer` | Yes | Read only | Read only | Read only | Read only |
 
+![Community roles](../screenshots/dashboard-community-team-roles.png)
+
 Community role impact on group-level operations in the same community:
 
 - `admin` and `groups-manager` can perform group write operations (`events`, `members`,
