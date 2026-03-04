@@ -15,7 +15,10 @@ use crate::{
     auth::AuthSession,
     db::DynDB,
     handlers::{
-        auth::GROUP_TEAM_WRITE_PERMISSION,
+        auth::{
+            GROUP_EVENTS_WRITE, GROUP_MEMBERS_WRITE, GROUP_SETTINGS_WRITE, GROUP_SPONSORS_WRITE,
+            GROUP_TEAM_WRITE,
+        },
         error::HandlerError,
         extractors::{SelectedCommunityId, SelectedGroupId},
     },
@@ -71,7 +74,10 @@ pub(crate) async fn page(
             // Fetch past and upcoming events
             let filters: EventsListFilters =
                 serde_qs_config().deserialize_str(raw_query.as_deref().unwrap_or_default())?;
-            let events = db.list_group_events(group_id, &filters).await?;
+            let (can_manage_events, events) = tokio::try_join!(
+                db.user_has_group_permission(&community_id, &group_id, &user.user_id, GROUP_EVENTS_WRITE),
+                db.list_group_events(group_id, &filters)
+            )?;
             let mut past_filters = filters.clone();
             past_filters.events_tab = Some(EventsTab::Past);
             let mut upcoming_filters = filters.clone();
@@ -91,6 +97,7 @@ pub(crate) async fn page(
                 "/dashboard/group/events",
             )?;
             Content::Events(Box::new(events::ListPage {
+                can_manage_events,
                 events,
                 events_tab: filters.current_tab(),
                 past_navigation_links,
@@ -104,7 +111,10 @@ pub(crate) async fn page(
             // Fetch group members
             let filters: GroupMembersFilters =
                 serde_qs_config().deserialize_str(raw_query.as_deref().unwrap_or_default())?;
-            let results = db.list_group_members(group_id, &filters).await?;
+            let (can_manage_members, results) = tokio::try_join!(
+                db.user_has_group_permission(&community_id, &group_id, &user.user_id, GROUP_MEMBERS_WRITE),
+                db.list_group_members(group_id, &filters)
+            )?;
 
             // Prepare template content
             let navigation_links = NavigationLinks::from_filters(
@@ -114,6 +124,7 @@ pub(crate) async fn page(
                 "/dashboard/group/members",
             )?;
             Content::Members(members::ListPage {
+                can_manage_members,
                 members: results.members,
                 navigation_links,
                 total: results.total,
@@ -122,12 +133,14 @@ pub(crate) async fn page(
             })
         }
         Tab::Settings => {
-            let (group, categories, regions) = tokio::try_join!(
+            let (can_manage_settings, group, categories, regions) = tokio::try_join!(
+                db.user_has_group_permission(&community_id, &group_id, &user.user_id, GROUP_SETTINGS_WRITE),
                 db.get_group_full(community_id, group_id),
                 db.list_group_categories(community_id),
                 db.list_regions(community_id)
             )?;
             Content::Settings(Box::new(settings::UpdatePage {
+                can_manage_settings,
                 categories,
                 group,
                 regions,
@@ -137,7 +150,10 @@ pub(crate) async fn page(
             // Fetch group sponsors
             let filters: GroupSponsorsFilters =
                 serde_qs_config().deserialize_str(raw_query.as_deref().unwrap_or_default())?;
-            let results = db.list_group_sponsors(group_id, &filters, false).await?;
+            let (can_manage_sponsors, results) = tokio::try_join!(
+                db.user_has_group_permission(&community_id, &group_id, &user.user_id, GROUP_SPONSORS_WRITE),
+                db.list_group_sponsors(group_id, &filters, false)
+            )?;
 
             // Prepare template content
             let navigation_links = NavigationLinks::from_filters(
@@ -147,6 +163,7 @@ pub(crate) async fn page(
                 "/dashboard/group/sponsors",
             )?;
             Content::Sponsors(sponsors::ListPage {
+                can_manage_sponsors,
                 navigation_links,
                 sponsors: results.sponsors,
                 total: results.total,
@@ -162,12 +179,7 @@ pub(crate) async fn page(
             let (results, roles, can_manage_team) = tokio::try_join!(
                 db.list_group_team_members(group_id, &filters),
                 db.list_group_roles(),
-                db.user_has_group_permission(
-                    &community_id,
-                    &group_id,
-                    &user.user_id,
-                    GROUP_TEAM_WRITE_PERMISSION
-                )
+                db.user_has_group_permission(&community_id, &group_id, &user.user_id, GROUP_TEAM_WRITE)
             )?;
 
             // Prepare template content
@@ -224,8 +236,17 @@ mod tests {
     use uuid::Uuid;
 
     use crate::{
-        db::mock::MockDB, handlers::tests::*, router::CACHE_CONTROL_NO_CACHE,
-        services::notifications::MockNotificationsManager, templates::dashboard::DASHBOARD_PAGINATION_LIMIT,
+        db::mock::MockDB,
+        handlers::{
+            auth::{
+                GROUP_EVENTS_WRITE, GROUP_MEMBERS_WRITE, GROUP_READ, GROUP_SETTINGS_WRITE,
+                GROUP_SPONSORS_WRITE, GROUP_TEAM_WRITE,
+            },
+            tests::*,
+        },
+        router::CACHE_CONTROL_NO_CACHE,
+        services::notifications::MockNotificationsManager,
+        templates::dashboard::DASHBOARD_PAGINATION_LIMIT,
     };
 
     #[tokio::test]
@@ -259,7 +280,7 @@ mod tests {
         db.expect_user_has_group_permission()
             .times(1)
             .withf(move |cid, gid, uid, permission| {
-                *cid == community_id && *gid == group_id && *uid == user_id && permission == "group.read"
+                *cid == community_id && *gid == group_id && *uid == user_id && permission == GROUP_READ
             })
             .returning(|_, _, _, _| Ok(true));
         db.expect_list_user_groups()
@@ -334,7 +355,16 @@ mod tests {
         db.expect_user_has_group_permission()
             .times(1)
             .withf(move |cid, gid, uid, permission| {
-                *cid == community_id && *gid == group_id && *uid == user_id && permission == "group.read"
+                *cid == community_id && *gid == group_id && *uid == user_id && permission == GROUP_READ
+            })
+            .returning(|_, _, _, _| Ok(true));
+        db.expect_user_has_group_permission()
+            .times(1)
+            .withf(move |cid, gid, uid, permission| {
+                *cid == community_id
+                    && *gid == group_id
+                    && *uid == user_id
+                    && permission == GROUP_EVENTS_WRITE
             })
             .returning(|_, _, _, _| Ok(true));
         db.expect_list_user_groups()
@@ -417,7 +447,16 @@ mod tests {
         db.expect_user_has_group_permission()
             .times(1)
             .withf(move |cid, gid, uid, permission| {
-                *cid == community_id && *gid == group_id && *uid == user_id && permission == "group.read"
+                *cid == community_id && *gid == group_id && *uid == user_id && permission == GROUP_READ
+            })
+            .returning(|_, _, _, _| Ok(true));
+        db.expect_user_has_group_permission()
+            .times(1)
+            .withf(move |cid, gid, uid, permission| {
+                *cid == community_id
+                    && *gid == group_id
+                    && *uid == user_id
+                    && permission == GROUP_MEMBERS_WRITE
             })
             .returning(|_, _, _, _| Ok(true));
         db.expect_list_user_groups()
@@ -497,7 +536,16 @@ mod tests {
         db.expect_user_has_group_permission()
             .times(1)
             .withf(move |cid, gid, uid, permission| {
-                *cid == community_id && *gid == group_id && *uid == user_id && permission == "group.read"
+                *cid == community_id && *gid == group_id && *uid == user_id && permission == GROUP_READ
+            })
+            .returning(|_, _, _, _| Ok(true));
+        db.expect_user_has_group_permission()
+            .times(1)
+            .withf(move |cid, gid, uid, permission| {
+                *cid == community_id
+                    && *gid == group_id
+                    && *uid == user_id
+                    && permission == GROUP_SETTINGS_WRITE
             })
             .returning(|_, _, _, _| Ok(true));
         db.expect_list_user_groups()
@@ -583,7 +631,16 @@ mod tests {
         db.expect_user_has_group_permission()
             .times(1)
             .withf(move |cid, gid, uid, permission| {
-                *cid == community_id && *gid == group_id && *uid == user_id && permission == "group.read"
+                *cid == community_id && *gid == group_id && *uid == user_id && permission == GROUP_READ
+            })
+            .returning(|_, _, _, _| Ok(true));
+        db.expect_user_has_group_permission()
+            .times(1)
+            .withf(move |cid, gid, uid, permission| {
+                *cid == community_id
+                    && *gid == group_id
+                    && *uid == user_id
+                    && permission == GROUP_SPONSORS_WRITE
             })
             .returning(|_, _, _, _| Ok(true));
         db.expect_list_user_groups()
@@ -670,16 +727,13 @@ mod tests {
         db.expect_user_has_group_permission()
             .times(1)
             .withf(move |cid, gid, uid, permission| {
-                *cid == community_id && *gid == group_id && *uid == user_id && permission == "group.read"
+                *cid == community_id && *gid == group_id && *uid == user_id && permission == GROUP_READ
             })
             .returning(|_, _, _, _| Ok(true));
         db.expect_user_has_group_permission()
             .times(1)
             .withf(move |cid, gid, uid, permission| {
-                *cid == community_id
-                    && *gid == group_id
-                    && *uid == user_id
-                    && permission == "group.team.write"
+                *cid == community_id && *gid == group_id && *uid == user_id && permission == GROUP_TEAM_WRITE
             })
             .returning(|_, _, _, _| Ok(true));
         db.expect_list_user_groups()

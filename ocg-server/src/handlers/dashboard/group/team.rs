@@ -15,7 +15,7 @@ use uuid::Uuid;
 use crate::{
     config::HttpServerConfig,
     db::DynDB,
-    handlers::auth::GROUP_TEAM_WRITE_PERMISSION,
+    handlers::auth::GROUP_TEAM_WRITE,
     handlers::{
         error::HandlerError,
         extractors::{CurrentUser, SelectedCommunityId, SelectedGroupId, ValidatedForm},
@@ -48,12 +48,7 @@ pub(crate) async fn list_page(
     let (results, roles, can_manage_team) = tokio::try_join!(
         db.list_group_team_members(group_id, &filters),
         db.list_group_roles(),
-        db.user_has_group_permission(
-            &community_id,
-            &group_id,
-            &user.user_id,
-            GROUP_TEAM_WRITE_PERMISSION
-        )
+        db.user_has_group_permission(&community_id, &group_id, &user.user_id, GROUP_TEAM_WRITE)
     )?;
 
     // Prepare template
@@ -197,7 +192,7 @@ mod tests {
 
     use crate::{
         db::mock::MockDB,
-        handlers::tests::*,
+        handlers::{auth::GROUP_TEAM_WRITE, tests::*},
         router::CACHE_CONTROL_NO_CACHE,
         services::notifications::{MockNotificationsManager, NotificationKind},
         templates::dashboard::DASHBOARD_PAGINATION_LIMIT,
@@ -262,10 +257,7 @@ mod tests {
         db.expect_user_has_group_permission()
             .times(1)
             .withf(move |cid, gid, uid, permission| {
-                *cid == community_id
-                    && *gid == group_id
-                    && *uid == user_id
-                    && permission == "group.team.write"
+                *cid == community_id && *gid == group_id && *uid == user_id && permission == GROUP_TEAM_WRITE
             })
             .returning(move |_, _, _, _| Ok(true));
 
@@ -352,10 +344,7 @@ mod tests {
         db.expect_user_has_group_permission()
             .times(1)
             .withf(move |cid, gid, uid, permission| {
-                *cid == community_id
-                    && *gid == group_id
-                    && *uid == user_id
-                    && permission == "group.team.write"
+                *cid == community_id && *gid == group_id && *uid == user_id && permission == GROUP_TEAM_WRITE
             })
             .returning(move |_, _, _, _| Ok(true));
 
@@ -428,10 +417,7 @@ mod tests {
         db.expect_user_has_group_permission()
             .times(1)
             .withf(move |cid, gid, uid, permission| {
-                *cid == community_id
-                    && *gid == group_id
-                    && *uid == user_id
-                    && permission == "group.team.write"
+                *cid == community_id && *gid == group_id && *uid == user_id && permission == GROUP_TEAM_WRITE
             })
             .returning(move |_, _, _, _| Ok(true));
         db.expect_add_group_team_member()
@@ -518,10 +504,7 @@ mod tests {
         db.expect_user_has_group_permission()
             .times(1)
             .withf(move |cid, gid, uid, permission| {
-                *cid == community_id
-                    && *gid == group_id
-                    && *uid == user_id
-                    && permission == "group.team.write"
+                *cid == community_id && *gid == group_id && *uid == user_id && permission == GROUP_TEAM_WRITE
             })
             .returning(move |_, _, _, _| Ok(true));
         db.expect_delete_group_team_member()
@@ -587,10 +570,7 @@ mod tests {
         db.expect_user_has_group_permission()
             .times(1)
             .withf(move |cid, gid, uid, permission| {
-                *cid == community_id
-                    && *gid == group_id
-                    && *uid == user_id
-                    && permission == "group.team.write"
+                *cid == community_id && *gid == group_id && *uid == user_id && permission == GROUP_TEAM_WRITE
             })
             .returning(move |_, _, _, _| Ok(true));
         db.expect_update_group_team_member_role()

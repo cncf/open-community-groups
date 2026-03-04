@@ -13,6 +13,7 @@ use crate::{
     config::HttpServerConfig,
     db::DynDB,
     handlers::{
+        auth::GROUP_EVENTS_WRITE,
         error::HandlerError,
         extractors::{CurrentUser, SelectedCommunityId, SelectedGroupId, ValidatedFormQs},
     },
@@ -30,6 +31,7 @@ use crate::{
 /// Displays the CFS submissions list for an event.
 #[instrument(skip_all, err)]
 pub(crate) async fn list_page(
+    CurrentUser(user): CurrentUser,
     SelectedCommunityId(community_id): SelectedCommunityId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
@@ -39,7 +41,8 @@ pub(crate) async fn list_page(
     // Fetch event submissions (checking event belongs to group)
     let filters: CfsSubmissionsFilters =
         serde_qs_config().deserialize_str(raw_query.as_deref().unwrap_or_default())?;
-    let (_event, labels, statuses, submissions) = tokio::try_join!(
+    let (can_manage_events, _event, labels, statuses, submissions) = tokio::try_join!(
+        db.user_has_group_permission(&community_id, &group_id, &user.user_id, GROUP_EVENTS_WRITE),
         db.get_event_summary(community_id, group_id, event_id), // ensure event belongs to group
         db.list_event_cfs_labels(event_id),
         db.list_cfs_submission_statuses_for_review(),
@@ -52,8 +55,9 @@ pub(crate) async fn list_page(
         NavigationLinks::from_filters(&filters, submissions.total, &base_path, &base_path)?;
     let refresh_url = pagination::build_url(&base_path, &filters)?;
     let template = submissions::ListPage {
-        event_id,
+        can_manage_events,
         event_cfs_labels: labels,
+        event_id,
         statuses,
         submissions: submissions.submissions,
         navigation_links,
@@ -140,7 +144,10 @@ mod tests {
 
     use crate::{
         db::mock::MockDB,
-        handlers::tests::*,
+        handlers::{
+            auth::{GROUP_EVENTS_WRITE, GROUP_READ},
+            tests::*,
+        },
         router::CACHE_CONTROL_NO_CACHE,
         services::notifications::{MockNotificationsManager, NotificationKind},
         templates::{dashboard::DASHBOARD_PAGINATION_LIMIT, notifications::CfsSubmissionUpdated},
@@ -189,7 +196,16 @@ mod tests {
         db.expect_user_has_group_permission()
             .times(1)
             .withf(move |cid, gid, uid, permission| {
-                *cid == community_id && *gid == group_id && *uid == user_id && permission == "group.read"
+                *cid == community_id && *gid == group_id && *uid == user_id && permission == GROUP_READ
+            })
+            .returning(|_, _, _, _| Ok(true));
+        db.expect_user_has_group_permission()
+            .times(1)
+            .withf(move |cid, gid, uid, permission| {
+                *cid == community_id
+                    && *gid == group_id
+                    && *uid == user_id
+                    && permission == GROUP_EVENTS_WRITE
             })
             .returning(|_, _, _, _| Ok(true));
         db.expect_get_event_summary()
@@ -276,7 +292,16 @@ mod tests {
         db.expect_user_has_group_permission()
             .times(1)
             .withf(move |cid, gid, uid, permission| {
-                *cid == community_id && *gid == group_id && *uid == user_id && permission == "group.read"
+                *cid == community_id && *gid == group_id && *uid == user_id && permission == GROUP_READ
+            })
+            .returning(|_, _, _, _| Ok(true));
+        db.expect_user_has_group_permission()
+            .times(1)
+            .withf(move |cid, gid, uid, permission| {
+                *cid == community_id
+                    && *gid == group_id
+                    && *uid == user_id
+                    && permission == GROUP_EVENTS_WRITE
             })
             .returning(|_, _, _, _| Ok(true));
         db.expect_get_event_summary()
@@ -357,7 +382,16 @@ mod tests {
         db.expect_user_has_group_permission()
             .times(1)
             .withf(move |cid, gid, uid, permission| {
-                *cid == community_id && *gid == group_id && *uid == user_id && permission == "group.read"
+                *cid == community_id && *gid == group_id && *uid == user_id && permission == GROUP_READ
+            })
+            .returning(|_, _, _, _| Ok(true));
+        db.expect_user_has_group_permission()
+            .times(1)
+            .withf(move |cid, gid, uid, permission| {
+                *cid == community_id
+                    && *gid == group_id
+                    && *uid == user_id
+                    && permission == GROUP_EVENTS_WRITE
             })
             .returning(|_, _, _, _| Ok(true));
         db.expect_get_event_summary()
@@ -441,7 +475,7 @@ mod tests {
                 *cid == community_id
                     && *gid == group_id
                     && *uid == user_id
-                    && permission == "group.events.write"
+                    && permission == GROUP_EVENTS_WRITE
             })
             .returning(|_, _, _, _| Ok(true));
         db.expect_get_event_summary()

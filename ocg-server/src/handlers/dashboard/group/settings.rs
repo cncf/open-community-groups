@@ -12,8 +12,9 @@ use tracing::instrument;
 use crate::{
     db::DynDB,
     handlers::{
+        auth::GROUP_SETTINGS_WRITE,
         error::HandlerError,
-        extractors::{SelectedCommunityId, SelectedGroupId, ValidatedFormQs},
+        extractors::{CurrentUser, SelectedCommunityId, SelectedGroupId, ValidatedFormQs},
     },
     templates::dashboard::group::settings::{self, GroupUpdate},
 };
@@ -23,17 +24,20 @@ use crate::{
 /// Displays the page to update group settings.
 #[instrument(skip_all, err)]
 pub(crate) async fn update_page(
+    CurrentUser(user): CurrentUser,
     SelectedCommunityId(community_id): SelectedCommunityId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
-    let (group, categories, regions) = tokio::try_join!(
+    let (can_manage_settings, group, categories, regions) = tokio::try_join!(
+        db.user_has_group_permission(&community_id, &group_id, &user.user_id, GROUP_SETTINGS_WRITE),
         db.get_group_full(community_id, group_id),
         db.list_group_categories(community_id),
         db.list_regions(community_id)
     )?;
     let template = settings::UpdatePage {
+        can_manage_settings,
         categories,
         group,
         regions,
@@ -75,7 +79,12 @@ mod tests {
     use uuid::Uuid;
 
     use crate::{
-        db::mock::MockDB, handlers::tests::*, router::CACHE_CONTROL_NO_CACHE,
+        db::mock::MockDB,
+        handlers::{
+            auth::{GROUP_READ, GROUP_SETTINGS_WRITE},
+            tests::*,
+        },
+        router::CACHE_CONTROL_NO_CACHE,
         services::notifications::MockNotificationsManager,
     };
 
@@ -111,7 +120,16 @@ mod tests {
         db.expect_user_has_group_permission()
             .times(1)
             .withf(move |cid, gid, uid, permission| {
-                *cid == community_id && *gid == group_id && *uid == user_id && permission == "group.read"
+                *cid == community_id && *gid == group_id && *uid == user_id && permission == GROUP_READ
+            })
+            .returning(|_, _, _, _| Ok(true));
+        db.expect_user_has_group_permission()
+            .times(1)
+            .withf(move |cid, gid, uid, permission| {
+                *cid == community_id
+                    && *gid == group_id
+                    && *uid == user_id
+                    && permission == GROUP_SETTINGS_WRITE
             })
             .returning(|_, _, _, _| Ok(true));
         db.expect_get_group_full()
@@ -184,7 +202,16 @@ mod tests {
         db.expect_user_has_group_permission()
             .times(1)
             .withf(move |cid, gid, uid, permission| {
-                *cid == community_id && *gid == group_id && *uid == user_id && permission == "group.read"
+                *cid == community_id && *gid == group_id && *uid == user_id && permission == GROUP_READ
+            })
+            .returning(|_, _, _, _| Ok(true));
+        db.expect_user_has_group_permission()
+            .times(1)
+            .withf(move |cid, gid, uid, permission| {
+                *cid == community_id
+                    && *gid == group_id
+                    && *uid == user_id
+                    && permission == GROUP_SETTINGS_WRITE
             })
             .returning(|_, _, _, _| Ok(true));
         db.expect_get_group_full()
@@ -246,7 +273,7 @@ mod tests {
                 *cid == community_id
                     && *gid == group_id
                     && *uid == user_id
-                    && permission == "group.settings.write"
+                    && permission == GROUP_SETTINGS_WRITE
             })
             .returning(|_, _, _, _| Ok(true));
         db.expect_update_group()
@@ -313,7 +340,7 @@ mod tests {
                 *cid == community_id
                     && *gid == group_id
                     && *uid == user_id
-                    && permission == "group.settings.write"
+                    && permission == GROUP_SETTINGS_WRITE
             })
             .returning(|_, _, _, _| Ok(true));
 

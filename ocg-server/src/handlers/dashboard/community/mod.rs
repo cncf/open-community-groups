@@ -71,7 +71,7 @@ mod tests {
     use crate::{
         db::mock::MockDB,
         handlers::{
-            auth::{SELECTED_COMMUNITY_ID_KEY, SELECTED_GROUP_ID_KEY},
+            auth::{COMMUNITY_READ, SELECTED_COMMUNITY_ID_KEY, SELECTED_GROUP_ID_KEY},
             tests::*,
         },
         services::notifications::MockNotificationsManager,
@@ -101,7 +101,7 @@ mod tests {
         db.expect_user_has_community_permission()
             .times(1)
             .withf(move |cid, uid, permission| {
-                *cid == community_id && *uid == user_id && permission == "community.read"
+                *cid == community_id && *uid == user_id && permission == COMMUNITY_READ
             })
             .returning(|_, _, _| Ok(true));
         db.expect_list_user_groups()
@@ -171,7 +171,7 @@ mod tests {
         db.expect_user_has_community_permission()
             .times(1)
             .withf(move |cid, uid, permission| {
-                *cid == community_id && *uid == user_id && permission == "community.read"
+                *cid == community_id && *uid == user_id && permission == COMMUNITY_READ
             })
             .returning(|_, _, _| Ok(true));
         db.expect_list_user_groups()

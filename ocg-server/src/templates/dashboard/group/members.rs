@@ -21,6 +21,8 @@ use crate::{
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "dashboard/group/members_list.html")]
 pub(crate) struct ListPage {
+    /// Whether the current user can manage members.
+    pub can_manage_members: bool,
     /// List of members in the group.
     pub members: Vec<GroupMember>,
     /// Pagination navigation links.

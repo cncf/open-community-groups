@@ -13,8 +13,9 @@ use uuid::Uuid;
 use crate::{
     db::DynDB,
     handlers::{
+        auth::GROUP_SPONSORS_WRITE,
         error::HandlerError,
-        extractors::{SelectedGroupId, ValidatedForm},
+        extractors::{CurrentUser, SelectedCommunityId, SelectedGroupId, ValidatedForm},
     },
     router::serde_qs_config,
     templates::{
@@ -29,11 +30,19 @@ use crate::{
 /// Displays the page to add a new sponsor.
 #[instrument(skip_all, err)]
 pub(crate) async fn add_page(
+    CurrentUser(user): CurrentUser,
+    SelectedCommunityId(community_id): SelectedCommunityId,
     SelectedGroupId(group_id): SelectedGroupId,
-    State(_db): State<DynDB>,
+    State(db): State<DynDB>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
-    let template = sponsors::AddPage { group_id };
+    let can_manage_sponsors = db
+        .user_has_group_permission(&community_id, &group_id, &user.user_id, GROUP_SPONSORS_WRITE)
+        .await?;
+    let template = sponsors::AddPage {
+        can_manage_sponsors,
+        group_id,
+    };
 
     Ok(Html(template.render()?))
 }
@@ -41,6 +50,8 @@ pub(crate) async fn add_page(
 /// Displays the list of sponsors for the group dashboard.
 #[instrument(skip_all, err)]
 pub(crate) async fn list_page(
+    CurrentUser(user): CurrentUser,
+    SelectedCommunityId(community_id): SelectedCommunityId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     RawQuery(raw_query): RawQuery,
@@ -48,7 +59,10 @@ pub(crate) async fn list_page(
     // Fetch sponsors
     let filters: GroupSponsorsFilters =
         serde_qs_config().deserialize_str(raw_query.as_deref().unwrap_or_default())?;
-    let results = db.list_group_sponsors(group_id, &filters, false).await?;
+    let (can_manage_sponsors, results) = tokio::try_join!(
+        db.user_has_group_permission(&community_id, &group_id, &user.user_id, GROUP_SPONSORS_WRITE),
+        db.list_group_sponsors(group_id, &filters, false)
+    )?;
 
     // Prepare template
     let navigation_links = NavigationLinks::from_filters(
@@ -58,6 +72,7 @@ pub(crate) async fn list_page(
         "/dashboard/group/sponsors",
     )?;
     let template = sponsors::ListPage {
+        can_manage_sponsors,
         navigation_links,
         sponsors: results.sponsors,
         total: results.total,
@@ -75,13 +90,22 @@ pub(crate) async fn list_page(
 /// Displays the page to update an existing sponsor.
 #[instrument(skip_all, err)]
 pub(crate) async fn update_page(
+    CurrentUser(user): CurrentUser,
+    SelectedCommunityId(community_id): SelectedCommunityId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     Path(group_sponsor_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
-    let sponsor = db.get_group_sponsor(group_id, group_sponsor_id).await?;
-    let template = sponsors::UpdatePage { group_id, sponsor };
+    let (can_manage_sponsors, sponsor) = tokio::try_join!(
+        db.user_has_group_permission(&community_id, &group_id, &user.user_id, GROUP_SPONSORS_WRITE),
+        db.get_group_sponsor(group_id, group_sponsor_id)
+    )?;
+    let template = sponsors::UpdatePage {
+        can_manage_sponsors,
+        group_id,
+        sponsor,
+    };
 
     Ok(Html(template.render()?))
 }
@@ -155,8 +179,14 @@ mod tests {
     use uuid::Uuid;
 
     use crate::{
-        db::mock::MockDB, handlers::tests::*, router::CACHE_CONTROL_NO_CACHE,
-        services::notifications::MockNotificationsManager, templates::dashboard::DASHBOARD_PAGINATION_LIMIT,
+        db::mock::MockDB,
+        handlers::{
+            auth::{GROUP_READ, GROUP_SPONSORS_WRITE},
+            tests::*,
+        },
+        router::CACHE_CONTROL_NO_CACHE,
+        services::notifications::MockNotificationsManager,
+        templates::dashboard::DASHBOARD_PAGINATION_LIMIT,
     };
 
     #[tokio::test]
@@ -188,7 +218,16 @@ mod tests {
         db.expect_user_has_group_permission()
             .times(1)
             .withf(move |cid, gid, uid, permission| {
-                *cid == community_id && *gid == group_id && *uid == user_id && permission == "group.read"
+                *cid == community_id && *gid == group_id && *uid == user_id && permission == GROUP_READ
+            })
+            .returning(|_, _, _, _| Ok(true));
+        db.expect_user_has_group_permission()
+            .times(1)
+            .withf(move |cid, gid, uid, permission| {
+                *cid == community_id
+                    && *gid == group_id
+                    && *uid == user_id
+                    && permission == GROUP_SPONSORS_WRITE
             })
             .returning(|_, _, _, _| Ok(true));
 
@@ -254,7 +293,16 @@ mod tests {
         db.expect_user_has_group_permission()
             .times(1)
             .withf(move |cid, gid, uid, permission| {
-                *cid == community_id && *gid == group_id && *uid == user_id && permission == "group.read"
+                *cid == community_id && *gid == group_id && *uid == user_id && permission == GROUP_READ
+            })
+            .returning(|_, _, _, _| Ok(true));
+        db.expect_user_has_group_permission()
+            .times(1)
+            .withf(move |cid, gid, uid, permission| {
+                *cid == community_id
+                    && *gid == group_id
+                    && *uid == user_id
+                    && permission == GROUP_SPONSORS_WRITE
             })
             .returning(|_, _, _, _| Ok(true));
         db.expect_list_group_sponsors()
@@ -329,7 +377,16 @@ mod tests {
         db.expect_user_has_group_permission()
             .times(1)
             .withf(move |cid, gid, uid, permission| {
-                *cid == community_id && *gid == group_id && *uid == user_id && permission == "group.read"
+                *cid == community_id && *gid == group_id && *uid == user_id && permission == GROUP_READ
+            })
+            .returning(|_, _, _, _| Ok(true));
+        db.expect_user_has_group_permission()
+            .times(1)
+            .withf(move |cid, gid, uid, permission| {
+                *cid == community_id
+                    && *gid == group_id
+                    && *uid == user_id
+                    && permission == GROUP_SPONSORS_WRITE
             })
             .returning(|_, _, _, _| Ok(true));
         db.expect_list_group_sponsors()
@@ -399,7 +456,16 @@ mod tests {
         db.expect_user_has_group_permission()
             .times(1)
             .withf(move |cid, gid, uid, permission| {
-                *cid == community_id && *gid == group_id && *uid == user_id && permission == "group.read"
+                *cid == community_id && *gid == group_id && *uid == user_id && permission == GROUP_READ
+            })
+            .returning(|_, _, _, _| Ok(true));
+        db.expect_user_has_group_permission()
+            .times(1)
+            .withf(move |cid, gid, uid, permission| {
+                *cid == community_id
+                    && *gid == group_id
+                    && *uid == user_id
+                    && permission == GROUP_SPONSORS_WRITE
             })
             .returning(|_, _, _, _| Ok(true));
         db.expect_get_group_sponsor()
@@ -469,7 +535,7 @@ mod tests {
                 *cid == community_id
                     && *gid == group_id
                     && *uid == user_id
-                    && permission == "group.sponsors.write"
+                    && permission == GROUP_SPONSORS_WRITE
             })
             .returning(|_, _, _, _| Ok(true));
         db.expect_add_group_sponsor()
@@ -537,7 +603,7 @@ mod tests {
                 *cid == community_id
                     && *gid == group_id
                     && *uid == user_id
-                    && permission == "group.sponsors.write"
+                    && permission == GROUP_SPONSORS_WRITE
             })
             .returning(|_, _, _, _| Ok(true));
         db.expect_delete_group_sponsor()
@@ -604,7 +670,7 @@ mod tests {
                 *cid == community_id
                     && *gid == group_id
                     && *uid == user_id
-                    && permission == "group.sponsors.write"
+                    && permission == GROUP_SPONSORS_WRITE
             })
             .returning(|_, _, _, _| Ok(true));
         db.expect_update_group_sponsor()

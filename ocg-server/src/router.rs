@@ -270,9 +270,7 @@ fn setup_community_dashboard_router(state: &State) -> Router<State> {
             "/regions/{region_id}/update",
             get(dashboard::community::regions::update_page),
         )
-        .route_layer(check_selected_community_permission(
-            auth::COMMUNITY_READ_PERMISSION,
-        ));
+        .route_layer(check_selected_community_permission(auth::COMMUNITY_READ));
 
     // Community groups management endpoints
     let groups_management = Router::new()
@@ -293,15 +291,13 @@ fn setup_community_dashboard_router(state: &State) -> Router<State> {
             "/groups/{group_id}/update",
             put(dashboard::community::groups::update),
         )
-        .route_layer(check_selected_community_permission(
-            auth::COMMUNITY_GROUPS_WRITE_PERMISSION,
-        ));
+        .route_layer(check_selected_community_permission(auth::COMMUNITY_GROUPS_WRITE));
 
     // Community settings management endpoints
     let settings_management = Router::new()
         .route("/settings/update", put(dashboard::community::settings::update))
         .route_layer(check_selected_community_permission(
-            auth::COMMUNITY_SETTINGS_WRITE_PERMISSION,
+            auth::COMMUNITY_SETTINGS_WRITE,
         ));
 
     // Community taxonomy management endpoints
@@ -340,7 +336,7 @@ fn setup_community_dashboard_router(state: &State) -> Router<State> {
             put(dashboard::community::regions::update),
         )
         .route_layer(check_selected_community_permission(
-            auth::COMMUNITY_TAXONOMY_WRITE_PERMISSION,
+            auth::COMMUNITY_TAXONOMY_WRITE,
         ));
 
     // Community team management endpoints
@@ -355,9 +351,7 @@ fn setup_community_dashboard_router(state: &State) -> Router<State> {
             put(dashboard::community::team::update_role),
         )
         .route("/users/search", get(dashboard::common::search_user))
-        .route_layer(check_selected_community_permission(
-            auth::COMMUNITY_TEAM_WRITE_PERMISSION,
-        ));
+        .route_layer(check_selected_community_permission(auth::COMMUNITY_TEAM_WRITE));
 
     // Setup router
     Router::new()
@@ -369,7 +363,7 @@ fn setup_community_dashboard_router(state: &State) -> Router<State> {
         .route(
             "/{community_id}/select",
             put(dashboard::community::select_community)
-                .route_layer(check_path_community_permission(auth::COMMUNITY_READ_PERMISSION)),
+                .route_layer(check_path_community_permission(auth::COMMUNITY_READ)),
         )
 }
 
@@ -427,7 +421,7 @@ fn setup_group_dashboard_router(state: &State) -> Router<State> {
             get(dashboard::group::sponsors::update_page),
         )
         .route("/team", get(dashboard::group::team::list_page))
-        .route_layer(check_selected_group_permission(auth::GROUP_READ_PERMISSION));
+        .route_layer(check_selected_group_permission(auth::GROUP_READ));
 
     // Group events management endpoints
     let events_management = Router::new()
@@ -459,9 +453,7 @@ fn setup_group_dashboard_router(state: &State) -> Router<State> {
             post(dashboard::group::attendees::send_event_custom_notification),
         )
         .route("/users/search", get(dashboard::common::search_user))
-        .route_layer(check_selected_group_permission(
-            auth::GROUP_EVENTS_WRITE_PERMISSION,
-        ));
+        .route_layer(check_selected_group_permission(auth::GROUP_EVENTS_WRITE));
 
     // Group member management endpoints
     let members_management = Router::new()
@@ -469,16 +461,12 @@ fn setup_group_dashboard_router(state: &State) -> Router<State> {
             "/notifications",
             post(dashboard::group::members::send_group_custom_notification),
         )
-        .route_layer(check_selected_group_permission(
-            auth::GROUP_MEMBERS_WRITE_PERMISSION,
-        ));
+        .route_layer(check_selected_group_permission(auth::GROUP_MEMBERS_WRITE));
 
     // Group settings management endpoints
     let settings_management = Router::new()
         .route("/settings/update", put(dashboard::group::settings::update))
-        .route_layer(check_selected_group_permission(
-            auth::GROUP_SETTINGS_WRITE_PERMISSION,
-        ));
+        .route_layer(check_selected_group_permission(auth::GROUP_SETTINGS_WRITE));
 
     // Group sponsor management endpoints
     let sponsors_management = Router::new()
@@ -491,16 +479,14 @@ fn setup_group_dashboard_router(state: &State) -> Router<State> {
             "/sponsors/{group_sponsor_id}/update",
             put(dashboard::group::sponsors::update),
         )
-        .route_layer(check_selected_group_permission(
-            auth::GROUP_SPONSORS_WRITE_PERMISSION,
-        ));
+        .route_layer(check_selected_group_permission(auth::GROUP_SPONSORS_WRITE));
 
     // Group team management endpoints
     let team_management = Router::new()
         .route("/team/add", post(dashboard::group::team::add))
         .route("/team/{user_id}/delete", delete(dashboard::group::team::delete))
         .route("/team/{user_id}/role", put(dashboard::group::team::update_role))
-        .route_layer(check_selected_group_permission(auth::GROUP_TEAM_WRITE_PERMISSION));
+        .route_layer(check_selected_group_permission(auth::GROUP_TEAM_WRITE));
 
     // Setup router
     Router::new()
@@ -512,8 +498,7 @@ fn setup_group_dashboard_router(state: &State) -> Router<State> {
         .merge(team_management)
         .route(
             "/{group_id}/select",
-            put(dashboard::group::select_group)
-                .route_layer(check_path_group_permission(auth::GROUP_READ_PERMISSION)),
+            put(dashboard::group::select_group).route_layer(check_path_group_permission(auth::GROUP_READ)),
         )
         .route(
             "/community/{community_id}/select",

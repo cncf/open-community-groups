@@ -21,6 +21,8 @@ use crate::{
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "dashboard/community/settings_update.html")]
 pub(crate) struct UpdatePage {
+    /// Whether the current user can manage settings.
+    pub can_manage_settings: bool,
     /// Community information.
     pub community: CommunityFull,
 }
