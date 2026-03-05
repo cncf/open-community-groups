@@ -25,6 +25,7 @@
     {# User -#}
     <div class="leading-10 grid gap-y-0.5">
       {{ dashboard::menu_title(text = "User", extra_styles = "py-1.5") -}}
+      {{ dashboard::menu_item(name = "My Events", icon = "events", is_active = content.is_events() , href = "/dashboard/user?tab=events") -}}
       {{ dashboard::menu_item(name = "Profile", icon = "user-small", is_active = content.is_account() , href = "/dashboard/user?tab=account") -}}
       {{ dashboard::menu_item(name = "Invitations", icon = "pending-invitation", is_active = content.is_invitations() , href = "/dashboard/user?tab=invitations") -}}
     </div>

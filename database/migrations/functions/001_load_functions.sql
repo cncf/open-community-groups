@@ -96,6 +96,7 @@
 {{ template "dashboard-user/list_session_proposal_levels.sql" }}
 {{ template "dashboard-user/list_user_cfs_submissions.sql" }}
 {{ template "dashboard-user/list_user_community_team_invitations.sql" }}
+{{ template "dashboard-user/list_user_events.sql" }}
 {{ template "dashboard-user/list_user_group_team_invitations.sql" }}
 {{ template "dashboard-user/list_user_pending_session_proposal_co_speaker_invitations.sql" }}
 {{ template "dashboard-user/list_user_session_proposals.sql" }}

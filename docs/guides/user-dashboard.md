@@ -2,9 +2,9 @@
 
 # User Dashboard Guide
 
-Think of the User Dashboard as your home base inside OCG. It brings profile, invitations,
-proposal writing, and submission tracking into one place so moving from participant to speaker
-feels smooth.
+Think of the User Dashboard as your home base inside OCG. It brings upcoming events, profile,
+invitations, proposal writing, and submission tracking into one place so moving from participant
+to speaker feels smooth.
 
 For a fast end-to-end walkthrough first, use
 [Quickstart](../getting-started/quickstart.md).
@@ -14,6 +14,7 @@ Path: [`/dashboard/user`](/dashboard/user ':ignore')
 **Sections:**
 
 - [User Dashboard Structure](#user-dashboard-structure)
+- [My Events: Upcoming Participation](#my-events-upcoming-participation)
 - [Profile: Public Identity](#profile-public-identity)
 - [Invitations: Unlock Organizer Access](#invitations-unlock-organizer-access)
 - [Session Proposals: Reusable Talks](#session-proposals-reusable-talks)
@@ -22,15 +23,37 @@ Path: [`/dashboard/user`](/dashboard/user ':ignore')
 
 ## User Dashboard Structure
 
-The dashboard is organized into four areas:
+The dashboard is organized into five areas:
 
+- [`My Events`](/dashboard/user?tab=events ':ignore')
 - [`Profile`](/dashboard/user?tab=account ':ignore')
 - [`Invitations`](/dashboard/user?tab=invitations ':ignore')
 - [`Session proposals`](/dashboard/user?tab=session-proposals ':ignore')
 - [`Submissions`](/dashboard/user?tab=submissions ':ignore')
 
-Each area maps to a specific phase of your lifecycle: identity, access, content creation,
-and review outcomes.
+Each area maps to a specific phase of your lifecycle: participation, identity, access, content
+creation, and review outcomes.
+
+## My Events: Upcoming Participation
+
+`My Events` is your personal queue of upcoming events where you already have an active role.
+
+Each row includes:
+
+- Event title with a direct link to the public event page.
+- Event location.
+- Event date and time.
+- Your role in that event (`Attendee`, `Host`, `Speaker`, or multiple roles).
+
+Filtering behavior:
+
+- Includes only upcoming published events.
+- Excludes canceled events.
+- Excludes events from inactive or deleted groups.
+
+Sorting behavior:
+
+- Ordered by date ascending, so the next event appears first.
 
 ## Profile: Public Identity
 
@@ -166,7 +189,8 @@ To understand where submission decisions are made, see
 ?> Keep this cycle active to avoid last-minute blockers around invitations or submission windows.
 
 1. Keep profile current (especially bio, timezone, and links).
-2. Clear invitations quickly so role-based access stays accurate.
-3. Build reusable proposals before deadlines.
-4. Submit to events where CFS is open.
-5. Watch `Submissions` and respond fast when information is requested.
+2. Track `My Events` to stay ahead of upcoming commitments.
+3. Clear invitations quickly so role-based access stays accurate.
+4. Build reusable proposals before deadlines.
+5. Submit to events where CFS is open.
+6. Watch `Submissions` and respond fast when information is requested.

@@ -151,6 +151,25 @@
             </a>
           </li>
 
+          <li class="hidden lg:block border-t border-stone-200 mt-2 pt-2"
+              role="none">
+            <a href="/dashboard/user?tab=events"
+               hx-boost="true"
+               hx-target="body"
+               class="inline-block w-full text-start px-4 py-2 hover:bg-stone-100"
+               role="menuitem">
+              <div class="flex items-center">
+                <div class="svg-icon size-4 icon-events bg-stone-600"></div>
+                <div class="ms-2 text-xs/6">My Events</div>
+                <div class="ms-auto hx-spinner">{{ ui::spinner(size = "size-4") -}}</div>
+              </div>
+            </a>
+          </li>
+
+          <li class="hidden lg:block border-t border-stone-200 mt-2 pt-2"
+              role="separator"
+              aria-hidden="true"></li>
+
           {# Dashboard links -#}
           {% if user.belongs_to_community_team.unwrap_or(false) -%}
             <li class="hidden lg:block" role="none">

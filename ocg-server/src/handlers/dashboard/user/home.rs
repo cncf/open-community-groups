@@ -20,6 +20,7 @@ use crate::{
         PageId,
         auth::{self, User, UserDetails},
         dashboard::user::{
+            events,
             home::{Content, Page, Tab},
             invitations, session_proposals, submissions,
         },
@@ -58,6 +59,23 @@ pub(crate) async fn page(
                 timezones,
                 user: UserDetails::from(user),
             }))
+        }
+        Tab::Events => {
+            let filters: events::UserEventsFilters = serde_qs_config().deserialize_str(raw_query)?;
+            let events_output = db.list_user_events(user.user_id, &filters).await?;
+            let navigation_links = NavigationLinks::from_filters(
+                &filters,
+                events_output.total,
+                "/dashboard/user?tab=events",
+                "/dashboard/user/events",
+            )?;
+            Content::Events(events::ListPage {
+                events: events_output.events,
+                navigation_links,
+                total: events_output.total,
+                limit: filters.limit,
+                offset: filters.offset,
+            })
         }
         Tab::Invitations => {
             let (community_invitations, group_invitations) = tokio::try_join!(
@@ -147,7 +165,10 @@ mod tests {
         handlers::tests::*,
         router::CACHE_CONTROL_NO_CACHE,
         services::notifications::MockNotificationsManager,
-        templates::dashboard::{DASHBOARD_PAGINATION_LIMIT, user::session_proposals::SessionProposalsOutput},
+        templates::dashboard::{
+            DASHBOARD_PAGINATION_LIMIT,
+            user::{events::UserEventsOutput, session_proposals::SessionProposalsOutput},
+        },
     };
 
     #[tokio::test]
@@ -183,6 +204,68 @@ mod tests {
         let request = Request::builder()
             .method("GET")
             .uri("/dashboard/user")
+            .header(COOKIE, format!("id={session_id}"))
+            .body(Body::empty())
+            .unwrap();
+        let response = router.oneshot(request).await.unwrap();
+        let (parts, body) = response.into_parts();
+        let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+        // Check response matches expectations
+        assert_eq!(parts.status, StatusCode::OK);
+        assert_eq!(
+            parts.headers.get(CONTENT_TYPE).unwrap(),
+            &HeaderValue::from_static("text/html; charset=utf-8"),
+        );
+        assert_eq!(
+            parts.headers.get(CACHE_CONTROL).unwrap(),
+            &HeaderValue::from_static(CACHE_CONTROL_NO_CACHE),
+        );
+        assert!(!bytes.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_page_events_tab_success() {
+        // Setup identifiers and data structures
+        let session_id = session::Id::default();
+        let user_id = Uuid::new_v4();
+        let auth_hash = "hash".to_string();
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
+        let events_output = UserEventsOutput {
+            events: vec![],
+            total: 0,
+        };
+
+        // Setup database mock
+        let mut db = MockDB::new();
+        db.expect_get_session()
+            .times(1)
+            .withf(move |id| *id == session_id)
+            .returning(move |_| Ok(Some(session_record.clone())));
+        db.expect_get_user_by_id()
+            .times(1)
+            .withf(move |id| *id == user_id)
+            .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+        db.expect_list_user_events()
+            .times(1)
+            .withf(move |uid, filters| {
+                *uid == user_id
+                    && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
+                    && filters.offset == Some(0)
+            })
+            .returning(move |_, _| Ok(events_output.clone()));
+        db.expect_get_site_settings()
+            .times(1)
+            .returning(|| Ok(sample_site_settings()));
+
+        // Setup notifications manager mock
+        let nm = MockNotificationsManager::new();
+
+        // Setup router and send request
+        let router = TestRouterBuilder::new(db, nm).build().await;
+        let request = Request::builder()
+            .method("GET")
+            .uri("/dashboard/user?tab=events")
             .header(COOKIE, format!("id={session_id}"))
             .body(Body::empty())
             .unwrap();
