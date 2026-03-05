@@ -8,7 +8,7 @@ use crate::{
     templates::{
         PageId,
         auth::{self, User},
-        dashboard::user::{invitations, session_proposals, submissions},
+        dashboard::user::{events, invitations, session_proposals, submissions},
         filters,
         helpers::user_initials,
     },
@@ -38,6 +38,8 @@ pub(crate) struct Page {
 pub(crate) enum Content {
     /// User account page.
     Account(Box<auth::UpdateUserPage>),
+    /// User upcoming events page.
+    Events(events::ListPage),
     /// Invitations page.
     Invitations(invitations::ListPage),
     /// Session proposals page.
@@ -50,6 +52,11 @@ impl Content {
     /// Check if the content is the account page.
     fn is_account(&self) -> bool {
         matches!(self, Content::Account(_))
+    }
+
+    /// Check if the content is the events page.
+    fn is_events(&self) -> bool {
+        matches!(self, Content::Events(_))
     }
 
     /// Check if the content is the invitations page.
@@ -72,6 +79,7 @@ impl std::fmt::Display for Content {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Content::Account(template) => write!(f, "{}", template.render()?),
+            Content::Events(template) => write!(f, "{}", template.render()?),
             Content::Invitations(template) => write!(f, "{}", template.render()?),
             Content::SessionProposals(template) => write!(f, "{}", template.render()?),
             Content::Submissions(template) => write!(f, "{}", template.render()?),
@@ -87,6 +95,8 @@ pub(crate) enum Tab {
     /// User account tab (default).
     #[default]
     Account,
+    /// Events tab.
+    Events,
     /// Invitations tab.
     Invitations,
     /// Session proposals tab.

@@ -14,7 +14,7 @@ and know where to go when something behaves differently than expected.
 | Understand where to work                   | [Choose Your Dashboard](getting-started/choose-dashboard.md) |
 | Understand role permissions                | [Choose Your Dashboard](getting-started/choose-dashboard.md#fixed-role-model) |
 | Discover groups and attend events          | [Public Site Guide](guides/public-site.md)                   |
-| Manage profile, proposals, and submissions | [User Dashboard Guide](guides/user-dashboard.md)             |
+| Manage events, profile, proposals, and submissions | [User Dashboard Guide](guides/user-dashboard.md)             |
 | Run a community                            | [Community Dashboard Guide](guides/community-dashboard.md)   |
 | Run a group and events                     | [Group Dashboard Guide](guides/group-dashboard.md)           |
 | Run the full event lifecycle               | [Event Operations](guides/event-operations.md)               |
@@ -30,8 +30,8 @@ The [public site](/ ':ignore') is where discovery and participation happen: find
 
 ### User Dashboard
 
-The [user workspace](/dashboard/user ':ignore') is personal and persistent. It holds profile, invitations,
-reusable session proposals, and submission outcomes.
+The [user workspace](/dashboard/user ':ignore') is your central place for individual participation. It holds upcoming events,
+profile, invitations, reusable session proposals, and submission outcomes.
 
 ### Community Dashboard
 

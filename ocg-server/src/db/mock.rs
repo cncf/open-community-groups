@@ -454,6 +454,11 @@ mock! {
         ) -> Result<Vec<
             crate::templates::dashboard::user::invitations::CommunityTeamInvitation,
         >>;
+        async fn list_user_events(
+            &self,
+            user_id: Uuid,
+            filters: &crate::templates::dashboard::user::events::UserEventsFilters,
+        ) -> Result<crate::templates::dashboard::user::events::UserEventsOutput>;
         async fn list_user_group_team_invitations(
             &self,
             user_id: Uuid,

@@ -517,6 +517,7 @@ fn setup_user_dashboard_router() -> Router<State> {
     // Setup router
     Router::new()
         .route("/", get(dashboard::user::home::page))
+        .route("/events", get(dashboard::user::events::list_page))
         .route("/invitations", get(dashboard::user::invitations::list_page))
         .route(
             "/invitations/community/{community_id}/accept",

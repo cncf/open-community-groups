@@ -9,6 +9,7 @@ use uuid::Uuid;
 use crate::{
     db::PgDB,
     templates::dashboard::user::{
+        events::{UserEventsFilters, UserEventsOutput},
         invitations::{CommunityTeamInvitation, GroupTeamInvitation},
         session_proposals::{
             PendingCoSpeakerInvitation, SessionProposalInput, SessionProposalLevel, SessionProposalsFilters,
@@ -66,6 +67,9 @@ pub(crate) trait DBDashboardUser {
         &self,
         user_id: Uuid,
     ) -> Result<Vec<CommunityTeamInvitation>>;
+
+    /// Lists upcoming events where the user participates.
+    async fn list_user_events(&self, user_id: Uuid, filters: &UserEventsFilters) -> Result<UserEventsOutput>;
 
     /// Lists all pending group team invitations for the user.
     async fn list_user_group_team_invitations(&self, user_id: Uuid) -> Result<Vec<GroupTeamInvitation>>;
@@ -270,6 +274,23 @@ impl DBDashboardUser for PgDB {
         let invitations = row.try_get::<_, Json<Vec<CommunityTeamInvitation>>>(0)?.0;
 
         Ok(invitations)
+    }
+
+    /// [`DBDashboardUser::list_user_events`]
+    #[instrument(skip(self, filters), err)]
+    async fn list_user_events(&self, user_id: Uuid, filters: &UserEventsFilters) -> Result<UserEventsOutput> {
+        trace!("db: list user events");
+
+        let db = self.pool.get().await?;
+        let row = db
+            .query_one(
+                "select list_user_events($1::uuid, $2::jsonb)",
+                &[&user_id, &Json(filters)],
+            )
+            .await?;
+        let events = row.try_get::<_, Json<UserEventsOutput>>(0)?.0;
+
+        Ok(events)
     }
 
     /// [`DBDashboardUser::list_user_group_team_invitations`]
