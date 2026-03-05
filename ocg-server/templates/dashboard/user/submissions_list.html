@@ -27,16 +27,26 @@ description = "Track and manage your call for speakers submissions.") -}}
           <th scope="col" class="px-3 xl:px-5 py-3">Proposal</th>
           <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3">Status</th>
           <th scope="col" class="hidden 2xl:table-cell px-3 xl:px-5 py-3">Updated</th>
-          <th scope="col" class="px-3 xl:px-5 py-3 w-32"></th>
+          <th scope="col" class="px-3 xl:px-5 py-3 w-32">
+            <span class="sr-only">Actions</span>
+          </th>
         </tr>
       </thead>
       <tbody>
         {% if submissions.is_empty() -%}
-          <tr class="bg-white border-b border-stone-200">
+          <tr class="bg-white border-b border-stone-200 xl:hidden">
+            <td class="px-8 py-16 text-center" colspan="3">
+              {% include "dashboard/placeholders/user_submissions_table.html" -%}
+            </td>
+          </tr>
+          <tr class="hidden xl:table-row 2xl:hidden bg-white border-b border-stone-200">
+            <td class="px-8 py-16 text-center" colspan="4">
+              {% include "dashboard/placeholders/user_submissions_table.html" -%}
+            </td>
+          </tr>
+          <tr class="hidden 2xl:table-row bg-white border-b border-stone-200">
             <td class="px-8 py-16 text-center" colspan="5">
-              <div class="flex flex-col items-center justify-center min-h-[125px]">
-                <div class="text-lg lg:text-xl">You don't have any submissions yet.</div>
-              </div>
+              {% include "dashboard/placeholders/user_submissions_table.html" -%}
             </td>
           </tr>
         {% else -%}

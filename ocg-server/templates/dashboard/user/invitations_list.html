@@ -13,7 +13,9 @@ description = "Manage invitations to join communities.") -}}
           <th scope="col" class="px-3 xl:px-5 py-3 w-auto lg:w-2/5 xl:w-1/3">Community</th>
           <th scope="col" class="px-3 xl:px-5 py-3">Role</th>
           <th scope="col" class="px-3 xl:px-5 py-3">Created</th>
-          <th scope="col" class="p-4 w-27"></th>
+          <th scope="col" class="p-4 w-27">
+            <span class="sr-only">Actions</span>
+          </th>
         </tr>
       </thead>
       <tbody>
@@ -21,9 +23,7 @@ description = "Manage invitations to join communities.") -}}
           <tr class="bg-white border-b border-stone-200">
             {# No invitations -#}
             <td class="px-8 py-16 text-center" colspan="4">
-              <div class="flex flex-col items-center justify-center min-h-[125px]">
-                <div class="text-lg lg:text-xl">You don't have any pending community invitation.</div>
-              </div>
+              {% include "dashboard/placeholders/user_community_invitations_table.html" -%}
             </td>
           </tr>
         {% else -%}
@@ -94,7 +94,9 @@ description = "Manage invitations to join groups.") -}}
           <th scope="col" class="px-3 xl:px-5 py-3 w-auto lg:w-2/5 xl:w-1/3">Group</th>
           <th scope="col" class="px-3 xl:px-5 py-3">Role</th>
           <th scope="col" class="px-3 xl:px-5 py-3">Created</th>
-          <th scope="col" class="p-4 w-27"></th>
+          <th scope="col" class="p-4 w-27">
+            <span class="sr-only">Actions</span>
+          </th>
         </tr>
       </thead>
       <tbody>
@@ -102,9 +104,7 @@ description = "Manage invitations to join groups.") -}}
           <tr class="bg-white border-b border-stone-200">
             {# No invitations -#}
             <td class="px-8 py-16 text-center" colspan="4">
-              <div class="flex flex-col items-center justify-center min-h-[125px]">
-                <div class="text-lg lg:text-xl">You don't have any pending group invitation.</div>
-              </div>
+              {% include "dashboard/placeholders/user_group_invitations_table.html" -%}
             </td>
           </tr>
         {% else -%}
