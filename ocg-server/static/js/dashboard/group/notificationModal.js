@@ -1,7 +1,7 @@
 import { toggleModalVisibility } from "/static/js/common/common.js";
 import { showSuccessAlert, showErrorAlert, handleHtmxResponse } from "/static/js/common/alerts.js";
 
-const DEFAULT_ERROR_MESSAGE = "Failed to send email. Please try again later.";
+const DEFAULT_ERROR_MESSAGE = "Something went wrong while trying to send the email. Please try again later.";
 
 // Central helper for attaching modal controls and HTMX success handling.
 export const createNotificationModal = ({
@@ -70,7 +70,7 @@ export const createNotificationModal = ({
       const ok = handleHtmxResponse({
         xhr,
         successMessage: successMessage || "Email sent successfully.",
-        errorMessage: xhr ? xhr.statusText || DEFAULT_ERROR_MESSAGE : DEFAULT_ERROR_MESSAGE,
+        errorMessage: xhr ? xhr.responseText || DEFAULT_ERROR_MESSAGE : DEFAULT_ERROR_MESSAGE,
       });
       if (ok) {
         form.reset();
