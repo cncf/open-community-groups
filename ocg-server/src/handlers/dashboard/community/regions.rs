@@ -13,11 +13,11 @@ use uuid::Uuid;
 use crate::{
     db::DynDB,
     handlers::{
-        auth::COMMUNITY_TAXONOMY_WRITE,
         error::HandlerError,
         extractors::{CurrentUser, SelectedCommunityId, ValidatedForm},
     },
     templates::dashboard::community::regions::{self, RegionInput},
+    types::permissions::CommunityPermission,
 };
 
 // Pages handlers.
@@ -31,7 +31,7 @@ pub(crate) async fn list_page(
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
     let (can_manage_taxonomy, regions) = tokio::try_join!(
-        db.user_has_community_permission(&community_id, &user.user_id, COMMUNITY_TAXONOMY_WRITE),
+        db.user_has_community_permission(&community_id, &user.user_id, CommunityPermission::TaxonomyWrite),
         db.list_regions(community_id)
     )?;
     let template = regions::ListPage {
@@ -51,7 +51,7 @@ pub(crate) async fn add_page(
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
     let can_manage_taxonomy = db
-        .user_has_community_permission(&community_id, &user.user_id, COMMUNITY_TAXONOMY_WRITE)
+        .user_has_community_permission(&community_id, &user.user_id, CommunityPermission::TaxonomyWrite)
         .await?;
     let template = regions::AddPage { can_manage_taxonomy };
 
@@ -68,7 +68,7 @@ pub(crate) async fn update_page(
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
     let (can_manage_taxonomy, regions) = tokio::try_join!(
-        db.user_has_community_permission(&community_id, &user.user_id, COMMUNITY_TAXONOMY_WRITE),
+        db.user_has_community_permission(&community_id, &user.user_id, CommunityPermission::TaxonomyWrite),
         db.list_regions(community_id)
     )?;
     let Some(region) = regions.into_iter().find(|region| region.region_id == region_id) else {
@@ -146,13 +146,8 @@ mod tests {
     use uuid::Uuid;
 
     use crate::{
-        db::mock::MockDB,
-        handlers::{
-            auth::{COMMUNITY_READ, COMMUNITY_TAXONOMY_WRITE},
-            tests::*,
-        },
-        router::CACHE_CONTROL_NO_CACHE,
-        services::notifications::MockNotificationsManager,
+        db::mock::MockDB, handlers::tests::*, router::CACHE_CONTROL_NO_CACHE,
+        services::notifications::MockNotificationsManager, types::permissions::CommunityPermission,
     };
 
     use super::RegionInput;
@@ -180,13 +175,13 @@ mod tests {
         db.expect_user_has_community_permission()
             .times(1)
             .withf(move |cid, uid, permission| {
-                *cid == community_id && *uid == user_id && permission == COMMUNITY_READ
+                *cid == community_id && *uid == user_id && permission == CommunityPermission::Read
             })
             .returning(|_, _, _| Ok(true));
         db.expect_user_has_community_permission()
             .times(1)
             .withf(move |cid, uid, permission| {
-                *cid == community_id && *uid == user_id && permission == COMMUNITY_TAXONOMY_WRITE
+                *cid == community_id && *uid == user_id && permission == CommunityPermission::TaxonomyWrite
             })
             .returning(|_, _, _| Ok(true));
         db.expect_list_regions()
@@ -245,13 +240,13 @@ mod tests {
         db.expect_user_has_community_permission()
             .times(1)
             .withf(move |cid, uid, permission| {
-                *cid == community_id && *uid == user_id && permission == COMMUNITY_READ
+                *cid == community_id && *uid == user_id && permission == CommunityPermission::Read
             })
             .returning(|_, _, _| Ok(true));
         db.expect_user_has_community_permission()
             .times(1)
             .withf(move |cid, uid, permission| {
-                *cid == community_id && *uid == user_id && permission == COMMUNITY_TAXONOMY_WRITE
+                *cid == community_id && *uid == user_id && permission == CommunityPermission::TaxonomyWrite
             })
             .returning(|_, _, _| Ok(true));
 
@@ -308,13 +303,13 @@ mod tests {
         db.expect_user_has_community_permission()
             .times(1)
             .withf(move |cid, uid, permission| {
-                *cid == community_id && *uid == user_id && permission == COMMUNITY_READ
+                *cid == community_id && *uid == user_id && permission == CommunityPermission::Read
             })
             .returning(|_, _, _| Ok(true));
         db.expect_user_has_community_permission()
             .times(1)
             .withf(move |cid, uid, permission| {
-                *cid == community_id && *uid == user_id && permission == COMMUNITY_TAXONOMY_WRITE
+                *cid == community_id && *uid == user_id && permission == CommunityPermission::TaxonomyWrite
             })
             .returning(|_, _, _| Ok(true));
         db.expect_list_regions()
@@ -369,13 +364,13 @@ mod tests {
         db.expect_user_has_community_permission()
             .times(1)
             .withf(move |cid, uid, permission| {
-                *cid == community_id && *uid == user_id && permission == COMMUNITY_READ
+                *cid == community_id && *uid == user_id && permission == CommunityPermission::Read
             })
             .returning(|_, _, _| Ok(true));
         db.expect_user_has_community_permission()
             .times(1)
             .withf(move |cid, uid, permission| {
-                *cid == community_id && *uid == user_id && permission == COMMUNITY_TAXONOMY_WRITE
+                *cid == community_id && *uid == user_id && permission == CommunityPermission::TaxonomyWrite
             })
             .returning(|_, _, _| Ok(true));
         db.expect_list_regions()
@@ -439,7 +434,7 @@ mod tests {
         db.expect_user_has_community_permission()
             .times(1)
             .withf(move |cid, uid, permission| {
-                *cid == community_id && *uid == user_id && permission == COMMUNITY_TAXONOMY_WRITE
+                *cid == community_id && *uid == user_id && permission == CommunityPermission::TaxonomyWrite
             })
             .returning(|_, _, _| Ok(true));
         db.expect_add_region()
@@ -496,7 +491,7 @@ mod tests {
         db.expect_user_has_community_permission()
             .times(1)
             .withf(move |cid, uid, permission| {
-                *cid == community_id && *uid == user_id && permission == COMMUNITY_TAXONOMY_WRITE
+                *cid == community_id && *uid == user_id && permission == CommunityPermission::TaxonomyWrite
             })
             .returning(|_, _, _| Ok(true));
         db.expect_delete_region()
@@ -557,7 +552,7 @@ mod tests {
         db.expect_user_has_community_permission()
             .times(1)
             .withf(move |cid, uid, permission| {
-                *cid == community_id && *uid == user_id && permission == COMMUNITY_TAXONOMY_WRITE
+                *cid == community_id && *uid == user_id && permission == CommunityPermission::TaxonomyWrite
             })
             .returning(|_, _, _| Ok(true));
         db.expect_update_region()

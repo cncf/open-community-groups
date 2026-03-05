@@ -12,11 +12,11 @@ use tracing::instrument;
 use crate::{
     db::DynDB,
     handlers::{
-        auth::COMMUNITY_SETTINGS_WRITE,
         error::HandlerError,
         extractors::{CurrentUser, SelectedCommunityId, ValidatedFormQs},
     },
     templates::dashboard::community::settings::{self, CommunityUpdate},
+    types::permissions::CommunityPermission,
 };
 
 // Pages handlers.
@@ -30,7 +30,7 @@ pub(crate) async fn update_page(
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
     let (can_manage_settings, community) = tokio::try_join!(
-        db.user_has_community_permission(&community_id, &user.user_id, COMMUNITY_SETTINGS_WRITE),
+        db.user_has_community_permission(&community_id, &user.user_id, CommunityPermission::SettingsWrite),
         db.get_community_full(community_id)
     )?;
     let template = settings::UpdatePage {
@@ -73,13 +73,8 @@ mod tests {
     use uuid::Uuid;
 
     use crate::{
-        db::mock::MockDB,
-        handlers::{
-            auth::{COMMUNITY_READ, COMMUNITY_SETTINGS_WRITE},
-            tests::*,
-        },
-        router::CACHE_CONTROL_NO_CACHE,
-        services::notifications::MockNotificationsManager,
+        db::mock::MockDB, handlers::tests::*, router::CACHE_CONTROL_NO_CACHE,
+        services::notifications::MockNotificationsManager, types::permissions::CommunityPermission,
     };
 
     #[tokio::test]
@@ -105,13 +100,13 @@ mod tests {
         db.expect_user_has_community_permission()
             .times(1)
             .withf(move |cid, uid, permission| {
-                *cid == community_id && *uid == user_id && permission == COMMUNITY_READ
+                *cid == community_id && *uid == user_id && permission == CommunityPermission::Read
             })
             .returning(|_, _, _| Ok(true));
         db.expect_user_has_community_permission()
             .times(1)
             .withf(move |cid, uid, permission| {
-                *cid == community_id && *uid == user_id && permission == COMMUNITY_SETTINGS_WRITE
+                *cid == community_id && *uid == user_id && permission == CommunityPermission::SettingsWrite
             })
             .returning(|_, _, _| Ok(true));
         db.expect_get_community_full()
@@ -170,13 +165,13 @@ mod tests {
         db.expect_user_has_community_permission()
             .times(1)
             .withf(move |cid, uid, permission| {
-                *cid == community_id && *uid == user_id && permission == COMMUNITY_READ
+                *cid == community_id && *uid == user_id && permission == CommunityPermission::Read
             })
             .returning(|_, _, _| Ok(true));
         db.expect_user_has_community_permission()
             .times(1)
             .withf(move |cid, uid, permission| {
-                *cid == community_id && *uid == user_id && permission == COMMUNITY_SETTINGS_WRITE
+                *cid == community_id && *uid == user_id && permission == CommunityPermission::SettingsWrite
             })
             .returning(|_, _, _| Ok(true));
         db.expect_get_community_full()
@@ -230,7 +225,7 @@ mod tests {
         db.expect_user_has_community_permission()
             .times(1)
             .withf(move |cid, uid, permission| {
-                *cid == community_id && *uid == user_id && permission == COMMUNITY_SETTINGS_WRITE
+                *cid == community_id && *uid == user_id && permission == CommunityPermission::SettingsWrite
             })
             .returning(|_, _, _| Ok(true));
         db.expect_update_community()
@@ -286,7 +281,7 @@ mod tests {
         db.expect_user_has_community_permission()
             .times(1)
             .withf(move |cid, uid, permission| {
-                *cid == community_id && *uid == user_id && permission == COMMUNITY_SETTINGS_WRITE
+                *cid == community_id && *uid == user_id && permission == CommunityPermission::SettingsWrite
             })
             .returning(|_, _, _| Ok(true));
 
@@ -336,7 +331,7 @@ mod tests {
         db.expect_user_has_community_permission()
             .times(1)
             .withf(move |cid, uid, permission| {
-                *cid == community_id && *uid == user_id && permission == COMMUNITY_SETTINGS_WRITE
+                *cid == community_id && *uid == user_id && permission == CommunityPermission::SettingsWrite
             })
             .returning(|_, _, _| Ok(true));
         db.expect_update_community()

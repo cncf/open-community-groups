@@ -12,11 +12,11 @@ use tracing::instrument;
 use crate::{
     db::DynDB,
     handlers::{
-        auth::GROUP_SETTINGS_WRITE,
         error::HandlerError,
         extractors::{CurrentUser, SelectedCommunityId, SelectedGroupId, ValidatedFormQs},
     },
     templates::dashboard::group::settings::{self, GroupUpdate},
+    types::permissions::GroupPermission,
 };
 
 // Pages handlers.
@@ -31,7 +31,12 @@ pub(crate) async fn update_page(
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
     let (can_manage_settings, group, categories, regions) = tokio::try_join!(
-        db.user_has_group_permission(&community_id, &group_id, &user.user_id, GROUP_SETTINGS_WRITE),
+        db.user_has_group_permission(
+            &community_id,
+            &group_id,
+            &user.user_id,
+            GroupPermission::SettingsWrite
+        ),
         db.get_group_full(community_id, group_id),
         db.list_group_categories(community_id),
         db.list_regions(community_id)
@@ -79,13 +84,8 @@ mod tests {
     use uuid::Uuid;
 
     use crate::{
-        db::mock::MockDB,
-        handlers::{
-            auth::{GROUP_READ, GROUP_SETTINGS_WRITE},
-            tests::*,
-        },
-        router::CACHE_CONTROL_NO_CACHE,
-        services::notifications::MockNotificationsManager,
+        db::mock::MockDB, handlers::tests::*, router::CACHE_CONTROL_NO_CACHE,
+        services::notifications::MockNotificationsManager, types::permissions::GroupPermission,
     };
 
     #[tokio::test]
@@ -120,7 +120,10 @@ mod tests {
         db.expect_user_has_group_permission()
             .times(1)
             .withf(move |cid, gid, uid, permission| {
-                *cid == community_id && *gid == group_id && *uid == user_id && permission == GROUP_READ
+                *cid == community_id
+                    && *gid == group_id
+                    && *uid == user_id
+                    && permission == GroupPermission::Read
             })
             .returning(|_, _, _, _| Ok(true));
         db.expect_user_has_group_permission()
@@ -129,7 +132,7 @@ mod tests {
                 *cid == community_id
                     && *gid == group_id
                     && *uid == user_id
-                    && permission == GROUP_SETTINGS_WRITE
+                    && permission == GroupPermission::SettingsWrite
             })
             .returning(|_, _, _, _| Ok(true));
         db.expect_get_group_full()
@@ -202,7 +205,10 @@ mod tests {
         db.expect_user_has_group_permission()
             .times(1)
             .withf(move |cid, gid, uid, permission| {
-                *cid == community_id && *gid == group_id && *uid == user_id && permission == GROUP_READ
+                *cid == community_id
+                    && *gid == group_id
+                    && *uid == user_id
+                    && permission == GroupPermission::Read
             })
             .returning(|_, _, _, _| Ok(true));
         db.expect_user_has_group_permission()
@@ -211,7 +217,7 @@ mod tests {
                 *cid == community_id
                     && *gid == group_id
                     && *uid == user_id
-                    && permission == GROUP_SETTINGS_WRITE
+                    && permission == GroupPermission::SettingsWrite
             })
             .returning(|_, _, _, _| Ok(true));
         db.expect_get_group_full()
@@ -273,7 +279,7 @@ mod tests {
                 *cid == community_id
                     && *gid == group_id
                     && *uid == user_id
-                    && permission == GROUP_SETTINGS_WRITE
+                    && permission == GroupPermission::SettingsWrite
             })
             .returning(|_, _, _, _| Ok(true));
         db.expect_update_group()
@@ -340,7 +346,7 @@ mod tests {
                 *cid == community_id
                     && *gid == group_id
                     && *uid == user_id
-                    && permission == GROUP_SETTINGS_WRITE
+                    && permission == GroupPermission::SettingsWrite
             })
             .returning(|_, _, _, _| Ok(true));
 

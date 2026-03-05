@@ -8,16 +8,10 @@ create or replace function user_has_community_permission(
     select exists (
         select 1
         from community_team ct
+        join community_role_community_permission crcp on crcp.community_role_id = ct.role
         where ct.community_id = p_community_id
           and ct.user_id = p_user_id
           and ct.accepted = true
-          and case
-              when p_permission = 'community.read' then ct.role in ('admin', 'groups-manager', 'viewer')
-              when p_permission = 'community.groups.write' then ct.role in ('admin', 'groups-manager')
-              when p_permission = 'community.settings.write' then ct.role = 'admin'
-              when p_permission = 'community.taxonomy.write' then ct.role = 'admin'
-              when p_permission = 'community.team.write' then ct.role = 'admin'
-              else false
-          end
+          and crcp.community_permission_id = p_permission
     );
 $$ language sql;

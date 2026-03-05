@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(119);
+select plan(127);
 
 -- ============================================================================
 -- VARIABLES
@@ -13,6 +13,8 @@ select plan(119);
 \set communityID '00000000-0000-0000-0000-000000000001'
 \set deletedGroupID '00000000-0000-0000-0000-000000000023'
 \set groupID '00000000-0000-0000-0000-000000000021'
+\set otherCategoryID '00000000-0000-0000-0000-000000000032'
+\set otherCommunityGroupID '00000000-0000-0000-0000-000000000024'
 \set otherCommunityID '00000000-0000-0000-0000-000000000002'
 \set otherGroupID '00000000-0000-0000-0000-000000000022'
 \set userCommunityAdminID '00000000-0000-0000-0000-000000000018'
@@ -48,6 +50,14 @@ insert into community (
     'https://example.com/logo.png',
     'https://example.com/banner_mobile.png',
     'https://example.com/banner.png'
+), (
+    :'otherCommunityID',
+    'platform-engineering-madrid',
+    'Platform Engineering Madrid',
+    'Madrid community for platform engineering discussions',
+    'https://example.com/other-logo.png',
+    'https://example.com/other-banner_mobile.png',
+    'https://example.com/other-banner.png'
 );
 
 -- Users
@@ -146,6 +156,10 @@ insert into group_category (
     :'categoryID',
     :'communityID',
     'Technology'
+), (
+    :'otherCategoryID',
+    :'otherCommunityID',
+    'Platform Engineering'
 );
 
 -- Group
@@ -177,6 +191,13 @@ insert into "group" (
     'Deleted Study Group',
     'deleted-study',
     'Deleted group used for permission checks'
+), (
+    :'otherCommunityGroupID',
+    :'otherCommunityID',
+    :'otherCategoryID',
+    'Internal Developer Platform',
+    'internal-developer-platform',
+    'Platform engineering group in a different community'
 );
 
 -- Soft-delete one group for permission checks
@@ -226,6 +247,11 @@ insert into group_team (
     :'otherGroupID',
     'admin',
     :'userOtherGroupAdminID'
+), (
+    true,
+    :'otherCommunityGroupID',
+    'admin',
+    :'userOtherGroupAdminID'
 );
 
 -- Community team membership
@@ -264,6 +290,43 @@ insert into community_team (
 -- ============================================================================
 -- TESTS
 -- ============================================================================
+
+-- Should keep tested group permissions aligned with canonical catalog
+with tested_permissions (
+    permission
+) as (
+    values
+        ('group.events.write'),
+        ('group.members.write'),
+        ('group.read'),
+        ('group.settings.write'),
+        ('group.sponsors.write'),
+        ('group.team.write')
+)
+select is(
+    (
+        select count(*)
+        from (
+            (
+                select group_permission_id
+                from group_permission
+                except
+                select permission
+                from tested_permissions
+            )
+            union all
+            (
+                select permission
+                from tested_permissions
+                except
+                select group_permission_id
+                from group_permission
+            )
+        ) mismatches
+    ),
+    0::bigint,
+    'Tested group permissions should match the canonical catalog'
+);
 
 -- Should enforce the full group role-permission matrix
 with actors (
@@ -398,6 +461,20 @@ with actors (
             :'userGroupViewerID'::uuid,
             array[
                 'group.read'
+            ]::text[]
+        ),
+        (
+            'other-community-group-admin',
+            :'otherCommunityID'::uuid,
+            :'otherCommunityGroupID'::uuid,
+            :'userOtherGroupAdminID'::uuid,
+            array[
+                'group.events.write',
+                'group.members.write',
+                'group.read',
+                'group.settings.write',
+                'group.sponsors.write',
+                'group.team.write'
             ]::text[]
         ),
         (

@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(391);
+select plan(422);
 
 -- ============================================================================
 -- TESTS
@@ -21,7 +21,10 @@ select has_table('cfs_submission_label');
 select has_table('cfs_submission_rating');
 select has_table('cfs_submission_status');
 select has_table('community');
+select has_table('community_permission');
 select has_table('community_role');
+select has_table('community_role_community_permission');
+select has_table('community_role_group_permission');
 select has_table('community_site_layout');
 select has_table('community_team');
 select has_table('custom_notification');
@@ -37,7 +40,9 @@ select has_table('event_sponsor');
 select has_table('group');
 select has_table('group_category');
 select has_table('group_member');
+select has_table('group_permission');
 select has_table('group_role');
+select has_table('group_role_group_permission');
 select has_table('group_site_layout');
 select has_table('group_sponsor');
 select has_table('group_team');
@@ -156,6 +161,24 @@ select columns_are('community_site_layout', array[
 select columns_are('community_role', array[
     'community_role_id',
     'display_name'
+]);
+
+-- Test: community_permission columns should match expected
+select columns_are('community_permission', array[
+    'community_permission_id',
+    'display_name'
+]);
+
+-- Test: community_role_community_permission columns should match expected
+select columns_are('community_role_community_permission', array[
+    'community_permission_id',
+    'community_role_id'
+]);
+
+-- Test: community_role_group_permission columns should match expected
+select columns_are('community_role_group_permission', array[
+    'community_role_id',
+    'group_permission_id'
 ]);
 
 -- Test: community_team columns should match expected
@@ -395,6 +418,18 @@ select columns_are('group_role', array[
     'display_name'
 ]);
 
+-- Test: group_permission columns should match expected
+select columns_are('group_permission', array[
+    'group_permission_id',
+    'display_name'
+]);
+
+-- Test: group_role_group_permission columns should match expected
+select columns_are('group_role_group_permission', array[
+    'group_permission_id',
+    'group_role_id'
+]);
+
 -- Test: group_site_layout columns should match expected
 select columns_are('group_site_layout', array[
     'group_site_layout_id'
@@ -610,7 +645,10 @@ select has_pk('cfs_submission');
 select has_pk('cfs_submission_rating');
 select has_pk('cfs_submission_status');
 select has_pk('community');
+select has_pk('community_permission');
 select has_pk('community_role');
+select has_pk('community_role_community_permission');
+select has_pk('community_role_group_permission');
 select has_pk('community_site_layout');
 select has_pk('community_team');
 select has_pk('custom_notification');
@@ -625,7 +663,9 @@ select has_pk('event_sponsor');
 select has_pk('group');
 select has_pk('group_category');
 select has_pk('group_member');
+select has_pk('group_permission');
 select has_pk('group_role');
+select has_pk('group_role_group_permission');
 select has_pk('group_site_layout');
 select has_pk('group_sponsor');
 select has_pk('group_team');
@@ -651,6 +691,10 @@ select has_pk('user');
 
 -- Test: check tables have expected foreign keys
 select col_is_fk('community', 'community_site_layout_id', 'community_site_layout');
+select col_is_fk('community_role_community_permission', 'community_permission_id', 'community_permission');
+select col_is_fk('community_role_community_permission', 'community_role_id', 'community_role');
+select col_is_fk('community_role_group_permission', 'community_role_id', 'community_role');
+select col_is_fk('community_role_group_permission', 'group_permission_id', 'group_permission');
 select col_is_fk('community_team', 'community_id', 'community');
 select col_is_fk('community_team', 'user_id', 'user');
 select col_is_fk('custom_notification', 'created_by', 'user');
@@ -684,6 +728,8 @@ select col_is_fk('group', 'region_id', 'region');
 select col_is_fk('group_category', 'community_id', 'community');
 select col_is_fk('group_member', 'group_id', 'group');
 select col_is_fk('group_member', 'user_id', 'user');
+select col_is_fk('group_role_group_permission', 'group_permission_id', 'group_permission');
+select col_is_fk('group_role_group_permission', 'group_role_id', 'group_role');
 select col_is_fk('group_sponsor', 'group_id', 'group');
 select col_is_fk('group_team', 'group_id', 'group');
 select col_is_fk('group_team', 'role', 'group_role');
@@ -768,6 +814,22 @@ select indexes_are('community_site_layout', array[
 select indexes_are('community_role', array[
     'community_role_pkey',
     'community_role_display_name_key'
+]);
+
+-- Test: community_permission indexes should match expected
+select indexes_are('community_permission', array[
+    'community_permission_pkey',
+    'community_permission_display_name_key'
+]);
+
+-- Test: community_role_community_permission indexes should match expected
+select indexes_are('community_role_community_permission', array[
+    'community_role_community_permission_pkey'
+]);
+
+-- Test: community_role_group_permission indexes should match expected
+select indexes_are('community_role_group_permission', array[
+    'community_role_group_permission_pkey'
 ]);
 
 -- Test: community_team indexes should match expected
@@ -881,6 +943,17 @@ select indexes_are('group_member', array[
 select indexes_are('group_role', array[
     'group_role_pkey',
     'group_role_display_name_key'
+]);
+
+-- Test: group_permission indexes should match expected
+select indexes_are('group_permission', array[
+    'group_permission_pkey',
+    'group_permission_display_name_key'
+]);
+
+-- Test: group_role_group_permission indexes should match expected
+select indexes_are('group_role_group_permission', array[
+    'group_role_group_permission_pkey'
 ]);
 
 -- Test: group_site_layout indexes should match expected
@@ -1315,6 +1388,70 @@ select results_eq(
     'Community roles should exist'
 );
 
+-- Test: community permissions should match expected values
+select results_eq(
+    'select community_permission_id, display_name from community_permission order by community_permission_id',
+    $$ values
+        ('community.groups.write', 'Groups Write'),
+        ('community.read', 'Read'),
+        ('community.settings.write', 'Settings Write'),
+        ('community.taxonomy.write', 'Taxonomy Write'),
+        ('community.team.write', 'Team Write')
+    $$,
+    'Community permissions should exist'
+);
+
+-- Test: community role to community permission mapping should match expected values
+select results_eq(
+    'select community_permission_id, community_role_id from community_role_community_permission order by community_permission_id, community_role_id',
+    $$ values
+        ('community.groups.write', 'admin'),
+        ('community.groups.write', 'groups-manager'),
+        ('community.read', 'admin'),
+        ('community.read', 'groups-manager'),
+        ('community.read', 'viewer'),
+        ('community.settings.write', 'admin'),
+        ('community.taxonomy.write', 'admin'),
+        ('community.team.write', 'admin')
+    $$,
+    'Community role to community permission mapping should exist'
+);
+
+-- Test: community role to group permission mapping should match expected values
+select results_eq(
+    'select community_role_id, group_permission_id from community_role_group_permission order by community_role_id, group_permission_id',
+    $$ values
+        ('admin', 'group.events.write'),
+        ('admin', 'group.members.write'),
+        ('admin', 'group.read'),
+        ('admin', 'group.settings.write'),
+        ('admin', 'group.sponsors.write'),
+        ('admin', 'group.team.write'),
+        ('groups-manager', 'group.events.write'),
+        ('groups-manager', 'group.members.write'),
+        ('groups-manager', 'group.read'),
+        ('groups-manager', 'group.settings.write'),
+        ('groups-manager', 'group.sponsors.write'),
+        ('groups-manager', 'group.team.write'),
+        ('viewer', 'group.read')
+    $$,
+    'Community role to group permission mapping should exist'
+);
+
+-- Test: group permissions should match expected values
+select results_eq(
+    'select group_permission_id, display_name from group_permission order by group_permission_id',
+    $$ values
+        ('group.events.write', 'Events Write'),
+        ('group.members.write', 'Members Write'),
+        ('group.read', 'Read'),
+        ('group.settings.write', 'Settings Write'),
+        ('group.sponsors.write', 'Sponsors Write'),
+        ('group.team.write', 'Team Write')
+    $$,
+    'Group permissions should exist'
+);
+
 -- Test: group role should match expected values
 select results_eq(
     'select * from group_role order by group_role_id',
@@ -1324,6 +1461,23 @@ select results_eq(
         ('viewer', 'Viewer')
     $$,
     'Group roles should exist'
+);
+
+-- Test: group role to group permission mapping should match expected values
+select results_eq(
+    'select group_permission_id, group_role_id from group_role_group_permission order by group_permission_id, group_role_id',
+    $$ values
+        ('group.events.write', 'admin'),
+        ('group.events.write', 'events-manager'),
+        ('group.members.write', 'admin'),
+        ('group.read', 'admin'),
+        ('group.read', 'events-manager'),
+        ('group.read', 'viewer'),
+        ('group.settings.write', 'admin'),
+        ('group.sponsors.write', 'admin'),
+        ('group.team.write', 'admin')
+    $$,
+    'Group role to group permission mapping should exist'
 );
 
 -- Test: group site layout should match expected

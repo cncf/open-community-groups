@@ -37,6 +37,7 @@ use crate::{
         auth::{User, UserDetails},
         notifications::EmailVerification,
     },
+    types::permissions::{CommunityPermission, GroupPermission},
     validation::{MAX_LEN_S, trimmed_non_empty},
 };
 
@@ -72,41 +73,6 @@ pub(crate) const SIGN_UP_URL: &str = "/sign-up";
 
 /// URL for user dashboard invitations tab.
 pub(crate) const USER_DASHBOARD_INVITATIONS_URL: &str = "/dashboard/user?tab=invitations";
-
-// Permissions.
-
-/// Community read permission.
-pub(crate) const COMMUNITY_READ: &str = "community.read";
-
-/// Community groups write permission.
-pub(crate) const COMMUNITY_GROUPS_WRITE: &str = "community.groups.write";
-
-/// Community settings write permission.
-pub(crate) const COMMUNITY_SETTINGS_WRITE: &str = "community.settings.write";
-
-/// Community taxonomy write permission.
-pub(crate) const COMMUNITY_TAXONOMY_WRITE: &str = "community.taxonomy.write";
-
-/// Community team write permission.
-pub(crate) const COMMUNITY_TEAM_WRITE: &str = "community.team.write";
-
-/// Group read permission.
-pub(crate) const GROUP_READ: &str = "group.read";
-
-/// Group events write permission.
-pub(crate) const GROUP_EVENTS_WRITE: &str = "group.events.write";
-
-/// Group members write permission.
-pub(crate) const GROUP_MEMBERS_WRITE: &str = "group.members.write";
-
-/// Group settings write permission.
-pub(crate) const GROUP_SETTINGS_WRITE: &str = "group.settings.write";
-
-/// Group sponsors write permission.
-pub(crate) const GROUP_SPONSORS_WRITE: &str = "group.sponsors.write";
-
-/// Group team write permission.
-pub(crate) const GROUP_TEAM_WRITE: &str = "group.team.write";
 
 // Pages and sections handlers.
 
@@ -742,7 +708,7 @@ pub(crate) struct NextUrl {
 /// Check if the user has a specific community permission in a path community.
 #[instrument(skip_all)]
 pub(crate) async fn user_has_path_community_permission(
-    State((db, permission)): State<(DynDB, &'static str)>,
+    State((db, permission)): State<(DynDB, CommunityPermission)>,
     Path(community_id): Path<Uuid>,
     auth_session: AuthSession,
     request: Request,
@@ -770,7 +736,7 @@ pub(crate) async fn user_has_path_community_permission(
 /// Check if the user has a specific group permission in a path group.
 #[instrument(skip_all)]
 pub(crate) async fn user_has_path_group_permission(
-    State((db, permission)): State<(DynDB, &'static str)>,
+    State((db, permission)): State<(DynDB, GroupPermission)>,
     Path(group_id): Path<Uuid>,
     auth_session: AuthSession,
     session: Session,
@@ -806,7 +772,7 @@ pub(crate) async fn user_has_path_group_permission(
 /// community.
 #[instrument(skip_all)]
 pub(crate) async fn user_has_selected_community_permission(
-    State((db, permission)): State<(DynDB, &'static str)>,
+    State((db, permission)): State<(DynDB, CommunityPermission)>,
     auth_session: AuthSession,
     session: Session,
     request: Request,
@@ -844,7 +810,7 @@ pub(crate) async fn user_has_selected_community_permission(
 /// Check if the user has a specific group permission in the selected group.
 #[instrument(skip_all)]
 pub(crate) async fn user_has_selected_group_permission(
-    State((db, permission)): State<(DynDB, &'static str)>,
+    State((db, permission)): State<(DynDB, GroupPermission)>,
     auth_session: AuthSession,
     session: Session,
     request: Request,

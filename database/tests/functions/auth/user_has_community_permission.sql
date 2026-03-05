@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(36);
+select plan(43);
 
 -- ============================================================================
 -- VARIABLES
@@ -38,6 +38,14 @@ insert into community (
     'https://example.com/logo.png',
     'https://example.com/banner_mobile.png',
     'https://example.com/banner.png'
+), (
+    :'otherCommunityID',
+    'platform-engineering-madrid',
+    'Platform Engineering Madrid',
+    'Madrid community for platform engineering discussions',
+    'https://example.com/other-logo.png',
+    'https://example.com/other-banner_mobile.png',
+    'https://example.com/other-banner.png'
 );
 
 -- Users
@@ -111,11 +119,52 @@ insert into community_team (
     :'communityID',
     'admin',
     :'userPendingAdminID'
+), (
+    true,
+    :'otherCommunityID',
+    'admin',
+    :'userRegularID'
 );
 
 -- ============================================================================
 -- TESTS
 -- ============================================================================
+
+-- Should keep tested community permissions aligned with canonical catalog
+with tested_permissions (
+    permission
+) as (
+    values
+        ('community.groups.write'),
+        ('community.read'),
+        ('community.settings.write'),
+        ('community.taxonomy.write'),
+        ('community.team.write')
+)
+select is(
+    (
+        select count(*)
+        from (
+            (
+                select community_permission_id
+                from community_permission
+                except
+                select permission
+                from tested_permissions
+            )
+            union all
+            (
+                select permission
+                from tested_permissions
+                except
+                select community_permission_id
+                from community_permission
+            )
+        ) mismatches
+    ),
+    0::bigint,
+    'Tested community permissions should match the canonical catalog'
+);
 
 -- Should enforce the full community role-permission matrix
 with actors (
@@ -163,6 +212,18 @@ with actors (
             :'communityID'::uuid,
             :'userRegularID'::uuid,
             array[]::text[]
+        ),
+        (
+            'regular-user-other-community-admin',
+            :'otherCommunityID'::uuid,
+            :'userRegularID'::uuid,
+            array[
+                'community.groups.write',
+                'community.read',
+                'community.settings.write',
+                'community.taxonomy.write',
+                'community.team.write'
+            ]::text[]
         ),
         (
             'viewer',

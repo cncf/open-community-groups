@@ -47,10 +47,8 @@ mod tests {
     use uuid::Uuid;
 
     use crate::{
-        db::mock::MockDB,
-        handlers::{auth::COMMUNITY_TEAM_WRITE, tests::*},
-        router::CACHE_CONTROL_NO_CACHE,
-        services::notifications::MockNotificationsManager,
+        db::mock::MockDB, handlers::tests::*, router::CACHE_CONTROL_NO_CACHE,
+        services::notifications::MockNotificationsManager, types::permissions::CommunityPermission,
     };
 
     #[tokio::test]
@@ -79,7 +77,9 @@ mod tests {
         db.expect_user_has_community_permission()
             .times(1)
             .withf(move |cid, uid, permission| {
-                *cid == community_id && *uid == session_user_id && permission == COMMUNITY_TEAM_WRITE
+                *cid == community_id
+                    && *uid == session_user_id
+                    && permission == CommunityPermission::TeamWrite
             })
             .returning(|_, _, _| Ok(true));
         db.expect_search_user()
@@ -140,7 +140,9 @@ mod tests {
         db.expect_user_has_community_permission()
             .times(1)
             .withf(move |cid, uid, permission| {
-                *cid == community_id && *uid == session_user_id && permission == COMMUNITY_TEAM_WRITE
+                *cid == community_id
+                    && *uid == session_user_id
+                    && permission == CommunityPermission::TeamWrite
             })
             .returning(|_, _, _| Ok(true));
 

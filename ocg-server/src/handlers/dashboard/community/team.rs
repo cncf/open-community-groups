@@ -16,7 +16,6 @@ use crate::{
     config::HttpServerConfig,
     db::DynDB,
     handlers::{
-        auth::COMMUNITY_TEAM_WRITE,
         error::HandlerError,
         extractors::{CurrentUser, SelectedCommunityId, ValidatedForm},
     },
@@ -29,6 +28,7 @@ use crate::{
         pagination::NavigationLinks,
     },
     types::community::CommunityRole,
+    types::permissions::CommunityPermission,
 };
 
 // Pages handlers.
@@ -47,7 +47,7 @@ pub(crate) async fn list_page(
     let (results, roles, can_manage_team) = tokio::try_join!(
         db.list_community_team_members(community_id, &filters),
         db.list_community_roles(),
-        db.user_has_community_permission(&community_id, &user.user_id, COMMUNITY_TEAM_WRITE)
+        db.user_has_community_permission(&community_id, &user.user_id, CommunityPermission::TeamWrite)
     )?;
 
     // Prepare template
@@ -186,15 +186,13 @@ mod tests {
 
     use crate::{
         db::mock::MockDB,
-        handlers::{
-            auth::{COMMUNITY_READ, COMMUNITY_TEAM_WRITE},
-            tests::*,
-        },
+        handlers::tests::*,
         router::CACHE_CONTROL_NO_CACHE,
         services::notifications::{MockNotificationsManager, NotificationKind},
         templates::dashboard::DASHBOARD_PAGINATION_LIMIT,
         templates::notifications::CommunityTeamInvitation as CommunityTeamInvitationTemplate,
         types::community::CommunityRole,
+        types::permissions::CommunityPermission,
     };
 
     use super::NewTeamMember;
@@ -235,7 +233,7 @@ mod tests {
         db.expect_user_has_community_permission()
             .times(1)
             .withf(move |cid, uid, permission| {
-                *cid == community_id && *uid == user_id && permission == COMMUNITY_READ
+                *cid == community_id && *uid == user_id && permission == CommunityPermission::Read
             })
             .returning(|_, _, _| Ok(true));
         db.expect_list_community_team_members()
@@ -252,7 +250,7 @@ mod tests {
         db.expect_user_has_community_permission()
             .times(1)
             .withf(move |cid, uid, permission| {
-                *cid == community_id && *uid == user_id && permission == COMMUNITY_TEAM_WRITE
+                *cid == community_id && *uid == user_id && permission == CommunityPermission::TeamWrite
             })
             .returning(move |_, _, _| Ok(true));
 
@@ -323,7 +321,7 @@ mod tests {
         db.expect_user_has_community_permission()
             .times(1)
             .withf(move |cid, uid, permission| {
-                *cid == community_id && *uid == user_id && permission == COMMUNITY_READ
+                *cid == community_id && *uid == user_id && permission == CommunityPermission::Read
             })
             .returning(|_, _, _| Ok(true));
         db.expect_list_community_team_members()
@@ -338,7 +336,7 @@ mod tests {
         db.expect_user_has_community_permission()
             .times(1)
             .withf(move |cid, uid, permission| {
-                *cid == community_id && *uid == user_id && permission == COMMUNITY_TEAM_WRITE
+                *cid == community_id && *uid == user_id && permission == CommunityPermission::TeamWrite
             })
             .returning(move |_, _, _| Ok(true));
 
@@ -395,7 +393,7 @@ mod tests {
         db.expect_user_has_community_permission()
             .times(1)
             .withf(move |cid, uid, permission| {
-                *cid == community_id && *uid == user_id && permission == COMMUNITY_READ
+                *cid == community_id && *uid == user_id && permission == CommunityPermission::Read
             })
             .returning(|_, _, _| Ok(true));
         db.expect_list_community_team_members()
@@ -460,7 +458,7 @@ mod tests {
         db.expect_user_has_community_permission()
             .times(1)
             .withf(move |cid, uid, permission| {
-                *cid == community_id && *uid == user_id && permission == COMMUNITY_TEAM_WRITE
+                *cid == community_id && *uid == user_id && permission == CommunityPermission::TeamWrite
             })
             .returning(move |_, _, _| Ok(true));
         db.expect_add_community_team_member()
@@ -548,7 +546,7 @@ mod tests {
         db.expect_user_has_community_permission()
             .times(1)
             .withf(move |cid, uid, permission| {
-                *cid == community_id && *uid == user_id && permission == COMMUNITY_TEAM_WRITE
+                *cid == community_id && *uid == user_id && permission == CommunityPermission::TeamWrite
             })
             .returning(move |_, _, _| Ok(true));
         db.expect_add_community_team_member()
@@ -603,7 +601,7 @@ mod tests {
         db.expect_user_has_community_permission()
             .times(1)
             .withf(move |cid, uid, permission| {
-                *cid == community_id && *uid == user_id && permission == COMMUNITY_TEAM_WRITE
+                *cid == community_id && *uid == user_id && permission == CommunityPermission::TeamWrite
             })
             .returning(move |_, _, _| Ok(true));
         db.expect_delete_community_team_member()

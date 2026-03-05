@@ -13,7 +13,6 @@ use uuid::Uuid;
 use crate::{
     db::DynDB,
     handlers::{
-        auth::GROUP_SPONSORS_WRITE,
         error::HandlerError,
         extractors::{CurrentUser, SelectedCommunityId, SelectedGroupId, ValidatedForm},
     },
@@ -23,6 +22,7 @@ use crate::{
         pagination,
         pagination::NavigationLinks,
     },
+    types::permissions::GroupPermission,
 };
 
 // Pages handlers.
@@ -37,7 +37,12 @@ pub(crate) async fn add_page(
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
     let can_manage_sponsors = db
-        .user_has_group_permission(&community_id, &group_id, &user.user_id, GROUP_SPONSORS_WRITE)
+        .user_has_group_permission(
+            &community_id,
+            &group_id,
+            &user.user_id,
+            GroupPermission::SponsorsWrite,
+        )
         .await?;
     let template = sponsors::AddPage {
         can_manage_sponsors,
@@ -60,7 +65,12 @@ pub(crate) async fn list_page(
     let filters: GroupSponsorsFilters =
         serde_qs_config().deserialize_str(raw_query.as_deref().unwrap_or_default())?;
     let (can_manage_sponsors, results) = tokio::try_join!(
-        db.user_has_group_permission(&community_id, &group_id, &user.user_id, GROUP_SPONSORS_WRITE),
+        db.user_has_group_permission(
+            &community_id,
+            &group_id,
+            &user.user_id,
+            GroupPermission::SponsorsWrite
+        ),
         db.list_group_sponsors(group_id, &filters, false)
     )?;
 
@@ -98,7 +108,12 @@ pub(crate) async fn update_page(
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
     let (can_manage_sponsors, sponsor) = tokio::try_join!(
-        db.user_has_group_permission(&community_id, &group_id, &user.user_id, GROUP_SPONSORS_WRITE),
+        db.user_has_group_permission(
+            &community_id,
+            &group_id,
+            &user.user_id,
+            GroupPermission::SponsorsWrite
+        ),
         db.get_group_sponsor(group_id, group_sponsor_id)
     )?;
     let template = sponsors::UpdatePage {
@@ -179,14 +194,9 @@ mod tests {
     use uuid::Uuid;
 
     use crate::{
-        db::mock::MockDB,
-        handlers::{
-            auth::{GROUP_READ, GROUP_SPONSORS_WRITE},
-            tests::*,
-        },
-        router::CACHE_CONTROL_NO_CACHE,
-        services::notifications::MockNotificationsManager,
-        templates::dashboard::DASHBOARD_PAGINATION_LIMIT,
+        db::mock::MockDB, handlers::tests::*, router::CACHE_CONTROL_NO_CACHE,
+        services::notifications::MockNotificationsManager, templates::dashboard::DASHBOARD_PAGINATION_LIMIT,
+        types::permissions::GroupPermission,
     };
 
     #[tokio::test]
@@ -218,7 +228,10 @@ mod tests {
         db.expect_user_has_group_permission()
             .times(1)
             .withf(move |cid, gid, uid, permission| {
-                *cid == community_id && *gid == group_id && *uid == user_id && permission == GROUP_READ
+                *cid == community_id
+                    && *gid == group_id
+                    && *uid == user_id
+                    && permission == GroupPermission::Read
             })
             .returning(|_, _, _, _| Ok(true));
         db.expect_user_has_group_permission()
@@ -227,7 +240,7 @@ mod tests {
                 *cid == community_id
                     && *gid == group_id
                     && *uid == user_id
-                    && permission == GROUP_SPONSORS_WRITE
+                    && permission == GroupPermission::SponsorsWrite
             })
             .returning(|_, _, _, _| Ok(true));
 
@@ -293,7 +306,10 @@ mod tests {
         db.expect_user_has_group_permission()
             .times(1)
             .withf(move |cid, gid, uid, permission| {
-                *cid == community_id && *gid == group_id && *uid == user_id && permission == GROUP_READ
+                *cid == community_id
+                    && *gid == group_id
+                    && *uid == user_id
+                    && permission == GroupPermission::Read
             })
             .returning(|_, _, _, _| Ok(true));
         db.expect_user_has_group_permission()
@@ -302,7 +318,7 @@ mod tests {
                 *cid == community_id
                     && *gid == group_id
                     && *uid == user_id
-                    && permission == GROUP_SPONSORS_WRITE
+                    && permission == GroupPermission::SponsorsWrite
             })
             .returning(|_, _, _, _| Ok(true));
         db.expect_list_group_sponsors()
@@ -377,7 +393,10 @@ mod tests {
         db.expect_user_has_group_permission()
             .times(1)
             .withf(move |cid, gid, uid, permission| {
-                *cid == community_id && *gid == group_id && *uid == user_id && permission == GROUP_READ
+                *cid == community_id
+                    && *gid == group_id
+                    && *uid == user_id
+                    && permission == GroupPermission::Read
             })
             .returning(|_, _, _, _| Ok(true));
         db.expect_user_has_group_permission()
@@ -386,7 +405,7 @@ mod tests {
                 *cid == community_id
                     && *gid == group_id
                     && *uid == user_id
-                    && permission == GROUP_SPONSORS_WRITE
+                    && permission == GroupPermission::SponsorsWrite
             })
             .returning(|_, _, _, _| Ok(true));
         db.expect_list_group_sponsors()
@@ -456,7 +475,10 @@ mod tests {
         db.expect_user_has_group_permission()
             .times(1)
             .withf(move |cid, gid, uid, permission| {
-                *cid == community_id && *gid == group_id && *uid == user_id && permission == GROUP_READ
+                *cid == community_id
+                    && *gid == group_id
+                    && *uid == user_id
+                    && permission == GroupPermission::Read
             })
             .returning(|_, _, _, _| Ok(true));
         db.expect_user_has_group_permission()
@@ -465,7 +487,7 @@ mod tests {
                 *cid == community_id
                     && *gid == group_id
                     && *uid == user_id
-                    && permission == GROUP_SPONSORS_WRITE
+                    && permission == GroupPermission::SponsorsWrite
             })
             .returning(|_, _, _, _| Ok(true));
         db.expect_get_group_sponsor()
@@ -535,7 +557,7 @@ mod tests {
                 *cid == community_id
                     && *gid == group_id
                     && *uid == user_id
-                    && permission == GROUP_SPONSORS_WRITE
+                    && permission == GroupPermission::SponsorsWrite
             })
             .returning(|_, _, _, _| Ok(true));
         db.expect_add_group_sponsor()
@@ -603,7 +625,7 @@ mod tests {
                 *cid == community_id
                     && *gid == group_id
                     && *uid == user_id
-                    && permission == GROUP_SPONSORS_WRITE
+                    && permission == GroupPermission::SponsorsWrite
             })
             .returning(|_, _, _, _| Ok(true));
         db.expect_delete_group_sponsor()
@@ -670,7 +692,7 @@ mod tests {
                 *cid == community_id
                     && *gid == group_id
                     && *uid == user_id
-                    && permission == GROUP_SPONSORS_WRITE
+                    && permission == GroupPermission::SponsorsWrite
             })
             .returning(|_, _, _, _| Ok(true));
         db.expect_update_group_sponsor()

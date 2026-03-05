@@ -11,6 +11,7 @@ use crate::{
     auth::{User, UserSummary},
     db::PgDB,
     templates::auth::UserDetails,
+    types::permissions::{CommunityPermission, GroupPermission},
 };
 
 /// Trait for database operations related to authentication and authorization.
@@ -58,7 +59,7 @@ pub(crate) trait DBAuth {
         &self,
         community_id: &Uuid,
         user_id: &Uuid,
-        permission: &str,
+        permission: CommunityPermission,
     ) -> Result<bool>;
 
     /// Checks whether a user has a permission in a specific group.
@@ -67,7 +68,7 @@ pub(crate) trait DBAuth {
         community_id: &Uuid,
         group_id: &Uuid,
         user_id: &Uuid,
-        permission: &str,
+        permission: GroupPermission,
     ) -> Result<bool>;
 
     /// Verifies a user's email address using a verification code.
@@ -273,14 +274,14 @@ impl DBAuth for PgDB {
         &self,
         community_id: &Uuid,
         user_id: &Uuid,
-        permission: &str,
+        permission: CommunityPermission,
     ) -> Result<bool> {
         trace!("db: check if user has community permission");
         let db = self.pool.get().await?;
         let row = db
             .query_one(
                 "select user_has_community_permission($1::uuid, $2::uuid, $3::text) as has_permission;",
-                &[&community_id, &user_id, &permission],
+                &[&community_id, &user_id, &permission.as_str()],
             )
             .await?;
 
@@ -293,14 +294,14 @@ impl DBAuth for PgDB {
         community_id: &Uuid,
         group_id: &Uuid,
         user_id: &Uuid,
-        permission: &str,
+        permission: GroupPermission,
     ) -> Result<bool> {
         trace!("db: check if user has group permission");
         let db = self.pool.get().await?;
         let row = db
             .query_one(
                 "select user_has_group_permission($1::uuid, $2::uuid, $3::uuid, $4::text) as has_permission;",
-                &[&community_id, &group_id, &user_id, &permission],
+                &[&community_id, &group_id, &user_id, &permission.as_str()],
             )
             .await?;
 

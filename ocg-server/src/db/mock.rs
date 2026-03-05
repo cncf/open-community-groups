@@ -65,14 +65,14 @@ mock! {
             &self,
             community_id: &Uuid,
             user_id: &Uuid,
-            permission: &str,
+            permission: crate::types::permissions::CommunityPermission,
         ) -> Result<bool>;
         async fn user_has_group_permission(
             &self,
             community_id: &Uuid,
             group_id: &Uuid,
             user_id: &Uuid,
-            permission: &str,
+            permission: crate::types::permissions::GroupPermission,
         ) -> Result<bool>;
         async fn verify_email(&self, code: &Uuid) -> Result<()>;
     }

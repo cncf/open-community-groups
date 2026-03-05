@@ -2183,7 +2183,7 @@ async fn test_user_has_path_community_permission_select_route_allows_request() {
     db.expect_user_has_community_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == community_id && *uid == user_id && permission == COMMUNITY_READ
+            *cid == community_id && *uid == user_id && permission == CommunityPermission::Read
         })
         .returning(|_, _, _| Ok(true));
 
@@ -2203,7 +2203,7 @@ async fn test_user_has_path_community_permission_select_route_allows_request() {
     let router = Router::new()
         .route("/{community_id}/protected", get(|| async { StatusCode::OK }))
         .layer(middleware::from_fn_with_state(
-            (db.clone(), COMMUNITY_READ),
+            (db.clone(), CommunityPermission::Read),
             user_has_path_community_permission,
         ))
         .layer(auth_layer)
@@ -2247,7 +2247,7 @@ async fn test_user_has_path_community_permission_select_route_forbidden_without_
     db.expect_user_has_community_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == community_id && *uid == user_id && permission == COMMUNITY_READ
+            *cid == community_id && *uid == user_id && permission == CommunityPermission::Read
         })
         .returning(|_, _, _| Ok(false));
 
@@ -2267,7 +2267,7 @@ async fn test_user_has_path_community_permission_select_route_forbidden_without_
     let router = Router::new()
         .route("/{community_id}/protected", get(|| async { StatusCode::OK }))
         .layer(middleware::from_fn_with_state(
-            (db.clone(), COMMUNITY_READ),
+            (db.clone(), CommunityPermission::Read),
             user_has_path_community_permission,
         ))
         .layer(auth_layer)
@@ -2311,7 +2311,7 @@ async fn test_user_has_path_community_permission_select_route_returns_error_on_d
     db.expect_user_has_community_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == community_id && *uid == user_id && permission == COMMUNITY_READ
+            *cid == community_id && *uid == user_id && permission == CommunityPermission::Read
         })
         .returning(|_, _, _| Err(anyhow!("db error")));
 
@@ -2331,7 +2331,7 @@ async fn test_user_has_path_community_permission_select_route_returns_error_on_d
     let router = Router::new()
         .route("/{community_id}/protected", get(|| async { StatusCode::OK }))
         .layer(middleware::from_fn_with_state(
-            (db.clone(), COMMUNITY_READ),
+            (db.clone(), CommunityPermission::Read),
             user_has_path_community_permission,
         ))
         .layer(auth_layer)
@@ -2375,7 +2375,7 @@ async fn test_user_has_path_community_permission_allows_request() {
     db.expect_user_has_community_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == community_id && *uid == user_id && permission == COMMUNITY_READ
+            *cid == community_id && *uid == user_id && permission == CommunityPermission::Read
         })
         .returning(|_, _, _| Ok(true));
 
@@ -2398,7 +2398,7 @@ async fn test_user_has_path_community_permission_allows_request() {
             get(|| async { StatusCode::OK }),
         )
         .layer(middleware::from_fn_with_state(
-            (db.clone(), COMMUNITY_READ),
+            (db.clone(), CommunityPermission::Read),
             user_has_path_community_permission,
         ))
         .layer(auth_layer)
@@ -2442,7 +2442,7 @@ async fn test_user_has_path_community_permission_forbidden_without_permission() 
     db.expect_user_has_community_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == community_id && *uid == user_id && permission == COMMUNITY_READ
+            *cid == community_id && *uid == user_id && permission == CommunityPermission::Read
         })
         .returning(|_, _, _| Ok(false));
 
@@ -2465,7 +2465,7 @@ async fn test_user_has_path_community_permission_forbidden_without_permission() 
             get(|| async { StatusCode::OK }),
         )
         .layer(middleware::from_fn_with_state(
-            (db.clone(), COMMUNITY_READ),
+            (db.clone(), CommunityPermission::Read),
             user_has_path_community_permission,
         ))
         .layer(auth_layer)
@@ -2509,7 +2509,7 @@ async fn test_user_has_path_community_permission_returns_error_on_db_failure() {
     db.expect_user_has_community_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == community_id && *uid == user_id && permission == COMMUNITY_READ
+            *cid == community_id && *uid == user_id && permission == CommunityPermission::Read
         })
         .returning(|_, _, _| Err(anyhow!("db error")));
 
@@ -2532,7 +2532,7 @@ async fn test_user_has_path_community_permission_returns_error_on_db_failure() {
             get(|| async { StatusCode::OK }),
         )
         .layer(middleware::from_fn_with_state(
-            (db.clone(), COMMUNITY_READ),
+            (db.clone(), CommunityPermission::Read),
             user_has_path_community_permission,
         ))
         .layer(auth_layer)
@@ -2595,7 +2595,7 @@ async fn test_user_has_path_group_permission_allows_request() {
     let router = Router::new()
         .route("/groups/{group_id}", get(|| async { StatusCode::OK }))
         .layer(middleware::from_fn_with_state(
-            (db.clone(), GROUP_READ),
+            (db.clone(), GroupPermission::Read),
             user_has_path_group_permission,
         ))
         .layer(auth_layer)
@@ -2658,7 +2658,7 @@ async fn test_user_has_path_group_permission_forbidden_without_permission() {
     let router = Router::new()
         .route("/groups/{group_id}", get(|| async { StatusCode::OK }))
         .layer(middleware::from_fn_with_state(
-            (db.clone(), GROUP_READ),
+            (db.clone(), GroupPermission::Read),
             user_has_path_group_permission,
         ))
         .layer(auth_layer)
@@ -2721,7 +2721,7 @@ async fn test_user_has_path_group_permission_returns_error_on_db_failure() {
     let router = Router::new()
         .route("/groups/{group_id}", get(|| async { StatusCode::OK }))
         .layer(middleware::from_fn_with_state(
-            (db.clone(), GROUP_READ),
+            (db.clone(), GroupPermission::Read),
             user_has_path_group_permission,
         ))
         .layer(auth_layer)
@@ -2780,7 +2780,7 @@ async fn test_user_has_path_group_permission_redirects_when_selected_community_i
     let router = Router::new()
         .route("/groups/{group_id}", get(|| async { StatusCode::OK }))
         .layer(middleware::from_fn_with_state(
-            (db.clone(), GROUP_READ),
+            (db.clone(), GroupPermission::Read),
             user_has_path_group_permission,
         ))
         .layer(auth_layer)
@@ -2828,7 +2828,7 @@ async fn test_user_has_selected_community_permission_allows_request() {
     db.expect_user_has_community_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == community_id && *uid == user_id && permission == COMMUNITY_READ
+            *cid == community_id && *uid == user_id && permission == CommunityPermission::Read
         })
         .returning(|_, _, _| Ok(true));
 
@@ -2848,7 +2848,7 @@ async fn test_user_has_selected_community_permission_allows_request() {
     let router = Router::new()
         .route("/protected", get(|| async { StatusCode::OK }))
         .layer(middleware::from_fn_with_state(
-            (db.clone(), COMMUNITY_READ),
+            (db.clone(), CommunityPermission::Read),
             user_has_selected_community_permission,
         ))
         .layer(auth_layer)
@@ -2892,7 +2892,7 @@ async fn test_user_has_selected_community_permission_forbidden_without_permissio
     db.expect_user_has_community_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == community_id && *uid == user_id && permission == COMMUNITY_READ
+            *cid == community_id && *uid == user_id && permission == CommunityPermission::Read
         })
         .returning(|_, _, _| Ok(false));
 
@@ -2912,7 +2912,7 @@ async fn test_user_has_selected_community_permission_forbidden_without_permissio
     let router = Router::new()
         .route("/protected", get(|| async { StatusCode::OK }))
         .layer(middleware::from_fn_with_state(
-            (db.clone(), COMMUNITY_READ),
+            (db.clone(), CommunityPermission::Read),
             user_has_selected_community_permission,
         ))
         .layer(auth_layer)
@@ -2956,7 +2956,7 @@ async fn test_user_has_selected_community_permission_returns_error_on_db_failure
     db.expect_user_has_community_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == community_id && *uid == user_id && permission == COMMUNITY_READ
+            *cid == community_id && *uid == user_id && permission == CommunityPermission::Read
         })
         .returning(|_, _, _| Err(anyhow!("db error")));
 
@@ -2976,7 +2976,7 @@ async fn test_user_has_selected_community_permission_returns_error_on_db_failure
     let router = Router::new()
         .route("/protected", get(|| async { StatusCode::OK }))
         .layer(middleware::from_fn_with_state(
-            (db.clone(), COMMUNITY_READ),
+            (db.clone(), CommunityPermission::Read),
             user_has_selected_community_permission,
         ))
         .layer(auth_layer)
@@ -3034,7 +3034,7 @@ async fn test_user_has_selected_community_permission_redirects_when_selected_com
     let router = Router::new()
         .route("/protected", get(|| async { StatusCode::OK }))
         .layer(middleware::from_fn_with_state(
-            (db.clone(), COMMUNITY_READ),
+            (db.clone(), CommunityPermission::Read),
             user_has_selected_community_permission,
         ))
         .layer(auth_layer)
@@ -3107,7 +3107,7 @@ async fn test_user_has_selected_group_permission_allows_request() {
     let router = Router::new()
         .route("/protected", get(|| async { StatusCode::OK }))
         .layer(middleware::from_fn_with_state(
-            (db.clone(), GROUP_READ),
+            (db.clone(), GroupPermission::Read),
             user_has_selected_group_permission,
         ))
         .layer(auth_layer)
@@ -3176,7 +3176,7 @@ async fn test_user_has_selected_group_permission_forbidden_without_permission() 
     let router = Router::new()
         .route("/protected", get(|| async { StatusCode::OK }))
         .layer(middleware::from_fn_with_state(
-            (db.clone(), GROUP_READ),
+            (db.clone(), GroupPermission::Read),
             user_has_selected_group_permission,
         ))
         .layer(auth_layer)
@@ -3245,7 +3245,7 @@ async fn test_user_has_selected_group_permission_returns_error_on_db_failure() {
     let router = Router::new()
         .route("/protected", get(|| async { StatusCode::OK }))
         .layer(middleware::from_fn_with_state(
-            (db.clone(), GROUP_READ),
+            (db.clone(), GroupPermission::Read),
             user_has_selected_group_permission,
         ))
         .layer(auth_layer)
@@ -3304,7 +3304,7 @@ async fn test_user_has_selected_group_permission_redirects_when_selected_group_i
     let router = Router::new()
         .route("/protected", get(|| async { StatusCode::OK }))
         .layer(middleware::from_fn_with_state(
-            (db.clone(), GROUP_READ),
+            (db.clone(), GroupPermission::Read),
             user_has_selected_group_permission,
         ))
         .layer(auth_layer)
@@ -3365,7 +3365,7 @@ async fn test_user_has_path_community_permission_select_route_forbidden_when_not
             get(|| async { StatusCode::OK }),
         )
         .layer(middleware::from_fn_with_state(
-            (db.clone(), COMMUNITY_READ),
+            (db.clone(), CommunityPermission::Read),
             user_has_path_community_permission,
         ))
         .layer(auth_layer)
@@ -3419,7 +3419,7 @@ async fn test_user_has_path_community_permission_protected_route_forbidden_when_
     let router = Router::new()
         .route("/{community_id}/protected", get(|| async { StatusCode::OK }))
         .layer(middleware::from_fn_with_state(
-            (db.clone(), COMMUNITY_READ),
+            (db.clone(), CommunityPermission::Read),
             user_has_path_community_permission,
         ))
         .layer(auth_layer)
@@ -3477,7 +3477,7 @@ async fn test_user_has_path_group_permission_forbidden_when_not_logged_in() {
     let router = Router::new()
         .route("/groups/{group_id}", get(|| async { StatusCode::OK }))
         .layer(middleware::from_fn_with_state(
-            (db.clone(), GROUP_READ),
+            (db.clone(), GroupPermission::Read),
             user_has_path_group_permission,
         ))
         .layer(auth_layer)
@@ -3534,7 +3534,7 @@ async fn test_user_has_selected_community_permission_forbidden_when_not_logged_i
     let router = Router::new()
         .route("/protected", get(|| async { StatusCode::OK }))
         .layer(middleware::from_fn_with_state(
-            (db.clone(), COMMUNITY_READ),
+            (db.clone(), CommunityPermission::Read),
             user_has_selected_community_permission,
         ))
         .layer(auth_layer)
@@ -3595,7 +3595,7 @@ async fn test_user_has_selected_group_permission_forbidden_when_not_logged_in() 
     let router = Router::new()
         .route("/protected", get(|| async { StatusCode::OK }))
         .layer(middleware::from_fn_with_state(
-            (db.clone(), GROUP_READ),
+            (db.clone(), GroupPermission::Read),
             user_has_selected_group_permission,
         ))
         .layer(auth_layer)

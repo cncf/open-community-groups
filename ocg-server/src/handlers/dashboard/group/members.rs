@@ -15,7 +15,6 @@ use crate::{
     config::HttpServerConfig,
     db::DynDB,
     handlers::{
-        auth::GROUP_MEMBERS_WRITE,
         error::HandlerError,
         extractors::{CurrentUser, SelectedCommunityId, SelectedGroupId, ValidatedForm},
     },
@@ -27,6 +26,7 @@ use crate::{
         pagination,
         pagination::NavigationLinks,
     },
+    types::permissions::GroupPermission,
     validation::{MAX_LEN_M, MAX_LEN_NOTIFICATION_BODY, trimmed_non_empty},
 };
 
@@ -45,7 +45,12 @@ pub(crate) async fn list_page(
     let filters: GroupMembersFilters =
         serde_qs_config().deserialize_str(raw_query.as_deref().unwrap_or_default())?;
     let (can_manage_members, results) = tokio::try_join!(
-        db.user_has_group_permission(&community_id, &group_id, &user.user_id, GROUP_MEMBERS_WRITE),
+        db.user_has_group_permission(
+            &community_id,
+            &group_id,
+            &user.user_id,
+            GroupPermission::MembersWrite
+        ),
         db.list_group_members(group_id, &filters)
     )?;
 
@@ -166,15 +171,12 @@ mod tests {
 
     use crate::{
         db::mock::MockDB,
-        handlers::{
-            auth::{GROUP_MEMBERS_WRITE, GROUP_READ},
-            dashboard::group::members::GroupCustomNotification,
-            tests::*,
-        },
+        handlers::{dashboard::group::members::GroupCustomNotification, tests::*},
         router::CACHE_CONTROL_NO_CACHE,
         services::notifications::{MockNotificationsManager, NotificationKind},
         templates::dashboard::DASHBOARD_PAGINATION_LIMIT,
         templates::notifications::GroupCustom,
+        types::permissions::GroupPermission,
     };
 
     #[tokio::test]
@@ -211,7 +213,10 @@ mod tests {
         db.expect_user_has_group_permission()
             .times(1)
             .withf(move |cid, gid, uid, permission| {
-                *cid == community_id && *gid == group_id && *uid == user_id && permission == GROUP_READ
+                *cid == community_id
+                    && *gid == group_id
+                    && *uid == user_id
+                    && permission == GroupPermission::Read
             })
             .returning(|_, _, _, _| Ok(true));
         db.expect_user_has_group_permission()
@@ -220,7 +225,7 @@ mod tests {
                 *cid == community_id
                     && *gid == group_id
                     && *uid == user_id
-                    && permission == GROUP_MEMBERS_WRITE
+                    && permission == GroupPermission::MembersWrite
             })
             .returning(|_, _, _, _| Ok(true));
         db.expect_list_group_members()
@@ -294,7 +299,10 @@ mod tests {
         db.expect_user_has_group_permission()
             .times(1)
             .withf(move |cid, gid, uid, permission| {
-                *cid == community_id && *gid == group_id && *uid == user_id && permission == GROUP_READ
+                *cid == community_id
+                    && *gid == group_id
+                    && *uid == user_id
+                    && permission == GroupPermission::Read
             })
             .returning(|_, _, _, _| Ok(true));
         db.expect_user_has_group_permission()
@@ -303,7 +311,7 @@ mod tests {
                 *cid == community_id
                     && *gid == group_id
                     && *uid == user_id
-                    && permission == GROUP_MEMBERS_WRITE
+                    && permission == GroupPermission::MembersWrite
             })
             .returning(|_, _, _, _| Ok(true));
         db.expect_list_group_members()
@@ -369,7 +377,10 @@ mod tests {
         db.expect_user_has_group_permission()
             .times(1)
             .withf(move |cid, gid, uid, permission| {
-                *cid == community_id && *gid == group_id && *uid == user_id && permission == GROUP_READ
+                *cid == community_id
+                    && *gid == group_id
+                    && *uid == user_id
+                    && permission == GroupPermission::Read
             })
             .returning(|_, _, _, _| Ok(true));
         db.expect_user_has_group_permission()
@@ -378,7 +389,7 @@ mod tests {
                 *cid == community_id
                     && *gid == group_id
                     && *uid == user_id
-                    && permission == GROUP_MEMBERS_WRITE
+                    && permission == GroupPermission::MembersWrite
             })
             .returning(|_, _, _, _| Ok(true));
         db.expect_list_group_members()
@@ -467,7 +478,7 @@ mod tests {
                 *cid == community_id
                     && *gid == group_id
                     && *uid == user_id
-                    && permission == GROUP_MEMBERS_WRITE
+                    && permission == GroupPermission::MembersWrite
             })
             .returning(|_, _, _, _| Ok(true));
         db.expect_list_group_members_ids()
@@ -574,7 +585,7 @@ mod tests {
                 *cid == community_id
                     && *gid == group_id
                     && *uid == user_id
-                    && permission == GROUP_MEMBERS_WRITE
+                    && permission == GroupPermission::MembersWrite
             })
             .returning(|_, _, _, _| Ok(true));
         db.expect_get_group_summary()
