@@ -51,6 +51,8 @@ UI behavior:
 - Event action controls are disabled when your role cannot perform the operation.
 - Middleware authorization is enforced server-side for every write endpoint.
 
+![Group disabled form](../screenshots/dashboard-group-permissions-role.png)
+
 ## Events List: Work Queue
 
 [`Events`](/dashboard/group?tab=events ':ignore') is your organizer queue. `Upcoming events` and `Past events`

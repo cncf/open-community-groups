@@ -79,6 +79,8 @@ UI behavior:
 - When your role cannot perform an action, controls are disabled.
 - Authorization middleware is the source of truth and blocks unauthorized requests.
 
+![Community disabled form](../screenshots/dashboard-community-permissions-role.png)
+
 ## Settings: Community Identity
 
 `Settings` is where you shape how the community appears publicly and how organizers enrich it over

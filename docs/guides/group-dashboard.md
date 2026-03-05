@@ -68,6 +68,8 @@ UI behavior:
 - Controls are disabled when the selected role cannot perform that operation.
 - Authorization middleware is still enforced server-side.
 
+![Community disabled form](../screenshots/dashboard-group-permissions-role.png)
+
 ## Settings: Group Identity
 
 Use `Settings` to maintain the information people rely on before joining or attending.
