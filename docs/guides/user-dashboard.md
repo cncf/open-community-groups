@@ -55,6 +55,8 @@ Sorting behavior:
 
 - Ordered by date ascending, so the next event appears first.
 
+![User profile area](../screenshots/dashboard-user-my-events.png)
+
 ## Profile: Public Identity
 
 `Profile` is not just cosmetic. Organizers, co-speakers, and reviewers use this information
