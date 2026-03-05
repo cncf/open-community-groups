@@ -611,7 +611,7 @@ async fn static_handler(uri: Uri) -> impl IntoResponse {
 
 /// Returns the `serde_qs` configuration for query string parsing.
 pub(crate) fn serde_qs_config() -> serde_qs::Config {
-    serde_qs::Config::new(3, false)
+    serde_qs::Config::new().max_depth(3).use_form_encoding(true)
 }
 
 /// Middleware that redirects requests from old hosts to the base URL.
