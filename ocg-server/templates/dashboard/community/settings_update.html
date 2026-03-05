@@ -9,13 +9,13 @@
       hx-target="#dashboard-content"
       hx-indicator="#dashboard-spinner, #community-settings-spinner"
       hx-disabled-elt="button[type=submit], #cancel-button">
-  {% if !can_manage_settings -%}
-    {{ dashboard::permission_warning(message = "Your role cannot update community settings.") -}}
-  {% endif -%}
+
   <div class="space-y-12">
-    <div class="border-b border-stone-900/10 pb-12">
-      {{ dashboard::page_title(title = "General Settings", docs_href = "/docs#/guides/community-dashboard?id=settings-community-identity", description = "Configure core community information and basic settings.") -}}
-    </div>
+    {{ dashboard::page_title(title = "General Settings", docs_href = "/docs#/guides/community-dashboard?id=settings-community-identity", description = "Configure core community information and basic settings.") -}}
+
+    {% if !can_manage_settings -%}
+      {{ dashboard::permission_warning(message = "Your role cannot update community settings.") -}}
+    {% endif -%}
 
     <div class="inert-form" {% if !can_manage_settings -%} inert {% endif -%}>
       <div class="border-b border-stone-900/10 pb-12">

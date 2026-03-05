@@ -8,12 +8,13 @@
       hx-target="#dashboard-content"
       hx-indicator="#dashboard-spinner, #community-group-category-update-spinner"
       hx-disabled-elt="button[type=submit], #cancel-button">
-  {% if !can_manage_taxonomy -%}
-    {{ dashboard::permission_warning(message = "Your role cannot update group categories.") -}}
-  {% endif -%}
   <div class="space-y-12">
-    <div class="border-b border-stone-900/10 pb-12">
+    <div class="border-b border-stone-900/10 pb-12 space-y-12">
       {{ dashboard::page_title(title = "Group Category Details", docs_href = "/docs#/guides/community-dashboard?id=group-categories-group-taxonomy", description = "Update the group category for this community.") -}}
+
+      {% if !can_manage_taxonomy -%}
+        {{ dashboard::permission_warning(message = "Your role cannot update group categories.") -}}
+      {% endif -%}
 
       <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-4xl inert-form"
            {% if !can_manage_taxonomy -%}

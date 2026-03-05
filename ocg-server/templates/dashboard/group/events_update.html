@@ -3,9 +3,6 @@
 
 {# Events update form -#}
 <div class="space-y-12" data-event-past="{{ event.is_past() }}">
-  {% if !can_manage_events -%}
-    {{ dashboard::permission_warning(message = "Your role cannot update events.", extra_classes = "") -}}
-  {% endif -%}
   <ul class="flex flex-wrap space-x-1 lg:space-x-2 -mb-px font-medium text-center border-b border-stone-900/10 w-full mb-10">
     <li>
       <button type="button"
@@ -90,6 +87,10 @@
       </button>
     </li>
   </ul>
+
+  {% if !can_manage_events -%}
+    {{ dashboard::permission_warning(message = "Your role cannot update events.", extra_classes = "") -}}
+  {% endif -%}
 
   <div id="pending-changes-alert" class="hidden">
     <div class="flex flex-wrap items-center justify-between gap-3 rounded-md border border-primary-200 bg-primary-50 px-4 py-3 text-primary-900">

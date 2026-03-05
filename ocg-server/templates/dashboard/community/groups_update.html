@@ -8,13 +8,12 @@
       hx-target="#dashboard-content"
       hx-indicator="#dashboard-spinner, #community-groups-update-spinner"
       hx-disabled-elt="button[type=submit], #cancel-button">
-  {% if !can_manage_groups -%}
-    {{ dashboard::permission_warning(message = "Your role cannot update groups.") -}}
-  {% endif -%}
   <div class="space-y-12">
-    <div class="border-b border-stone-900/10 pb-12">
-      {{ dashboard::page_title(title = "Group Details", docs_href = "/docs#/guides/community-dashboard?id=groups-portfolio", description = "Please update as many details about this group as possible.") -}}
-    </div>
+    {{ dashboard::page_title(title = "Group Details", docs_href = "/docs#/guides/community-dashboard?id=groups-portfolio", description = "Please update as many details about this group as possible.") -}}
+
+    {% if !can_manage_groups -%}
+      {{ dashboard::permission_warning(message = "Your role cannot update groups.") -}}
+    {% endif -%}
 
     <div class="inert-form" {% if !can_manage_groups -%} inert {% endif -%}>
       <div class="border-b border-stone-900/10 pb-12">
