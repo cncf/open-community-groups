@@ -763,6 +763,8 @@
   const locationSearchField = document.querySelector('location-search-field');
   const approvedSubmissionsEvent = 'event-approved-submissions-updated';
   const isPastEvent = document.querySelector('[data-event-past]')?.dataset.eventPast === 'true';
+  const canManageEvents = '{{ can_manage_events }}' === 'true';
+  const inertForm = document.querySelector('.inert-form');
 
   const syncSessionsDateRange = () => {
     const sessionsSection = document.querySelector('sessions-section');
@@ -878,6 +880,14 @@
 
     if (sectionName === 'sessions') {
       syncSessionsDateRange();
+    }
+
+    if (!canManageEvents && inertForm) {
+      if (sectionName === 'submissions') {
+        inertForm.removeAttribute('inert');
+      } else {
+        inertForm.setAttribute('inert', '');
+      }
     }
   }
 
