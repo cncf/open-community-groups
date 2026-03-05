@@ -42,9 +42,9 @@ values
 -- Group team
 insert into group_team (group_id, user_id, accepted, role)
 values
-    (:'groupID', :'user1ID', true, 'organizer'),
-    (:'groupID', :'user2ID', true, 'organizer'),
-    (:'groupID', :'user3ID', false, 'organizer');
+    (:'groupID', :'user1ID', true, 'admin'),
+    (:'groupID', :'user2ID', true, 'admin'),
+    (:'groupID', :'user3ID', false, 'admin');
 
 -- ============================================================================
 -- TESTS

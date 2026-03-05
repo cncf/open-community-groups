@@ -4,8 +4,9 @@ create or replace function delete_community_team_member(
     p_user_id uuid
 ) returns void as $$
 declare
-    v_accepted_members integer;
+    v_accepted_admins integer;
     v_is_accepted boolean;
+    v_role text;
 begin
     -- Lock current community team rows to avoid concurrent final-member removals
     perform 1
@@ -15,8 +16,12 @@ begin
     for update;
 
     -- Load target membership details
-    select ct.accepted
-    into v_is_accepted
+    select
+        ct.accepted,
+        ct.role
+    into
+        v_is_accepted,
+        v_role
     from community_team ct
     where ct.community_id = p_community_id
       and ct.user_id = p_user_id;
@@ -26,16 +31,17 @@ begin
         raise exception 'user is not a community team member';
     end if;
 
-    -- Prevent removing the last accepted community team member
-    if v_is_accepted then
+    -- Prevent removing the last accepted community admin
+    if v_is_accepted and v_role = 'admin' then
         select count(*)::int
-        into v_accepted_members
+        into v_accepted_admins
         from community_team ct
         where ct.community_id = p_community_id
-          and ct.accepted = true;
+          and ct.accepted = true
+          and ct.role = 'admin';
 
-        if v_accepted_members = 1 then
-            raise exception 'cannot remove the last accepted community team member';
+        if v_accepted_admins = 1 then
+            raise exception 'cannot remove the last accepted community admin';
         end if;
     end if;
 

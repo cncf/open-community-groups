@@ -14,9 +14,10 @@ use crate::{
     db::DynDB,
     handlers::{
         error::HandlerError,
-        extractors::{SelectedCommunityId, ValidatedForm},
+        extractors::{CurrentUser, SelectedCommunityId, ValidatedForm},
     },
     templates::dashboard::community::event_categories::{self, EventCategoryInput},
+    types::permissions::CommunityPermission,
 };
 
 // Pages handlers.
@@ -24,21 +25,35 @@ use crate::{
 /// Displays the list of event categories for the selected community.
 #[instrument(skip_all, err)]
 pub(crate) async fn list_page(
+    CurrentUser(user): CurrentUser,
     SelectedCommunityId(community_id): SelectedCommunityId,
     State(db): State<DynDB>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
-    let categories = db.list_event_categories(community_id).await?;
-    let template = event_categories::ListPage { categories };
+    let (can_manage_taxonomy, categories) = tokio::try_join!(
+        db.user_has_community_permission(&community_id, &user.user_id, CommunityPermission::TaxonomyWrite),
+        db.list_event_categories(community_id)
+    )?;
+    let template = event_categories::ListPage {
+        can_manage_taxonomy,
+        categories,
+    };
 
     Ok(Html(template.render()?))
 }
 
 /// Displays the form to create a new event category.
 #[instrument(skip_all, err)]
-pub(crate) async fn add_page() -> Result<impl IntoResponse, HandlerError> {
+pub(crate) async fn add_page(
+    CurrentUser(user): CurrentUser,
+    SelectedCommunityId(community_id): SelectedCommunityId,
+    State(db): State<DynDB>,
+) -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
-    let template = event_categories::AddPage;
+    let can_manage_taxonomy = db
+        .user_has_community_permission(&community_id, &user.user_id, CommunityPermission::TaxonomyWrite)
+        .await?;
+    let template = event_categories::AddPage { can_manage_taxonomy };
 
     Ok(Html(template.render()?))
 }
@@ -46,19 +61,26 @@ pub(crate) async fn add_page() -> Result<impl IntoResponse, HandlerError> {
 /// Displays the form to update an existing event category.
 #[instrument(skip_all, err)]
 pub(crate) async fn update_page(
+    CurrentUser(user): CurrentUser,
     SelectedCommunityId(community_id): SelectedCommunityId,
     State(db): State<DynDB>,
     Path(event_category_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
-    let categories = db.list_event_categories(community_id).await?;
+    let (can_manage_taxonomy, categories) = tokio::try_join!(
+        db.user_has_community_permission(&community_id, &user.user_id, CommunityPermission::TaxonomyWrite),
+        db.list_event_categories(community_id)
+    )?;
     let Some(category) = categories
         .into_iter()
         .find(|category| category.event_category_id == event_category_id)
     else {
         return Err(HandlerError::Database("event category not found".to_string()));
     };
-    let template = event_categories::UpdatePage { category };
+    let template = event_categories::UpdatePage {
+        can_manage_taxonomy,
+        category,
+    };
 
     Ok(Html(template.render()?))
 }
@@ -129,7 +151,7 @@ mod tests {
 
     use crate::{
         db::mock::MockDB, handlers::tests::*, router::CACHE_CONTROL_NO_CACHE,
-        services::notifications::MockNotificationsManager,
+        services::notifications::MockNotificationsManager, types::permissions::CommunityPermission,
     };
 
     use super::EventCategoryInput;
@@ -154,10 +176,18 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_community()
+        db.expect_user_has_community_permission()
             .times(1)
-            .withf(move |cid, uid| *cid == community_id && *uid == user_id)
-            .returning(|_, _| Ok(true));
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == user_id && permission == CommunityPermission::Read
+            })
+            .returning(|_, _, _| Ok(true));
+        db.expect_user_has_community_permission()
+            .times(1)
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == user_id && permission == CommunityPermission::TaxonomyWrite
+            })
+            .returning(|_, _, _| Ok(true));
         db.expect_list_event_categories()
             .times(1)
             .withf(move |cid| *cid == community_id)
@@ -211,10 +241,18 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_community()
+        db.expect_user_has_community_permission()
             .times(1)
-            .withf(move |cid, uid| *cid == community_id && *uid == user_id)
-            .returning(|_, _| Ok(true));
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == user_id && permission == CommunityPermission::Read
+            })
+            .returning(|_, _, _| Ok(true));
+        db.expect_user_has_community_permission()
+            .times(1)
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == user_id && permission == CommunityPermission::TaxonomyWrite
+            })
+            .returning(|_, _, _| Ok(true));
 
         // Setup notifications manager mock
         let nm = MockNotificationsManager::new();
@@ -266,10 +304,18 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_community()
+        db.expect_user_has_community_permission()
             .times(1)
-            .withf(move |cid, uid| *cid == community_id && *uid == user_id)
-            .returning(|_, _| Ok(true));
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == user_id && permission == CommunityPermission::Read
+            })
+            .returning(|_, _, _| Ok(true));
+        db.expect_user_has_community_permission()
+            .times(1)
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == user_id && permission == CommunityPermission::TaxonomyWrite
+            })
+            .returning(|_, _, _| Ok(true));
         db.expect_list_event_categories()
             .times(1)
             .withf(move |cid| *cid == community_id)
@@ -321,10 +367,18 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_community()
+        db.expect_user_has_community_permission()
             .times(1)
-            .withf(move |cid, uid| *cid == community_id && *uid == user_id)
-            .returning(|_, _| Ok(true));
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == user_id && permission == CommunityPermission::Read
+            })
+            .returning(|_, _, _| Ok(true));
+        db.expect_user_has_community_permission()
+            .times(1)
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == user_id && permission == CommunityPermission::TaxonomyWrite
+            })
+            .returning(|_, _, _| Ok(true));
         db.expect_list_event_categories()
             .times(1)
             .withf(move |cid| *cid == community_id)
@@ -385,10 +439,12 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_community()
+        db.expect_user_has_community_permission()
             .times(1)
-            .withf(move |cid, uid| *cid == community_id && *uid == user_id)
-            .returning(|_, _| Ok(true));
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == user_id && permission == CommunityPermission::TaxonomyWrite
+            })
+            .returning(|_, _, _| Ok(true));
         db.expect_add_event_category()
             .times(1)
             .withf(move |cid, category| *cid == community_id && category.name == expected_name)
@@ -440,10 +496,12 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_community()
+        db.expect_user_has_community_permission()
             .times(1)
-            .withf(move |cid, uid| *cid == community_id && *uid == user_id)
-            .returning(|_, _| Ok(true));
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == user_id && permission == CommunityPermission::TaxonomyWrite
+            })
+            .returning(|_, _, _| Ok(true));
         db.expect_delete_event_category()
             .times(1)
             .withf(move |cid, ecid| *cid == community_id && *ecid == event_category_id)
@@ -501,10 +559,12 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_community()
+        db.expect_user_has_community_permission()
             .times(1)
-            .withf(move |cid, uid| *cid == community_id && *uid == user_id)
-            .returning(|_, _| Ok(true));
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == user_id && permission == CommunityPermission::TaxonomyWrite
+            })
+            .returning(|_, _, _| Ok(true));
         db.expect_update_event_category()
             .times(1)
             .withf(move |cid, ecid, category| {

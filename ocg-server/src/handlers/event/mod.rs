@@ -590,9 +590,6 @@ mod tests {
             .times(1)
             .withf(move |cid, eid| *cid == community_id && *eid == event_id)
             .returning(move |_, _| Err(anyhow!("db error")));
-        db.expect_list_event_cfs_labels()
-            .times(0..=1)
-            .returning(|_| Ok(vec![]));
 
         // Setup notifications manager mock
         let nm = MockNotificationsManager::new();

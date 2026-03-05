@@ -1,3 +1,5 @@
+<!-- markdownlint-disable MD013 -->
+
 # Community Dashboard Guide
 
 Use the Community Dashboard to manage strategy-level community operations: identity, governance,
@@ -12,6 +14,7 @@ Path: [`/dashboard/community`](/dashboard/community ':ignore')
 
 - [What This Dashboard Owns](#what-this-dashboard-owns)
 - [Access and Context](#access-and-context)
+- [Roles and Permissions](#roles-and-permissions)
 - [Settings: Community Identity](#settings-community-identity)
 - [Team: Community Access](#team-community-access)
 - [Regions: Geographic Scope](#regions-geographic-scope)
@@ -53,6 +56,31 @@ If no community is selected yet, some actions stay unavailable until you choose 
 Invitation acceptance and access visibility are managed in
 [User Dashboard Guide](user-dashboard.md).
 
+## Roles and Permissions
+
+Community role permissions are fixed and enforced by middleware plus database checks:
+
+| Community role | Community read | Groups | Settings | Taxonomy | Team |
+| --- | --- | --- | --- | --- | --- |
+| `admin` | Yes | Write | Write | Write | Write |
+| `groups-manager` | Yes | Write | Read only | Read only | Read only |
+| `viewer` | Yes | Read only | Read only | Read only | Read only |
+
+![Community roles](../screenshots/dashboard-community-team-roles.png)
+
+Community role impact on group-level operations in the same community:
+
+- `admin` and `groups-manager` can perform group write operations (`events`, `members`,
+  `settings`, `sponsors`, `team`) without needing group-team role assignment.
+- `viewer` keeps read-only visibility.
+
+UI behavior:
+
+- When your role cannot perform an action, controls are disabled.
+- Authorization middleware is the source of truth and blocks unauthorized requests.
+
+![Community disabled form](../screenshots/dashboard-community-permissions-role.png)
+
 ## Settings: Community Identity
 
 `Settings` is where you shape how the community appears publicly and how organizers enrich it over
@@ -78,12 +106,20 @@ Field requirements, character limits, and list limits are shown inline in the se
 
 ## Team: Community Access
 
-Use `Team` to invite or remove community admins.
+Use `Team` to invite members with a community role, update existing roles, or remove members.
 
-OCG blocks removal of the final accepted team member, so a community is never left without an
-accountable owner.
+Current assignable roles:
 
-!> The final accepted community team member cannot be removed.
+- `admin`
+- `groups-manager`
+- `viewer`
+
+Safety rules:
+
+- OCG blocks removing the final accepted community admin.
+- OCG blocks demoting the final accepted community admin to a non-admin role.
+
+!> The final accepted community admin cannot be removed or demoted.
 Add another accepted member first, then retry removal.
 
 Pending states are visible (`Invitation sent`) so you can tell the difference between invited and

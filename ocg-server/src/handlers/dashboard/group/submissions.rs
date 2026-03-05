@@ -23,6 +23,7 @@ use crate::{
         notifications::CfsSubmissionUpdated,
         pagination::{self, NavigationLinks},
     },
+    types::permissions::GroupPermission,
 };
 
 // Pages handlers.
@@ -30,6 +31,7 @@ use crate::{
 /// Displays the CFS submissions list for an event.
 #[instrument(skip_all, err)]
 pub(crate) async fn list_page(
+    CurrentUser(user): CurrentUser,
     SelectedCommunityId(community_id): SelectedCommunityId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
@@ -39,7 +41,13 @@ pub(crate) async fn list_page(
     // Fetch event submissions (checking event belongs to group)
     let filters: CfsSubmissionsFilters =
         serde_qs_config().deserialize_str(raw_query.as_deref().unwrap_or_default())?;
-    let (_event, labels, statuses, submissions) = tokio::try_join!(
+    let (can_manage_events, _event, labels, statuses, submissions) = tokio::try_join!(
+        db.user_has_group_permission(
+            &community_id,
+            &group_id,
+            &user.user_id,
+            GroupPermission::EventsWrite
+        ),
         db.get_event_summary(community_id, group_id, event_id), // ensure event belongs to group
         db.list_event_cfs_labels(event_id),
         db.list_cfs_submission_statuses_for_review(),
@@ -52,8 +60,9 @@ pub(crate) async fn list_page(
         NavigationLinks::from_filters(&filters, submissions.total, &base_path, &base_path)?;
     let refresh_url = pagination::build_url(&base_path, &filters)?;
     let template = submissions::ListPage {
-        event_id,
+        can_manage_events,
         event_cfs_labels: labels,
+        event_id,
         statuses,
         submissions: submissions.submissions,
         navigation_links,
@@ -144,6 +153,7 @@ mod tests {
         router::CACHE_CONTROL_NO_CACHE,
         services::notifications::{MockNotificationsManager, NotificationKind},
         templates::{dashboard::DASHBOARD_PAGINATION_LIMIT, notifications::CfsSubmissionUpdated},
+        types::permissions::GroupPermission,
     };
 
     #[tokio::test]
@@ -186,10 +196,24 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_group()
+        db.expect_user_has_group_permission()
             .times(1)
-            .withf(move |cid, gid, uid| *cid == community_id && *gid == group_id && *uid == user_id)
-            .returning(|_, _, _| Ok(true));
+            .withf(move |cid, gid, uid, permission| {
+                *cid == community_id
+                    && *gid == group_id
+                    && *uid == user_id
+                    && permission == GroupPermission::Read
+            })
+            .returning(|_, _, _, _| Ok(true));
+        db.expect_user_has_group_permission()
+            .times(1)
+            .withf(move |cid, gid, uid, permission| {
+                *cid == community_id
+                    && *gid == group_id
+                    && *uid == user_id
+                    && permission == GroupPermission::EventsWrite
+            })
+            .returning(|_, _, _, _| Ok(true));
         db.expect_get_event_summary()
             .times(1)
             .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
@@ -271,10 +295,24 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_group()
+        db.expect_user_has_group_permission()
             .times(1)
-            .withf(move |cid, gid, uid| *cid == community_id && *gid == group_id && *uid == user_id)
-            .returning(|_, _, _| Ok(true));
+            .withf(move |cid, gid, uid, permission| {
+                *cid == community_id
+                    && *gid == group_id
+                    && *uid == user_id
+                    && permission == GroupPermission::Read
+            })
+            .returning(|_, _, _, _| Ok(true));
+        db.expect_user_has_group_permission()
+            .times(1)
+            .withf(move |cid, gid, uid, permission| {
+                *cid == community_id
+                    && *gid == group_id
+                    && *uid == user_id
+                    && permission == GroupPermission::EventsWrite
+            })
+            .returning(|_, _, _, _| Ok(true));
         db.expect_get_event_summary()
             .times(1)
             .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
@@ -350,28 +388,28 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_group()
+        db.expect_user_has_group_permission()
             .times(1)
-            .withf(move |cid, gid, uid| *cid == community_id && *gid == group_id && *uid == user_id)
-            .returning(|_, _, _| Ok(true));
+            .withf(move |cid, gid, uid, permission| {
+                *cid == community_id
+                    && *gid == group_id
+                    && *uid == user_id
+                    && permission == GroupPermission::Read
+            })
+            .returning(|_, _, _, _| Ok(true));
+        db.expect_user_has_group_permission()
+            .times(1)
+            .withf(move |cid, gid, uid, permission| {
+                *cid == community_id
+                    && *gid == group_id
+                    && *uid == user_id
+                    && permission == GroupPermission::EventsWrite
+            })
+            .returning(|_, _, _, _| Ok(true));
         db.expect_get_event_summary()
             .times(1)
             .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
             .returning(|_, _, _| Err(anyhow!("db error")));
-        db.expect_list_cfs_submission_statuses_for_review()
-            .times(0..=1)
-            .returning(|| Ok(vec![]));
-        db.expect_list_event_cfs_labels()
-            .times(0..=1)
-            .returning(|_| Ok(vec![]));
-        db.expect_list_event_cfs_submissions().times(0..=1).returning(|_, _| {
-            Ok(
-                crate::templates::dashboard::group::submissions::CfsSubmissionsOutput {
-                    submissions: vec![],
-                    total: 0,
-                },
-            )
-        });
 
         // Setup notifications manager mock
         let nm = MockNotificationsManager::new();
@@ -443,10 +481,15 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_group()
+        db.expect_user_has_group_permission()
             .times(1)
-            .withf(move |cid, gid, uid| *cid == community_id && *gid == group_id && *uid == user_id)
-            .returning(|_, _, _| Ok(true));
+            .withf(move |cid, gid, uid, permission| {
+                *cid == community_id
+                    && *gid == group_id
+                    && *uid == user_id
+                    && permission == GroupPermission::EventsWrite
+            })
+            .returning(|_, _, _, _| Ok(true));
         db.expect_get_event_summary()
             .times(1)
             .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)

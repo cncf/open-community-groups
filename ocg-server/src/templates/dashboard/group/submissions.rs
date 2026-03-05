@@ -29,10 +29,12 @@ use super::events::CfsSubmissionStatus;
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "dashboard/group/event_submissions_list.html")]
 pub(crate) struct ListPage {
-    /// Event identifier.
-    pub event_id: Uuid,
+    /// Whether the current user can manage events.
+    pub can_manage_events: bool,
     /// Event CFS labels available for filtering and submission updates.
     pub event_cfs_labels: Vec<EventCfsLabel>,
+    /// Event identifier.
+    pub event_id: Uuid,
     /// Pagination navigation links.
     pub navigation_links: pagination::NavigationLinks,
     /// URL used to refresh the submissions list.

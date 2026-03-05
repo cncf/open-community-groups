@@ -35,12 +35,14 @@ use crate::{
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "dashboard/group/events_add.html")]
 pub(crate) struct AddPage {
-    /// Group identifier.
-    pub group_id: Uuid,
+    /// Whether the current user can manage events.
+    pub can_manage_events: bool,
     /// List of available event categories.
     pub categories: Vec<EventCategory>,
     /// List of available event kinds.
     pub event_kinds: Vec<EventKindSummary>,
+    /// Group identifier.
+    pub group_id: Uuid,
     /// Flag indicating if meetings functionality is enabled.
     pub meetings_enabled: bool,
     /// Maximum participants per meeting provider.
@@ -57,6 +59,8 @@ pub(crate) struct AddPage {
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "dashboard/group/events_list.html")]
 pub(crate) struct ListPage {
+    /// Whether the current user can manage events.
+    pub can_manage_events: bool,
     /// Group events split by upcoming and past ones.
     pub events: GroupEvents,
     /// Current events tab selection.
@@ -80,6 +84,8 @@ pub(crate) struct ListPage {
 pub(crate) struct UpdatePage {
     /// Approved CFS submissions for linking sessions.
     pub approved_submissions: Vec<ApprovedSubmissionSummary>,
+    /// Whether the current user can manage events.
+    pub can_manage_events: bool,
     /// List of available event categories.
     pub categories: Vec<EventCategory>,
     /// CFS submission status options.

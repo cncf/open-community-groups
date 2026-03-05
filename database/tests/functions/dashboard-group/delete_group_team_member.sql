@@ -43,9 +43,9 @@ values
 -- Group team membership
 insert into group_team (group_id, user_id, role, accepted)
 values
-    (:'groupID', :'user1ID', 'organizer', true),
-    (:'groupID', :'user2ID', 'organizer', true),
-    (:'groupID', :'user3ID', 'organizer', false);
+    (:'groupID', :'user1ID', 'admin', true),
+    (:'groupID', :'user2ID', 'admin', true),
+    (:'groupID', :'user3ID', 'admin', false);
 
 -- ============================================================================
 -- TESTS
@@ -71,7 +71,7 @@ select lives_ok(
 -- Should block deleting the last accepted member
 select throws_ok(
     $$ select delete_group_team_member('00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000031'::uuid) $$,
-    'cannot remove the last accepted group team member',
+    'cannot remove the last accepted group admin',
     'Should block deleting the last accepted member'
 );
 select results_eq(

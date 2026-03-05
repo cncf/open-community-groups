@@ -49,10 +49,10 @@ insert into "user" (
     :'user3ID', gen_random_bytes(32), 'charlie@example.com', 'Charlie', 'charlie', true
 );
 
-insert into community_team (accepted, community_id, user_id) values
-    (true, :'communityID', :'user1ID'),
-    (true, :'communityID', :'user2ID'),
-    (false, :'communityID', :'user3ID');
+insert into community_team (accepted, community_id, role, user_id) values
+    (true, :'communityID', 'admin', :'user1ID'),
+    (true, :'communityID', 'admin', :'user2ID'),
+    (false, :'communityID', 'viewer', :'user3ID');
 
 -- ============================================================================
 -- TESTS
@@ -78,7 +78,7 @@ select lives_ok(
 -- Should block deleting the last accepted member
 select throws_ok(
     $$ select delete_community_team_member('00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000011'::uuid) $$,
-    'cannot remove the last accepted community team member',
+    'cannot remove the last accepted community admin',
     'Should block deleting the last accepted member'
 );
 select results_eq(

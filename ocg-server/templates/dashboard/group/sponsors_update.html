@@ -9,10 +9,17 @@
       hx-indicator="#dashboard-spinner, #group-sponsor-update-spinner"
       hx-disabled-elt="button[type=submit], #cancel-button">
   <div class="space-y-12">
-    <div class="border-b border-stone-900/10 pb-12">
+    <div class="border-b border-stone-900/10 pb-12 space-y-12">
       {{ dashboard::page_title(title = "Sponsor Details", docs_href = "/docs#/guides/group-dashboard?id=sponsors-reusable-profiles", description = "Please update the sponsor information.") -}}
 
-      <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-4xl">
+      {% if !can_manage_sponsors -%}
+        {{ dashboard::permission_warning(message = "Your role cannot update sponsors.") -}}
+      {% endif -%}
+
+      <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-4xl inert-form"
+           {% if !can_manage_sponsors -%}
+             inert
+           {% endif -%}>
         {# Sponsor name -#}
         <div class="col-span-full lg:col-span-5">
           <label for="name" class="form-label">
@@ -69,7 +76,14 @@
     {# End cancel button -#}
 
     {# Save button -#}
-    <button type="submit" class="btn-primary relative">
+    <button type="submit"
+            class="btn-primary relative
+                   {% if !can_manage_sponsors -%}
+                     opacity-50 cursor-not-allowed
+                   {% endif -%}"
+            {% if !can_manage_sponsors -%}
+              disabled title="Your role cannot update sponsors."
+            {% endif -%}>
       {{ ui::btn_spinner(id = "group-sponsor-update-spinner", spinner_type = "2") -}}
       Update Sponsor
     </button>

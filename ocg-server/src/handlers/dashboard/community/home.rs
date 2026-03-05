@@ -29,6 +29,7 @@ use crate::{
         pagination::NavigationLinks,
         site::explore::SearchGroupsFilters,
     },
+    types::permissions::CommunityPermission,
 };
 
 /// Handler that returns the community dashboard home page.
@@ -36,6 +37,7 @@ use crate::{
 /// This handler manages the main community dashboard page, selecting the appropriate tab
 /// and preparing the content for each dashboard section.
 #[instrument(skip_all, err)]
+#[allow(clippy::too_many_lines)]
 pub(crate) async fn page(
     auth_session: AuthSession,
     messages: Messages,
@@ -64,12 +66,24 @@ pub(crate) async fn page(
             Content::Analytics(Box::new(analytics::Page { stats }))
         }
         Tab::EventCategories => {
-            let categories = db.list_event_categories(community_id).await?;
-            Content::EventCategories(event_categories::ListPage { categories })
+            let (can_manage_taxonomy, categories) = tokio::try_join!(
+                db.user_has_community_permission(&community_id, &user_id, CommunityPermission::TaxonomyWrite),
+                db.list_event_categories(community_id)
+            )?;
+            Content::EventCategories(event_categories::ListPage {
+                can_manage_taxonomy,
+                categories,
+            })
         }
         Tab::GroupCategories => {
-            let categories = db.list_group_categories(community_id).await?;
-            Content::GroupCategories(group_categories::ListPage { categories })
+            let (can_manage_taxonomy, categories) = tokio::try_join!(
+                db.user_has_community_permission(&community_id, &user_id, CommunityPermission::TaxonomyWrite),
+                db.list_group_categories(community_id)
+            )?;
+            Content::GroupCategories(group_categories::ListPage {
+                can_manage_taxonomy,
+                categories,
+            })
         }
         Tab::Groups => {
             // Fetch groups
@@ -84,7 +98,10 @@ pub(crate) async fn page(
                 ts_query: page_filters.ts_query.clone(),
                 ..SearchGroupsFilters::default()
             };
-            let results = db.search_groups(&search_filters).await?;
+            let (can_manage_groups, results) = tokio::try_join!(
+                db.user_has_community_permission(&community_id, &user_id, CommunityPermission::GroupsWrite),
+                db.search_groups(&search_filters)
+            )?;
 
             // Prepare template content
             let navigation_links = NavigationLinks::from_filters(
@@ -94,6 +111,7 @@ pub(crate) async fn page(
                 "/dashboard/community/groups",
             )?;
             Content::Groups(groups::ListPage {
+                can_manage_groups,
                 groups: results.groups,
                 navigation_links,
                 total: results.total,
@@ -103,17 +121,33 @@ pub(crate) async fn page(
             })
         }
         Tab::Regions => {
-            let regions = db.list_regions(community_id).await?;
-            Content::Regions(regions::ListPage { regions })
+            let (can_manage_taxonomy, regions) = tokio::try_join!(
+                db.user_has_community_permission(&community_id, &user_id, CommunityPermission::TaxonomyWrite),
+                db.list_regions(community_id)
+            )?;
+            Content::Regions(regions::ListPage {
+                can_manage_taxonomy,
+                regions,
+            })
         }
-        Tab::Settings => Content::Settings(Box::new(settings::UpdatePage {
-            community: community.clone(),
-        })),
+        Tab::Settings => {
+            let can_manage_settings = db
+                .user_has_community_permission(&community_id, &user_id, CommunityPermission::SettingsWrite)
+                .await?;
+            Content::Settings(Box::new(settings::UpdatePage {
+                can_manage_settings,
+                community: community.clone(),
+            }))
+        }
         Tab::Team => {
             // Fetch team members
             let page_filters: CommunityTeamFilters =
                 serde_qs_config().deserialize_str(raw_query.as_deref().unwrap_or_default())?;
-            let results = db.list_community_team_members(community_id, &page_filters).await?;
+            let (results, roles, can_manage_team) = tokio::try_join!(
+                db.list_community_team_members(community_id, &page_filters),
+                db.list_community_roles(),
+                db.user_has_community_permission(&community_id, &user_id, CommunityPermission::TeamWrite)
+            )?;
 
             // Prepare template content
             let navigation_links = NavigationLinks::from_filters(
@@ -123,10 +157,13 @@ pub(crate) async fn page(
                 "/dashboard/community/team",
             )?;
             Content::Team(team::ListPage {
-                approved_members_count: results.approved_total,
+                can_manage_team,
                 members: results.members,
                 navigation_links,
+                roles,
                 total: results.total,
+                total_accepted: results.total_accepted,
+                total_admins_accepted: results.total_admins_accepted,
                 limit: page_filters.limit,
                 offset: page_filters.offset,
             })
@@ -145,8 +182,7 @@ pub(crate) async fn page(
         user: User::from_session(auth_session).await?,
     };
 
-    let html = Html(page.render()?);
-    Ok(html)
+    Ok(Html(page.render()?))
 }
 
 // Tests.
@@ -171,6 +207,7 @@ mod tests {
         router::CACHE_CONTROL_NO_CACHE,
         services::notifications::MockNotificationsManager,
         templates::dashboard::DASHBOARD_PAGINATION_LIMIT,
+        types::permissions::CommunityPermission,
     };
 
     #[tokio::test]
@@ -193,10 +230,12 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_community()
+        db.expect_user_has_community_permission()
             .times(1)
-            .withf(move |cid, uid| *cid == community_id && *uid == user_id)
-            .returning(|_, _| Ok(true));
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == user_id && permission == CommunityPermission::Read
+            })
+            .returning(|_, _, _| Ok(true));
         db.expect_get_community_full()
             .times(1)
             .withf(move |id| *id == community_id)
@@ -268,10 +307,18 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_community()
+        db.expect_user_has_community_permission()
             .times(1)
-            .withf(move |cid, uid| *cid == community_id && *uid == user_id)
-            .returning(|_, _| Ok(true));
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == user_id && permission == CommunityPermission::Read
+            })
+            .returning(|_, _, _| Ok(true));
+        db.expect_user_has_community_permission()
+            .times(1)
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == user_id && permission == CommunityPermission::GroupsWrite
+            })
+            .returning(|_, _, _| Ok(true));
         db.expect_get_community_full()
             .times(1)
             .withf(move |id| *id == community_id)
@@ -345,10 +392,18 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_community()
+        db.expect_user_has_community_permission()
             .times(1)
-            .withf(move |cid, uid| *cid == community_id && *uid == user_id)
-            .returning(|_, _| Ok(true));
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == user_id && permission == CommunityPermission::Read
+            })
+            .returning(|_, _, _| Ok(true));
+        db.expect_user_has_community_permission()
+            .times(1)
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == user_id && permission == CommunityPermission::SettingsWrite
+            })
+            .returning(|_, _, _| Ok(true));
         db.expect_get_community_full()
             .times(1)
             .withf(move |id| *id == community_id)
@@ -403,9 +458,10 @@ mod tests {
             sample_community_team_member(false),
         ];
         let output = crate::templates::dashboard::community::team::CommunityTeamOutput {
-            approved_total: 1,
             members: members.clone(),
             total: members.len(),
+            total_accepted: 1,
+            total_admins_accepted: 1,
         };
 
         // Setup database mock
@@ -418,10 +474,18 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_community()
+        db.expect_user_has_community_permission()
             .times(1)
-            .withf(move |cid, uid| *cid == community_id && *uid == user_id)
-            .returning(|_, _| Ok(true));
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == user_id && permission == CommunityPermission::Read
+            })
+            .returning(|_, _, _| Ok(true));
+        db.expect_user_has_community_permission()
+            .times(1)
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == user_id && permission == CommunityPermission::TeamWrite
+            })
+            .returning(|_, _, _| Ok(true));
         db.expect_get_community_full()
             .times(1)
             .withf(move |id| *id == community_id)
@@ -441,6 +505,9 @@ mod tests {
         db.expect_get_site_settings()
             .times(1)
             .returning(|| Ok(sample_site_settings()));
+        db.expect_list_community_roles()
+            .times(1)
+            .returning(|| Ok(vec![sample_community_role_summary()]));
 
         // Setup notifications manager mock
         let nm = MockNotificationsManager::new();
@@ -491,10 +558,18 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_community()
+        db.expect_user_has_community_permission()
             .times(1)
-            .withf(move |cid, uid| *cid == community_id && *uid == user_id)
-            .returning(|_, _| Ok(true));
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == user_id && permission == CommunityPermission::Read
+            })
+            .returning(|_, _, _| Ok(true));
+        db.expect_user_has_community_permission()
+            .times(1)
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == user_id && permission == CommunityPermission::TaxonomyWrite
+            })
+            .returning(|_, _, _| Ok(true));
         db.expect_get_community_full()
             .times(1)
             .withf(move |id| *id == community_id)
@@ -560,10 +635,18 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_community()
+        db.expect_user_has_community_permission()
             .times(1)
-            .withf(move |cid, uid| *cid == community_id && *uid == user_id)
-            .returning(|_, _| Ok(true));
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == user_id && permission == CommunityPermission::Read
+            })
+            .returning(|_, _, _| Ok(true));
+        db.expect_user_has_community_permission()
+            .times(1)
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == user_id && permission == CommunityPermission::TaxonomyWrite
+            })
+            .returning(|_, _, _| Ok(true));
         db.expect_get_community_full()
             .times(1)
             .withf(move |id| *id == community_id)
@@ -629,10 +712,18 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_community()
+        db.expect_user_has_community_permission()
             .times(1)
-            .withf(move |cid, uid| *cid == community_id && *uid == user_id)
-            .returning(|_, _| Ok(true));
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == user_id && permission == CommunityPermission::Read
+            })
+            .returning(|_, _, _| Ok(true));
+        db.expect_user_has_community_permission()
+            .times(1)
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == user_id && permission == CommunityPermission::TaxonomyWrite
+            })
+            .returning(|_, _, _| Ok(true));
         db.expect_get_community_full()
             .times(1)
             .withf(move |id| *id == community_id)
@@ -697,10 +788,12 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_community()
+        db.expect_user_has_community_permission()
             .times(1)
-            .withf(move |cid, uid| *cid == community_id && *uid == user_id)
-            .returning(|_, _| Ok(true));
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == user_id && permission == CommunityPermission::Read
+            })
+            .returning(|_, _, _| Ok(true));
         db.expect_get_community_full()
             .times(1)
             .withf(move |id| *id == community_id)

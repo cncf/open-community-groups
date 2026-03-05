@@ -3,4 +3,5 @@
 pub mod community;
 pub mod event;
 pub mod group;
+pub mod permissions;
 pub mod site;

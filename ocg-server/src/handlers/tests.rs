@@ -64,7 +64,7 @@ use crate::{
         event::SessionProposal as EventSessionProposal,
     },
     types::{
-        community::{CommunityFull, CommunitySummary},
+        community::{CommunityFull, CommunityRole, CommunityRoleSummary, CommunitySummary},
         event::{EventCategory, EventFull, EventKind, EventKindSummary, EventSummary, SessionKindSummary},
         group::{
             GroupCategory, GroupFull, GroupMinimal, GroupRegion, GroupRole, GroupRoleSummary, GroupSponsor,
@@ -162,7 +162,16 @@ pub(crate) fn sample_community_invitation(community_id: Uuid) -> CommunityTeamIn
     CommunityTeamInvitation {
         community_id,
         community_name: "test-community".to_string(),
+        role: CommunityRole::Admin,
         created_at: Utc.with_ymd_and_hms(2024, 1, 1, 0, 0, 0).unwrap(),
+    }
+}
+
+/// Sample community role summary used in dashboards.
+pub(crate) fn sample_community_role_summary() -> CommunityRoleSummary {
+    CommunityRoleSummary {
+        community_role_id: "admin".to_string(),
+        display_name: "Admin".to_string(),
     }
 }
 
@@ -170,6 +179,7 @@ pub(crate) fn sample_community_invitation(community_id: Uuid) -> CommunityTeamIn
 pub(crate) fn sample_community_team_member(accepted: bool) -> CommunityTeamMember {
     CommunityTeamMember {
         accepted,
+        role: Some(CommunityRole::Admin),
         user_id: Uuid::new_v4(),
         username: "team-member".to_string(),
 
@@ -177,18 +187,6 @@ pub(crate) fn sample_community_team_member(accepted: bool) -> CommunityTeamMembe
         name: Some("Team Member".to_string()),
         photo_url: Some("https://example.test/photo.png".to_string()),
         title: Some("Organizer".to_string()),
-    }
-}
-
-/// Sample community update payload for dashboard community settings tests.
-pub(crate) fn sample_community_update() -> CommunityUpdate {
-    CommunityUpdate {
-        banner_mobile_url: "https://example.test/banner_mobile.png".to_string(),
-        banner_url: "https://example.test/banner.png".to_string(),
-        description: "Updated description".to_string(),
-        display_name: "Test".to_string(),
-        logo_url: "https://example.test/logo.png".to_string(),
-        ..Default::default()
     }
 }
 
@@ -251,6 +249,18 @@ pub(crate) fn sample_community_stats() -> CommunityStats {
             total_by_category: vec![],
             total_by_region: vec![],
         },
+    }
+}
+
+/// Sample community update payload for dashboard community settings tests.
+pub(crate) fn sample_community_update() -> CommunityUpdate {
+    CommunityUpdate {
+        banner_mobile_url: "https://example.test/banner_mobile.png".to_string(),
+        banner_url: "https://example.test/banner.png".to_string(),
+        description: "Updated description".to_string(),
+        display_name: "Test".to_string(),
+        logo_url: "https://example.test/logo.png".to_string(),
+        ..Default::default()
     }
 }
 
@@ -520,7 +530,7 @@ pub(crate) fn sample_group_invitation(group_id: Uuid) -> GroupTeamInvitation {
         community_name: "test-community".to_string(),
         group_id,
         group_name: "Test Group".to_string(),
-        role: GroupRole::Organizer,
+        role: GroupRole::Admin,
         created_at: Utc.with_ymd_and_hms(2024, 1, 2, 0, 0, 0).unwrap(),
     }
 }
@@ -583,8 +593,8 @@ pub(crate) fn sample_group_stats() -> GroupStats {
 /// Sample group role summary used in dashboards.
 pub(crate) fn sample_group_role_summary() -> GroupRoleSummary {
     GroupRoleSummary {
-        display_name: "Organizer".to_string(),
-        group_role_id: "organizer".to_string(),
+        display_name: "Admin".to_string(),
+        group_role_id: "admin".to_string(),
     }
 }
 
@@ -819,13 +829,13 @@ pub(crate) fn sample_sponsor_form() -> Sponsor {
 pub(crate) fn sample_team_member(accepted: bool) -> GroupTeamMember {
     GroupTeamMember {
         accepted,
+        role: Some(GroupRole::Admin),
         user_id: Uuid::new_v4(),
         username: "team-member".to_string(),
 
         company: Some("Example".to_string()),
         name: Some("Team Member".to_string()),
         photo_url: Some("https://example.test/photo.png".to_string()),
-        role: Some(GroupRole::Organizer),
         title: Some("Organizer".to_string()),
     }
 }

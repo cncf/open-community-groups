@@ -25,6 +25,7 @@ use crate::{
         pagination::NavigationLinks,
         site::explore::SearchGroupsFilters,
     },
+    types::permissions::CommunityPermission,
 };
 
 // Pages handlers.
@@ -32,6 +33,7 @@ use crate::{
 /// Displays the list of groups for the community dashboard.
 #[instrument(skip_all, err)]
 pub(crate) async fn list_page(
+    CurrentUser(user): CurrentUser,
     SelectedCommunityId(community_id): SelectedCommunityId,
     State(db): State<DynDB>,
     RawQuery(raw_query): RawQuery,
@@ -53,7 +55,10 @@ pub(crate) async fn list_page(
         ts_query: page_filters.ts_query.clone(),
         ..SearchGroupsFilters::default()
     };
-    let results = db.search_groups(&search_filters).await?;
+    let (can_manage_groups, results) = tokio::try_join!(
+        db.user_has_community_permission(&community_id, &user.user_id, CommunityPermission::GroupsWrite),
+        db.search_groups(&search_filters)
+    )?;
 
     // Prepare template
     let navigation_links = NavigationLinks::from_filters(
@@ -63,6 +68,7 @@ pub(crate) async fn list_page(
         "/dashboard/community/groups",
     )?;
     let template = groups::ListPage {
+        can_manage_groups,
         groups: results.groups,
         navigation_links,
         total: results.total,
@@ -81,15 +87,21 @@ pub(crate) async fn list_page(
 /// Displays the page to add a new group.
 #[instrument(skip_all, err)]
 pub(crate) async fn add_page(
+    CurrentUser(user): CurrentUser,
     SelectedCommunityId(community_id): SelectedCommunityId,
     State(db): State<DynDB>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
-    let (categories, regions) = tokio::try_join!(
+    let (can_manage_groups, categories, regions) = tokio::try_join!(
+        db.user_has_community_permission(&community_id, &user.user_id, CommunityPermission::GroupsWrite),
         db.list_group_categories(community_id),
         db.list_regions(community_id)
     )?;
-    let template = groups::AddPage { categories, regions };
+    let template = groups::AddPage {
+        can_manage_groups,
+        categories,
+        regions,
+    };
 
     Ok(Html(template.render()?))
 }
@@ -97,19 +109,22 @@ pub(crate) async fn add_page(
 /// Displays the page to update an existing group.
 #[instrument(skip_all, err)]
 pub(crate) async fn update_page(
+    CurrentUser(user): CurrentUser,
     SelectedCommunityId(community_id): SelectedCommunityId,
     State(db): State<DynDB>,
     Path(group_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
-    let (group, categories, regions) = tokio::try_join!(
+    let (can_manage_groups, group, categories, regions) = tokio::try_join!(
+        db.user_has_community_permission(&community_id, &user.user_id, CommunityPermission::GroupsWrite),
         db.get_group_full(community_id, group_id),
         db.list_group_categories(community_id),
         db.list_regions(community_id)
     )?;
     let template = groups::UpdatePage {
-        group,
+        can_manage_groups,
         categories,
+        group,
         regions,
     };
 
@@ -247,6 +262,7 @@ mod tests {
         router::CACHE_CONTROL_NO_CACHE,
         services::notifications::MockNotificationsManager,
         templates::dashboard::DASHBOARD_PAGINATION_LIMIT,
+        types::permissions::CommunityPermission,
     };
 
     #[tokio::test]
@@ -274,10 +290,18 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_community()
+        db.expect_user_has_community_permission()
             .times(1)
-            .withf(move |cid, uid| *cid == community_id && *uid == user_id)
-            .returning(|_, _| Ok(true));
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == user_id && permission == CommunityPermission::Read
+            })
+            .returning(|_, _, _| Ok(true));
+        db.expect_user_has_community_permission()
+            .times(1)
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == user_id && permission == CommunityPermission::GroupsWrite
+            })
+            .returning(|_, _, _| Ok(true));
         db.expect_get_community_name_by_id()
             .times(1)
             .withf(move |id| *id == community_id)
@@ -344,10 +368,18 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_community()
+        db.expect_user_has_community_permission()
             .times(1)
-            .withf(move |cid, uid| *cid == community_id && *uid == user_id)
-            .returning(|_, _| Ok(true));
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == user_id && permission == CommunityPermission::Read
+            })
+            .returning(|_, _, _| Ok(true));
+        db.expect_user_has_community_permission()
+            .times(1)
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == user_id && permission == CommunityPermission::GroupsWrite
+            })
+            .returning(|_, _, _| Ok(true));
         db.expect_get_community_name_by_id()
             .times(1)
             .withf(move |id| *id == community_id)
@@ -403,10 +435,18 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_community()
+        db.expect_user_has_community_permission()
             .times(1)
-            .withf(move |cid, uid| *cid == community_id && *uid == user_id)
-            .returning(|_, _| Ok(true));
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == user_id && permission == CommunityPermission::Read
+            })
+            .returning(|_, _, _| Ok(true));
+        db.expect_user_has_community_permission()
+            .times(1)
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == user_id && permission == CommunityPermission::GroupsWrite
+            })
+            .returning(|_, _, _| Ok(true));
         db.expect_list_group_categories()
             .times(1)
             .withf(move |cid| *cid == community_id)
@@ -464,10 +504,18 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_community()
+        db.expect_user_has_community_permission()
             .times(1)
-            .withf(move |cid, uid| *cid == community_id && *uid == user_id)
-            .returning(|_, _| Ok(true));
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == user_id && permission == CommunityPermission::Read
+            })
+            .returning(|_, _, _| Ok(true));
+        db.expect_user_has_community_permission()
+            .times(1)
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == user_id && permission == CommunityPermission::GroupsWrite
+            })
+            .returning(|_, _, _| Ok(true));
         db.expect_list_group_categories()
             .times(1)
             .withf(move |cid| *cid == community_id)
@@ -517,10 +565,18 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_community()
+        db.expect_user_has_community_permission()
             .times(1)
-            .withf(move |cid, uid| *cid == community_id && *uid == user_id)
-            .returning(|_, _| Ok(true));
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == user_id && permission == CommunityPermission::Read
+            })
+            .returning(|_, _, _| Ok(true));
+        db.expect_user_has_community_permission()
+            .times(1)
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == user_id && permission == CommunityPermission::GroupsWrite
+            })
+            .returning(|_, _, _| Ok(true));
         db.expect_get_group_full()
             .times(1)
             .withf(move |cid, gid| *cid == community_id && *gid == group_id)
@@ -583,10 +639,18 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_community()
+        db.expect_user_has_community_permission()
             .times(1)
-            .withf(move |cid, uid| *cid == community_id && *uid == user_id)
-            .returning(|_, _| Ok(true));
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == user_id && permission == CommunityPermission::Read
+            })
+            .returning(|_, _, _| Ok(true));
+        db.expect_user_has_community_permission()
+            .times(1)
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == user_id && permission == CommunityPermission::GroupsWrite
+            })
+            .returning(|_, _, _| Ok(true));
         db.expect_get_group_full()
             .times(1)
             .withf(move |cid, gid| *cid == community_id && *gid == group_id)
@@ -635,10 +699,12 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_community()
+        db.expect_user_has_community_permission()
             .times(1)
-            .withf(move |cid, uid| *cid == community_id && *uid == user_id)
-            .returning(|_, _| Ok(true));
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == user_id && permission == CommunityPermission::GroupsWrite
+            })
+            .returning(|_, _, _| Ok(true));
         db.expect_add_group()
             .times(1)
             .withf(move |cid, group| {
@@ -713,10 +779,12 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_community()
+        db.expect_user_has_community_permission()
             .times(1)
-            .withf(move |cid, uid| *cid == community_id && *uid == user_id)
-            .returning(|_, _| Ok(true));
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == user_id && permission == CommunityPermission::GroupsWrite
+            })
+            .returning(|_, _, _| Ok(true));
         db.expect_add_group()
             .times(1)
             .withf(move |cid, group| *cid == community_id && group.category_id == category_id)
@@ -767,10 +835,12 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_community()
+        db.expect_user_has_community_permission()
             .times(1)
-            .withf(move |cid, uid| *cid == community_id && *uid == user_id)
-            .returning(|_, _| Ok(true));
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == user_id && permission == CommunityPermission::GroupsWrite
+            })
+            .returning(|_, _, _| Ok(true));
 
         // Setup notifications manager mock
         let nm = MockNotificationsManager::new();
@@ -815,10 +885,12 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_community()
+        db.expect_user_has_community_permission()
             .times(1)
-            .withf(move |cid, uid| *cid == community_id && *uid == user_id)
-            .returning(|_, _| Ok(true));
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == user_id && permission == CommunityPermission::GroupsWrite
+            })
+            .returning(|_, _, _| Ok(true));
         db.expect_add_group()
             .times(1)
             .withf(move |cid, group| *cid == community_id && group.category_id == category_id)
@@ -868,10 +940,12 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_community()
+        db.expect_user_has_community_permission()
             .times(1)
-            .withf(move |cid, uid| *cid == community_id && *uid == user_id)
-            .returning(|_, _| Ok(true));
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == user_id && permission == CommunityPermission::GroupsWrite
+            })
+            .returning(|_, _, _| Ok(true));
         db.expect_update_group()
             .times(1)
             .withf(move |cid, gid, group| {
@@ -925,10 +999,12 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_community()
+        db.expect_user_has_community_permission()
             .times(1)
-            .withf(move |cid, uid| *cid == community_id && *uid == user_id)
-            .returning(|_, _| Ok(true));
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == user_id && permission == CommunityPermission::GroupsWrite
+            })
+            .returning(|_, _, _| Ok(true));
 
         // Setup notifications manager mock
         let nm = MockNotificationsManager::new();
@@ -974,10 +1050,12 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_community()
+        db.expect_user_has_community_permission()
             .times(1)
-            .withf(move |cid, uid| *cid == community_id && *uid == user_id)
-            .returning(|_, _| Ok(true));
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == user_id && permission == CommunityPermission::GroupsWrite
+            })
+            .returning(|_, _, _| Ok(true));
         db.expect_update_group()
             .times(1)
             .withf(move |cid, gid, group| {
@@ -1027,10 +1105,12 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_community()
+        db.expect_user_has_community_permission()
             .times(1)
-            .withf(move |cid, uid| *cid == community_id && *uid == user_id)
-            .returning(|_, _| Ok(true));
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == user_id && permission == CommunityPermission::GroupsWrite
+            })
+            .returning(|_, _, _| Ok(true));
         db.expect_activate_group()
             .times(1)
             .withf(move |cid, gid| *cid == community_id && *gid == group_id)
@@ -1081,10 +1161,12 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_community()
+        db.expect_user_has_community_permission()
             .times(1)
-            .withf(move |cid, uid| *cid == community_id && *uid == user_id)
-            .returning(|_, _| Ok(true));
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == user_id && permission == CommunityPermission::GroupsWrite
+            })
+            .returning(|_, _, _| Ok(true));
         db.expect_deactivate_group()
             .times(1)
             .withf(move |cid, gid| *cid == community_id && *gid == group_id)
@@ -1142,10 +1224,12 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_community()
+        db.expect_user_has_community_permission()
             .times(1)
-            .withf(move |cid, uid| *cid == community_id && *uid == user_id)
-            .returning(|_, _| Ok(true));
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == user_id && permission == CommunityPermission::GroupsWrite
+            })
+            .returning(|_, _, _| Ok(true));
         db.expect_delete_group()
             .times(1)
             .withf(move |cid, gid| *cid == community_id && *gid == group_id)
@@ -1204,10 +1288,12 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_community()
+        db.expect_user_has_community_permission()
             .times(1)
-            .withf(move |cid, uid| *cid == community_id && *uid == user_id)
-            .returning(|_, _| Ok(true));
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == user_id && permission == CommunityPermission::GroupsWrite
+            })
+            .returning(|_, _, _| Ok(true));
         db.expect_delete_group()
             .times(1)
             .withf(move |cid, gid| *cid == community_id && *gid == group_id)
@@ -1278,10 +1364,12 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_community()
+        db.expect_user_has_community_permission()
             .times(1)
-            .withf(move |cid, uid| *cid == community_id && *uid == user_id)
-            .returning(|_, _| Ok(true));
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == user_id && permission == CommunityPermission::GroupsWrite
+            })
+            .returning(|_, _, _| Ok(true));
         db.expect_delete_group()
             .times(1)
             .withf(move |cid, gid| *cid == community_id && *gid == group_id)

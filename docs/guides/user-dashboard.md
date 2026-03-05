@@ -1,3 +1,5 @@
+<!-- markdownlint-disable MD013 -->
+
 # User Dashboard Guide
 
 Think of the User Dashboard as your home base inside OCG. It brings profile, invitations,
@@ -55,6 +57,7 @@ Invitation statuses:
 
 - Community and group team invites: Invitation sent, accepted, rejected.
 - Pending team invites do not grant dashboard access until accepted.
+- Invitation rows include the role that will be assigned on acceptance.
 
 When someone invites you to a team, you receive an in-app and email invitation with a direct path
 to accept or decline.
@@ -62,8 +65,9 @@ to accept or decline.
 Typical post-accept behavior:
 
 1. Access is granted to the related scope.
-2. Pending invitation state clears.
-3. A refresh or re-login may be needed before navigation updates.
+2. The assigned community/group role becomes active for permission checks.
+3. Pending invitation state clears.
+4. A refresh or re-login may be needed before navigation updates.
 
 If organizer dashboards still do not appear, see
 [Choose Your Dashboard](../getting-started/choose-dashboard.md) and

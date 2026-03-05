@@ -1,3 +1,5 @@
+<!-- markdownlint-disable MD013 -->
+
 # Choose Your Dashboard
 
 OCG has three dashboards, each scoped to a different level of responsibility. Think of them as
@@ -41,6 +43,36 @@ the needed community or group.
 !> Missing dashboard entries usually mean either missing role access or missing selected context.
 Community scope needs a selected community.
 Group scope needs both selected community and selected group.
+
+## Fixed Role Model
+
+OCG now uses fixed roles for community and group management. Roles are assigned per team member and
+define what operations are allowed.
+
+Community team roles:
+
+| Role | What it can do |
+| --- | --- |
+| `admin` | Full community management (`settings`, `taxonomy`, `team`, `groups`) and group-level write operations in that community |
+| `groups-manager` | Manage groups and group-level write operations in that community, without community settings/taxonomy/team control |
+| `viewer` | Read-only access |
+
+![Community roles](../screenshots/dashboard-community-team-roles.png)
+
+Group team roles:
+
+| Role | What it can do |
+| --- | --- |
+| `admin` | Full group management (`events`, `members`, `settings`, `sponsors`, `team`) |
+| `events-manager` | Event operations only (`events`) |
+| `viewer` | Read-only access |
+
+![Group roles](../screenshots/dashboard-group-members-list-roles.png)
+
+UI behavior:
+
+- Controls are disabled when your role cannot perform an operation.
+- Server-side authorization still enforces permissions even if a request is sent manually.
 
 ## If a Dashboard Is Missing
 

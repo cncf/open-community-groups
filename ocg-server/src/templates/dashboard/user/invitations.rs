@@ -5,7 +5,10 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::{templates::helpers::DATE_FORMAT_2, types::group::GroupRole};
+use crate::{
+    templates::helpers::DATE_FORMAT_2,
+    types::{community::CommunityRole, group::GroupRole},
+};
 
 // Pages templates.
 
@@ -28,6 +31,8 @@ pub(crate) struct CommunityTeamInvitation {
     pub community_id: Uuid,
     /// Community name (slug).
     pub community_name: String,
+    /// Role within the community.
+    pub role: CommunityRole,
 
     /// Invitation creation time.
     #[serde(with = "chrono::serde::ts_seconds")]

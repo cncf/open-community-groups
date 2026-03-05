@@ -13,9 +13,10 @@ use crate::{
     db::DynDB,
     handlers::{
         error::HandlerError,
-        extractors::{SelectedCommunityId, ValidatedFormQs},
+        extractors::{CurrentUser, SelectedCommunityId, ValidatedFormQs},
     },
     templates::dashboard::community::settings::{self, CommunityUpdate},
+    types::permissions::CommunityPermission,
 };
 
 // Pages handlers.
@@ -23,12 +24,19 @@ use crate::{
 /// Displays the page to update community settings.
 #[instrument(skip_all, err)]
 pub(crate) async fn update_page(
+    CurrentUser(user): CurrentUser,
     SelectedCommunityId(community_id): SelectedCommunityId,
     State(db): State<DynDB>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
-    let community = db.get_community_full(community_id).await?;
-    let template = settings::UpdatePage { community };
+    let (can_manage_settings, community) = tokio::try_join!(
+        db.user_has_community_permission(&community_id, &user.user_id, CommunityPermission::SettingsWrite),
+        db.get_community_full(community_id)
+    )?;
+    let template = settings::UpdatePage {
+        can_manage_settings,
+        community,
+    };
 
     Ok(Html(template.render()?))
 }
@@ -66,7 +74,7 @@ mod tests {
 
     use crate::{
         db::mock::MockDB, handlers::tests::*, router::CACHE_CONTROL_NO_CACHE,
-        services::notifications::MockNotificationsManager,
+        services::notifications::MockNotificationsManager, types::permissions::CommunityPermission,
     };
 
     #[tokio::test]
@@ -89,10 +97,18 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_community()
+        db.expect_user_has_community_permission()
             .times(1)
-            .withf(move |cid, uid| *cid == community_id && *uid == user_id)
-            .returning(|_, _| Ok(true));
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == user_id && permission == CommunityPermission::Read
+            })
+            .returning(|_, _, _| Ok(true));
+        db.expect_user_has_community_permission()
+            .times(1)
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == user_id && permission == CommunityPermission::SettingsWrite
+            })
+            .returning(|_, _, _| Ok(true));
         db.expect_get_community_full()
             .times(1)
             .withf(move |cid| *cid == community_id)
@@ -146,10 +162,18 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_community()
+        db.expect_user_has_community_permission()
             .times(1)
-            .withf(move |cid, uid| *cid == community_id && *uid == user_id)
-            .returning(|_, _| Ok(true));
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == user_id && permission == CommunityPermission::Read
+            })
+            .returning(|_, _, _| Ok(true));
+        db.expect_user_has_community_permission()
+            .times(1)
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == user_id && permission == CommunityPermission::SettingsWrite
+            })
+            .returning(|_, _, _| Ok(true));
         db.expect_get_community_full()
             .times(1)
             .withf(move |cid| *cid == community_id)
@@ -198,10 +222,12 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_community()
+        db.expect_user_has_community_permission()
             .times(1)
-            .withf(move |cid, uid| *cid == community_id && *uid == user_id)
-            .returning(|_, _| Ok(true));
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == user_id && permission == CommunityPermission::SettingsWrite
+            })
+            .returning(|_, _, _| Ok(true));
         db.expect_update_community()
             .times(1)
             .withf(move |cid, update| *cid == community_id && update.display_name == expected_display_name)
@@ -252,10 +278,12 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_community()
+        db.expect_user_has_community_permission()
             .times(1)
-            .withf(move |cid, uid| *cid == community_id && *uid == user_id)
-            .returning(|_, _| Ok(true));
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == user_id && permission == CommunityPermission::SettingsWrite
+            })
+            .returning(|_, _, _| Ok(true));
 
         // Setup notifications manager mock
         let nm = MockNotificationsManager::new();
@@ -300,10 +328,12 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_community()
+        db.expect_user_has_community_permission()
             .times(1)
-            .withf(move |cid, uid| *cid == community_id && *uid == user_id)
-            .returning(|_, _| Ok(true));
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == user_id && permission == CommunityPermission::SettingsWrite
+            })
+            .returning(|_, _, _| Ok(true));
         db.expect_update_community()
             .times(1)
             .withf(move |cid, _| *cid == community_id)

@@ -13,7 +13,13 @@
             hx-get="/dashboard/group/sponsors/add"
             hx-target="#dashboard-content"
             hx-indicator="#dashboard-spinner"
-            class="btn-primary">Add Sponsor</button>
+            {% if !can_manage_sponsors -%}
+              disabled title="Your role cannot add sponsors."
+            {% endif -%}
+            class="btn-primary
+                   {% if !can_manage_sponsors -%}
+                     opacity-50 cursor-not-allowed
+                   {% endif -%}">Add Sponsor</button>
   </div>
   <script type="module">
     const addSponsorButton = document.getElementById('add-sponsor-button');
@@ -103,7 +109,13 @@
                           hx-target="#dashboard-content"
                           hx-indicator="#dashboard-spinner"
                           hx-trigger="confirmed"
-                          class="btn-tertiary p-2"
+                          class="btn-tertiary p-2
+                                 {% if !can_manage_sponsors -%}
+                                   opacity-50 cursor-not-allowed
+                                 {% endif -%}"
+                          {% if !can_manage_sponsors -%}
+                            disabled title="Your role cannot delete sponsors."
+                          {% endif -%}
                           aria-label="Delete sponsor: {{ sponsor.name }}">
                     <div class="svg-icon size-4 icon-trash"></div>
                   </button>
@@ -114,7 +126,7 @@
                     } from '/static/js/common/alerts.js';
 
                     const deleteButton = document.getElementById('delete-sponsor-{{ sponsor.group_sponsor_id }}');
-                    if (deleteButton) {
+                    if (deleteButton && !deleteButton.disabled) {
                       deleteButton.addEventListener('click', () => {
                         showConfirmAlert(
                           'Are you sure you would like to delete this sponsor?',

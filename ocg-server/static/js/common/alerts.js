@@ -88,6 +88,33 @@ const stripRetryMessage = (message) => {
 };
 
 /**
+ * Returns true when the message is only a generic forbidden status text.
+ * @param {string} message
+ * @returns {boolean}
+ */
+const isGenericForbiddenMessage = (message) => {
+  if (!message) {
+    return false;
+  }
+  return /^(403\s*)?forbidden$/i.test(message.trim());
+};
+
+/**
+ * Builds the message shown for forbidden (403) responses.
+ * Preserves the action-specific context from the original message.
+ * @param {string} message
+ * @returns {string}
+ */
+const buildForbiddenMessage = (message) => {
+  const baseMessage = stripRetryMessage(message);
+  const permissionMessage = "It looks like you don't have permission to perform this operation.";
+  if (!baseMessage || isGenericForbiddenMessage(baseMessage)) {
+    return `Something went wrong. ${permissionMessage}`;
+  }
+  return `${baseMessage} ${permissionMessage}`;
+};
+
+/**
  * Handles common HTMX response patterns and displays alerts.
  * Returns true on success (2xx), false otherwise.
  * @param {Object} params
@@ -113,6 +140,12 @@ export const handleHtmxResponse = ({ xhr, successMessage, errorMessage }) => {
     const cleanedErrorMessage = stripRetryMessage(errorMessage);
     scrollToDashboardTop();
     showServerErrorAlert(cleanedErrorMessage, xhr.responseText?.trim());
+    return false;
+  }
+
+  if (xhr.status === 403) {
+    scrollToDashboardTop();
+    showErrorAlert(buildForbiddenMessage(errorMessage));
     return false;
   }
 

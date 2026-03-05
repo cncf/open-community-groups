@@ -25,6 +25,8 @@ use crate::{
 pub(crate) struct ListPage {
     /// List of attendees for the selected event.
     pub attendees: Vec<Attendee>,
+    /// Whether the current user can manage events.
+    pub can_manage_events: bool,
     /// Event for which attendees are listed.
     pub event: EventSummary,
     /// Pagination navigation links.

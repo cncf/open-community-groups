@@ -18,19 +18,26 @@ description = "Review and manage call for speakers submissions.") -}}
         hx-target="#submissions-content"
         hx-swap="innerHTML"
         hx-indicator="#dashboard-spinner">
-    <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-      {% if !event_cfs_labels.is_empty() -%}
-        <div class="min-w-0 w-full md:w-1/2 md:pe-6">
+    <div class="flex flex-col gap-3 md:flex-row md:items-center">
+      <div class="min-w-0 w-full md:w-1/2 md:pe-6 md:me-auto">
+        {% if event_cfs_labels.is_empty() -%}
+          <label for="submissions-label-filter-empty" class="sr-only">Filter by labels</label>
+          <input id="submissions-label-filter-empty"
+                 type="text"
+                 placeholder="Search labels"
+                 class="input-primary"
+                 disabled>
+        {% else -%}
           <label for="submissions-label-filter" class="sr-only">Filter by labels</label>
           <cfs-label-selector id="submissions-label-filter" name="label_ids" labels="{{ event_cfs_labels|json }}" selected="{{ selected_event_cfs_label_ids|json }}" placeholder="Search labels" compact selected-in-input></cfs-label-selector>
-        </div>
-      {% endif -%}
-      <div class="flex items-center justify-end gap-2 whitespace-nowrap">
+        {% endif -%}
+      </div>
+      <div class="flex items-center justify-end gap-2 whitespace-nowrap md:ms-auto">
         <label for="submissions-sort"
                class="font-semibold text-[0.775rem] text-nowrap text-black leading-6">Sort by</label>
         <select id="submissions-sort"
                 name="sort"
-                class="block w-48 px-3 text-sm h-[42px] text-stone-900 bg-white border border-stone-200 rounded-full focus:outline-none focus:ring-0 focus:border-stone-200 hover:border-primary-500 focus:hover:border-primary-500 transition-colors">
+                class="block w-56 px-3 text-sm h-[42px] text-stone-900 bg-white border border-stone-200 rounded-full focus:outline-none focus:ring-0 focus:border-stone-200 hover:border-primary-500 focus:hover:border-primary-500 transition-colors">
           <option value="created-desc"
                   {% if sort == "created-desc" %}selected{% endif %}>Submitted (newest)</option>
           <option value="created-asc" {% if sort == "created-asc" %}selected{% endif %}>Submitted (oldest)</option>
@@ -83,16 +90,21 @@ description = "Review and manage call for speakers submissions.") -}}
           <th scope="col" class="px-3 xl:px-5 py-3">Status</th>
           <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3">Ratings</th>
           <th scope="col" class="hidden 2xl:table-cell px-3 xl:px-5 py-3">Submitted</th>
-          <th scope="col" class="px-3 xl:px-5 py-3"></th>
+          <th scope="col" class="px-3 xl:px-5 py-3">
+            <span class="sr-only">Actions</span>
+          </th>
         </tr>
       </thead>
       <tbody>
         {% if submissions.is_empty() -%}
           <tr class="bg-white border-b border-stone-200">
-            <td class="px-8 py-16 text-center" colspan="6">
-              <div class="flex flex-col items-center justify-center min-h-[125px]">
-                <div class="text-lg lg:text-xl">No submissions have been received yet.</div>
-              </div>
+            <td class="xl:hidden px-8 py-16 text-center" colspan="4">
+              {% include "dashboard/placeholders/group_event_submissions_table.html" -%}
+            </td>
+            <td class="hidden xl:table-cell 2xl:hidden px-8 py-16 text-center"
+                colspan="5">{% include "dashboard/placeholders/group_event_submissions_table.html" -%}</td>
+            <td class="hidden 2xl:table-cell px-8 py-16 text-center" colspan="6">
+              {% include "dashboard/placeholders/group_event_submissions_table.html" -%}
             </td>
           </tr>
         {% else -%}
@@ -151,7 +163,13 @@ description = "Review and manage call for speakers submissions.") -}}
               </td>
               <td class="px-3 xl:px-5 py-4">
                 <button type="button"
-                        class="btn-tertiary p-2"
+                        class="btn-tertiary p-2
+                               {% if !can_manage_events -%}
+                                 opacity-50 cursor-not-allowed
+                               {% endif -%}"
+                        {% if !can_manage_events -%}
+                          disabled
+                        {% endif -%}
                         data-action="open-cfs-submission-modal"
                         data-submission='{{ submission|json }}'
                         data-proposal-description-html='{% if let Some(description) = &submission.session_proposal.description %}
@@ -159,7 +177,11 @@ description = "Review and manage call for speakers submissions.") -}}
                                                         {% else %}
                                                           ""
                                                         {% endif %}'
-                        title="Review submission">
+                        title="{% if can_manage_events -%}
+                                 Review submission
+                               {% else -%}
+                                 Your role cannot manage events.
+                               {% endif -%}">
                   <div class="svg-icon size-3 md:size-4 icon-pencil"></div>
                 </button>
               </td>

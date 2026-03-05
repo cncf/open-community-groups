@@ -27,6 +27,8 @@ use crate::{
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "dashboard/community/groups_add.html")]
 pub(crate) struct AddPage {
+    /// Whether the current user can manage groups.
+    pub can_manage_groups: bool,
     /// List of available group categories.
     pub categories: Vec<GroupCategory>,
     /// List of available regions.
@@ -37,6 +39,8 @@ pub(crate) struct AddPage {
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "dashboard/community/groups_list.html")]
 pub(crate) struct ListPage {
+    /// Whether the current user can manage groups.
+    pub can_manage_groups: bool,
     /// List of groups in the community.
     pub groups: Vec<GroupSummary>,
     /// Pagination navigation links.
@@ -56,10 +60,12 @@ pub(crate) struct ListPage {
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "dashboard/community/groups_update.html")]
 pub(crate) struct UpdatePage {
-    /// Group details to update.
-    pub group: GroupFull,
+    /// Whether the current user can manage groups.
+    pub can_manage_groups: bool,
     /// List of available group categories.
     pub categories: Vec<GroupCategory>,
+    /// Group details to update.
+    pub group: GroupFull,
     /// List of available regions.
     pub regions: Vec<GroupRegion>,
 }

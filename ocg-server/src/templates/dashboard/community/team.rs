@@ -12,6 +12,7 @@ use crate::{
         helpers::user_initials,
         pagination::{self, Pagination, ToRawQuery},
     },
+    types::community::{CommunityRole, CommunityRoleSummary},
     validation::MAX_PAGINATION_LIMIT,
 };
 
@@ -21,14 +22,20 @@ use crate::{
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "dashboard/community/team_list.html")]
 pub(crate) struct ListPage {
-    /// Number of members with approved status.
-    pub approved_members_count: usize,
+    /// Whether the current user can update team membership and roles.
+    pub can_manage_team: bool,
     /// List of team members in the community.
     pub members: Vec<CommunityTeamMember>,
     /// Pagination navigation links.
     pub navigation_links: pagination::NavigationLinks,
+    /// List of available team roles.
+    pub roles: Vec<CommunityRoleSummary>,
     /// Total number of team members.
     pub total: usize,
+    /// Number of accepted members in the community team.
+    pub total_accepted: usize,
+    /// Number of accepted admins in the community team.
+    pub total_admins_accepted: usize,
 
     /// Number of results per page.
     pub limit: Option<usize>,
@@ -70,6 +77,8 @@ pub struct CommunityTeamMember {
     pub name: Option<String>,
     /// URL to user's avatar.
     pub photo_url: Option<String>,
+    /// Team role.
+    pub role: Option<CommunityRole>,
     /// Title held by the user.
     pub title: Option<String>,
 }
@@ -77,10 +86,12 @@ pub struct CommunityTeamMember {
 /// Paginated community team response data.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct CommunityTeamOutput {
-    /// Total number of approved members.
-    pub approved_total: usize,
     /// List of team members in the community.
     pub members: Vec<CommunityTeamMember>,
     /// Total number of team members.
     pub total: usize,
+    /// Total number of accepted members.
+    pub total_accepted: usize,
+    /// Total number of accepted admins.
+    pub total_admins_accepted: usize,
 }

@@ -15,6 +15,8 @@ use crate::{
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "dashboard/community/group_categories_list.html")]
 pub(crate) struct ListPage {
+    /// Whether the current user can manage taxonomy.
+    pub can_manage_taxonomy: bool,
     /// Group categories available in the selected community.
     pub categories: Vec<GroupCategory>,
 }
@@ -22,12 +24,17 @@ pub(crate) struct ListPage {
 /// Group category add form template.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "dashboard/community/group_categories_add.html")]
-pub(crate) struct AddPage;
+pub(crate) struct AddPage {
+    /// Whether the current user can manage taxonomy.
+    pub can_manage_taxonomy: bool,
+}
 
 /// Group category update form template.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "dashboard/community/group_categories_update.html")]
 pub(crate) struct UpdatePage {
+    /// Whether the current user can manage taxonomy.
+    pub can_manage_taxonomy: bool,
     /// Group category currently being edited.
     pub category: GroupCategory,
 }

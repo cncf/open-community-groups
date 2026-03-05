@@ -1,3 +1,5 @@
+<!-- markdownlint-disable MD013 -->
+
 # Event Operations
 
 This guide covers the full event lifecycle in
@@ -10,6 +12,7 @@ For scope boundaries and non-event responsibilities, pair this with
 **Sections:**
 
 - [Lifecycle Model](#lifecycle-model)
+- [Authorization Model](#authorization-model)
 - [Events List: Work Queue](#events-list-work-queue)
 - [Add Event: Draft First](#add-event-draft-first)
 - [Event Editor Tabs](#event-editor-tabs)
@@ -29,6 +32,26 @@ Treat event operations as a staged workflow, not one big form submission:
 4. Retire intentionally (unpublish, cancel, or delete).
 
 When phase 1 is done well, every downstream step is faster and safer.
+
+## Authorization Model
+
+Event write operations require the `group.events.write` permission.
+
+This is granted by:
+
+- Group `admin`
+- Group `events-manager`
+- Community `admin`
+- Community `groups-manager`
+
+Read-only roles can still view event data but cannot mutate it.
+
+UI behavior:
+
+- Event action controls are disabled when your role cannot perform the operation.
+- Middleware authorization is enforced server-side for every write endpoint.
+
+![Group disabled form](../screenshots/dashboard-group-permissions-role.png)
 
 ## Events List: Work Queue
 

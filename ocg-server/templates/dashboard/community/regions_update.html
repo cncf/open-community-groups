@@ -9,10 +9,17 @@
       hx-indicator="#dashboard-spinner, #community-region-update-spinner"
       hx-disabled-elt="button[type=submit], #cancel-button">
   <div class="space-y-12">
-    <div class="border-b border-stone-900/10 pb-12">
+    <div class="border-b border-stone-900/10 pb-12 space-y-12">
       {{ dashboard::page_title(title = "Region Details", docs_href = "/docs#/guides/community-dashboard?id=regions-geographic-scope", description = "Update the region for this community.") -}}
 
-      <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-4xl">
+      {% if !can_manage_taxonomy -%}
+        {{ dashboard::permission_warning(message = "Your role cannot update regions.") -}}
+      {% endif -%}
+
+      <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-4xl inert-form"
+           {% if !can_manage_taxonomy -%}
+             inert
+           {% endif -%}>
         <div class="col-span-full lg:col-span-5">
           <label for="name" class="form-label">
             Name <span class="asterisk">*</span>
@@ -44,7 +51,14 @@
             hx-indicator="#dashboard-spinner"
             class="btn-primary-outline">Cancel</button>
 
-    <button type="submit" class="btn-primary relative">
+    <button type="submit"
+            class="btn-primary relative
+                   {% if !can_manage_taxonomy -%}
+                     opacity-50 cursor-not-allowed
+                   {% endif -%}"
+            {% if !can_manage_taxonomy -%}
+              disabled title="Your role cannot update regions."
+            {% endif -%}>
       {{ ui::btn_spinner(id = "community-region-update-spinner", spinner_type = "2") -}}
       Update Region
     </button>

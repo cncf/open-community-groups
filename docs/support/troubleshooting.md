@@ -1,3 +1,5 @@
+<!-- markdownlint-disable MD013 -->
+
 # Troubleshooting
 
 This page helps you diagnose issues quickly by symptom.
@@ -16,6 +18,19 @@ Check:
 If actions still fail, re-select the community/group from dashboard selectors and refresh.
 
 ![Group team area](../screenshots/dashboard-user-invitations.png)
+
+## Controls Are Disabled in Dashboard Tabs
+
+Disabled controls usually indicate role-based authorization, not a UI bug.
+
+Examples:
+
+- Community `viewer` cannot modify settings/taxonomy/team/groups.
+- Community `groups-manager` cannot modify community settings/taxonomy/team.
+- Group `events-manager` can manage events but cannot manage members/settings/sponsors/team.
+- Group `viewer` is read-only.
+
+If you need broader access, request a higher role from a team admin.
 
 ## Join Group or Attend Event Buttons Do Not Work
 
@@ -78,7 +93,7 @@ Check:
 
 For community/group team tables:
 
-- You cannot remove the final accepted team member.
+- You cannot remove or demote the final accepted `admin`.
 
 Add another accepted team member first, then retry.
 

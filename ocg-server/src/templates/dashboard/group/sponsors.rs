@@ -21,6 +21,8 @@ use crate::{
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "dashboard/group/sponsors_add.html")]
 pub(crate) struct AddPage {
+    /// Whether the current user can manage sponsors.
+    pub can_manage_sponsors: bool,
     /// Group identifier.
     pub group_id: Uuid,
 }
@@ -29,10 +31,12 @@ pub(crate) struct AddPage {
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "dashboard/group/sponsors_list.html")]
 pub(crate) struct ListPage {
-    /// List of sponsors in the group.
-    pub sponsors: Vec<GroupSponsor>,
+    /// Whether the current user can manage sponsors.
+    pub can_manage_sponsors: bool,
     /// Pagination navigation links.
     pub navigation_links: pagination::NavigationLinks,
+    /// List of sponsors in the group.
+    pub sponsors: Vec<GroupSponsor>,
     /// Total number of sponsors in the group.
     pub total: usize,
 
@@ -46,6 +50,8 @@ pub(crate) struct ListPage {
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "dashboard/group/sponsors_update.html")]
 pub(crate) struct UpdatePage {
+    /// Whether the current user can manage sponsors.
+    pub can_manage_sponsors: bool,
     /// Group identifier.
     pub group_id: Uuid,
     /// Sponsor information to update.

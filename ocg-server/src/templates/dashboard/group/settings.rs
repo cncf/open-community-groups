@@ -11,6 +11,8 @@ use crate::types::group::{GroupCategory, GroupFull, GroupRegion};
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "dashboard/group/settings_update.html")]
 pub(crate) struct UpdatePage {
+    /// Whether the current user can manage settings.
+    pub can_manage_settings: bool,
     /// List of available group categories.
     pub categories: Vec<GroupCategory>,
     /// Group information.

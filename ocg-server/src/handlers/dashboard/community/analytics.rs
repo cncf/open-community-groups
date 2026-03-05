@@ -45,7 +45,7 @@ mod tests {
 
     use crate::{
         db::mock::MockDB, handlers::tests::*, router::CACHE_CONTROL_NO_CACHE,
-        services::notifications::MockNotificationsManager,
+        services::notifications::MockNotificationsManager, types::permissions::CommunityPermission,
     };
 
     #[tokio::test]
@@ -67,10 +67,12 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_community()
+        db.expect_user_has_community_permission()
             .times(1)
-            .withf(move |cid, uid| *cid == community_id && *uid == user_id)
-            .returning(|_, _| Ok(true));
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == user_id && permission == CommunityPermission::Read
+            })
+            .returning(|_, _, _| Ok(true));
         db.expect_get_community_stats()
             .times(1)
             .withf(move |cid| *cid == community_id)
@@ -117,10 +119,12 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_community()
+        db.expect_user_has_community_permission()
             .times(1)
-            .withf(move |cid, uid| *cid == community_id && *uid == user_id)
-            .returning(|_, _| Ok(true));
+            .withf(move |cid, uid, permission| {
+                *cid == community_id && *uid == user_id && permission == CommunityPermission::Read
+            })
+            .returning(|_, _, _| Ok(true));
         db.expect_get_community_stats()
             .times(1)
             .withf(move |cid| *cid == community_id)

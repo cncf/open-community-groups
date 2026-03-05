@@ -132,7 +132,6 @@ returns json as $$
                 from group_team gt
                 join "user" u using (user_id)
                 where gt.group_id = g.group_id
-                and gt.role = 'organizer'
                 and gt.accepted = true
             ),
             -- Include remaining capacity when event capacity is set

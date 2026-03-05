@@ -15,6 +15,8 @@ use crate::{
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "dashboard/community/regions_list.html")]
 pub(crate) struct ListPage {
+    /// Whether the current user can manage taxonomy.
+    pub can_manage_taxonomy: bool,
     /// Regions available in the selected community.
     pub regions: Vec<GroupRegion>,
 }
@@ -22,12 +24,17 @@ pub(crate) struct ListPage {
 /// Region add form template.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "dashboard/community/regions_add.html")]
-pub(crate) struct AddPage;
+pub(crate) struct AddPage {
+    /// Whether the current user can manage taxonomy.
+    pub can_manage_taxonomy: bool,
+}
 
 /// Region update form template.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "dashboard/community/regions_update.html")]
 pub(crate) struct UpdatePage {
+    /// Whether the current user can manage taxonomy.
+    pub can_manage_taxonomy: bool,
     /// Region currently being edited.
     pub region: GroupRegion,
 }

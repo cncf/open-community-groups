@@ -89,20 +89,20 @@ update "group" set deleted = true, active = false where group_id = :'group4ID';
 
 -- Group Team
 insert into group_team (group_id, user_id, role, accepted) values
-    (:'group1ID', :'groupMemberUserID', 'organizer', true),
-    (:'group1ID', :'multiCommunityUserID', 'organizer', true),
-    (:'group2ID', :'groupMemberUserID', 'organizer', true),
-    (:'group5ID', :'multiCommunityUserID', 'organizer', true);
+    (:'group1ID', :'groupMemberUserID', 'admin', true),
+    (:'group1ID', :'multiCommunityUserID', 'admin', true),
+    (:'group2ID', :'groupMemberUserID', 'admin', true),
+    (:'group5ID', :'multiCommunityUserID', 'admin', true);
 
 -- Community Team
-insert into community_team (accepted, community_id, user_id) values
-    (true, :'community1ID', :'communityAdminUserID');
+insert into community_team (accepted, community_id, role, user_id) values
+    (true, :'community1ID', 'admin', :'communityAdminUserID');
 
 -- Community Team (dual membership)
-insert into community_team (accepted, community_id, user_id) values
-    (true, :'community1ID', :'dualRoleUserID');
+insert into community_team (accepted, community_id, role, user_id) values
+    (true, :'community1ID', 'admin', :'dualRoleUserID');
 insert into group_team (group_id, user_id, role, accepted) values
-    (:'group2ID', :'dualRoleUserID', 'organizer', true);
+    (:'group2ID', :'dualRoleUserID', 'admin', true);
 
 
 -- ============================================================================

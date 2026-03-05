@@ -256,7 +256,7 @@ values
 
 -- Group Team
 insert into group_team (group_id, user_id, role, accepted, "order")
-values (:'groupID', :'user2ID', 'organizer', true, 1);
+values (:'groupID', :'user2ID', 'admin', true, 1);
 
 -- Session
 insert into session (

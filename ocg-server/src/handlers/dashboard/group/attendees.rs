@@ -29,6 +29,7 @@ use crate::{
         notifications::EventCustom,
         pagination::NavigationLinks,
     },
+    types::permissions::GroupPermission,
     validation::{MAX_LEN_M, MAX_LEN_NOTIFICATION_BODY, trimmed_non_empty},
 };
 
@@ -37,6 +38,7 @@ use crate::{
 /// Displays the list of attendees for a specific event.
 #[instrument(skip_all, err)]
 pub(crate) async fn list_page(
+    CurrentUser(user): CurrentUser,
     SelectedCommunityId(community_id): SelectedCommunityId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
@@ -51,7 +53,13 @@ pub(crate) async fn list_page(
         limit: page_filters.limit,
         offset: page_filters.offset,
     };
-    let (event, search_attendees_results) = tokio::try_join!(
+    let (can_manage_events, event, search_attendees_results) = tokio::try_join!(
+        db.user_has_group_permission(
+            &community_id,
+            &group_id,
+            &user.user_id,
+            GroupPermission::EventsWrite
+        ),
         db.get_event_summary(community_id, group_id, event_id),
         db.search_event_attendees(group_id, &search_filters)
     )?;
@@ -65,6 +73,7 @@ pub(crate) async fn list_page(
     )?;
     let template = attendees::ListPage {
         attendees: search_attendees_results.attendees,
+        can_manage_events,
         event,
         navigation_links,
         total: search_attendees_results.total,
@@ -226,12 +235,12 @@ mod tests {
     use crate::{
         config::HttpServerConfig,
         db::mock::MockDB,
-        handlers::dashboard::group::attendees::EventCustomNotification,
-        handlers::tests::*,
+        handlers::{dashboard::group::attendees::EventCustomNotification, tests::*},
         router::CACHE_CONTROL_NO_CACHE,
         services::notifications::{MockNotificationsManager, NotificationKind},
         templates::dashboard::DASHBOARD_PAGINATION_LIMIT,
         templates::notifications::EventCustom,
+        types::permissions::GroupPermission,
     };
 
     #[tokio::test]
@@ -262,10 +271,15 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_group()
+        db.expect_user_has_group_permission()
             .times(1)
-            .withf(move |cid, gid, uid| *cid == community_id && *gid == group_id && *uid == user_id)
-            .returning(|_, _, _| Ok(true));
+            .withf(move |cid, gid, uid, permission| {
+                *cid == community_id
+                    && *gid == group_id
+                    && *uid == user_id
+                    && permission == GroupPermission::Read
+            })
+            .returning(|_, _, _, _| Ok(true));
         db.expect_get_community_name_by_id()
             .times(1)
             .withf(move |cid| *cid == community_id)
@@ -347,10 +361,24 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_group()
+        db.expect_user_has_group_permission()
             .times(1)
-            .withf(move |cid, gid, uid| *cid == community_id && *gid == group_id && *uid == user_id)
-            .returning(|_, _, _| Ok(true));
+            .withf(move |cid, gid, uid, permission| {
+                *cid == community_id
+                    && *gid == group_id
+                    && *uid == user_id
+                    && permission == GroupPermission::Read
+            })
+            .returning(|_, _, _, _| Ok(true));
+        db.expect_user_has_group_permission()
+            .times(1)
+            .withf(move |cid, gid, uid, permission| {
+                *cid == community_id
+                    && *gid == group_id
+                    && *uid == user_id
+                    && permission == GroupPermission::EventsWrite
+            })
+            .returning(|_, _, _, _| Ok(true));
         db.expect_search_event_attendees()
             .times(1)
             .withf(move |gid, filters| {
@@ -426,10 +454,24 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_group()
+        db.expect_user_has_group_permission()
             .times(1)
-            .withf(move |cid, gid, uid| *cid == community_id && *gid == group_id && *uid == user_id)
-            .returning(|_, _, _| Ok(true));
+            .withf(move |cid, gid, uid, permission| {
+                *cid == community_id
+                    && *gid == group_id
+                    && *uid == user_id
+                    && permission == GroupPermission::Read
+            })
+            .returning(|_, _, _, _| Ok(true));
+        db.expect_user_has_group_permission()
+            .times(1)
+            .withf(move |cid, gid, uid, permission| {
+                *cid == community_id
+                    && *gid == group_id
+                    && *uid == user_id
+                    && permission == GroupPermission::EventsWrite
+            })
+            .returning(|_, _, _, _| Ok(true));
         db.expect_search_event_attendees()
             .times(1)
             .withf(move |gid, filters| {
@@ -503,10 +545,15 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_group()
+        db.expect_user_has_group_permission()
             .times(1)
-            .withf(move |cid, gid, uid| *cid == community_id && *gid == group_id && *uid == user_id)
-            .returning(|_, _, _| Ok(true));
+            .withf(move |cid, gid, uid, permission| {
+                *cid == community_id
+                    && *gid == group_id
+                    && *uid == user_id
+                    && permission == GroupPermission::EventsWrite
+            })
+            .returning(|_, _, _, _| Ok(true));
         db.expect_get_event_summary()
             .times(1)
             .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
@@ -567,19 +614,24 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_group()
+        db.expect_user_has_group_permission()
             .times(1)
-            .withf(move |cid, gid, uid| *cid == community_id && *gid == group_id && *uid == user_id)
-            .returning(|_, _, _| Ok(true));
-        db.expect_search_event_attendees()
-            .times(0..=1)
-            .withf(move |gid, filters| {
-                *gid == group_id
-                    && filters.event_id == event_id
-                    && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
-                    && filters.offset == Some(0)
+            .withf(move |cid, gid, uid, permission| {
+                *cid == community_id
+                    && *gid == group_id
+                    && *uid == user_id
+                    && permission == GroupPermission::Read
             })
-            .returning(move |_, _| Err(anyhow!("db error")));
+            .returning(|_, _, _, _| Ok(true));
+        db.expect_user_has_group_permission()
+            .times(1)
+            .withf(move |cid, gid, uid, permission| {
+                *cid == community_id
+                    && *gid == group_id
+                    && *uid == user_id
+                    && permission == GroupPermission::EventsWrite
+            })
+            .returning(|_, _, _, _| Ok(true));
         db.expect_get_event_summary()
             .times(1)
             .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
@@ -657,10 +709,15 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_group()
+        db.expect_user_has_group_permission()
             .times(1)
-            .withf(move |cid, gid, uid| *cid == community_id && *gid == group_id && *uid == user_id)
-            .returning(|_, _, _| Ok(true));
+            .withf(move |cid, gid, uid, permission| {
+                *cid == community_id
+                    && *gid == group_id
+                    && *uid == user_id
+                    && permission == GroupPermission::EventsWrite
+            })
+            .returning(|_, _, _, _| Ok(true));
         db.expect_list_event_attendees_ids()
             .times(1)
             .withf(move |gid, eid| *gid == group_id && *eid == event_id)
@@ -756,10 +813,15 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_group()
+        db.expect_user_has_group_permission()
             .times(1)
-            .withf(move |cid, gid, uid| *cid == community_id && *gid == group_id && *uid == user_id)
-            .returning(|_, _, _| Ok(true));
+            .withf(move |cid, gid, uid, permission| {
+                *cid == community_id
+                    && *gid == group_id
+                    && *uid == user_id
+                    && permission == GroupPermission::EventsWrite
+            })
+            .returning(|_, _, _, _| Ok(true));
         db.expect_get_event_summary_by_id()
             .times(1)
             .withf(move |cid, eid| *cid == community_id && *eid == event_id)

@@ -78,10 +78,12 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_group()
+        db.expect_user_has_group_permission()
             .times(1)
-            .withf(move |cid, gid, uid| *cid == community_id && *gid == group_id && *uid == user_id)
-            .returning(|_, _, _| Ok(true));
+            .withf(move |cid, gid, uid, _permission| {
+                *cid == community_id && *gid == group_id && *uid == user_id
+            })
+            .returning(|_, _, _, _| Ok(true));
         db.expect_get_group_stats()
             .times(1)
             .withf(move |cid, gid| *cid == community_id && *gid == group_id)
@@ -134,10 +136,12 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_group()
+        db.expect_user_has_group_permission()
             .times(1)
-            .withf(move |cid, gid, uid| *cid == community_id && *gid == group_id && *uid == user_id)
-            .returning(|_, _, _| Ok(true));
+            .withf(move |cid, gid, uid, _permission| {
+                *cid == community_id && *gid == group_id && *uid == user_id
+            })
+            .returning(|_, _, _, _| Ok(true));
         db.expect_get_group_stats()
             .times(1)
             .withf(move |cid, gid| *cid == community_id && *gid == group_id)

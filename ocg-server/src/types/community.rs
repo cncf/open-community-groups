@@ -68,6 +68,26 @@ pub struct CommunityFull {
     pub youtube_url: Option<String>,
 }
 
+/// Community team role enumeration.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, strum::Display)]
+#[serde(rename_all = "kebab-case")]
+#[strum(serialize_all = "kebab-case")]
+pub enum CommunityRole {
+    Admin,
+    GroupsManager,
+    #[default]
+    Viewer,
+}
+
+/// Community role summary information.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CommunityRoleSummary {
+    /// Role identifier.
+    pub community_role_id: String,
+    /// Display name.
+    pub display_name: String,
+}
+
 /// Summary of a community used for listing communities.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct CommunitySummary {

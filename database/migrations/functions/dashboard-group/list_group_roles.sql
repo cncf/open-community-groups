@@ -13,4 +13,3 @@ returns json as $$
     )
     from group_role gr;
 $$ language sql;
-

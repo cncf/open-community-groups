@@ -12,8 +12,13 @@
   <div>
     <button id="open-notification-modal"
             type="button"
-            class="btn-primary"
-            {% if total == 0 -%}
+            class="btn-primary
+                   {% if total == 0 || !can_manage_members -%}
+                     opacity-50 cursor-not-allowed
+                   {% endif -%}"
+            {% if !can_manage_members -%}
+              disabled title="Your role cannot send emails to members."
+            {% else if total == 0 -%}
               disabled title="Add members to enable sending notifications."
             {% endif -%}>Send email</button>
   </div>
@@ -159,7 +164,15 @@
           </div>
           <div class="flex justify-end gap-3 pt-6 border-t border-stone-200">
             <button id="cancel-notification" type="button" class="btn-primary-outline">Cancel</button>
-            <button id="submit-notification" type="submit" class="btn-primary relative">
+            <button id="submit-notification"
+                    type="submit"
+                    class="btn-primary relative
+                           {% if !can_manage_members -%}
+                             opacity-50 cursor-not-allowed
+                           {% endif -%}"
+                    {% if !can_manage_members -%}
+                      disabled title="Your role cannot send emails to members."
+                    {% endif -%}>
               {{ ui::btn_spinner(id = "notification-spinner", spinner_type = "2") -}}
               Send email
             </button>

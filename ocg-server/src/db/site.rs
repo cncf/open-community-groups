@@ -1,7 +1,11 @@
 //! This module defines some database functionality for the global site.
 
+use std::time::Duration;
+
 use anyhow::Result;
 use async_trait::async_trait;
+use cached::proc_macro::cached;
+use deadpool_postgres::Client;
 use tokio_postgres::types::Json;
 use tracing::{instrument, trace};
 
@@ -96,13 +100,24 @@ impl DBSite for PgDB {
 
     #[instrument(skip(self), err)]
     async fn get_site_settings(&self) -> Result<SiteSettings> {
-        trace!("db: get site settings");
+        #[cached(
+            time = 300,
+            key = "String",
+            convert = r#"{ String::from("site_settings") }"#,
+            sync_writes = "by_key",
+            result = true
+        )]
+        async fn inner(db: Client) -> Result<SiteSettings> {
+            trace!("db: get site settings");
+
+            let row = db.query_one("select get_site_settings()", &[]).await?;
+            let settings = row.try_get::<_, Json<SiteSettings>>(0)?.0;
+
+            Ok(settings)
+        }
 
         let db = self.pool.get().await?;
-        let row = db.query_one("select get_site_settings()", &[]).await?;
-        let settings = row.try_get::<_, Json<SiteSettings>>(0)?.0;
-
-        Ok(settings)
+        inner(db).await
     }
 
     #[instrument(skip(self), err)]
@@ -132,12 +147,23 @@ impl DBSite for PgDB {
 
     #[instrument(skip(self), err)]
     async fn list_communities(&self) -> Result<Vec<CommunitySummary>> {
-        trace!("db: list communities");
+        #[cached(
+            time = 300,
+            key = "String",
+            convert = r#"{ String::from("communities") }"#,
+            sync_writes = "by_key",
+            result = true
+        )]
+        async fn inner(db: Client) -> Result<Vec<CommunitySummary>> {
+            trace!("db: list communities");
+
+            let row = db.query_one("select list_communities();", &[]).await?;
+            let communities = row.try_get::<_, Json<Vec<CommunitySummary>>>(0)?.0;
+
+            Ok(communities)
+        }
 
         let db = self.pool.get().await?;
-        let row = db.query_one("select list_communities();", &[]).await?;
-        let communities = row.try_get::<_, Json<Vec<CommunitySummary>>>(0)?.0;
-
-        Ok(communities)
+        inner(db).await
     }
 }

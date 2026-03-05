@@ -61,17 +61,18 @@ mock! {
             user_id: &Uuid,
             new_password: &str,
         ) -> Result<()>;
-        async fn user_owns_community(&self, community_id: &Uuid, user_id: &Uuid) -> Result<bool>;
-        async fn user_owns_group(
+        async fn user_has_community_permission(
+            &self,
+            community_id: &Uuid,
+            user_id: &Uuid,
+            permission: crate::types::permissions::CommunityPermission,
+        ) -> Result<bool>;
+        async fn user_has_group_permission(
             &self,
             community_id: &Uuid,
             group_id: &Uuid,
             user_id: &Uuid,
-        ) -> Result<bool>;
-        async fn user_owns_groups_in_community(
-            &self,
-            community_id: &Uuid,
-            user_id: &Uuid,
+            permission: crate::types::permissions::GroupPermission,
         ) -> Result<bool>;
         async fn verify_email(&self, code: &Uuid) -> Result<()>;
     }
@@ -166,6 +167,7 @@ mock! {
             &self,
             community_id: Uuid,
             user_id: Uuid,
+            role: &crate::types::community::CommunityRole,
         ) -> Result<()>;
         async fn add_event_category(
             &self,
@@ -214,6 +216,9 @@ mock! {
             community_id: Uuid,
             filters: &crate::templates::dashboard::community::team::CommunityTeamFilters,
         ) -> Result<crate::templates::dashboard::community::team::CommunityTeamOutput>;
+        async fn list_community_roles(
+            &self,
+        ) -> Result<Vec<crate::types::community::CommunityRoleSummary>>;
         async fn list_group_categories(
             &self,
             community_id: Uuid,
@@ -230,6 +235,12 @@ mock! {
             &self,
             community_id: Uuid,
             community: &crate::templates::dashboard::community::settings::CommunityUpdate,
+        ) -> Result<()>;
+        async fn update_community_team_member_role(
+            &self,
+            community_id: Uuid,
+            user_id: Uuid,
+            role: &crate::types::community::CommunityRole,
         ) -> Result<()>;
         async fn update_event_category(
             &self,

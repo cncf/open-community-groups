@@ -1,3 +1,5 @@
+<!-- markdownlint-disable MD013 MD060 -->
+
 # Open Community Groups Documentation
 
 Open Community Groups (OCG) helps communities run groups, events, and speaker programs in one
@@ -10,6 +12,7 @@ and know where to go when something behaves differently than expected.
 | ------------------------------------------ | ------------------------------------------------------------ |
 | Get productive fast                        | [Quickstart](getting-started/quickstart.md)                  |
 | Understand where to work                   | [Choose Your Dashboard](getting-started/choose-dashboard.md) |
+| Understand role permissions                | [Choose Your Dashboard](getting-started/choose-dashboard.md#fixed-role-model) |
 | Discover groups and attend events          | [Public Site Guide](guides/public-site.md)                   |
 | Manage profile, proposals, and submissions | [User Dashboard Guide](guides/user-dashboard.md)             |
 | Run a community                            | [Community Dashboard Guide](guides/community-dashboard.md)   |

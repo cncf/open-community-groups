@@ -49,11 +49,11 @@ insert into "user" (
 -- User 1 is team member of both communities (accepted)
 -- User 2 is team member of community1 only (accepted)
 -- User 3 is pending team member of community1 (not accepted)
-insert into community_team (accepted, community_id, user_id) values
-    (true, :'community1ID', :'user1ID'),
-    (true, :'community2ID', :'user1ID'),
-    (true, :'community1ID', :'user2ID'),
-    (false, :'community1ID', :'user3ID');
+insert into community_team (accepted, community_id, role, user_id) values
+    (true, :'community1ID', 'admin', :'user1ID'),
+    (true, :'community2ID', 'admin', :'user1ID'),
+    (true, :'community1ID', 'admin', :'user2ID'),
+    (false, :'community1ID', 'viewer', :'user3ID');
 
 -- ============================================================================
 -- TESTS

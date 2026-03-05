@@ -12,13 +12,13 @@ returns json as $$
         members as (
             select
                 gt.accepted,
+                gt.role,
                 u.user_id,
                 u.username,
 
                 u.company,
                 u.name,
                 u.photo_url,
-                gt.role,
                 u.title
             from group_team gt
             join "user" u using (user_id)
@@ -27,11 +27,15 @@ returns json as $$
             offset (select offset_value from filters)
             limit (select limit_value from filters)
         ),
-        -- Count totals for all and accepted members
+        -- Count totals for all members, accepted members and accepted admins
         totals as (
             select
                 count(*)::int as total,
-                count(*) filter (where gt.accepted)::int as approved_total
+                count(*) filter (where gt.accepted)::int as total_accepted,
+                count(*) filter (
+                    where gt.accepted
+                      and gt.role = 'admin'
+                )::int as total_admins_accepted
             from group_team gt
             where gt.group_id = p_group_id
         ),
@@ -42,9 +46,10 @@ returns json as $$
         )
     -- Build final payload
     select json_build_object(
-        'approved_total', totals.approved_total,
         'members', members_json.members,
-        'total', totals.total
+        'total', totals.total,
+        'total_accepted', totals.total_accepted,
+        'total_admins_accepted', totals.total_admins_accepted
     )
     from totals, members_json;
 $$ language sql;
