@@ -15,7 +15,10 @@
       {{ dashboard::permission_warning(message = "Your role cannot update group settings.") -}}
     {% endif -%}
 
-    <div class="inert-form" {% if !can_manage_settings -%} inert {% endif -%}>
+    <div class="inert-form space-y-12"
+         {% if !can_manage_settings -%}
+           inert
+         {% endif -%}>
       <div class="border-b border-stone-900/10 pb-12">
         <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
           {# Group name -#}
