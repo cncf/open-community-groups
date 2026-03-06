@@ -744,6 +744,50 @@ const rewriteAppLinks = (docsRoot) => {
 };
 
 /**
+ * Adds per-cell labels so CSS can render markdown tables as mobile cards.
+ * @param {HTMLElement} docsRoot Docs root container.
+ */
+const enhanceMobileCardTables = (docsRoot) => {
+  if (!docsRoot || !docsRoot.isConnected) {
+    return;
+  }
+
+  const tables = docsRoot.querySelectorAll(".markdown-section table");
+  tables.forEach((table) => {
+    if (table.dataset.ocgMobileCardTableEnhanced === "1") {
+      return;
+    }
+
+    let headerCells = Array.from(table.querySelectorAll("thead th"));
+    if (!headerCells.length) {
+      const firstRow = table.querySelector("tr");
+      if (firstRow) {
+        headerCells = Array.from(firstRow.querySelectorAll("th, td"));
+      }
+    }
+
+    if (!headerCells.length) {
+      return;
+    }
+
+    const headerLabels = headerCells.map((cell) => {
+      return (cell.textContent || "").trim();
+    });
+    const bodyRows = table.querySelectorAll("tbody tr");
+    bodyRows.forEach((row) => {
+      const cells = row.querySelectorAll("td");
+      cells.forEach((cell, index) => {
+        const label = headerLabels[index] || "";
+        cell.setAttribute("data-label", label);
+      });
+    });
+
+    table.classList.add("ocg-mobile-card-table");
+    table.dataset.ocgMobileCardTableEnhanced = "1";
+  });
+};
+
+/**
  * Normalizes docs path by removing leading/trailing slashes and .md suffix.
  * @param {string} path Route path.
  * @returns {string} Normalized path.
@@ -933,6 +977,7 @@ const createDocsifyPlugins = (runId, docsRoot) => [
       }
 
       rewriteAppLinks(docsRoot);
+      enhanceMobileCardTables(docsRoot);
     });
   },
 ];
@@ -1009,6 +1054,7 @@ const mountDocs = async (docsRoot, docsApp) => {
 
     const handleRewriteOnHashChange = () => {
       rewriteAppLinks(docsRoot);
+      enhanceMobileCardTables(docsRoot);
     };
     window.addEventListener("hashchange", handleRewriteOnHashChange);
     cleanups.push(() => {
@@ -1026,6 +1072,7 @@ const mountDocs = async (docsRoot, docsApp) => {
     }
 
     rewriteAppLinks(docsRoot);
+    enhanceMobileCardTables(docsRoot);
   } catch (error) {
     if (!isCurrentMount(runId, docsRoot)) {
       return;
