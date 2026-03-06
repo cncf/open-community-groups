@@ -11,7 +11,7 @@
   - [User Dashboard](/guides/user-dashboard.md)
   - [Community Dashboard](/guides/community-dashboard.md)
   - [Group Dashboard](/guides/group-dashboard.md)
-    - [Event Operations](/guides/event-operations.md)
+  - [Event Operations](/guides/event-operations.md)
 
 - Support
   - [Troubleshooting](/support/troubleshooting.md)
