@@ -431,6 +431,70 @@ body,
     max-width: 100%;
     width: 100%;
   }
+
+  /* Convert enhanced docs tables into stacked row cards for narrow screens. */
+  .markdown-section table.ocg-mobile-card-table {
+    border: 0;
+    display: block;
+    margin: 2rem 0 2.8rem;
+    width: 100%;
+  }
+
+  .markdown-section table.ocg-mobile-card-table thead {
+    border: 0;
+    clip: rect(0 0 0 0);
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    padding: 0;
+    position: absolute;
+    width: 1px;
+  }
+
+  .markdown-section table.ocg-mobile-card-table tbody {
+    display: block;
+  }
+
+  .markdown-section table.ocg-mobile-card-table tbody tr {
+    border: 1px solid #e7e5e4;
+    display: block;
+    margin: 0 0 0.85rem;
+  }
+
+  .markdown-section table.ocg-mobile-card-table tbody tr:last-child {
+    margin-bottom: 0;
+  }
+
+  .markdown-section table.ocg-mobile-card-table tbody td {
+    border: 0;
+    border-top: 1px solid #e7e5e4;
+    display: grid;
+    gap: 0.65rem;
+    grid-template-columns: minmax(7.8rem, 38%) minmax(0, 1fr);
+    overflow-wrap: anywhere;
+    padding: 0.72rem 0.75rem;
+  }
+
+  .markdown-section table.ocg-mobile-card-table tbody td:first-child {
+    border-top: 0;
+  }
+
+  .markdown-section table.ocg-mobile-card-table tbody td::before {
+    color: #57534e;
+    content: attr(data-label);
+    font-weight: 620;
+  }
+
+  .markdown-section table.ocg-mobile-card-table tbody td[data-label=""] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .markdown-section
+    table.ocg-mobile-card-table
+    tbody
+    td[data-label=""]::before {
+    content: "";
+  }
 }
 
 @media screen and (min-width: 769px) {
