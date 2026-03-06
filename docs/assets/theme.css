@@ -427,6 +427,22 @@ body,
 }
 
 @media screen and (max-width: 768px) {
+  .markdown-section h1 {
+    font-size: 1.45rem;
+    line-height: 1.2;
+  }
+
+  .markdown-section h2 {
+    font-size: 1.22rem;
+    line-height: 1.25;
+    margin-top: 1.8rem;
+  }
+
+  .markdown-section h3 {
+    font-size: 1rem;
+    line-height: 1.3;
+  }
+
   .markdown-section img[src*="screenshots/"] {
     max-width: 100%;
     width: 100%;
@@ -456,9 +472,12 @@ body,
   }
 
   .markdown-section table.ocg-mobile-card-table tbody tr {
+    background: #fff;
     border: 1px solid #e7e5e4;
+    border-radius: 0.75rem;
     display: block;
-    margin: 0 0 0.85rem;
+    margin: 0 0 1rem;
+    overflow: hidden;
   }
 
   .markdown-section table.ocg-mobile-card-table tbody tr:last-child {
@@ -467,12 +486,9 @@ body,
 
   .markdown-section table.ocg-mobile-card-table tbody td {
     border: 0;
-    border-top: 1px solid #e7e5e4;
-    display: grid;
-    gap: 0.65rem;
-    grid-template-columns: minmax(7.8rem, 38%) minmax(0, 1fr);
+    display: block;
     overflow-wrap: anywhere;
-    padding: 0.72rem 0.75rem;
+    padding: 0.72rem 0.9rem;
   }
 
   .markdown-section table.ocg-mobile-card-table tbody td:first-child {
@@ -482,11 +498,16 @@ body,
   .markdown-section table.ocg-mobile-card-table tbody td::before {
     color: #57534e;
     content: attr(data-label);
+    display: block;
+    font-size: 0.72rem;
     font-weight: 620;
+    letter-spacing: 0.03em;
+    margin-bottom: 0.35rem;
+    text-transform: uppercase;
   }
 
   .markdown-section table.ocg-mobile-card-table tbody td[data-label=""] {
-    grid-template-columns: minmax(0, 1fr);
+    padding-top: 0.72rem;
   }
 
   .markdown-section
