@@ -457,25 +457,6 @@
       {% endif -%}
       {# End sessions section -#}
 
-      {# Hosts section (legacy data) - Full width -#}
-      {% if let Some(legacy_hosts) = &event.legacy_hosts -%}
-        {% if !legacy_hosts.is_empty() -%}
-          <div>
-            <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pt-2 lg:pb-14">
-              Hosts
-            </div>
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {% for host in legacy_hosts -%}
-                {% if host.name.is_some() -%}
-                  <user-chip user='{{ host|json }}'></user-chip>
-                {% endif -%}
-              {% endfor -%}
-            </div>
-          </div>
-        {% endif -%}
-      {% endif -%}
-      {# End hosts section (legacy data) -#}
-
       {# Hosts section - Full width -#}
       {% if !event.hosts.is_empty() -%}
         <div>
@@ -483,6 +464,13 @@
             Hosts
           </div>
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {% if let Some(legacy_hosts) = &event.legacy_hosts -%}
+              {% for host in legacy_hosts -%}
+                {% if host.name.is_some() -%}
+                  <user-chip user='{{ host|json }}'></user-chip>
+                {% endif -%}
+              {% endfor -%}
+            {% endif -%}
             {% for host in event.hosts -%}
               {% if host.name.is_some() -%}
                 <user-chip user='{{ host|json }}'></user-chip>
@@ -490,6 +478,23 @@
             {% endfor -%}
           </div>
         </div>
+      {% else -%}
+        {% if let Some(legacy_hosts) = &event.legacy_hosts -%}
+          {% if !legacy_hosts.is_empty() -%}
+            <div>
+              <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pt-2 lg:pb-14">
+                Hosts
+              </div>
+              <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {% for host in legacy_hosts -%}
+                  {% if host.name.is_some() -%}
+                    <user-chip user='{{ host|json }}'></user-chip>
+                  {% endif -%}
+                {% endfor -%}
+              </div>
+            </div>
+          {% endif -%}
+        {% endif -%}
       {% endif -%}
       {# End hosts section -#}
 
@@ -508,11 +513,18 @@
           </div>
         </div>
 
-        <div>
+        <div class="hidden has-[user-chip]:block">
           <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pt-2 lg:pb-14">
             Speakers
           </div>
           <div class="regular-speakers-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {% if let Some(legacy_speakers) = &event.legacy_speakers -%}
+              {% for speaker in legacy_speakers -%}
+                {% if speaker.name.is_some() -%}
+                  <user-chip user='{{ speaker|json }}' bio-is-html></user-chip>
+                {% endif -%}
+              {% endfor -%}
+            {% endif -%}
             {% for speaker in event.speakers -%}
               {% if !speaker.featured && speaker.user.name.is_some() -%}
                 <user-chip user='{{ speaker.user|json }}'></user-chip>
@@ -520,27 +532,25 @@
             {% endfor -%}
           </div>
         </div>
-      {% endif -%}
-      {# End event speakers section -#}
-
-      {# Speakers section (legacy data) - Full width - no featured on LegacyUser -#}
-      {% if let Some(legacy_speakers) = &event.legacy_speakers -%}
-        {% if !legacy_speakers.is_empty() -%}
-          <div>
-            <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pt-2 lg:pb-14">
-              Speakers
+      {% else -%}
+        {% if let Some(legacy_speakers) = &event.legacy_speakers -%}
+          {% if !legacy_speakers.is_empty() -%}
+            <div>
+              <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pt-2 lg:pb-14">
+                Speakers
+              </div>
+              <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {% for speaker in legacy_speakers -%}
+                  {% if speaker.name.is_some() -%}
+                    <user-chip user='{{ speaker|json }}' bio-is-html></user-chip>
+                  {% endif -%}
+                {% endfor -%}
+              </div>
             </div>
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {% for speaker in legacy_speakers -%}
-                {% if speaker.name.is_some() -%}
-                  <user-chip user='{{ speaker|json }}' bio-is-html></user-chip>
-                {% endif -%}
-              {% endfor -%}
-            </div>
-          </div>
+          {% endif -%}
         {% endif -%}
       {% endif -%}
-      {# End speakers section (legacy data) -#}
+      {# End event speakers section -#}
 
       {# Organizers section - Full width -#}
       {% if !event.organizers.is_empty() -%}
