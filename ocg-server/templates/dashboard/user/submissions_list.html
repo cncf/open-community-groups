@@ -159,8 +159,8 @@ description = "Track and manage your call for speakers submissions.") -}}
      class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-[1000] justify-center items-center w-full md:inset-0 max-h-full flex">
   <div id="overlay-action-required-modal"
        class="modal-overlay absolute w-full h-full bg-stone-950 opacity-[0.35]"></div>
-  <div class="relative p-4 w-full max-w-2xl max-h-full">
-    <div class="relative bg-white rounded-lg shadow">
+  <div class="modal-panel p-4 max-w-2xl">
+    <div class="modal-card rounded-lg shadow">
       <div class="flex items-center justify-between p-4 md:p-5 border-b border-stone-200 rounded-t">
         <h3 id="action-required-modal-title"
             class="text-xl font-semibold text-stone-900">Action required</h3>
@@ -171,7 +171,7 @@ description = "Track and manage your call for speakers submissions.") -}}
           <span class="sr-only">Close modal</span>
         </button>
       </div>
-      <div class="p-4 md:p-8">
+      <div class="modal-body p-4 md:p-8">
         <p id="action-required-modal-message"
            class="text-sm text-stone-700 whitespace-pre-line"></p>
         <div class="flex justify-end pt-6 border-t border-stone-200 mt-6">

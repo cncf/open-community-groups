@@ -746,14 +746,14 @@ export class SessionProposalModal extends LitWrapper {
         role="dialog"
         aria-modal="true"
         aria-labelledby="session-proposal-modal-title"
-        class="overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-[1000] justify-center items-center w-full md:inset-0 max-h-full ${modalVisibilityClass}"
+        class="overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-[1000] justify-center items-center w-full md:inset-0 ${modalVisibilityClass}"
       >
         <div
           class="modal-overlay absolute w-full h-full bg-stone-950 opacity-[0.35]"
           @click=${this.close}
         ></div>
-        <div class="relative p-4 w-full ${widthClass} max-h-full">
-          <div class="relative bg-white rounded-lg shadow">
+        <div class="modal-panel p-4 ${widthClass}">
+          <div class="modal-card rounded-lg">
             <div class="flex items-center justify-between p-4 md:p-5 border-b border-stone-200 rounded-t">
               <h3 id="session-proposal-modal-title" class="text-xl font-semibold text-stone-900">
                 ${this._getModalTitle()}
@@ -769,7 +769,9 @@ export class SessionProposalModal extends LitWrapper {
                 <span class="sr-only">Close modal</span>
               </button>
             </div>
-            ${isReadOnly ? this._renderViewContent() : this._renderFormContent()}
+            <div class="modal-body">
+              ${isReadOnly ? this._renderViewContent() : this._renderFormContent()}
+            </div>
           </div>
         </div>
       </div>

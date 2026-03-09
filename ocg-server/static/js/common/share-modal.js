@@ -202,8 +202,8 @@ export class ShareModal extends LitWrapper {
                 @click=${this._closeModal}
               ></div>
 
-              <div class="relative p-4 w-full max-w-lg max-h-full">
-                <div class="relative bg-white rounded-lg shadow-lg">
+              <div class="modal-panel p-4 max-w-lg">
+                <div class="modal-card rounded-lg shadow-lg">
                   <div
                     class="flex items-center justify-between p-4 border-b
                            border-stone-200 rounded-t"
@@ -224,7 +224,7 @@ export class ShareModal extends LitWrapper {
                     </button>
                   </div>
 
-                  <div class="p-5">
+                  <div class="modal-body p-5">
                     <div class="text-sm font-medium text-stone-700 mb-4">Share this link via</div>
                     <div class="flex flex-wrap gap-3">
                       ${this._renderShareButton("email", "email", "Email")}

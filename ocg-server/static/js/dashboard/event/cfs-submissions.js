@@ -1061,7 +1061,7 @@ export class ReviewSubmissionModal extends LitWrapper {
 
     return html`
       <div
-        class="fixed top-0 right-0 left-0 justify-center items-center w-full md:inset-0 max-h-full overflow-y-auto flex z-[1000]"
+        class="fixed top-0 right-0 left-0 justify-center items-center w-full md:inset-0 overflow-y-auto overflow-x-hidden flex z-[1000]"
         role="dialog"
         aria-modal="true"
         aria-labelledby="cfs-submission-modal-title"
@@ -1070,8 +1070,8 @@ export class ReviewSubmissionModal extends LitWrapper {
           class="modal-overlay absolute w-full h-full bg-stone-950 opacity-[0.35]"
           @click=${() => this.close()}
         ></div>
-        <div class="relative p-4 w-full max-w-5xl h-[90vh]">
-          <div class="relative bg-white rounded-2xl shadow-lg h-full flex flex-col overflow-hidden">
+        <div class="modal-panel p-4 max-w-5xl">
+          <div class="modal-card rounded-2xl shadow-lg">
             <div class="flex items-center justify-between p-5 border-b border-stone-200 shrink-0">
               <h3 id="cfs-submission-modal-title" class="text-xl font-semibold text-stone-900">
                 Review submission

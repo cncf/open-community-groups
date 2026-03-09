@@ -179,8 +179,8 @@ export class UserInfoModal extends LitWrapper {
           @click=${this._closeModal}
         ></div>
 
-        <div class="relative p-4 w-full max-w-2xl max-h-full">
-          <div class="relative bg-white rounded-lg shadow-lg">
+        <div class="modal-panel p-4 max-w-2xl">
+          <div class="modal-card rounded-lg shadow-lg">
             <div class="flex items-center justify-between p-6 border-b border-stone-200 rounded-t">
               <h3 id="user-info-modal-title" class="text-2xl font-semibold text-stone-900">
                 User Information
@@ -197,7 +197,7 @@ export class UserInfoModal extends LitWrapper {
               </button>
             </div>
 
-            <div class="p-8">
+            <div class="modal-body p-8">
               <div class="flex items-center gap-6 mb-6">
                 <logo-image
                   image-url=${this._userData.imageUrl || ""}

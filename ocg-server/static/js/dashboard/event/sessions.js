@@ -1055,18 +1055,15 @@ class SessionFormModal extends LitWrapper {
 
     return html`
       <div
-        class="fixed inset-0 flex items-center justify-center z-[1000]"
+        class="fixed inset-0 flex items-center justify-center overflow-y-auto overflow-x-hidden z-[1000]"
         role="dialog"
         aria-modal="true"
         aria-labelledby="session-form-modal-title"
         data-pending-changes-ignore
       >
         <div class="absolute inset-0 bg-stone-950 opacity-35" @click=${() => this.close()}></div>
-        <div class="relative p-4 w-full max-w-6xl max-h-[90vh] overflow-hidden">
-          <div
-            class="relative bg-white rounded-2xl shadow-lg flex flex-col overflow-hidden"
-            style="max-height: calc(90vh - 2rem)"
-          >
+        <div class="modal-panel p-4 max-w-6xl">
+          <div class="modal-card rounded-2xl shadow-lg">
             <div class="flex items-center justify-between p-5 border-b border-stone-200 shrink-0">
               <h3 id="session-form-modal-title" class="text-xl font-semibold text-stone-900">
                 ${modalTitle}
@@ -1083,7 +1080,7 @@ class SessionFormModal extends LitWrapper {
               </button>
             </div>
 
-            <div class="p-6 overflow-y-auto min-h-0 flex-1">
+            <div class="modal-body p-6 flex-1">
               <session-item
                 .data=${this._session}
                 .index=${0}

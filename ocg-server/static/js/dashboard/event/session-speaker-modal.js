@@ -185,15 +185,13 @@ export class SessionSpeakerModal extends LitWrapper {
     if (!this._isOpen) return html``;
 
     return html`
-      <div
-        class="fixed top-0 right-0 left-0 z-50 justify-center items-center w-full h-full flex overflow-visible"
-      >
+      <div class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto overflow-x-hidden">
         <div
           class="modal-overlay absolute w-full h-full bg-stone-950 opacity-[.35]"
           @click=${() => this.close()}
         ></div>
-        <div class="relative px-4 py-8 w-full max-w-2xl overflow-visible">
-          <div class="relative bg-white rounded-lg shadow overflow-visible">
+        <div class="modal-panel p-4 max-w-2xl">
+          <div class="modal-card rounded-lg shadow">
             <div class="flex items-center justify-between p-4 md:p-5 border-b border-stone-200 rounded-t">
               <h3 class="text-xl font-semibold text-stone-900">Add speaker</h3>
               <button
@@ -206,7 +204,7 @@ export class SessionSpeakerModal extends LitWrapper {
                 <span class="sr-only">Close modal</span>
               </button>
             </div>
-            <div class="p-4 md:p-8 space-y-6">
+            <div class="modal-body p-4 md:p-8 space-y-6">
               <div>
                 <user-search-field
                   dashboard-type=${this.dashboardType}
