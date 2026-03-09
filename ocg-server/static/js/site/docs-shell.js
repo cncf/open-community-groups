@@ -840,6 +840,77 @@ const getCurrentDocsRoute = () =>
   };
 
 /**
+ * Keeps the current page section list open and matches the active section to the hash.
+ * @param {HTMLElement} docsRoot Docs root container.
+ */
+const syncCurrentSidebarSectionState = (docsRoot) => {
+  const sidebar = docsRoot.querySelector(DOCS_SIDEBAR_SELECTOR);
+  if (!sidebar) {
+    return;
+  }
+
+  const currentRoute = getCurrentDocsRoute();
+  if (!currentRoute.path) {
+    return;
+  }
+
+  const pageLink = Array.from(sidebar.querySelectorAll("a[href^='#/']")).find((link) => {
+    const route = parseDocsRoute(link.getAttribute("href"));
+    return route && route.path === currentRoute.path && !route.id;
+  });
+  if (!pageLink) {
+    return;
+  }
+
+  const pageItem = pageLink.closest("li");
+  const sections = pageItem ? pageItem.querySelector(":scope > .app-sub-sidebar") : null;
+  if (!pageItem || !sections) {
+    return;
+  }
+
+  pageItem.classList.remove("collapse");
+  sections.querySelectorAll(":scope > li.active").forEach((item) => {
+    item.classList.remove("active");
+  });
+
+  if (!currentRoute.id) {
+    pageItem.classList.add("active");
+    return;
+  }
+
+  const activeSectionLink = Array.from(sections.querySelectorAll(":scope > li > a[href^='#/']")).find(
+    (link) => {
+      const route = parseDocsRoute(link.getAttribute("href"));
+      return route && route.path === currentRoute.path && route.id === currentRoute.id;
+    },
+  );
+  if (!activeSectionLink) {
+    return;
+  }
+
+  activeSectionLink.closest("li")?.classList.add("active");
+};
+
+/**
+ * Re-applies sidebar section state after Docsify finishes reacting to anchor clicks.
+ */
+const scheduleCurrentSidebarSectionStateSync = () => {
+  const syncIfMounted = () => {
+    if (!activeDocsRoot || !activeDocsRoot.isConnected) {
+      return;
+    }
+
+    syncCurrentSidebarSectionState(activeDocsRoot);
+  };
+
+  syncIfMounted();
+  window.requestAnimationFrame(() => {
+    syncIfMounted();
+    window.requestAnimationFrame(syncIfMounted);
+  });
+};
+
+/**
  * Parses link href for same-page anchor handling.
  * @param {string|null} href Link href.
  * @returns {{id: string, path: string, rawPath: string}|null} Anchor route.
@@ -875,6 +946,7 @@ const parseSamePageAnchor = (href) => {
  * @param {string} id Target section ID.
  */
 const updateDocsAnchorHash = (rawPath, id) => {
+  const previousUrl = window.location.href;
   const nextHash = `#${rawPath || "/"}?id=${encodeURIComponent(id)}`;
   if (window.location.hash === nextHash) {
     window.history.replaceState(null, "", nextHash);
@@ -882,6 +954,13 @@ const updateDocsAnchorHash = (rawPath, id) => {
   }
 
   window.history.pushState(null, "", nextHash);
+  // pushState does not emit hashchange, but Docsify and our sidebar sync rely on it.
+  window.dispatchEvent(
+    new HashChangeEvent("hashchange", {
+      oldURL: previousUrl,
+      newURL: window.location.href,
+    }),
+  );
 };
 
 /**
@@ -894,6 +973,31 @@ const jumpToElement = (element) => {
     behavior: "auto",
     top: Math.max(0, top - DOCS_ANCHOR_SCROLL_PADDING_PX),
   });
+};
+
+/**
+ * Keeps a repeated click on the current sidebar page link from collapsing its sections.
+ * @param {MouseEvent} event Click event.
+ */
+const handleCurrentSidebarPageClick = (event) => {
+  const link = event.target.closest("a[href]");
+  if (!link || !link.closest(DOCS_SIDEBAR_SELECTOR) || link.closest(".app-sub-sidebar")) {
+    return;
+  }
+
+  const targetRoute = parseDocsRoute(link.getAttribute("href"));
+  if (!targetRoute || targetRoute.id) {
+    return;
+  }
+
+  const currentRoute = getCurrentDocsRoute();
+  if (targetRoute.path !== currentRoute.path || currentRoute.id) {
+    return;
+  }
+
+  event.preventDefault();
+  event.stopImmediatePropagation();
+  scheduleCurrentSidebarSectionStateSync();
 };
 
 /**
@@ -928,6 +1032,7 @@ const handleSamePageAnchorClick = (event) => {
   event.preventDefault();
   updateDocsAnchorHash(currentRoute.rawPath, targetRoute.id);
   jumpToElement(targetElement);
+  scheduleCurrentSidebarSectionStateSync();
 };
 
 /**
@@ -978,6 +1083,7 @@ const createDocsifyPlugins = (runId, docsRoot) => [
 
       rewriteAppLinks(docsRoot);
       enhanceMobileCardTables(docsRoot);
+      syncCurrentSidebarSectionState(docsRoot);
     });
   },
 ];
@@ -1047,6 +1153,10 @@ const mountDocs = async (docsRoot, docsApp) => {
     };
 
     cleanups.push(mirrorDocsifyBodyClasses(docsRoot));
+    document.addEventListener("click", handleCurrentSidebarPageClick);
+    cleanups.push(() => {
+      document.removeEventListener("click", handleCurrentSidebarPageClick);
+    });
     document.addEventListener("click", handleSamePageAnchorClick);
     cleanups.push(() => {
       document.removeEventListener("click", handleSamePageAnchorClick);
@@ -1055,6 +1165,7 @@ const mountDocs = async (docsRoot, docsApp) => {
     const handleRewriteOnHashChange = () => {
       rewriteAppLinks(docsRoot);
       enhanceMobileCardTables(docsRoot);
+      syncCurrentSidebarSectionState(docsRoot);
     };
     window.addEventListener("hashchange", handleRewriteOnHashChange);
     cleanups.push(() => {
@@ -1073,6 +1184,7 @@ const mountDocs = async (docsRoot, docsApp) => {
 
     rewriteAppLinks(docsRoot);
     enhanceMobileCardTables(docsRoot);
+    syncCurrentSidebarSectionState(docsRoot);
   } catch (error) {
     if (!isCurrentMount(runId, docsRoot)) {
       return;

@@ -208,9 +208,9 @@ body,
   margin-top: 3px;
 }
 
-/* Keep in-page section active links visible even if Docsify toggles collapse */
-.active.collapse {
-  visibility: visible !important;
+/* Keep active guide sections visible when Docsify leaves the guide item collapsed. */
+.sidebar li.active.collapse > .app-sub-sidebar {
+  display: block !important;
 }
 
 .sidebar .app-sub-sidebar li {
