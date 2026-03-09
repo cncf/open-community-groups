@@ -87,16 +87,30 @@ export class CfsLabelsEditor extends LitWrapper {
   }
 
   /**
-   * Creates an empty row with the first configured color when available.
+   * Creates an empty row with a color derived from its index.
    * @returns {Object}
    */
   _createEmptyRow() {
     return {
       _row_id: this._nextRowId(),
-      color: this._paletteColors[0] || "",
+      color: this._getPaletteColorForIndex(this._rows.length),
       event_cfs_label_id: "",
       name: "",
     };
+  }
+
+  /**
+   * Returns a palette color for the provided index.
+   * @param {number} index
+   * @returns {string}
+   */
+  _getPaletteColorForIndex(index) {
+    const paletteColors = this._paletteColors;
+    if (paletteColors.length === 0) {
+      return "";
+    }
+
+    return paletteColors[index % paletteColors.length];
   }
 
   /**
