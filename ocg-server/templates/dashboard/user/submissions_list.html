@@ -54,8 +54,8 @@ description = "Track and manage your call for speakers submissions.") -}}
             <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
               <td class="px-3 xl:px-5 py-4">
                 <a href="/{{ submission.event.community_name }}/group/{{ submission.event.group_slug }}/event/{{ submission.event.slug }}"
-                   hx-boost="true"
-                   hx-target="body"
+                   target="_blank"
+                   rel="noopener noreferrer"
                    class="font-medium text-stone-900 hover:underline line-clamp-1">
                   {{ submission.event.name }}
                 </a>
