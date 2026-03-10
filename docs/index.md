@@ -69,7 +69,8 @@ it to manage events, organizers, members, sponsors, and communication.
 
 ## If You Get Stuck
 
-Start with [Troubleshooting](support/troubleshooting.md). For status-based behavior, review:
+Start with [Troubleshooting](support/troubleshooting.md) or the
+[Frequently Asked Questions](support/faq.md). For status-based behavior, review:
 
 - [Session and submission statuses](guides/user-dashboard.md#submissions-track-and-respond)
 - [Event lifecycle states](guides/event-operations.md#events-list-work-queue)
