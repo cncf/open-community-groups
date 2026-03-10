@@ -459,7 +459,7 @@
 
       {# Hosts section - Full width -#}
       {% if !event.hosts.is_empty() -%}
-        <div>
+        <div class="hidden has-[user-chip]:block">
           <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pt-2 lg:pb-14">
             Hosts
           </div>
@@ -481,7 +481,7 @@
       {% else -%}
         {% if let Some(legacy_hosts) = &event.legacy_hosts -%}
           {% if !legacy_hosts.is_empty() -%}
-            <div>
+            <div class="hidden has-[user-chip]:block">
               <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pt-2 lg:pb-14">
                 Hosts
               </div>
