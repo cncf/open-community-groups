@@ -698,6 +698,7 @@ export class SessionProposalModal extends LitWrapper {
               />
               <user-search-field
                 id="session-proposal-co-speaker-search"
+                class="mt-2 block mb-2"
                 dashboard-type="user"
                 label="co-speaker"
                 legend="Search by username to add an optional co-speaker."
