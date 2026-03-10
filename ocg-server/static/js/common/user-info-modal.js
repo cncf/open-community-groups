@@ -180,7 +180,7 @@ export class UserInfoModal extends LitWrapper {
         ></div>
 
         <div class="modal-panel p-4 max-w-2xl">
-          <div class="modal-card rounded-lg shadow-lg">
+          <div class="modal-card rounded-lg">
             <div class="flex items-center justify-between p-6 border-b border-stone-200 rounded-t">
               <h3 id="user-info-modal-title" class="text-2xl font-semibold text-stone-900">
                 User Information

@@ -1063,7 +1063,7 @@ class SessionFormModal extends LitWrapper {
       >
         <div class="absolute inset-0 bg-stone-950 opacity-35" @click=${() => this.close()}></div>
         <div class="modal-panel p-4 max-w-6xl">
-          <div class="modal-card rounded-2xl shadow-lg">
+          <div class="modal-card rounded-2xl">
             <div class="flex items-center justify-between p-5 border-b border-stone-200 shrink-0">
               <h3 id="session-form-modal-title" class="text-xl font-semibold text-stone-900">
                 ${modalTitle}

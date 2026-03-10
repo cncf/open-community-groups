@@ -203,7 +203,7 @@ export class ShareModal extends LitWrapper {
               ></div>
 
               <div class="modal-panel p-4 max-w-lg">
-                <div class="modal-card rounded-lg shadow-lg">
+                <div class="modal-card rounded-lg">
                   <div
                     class="flex items-center justify-between p-4 border-b
                            border-stone-200 rounded-t"

@@ -1080,7 +1080,7 @@ export class ReviewSubmissionModal extends LitWrapper {
           @click=${() => this.close()}
         ></div>
         <div class="modal-panel p-4 max-w-5xl">
-          <div class="modal-card rounded-2xl shadow-lg">
+          <div class="modal-card rounded-2xl">
             <div class="flex items-center justify-between p-5 border-b border-stone-200 shrink-0">
               <h3 id="cfs-submission-modal-title" class="text-xl font-semibold text-stone-900">
                 Review submission
