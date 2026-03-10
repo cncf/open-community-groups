@@ -14,4 +14,5 @@
   - [Event Operations](/guides/event-operations.md)
 
 - Support
+  - [Frequently Asked Questions](/support/faq.md)
   - [Troubleshooting](/support/troubleshooting.md)

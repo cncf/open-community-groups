@@ -2,8 +2,8 @@
 
 # Group Dashboard Guide
 
-Use the Group Dashboard for execution-level operations. This is where organizers run the actual
-program: events, team coordination, member communication, and sponsor management.
+Use the Group Dashboard to run your group day to day. This is where organizers
+manage events, team coordination, member communication, and sponsors.
 
 If you are still selecting the right workspace, read
 [Choose Your Dashboard](../getting-started/choose-dashboard.md).
@@ -24,7 +24,8 @@ Path: [`/dashboard/group`](/dashboard/group ':ignore')
 
 ## What This Dashboard Owns
 
-At community level, you define structure. At group level, you deliver outcomes.
+The community dashboard sets shared structure. The group dashboard is where you
+run the group.
 
 Main areas:
 
@@ -41,7 +42,7 @@ To operate here, you need:
 
 1. Logged-in session.
 2. Group-team membership.
-3. Selected community and group context.
+3. A selected community and group.
 
 If the right community or group is not selected yet, some actions stay unavailable until you pick
 them.
@@ -65,8 +66,8 @@ Community role interaction:
 
 UI behavior:
 
-- Controls are disabled when the selected role cannot perform that operation.
-- Authorization middleware is still enforced server-side.
+- Controls are disabled when your role does not allow that action.
+- Server-side authorization still applies.
 
 ![Community disabled form](../screenshots/dashboard-group-permissions-role.png)
 

@@ -2,8 +2,8 @@
 
 # Community Dashboard Guide
 
-Use the Community Dashboard to manage strategy-level community operations: identity, governance,
-taxonomy, team access, analytics, and group lifecycle.
+Use the Community Dashboard to manage community-wide settings and operations:
+identity, governance, taxonomy, team access, analytics, and groups.
 
 If you are deciding workspace scope first, read
 [Choose Your Dashboard](../getting-started/choose-dashboard.md).
@@ -26,8 +26,9 @@ Path: [`/dashboard/community`](/dashboard/community ':ignore')
 
 ## What This Dashboard Owns
 
-Think of the community scope as the layer above groups. You are not running one event here; you
-are shaping how the whole community is represented and governed.
+Use the community scope to manage the structure shared by all groups. You are
+not running one event here; you are shaping how the whole community is
+presented and managed.
 
 Main areas:
 
@@ -53,7 +54,7 @@ You are ready to work in this dashboard when:
 
 If no community is selected yet, some actions stay unavailable until you choose one.
 
-Invitation acceptance and access visibility are managed in
+For invitation acceptance and dashboard access, see
 [User Dashboard Guide](user-dashboard.md).
 
 ## Roles and Permissions
@@ -77,7 +78,7 @@ Community role impact on group-level operations in the same community:
 UI behavior:
 
 - When your role cannot perform an action, controls are disabled.
-- Authorization middleware is the source of truth and blocks unauthorized requests.
+- Server-side authorization blocks unauthorized requests.
 
 ![Community disabled form](../screenshots/dashboard-community-permissions-role.png)
 

@@ -5,17 +5,14 @@ Use this walkthrough to experience the core OCG flow in one sitting.
 Estimated time: 10-15 minutes.
 
 By the end, you will have discovered events and, if you sign in, joined a
-group, RSVP'd to an event, and validated where your dashboard work happens.
+group, RSVP'd to an event, and seen which dashboards are available to you.
 
 ## Optional: Sign In
 
 Open [Log in](/log-in ':ignore'), choose `Linux Foundation SSO`, complete
 authentication, and return to the [home page](/ ':ignore').
 
-You can skip this step if you only want to browse public content. Sign-in is
-required for membership actions, RSVP, submissions, and dashboard access.
-
-!> Sign-in is optional only for browsing public pages.
+!> You can skip sign-in if you only want to browse public pages.
 Membership actions, RSVP, submissions, and dashboard access require login.
 
 ![Log in page](../screenshots/login-page.png)
