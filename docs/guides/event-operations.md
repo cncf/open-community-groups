@@ -3,7 +3,7 @@
 # Event Operations
 
 This guide covers the full event lifecycle in
-[`Group Dashboard -> Events`](/dashboard/group?tab=events ':ignore'): draft creation, configuration,
+[Group Dashboard -> Events](/dashboard/group?tab=events ':ignore'): draft creation, configuration,
 publishing, delivery-day execution, and controlled retirement.
 
 For scope boundaries and non-event responsibilities, pair this with
@@ -55,7 +55,7 @@ UI behavior:
 
 ## Events List: Work Queue
 
-[`Events`](/dashboard/group?tab=events ':ignore') is your organizer queue. `Upcoming events` and `Past events`
+[Events](/dashboard/group?tab=events ':ignore') is your organizer queue. `Upcoming events` and `Past events`
 help you separate work that needs intervention now from historical cleanup.
 
 From each row, you can:
@@ -109,7 +109,7 @@ In this tab, you define attendee-facing identity and enrollment posture: name, e
 category, description, branding assets, capacity, registration toggle, tags, and optional links.
 
 Event category options come from the defined community's
-[`Event Categories`](/dashboard/community?tab=event-categories ':ignore') tab.
+[Event Categories](/dashboard/community?tab=event-categories ':ignore') tab.
 
 Publish readiness checks in this tab:
 
@@ -243,11 +243,11 @@ CFS spans organizer setup, speaker submission, and review loop. Treat it as one 
 1. Organizer configures CFS in the event editor.
 2. Organizer publishes the event.
 3. Speaker prepares reusable proposals in
-   [`User Dashboard -> Session proposals`](/dashboard/user?tab=session-proposals ':ignore').
+   [User Dashboard -> Session proposals](/dashboard/user?tab=session-proposals ':ignore').
 4. Speaker submits from the event page CFS modal.
-5. Organizer reviews in [`Group Dashboard -> Event -> Submissions`](/dashboard/group?tab=events ':ignore').
+5. Organizer reviews in [Group Dashboard -> Event -> Submissions](/dashboard/group?tab=events ':ignore').
 6. Speaker tracks outcomes in
-   [`User Dashboard -> Submissions`](/dashboard/user?tab=submissions ':ignore').
+   [User Dashboard -> Submissions](/dashboard/user?tab=submissions ':ignore').
 7. Approved submissions are scheduled in `Sessions`.
 
 ![Session proposals list](../screenshots/dashboard-user-session-proposals-list.png)
@@ -352,7 +352,7 @@ Use the least destructive action that matches your operational goal.
 ## Public Event Result
 
 The public event page is the delivery surface of all organizer decisions: RSVP controls, logistics,
-CFS visibility, and final agenda experience. You can reach it through [`Explore`](/explore ':ignore').
+CFS visibility, and final agenda experience. You can reach it through [Explore](/explore ':ignore').
 
 For attendee/member perspective, see [Public Site Guide](public-site.md).
 

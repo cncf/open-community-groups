@@ -9,7 +9,7 @@ Public pages are usable on mobile. Dashboards are currently desktop-only.
 ## Where Do I Submit a Speaker Proposal?
 
 Create proposals in
-[`User Dashboard -> Session proposals`](/dashboard/user?tab=session-proposals ':ignore'), then
+[User Dashboard -> Session proposals](/dashboard/user?tab=session-proposals ':ignore'), then
 submit from each event's public CFS modal.
 
 ![Session proposals list](../screenshots/dashboard-user-session-proposals-list.png)
@@ -47,6 +47,6 @@ technical limitations.
 
 ## Where Can I See Platform-Wide Growth Trends?
 
-Use the public [`Stats`](/stats ':ignore') page.
+Use the public [Stats](/stats ':ignore') page.
 
 ![Stats page](../screenshots/stats-page.png)

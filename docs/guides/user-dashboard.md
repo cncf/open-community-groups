@@ -9,7 +9,7 @@ to speaker feels smooth.
 For a fast end-to-end walkthrough first, use
 [Quickstart](../getting-started/quickstart.md).
 
-Path: [`/dashboard/user`](/dashboard/user ':ignore')
+Path: [/dashboard/user](/dashboard/user ':ignore')
 
 **Sections:**
 
@@ -25,11 +25,11 @@ Path: [`/dashboard/user`](/dashboard/user ':ignore')
 
 The dashboard is organized into five areas:
 
-- [`My Events`](/dashboard/user?tab=events ':ignore')
-- [`Profile`](/dashboard/user?tab=account ':ignore')
-- [`Invitations`](/dashboard/user?tab=invitations ':ignore')
-- [`Session proposals`](/dashboard/user?tab=session-proposals ':ignore')
-- [`Submissions`](/dashboard/user?tab=submissions ':ignore')
+- [My Events](/dashboard/user?tab=events ':ignore')
+- [Profile](/dashboard/user?tab=account ':ignore')
+- [Invitations](/dashboard/user?tab=invitations ':ignore')
+- [Session proposals](/dashboard/user?tab=session-proposals ':ignore')
+- [Submissions](/dashboard/user?tab=submissions ':ignore')
 
 Each area supports a different part of your participation in OCG: events,
 profile, access, proposals, and submissions.

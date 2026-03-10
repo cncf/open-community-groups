@@ -25,9 +25,9 @@ If you prefer a faster task-oriented run-through first, use
 
 | Page           | Path                                                 | Why it matters                                                   |
 | -------------- | ---------------------------------------------------- | ---------------------------------------------------------------- |
-| Home           | [`/`](/ ':ignore')                                   | Platform overview, featured communities, curated upcoming events |
-| Explore        | [`/explore`](/explore ':ignore')                     | Search and filter events or groups with multiple views           |
-| Stats          | [`/stats`](/stats ':ignore')                         | Platform-level growth and trend visibility                       |
+| Home           | [/](/ ':ignore')                                   | Platform overview, featured communities, curated upcoming events |
+| Explore        | [/explore](/explore ':ignore')                     | Search and filter events or groups with multiple views           |
+| Stats          | [/stats](/stats ':ignore')                         | Platform-level growth and trend visibility                       |
 | Community page | `/{community}`                                       | Community identity, activity, and top-level context              |
 | Group page     | `/{community}/group/{group_slug}`                    | Membership entry point and group-specific event stream           |
 | Event page     | `/{community}/group/{group_slug}/event/{event_slug}` | RSVP, schedule, CFS, and delivery details                        |
@@ -37,7 +37,7 @@ If you prefer a faster task-oriented run-through first, use
 
 ## Discover Quickly in Explore
 
-[`Explore`](/explore ':ignore') is designed to help you move from
+[Explore](/explore ':ignore') is designed to help you move from
 "too many options" to a confident choice.
 
 For events, begin broad and narrow in this order: community, type, category,
@@ -127,7 +127,7 @@ and the check-in window is open.
 The CFS flow happens in two places:
 
 1. Create reusable proposals in
-   [`User Dashboard -> Session proposals`](
+   [User Dashboard -> Session proposals](
    /dashboard/user?tab=session-proposals ':ignore').
 2. Submit those proposals from event pages where CFS is open.
 
@@ -135,7 +135,7 @@ This lets you reuse proposal content while keeping each event submission
 separate, including status, reviewer feedback, labels, and outcomes.
 
 Track progress in
-[`User Dashboard -> Submissions`](/dashboard/user?tab=submissions ':ignore').
+[User Dashboard -> Submissions](/dashboard/user?tab=submissions ':ignore').
 
 For full speaker workflow detail, continue with
 [User Dashboard Guide](user-dashboard.md). For organizer-side review and event
@@ -145,14 +145,14 @@ lifecycle controls, see [Event Operations](event-operations.md).
 
 ## Use Stats for Platform Context
 
-[`Stats`](/stats ':ignore') helps organizers and contributors understand
+[Stats](/stats ':ignore') helps organizers and contributors understand
 momentum at a glance: groups, members, events, and attendees over time.
 
 ![Stats page overview](../screenshots/stats-page.png)
 
 ## Recommended Member Flow
 
-1. Discover in [`Explore`](/explore ':ignore').
+1. Discover in [Explore](/explore ':ignore').
 2. Join one or more groups.
 3. RSVP to events.
 4. Check in on event day.

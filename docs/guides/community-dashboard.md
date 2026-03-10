@@ -8,7 +8,7 @@ identity, governance, taxonomy, team access, analytics, and groups.
 If you are deciding workspace scope first, read
 [Choose Your Dashboard](../getting-started/choose-dashboard.md).
 
-Path: [`/dashboard/community`](/dashboard/community ':ignore')
+Path: [/dashboard/community](/dashboard/community ':ignore')
 
 **Sections:**
 
@@ -32,14 +32,14 @@ presented and managed.
 
 Main areas:
 
-- [`Settings`](/dashboard/community?tab=settings ':ignore'): community identity, branding, social presence,
+- [Settings](/dashboard/community?tab=settings ':ignore'): community identity, branding, social presence,
   and long-form content.
-- [`Team`](/dashboard/community?tab=team ':ignore'): community-level admins and invitation flow.
-- [`Regions`](/dashboard/community?tab=regions ':ignore'): community geography model for group classification.
-- [`Group Categories`](/dashboard/community?tab=group-categories ':ignore'): reusable taxonomy for groups.
-- [`Event Categories`](/dashboard/community?tab=event-categories ':ignore'): reusable taxonomy for events.
-- [`Analytics`](/dashboard/community?tab=analytics ':ignore'): community growth trends and volume metrics.
-- [`Groups`](/dashboard/community?tab=groups ':ignore'): group creation, maintenance, activation state,
+- [Team](/dashboard/community?tab=team ':ignore'): community-level admins and invitation flow.
+- [Regions](/dashboard/community?tab=regions ':ignore'): community geography model for group classification.
+- [Group Categories](/dashboard/community?tab=group-categories ':ignore'): reusable taxonomy for groups.
+- [Event Categories](/dashboard/community?tab=event-categories ':ignore'): reusable taxonomy for events.
+- [Analytics](/dashboard/community?tab=analytics ':ignore'): community growth trends and volume metrics.
+- [Groups](/dashboard/community?tab=groups ':ignore'): group creation, maintenance, activation state,
   and lifecycle transitions.
 
 ![Community dashboard analytics](../screenshots/dashboard-community-analytics.png)
@@ -127,7 +127,7 @@ Pending states are visible (`Invitation sent`) so you can tell the difference be
 fully active collaborators.
 
 When you add a team member, OCG sends an invitation with a direct link to
-[`User Dashboard -> Invitations`](/dashboard/user?tab=invitations ':ignore').
+[User Dashboard -> Invitations](/dashboard/user?tab=invitations ':ignore').
 
 ![Community team area](../screenshots/dashboard-community-team.png)
 
@@ -265,14 +265,14 @@ When a group is inactive, its public-view shortcut is disabled in the groups tab
 
 ?> Use a recurring monthly or biweekly rhythm so identity, access, and group structure stay healthy.
 
-1. Review [`Settings`](/dashboard/community?tab=settings ':ignore') monthly for brand accuracy.
-2. Keep [`Team`](/dashboard/community?tab=team ':ignore') membership current to avoid operational
+1. Review [Settings](/dashboard/community?tab=settings ':ignore') monthly for brand accuracy.
+2. Keep [Team](/dashboard/community?tab=team ':ignore') membership current to avoid operational
    bottlenecks.
-3. Review [`Regions`](/dashboard/community?tab=regions ':ignore') so geography labels stay clean and useful.
-4. Review [`Group Categories`](/dashboard/community?tab=group-categories ':ignore') to avoid stale taxonomy.
-5. Review [`Event Categories`](/dashboard/community?tab=event-categories ':ignore') as event programs evolve.
-6. Check [`Analytics`](/dashboard/community?tab=analytics ':ignore') on a regular cadence for trend shifts.
-7. Use [`Groups`](/dashboard/community?tab=groups ':ignore') to retire stale structures and support active
+3. Review [Regions](/dashboard/community?tab=regions ':ignore') so geography labels stay clean and useful.
+4. Review [Group Categories](/dashboard/community?tab=group-categories ':ignore') to avoid stale taxonomy.
+5. Review [Event Categories](/dashboard/community?tab=event-categories ':ignore') as event programs evolve.
+6. Check [Analytics](/dashboard/community?tab=analytics ':ignore') on a regular cadence for trend shifts.
+7. Use [Groups](/dashboard/community?tab=groups ':ignore') to retire stale structures and support active
    ones.
 
 For event lifecycle operations after handoff to group teams, see

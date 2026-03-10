@@ -8,7 +8,7 @@ manage events, team coordination, member communication, and sponsors.
 If you are still selecting the right workspace, read
 [Choose Your Dashboard](../getting-started/choose-dashboard.md).
 
-Path: [`/dashboard/group`](/dashboard/group ':ignore')
+Path: [/dashboard/group](/dashboard/group ':ignore')
 
 **Sections:**
 
@@ -29,12 +29,12 @@ run the group.
 
 Main areas:
 
-- [`Settings`](/dashboard/group?tab=settings ':ignore'): group identity and public profile quality.
-- [`Team`](/dashboard/group?tab=team ':ignore'): organizer membership and roles.
-- [`Analytics`](/dashboard/group?tab=analytics ':ignore'): group-level growth trends.
-- [`Events`](/dashboard/group?tab=events ':ignore'): full event lifecycle operations.
-- [`Members`](/dashboard/group?tab=members ':ignore'): membership view and group-wide communication.
-- [`Sponsors`](/dashboard/group?tab=sponsors ':ignore'): reusable sponsor records for event use.
+- [Settings](/dashboard/group?tab=settings ':ignore'): group identity and public profile quality.
+- [Team](/dashboard/group?tab=team ':ignore'): organizer membership and roles.
+- [Analytics](/dashboard/group?tab=analytics ':ignore'): group-level growth trends.
+- [Events](/dashboard/group?tab=events ':ignore'): full event lifecycle operations.
+- [Members](/dashboard/group?tab=members ':ignore'): membership view and group-wide communication.
+- [Sponsors](/dashboard/group?tab=sponsors ':ignore'): reusable sponsor records for event use.
 
 ## Access and Context
 
@@ -84,8 +84,8 @@ You can manage:
 - Optional tags, photo gallery, and extra links.
 
 Category and region options in this form come from the defined community's
-[`Group Categories`](/dashboard/community?tab=group-categories ':ignore') and
-[`Regions`](/dashboard/community?tab=regions ':ignore') tabs.
+[Group Categories](/dashboard/community?tab=group-categories ':ignore') and
+[Regions](/dashboard/community?tab=regions ':ignore') tabs.
 
 Brand inheritance model in this scope:
 
@@ -116,7 +116,7 @@ This protects continuity for critical event operations and approvals.
 Add another accepted team member first, then retry.
 
 When you add a group team member, OCG sends an invitation with a link to
-[`User Dashboard -> Invitations`](/dashboard/user?tab=invitations ':ignore').
+[User Dashboard -> Invitations](/dashboard/user?tab=invitations ':ignore').
 
 Invitation acceptance and dashboard visibility details are covered in
 [User Dashboard Guide](user-dashboard.md).
@@ -155,7 +155,7 @@ Sponsors are managed once and reused across events, reducing repetitive event se
 
 Typical flow:
 
-1. Create sponsor records in [`Sponsors`](/dashboard/group?tab=sponsors ':ignore').
+1. Create sponsor records in [Sponsors](/dashboard/group?tab=sponsors ':ignore').
 2. Attach sponsors in event editing (`Hosts & Speakers` section).
 3. Update sponsor details once to keep future events consistent.
 
@@ -163,7 +163,7 @@ Typical flow:
 
 ## Events: Operations Hub
 
-Most organizer time is spent in [`Events`](/dashboard/group?tab=events ':ignore'): creating drafts,
+Most organizer time is spent in [Events](/dashboard/group?tab=events ':ignore'): creating drafts,
 publishing, managing CFS, reviewing submissions, and running attendance/check-in flows.
 
 List classification is based on event start time:
@@ -173,7 +173,7 @@ List classification is based on event start time:
 
 ![Group events area](../screenshots/dashboard-group-events.png)
 
-Starting from [`Add Event`](/dashboard/group/events/add ':ignore') gives organizers a structured editor with
+Starting from [Add Event](/dashboard/group/events/add ':ignore') gives organizers a structured editor with
 tabbed sections that map directly to delivery needs (details, schedule, roles, sessions, CFS,
 attendees).
 

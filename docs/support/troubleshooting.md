@@ -10,7 +10,7 @@ Check:
 
 1. You are logged in.
 2. You accepted the related invitation in
-   [`User Dashboard -> Invitations`](/dashboard/user?tab=invitations ':ignore').
+   [User Dashboard -> Invitations](/dashboard/user?tab=invitations ':ignore').
 3. You selected the required context:
    - [Community dashboard](/dashboard/community ':ignore'): selected community.
    - [Group dashboard](/dashboard/group ':ignore'): selected community and group.
@@ -66,7 +66,7 @@ Submission actions depend on status:
 - `Withdraw` is available only while the submission is still active in review.
 - After a final outcome (such as approved/linked), withdraw is no longer available.
 
-Confirm current status in [`User Dashboard -> Submissions`](/dashboard/user?tab=submissions ':ignore').
+Confirm current status in [User Dashboard -> Submissions](/dashboard/user?tab=submissions ':ignore').
 
 ![User submissions list](../screenshots/dashboard-user-submissions-list.png)
 
