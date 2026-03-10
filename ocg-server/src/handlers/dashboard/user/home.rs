@@ -102,6 +102,7 @@ pub(crate) async fn page(
                 "/dashboard/user/session-proposals",
             )?;
             Content::SessionProposals(session_proposals::ListPage {
+                current_user_id: user.user_id,
                 pending_co_speaker_invitations,
                 session_proposal_levels,
                 session_proposals: session_proposals_output.session_proposals,

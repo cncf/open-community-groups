@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(2);
+select plan(3);
 
 -- ============================================================================
 -- VARIABLES
@@ -96,6 +96,23 @@ select is(
         'user_id', :'userID'::uuid
     ),
     'Should set ready-for-submission when no co-speaker is provided'
+);
+
+-- Should reject self as co-speaker
+select throws_ok(
+    format(
+        'select add_session_proposal(%L::uuid, %L::jsonb)',
+        :'userID',
+        jsonb_build_object(
+            'co_speaker_user_id', :'userID'::uuid,
+            'description', 'Self co-speaker attempt',
+            'duration_minutes', 30,
+            'session_proposal_level_id', 'beginner',
+            'title', 'Rust Solo'
+        )::text
+    ),
+    'session proposal co-speaker cannot be the speaker',
+    'Should reject self as co-speaker'
 );
 
 -- ============================================================================

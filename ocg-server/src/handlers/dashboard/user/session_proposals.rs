@@ -54,6 +54,7 @@ pub(crate) async fn list_page(
         "/dashboard/user/session-proposals",
     )?;
     let template = session_proposals::ListPage {
+        current_user_id: user.user_id,
         session_proposal_levels,
         session_proposals: session_proposals_output.session_proposals,
         pending_co_speaker_invitations,

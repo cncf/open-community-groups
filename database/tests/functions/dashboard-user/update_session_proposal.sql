@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(5);
+select plan(6);
 
 -- ============================================================================
 -- VARIABLES
@@ -225,6 +225,24 @@ select throws_ok(
     ),
     'session proposal with submissions cannot change co-speaker',
     'Should reject changing co-speaker for proposals with submissions'
+);
+
+-- Should reject self as co-speaker
+select throws_ok(
+    format(
+        'select update_session_proposal(%L::uuid, %L::uuid, %L::jsonb)',
+        :'userID',
+        :'proposalRustID',
+        jsonb_build_object(
+            'co_speaker_user_id', :'userID'::uuid,
+            'description', 'Updated description',
+            'duration_minutes', 60,
+            'session_proposal_level_id', 'intermediate',
+            'title', 'Rust 102'
+        )::text
+    ),
+    'session proposal co-speaker cannot be the speaker',
+    'Should reject self as co-speaker'
 );
 
 -- Should reject updating proposals linked to sessions

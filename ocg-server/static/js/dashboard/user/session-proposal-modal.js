@@ -20,6 +20,7 @@ export class SessionProposalModal extends LitWrapper {
    * Defines reactive properties and internal state tracked by Lit.
    * @property {number} titleMaxLength - Max length allowed for proposal title.
    * @property {number} descriptionMaxLength - Max length allowed for description text.
+   * @property {string} currentUserId - Authenticated user id used to disable self-selection.
    * @property {number} durationMax - Max allowed value for duration in minutes.
    * @property {Array} _sessionProposalLevels - Available level options for the form.
    * @property {boolean} _isOpen - Internal visibility state for the modal.
@@ -30,6 +31,7 @@ export class SessionProposalModal extends LitWrapper {
   static properties = {
     titleMaxLength: { type: Number, attribute: "title-max-length" },
     descriptionMaxLength: { type: Number, attribute: "description-max-length" },
+    currentUserId: { type: String, attribute: "current-user-id" },
     durationMax: { type: Number, attribute: "duration-max" },
     _sessionProposalLevels: { type: Array, attribute: false },
     _isOpen: { type: Boolean, attribute: false },
@@ -45,6 +47,7 @@ export class SessionProposalModal extends LitWrapper {
     super();
     this.titleMaxLength = 255;
     this.descriptionMaxLength = 5000;
+    this.currentUserId = "";
     this.durationMax = 600;
     this._sessionProposalLevels = [];
     this._isOpen = false;
@@ -322,6 +325,7 @@ export class SessionProposalModal extends LitWrapper {
       return;
     }
 
+    coSpeakerSearch.disabledUserIds = this.currentUserId ? [this.currentUserId] : [];
     coSpeakerSearch.excludeUsernames = this._selectedCoSpeaker ? [this._selectedCoSpeaker.username] : [];
   }
 

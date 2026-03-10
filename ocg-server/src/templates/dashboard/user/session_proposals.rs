@@ -26,6 +26,8 @@ use crate::{
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "dashboard/user/session_proposals_list.html")]
 pub(crate) struct ListPage {
+    /// Current authenticated user identifier.
+    pub current_user_id: Uuid,
     /// Pagination navigation links.
     pub navigation_links: pagination::NavigationLinks,
     /// Pending co-speaker invitations for this user.

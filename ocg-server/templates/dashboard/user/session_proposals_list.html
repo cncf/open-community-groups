@@ -241,4 +241,4 @@ description = "Create reusable session proposals to submit to events.") -}}
 {% endif -%}
 
 {# Session proposal modal -#}
-<session-proposal-modal id="session-proposal-modal-component" session-proposal-levels='{{ session_proposal_levels|json }}' title-max-length="{{ crate::validation::MAX_LEN_ENTITY_NAME }}" description-max-length="{{ crate::validation::MAX_LEN_DESCRIPTION }}" duration-max="{{ crate::validation::MAX_SESSION_PROPOSAL_DURATION_MINUTES }}"></session-proposal-modal>
+<session-proposal-modal id="session-proposal-modal-component" session-proposal-levels='{{ session_proposal_levels|json }}' current-user-id="{{ current_user_id }}" title-max-length="{{ crate::validation::MAX_LEN_ENTITY_NAME }}" description-max-length="{{ crate::validation::MAX_LEN_DESCRIPTION }}" duration-max="{{ crate::validation::MAX_SESSION_PROPOSAL_DURATION_MINUTES }}"></session-proposal-modal>
