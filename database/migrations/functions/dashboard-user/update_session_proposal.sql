@@ -23,11 +23,6 @@ begin
     -- Parse incoming co-speaker
     v_new_co_speaker_user_id := nullif(p_session_proposal->>'co_speaker_user_id', '')::uuid;
 
-    -- Prevent speakers from inviting themselves as co-speakers
-    if v_new_co_speaker_user_id = p_user_id then
-        raise exception 'session proposal co-speaker cannot be the speaker';
-    end if;
-
     -- Ensure the session proposal is not linked to an accepted session
     perform 1
     from cfs_submission cs
