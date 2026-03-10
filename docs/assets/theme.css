@@ -15,7 +15,8 @@
 }
 
 :root {
-  --theme-color: #0094ff;
+  --theme-color: var(--color-primary-500, #0094ff);
+  --ocg-docs-active-marker-height: 21px;
 }
 
 html,
@@ -171,20 +172,19 @@ body,
 .sidebar ul li.active > a {
   position: relative;
   border-right: 0 !important;
-  font-weight: normal;
-  color: var(--theme-color);
+  color: var(--color-primary-600, #0077cc);
 }
 
 .sidebar ul li.active > a::after {
   position: absolute;
   right: 0;
-  top: 0;
+  top: 50%;
   content: "";
-  height: 100%;
-  bottom: 0;
+  height: var(--ocg-docs-active-marker-height);
+  transform: translateY(-50%);
   width: 3px;
   border-radius: 8px;
-  background-color: var(--theme-color);
+  background-color: var(--color-primary-600, #0077cc);
 }
 
 .sidebar ul li ul li a {
@@ -275,13 +275,13 @@ body,
 }
 
 .markdown-section a {
-  color: #0077cc;
+  color: var(--color-primary-600, #0077cc);
   font-weight: 600;
   text-decoration: none;
 }
 
 .markdown-section a:hover {
-  color: #005999;
+  color: var(--color-primary-700, #005999);
   text-decoration: underline;
 }
 
