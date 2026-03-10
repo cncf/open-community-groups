@@ -788,6 +788,16 @@ const enhanceMobileCardTables = (docsRoot) => {
 };
 
 /**
+ * Runs post-render docs enhancements for links, tables, and sidebar state.
+ * @param {HTMLElement} docsRoot Docs root container.
+ */
+const runDocsEnhancements = (docsRoot) => {
+  rewriteAppLinks(docsRoot);
+  enhanceMobileCardTables(docsRoot);
+  syncCurrentSidebarSectionState(docsRoot);
+};
+
+/**
  * Normalizes docs path by removing leading/trailing slashes and .md suffix.
  * @param {string} path Route path.
  * @returns {string} Normalized path.
@@ -1069,21 +1079,59 @@ const isCurrentMount = (runId, docsRoot) =>
   runId === mountRunId && activeDocsRoot === docsRoot && docsRoot.isConnected;
 
 /**
+ * Creates an animation-frame scheduler for docs enhancements.
+ * @param {number} runId Mount run ID.
+ * @param {HTMLElement} docsRoot Docs root container.
+ * @returns {{schedule: () => void, cancel: () => void}} Scheduler controls.
+ */
+const createDocsEnhancementsScheduler = (runId, docsRoot) => {
+  let frameId = null;
+
+  const flush = () => {
+    frameId = null;
+    if (!isCurrentMount(runId, docsRoot)) {
+      return;
+    }
+
+    runDocsEnhancements(docsRoot);
+  };
+
+  const schedule = () => {
+    if (frameId !== null) {
+      return;
+    }
+
+    // Coalesce rapid docsify/hashchange triggers into one enhancement pass.
+    frameId = window.requestAnimationFrame(flush);
+  };
+
+  const cancel = () => {
+    if (frameId === null) {
+      return;
+    }
+
+    window.cancelAnimationFrame(frameId);
+    frameId = null;
+  };
+
+  return { cancel, schedule };
+};
+
+/**
  * Builds docsify plugins for docs shell behavior.
  * @param {number} runId Mount run ID.
  * @param {HTMLElement} docsRoot Docs root container.
+ * @param {() => void} scheduleDocsEnhancements Enhancements scheduler.
  * @returns {Function[]} Docsify plugins.
  */
-const createDocsifyPlugins = (runId, docsRoot) => [
+const createDocsifyPlugins = (runId, docsRoot, scheduleDocsEnhancements) => [
   (hook) => {
     hook.doneEach(() => {
       if (!isCurrentMount(runId, docsRoot)) {
         return;
       }
 
-      rewriteAppLinks(docsRoot);
-      enhanceMobileCardTables(docsRoot);
-      syncCurrentSidebarSectionState(docsRoot);
+      scheduleDocsEnhancements();
     });
   },
 ];
@@ -1134,7 +1182,11 @@ const mountDocs = async (docsRoot, docsApp) => {
     cleanups.push(setupDocsTopOffsetSync(docsRoot));
     cleanups.push(setupMobileSidebarOutsideDismiss());
 
-    const docsifyPlugins = createDocsifyPlugins(runId, docsRoot);
+    const { cancel: cancelDocsEnhancements, schedule: scheduleDocsEnhancements } =
+      createDocsEnhancementsScheduler(runId, docsRoot);
+    cleanups.push(cancelDocsEnhancements);
+
+    const docsifyPlugins = createDocsifyPlugins(runId, docsRoot, scheduleDocsEnhancements);
 
     window.$docsify = {
       alias: {
@@ -1163,9 +1215,7 @@ const mountDocs = async (docsRoot, docsApp) => {
     });
 
     const handleRewriteOnHashChange = () => {
-      rewriteAppLinks(docsRoot);
-      enhanceMobileCardTables(docsRoot);
-      syncCurrentSidebarSectionState(docsRoot);
+      scheduleDocsEnhancements();
     };
     window.addEventListener("hashchange", handleRewriteOnHashChange);
     cleanups.push(() => {
@@ -1182,9 +1232,7 @@ const mountDocs = async (docsRoot, docsApp) => {
       return;
     }
 
-    rewriteAppLinks(docsRoot);
-    enhanceMobileCardTables(docsRoot);
-    syncCurrentSidebarSectionState(docsRoot);
+    scheduleDocsEnhancements();
   } catch (error) {
     if (!isCurrentMount(runId, docsRoot)) {
       return;
