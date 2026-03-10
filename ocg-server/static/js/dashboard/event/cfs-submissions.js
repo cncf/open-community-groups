@@ -942,6 +942,15 @@ export class ReviewSubmissionModal extends LitWrapper {
         class="pt-5 space-y-8"
         ?hidden=${!isActive}
       >
+        <div
+          role="status"
+          class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+        >
+          This is the <span class="font-semibold">group's final decision</span> on this submission, not an
+          individual assessment. Once saved, it is final. The speaker will receive this update and can review
+          it in their Submissions tab.
+        </div>
+
         <div>
           <label class="form-label">Decision</label>
           <div class="mt-3">${this._renderStatusBoxes()}</div>
