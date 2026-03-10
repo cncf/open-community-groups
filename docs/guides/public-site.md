@@ -25,9 +25,9 @@ If you prefer a faster task-oriented run-through first, use
 
 | Page           | Path                                                 | Why it matters                                                   |
 | -------------- | ---------------------------------------------------- | ---------------------------------------------------------------- |
-| Home           | [/](/ ':ignore')                                   | Platform overview, featured communities, curated upcoming events |
-| Explore        | [/explore](/explore ':ignore')                     | Search and filter events or groups with multiple views           |
-| Stats          | [/stats](/stats ':ignore')                         | Platform-level growth and trend visibility                       |
+| Home           | [/](/ ':ignore')                                     | Platform overview, featured communities, curated upcoming events |
+| Explore        | [/explore](/explore ':ignore')                       | Search and filter events or groups with multiple views           |
+| Stats          | [/stats](/stats ':ignore')                           | Platform-level growth and trend visibility                       |
 | Community page | `/{community}`                                       | Community identity, activity, and top-level context              |
 | Group page     | `/{community}/group/{group_slug}`                    | Membership entry point and group-specific event stream           |
 | Event page     | `/{community}/group/{group_slug}/event/{event_slug}` | RSVP, schedule, CFS, and delivery details                        |
