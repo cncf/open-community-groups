@@ -9,7 +9,7 @@ to speaker feels smooth.
 For a fast end-to-end walkthrough first, use
 [Quickstart](../getting-started/quickstart.md).
 
-Path: [`/dashboard/user`](/dashboard/user ':ignore')
+Path: [/dashboard/user](/dashboard/user ':ignore')
 
 **Sections:**
 
@@ -25,14 +25,14 @@ Path: [`/dashboard/user`](/dashboard/user ':ignore')
 
 The dashboard is organized into five areas:
 
-- [`My Events`](/dashboard/user?tab=events ':ignore')
-- [`Profile`](/dashboard/user?tab=account ':ignore')
-- [`Invitations`](/dashboard/user?tab=invitations ':ignore')
-- [`Session proposals`](/dashboard/user?tab=session-proposals ':ignore')
-- [`Submissions`](/dashboard/user?tab=submissions ':ignore')
+- [My Events](/dashboard/user?tab=events ':ignore')
+- [Profile](/dashboard/user?tab=account ':ignore')
+- [Invitations](/dashboard/user?tab=invitations ':ignore')
+- [Session proposals](/dashboard/user?tab=session-proposals ':ignore')
+- [Submissions](/dashboard/user?tab=submissions ':ignore')
 
-Each area maps to a specific phase of your lifecycle: participation, identity, access, content
-creation, and review outcomes.
+Each area supports a different part of your participation in OCG: events,
+profile, access, proposals, and submissions.
 
 ## My Events: Upcoming Participation
 
@@ -74,9 +74,9 @@ Field requirements and limits are shown inline in the dashboard forms while you 
 
 ## Invitations: Unlock Organizer Access
 
-When a community or group invites you to help run operations, the invitation appears here.
-Accepting an invitation updates your access model and can surface new dashboard options in
-your user menu.
+When a community or group invites you to help run operations, the invitation
+appears here. Accepting an invitation updates your access and can add new
+dashboard options in your user menu.
 
 Invitation statuses:
 
@@ -102,8 +102,9 @@ If organizer dashboards still do not appear, see
 
 ## Session Proposals: Reusable Talks
 
-`Session proposals` is where you maintain reusable speaker assets. This keeps your talk content
-consistent while allowing event-level submission decisions later.
+`Session proposals` is where you manage talk proposals you can reuse across
+events. This helps you keep your talk content consistent while submitting to
+different events.
 
 ![Session proposals list](../screenshots/dashboard-user-session-proposals-list.png)
 
@@ -134,11 +135,8 @@ Derived badges may also appear:
 
 ### When a Proposal Gets Locked
 
-Not all locks are the same. OCG uses two practical lock levels:
-
-!> `Linked` is a hard lock, so once a proposal is linked to an accepted event session it can no
-longer be edited in place. `Submitted` is a partial lock: most content can still be improved, but
-delete is blocked and co-speaker changes are restricted after submission.
+!> `Linked` proposals cannot be edited. `Submitted` proposals can still be
+updated, but delete and some co-speaker changes are blocked.
 
 - `Linked` is a hard lock. Once a proposal is linked to an accepted event session, it is treated as
   delivery content and can no longer be edited in place.
@@ -188,7 +186,8 @@ To understand where submission decisions are made, see
 
 ## Recommended Working Rhythm
 
-?> Keep this cycle active to avoid last-minute blockers around invitations or submission windows.
+?> Review this list regularly so invitations and submission deadlines do not
+catch you by surprise.
 
 1. Keep profile current (especially bio, timezone, and links).
 2. Track `My Events` to stay ahead of upcoming commitments.

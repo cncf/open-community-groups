@@ -53,7 +53,13 @@ const initializeSubmissionActions = () => {
       if (!button.id) {
         button.id = `withdraw-submission-${button.dataset.submissionId}`;
       }
-      showConfirmAlert("Are you sure you want to withdraw this submission?", button.id, "Withdraw");
+      showConfirmAlert(
+        "Are you sure you want to withdraw this submission?<br><br>This action cannot be undone.",
+        button.id,
+        "Withdraw",
+        "Cancel",
+        true,
+      );
     });
     button.addEventListener("htmx:afterRequest", (event) => {
       handleHtmxResponse({

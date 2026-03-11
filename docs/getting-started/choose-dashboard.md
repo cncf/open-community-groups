@@ -2,20 +2,19 @@
 
 # Choose Your Dashboard
 
-OCG has three dashboards, each scoped to a different level of responsibility. Think of them as
-three workspaces that stack: personal work (`User`), community governance (`Community`), and
-execution at the group/event layer (`Group`).
+OCG has three dashboards, each supporting a different kind of work: personal tasks (`User`),
+community management (`Community`), and group or event management (`Group`).
 
 ## How to Pick the Right Workspace
 
-Start from your role in the workflow, not from the menu label. This matrix combines intent,
-access model, and expected outcomes in one view:
+Start with what you need to do, not the menu label. This matrix combines tasks, access, and
+expected outcomes in one view:
 
 | If you need to... | Use this dashboard | Who gets it | Core outcomes |
 | --- | --- | --- | --- |
-| Manage your profile, invitations, proposals, and submissions | [`User Dashboard`](/dashboard/user ':ignore') | Any logged-in user | Keep profile current, accept invitations, submit to CFS |
-| Manage community-wide identity, admins, taxonomy, analytics, and groups | [`Community Dashboard`](/dashboard/community ':ignore') | Community team members | Operate team access, branding, regions, categories, analytics, and group lifecycle |
-| Run events, organizers, members, sponsors, and day-to-day operations | [`Group Dashboard`](/dashboard/group ':ignore') | Group team members | Deliver events, manage members, coordinate organizers and sponsors |
+| Manage your profile, invitations, proposals, and submissions | [User Dashboard](/dashboard/user ':ignore') | Any logged-in user | Keep profile current, accept invitations, submit to CFS |
+| Manage community-wide identity, admins, taxonomy, analytics, and groups | [Community Dashboard](/dashboard/community ':ignore') | Community team members | Manage team access, branding, regions, categories, analytics, and groups |
+| Run events, organizers, members, sponsors, and day-to-day operations | [Group Dashboard](/dashboard/group ':ignore') | Group team members | Deliver events, manage members, coordinate organizers and sponsors |
 
 ![Dashboard options from user menu](../screenshots/navigation-user-menu.png)
 
@@ -29,20 +28,21 @@ Guide deep-dives:
 
 ## Access Model and Why It Matters
 
-Dashboard visibility is role-driven. If a dashboard is missing from your menu, your account does
-not currently hold that role.
+Dashboard visibility depends on your role. If a dashboard is missing from your menu, your account
+does not currently have access to it.
 
-The two organizer dashboards are also context-driven:
+The two organizer dashboards also depend on selected context:
 
-- [`Community Dashboard`](/dashboard/community ':ignore') requires a selected community.
-- [`Group Dashboard`](/dashboard/group ':ignore') requires both a selected community and a selected group.
+- [Community Dashboard](/dashboard/community ':ignore') requires a selected community.
+- [Group Dashboard](/dashboard/group ':ignore') requires both a selected community and a selected group.
 
 If the right context is not selected yet, some organizer actions stay unavailable until you choose
 the needed community or group.
 
-!> Missing dashboard entries usually mean either missing role access or missing selected context.
-Community scope needs a selected community.
-Group scope needs both selected community and selected group.
+!> Missing dashboard entries usually mean you either do not have access yet or have not selected
+the right context.
+Community Dashboard needs a selected community.
+Group Dashboard needs both a selected community and a selected group.
 
 ## Fixed Role Model
 
@@ -78,7 +78,7 @@ UI behavior:
 
 Use this order to unblock quickly:
 
-1. Open [`User Dashboard -> Invitations`](/dashboard/user?tab=invitations ':ignore').
+1. Open [User Dashboard -> Invitations](/dashboard/user?tab=invitations ':ignore').
 2. Accept pending community/group invitations.
 3. Refresh the page (or sign out/in).
 4. Re-open your avatar menu and check for new dashboard entries.
@@ -92,7 +92,7 @@ If visibility still does not update, use
 
 ### Member or speaker path
 
-Start in [`User Dashboard`](/dashboard/user ':ignore'), complete your profile, then create session proposals
+Start in [User Dashboard](/dashboard/user ':ignore'), complete your profile, then create session proposals
 only when you need to submit to event CFS.
 
 Continue with [User Dashboard Guide](../guides/user-dashboard.md) and
@@ -100,18 +100,18 @@ Continue with [User Dashboard Guide](../guides/user-dashboard.md) and
 
 ### Community lead path
 
-Start in [`Community Dashboard`](/dashboard/community?tab=settings ':ignore') to verify settings and team
-membership first, then review [`Regions`](/dashboard/community?tab=regions ':ignore'),
-[`Group Categories`](/dashboard/community?tab=group-categories ':ignore'), and
-[`Event Categories`](/dashboard/community?tab=event-categories ':ignore'). Move to
-[`Groups`](/dashboard/community?tab=groups ':ignore') after taxonomy and ownership structure are in place.
+Start in [Community Dashboard](/dashboard/community?tab=settings ':ignore') to verify settings and team
+membership first, then review [Regions](/dashboard/community?tab=regions ':ignore'),
+[Group Categories](/dashboard/community?tab=group-categories ':ignore'), and
+[Event Categories](/dashboard/community?tab=event-categories ':ignore'). Move to
+[Groups](/dashboard/community?tab=groups ':ignore') after taxonomy and ownership structure are in place.
 
 Continue with [Community Dashboard Guide](../guides/community-dashboard.md).
 
 ### Group organizer path
 
-Start in [`Group Dashboard`](/dashboard/group?tab=settings ':ignore') and move straight into
-[`Events`](/dashboard/group?tab=events ':ignore'), because event setup, publishing, attendance, and
+Start in [Group Dashboard](/dashboard/group?tab=settings ':ignore') and move straight into
+[Events](/dashboard/group?tab=events ':ignore'), because event setup, publishing, attendance, and
 submissions are the operational center of group work.
 
 Continue with [Group Dashboard Guide](../guides/group-dashboard.md) and

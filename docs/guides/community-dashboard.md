@@ -2,13 +2,13 @@
 
 # Community Dashboard Guide
 
-Use the Community Dashboard to manage strategy-level community operations: identity, governance,
-taxonomy, team access, analytics, and group lifecycle.
+Use the Community Dashboard to manage community-wide settings and operations:
+identity, governance, taxonomy, team access, analytics, and groups.
 
 If you are deciding workspace scope first, read
 [Choose Your Dashboard](../getting-started/choose-dashboard.md).
 
-Path: [`/dashboard/community`](/dashboard/community ':ignore')
+Path: [/dashboard/community](/dashboard/community ':ignore')
 
 **Sections:**
 
@@ -26,19 +26,20 @@ Path: [`/dashboard/community`](/dashboard/community ':ignore')
 
 ## What This Dashboard Owns
 
-Think of the community scope as the layer above groups. You are not running one event here; you
-are shaping how the whole community is represented and governed.
+Use the community scope to manage the structure shared by all groups. You are
+not running one event here; you are shaping how the whole community is
+presented and managed.
 
 Main areas:
 
-- [`Settings`](/dashboard/community?tab=settings ':ignore'): community identity, branding, social presence,
+- [Settings](/dashboard/community?tab=settings ':ignore'): community identity, branding, social presence,
   and long-form content.
-- [`Team`](/dashboard/community?tab=team ':ignore'): community-level admins and invitation flow.
-- [`Regions`](/dashboard/community?tab=regions ':ignore'): community geography model for group classification.
-- [`Group Categories`](/dashboard/community?tab=group-categories ':ignore'): reusable taxonomy for groups.
-- [`Event Categories`](/dashboard/community?tab=event-categories ':ignore'): reusable taxonomy for events.
-- [`Analytics`](/dashboard/community?tab=analytics ':ignore'): community growth trends and volume metrics.
-- [`Groups`](/dashboard/community?tab=groups ':ignore'): group creation, maintenance, activation state,
+- [Team](/dashboard/community?tab=team ':ignore'): community-level admins and invitation flow.
+- [Regions](/dashboard/community?tab=regions ':ignore'): community geography model for group classification.
+- [Group Categories](/dashboard/community?tab=group-categories ':ignore'): reusable taxonomy for groups.
+- [Event Categories](/dashboard/community?tab=event-categories ':ignore'): reusable taxonomy for events.
+- [Analytics](/dashboard/community?tab=analytics ':ignore'): community growth trends and volume metrics.
+- [Groups](/dashboard/community?tab=groups ':ignore'): group creation, maintenance, activation state,
   and lifecycle transitions.
 
 ![Community dashboard analytics](../screenshots/dashboard-community-analytics.png)
@@ -53,7 +54,7 @@ You are ready to work in this dashboard when:
 
 If no community is selected yet, some actions stay unavailable until you choose one.
 
-Invitation acceptance and access visibility are managed in
+For invitation acceptance and dashboard access, see
 [User Dashboard Guide](user-dashboard.md).
 
 ## Roles and Permissions
@@ -77,7 +78,7 @@ Community role impact on group-level operations in the same community:
 UI behavior:
 
 - When your role cannot perform an action, controls are disabled.
-- Authorization middleware is the source of truth and blocks unauthorized requests.
+- Server-side authorization blocks unauthorized requests.
 
 ![Community disabled form](../screenshots/dashboard-community-permissions-role.png)
 
@@ -126,7 +127,7 @@ Pending states are visible (`Invitation sent`) so you can tell the difference be
 fully active collaborators.
 
 When you add a team member, OCG sends an invitation with a direct link to
-[`User Dashboard -> Invitations`](/dashboard/user?tab=invitations ':ignore').
+[User Dashboard -> Invitations](/dashboard/user?tab=invitations ':ignore').
 
 ![Community team area](../screenshots/dashboard-community-team.png)
 
@@ -264,14 +265,14 @@ When a group is inactive, its public-view shortcut is disabled in the groups tab
 
 ?> Use a recurring monthly or biweekly rhythm so identity, access, and group structure stay healthy.
 
-1. Review [`Settings`](/dashboard/community?tab=settings ':ignore') monthly for brand accuracy.
-2. Keep [`Team`](/dashboard/community?tab=team ':ignore') membership current to avoid operational
+1. Review [Settings](/dashboard/community?tab=settings ':ignore') monthly for brand accuracy.
+2. Keep [Team](/dashboard/community?tab=team ':ignore') membership current to avoid operational
    bottlenecks.
-3. Review [`Regions`](/dashboard/community?tab=regions ':ignore') so geography labels stay clean and useful.
-4. Review [`Group Categories`](/dashboard/community?tab=group-categories ':ignore') to avoid stale taxonomy.
-5. Review [`Event Categories`](/dashboard/community?tab=event-categories ':ignore') as event programs evolve.
-6. Check [`Analytics`](/dashboard/community?tab=analytics ':ignore') on a regular cadence for trend shifts.
-7. Use [`Groups`](/dashboard/community?tab=groups ':ignore') to retire stale structures and support active
+3. Review [Regions](/dashboard/community?tab=regions ':ignore') so geography labels stay clean and useful.
+4. Review [Group Categories](/dashboard/community?tab=group-categories ':ignore') to avoid stale taxonomy.
+5. Review [Event Categories](/dashboard/community?tab=event-categories ':ignore') as event programs evolve.
+6. Check [Analytics](/dashboard/community?tab=analytics ':ignore') on a regular cadence for trend shifts.
+7. Use [Groups](/dashboard/community?tab=groups ':ignore') to retire stale structures and support active
    ones.
 
 For event lifecycle operations after handoff to group teams, see

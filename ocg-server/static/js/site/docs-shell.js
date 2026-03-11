@@ -744,6 +744,60 @@ const rewriteAppLinks = (docsRoot) => {
 };
 
 /**
+ * Adds per-cell labels so CSS can render markdown tables as mobile cards.
+ * @param {HTMLElement} docsRoot Docs root container.
+ */
+const enhanceMobileCardTables = (docsRoot) => {
+  if (!docsRoot || !docsRoot.isConnected) {
+    return;
+  }
+
+  const tables = docsRoot.querySelectorAll(".markdown-section table");
+  tables.forEach((table) => {
+    if (table.dataset.ocgMobileCardTableEnhanced === "1") {
+      return;
+    }
+
+    let headerCells = Array.from(table.querySelectorAll("thead th"));
+    if (!headerCells.length) {
+      const firstRow = table.querySelector("tr");
+      if (firstRow) {
+        headerCells = Array.from(firstRow.querySelectorAll("th, td"));
+      }
+    }
+
+    if (!headerCells.length) {
+      return;
+    }
+
+    const headerLabels = headerCells.map((cell) => {
+      return (cell.textContent || "").trim();
+    });
+    const bodyRows = table.querySelectorAll("tbody tr");
+    bodyRows.forEach((row) => {
+      const cells = row.querySelectorAll("td");
+      cells.forEach((cell, index) => {
+        const label = headerLabels[index] || "";
+        cell.setAttribute("data-label", label);
+      });
+    });
+
+    table.classList.add("ocg-mobile-card-table");
+    table.dataset.ocgMobileCardTableEnhanced = "1";
+  });
+};
+
+/**
+ * Runs post-render docs enhancements for links, tables, and sidebar state.
+ * @param {HTMLElement} docsRoot Docs root container.
+ */
+const runDocsEnhancements = (docsRoot) => {
+  rewriteAppLinks(docsRoot);
+  enhanceMobileCardTables(docsRoot);
+  syncCurrentSidebarSectionState(docsRoot);
+};
+
+/**
  * Normalizes docs path by removing leading/trailing slashes and .md suffix.
  * @param {string} path Route path.
  * @returns {string} Normalized path.
@@ -796,6 +850,77 @@ const getCurrentDocsRoute = () =>
   };
 
 /**
+ * Keeps the current page section list open and matches the active section to the hash.
+ * @param {HTMLElement} docsRoot Docs root container.
+ */
+const syncCurrentSidebarSectionState = (docsRoot) => {
+  const sidebar = docsRoot.querySelector(DOCS_SIDEBAR_SELECTOR);
+  if (!sidebar) {
+    return;
+  }
+
+  const currentRoute = getCurrentDocsRoute();
+  if (!currentRoute.path) {
+    return;
+  }
+
+  const pageLink = Array.from(sidebar.querySelectorAll("a[href^='#/']")).find((link) => {
+    const route = parseDocsRoute(link.getAttribute("href"));
+    return route && route.path === currentRoute.path && !route.id;
+  });
+  if (!pageLink) {
+    return;
+  }
+
+  const pageItem = pageLink.closest("li");
+  const sections = pageItem ? pageItem.querySelector(":scope > .app-sub-sidebar") : null;
+  if (!pageItem || !sections) {
+    return;
+  }
+
+  pageItem.classList.remove("collapse");
+  sections.querySelectorAll(":scope > li.active").forEach((item) => {
+    item.classList.remove("active");
+  });
+
+  if (!currentRoute.id) {
+    pageItem.classList.add("active");
+    return;
+  }
+
+  const activeSectionLink = Array.from(sections.querySelectorAll(":scope > li > a[href^='#/']")).find(
+    (link) => {
+      const route = parseDocsRoute(link.getAttribute("href"));
+      return route && route.path === currentRoute.path && route.id === currentRoute.id;
+    },
+  );
+  if (!activeSectionLink) {
+    return;
+  }
+
+  activeSectionLink.closest("li")?.classList.add("active");
+};
+
+/**
+ * Re-applies sidebar section state after Docsify finishes reacting to anchor clicks.
+ */
+const scheduleCurrentSidebarSectionStateSync = () => {
+  const syncIfMounted = () => {
+    if (!activeDocsRoot || !activeDocsRoot.isConnected) {
+      return;
+    }
+
+    syncCurrentSidebarSectionState(activeDocsRoot);
+  };
+
+  syncIfMounted();
+  window.requestAnimationFrame(() => {
+    syncIfMounted();
+    window.requestAnimationFrame(syncIfMounted);
+  });
+};
+
+/**
  * Parses link href for same-page anchor handling.
  * @param {string|null} href Link href.
  * @returns {{id: string, path: string, rawPath: string}|null} Anchor route.
@@ -831,6 +956,7 @@ const parseSamePageAnchor = (href) => {
  * @param {string} id Target section ID.
  */
 const updateDocsAnchorHash = (rawPath, id) => {
+  const previousUrl = window.location.href;
   const nextHash = `#${rawPath || "/"}?id=${encodeURIComponent(id)}`;
   if (window.location.hash === nextHash) {
     window.history.replaceState(null, "", nextHash);
@@ -838,6 +964,13 @@ const updateDocsAnchorHash = (rawPath, id) => {
   }
 
   window.history.pushState(null, "", nextHash);
+  // pushState does not emit hashchange, but Docsify and our sidebar sync rely on it.
+  window.dispatchEvent(
+    new HashChangeEvent("hashchange", {
+      oldURL: previousUrl,
+      newURL: window.location.href,
+    }),
+  );
 };
 
 /**
@@ -850,6 +983,31 @@ const jumpToElement = (element) => {
     behavior: "auto",
     top: Math.max(0, top - DOCS_ANCHOR_SCROLL_PADDING_PX),
   });
+};
+
+/**
+ * Keeps a repeated click on the current sidebar page link from collapsing its sections.
+ * @param {MouseEvent} event Click event.
+ */
+const handleCurrentSidebarPageClick = (event) => {
+  const link = event.target.closest("a[href]");
+  if (!link || !link.closest(DOCS_SIDEBAR_SELECTOR) || link.closest(".app-sub-sidebar")) {
+    return;
+  }
+
+  const targetRoute = parseDocsRoute(link.getAttribute("href"));
+  if (!targetRoute || targetRoute.id) {
+    return;
+  }
+
+  const currentRoute = getCurrentDocsRoute();
+  if (targetRoute.path !== currentRoute.path || currentRoute.id) {
+    return;
+  }
+
+  event.preventDefault();
+  event.stopImmediatePropagation();
+  scheduleCurrentSidebarSectionStateSync();
 };
 
 /**
@@ -884,6 +1042,7 @@ const handleSamePageAnchorClick = (event) => {
   event.preventDefault();
   updateDocsAnchorHash(currentRoute.rawPath, targetRoute.id);
   jumpToElement(targetElement);
+  scheduleCurrentSidebarSectionStateSync();
 };
 
 /**
@@ -920,19 +1079,59 @@ const isCurrentMount = (runId, docsRoot) =>
   runId === mountRunId && activeDocsRoot === docsRoot && docsRoot.isConnected;
 
 /**
+ * Creates an animation-frame scheduler for docs enhancements.
+ * @param {number} runId Mount run ID.
+ * @param {HTMLElement} docsRoot Docs root container.
+ * @returns {{schedule: () => void, cancel: () => void}} Scheduler controls.
+ */
+const createDocsEnhancementsScheduler = (runId, docsRoot) => {
+  let frameId = null;
+
+  const flush = () => {
+    frameId = null;
+    if (!isCurrentMount(runId, docsRoot)) {
+      return;
+    }
+
+    runDocsEnhancements(docsRoot);
+  };
+
+  const schedule = () => {
+    if (frameId !== null) {
+      return;
+    }
+
+    // Coalesce rapid docsify/hashchange triggers into one enhancement pass.
+    frameId = window.requestAnimationFrame(flush);
+  };
+
+  const cancel = () => {
+    if (frameId === null) {
+      return;
+    }
+
+    window.cancelAnimationFrame(frameId);
+    frameId = null;
+  };
+
+  return { cancel, schedule };
+};
+
+/**
  * Builds docsify plugins for docs shell behavior.
  * @param {number} runId Mount run ID.
  * @param {HTMLElement} docsRoot Docs root container.
+ * @param {() => void} scheduleDocsEnhancements Enhancements scheduler.
  * @returns {Function[]} Docsify plugins.
  */
-const createDocsifyPlugins = (runId, docsRoot) => [
+const createDocsifyPlugins = (runId, docsRoot, scheduleDocsEnhancements) => [
   (hook) => {
     hook.doneEach(() => {
       if (!isCurrentMount(runId, docsRoot)) {
         return;
       }
 
-      rewriteAppLinks(docsRoot);
+      scheduleDocsEnhancements();
     });
   },
 ];
@@ -983,7 +1182,11 @@ const mountDocs = async (docsRoot, docsApp) => {
     cleanups.push(setupDocsTopOffsetSync(docsRoot));
     cleanups.push(setupMobileSidebarOutsideDismiss());
 
-    const docsifyPlugins = createDocsifyPlugins(runId, docsRoot);
+    const { cancel: cancelDocsEnhancements, schedule: scheduleDocsEnhancements } =
+      createDocsEnhancementsScheduler(runId, docsRoot);
+    cleanups.push(cancelDocsEnhancements);
+
+    const docsifyPlugins = createDocsifyPlugins(runId, docsRoot, scheduleDocsEnhancements);
 
     window.$docsify = {
       alias: {
@@ -1002,13 +1205,17 @@ const mountDocs = async (docsRoot, docsApp) => {
     };
 
     cleanups.push(mirrorDocsifyBodyClasses(docsRoot));
+    document.addEventListener("click", handleCurrentSidebarPageClick);
+    cleanups.push(() => {
+      document.removeEventListener("click", handleCurrentSidebarPageClick);
+    });
     document.addEventListener("click", handleSamePageAnchorClick);
     cleanups.push(() => {
       document.removeEventListener("click", handleSamePageAnchorClick);
     });
 
     const handleRewriteOnHashChange = () => {
-      rewriteAppLinks(docsRoot);
+      scheduleDocsEnhancements();
     };
     window.addEventListener("hashchange", handleRewriteOnHashChange);
     cleanups.push(() => {
@@ -1025,7 +1232,7 @@ const mountDocs = async (docsRoot, docsApp) => {
       return;
     }
 
-    rewriteAppLinks(docsRoot);
+    scheduleDocsEnhancements();
   } catch (error) {
     if (!isCurrentMount(runId, docsRoot)) {
       return;

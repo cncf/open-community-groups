@@ -27,16 +27,26 @@ description = "Track and manage your call for speakers submissions.") -}}
           <th scope="col" class="px-3 xl:px-5 py-3">Proposal</th>
           <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3">Status</th>
           <th scope="col" class="hidden 2xl:table-cell px-3 xl:px-5 py-3">Updated</th>
-          <th scope="col" class="px-3 xl:px-5 py-3 w-32"></th>
+          <th scope="col" class="px-3 xl:px-5 py-3 w-32">
+            <span class="sr-only">Actions</span>
+          </th>
         </tr>
       </thead>
       <tbody>
         {% if submissions.is_empty() -%}
-          <tr class="bg-white border-b border-stone-200">
+          <tr class="bg-white border-b border-stone-200 xl:hidden">
+            <td class="px-8 py-16 text-center" colspan="3">
+              {% include "dashboard/placeholders/user_submissions_table.html" -%}
+            </td>
+          </tr>
+          <tr class="hidden xl:table-row 2xl:hidden bg-white border-b border-stone-200">
+            <td class="px-8 py-16 text-center" colspan="4">
+              {% include "dashboard/placeholders/user_submissions_table.html" -%}
+            </td>
+          </tr>
+          <tr class="hidden 2xl:table-row bg-white border-b border-stone-200">
             <td class="px-8 py-16 text-center" colspan="5">
-              <div class="flex flex-col items-center justify-center min-h-[125px]">
-                <div class="text-lg lg:text-xl">You don't have any submissions yet.</div>
-              </div>
+              {% include "dashboard/placeholders/user_submissions_table.html" -%}
             </td>
           </tr>
         {% else -%}
@@ -44,8 +54,8 @@ description = "Track and manage your call for speakers submissions.") -}}
             <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
               <td class="px-3 xl:px-5 py-4">
                 <a href="/{{ submission.event.community_name }}/group/{{ submission.event.group_slug }}/event/{{ submission.event.slug }}"
-                   hx-boost="true"
-                   hx-target="body"
+                   target="_blank"
+                   rel="noopener noreferrer"
                    class="font-medium text-stone-900 hover:underline line-clamp-1">
                   {{ submission.event.name }}
                 </a>
@@ -149,8 +159,8 @@ description = "Track and manage your call for speakers submissions.") -}}
      class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-[1000] justify-center items-center w-full md:inset-0 max-h-full flex">
   <div id="overlay-action-required-modal"
        class="modal-overlay absolute w-full h-full bg-stone-950 opacity-[0.35]"></div>
-  <div class="relative p-4 w-full max-w-2xl max-h-full">
-    <div class="relative bg-white rounded-lg shadow">
+  <div class="modal-panel p-4 max-w-2xl">
+    <div class="modal-card rounded-lg">
       <div class="flex items-center justify-between p-4 md:p-5 border-b border-stone-200 rounded-t">
         <h3 id="action-required-modal-title"
             class="text-xl font-semibold text-stone-900">Action required</h3>
@@ -161,7 +171,7 @@ description = "Track and manage your call for speakers submissions.") -}}
           <span class="sr-only">Close modal</span>
         </button>
       </div>
-      <div class="p-4 md:p-8">
+      <div class="modal-body p-4 md:p-8">
         <p id="action-required-modal-message"
            class="text-sm text-stone-700 whitespace-pre-line"></p>
         <div class="flex justify-end pt-6 border-t border-stone-200 mt-6">

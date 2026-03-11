@@ -20,6 +20,7 @@ export class SessionProposalModal extends LitWrapper {
    * Defines reactive properties and internal state tracked by Lit.
    * @property {number} titleMaxLength - Max length allowed for proposal title.
    * @property {number} descriptionMaxLength - Max length allowed for description text.
+   * @property {string} currentUserId - Authenticated user id used to disable self-selection.
    * @property {number} durationMax - Max allowed value for duration in minutes.
    * @property {Array} _sessionProposalLevels - Available level options for the form.
    * @property {boolean} _isOpen - Internal visibility state for the modal.
@@ -30,6 +31,7 @@ export class SessionProposalModal extends LitWrapper {
   static properties = {
     titleMaxLength: { type: Number, attribute: "title-max-length" },
     descriptionMaxLength: { type: Number, attribute: "description-max-length" },
+    currentUserId: { type: String, attribute: "current-user-id" },
     durationMax: { type: Number, attribute: "duration-max" },
     _sessionProposalLevels: { type: Array, attribute: false },
     _isOpen: { type: Boolean, attribute: false },
@@ -45,6 +47,7 @@ export class SessionProposalModal extends LitWrapper {
     super();
     this.titleMaxLength = 255;
     this.descriptionMaxLength = 5000;
+    this.currentUserId = "";
     this.durationMax = 600;
     this._sessionProposalLevels = [];
     this._isOpen = false;
@@ -322,6 +325,7 @@ export class SessionProposalModal extends LitWrapper {
       return;
     }
 
+    coSpeakerSearch.disabledUserIds = this.currentUserId ? [this.currentUserId] : [];
     coSpeakerSearch.excludeUsernames = this._selectedCoSpeaker ? [this._selectedCoSpeaker.username] : [];
   }
 
@@ -694,6 +698,7 @@ export class SessionProposalModal extends LitWrapper {
               />
               <user-search-field
                 id="session-proposal-co-speaker-search"
+                class="mt-2 block mb-2"
                 dashboard-type="user"
                 label="co-speaker"
                 legend="Search by username to add an optional co-speaker."
@@ -746,14 +751,14 @@ export class SessionProposalModal extends LitWrapper {
         role="dialog"
         aria-modal="true"
         aria-labelledby="session-proposal-modal-title"
-        class="overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-[1000] justify-center items-center w-full md:inset-0 max-h-full ${modalVisibilityClass}"
+        class="overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-[1000] justify-center items-center w-full md:inset-0 ${modalVisibilityClass}"
       >
         <div
           class="modal-overlay absolute w-full h-full bg-stone-950 opacity-[0.35]"
           @click=${this.close}
         ></div>
-        <div class="relative p-4 w-full ${widthClass} max-h-full">
-          <div class="relative bg-white rounded-lg shadow">
+        <div class="modal-panel p-4 ${widthClass}">
+          <div class="modal-card rounded-lg">
             <div class="flex items-center justify-between p-4 md:p-5 border-b border-stone-200 rounded-t">
               <h3 id="session-proposal-modal-title" class="text-xl font-semibold text-stone-900">
                 ${this._getModalTitle()}
@@ -769,7 +774,9 @@ export class SessionProposalModal extends LitWrapper {
                 <span class="sr-only">Close modal</span>
               </button>
             </div>
-            ${isReadOnly ? this._renderViewContent() : this._renderFormContent()}
+            <div class="modal-body">
+              ${isReadOnly ? this._renderViewContent() : this._renderFormContent()}
+            </div>
           </div>
         </div>
       </div>

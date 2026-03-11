@@ -87,16 +87,30 @@ export class CfsLabelsEditor extends LitWrapper {
   }
 
   /**
-   * Creates an empty row with the first configured color when available.
+   * Creates an empty row with a color derived from its index.
    * @returns {Object}
    */
   _createEmptyRow() {
     return {
       _row_id: this._nextRowId(),
-      color: this._paletteColors[0] || "",
+      color: this._getPaletteColorForIndex(this._rows.length),
       event_cfs_label_id: "",
       name: "",
     };
+  }
+
+  /**
+   * Returns a palette color for the provided index.
+   * @param {number} index
+   * @returns {string}
+   */
+  _getPaletteColorForIndex(index) {
+    const paletteColors = this._paletteColors;
+    if (paletteColors.length === 0) {
+      return "";
+    }
+
+    return paletteColors[index % paletteColors.length];
   }
 
   /**
@@ -260,7 +274,7 @@ export class CfsLabelsEditor extends LitWrapper {
 
     this._documentClickHandler = (event) => {
       const path = event.composedPath();
-      if (!path.includes(this)) {
+      if (!this._isActiveColorPopoverInteraction(path)) {
         this._closeColorPopover();
       }
     };
@@ -279,6 +293,20 @@ export class CfsLabelsEditor extends LitWrapper {
   _captureLegendHtml() {
     const legendNode = this.querySelector('[slot="legend"]');
     this._legendHtml = String(legendNode?.innerHTML || "").trim();
+  }
+
+  /**
+   * Checks whether the click happened within the active color trigger or popover.
+   * @param {Array<EventTarget>} path Event path
+   * @returns {boolean}
+   */
+  _isActiveColorPopoverInteraction(path) {
+    if (this._openColorPopoverRowId === null) {
+      return false;
+    }
+
+    const activeRowId = String(this._openColorPopoverRowId);
+    return path.some((node) => node?.dataset?.colorPopoverRowId === activeRowId);
   }
 
   render() {
@@ -322,6 +350,7 @@ export class CfsLabelsEditor extends LitWrapper {
                   <div class="relative shrink-0">
                     <button
                       type="button"
+                      data-color-popover-row-id="${row._row_id}"
                       class="inline-flex size-[38px] items-center justify-center rounded-full border transition hover:ring-1 hover:ring-stone-200"
                       style="--label-color:${row.color ||
                       "transparent"};border-color:var(--label-color);background-color:color-mix(in srgb, var(--label-color) 30%, transparent);"
@@ -341,6 +370,7 @@ export class CfsLabelsEditor extends LitWrapper {
                       ? html`
                           <div
                             id="cfs-label-color-popover-${row._row_id}"
+                            data-color-popover-row-id="${row._row_id}"
                             class="absolute top-full right-0 z-50 mt-2 w-[220px] rounded-xl border border-stone-200 bg-white p-2 shadow-lg"
                             role="listbox"
                             aria-label="Label colors"

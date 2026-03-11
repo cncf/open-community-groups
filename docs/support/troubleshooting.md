@@ -10,7 +10,7 @@ Check:
 
 1. You are logged in.
 2. You accepted the related invitation in
-   [`User Dashboard -> Invitations`](/dashboard/user?tab=invitations ':ignore').
+   [User Dashboard -> Invitations](/dashboard/user?tab=invitations ':ignore').
 3. You selected the required context:
    - [Community dashboard](/dashboard/community ':ignore'): selected community.
    - [Group dashboard](/dashboard/group ':ignore'): selected community and group.
@@ -38,7 +38,7 @@ Check:
 
 1. You are logged in.
 2. The group/event is active and available.
-3. You do not have stale session state (refresh page).
+3. Your session is up to date (refresh page).
 
 For events:
 
@@ -66,7 +66,7 @@ Submission actions depend on status:
 - `Withdraw` is available only while the submission is still active in review.
 - After a final outcome (such as approved/linked), withdraw is no longer available.
 
-Confirm current status in [`User Dashboard -> Submissions`](/dashboard/user?tab=submissions ':ignore').
+Confirm current status in [User Dashboard -> Submissions](/dashboard/user?tab=submissions ':ignore').
 
 ![User submissions list](../screenshots/dashboard-user-submissions-list.png)
 
@@ -119,53 +119,7 @@ Also verify required fields:
 - Title
 - Body (plain text)
 
-## Frequently Asked Questions
+## More Help
 
-### Is OCG Mobile Friendly?
-
-Public pages are usable on mobile. Dashboards are currently desktop-only.
-
-### Where Do I Submit a Speaker Proposal?
-
-Create proposals in
-[`User Dashboard -> Session proposals`](/dashboard/user?tab=session-proposals ':ignore'), then submit from
-each event's public CFS modal.
-
-![Session proposals list](../screenshots/dashboard-user-session-proposals-list.png)
-
-### Why Is My Proposal Missing in CFS Modal?
-
-Likely causes:
-
-- Proposal is not eligible for submission status.
-- Proposal was already submitted to this event.
-- You are logged in with a different account.
-
-### Can I Undo a Submission?
-
-You can withdraw while review is still active. After a final decision, withdraw is no longer
-available.
-
-### Can I Check In Without RSVP?
-
-No. Only attendees can check in.
-
-### Can I Use Automatic Meeting Creation on In-Person Events?
-
-No. Automatic meeting requests are allowed only for `virtual` and `hybrid` events.
-
-### Are Automatically Created Meetings Ended Automatically?
-
-Yes. Meetings created automatically are also ended automatically when the
-configured end time is reached.
-
-### Why Are Host Controls Missing in Automatically Created Zoom Meetings?
-
-At the moment, host controls are not available in automatically created Zoom
-meetings due to some technical limitations.
-
-### Where Can I See Platform-Wide Growth Trends?
-
-Use the public [`Stats`](/stats ':ignore') page.
-
-![Stats page](../screenshots/stats-page.png)
+If you do not see your issue here, check the
+[Frequently Asked Questions](faq.md).

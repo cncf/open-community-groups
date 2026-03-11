@@ -38,13 +38,22 @@
         <tr>
           <th scope="col" class="px-3 xl:px-5 py-3">Name</th>
           <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3">Groups</th>
-          <th scope="col" class="px-3 xl:px-5 py-3 w-27"></th>
+          <th scope="col" class="px-3 xl:px-5 py-3 w-27">
+            <span class="sr-only">Actions</span>
+          </th>
         </tr>
       </thead>
       <tbody id="regions-list">
         {% if regions.is_empty() -%}
-          <tr class="bg-white border-b border-stone-200">
-            <td class="px-8 py-12 text-center text-stone-500" colspan="3">No regions found for this community yet.</td>
+          <tr class="bg-white border-b border-stone-200 xl:hidden">
+            <td class="px-8 py-12 text-center text-stone-500" colspan="2">
+              {% include "dashboard/placeholders/community_regions_table.html" -%}
+            </td>
+          </tr>
+          <tr class="hidden xl:table-row bg-white border-b border-stone-200">
+            <td class="px-8 py-12 text-center text-stone-500" colspan="3">
+              {% include "dashboard/placeholders/community_regions_table.html" -%}
+            </td>
           </tr>
         {% else -%}
           {% for region in regions -%}

@@ -670,6 +670,11 @@
       <div class="border-b border-stone-900/10 pb-12">
         <div class="text-xl lg:text-2xl font-medium text-stone-900">Event Hosts</div>
         <div class="mt-5">
+          {% if let Some(legacy_hosts) = &event.legacy_hosts -%}
+            {% if !legacy_hosts.is_empty() -%}
+              {{ dashboard::permission_warning(message = "This event has legacy hosts imported from the previous platform. These hosts cannot be edited.", extra_classes = "mb-6") -}}
+            {% endif -%}
+          {% endif -%}
           <user-search-selector selected-users="{{ event.hosts|json }}" field-name="hosts" dashboard-type="group" label="host" legend="Search for event organizers or hosts by their username"></user-search-selector>
         </div>
       </div>
@@ -679,6 +684,11 @@
       <div class="border-b border-stone-900/10 pb-12">
         <div class="text-xl lg:text-2xl font-medium text-stone-900">Event Speakers</div>
         <div class="mt-5">
+          {% if let Some(legacy_speakers) = &event.legacy_speakers -%}
+            {% if !legacy_speakers.is_empty() -%}
+              {{ dashboard::permission_warning(message = "This event has legacy speakers imported from the previous platform. These speakers cannot be edited.", extra_classes = "mb-4") -}}
+            {% endif -%}
+          {% endif -%}
           <speakers-selector selected-speakers="{{ event.speakers|json }}" dashboard-type="group" field-name-prefix="speakers" show-add-button label="Speakers" help-text="Add speakers or presenters for this event."></speakers-selector>
         </div>
       </div>

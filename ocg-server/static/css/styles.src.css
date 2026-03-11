@@ -239,6 +239,18 @@
     @apply flex items-center justify-center bg-stone-50 rounded-lg text-stone-500 text-sm p-4 min-h-[220px];
   }
 
+  .modal-panel {
+    @apply relative w-full max-h-[90vh];
+  }
+
+  .modal-card {
+    @apply relative flex min-h-0 max-h-[calc(90vh-2rem)] flex-col overflow-hidden bg-white shadow;
+  }
+
+  .modal-body {
+    @apply min-h-0 overflow-y-auto;
+  }
+
   .featured-speakers-grid:empty {
     display: none;
     margin: 0;
