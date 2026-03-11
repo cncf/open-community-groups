@@ -172,33 +172,40 @@ impl NavigationLinksOffsets {
     /// Determines which navigation links should exist based on the current offset, page
     /// size (limit), and total number of results.
     fn new(offset: Option<usize>, limit: usize, total: usize) -> Self {
-        let mut offsets = NavigationLinksOffsets::default();
-
         let offset = offset.unwrap_or(0);
+        let mut first = None;
+        let mut last = None;
+        let mut next = None;
+        let mut prev = None;
 
         // There are more results going backwards
         if offset > 0 {
             // First
-            offsets.first = Some(0);
+            first = Some(0);
 
             // Previous
-            offsets.prev = Some(offset.saturating_sub(limit));
+            prev = Some(offset.saturating_sub(limit));
         }
 
         // There are more results going forward
         if total.saturating_sub(offset + limit) > 0 {
             // Next
-            offsets.next = Some(offset + limit);
+            next = Some(offset + limit);
 
             // Last
-            offsets.last = if total.is_multiple_of(limit) {
+            last = if total.is_multiple_of(limit) {
                 Some(total - limit)
             } else {
                 Some(total - (total % limit))
             };
         }
 
-        offsets
+        Self {
+            first,
+            last,
+            next,
+            prev,
+        }
     }
 }
 

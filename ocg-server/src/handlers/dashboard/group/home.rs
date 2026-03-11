@@ -55,7 +55,9 @@ pub(crate) async fn page(
     let user = auth_session.user.as_ref().expect("user to be logged in").clone();
 
     // Get selected tab from query
-    let tab: Tab = query.get("tab").unwrap_or(&String::new()).parse().unwrap_or_default();
+    let tab: Tab = query
+        .get("tab")
+        .map_or(Tab::default(), |tab| tab.parse().unwrap_or_default());
 
     // Get site settings and user groups information
     let (groups_by_community, site_settings) =

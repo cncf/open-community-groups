@@ -23,6 +23,7 @@ use tower_http::{set_header::SetResponseHeaderLayer, trace::TraceLayer};
 use tracing::instrument;
 
 use crate::{
+    activity_tracker::DynActivityTracker,
     auth::AuthnBackend,
     config::{HttpServerConfig, MeetingsConfig},
     db::DynDB,
@@ -47,6 +48,8 @@ struct StaticFile;
 /// Shared state for the router.
 #[derive(Clone, FromRef)]
 pub(crate) struct State {
+    /// Activity tracker handle.
+    pub activity_tracker: DynActivityTracker,
     /// Database handle.
     pub db: DynDB,
     /// Image storage provider handle.
@@ -68,6 +71,7 @@ pub(crate) struct State {
 #[allow(clippy::too_many_lines)]
 #[instrument(skip_all)]
 pub(crate) async fn setup(
+    activity_tracker: DynActivityTracker,
     db: DynDB,
     image_storage: DynImageStorage,
     meetings_cfg: Option<MeetingsConfig>,
@@ -80,6 +84,7 @@ pub(crate) async fn setup(
     // Setup router state
     let state = State {
         db: db.clone(),
+        activity_tracker,
         image_storage,
         meetings_cfg,
         notifications_manager,
@@ -165,7 +170,11 @@ pub(crate) async fn setup(
         .route(
             "/{community}/group/{group_slug}/event/{event_slug}",
             get(event::page),
-        );
+        )
+        // Page view tracking routes
+        .route("/communities/{community_id}/views", post(community::track_view))
+        .route("/events/{event_id}/views", post(event::track_view))
+        .route("/groups/{group_id}/views", post(group::track_view));
 
     // Setup some routes based on the login options enabled
     if server_cfg.login.email {

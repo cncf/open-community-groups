@@ -2191,14 +2191,7 @@ async fn test_user_has_path_community_permission_select_route_allows_request() {
     let server_cfg = HttpServerConfig::default();
     let db: DynDB = Arc::new(db);
     let nm = Arc::new(MockNotificationsManager::new());
-    let state = State {
-        server_cfg: server_cfg.clone(),
-        db: db.clone(),
-        image_storage: Arc::new(MockImageStorage::new()),
-        meetings_cfg: None,
-        notifications_manager: nm.clone(),
-        serde_qs_de: serde_qs_config(),
-    };
+    let state = build_state(db.clone(), nm.clone(), &server_cfg);
     let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
     let router = Router::new()
         .route("/{community_id}/protected", get(|| async { StatusCode::OK }))
@@ -2255,14 +2248,7 @@ async fn test_user_has_path_community_permission_select_route_forbidden_without_
     let server_cfg = HttpServerConfig::default();
     let db: DynDB = Arc::new(db);
     let nm = Arc::new(MockNotificationsManager::new());
-    let state = State {
-        server_cfg: server_cfg.clone(),
-        db: db.clone(),
-        image_storage: Arc::new(MockImageStorage::new()),
-        meetings_cfg: None,
-        notifications_manager: nm.clone(),
-        serde_qs_de: serde_qs_config(),
-    };
+    let state = build_state(db.clone(), nm.clone(), &server_cfg);
     let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
     let router = Router::new()
         .route("/{community_id}/protected", get(|| async { StatusCode::OK }))
@@ -2319,14 +2305,7 @@ async fn test_user_has_path_community_permission_select_route_returns_error_on_d
     let server_cfg = HttpServerConfig::default();
     let db: DynDB = Arc::new(db);
     let nm = Arc::new(MockNotificationsManager::new());
-    let state = State {
-        server_cfg: server_cfg.clone(),
-        db: db.clone(),
-        image_storage: Arc::new(MockImageStorage::new()),
-        meetings_cfg: None,
-        notifications_manager: nm.clone(),
-        serde_qs_de: serde_qs_config(),
-    };
+    let state = build_state(db.clone(), nm.clone(), &server_cfg);
     let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
     let router = Router::new()
         .route("/{community_id}/protected", get(|| async { StatusCode::OK }))
@@ -2383,14 +2362,7 @@ async fn test_user_has_path_community_permission_allows_request() {
     let server_cfg = HttpServerConfig::default();
     let db: DynDB = Arc::new(db);
     let nm = Arc::new(MockNotificationsManager::new());
-    let state = State {
-        server_cfg: server_cfg.clone(),
-        db: db.clone(),
-        image_storage: Arc::new(MockImageStorage::new()),
-        meetings_cfg: None,
-        notifications_manager: nm.clone(),
-        serde_qs_de: serde_qs_config(),
-    };
+    let state = build_state(db.clone(), nm.clone(), &server_cfg);
     let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
     let router = Router::new()
         .route(
@@ -2450,14 +2422,7 @@ async fn test_user_has_path_community_permission_forbidden_without_permission() 
     let server_cfg = HttpServerConfig::default();
     let db: DynDB = Arc::new(db);
     let nm = Arc::new(MockNotificationsManager::new());
-    let state = State {
-        server_cfg: server_cfg.clone(),
-        db: db.clone(),
-        image_storage: Arc::new(MockImageStorage::new()),
-        meetings_cfg: None,
-        notifications_manager: nm.clone(),
-        serde_qs_de: serde_qs_config(),
-    };
+    let state = build_state(db.clone(), nm.clone(), &server_cfg);
     let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
     let router = Router::new()
         .route(
@@ -2517,14 +2482,7 @@ async fn test_user_has_path_community_permission_returns_error_on_db_failure() {
     let server_cfg = HttpServerConfig::default();
     let db: DynDB = Arc::new(db);
     let nm = Arc::new(MockNotificationsManager::new());
-    let state = State {
-        server_cfg: server_cfg.clone(),
-        db: db.clone(),
-        image_storage: Arc::new(MockImageStorage::new()),
-        meetings_cfg: None,
-        notifications_manager: nm.clone(),
-        serde_qs_de: serde_qs_config(),
-    };
+    let state = build_state(db.clone(), nm.clone(), &server_cfg);
     let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
     let router = Router::new()
         .route(
@@ -2583,14 +2541,7 @@ async fn test_user_has_path_group_permission_allows_request() {
     let server_cfg = HttpServerConfig::default();
     let db: DynDB = Arc::new(db);
     let nm = Arc::new(MockNotificationsManager::new());
-    let state = State {
-        server_cfg: server_cfg.clone(),
-        db: db.clone(),
-        image_storage: Arc::new(MockImageStorage::new()),
-        meetings_cfg: None,
-        notifications_manager: nm.clone(),
-        serde_qs_de: serde_qs_config(),
-    };
+    let state = build_state(db.clone(), nm.clone(), &server_cfg);
     let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
     let router = Router::new()
         .route("/groups/{group_id}", get(|| async { StatusCode::OK }))
@@ -2646,14 +2597,7 @@ async fn test_user_has_path_group_permission_forbidden_without_permission() {
     let server_cfg = HttpServerConfig::default();
     let db: DynDB = Arc::new(db);
     let nm = Arc::new(MockNotificationsManager::new());
-    let state = State {
-        server_cfg: server_cfg.clone(),
-        db: db.clone(),
-        image_storage: Arc::new(MockImageStorage::new()),
-        meetings_cfg: None,
-        notifications_manager: nm.clone(),
-        serde_qs_de: serde_qs_config(),
-    };
+    let state = build_state(db.clone(), nm.clone(), &server_cfg);
     let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
     let router = Router::new()
         .route("/groups/{group_id}", get(|| async { StatusCode::OK }))
@@ -2709,14 +2653,7 @@ async fn test_user_has_path_group_permission_returns_error_on_db_failure() {
     let server_cfg = HttpServerConfig::default();
     let db: DynDB = Arc::new(db);
     let nm = Arc::new(MockNotificationsManager::new());
-    let state = State {
-        server_cfg: server_cfg.clone(),
-        db: db.clone(),
-        image_storage: Arc::new(MockImageStorage::new()),
-        meetings_cfg: None,
-        notifications_manager: nm.clone(),
-        serde_qs_de: serde_qs_config(),
-    };
+    let state = build_state(db.clone(), nm.clone(), &server_cfg);
     let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
     let router = Router::new()
         .route("/groups/{group_id}", get(|| async { StatusCode::OK }))
@@ -2768,14 +2705,7 @@ async fn test_user_has_path_group_permission_redirects_when_selected_community_i
     let server_cfg = HttpServerConfig::default();
     let db: DynDB = Arc::new(db);
     let nm = Arc::new(MockNotificationsManager::new());
-    let state = State {
-        server_cfg: server_cfg.clone(),
-        db: db.clone(),
-        image_storage: Arc::new(MockImageStorage::new()),
-        meetings_cfg: None,
-        notifications_manager: nm.clone(),
-        serde_qs_de: serde_qs_config(),
-    };
+    let state = build_state(db.clone(), nm.clone(), &server_cfg);
     let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
     let router = Router::new()
         .route("/groups/{group_id}", get(|| async { StatusCode::OK }))
@@ -2836,14 +2766,7 @@ async fn test_user_has_selected_community_permission_allows_request() {
     let server_cfg = HttpServerConfig::default();
     let db: DynDB = Arc::new(db);
     let nm = Arc::new(MockNotificationsManager::new());
-    let state = State {
-        server_cfg: server_cfg.clone(),
-        db: db.clone(),
-        image_storage: Arc::new(MockImageStorage::new()),
-        meetings_cfg: None,
-        notifications_manager: nm.clone(),
-        serde_qs_de: serde_qs_config(),
-    };
+    let state = build_state(db.clone(), nm.clone(), &server_cfg);
     let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
     let router = Router::new()
         .route("/protected", get(|| async { StatusCode::OK }))
@@ -2900,14 +2823,7 @@ async fn test_user_has_selected_community_permission_forbidden_without_permissio
     let server_cfg = HttpServerConfig::default();
     let db: DynDB = Arc::new(db);
     let nm = Arc::new(MockNotificationsManager::new());
-    let state = State {
-        server_cfg: server_cfg.clone(),
-        db: db.clone(),
-        image_storage: Arc::new(MockImageStorage::new()),
-        meetings_cfg: None,
-        notifications_manager: nm.clone(),
-        serde_qs_de: serde_qs_config(),
-    };
+    let state = build_state(db.clone(), nm.clone(), &server_cfg);
     let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
     let router = Router::new()
         .route("/protected", get(|| async { StatusCode::OK }))
@@ -2964,14 +2880,7 @@ async fn test_user_has_selected_community_permission_returns_error_on_db_failure
     let server_cfg = HttpServerConfig::default();
     let db: DynDB = Arc::new(db);
     let nm = Arc::new(MockNotificationsManager::new());
-    let state = State {
-        server_cfg: server_cfg.clone(),
-        db: db.clone(),
-        image_storage: Arc::new(MockImageStorage::new()),
-        meetings_cfg: None,
-        notifications_manager: nm.clone(),
-        serde_qs_de: serde_qs_config(),
-    };
+    let state = build_state(db.clone(), nm.clone(), &server_cfg);
     let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
     let router = Router::new()
         .route("/protected", get(|| async { StatusCode::OK }))
@@ -3022,14 +2931,7 @@ async fn test_user_has_selected_community_permission_redirects_when_selected_com
     let server_cfg = HttpServerConfig::default();
     let db: DynDB = Arc::new(db);
     let nm = Arc::new(MockNotificationsManager::new());
-    let state = State {
-        server_cfg: server_cfg.clone(),
-        db: db.clone(),
-        image_storage: Arc::new(MockImageStorage::new()),
-        meetings_cfg: None,
-        notifications_manager: nm.clone(),
-        serde_qs_de: serde_qs_config(),
-    };
+    let state = build_state(db.clone(), nm.clone(), &server_cfg);
     let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
     let router = Router::new()
         .route("/protected", get(|| async { StatusCode::OK }))
@@ -3095,14 +2997,7 @@ async fn test_user_has_selected_group_permission_allows_request() {
     let server_cfg = HttpServerConfig::default();
     let db: DynDB = Arc::new(db);
     let nm = Arc::new(MockNotificationsManager::new());
-    let state = State {
-        server_cfg: server_cfg.clone(),
-        db: db.clone(),
-        image_storage: Arc::new(MockImageStorage::new()),
-        meetings_cfg: None,
-        notifications_manager: nm.clone(),
-        serde_qs_de: serde_qs_config(),
-    };
+    let state = build_state(db.clone(), nm.clone(), &server_cfg);
     let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
     let router = Router::new()
         .route("/protected", get(|| async { StatusCode::OK }))
@@ -3164,14 +3059,7 @@ async fn test_user_has_selected_group_permission_forbidden_without_permission() 
     let server_cfg = HttpServerConfig::default();
     let db: DynDB = Arc::new(db);
     let nm = Arc::new(MockNotificationsManager::new());
-    let state = State {
-        server_cfg: server_cfg.clone(),
-        db: db.clone(),
-        image_storage: Arc::new(MockImageStorage::new()),
-        meetings_cfg: None,
-        notifications_manager: nm.clone(),
-        serde_qs_de: serde_qs_config(),
-    };
+    let state = build_state(db.clone(), nm.clone(), &server_cfg);
     let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
     let router = Router::new()
         .route("/protected", get(|| async { StatusCode::OK }))
@@ -3233,14 +3121,7 @@ async fn test_user_has_selected_group_permission_returns_error_on_db_failure() {
     let server_cfg = HttpServerConfig::default();
     let db: DynDB = Arc::new(db);
     let nm = Arc::new(MockNotificationsManager::new());
-    let state = State {
-        server_cfg: server_cfg.clone(),
-        db: db.clone(),
-        image_storage: Arc::new(MockImageStorage::new()),
-        meetings_cfg: None,
-        notifications_manager: nm.clone(),
-        serde_qs_de: serde_qs_config(),
-    };
+    let state = build_state(db.clone(), nm.clone(), &server_cfg);
     let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
     let router = Router::new()
         .route("/protected", get(|| async { StatusCode::OK }))
@@ -3292,14 +3173,7 @@ async fn test_user_has_selected_group_permission_redirects_when_selected_group_i
     let server_cfg = HttpServerConfig::default();
     let db: DynDB = Arc::new(db);
     let nm = Arc::new(MockNotificationsManager::new());
-    let state = State {
-        server_cfg: server_cfg.clone(),
-        db: db.clone(),
-        image_storage: Arc::new(MockImageStorage::new()),
-        meetings_cfg: None,
-        notifications_manager: nm.clone(),
-        serde_qs_de: serde_qs_config(),
-    };
+    let state = build_state(db.clone(), nm.clone(), &server_cfg);
     let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
     let router = Router::new()
         .route("/protected", get(|| async { StatusCode::OK }))
@@ -3350,14 +3224,7 @@ async fn test_user_has_path_community_permission_select_route_forbidden_when_not
     let server_cfg = HttpServerConfig::default();
     let db: DynDB = Arc::new(db);
     let nm = Arc::new(MockNotificationsManager::new());
-    let state = State {
-        server_cfg: server_cfg.clone(),
-        db: db.clone(),
-        image_storage: Arc::new(MockImageStorage::new()),
-        meetings_cfg: None,
-        notifications_manager: nm.clone(),
-        serde_qs_de: serde_qs_config(),
-    };
+    let state = build_state(db.clone(), nm.clone(), &server_cfg);
     let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
     let router = Router::new()
         .route(
@@ -3407,14 +3274,7 @@ async fn test_user_has_path_community_permission_protected_route_forbidden_when_
     let server_cfg = HttpServerConfig::default();
     let db: DynDB = Arc::new(db);
     let nm = Arc::new(MockNotificationsManager::new());
-    let state = State {
-        server_cfg: server_cfg.clone(),
-        db: db.clone(),
-        image_storage: Arc::new(MockImageStorage::new()),
-        meetings_cfg: None,
-        notifications_manager: nm.clone(),
-        serde_qs_de: serde_qs_config(),
-    };
+    let state = build_state(db.clone(), nm.clone(), &server_cfg);
     let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
     let router = Router::new()
         .route("/{community_id}/protected", get(|| async { StatusCode::OK }))
@@ -3465,14 +3325,7 @@ async fn test_user_has_path_group_permission_forbidden_when_not_logged_in() {
     let server_cfg = HttpServerConfig::default();
     let db: DynDB = Arc::new(db);
     let nm = Arc::new(MockNotificationsManager::new());
-    let state = State {
-        server_cfg: server_cfg.clone(),
-        db: db.clone(),
-        image_storage: Arc::new(MockImageStorage::new()),
-        meetings_cfg: None,
-        notifications_manager: nm.clone(),
-        serde_qs_de: serde_qs_config(),
-    };
+    let state = build_state(db.clone(), nm.clone(), &server_cfg);
     let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
     let router = Router::new()
         .route("/groups/{group_id}", get(|| async { StatusCode::OK }))
@@ -3522,14 +3375,7 @@ async fn test_user_has_selected_community_permission_forbidden_when_not_logged_i
     let server_cfg = HttpServerConfig::default();
     let db: DynDB = Arc::new(db);
     let nm = Arc::new(MockNotificationsManager::new());
-    let state = State {
-        server_cfg: server_cfg.clone(),
-        db: db.clone(),
-        image_storage: Arc::new(MockImageStorage::new()),
-        meetings_cfg: None,
-        notifications_manager: nm.clone(),
-        serde_qs_de: serde_qs_config(),
-    };
+    let state = build_state(db.clone(), nm.clone(), &server_cfg);
     let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
     let router = Router::new()
         .route("/protected", get(|| async { StatusCode::OK }))
@@ -3583,14 +3429,7 @@ async fn test_user_has_selected_group_permission_forbidden_when_not_logged_in() 
     let server_cfg = HttpServerConfig::default();
     let db: DynDB = Arc::new(db);
     let nm = Arc::new(MockNotificationsManager::new());
-    let state = State {
-        server_cfg: server_cfg.clone(),
-        db: db.clone(),
-        image_storage: Arc::new(MockImageStorage::new()),
-        meetings_cfg: None,
-        notifications_manager: nm.clone(),
-        serde_qs_de: serde_qs_config(),
-    };
+    let state = build_state(db.clone(), nm.clone(), &server_cfg);
     let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
     let router = Router::new()
         .route("/protected", get(|| async { StatusCode::OK }))
@@ -3657,6 +3496,24 @@ impl CallbackAuth for MockCallbackAuth {
     }
 }
 
+/// Build the route's state.
+fn build_state(
+    db: DynDB,
+    notifications_manager: Arc<MockNotificationsManager>,
+    server_cfg: &HttpServerConfig,
+) -> State {
+    State {
+        activity_tracker: Arc::new(crate::activity_tracker::MockActivityTracker::new()),
+        db,
+        image_storage: Arc::new(MockImageStorage::new()),
+        meetings_cfg: None,
+        notifications_manager,
+        serde_qs_de: serde_qs_config(),
+        server_cfg: server_cfg.clone(),
+    }
+}
+
+/// Sample session record with specified session ID.
 fn empty_session_record(session_id: session::Id) -> session::Record {
     session::Record {
         data: HashMap::default(),
@@ -3665,6 +3522,7 @@ fn empty_session_record(session_id: session::Id) -> session::Record {
     }
 }
 
+/// Checks if the session record contains the selected group ID.
 fn record_contains_selected_group(record: &session::Record, group_id: Uuid) -> bool {
     record
         .data

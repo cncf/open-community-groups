@@ -210,7 +210,7 @@ mock! {
         async fn get_community_stats(
             &self,
             community_id: Uuid,
-        ) -> Result<crate::templates::dashboard::community::analytics::CommunityStats>;
+        ) -> Result<crate::templates::dashboard::community::analytics::CommunityDashboardStats>;
         async fn list_community_team_members(
             &self,
             community_id: Uuid,
@@ -307,7 +307,7 @@ mock! {
             &self,
             community_id: Uuid,
             group_id: Uuid,
-        ) -> Result<crate::templates::dashboard::group::analytics::GroupStats>;
+        ) -> Result<crate::templates::dashboard::group::analytics::GroupDashboardStats>;
         async fn list_event_attendees_ids(
             &self,
             group_id: Uuid,
@@ -555,6 +555,13 @@ mock! {
             user_id: Uuid,
             event_id: Uuid,
         ) -> Result<Vec<crate::templates::event::SessionProposal>>;
+    }
+
+    #[async_trait]
+    impl crate::db::activity_tracker::DBActivityTracker for DB {
+        async fn update_community_views(&self, data: Vec<(Uuid, String, u32)>) -> Result<()>;
+        async fn update_event_views(&self, data: Vec<(Uuid, String, u32)>) -> Result<()>;
+        async fn update_group_views(&self, data: Vec<(Uuid, String, u32)>) -> Result<()>;
     }
 
     #[async_trait]

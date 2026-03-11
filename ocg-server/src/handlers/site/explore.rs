@@ -45,7 +45,7 @@ pub(crate) async fn page(
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
     let site_settings = db.get_site_settings().await?;
-    let entity: explore::Entity = query.get("entity").into();
+    let entity: explore::Entity = query.get("entity").map(String::as_str).into();
     let mut template = explore::Page {
         entity: entity.clone(),
         page_id: PageId::SiteExplore,

@@ -105,12 +105,12 @@ impl EventSummary {
     /// Build a display-friendly location string from available location data.
     pub fn location(&self, max_len: usize) -> Option<String> {
         let parts = LocationParts::new()
-            .address(self.venue_address.as_ref())
-            .city(self.venue_city.as_ref())
-            .country_code(self.venue_country_code.as_ref())
-            .country_name(self.venue_country_name.as_ref())
-            .name(self.venue_name.as_ref())
-            .state(self.venue_state.as_ref());
+            .address(self.venue_address.as_deref())
+            .city(self.venue_city.as_deref())
+            .country_code(self.venue_country_code.as_deref())
+            .country_name(self.venue_country_name.as_deref())
+            .name(self.venue_name.as_deref())
+            .state(self.venue_state.as_deref());
 
         build_location(&parts, max_len)
     }
@@ -305,12 +305,12 @@ impl EventFull {
     /// Build a display-friendly location string from available location data.
     pub fn location(&self, max_len: usize) -> Option<String> {
         let parts = LocationParts::new()
-            .address(self.venue_address.as_ref())
-            .city(self.venue_city.as_ref())
-            .country_code(self.venue_country_code.as_ref())
-            .country_name(self.venue_country_name.as_ref())
-            .name(self.venue_name.as_ref())
-            .state(self.venue_state.as_ref());
+            .address(self.venue_address.as_deref())
+            .city(self.venue_city.as_deref())
+            .country_code(self.venue_country_code.as_deref())
+            .country_name(self.venue_country_name.as_deref())
+            .name(self.venue_name.as_deref())
+            .state(self.venue_state.as_deref());
 
         build_location(&parts, max_len)
     }

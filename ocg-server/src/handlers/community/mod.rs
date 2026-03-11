@@ -6,16 +6,18 @@
 use anyhow::Result;
 use askama::Template;
 use axum::{
-    extract::State,
-    http::Uri,
+    extract::{Path, State},
+    http::{HeaderMap, StatusCode, Uri},
     response::{Html, IntoResponse},
 };
 use chrono::Duration;
 use tracing::instrument;
+use uuid::Uuid;
 
 use crate::{
+    activity_tracker::{Activity, DynActivityTracker},
     db::DynDB,
-    handlers::{error::HandlerError, extractors::CommunityId, prepare_headers},
+    handlers::{error::HandlerError, extractors::CommunityId, prepare_headers, request_matches_site},
     templates::{PageId, auth::User, community},
     types::event::EventKind,
 };
@@ -72,12 +74,31 @@ pub(crate) async fn page(
     Ok((headers, Html(template.render()?)))
 }
 
+// Actions handlers.
+
+/// Tracks a community page view.
+#[instrument(skip_all)]
+pub(crate) async fn track_view(
+    headers: HeaderMap,
+    State(activity_tracker): State<DynActivityTracker>,
+    State(server_cfg): State<crate::config::HttpServerConfig>,
+    Path(community_id): Path<Uuid>,
+) -> Result<impl IntoResponse, HandlerError> {
+    if request_matches_site(&server_cfg, &headers)? {
+        activity_tracker
+            .track(Activity::CommunityView { community_id })
+            .await?;
+    }
+
+    Ok(StatusCode::NO_CONTENT)
+}
+
 // Tests.
 
 #[cfg(test)]
 mod tests {
     use anyhow::anyhow;
-    use axum::body::to_bytes;
+    use axum::body::{Body, to_bytes};
     use axum::http::{
         HeaderValue, Request, StatusCode,
         header::{CACHE_CONTROL, CONTENT_TYPE},
@@ -86,8 +107,12 @@ mod tests {
     use uuid::Uuid;
 
     use crate::{
-        db::mock::MockDB, handlers::tests::*, services::notifications::MockNotificationsManager,
-        templates::community::Stats, types::event::EventKind,
+        activity_tracker::{Activity, MockActivityTracker},
+        db::mock::MockDB,
+        handlers::tests::*,
+        services::notifications::MockNotificationsManager,
+        templates::community::Stats,
+        types::event::EventKind,
     };
 
     #[tokio::test]
@@ -211,6 +236,79 @@ mod tests {
 
         // Check response matches expectations
         assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
+        assert!(bytes.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_track_view_success() {
+        // Setup identifiers and data structures
+        let community_id = Uuid::new_v4();
+
+        // Setup database mock
+        let db = MockDB::new();
+
+        // Setup notifications manager mock
+        let nm = MockNotificationsManager::new();
+
+        // Setup activity tracker mock
+        let mut activity_tracker = MockActivityTracker::new();
+        activity_tracker
+            .expect_track()
+            .times(1)
+            .withf(move |activity| *activity == Activity::CommunityView { community_id })
+            .returning(|_| Box::pin(async { Ok(()) }));
+
+        // Setup router and send request
+        let router = TestRouterBuilder::new(db, nm)
+            .with_activity_tracker(activity_tracker)
+            .with_server_cfg(sample_tracking_server_cfg())
+            .build()
+            .await;
+        let request = Request::builder()
+            .method("POST")
+            .uri(format!("/communities/{community_id}/views"))
+            .header("origin", "https://example.test")
+            .body(Body::empty())
+            .unwrap();
+        let response = router.oneshot(request).await.unwrap();
+        let (parts, body) = response.into_parts();
+        let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+        // Check response matches expectations
+        assert_eq!(parts.status, StatusCode::NO_CONTENT);
+        assert!(bytes.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_track_view_ignores_cross_origin_request() {
+        // Setup database mock
+        let db = MockDB::new();
+
+        // Setup notifications manager mock
+        let nm = MockNotificationsManager::new();
+
+        // Setup activity tracker mock
+        let mut activity_tracker = MockActivityTracker::new();
+        activity_tracker.expect_track().times(0);
+
+        // Setup router and send request
+        let router = TestRouterBuilder::new(db, nm)
+            .with_activity_tracker(activity_tracker)
+            .with_server_cfg(sample_tracking_server_cfg())
+            .build()
+            .await;
+        let request = Request::builder()
+            .method("POST")
+            .uri(format!("/communities/{}/views", Uuid::new_v4()))
+            .header("origin", "https://evil.test")
+            .body(Body::empty())
+            .unwrap();
+        let response = router.oneshot(request).await.unwrap();
+        let (parts, body) = response.into_parts();
+        let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+        // Check response matches expectations
+        assert_eq!(parts.status, StatusCode::NO_CONTENT);
         assert!(bytes.is_empty());
     }
 }

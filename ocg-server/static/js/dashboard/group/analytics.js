@@ -46,6 +46,14 @@ const initMembersCharts = (stats = {}, palette) => {
 const initEventsCharts = (stats = {}, palette) => {
   const charts = [];
 
+  const viewsData = stats.per_month_views || [];
+  const viewsChart = renderChart(
+    "event-views-monthly-chart",
+    createMonthlyBarChart("Event Page Views per Month", "Views", viewsData, palette),
+    hasChartData(viewsData),
+  );
+  if (viewsChart) charts.push(viewsChart);
+
   const runningData = stats.running_total || [];
   const runningChart = renderChart(
     "events-running-chart",
@@ -58,6 +66,26 @@ const initEventsCharts = (stats = {}, palette) => {
   const monthlyChart = renderChart(
     "events-monthly-chart",
     createMonthlyBarChart("New Events per Month", "Events", monthlyData, palette),
+    hasChartData(monthlyData),
+  );
+  if (monthlyChart) charts.push(monthlyChart);
+
+  return charts;
+};
+
+/**
+ * Build charts for group page views.
+ * @param {Object} stats - Group page views stats payload.
+ * @param {Object} palette - Theme palette.
+ * @returns {Array<echarts.ECharts>} Initialized charts.
+ */
+const initGroupViewsCharts = (stats = {}, palette) => {
+  const charts = [];
+
+  const monthlyData = stats.per_month_views || [];
+  const monthlyChart = renderChart(
+    "group-views-monthly-chart",
+    createMonthlyBarChart("Group Page Views per Month", "Views", monthlyData, palette),
     hasChartData(monthlyData),
   );
   if (monthlyChart) charts.push(monthlyChart);
@@ -107,6 +135,7 @@ export const initAnalyticsCharts = async (stats) => {
     const palette = getThemePalette();
 
     const charts = [
+      ...initGroupViewsCharts(stats.group, palette),
       ...initMembersCharts(stats.members, palette),
       ...initEventsCharts(stats.events, palette),
       ...initAttendeesCharts(stats.attendees, palette),

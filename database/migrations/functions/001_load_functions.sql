@@ -25,6 +25,7 @@
 {{ template "community/get_community_recently_added_groups.sql" }}
 {{ template "community/get_community_site_stats.sql" }}
 {{ template "community/get_community_upcoming_events.sql" }}
+{{ template "community/update_community_views.sql" }}
 
 {{ template "dashboard-common/search_user.sql" }}
 {{ template "dashboard-common/update_group.sql" }}
@@ -114,6 +115,7 @@
 {{ template "event/is_event_check_in_window_open.sql" }}
 {{ template "event/leave_event.sql" }}
 {{ template "event/list_user_session_proposals_for_cfs_event.sql" }}
+{{ template "event/update_event_views.sql" }}
 
 {{ template "group/get_group_full_by_slug.sql" }}
 {{ template "group/get_group_past_events.sql" }}
@@ -121,6 +123,7 @@
 {{ template "group/is_group_member.sql" }}
 {{ template "group/join_group.sql" }}
 {{ template "group/leave_group.sql" }}
+{{ template "group/update_group_views.sql" }}
 
 {{ template "meetings/add_meeting.sql" }}
 {{ template "meetings/delete_meeting.sql" }}

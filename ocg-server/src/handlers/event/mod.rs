@@ -4,7 +4,7 @@ use askama::Template;
 use axum::{
     Json,
     extract::{Path, State},
-    http::{StatusCode, Uri},
+    http::{HeaderMap, StatusCode, Uri},
     response::{Html, IntoResponse},
 };
 use chrono::Duration;
@@ -15,12 +15,13 @@ use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
+    activity_tracker::{Activity, DynActivityTracker},
     auth::AuthSession,
     config::HttpServerConfig,
     db::DynDB,
     handlers::{
         extractors::{CurrentUser, ValidatedFormQs},
-        prepare_headers,
+        prepare_headers, request_matches_site,
     },
     services::notifications::{DynNotificationsManager, NewNotification, NotificationKind},
     templates::{
@@ -263,6 +264,21 @@ pub(crate) async fn submit_cfs_submission(
     Ok(Html(template.render()?))
 }
 
+/// Tracks an event page view.
+#[instrument(skip_all)]
+pub(crate) async fn track_view(
+    headers: HeaderMap,
+    State(activity_tracker): State<DynActivityTracker>,
+    State(server_cfg): State<HttpServerConfig>,
+    Path(event_id): Path<Uuid>,
+) -> Result<impl IntoResponse, HandlerError> {
+    if request_matches_site(&server_cfg, &headers)? {
+        activity_tracker.track(Activity::EventView { event_id }).await?;
+    }
+
+    Ok(StatusCode::NO_CONTENT)
+}
+
 // Types.
 
 #[derive(Debug, Deserialize, Validate)]
@@ -292,6 +308,7 @@ mod tests {
     use uuid::Uuid;
 
     use crate::{
+        activity_tracker::{Activity, MockActivityTracker},
         db::mock::MockDB,
         handlers::tests::*,
         router::CACHE_CONTROL_NO_CACHE,
@@ -973,6 +990,79 @@ mod tests {
 
         // Check response matches expectations
         assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
+        assert!(bytes.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_track_view_success() {
+        // Setup identifiers and data structures
+        let event_id = Uuid::new_v4();
+
+        // Setup database mock
+        let db = MockDB::new();
+
+        // Setup notifications manager mock
+        let nm = MockNotificationsManager::new();
+
+        // Setup activity tracker mock
+        let mut activity_tracker = MockActivityTracker::new();
+        activity_tracker
+            .expect_track()
+            .times(1)
+            .withf(move |activity| *activity == Activity::EventView { event_id })
+            .returning(|_| Box::pin(async { Ok(()) }));
+
+        // Setup router and send request
+        let router = TestRouterBuilder::new(db, nm)
+            .with_activity_tracker(activity_tracker)
+            .with_server_cfg(sample_tracking_server_cfg())
+            .build()
+            .await;
+        let request = Request::builder()
+            .method("POST")
+            .uri(format!("/events/{event_id}/views"))
+            .header("origin", "https://example.test")
+            .body(Body::empty())
+            .unwrap();
+        let response = router.oneshot(request).await.unwrap();
+        let (parts, body) = response.into_parts();
+        let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+        // Check response matches expectations
+        assert_eq!(parts.status, StatusCode::NO_CONTENT);
+        assert!(bytes.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_track_view_ignores_cross_origin_request() {
+        // Setup database mock
+        let db = MockDB::new();
+
+        // Setup notifications manager mock
+        let nm = MockNotificationsManager::new();
+
+        // Setup activity tracker mock
+        let mut activity_tracker = MockActivityTracker::new();
+        activity_tracker.expect_track().times(0);
+
+        // Setup router and send request
+        let router = TestRouterBuilder::new(db, nm)
+            .with_activity_tracker(activity_tracker)
+            .with_server_cfg(sample_tracking_server_cfg())
+            .build()
+            .await;
+        let request = Request::builder()
+            .method("POST")
+            .uri(format!("/events/{}/views", Uuid::new_v4()))
+            .header("origin", "https://evil.test")
+            .body(Body::empty())
+            .unwrap();
+        let response = router.oneshot(request).await.unwrap();
+        let (parts, body) = response.into_parts();
+        let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+        // Check response matches expectations
+        assert_eq!(parts.status, StatusCode::NO_CONTENT);
         assert!(bytes.is_empty());
     }
 }

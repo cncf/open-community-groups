@@ -18,6 +18,28 @@ import {
 import { registerChartResizeHandler, renderChart } from "/static/js/common/stats.js";
 
 /**
+ * Render community page view charts.
+ * @param {Object} communityViews - Community view stats payload.
+ * @param {Object} palette - Theme palette.
+ * @returns {Array<echarts.ECharts>} Initialized charts.
+ */
+const initCommunityViewsCharts = async (communityViews = {}, palette) => {
+  await loadEChartsScript();
+
+  const charts = [];
+
+  const monthlyData = communityViews.per_month_views || [];
+  const monthlyChart = renderChart(
+    "community-views-monthly-chart",
+    createMonthlyBarChart("Community Page Views per Month", "Views", monthlyData, palette),
+    hasChartData(monthlyData),
+  );
+  if (monthlyChart) charts.push(monthlyChart);
+
+  return charts;
+};
+
+/**
  * Render groups charts.
  * @param {Object} groups - Group stats payload.
  * @param {Object} palette - Theme palette.
@@ -29,6 +51,13 @@ const initGroupsCharts = async (groups = {}, palette) => {
   const charts = [];
 
   const runningData = groups.running_total || [];
+  const viewsChart = renderChart(
+    "groups-views-monthly-chart",
+    createMonthlyBarChart("Group Page Views per Month", "Views", groups.per_month_views || [], palette),
+    hasChartData(groups.per_month_views || []),
+  );
+  if (viewsChart) charts.push(viewsChart);
+
   const runningChart = renderChart(
     "groups-running-chart",
     createAreaChart("Groups over time", "Groups", runningData, palette),
@@ -203,6 +232,13 @@ const initEventsCharts = async (events = {}, palette) => {
   const charts = [];
 
   const runningData = events.running_total || [];
+  const viewsChart = renderChart(
+    "events-views-monthly-chart",
+    createMonthlyBarChart("Event Page Views per Month", "Views", events.per_month_views || [], palette),
+    hasChartData(events.per_month_views || []),
+  );
+  if (viewsChart) charts.push(viewsChart);
+
   const runningChart = renderChart(
     "events-running-chart",
     createAreaChart("Events over time", "Events", runningData, palette),
@@ -437,7 +473,9 @@ const setupAnalyticsTabs = (stats, palette) => {
     }
 
     let charts = [];
-    if (tab === "groups") {
+    if (tab === "community-views") {
+      charts = await initCommunityViewsCharts(stats.community, palette);
+    } else if (tab === "groups") {
       charts = await initGroupsCharts(stats.groups, palette);
     } else if (tab === "members") {
       charts = await initMembersCharts(stats.members, palette);

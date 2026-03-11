@@ -7,6 +7,16 @@
 {% block scripts -%}
   <script type="module" src="/static/js/common/breadcrumb-nav.js"></script>
   <script type="module" src="/static/js/common/images-gallery.js"></script>
+  <script type="module">
+    import {
+      trackPageView
+    } from "/static/js/common/page-views.js";
+
+    trackPageView({
+      entityId: "{{ event.event_id }}",
+      entityType: "event"
+    });
+  </script>
   <script type="module" src="/static/js/common/people-list.js"></script>
   <script type="module" src="/static/js/common/user-chip.js"></script>
   <script type="module" src="/static/js/common/user-info-modal.js"></script>

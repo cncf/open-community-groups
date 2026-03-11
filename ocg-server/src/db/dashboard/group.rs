@@ -14,7 +14,7 @@ use crate::{
     db::PgDB,
     services::meetings::MeetingProvider,
     templates::dashboard::group::{
-        analytics::GroupStats,
+        analytics::GroupDashboardStats,
         attendees::{AttendeesFilters, AttendeesOutput},
         events::{ApprovedSubmissionSummary, CfsSubmissionStatus, Event, EventsListFilters, GroupEvents},
         home::UserGroupsByCommunity,
@@ -71,7 +71,7 @@ pub(crate) trait DBDashboardGroup {
     async fn get_group_sponsor(&self, group_id: Uuid, group_sponsor_id: Uuid) -> Result<GroupSponsor>;
 
     /// Retrieves analytics statistics for a group.
-    async fn get_group_stats(&self, community_id: Uuid, group_id: Uuid) -> Result<GroupStats>;
+    async fn get_group_stats(&self, community_id: Uuid, group_id: Uuid) -> Result<GroupDashboardStats>;
 
     /// Lists reviewer-available CFS submission statuses.
     async fn list_cfs_submission_statuses_for_review(&self) -> Result<Vec<CfsSubmissionStatus>>;
@@ -337,7 +337,7 @@ impl DBDashboardGroup for PgDB {
 
     /// [`DBDashboardGroup::get_group_stats`]
     #[instrument(skip(self), err)]
-    async fn get_group_stats(&self, community_id: Uuid, group_id: Uuid) -> Result<GroupStats> {
+    async fn get_group_stats(&self, community_id: Uuid, group_id: Uuid) -> Result<GroupDashboardStats> {
         #[cached(
             time = 21600,
             key = "(Uuid, Uuid)",
@@ -345,7 +345,7 @@ impl DBDashboardGroup for PgDB {
             sync_writes = "by_key",
             result = true
         )]
-        async fn inner(db: Client, community_id: Uuid, group_id: Uuid) -> Result<GroupStats> {
+        async fn inner(db: Client, community_id: Uuid, group_id: Uuid) -> Result<GroupDashboardStats> {
             trace!(community_id = ?community_id, group_id = ?group_id, "db: get group stats");
 
             let row = db
@@ -354,7 +354,7 @@ impl DBDashboardGroup for PgDB {
                     &[&community_id, &group_id],
                 )
                 .await?;
-            let stats = row.try_get::<_, Json<GroupStats>>(0)?.0;
+            let stats = row.try_get::<_, Json<GroupDashboardStats>>(0)?.0;
 
             Ok(stats)
         }

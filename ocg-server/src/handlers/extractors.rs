@@ -1033,6 +1033,7 @@ mod tests {
     /// Builds router state with the provided database and notifications manager.
     fn build_state(db: DynDB, image_storage: DynImageStorage, nm: DynNotificationsManager) -> router::State {
         router::State {
+            activity_tracker: Arc::new(crate::activity_tracker::MockActivityTracker::new()),
             db,
             image_storage,
             meetings_cfg: None,
