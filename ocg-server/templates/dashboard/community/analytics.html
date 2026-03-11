@@ -9,17 +9,6 @@ description = "Community statistics and growth trends. Analytics are cached for 
 {# Summary stat cards #}
 <div class="grid grid-cols-2 xl:grid-cols-5 gap-4 mt-10">
   <button type="button"
-          data-analytics-tab="community-views"
-          data-active="false"
-          class="bg-white border border-stone-200 text-start rounded-lg p-5 cursor-pointer hover:bg-stone-50 hover:border-stone-300 data-[active=true]:border-primary-500 data-[active=true]:bg-primary-50/50 data-[active=true]:outline data-[active=true]:outline-2 data-[active=true]:outline-primary-200 data-[active=true]:outline-offset-0 relative [&_span.tab-peak]:hidden md:[&_span.tab-peak]:hidden md:data-[active=true]:[&_span.tab-peak]:block">
-    <div class="text-sm text-stone-600">Community Views</div>
-    <div class="mt-2 ps-px text-3xl leading-tight font-semibold text-stone-900">
-      {{ stats.community.total_views|num_fmt }}
-    </div>
-    <div class="mt-1 text-xs text-stone-500">Browser-confirmed community homepage views</div>
-    <span class="tab-peak absolute left-1/2 top-[calc(100%+2.25rem-1px)] -translate-x-1/2 w-0 h-0 border-l-[14px] border-r-[14px] border-t-0 border-b-[14px] border-l-transparent border-r-transparent border-b-stone-200"></span>
-  </button>
-  <button type="button"
           data-analytics-tab="groups"
           data-active="true"
           class="bg-white border border-stone-200 text-start rounded-lg p-5 cursor-pointer hover:bg-stone-50 hover:border-stone-300 data-[active=true]:border-primary-500 data-[active=true]:bg-primary-50/50 data-[active=true]:outline data-[active=true]:outline-2 data-[active=true]:outline-primary-200 data-[active=true]:outline-offset-0 relative [&_span.tab-peak]:hidden md:[&_span.tab-peak]:hidden md:data-[active=true]:[&_span.tab-peak]:block">
@@ -28,7 +17,6 @@ description = "Community statistics and growth trends. Analytics are cached for 
       {{ stats.groups.total|num_fmt }}
     </div>
     <div class="mt-1 text-xs text-stone-500">Active, non-deleted groups</div>
-    <div class="mt-2 text-xs text-stone-500">Views: {{ stats.groups.total_views|num_fmt }}</div>
     <span class="tab-peak absolute left-1/2 top-[calc(100%+2.25rem-1px)] -translate-x-1/2 w-0 h-0 border-l-[14px] border-r-[14px] border-t-0 border-b-[14px] border-l-transparent border-r-transparent border-b-stone-200"></span>
   </button>
   <button type="button"
@@ -51,7 +39,6 @@ description = "Community statistics and growth trends. Analytics are cached for 
       {{ stats.events.total|num_fmt }}
     </div>
     <div class="mt-1 text-xs text-stone-500">Published, upcoming or past</div>
-    <div class="mt-2 text-xs text-stone-500">Views: {{ stats.events.total_views|num_fmt }}</div>
     <span class="tab-peak absolute left-1/2 top-[calc(100%+2.25rem-1px)] -translate-x-1/2 w-0 h-0 border-l-[14px] border-r-[14px] border-t-0 border-b-[14px] border-l-transparent border-r-transparent border-b-stone-200"></span>
   </button>
   <button type="button"
@@ -65,6 +52,17 @@ description = "Community statistics and growth trends. Analytics are cached for 
     <div class="mt-1 text-xs text-stone-500">RSVPs across all events</div>
     <span class="tab-peak absolute left-1/2 top-[calc(100%+2.25rem-1px)] -translate-x-1/2 w-0 h-0 border-l-[14px] border-r-[14px] border-t-0 border-b-[14px] border-l-transparent border-r-transparent border-b-stone-200"></span>
   </button>
+  <button type="button"
+          data-analytics-tab="page-views"
+          data-active="false"
+          class="bg-white border border-stone-200 text-start rounded-lg p-5 cursor-pointer hover:bg-stone-50 hover:border-stone-300 data-[active=true]:border-primary-500 data-[active=true]:bg-primary-50/50 data-[active=true]:outline data-[active=true]:outline-2 data-[active=true]:outline-primary-200 data-[active=true]:outline-offset-0 relative [&_span.tab-peak]:hidden md:[&_span.tab-peak]:hidden md:data-[active=true]:[&_span.tab-peak]:block">
+    <div class="text-sm text-stone-600">Page views</div>
+    <div class="mt-2 ps-px text-3xl leading-tight font-semibold text-stone-900">
+      {{ stats.page_views.total_views|num_fmt }}
+    </div>
+    <div class="mt-1 text-xs text-stone-500">Community, group, and event page views</div>
+    <span class="tab-peak absolute left-1/2 top-[calc(100%+2.25rem-1px)] -translate-x-1/2 w-0 h-0 border-l-[14px] border-r-[14px] border-t-0 border-b-[14px] border-l-transparent border-r-transparent border-b-stone-200"></span>
+  </button>
 </div>
 {# End summary stat cards #}
 
@@ -72,16 +70,6 @@ description = "Community statistics and growth trends. Analytics are cached for 
 
 {# Charts sections #}
 <div class="space-y-14 mt-10">
-  <div class="hidden" data-analytics-content="community-views">
-    {{ dashboard::form_title(title = "Community Views") }}
-    <div class="mt-8">
-      <div class="text-sm font-semibold text-stone-500">Per month</div>
-      <div class="mt-4">
-        {{ stats_macro::analytics_chart(chart_id = "community-views-monthly-chart", data = stats.community.per_month_views, class = "h-[340px]") -}}
-      </div>
-    </div>
-  </div>
-
   {# Groups section #}
   <div data-analytics-content="groups">
     {{ dashboard::form_title(title = "Groups") }}
@@ -93,14 +81,6 @@ description = "Community statistics and growth trends. Analytics are cached for 
           {{ stats_macro::analytics_chart(chart_id = "groups-region-chart", data = stats.groups.total_by_region, class = "h-[300px]") -}}
         </div>
       </div>
-
-      <div>
-        <div class="text-sm font-semibold text-stone-500">Page views</div>
-        <div class="mt-4">
-          {{ stats_macro::analytics_chart(chart_id = "groups-views-monthly-chart", data = stats.groups.per_month_views, class = "h-[340px]") -}}
-        </div>
-      </div>
-
       <div>
         <div class="text-sm font-semibold text-stone-500">Running total</div>
         <div class="mt-4 space-y-6">
@@ -167,14 +147,6 @@ description = "Community statistics and growth trends. Analytics are cached for 
           {{ stats_macro::analytics_chart(chart_id = "events-category-chart", data = stats.events.total_by_event_category, class = "h-[300px]", wrapper_class = "xl:col-span-2") -}}
         </div>
       </div>
-
-      <div>
-        <div class="text-sm font-semibold text-stone-500">Page views</div>
-        <div class="mt-4">
-          {{ stats_macro::analytics_chart(chart_id = "events-views-monthly-chart", data = stats.events.per_month_views, class = "h-[340px]") -}}
-        </div>
-      </div>
-
       <div>
         <div class="text-sm font-semibold text-stone-500">Running total</div>
         <div class="mt-4 space-y-6">
@@ -232,6 +204,35 @@ description = "Community statistics and growth trends. Analytics are cached for 
     </div>
   </div>
   {# End attendees section #}
+
+  <div class="hidden" data-analytics-content="page-views">
+    {{ dashboard::form_title(title = "Page views") }}
+    <div class="mt-8 space-y-8">
+      <div>
+        <div class="text-sm font-semibold text-stone-500">Community page</div>
+        <div class="mt-4 grid grid-cols-1 xl:grid-cols-2 gap-6">
+          {{ stats_macro::analytics_chart(chart_id = "community-views-monthly-chart", data = stats.page_views.community.per_month_views, class = "h-[340px]") -}}
+          {{ stats_macro::analytics_chart(chart_id = "community-views-daily-chart", data = stats.page_views.community.per_day_views, class = "h-[340px]") -}}
+        </div>
+      </div>
+
+      <div>
+        <div class="text-sm font-semibold text-stone-500">Group pages</div>
+        <div class="mt-4 grid grid-cols-1 xl:grid-cols-2 gap-6">
+          {{ stats_macro::analytics_chart(chart_id = "groups-views-monthly-chart", data = stats.page_views.groups.per_month_views, class = "h-[340px]") -}}
+          {{ stats_macro::analytics_chart(chart_id = "groups-views-daily-chart", data = stats.page_views.groups.per_day_views, class = "h-[340px]") -}}
+        </div>
+      </div>
+
+      <div>
+        <div class="text-sm font-semibold text-stone-500">Event pages</div>
+        <div class="mt-4 grid grid-cols-1 xl:grid-cols-2 gap-6">
+          {{ stats_macro::analytics_chart(chart_id = "events-views-monthly-chart", data = stats.page_views.events.per_month_views, class = "h-[340px]") -}}
+          {{ stats_macro::analytics_chart(chart_id = "events-views-daily-chart", data = stats.page_views.events.per_day_views, class = "h-[340px]") -}}
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 {# End charts sections #}
 

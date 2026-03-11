@@ -34,8 +34,8 @@ use crate::{
         dashboard::{
             community::{
                 analytics::{
-                    AttendeesStats, CommunityDashboardStats, CommunityStats, EventsStats, GroupsStats,
-                    MembersStats,
+                    AttendeesStats, CommunityDashboardStats, CommunityPageViewsStats, EventsStats,
+                    GroupsStats, MembersStats, PageViewsStats as CommunityPageViewsEntry,
                 },
                 groups::Group,
                 settings::CommunityUpdate,
@@ -43,7 +43,8 @@ use crate::{
             },
             group::{
                 analytics::{
-                    GroupAttendeesStats, GroupDashboardStats, GroupEventsStats, GroupMembersStats, GroupStats,
+                    GroupAttendeesStats, GroupDashboardStats, GroupEventsStats, GroupMembersStats,
+                    GroupPageViewsStats, PageViewsStats as GroupPageViewsEntry,
                 },
                 attendees::Attendee,
                 events::{CfsSubmissionStatus, Event as GroupEventForm, GroupEvents},
@@ -216,17 +217,12 @@ pub(crate) fn sample_community_stats() -> CommunityDashboardStats {
             total_by_group_category: vec![],
             total_by_group_region: vec![],
         },
-        community: CommunityStats {
-            per_month_views: vec![("2024-01".to_string(), 4)],
-            total_views: 4,
-        },
         events: EventsStats {
             per_month: vec![("2024-01".to_string(), 3)],
             per_month_by_event_category: HashMap::from([(
                 "webinar".to_string(),
                 vec![("2024-01".to_string(), 3)],
             )]),
-            per_month_views: vec![("2024-01".to_string(), 12)],
             per_month_by_group_category: HashMap::new(),
             per_month_by_group_region: HashMap::new(),
             running_total: vec![(1, 3)],
@@ -234,7 +230,6 @@ pub(crate) fn sample_community_stats() -> CommunityDashboardStats {
             running_total_by_group_category: HashMap::new(),
             running_total_by_group_region: HashMap::new(),
             total: 3,
-            total_views: 12,
             total_by_event_category: vec![("webinar".to_string(), 3)],
             total_by_group_category: vec![],
             total_by_group_region: vec![],
@@ -242,13 +237,11 @@ pub(crate) fn sample_community_stats() -> CommunityDashboardStats {
         groups: GroupsStats {
             per_month: vec![("2024-01".to_string(), 2)],
             per_month_by_category: HashMap::from([("dev".to_string(), vec![("2024-01".to_string(), 2)])]),
-            per_month_views: vec![("2024-01".to_string(), 9)],
             per_month_by_region: HashMap::new(),
             running_total: vec![(1, 2)],
             running_total_by_category: HashMap::new(),
             running_total_by_region: HashMap::new(),
             total: 2,
-            total_views: 9,
             total_by_category: vec![("dev".to_string(), 2)],
             total_by_region: vec![],
         },
@@ -262,6 +255,24 @@ pub(crate) fn sample_community_stats() -> CommunityDashboardStats {
             total: 8,
             total_by_category: vec![],
             total_by_region: vec![],
+        },
+        page_views: CommunityPageViewsStats {
+            community: CommunityPageViewsEntry {
+                per_day_views: vec![("2024-01-10".to_string(), 2), ("2024-01-20".to_string(), 2)],
+                per_month_views: vec![("2024-01".to_string(), 4)],
+                total_views: 4,
+            },
+            events: CommunityPageViewsEntry {
+                per_day_views: vec![("2024-01-11".to_string(), 5), ("2024-01-21".to_string(), 7)],
+                per_month_views: vec![("2024-01".to_string(), 12)],
+                total_views: 12,
+            },
+            groups: CommunityPageViewsEntry {
+                per_day_views: vec![("2024-01-12".to_string(), 4), ("2024-01-22".to_string(), 5)],
+                per_month_views: vec![("2024-01".to_string(), 9)],
+                total_views: 9,
+            },
+            total_views: 25,
         },
     }
 }
@@ -593,19 +604,26 @@ pub(crate) fn sample_group_stats() -> GroupDashboardStats {
         },
         events: GroupEventsStats {
             per_month: vec![("2024-01".to_string(), 3)],
-            per_month_views: vec![("2024-01".to_string(), 7)],
             running_total: vec![(1, 3)],
             total: 3,
-            total_views: 7,
-        },
-        group: GroupStats {
-            per_month_views: vec![("2024-01".to_string(), 4)],
-            total_views: 4,
         },
         members: GroupMembersStats {
             per_month: vec![("2024-01".to_string(), 2)],
             running_total: vec![(1, 2)],
             total: 2,
+        },
+        page_views: GroupPageViewsStats {
+            events: GroupPageViewsEntry {
+                per_day_views: vec![("2024-01-10".to_string(), 3), ("2024-01-20".to_string(), 4)],
+                per_month_views: vec![("2024-01".to_string(), 7)],
+                total_views: 7,
+            },
+            group: GroupPageViewsEntry {
+                per_day_views: vec![("2024-01-11".to_string(), 1), ("2024-01-21".to_string(), 3)],
+                per_month_views: vec![("2024-01".to_string(), 4)],
+                total_views: 4,
+            },
+            total_views: 11,
         },
     }
 }

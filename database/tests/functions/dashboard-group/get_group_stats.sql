@@ -119,13 +119,13 @@ insert into event_attendee (event_id, user_id, created_at) values
 -- Page views
 insert into group_views (day, group_id, total) values
     (date_trunc('month', current_timestamp at time zone 'UTC') - interval '2 months', :'group1ID', 4),
-    (date_trunc('month', current_timestamp at time zone 'UTC'), :'group1ID', 6),
-    (date_trunc('month', current_timestamp at time zone 'UTC'), :'group2ID', 10);
+    (current_date, :'group1ID', 6),
+    (current_date, :'group2ID', 10);
 
 insert into event_views (day, event_id, total) values
     (date_trunc('month', current_timestamp at time zone 'UTC') - interval '2 months', :'event1ID', 7),
-    (date_trunc('month', current_timestamp at time zone 'UTC'), :'event2ID', 5),
-    (date_trunc('month', current_timestamp at time zone 'UTC'), :'event3ID', 9);
+    (current_date, :'event2ID', 5),
+    (current_date, :'event3ID', 9);
 
 -- ============================================================================
 -- TESTS
@@ -143,15 +143,11 @@ select is(
                 date_trunc('month', current_timestamp at time zone 'UTC') - interval '1 month' as m1,
                 date_trunc('month', current_timestamp at time zone 'UTC') - interval '2 months' as m2,
                 date_trunc('month', current_timestamp at time zone 'UTC') - interval '3 months' as m3
+        ),
+        days as (
+            select current_date as d0
         )
         select jsonb_build_object(
-            'group', jsonb_build_object(
-                'total_views', 10,
-                'per_month_views', jsonb_build_array(
-                    jsonb_build_array(to_char(m2, 'YYYY-MM'), 4),
-                    jsonb_build_array(to_char(m0, 'YYYY-MM'), 6)
-                )
-            ),
             'members', jsonb_build_object(
                 'total', 2,
                 'running_total', jsonb_build_array(
@@ -171,7 +167,6 @@ select is(
             ),
             'events', jsonb_build_object(
                 'total', 1,
-                'total_views', 12,
                 'running_total', jsonb_build_array(
                     jsonb_build_array(
                         (extract(epoch from m2 at time zone 'UTC') * 1000)::bigint,
@@ -180,10 +175,6 @@ select is(
                 ),
                 'per_month', jsonb_build_array(
                     jsonb_build_array(to_char(m2, 'YYYY-MM'), 1)
-                ),
-                'per_month_views', jsonb_build_array(
-                    jsonb_build_array(to_char(m2, 'YYYY-MM'), 7),
-                    jsonb_build_array(to_char(m0, 'YYYY-MM'), 5)
                 )
             ),
             'attendees', jsonb_build_object(
@@ -197,9 +188,32 @@ select is(
                 'per_month', jsonb_build_array(
                     jsonb_build_array(to_char(m2, 'YYYY-MM'), 2)
                 )
+            ),
+            'page_views', jsonb_build_object(
+                'total_views', 22,
+                'events', jsonb_build_object(
+                    'total_views', 12,
+                    'per_day_views', jsonb_build_array(
+                        jsonb_build_array(to_char(d0, 'YYYY-MM-DD'), 5)
+                    ),
+                    'per_month_views', jsonb_build_array(
+                        jsonb_build_array(to_char(m2, 'YYYY-MM'), 7),
+                        jsonb_build_array(to_char(m0, 'YYYY-MM'), 5)
+                    )
+                ),
+                'group', jsonb_build_object(
+                    'total_views', 10,
+                    'per_day_views', jsonb_build_array(
+                        jsonb_build_array(to_char(d0, 'YYYY-MM-DD'), 6)
+                    ),
+                    'per_month_views', jsonb_build_array(
+                        jsonb_build_array(to_char(m2, 'YYYY-MM'), 4),
+                        jsonb_build_array(to_char(m0, 'YYYY-MM'), 6)
+                    )
+                )
             )
         )
-        from months
+        from months, days
     ),
     'Should return complete accurate JSON for seeded group'
 );
@@ -209,10 +223,6 @@ select is(
     get_group_stats(:'communityID'::uuid, :'nonExistentGroupID'::uuid)::jsonb,
     $$
     {
-        "group": {
-            "total_views": 0,
-            "per_month_views": []
-        },
         "members": {
             "total": 0,
             "running_total": [],
@@ -220,15 +230,26 @@ select is(
         },
         "events": {
             "total": 0,
-            "total_views": 0,
             "running_total": [],
-            "per_month": [],
-            "per_month_views": []
+            "per_month": []
         },
         "attendees": {
             "total": 0,
             "running_total": [],
             "per_month": []
+        },
+        "page_views": {
+            "total_views": 0,
+            "events": {
+                "total_views": 0,
+                "per_day_views": [],
+                "per_month_views": []
+            },
+            "group": {
+                "total_views": 0,
+                "per_day_views": [],
+                "per_month_views": []
+            }
         }
     }
     $$,

@@ -2,6 +2,7 @@ import {
   loadEChartsScript,
   getThemePalette,
   createAreaChart,
+  createDailyBarChart,
   createMonthlyBarChart,
   deferUntilHtmxSettled,
   hasChartData,
@@ -46,14 +47,6 @@ const initMembersCharts = (stats = {}, palette) => {
 const initEventsCharts = (stats = {}, palette) => {
   const charts = [];
 
-  const viewsData = stats.per_month_views || [];
-  const viewsChart = renderChart(
-    "event-views-monthly-chart",
-    createMonthlyBarChart("Event Page Views per Month", "Views", viewsData, palette),
-    hasChartData(viewsData),
-  );
-  if (viewsChart) charts.push(viewsChart);
-
   const runningData = stats.running_total || [];
   const runningChart = renderChart(
     "events-running-chart",
@@ -74,21 +67,45 @@ const initEventsCharts = (stats = {}, palette) => {
 };
 
 /**
- * Build charts for group page views.
- * @param {Object} stats - Group page views stats payload.
+ * Build charts for page views.
+ * @param {Object} stats - Page views stats payload.
  * @param {Object} palette - Theme palette.
  * @returns {Array<echarts.ECharts>} Initialized charts.
  */
-const initGroupViewsCharts = (stats = {}, palette) => {
+const initPageViewsCharts = (stats = {}, palette) => {
   const charts = [];
 
-  const monthlyData = stats.per_month_views || [];
-  const monthlyChart = renderChart(
+  const groupMonthlyData = stats.group?.per_month_views || [];
+  const groupMonthlyChart = renderChart(
     "group-views-monthly-chart",
-    createMonthlyBarChart("Group Page Views per Month", "Views", monthlyData, palette),
-    hasChartData(monthlyData),
+    createMonthlyBarChart("Monthly group page views", "Views", groupMonthlyData, palette),
+    hasChartData(groupMonthlyData),
   );
-  if (monthlyChart) charts.push(monthlyChart);
+  if (groupMonthlyChart) charts.push(groupMonthlyChart);
+
+  const groupDailyData = stats.group?.per_day_views || [];
+  const groupDailyChart = renderChart(
+    "group-views-daily-chart",
+    createDailyBarChart("Daily group page views during the last month", "Views", groupDailyData, palette),
+    hasChartData(groupDailyData),
+  );
+  if (groupDailyChart) charts.push(groupDailyChart);
+
+  const eventMonthlyData = stats.events?.per_month_views || [];
+  const eventMonthlyChart = renderChart(
+    "event-views-monthly-chart",
+    createMonthlyBarChart("Monthly event page views", "Views", eventMonthlyData, palette),
+    hasChartData(eventMonthlyData),
+  );
+  if (eventMonthlyChart) charts.push(eventMonthlyChart);
+
+  const eventDailyData = stats.events?.per_day_views || [];
+  const eventDailyChart = renderChart(
+    "event-views-daily-chart",
+    createDailyBarChart("Daily event page views during the last month", "Views", eventDailyData, palette),
+    hasChartData(eventDailyData),
+  );
+  if (eventDailyChart) charts.push(eventDailyChart);
 
   return charts;
 };
@@ -135,7 +152,7 @@ export const initAnalyticsCharts = async (stats) => {
     const palette = getThemePalette();
 
     const charts = [
-      ...initGroupViewsCharts(stats.group, palette),
+      ...initPageViewsCharts(stats.page_views, palette),
       ...initMembersCharts(stats.members, palette),
       ...initEventsCharts(stats.events, palette),
       ...initAttendeesCharts(stats.attendees, palette),

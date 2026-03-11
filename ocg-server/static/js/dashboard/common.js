@@ -368,6 +368,56 @@ export const createMonthlyBarChart = (title, name, data, palette) => {
 };
 
 /**
+ * Create vertical bar chart configuration for daily data.
+ * @param {string} title - Chart title.
+ * @param {string} name - Series name.
+ * @param {Array} data - Daily data pairs.
+ * @param {Object} palette - Theme color palette.
+ * @returns {Object} ECharts option.
+ */
+export const createDailyBarChart = (title, name, data, palette) => {
+  return Object.assign(baseText(), {
+    title: {
+      text: title,
+      left: "center",
+      top: 12,
+      textStyle: { fontFamily: dashboardFontFamily, fontSize: 14, fontWeight: 500, color: "#334155" },
+    },
+    color: [palette[700]],
+    tooltip: {
+      trigger: "axis",
+      backgroundColor: "#fff",
+      borderColor: palette[100],
+      borderWidth: 1,
+      textStyle: { color: "#334155" },
+    },
+    grid: { left: 70, right: 40, bottom: 110, top: 80 },
+    xAxis: {
+      type: "category",
+      data: (data || []).map((d) => d[0]),
+      axisLine: { show: false },
+      axisTick: { show: false },
+      axisLabel: { rotate: 45, color: "#94a3b8", fontSize: 10 },
+    },
+    yAxis: {
+      type: "value",
+      axisLine: { show: false },
+      axisTick: { show: false },
+      axisLabel: { color: "#94a3b8", fontSize: 11 },
+      splitLine: { lineStyle: { color: "#f1f5f9", type: "dashed" } },
+    },
+    series: [
+      {
+        name,
+        type: "bar",
+        data: (data || []).map((d) => Number(d[1])),
+        barCategoryGap: "30%",
+      },
+    ],
+  });
+};
+
+/**
  * Build a palette for multi-series charts.
  * @param {Object} palette - Theme color palette.
  * @param {number} count - Number of series.

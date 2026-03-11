@@ -30,18 +30,11 @@ description = "Group statistics and growth trends. Analytics are cached for a fe
     <div class="mt-1 text-xs text-stone-500">Total RSVPs</div>
   </div>
   <div class="bg-white border border-stone-200 text-start rounded-lg p-5">
-    <div class="text-sm text-stone-600">Group Views</div>
+    <div class="text-sm text-stone-600">Page views</div>
     <div class="mt-2 ps-px text-3xl leading-tight font-semibold text-stone-900">
-      {{ stats.group.total_views|num_fmt }}
+      {{ stats.page_views.total_views|num_fmt }}
     </div>
-    <div class="mt-1 text-xs text-stone-500">Browser-confirmed group page views</div>
-  </div>
-  <div class="bg-white border border-stone-200 text-start rounded-lg p-5">
-    <div class="text-sm text-stone-600">Event Views</div>
-    <div class="mt-2 ps-px text-3xl leading-tight font-semibold text-stone-900">
-      {{ stats.events.total_views|num_fmt }}
-    </div>
-    <div class="mt-1 text-xs text-stone-500">Browser-confirmed event page views</div>
+    <div class="mt-1 text-xs text-stone-500">Group page and event pages views</div>
   </div>
 </div>
 {# End summary stat cards #}
@@ -52,12 +45,18 @@ description = "Group statistics and growth trends. Analytics are cached for a fe
     {{ dashboard::form_title(title = "Page Views") }}
     <div class="mt-6 grid grid-cols-1 gap-6">
       <div>
-        <div class="text-sm font-semibold text-stone-500">Group page views per month</div>
-        {{ stats_macro::analytics_chart(chart_id = "group-views-monthly-chart", data = stats.group.per_month_views, wrapper_class = "mt-3") -}}
+        <div class="text-sm font-semibold text-stone-500">Group page</div>
+        <div class="mt-3 grid grid-cols-1 xl:grid-cols-2 gap-6">
+          {{ stats_macro::analytics_chart(chart_id = "group-views-monthly-chart", data = stats.page_views.group.per_month_views) -}}
+          {{ stats_macro::analytics_chart(chart_id = "group-views-daily-chart", data = stats.page_views.group.per_day_views) -}}
+        </div>
       </div>
       <div>
-        <div class="text-sm font-semibold text-stone-500">Event page views per month</div>
-        {{ stats_macro::analytics_chart(chart_id = "event-views-monthly-chart", data = stats.events.per_month_views, wrapper_class = "mt-3") -}}
+        <div class="text-sm font-semibold text-stone-500">Event pages</div>
+        <div class="mt-3 grid grid-cols-1 xl:grid-cols-2 gap-6">
+          {{ stats_macro::analytics_chart(chart_id = "event-views-monthly-chart", data = stats.page_views.events.per_month_views) -}}
+          {{ stats_macro::analytics_chart(chart_id = "event-views-daily-chart", data = stats.page_views.events.per_day_views) -}}
+        </div>
       </div>
     </div>
   </div>

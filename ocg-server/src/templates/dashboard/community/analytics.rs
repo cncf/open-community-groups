@@ -23,22 +23,26 @@ pub(crate) struct Page {
 pub(crate) struct CommunityDashboardStats {
     /// Attendees statistics.
     pub attendees: AttendeesStats,
-    /// Community statistics.
-    pub community: CommunityStats,
     /// Events statistics.
     pub events: EventsStats,
     /// Groups statistics.
     pub groups: GroupsStats,
     /// Members statistics.
     pub members: MembersStats,
+    /// Page views statistics.
+    pub page_views: CommunityPageViewsStats,
 }
 
-/// Statistics for community.
+/// Statistics for community dashboard page views.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub(crate) struct CommunityStats {
-    /// Monthly community page views.
-    pub per_month_views: Vec<(String, i64)>,
-    /// Total community page views.
+pub(crate) struct CommunityPageViewsStats {
+    /// Community page views statistics.
+    pub community: PageViewsStats,
+    /// Event page views statistics.
+    pub events: PageViewsStats,
+    /// Group page views statistics.
+    pub groups: PageViewsStats,
+    /// Total views across all tracked pages.
     pub total_views: i64,
 }
 
@@ -82,8 +86,6 @@ pub(crate) struct EventsStats {
     pub per_month_by_group_category: HashMap<String, Vec<(String, i64)>>,
     /// Monthly event counts by group region.
     pub per_month_by_group_region: HashMap<String, Vec<(String, i64)>>,
-    /// Monthly event page views.
-    pub per_month_views: Vec<(String, i64)>,
     /// Running total of events.
     pub running_total: Vec<(i64, i64)>,
     /// Running total of events by event category.
@@ -94,8 +96,6 @@ pub(crate) struct EventsStats {
     pub running_total_by_group_region: HashMap<String, Vec<(i64, i64)>>,
     /// Total events.
     pub total: i64,
-    /// Total event page views.
-    pub total_views: i64,
     /// Total events by event category.
     pub total_by_event_category: Vec<(String, i64)>,
     /// Total events by group category.
@@ -113,8 +113,6 @@ pub(crate) struct GroupsStats {
     pub per_month_by_category: HashMap<String, Vec<(String, i64)>>,
     /// Monthly group counts by region.
     pub per_month_by_region: HashMap<String, Vec<(String, i64)>>,
-    /// Monthly group page views.
-    pub per_month_views: Vec<(String, i64)>,
     /// Running total of groups.
     pub running_total: Vec<(i64, i64)>,
     /// Running total of groups by category.
@@ -123,8 +121,6 @@ pub(crate) struct GroupsStats {
     pub running_total_by_region: HashMap<String, Vec<(i64, i64)>>,
     /// Total groups.
     pub total: i64,
-    /// Total group page views.
-    pub total_views: i64,
     /// Total groups by category.
     pub total_by_category: Vec<(String, i64)>,
     /// Total groups by region.
@@ -152,4 +148,15 @@ pub(crate) struct MembersStats {
     pub total_by_category: Vec<(String, i64)>,
     /// Total members by region.
     pub total_by_region: Vec<(String, i64)>,
+}
+
+/// Statistics for page views.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct PageViewsStats {
+    /// Daily page views during the last month.
+    pub per_day_views: Vec<(String, i64)>,
+    /// Monthly page views.
+    pub per_month_views: Vec<(String, i64)>,
+    /// Total page views.
+    pub total_views: i64,
 }

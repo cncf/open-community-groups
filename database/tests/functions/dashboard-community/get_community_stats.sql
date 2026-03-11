@@ -207,7 +207,7 @@ insert into group_views (day, group_id, total) values
     (date_trunc('month', current_timestamp at time zone 'UTC') - interval '10 months', :'group1ID', 10),
     (date_trunc('month', current_timestamp at time zone 'UTC') - interval '9 months', :'group2ID', 8),
     (date_trunc('month', current_timestamp at time zone 'UTC') - interval '7 months', :'group3ID', 6),
-    (date_trunc('month', current_timestamp at time zone 'UTC') - interval '5 months', :'group4ID', 4),
+    (current_date, :'group4ID', 4),
     (date_trunc('month', current_timestamp at time zone 'UTC') - interval '3 months', :'group5ID', 99);
 
 -- Event page views
@@ -217,14 +217,14 @@ insert into event_views (day, event_id, total) values
     (date_trunc('month', current_timestamp at time zone 'UTC') - interval '6 months', :'event3ID', 6),
     (date_trunc('month', current_timestamp at time zone 'UTC') - interval '4 months', :'event4ID', 4),
     (date_trunc('month', current_timestamp at time zone 'UTC') - interval '3 months', :'event5ID', 7),
-    (date_trunc('month', current_timestamp at time zone 'UTC') - interval '2 months', :'event6ID', 5),
-    (date_trunc('month', current_timestamp at time zone 'UTC'), :'event8ID', 3);
+    (current_date, :'event6ID', 5),
+    (current_date, :'event8ID', 3);
 
 -- Community page views
 insert into community_views (day, community_id, total) values
     (date_trunc('month', current_timestamp at time zone 'UTC') - interval '10 months', :'communityID', 11),
     (date_trunc('month', current_timestamp at time zone 'UTC') - interval '8 months', :'communityID', 9),
-    (date_trunc('month', current_timestamp at time zone 'UTC') - interval '2 months', :'communityID', 5),
+    (current_date, :'communityID', 5),
     (date_trunc('month', current_timestamp at time zone 'UTC') - interval '3 months', :'community2ID', 99);
 
 -- ============================================================================
@@ -250,19 +250,13 @@ select is(
                 date_trunc('month', current_timestamp at time zone 'UTC') - interval '4 months' as m4,
                 date_trunc('month', current_timestamp at time zone 'UTC') - interval '3 months' as m3,
                 date_trunc('month', current_timestamp at time zone 'UTC') - interval '2 months' as m2
+        ),
+        days as (
+            select current_date as d0
         )
         select jsonb_build_object(
-            'community', jsonb_build_object(
-                'total_views', 25,
-                'per_month_views', jsonb_build_array(
-                    jsonb_build_array(to_char(m10, 'YYYY-MM'), 11),
-                    jsonb_build_array(to_char(m8, 'YYYY-MM'), 9),
-                    jsonb_build_array(to_char(m2, 'YYYY-MM'), 5)
-                )
-            ),
             'groups', jsonb_build_object(
                 'total', 4,
-                'total_views', 28,
                 'total_by_category', jsonb_build_array(
                     jsonb_build_array('AI/ML', 2),
                     jsonb_build_array('Cloud Native', 2)
@@ -302,12 +296,6 @@ select is(
                     jsonb_build_array(to_char(m9, 'YYYY-MM'), 1),
                     jsonb_build_array(to_char(m7, 'YYYY-MM'), 1),
                     jsonb_build_array(to_char(m5, 'YYYY-MM'), 1)
-                ),
-                'per_month_views', jsonb_build_array(
-                    jsonb_build_array(to_char(m10, 'YYYY-MM'), 10),
-                    jsonb_build_array(to_char(m9, 'YYYY-MM'), 8),
-                    jsonb_build_array(to_char(m7, 'YYYY-MM'), 6),
-                    jsonb_build_array(to_char(m5, 'YYYY-MM'), 4)
                 ),
                 'per_month_by_category', jsonb_build_object(
                     'AI/ML', jsonb_build_array(
@@ -419,7 +407,6 @@ select is(
             ),
             'events', jsonb_build_object(
                 'total', 6,
-                'total_views', 45,
                 'total_by_event_category', jsonb_build_array(
                     jsonb_build_array('Conference', 3),
                     jsonb_build_array('Meetup', 3)
@@ -483,15 +470,6 @@ select is(
                     jsonb_build_array(to_char(m4, 'YYYY-MM'), 1),
                     jsonb_build_array(to_char(m3, 'YYYY-MM'), 1),
                     jsonb_build_array(to_char(m2, 'YYYY-MM'), 1)
-                ),
-                'per_month_views', jsonb_build_array(
-                    jsonb_build_array(to_char(m10, 'YYYY-MM'), 12),
-                    jsonb_build_array(to_char(m8, 'YYYY-MM'), 8),
-                    jsonb_build_array(to_char(m6, 'YYYY-MM'), 6),
-                    jsonb_build_array(to_char(m4, 'YYYY-MM'), 4),
-                    jsonb_build_array(to_char(m3, 'YYYY-MM'), 7),
-                    jsonb_build_array(to_char(m2, 'YYYY-MM'), 5),
-                    jsonb_build_array(to_char(m0, 'YYYY-MM'), 3)
                 ),
                 'per_month_by_event_category', jsonb_build_object(
                     'Conference', jsonb_build_array(
@@ -632,9 +610,49 @@ select is(
                         jsonb_build_array(to_char(m2, 'YYYY-MM'), 1)
                     )
                 )
+            ),
+            'page_views', jsonb_build_object(
+                'total_views', 98,
+                'community', jsonb_build_object(
+                    'total_views', 25,
+                    'per_day_views', jsonb_build_array(
+                        jsonb_build_array(to_char(d0, 'YYYY-MM-DD'), 5)
+                    ),
+                    'per_month_views', jsonb_build_array(
+                        jsonb_build_array(to_char(m10, 'YYYY-MM'), 11),
+                        jsonb_build_array(to_char(m8, 'YYYY-MM'), 9),
+                        jsonb_build_array(to_char(m0, 'YYYY-MM'), 5)
+                    )
+                ),
+                'events', jsonb_build_object(
+                    'total_views', 45,
+                    'per_day_views', jsonb_build_array(
+                        jsonb_build_array(to_char(d0, 'YYYY-MM-DD'), 8)
+                    ),
+                    'per_month_views', jsonb_build_array(
+                        jsonb_build_array(to_char(m10, 'YYYY-MM'), 12),
+                        jsonb_build_array(to_char(m8, 'YYYY-MM'), 8),
+                        jsonb_build_array(to_char(m6, 'YYYY-MM'), 6),
+                        jsonb_build_array(to_char(m4, 'YYYY-MM'), 4),
+                        jsonb_build_array(to_char(m3, 'YYYY-MM'), 7),
+                        jsonb_build_array(to_char(m0, 'YYYY-MM'), 8)
+                    )
+                ),
+                'groups', jsonb_build_object(
+                    'total_views', 28,
+                    'per_day_views', jsonb_build_array(
+                        jsonb_build_array(to_char(d0, 'YYYY-MM-DD'), 4)
+                    ),
+                    'per_month_views', jsonb_build_array(
+                        jsonb_build_array(to_char(m10, 'YYYY-MM'), 10),
+                        jsonb_build_array(to_char(m9, 'YYYY-MM'), 8),
+                        jsonb_build_array(to_char(m7, 'YYYY-MM'), 6),
+                        jsonb_build_array(to_char(m0, 'YYYY-MM'), 4)
+                    )
+                )
             )
         )
-        from months
+        from months, days
     ),
     'Should return complete accurate JSON for test community'
 );
@@ -644,20 +662,14 @@ select is(
     get_community_stats(:'nonExistentCommunityID'::uuid)::jsonb,
     $$
     {
-        "community": {
-            "total_views": 0,
-            "per_month_views": []
-        },
         "groups": {
             "total": 0,
-            "total_views": 0,
             "total_by_category": [],
             "total_by_region": [],
             "running_total": [],
             "running_total_by_category": {},
             "running_total_by_region": {},
             "per_month": [],
-            "per_month_views": [],
             "per_month_by_category": {},
             "per_month_by_region": {}
         },
@@ -674,7 +686,6 @@ select is(
         },
         "events": {
             "total": 0,
-            "total_views": 0,
             "total_by_event_category": [],
             "total_by_group_category": [],
             "total_by_group_region": [],
@@ -683,7 +694,6 @@ select is(
             "running_total_by_group_category": {},
             "running_total_by_group_region": {},
             "per_month": [],
-            "per_month_views": [],
             "per_month_by_event_category": {},
             "per_month_by_group_category": {},
             "per_month_by_group_region": {}
@@ -701,6 +711,24 @@ select is(
             "per_month_by_event_category": {},
             "per_month_by_group_category": {},
             "per_month_by_group_region": {}
+        },
+        "page_views": {
+            "total_views": 0,
+            "community": {
+                "total_views": 0,
+                "per_day_views": [],
+                "per_month_views": []
+            },
+            "events": {
+                "total_views": 0,
+                "per_day_views": [],
+                "per_month_views": []
+            },
+            "groups": {
+                "total_views": 0,
+                "per_day_views": [],
+                "per_month_views": []
+            }
         }
     }
     $$::jsonb,
