@@ -30,7 +30,9 @@ const initMembersCharts = (stats = {}, palette) => {
   const monthlyData = stats.per_month || [];
   const monthlyChart = renderChart(
     "members-monthly-chart",
-    createMonthlyBarChart("New Members per Month", "Members", monthlyData, palette),
+    createMonthlyBarChart("New Members per Month", "Members", monthlyData, palette, {
+      reservePeriodStart: true,
+    }),
     hasChartData(monthlyData),
   );
   if (monthlyChart) charts.push(monthlyChart);
@@ -58,7 +60,9 @@ const initEventsCharts = (stats = {}, palette) => {
   const monthlyData = stats.per_month || [];
   const monthlyChart = renderChart(
     "events-monthly-chart",
-    createMonthlyBarChart("New Events per Month", "Events", monthlyData, palette),
+    createMonthlyBarChart("New Events per Month", "Events", monthlyData, palette, {
+      reservePeriodStart: true,
+    }),
     hasChartData(monthlyData),
   );
   if (monthlyChart) charts.push(monthlyChart);
@@ -80,7 +84,10 @@ const initPageViewsCharts = async (stats = {}, palette) => {
   const groupMonthlyData = stats.group?.per_month_views || [];
   const groupMonthlyChart = renderChart(
     "group-views-monthly-chart",
-    createMonthlyBarChart("Monthly group page views", "Page views", groupMonthlyData, palette),
+    createMonthlyBarChart("Monthly group page views", "Page views", groupMonthlyData, palette, {
+      useTimeAxis: true,
+      reservePeriodStart: true,
+    }),
     hasChartData(groupMonthlyData),
   );
   if (groupMonthlyChart) charts.push(groupMonthlyChart);
@@ -101,7 +108,10 @@ const initPageViewsCharts = async (stats = {}, palette) => {
   const eventMonthlyData = stats.events?.per_month_views || [];
   const eventMonthlyChart = renderChart(
     "event-views-monthly-chart",
-    createMonthlyBarChart("Monthly event page views", "Page views", eventMonthlyData, palette),
+    createMonthlyBarChart("Monthly event page views", "Page views", eventMonthlyData, palette, {
+      useTimeAxis: true,
+      reservePeriodStart: true,
+    }),
     hasChartData(eventMonthlyData),
   );
   if (eventMonthlyChart) charts.push(eventMonthlyChart);
@@ -142,7 +152,9 @@ const initAttendeesCharts = (stats = {}, palette) => {
   const monthlyData = stats.per_month || [];
   const monthlyChart = renderChart(
     "attendees-monthly-chart",
-    createMonthlyBarChart("New Attendees per Month", "Attendees", monthlyData, palette),
+    createMonthlyBarChart("New Attendees per Month", "Attendees", monthlyData, palette, {
+      reservePeriodStart: true,
+    }),
     hasChartData(monthlyData),
   );
   if (monthlyChart) charts.push(monthlyChart);
