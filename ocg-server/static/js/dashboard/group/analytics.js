@@ -78,7 +78,7 @@ const initPageViewsCharts = (stats = {}, palette) => {
   const groupMonthlyData = stats.group?.per_month_views || [];
   const groupMonthlyChart = renderChart(
     "group-views-monthly-chart",
-    createMonthlyBarChart("Monthly group page views", "Views", groupMonthlyData, palette),
+    createMonthlyBarChart("Monthly group page views", "Page views", groupMonthlyData, palette),
     hasChartData(groupMonthlyData),
   );
   if (groupMonthlyChart) charts.push(groupMonthlyChart);
@@ -86,7 +86,7 @@ const initPageViewsCharts = (stats = {}, palette) => {
   const groupDailyData = stats.group?.per_day_views || [];
   const groupDailyChart = renderChart(
     "group-views-daily-chart",
-    createDailyBarChart("Daily group page views during the last month", "Views", groupDailyData, palette),
+    createDailyBarChart("Daily group page views during the last month", "Page views", groupDailyData, palette),
     hasChartData(groupDailyData),
   );
   if (groupDailyChart) charts.push(groupDailyChart);
@@ -94,7 +94,7 @@ const initPageViewsCharts = (stats = {}, palette) => {
   const eventMonthlyData = stats.events?.per_month_views || [];
   const eventMonthlyChart = renderChart(
     "event-views-monthly-chart",
-    createMonthlyBarChart("Monthly event page views", "Views", eventMonthlyData, palette),
+    createMonthlyBarChart("Monthly event page views", "Page views", eventMonthlyData, palette),
     hasChartData(eventMonthlyData),
   );
   if (eventMonthlyChart) charts.push(eventMonthlyChart);
@@ -102,7 +102,7 @@ const initPageViewsCharts = (stats = {}, palette) => {
   const eventDailyData = stats.events?.per_day_views || [];
   const eventDailyChart = renderChart(
     "event-views-daily-chart",
-    createDailyBarChart("Daily event page views during the last month", "Views", eventDailyData, palette),
+    createDailyBarChart("Daily event page views during the last month", "Page views", eventDailyData, palette),
     hasChartData(eventDailyData),
   );
   if (eventDailyChart) charts.push(eventDailyChart);

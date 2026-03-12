@@ -32,7 +32,7 @@ const initPageViewsCharts = async (pageViews = {}, palette) => {
   const communityMonthlyData = pageViews.community?.per_month_views || [];
   const communityMonthlyChart = renderChart(
     "community-views-monthly-chart",
-    createMonthlyBarChart("Monthly community page views", "Views", communityMonthlyData, palette),
+    createMonthlyBarChart("Monthly community page views", "Page views", communityMonthlyData, palette),
     hasChartData(communityMonthlyData),
   );
   if (communityMonthlyChart) charts.push(communityMonthlyChart);
@@ -42,7 +42,7 @@ const initPageViewsCharts = async (pageViews = {}, palette) => {
     "community-views-daily-chart",
     createDailyBarChart(
       "Daily community page views during the last month",
-      "Views",
+      "Page views",
       communityDailyData,
       palette,
     ),
@@ -53,7 +53,7 @@ const initPageViewsCharts = async (pageViews = {}, palette) => {
   const groupMonthlyData = pageViews.groups?.per_month_views || [];
   const groupMonthlyChart = renderChart(
     "groups-views-monthly-chart",
-    createMonthlyBarChart("Monthly group page views", "Views", groupMonthlyData, palette),
+    createMonthlyBarChart("Monthly group page views", "Page views", groupMonthlyData, palette),
     hasChartData(groupMonthlyData),
   );
   if (groupMonthlyChart) charts.push(groupMonthlyChart);
@@ -61,7 +61,7 @@ const initPageViewsCharts = async (pageViews = {}, palette) => {
   const groupDailyData = pageViews.groups?.per_day_views || [];
   const groupDailyChart = renderChart(
     "groups-views-daily-chart",
-    createDailyBarChart("Daily group page views during the last month", "Views", groupDailyData, palette),
+    createDailyBarChart("Daily group page views during the last month", "Page views", groupDailyData, palette),
     hasChartData(groupDailyData),
   );
   if (groupDailyChart) charts.push(groupDailyChart);
@@ -69,7 +69,7 @@ const initPageViewsCharts = async (pageViews = {}, palette) => {
   const eventMonthlyData = pageViews.events?.per_month_views || [];
   const eventMonthlyChart = renderChart(
     "events-views-monthly-chart",
-    createMonthlyBarChart("Monthly event page views", "Views", eventMonthlyData, palette),
+    createMonthlyBarChart("Monthly event page views", "Page views", eventMonthlyData, palette),
     hasChartData(eventMonthlyData),
   );
   if (eventMonthlyChart) charts.push(eventMonthlyChart);
@@ -77,7 +77,7 @@ const initPageViewsCharts = async (pageViews = {}, palette) => {
   const eventDailyData = pageViews.events?.per_day_views || [];
   const eventDailyChart = renderChart(
     "events-views-daily-chart",
-    createDailyBarChart("Daily event page views during the last month", "Views", eventDailyData, palette),
+    createDailyBarChart("Daily event page views during the last month", "Page views", eventDailyData, palette),
     hasChartData(eventDailyData),
   );
   if (eventDailyChart) charts.push(eventDailyChart);
