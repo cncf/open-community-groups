@@ -72,7 +72,9 @@ const initEventsCharts = (stats = {}, palette) => {
  * @param {Object} palette - Theme palette.
  * @returns {Array<echarts.ECharts>} Initialized charts.
  */
-const initPageViewsCharts = (stats = {}, palette) => {
+const initPageViewsCharts = async (stats = {}, palette) => {
+  await loadEChartsScript();
+
   const charts = [];
 
   const groupMonthlyData = stats.group?.per_month_views || [];
@@ -86,7 +88,12 @@ const initPageViewsCharts = (stats = {}, palette) => {
   const groupDailyData = stats.group?.per_day_views || [];
   const groupDailyChart = renderChart(
     "group-views-daily-chart",
-    createDailyBarChart("Daily group page views during the last month", "Page views", groupDailyData, palette),
+    createDailyBarChart(
+      "Daily group page views during the last month",
+      "Page views",
+      groupDailyData,
+      palette,
+    ),
     hasChartData(groupDailyData),
   );
   if (groupDailyChart) charts.push(groupDailyChart);
@@ -102,7 +109,12 @@ const initPageViewsCharts = (stats = {}, palette) => {
   const eventDailyData = stats.events?.per_day_views || [];
   const eventDailyChart = renderChart(
     "event-views-daily-chart",
-    createDailyBarChart("Daily event page views during the last month", "Page views", eventDailyData, palette),
+    createDailyBarChart(
+      "Daily event page views during the last month",
+      "Page views",
+      eventDailyData,
+      palette,
+    ),
     hasChartData(eventDailyData),
   );
   if (eventDailyChart) charts.push(eventDailyChart);
@@ -152,7 +164,7 @@ export const initAnalyticsCharts = async (stats) => {
     const palette = getThemePalette();
 
     const charts = [
-      ...initPageViewsCharts(stats.page_views, palette),
+      ...(await initPageViewsCharts(stats.page_views, palette)),
       ...initMembersCharts(stats.members, palette),
       ...initEventsCharts(stats.events, palette),
       ...initAttendeesCharts(stats.attendees, palette),
