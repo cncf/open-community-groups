@@ -1,50 +1,38 @@
+{% extends "common/card_small_base.html" -%}
 {% import "macros/ui.html" as ui -%}
 
-{# Group card -#}
-<a href="/{{ group.community_name }}/group/{{ group.slug }}"
-   class="flex flex-1 flex-row items-center group select-none">
-  <div class="relative group-hover:opacity-75 transition-opacity">
-    {# Group icon -#}
-    {{ ui::logo(logo_url = group.logo_url, classes = "h-24 w-24 md:h-[120px] md:w-[120px] md:min-w-[120px]", size = 120) -}}
-    {# End group icon -#}
+{% block href -%}
+  /{{ group.community_name }}/group/{{ group.slug }}
+{% endblock href %}
+
+{% block logo -%}
+  {{ ui::logo(logo_url = group.logo_url, classes = "h-[60px] w-[60px] min-w-[60px]", size = 60) -}}
+{% endblock logo %}
+
+{% block preheader -%}
+  <span>
+    {% if let Some(region) = &group.region -%}
+      {{ region.name }}
+    {% else -%}
+      {{ group.category.name }}
+    {% endif -%}
+  </span>
+{% endblock preheader %}
+
+{% block title -%}
+  {{ group.name|demoji }}
+{% endblock title %}
+
+{% block footer -%}
+  <div class="card-meta !pt-0">
+    {% if let Some(location) = &self.group.location(32) -%}
+      {{ ui::icon_text(icon_name = "location", text = location) -}}
+    {% else -%}
+      {{ ui::icon_text(icon_name = "location", text = "No location provided") -}}
+    {% endif -%}
   </div>
 
-  <div class="card-content">
-    <div class="card-body">
-      <div>
-        {# Category or region -#}
-        <div class="card-header">
-          {% block preheader -%}
-            <span>
-              {% if let Some(region) = &group.region -%}
-                {{ region.name }}
-              {% else -%}
-                {{ group.category.name }}
-              {% endif -%}
-            </span>
-          {% endblock preheader -%}
-        </div>
-        {# End category or region -#}
-
-        {# Group title -#}
-        <div class="card-title group-hover:underline">{{ group.name|demoji }}</div>
-        {# End group title -#}
-      </div>
-
-      <div>
-        {# Group location -#}
-        {% if let Some(location) = &self.group.location(25) -%}
-          <div class="card-meta">{{ ui::icon_text(icon_name = "location", text = location) -}}</div>
-        {% endif -%}
-        {# End group location -#}
-
-        {# Group creation date -#}
-        <div class="card-meta">
-          {{ ui::icon_text(icon_name = "date", text = group.created_at.format("%B %e · %Y") ) -}}
-        </div>
-        {# End group creation date -#}
-      </div>
-    </div>
+  <div class="card-meta">
+    {{ ui::icon_text(icon_name = "date", text = group.created_at.format("%B %e · %Y") ) -}}
   </div>
-</a>
-{# End group card -#}
+{% endblock footer %}
