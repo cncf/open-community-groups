@@ -83,7 +83,7 @@ export const trackPageView = ({ entityId, entityType }) => {
   });
 
   trackerState.endpoint = endpoint;
-  trackerState.pendingViews = 1;
+  trackerState.pendingViews += 1;
 
   bindLifecycleListeners(trackerState);
   flushPendingPageViews(trackerState);
