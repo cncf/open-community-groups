@@ -1,0 +1,29 @@
+{{- if .Values.redirector.enabled -}}
+{{- if .Values.redirector.ingress.enabled -}}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "chart.resourceNamePrefix" . }}redirector
+  labels:
+    app.kubernetes.io/component: redirector
+    {{- include "chart.labels" . | nindent 4 }}
+  {{- with .Values.redirector.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  defaultBackend:
+    service:
+      name: {{ include "chart.resourceNamePrefix" . }}redirector
+      port:
+        number: {{ .Values.redirector.ingress.backendServicePort }}
+  {{- with .Values.redirector.ingress.rules }}
+  rules:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with .Values.redirector.ingress.tls }}
+  tls:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+{{- end }}
+{{- end }}

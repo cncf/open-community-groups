@@ -1,0 +1,24 @@
+{{- if .Values.redirector.enabled -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "chart.resourceNamePrefix" . }}redirector
+  labels:
+    app.kubernetes.io/component: redirector
+    {{- include "chart.labels" . | nindent 4 }}
+  {{- with .Values.redirector.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- $serviceType := default "ClusterIP" .Values.redirector.service.type }}
+  {{- if eq $serviceType "LoadBalancer" }}
+  allocateLoadBalancerNodePorts: {{ .Values.redirector.service.allocateLoadBalancerNodePorts }}
+  {{- end }}
+  type: {{ $serviceType }}
+  ports:
+    {{- toYaml .Values.redirector.service.ports | nindent 4 }}
+  selector:
+    app.kubernetes.io/component: redirector
+    {{- include "chart.selectorLabels" . | nindent 4 }}
+{{- end }}

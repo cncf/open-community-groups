@@ -90,13 +90,53 @@ dbmigrator:
       repository: ocg/dbmigrator
     podSecurityContext: {}
 
+# Redirector configuration
+redirector:
+  enabled: false
+
+  # Address to listen on
+  addr: 0.0.0.0:9001
+
+  # Base URL used for redirect targets and fallback redirects
+  baseRedirectUrl: "https://{YOUR_OCG_SERVER_HOSTNAME}"
+
+  # Ingress configuration
+  ingress:
+    enabled: false
+    annotations:
+      kubernetes.io/ingress.class: nginx
+    backendServicePort: 80
+    rules: []
+    tls: []
+
+  # Service configuration
+  service:
+    allocateLoadBalancerNodePorts: true
+    annotations: {}
+    ports:
+      - name: http
+        port: 80
+        protocol: TCP
+        targetPort: 9001
+    type: NodePort
+
+  # Deployment configuration
+  deploy:
+    containerSecurityContext: {}
+    image:
+      # Redirector image repository (without the tag)
+      repository: ocg/redirector
+    podSecurityContext: {}
+    replicaCount: 1
+    resources: {}
+
 # Server configuration
 server:
   # Address to listen on
   addr: 0.0.0.0:9000
 
   # Base URL
-  baseUrl: "https://{YOUR_OCG_HOSTNAME}"
+  baseUrl: "https://{YOUR_OCG_SERVER_HOSTNAME}"
 
   # Cookie configuration
   cookie:

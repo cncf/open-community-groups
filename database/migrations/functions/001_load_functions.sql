@@ -17,6 +17,7 @@
 {{ template "common/get_event_full.sql" }}
 {{ template "common/get_event_summary.sql" }}
 {{ template "common/get_group_full.sql" }}
+{{ template "common/get_redirect_target.sql" }}
 {{ template "common/list_event_cfs_labels.sql" }}
 {{ template "common/search_events.sql" }}
 {{ template "common/search_groups.sql" }}

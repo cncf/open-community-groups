@@ -40,6 +40,33 @@ jobs:
             .
           docker push $OCIR_REPOSITORY:$GITHUB_SHA
 
+  build-ocg-redirector-image:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+      - name: Login to OCI Registry
+        id: login-ocir
+        uses: oracle-actions/login-ocir@v1.3.0
+        with:
+          auth_token: ${{ secrets.OCI_AUTH_TOKEN }}
+      - name: Get ocg-redirector OCIR repository
+        id: get-ocir-repository-redirector
+        uses: oracle-actions/get-ocir-repository@v1.3.0
+        with:
+          name: ocg/redirector
+          compartment: ${{ secrets.OCI_COMPARTMENT_OCID }}
+      - name: Build and push ocg-redirector image
+        env:
+          OCIR_REPOSITORY: ${{ steps.get-ocir-repository-redirector.outputs.repo_path }}
+        run: |
+          docker build \
+            -f ocg-redirector/Dockerfile \
+            -t $OCIR_REPOSITORY:$GITHUB_SHA \
+            .
+          docker push $OCIR_REPOSITORY:$GITHUB_SHA
+
   build-ocg-server-image:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
