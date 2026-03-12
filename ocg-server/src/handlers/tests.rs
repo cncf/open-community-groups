@@ -14,6 +14,7 @@ use time::{Duration as TimeDuration, OffsetDateTime};
 use uuid::Uuid;
 
 use crate::{
+    activity_tracker::DynActivityTracker,
     auth::User as AuthUser,
     config::HttpServerConfig,
     db::{
@@ -32,13 +33,19 @@ use crate::{
         common::{User as TemplateUser, UserSummary},
         dashboard::{
             community::{
-                analytics::{AttendeesStats, CommunityStats, EventsStats, GroupsStats, MembersStats},
+                analytics::{
+                    AttendeesStats, CommunityDashboardStats, CommunityPageViewsStats, EventsStats,
+                    GroupsStats, MembersStats, PageViewsStats as CommunityPageViewsEntry,
+                },
                 groups::Group,
                 settings::CommunityUpdate,
                 team::CommunityTeamMember,
             },
             group::{
-                analytics::{GroupAttendeesStats, GroupEventsStats, GroupMembersStats, GroupStats},
+                analytics::{
+                    GroupAttendeesStats, GroupDashboardStats, GroupEventsStats, GroupMembersStats,
+                    GroupPageViewsStats, PageViewsStats as GroupPageViewsEntry,
+                },
                 attendees::Attendee,
                 events::{CfsSubmissionStatus, Event as GroupEventForm, GroupEvents},
                 home::UserGroupsByCommunity,
@@ -191,8 +198,8 @@ pub(crate) fn sample_community_team_member(accepted: bool) -> CommunityTeamMembe
 }
 
 /// Sample community stats used in analytics tests.
-pub(crate) fn sample_community_stats() -> CommunityStats {
-    CommunityStats {
+pub(crate) fn sample_community_stats() -> CommunityDashboardStats {
+    CommunityDashboardStats {
         attendees: AttendeesStats {
             per_month: vec![("2024-01".to_string(), 5)],
             per_month_by_event_category: HashMap::from([(
@@ -248,6 +255,24 @@ pub(crate) fn sample_community_stats() -> CommunityStats {
             total: 8,
             total_by_category: vec![],
             total_by_region: vec![],
+        },
+        page_views: CommunityPageViewsStats {
+            community: CommunityPageViewsEntry {
+                per_day_views: vec![("2024-01-10".to_string(), 2), ("2024-01-20".to_string(), 2)],
+                per_month_views: vec![("2024-01".to_string(), 4)],
+                total_views: 4,
+            },
+            events: CommunityPageViewsEntry {
+                per_day_views: vec![("2024-01-11".to_string(), 5), ("2024-01-21".to_string(), 7)],
+                per_month_views: vec![("2024-01".to_string(), 12)],
+                total_views: 12,
+            },
+            groups: CommunityPageViewsEntry {
+                per_day_views: vec![("2024-01-12".to_string(), 4), ("2024-01-22".to_string(), 5)],
+                per_month_views: vec![("2024-01".to_string(), 9)],
+                total_views: 9,
+            },
+            total_views: 25,
         },
     }
 }
@@ -570,8 +595,8 @@ pub(crate) fn sample_group_region() -> GroupRegion {
 }
 
 /// Sample group stats used in analytics tests.
-pub(crate) fn sample_group_stats() -> GroupStats {
-    GroupStats {
+pub(crate) fn sample_group_stats() -> GroupDashboardStats {
+    GroupDashboardStats {
         attendees: GroupAttendeesStats {
             per_month: vec![("2024-01".to_string(), 5)],
             running_total: vec![(1, 5)],
@@ -586,6 +611,19 @@ pub(crate) fn sample_group_stats() -> GroupStats {
             per_month: vec![("2024-01".to_string(), 2)],
             running_total: vec![(1, 2)],
             total: 2,
+        },
+        page_views: GroupPageViewsStats {
+            events: GroupPageViewsEntry {
+                per_day_views: vec![("2024-01-10".to_string(), 3), ("2024-01-20".to_string(), 4)],
+                per_month_views: vec![("2024-01".to_string(), 7)],
+                total_views: 7,
+            },
+            group: GroupPageViewsEntry {
+                per_day_views: vec![("2024-01-11".to_string(), 1), ("2024-01-21".to_string(), 3)],
+                per_month_views: vec![("2024-01".to_string(), 4)],
+                total_views: 4,
+            },
+            total_views: 11,
         },
     }
 }
@@ -862,6 +900,14 @@ pub(crate) fn sample_template_user_with_id(user_id: Uuid) -> TemplateUser {
     }
 }
 
+/// Sample server configuration for testing `track_view` handlers.
+pub(crate) fn sample_tracking_server_cfg() -> HttpServerConfig {
+    HttpServerConfig {
+        base_url: "https://example.test".to_string(),
+        ..Default::default()
+    }
+}
+
 /// Sample CFS session proposal used in user dashboard tests.
 pub(crate) fn sample_user_cfs_session_proposal(session_proposal_id: Uuid) -> UserCfsSessionProposal {
     UserCfsSessionProposal {
@@ -943,6 +989,7 @@ pub(crate) fn sample_user_summary(user_id: Uuid, username: &str) -> UserSummary 
 
 /// Builder for test router configuration.
 pub(crate) struct TestRouterBuilder {
+    activity_tracker: Option<crate::activity_tracker::MockActivityTracker>,
     db: MockDB,
     image_storage: Option<MockImageStorage>,
     meetings_cfg: Option<crate::config::MeetingsConfig>,
@@ -954,6 +1001,7 @@ impl TestRouterBuilder {
     /// Creates a new test router builder with required dependencies.
     pub(crate) fn new(db: MockDB, nm: MockNotificationsManager) -> Self {
         Self {
+            activity_tracker: None,
             db,
             image_storage: None,
             meetings_cfg: None,
@@ -965,13 +1013,23 @@ impl TestRouterBuilder {
     /// Builds the application router with the configured options.
     pub(crate) async fn build(self) -> Router {
         let db: DynDB = Arc::new(self.db);
+        let activity_tracker: DynActivityTracker = Arc::new(self.activity_tracker.unwrap_or_default());
         let is: DynImageStorage = Arc::new(self.image_storage.unwrap_or_default());
         let nm: DynNotificationsManager = Arc::new(self.nm);
         let server_cfg = self.server_cfg.unwrap_or_default();
 
-        router::setup(db, is, self.meetings_cfg, nm, &server_cfg)
+        router::setup(activity_tracker, db, is, self.meetings_cfg, nm, &server_cfg)
             .await
             .expect("router setup should succeed")
+    }
+
+    /// Sets a custom activity tracker.
+    pub(crate) fn with_activity_tracker(
+        mut self,
+        activity_tracker: crate::activity_tracker::MockActivityTracker,
+    ) -> Self {
+        self.activity_tracker = Some(activity_tracker);
+        self
     }
 
     /// Sets a custom image storage.

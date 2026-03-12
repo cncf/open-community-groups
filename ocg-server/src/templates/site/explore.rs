@@ -183,8 +183,8 @@ pub(crate) enum Entity {
     Groups,
 }
 
-impl From<Option<&String>> for Entity {
-    fn from(entity: Option<&String>) -> Self {
+impl From<Option<&str>> for Entity {
+    fn from(entity: Option<&str>) -> Self {
         entity.and_then(|value| value.parse().ok()).unwrap_or_default()
     }
 }

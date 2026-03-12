@@ -13,8 +13,9 @@ use tracing::instrument;
 use uuid::Uuid;
 
 use crate::db::{
-    auth::DBAuth, common::DBCommon, community::DBCommunity, dashboard::DBDashboard, event::DBEvent,
-    group::DBGroup, images::DBImages, meetings::DBMeetings, notifications::DBNotifications, site::DBSite,
+    activity_tracker::DBActivityTracker, auth::DBAuth, common::DBCommon, community::DBCommunity,
+    dashboard::DBDashboard, event::DBEvent, group::DBGroup, images::DBImages, meetings::DBMeetings,
+    notifications::DBNotifications, site::DBSite,
 };
 
 /// Module containing authentication database operations.
@@ -31,6 +32,9 @@ pub(crate) mod dashboard;
 
 /// Module containing database functionality for the event page.
 pub(crate) mod event;
+
+/// Module containing database functionality for the activity tracker.
+pub(crate) mod activity_tracker;
 
 /// Module containing database functionality for the group site.
 pub(crate) mod group;
@@ -65,6 +69,7 @@ const TXS_CLIENT_TIMEOUT: TimeDelta = TimeDelta::seconds(30);
 #[async_trait]
 pub(crate) trait DB:
     DBAuth
+    + DBActivityTracker
     + DBCommon
     + DBCommunity
     + DBDashboard

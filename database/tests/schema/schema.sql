@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(422);
+select plan(440);
 
 -- ============================================================================
 -- TESTS
@@ -27,6 +27,7 @@ select has_table('community_role_community_permission');
 select has_table('community_role_group_permission');
 select has_table('community_site_layout');
 select has_table('community_team');
+select has_table('community_views');
 select has_table('custom_notification');
 select has_table('email_verification_code');
 select has_table('event');
@@ -37,6 +38,7 @@ select has_table('event_kind');
 select has_table('event_cfs_label');
 select has_table('event_speaker');
 select has_table('event_sponsor');
+select has_table('event_views');
 select has_table('group');
 select has_table('group_category');
 select has_table('group_member');
@@ -46,6 +48,7 @@ select has_table('group_role_group_permission');
 select has_table('group_site_layout');
 select has_table('group_sponsor');
 select has_table('group_team');
+select has_table('group_views');
 select has_table('images');
 select has_table('legacy_event_host');
 select has_table('legacy_event_speaker');
@@ -190,6 +193,13 @@ select columns_are('community_team', array[
     'user_id'
 ]);
 
+-- Test: community_views columns should match expected
+select columns_are('community_views', array[
+    'community_id',
+    'day',
+    'total'
+]);
+
 -- Test: custom_notification columns should match expected
 select columns_are('custom_notification', array[
     'custom_notification_id',
@@ -319,6 +329,13 @@ select columns_are('event_sponsor', array[
     'event_id',
     'group_sponsor_id',
     'level'
+]);
+
+-- Test: event_views columns should match expected
+select columns_are('event_views', array[
+    'event_id',
+    'day',
+    'total'
 ]);
 
 -- Test: meeting columns should match expected
@@ -455,6 +472,13 @@ select columns_are('group_team', array[
     'role',
 
     'order'
+]);
+
+-- Test: group_views columns should match expected
+select columns_are('group_views', array[
+    'group_id',
+    'day',
+    'total'
 ]);
 
 -- Test: images columns should match expected
@@ -651,6 +675,7 @@ select has_pk('community_role_community_permission');
 select has_pk('community_role_group_permission');
 select has_pk('community_site_layout');
 select has_pk('community_team');
+select hasnt_pk('community_views');
 select has_pk('custom_notification');
 select has_pk('email_verification_code');
 select has_pk('event');
@@ -660,6 +685,7 @@ select has_pk('event_host');
 select has_pk('event_kind');
 select has_pk('event_speaker');
 select has_pk('event_sponsor');
+select hasnt_pk('event_views');
 select has_pk('group');
 select has_pk('group_category');
 select has_pk('group_member');
@@ -669,6 +695,7 @@ select has_pk('group_role_group_permission');
 select has_pk('group_site_layout');
 select has_pk('group_sponsor');
 select has_pk('group_team');
+select hasnt_pk('group_views');
 select has_pk('images');
 select has_pk('legacy_event_host');
 select has_pk('legacy_event_speaker');
@@ -697,6 +724,7 @@ select col_is_fk('community_role_group_permission', 'community_role_id', 'commun
 select col_is_fk('community_role_group_permission', 'group_permission_id', 'group_permission');
 select col_is_fk('community_team', 'community_id', 'community');
 select col_is_fk('community_team', 'user_id', 'user');
+select col_is_fk('community_views', 'community_id', 'community');
 select col_is_fk('custom_notification', 'created_by', 'user');
 select col_is_fk('custom_notification', 'event_id', 'event');
 select col_is_fk('custom_notification', 'group_id', 'group');
@@ -721,6 +749,7 @@ select col_is_fk('event_speaker', 'event_id', 'event');
 select col_is_fk('event_speaker', 'user_id', 'user');
 select col_is_fk('event_sponsor', 'event_id', 'event');
 select col_is_fk('event_sponsor', 'group_sponsor_id', 'group_sponsor');
+select col_is_fk('event_views', 'event_id', 'event');
 select col_is_fk('group', 'community_id', 'community');
 select col_is_fk('group', 'group_category_id', 'group_category');
 select col_is_fk('group', 'group_site_layout_id', 'group_site_layout');
@@ -734,6 +763,7 @@ select col_is_fk('group_sponsor', 'group_id', 'group');
 select col_is_fk('group_team', 'group_id', 'group');
 select col_is_fk('group_team', 'role', 'group_role');
 select col_is_fk('group_team', 'user_id', 'user');
+select col_is_fk('group_views', 'group_id', 'group');
 select col_is_fk('images', 'created_by', 'user');
 select col_is_fk('legacy_event_host', 'event_id', 'event');
 select col_is_fk('legacy_event_speaker', 'event_id', 'event');
@@ -839,6 +869,11 @@ select indexes_are('community_team', array[
     'community_team_role_idx',
     'community_team_user_id_idx',
     'community_team_pending_user_created_at_idx'
+]);
+
+-- Test: community_views indexes should match expected
+select indexes_are('community_views', array[
+    'community_views_community_id_day_key'
 ]);
 
 -- Test: custom_notification indexes should match expected
@@ -981,6 +1016,11 @@ select indexes_are('event_sponsor', array[
     'event_sponsor_group_sponsor_id_idx'
 ]);
 
+-- Test: event_views indexes should match expected
+select indexes_are('event_views', array[
+    'event_views_event_id_day_key'
+]);
+
 -- Test: group_team indexes should match expected
 select indexes_are('group_team', array[
     'group_team_pkey',
@@ -988,6 +1028,11 @@ select indexes_are('group_team', array[
     'group_team_user_id_idx',
     'group_team_role_idx',
     'group_team_pending_user_created_at_idx'
+]);
+
+-- Test: group_views indexes should match expected
+select indexes_are('group_views', array[
+    'group_views_group_id_day_key'
 ]);
 
 -- Test: images indexes should match expected
@@ -1218,10 +1263,13 @@ select has_function('unpublish_event');
 select has_function('update_cfs_submission');
 select has_function('update_community');
 select has_function('update_community_team_member_role');
+select has_function('update_community_views');
 select has_function('update_event');
+select has_function('update_event_views');
 select has_function('update_group');
 select has_function('update_group_sponsor');
 select has_function('update_group_team_member_role');
+select has_function('update_group_views');
 select has_function('update_meeting_recording_url');
 select has_function('update_session_proposal');
 select has_function('update_user_details');

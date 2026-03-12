@@ -9,6 +9,7 @@
 --   - running_total_by_*: Cumulative total by category or region (all-time)
 --   - per_month: Monthly counts (last 2 years)
 --   - per_month_by_*: Monthly counts by category or region (last 2 years)
+--   - page_views.total_views/per_day_views/per_month_views: Page views
 --
 -- Time series data is returned as arrays of [timestamp, value] pairs, where
 -- timestamps are Unix milliseconds. Category/region breakdowns use entity
@@ -18,7 +19,8 @@ returns json as $$
 with params as (
     select
         p_community_id as community_id,
-        current_date - interval '2 years' as period_start
+        current_date - interval '2 years' as period_start,
+        current_date - interval '1 month' as recent_views_start
 ),
 event_categories as (
     select
@@ -79,6 +81,17 @@ events as (
         and e.canceled = false
         and e.deleted = false
 ),
+events_for_views as (
+    select
+        e.event_id,
+        e.event_category_id,
+        fg.group_category_id,
+        fg.region_id
+    from event e
+    join filtered_groups fg on fg.group_id = e.group_id
+    where e.deleted = false
+        and (e.canceled = true or e.published = true)
+),
 events_with_start as (
     select *
     from events
@@ -94,6 +107,37 @@ attendees as (
         timezone('UTC', date_trunc('month', ea.created_at at time zone 'UTC')) as created_month
     from event_attendee ea
     join events e on e.event_id = ea.event_id
+),
+event_views_data as (
+    select
+        ev.event_id,
+        ev.total,
+        efv.event_category_id,
+        efv.group_category_id,
+        efv.region_id,
+        timezone('UTC', date_trunc('month', ev.day::timestamp)) as viewed_month,
+        ev.day
+    from event_views ev
+    join events_for_views efv on efv.event_id = ev.event_id
+),
+group_views_data as (
+    select
+        gv.group_id,
+        gv.total,
+        fg.group_category_id,
+        fg.region_id,
+        timezone('UTC', date_trunc('month', gv.day::timestamp)) as viewed_month,
+        gv.day
+    from group_views gv
+    join filtered_groups fg on fg.group_id = gv.group_id
+),
+community_views_data as (
+    select
+        cv.total,
+        timezone('UTC', date_trunc('month', cv.day::timestamp)) as viewed_month,
+        cv.day
+    from community_views cv
+    join params p on cv.community_id = p.community_id
 )
 select json_strip_nulls(json_build_object(
     -- ========================================================================
@@ -763,6 +807,93 @@ select json_strip_nulls(json_build_object(
                 group by region_name
             ) grouped
         ), '{}'::json)
+    ),
+    -- ========================================================================
+    -- PAGE VIEWS STATISTICS
+    -- ========================================================================
+    'page_views', json_build_object(
+        'total_views', (
+            select (
+                coalesce((select sum(total) from community_views_data), 0) +
+                coalesce((select sum(total) from event_views_data), 0) +
+                coalesce((select sum(total) from group_views_data), 0)
+            )::int
+        ),
+        'community', json_build_object(
+            'total_views', (select coalesce(sum(total), 0)::int from community_views_data),
+            'per_day_views', coalesce((
+                select json_agg(json_build_array(day_label, day_count) order by day_label)
+                from (
+                    select
+                        to_char(cv.day, 'YYYY-MM-DD') as day_label,
+                        sum(cv.total)::int as day_count
+                    from community_views_data cv
+                    join params p on cv.day >= p.recent_views_start
+                    group by to_char(cv.day, 'YYYY-MM-DD')
+                ) daily
+            ), '[]'::json),
+            'per_month_views', coalesce((
+                select json_agg(json_build_array(month_label, month_count) order by month_label)
+                from (
+                    select
+                        to_char(cv.viewed_month, 'YYYY-MM') as month_label,
+                        sum(cv.total)::int as month_count
+                    from community_views_data cv
+                    join params p on cv.day >= p.period_start
+                    group by to_char(cv.viewed_month, 'YYYY-MM')
+                ) monthly
+            ), '[]'::json)
+        ),
+        'events', json_build_object(
+            'total_views', (select coalesce(sum(total), 0)::int from event_views_data),
+            'per_day_views', coalesce((
+                select json_agg(json_build_array(day_label, day_count) order by day_label)
+                from (
+                    select
+                        to_char(ev.day, 'YYYY-MM-DD') as day_label,
+                        sum(ev.total)::int as day_count
+                    from event_views_data ev
+                    join params p on ev.day >= p.recent_views_start
+                    group by to_char(ev.day, 'YYYY-MM-DD')
+                ) daily
+            ), '[]'::json),
+            'per_month_views', coalesce((
+                select json_agg(json_build_array(month_label, month_count) order by month_label)
+                from (
+                    select
+                        to_char(ev.viewed_month, 'YYYY-MM') as month_label,
+                        sum(ev.total)::int as month_count
+                    from event_views_data ev
+                    join params p on ev.day >= p.period_start
+                    group by to_char(ev.viewed_month, 'YYYY-MM')
+                ) monthly
+            ), '[]'::json)
+        ),
+        'groups', json_build_object(
+            'total_views', (select coalesce(sum(total), 0)::int from group_views_data),
+            'per_day_views', coalesce((
+                select json_agg(json_build_array(day_label, day_count) order by day_label)
+                from (
+                    select
+                        to_char(gv.day, 'YYYY-MM-DD') as day_label,
+                        sum(gv.total)::int as day_count
+                    from group_views_data gv
+                    join params p on gv.day >= p.recent_views_start
+                    group by to_char(gv.day, 'YYYY-MM-DD')
+                ) daily
+            ), '[]'::json),
+            'per_month_views', coalesce((
+                select json_agg(json_build_array(month_label, month_count) order by month_label)
+                from (
+                    select
+                        to_char(gv.viewed_month, 'YYYY-MM') as month_label,
+                        sum(gv.total)::int as month_count
+                    from group_views_data gv
+                    join params p on gv.day >= p.period_start
+                    group by to_char(gv.viewed_month, 'YYYY-MM')
+                ) monthly
+            ), '[]'::json)
+        )
     )
 ));
 $$ language sql;

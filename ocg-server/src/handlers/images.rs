@@ -8,8 +8,8 @@ use axum::{
     body::Body,
     extract::{Multipart, Path, State},
     http::{
-        HeaderMap, HeaderValue, StatusCode, Uri,
-        header::{CACHE_CONTROL, CONTENT_TYPE, REFERER},
+        HeaderMap, HeaderValue, StatusCode,
+        header::{CACHE_CONTROL, CONTENT_TYPE},
     },
     response::IntoResponse,
 };
@@ -20,7 +20,7 @@ use tracing::instrument;
 
 use crate::{
     config::HttpServerConfig,
-    handlers::{error::HandlerError, extractors::CurrentUser},
+    handlers::{error::HandlerError, extractors::CurrentUser, request_matches_site},
     services::images::{DynImageStorage, NewImage},
     util::compute_hash,
 };
@@ -42,7 +42,7 @@ pub(crate) async fn serve(
     Path(file_name): Path<String>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Validate referer header matches configured hostname.
-    if !referer_matches_site(&server_cfg, &headers)? {
+    if !request_matches_site(&server_cfg, &headers)? {
         return Ok(StatusCode::FORBIDDEN.into_response());
     }
 
@@ -73,7 +73,7 @@ pub(crate) async fn upload(
     mut multipart: Multipart,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Validate referer header matches configured hostname
-    if !referer_matches_site(&server_cfg, &headers)? {
+    if !request_matches_site(&server_cfg, &headers)? {
         return Ok((StatusCode::FORBIDDEN).into_response());
     }
 
@@ -306,34 +306,6 @@ fn mime_type(format: &SupportedImageFormat) -> &'static str {
         SupportedImageFormat::Tiff => "image/tiff",
         SupportedImageFormat::Webp => "image/webp",
     }
-}
-
-/// Checks whether the referer header matches the configured site hostname.
-fn referer_matches_site(server_cfg: &HttpServerConfig, headers: &HeaderMap) -> Result<bool> {
-    // Check if referer checks are disabled
-    if server_cfg.disable_referer_checks {
-        return Ok(true);
-    }
-
-    // Extract referer from headers
-    let Some(referer) = headers.get(REFERER) else {
-        return Ok(false);
-    };
-    let Ok(referer) = referer.to_str() else {
-        return Ok(false);
-    };
-
-    // Extract referer and site host and compare
-    let referer_host = Uri::from_str(referer)
-        .ok()
-        .and_then(|uri| uri.host().map(str::to_ascii_lowercase));
-    let site_host = Uri::from_str(&server_cfg.base_url)
-        .expect("valid base_url in config")
-        .host()
-        .map(str::to_ascii_lowercase)
-        .ok_or_else(|| anyhow!("missing host in base_url"))?;
-
-    Ok(referer_host.is_some_and(|referer_host| referer_host == site_host))
 }
 
 /// Validates image dimensions match the target requirements.
@@ -877,10 +849,12 @@ mod tests {
     }
 
     fn build_state(image_storage: DynImageStorage) -> RouterState {
+        let activity_tracker = Arc::new(crate::activity_tracker::MockActivityTracker::new());
         let db: DynDB = Arc::new(MockDB::new());
         let notifications_manager: DynNotificationsManager = Arc::new(MockNotificationsManager::new());
 
         RouterState {
+            activity_tracker,
             db,
             image_storage,
             meetings_cfg: None,

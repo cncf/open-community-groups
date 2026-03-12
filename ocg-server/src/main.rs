@@ -8,6 +8,7 @@
 
 use std::{collections::HashMap, path::PathBuf, sync::Arc};
 
+use activity_tracker::ActivityTrackerDB;
 use anyhow::{Context, Result};
 use clap::Parser;
 use deadpool_postgres::Runtime;
@@ -28,6 +29,8 @@ use crate::{
     },
 };
 
+/// Activity tracking.
+mod activity_tracker;
 /// Authentication and authorization functionality.
 mod auth;
 /// Application configuration management.
@@ -135,8 +138,16 @@ async fn main() -> Result<()> {
         &cancellation_token,
     ));
 
+    // Setup activity tracker.
+    let activity_tracker = Arc::new(ActivityTrackerDB::new(
+        db.clone(),
+        &task_tracker,
+        &cancellation_token,
+    ));
+
     // Setup and launch the HTTP server.
     let router = router::setup(
+        activity_tracker,
         db,
         image_storage,
         cfg.meetings.clone(),

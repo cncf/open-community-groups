@@ -6,6 +6,16 @@
 {% block scripts -%}
   <script type="module" src="/static/js/common/breadcrumb-nav.js"></script>
   <script type="module" src="/static/js/common/images-gallery.js"></script>
+  <script type="module">
+    import {
+      trackPageView
+    } from "/static/js/common/page-views.js";
+
+    trackPageView({
+      entityId: "{{ community.community_id }}",
+      entityType: "community"
+    });
+  </script>
 {% endblock scripts -%}
 
 {% block content -%}

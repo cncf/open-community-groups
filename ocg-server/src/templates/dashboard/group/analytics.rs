@@ -11,20 +11,22 @@ use serde::{Deserialize, Serialize};
 #[template(path = "dashboard/group/analytics.html")]
 pub(crate) struct Page {
     /// Statistics to render.
-    pub stats: GroupStats,
+    pub stats: GroupDashboardStats,
 }
 
 // Types.
 
 /// Aggregated group statistics used across charts.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub(crate) struct GroupStats {
+pub(crate) struct GroupDashboardStats {
     /// Attendees statistics.
     pub attendees: GroupAttendeesStats,
     /// Events statistics.
     pub events: GroupEventsStats,
     /// Members statistics.
     pub members: GroupMembersStats,
+    /// Page views statistics.
+    pub page_views: GroupPageViewsStats,
 }
 
 /// Statistics for attendees across a single group.
@@ -58,4 +60,26 @@ pub(crate) struct GroupMembersStats {
     pub running_total: Vec<(i64, i64)>,
     /// Total members.
     pub total: i64,
+}
+
+/// Statistics for group dashboard page views.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct GroupPageViewsStats {
+    /// Event page views statistics.
+    pub events: PageViewsStats,
+    /// Group page views statistics.
+    pub group: PageViewsStats,
+    /// Total views across all tracked pages.
+    pub total_views: i64,
+}
+
+/// Statistics for page views.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct PageViewsStats {
+    /// Daily page views during the last month.
+    pub per_day_views: Vec<(String, i64)>,
+    /// Monthly page views.
+    pub per_month_views: Vec<(String, i64)>,
+    /// Total page views.
+    pub total_views: i64,
 }

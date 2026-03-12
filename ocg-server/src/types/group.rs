@@ -82,10 +82,10 @@ impl GroupSummary {
     /// Builds a formatted location string for the group.
     pub fn location(&self, max_len: usize) -> Option<String> {
         let parts = LocationParts::new()
-            .city(self.city.as_ref())
-            .country_code(self.country_code.as_ref())
-            .country_name(self.country_name.as_ref())
-            .state(self.state.as_ref());
+            .city(self.city.as_deref())
+            .country_code(self.country_code.as_deref())
+            .country_name(self.country_name.as_deref())
+            .state(self.state.as_deref());
 
         build_location(&parts, max_len)
     }
@@ -175,10 +175,10 @@ impl GroupFull {
     /// Build a display-friendly location string from available location data.
     pub fn location(&self, max_len: usize) -> Option<String> {
         let parts = LocationParts::new()
-            .city(self.city.as_ref())
-            .country_code(self.country_code.as_ref())
-            .country_name(self.country_name.as_ref())
-            .state(self.state.as_ref());
+            .city(self.city.as_deref())
+            .country_code(self.country_code.as_deref())
+            .country_name(self.country_name.as_deref())
+            .state(self.state.as_deref());
 
         build_location(&parts, max_len)
     }

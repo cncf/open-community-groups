@@ -18,7 +18,7 @@ begin
     end if;
 
     -- Serialize host allocation to avoid races across workers
-    perform pg_advisory_xact_lock(hashtext('zoom_host_slot_allocation')::bigint);
+    perform pg_advisory_xact_lock(hashtextextended('ocg:zoom-host-slot-allocation', 0));
 
     -- Select the least-loaded host with an available overlapping slot
     with host_load as (

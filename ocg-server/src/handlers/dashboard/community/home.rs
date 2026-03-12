@@ -47,7 +47,9 @@ pub(crate) async fn page(
     RawQuery(raw_query): RawQuery,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Get selected tab from query
-    let tab: Tab = query.get("tab").unwrap_or(&String::new()).parse().unwrap_or_default();
+    let tab: Tab = query
+        .get("tab")
+        .map_or(Tab::default(), |tab| tab.parse().unwrap_or_default());
 
     // Get user_id from session
     let user_id = auth_session.user.as_ref().expect("user to be logged in").user_id;

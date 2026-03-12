@@ -13,14 +13,14 @@ use serde::{Deserialize, Serialize};
 #[template(path = "dashboard/community/analytics.html")]
 pub(crate) struct Page {
     /// Statistics to render.
-    pub stats: CommunityStats,
+    pub stats: CommunityDashboardStats,
 }
 
 // Types.
 
 /// Aggregated community statistics used across charts.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub(crate) struct CommunityStats {
+pub(crate) struct CommunityDashboardStats {
     /// Attendees statistics.
     pub attendees: AttendeesStats,
     /// Events statistics.
@@ -29,6 +29,21 @@ pub(crate) struct CommunityStats {
     pub groups: GroupsStats,
     /// Members statistics.
     pub members: MembersStats,
+    /// Page views statistics.
+    pub page_views: CommunityPageViewsStats,
+}
+
+/// Statistics for community dashboard page views.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct CommunityPageViewsStats {
+    /// Community page views statistics.
+    pub community: PageViewsStats,
+    /// Event page views statistics.
+    pub events: PageViewsStats,
+    /// Group page views statistics.
+    pub groups: PageViewsStats,
+    /// Total views across all tracked pages.
+    pub total_views: i64,
 }
 
 /// Statistics for attendees across events.
@@ -133,4 +148,15 @@ pub(crate) struct MembersStats {
     pub total_by_category: Vec<(String, i64)>,
     /// Total members by region.
     pub total_by_region: Vec<(String, i64)>,
+}
+
+/// Statistics for page views.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct PageViewsStats {
+    /// Daily page views during the last month.
+    pub per_day_views: Vec<(String, i64)>,
+    /// Monthly page views.
+    pub per_month_views: Vec<(String, i64)>,
+    /// Total page views.
+    pub total_views: i64,
 }

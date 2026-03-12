@@ -13,7 +13,7 @@ use uuid::Uuid;
 use crate::{
     db::PgDB,
     templates::dashboard::community::{
-        analytics::CommunityStats,
+        analytics::CommunityDashboardStats,
         event_categories::EventCategoryInput,
         group_categories::GroupCategoryInput,
         groups::Group,
@@ -80,7 +80,7 @@ pub(crate) trait DBDashboardCommunity {
     async fn delete_region(&self, community_id: Uuid, region_id: Uuid) -> Result<()>;
 
     /// Retrieves analytics statistics for a community.
-    async fn get_community_stats(&self, community_id: Uuid) -> Result<CommunityStats>;
+    async fn get_community_stats(&self, community_id: Uuid) -> Result<CommunityDashboardStats>;
 
     /// Lists all available community roles.
     async fn list_community_roles(&self) -> Result<Vec<CommunityRoleSummary>>;
@@ -337,7 +337,7 @@ impl DBDashboardCommunity for PgDB {
 
     /// [`DBDashboardCommunity::get_community_stats`]
     #[instrument(skip(self), err)]
-    async fn get_community_stats(&self, community_id: Uuid) -> Result<CommunityStats> {
+    async fn get_community_stats(&self, community_id: Uuid) -> Result<CommunityDashboardStats> {
         #[cached(
             time = 21600,
             key = "Uuid",
@@ -345,13 +345,13 @@ impl DBDashboardCommunity for PgDB {
             sync_writes = "by_key",
             result = true
         )]
-        async fn inner(db: Client, community_id: Uuid) -> Result<CommunityStats> {
+        async fn inner(db: Client, community_id: Uuid) -> Result<CommunityDashboardStats> {
             trace!(community_id = ?community_id, "db: get community stats");
 
             let row = db
                 .query_one("select get_community_stats($1::uuid)", &[&community_id])
                 .await?;
-            let stats = row.try_get::<_, Json<CommunityStats>>(0)?.0;
+            let stats = row.try_get::<_, Json<CommunityDashboardStats>>(0)?.0;
 
             Ok(stats)
         }
