@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(440);
+select plan(441);
 
 -- ============================================================================
 -- TESTS
@@ -898,6 +898,7 @@ select indexes_are('event', array[
     'event_event_category_id_idx',
     'event_event_kind_id_idx',
     'event_group_id_idx',
+    'event_legacy_path_idx',
     'event_location_idx',
     'event_meeting_sync_idx',
     'event_published_by_idx',
@@ -951,6 +952,7 @@ select indexes_are('group', array[
     'group_group_category_id_idx',
     'group_region_id_idx',
     'group_group_site_layout_id_idx',
+    'group_legacy_path_idx',
     'group_location_idx',
     'group_search_idx',
     'group_tsdoc_idx',
@@ -1211,6 +1213,7 @@ select has_function('get_group_sponsor');
 select has_function('get_group_summary');
 select has_function('get_group_upcoming_events');
 select has_function('get_meeting_for_auto_end');
+select has_function('get_redirect_target');
 select has_function('get_site_home_stats');
 select has_function('get_site_recently_added_groups');
 select has_function('get_site_settings');

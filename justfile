@@ -14,8 +14,8 @@
 # Please don't forget to set up the tern config files (tern.conf and tern-tests.conf) in
 # the config directory (OCG_CONFIG). Make sure the database connection settings match the
 # environment variables set here.
-
 # Configuration
+
 config_dir := env("OCG_CONFIG", env_var("HOME") / ".config/ocg")
 db_host := env("OCG_DB_HOST", "localhost")
 db_name := env("OCG_DB_NAME", "ocg")
@@ -90,29 +90,49 @@ db-tests: db-recreate-tests
 db-tests-file file: db-migrate-tests
     pg_prove -h {{ db_host }} -p {{ db_port }} -d {{ db_name_tests }} -U {{ db_user }} --psql-bin {{ pg_bin }}/psql -v {{ file }}
 
+# Redirector
+
+# Run the redirector using cargo run (builds if needed).
+redirector:
+    cargo run -p ocg-redirector -- -c "{{ config_dir }}/redirector.yml"
+
+# Build the redirector binary.
+redirector-build:
+    cargo build -p ocg-redirector
+
+# Format and lint redirector code.
+redirector-fmt-and-lint:
+    cargo fmt
+    cargo check -p ocg-redirector
+    cargo clippy -p ocg-redirector --all-targets --all-features -- --deny warnings
+
+# Run redirector tests.
+redirector-tests:
+    cargo test -p ocg-redirector
+
 # Server
 
 # Run the server using cargo run (builds if needed).
 server:
-    cargo run -- -c "{{ config_dir }}/server.yml"
+    cargo run -p ocg-server -- -c "{{ config_dir }}/server.yml"
 
 # Build the server binary.
 server-build:
-    cargo build
+    cargo build -p ocg-server
 
 # Format and lint server code.
 server-fmt-and-lint:
     cargo fmt
-    cargo check
-    cargo clippy --all-targets --all-features -- --deny warnings
+    cargo check -p ocg-server
+    cargo clippy -p ocg-server --all-targets --all-features -- --deny warnings
 
 # Run server tests.
 server-tests:
-    cargo test
+    cargo test -p ocg-server
 
 # Run the server with cargo watch for auto-reload.
 server-watch:
-    cargo watch -x "run -- -c {{ config_dir }}/server.yml"
+    cargo watch -x "run -p ocg-server -- -c {{ config_dir }}/server.yml"
 
 # Frontend
 

@@ -3204,6 +3204,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "ocg-redirector"
+version = "0.7.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "axum",
+ "clap",
+ "deadpool-postgres",
+ "figment",
+ "mockall",
+ "openssl",
+ "postgres-openssl",
+ "serde",
+ "strum",
+ "tokio",
+ "tokio-postgres",
+ "tower",
+ "tower-http",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "ocg-server"
 version = "0.7.0"
 dependencies = [

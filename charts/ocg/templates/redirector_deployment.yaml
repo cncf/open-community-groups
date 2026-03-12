@@ -1,0 +1,73 @@
+{{- if .Values.redirector.enabled -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "chart.resourceNamePrefix" . }}redirector
+  labels:
+    app.kubernetes.io/component: redirector
+    {{- include "chart.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.redirector.deploy.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: redirector
+      {{- include "chart.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: redirector
+        {{- include "chart.selectorLabels" . | nindent 8 }}
+    spec:
+    {{- with .Values.redirector.deploy.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+    {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+      {{- if .Release.IsInstall }}
+      serviceAccountName: {{ include "chart.resourceNamePrefix" . }}redirector
+      {{- end }}
+      initContainers:
+        - {{- include "chart.checkDbIsReadyInitContainer" . | nindent 10 }}
+        {{- if .Release.IsInstall }}
+        - name: check-dbmigrator-run
+          {{ $kubeVersion := include "chart.KubernetesVersion" . }}
+          {{ $kubectlImageVersion := ternary "1.33" $kubeVersion (semverCompare ">=1.34.0-0" (printf "%s.0" $kubeVersion)) }}
+          image: "docker.io/bitnamilegacy/kubectl:{{ $kubectlImageVersion }}"
+          imagePullPolicy: IfNotPresent
+          {{- with .Values.checkDbIsReadyInitContainer.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          command: ['kubectl', 'wait', '--namespace={{ .Release.Namespace }}', '--for=condition=complete', 'job/{{ include "chart.resourceNamePrefix" . }}dbmigrator-install', '--timeout=60s']
+        {{- end }}
+      containers:
+        - name: redirector
+          image: {{ .Values.redirector.deploy.image.repository }}:{{ .Values.imageTag | default (printf "v%s" .Chart.AppVersion) }}
+          imagePullPolicy: {{ .Values.pullPolicy }}
+          {{- with .Values.redirector.deploy.containerSecurityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: redirector-config
+              mountPath: {{ .Values.configDir | quote }}
+              readOnly: true
+          ports:
+            - name: http
+              containerPort: 9001
+              protocol: TCP
+          resources:
+            {{- toYaml .Values.redirector.deploy.resources | nindent 12 }}
+          readinessProbe:
+            httpGet:
+              path: /health-check
+              port: 9001
+          command: ['ocg-redirector', '-c', '{{ .Values.configDir }}/redirector.yml']
+      volumes:
+        - name: redirector-config
+          secret:
+            secretName: {{ include "chart.resourceNamePrefix" . }}redirector-config
+{{- end }}
