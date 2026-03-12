@@ -1,0 +1,81 @@
+{% extends "common/card_small_base.html" -%}
+{% import "macros/ui.html" as ui -%}
+{% import "macros/badges.html" as badges -%}
+
+{% block href -%}
+  /{{ event.community_name }}/group/{{ event.group_slug }}/event/{{ event.slug }}
+{% endblock href %}
+
+{% block anchor_attributes -%}
+  hx-boost="true"
+  hx-target="body"
+{% endblock anchor_attributes %}
+
+{% block logo -%}
+  {{ ui::logo(logo_url = event.logo_url, classes = "h-[60px] w-[60px] min-w-[60px]", size = 60) -}}
+{% endblock logo %}
+
+{% block overlay -%}
+  {{ badges::sold_out_overlay(remaining_capacity = event.remaining_capacity, capacity = event.capacity, inner_classes = Some("top-[31px] right-[11px] !w-16 md:!w-16") ) -}}
+{% endblock overlay %}
+
+{% block preheader -%}
+  <span>
+    <span class="text-primary-500">{{ event.community_display_name }}</span>
+    <span class="px-1 hidden sm:inline">·</span>
+    <span>{{ event.group_name }}</span>
+    <span class="px-1 hidden sm:inline">·</span>
+    <span class="hidden sm:inline">{{ event.group_category_name }}</span>
+  </span>
+{% endblock preheader %}
+
+{% block title -%}
+  {{ event.name|demoji }}
+{% endblock title %}
+
+{% block details -%}
+  {% if let Some(description_short) = &event.description_short -%}
+    <div class="px-3.5 pt-3 md:px-4 md:pt-3.5">
+      <p class="text-[0.8rem]/[1.2rem] text-stone-500 line-clamp-2">{{ description_short|demoji }}</p>
+    </div>
+  {% endif -%}
+{% endblock details %}
+
+{% block details_spacing -%}
+  <div class="pb-3 md:pb-4"></div>
+{% endblock details_spacing %}
+
+{% block footer -%}
+  {% match event.kind -%}
+  {% when EventKind::InPerson -%}
+  <div class="flex min-w-0 items-center gap-2">
+    {% if let Some(location) = &self.event.location(32) -%}
+      {{ ui::icon_text(icon_name = "location", text = location, extra_styles = Some("flex-1") ) -}}
+    {%- else -%}
+      {{ ui::icon_text(icon_name = "location", text = "No location provided", extra_styles = Some("flex-1") ) -}}
+    {% endif -%}
+  </div>
+  {% when EventKind::Hybrid -%}
+  <div class="flex min-w-0 items-center gap-2">
+    {% if let Some(location) = &self.event.location(22) -%}
+      {{ ui::icon_text(icon_name = "location", text = location, extra_styles = Some("flex-1") ) -}}
+    {%- else -%}
+      {{ ui::icon_text(icon_name = "location", text = "No location provided", extra_styles = Some("flex-1") ) -}}
+    {% endif -%}
+    {{ badges::event_badge(kind = event.kind, extra_styles = Some("shrink-0 bg-white") ) -}}
+  </div>
+  {% when EventKind::Virtual -%}
+  <div class="flex min-w-0 items-center gap-2">
+    {{ ui::icon_text(icon_name = "location", text = "Virtual", extra_styles = Some("flex-1") ) -}}
+  </div>
+{% endmatch -%}
+
+<div class="card-meta !pt-1.5">
+  {% if let Some(starts_at) = &event.starts_at -%}
+    {{ ui::icon_text(icon_name = "date", text = starts_at.with_timezone(event.timezone).format("%B %e · %l:%M %p %Z"), extra_styles = Some("flex-1"), icon_extra_styles = Some("-top-px") ) -}}
+  {% endif -%}
+  {% if event.canceled -%}
+    {{ badges::event_badge(kind = event.kind, canceled = true, extra_styles = Some("ms-2 shrink-0 bg-white") ) -}}
+  {% endif -%}
+</div>
+{% endblock footer %}

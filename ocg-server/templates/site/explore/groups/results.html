@@ -8,8 +8,7 @@
 {% match view_mode -%}
 {% when ViewMode::List -%}
 {# List view -#}
-<div class="flex flex-col divide-y divide-stone-200 mt-5 border-t border-stone-200 md:mt-7
-            {% if groups.len() > 0 %}border-b{% endif %}">
+<div class="mt-5 flex flex-col gap-4 px-5 pb-5 md:mt-7 md:gap-5 md:px-7 md:pb-7">
   {# Placeholder cards -#}
   {% if groups.len() == 0 -%}
     {{ feedback::alert(title = "We're sorry!", content = "We can't seem to find any groups that match your search criteria. You can reset your filters or try a different search.") -}}
