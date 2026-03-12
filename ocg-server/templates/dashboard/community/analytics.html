@@ -11,7 +11,7 @@ description = "Community statistics and growth trends. Analytics are cached for 
   <button type="button"
           data-analytics-tab="groups"
           data-active="true"
-          class="bg-white border border-stone-200 text-start rounded-lg p-5 cursor-pointer hover:bg-stone-50 hover:border-stone-300 data-[active=true]:border-primary-500 data-[active=true]:bg-primary-50/50 data-[active=true]:outline data-[active=true]:outline-2 data-[active=true]:outline-primary-200 data-[active=true]:outline-offset-0 relative [&_span.tab-peak]:hidden xl:data-[active=true]:[&_span.tab-peak]:block">
+          class="bg-white border border-stone-200 text-start rounded-lg p-5 cursor-default pointer-events-none xl:cursor-pointer xl:pointer-events-auto xl:hover:bg-stone-50 xl:hover:border-stone-300 xl:data-[active=true]:border-primary-500 xl:data-[active=true]:bg-primary-50/50 xl:data-[active=true]:outline xl:data-[active=true]:outline-2 xl:data-[active=true]:outline-primary-200 xl:data-[active=true]:outline-offset-0 relative [&_span.tab-peak]:hidden xl:data-[active=true]:[&_span.tab-peak]:block">
     <div class="text-sm text-stone-600">Groups</div>
     <div class="mt-2 ps-px text-3xl leading-tight font-semibold text-stone-900">
       {{ stats.groups.total|num_fmt }}
@@ -22,7 +22,7 @@ description = "Community statistics and growth trends. Analytics are cached for 
   <button type="button"
           data-analytics-tab="members"
           data-active="false"
-          class="bg-white border border-stone-200 text-start rounded-lg p-5 cursor-pointer hover:bg-stone-50 hover:border-stone-300 data-[active=true]:border-primary-500 data-[active=true]:bg-primary-50/50 data-[active=true]:outline data-[active=true]:outline-2 data-[active=true]:outline-primary-200 data-[active=true]:outline-offset-0 relative [&_span.tab-peak]:hidden xl:data-[active=true]:[&_span.tab-peak]:block">
+          class="bg-white border border-stone-200 text-start rounded-lg p-5 cursor-default pointer-events-none xl:cursor-pointer xl:pointer-events-auto xl:hover:bg-stone-50 xl:hover:border-stone-300 xl:data-[active=true]:border-primary-500 xl:data-[active=true]:bg-primary-50/50 xl:data-[active=true]:outline xl:data-[active=true]:outline-2 xl:data-[active=true]:outline-primary-200 xl:data-[active=true]:outline-offset-0 relative [&_span.tab-peak]:hidden xl:data-[active=true]:[&_span.tab-peak]:block">
     <div class="text-sm text-stone-600">Members</div>
     <div class="mt-2 ps-px text-3xl leading-tight font-semibold text-stone-900">
       {{ stats.members.total|num_fmt }}
@@ -33,7 +33,7 @@ description = "Community statistics and growth trends. Analytics are cached for 
   <button type="button"
           data-analytics-tab="events"
           data-active="false"
-          class="bg-white border border-stone-200 text-start rounded-lg p-5 cursor-pointer hover:bg-stone-50 hover:border-stone-300 data-[active=true]:border-primary-500 data-[active=true]:bg-primary-50/50 data-[active=true]:outline data-[active=true]:outline-2 data-[active=true]:outline-primary-200 data-[active=true]:outline-offset-0 relative [&_span.tab-peak]:hidden xl:data-[active=true]:[&_span.tab-peak]:block">
+          class="bg-white border border-stone-200 text-start rounded-lg p-5 cursor-default pointer-events-none xl:cursor-pointer xl:pointer-events-auto xl:hover:bg-stone-50 xl:hover:border-stone-300 xl:data-[active=true]:border-primary-500 xl:data-[active=true]:bg-primary-50/50 xl:data-[active=true]:outline xl:data-[active=true]:outline-2 xl:data-[active=true]:outline-primary-200 xl:data-[active=true]:outline-offset-0 relative [&_span.tab-peak]:hidden xl:data-[active=true]:[&_span.tab-peak]:block">
     <div class="text-sm text-stone-600">Events</div>
     <div class="mt-2 ps-px text-3xl leading-tight font-semibold text-stone-900">
       {{ stats.events.total|num_fmt }}
@@ -44,7 +44,7 @@ description = "Community statistics and growth trends. Analytics are cached for 
   <button type="button"
           data-analytics-tab="attendees"
           data-active="false"
-          class="bg-white border border-stone-200 text-start rounded-lg p-5 cursor-pointer hover:bg-stone-50 hover:border-stone-300 data-[active=true]:border-primary-500 data-[active=true]:bg-primary-50/50 data-[active=true]:outline data-[active=true]:outline-2 data-[active=true]:outline-primary-200 data-[active=true]:outline-offset-0 relative [&_span.tab-peak]:hidden xl:data-[active=true]:[&_span.tab-peak]:block">
+          class="bg-white border border-stone-200 text-start rounded-lg p-5 cursor-default pointer-events-none xl:cursor-pointer xl:pointer-events-auto xl:hover:bg-stone-50 xl:hover:border-stone-300 xl:data-[active=true]:border-primary-500 xl:data-[active=true]:bg-primary-50/50 xl:data-[active=true]:outline xl:data-[active=true]:outline-2 xl:data-[active=true]:outline-primary-200 xl:data-[active=true]:outline-offset-0 relative [&_span.tab-peak]:hidden xl:data-[active=true]:[&_span.tab-peak]:block">
     <div class="text-sm text-stone-600">Attendees</div>
     <div class="mt-2 ps-px text-3xl leading-tight font-semibold text-stone-900">
       {{ stats.attendees.total|num_fmt }}
@@ -55,7 +55,7 @@ description = "Community statistics and growth trends. Analytics are cached for 
   <button type="button"
           data-analytics-tab="page-views"
           data-active="false"
-          class="bg-white border border-stone-200 text-start rounded-lg p-5 cursor-pointer hover:bg-stone-50 hover:border-stone-300 data-[active=true]:border-primary-500 data-[active=true]:bg-primary-50/50 data-[active=true]:outline data-[active=true]:outline-2 data-[active=true]:outline-primary-200 data-[active=true]:outline-offset-0 relative [&_span.tab-peak]:hidden xl:data-[active=true]:[&_span.tab-peak]:block">
+          class="bg-white border border-stone-200 text-start rounded-lg p-5 cursor-default pointer-events-none xl:cursor-pointer xl:pointer-events-auto xl:hover:bg-stone-50 xl:hover:border-stone-300 xl:data-[active=true]:border-primary-500 xl:data-[active=true]:bg-primary-50/50 xl:data-[active=true]:outline xl:data-[active=true]:outline-2 xl:data-[active=true]:outline-primary-200 xl:data-[active=true]:outline-offset-0 relative [&_span.tab-peak]:hidden xl:data-[active=true]:[&_span.tab-peak]:block">
     <div class="text-sm text-stone-600">Page views</div>
     <div class="mt-2 ps-px text-3xl leading-tight font-semibold text-stone-900">
       {{ stats.page_views.total_views|num_fmt }}
@@ -65,6 +65,53 @@ description = "Community statistics and growth trends. Analytics are cached for 
   </button>
 </div>
 {# End summary stat cards #}
+
+<div class="xl:hidden mt-10 overflow-x-auto border-b border-stone-200">
+  <ul class="flex flex-nowrap items-center gap-1.5 min-w-max -mb-px text-xs sm:text-sm font-medium text-center"
+      role="tablist"
+      aria-label="Analytics tabs">
+    <li>
+      <button type="button"
+              data-analytics-tab="groups"
+              data-active="true"
+              class="cursor-pointer inline-flex items-center justify-center px-3 py-2 sm:px-4 sm:py-3 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 text-nowrap">
+        Groups
+      </button>
+    </li>
+    <li>
+      <button type="button"
+              data-analytics-tab="members"
+              data-active="false"
+              class="cursor-pointer inline-flex items-center justify-center px-3 py-2 sm:px-4 sm:py-3 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 text-nowrap">
+        Members
+      </button>
+    </li>
+    <li>
+      <button type="button"
+              data-analytics-tab="events"
+              data-active="false"
+              class="cursor-pointer inline-flex items-center justify-center px-3 py-2 sm:px-4 sm:py-3 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 text-nowrap">
+        Events
+      </button>
+    </li>
+    <li>
+      <button type="button"
+              data-analytics-tab="attendees"
+              data-active="false"
+              class="cursor-pointer inline-flex items-center justify-center px-3 py-2 sm:px-4 sm:py-3 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 text-nowrap">
+        Attendees
+      </button>
+    </li>
+    <li>
+      <button type="button"
+              data-analytics-tab="page-views"
+              data-active="false"
+              class="cursor-pointer inline-flex items-center justify-center px-3 py-2 sm:px-4 sm:py-3 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 text-nowrap">
+        Page views
+      </button>
+    </li>
+  </ul>
+</div>
 
 <div class="hidden xl:block mt-12 border-t border-stone-200"></div>
 
