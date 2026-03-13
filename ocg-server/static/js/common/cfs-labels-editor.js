@@ -341,7 +341,7 @@ export class CfsLabelsEditor extends LitWrapper {
                       maxlength="80"
                       placeholder="track / ai + ml"
                       .value=${row.name}
-                      ?required=${!this.disabled}
+                      ?required=${!this.disabled && trimmedName.length > 0}
                       ?disabled=${this.disabled}
                       @input=${(event) => this._setRowName(row._row_id, event)}
                     />
