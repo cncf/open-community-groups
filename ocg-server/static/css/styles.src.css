@@ -467,20 +467,20 @@ input:placeholder-shown {
 .leaflet-tooltip-bottom.explore-map-tooltip::after {
   border-bottom: 5px solid rgb(209, 213, 219);
   left: calc(50% - 2px);
-  top: -4px;
+  top: -10px;
   transform: translateX(-50%);
 }
 
 .leaflet-tooltip-left.explore-map-tooltip::after {
   border-left: 5px solid rgb(209, 213, 219);
-  right: -4px;
+  right: -10px;
   top: 50%;
   transform: translateY(-50%);
 }
 
 .leaflet-tooltip-right.explore-map-tooltip::after {
   border-right: 5px solid rgb(209, 213, 219);
-  left: -4px;
+  left: -10px;
   top: 50%;
   transform: translateY(-50%);
 }
