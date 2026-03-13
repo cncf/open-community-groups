@@ -1,9 +1,10 @@
 {% extends "common/card_small_base.html" -%}
 {% import "macros/ui.html" as ui -%}
+{% import "macros/badges.html" as badges -%}
 {% import "macros/cards.html" as cards -%}
 
 {% block href -%}
-  /{{ group.community_name }}/group/{{ group.slug }}
+  /{{ event.community_name }}/group/{{ event.group_slug }}/event/{{ event.slug }}
 {% endblock href %}
 
 {% block anchor_attributes -%}
@@ -12,8 +13,16 @@
 {% endblock anchor_attributes %}
 
 {% block logo -%}
-  {{ ui::logo(logo_url = group.logo_url, classes = "h-[60px] w-[60px] min-w-[60px] md:h-[88px] md:w-[88px] md:min-w-[88px]", size = 88) -}}
+  {{ ui::logo(logo_url = event.logo_url, classes = "h-[60px] w-[60px] min-w-[60px] md:h-[88px] md:w-[88px] md:min-w-[88px]", size = 88) -}}
 {% endblock logo %}
+
+{% block corner_badge -%}
+  {{ badges::sold_out_corner_ribbon(remaining_capacity = event.remaining_capacity, capacity = event.capacity) -}}
+{% endblock corner_badge %}
+
+{% block top_row_classes -%}
+  pr-14 md:pr-20
+{% endblock top_row_classes %}
 
 {% block content_stack_classes -%}
   md:min-h-[88px]
@@ -25,22 +34,20 @@
 
 {% block preheader -%}
   <span>
-    <span class="hidden text-primary-500 sm:inline">{{ group.community_display_name }}</span>
+    <span class="hidden text-primary-500 sm:inline">{{ event.community_display_name }}</span>
     <span class="px-1 hidden sm:inline">·</span>
-    {% if let Some(region) = &group.region -%}
-      {{ region.name }}
-    {% else -%}
-      {{ group.category.name }}
-    {% endif -%}
+    <span>{{ event.group_name }}</span>
+    <span class="px-1 hidden sm:inline">·</span>
+    <span class="hidden sm:inline">{{ event.group_category_name }}</span>
   </span>
 {% endblock preheader %}
 
 {% block title -%}
-  {{ group.name|demoji }}
+  {{ event.name|demoji }}
 {% endblock title %}
 
 {% block inline_details -%}
-  {% if let Some(description_short) = &group.description_short -%}
+  {% if let Some(description_short) = &event.description_short -%}
     <div class="mt-2 hidden md:block">
       <p class="text-[0.8rem]/[1.2rem] text-stone-500 line-clamp-2">{{ description_short|demoji }}</p>
     </div>
@@ -48,7 +55,7 @@
 {% endblock inline_details %}
 
 {% block details -%}
-  {% if let Some(description_short) = &group.description_short -%}
+  {% if let Some(description_short) = &event.description_short -%}
     <div class="px-3.5 pt-3 md:hidden">
       <p class="text-[0.8rem]/[1.2rem] text-stone-500 line-clamp-2">{{ description_short|demoji }}</p>
     </div>
@@ -56,5 +63,5 @@
 {% endblock details %}
 
 {% block footer -%}
-  {{ cards::group_footer(group = group, location_max_len = 40, left_width_classes = "w-[60px] min-w-[60px] md:w-[88px] md:min-w-[88px]") -}}
+  {{ cards::event_footer(event = event, left_width_classes = "w-[60px] min-w-[60px] md:w-[88px] md:min-w-[88px]") -}}
 {% endblock footer %}

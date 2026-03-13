@@ -108,7 +108,7 @@ const initPageViewsCharts = async (stats = {}, palette) => {
   const eventMonthlyData = stats.events?.per_month_views || [];
   const eventMonthlyChart = renderChart(
     "event-views-monthly-chart",
-    createMonthlyBarChart("Monthly event page views", "Page views", eventMonthlyData, palette, {
+    createMonthlyBarChart("Monthly events pages views", "Page views", eventMonthlyData, palette, {
       useTimeAxis: true,
       reservePeriodStart: true,
     }),
@@ -120,7 +120,7 @@ const initPageViewsCharts = async (stats = {}, palette) => {
   const eventDailyChart = renderChart(
     "event-views-daily-chart",
     createDailyBarChart(
-      "Daily event page views during the last month",
+      "Daily events pages views during the last month",
       "Page views",
       eventDailyData,
       palette,

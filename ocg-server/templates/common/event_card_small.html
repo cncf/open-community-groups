@@ -1,70 +1,37 @@
+{% extends "common/card_small_base.html" -%}
 {% import "macros/ui.html" as ui -%}
 {% import "macros/badges.html" as badges -%}
+{% import "macros/cards.html" as cards -%}
 
-{# Event card -#}
-<a href="/{{ event.community_name }}/group/{{ event.group_slug }}/event/{{ event.slug }}"
-   class="flex flex-1 flex-row items-center min-w-0 group select-none"
-   hx-boost="true"
-   hx-target="body">
-  <div class="relative group-hover:opacity-75 transition-opacity">
-    {# Event icon -#}
-    {{ ui::logo(logo_url = event.logo_url, classes = "h-24 w-24 md:h-[120px] md:w-[120px] md:min-w-[120px]", size = 120) -}}
-    {# End event icon -#}
-    {{ badges::sold_out_overlay(remaining_capacity = event.remaining_capacity, capacity = event.capacity, inner_classes = Some("top-[43px] md:top-[55px] right-[29px] md:right-[36px]") ) -}}
-  </div>
+{% block href -%}
+  /{{ event.community_name }}/group/{{ event.group_slug }}/event/{{ event.slug }}
+{% endblock href %}
 
-  <div class="card-content">
-    <div class="card-body">
-      <div>
-        {# Event group name -#}
-        <div class="card-header">
-          {% block preheader %}
-            <span>{{ event.group_name }}</span>
-          {% endblock preheader %}
-        </div>
-        {# End event group name -#}
+{% block anchor_attributes -%}
+  hx-boost="true"
+  hx-target="body"
+{% endblock anchor_attributes %}
 
-        {# Event title -#}
-        <div class="card-title group-hover:underline">{{ event.name|demoji }}</div>
-        {# End event title -#}
-      </div>
+{% block logo -%}
+  {{ ui::logo(logo_url = event.logo_url, classes = "h-[60px] w-[60px] min-w-[60px]", size = 60) -}}
+{% endblock logo %}
 
-      <div>
-        {# Event location -#}
-        <div class="card-meta">
-          {% match event.kind -%}
-          {% when EventKind::InPerson -%}
-          {% if let Some(location) = &self.event.location(25) -%}
-            {{ ui::icon_text(icon_name = "location", text = location) -}}
-          {%- else -%}
-            {{ ui::icon_text(icon_name = "location", text = "No location provided", extra_styles = Some("me-2") ) -}}
-          {% endif -%}
-          {% when EventKind::Hybrid -%}
-          <div class="flex items-center">
-            {% if let Some(location) = &self.event.location(16) -%}
-              {{ ui::icon_text(icon_name = "location", text = location, extra_styles = Some("me-2") ) -}}
-              {{ badges::event_badge(kind = event.kind) -}}
-            {%- else -%}
-              {{ ui::icon_text(icon_name = "location", text = "No location provided", extra_styles = Some("me-2") ) -}}
-            {% endif -%}
-          </div>
-          {% when EventKind::Virtual -%}
-          <div class="flex items-center">
-            {{ ui::icon_text(icon_name = "location", text = "Virtual", extra_styles = Some("me-2") ) -}}
-          </div>
-        {% endmatch -%}
-      </div>
-      {# End event location -#}
+{% block corner_badge -%}
+  {{ badges::sold_out_corner_ribbon(remaining_capacity = event.remaining_capacity, capacity = event.capacity) -}}
+{% endblock corner_badge %}
 
-      {# Event date -#}
-      {% if let Some(starts_at) = &event.starts_at -%}
-        <div class="card-meta">
-          {{ ui::icon_text(icon_name = "date", text = starts_at.with_timezone(event.timezone).format("%B %e · %l:%M %p %Z"), icon_extra_styles = Some("-top-px")) -}}
-        </div>
-      {% endif -%}
-      {# End event date -#}
-    </div>
-  </div>
-</div>
-</a>
-{# End event card -#}
+{% block top_row_classes -%}
+  pr-14 md:pr-16
+{% endblock top_row_classes %}
+
+{% block preheader -%}
+  <span>{{ event.group_name }}</span>
+{% endblock preheader %}
+
+{% block title -%}
+  {{ event.name|demoji }}
+{% endblock title %}
+
+{% block footer -%}
+  {{ cards::event_footer(event = event, left_width_classes = "w-[60px] min-w-[60px]") -}}
+{% endblock footer %}

@@ -264,7 +264,7 @@ description = "Community statistics and growth trends. Analytics are cached for 
       </div>
 
       <div>
-        <div class="text-sm font-semibold text-stone-500">Group pages</div>
+        <div class="text-sm font-semibold text-stone-500">Groups pages</div>
         <div class="mt-4 grid grid-cols-1 xl:grid-cols-2 gap-6">
           {{ stats_macro::analytics_chart(chart_id = "groups-views-monthly-chart", data = stats.page_views.groups.per_month_views, class = "h-[340px]") -}}
           {{ stats_macro::analytics_chart(chart_id = "groups-views-daily-chart", data = stats.page_views.groups.per_day_views, class = "h-[340px]") -}}
@@ -272,7 +272,7 @@ description = "Community statistics and growth trends. Analytics are cached for 
       </div>
 
       <div>
-        <div class="text-sm font-semibold text-stone-500">Event pages</div>
+        <div class="text-sm font-semibold text-stone-500">Events pages</div>
         <div class="mt-4 grid grid-cols-1 xl:grid-cols-2 gap-6">
           {{ stats_macro::analytics_chart(chart_id = "events-views-monthly-chart", data = stats.page_views.events.per_month_views, class = "h-[340px]") -}}
           {{ stats_macro::analytics_chart(chart_id = "events-views-daily-chart", data = stats.page_views.events.per_day_views, class = "h-[340px]") -}}

@@ -1,5 +1,6 @@
 {# Attend button section -#}
-<div id="attendance-container"
+<div id="attendance-container-{{ attendance_instance }}"
+     data-attendance-container
      {% if let Some(starts_at) = &event.starts_at %}data-starts="{{ starts_at.to_rfc3339() }}"{% endif %}
      {% if let Some(capacity) = &event.capacity %}data-capacity="{{ capacity }}"{% endif %}
      {% if let Some(remaining_capacity) = &event.remaining_capacity %}
@@ -10,7 +11,8 @@
      class="flex flex-row flex-wrap gap-2">
 
   <!-- Loading spinner (shown initially) -->
-  <button id="loading-btn"
+  <button id="loading-btn-{{ attendance_instance }}"
+          data-attendance-role="loading-btn"
           disabled
           class="group relative is-loading btn-primary-outline h-10 md:h-[30px] opacity-50 cursor-not-allowed flex items-center justify-center">
     {% import "macros/ui.html" as ui -%}
@@ -19,7 +21,8 @@
   </button>
 
   <!-- Sign in prompt (hidden initially) -->
-  <button id="signin-btn"
+  <button id="signin-btn-{{ attendance_instance }}"
+          data-attendance-role="signin-btn"
           data-path="{{ path }}"
           class="hidden group btn-primary-outline-anchor h-10 md:h-[30px] flex items-center justify-center space-x-2">
     <div class="svg-icon size-3 icon-user-plus"></div>
@@ -27,7 +30,8 @@
   </button>
 
   <!-- Attend button (hidden initially) -->
-  <button id="attend-btn"
+  <button id="attend-btn-{{ attendance_instance }}"
+          data-attendance-role="attend-btn"
           hx-post="/{{ event.community.name }}/event/{{ event.event_id }}/attend"
           hx-swap="none"
           class="hidden group btn-primary-outline h-10 md:h-[30px] flex items-center justify-center space-x-2">
@@ -37,7 +41,8 @@
 
   <!-- Join meeting button (hidden initially, shown for attendees when live) -->
   {% if let Some(meeting_join_url) = &event.meeting_join_url %}
-    <a id="join-meeting-btn"
+    <a id="join-meeting-btn-{{ attendance_instance }}"
+       data-attendance-role="join-meeting-btn"
        href="{{ meeting_join_url }}"
        data-join-link
        target="_blank"
@@ -49,7 +54,8 @@
   {% endif %}
 
   <!-- Leave button (hidden initially) -->
-  <button id="leave-btn"
+  <button id="leave-btn-{{ attendance_instance }}"
+          data-attendance-role="leave-btn"
           hx-delete="/{{ event.community.name }}/event/{{ event.event_id }}/leave"
           hx-trigger="confirmed"
           hx-swap="none"
@@ -59,7 +65,9 @@
   </button>
 
   <!-- Hidden element that checks attendance status -->
-  <div id="attendance-checker"
+  <div id="attendance-checker-{{ attendance_instance }}"
+       data-attendance-role="attendance-checker"
+       class="hidden"
        hx-get="/{{ event.community.name }}/event/{{ event.event_id }}/attendance"
        hx-trigger="load, attendance-changed from:body"
        hx-swap="none"></div>

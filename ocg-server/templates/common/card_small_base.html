@@ -1,0 +1,42 @@
+<a href="{% block href %}{% endblock %}"
+   class="group flex h-full min-w-0 select-none rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
+   {% block anchor_attributes %}{% endblock %}>
+  <article class="card-hover-border relative flex h-full w-full min-w-0 flex-col overflow-hidden rounded-lg border border-stone-200 bg-white hover:outline hover:outline-1 hover:outline-stone-200 hover:shadow-sm">
+    {% block corner_badge %}{% endblock %}
+
+    <div class="flex min-w-0 items-start gap-3 px-3.5 pt-3.5 md:gap-4 md:px-4 md:pt-4
+                {% block top_row_classes %}{% endblock %}">
+      <div class="relative shrink-0 transition-opacity">
+        {% block logo %}{% endblock %}
+        {% block overlay %}{% endblock %}
+      </div>
+
+      <div class="min-w-0 flex-1">
+        <div class="flex min-h-[60px] flex-col justify-between
+                    {% block content_stack_classes %}{% endblock %}">
+          <div class="card-header">
+            {% block preheader %}{% endblock %}
+          </div>
+
+          <div class="card-title !mt-0.5 !mb-0 !h-auto !line-clamp-2 text-[0.98rem]/[1.4rem] md:text-[1.02rem]/[1.4rem]
+                      {% block title_classes %}{% endblock %}">
+            {% block title %}{% endblock %}
+          </div>
+
+          {% block inline_details %}{% endblock %}
+        </div>
+      </div>
+    </div>
+
+    {% block details %}{% endblock %}
+    {% block details_spacing %}
+      <div class="pb-3 md:pb-4"></div>
+    {% endblock details_spacing %}
+
+    <div class="mt-auto px-3.5 pb-3.5 md:px-4 md:pb-4">
+      <div class="rounded-lg bg-stone-50/90 pl-0 pr-3 py-2.5 md:pl-0 md:pr-3.5 md:py-3">
+        {% block footer %}{% endblock %}
+      </div>
+    </div>
+  </article>
+</a>
