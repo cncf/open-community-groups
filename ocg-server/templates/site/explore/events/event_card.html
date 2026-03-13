@@ -17,11 +17,11 @@
 {% endblock logo %}
 
 {% block corner_badge -%}
-  {{ badges::sold_out_corner_badge(remaining_capacity = event.remaining_capacity, capacity = event.capacity) -}}
+  {{ badges::sold_out_corner_ribbon(remaining_capacity = event.remaining_capacity, capacity = event.capacity) -}}
 {% endblock corner_badge %}
 
 {% block top_row_classes -%}
-  pr-16 md:pr-18
+  pr-14 md:pr-20
 {% endblock top_row_classes %}
 
 {% block content_stack_classes -%}
