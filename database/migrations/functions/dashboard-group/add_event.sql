@@ -12,7 +12,6 @@ declare
     v_event_speaker jsonb;
     v_host_id uuid;
     v_max_retries int := 10;
-    v_provider_max_participants int;
     v_retries int := 0;
     v_session jsonb;
     v_session_ends_at timestamptz;
@@ -60,37 +59,9 @@ begin
         end loop;
     end if;
 
-    -- Validate event capacity against max_participants when meeting is requested
-    if (p_event->>'meeting_requested')::boolean = true then
-        v_provider_max_participants := (p_cfg_max_participants->>(p_event->>'meeting_provider_id'))::int;
-
-        if v_provider_max_participants is not null
-           and (p_event->>'capacity')::int > v_provider_max_participants
-        then
-            raise exception 'event capacity (%) exceeds maximum participants allowed (%)',
-                (p_event->>'capacity')::int, v_provider_max_participants;
-        end if;
-    end if;
-
-    -- Validate CFS labels payload
-    if p_event->'cfs_labels' is not null then
-        if jsonb_array_length(p_event->'cfs_labels') > 200 then
-            raise exception 'too many cfs labels';
-        end if;
-
-        if exists (
-            select 1
-            from (
-                select nullif(cfs_label->>'name', '') as cfs_label_name
-                from jsonb_array_elements(p_event->'cfs_labels') as cfs_label
-            ) cfs_labels
-            where cfs_labels.cfs_label_name is not null
-            group by cfs_labels.cfs_label_name
-            having count(*) > 1
-        ) then
-            raise exception 'duplicate cfs label names';
-        end if;
-    end if;
+    -- Validate capacity and CFS label rules
+    perform validate_event_capacity(p_event, p_cfg_max_participants);
+    perform validate_event_cfs_labels_payload(p_event->'cfs_labels');
 
     -- Insert event with unique slug generation and collision retry
     loop

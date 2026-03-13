@@ -55,6 +55,8 @@
 {{ template "dashboard-community/update_group_category.sql" }}
 {{ template "dashboard-community/update_region.sql" }}
 
+{{ template "dashboard-group/validate_event_capacity.sql" }} -- Dependency for add/update_event
+{{ template "dashboard-group/validate_event_cfs_labels_payload.sql" }} -- Dependency for add/update_event
 {{ template "dashboard-group/add_event.sql" }}
 {{ template "dashboard-group/add_group_sponsor.sql" }}
 {{ template "dashboard-group/add_group_team_member.sql" }}
@@ -84,8 +86,11 @@
 {{ template "dashboard-group/list_user_groups.sql" }}
 {{ template "dashboard-group/publish_event.sql" }}
 {{ template "dashboard-group/search_event_attendees.sql" }}
+{{ template "dashboard-group/sync_event_cfs_labels.sql" }} -- Dependency for update_event
+{{ template "dashboard-group/sync_event_sessions.sql" }} -- Dependency for update_event
 {{ template "dashboard-group/unpublish_event.sql" }}
 {{ template "dashboard-group/update_cfs_submission.sql" }}
+{{ template "dashboard-group/validate_update_event_dates.sql" }} -- Dependency for update_event
 {{ template "dashboard-group/update_group_sponsor.sql" }}
 {{ template "dashboard-group/update_group_team_member_role.sql" }}
 {{ template "dashboard-group/update_event.sql" }}

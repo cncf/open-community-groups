@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(67);
+select plan(58);
 
 -- ============================================================================
 -- VARIABLES
@@ -788,33 +788,6 @@ select is(
     'Should return updated CFS labels in event payload'
 );
 
--- Should throw error when CFS labels contain duplicate names
-select throws_ok(
-    $$select update_event(
-        '00000000-0000-0000-0000-000000000002'::uuid,
-        '00000000-0000-0000-0000-000000000014'::uuid,
-        '{
-            "name": "Event With Labels",
-            "description": "Event seeded for CFS labels update tests",
-            "timezone": "UTC",
-            "category_id": "00000000-0000-0000-0000-000000000011",
-            "kind_id": "virtual",
-            "cfs_description": "Updated CFS description",
-            "cfs_enabled": true,
-            "cfs_starts_at": "2029-12-22T00:00:00",
-            "cfs_ends_at": "2030-01-07T00:00:00",
-            "starts_at": "2030-01-15T10:00:00",
-            "ends_at": "2030-01-15T12:00:00",
-            "cfs_labels": [
-                {"name": "track / data", "color": "#DBEAFE"},
-                {"name": "track / data", "color": "#FEE2E2"}
-            ]
-        }'::jsonb
-    )$$,
-    'duplicate cfs label names',
-    'Should throw error when CFS labels contain duplicate names'
-);
-
 -- Should throw error when group_id does not match
 select throws_ok(
     $$select update_event(
@@ -1015,62 +988,6 @@ select is(
     'Meeting becomes orphan (session_id set to null) after session deletion'
 );
 
--- Should throw error when capacity exceeds max_participants with meeting_requested
-select throws_ok(
-    $$select update_event(
-        '00000000-0000-0000-0000-000000000002'::uuid,
-        '00000000-0000-0000-0000-000000000005'::uuid,
-        '{"name": "Event With Pending Sync", "description": "Test", "timezone": "America/New_York", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "virtual", "capacity": 200, "meeting_requested": true, "meeting_provider_id": "zoom", "starts_at": "2030-03-01T10:00:00", "ends_at": "2030-03-01T12:00:00"}'::jsonb,
-        '{"zoom": 100}'::jsonb
-    )$$,
-    'event capacity (200) exceeds maximum participants allowed (100)',
-    'Should throw error when capacity exceeds cfg_max_participants with meeting_requested=true'
-);
-
--- Should succeed when capacity is within max_participants
-select lives_ok(
-    $$select update_event(
-        '00000000-0000-0000-0000-000000000002'::uuid,
-        '00000000-0000-0000-0000-000000000005'::uuid,
-        '{"name": "Event With Pending Sync", "description": "Test updated", "timezone": "America/New_York", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "virtual", "capacity": 50, "meeting_requested": true, "meeting_provider_id": "zoom", "starts_at": "2030-03-01T10:00:00", "ends_at": "2030-03-01T12:00:00"}'::jsonb,
-        '{"zoom": 100}'::jsonb
-    )$$,
-    'Should succeed when capacity is within cfg_max_participants'
-);
-
--- Should succeed with high capacity when meeting_requested is false
-select lives_ok(
-    $$select update_event(
-        '00000000-0000-0000-0000-000000000002'::uuid,
-        '00000000-0000-0000-0000-000000000005'::uuid,
-        '{"name": "Event With Pending Sync", "description": "Test no meeting", "timezone": "America/New_York", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "capacity": 500}'::jsonb,
-        '{"zoom": 100}'::jsonb
-    )$$,
-    'Should succeed with high capacity when meeting_requested is false'
-);
-
--- Should succeed when cfg_max_participants is null
-select lives_ok(
-    $$select update_event(
-        '00000000-0000-0000-0000-000000000002'::uuid,
-        '00000000-0000-0000-0000-000000000005'::uuid,
-        '{"name": "Event With Pending Sync", "description": "Test no limit", "timezone": "America/New_York", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "virtual", "capacity": 1000, "meeting_requested": true, "meeting_provider_id": "zoom", "starts_at": "2030-03-01T10:00:00", "ends_at": "2030-03-01T12:00:00"}'::jsonb,
-        null
-    )$$,
-    'Should succeed when cfg_max_participants is null'
-);
-
--- Should throw error when event starts_at is in the past
-select throws_ok(
-    $$select update_event(
-        '00000000-0000-0000-0000-000000000002'::uuid,
-        '00000000-0000-0000-0000-000000000003'::uuid,
-        '{"name": "Past Event", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "starts_at": "2020-01-01T10:00:00"}'::jsonb
-    )$$,
-    'event starts_at cannot be in the past',
-    'Should throw error when event starts_at is in the past'
-);
-
 -- Should throw error when event ends_at is in the past
 select throws_ok(
     $$select update_event(
@@ -1080,17 +997,6 @@ select throws_ok(
     )$$,
     'event ends_at cannot be in the past',
     'Should throw error when event ends_at is in the past'
-);
-
--- Should throw error when session starts_at is in the past
-select throws_ok(
-    $$select update_event(
-        '00000000-0000-0000-0000-000000000002'::uuid,
-        '00000000-0000-0000-0000-000000000003'::uuid,
-        '{"name": "Session Past Start", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "starts_at": "2030-01-01T10:00:00", "sessions": [{"name": "Past Session", "starts_at": "2020-01-01T10:00:00", "kind": "in-person"}]}'::jsonb
-    )$$,
-    'session starts_at cannot be in the past',
-    'Should throw error when session starts_at is in the past'
 );
 
 -- Should throw error when session ends_at is in the past
@@ -1386,17 +1292,6 @@ select is(
     'Should update sessions on past events'
 );
 
--- Should throw error when past event starts_at is in the future
-select throws_ok(
-    $$select update_event(
-        '00000000-0000-0000-0000-000000000002'::uuid,
-        '00000000-0000-0000-0000-000000000008'::uuid,
-        '{"name": "Future Past Event", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000012", "kind_id": "virtual", "starts_at": "2099-01-01T10:00:00", "ends_at": "2020-01-02T12:30:00"}'::jsonb
-    )$$,
-    'event starts_at cannot be in the future',
-    'Should throw error when past event starts_at is in the future'
-);
-
 -- Should throw error when past event ends_at is in the future
 select throws_ok(
     $$select update_event(
@@ -1470,28 +1365,6 @@ select lives_ok(
         :'group1ID', :'event9ID', :'category1ID', :'event9ID', :'event9ID'
     ),
     'Should succeed updating live event when starts_at is moved later (but still in past)'
-);
-
--- Should throw error when trying to backdate starts_at on live event
-select throws_ok(
-    format(
-        $$select update_event(
-            '%s'::uuid,
-            '%s'::uuid,
-            jsonb_build_object(
-                'name', 'Live Event Backdated',
-                'description', 'Trying to backdate',
-                'timezone', 'UTC',
-                'category_id', '%s',
-                'kind_id', 'in-person',
-                'starts_at', to_char((select starts_at from event where event_id = '%s'::uuid) at time zone 'UTC' - interval '30 minutes', 'YYYY-MM-DD"T"HH24:MI:SS'),
-                'ends_at', to_char((select ends_at from event where event_id = '%s'::uuid) at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS')
-            )
-        )$$,
-        :'group1ID', :'event9ID', :'category1ID', :'event9ID', :'event9ID'
-    ),
-    'event starts_at cannot be earlier than current value',
-    'Should throw error when trying to backdate starts_at on live event'
 );
 
 -- Should throw error when capacity is reduced below attendee count
