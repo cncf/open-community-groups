@@ -19,12 +19,12 @@
 {% endblock content_stack_classes %}
 
 {% block title_classes -%}
-  md:!line-clamp-1 md:text-[1.05rem]/5
+  md:!mt-2 md:!line-clamp-1 md:text-[1.05rem]/5
 {% endblock title_classes %}
 
 {% block preheader -%}
   <span>
-    <span class="text-primary-500">{{ group.community_display_name }}</span>
+    <span class="hidden text-primary-500 sm:inline">{{ group.community_display_name }}</span>
     <span class="px-1 hidden sm:inline">·</span>
     {% if let Some(region) = &group.region -%}
       {{ region.name }}
@@ -55,15 +55,28 @@
 {% endblock details %}
 
 {% block footer -%}
-  <div class="card-meta !pt-0">
-    {% if let Some(location) = &self.group.location(40) -%}
-      {{ ui::icon_text(icon_name = "location", text = location) -}}
-    {% else -%}
-      {{ ui::icon_text(icon_name = "location", text = "No location provided") -}}
-    {% endif -%}
-  </div>
+  <div class="flex items-center gap-3 md:gap-4">
+    <div class="w-[60px] min-w-[60px] shrink-0 text-center md:w-[88px] md:min-w-[88px]">
+      <div class="text-[0.7rem] font-bold tracking-[0.04em] text-stone-900">
+        {{ group.created_at.format("%Y") }}
+      </div>
+      <div class="mt-0.5 text-[1rem]/5 font-bold uppercase text-stone-900">
+        {{ group.created_at.format("%b") }}
+      </div>
+    </div>
 
-  <div class="card-meta">
-    {{ ui::icon_text(icon_name = "date", text = group.created_at.format("%B %e · %Y") ) -}}
+    <div class="min-w-0 flex-1">
+      <div class="card-meta !pt-0">
+        {% if let Some(location) = &self.group.location(40) -%}
+          {{ ui::icon_text(icon_name = "location", text = location, extra_styles = Some("flex-1") ) -}}
+        {% else -%}
+          {{ ui::icon_text(icon_name = "location", text = "No location provided", extra_styles = Some("flex-1") ) -}}
+        {% endif -%}
+      </div>
+
+      <div class="card-meta !pt-1.5">
+        {{ ui::icon_text(icon_name = "date", text = group.created_at.format("%b %-e, %Y") , extra_styles = Some("flex-1"), icon_extra_styles = Some("-top-px") ) -}}
+      </div>
+    </div>
   </div>
 {% endblock footer %}

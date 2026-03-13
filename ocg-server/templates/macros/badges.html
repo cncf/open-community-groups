@@ -156,6 +156,24 @@
 {% endmacro sold_out_overlay -%}
 {# End sold out overlay badge -#}
 
+{# Sold out corner badge -#}
+{% macro sold_out_corner_badge(remaining_capacity, capacity = None, label = "Sold out", extra_styles = None) -%}
+  {% let extra_styles_ = extra_styles.unwrap_or("") -%}
+
+  {% if let Some(capacity_) = &capacity -%}
+    {% if *capacity_ > 0 -%}
+      {% if let Some(remaining_capacity_) = &remaining_capacity -%}
+        {% if *remaining_capacity_ == 0 -%}
+          <span class="pointer-events-none absolute right-3 top-3 z-10 inline-flex rounded-full border border-red-200 bg-red-500 px-2 py-0.5 text-[10px]/4 font-semibold uppercase tracking-wide text-white shadow-sm md:right-4 md:top-4 {{ extra_styles_ }}">
+            {{ label }}
+          </span>
+        {% endif -%}
+      {% endif -%}
+    {% endif -%}
+  {% endif -%}
+{% endmacro sold_out_corner_badge -%}
+{# End sold out corner badge -#}
+
 {# Sponsor badge -#}
 {% macro sponsor_badge(name, logo_url, website_url, level = "", with_level = false) -%}
   {% if let Some(website_url) = &website_url -%}

@@ -15,21 +15,25 @@
   {{ ui::logo(logo_url = event.logo_url, classes = "h-[60px] w-[60px] min-w-[60px] md:h-[88px] md:w-[88px] md:min-w-[88px]", size = 88) -}}
 {% endblock logo %}
 
-{% block overlay -%}
-  {{ badges::sold_out_overlay(remaining_capacity = event.remaining_capacity, capacity = event.capacity, inner_classes = Some("top-[31px] right-[11px] !w-16 md:top-[45px] md:right-[22px] md:!w-20") ) -}}
-{% endblock overlay %}
+{% block corner_badge -%}
+  {{ badges::sold_out_corner_badge(remaining_capacity = event.remaining_capacity, capacity = event.capacity) -}}
+{% endblock corner_badge %}
+
+{% block top_row_classes -%}
+  pr-16 md:pr-18
+{% endblock top_row_classes %}
 
 {% block content_stack_classes -%}
   md:min-h-[88px]
 {% endblock content_stack_classes %}
 
 {% block title_classes -%}
-  md:!line-clamp-1 md:text-[1.05rem]/5
+  md:!mt-2 md:!line-clamp-1 md:text-[1.05rem]/5
 {% endblock title_classes %}
 
 {% block preheader -%}
   <span>
-    <span class="text-primary-500">{{ event.community_display_name }}</span>
+    <span class="hidden text-primary-500 sm:inline">{{ event.community_display_name }}</span>
     <span class="px-1 hidden sm:inline">·</span>
     <span>{{ event.group_name }}</span>
     <span class="px-1 hidden sm:inline">·</span>
@@ -58,36 +62,52 @@
 {% endblock details %}
 
 {% block footer -%}
-  {% match event.kind -%}
-  {% when EventKind::InPerson -%}
-  <div class="flex min-w-0 items-center gap-2">
-    {% if let Some(location) = &self.event.location(32) -%}
-      {{ ui::icon_text(icon_name = "location", text = location, extra_styles = Some("flex-1") ) -}}
-    {%- else -%}
-      {{ ui::icon_text(icon_name = "location", text = "No location provided", extra_styles = Some("flex-1") ) -}}
-    {% endif -%}
-  </div>
-  {% when EventKind::Hybrid -%}
-  <div class="flex min-w-0 items-center gap-2">
-    {% if let Some(location) = &self.event.location(22) -%}
-      {{ ui::icon_text(icon_name = "location", text = location, extra_styles = Some("flex-1") ) -}}
-    {%- else -%}
-      {{ ui::icon_text(icon_name = "location", text = "No location provided", extra_styles = Some("flex-1") ) -}}
-    {% endif -%}
-    {{ badges::event_badge(kind = event.kind, extra_styles = Some("shrink-0 bg-white") ) -}}
-  </div>
-  {% when EventKind::Virtual -%}
-  <div class="flex min-w-0 items-center gap-2">
-    {{ ui::icon_text(icon_name = "location", text = "Virtual", extra_styles = Some("flex-1") ) -}}
-  </div>
-{% endmatch -%}
+  <div class="flex items-center gap-3 md:gap-4">
+    <div class="w-[60px] min-w-[60px] shrink-0 text-center md:w-[88px] md:min-w-[88px]">
+      {% if let Some(starts_at) = &event.starts_at -%}
+        <div class="text-[0.72rem] font-bold uppercase tracking-[0.12em] text-stone-900">
+          {{ starts_at.with_timezone(event.timezone).format("%b") }}
+        </div>
+        <div class="mt-0.5 text-[1.7rem]/7 font-bold text-stone-900">
+          {{ starts_at.with_timezone(event.timezone).format("%e")|trim }}
+        </div>
+      {% else -%}
+        <div class="text-[0.72rem] font-bold uppercase tracking-[0.12em] text-stone-900">TBD</div>
+        <div class="mt-0.5 text-[1.7rem]/7 font-bold text-stone-900">--</div>
+      {% endif -%}
+    </div>
 
-<div class="card-meta !pt-1.5">
-  {% if let Some(starts_at) = &event.starts_at -%}
-    {{ ui::icon_text(icon_name = "date", text = starts_at.with_timezone(event.timezone).format("%B %e · %l:%M %p %Z"), extra_styles = Some("flex-1"), icon_extra_styles = Some("-top-px") ) -}}
-  {% endif -%}
-  {% if event.canceled -%}
-    {{ badges::event_badge(kind = event.kind, canceled = true, extra_styles = Some("ms-2 shrink-0 bg-white") ) -}}
-  {% endif -%}
-</div>
+    <div class="min-w-0 flex-1">
+      <div class="flex min-w-0 items-center gap-2">
+        {% if event.kind == EventKind::Virtual -%}
+          {{ ui::icon_text(icon_name = "location", text = "Virtual", extra_styles = Some("flex-1") ) -}}
+        {% else if event.kind == EventKind::Hybrid -%}
+          {% if let Some(location) = &self.event.location(26) -%}
+            {{ ui::icon_text(icon_name = "location", text = location, extra_styles = Some("flex-1") ) -}}
+          {%- else -%}
+            {{ ui::icon_text(icon_name = "location", text = "No location provided", extra_styles = Some("flex-1") ) -}}
+          {% endif -%}
+        {% else -%}
+          {% if let Some(location) = &self.event.location(30) -%}
+            {{ ui::icon_text(icon_name = "location", text = location, extra_styles = Some("flex-1") ) -}}
+          {%- else -%}
+            {{ ui::icon_text(icon_name = "location", text = "No location provided", extra_styles = Some("flex-1") ) -}}
+          {% endif -%}
+        {% endif -%}
+        {% if event.canceled -%}
+          {{ badges::event_badge(kind = event.kind, canceled = true, extra_styles = Some("shrink-0 bg-white") ) -}}
+        {% else if event.kind == EventKind::Hybrid -%}
+          {{ badges::event_badge(kind = event.kind, extra_styles = Some("shrink-0 bg-white") ) -}}
+        {% endif -%}
+      </div>
+
+      <div class="card-meta !pt-1.5">
+        {% if let Some(starts_at) = &event.starts_at -%}
+          {{ ui::icon_text(icon_name = "date", text = starts_at.with_timezone(event.timezone).format("%b %-e, %Y · %-I:%M %p %Z"), extra_styles = Some("flex-1"), icon_extra_styles = Some("-top-px") ) -}}
+        {% else -%}
+          {{ ui::icon_text(icon_name = "date", text = "Date to be announced", extra_styles = Some("flex-1") , icon_extra_styles = Some("-top-px") ) -}}
+        {% endif -%}
+      </div>
+    </div>
+  </div>
 {% endblock footer %}
