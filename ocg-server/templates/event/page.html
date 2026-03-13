@@ -41,8 +41,9 @@
       <div class="flex gap-y-6 sm:gap-y-8 lg:gap-y-12 flex-col px-4 sm:px-6 lg:px-10 py-4 sm:py-6 lg:py-10">
         {# Event header with name and group -#}
         <div>
-          {# Main flex container for logo, name/group, and social networks -#}
-          <div class="flex flex-1 flex-row flex-wrap items-stretch md:gap-6 lg:flex-nowrap">
+          {# Main flex container for logo, name/group,
+             and social networks -#}
+          <div class="flex flex-1 flex-row items-stretch gap-6">
             {# Event logo -#}
             <div class="relative hidden md:block">
               {{ ui::logo(logo_url = event.logo_url, classes = "size-24 md:size-28", size = 112) -}}
@@ -50,7 +51,7 @@
             {# End event logo -#}
 
             <div class="flex-1 min-w-0 flex flex-col justify-between">
-              <div class="flex-1 min-w-0">
+              <div class="flex-1 min-w-0 flex justify-between">
                 <div class="flex flex-col">
                   {# Group/Category legend -#}
                   <a href="/{{ event.community.name }}/group/{{ event.group.slug }}"
@@ -59,7 +60,7 @@
                      hx-target="body">{{ event.group.name }}</a>
                   {# End group/category legend -#}
 
-                  {# Event name: use smaller font size for long titles (>68 chars) -#}
+                  {# Event name -#}
                   {% if event.name.len() > 68 -%}
                     <h1 class="text-[0.95rem]/5 xl:text-[1.45rem]/[1.35] font-semibold text-stone-900 line-clamp-2 mt-2 md:mt-1 xl:mt-0">
                       {{ event.name|demoji }}
@@ -72,9 +73,27 @@
                   {# End event name -#}
                 </div>
 
+                {# Social networks and canceled badge
+                   (desktop) -#}
+                {% if event.canceled || has_social_links -%}
+                  <div class="hidden md:flex flex-col items-end gap-2">
+                    {% if event.canceled -%}
+                      {{ badges::event_badge(kind = event.kind, canceled = true, extra_styles = Some("px-2.5 py-0.5") ) -}}
+                    {% endif -%}
+                    {% if has_social_links -%}
+                      <div class="flex flex-wrap gap-2">
+                        {% if let Some(meetup_url) = &event.meetup_url -%}
+                          {{ social::social_link(url = meetup_url, icon_name = "meetup", platform_name = "Meetup") -}}
+                        {% endif -%}
+                      </div>
+                    {% endif -%}
+                  </div>
+                {% endif -%}
+                {# End social networks and canceled
+                   badge (desktop) -#}
               </div>
 
-              <div class="mt-2 md:mt-auto flex flex-col md:flex-row md:flex-wrap md:items-end md:justify-between w-full">
+              <div class="mt-2 md:mt-auto flex flex-col md:flex-row md:items-end md:justify-between w-full">
                 {# Event details and date -#}
                 <div class="flex items-end gap-4 text-stone-600">
                   {% if let Some(capacity) = &event.capacity -%}
@@ -112,48 +131,18 @@
                 {% endif -%}
                 {# End social networks (mobile) -#}
 
-                <div class="mt-4 flex flex-row flex-wrap items-end gap-4 md:hidden">
+                <div class="mt-4 md:mt-0 flex flex-row flex-wrap gap-4 items-end md:ml-auto">
                   {# Share button -#}
                   <share-modal title="{{ event.group.name }} · {{ event.name }}" url="/{{ event.community.name }}/group/{{ event.group.slug }}/event/{{ event.slug }}">
                   </share-modal>
                   {# End share button -#}
 
                   {# Attend button section -#}
-                  {% let attendance_instance = "mobile" -%}
+                  {% let attendance_instance = "main" -%}
                   {% include "event/attend_button.html" %}
                   {# End attend button section -#}
                 </div>
 
-              </div>
-            </div>
-
-            <div class="hidden shrink-0 md:ml-auto md:flex md:h-28 md:flex-col md:items-end md:justify-between">
-              {% if event.canceled || has_social_links -%}
-                <div class="flex flex-col items-end gap-2">
-                  {% if event.canceled -%}
-                    {{ badges::event_badge(kind = event.kind, canceled = true, extra_styles = Some("px-2.5 py-0.5") ) -}}
-                  {% endif -%}
-
-                  {% if has_social_links -%}
-                    <div class="flex flex-wrap justify-end gap-2">
-                      {% if let Some(meetup_url) = &event.meetup_url -%}
-                        {{ social::social_link(url = meetup_url, icon_name = "meetup", platform_name = "Meetup") -}}
-                      {% endif -%}
-                    </div>
-                  {% endif -%}
-                </div>
-              {% endif -%}
-
-              <div class="flex flex-row flex-wrap items-end justify-end gap-4">
-                {# Share button -#}
-                <share-modal title="{{ event.group.name }} · {{ event.name }}" url="/{{ event.community.name }}/group/{{ event.group.slug }}/event/{{ event.slug }}">
-                </share-modal>
-                {# End share button -#}
-
-                {# Attend button section -#}
-                {% let attendance_instance = "desktop" -%}
-                {% include "event/attend_button.html" %}
-                {# End attend button section -#}
               </div>
             </div>
 
