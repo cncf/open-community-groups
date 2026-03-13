@@ -12,12 +12,20 @@
 {% endblock anchor_attributes %}
 
 {% block logo -%}
-  {{ ui::logo(logo_url = event.logo_url, classes = "h-[60px] w-[60px] min-w-[60px]", size = 60) -}}
+  {{ ui::logo(logo_url = event.logo_url, classes = "h-[60px] w-[60px] min-w-[60px] md:h-[88px] md:w-[88px] md:min-w-[88px]", size = 88) -}}
 {% endblock logo %}
 
 {% block overlay -%}
-  {{ badges::sold_out_overlay(remaining_capacity = event.remaining_capacity, capacity = event.capacity, inner_classes = Some("top-[31px] right-[11px] !w-16 md:!w-16") ) -}}
+  {{ badges::sold_out_overlay(remaining_capacity = event.remaining_capacity, capacity = event.capacity, inner_classes = Some("top-[31px] right-[11px] !w-16 md:top-[45px] md:right-[22px] md:!w-20") ) -}}
 {% endblock overlay %}
+
+{% block content_stack_classes -%}
+  md:min-h-[88px]
+{% endblock content_stack_classes %}
+
+{% block title_classes -%}
+  md:!line-clamp-1 md:text-[1.05rem]/5
+{% endblock title_classes %}
 
 {% block preheader -%}
   <span>
@@ -33,17 +41,21 @@
   {{ event.name|demoji }}
 {% endblock title %}
 
+{% block inline_details -%}
+  {% if let Some(description_short) = &event.description_short -%}
+    <div class="mt-2 hidden md:block">
+      <p class="text-[0.8rem]/[1.2rem] text-stone-500 line-clamp-2">{{ description_short|demoji }}</p>
+    </div>
+  {% endif -%}
+{% endblock inline_details %}
+
 {% block details -%}
   {% if let Some(description_short) = &event.description_short -%}
-    <div class="px-3.5 pt-3 md:px-4 md:pt-3.5">
+    <div class="px-3.5 pt-3 md:hidden">
       <p class="text-[0.8rem]/[1.2rem] text-stone-500 line-clamp-2">{{ description_short|demoji }}</p>
     </div>
   {% endif -%}
 {% endblock details %}
-
-{% block details_spacing -%}
-  <div class="pb-3 md:pb-4"></div>
-{% endblock details_spacing %}
 
 {% block footer -%}
   {% match event.kind -%}
