@@ -60,6 +60,7 @@
 
   <!-- Hidden element that checks attendance status -->
   <div id="attendance-checker"
+       class="hidden"
        hx-get="/{{ event.community.name }}/event/{{ event.event_id }}/attendance"
        hx-trigger="load, attendance-changed from:body"
        hx-swap="none"></div>

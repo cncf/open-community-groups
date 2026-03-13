@@ -44,13 +44,13 @@
           {# Main flex container for logo, name/group, and social networks -#}
           <div class="flex flex-1 flex-row flex-wrap items-stretch md:gap-6 lg:flex-nowrap">
             {# Event logo -#}
-            <div class="relative">
-              {{ ui::logo(logo_url = event.logo_url, classes = "hidden md:block size-24 md:size-28", size = 112) -}}
+            <div class="relative hidden md:block">
+              {{ ui::logo(logo_url = event.logo_url, classes = "size-24 md:size-28", size = 112) -}}
             </div>
             {# End event logo -#}
 
-            <div class="flex-1 flex flex-col justify-between">
-              <div class="flex-1 flex justify-between">
+            <div class="flex-1 min-w-0 flex flex-col justify-between">
+              <div class="flex-1 min-w-0">
                 <div class="flex flex-col">
                   {# Group/Category legend -#}
                   <a href="/{{ event.community.name }}/group/{{ event.group.slug }}"
@@ -72,25 +72,6 @@
                   {# End event name -#}
                 </div>
 
-                {# Event status and social networks -#}
-                <div class="hidden md:flex flex-col items-end gap-2">
-                  {# Event status badge -#}
-                  {% if event.canceled -%}
-                    {{ badges::event_badge(kind = event.kind, canceled = true, extra_styles = Some("px-2.5 py-0.5") ) -}}
-                  {% endif -%}
-                  {# End event status badge -#}
-
-                  {# Social networks -#}
-                  {% if has_social_links -%}
-                    <div class="flex flex-wrap gap-2">
-                      {% if let Some(meetup_url) = &event.meetup_url -%}
-                        {{ social::social_link(url = meetup_url, icon_name = "meetup", platform_name = "Meetup") -}}
-                      {% endif -%}
-                    </div>
-                  {% endif -%}
-                  {# End social networks -#}
-                </div>
-                {# End event status and social networks -#}
               </div>
 
               <div class="mt-2 md:mt-auto flex flex-col md:flex-row md:flex-wrap md:items-end md:justify-between w-full">
@@ -131,18 +112,47 @@
                 {% endif -%}
                 {# End social networks (mobile) -#}
 
+                <div class="mt-4 flex flex-row flex-wrap items-end gap-4 md:hidden">
+                  {# Share button -#}
+                  <share-modal title="{{ event.group.name }} · {{ event.name }}" url="/{{ event.community.name }}/group/{{ event.group.slug }}/event/{{ event.slug }}">
+                  </share-modal>
+                  {# End share button -#}
+
+                  {# Attend button section -#}
+                  {% include "event/attend_button.html" %}
+                  {# End attend button section -#}
+                </div>
+
               </div>
             </div>
 
-            <div class="mt-4 flex flex-row flex-wrap gap-4 items-end w-full shrink-0 lg:mt-0 lg:w-auto lg:shrink lg:ml-auto">
-              {# Share button -#}
-              <share-modal title="{{ event.group.name }} · {{ event.name }}" url="/{{ event.community.name }}/group/{{ event.group.slug }}/event/{{ event.slug }}">
-              </share-modal>
-              {# End share button -#}
+            <div class="hidden shrink-0 md:ml-auto md:flex md:h-28 md:flex-col md:items-end md:justify-between">
+              {% if event.canceled || has_social_links -%}
+                <div class="flex flex-col items-end gap-2">
+                  {% if event.canceled -%}
+                    {{ badges::event_badge(kind = event.kind, canceled = true, extra_styles = Some("px-2.5 py-0.5") ) -}}
+                  {% endif -%}
 
-              {# Attend button section -#}
-              {% include "event/attend_button.html" %}
-              {# End attend button section -#}
+                  {% if has_social_links -%}
+                    <div class="flex flex-wrap justify-end gap-2">
+                      {% if let Some(meetup_url) = &event.meetup_url -%}
+                        {{ social::social_link(url = meetup_url, icon_name = "meetup", platform_name = "Meetup") -}}
+                      {% endif -%}
+                    </div>
+                  {% endif -%}
+                </div>
+              {% endif -%}
+
+              <div class="flex flex-row flex-wrap items-end justify-end gap-4">
+                {# Share button -#}
+                <share-modal title="{{ event.group.name }} · {{ event.name }}" url="/{{ event.community.name }}/group/{{ event.group.slug }}/event/{{ event.slug }}">
+                </share-modal>
+                {# End share button -#}
+
+                {# Attend button section -#}
+                {% include "event/attend_button.html" %}
+                {# End attend button section -#}
+              </div>
             </div>
 
           </div>
