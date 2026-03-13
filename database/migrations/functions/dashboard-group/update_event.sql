@@ -7,187 +7,77 @@ create or replace function update_event(
 )
 returns void as $$
 declare
-    v_attendee_count int;
-    v_cfs_label jsonb;
-    v_cfs_label_id uuid;
-    v_community_id uuid;
-    v_ends_at timestamptz;
+    v_event_location geography;
+    v_event_meeting_hosts text[];
+    v_event_photos_urls text[];
     v_event_before jsonb;
-    v_event_speaker jsonb;
-    v_host_id uuid;
-    v_is_past_event boolean;
-    v_processed_session_ids uuid[] := '{}';
-    v_provider_max_participants int;
-    v_processed_cfs_label_ids uuid[] := '{}';
-    v_session jsonb;
-    v_session_before jsonb;
-    v_session_ends_at timestamptz;
-    v_session_id uuid;
-    v_session_speaker jsonb;
-    v_session_starts_at timestamptz;
-    v_speaker_id uuid;
-    v_speaker_featured boolean;
-    v_sponsor jsonb;
-    v_sponsor_id uuid;
-    v_sponsor_level text;
-    v_starts_at timestamptz;
+    v_event_reminder_enabled boolean;
+    v_event_tags text[];
+    v_new_ends_at timestamptz;
+    v_new_starts_at timestamptz;
+    v_timezone text := p_event->>'timezone';
 begin
-    -- Get community_id
-    select community_id into v_community_id
-    from "group"
-    where group_id = p_group_id;
-
-    -- Lock event row to keep updates consistent with current state
-    perform 1
-    from event e
-    where e.event_id = p_event_id
-    and e.group_id = p_group_id
+    -- Load the locked event state used by the update flow
+    select
+        get_event_full(g.community_id, p_group_id, p_event_id)::jsonb
+    into
+        v_event_before
+    from "group" g
+    join event e on e.group_id = g.group_id
+    where g.group_id = p_group_id
+    and e.event_id = p_event_id
     and e.deleted = false
     and e.canceled = false
-    for update;
-
-    if not found then
-        raise exception 'event not found or inactive';
-    end if;
-
-    -- Load current event state for sync calculation and existence check
-    select get_event_full(v_community_id, p_group_id, p_event_id)::jsonb
-    into v_event_before
-    from event e
-    where e.event_id = p_event_id
-    and e.group_id = p_group_id
-    and e.deleted = false
-    and e.canceled = false;
+    for update of e;
 
     if v_event_before is null then
         raise exception 'event not found or inactive';
     end if;
 
-    -- Check if the event is in the past
-    v_is_past_event := coalesce(
-        to_timestamp((v_event_before->>'ends_at')::bigint),
-        to_timestamp((v_event_before->>'starts_at')::bigint)
-    ) < current_timestamp;
+    -- Precompute derived values used across the update flow
+    v_event_location := case
+        when (p_event->>'latitude') is not null and (p_event->>'longitude') is not null
+        then ST_SetSRID(ST_MakePoint((p_event->>'longitude')::float, (p_event->>'latitude')::float), 4326)::geography
+        else null
+    end;
+    v_event_meeting_hosts := case
+        when p_event->'meeting_hosts' is not null
+        then array(select jsonb_array_elements_text(p_event->'meeting_hosts'))
+        else null
+    end;
+    v_event_photos_urls := case
+        when p_event->'photos_urls' is not null
+        then array(select jsonb_array_elements_text(p_event->'photos_urls'))
+        else null
+    end;
+    v_event_reminder_enabled := coalesce((p_event->>'event_reminder_enabled')::boolean, true);
+    v_event_tags := case
+        when p_event->'tags' is not null
+        then array(select jsonb_array_elements_text(p_event->'tags'))
+        else null
+    end;
 
-    -- Events that were in the past should not be updated to have future dates
-    if v_is_past_event then
-        -- Validate event dates are not in the future (only for past events)
-        if p_event->>'starts_at' is not null then
-            v_starts_at := (p_event->>'starts_at')::timestamp at time zone (p_event->>'timezone');
-            if v_starts_at > current_timestamp then
-                raise exception 'event starts_at cannot be in the future';
-            end if;
-        end if;
-        if p_event->>'ends_at' is not null then
-            v_ends_at := (p_event->>'ends_at')::timestamp at time zone (p_event->>'timezone');
-            if v_ends_at > current_timestamp then
-                raise exception 'event ends_at cannot be in the future';
-            end if;
-        end if;
-
-        -- Validate session dates are not in the future
-        if p_event->'sessions' is not null then
-            for v_session in select jsonb_array_elements(p_event->'sessions')
-            loop
-                v_session_starts_at := (v_session->>'starts_at')::timestamp at time zone (p_event->>'timezone');
-                if v_session_starts_at > current_timestamp then
-                    raise exception 'session starts_at cannot be in the future';
-                end if;
-
-                if v_session->>'ends_at' is not null then
-                    v_session_ends_at := (v_session->>'ends_at')::timestamp at time zone (p_event->>'timezone');
-                    if v_session_ends_at > current_timestamp then
-                        raise exception 'session ends_at cannot be in the future';
-                    end if;
-                end if;
-            end loop;
-        end if;
+    -- Parse event timestamps once for validation and row updates
+    if p_event->>'ends_at' is not null then
+        v_new_ends_at := (p_event->>'ends_at')::timestamp at time zone v_timezone;
     end if;
 
-    -- Events that were not in the past should not be updated to have past dates
-    if not v_is_past_event then
-        -- Validate event dates are not in the past (only for non-past events)
-        if p_event->>'starts_at' is not null then
-            v_starts_at := (p_event->>'starts_at')::timestamp at time zone (p_event->>'timezone');
-            -- For events that haven't started yet: starts_at cannot be in the past
-            -- For events already started (live): starts_at cannot be earlier than current value
-            if v_starts_at < current_timestamp then
-                if to_timestamp((v_event_before->>'starts_at')::bigint) >= current_timestamp then
-                    raise exception 'event starts_at cannot be in the past';
-                elsif v_starts_at < to_timestamp((v_event_before->>'starts_at')::bigint) then
-                    raise exception 'event starts_at cannot be earlier than current value';
-                end if;
-            end if;
-        end if;
-        if p_event->>'ends_at' is not null then
-            v_ends_at := (p_event->>'ends_at')::timestamp at time zone (p_event->>'timezone');
-            if v_ends_at < current_timestamp then
-                raise exception 'event ends_at cannot be in the past';
-            end if;
-        end if;
-
-        -- Validate session dates are not in the past
-        if p_event->'sessions' is not null then
-            for v_session in select jsonb_array_elements(p_event->'sessions')
-            loop
-                v_session_starts_at := (v_session->>'starts_at')::timestamp at time zone (p_event->>'timezone');
-                if v_session_starts_at < current_timestamp then
-                    raise exception 'session starts_at cannot be in the past';
-                end if;
-
-                if v_session->>'ends_at' is not null then
-                    v_session_ends_at := (v_session->>'ends_at')::timestamp at time zone (p_event->>'timezone');
-                    if v_session_ends_at < current_timestamp then
-                        raise exception 'session ends_at cannot be in the past';
-                    end if;
-                end if;
-            end loop;
-        end if;
+    if p_event->>'starts_at' is not null then
+        v_new_starts_at := (p_event->>'starts_at')::timestamp at time zone v_timezone;
     end if;
 
-    -- Validate event capacity against max_participants when meeting is requested
-    if (p_event->>'meeting_requested')::boolean = true then
-        v_provider_max_participants := (p_cfg_max_participants->>(p_event->>'meeting_provider_id'))::int;
+    -- Validate update-specific event and session date rules
+    perform validate_update_event_dates(p_event, v_event_before);
 
-        if v_provider_max_participants is not null
-           and (p_event->>'capacity')::int > v_provider_max_participants
-        then
-            raise exception 'event capacity (%) exceeds maximum participants allowed (%)',
-                (p_event->>'capacity')::int, v_provider_max_participants;
-        end if;
-    end if;
+    -- Validate capacity
+    perform validate_event_capacity(
+        p_event,
+        p_cfg_max_participants,
+        p_existing_event_id => p_event_id
+    );
 
-    -- Validate event capacity is not less than current attendee count
-    if (p_event->>'capacity')::int is not null then
-        select count(*) into v_attendee_count
-        from event_attendee
-        where event_id = p_event_id;
-
-        if (p_event->>'capacity')::int < v_attendee_count then
-            raise exception 'event capacity (%) cannot be less than current number of attendees (%)',
-                (p_event->>'capacity')::int, v_attendee_count;
-        end if;
-    end if;
-
-    -- Validate CFS labels payload
-    if p_event->'cfs_labels' is not null then
-        if jsonb_array_length(p_event->'cfs_labels') > 200 then
-            raise exception 'too many cfs labels';
-        end if;
-
-        if exists (
-            select 1
-            from (
-                select nullif(cfs_label->>'name', '') as cfs_label_name
-                from jsonb_array_elements(p_event->'cfs_labels') as cfs_label
-            ) cfs_labels
-            where cfs_labels.cfs_label_name is not null
-            group by cfs_labels.cfs_label_name
-            having count(*) > 1
-        ) then
-            raise exception 'duplicate cfs label names';
-        end if;
-    end if;
+    -- Validate CFS labels rules
+    perform validate_event_cfs_labels_payload(p_event->'cfs_labels');
 
     -- Update event
     update event set
@@ -202,36 +92,30 @@ begin
         capacity = (p_event->>'capacity')::int,
         cfs_description = nullif(p_event->>'cfs_description', ''),
         cfs_enabled = (p_event->>'cfs_enabled')::boolean,
-        cfs_ends_at = (p_event->>'cfs_ends_at')::timestamp at time zone (p_event->>'timezone'),
-        cfs_starts_at = (p_event->>'cfs_starts_at')::timestamp at time zone (p_event->>'timezone'),
+        cfs_ends_at = (p_event->>'cfs_ends_at')::timestamp at time zone v_timezone,
+        cfs_starts_at = (p_event->>'cfs_starts_at')::timestamp at time zone v_timezone,
         description_short = nullif(p_event->>'description_short', ''),
-        ends_at = (p_event->>'ends_at')::timestamp at time zone (p_event->>'timezone'),
-        event_reminder_enabled = coalesce((p_event->>'event_reminder_enabled')::boolean, true),
+        ends_at = v_new_ends_at,
+        event_reminder_enabled = v_event_reminder_enabled,
         -- Mark reminder as evaluated when update moves start time inside the 24-hour window
         event_reminder_evaluated_for_starts_at = case
-            when coalesce((p_event->>'event_reminder_enabled')::boolean, true) = true
+            when v_event_reminder_enabled = true
                  and event_reminder_sent_at is null
-                 and starts_at is distinct from (p_event->>'starts_at')::timestamp at time zone (p_event->>'timezone')
+                 and starts_at is distinct from v_new_starts_at
                  and (
                      starts_at is null
                      or starts_at <= current_timestamp
                      or starts_at > current_timestamp + interval '24 hours'
                  )
-                 and (p_event->>'starts_at') is not null
-                 and (p_event->>'starts_at')::timestamp at time zone (p_event->>'timezone')
-                     > current_timestamp
-                 and (p_event->>'starts_at')::timestamp at time zone (p_event->>'timezone')
-                     <= current_timestamp + interval '24 hours'
-            then (p_event->>'starts_at')::timestamp at time zone (p_event->>'timezone')
+                 and v_new_starts_at is not null
+                 and v_new_starts_at > current_timestamp
+                 and v_new_starts_at <= current_timestamp + interval '24 hours'
+            then v_new_starts_at
             else event_reminder_evaluated_for_starts_at
         end,
-        location = case
-            when (p_event->>'latitude') is not null and (p_event->>'longitude') is not null
-            then ST_SetSRID(ST_MakePoint((p_event->>'longitude')::float, (p_event->>'latitude')::float), 4326)::geography
-            else null
-        end,
+        location = v_event_location,
         logo_url = nullif(p_event->>'logo_url', ''),
-        meeting_hosts = case when p_event->'meeting_hosts' is not null then array(select jsonb_array_elements_text(p_event->'meeting_hosts')) else null end,
+        meeting_hosts = v_event_meeting_hosts,
         meeting_in_sync = case
             when (v_event_before->>'meeting_in_sync')::boolean = false
                  and (p_event->>'meeting_requested')::boolean is distinct from false
@@ -243,10 +127,10 @@ begin
         meeting_recording_url = nullif(p_event->>'meeting_recording_url', ''),
         meeting_requested = (p_event->>'meeting_requested')::boolean,
         meetup_url = nullif(p_event->>'meetup_url', ''),
-        photos_urls = case when p_event->'photos_urls' is not null then array(select jsonb_array_elements_text(p_event->'photos_urls')) else null end,
+        photos_urls = v_event_photos_urls,
         registration_required = (p_event->>'registration_required')::boolean,
-        starts_at = (p_event->>'starts_at')::timestamp at time zone (p_event->>'timezone'),
-        tags = case when p_event->'tags' is not null then array(select jsonb_array_elements_text(p_event->'tags')) else null end,
+        starts_at = v_new_starts_at,
+        tags = v_event_tags,
         venue_address = nullif(p_event->>'venue_address', ''),
         venue_city = nullif(p_event->>'venue_city', ''),
         venue_country_code = nullif(p_event->>'venue_country_code', ''),
@@ -259,46 +143,8 @@ begin
     and deleted = false
     and canceled = false;
 
-    -- Insert/update event CFS labels
-    if p_event->'cfs_labels' is not null then
-        for v_cfs_label in select jsonb_array_elements(p_event->'cfs_labels')
-        loop
-            v_cfs_label_id := nullif(v_cfs_label->>'event_cfs_label_id', '')::uuid;
-
-            -- New label - insert
-            if v_cfs_label_id is null then
-                insert into event_cfs_label (event_id, name, color)
-                values (
-                    p_event_id,
-                    nullif(v_cfs_label->>'name', ''),
-                    v_cfs_label->>'color'
-                )
-                returning event_cfs_label_id into v_cfs_label_id;
-            -- Existing label - update
-            else
-                update event_cfs_label set
-                    color = v_cfs_label->>'color',
-                    name = nullif(v_cfs_label->>'name', '')
-                where event_cfs_label_id = v_cfs_label_id
-                and event_id = p_event_id;
-
-                if not found then
-                    raise exception 'event CFS label % not found for event %', v_cfs_label_id, p_event_id;
-                end if;
-            end if;
-
-            -- Keep track of processed label IDs to identify deletions
-            v_processed_cfs_label_ids := array_append(v_processed_cfs_label_ids, v_cfs_label_id);
-        end loop;
-
-        -- Delete event CFS labels no longer present in payload
-        delete from event_cfs_label
-        where event_id = p_event_id
-        and not (event_cfs_label_id = any(v_processed_cfs_label_ids));
-    else
-        -- No labels in payload - delete all existing labels
-        delete from event_cfs_label where event_id = p_event_id;
-    end if;
+    -- Synchronize event CFS labels
+    perform sync_event_cfs_labels(p_event_id, p_event->'cfs_labels');
 
     -- Delete existing hosts, sponsors, sessions and speakers
     delete from event_host where event_id = p_event_id;
@@ -307,154 +153,26 @@ begin
 
     -- Insert event hosts
     if p_event->'hosts' is not null then
-        for v_host_id in select (jsonb_array_elements_text(p_event->'hosts'))::uuid
-        loop
-            insert into event_host (event_id, user_id)
-            values (p_event_id, v_host_id);
-        end loop;
+        insert into event_host (event_id, user_id)
+        select p_event_id, host.user_id::uuid
+        from jsonb_array_elements_text(p_event->'hosts') as host(user_id);
     end if;
 
     -- Insert event speakers
     if p_event->'speakers' is not null then
-        for v_event_speaker in select jsonb_array_elements(p_event->'speakers')
-        loop
-            -- Extract speaker details
-            v_speaker_id := (v_event_speaker->>'user_id')::uuid;
-            v_speaker_featured := (v_event_speaker->>'featured')::boolean;
-
-            insert into event_speaker (event_id, user_id, featured)
-            values (p_event_id, v_speaker_id, v_speaker_featured);
-        end loop;
+        insert into event_speaker (event_id, user_id, featured)
+        select p_event_id, speaker.user_id, speaker.featured
+        from jsonb_to_recordset(p_event->'speakers') as speaker(featured boolean, user_id uuid);
     end if;
 
     -- Insert event sponsors with per-event level
     if p_event->'sponsors' is not null then
-        for v_sponsor in select jsonb_array_elements(p_event->'sponsors')
-        loop
-            -- Extract sponsor details
-            v_sponsor_id := (v_sponsor->>'group_sponsor_id')::uuid;
-            v_sponsor_level := v_sponsor->>'level';
-
-            insert into event_sponsor (event_id, group_sponsor_id, level)
-            values (p_event_id, v_sponsor_id, v_sponsor_level);
-        end loop;
+        insert into event_sponsor (event_id, group_sponsor_id, level)
+        select p_event_id, sponsor.group_sponsor_id, sponsor.level
+        from jsonb_to_recordset(p_event->'sponsors') as sponsor(group_sponsor_id uuid, level text);
     end if;
 
-    -- Insert/update sessions and speakers
-    if p_event->'sessions' is not null then
-        for v_session in select jsonb_array_elements(p_event->'sessions')
-        loop
-            -- Update existing session when session_id is provided, otherwise insert new
-            if v_session->>'session_id' is not null then
-                v_session_id := (v_session->>'session_id')::uuid;
-
-                -- Extract previous session state from event snapshot for sync calculation
-                select sess
-                into v_session_before
-                from jsonb_each(v_event_before->'sessions') as day(day, sessions)
-                cross join lateral jsonb_array_elements(sessions) as sess
-                where sess->>'session_id' = v_session_id::text
-                limit 1;
-
-                update session set
-                    name = v_session->>'name',
-                    description = v_session->>'description',
-                    starts_at = (v_session->>'starts_at')::timestamp at time zone (p_event->>'timezone'),
-                    ends_at = (v_session->>'ends_at')::timestamp at time zone (p_event->>'timezone'),
-                    cfs_submission_id = nullif(v_session->>'cfs_submission_id', '')::uuid,
-                    session_kind_id = v_session->>'kind',
-                    location = v_session->>'location',
-                    meeting_hosts = case when v_session->'meeting_hosts' is not null then array(select jsonb_array_elements_text(v_session->'meeting_hosts')) else null end,
-                    meeting_in_sync = case
-                        when (v_session_before->>'meeting_in_sync')::boolean = false
-                             and (v_session->>'meeting_requested')::boolean is distinct from false
-                        then false
-                        else (select is_session_meeting_in_sync(v_session_before, v_session, v_event_before, p_event))
-                    end,
-                    meeting_join_url = v_session->>'meeting_join_url',
-                    meeting_provider_id = v_session->>'meeting_provider_id',
-                    meeting_recording_url = v_session->>'meeting_recording_url',
-                    meeting_requested = (v_session->>'meeting_requested')::boolean
-                where session_id = v_session_id
-                and event_id = p_event_id;
-
-                if not found then
-                    raise exception 'session % not found for event %', v_session_id, p_event_id;
-                end if;
-
-                delete from session_speaker where session_id = v_session_id;
-            else
-                insert into session (
-                    event_id,
-                    name,
-                    description,
-                    starts_at,
-                    ends_at,
-                    cfs_submission_id,
-                    session_kind_id,
-                    location,
-                    meeting_hosts,
-                    meeting_in_sync,
-                    meeting_join_url,
-                    meeting_provider_id,
-                    meeting_recording_url,
-                    meeting_requested
-                ) values (
-                    p_event_id,
-                    v_session->>'name',
-                    v_session->>'description',
-                    (v_session->>'starts_at')::timestamp at time zone (p_event->>'timezone'),
-                    (v_session->>'ends_at')::timestamp at time zone (p_event->>'timezone'),
-                    nullif(v_session->>'cfs_submission_id', '')::uuid,
-                    v_session->>'kind',
-                    v_session->>'location',
-                    case when v_session->'meeting_hosts' is not null then array(select jsonb_array_elements_text(v_session->'meeting_hosts')) else null end,
-                    case
-                        when (v_session->>'meeting_requested')::boolean = true then false
-                        else null
-                    end,
-                    v_session->>'meeting_join_url',
-                    v_session->>'meeting_provider_id',
-                    v_session->>'meeting_recording_url',
-                    (v_session->>'meeting_requested')::boolean
-                )
-                returning session_id into v_session_id;
-            end if;
-
-            v_processed_session_ids := array_append(v_processed_session_ids, v_session_id);
-
-            -- Insert speakers for this session
-            if v_session->'speakers' is not null then
-                for v_session_speaker in select jsonb_array_elements(v_session->'speakers')
-                loop
-                    -- Extract speaker details
-                    v_speaker_id := (v_session_speaker->>'user_id')::uuid;
-                    v_speaker_featured := (v_session_speaker->>'featured')::boolean;
-
-                    insert into session_speaker (session_id, user_id, featured)
-                    values (v_session_id, v_speaker_id, v_speaker_featured);
-                end loop;
-            end if;
-        end loop;
-
-        -- Delete sessions (and speakers) no longer present in payload
-        delete from session_speaker
-        where session_id in (
-            select s.session_id
-            from session s
-            where s.event_id = p_event_id
-            and not (s.session_id = any(v_processed_session_ids))
-        );
-
-        delete from session
-        where event_id = p_event_id
-        and not (session_id = any(v_processed_session_ids));
-    else
-        -- No sessions in payload - delete all existing sessions
-        delete from session_speaker
-        where session_id in (select session_id from session where event_id = p_event_id);
-
-        delete from session where event_id = p_event_id;
-    end if;
+    -- Synchronize event sessions and speakers
+    perform sync_event_sessions(p_event_id, p_event, v_event_before);
 end;
 $$ language plpgsql;
