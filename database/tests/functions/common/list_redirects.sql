@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(10);
+select plan(6);
 
 -- ============================================================================
 -- VARIABLES
@@ -29,6 +29,8 @@ select plan(10);
 \set duplicateGroupOnlyID '00000000-0000-0000-0000-000000000203'
 \set inactiveGroupID '00000000-0000-0000-0000-000000000204'
 \set rootGroupID '00000000-0000-0000-0000-000000000206'
+\set sharedPathGroupID '00000000-0000-0000-0000-000000000209'
+\set sharedPathEventID '00000000-0000-0000-0000-000000000107'
 
 -- ============================================================================
 -- SEED DATA
@@ -79,7 +81,8 @@ insert into "group" (
     (:'duplicateGroupID', :'duplicateCommunityID', :'duplicateGroupCategoryID', 'Duplicate Group', 'duplicate-group', 'A group sharing a legacy URL', 'https://legacy.example.org/group-duplicate'),
     (:'duplicateGroupOnlyID', :'duplicateCommunityID', :'duplicateGroupCategoryID', 'Duplicate Group Only', 'duplicate-group-only', 'Another group sharing the same legacy URL', 'https://legacy.example.org/group-duplicate'),
     (:'inactiveGroupID', :'inactiveCommunityID', :'inactiveGroupCategoryID', 'Inactive Group', 'inactive-group', 'A group under an inactive community', 'https://legacy.example.org/inactive-group'),
-    (:'rootGroupID', :'activeCommunityID', :'activeGroupCategoryID', 'Root Group', 'root-group', 'A group using the site root as legacy URL', 'https://legacy.example.org');
+    (:'rootGroupID', :'activeCommunityID', :'activeGroupCategoryID', 'Root Group', 'root-group', 'A group using the site root as legacy URL', 'https://legacy.example.org'),
+    (:'sharedPathGroupID', :'activeCommunityID', :'activeGroupCategoryID', 'Shared Path Group', 'shared-path-group', 'A group sharing a path with an event', 'https://legacy.example.org/shared-path');
 
 -- Events
 insert into event (
@@ -99,106 +102,78 @@ insert into event (
     (:'activeEventSlashID', :'activeEventCategoryID', 'virtual', :'activeGroupID', 'Active Event Slash', 'active-event-slash', 'A published event with a trailing-slash legacy URL', 'UTC', 'https://legacy.example.org/events/active-slash/', true),
     (:'activeEventNullLegacyID', :'activeEventCategoryID', 'virtual', :'activeGroupID', 'Active Event Null Legacy', 'active-event-null-legacy', 'A published event without a legacy URL', 'UTC', null, true),
     (:'duplicateEventID', :'duplicateEventCategoryID', 'virtual', :'duplicateGroupID', 'Duplicate Event', 'duplicate-event', 'A published event sharing a legacy URL', 'UTC', 'https://legacy.example.org/events/duplicate', true),
-    (:'duplicateEventOnlyID', :'duplicateEventCategoryID', 'virtual', :'duplicateGroupID', 'Duplicate Event Only', 'duplicate-event-only', 'Another published event sharing the same legacy URL', 'UTC', 'https://legacy.example.org/events/duplicate', true);
+    (:'duplicateEventOnlyID', :'duplicateEventCategoryID', 'virtual', :'duplicateGroupID', 'Duplicate Event Only', 'duplicate-event-only', 'Another published event sharing the same legacy URL', 'UTC', 'https://legacy.example.org/events/duplicate', true),
+    (:'sharedPathEventID', :'activeEventCategoryID', 'virtual', :'activeGroupID', 'Shared Path Event', 'shared-path-event', 'A published event sharing a path with a group', 'UTC', 'https://legacy.example.org/shared-path', true);
 
 -- ============================================================================
 -- TESTS
 -- ============================================================================
 
--- Should return group redirect target for a unique group match
+-- Should return all unique normalized redirect mappings ordered by legacy path
 select is(
-    get_redirect_target('group', '/groups/active')::jsonb,
-    '{
-        "community_name": "active-community",
-        "entity": "group",
-        "group_slug": "active-group",
-        "event_slug": null
-    }'::jsonb,
-    'Should return group redirect target for a unique group match'
+    (
+        select jsonb_agg(row_to_json(r) order by r.legacy_path)
+        from list_redirects() r
+    ),
+    '[
+        {"legacy_path": "/", "new_path": "/active-community/group/root-group"},
+        {"legacy_path": "/events/active", "new_path": "/active-community/group/active-group/event/active-event"},
+        {"legacy_path": "/events/active-slash", "new_path": "/active-community/group/active-group/event/active-event-slash"},
+        {"legacy_path": "/groups/active", "new_path": "/active-community/group/active-group"},
+        {"legacy_path": "/groups/active-slash", "new_path": "/active-community/group/active-group-slash"}
+    ]'::jsonb,
+    'Should return all unique normalized redirect mappings ordered by legacy path'
 );
 
--- Should return event redirect target for a unique event match
+-- Should return canonical relative paths without the base URL prefix
 select is(
-    get_redirect_target('event', '/events/active')::jsonb,
-    '{
-        "community_name": "active-community",
-        "entity": "event",
-        "group_slug": "active-group",
-        "event_slug": "active-event"
-    }'::jsonb,
-    'Should return event redirect target for a unique event match'
+    (
+        select new_path
+        from list_redirects()
+        where legacy_path = '/groups/active'
+    ),
+    '/active-community/group/active-group',
+    'Should return canonical relative paths without the base URL prefix'
 );
 
--- Should normalize trailing slashes for unique group matches
-select is(
-    get_redirect_target('group', '/groups/active-slash')::jsonb,
-    '{
-        "community_name": "active-community",
-        "entity": "group",
-        "group_slug": "active-group-slash",
-        "event_slug": null
-    }'::jsonb,
-    'Should normalize trailing slashes for unique group matches'
-);
-
--- Should normalize trailing slashes for unique event matches
-select is(
-    get_redirect_target('event', '/events/active-slash')::jsonb,
-    '{
-        "community_name": "active-community",
-        "entity": "event",
-        "group_slug": "active-group",
-        "event_slug": "active-event-slash"
-    }'::jsonb,
-    'Should normalize trailing slashes for unique event matches'
-);
-
--- Should return null for duplicate group legacy URL matches
+-- Should exclude duplicate group legacy paths
 select ok(
-    get_redirect_target('group', '/group-duplicate') is null,
-    'Should return null for duplicate group legacy URL matches'
+    not exists(
+        select 1
+        from list_redirects()
+        where legacy_path = '/group-duplicate'
+    ),
+    'Should exclude duplicate group legacy paths'
 );
 
--- Should return null for duplicate event legacy URL matches
+-- Should exclude duplicate event legacy paths
 select ok(
-    get_redirect_target('event', '/events/duplicate') is null,
-    'Should return null for duplicate event legacy URL matches'
+    not exists(
+        select 1
+        from list_redirects()
+        where legacy_path = '/events/duplicate'
+    ),
+    'Should exclude duplicate event legacy paths'
 );
 
--- Should match root legacy URLs as a slash path
-select is(
-    get_redirect_target('group', '/')::jsonb,
-    '{
-        "community_name": "active-community",
-        "entity": "group",
-        "group_slug": "root-group",
-        "event_slug": null
-    }'::jsonb,
-    'Should match root legacy URLs as a slash path'
-);
-
--- Should ignore null legacy URLs when matching root paths
-select is(
-    get_redirect_target('event', '/events/active')::jsonb,
-    '{
-        "community_name": "active-community",
-        "entity": "event",
-        "group_slug": "active-group",
-        "event_slug": "active-event"
-    }'::jsonb,
-    'Should ignore null legacy URLs when matching event paths'
-);
-
--- Should return null for inactive community matches
+-- Should exclude normalized paths shared by events and groups
 select ok(
-    get_redirect_target('group', '/inactive-group') is null,
-    'Should return null for inactive community matches'
+    not exists(
+        select 1
+        from list_redirects()
+        where legacy_path = '/shared-path'
+    ),
+    'Should exclude normalized paths shared by events and groups'
 );
 
--- Should return null for missing legacy URL matches
+-- Should exclude inactive and null legacy URL records
 select ok(
-    get_redirect_target('group', '/missing') is null,
-    'Should return null for missing legacy URL matches'
+    not exists(
+        select 1
+        from list_redirects()
+        where legacy_path in ('/inactive-group', '/events/active-event-null-legacy')
+    ),
+    'Should exclude inactive and null legacy URL records'
 );
 
 -- ============================================================================

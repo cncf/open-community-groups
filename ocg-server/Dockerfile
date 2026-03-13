@@ -6,6 +6,7 @@ RUN chmod +x /usr/local/bin/tailwindcss
 WORKDIR /ocg
 COPY Cargo.* ./
 COPY docs docs
+COPY ocg-redirector/Cargo.toml ocg-redirector/Cargo.toml
 COPY ocg-server ocg-server
 WORKDIR /ocg/ocg-server
 RUN cargo build --release
