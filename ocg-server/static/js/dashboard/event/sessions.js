@@ -590,6 +590,7 @@ export class SessionsSection extends LitWrapper {
       ${this.sessions.map((session, index) => {
         const automaticMeetingRequested =
           session.meeting_requested === true || session.meeting_requested === "true";
+        const isCfsLinkedSession = Boolean(session.cfs_submission_id);
         const meetingJoinUrl = automaticMeetingRequested ? "" : session.meeting_join_url || "";
         const meetingRecordingUrl = automaticMeetingRequested ? "" : session.meeting_recording_url || "";
         const meetingProviderId =
@@ -604,7 +605,11 @@ export class SessionsSection extends LitWrapper {
           <input type="hidden" name="sessions[${index}][starts_at]" value=${session.starts_at || ""} />
           <input type="hidden" name="sessions[${index}][ends_at]" value=${session.ends_at || ""} />
           <input type="hidden" name="sessions[${index}][location]" value=${session.location || ""} />
-          <input type="hidden" name="sessions[${index}][description]" value=${session.description || ""} />
+          <input
+            type="hidden"
+            name="sessions[${index}][description]"
+            value=${isCfsLinkedSession ? "" : session.description || ""}
+          />
           <input
             type="hidden"
             name="sessions[${index}][cfs_submission_id]"
@@ -622,20 +627,22 @@ export class SessionsSection extends LitWrapper {
             value=${session.meeting_requested || false}
           />
           <input type="hidden" name="sessions[${index}][meeting_provider_id]" value=${meetingProviderId} />
-          ${(session.speakers || []).map(
-            (speaker, speakerIndex) => html`
-              <input
-                type="hidden"
-                name="sessions[${index}][speakers][${speakerIndex}][user_id]"
-                value=${speaker.user_id || ""}
-              />
-              <input
-                type="hidden"
-                name="sessions[${index}][speakers][${speakerIndex}][featured]"
-                value=${speaker.featured || false}
-              />
-            `,
-          )}
+          ${isCfsLinkedSession
+            ? ""
+            : (session.speakers || []).map(
+                (speaker, speakerIndex) => html`
+                  <input
+                    type="hidden"
+                    name="sessions[${index}][speakers][${speakerIndex}][user_id]"
+                    value=${speaker.user_id || ""}
+                  />
+                  <input
+                    type="hidden"
+                    name="sessions[${index}][speakers][${speakerIndex}][featured]"
+                    value=${speaker.featured || false}
+                  />
+                `,
+              )}
         `;
       })}
     `;
@@ -1295,7 +1302,7 @@ class SessionItem extends LitWrapper {
     if (newMode === "cfs") {
       this.data = { ...this.data, description: "", speakers: [] };
     } else {
-      this.data = { ...this.data, cfs_submission_id: "" };
+      this.data = { ...this.data, cfs_submission_id: "", speakers: [] };
     }
 
     this.isObjectEmpty = isObjectEmpty(this.data);
