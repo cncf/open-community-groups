@@ -253,12 +253,13 @@ export class Map {
       });
 
       if (item.popover_html) {
-        const tooltipContent = `<div class="flex flex-1 flex-row items-center min-w-[370px]">${item.popover_html}</div>`;
+        const tooltipContent = `<div class="explore-popover-card-shell">${item.popover_html}</div>`;
         const tooltipOptions = {
+          className: "explore-map-tooltip",
           direction: "top",
           permanent: false,
-          sticky: true,
-          offset: [0, 0],
+          sticky: false,
+          offset: [0, -18],
           opacity: 1,
         };
 

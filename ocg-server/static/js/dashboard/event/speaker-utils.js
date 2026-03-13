@@ -1,4 +1,29 @@
 /**
+ * Normalizes a single speaker entry to a flat shape.
+ * @param {any} speaker
+ * @returns {Object|null}
+ */
+const normalizeSpeaker = (speaker) => {
+  if (!speaker || typeof speaker !== "object") {
+    return null;
+  }
+
+  const normalized = {
+    ...(speaker.user && typeof speaker.user === "object" ? speaker.user : {}),
+    ...speaker,
+    featured: !!speaker.featured,
+  };
+
+  delete normalized.user;
+
+  if (!normalized.user_id && !normalized.username) {
+    return null;
+  }
+
+  return normalized;
+};
+
+/**
  * Normalizes speakers list ensuring array shape and boolean featured flag.
  * Accepts stringified JSON or array-like values.
  * @param {any} value
@@ -14,10 +39,7 @@ export const normalizeSpeakers = (value) => {
     }
   }
   if (!Array.isArray(list)) return [];
-  return list.map((speaker) => ({
-    ...speaker,
-    featured: !!speaker.featured,
-  }));
+  return list.map((speaker) => normalizeSpeaker(speaker)).filter(Boolean);
 };
 
 /**
@@ -25,7 +47,10 @@ export const normalizeSpeakers = (value) => {
  * @param {Object} item
  * @returns {string}
  */
-export const speakerKey = (item) => String(item?.user_id ?? item?.username ?? "");
+export const speakerKey = (item) => {
+  const normalized = normalizeSpeaker(item);
+  return String(normalized?.user_id ?? normalized?.username ?? "");
+};
 
 /**
  * Checks if speakers list already contains the provided user.
