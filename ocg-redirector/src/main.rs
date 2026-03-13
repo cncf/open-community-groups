@@ -6,7 +6,7 @@
 #![warn(clippy::all, clippy::pedantic)]
 #![allow(clippy::struct_field_names)]
 
-use std::{path::PathBuf, sync::Arc};
+use std::path::PathBuf;
 
 use anyhow::{Context, Result};
 use clap::Parser;
@@ -63,10 +63,11 @@ async fn main() -> Result<()> {
     builder.set_verify(SslVerifyMode::NONE);
     let connector = MakeTlsConnector::new(builder.build());
     let pool = cfg.db.create_pool(Some(Runtime::Tokio1), connector)?;
-    let db = Arc::new(PgDB::new(pool));
+    let db = PgDB::new(pool);
 
     // Setup and launch the HTTP server
-    let router = router::setup(db, &cfg.server).await?;
+    let redirects = db.load_redirects().await?;
+    let router = router::setup(redirects, &cfg.server);
     let listener = TcpListener::bind(&cfg.server.addr).await?;
     info!("server started");
     info!(%cfg.server.addr, "listening");
@@ -75,7 +76,7 @@ async fn main() -> Result<()> {
         .await
     {
         error!(?err, "server error");
-        return Err(err.into());
+        return Err(anyhow::Error::new(err));
     }
     info!("server stopped");
 

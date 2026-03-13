@@ -3208,16 +3208,13 @@ name = "ocg-redirector"
 version = "0.7.0"
 dependencies = [
  "anyhow",
- "async-trait",
  "axum",
  "clap",
  "deadpool-postgres",
  "figment",
- "mockall",
  "openssl",
  "postgres-openssl",
  "serde",
- "strum",
  "tokio",
  "tokio-postgres",
  "tower",
