@@ -119,6 +119,7 @@
                   {# End share button -#}
 
                   {# Attend button section -#}
+                  {% let attendance_instance = "mobile" -%}
                   {% include "event/attend_button.html" %}
                   {# End attend button section -#}
                 </div>
@@ -150,6 +151,7 @@
                 {# End share button -#}
 
                 {# Attend button section -#}
+                {% let attendance_instance = "desktop" -%}
                 {% include "event/attend_button.html" %}
                 {# End attend button section -#}
               </div>

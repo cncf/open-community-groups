@@ -1,7 +1,16 @@
 import { showConfirmAlert, showInfoAlert, handleHtmxResponse } from "/static/js/common/alerts.js";
 import { isSuccessfulXHRStatus } from "/static/js/common/common.js";
 
-const ATTENDANCE_CONTAINER_SELECTOR = "#attendance-container";
+const ATTENDANCE_CONTAINER_SELECTOR = "[data-attendance-container]";
+
+/**
+ * Finds an attendance control inside a container.
+ * @param {HTMLElement|null} container - Attendance container element
+ * @param {string} role - Attendance control role
+ * @returns {HTMLElement|null} Matching attendance control
+ */
+const getAttendanceControl = (container, role) =>
+  container?.querySelector(`[data-attendance-role="${role}"]`) ?? null;
 
 /**
  * Returns all attendance containers within a root node.
@@ -158,8 +167,8 @@ const initializeAttendanceContainer = (container) => {
   }
 
   const meta = getAttendanceMeta(container);
-  const attendButton = container.querySelector("#attend-btn");
-  const leaveButton = container.querySelector("#leave-btn");
+  const attendButton = getAttendanceControl(container, "attend-btn");
+  const leaveButton = getAttendanceControl(container, "leave-btn");
 
   updateButtonStateForEventDate(attendButton, meta);
   applySoldOutState(attendButton, meta);
@@ -174,7 +183,7 @@ const initializeAttendanceContainer = (container) => {
  */
 const handleAttendanceCheckResponse = (event) => {
   const target = event.target;
-  if (!(target instanceof HTMLElement) || target.id !== "attendance-checker") {
+  if (!(target instanceof HTMLElement) || target.dataset.attendanceRole !== "attendance-checker") {
     return;
   }
 
@@ -183,10 +192,10 @@ const handleAttendanceCheckResponse = (event) => {
     return;
   }
 
-  const loadingButton = container.querySelector("#loading-btn");
-  const signinButton = container.querySelector("#signin-btn");
-  const attendButton = container.querySelector("#attend-btn");
-  const leaveButton = container.querySelector("#leave-btn");
+  const loadingButton = getAttendanceControl(container, "loading-btn");
+  const signinButton = getAttendanceControl(container, "signin-btn");
+  const attendButton = getAttendanceControl(container, "attend-btn");
+  const leaveButton = getAttendanceControl(container, "leave-btn");
 
   if (!loadingButton || !signinButton || !attendButton || !leaveButton) {
     return;
@@ -246,12 +255,12 @@ const handleAttendanceCheckResponse = (event) => {
  * @param {HTMLElement} target - Event target
  */
 const handleAttendBeforeRequest = (target) => {
-  if (target.id !== "attend-btn") {
+  if (target.dataset.attendanceRole !== "attend-btn") {
     return;
   }
 
   const container = target.closest(ATTENDANCE_CONTAINER_SELECTOR);
-  const loadingButton = container?.querySelector("#loading-btn");
+  const loadingButton = getAttendanceControl(container, "loading-btn");
   if (!loadingButton) {
     return;
   }
@@ -265,12 +274,12 @@ const handleAttendBeforeRequest = (target) => {
  * @param {HTMLElement} target - Event target
  */
 const handleLeaveBeforeRequest = (target) => {
-  if (target.id !== "leave-btn") {
+  if (target.dataset.attendanceRole !== "leave-btn") {
     return;
   }
 
   const container = target.closest(ATTENDANCE_CONTAINER_SELECTOR);
-  const loadingButton = container?.querySelector("#loading-btn");
+  const loadingButton = getAttendanceControl(container, "loading-btn");
   if (!loadingButton) {
     return;
   }
@@ -285,7 +294,7 @@ const handleLeaveBeforeRequest = (target) => {
  */
 const handleAttendAfterRequest = (event) => {
   const target = event.target;
-  if (!(target instanceof HTMLElement) || target.id !== "attend-btn") {
+  if (!(target instanceof HTMLElement) || target.dataset.attendanceRole !== "attend-btn") {
     return;
   }
 
@@ -294,8 +303,8 @@ const handleAttendAfterRequest = (event) => {
     return;
   }
 
-  const loadingButton = container.querySelector("#loading-btn");
-  const attendButton = container.querySelector("#attend-btn");
+  const loadingButton = getAttendanceControl(container, "loading-btn");
+  const attendButton = getAttendanceControl(container, "attend-btn");
   if (!loadingButton || !attendButton) {
     return;
   }
@@ -321,7 +330,7 @@ const handleAttendAfterRequest = (event) => {
  */
 const handleLeaveAfterRequest = (event) => {
   const target = event.target;
-  if (!(target instanceof HTMLElement) || target.id !== "leave-btn") {
+  if (!(target instanceof HTMLElement) || target.dataset.attendanceRole !== "leave-btn") {
     return;
   }
 
@@ -330,8 +339,8 @@ const handleLeaveAfterRequest = (event) => {
     return;
   }
 
-  const loadingButton = container.querySelector("#loading-btn");
-  const leaveButton = container.querySelector("#leave-btn");
+  const loadingButton = getAttendanceControl(container, "loading-btn");
+  const leaveButton = getAttendanceControl(container, "leave-btn");
   if (!loadingButton || !leaveButton) {
     return;
   }
@@ -393,7 +402,7 @@ const handleAttendanceClick = (event) => {
     return;
   }
 
-  const signinButton = target.closest("#signin-btn");
+  const signinButton = target.closest('[data-attendance-role="signin-btn"]');
   if (signinButton) {
     const path = signinButton.dataset.path || window.location.pathname;
     showInfoAlert(
@@ -403,9 +412,9 @@ const handleAttendanceClick = (event) => {
     return;
   }
 
-  const leaveButton = target.closest("#leave-btn");
+  const leaveButton = target.closest('[data-attendance-role="leave-btn"]');
   if (leaveButton) {
-    showConfirmAlert("Are you sure you want to cancel your attendance?", "leave-btn", "Yes");
+    showConfirmAlert("Are you sure you want to cancel your attendance?", leaveButton.id, "Yes");
   }
 };
 
