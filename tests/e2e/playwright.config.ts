@@ -4,6 +4,7 @@ import { defineConfig, devices } from "@playwright/test";
 const baseURL = process.env.OCG_E2E_BASE_URL || "http://localhost:9000";
 const shouldStartServer = process.env.OCG_E2E_START_SERVER === "true";
 const webServerCommand = process.env.OCG_E2E_SERVER_CMD;
+const webServerTimeout = Number(process.env.OCG_E2E_SERVER_TIMEOUT || 300_000);
 const reportDir = path.resolve(__dirname, "../../playwright-report");
 const resultsDir = path.resolve(__dirname, "../../test-results");
 
@@ -13,7 +14,7 @@ const webServer =
         command: webServerCommand,
         url: baseURL,
         reuseExistingServer: true,
-        timeout: 120_000,
+        timeout: webServerTimeout,
       }
     : undefined;
 
