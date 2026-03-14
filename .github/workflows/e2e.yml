@@ -142,12 +142,18 @@ jobs:
       - name: Build e2e server binary
         run: cargo build --bin ocg-server
 
+      - name: Start server and wait for it to be ready
+        uses: JarvusInnovations/background-action@v1
+        with:
+          run: ${{ github.workspace }}/target/debug/ocg-server -c /tmp/ocg-e2e.yml &
+          wait-on: http://127.0.0.1:9000/health-check
+          tail: true
+          log-output: "stdout,stderr"
+          log-output-if: true
+
       - name: Run Playwright tests
         env:
           OCG_E2E_BASE_URL: http://127.0.0.1:9000
-          OCG_E2E_START_SERVER: "true"
-          OCG_E2E_SERVER_CMD: ./target/debug/ocg-server -c /tmp/ocg-e2e.yml
-          OCG_E2E_SERVER_TIMEOUT: "300000"
         run: npm run test:e2e
 
       - name: Upload Playwright artifacts
