@@ -186,16 +186,14 @@ values (
 -- EVENT CATEGORIES (2 - one per community)
 -- ============================================================================
 
-insert into event_category (event_category_id, name, slug, community_id)
+insert into event_category (event_category_id, name, community_id)
 values (
     '33333333-3333-3333-3333-333333333331',
     'General',
-    'general',
     '11111111-1111-1111-1111-111111111111'
 ), (
     '33333333-3333-3333-3333-333333333332',
     'Meetups',
-    'meetups',
     '11111111-1111-1111-1111-111111111112'
 );
 
@@ -654,27 +652,30 @@ insert into "user" (
 -- ============================================================================
 
 -- Admin 1 is an accepted admin of community 1
-insert into community_team (community_id, user_id, accepted)
+insert into community_team (community_id, user_id, accepted, role)
 values (
     '11111111-1111-1111-1111-111111111111',
     '77777777-7777-7777-7777-777777777701',
-    true
+    true,
+    'admin'
 );
 
 -- Admin 2 is an accepted admin of community 2
-insert into community_team (community_id, user_id, accepted)
+insert into community_team (community_id, user_id, accepted, role)
 values (
     '11111111-1111-1111-1111-111111111112',
     '77777777-7777-7777-7777-777777777702',
-    true
+    true,
+    'admin'
 );
 
 -- Pending 1 has a pending community 1 team invitation
-insert into community_team (community_id, user_id, accepted)
+insert into community_team (community_id, user_id, accepted, role)
 values (
     '11111111-1111-1111-1111-111111111111',
     '77777777-7777-7777-7777-777777777707',
-    false
+    false,
+    'admin'
 );
 
 -- ============================================================================
@@ -687,7 +688,7 @@ values (
     '44444444-4444-4444-4444-444444444441',
     '77777777-7777-7777-7777-777777777703',
     true,
-    'organizer'
+    'admin'
 );
 
 -- Organizer 2 is an accepted organizer of Delta group
@@ -696,7 +697,7 @@ values (
     '44444444-4444-4444-4444-444444444444',
     '77777777-7777-7777-7777-777777777704',
     true,
-    'organizer'
+    'admin'
 );
 
 -- Pending 2 has a pending Beta group team invitation
@@ -705,7 +706,7 @@ values (
     '44444444-4444-4444-4444-444444444442',
     '77777777-7777-7777-7777-777777777708',
     false,
-    'organizer'
+    'admin'
 );
 
 -- ============================================================================
