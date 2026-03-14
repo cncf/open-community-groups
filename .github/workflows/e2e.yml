@@ -146,7 +146,7 @@ jobs:
         env:
           OCG_E2E_BASE_URL: http://127.0.0.1:9000
           OCG_E2E_START_SERVER: "true"
-          OCG_E2E_SERVER_CMD: target/debug/ocg-server -c /tmp/ocg-e2e.yml
+          OCG_E2E_SERVER_CMD: ./target/debug/ocg-server -c /tmp/ocg-e2e.yml
           OCG_E2E_SERVER_TIMEOUT: "300000"
         run: npm run test:e2e
 

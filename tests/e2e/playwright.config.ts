@@ -5,6 +5,7 @@ const baseURL = process.env.OCG_E2E_BASE_URL || "http://localhost:9000";
 const shouldStartServer = process.env.OCG_E2E_START_SERVER === "true";
 const webServerCommand = process.env.OCG_E2E_SERVER_CMD;
 const webServerTimeout = Number(process.env.OCG_E2E_SERVER_TIMEOUT || 300_000);
+const webServerCwd = path.resolve(__dirname, "../..");
 const reportDir = path.resolve(__dirname, "../../playwright-report");
 const resultsDir = path.resolve(__dirname, "../../test-results");
 
@@ -12,6 +13,7 @@ const webServer =
   shouldStartServer && webServerCommand
     ? {
         command: webServerCommand,
+        cwd: webServerCwd,
         url: baseURL,
         reuseExistingServer: true,
         timeout: webServerTimeout,
