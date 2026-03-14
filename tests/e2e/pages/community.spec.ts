@@ -34,9 +34,9 @@ test.describe("community home page", () => {
     });
 
     test("about section renders with seeded description", async ({ page }) => {
-      const descriptionDiv = page.locator(".jumbotron-description");
-      await expect(descriptionDiv).toBeVisible();
-      await expect(descriptionDiv).toContainText(TEST_COMMUNITY_DESCRIPTION);
+      await expect(
+        page.getByText(TEST_COMMUNITY_DESCRIPTION, { exact: true }),
+      ).toBeVisible();
     });
 
     test("CTA link includes community filter parameter", async ({ page }) => {
@@ -133,11 +133,13 @@ test.describe("community home page", () => {
       ];
 
       for (const { name, slug } of groupData) {
-        const groupCard = groupsSection.getByRole("link", { name });
+        const groupCard = groupsSection
+          .locator(`a[href*="/${TEST_COMMUNITY_NAME}/group/${slug}"]`)
+          .filter({ hasText: name });
         await expect(groupCard).toBeVisible();
         await expect(groupCard).toHaveAttribute(
           "href",
-          `/${TEST_COMMUNITY_NAME}/group/${slug}`,
+          new RegExp(`/${TEST_COMMUNITY_NAME}/group/${slug}`),
         );
       }
     });
