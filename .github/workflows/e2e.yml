@@ -12,6 +12,16 @@ on:
 jobs:
   e2e-tests:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - suite: smoke
+            command: yarn test:e2e:smoke
+            artifact_name: playwright-artifacts-smoke
+          - suite: deep
+            command: yarn test:e2e:deep
+            artifact_name: playwright-artifacts-deep
     permissions:
       contents: read
     services:
@@ -55,9 +65,13 @@ jobs:
         uses: actions/setup-node@v5
         with:
           node-version: "22"
+          cache: yarn
 
-      - name: Install npm dependencies
-        run: npm install
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install yarn dependencies
+        run: yarn install --frozen-lockfile
 
       - name: Install Playwright browsers
         run: npx playwright install --with-deps
@@ -156,16 +170,16 @@ jobs:
           log-output: "stdout,stderr"
           log-output-if: true
 
-      - name: Run Playwright tests
+      - name: Run Playwright ${{ matrix.suite }} tests
         env:
           OCG_E2E_BASE_URL: http://127.0.0.1:9000
-        run: npm run test:e2e
+        run: ${{ matrix.command }}
 
       - name: Upload Playwright artifacts
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-artifacts
+          name: ${{ matrix.artifact_name }}
           path: |
             playwright-report/
             test-results/

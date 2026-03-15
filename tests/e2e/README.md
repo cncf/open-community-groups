@@ -42,7 +42,7 @@ This command:
 - Sets up the e2e database
 - Generates temporary server configuration
 - Builds and starts the server
-- Runs all Playwright tests across all browsers
+- Runs smoke coverage across all browsers and deeper coverage on Chromium
 - Reports results
 
 ### Option 2: Manual (Two Terminals)
@@ -73,6 +73,12 @@ just e2e-tests-headed
 yarn test:e2e:chromium
 yarn test:e2e:firefox
 yarn test:e2e:webkit
+
+# Run only the fast cross-browser smoke suite
+yarn test:e2e:smoke
+
+# Run only the deeper Chromium suite
+yarn test:e2e:deep
 ```
 
 ## Test Structure
@@ -108,6 +114,13 @@ Test data is defined in `/database/tests/data/e2e.sql` and includes:
   - Both scheduled for future dates to avoid timing issues
 
 ## Test Coverage
+
+### Suite Split
+
+- `smoke`: `public/public.spec.ts`, `auth/oauth.spec.ts`, and `dashboard/access-control.spec.ts`
+- `deep`: all remaining E2E specs, executed on Chromium only
+- `yarn test:e2e`: runs both suites together
+- `yarn test:e2e:firefox` and `yarn test:e2e:webkit` run the smoke suite only
 
 ### Current Tests (Public Pages)
 

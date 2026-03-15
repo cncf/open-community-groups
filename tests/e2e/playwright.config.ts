@@ -9,6 +9,11 @@ const webServerTimeout = Number(process.env.OCG_E2E_SERVER_TIMEOUT || 300_000);
 const webServerCwd = path.resolve(__dirname, "../..");
 const reportDir = path.resolve(__dirname, "../../playwright-report");
 const resultsDir = path.resolve(__dirname, "../../test-results");
+const smokeSpecPaths = [
+  "auth/oauth.spec.ts",
+  "dashboard/access-control.spec.ts",
+  "public/public.spec.ts",
+];
 
 const webServer =
   shouldStartServer && webServerCommand
@@ -36,16 +41,24 @@ export default defineConfig({
   },
   projects: [
     {
-      name: "chromium",
+      name: "chromium-smoke",
+      testMatch: smokeSpecPaths,
       use: { ...devices["Desktop Chrome"] },
     },
     {
-      name: "firefox",
+      name: "firefox-smoke",
+      testMatch: smokeSpecPaths,
       use: { ...devices["Desktop Firefox"] },
     },
     {
-      name: "webkit",
+      name: "webkit-smoke",
+      testMatch: smokeSpecPaths,
       use: { ...devices["Desktop Safari"] },
+    },
+    {
+      name: "chromium-deep",
+      testIgnore: smokeSpecPaths,
+      use: { ...devices["Desktop Chrome"] },
     },
   ],
   webServer,
