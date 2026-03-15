@@ -132,6 +132,60 @@ test.describe("user dashboard", () => {
     await expect(invitationRow.getByTitle("Decline invitation")).toBeVisible();
   });
 
+  test("accepting a co-speaker invitation updates both users' proposal views", async ({
+    member1Page,
+    member2Page,
+  }) => {
+    await openUserDashboardPath(
+      "/dashboard/user?tab=session-proposals",
+      member2Page,
+    );
+
+    const member2Dashboard = member2Page.locator("#dashboard-content");
+    const invitationRow = member2Dashboard.locator("tr", {
+      hasText: "Collaborative Roadmaps",
+    });
+
+    if ((await invitationRow.getByTitle("Accept invitation").count()) > 0) {
+      await expect(member2Dashboard.locator("[role='alert']")).toContainText(
+        "co-speaker invitation waiting for your response",
+      );
+      await expect(invitationRow).toContainText("E2E Member One");
+
+      await Promise.all([
+        member2Page.waitForResponse(
+          (response) =>
+            response.request().method() === "PUT" &&
+            response.ok() &&
+            response
+              .url()
+              .includes("/co-speaker-invitation/accept"),
+        ),
+        invitationRow.getByTitle("Accept invitation").click(),
+      ]);
+    }
+
+    await member2Page.reload();
+    await expect(member2Dashboard.locator("[role='alert']")).toHaveCount(0);
+    await expect(
+      member2Dashboard.locator("tr", { hasText: "Collaborative Roadmaps" }),
+    ).toHaveCount(0);
+
+    await openUserDashboardPath(
+      "/dashboard/user?tab=session-proposals",
+      member1Page,
+    );
+
+    const member1Dashboard = member1Page.locator("#dashboard-content");
+    const proposalRow = member1Dashboard.locator("tr", {
+      hasText: "Collaborative Roadmaps",
+    });
+
+    await expect(proposalRow).toContainText("E2E Member Two");
+    await expect(proposalRow).toContainText("Ready for submission");
+    await expect(proposalRow).not.toContainText("Awaiting co-speaker response");
+  });
+
   test("submissions page shows review statuses and available actions", async ({
     member1Page,
   }) => {
