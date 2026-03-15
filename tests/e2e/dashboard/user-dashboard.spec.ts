@@ -1,25 +1,23 @@
-import { expect, test } from "@playwright/test";
+import type { Page } from "@playwright/test";
+
+import { expect, test } from "../fixtures";
 
 import {
   TEST_EVENT_NAMES,
-  TEST_USER_CREDENTIALS,
-  logInWithSeededUser,
   navigateToPath,
 } from "../utils";
 
-const openUserDashboardPath = async (
-  path: string,
-  page: Parameters<typeof logInWithSeededUser>[0],
-) => {
+const openUserDashboardPath = async (path: string, page: Page) => {
   await navigateToPath(page, path);
 };
 
 test.describe("user dashboard", () => {
-  test("invitations page shows pending community and group roles", async ({ page }) => {
-    await logInWithSeededUser(page, TEST_USER_CREDENTIALS.pending1);
-    await openUserDashboardPath("/dashboard/user?tab=invitations", page);
+  test("invitations page shows pending community and group roles", async ({
+    pending1Page,
+  }) => {
+    await openUserDashboardPath("/dashboard/user?tab=invitations", pending1Page);
 
-    const dashboardContent = page.locator("#dashboard-content");
+    const dashboardContent = pending1Page.locator("#dashboard-content");
     await expect(
       dashboardContent.getByText("Community Invitations", { exact: true }),
     ).toBeVisible();
@@ -42,11 +40,12 @@ test.describe("user dashboard", () => {
     await expect(groupRow.getByTitle("Reject")).toBeVisible();
   });
 
-  test("my events page lists only upcoming published participation", async ({ page }) => {
-    await logInWithSeededUser(page, TEST_USER_CREDENTIALS.member1);
-    await openUserDashboardPath("/dashboard/user?tab=events", page);
+  test("my events page lists only upcoming published participation", async ({
+    member1Page,
+  }) => {
+    await openUserDashboardPath("/dashboard/user?tab=events", member1Page);
 
-    const dashboardContent = page.locator("#dashboard-content");
+    const dashboardContent = member1Page.locator("#dashboard-content");
     await expect(
       dashboardContent.getByText("My Events", { exact: true }),
     ).toBeVisible();
@@ -61,11 +60,15 @@ test.describe("user dashboard", () => {
     await expect(dashboardContent.getByText(TEST_EVENT_NAMES.beta[0])).toHaveCount(0);
   });
 
-  test("session proposals page shows seeded proposal states and locks", async ({ page }) => {
-    await logInWithSeededUser(page, TEST_USER_CREDENTIALS.member1);
-    await openUserDashboardPath("/dashboard/user?tab=session-proposals", page);
+  test("session proposals page shows seeded proposal states and locks", async ({
+    member1Page,
+  }) => {
+    await openUserDashboardPath(
+      "/dashboard/user?tab=session-proposals",
+      member1Page,
+    );
 
-    const dashboardContent = page.locator("#dashboard-content");
+    const dashboardContent = member1Page.locator("#dashboard-content");
     await expect(
       dashboardContent.getByText("Session proposals", { exact: true }),
     ).toBeVisible();
@@ -107,12 +110,14 @@ test.describe("user dashboard", () => {
   });
 
   test("pending co-speaker invitations are surfaced to the invited user", async ({
-    page,
+    member2Page,
   }) => {
-    await logInWithSeededUser(page, TEST_USER_CREDENTIALS.member2);
-    await openUserDashboardPath("/dashboard/user?tab=session-proposals", page);
+    await openUserDashboardPath(
+      "/dashboard/user?tab=session-proposals",
+      member2Page,
+    );
 
-    const dashboardContent = page.locator("#dashboard-content");
+    const dashboardContent = member2Page.locator("#dashboard-content");
 
     await expect(dashboardContent.locator("[role='alert']")).toContainText(
       "co-speaker invitation waiting for your response",
@@ -127,11 +132,12 @@ test.describe("user dashboard", () => {
     await expect(invitationRow.getByTitle("Decline invitation")).toBeVisible();
   });
 
-  test("submissions page shows review statuses and available actions", async ({ page }) => {
-    await logInWithSeededUser(page, TEST_USER_CREDENTIALS.member1);
-    await openUserDashboardPath("/dashboard/user?tab=submissions", page);
+  test("submissions page shows review statuses and available actions", async ({
+    member1Page,
+  }) => {
+    await openUserDashboardPath("/dashboard/user?tab=submissions", member1Page);
 
-    const dashboardContent = page.locator("#dashboard-content");
+    const dashboardContent = member1Page.locator("#dashboard-content");
     await expect(
       dashboardContent.getByText("Submissions", { exact: true }),
     ).toBeVisible();

@@ -1,11 +1,7 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "../fixtures";
 
 import {
-  TEST_COMMUNITY_IDS,
-  TEST_USER_CREDENTIALS,
-  logInWithSeededUser,
   navigateToPath,
-  selectCommunityContext,
 } from "../utils";
 
 const taxonomyCases = [
@@ -34,13 +30,11 @@ const taxonomyCases = [
 
 test.describe("community dashboard", () => {
   test("community team page shows seeded roles and final-admin protection", async ({
-    page,
+    adminCommunityPage,
   }) => {
-    await logInWithSeededUser(page, TEST_USER_CREDENTIALS.admin1);
-    await selectCommunityContext(page, TEST_COMMUNITY_IDS.community1);
-    await navigateToPath(page, "/dashboard/community?tab=team");
+    await navigateToPath(adminCommunityPage, "/dashboard/community?tab=team");
 
-    const dashboardContent = page.locator("#dashboard-content");
+    const dashboardContent = adminCommunityPage.locator("#dashboard-content");
     await expect(
       dashboardContent.getByText("Community Team", { exact: true }),
     ).toBeVisible();
@@ -73,13 +67,11 @@ test.describe("community dashboard", () => {
 
   for (const taxonomyCase of taxonomyCases) {
     test(`admin can distinguish used and unused entries on ${taxonomyCase.heading}`, async ({
-      page,
+      adminCommunityPage,
     }) => {
-      await logInWithSeededUser(page, TEST_USER_CREDENTIALS.admin1);
-      await selectCommunityContext(page, TEST_COMMUNITY_IDS.community1);
-      await navigateToPath(page, taxonomyCase.path);
+      await navigateToPath(adminCommunityPage, taxonomyCase.path);
 
-      const dashboardContent = page.locator("#dashboard-content");
+      const dashboardContent = adminCommunityPage.locator("#dashboard-content");
       await expect(
         dashboardContent.getByText(taxonomyCase.heading, { exact: true }),
       ).toBeVisible();
@@ -92,12 +84,12 @@ test.describe("community dashboard", () => {
       ).toBeEnabled();
     });
 
-    test(`viewer sees read-only controls on ${taxonomyCase.heading}`, async ({ page }) => {
-      await logInWithSeededUser(page, TEST_USER_CREDENTIALS.communityViewer1);
-      await selectCommunityContext(page, TEST_COMMUNITY_IDS.community1);
-      await navigateToPath(page, taxonomyCase.path);
+    test(`viewer sees read-only controls on ${taxonomyCase.heading}`, async ({
+      communityViewerPage,
+    }) => {
+      await navigateToPath(communityViewerPage, taxonomyCase.path);
 
-      const dashboardContent = page.locator("#dashboard-content");
+      const dashboardContent = communityViewerPage.locator("#dashboard-content");
       await expect(
         dashboardContent.getByText(taxonomyCase.heading, { exact: true }),
       ).toBeVisible();

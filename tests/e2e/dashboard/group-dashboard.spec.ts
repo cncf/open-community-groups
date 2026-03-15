@@ -1,29 +1,16 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "../fixtures";
 
-import {
-  TEST_COMMUNITY_IDS,
-  TEST_GROUP_IDS,
-  TEST_USER_CREDENTIALS,
-  logInWithSeededUser,
-  navigateToPath,
-  selectGroupContext,
-} from "../utils";
+import { navigateToPath } from "../utils";
 
 const CFS_EVENT_ID = "55555555-5555-5555-5555-555555555519";
 
 test.describe("group dashboard", () => {
   test("group team page shows seeded roles and last-admin protection", async ({
-    page,
+    organizerGroupPage,
   }) => {
-    await logInWithSeededUser(page, TEST_USER_CREDENTIALS.organizer1);
-    await selectGroupContext(
-      page,
-      TEST_COMMUNITY_IDS.community1,
-      TEST_GROUP_IDS.community1.alpha,
-    );
-    await navigateToPath(page, "/dashboard/group?tab=team");
+    await navigateToPath(organizerGroupPage, "/dashboard/group?tab=team");
 
-    const dashboardContent = page.locator("#dashboard-content");
+    const dashboardContent = organizerGroupPage.locator("#dashboard-content");
     await expect(
       dashboardContent.getByText("Group Team", { exact: true }),
     ).toBeVisible();
@@ -57,34 +44,33 @@ test.describe("group dashboard", () => {
   });
 
   test("events manager can review CFS submissions with labels and ratings", async ({
-    page,
+    eventsManagerGroupPage,
   }) => {
-    await logInWithSeededUser(page, TEST_USER_CREDENTIALS.eventsManager1);
-    await selectGroupContext(
-      page,
-      TEST_COMMUNITY_IDS.community1,
-      TEST_GROUP_IDS.community1.alpha,
+    await navigateToPath(
+      eventsManagerGroupPage,
+      `/dashboard/group/events/${CFS_EVENT_ID}/submissions`,
     );
-    await navigateToPath(page, `/dashboard/group/events/${CFS_EVENT_ID}/submissions`);
 
-    await expect(page.getByText("Submissions", { exact: true })).toBeVisible();
-    const sortBy = page.getByLabel("Sort by");
+    await expect(
+      eventsManagerGroupPage.getByText("Submissions", { exact: true }),
+    ).toBeVisible();
+    const sortBy = eventsManagerGroupPage.getByLabel("Sort by");
     await expect(sortBy).toBeVisible();
     await expect(sortBy).toContainText("Stars (high to low)");
     await expect(sortBy).toContainText("Ratings count (high to low)");
 
-    const notReviewedRow = page.locator("tr", {
+    const notReviewedRow = eventsManagerGroupPage.locator("tr", {
       hasText: "Platform Reliability Patterns",
     });
     await expect(notReviewedRow).toContainText("Platform");
 
-    const informationRequestedRow = page.locator("tr", {
+    const informationRequestedRow = eventsManagerGroupPage.locator("tr", {
       hasText: "Observability in Practice",
     });
     await expect(informationRequestedRow).toContainText("Workshop");
     await expect(informationRequestedRow).toContainText("1 rating");
 
-    const approvedRow = page.locator("tr", {
+    const approvedRow = eventsManagerGroupPage.locator("tr", {
       hasText: "Scaling Community Workshops",
     });
     await expect(approvedRow).toContainText("Platform");
@@ -94,24 +80,22 @@ test.describe("group dashboard", () => {
     await expect(approvedRow.getByTitle("Review submission")).toBeEnabled();
   });
 
-  test("viewer sees read-only event and submission controls", async ({ page }) => {
-    await logInWithSeededUser(page, TEST_USER_CREDENTIALS.groupViewer1);
-    await selectGroupContext(
-      page,
-      TEST_COMMUNITY_IDS.community1,
-      TEST_GROUP_IDS.community1.alpha,
-    );
-    await navigateToPath(page, "/dashboard/group?tab=events");
+  test("viewer sees read-only event and submission controls", async ({
+    groupViewerPage,
+  }) => {
+    await navigateToPath(groupViewerPage, "/dashboard/group?tab=events");
 
-    const dashboardContent = page.locator("#dashboard-content");
+    const dashboardContent = groupViewerPage.locator("#dashboard-content");
     await expect(dashboardContent.getByText("Events", { exact: true })).toBeVisible();
     await expect(
       dashboardContent.getByRole("button", { name: "Add Event" }),
     ).toBeDisabled();
 
-    await navigateToPath(page, `/dashboard/group/events/${CFS_EVENT_ID}/submissions`);
+    await navigateToPath(groupViewerPage, `/dashboard/group/events/${CFS_EVENT_ID}/submissions`);
 
-    const reviewButtons = page.getByTitle("Your role cannot manage events.");
+    const reviewButtons = groupViewerPage.getByTitle(
+      "Your role cannot manage events.",
+    );
     await expect(reviewButtons.first()).toBeDisabled();
   });
 });

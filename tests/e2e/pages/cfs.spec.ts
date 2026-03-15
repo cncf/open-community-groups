@@ -1,10 +1,8 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "../fixtures";
 
 import {
   TEST_COMMUNITY_NAME,
   TEST_GROUP_SLUGS,
-  TEST_USER_CREDENTIALS,
-  logInWithSeededUser,
   navigateToEvent,
 } from "../utils";
 
@@ -47,31 +45,34 @@ test.describe("call for speakers", () => {
   });
 
   test("eligible and already-submitted proposals are distinguished in the modal", async ({
-    page,
+    member1Page,
   }) => {
-    await logInWithSeededUser(page, TEST_USER_CREDENTIALS.member1);
     await navigateToEvent(
-      page,
+      member1Page,
       TEST_COMMUNITY_NAME,
       TEST_GROUP_SLUGS.community1.alpha,
       CFS_EVENT_SLUG,
     );
 
-    await page.getByRole("button", { name: "Submit session proposal" }).click();
+    await member1Page
+      .getByRole("button", { name: "Submit session proposal" })
+      .click();
 
-    await expect(page.getByRole("dialog", { name: "Submit a proposal" })).toBeVisible();
-    await expect(page.locator("#session_proposal_id")).toBeVisible();
-    await expect(page.locator("cfs-label-selector")).toBeVisible();
     await expect(
-      page.getByText(
+      member1Page.getByRole("dialog", { name: "Submit a proposal" }),
+    ).toBeVisible();
+    await expect(member1Page.locator("#session_proposal_id")).toBeVisible();
+    await expect(member1Page.locator("cfs-label-selector")).toBeVisible();
+    await expect(
+      member1Page.getByText(
         "Proposals already submitted to this event will appear disabled.",
       ),
     ).toBeVisible();
 
-    const readyOption = page.locator(
+    const readyOption = member1Page.locator(
       'option[value="99999999-9999-9999-9999-999999999801"]',
     );
-    const submittedOption = page.locator(
+    const submittedOption = member1Page.locator(
       'option[value="99999999-9999-9999-9999-999999999802"]',
     );
 
