@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { expect } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
 export const TEST_COMMUNITY_NAME =
@@ -57,6 +58,7 @@ export const TEST_EVENT_SLUGS = {
   delta: ["delta-event-1", "delta-event-2", "delta-event-3"],
   epsilon: ["epsilon-event-1", "epsilon-event-2", "epsilon-event-3"],
   zeta: ["zeta-event-1", "zeta-event-2", "zeta-event-3"],
+  alphaDashboard: ["alpha-cfs-summit", "alpha-past-roundup"],
 } as const;
 
 /** Pre-seeded user credentials for e2e tests. */
@@ -69,6 +71,22 @@ export const TEST_USER_CREDENTIALS = {
   member2: { username: "e2e-member-2", password: "Password123!" },
   pending1: { username: "e2e-pending-1", password: "Password123!" },
   pending2: { username: "e2e-pending-2", password: "Password123!" },
+  groupsManager1: {
+    username: "e2e-groups-manager-1",
+    password: "Password123!",
+  },
+  communityViewer1: {
+    username: "e2e-community-viewer-1",
+    password: "Password123!",
+  },
+  eventsManager1: {
+    username: "e2e-events-manager-1",
+    password: "Password123!",
+  },
+  groupViewer1: {
+    username: "e2e-group-viewer-1",
+    password: "Password123!",
+  },
 } as const;
 const BASE_URL = process.env.OCG_E2E_BASE_URL || "http://localhost:9000";
 
@@ -155,4 +173,21 @@ export const navigateToEvent = async (
  */
 export const navigateToPath = async (page: Page, path: string) => {
   await page.goto(buildUrl(path));
+};
+
+/**
+ * Logs in with one of the pre-seeded e2e users.
+ */
+export const logInWithSeededUser = async (
+  page: Page,
+  credentials: (typeof TEST_USER_CREDENTIALS)[keyof typeof TEST_USER_CREDENTIALS],
+) => {
+  await navigateToPath(page, "/log-in");
+
+  await expect(page.getByRole("heading", { name: "Log In" })).toBeVisible();
+  await page.getByLabel("Username").fill(credentials.username);
+  await page
+    .getByRole("textbox", { name: "Password required" })
+    .fill(credentials.password);
+  await page.getByRole("button", { name: "Sign In" }).click();
 };

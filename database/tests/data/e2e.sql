@@ -4,6 +4,22 @@ begin;
 -- CLEANUP - Delete in correct order for FK constraints
 -- ============================================================================
 
+delete from cfs_submission_label where cfs_submission_id in (
+    '99999999-9999-9999-9999-999999999911',
+    '99999999-9999-9999-9999-999999999912',
+    '99999999-9999-9999-9999-999999999913',
+    '99999999-9999-9999-9999-999999999914',
+    '99999999-9999-9999-9999-999999999915'
+);
+
+delete from cfs_submission_rating where cfs_submission_id in (
+    '99999999-9999-9999-9999-999999999911',
+    '99999999-9999-9999-9999-999999999912',
+    '99999999-9999-9999-9999-999999999913',
+    '99999999-9999-9999-9999-999999999914',
+    '99999999-9999-9999-9999-999999999915'
+);
+
 delete from group_member where user_id in (
     '77777777-7777-7777-7777-777777777701',
     '77777777-7777-7777-7777-777777777702',
@@ -12,7 +28,11 @@ delete from group_member where user_id in (
     '77777777-7777-7777-7777-777777777705',
     '77777777-7777-7777-7777-777777777706',
     '77777777-7777-7777-7777-777777777707',
-    '77777777-7777-7777-7777-777777777708'
+    '77777777-7777-7777-7777-777777777708',
+    '77777777-7777-7777-7777-777777777709',
+    '77777777-7777-7777-7777-777777777710',
+    '77777777-7777-7777-7777-777777777711',
+    '77777777-7777-7777-7777-777777777712'
 );
 
 delete from group_team where user_id in (
@@ -23,7 +43,11 @@ delete from group_team where user_id in (
     '77777777-7777-7777-7777-777777777705',
     '77777777-7777-7777-7777-777777777706',
     '77777777-7777-7777-7777-777777777707',
-    '77777777-7777-7777-7777-777777777708'
+    '77777777-7777-7777-7777-777777777708',
+    '77777777-7777-7777-7777-777777777709',
+    '77777777-7777-7777-7777-777777777710',
+    '77777777-7777-7777-7777-777777777711',
+    '77777777-7777-7777-7777-777777777712'
 );
 
 delete from community_team where user_id in (
@@ -34,28 +58,42 @@ delete from community_team where user_id in (
     '77777777-7777-7777-7777-777777777705',
     '77777777-7777-7777-7777-777777777706',
     '77777777-7777-7777-7777-777777777707',
-    '77777777-7777-7777-7777-777777777708'
-);
-
-delete from "user" where user_id in (
-    '77777777-7777-7777-7777-777777777701',
-    '77777777-7777-7777-7777-777777777702',
-    '77777777-7777-7777-7777-777777777703',
-    '77777777-7777-7777-7777-777777777704',
-    '77777777-7777-7777-7777-777777777705',
-    '77777777-7777-7777-7777-777777777706',
-    '77777777-7777-7777-7777-777777777707',
-    '77777777-7777-7777-7777-777777777708'
+    '77777777-7777-7777-7777-777777777708',
+    '77777777-7777-7777-7777-777777777709',
+    '77777777-7777-7777-7777-777777777710',
+    '77777777-7777-7777-7777-777777777711',
+    '77777777-7777-7777-7777-777777777712'
 );
 
 delete from session_speaker where session_id in (
     '88888888-8888-8888-8888-888888888801',
-    '88888888-8888-8888-8888-888888888802'
+    '88888888-8888-8888-8888-888888888802',
+    '88888888-8888-8888-8888-888888888803'
 );
 
 delete from session where session_id in (
     '88888888-8888-8888-8888-888888888801',
-    '88888888-8888-8888-8888-888888888802'
+    '88888888-8888-8888-8888-888888888802',
+    '88888888-8888-8888-8888-888888888803'
+);
+
+delete from cfs_submission where cfs_submission_id in (
+    '99999999-9999-9999-9999-999999999911',
+    '99999999-9999-9999-9999-999999999912',
+    '99999999-9999-9999-9999-999999999913',
+    '99999999-9999-9999-9999-999999999914',
+    '99999999-9999-9999-9999-999999999915'
+);
+
+delete from session_proposal where session_proposal_id in (
+    '99999999-9999-9999-9999-999999999801',
+    '99999999-9999-9999-9999-999999999802',
+    '99999999-9999-9999-9999-999999999803',
+    '99999999-9999-9999-9999-999999999804',
+    '99999999-9999-9999-9999-999999999805',
+    '99999999-9999-9999-9999-999999999806',
+    '99999999-9999-9999-9999-999999999807',
+    '99999999-9999-9999-9999-999999999808'
 );
 
 delete from event_speaker where event_id in (
@@ -66,8 +104,34 @@ delete from event_host where event_id in (
     '55555555-5555-5555-5555-555555555501'
 );
 
+delete from event_attendee where event_id in (
+    '55555555-5555-5555-5555-555555555501',
+    '55555555-5555-5555-5555-555555555504',
+    '55555555-5555-5555-5555-555555555519',
+    '55555555-5555-5555-5555-555555555520'
+);
+
 delete from event_sponsor where event_id in (
     '55555555-5555-5555-5555-555555555501'
+);
+
+delete from event_cfs_label where event_id in (
+    '55555555-5555-5555-5555-555555555519'
+);
+
+delete from "user" where user_id in (
+    '77777777-7777-7777-7777-777777777701',
+    '77777777-7777-7777-7777-777777777702',
+    '77777777-7777-7777-7777-777777777703',
+    '77777777-7777-7777-7777-777777777704',
+    '77777777-7777-7777-7777-777777777705',
+    '77777777-7777-7777-7777-777777777706',
+    '77777777-7777-7777-7777-777777777707',
+    '77777777-7777-7777-7777-777777777708',
+    '77777777-7777-7777-7777-777777777709',
+    '77777777-7777-7777-7777-777777777710',
+    '77777777-7777-7777-7777-777777777711',
+    '77777777-7777-7777-7777-777777777712'
 );
 
 delete from group_sponsor where group_sponsor_id in (
@@ -92,7 +156,9 @@ delete from event where event_id in (
     '55555555-5555-5555-5555-555555555515',
     '55555555-5555-5555-5555-555555555516',
     '55555555-5555-5555-5555-555555555517',
-    '55555555-5555-5555-5555-555555555518'
+    '55555555-5555-5555-5555-555555555518',
+    '55555555-5555-5555-5555-555555555519',
+    '55555555-5555-5555-5555-555555555520'
 );
 
 delete from "group" where group_id in (
@@ -106,12 +172,19 @@ delete from "group" where group_id in (
 
 delete from event_category where event_category_id in (
     '33333333-3333-3333-3333-333333333331',
-    '33333333-3333-3333-3333-333333333332'
+    '33333333-3333-3333-3333-333333333332',
+    '33333333-3333-3333-3333-333333333333'
 );
 
 delete from group_category where group_category_id in (
     '22222222-2222-2222-2222-222222222221',
-    '22222222-2222-2222-2222-222222222222'
+    '22222222-2222-2222-2222-222222222222',
+    '22222222-2222-2222-2222-222222222223'
+);
+
+delete from region where region_id in (
+    '22222222-2222-2222-2222-222222222301',
+    '22222222-2222-2222-2222-222222222302'
 );
 
 delete from community where community_id in (
@@ -180,6 +253,10 @@ values (
     '22222222-2222-2222-2222-222222222222',
     'E2E Category Two',
     '11111111-1111-1111-1111-111111111112'
+), (
+    '22222222-2222-2222-2222-222222222223',
+    'E2E Category Unused',
+    '11111111-1111-1111-1111-111111111111'
 );
 
 -- ============================================================================
@@ -195,6 +272,27 @@ values (
     '33333333-3333-3333-3333-333333333332',
     'Meetups',
     '11111111-1111-1111-1111-111111111112'
+), (
+    '33333333-3333-3333-3333-333333333333',
+    'Workshops',
+    '11111111-1111-1111-1111-111111111111'
+);
+
+-- ============================================================================
+-- REGIONS (2 for community 1)
+-- ============================================================================
+
+insert into region (region_id, community_id, name, "order")
+values (
+    '22222222-2222-2222-2222-222222222301',
+    '11111111-1111-1111-1111-111111111111',
+    'North America',
+    1
+), (
+    '22222222-2222-2222-2222-222222222302',
+    '11111111-1111-1111-1111-111111111111',
+    'APAC',
+    2
 );
 
 -- ============================================================================
@@ -261,6 +359,13 @@ insert into "group" (
     'E2E Second Group Zeta',
     'second-group-zeta',
     true
+);
+
+update "group"
+set region_id = '22222222-2222-2222-2222-222222222301'
+where group_id in (
+    '44444444-4444-4444-4444-444444444441',
+    '44444444-4444-4444-4444-444444444442'
 );
 
 -- ============================================================================
@@ -573,6 +678,45 @@ insert into event (
     now() + interval '35 days 2 hours'
 );
 
+-- Additional Alpha group events for dashboard and CFS coverage
+insert into event (
+    event_id, name, slug, description, timezone, event_category_id,
+    event_kind_id, group_id, published, starts_at, ends_at,
+    cfs_enabled, cfs_description, cfs_starts_at, cfs_ends_at
+) values (
+    '55555555-5555-5555-5555-555555555519',
+    'Alpha CFS Summit',
+    'alpha-cfs-summit',
+    'Future event with an open call for speakers.',
+    'UTC',
+    '33333333-3333-3333-3333-333333333331',
+    'virtual',
+    '44444444-4444-4444-4444-444444444441',
+    true,
+    now() + interval '45 days',
+    now() + interval '45 days 4 hours',
+    true,
+    'Submit your best talks for our extended speaker program.',
+    now() - interval '2 days',
+    now() + interval '30 days'
+), (
+    '55555555-5555-5555-5555-555555555520',
+    'Alpha Past Roundup',
+    'alpha-past-roundup',
+    'Past event used for dashboard filtering coverage.',
+    'UTC',
+    '33333333-3333-3333-3333-333333333331',
+    'virtual',
+    '44444444-4444-4444-4444-444444444441',
+    true,
+    now() - interval '5 days',
+    now() - interval '5 days' + interval '2 hours',
+    null,
+    null,
+    null,
+    null
+);
+
 -- ============================================================================
 -- USERS (8 total, all email_verified=true)
 -- Password: Password123!
@@ -645,6 +789,38 @@ insert into "user" (
     'E2E Pending Two',
     '$argon2id$v=19$m=19456,t=2,p=1$gZiV/M1gPc22ElAH/Jh1Hw$CWOrkoo7oJBQ/iyh7uJ0LO2aLEfrHwTWllSAxT0zRno',
     'b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c4'
+), (
+    '77777777-7777-7777-7777-777777777709',
+    'e2e-groups-manager-1',
+    'e2e-groups-manager-1@example.com',
+    true,
+    'E2E Groups Manager One',
+    '$argon2id$v=19$m=19456,t=2,p=1$gZiV/M1gPc22ElAH/Jh1Hw$CWOrkoo7oJBQ/iyh7uJ0LO2aLEfrHwTWllSAxT0zRno',
+    'c4d5e6f7a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d5'
+), (
+    '77777777-7777-7777-7777-777777777710',
+    'e2e-community-viewer-1',
+    'e2e-community-viewer-1@example.com',
+    true,
+    'E2E Community Viewer One',
+    '$argon2id$v=19$m=19456,t=2,p=1$gZiV/M1gPc22ElAH/Jh1Hw$CWOrkoo7oJBQ/iyh7uJ0LO2aLEfrHwTWllSAxT0zRno',
+    'd5e6f7a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e6'
+), (
+    '77777777-7777-7777-7777-777777777711',
+    'e2e-events-manager-1',
+    'e2e-events-manager-1@example.com',
+    true,
+    'E2E Events Manager One',
+    '$argon2id$v=19$m=19456,t=2,p=1$gZiV/M1gPc22ElAH/Jh1Hw$CWOrkoo7oJBQ/iyh7uJ0LO2aLEfrHwTWllSAxT0zRno',
+    'e6f7a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f7'
+), (
+    '77777777-7777-7777-7777-777777777712',
+    'e2e-group-viewer-1',
+    'e2e-group-viewer-1@example.com',
+    true,
+    'E2E Group Viewer One',
+    '$argon2id$v=19$m=19456,t=2,p=1$gZiV/M1gPc22ElAH/Jh1Hw$CWOrkoo7oJBQ/iyh7uJ0LO2aLEfrHwTWllSAxT0zRno',
+    'f7a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a2'
 );
 
 -- ============================================================================
@@ -669,13 +845,31 @@ values (
     'admin'
 );
 
+-- Groups manager can manage community 1 groups without being a community admin
+insert into community_team (community_id, user_id, accepted, role)
+values (
+    '11111111-1111-1111-1111-111111111111',
+    '77777777-7777-7777-7777-777777777709',
+    true,
+    'groups-manager'
+);
+
+-- Viewer has read-only access to the community dashboard
+insert into community_team (community_id, user_id, accepted, role)
+values (
+    '11111111-1111-1111-1111-111111111111',
+    '77777777-7777-7777-7777-777777777710',
+    true,
+    'viewer'
+);
+
 -- Pending 1 has a pending community 1 team invitation
 insert into community_team (community_id, user_id, accepted, role)
 values (
     '11111111-1111-1111-1111-111111111111',
     '77777777-7777-7777-7777-777777777707',
     false,
-    'admin'
+    'viewer'
 );
 
 -- ============================================================================
@@ -700,13 +894,40 @@ values (
     'admin'
 );
 
+-- Events manager can manage Alpha group events without full admin access
+insert into group_team (group_id, user_id, accepted, role)
+values (
+    '44444444-4444-4444-4444-444444444441',
+    '77777777-7777-7777-7777-777777777711',
+    true,
+    'events-manager'
+);
+
+-- Group viewer has read-only access to Alpha group dashboard pages
+insert into group_team (group_id, user_id, accepted, role)
+values (
+    '44444444-4444-4444-4444-444444444441',
+    '77777777-7777-7777-7777-777777777712',
+    true,
+    'viewer'
+);
+
 -- Pending 2 has a pending Beta group team invitation
 insert into group_team (group_id, user_id, accepted, role)
 values (
     '44444444-4444-4444-4444-444444444442',
+    '77777777-7777-7777-7777-777777777707',
+    false,
+    'events-manager'
+);
+
+-- Pending 3 has a pending Alpha group team invitation with viewer access
+insert into group_team (group_id, user_id, accepted, role)
+values (
+    '44444444-4444-4444-4444-444444444441',
     '77777777-7777-7777-7777-777777777708',
     false,
-    'admin'
+    'viewer'
 );
 
 -- ============================================================================
@@ -731,6 +952,206 @@ values (
 ), (
     '44444444-4444-4444-4444-444444444445',
     '77777777-7777-7777-7777-777777777706'
+);
+
+-- ============================================================================
+-- EVENT CFS LABELS
+-- ============================================================================
+
+insert into event_cfs_label (event_cfs_label_id, event_id, name, color)
+values (
+    '99999999-9999-9999-9999-999999999701',
+    '55555555-5555-5555-5555-555555555519',
+    'Platform',
+    '#0284C7'
+), (
+    '99999999-9999-9999-9999-999999999702',
+    '55555555-5555-5555-5555-555555555519',
+    'Workshop',
+    '#16A34A'
+);
+
+-- ============================================================================
+-- SESSION PROPOSALS
+-- ============================================================================
+
+insert into session_proposal (
+    session_proposal_id,
+    user_id,
+    title,
+    description,
+    session_proposal_level_id,
+    duration,
+    co_speaker_user_id,
+    session_proposal_status_id,
+    updated_at
+) values (
+    '99999999-9999-9999-9999-999999999801',
+    '77777777-7777-7777-7777-777777777705',
+    'Cloud Native Operations Deep Dive',
+    'A ready proposal that has not been submitted yet.',
+    'advanced',
+    interval '45 minutes',
+    null,
+    'ready-for-submission',
+    now() - interval '3 days'
+), (
+    '99999999-9999-9999-9999-999999999802',
+    '77777777-7777-7777-7777-777777777705',
+    'Platform Reliability Patterns',
+    'A proposal already submitted to the open CFS event.',
+    'intermediate',
+    interval '30 minutes',
+    null,
+    'ready-for-submission',
+    now() - interval '4 days'
+), (
+    '99999999-9999-9999-9999-999999999803',
+    '77777777-7777-7777-7777-777777777705',
+    'Observability in Practice',
+    'A proposal that needs additional details before approval.',
+    'beginner',
+    interval '30 minutes',
+    null,
+    'ready-for-submission',
+    now() - interval '2 days'
+), (
+    '99999999-9999-9999-9999-999999999804',
+    '77777777-7777-7777-7777-777777777705',
+    'Scaling Community Workshops',
+    'An approved proposal linked to a scheduled session.',
+    'intermediate',
+    interval '45 minutes',
+    null,
+    'ready-for-submission',
+    now() - interval '1 day'
+), (
+    '99999999-9999-9999-9999-999999999805',
+    '77777777-7777-7777-7777-777777777705',
+    'Maintainer Burnout Lessons',
+    'A proposal that was reviewed and rejected.',
+    'advanced',
+    interval '30 minutes',
+    null,
+    'ready-for-submission',
+    now() - interval '5 days'
+), (
+    '99999999-9999-9999-9999-999999999806',
+    '77777777-7777-7777-7777-777777777705',
+    'Speaker Office Hours',
+    'A proposal that was submitted and then withdrawn.',
+    'beginner',
+    interval '30 minutes',
+    null,
+    'ready-for-submission',
+    now() - interval '6 days'
+), (
+    '99999999-9999-9999-9999-999999999807',
+    '77777777-7777-7777-7777-777777777705',
+    'Collaborative Roadmaps',
+    'A proposal waiting for the co-speaker response.',
+    'intermediate',
+    interval '45 minutes',
+    '77777777-7777-7777-7777-777777777706',
+    'pending-co-speaker-response',
+    now() - interval '1 day'
+), (
+    '99999999-9999-9999-9999-999999999808',
+    '77777777-7777-7777-7777-777777777705',
+    'Co-Speaker Retrospective',
+    'A proposal whose co-speaker declined the invitation.',
+    'beginner',
+    interval '30 minutes',
+    '77777777-7777-7777-7777-777777777706',
+    'declined-by-co-speaker',
+    now() - interval '7 days'
+);
+
+-- ============================================================================
+-- CFS SUBMISSIONS
+-- ============================================================================
+
+insert into cfs_submission (
+    cfs_submission_id,
+    event_id,
+    session_proposal_id,
+    status_id,
+    action_required_message,
+    reviewed_by,
+    updated_at
+) values (
+    '99999999-9999-9999-9999-999999999911',
+    '55555555-5555-5555-5555-555555555519',
+    '99999999-9999-9999-9999-999999999802',
+    'not-reviewed',
+    null,
+    null,
+    now() - interval '4 days'
+), (
+    '99999999-9999-9999-9999-999999999912',
+    '55555555-5555-5555-5555-555555555519',
+    '99999999-9999-9999-9999-999999999803',
+    'information-requested',
+    'Please add clearer audience outcomes before we continue the review.',
+    '77777777-7777-7777-7777-777777777703',
+    now() - interval '2 days'
+), (
+    '99999999-9999-9999-9999-999999999913',
+    '55555555-5555-5555-5555-555555555519',
+    '99999999-9999-9999-9999-999999999804',
+    'approved',
+    null,
+    '77777777-7777-7777-7777-777777777703',
+    now() - interval '1 day'
+), (
+    '99999999-9999-9999-9999-999999999914',
+    '55555555-5555-5555-5555-555555555519',
+    '99999999-9999-9999-9999-999999999805',
+    'rejected',
+    null,
+    '77777777-7777-7777-7777-777777777703',
+    now() - interval '3 days'
+), (
+    '99999999-9999-9999-9999-999999999915',
+    '55555555-5555-5555-5555-555555555519',
+    '99999999-9999-9999-9999-999999999806',
+    'withdrawn',
+    null,
+    null,
+    now() - interval '5 hours'
+);
+
+insert into cfs_submission_label (cfs_submission_id, event_cfs_label_id)
+values (
+    '99999999-9999-9999-9999-999999999911',
+    '99999999-9999-9999-9999-999999999701'
+), (
+    '99999999-9999-9999-9999-999999999912',
+    '99999999-9999-9999-9999-999999999702'
+), (
+    '99999999-9999-9999-9999-999999999913',
+    '99999999-9999-9999-9999-999999999701'
+), (
+    '99999999-9999-9999-9999-999999999913',
+    '99999999-9999-9999-9999-999999999702'
+);
+
+insert into cfs_submission_rating (cfs_submission_id, reviewer_id, stars, comments)
+values (
+    '99999999-9999-9999-9999-999999999912',
+    '77777777-7777-7777-7777-777777777703',
+    3,
+    'Needs a tighter outline and clearer takeaways.'
+), (
+    '99999999-9999-9999-9999-999999999913',
+    '77777777-7777-7777-7777-777777777703',
+    5,
+    'Strong structure and audience fit.'
+), (
+    '99999999-9999-9999-9999-999999999913',
+    '77777777-7777-7777-7777-777777777711',
+    4,
+    'Solid proposal with only minor refinements needed.'
 );
 
 -- ============================================================================
@@ -765,6 +1186,25 @@ insert into event_host (event_id, user_id)
 values (
     '55555555-5555-5555-5555-555555555501',
     '77777777-7777-7777-7777-777777777703'
+);
+
+-- ============================================================================
+-- EVENT ATTENDEES
+-- ============================================================================
+
+insert into event_attendee (event_id, user_id)
+values (
+    '55555555-5555-5555-5555-555555555501',
+    '77777777-7777-7777-7777-777777777703'
+), (
+    '55555555-5555-5555-5555-555555555501',
+    '77777777-7777-7777-7777-777777777705'
+), (
+    '55555555-5555-5555-5555-555555555504',
+    '77777777-7777-7777-7777-777777777705'
+), (
+    '55555555-5555-5555-5555-555555555520',
+    '77777777-7777-7777-7777-777777777705'
 );
 
 -- ============================================================================
@@ -803,7 +1243,19 @@ values (
     now() + interval '10 days 1 hour',
     now() + interval '10 days 2 hours',
     'Hands-on technical session.'
+), (
+    '88888888-8888-8888-8888-888888888803',
+    '55555555-5555-5555-5555-555555555519',
+    'Scaling Community Workshops Session',
+    'virtual',
+    now() + interval '45 days 1 hour',
+    now() + interval '45 days 1 hour 45 minutes',
+    'Approved proposal linked into the CFS agenda.'
 );
+
+update session
+set cfs_submission_id = '99999999-9999-9999-9999-999999999913'
+where session_id = '88888888-8888-8888-8888-888888888803';
 
 -- ============================================================================
 -- SESSION SPEAKERS
@@ -812,6 +1264,10 @@ values (
 insert into session_speaker (session_id, user_id, featured)
 values (
     '88888888-8888-8888-8888-888888888801',
+    '77777777-7777-7777-7777-777777777705',
+    true
+), (
+    '88888888-8888-8888-8888-888888888803',
     '77777777-7777-7777-7777-777777777705',
     true
 );
