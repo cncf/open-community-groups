@@ -5,6 +5,10 @@ import type { Page } from "@playwright/test";
 export const TEST_COMMUNITY_NAME =
   process.env.OCG_E2E_COMMUNITY_NAME || "e2e-test-community";
 export const TEST_COMMUNITY_NAME_2 = "e2e-second-community";
+export const TEST_COMMUNITY_IDS = {
+  community1: "11111111-1111-1111-1111-111111111111",
+  community2: "11111111-1111-1111-1111-111111111112",
+} as const;
 export const TEST_GROUP_SLUG =
   process.env.OCG_E2E_GROUP_SLUG || "test-group-alpha";
 export const TEST_EVENT_SLUG =
@@ -47,6 +51,20 @@ export const TEST_GROUP_SLUGS = {
     delta: "second-group-delta",
     epsilon: "second-group-epsilon",
     zeta: "second-group-zeta",
+  },
+} as const;
+
+/** Group ids organized by community. */
+export const TEST_GROUP_IDS = {
+  community1: {
+    alpha: "44444444-4444-4444-4444-444444444441",
+    beta: "44444444-4444-4444-4444-444444444442",
+    gamma: "44444444-4444-4444-4444-444444444443",
+  },
+  community2: {
+    delta: "44444444-4444-4444-4444-444444444444",
+    epsilon: "44444444-4444-4444-4444-444444444445",
+    zeta: "44444444-4444-4444-4444-444444444446",
   },
 } as const;
 
@@ -189,5 +207,42 @@ export const logInWithSeededUser = async (
   await page
     .getByRole("textbox", { name: "Password required" })
     .fill(credentials.password);
-  await page.getByRole("button", { name: "Sign In" }).click();
+
+  await Promise.all([
+    page.waitForURL((url) => !url.pathname.includes("/log-in")),
+    page.getByRole("button", { name: "Sign In" }).click(),
+  ]);
+};
+
+/**
+ * Selects a community dashboard context for the logged-in user.
+ */
+export const selectCommunityContext = async (
+  page: Page,
+  communityId: string,
+) => {
+  const response = await page.request.put(
+    buildUrl(`/dashboard/community/${communityId}/select`),
+  );
+
+  expect(response.ok()).toBeTruthy();
+};
+
+/**
+ * Selects a group dashboard context for the logged-in user.
+ */
+export const selectGroupContext = async (
+  page: Page,
+  communityId: string,
+  groupId: string,
+) => {
+  const communityResponse = await page.request.put(
+    buildUrl(`/dashboard/group/community/${communityId}/select`),
+  );
+  expect(communityResponse.ok()).toBeTruthy();
+
+  const groupResponse = await page.request.put(
+    buildUrl(`/dashboard/group/${groupId}/select`),
+  );
+  expect(groupResponse.ok()).toBeTruthy();
 };

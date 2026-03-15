@@ -1,9 +1,12 @@
 import { expect, test } from "@playwright/test";
 
 import {
+  TEST_COMMUNITY_IDS,
+  TEST_GROUP_IDS,
   TEST_USER_CREDENTIALS,
   logInWithSeededUser,
   navigateToPath,
+  selectGroupContext,
 } from "../utils";
 
 const CFS_EVENT_ID = "55555555-5555-5555-5555-555555555519";
@@ -13,30 +16,50 @@ test.describe("group dashboard", () => {
     page,
   }) => {
     await logInWithSeededUser(page, TEST_USER_CREDENTIALS.organizer1);
-    await navigateToPath(page, "/dashboard/group/team");
+    await selectGroupContext(
+      page,
+      TEST_COMMUNITY_IDS.community1,
+      TEST_GROUP_IDS.community1.alpha,
+    );
+    await navigateToPath(page, "/dashboard/group?tab=team");
 
-    await expect(page.getByText("Group Team", { exact: true })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Add member" })).toBeEnabled();
+    const dashboardContent = page.locator("#dashboard-content");
+    await expect(
+      dashboardContent.getByText("Group Team", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      dashboardContent.getByRole("button", { name: "Add member" }),
+    ).toBeEnabled();
 
-    const adminRow = page.locator("tr", { hasText: "E2E Organizer One" });
+    const adminRow = dashboardContent.locator("tr", {
+      hasText: "E2E Organizer One",
+    });
     await expect(adminRow.locator("select")).toBeDisabled();
-    await expect(adminRow.getByTitle("At least one accepted admin is required.")).toBeVisible();
+    await expect(adminRow.locator("select")).toHaveAttribute(
+      "title",
+      "At least one accepted admin is required.",
+    );
 
-    await expect(page.locator("tr", { hasText: "E2E Events Manager One" })).toContainText(
-      "events-manager",
-    );
-    await expect(page.locator("tr", { hasText: "E2E Group Viewer One" })).toContainText(
-      "viewer",
-    );
-    await expect(page.locator("tr", { hasText: "E2E Pending One" })).toContainText(
-      "Invitation sent",
-    );
+    await expect(
+      dashboardContent.locator("tr", { hasText: "E2E Events Manager One" }),
+    ).toContainText("events-manager");
+    await expect(
+      dashboardContent.locator("tr", { hasText: "E2E Group Viewer One" }),
+    ).toContainText("viewer");
+    await expect(
+      dashboardContent.locator("tr", { hasText: "E2E Pending Two" }),
+    ).toContainText("Invitation sent");
   });
 
   test("events manager can review CFS submissions with labels and ratings", async ({
     page,
   }) => {
     await logInWithSeededUser(page, TEST_USER_CREDENTIALS.eventsManager1);
+    await selectGroupContext(
+      page,
+      TEST_COMMUNITY_IDS.community1,
+      TEST_GROUP_IDS.community1.alpha,
+    );
     await navigateToPath(page, `/dashboard/group/events/${CFS_EVENT_ID}/submissions`);
 
     await expect(page.getByText("Submissions", { exact: true })).toBeVisible();
@@ -58,10 +81,18 @@ test.describe("group dashboard", () => {
 
   test("viewer sees read-only event and submission controls", async ({ page }) => {
     await logInWithSeededUser(page, TEST_USER_CREDENTIALS.groupViewer1);
-    await navigateToPath(page, "/dashboard/group/events");
+    await selectGroupContext(
+      page,
+      TEST_COMMUNITY_IDS.community1,
+      TEST_GROUP_IDS.community1.alpha,
+    );
+    await navigateToPath(page, "/dashboard/group?tab=events");
 
-    await expect(page.getByText("Events", { exact: true })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Add Event" })).toBeDisabled();
+    const dashboardContent = page.locator("#dashboard-content");
+    await expect(dashboardContent.getByText("Events", { exact: true })).toBeVisible();
+    await expect(
+      dashboardContent.getByRole("button", { name: "Add Event" }),
+    ).toBeDisabled();
 
     await navigateToPath(page, `/dashboard/group/events/${CFS_EVENT_ID}/submissions`);
 

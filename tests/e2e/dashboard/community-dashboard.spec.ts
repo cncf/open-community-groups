@@ -1,28 +1,30 @@
 import { expect, test } from "@playwright/test";
 
 import {
+  TEST_COMMUNITY_IDS,
   TEST_USER_CREDENTIALS,
   logInWithSeededUser,
   navigateToPath,
+  selectCommunityContext,
 } from "../utils";
 
 const taxonomyCases = [
   {
-    path: "/dashboard/community/regions",
+    path: "/dashboard/community?tab=regions",
     heading: "Regions",
     addButton: "Add Region",
     usedDeleteId: "delete-region-22222222-2222-2222-2222-222222222301",
     unusedDeleteId: "delete-region-22222222-2222-2222-2222-222222222302",
   },
   {
-    path: "/dashboard/community/group-categories",
+    path: "/dashboard/community?tab=group-categories",
     heading: "Group Categories",
     addButton: "Add Group Category",
     usedDeleteId: "delete-group-category-22222222-2222-2222-2222-222222222221",
     unusedDeleteId: "delete-group-category-22222222-2222-2222-2222-222222222223",
   },
   {
-    path: "/dashboard/community/event-categories",
+    path: "/dashboard/community?tab=event-categories",
     heading: "Event Categories",
     addButton: "Add Event Category",
     usedDeleteId: "delete-event-category-33333333-3333-3333-3333-333333333331",
@@ -35,24 +37,33 @@ test.describe("community dashboard", () => {
     page,
   }) => {
     await logInWithSeededUser(page, TEST_USER_CREDENTIALS.admin1);
-    await navigateToPath(page, "/dashboard/community/team");
+    await selectCommunityContext(page, TEST_COMMUNITY_IDS.community1);
+    await navigateToPath(page, "/dashboard/community?tab=team");
 
-    await expect(page.getByText("Community Team", { exact: true })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Add member" })).toBeEnabled();
+    const dashboardContent = page.locator("#dashboard-content");
+    await expect(
+      dashboardContent.getByText("Community Team", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      dashboardContent.getByRole("button", { name: "Add member" }),
+    ).toBeEnabled();
 
-    const adminRow = page.locator("tr", { hasText: "E2E Admin One" });
+    const adminRow = dashboardContent.locator("tr", { hasText: "E2E Admin One" });
     await expect(adminRow.locator("select")).toBeDisabled();
-    await expect(adminRow.getByTitle("At least one accepted admin is required.")).toBeVisible();
+    await expect(adminRow.locator("select")).toHaveAttribute(
+      "title",
+      "At least one accepted admin is required.",
+    );
 
-    await expect(page.locator("tr", { hasText: "E2E Groups Manager One" })).toContainText(
-      "groups-manager",
-    );
-    await expect(page.locator("tr", { hasText: "E2E Community Viewer One" })).toContainText(
-      "viewer",
-    );
-    await expect(page.locator("tr", { hasText: "E2E Pending One" })).toContainText(
-      "Invitation sent",
-    );
+    await expect(
+      dashboardContent.locator("tr", { hasText: "E2E Groups Manager One" }),
+    ).toContainText("groups-manager");
+    await expect(
+      dashboardContent.locator("tr", { hasText: "E2E Community Viewer One" }),
+    ).toContainText("viewer");
+    await expect(
+      dashboardContent.locator("tr", { hasText: "E2E Pending One" }),
+    ).toContainText("Invitation sent");
   });
 
   for (const taxonomyCase of taxonomyCases) {
@@ -60,25 +71,37 @@ test.describe("community dashboard", () => {
       page,
     }) => {
       await logInWithSeededUser(page, TEST_USER_CREDENTIALS.admin1);
+      await selectCommunityContext(page, TEST_COMMUNITY_IDS.community1);
       await navigateToPath(page, taxonomyCase.path);
 
-      await expect(page.getByText(taxonomyCase.heading, { exact: true })).toBeVisible();
+      const dashboardContent = page.locator("#dashboard-content");
       await expect(
-        page.getByRole("button", { name: taxonomyCase.addButton }),
+        dashboardContent.getByText(taxonomyCase.heading, { exact: true }),
+      ).toBeVisible();
+      await expect(
+        dashboardContent.getByRole("button", { name: taxonomyCase.addButton }),
       ).toBeEnabled();
-      await expect(page.locator(`#${taxonomyCase.usedDeleteId}`)).toBeDisabled();
-      await expect(page.locator(`#${taxonomyCase.unusedDeleteId}`)).toBeEnabled();
+      await expect(dashboardContent.locator(`#${taxonomyCase.usedDeleteId}`)).toBeDisabled();
+      await expect(
+        dashboardContent.locator(`#${taxonomyCase.unusedDeleteId}`),
+      ).toBeEnabled();
     });
 
     test(`viewer sees read-only controls on ${taxonomyCase.heading}`, async ({ page }) => {
       await logInWithSeededUser(page, TEST_USER_CREDENTIALS.communityViewer1);
+      await selectCommunityContext(page, TEST_COMMUNITY_IDS.community1);
       await navigateToPath(page, taxonomyCase.path);
 
-      await expect(page.getByText(taxonomyCase.heading, { exact: true })).toBeVisible();
+      const dashboardContent = page.locator("#dashboard-content");
       await expect(
-        page.getByRole("button", { name: taxonomyCase.addButton }),
+        dashboardContent.getByText(taxonomyCase.heading, { exact: true }),
+      ).toBeVisible();
+      await expect(
+        dashboardContent.getByRole("button", { name: taxonomyCase.addButton }),
       ).toBeDisabled();
-      await expect(page.locator(`#${taxonomyCase.unusedDeleteId}`)).toBeDisabled();
+      await expect(
+        dashboardContent.locator(`#${taxonomyCase.unusedDeleteId}`),
+      ).toBeDisabled();
     });
   }
 });

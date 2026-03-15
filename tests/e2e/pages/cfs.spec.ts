@@ -59,7 +59,8 @@ test.describe("call for speakers", () => {
 
     await page.getByRole("button", { name: "Submit session proposal" }).click();
 
-    await expect(page.getByLabel("Session proposal")).toBeVisible();
+    await expect(page.getByRole("dialog", { name: "Submit a proposal" })).toBeVisible();
+    await expect(page.locator("#session_proposal_id")).toBeVisible();
     await expect(page.locator("cfs-label-selector")).toBeVisible();
     await expect(
       page.getByText(
