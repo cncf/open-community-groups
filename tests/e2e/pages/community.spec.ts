@@ -13,6 +13,9 @@ import {
   TEST_EVENT_NAMES,
   TEST_GROUP_NAMES,
   TEST_GROUP_SLUGS,
+  getSectionLink,
+  getStatsContainer,
+  getStatValue,
   navigateToCommunityHome,
 } from "../utils";
 
@@ -152,16 +155,12 @@ test.describe("community home page", () => {
     });
 
     test("stats strip displays non-empty numeric values", async ({ page }) => {
-      const desktopStats = page
-        .locator("div.hidden.lg\\:flex")
-        .filter({ has: page.getByText("Groups", { exact: true }) })
-        .first();
+      const desktopStats = getStatsContainer(page, "community", "desktop");
       const statLabels = ["Groups", "Members", "Events", "Attendees"];
 
       for (const label of statLabels) {
-        const labelElement = desktopStats.getByText(label, { exact: true });
-        const statBlock = labelElement.locator("..");
-        const valueElement = statBlock.locator(".lg\\:text-4xl");
+        const valueElement = getStatValue(desktopStats, label);
+        await expect(desktopStats.getByText(label, { exact: true })).toBeVisible();
         await expect(valueElement).toBeVisible();
         const text = await valueElement.textContent();
         expect(text?.trim()).toMatch(/^\d[\d,]*$/);
@@ -171,35 +170,30 @@ test.describe("community home page", () => {
     test("stats strip shows desktop layout at lg breakpoint", async ({
       page,
     }) => {
-      const desktopStats = page
-        .locator("div.hidden.lg\\:flex")
-        .filter({ has: page.getByText("Groups", { exact: true }) })
-        .first();
+      const desktopStats = getStatsContainer(page, "community", "desktop");
       await expect(desktopStats).toBeVisible();
     });
 
     test("explore all events links have correct href on desktop", async ({
       page,
     }) => {
-      const inPersonSection = page
-        .getByText("upcoming in-person events", { exact: true })
-        .locator("..")
-        .locator("..");
-      const inPersonLink = inPersonSection
-        .locator("div.hidden.md\\:flex")
-        .getByRole("link", { name: "Explore all events" });
+      const inPersonLink = getSectionLink(
+        page,
+        "upcoming in-person events",
+        "Explore all events",
+        "desktop",
+      );
       await expect(inPersonLink).toHaveAttribute(
         "href",
         `/explore?entity=events&community[0]=${TEST_COMMUNITY_NAME}`,
       );
 
-      const virtualSection = page
-        .getByText("upcoming virtual events", { exact: true })
-        .locator("..")
-        .locator("..");
-      const virtualLink = virtualSection
-        .locator("div.hidden.md\\:flex")
-        .getByRole("link", { name: "Explore all events" });
+      const virtualLink = getSectionLink(
+        page,
+        "upcoming virtual events",
+        "Explore all events",
+        "desktop",
+      );
       await expect(virtualLink).toHaveAttribute(
         "href",
         `/explore?entity=events&community[0]=${TEST_COMMUNITY_NAME}`,
@@ -207,9 +201,12 @@ test.describe("community home page", () => {
     });
 
     test("explore all groups link visible on desktop", async ({ page }) => {
-      const desktopExploreLink = page
-        .locator("div.hidden.md\\:flex")
-        .getByRole("link", { name: "Explore all groups" });
+      const desktopExploreLink = getSectionLink(
+        page,
+        "Latest groups added",
+        "Explore all groups",
+        "desktop",
+      );
       await expect(desktopExploreLink).toBeVisible();
     });
   });
@@ -223,20 +220,19 @@ test.describe("community home page", () => {
     test("stats strip shows mobile layout below lg breakpoint", async ({
       page,
     }) => {
-      const mobileStats = page.locator("div.grid.lg\\:hidden").first();
+      const mobileStats = getStatsContainer(page, "community", "mobile");
       await expect(mobileStats).toBeVisible();
     });
 
     test("explore all events links have correct href on mobile", async ({
       page,
     }) => {
-      const inPersonSection = page
-        .getByText("upcoming in-person events", { exact: true })
-        .locator("..")
-        .locator("..");
-      const inPersonLink = inPersonSection
-        .locator("div.md\\:hidden")
-        .getByRole("link", { name: "Explore all events" });
+      const inPersonLink = getSectionLink(
+        page,
+        "upcoming in-person events",
+        "Explore all events",
+        "mobile",
+      );
       await expect(inPersonLink).toHaveAttribute(
         "href",
         `/explore?entity=events&community[0]=${TEST_COMMUNITY_NAME}`,
@@ -244,9 +240,12 @@ test.describe("community home page", () => {
     });
 
     test("explore all groups link visible on mobile", async ({ page }) => {
-      const mobileExploreLink = page
-        .locator("div.md\\:hidden")
-        .getByRole("link", { name: "Explore all groups" });
+      const mobileExploreLink = getSectionLink(
+        page,
+        "Latest groups added",
+        "Explore all groups",
+        "mobile",
+      );
       await expect(mobileExploreLink).toBeVisible();
     });
   });

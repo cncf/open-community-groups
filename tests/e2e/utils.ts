@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { expect } from "@playwright/test";
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 
 export const TEST_COMMUNITY_NAME =
   process.env.OCG_E2E_COMMUNITY_NAME || "e2e-test-community";
@@ -114,6 +114,92 @@ const buildUrl = (path: string) => new URL(path, BASE_URL).toString();
  * Builds a fully-qualified URL.
  */
 export const buildE2eUrl = (path: string) => buildUrl(path);
+
+/**
+ * Selects a site or community stats container.
+ */
+export const getStatsContainer = (
+  page: Page,
+  pageKind: "site" | "community",
+  viewport: "desktop" | "mobile",
+) => {
+  const selector =
+    viewport === "desktop" ? "div.hidden.lg\\:flex" : "div.grid.lg\\:hidden";
+
+  return page
+    .locator(selector)
+    .filter({ has: page.getByText("Groups", { exact: true }) })
+    .first();
+};
+
+/**
+ * Selects a stat value within a stats container.
+ */
+export const getStatValue = (statsContainer: Locator, statLabel: string) => {
+  const labelElement = statsContainer.getByText(statLabel, { exact: true });
+  const statBlock = labelElement.locator("..");
+
+  return statBlock.locator(".lg\\:text-4xl");
+};
+
+/**
+ * Selects a section container from its visible heading.
+ */
+export const getSectionByHeading = (page: Page, heading: string) =>
+  page.getByText(heading, { exact: true }).locator("..").locator("..");
+
+/**
+ * Selects a responsive link within a heading-based section.
+ */
+export const getSectionLink = (
+  page: Page,
+  heading: string,
+  linkName: string,
+  viewport: "desktop" | "mobile",
+) => {
+  const section = getSectionByHeading(page, heading);
+
+  return viewport === "desktop"
+    ? section.locator("div.hidden.md\\:flex").getByRole("link", { name: linkName })
+    : section.locator("div.md\\:hidden").getByRole("link", { name: linkName });
+};
+
+/**
+ * Selects a community banner variant on the site home page.
+ */
+export const getCommunityBanner = (
+  page: Page,
+  displayName: string,
+  viewport: "desktop" | "mobile",
+) => {
+  const selector =
+    viewport === "desktop"
+      ? "div.hidden.sm\\:block"
+      : "div.aspect-\\[61\\/12\\].sm\\:hidden";
+
+  return page
+    .locator(selector)
+    .filter({ has: page.getByAltText(`${displayName} banner`) })
+    .first();
+};
+
+/**
+ * Selects an event detail card from its heading.
+ */
+export const getEventInfoSection = (page: Page, heading: string) =>
+  page.getByText(heading, { exact: true }).locator("..").locator("..");
+
+/**
+ * Selects the event about section.
+ */
+export const getEventAboutSection = (page: Page) =>
+  page.getByText("About this event", { exact: true }).locator("..");
+
+/**
+ * Selects the event logo container.
+ */
+export const getEventLogo = (page: Page) =>
+  page.locator("div[style*='background-image']").first();
 
 export type AuthUser = {
   name: string;

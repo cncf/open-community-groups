@@ -5,6 +5,9 @@
 import { expect, test } from "@playwright/test";
 
 import {
+  getEventAboutSection,
+  getEventInfoSection,
+  getEventLogo,
   TEST_COMMUNITY_NAME,
   TEST_EVENT_NAME,
   TEST_EVENT_SLUG,
@@ -62,10 +65,7 @@ test.describe("event page", () => {
   });
 
   test("event date displays a formatted date or TBD", async ({ page }) => {
-    const eventDateSection = page
-      .getByText("Event date", { exact: true })
-      .locator("..")
-      .locator("..");
+    const eventDateSection = getEventInfoSection(page, "Event date");
     const eventDateText = (await eventDateSection.textContent()) || "";
     const hasFormattedDate =
       /(Jan|January|Feb|February|Mar|March|Apr|April|May|Jun|June|Jul|July|Aug|August|Sep|September|Oct|October|Nov|November|Dec|December)\s+\d{1,2},\s+\d{4}/.test(
@@ -88,10 +88,7 @@ test.describe("event page", () => {
   });
 
   test("location section shows map or fallback text", async ({ page }) => {
-    const locationSection = page
-      .getByText("Location", { exact: true })
-      .locator("..")
-      .locator("..");
+    const locationSection = getEventInfoSection(page, "Location");
     const locationText = ((await locationSection.textContent()) || "")
       .replace(/\s+/g, " ")
       .trim();
@@ -141,14 +138,10 @@ test.describe("event page", () => {
     test("about section renders with heading and description", async ({
       page,
     }) => {
-      const aboutSection = page
-        .getByText("About this event", { exact: true })
-        .locator("..");
+      const aboutSection = getEventAboutSection(page);
       const description = aboutSection.locator(".markdown");
 
-      await expect(
-        page.getByText("About this event", { exact: true }),
-      ).toBeVisible();
+      await expect(aboutSection).toContainText("About this event");
       await expect(description).toContainText(/\S/);
     });
 
@@ -222,9 +215,9 @@ test.describe("event page - responsive", () => {
     });
     await expect(heading).toBeVisible();
 
-    await expect(page.getByText("Event date", { exact: true })).toBeVisible();
-    await expect(page.getByText("Location", { exact: true })).toBeVisible();
-    await expect(page.getByText("About this event")).toBeVisible();
+    await expect(getEventInfoSection(page, "Event date")).toBeVisible();
+    await expect(getEventInfoSection(page, "Location")).toBeVisible();
+    await expect(getEventAboutSection(page)).toBeVisible();
   });
 
   test("event page renders correctly on desktop viewport", async ({ page }) => {
@@ -242,9 +235,9 @@ test.describe("event page - responsive", () => {
     });
     await expect(heading).toBeVisible();
 
-    await expect(page.getByText("Event date", { exact: true })).toBeVisible();
-    await expect(page.getByText("Location", { exact: true })).toBeVisible();
-    await expect(page.getByText("About this event")).toBeVisible();
+    await expect(getEventInfoSection(page, "Event date")).toBeVisible();
+    await expect(getEventInfoSection(page, "Location")).toBeVisible();
+    await expect(getEventAboutSection(page)).toBeVisible();
   });
 });
 
@@ -261,7 +254,7 @@ test.describe("event page - alpha event logo", () => {
       TEST_EVENT_SLUG,
     );
 
-    const logo = page.locator("div[style*='background-image']").first();
+    const logo = getEventLogo(page);
     await expect(logo).toBeVisible();
   });
 });
