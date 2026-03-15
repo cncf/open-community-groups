@@ -187,6 +187,8 @@ e2e-write-server-config:
     "server:" \
     "  addr: 127.0.0.1:9000" \
     "  base_url: http://localhost:9000" \
+    "  cookie:" \
+    "    secure: false" \
     "  disable_referer_checks: false" \
     "  login:" \
     "    email: true" \
@@ -230,6 +232,7 @@ e2e-db-setup: e2e-write-tern-config
     PATH="{{ pg_bin }}:$PATH" psql {{ pg_conn }} {{ db_name_e2e }} -c "CREATE EXTENSION IF NOT EXISTS postgis"
     cd "{{ source_dir }}/database/migrations" && TERN_CONF="{{ e2e_tern_conf }}" ./migrate.sh
     PATH="{{ pg_bin }}:$PATH" psql {{ pg_conn }} {{ db_name_e2e }} -f "{{ source_dir }}/database/tests/data/e2e.sql"
+    PATH="{{ pg_bin }}:$PATH" psql {{ pg_conn }} {{ db_name_e2e }} -c "update \"user\" set password = '\$argon2id\$v=19\$m=19456,t=2,p=1\$q55jlxUx8bffhFM3xN36ZA\$te6OiWkZ/q35lpSEAZbd/A3iJyCByxbive9F61sTp7g' where username like 'e2e-%'"
 
 # Run full e2e setup: database, dependencies, server, and tests.
 e2e-full: e2e-db-setup e2e-install e2e-write-server-config

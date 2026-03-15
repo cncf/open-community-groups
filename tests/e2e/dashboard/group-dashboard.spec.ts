@@ -40,12 +40,17 @@ test.describe("group dashboard", () => {
       "At least one accepted admin is required.",
     );
 
-    await expect(
-      dashboardContent.locator("tr", { hasText: "E2E Events Manager One" }),
-    ).toContainText("events-manager");
-    await expect(
-      dashboardContent.locator("tr", { hasText: "E2E Group Viewer One" }),
-    ).toContainText("viewer");
+    const eventsManagerRow = dashboardContent.locator("tr", {
+      hasText: "E2E Events Manager One",
+    });
+    await expect(eventsManagerRow.locator('select[name="role"]')).toHaveValue(
+      "events-manager",
+    );
+
+    const viewerRow = dashboardContent.locator("tr", {
+      hasText: "E2E Group Viewer One",
+    });
+    await expect(viewerRow.locator('select[name="role"]')).toHaveValue("viewer");
     await expect(
       dashboardContent.locator("tr", { hasText: "E2E Pending Two" }),
     ).toContainText("Invitation sent");
@@ -63,18 +68,28 @@ test.describe("group dashboard", () => {
     await navigateToPath(page, `/dashboard/group/events/${CFS_EVENT_ID}/submissions`);
 
     await expect(page.getByText("Submissions", { exact: true })).toBeVisible();
-    await expect(page.getByLabel("Sort by")).toBeVisible();
-    await expect(page.getByRole("option", { name: "Stars (high to low)" })).toBeVisible();
-    await expect(page.getByRole("option", { name: "Ratings count (high to low)" })).toBeVisible();
+    const sortBy = page.getByLabel("Sort by");
+    await expect(sortBy).toBeVisible();
+    await expect(sortBy).toContainText("Stars (high to low)");
+    await expect(sortBy).toContainText("Ratings count (high to low)");
 
-    await expect(page.getByText("Platform", { exact: true })).toBeVisible();
-    await expect(page.getByText("Workshop", { exact: true })).toBeVisible();
-    await expect(page.getByText("2 ratings", { exact: true })).toBeVisible();
-    await expect(page.getByText("1 rating", { exact: true })).toBeVisible();
+    const notReviewedRow = page.locator("tr", {
+      hasText: "Platform Reliability Patterns",
+    });
+    await expect(notReviewedRow).toContainText("Platform");
+
+    const informationRequestedRow = page.locator("tr", {
+      hasText: "Observability in Practice",
+    });
+    await expect(informationRequestedRow).toContainText("Workshop");
+    await expect(informationRequestedRow).toContainText("1 rating");
 
     const approvedRow = page.locator("tr", {
       hasText: "Scaling Community Workshops",
     });
+    await expect(approvedRow).toContainText("Platform");
+    await expect(approvedRow).toContainText("Workshop");
+    await expect(approvedRow).toContainText("2 ratings");
     await expect(approvedRow).toContainText("Approved");
     await expect(approvedRow.getByTitle("Review submission")).toBeEnabled();
   });

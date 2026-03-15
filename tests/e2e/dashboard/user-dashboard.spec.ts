@@ -28,7 +28,7 @@ test.describe("user dashboard", () => {
     ).toBeVisible();
 
     const communityRow = dashboardContent.locator("tr", {
-      hasText: "E2E Test Community",
+      hasText: "e2e-test-community",
     });
     await expect(communityRow).toContainText("viewer");
     await expect(communityRow.getByTitle("Approve")).toBeVisible();
@@ -135,18 +135,18 @@ test.describe("user dashboard", () => {
     await expect(
       dashboardContent.getByText("Submissions", { exact: true }),
     ).toBeVisible();
-    await expect(dashboardContent.getByText("Platform", { exact: true })).toBeVisible();
-    await expect(dashboardContent.getByText("Workshop", { exact: true })).toBeVisible();
 
     const notReviewedRow = dashboardContent.locator("tr", {
       hasText: "Platform Reliability Patterns",
     });
+    await expect(notReviewedRow).toContainText("Platform");
     await expect(notReviewedRow).toContainText("Not reviewed");
     await expect(notReviewedRow.getByTitle("Withdraw")).toBeEnabled();
 
     const informationRequestedRow = dashboardContent.locator("tr", {
       hasText: "Observability in Practice",
     });
+    await expect(informationRequestedRow).toContainText("Workshop");
     await expect(informationRequestedRow).toContainText("Information requested");
     await expect(informationRequestedRow.getByTitle("Resubmit")).toBeVisible();
 

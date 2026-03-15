@@ -55,12 +55,17 @@ test.describe("community dashboard", () => {
       "At least one accepted admin is required.",
     );
 
-    await expect(
-      dashboardContent.locator("tr", { hasText: "E2E Groups Manager One" }),
-    ).toContainText("groups-manager");
-    await expect(
-      dashboardContent.locator("tr", { hasText: "E2E Community Viewer One" }),
-    ).toContainText("viewer");
+    const groupsManagerRow = dashboardContent.locator("tr", {
+      hasText: "E2E Groups Manager One",
+    });
+    await expect(groupsManagerRow.locator('select[name="role"]')).toHaveValue(
+      "groups-manager",
+    );
+
+    const viewerRow = dashboardContent.locator("tr", {
+      hasText: "E2E Community Viewer One",
+    });
+    await expect(viewerRow.locator('select[name="role"]')).toHaveValue("viewer");
     await expect(
       dashboardContent.locator("tr", { hasText: "E2E Pending One" }),
     ).toContainText("Invitation sent");
