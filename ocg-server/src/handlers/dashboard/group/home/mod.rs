@@ -11,6 +11,8 @@ use axum::{
 use axum_messages::Messages;
 use tracing::instrument;
 
+use super::{events, members, sponsors, team};
+
 use crate::{
     auth::AuthSession,
     db::DynDB,
@@ -18,21 +20,16 @@ use crate::{
         error::HandlerError,
         extractors::{SelectedCommunityId, SelectedGroupId},
     },
-    router::serde_qs_config,
     templates::{
         PageId,
         auth::User,
         dashboard::group::{
             analytics,
-            events::{self, EventsListFilters, EventsTab},
             home::{Content, Page, Tab},
-            members::{self, GroupMembersFilters},
             settings,
-            sponsors::{self, GroupSponsorsFilters},
-            team::{self, GroupTeamFilters},
         },
     },
-    types::{pagination::NavigationLinks, permissions::GroupPermission},
+    types::permissions::GroupPermission,
 };
 
 #[cfg(test)]
@@ -72,76 +69,26 @@ pub(crate) async fn page(
             Content::Analytics(Box::new(analytics::Page { stats }))
         }
         Tab::Events => {
-            // Fetch past and upcoming events
-            let filters: EventsListFilters =
-                serde_qs_config().deserialize_str(raw_query.as_deref().unwrap_or_default())?;
-            let (can_manage_events, events) = tokio::try_join!(
-                db.user_has_group_permission(
-                    &community_id,
-                    &group_id,
-                    &user.user_id,
-                    GroupPermission::EventsWrite
-                ),
-                db.list_group_events(group_id, &filters)
-            )?;
-            let mut past_filters = filters.clone();
-            past_filters.events_tab = Some(EventsTab::Past);
-            let mut upcoming_filters = filters.clone();
-            upcoming_filters.events_tab = Some(EventsTab::Upcoming);
-
-            // Prepare template content
-            let past_navigation_links = NavigationLinks::from_filters(
-                &past_filters,
-                events.past.total,
-                "/dashboard/group?tab=events",
-                "/dashboard/group/events",
-            )?;
-            let upcoming_navigation_links = NavigationLinks::from_filters(
-                &upcoming_filters,
-                events.upcoming.total,
-                "/dashboard/group?tab=events",
-                "/dashboard/group/events",
-            )?;
-            Content::Events(Box::new(events::ListPage {
-                can_manage_events,
-                events,
-                events_tab: filters.current_tab(),
-                past_navigation_links,
-                upcoming_navigation_links,
-                limit: filters.limit,
-                past_offset: filters.past_offset,
-                upcoming_offset: filters.upcoming_offset,
-            }))
+            let (_, template) = events::prepare_list_page(
+                &db,
+                community_id,
+                group_id,
+                user.user_id,
+                raw_query.as_deref().unwrap_or_default(),
+            )
+            .await?;
+            Content::Events(Box::new(template))
         }
         Tab::Members => {
-            // Fetch group members
-            let filters: GroupMembersFilters =
-                serde_qs_config().deserialize_str(raw_query.as_deref().unwrap_or_default())?;
-            let (can_manage_members, results) = tokio::try_join!(
-                db.user_has_group_permission(
-                    &community_id,
-                    &group_id,
-                    &user.user_id,
-                    GroupPermission::MembersWrite
-                ),
-                db.list_group_members(group_id, &filters)
-            )?;
-
-            // Prepare template content
-            let navigation_links = NavigationLinks::from_filters(
-                &filters,
-                results.total,
-                "/dashboard/group?tab=members",
-                "/dashboard/group/members",
-            )?;
-            Content::Members(members::ListPage {
-                can_manage_members,
-                members: results.members,
-                navigation_links,
-                total: results.total,
-                limit: filters.limit,
-                offset: filters.offset,
-            })
+            let (_, template) = members::prepare_list_page(
+                &db,
+                community_id,
+                group_id,
+                user.user_id,
+                raw_query.as_deref().unwrap_or_default(),
+            )
+            .await?;
+            Content::Members(template)
         }
         Tab::Settings => {
             let (can_manage_settings, group, categories, regions) = tokio::try_join!(
@@ -163,69 +110,26 @@ pub(crate) async fn page(
             }))
         }
         Tab::Sponsors => {
-            // Fetch group sponsors
-            let filters: GroupSponsorsFilters =
-                serde_qs_config().deserialize_str(raw_query.as_deref().unwrap_or_default())?;
-            let (can_manage_sponsors, results) = tokio::try_join!(
-                db.user_has_group_permission(
-                    &community_id,
-                    &group_id,
-                    &user.user_id,
-                    GroupPermission::SponsorsWrite
-                ),
-                db.list_group_sponsors(group_id, &filters, false)
-            )?;
-
-            // Prepare template content
-            let navigation_links = NavigationLinks::from_filters(
-                &filters,
-                results.total,
-                "/dashboard/group?tab=sponsors",
-                "/dashboard/group/sponsors",
-            )?;
-            Content::Sponsors(sponsors::ListPage {
-                can_manage_sponsors,
-                navigation_links,
-                sponsors: results.sponsors,
-                total: results.total,
-                limit: filters.limit,
-                offset: filters.offset,
-            })
+            let (_, template) = sponsors::prepare_list_page(
+                &db,
+                community_id,
+                group_id,
+                user.user_id,
+                raw_query.as_deref().unwrap_or_default(),
+            )
+            .await?;
+            Content::Sponsors(template)
         }
         Tab::Team => {
-            // Fetch group team members
-            let filters: GroupTeamFilters =
-                serde_qs_config().deserialize_str(raw_query.as_deref().unwrap_or_default())?;
-            let user = auth_session.user.as_ref().expect("user to be logged in");
-            let (results, roles, can_manage_team) = tokio::try_join!(
-                db.list_group_team_members(group_id, &filters),
-                db.list_group_roles(),
-                db.user_has_group_permission(
-                    &community_id,
-                    &group_id,
-                    &user.user_id,
-                    GroupPermission::TeamWrite
-                )
-            )?;
-
-            // Prepare template content
-            let navigation_links = NavigationLinks::from_filters(
-                &filters,
-                results.total,
-                "/dashboard/group?tab=team",
-                "/dashboard/group/team",
-            )?;
-            Content::Team(team::ListPage {
-                can_manage_team,
-                members: results.members,
-                navigation_links,
-                roles,
-                total: results.total,
-                total_accepted: results.total_accepted,
-                total_admins_accepted: results.total_admins_accepted,
-                limit: filters.limit,
-                offset: filters.offset,
-            })
+            let (_, template) = team::prepare_list_page(
+                &db,
+                community_id,
+                group_id,
+                user.user_id,
+                raw_query.as_deref().unwrap_or_default(),
+            )
+            .await?;
+            Content::Team(template)
         }
     };
 

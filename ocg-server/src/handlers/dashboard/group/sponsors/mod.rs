@@ -27,6 +27,10 @@ use crate::{
 #[cfg(test)]
 mod tests;
 
+// URLs used by the dashboard page and tab partial
+const DASHBOARD_URL: &str = "/dashboard/group?tab=sponsors";
+const PARTIAL_URL: &str = "/dashboard/group/sponsors";
+
 // Pages handlers.
 
 /// Displays the page to add a new sponsor.
@@ -63,37 +67,18 @@ pub(crate) async fn list_page(
     State(db): State<DynDB>,
     RawQuery(raw_query): RawQuery,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Fetch sponsors
-    let filters: GroupSponsorsFilters =
-        serde_qs_config().deserialize_str(raw_query.as_deref().unwrap_or_default())?;
-    let (can_manage_sponsors, results) = tokio::try_join!(
-        db.user_has_group_permission(
-            &community_id,
-            &group_id,
-            &user.user_id,
-            GroupPermission::SponsorsWrite
-        ),
-        db.list_group_sponsors(group_id, &filters, false)
-    )?;
-
-    // Prepare template
-    let navigation_links = NavigationLinks::from_filters(
-        &filters,
-        results.total,
-        "/dashboard/group?tab=sponsors",
-        "/dashboard/group/sponsors",
-    )?;
-    let template = sponsors::ListPage {
-        can_manage_sponsors,
-        navigation_links,
-        sponsors: results.sponsors,
-        total: results.total,
-        limit: filters.limit,
-        offset: filters.offset,
-    };
+    // Prepare list page content
+    let (filters, template) = prepare_list_page(
+        &db,
+        community_id,
+        group_id,
+        user.user_id,
+        raw_query.as_deref().unwrap_or_default(),
+    )
+    .await?;
 
     // Prepare response headers
-    let url = pagination::build_url("/dashboard/group?tab=sponsors", &filters)?;
+    let url = pagination::build_url(DASHBOARD_URL, &filters)?;
     let headers = [(HeaderName::from_static("hx-push-url"), url)];
 
     Ok((headers, Html(template.render()?)))
@@ -177,4 +162,36 @@ pub(crate) async fn update(
         StatusCode::NO_CONTENT,
         [("HX-Trigger", "refresh-group-dashboard-table")],
     ))
+}
+
+// Helpers.
+
+/// Prepares the sponsors list page and filters for the group dashboard.
+pub(crate) async fn prepare_list_page(
+    db: &DynDB,
+    community_id: Uuid,
+    group_id: Uuid,
+    user_id: Uuid,
+    raw_query: &str,
+) -> Result<(GroupSponsorsFilters, sponsors::ListPage), HandlerError> {
+    // Fetch sponsors
+    let filters: GroupSponsorsFilters = serde_qs_config().deserialize_str(raw_query)?;
+    let (can_manage_sponsors, results) = tokio::try_join!(
+        db.user_has_group_permission(&community_id, &group_id, &user_id, GroupPermission::SponsorsWrite),
+        db.list_group_sponsors(group_id, &filters, false)
+    )?;
+
+    // Prepare template
+    let navigation_links =
+        NavigationLinks::from_filters(&filters, results.total, DASHBOARD_URL, PARTIAL_URL)?;
+    let template = sponsors::ListPage {
+        can_manage_sponsors,
+        navigation_links,
+        sponsors: results.sponsors,
+        total: results.total,
+        limit: filters.limit,
+        offset: filters.offset,
+    };
+
+    Ok((filters, template))
 }

@@ -33,6 +33,10 @@ use crate::{
 #[cfg(test)]
 mod tests;
 
+// URLs used by the dashboard page and tab partial
+const DASHBOARD_URL: &str = "/dashboard/group?tab=team";
+const PARTIAL_URL: &str = "/dashboard/group/team";
+
 // Pages handlers.
 
 /// Displays the list of group team members.
@@ -44,41 +48,18 @@ pub(crate) async fn list_page(
     State(db): State<DynDB>,
     RawQuery(raw_query): RawQuery,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Fetch group team members
-    let filters: GroupTeamFilters =
-        serde_qs_config().deserialize_str(raw_query.as_deref().unwrap_or_default())?;
-    let (results, roles, can_manage_team) = tokio::try_join!(
-        db.list_group_team_members(group_id, &filters),
-        db.list_group_roles(),
-        db.user_has_group_permission(
-            &community_id,
-            &group_id,
-            &user.user_id,
-            GroupPermission::TeamWrite
-        )
-    )?;
-
-    // Prepare template
-    let navigation_links = NavigationLinks::from_filters(
-        &filters,
-        results.total,
-        "/dashboard/group?tab=team",
-        "/dashboard/group/team",
-    )?;
-    let template = team::ListPage {
-        can_manage_team,
-        members: results.members,
-        navigation_links,
-        roles,
-        total: results.total,
-        total_accepted: results.total_accepted,
-        total_admins_accepted: results.total_admins_accepted,
-        limit: filters.limit,
-        offset: filters.offset,
-    };
+    // Prepare list page content
+    let (filters, template) = prepare_list_page(
+        &db,
+        community_id,
+        group_id,
+        user.user_id,
+        raw_query.as_deref().unwrap_or_default(),
+    )
+    .await?;
 
     // Prepare response headers
-    let url = pagination::build_url("/dashboard/group?tab=team", &filters)?;
+    let url = pagination::build_url(DASHBOARD_URL, &filters)?;
     let headers = [(HeaderName::from_static("hx-push-url"), url)];
 
     Ok((headers, Html(template.render()?)))
@@ -179,4 +160,40 @@ pub(crate) struct NewTeamMember {
 pub(crate) struct NewTeamRole {
     #[garde(skip)]
     role: GroupRole,
+}
+
+// Helpers.
+
+/// Prepares the team list page and filters for the group dashboard.
+pub(crate) async fn prepare_list_page(
+    db: &DynDB,
+    community_id: Uuid,
+    group_id: Uuid,
+    user_id: Uuid,
+    raw_query: &str,
+) -> Result<(GroupTeamFilters, team::ListPage), HandlerError> {
+    // Fetch group team members
+    let filters: GroupTeamFilters = serde_qs_config().deserialize_str(raw_query)?;
+    let (results, roles, can_manage_team) = tokio::try_join!(
+        db.list_group_team_members(group_id, &filters),
+        db.list_group_roles(),
+        db.user_has_group_permission(&community_id, &group_id, &user_id, GroupPermission::TeamWrite)
+    )?;
+
+    // Prepare template
+    let navigation_links =
+        NavigationLinks::from_filters(&filters, results.total, DASHBOARD_URL, PARTIAL_URL)?;
+    let template = team::ListPage {
+        can_manage_team,
+        members: results.members,
+        navigation_links,
+        roles,
+        total: results.total,
+        total_accepted: results.total_accepted,
+        total_admins_accepted: results.total_admins_accepted,
+        limit: filters.limit,
+        offset: filters.offset,
+    };
+
+    Ok((filters, template))
 }

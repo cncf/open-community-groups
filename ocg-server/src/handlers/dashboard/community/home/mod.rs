@@ -11,23 +11,22 @@ use axum::{
 use axum_messages::Messages;
 use tracing::instrument;
 
+use super::{groups, team};
+
 use crate::{
     auth::AuthSession,
     db::DynDB,
     handlers::{error::HandlerError, extractors::SelectedCommunityId},
-    router::serde_qs_config,
     templates::{
         PageId,
         auth::User,
         dashboard::community::{
             analytics, event_categories, group_categories,
-            groups::{self, CommunityGroupsFilters},
             home::{Content, Page, Tab},
             regions, settings,
-            team::{self, CommunityTeamFilters},
         },
     },
-    types::{pagination::NavigationLinks, permissions::CommunityPermission, search::SearchGroupsFilters},
+    types::permissions::CommunityPermission,
 };
 
 #[cfg(test)]
@@ -89,39 +88,15 @@ pub(crate) async fn page(
             })
         }
         Tab::Groups => {
-            // Fetch groups
-            let page_filters: CommunityGroupsFilters =
-                serde_qs_config().deserialize_str(raw_query.as_deref().unwrap_or_default())?;
-            let search_filters = SearchGroupsFilters {
-                community: vec![community.name.clone()],
-                include_inactive: Some(true),
-                limit: page_filters.limit,
-                offset: page_filters.offset,
-                sort_by: Some("name".to_string()),
-                ts_query: page_filters.ts_query.clone(),
-                ..SearchGroupsFilters::default()
-            };
-            let (can_manage_groups, results) = tokio::try_join!(
-                db.user_has_community_permission(&community_id, &user_id, CommunityPermission::GroupsWrite),
-                db.search_groups(&search_filters)
-            )?;
-
-            // Prepare template content
-            let navigation_links = NavigationLinks::from_filters(
-                &page_filters,
-                results.total,
-                "/dashboard/community?tab=groups",
-                "/dashboard/community/groups",
-            )?;
-            Content::Groups(groups::ListPage {
-                can_manage_groups,
-                groups: results.groups,
-                navigation_links,
-                total: results.total,
-                limit: page_filters.limit,
-                offset: page_filters.offset,
-                ts_query: page_filters.ts_query,
-            })
+            let (_, template) = groups::prepare_list_page(
+                &db,
+                community_id,
+                user_id,
+                raw_query.as_deref().unwrap_or_default(),
+                Some(community.name.clone()),
+            )
+            .await?;
+            Content::Groups(template)
         }
         Tab::Regions => {
             let (can_manage_taxonomy, regions) = tokio::try_join!(
@@ -143,33 +118,14 @@ pub(crate) async fn page(
             }))
         }
         Tab::Team => {
-            // Fetch team members
-            let page_filters: CommunityTeamFilters =
-                serde_qs_config().deserialize_str(raw_query.as_deref().unwrap_or_default())?;
-            let (results, roles, can_manage_team) = tokio::try_join!(
-                db.list_community_team_members(community_id, &page_filters),
-                db.list_community_roles(),
-                db.user_has_community_permission(&community_id, &user_id, CommunityPermission::TeamWrite)
-            )?;
-
-            // Prepare template content
-            let navigation_links = NavigationLinks::from_filters(
-                &page_filters,
-                results.total,
-                "/dashboard/community?tab=team",
-                "/dashboard/community/team",
-            )?;
-            Content::Team(team::ListPage {
-                can_manage_team,
-                members: results.members,
-                navigation_links,
-                roles,
-                total: results.total,
-                total_accepted: results.total_accepted,
-                total_admins_accepted: results.total_admins_accepted,
-                limit: page_filters.limit,
-                offset: page_filters.offset,
-            })
+            let (_, template) = team::prepare_list_page(
+                &db,
+                community_id,
+                user_id,
+                raw_query.as_deref().unwrap_or_default(),
+            )
+            .await?;
+            Content::Team(template)
         }
     };
 

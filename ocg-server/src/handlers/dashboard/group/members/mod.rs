@@ -10,6 +10,7 @@ use axum::{
 use garde::Validate;
 use serde::{Deserialize, Serialize};
 use tracing::instrument;
+use uuid::Uuid;
 
 use crate::{
     config::HttpServerConfig,
@@ -34,6 +35,10 @@ use crate::{
 #[cfg(test)]
 mod tests;
 
+// URLs used by the dashboard page and tab partial
+const DASHBOARD_URL: &str = "/dashboard/group?tab=members";
+const PARTIAL_URL: &str = "/dashboard/group/members";
+
 // Pages handlers.
 
 /// Displays the list of group members.
@@ -45,37 +50,18 @@ pub(crate) async fn list_page(
     State(db): State<DynDB>,
     RawQuery(raw_query): RawQuery,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Fetch group members
-    let filters: GroupMembersFilters =
-        serde_qs_config().deserialize_str(raw_query.as_deref().unwrap_or_default())?;
-    let (can_manage_members, results) = tokio::try_join!(
-        db.user_has_group_permission(
-            &community_id,
-            &group_id,
-            &user.user_id,
-            GroupPermission::MembersWrite
-        ),
-        db.list_group_members(group_id, &filters)
-    )?;
-
-    // Prepare template
-    let navigation_links = NavigationLinks::from_filters(
-        &filters,
-        results.total,
-        "/dashboard/group?tab=members",
-        "/dashboard/group/members",
-    )?;
-    let template = members::ListPage {
-        can_manage_members,
-        members: results.members,
-        navigation_links,
-        total: results.total,
-        limit: filters.limit,
-        offset: filters.offset,
-    };
+    // Prepare list page content
+    let (filters, template) = prepare_list_page(
+        &db,
+        community_id,
+        group_id,
+        user.user_id,
+        raw_query.as_deref().unwrap_or_default(),
+    )
+    .await?;
 
     // Prepare response headers
-    let url = pagination::build_url("/dashboard/group?tab=members", &filters)?;
+    let url = pagination::build_url(DASHBOARD_URL, &filters)?;
     let headers = [(HeaderName::from_static("hx-push-url"), url)];
 
     Ok((headers, Html(template.render()?)))
@@ -155,4 +141,36 @@ pub(crate) struct GroupCustomNotification {
     /// Title line for the notification email.
     #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_M))]
     pub title: String,
+}
+
+// Helpers.
+
+/// Prepares the members list page and filters for the group dashboard.
+pub(crate) async fn prepare_list_page(
+    db: &DynDB,
+    community_id: Uuid,
+    group_id: Uuid,
+    user_id: Uuid,
+    raw_query: &str,
+) -> Result<(GroupMembersFilters, members::ListPage), HandlerError> {
+    // Fetch group members
+    let filters: GroupMembersFilters = serde_qs_config().deserialize_str(raw_query)?;
+    let (can_manage_members, results) = tokio::try_join!(
+        db.user_has_group_permission(&community_id, &group_id, &user_id, GroupPermission::MembersWrite),
+        db.list_group_members(group_id, &filters)
+    )?;
+
+    // Prepare template
+    let navigation_links =
+        NavigationLinks::from_filters(&filters, results.total, DASHBOARD_URL, PARTIAL_URL)?;
+    let template = members::ListPage {
+        can_manage_members,
+        members: results.members,
+        navigation_links,
+        total: results.total,
+        limit: filters.limit,
+        offset: filters.offset,
+    };
+
+    Ok((filters, template))
 }

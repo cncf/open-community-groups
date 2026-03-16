@@ -30,6 +30,10 @@ use crate::{
 #[cfg(test)]
 mod tests;
 
+// URLs used by the dashboard page and tab partial
+const DASHBOARD_URL: &str = "/dashboard/user?tab=session-proposals";
+const PARTIAL_URL: &str = "/dashboard/user/session-proposals";
+
 // Pages handlers.
 
 /// Returns the session proposals list page for the user dashboard.
@@ -39,35 +43,12 @@ pub(crate) async fn list_page(
     State(db): State<DynDB>,
     RawQuery(raw_query): RawQuery,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Fetch pending invitations, session proposal levels, and session proposals
-    let filters: session_proposals::SessionProposalsFilters =
-        serde_qs_config().deserialize_str(raw_query.as_deref().unwrap_or_default())?;
-    let (pending_co_speaker_invitations, session_proposal_levels, session_proposals_output) = tokio::try_join!(
-        db.list_user_pending_session_proposal_co_speaker_invitations(user.user_id),
-        db.list_session_proposal_levels(),
-        db.list_user_session_proposals(user.user_id, &filters)
-    )?;
-
-    // Prepare template
-    let navigation_links = NavigationLinks::from_filters(
-        &filters,
-        session_proposals_output.total,
-        "/dashboard/user?tab=session-proposals",
-        "/dashboard/user/session-proposals",
-    )?;
-    let template = session_proposals::ListPage {
-        current_user_id: user.user_id,
-        session_proposal_levels,
-        session_proposals: session_proposals_output.session_proposals,
-        pending_co_speaker_invitations,
-        navigation_links,
-        total: session_proposals_output.total,
-        limit: filters.limit,
-        offset: filters.offset,
-    };
+    // Prepare list page content
+    let (filters, template) =
+        prepare_list_page(&db, user.user_id, raw_query.as_deref().unwrap_or_default()).await?;
 
     // Prepare response headers
-    let url = pagination::build_url("/dashboard/user?tab=session-proposals", &filters)?;
+    let url = pagination::build_url(DASHBOARD_URL, &filters)?;
     let headers = [(HeaderName::from_static("hx-push-url"), url)];
 
     Ok((headers, Html(template.render()?)))
@@ -254,4 +235,47 @@ async fn send_co_speaker_invitation_notification(
     notifications_manager.enqueue(&notification).await?;
 
     Ok(())
+}
+
+// Helpers.
+
+/// Prepares the session proposals list page and filters for the user dashboard.
+pub(crate) async fn prepare_list_page(
+    db: &DynDB,
+    user_id: Uuid,
+    raw_query: &str,
+) -> Result<
+    (
+        session_proposals::SessionProposalsFilters,
+        session_proposals::ListPage,
+    ),
+    HandlerError,
+> {
+    // Fetch pending invitations, session proposal levels, and session proposals
+    let filters: session_proposals::SessionProposalsFilters = serde_qs_config().deserialize_str(raw_query)?;
+    let (pending_co_speaker_invitations, session_proposal_levels, session_proposals_output) = tokio::try_join!(
+        db.list_user_pending_session_proposal_co_speaker_invitations(user_id),
+        db.list_session_proposal_levels(),
+        db.list_user_session_proposals(user_id, &filters)
+    )?;
+
+    // Prepare template
+    let navigation_links = NavigationLinks::from_filters(
+        &filters,
+        session_proposals_output.total,
+        DASHBOARD_URL,
+        PARTIAL_URL,
+    )?;
+    let template = session_proposals::ListPage {
+        current_user_id: user_id,
+        session_proposal_levels,
+        session_proposals: session_proposals_output.session_proposals,
+        pending_co_speaker_invitations,
+        navigation_links,
+        total: session_proposals_output.total,
+        limit: filters.limit,
+        offset: filters.offset,
+    };
+
+    Ok((filters, template))
 }

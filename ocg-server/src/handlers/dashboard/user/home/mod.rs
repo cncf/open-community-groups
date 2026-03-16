@@ -11,21 +11,17 @@ use axum::{
 use axum_messages::Messages;
 use tracing::instrument;
 
+use super::{events, invitations, session_proposals, submissions};
+
 use crate::{
     auth::AuthSession,
     db::DynDB,
     handlers::error::HandlerError,
-    router::serde_qs_config,
     templates::{
         PageId,
         auth::{self, User, UserDetails},
-        dashboard::user::{
-            events,
-            home::{Content, Page, Tab},
-            invitations, session_proposals, submissions,
-        },
+        dashboard::user::home::{Content, Page, Tab},
     },
-    types::pagination::NavigationLinks,
 };
 
 #[cfg(test)]
@@ -66,73 +62,17 @@ pub(crate) async fn page(
             }))
         }
         Tab::Events => {
-            let filters: events::UserEventsFilters = serde_qs_config().deserialize_str(raw_query)?;
-            let events_output = db.list_user_events(user.user_id, &filters).await?;
-            let navigation_links = NavigationLinks::from_filters(
-                &filters,
-                events_output.total,
-                "/dashboard/user?tab=events",
-                "/dashboard/user/events",
-            )?;
-            Content::Events(events::ListPage {
-                events: events_output.events,
-                navigation_links,
-                total: events_output.total,
-                limit: filters.limit,
-                offset: filters.offset,
-            })
+            let (_, template) = events::prepare_list_page(&db, user.user_id, raw_query).await?;
+            Content::Events(template)
         }
-        Tab::Invitations => {
-            let (community_invitations, group_invitations) = tokio::try_join!(
-                db.list_user_community_team_invitations(user.user_id),
-                db.list_user_group_team_invitations(user.user_id)
-            )?;
-            Content::Invitations(invitations::ListPage {
-                community_invitations,
-                group_invitations,
-            })
-        }
+        Tab::Invitations => Content::Invitations(invitations::prepare_list_page(&db, user.user_id).await?),
         Tab::SessionProposals => {
-            let filters: session_proposals::SessionProposalsFilters =
-                serde_qs_config().deserialize_str(raw_query)?;
-            let (pending_co_speaker_invitations, session_proposal_levels, session_proposals_output) = tokio::try_join!(
-                db.list_user_pending_session_proposal_co_speaker_invitations(user.user_id),
-                db.list_session_proposal_levels(),
-                db.list_user_session_proposals(user.user_id, &filters)
-            )?;
-            let navigation_links = NavigationLinks::from_filters(
-                &filters,
-                session_proposals_output.total,
-                "/dashboard/user?tab=session-proposals",
-                "/dashboard/user/session-proposals",
-            )?;
-            Content::SessionProposals(session_proposals::ListPage {
-                current_user_id: user.user_id,
-                pending_co_speaker_invitations,
-                session_proposal_levels,
-                session_proposals: session_proposals_output.session_proposals,
-                navigation_links,
-                total: session_proposals_output.total,
-                limit: filters.limit,
-                offset: filters.offset,
-            })
+            let (_, template) = session_proposals::prepare_list_page(&db, user.user_id, raw_query).await?;
+            Content::SessionProposals(template)
         }
         Tab::Submissions => {
-            let filters: submissions::CfsSubmissionsFilters = serde_qs_config().deserialize_str(raw_query)?;
-            let submissions = db.list_user_cfs_submissions(user.user_id, &filters).await?;
-            let navigation_links = NavigationLinks::from_filters(
-                &filters,
-                submissions.total,
-                "/dashboard/user?tab=submissions",
-                "/dashboard/user/submissions",
-            )?;
-            Content::Submissions(submissions::ListPage {
-                submissions: submissions.submissions,
-                navigation_links,
-                total: submissions.total,
-                limit: filters.limit,
-                offset: filters.offset,
-            })
+            let (_, template) = submissions::prepare_list_page(&db, user.user_id, raw_query).await?;
+            Content::Submissions(template)
         }
     };
 

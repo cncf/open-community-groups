@@ -45,6 +45,10 @@ use crate::{
 #[cfg(test)]
 mod tests;
 
+// URLs used by the dashboard page and tab partial
+const DASHBOARD_URL: &str = "/dashboard/group?tab=events";
+const PARTIAL_URL: &str = "/dashboard/group/events";
+
 // Minimum shift required to notify a reschedule.
 const MIN_RESCHEDULE_SHIFT: TimeDelta = TimeDelta::minutes(15);
 
@@ -102,49 +106,18 @@ pub(crate) async fn list_page(
     State(db): State<DynDB>,
     RawQuery(raw_query): RawQuery,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Fetch group's past and upcoming events
-    let filters: EventsListFilters =
-        serde_qs_config().deserialize_str(raw_query.as_deref().unwrap_or_default())?;
-    let (can_manage_events, events) = tokio::try_join!(
-        db.user_has_group_permission(
-            &community_id,
-            &group_id,
-            &user.user_id,
-            GroupPermission::EventsWrite
-        ),
-        db.list_group_events(group_id, &filters)
-    )?;
-    let mut past_filters = filters.clone();
-    past_filters.events_tab = Some(EventsTab::Past);
-    let mut upcoming_filters = filters.clone();
-    upcoming_filters.events_tab = Some(EventsTab::Upcoming);
-
-    // Prepare template
-    let past_navigation_links = NavigationLinks::from_filters(
-        &past_filters,
-        events.past.total,
-        "/dashboard/group?tab=events",
-        "/dashboard/group/events",
-    )?;
-    let upcoming_navigation_links = NavigationLinks::from_filters(
-        &upcoming_filters,
-        events.upcoming.total,
-        "/dashboard/group?tab=events",
-        "/dashboard/group/events",
-    )?;
-    let template = events::ListPage {
-        can_manage_events,
-        events,
-        events_tab: filters.current_tab(),
-        past_navigation_links,
-        upcoming_navigation_links,
-        limit: filters.limit,
-        past_offset: filters.past_offset,
-        upcoming_offset: filters.upcoming_offset,
-    };
+    // Prepare list page content
+    let (filters, template) = prepare_list_page(
+        &db,
+        community_id,
+        group_id,
+        user.user_id,
+        raw_query.as_deref().unwrap_or_default(),
+    )
+    .await?;
 
     // Prepare response headers
-    let url = pagination::build_url("/dashboard/group?tab=events", &filters)?;
+    let url = pagination::build_url(DASHBOARD_URL, &filters)?;
     let headers = [(HeaderName::from_static("hx-push-url"), url)];
 
     Ok((headers, Html(template.render()?)))
@@ -535,4 +508,46 @@ fn build_meetings_max_participants(meetings_cfg: Option<&MeetingsConfig>) -> Has
         map.insert(MeetingProvider::Zoom, zoom.max_participants);
     }
     map
+}
+
+/// Prepares the events list page and filters for the group dashboard.
+pub(crate) async fn prepare_list_page(
+    db: &DynDB,
+    community_id: Uuid,
+    group_id: Uuid,
+    user_id: Uuid,
+    raw_query: &str,
+) -> Result<(EventsListFilters, events::ListPage), HandlerError> {
+    // Fetch group's past and upcoming events
+    let filters: EventsListFilters = serde_qs_config().deserialize_str(raw_query)?;
+    let (can_manage_events, events) = tokio::try_join!(
+        db.user_has_group_permission(&community_id, &group_id, &user_id, GroupPermission::EventsWrite),
+        db.list_group_events(group_id, &filters)
+    )?;
+    let mut past_filters = filters.clone();
+    past_filters.events_tab = Some(EventsTab::Past);
+    let mut upcoming_filters = filters.clone();
+    upcoming_filters.events_tab = Some(EventsTab::Upcoming);
+
+    // Prepare template
+    let past_navigation_links =
+        NavigationLinks::from_filters(&past_filters, events.past.total, DASHBOARD_URL, PARTIAL_URL)?;
+    let upcoming_navigation_links = NavigationLinks::from_filters(
+        &upcoming_filters,
+        events.upcoming.total,
+        DASHBOARD_URL,
+        PARTIAL_URL,
+    )?;
+    let template = events::ListPage {
+        can_manage_events,
+        events,
+        events_tab: filters.current_tab(),
+        past_navigation_links,
+        upcoming_navigation_links,
+        limit: filters.limit,
+        past_offset: filters.past_offset,
+        upcoming_offset: filters.upcoming_offset,
+    };
+
+    Ok((filters, template))
 }

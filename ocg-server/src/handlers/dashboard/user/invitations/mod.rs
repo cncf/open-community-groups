@@ -32,15 +32,8 @@ pub(crate) async fn list_page(
     CurrentUser(user): CurrentUser,
     State(db): State<DynDB>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Prepare template fetching both lists concurrently
-    let (community_invitations, group_invitations) = tokio::try_join!(
-        db.list_user_community_team_invitations(user.user_id),
-        db.list_user_group_team_invitations(user.user_id)
-    )?;
-    let template = invitations::ListPage {
-        community_invitations,
-        group_invitations,
-    };
+    // Prepare list page content
+    let template = prepare_list_page(&db, user.user_id).await?;
 
     Ok(Html(template.render()?))
 }
@@ -118,4 +111,23 @@ pub(crate) async fn reject_group_team_invitation(
     messages.success("Team invitation rejected.");
 
     Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-body")]))
+}
+
+// Helpers.
+
+/// Prepares the invitations list page for the user dashboard.
+pub(crate) async fn prepare_list_page(
+    db: &DynDB,
+    user_id: Uuid,
+) -> Result<invitations::ListPage, HandlerError> {
+    // Prepare template fetching both lists concurrently
+    let (community_invitations, group_invitations) = tokio::try_join!(
+        db.list_user_community_team_invitations(user_id),
+        db.list_user_group_team_invitations(user_id)
+    )?;
+
+    Ok(invitations::ListPage {
+        community_invitations,
+        group_invitations,
+    })
 }

@@ -30,6 +30,10 @@ use crate::{
 #[cfg(test)]
 mod tests;
 
+// URLs used by the dashboard page and tab partial
+const DASHBOARD_URL: &str = "/dashboard/community?tab=groups";
+const PARTIAL_URL: &str = "/dashboard/community/groups";
+
 // Pages handlers.
 
 /// Displays the list of groups for the community dashboard.
@@ -40,47 +44,18 @@ pub(crate) async fn list_page(
     State(db): State<DynDB>,
     RawQuery(raw_query): RawQuery,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Get community name (cached)
-    let Some(community_name) = db.get_community_name_by_id(community_id).await? else {
-        return Err(anyhow::anyhow!("community not found").into());
-    };
-
-    // Fetch groups
-    let page_filters: CommunityGroupsFilters =
-        serde_qs_config().deserialize_str(raw_query.as_deref().unwrap_or_default())?;
-    let search_filters = SearchGroupsFilters {
-        community: vec![community_name],
-        include_inactive: Some(true),
-        limit: page_filters.limit,
-        offset: page_filters.offset,
-        sort_by: Some(String::from("name")),
-        ts_query: page_filters.ts_query.clone(),
-        ..SearchGroupsFilters::default()
-    };
-    let (can_manage_groups, results) = tokio::try_join!(
-        db.user_has_community_permission(&community_id, &user.user_id, CommunityPermission::GroupsWrite),
-        db.search_groups(&search_filters)
-    )?;
-
-    // Prepare template
-    let navigation_links = NavigationLinks::from_filters(
-        &page_filters,
-        results.total,
-        "/dashboard/community?tab=groups",
-        "/dashboard/community/groups",
-    )?;
-    let template = groups::ListPage {
-        can_manage_groups,
-        groups: results.groups,
-        navigation_links,
-        total: results.total,
-        limit: page_filters.limit,
-        offset: page_filters.offset,
-        ts_query: page_filters.ts_query.clone(),
-    };
+    // Prepare list page content
+    let (filters, template) = prepare_list_page(
+        &db,
+        community_id,
+        user.user_id,
+        raw_query.as_deref().unwrap_or_default(),
+        None,
+    )
+    .await?;
 
     // Prepare response headers
-    let url = pagination::build_url("/dashboard/community?tab=groups", &page_filters)?;
+    let url = pagination::build_url(DASHBOARD_URL, &filters)?;
     let headers = [(HeaderName::from_static("hx-push-url"), url)];
 
     Ok((headers, Html(template.render()?)))
@@ -239,4 +214,56 @@ pub(crate) async fn update(
         [("HX-Trigger", "refresh-community-dashboard-table")],
     )
         .into_response())
+}
+
+// Helpers.
+
+/// Prepares the groups list page and filters for the community dashboard.
+pub(crate) async fn prepare_list_page(
+    db: &DynDB,
+    community_id: Uuid,
+    user_id: Uuid,
+    raw_query: &str,
+    community_name: Option<String>,
+) -> Result<(CommunityGroupsFilters, groups::ListPage), HandlerError> {
+    // Use the provided community name when available to avoid an extra lookup
+    let community_name = if let Some(community_name) = community_name {
+        community_name
+    } else {
+        let Some(community_name) = db.get_community_name_by_id(community_id).await? else {
+            return Err(anyhow::anyhow!("community not found").into());
+        };
+        community_name
+    };
+
+    // Fetch groups
+    let filters: CommunityGroupsFilters = serde_qs_config().deserialize_str(raw_query)?;
+    let search_filters = SearchGroupsFilters {
+        community: vec![community_name],
+        include_inactive: Some(true),
+        limit: filters.limit,
+        offset: filters.offset,
+        sort_by: Some(String::from("name")),
+        ts_query: filters.ts_query.clone(),
+        ..SearchGroupsFilters::default()
+    };
+    let (can_manage_groups, results) = tokio::try_join!(
+        db.user_has_community_permission(&community_id, &user_id, CommunityPermission::GroupsWrite),
+        db.search_groups(&search_filters)
+    )?;
+
+    // Prepare template
+    let navigation_links =
+        NavigationLinks::from_filters(&filters, results.total, DASHBOARD_URL, PARTIAL_URL)?;
+    let template = groups::ListPage {
+        can_manage_groups,
+        groups: results.groups,
+        navigation_links,
+        total: results.total,
+        limit: filters.limit,
+        offset: filters.offset,
+        ts_query: filters.ts_query.clone(),
+    };
+
+    Ok((filters, template))
 }
