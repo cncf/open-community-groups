@@ -5,12 +5,7 @@
 
 <div class="flex justify-between items-end my-5">
   <div class="text-sm text-stone-600">
-    {{ categories.len() }} categor
-    {%- if categories.len() == 1 -%}
-      y
-    {%- else -%}
-      ies
-    {%- endif -%}
+    {{ categories.len() }} categor{%- if categories.len() == 1 -%}y{%- else -%}ies{%- endif -%}
   </div>
   <div>
     <button id="add-group-category-button"
@@ -63,8 +58,7 @@
             <td class="px-3 xl:px-5 py-4">
               <div class="font-medium text-stone-900">{{ category.name }}</div>
               <div class="xl:hidden text-xs text-stone-500 mt-1">
-                {{ groups_count }} group
-                {% if groups_count != 1 %}s{% endif %}
+                {{ groups_count }} group{%- if groups_count != 1 -%}s{%- endif -%}
               </div>
             </td>
             <td class="hidden xl:table-cell px-3 xl:px-5 py-4">{{ groups_count }}</td>
