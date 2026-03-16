@@ -143,7 +143,7 @@
                   {# End group name -#}
 
                   {# Mobile category and location -#}
-                  <div class="block xl:hidden text-xs text-stone-500">
+                  <div class="block xl:hidden mt-1.5 space-y-1 text-xs text-stone-500">
                     <div class="max-w-full truncate">{{ group.category.name }}</div>
                     {% if let Some(location) = &group.location(40) -%}
                       <div class="max-w-full truncate">{{ location }}</div>
