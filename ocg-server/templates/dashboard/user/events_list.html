@@ -47,7 +47,7 @@ description = "Upcoming events where you'll participate.") -}}
                 </a>
                 <div class="text-xs text-stone-400 truncate">{{ item.event.group_name }}</div>
 
-                <div class="block xl:hidden mt-1 text-xs text-stone-500">
+                <div class="block xl:hidden mt-1.5 space-y-1 text-xs text-stone-500">
                   {% if item.event.kind.to_string() == "virtual" -%}
                     <div class="max-w-full truncate">Virtual</div>
                   {% else if let Some(location) = &item.event.location(90) -%}
