@@ -240,4 +240,56 @@ test.describe("user dashboard", () => {
       ),
     ).toBeDisabled();
   });
+
+  test("accepting pending invitations removes them from the user dashboard", async ({
+    pending1Page,
+  }) => {
+    await openUserDashboardPath("/dashboard/user?tab=invitations", pending1Page);
+
+    const dashboardContent = pending1Page.locator("#dashboard-content");
+    const communityInvitationRow = dashboardContent.locator("tr", {
+      hasText: "e2e-test-community",
+    });
+
+    if ((await communityInvitationRow.getByTitle("Approve").count()) > 0) {
+      await Promise.all([
+        pending1Page.waitForResponse(
+          (response) =>
+            response.request().method() === "PUT" &&
+            response.ok() &&
+            response.url().includes("/dashboard/user/invitations/community/") &&
+            response.url().endsWith("/accept"),
+        ),
+        communityInvitationRow.getByTitle("Approve").click(),
+      ]);
+
+      await pending1Page.reload();
+    }
+
+    const groupInvitationRow = dashboardContent.locator("tr", {
+      hasText: "E2E Test Group Beta",
+    });
+
+    if ((await groupInvitationRow.getByTitle("Approve").count()) > 0) {
+      await Promise.all([
+        pending1Page.waitForResponse(
+          (response) =>
+            response.request().method() === "PUT" &&
+            response.ok() &&
+            response.url().includes("/dashboard/user/invitations/group/") &&
+            response.url().endsWith("/accept"),
+        ),
+        groupInvitationRow.getByTitle("Approve").click(),
+      ]);
+
+      await pending1Page.reload();
+    }
+
+    await expect(
+      dashboardContent.locator("tr", { hasText: "e2e-test-community" }),
+    ).toHaveCount(0);
+    await expect(
+      dashboardContent.locator("tr", { hasText: "E2E Test Group Beta" }),
+    ).toHaveCount(0);
+  });
 });
