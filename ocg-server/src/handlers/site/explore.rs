@@ -25,10 +25,11 @@ use crate::{
     templates::{
         PageId,
         auth::User,
+        site::explore::{self, render_event_popover, render_group_popover},
+    },
+    types::{
         pagination::{self, NavigationLinks},
-        site::explore::{
-            self, SearchEventsFilters, SearchGroupsFilters, render_event_popover, render_group_popover,
-        },
+        search::{SearchEventsFilters, SearchGroupsFilters, ViewMode},
     },
 };
 
@@ -152,9 +153,7 @@ async fn prepare_events_result_section(
     } = db.search_events(filters).await?;
 
     // Render popover HTML for map and calendar views
-    if filters.view_mode == Some(explore::ViewMode::Map)
-        || filters.view_mode == Some(explore::ViewMode::Calendar)
-    {
+    if filters.view_mode == Some(ViewMode::Map) || filters.view_mode == Some(ViewMode::Calendar) {
         for event in &mut events {
             event.popover_html = Some(render_event_popover(event)?);
         }
@@ -254,9 +253,7 @@ async fn prepare_groups_result_section(
     } = db.search_groups(filters).await?;
 
     // Render popover HTML for map and calendar views
-    if filters.view_mode == Some(explore::ViewMode::Map)
-        || filters.view_mode == Some(explore::ViewMode::Calendar)
-    {
+    if filters.view_mode == Some(ViewMode::Map) || filters.view_mode == Some(ViewMode::Calendar) {
         for group in &mut groups {
             group.popover_html = Some(render_group_popover(group)?);
         }
@@ -344,9 +341,10 @@ mod tests {
         db::mock::MockDB,
         handlers::tests::*,
         services::notifications::MockNotificationsManager,
-        templates::{
+        templates::site::explore::{self},
+        types::{
             pagination,
-            site::explore::{self, SearchEventsFilters, SearchGroupsFilters},
+            search::{SearchEventsFilters, SearchGroupsFilters},
         },
     };
 

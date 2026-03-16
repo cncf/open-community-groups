@@ -1,10 +1,6 @@
 //! Template helper functions and utilities.
 //!
-//! This module provides utility functions used by templates for common tasks like
-//! building location strings and extracting geolocation data from HTTP headers.
-
-// Location related helpers.
-pub(crate) mod location;
+//! This module provides utility functions used by templates for common tasks.
 
 /// Format for date-time inputs used by templates (YYYY-MM-DDTHH:MM).
 pub(crate) const DATE_FORMAT: &str = "%Y-%m-%dT%H:%M";

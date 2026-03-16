@@ -1,13 +1,10 @@
-//! Common types used across multiple template modules.
+//! Shared user types used across the application.
 
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use uuid::Uuid;
 
-// Types.
-
-/// This struct represents basic user profile information that can be displayed
-/// throughout the application.
+/// Full user information.
 #[skip_serializing_none]
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub(crate) struct User {
@@ -38,7 +35,7 @@ pub(crate) struct User {
     pub website_url: Option<String>,
 }
 
-/// Summary of user information used across templates.
+/// Summary user information.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct UserSummary {
     /// User identifier.

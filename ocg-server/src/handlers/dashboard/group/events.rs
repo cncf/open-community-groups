@@ -33,10 +33,12 @@ use crate::{
             sponsors::GroupSponsorsFilters,
         },
         notifications::{EventCanceled, EventPublished, EventRescheduled, SpeakerWelcome},
-        pagination::{self, NavigationLinks},
     },
-    types::event::EventSummary,
-    types::permissions::GroupPermission,
+    types::{
+        event::EventSummary,
+        pagination::{self, NavigationLinks},
+        permissions::GroupPermission,
+    },
     util::{build_event_calendar_attachment, build_event_page_link},
 };
 

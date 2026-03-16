@@ -23,10 +23,11 @@ use crate::{
     templates::{
         dashboard::group::members::{self, GroupMembersFilters},
         notifications::GroupCustom,
-        pagination,
-        pagination::NavigationLinks,
     },
-    types::permissions::GroupPermission,
+    types::{
+        pagination::{self, NavigationLinks},
+        permissions::GroupPermission,
+    },
     validation::{MAX_LEN_M, MAX_LEN_NOTIFICATION_BODY, trimmed_non_empty},
 };
 

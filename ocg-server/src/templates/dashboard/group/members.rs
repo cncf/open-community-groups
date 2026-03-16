@@ -7,11 +7,8 @@ use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 
 use crate::{
-    templates::{
-        dashboard,
-        helpers::user_initials,
-        pagination::{self, Pagination, ToRawQuery},
-    },
+    templates::{dashboard, helpers::user_initials},
+    types::pagination::{self, Pagination, ToRawQuery},
     validation::MAX_PAGINATION_LIMIT,
 };
 

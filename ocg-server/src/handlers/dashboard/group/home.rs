@@ -31,9 +31,8 @@ use crate::{
             sponsors::{self, GroupSponsorsFilters},
             team::{self, GroupTeamFilters},
         },
-        pagination::NavigationLinks,
     },
-    types::permissions::GroupPermission,
+    types::{pagination::NavigationLinks, permissions::GroupPermission},
 };
 
 /// Handler that returns the group dashboard home page.

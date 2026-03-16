@@ -19,13 +19,12 @@ use crate::{
         extractors::{CurrentUser, SelectedCommunityId, ValidatedFormQs},
     },
     router::serde_qs_config,
-    templates::{
-        dashboard::community::groups::{self, CommunityGroupsFilters, Group},
-        pagination,
-        pagination::NavigationLinks,
-        site::explore::SearchGroupsFilters,
+    templates::dashboard::community::groups::{self, CommunityGroupsFilters, Group},
+    types::{
+        pagination::{self, NavigationLinks},
+        permissions::CommunityPermission,
+        search::SearchGroupsFilters,
     },
-    types::permissions::CommunityPermission,
 };
 
 // Pages handlers.

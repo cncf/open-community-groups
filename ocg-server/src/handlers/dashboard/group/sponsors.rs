@@ -17,12 +17,11 @@ use crate::{
         extractors::{CurrentUser, SelectedCommunityId, SelectedGroupId, ValidatedForm},
     },
     router::serde_qs_config,
-    templates::{
-        dashboard::group::sponsors::{self, GroupSponsorsFilters, Sponsor},
-        pagination,
-        pagination::NavigationLinks,
+    templates::dashboard::group::sponsors::{self, GroupSponsorsFilters, Sponsor},
+    types::{
+        pagination::{self, NavigationLinks},
+        permissions::GroupPermission,
     },
-    types::permissions::GroupPermission,
 };
 
 // Pages handlers.

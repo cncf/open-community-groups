@@ -1,4 +1,4 @@
-//! Pagination-related types and helpers for templates.
+//! Shared pagination types and helpers.
 
 use std::fmt::Write as _;
 
@@ -241,8 +241,6 @@ fn get_url_filters_separator(url: &str) -> &str {
         "?"
     }
 }
-
-// Tests.
 
 #[cfg(test)]
 mod tests {

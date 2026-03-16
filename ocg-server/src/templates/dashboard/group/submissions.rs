@@ -9,12 +9,12 @@ use uuid::Uuid;
 
 use crate::templates::{filters, helpers::user_initials};
 use crate::{
-    templates::{
-        common::UserSummary,
-        dashboard,
+    templates::dashboard,
+    types::{
+        event::EventCfsLabel,
         pagination::{self, Pagination, ToRawQuery},
+        user::UserSummary,
     },
-    types::event::EventCfsLabel,
     validation::{
         MAX_LEN_DESCRIPTION, MAX_LEN_EVENT_LABELS_PER_EVENT, MAX_LEN_EVENT_LABELS_PER_SUBMISSION,
         MAX_LEN_SORT_KEY, MAX_PAGINATION_LIMIT, trimmed_non_empty, trimmed_non_empty_opt,

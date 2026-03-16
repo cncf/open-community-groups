@@ -12,7 +12,8 @@ use crate::{
     db::DynDB,
     handlers::{error::HandlerError, extractors::CurrentUser},
     router::serde_qs_config,
-    templates::{dashboard::user::events, pagination, pagination::NavigationLinks},
+    templates::dashboard::user::events,
+    types::pagination::{self, NavigationLinks},
 };
 
 // Pages handlers.

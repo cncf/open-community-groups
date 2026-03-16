@@ -7,12 +7,11 @@ use serde_with::skip_serializing_none;
 use uuid::Uuid;
 
 use crate::{
-    templates::{
-        dashboard,
-        helpers::user_initials,
+    templates::{dashboard, helpers::user_initials},
+    types::{
+        group::{GroupRole, GroupRoleSummary},
         pagination::{self, Pagination, ToRawQuery},
     },
-    types::group::{GroupRole, GroupRoleSummary},
     validation::MAX_PAGINATION_LIMIT,
 };
 

@@ -21,14 +21,13 @@ use crate::{
     },
     router::serde_qs_config,
     services::notifications::{DynNotificationsManager, NewNotification, NotificationKind},
+    templates::dashboard::community::team::{self, CommunityTeamFilters},
     templates::notifications::CommunityTeamInvitation,
-    templates::{
-        dashboard::community::team::{self, CommunityTeamFilters},
-        pagination,
-        pagination::NavigationLinks,
+    types::{
+        community::CommunityRole,
+        pagination::{self, NavigationLinks},
+        permissions::CommunityPermission,
     },
-    types::community::CommunityRole,
-    types::permissions::CommunityPermission,
 };
 
 // Pages handlers.

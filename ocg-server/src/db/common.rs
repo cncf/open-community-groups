@@ -13,11 +13,11 @@ use uuid::Uuid;
 
 use crate::{
     db::{BBox, PgDB, Total},
-    templates::site::explore::{SearchEventsFilters, SearchGroupsFilters},
     types::{
         community::{CommunityFull, CommunitySummary},
         event::{EventCfsLabel, EventFull, EventSummary},
         group::{GroupFull, GroupSummary},
+        search::{SearchEventsFilters, SearchGroupsFilters},
     },
 };
 

@@ -23,9 +23,8 @@ use crate::{
     templates::{
         dashboard::user::session_proposals::{self, SessionProposalInput},
         notifications::SessionProposalCoSpeakerInvitation,
-        pagination,
-        pagination::NavigationLinks,
     },
+    types::pagination::{self, NavigationLinks},
 };
 
 // Pages handlers.

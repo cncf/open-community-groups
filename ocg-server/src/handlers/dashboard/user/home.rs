@@ -24,8 +24,8 @@ use crate::{
             home::{Content, Page, Tab},
             invitations, session_proposals, submissions,
         },
-        pagination::NavigationLinks,
     },
+    types::pagination::NavigationLinks,
 };
 
 /// Handler that returns the user dashboard home page.

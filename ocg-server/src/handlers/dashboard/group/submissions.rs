@@ -21,9 +21,11 @@ use crate::{
     templates::{
         dashboard::group::submissions::{self, CfsSubmissionUpdate, CfsSubmissionsFilters},
         notifications::CfsSubmissionUpdated,
-        pagination::{self, NavigationLinks},
     },
-    types::permissions::GroupPermission,
+    types::{
+        pagination::{self, NavigationLinks},
+        permissions::GroupPermission,
+    },
 };
 
 // Pages handlers.

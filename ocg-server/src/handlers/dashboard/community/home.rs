@@ -26,10 +26,8 @@ use crate::{
             regions, settings,
             team::{self, CommunityTeamFilters},
         },
-        pagination::NavigationLinks,
-        site::explore::SearchGroupsFilters,
     },
-    types::permissions::CommunityPermission,
+    types::{pagination::NavigationLinks, permissions::CommunityPermission, search::SearchGroupsFilters},
 };
 
 /// Handler that returns the community dashboard home page.

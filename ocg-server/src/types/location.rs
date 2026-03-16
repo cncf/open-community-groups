@@ -1,6 +1,4 @@
-//!/ Helpers for formatting and extracting location information.
-
-use axum::http::HeaderMap;
+//! Shared location helpers used across the application.
 
 /// Constructs a formatted location string from available parts.
 ///
@@ -103,32 +101,8 @@ impl<'a> LocationParts<'a> {
     }
 }
 
-/// Extracts geolocation coordinates from HTTP headers.
-///
-/// Currently supports `CloudFront` geolocation headers. Returns a tuple of (latitude,
-/// longitude) as Options, with both None if location cannot be determined from the
-/// headers.
-pub(crate) fn extract_location(headers: &HeaderMap) -> (Option<f64>, Option<f64>) {
-    let try_from = |latitude_header: &str, longitude_header: &str| -> Option<(Option<f64>, Option<f64>)> {
-        let latitude = headers.get(latitude_header)?.to_str().ok()?.parse().ok()?;
-        let longitude = headers.get(longitude_header)?.to_str().ok()?.parse().ok()?;
-        Some((Some(latitude), Some(longitude)))
-    };
-
-    // Try from CloudFront geolocation headers
-    if let Some(coordinates) = try_from("CloudFront-Viewer-Latitude", "CloudFront-Viewer-Longitude") {
-        return coordinates;
-    }
-
-    (None, None)
-}
-
-// Tests.
-
 #[cfg(test)]
 mod tests {
-    use axum::http::{HeaderMap, HeaderValue};
-
     use super::*;
 
     #[test]
@@ -232,39 +206,5 @@ mod tests {
             build_location(&parts, 100),
             Some("Tech Hub, 456 Oak Ave".to_string())
         );
-    }
-
-    #[test]
-    fn test_extract_location_valid_headers() {
-        let mut headers = HeaderMap::new();
-        headers.insert("CloudFront-Viewer-Latitude", HeaderValue::from_static("10.123"));
-        headers.insert("CloudFront-Viewer-Longitude", HeaderValue::from_static("-20.456"));
-
-        let (latitude, longitude) = extract_location(&headers);
-
-        assert_eq!(latitude, Some(10.123));
-        assert_eq!(longitude, Some(-20.456));
-    }
-
-    #[test]
-    fn test_extract_location_missing_headers() {
-        let headers = HeaderMap::new();
-
-        let (latitude, longitude) = extract_location(&headers);
-
-        assert_eq!(latitude, None);
-        assert_eq!(longitude, None);
-    }
-
-    #[test]
-    fn test_extract_location_invalid_values() {
-        let mut headers = HeaderMap::new();
-        headers.insert("CloudFront-Viewer-Latitude", HeaderValue::from_static("invalid"));
-        headers.insert("CloudFront-Viewer-Longitude", HeaderValue::from_static("10.0"));
-
-        let (latitude, longitude) = extract_location(&headers);
-
-        assert_eq!(latitude, None);
-        assert_eq!(longitude, None);
     }
 }

@@ -8,8 +8,6 @@ use serde::{Deserialize, Serialize};
 
 /// Authentication pages templates.
 pub(crate) mod auth;
-/// Common template components and utilities.
-pub(crate) mod common;
 /// Community site templates.
 pub(crate) mod community;
 /// Dashboard templates.
@@ -24,8 +22,6 @@ pub(crate) mod group;
 pub(crate) mod helpers;
 /// Notification templates.
 pub(crate) mod notifications;
-/// Pagination types and helpers.
-pub(crate) mod pagination;
 /// Global site templates.
 pub(crate) mod site;
 

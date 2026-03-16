@@ -8,11 +8,10 @@ use serde_with::skip_serializing_none;
 use uuid::Uuid;
 
 use crate::{
-    templates::{
-        common::UserSummary,
-        dashboard, filters,
-        helpers::user_initials,
+    templates::{dashboard, filters, helpers::user_initials},
+    types::{
         pagination::{self, Pagination, ToRawQuery},
+        user::UserSummary,
     },
     validation::{
         MAX_LEN_DESCRIPTION, MAX_LEN_ENTITY_NAME, MAX_PAGINATION_LIMIT,

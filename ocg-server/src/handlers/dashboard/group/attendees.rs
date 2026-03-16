@@ -27,9 +27,8 @@ use crate::{
     templates::{
         dashboard::group::attendees::{self, AttendeesFilters, AttendeesPaginationFilters},
         notifications::EventCustom,
-        pagination::NavigationLinks,
     },
-    types::permissions::GroupPermission,
+    types::{pagination::NavigationLinks, permissions::GroupPermission},
     validation::{MAX_LEN_M, MAX_LEN_NOTIFICATION_BODY, trimmed_non_empty},
 };
 

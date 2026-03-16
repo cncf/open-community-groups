@@ -11,16 +11,15 @@ use uuid::Uuid;
 
 use crate::{
     services::meetings::MeetingProvider,
-    templates::{
-        dashboard, filters,
-        helpers::DATE_FORMAT,
+    templates::{dashboard, filters, helpers::DATE_FORMAT},
+    types::{
+        event::{
+            EventCategory, EventCfsLabel, EventFull, EventKindSummary, EventSummary, SessionKind,
+            SessionKindSummary,
+        },
+        group::GroupSponsor,
         pagination::{self, Pagination, ToRawQuery},
     },
-    types::event::{
-        EventCategory, EventCfsLabel, EventFull, EventKindSummary, EventSummary, SessionKind,
-        SessionKindSummary,
-    },
-    types::group::GroupSponsor,
     validation::{
         MAX_LEN_COUNTRY_CODE, MAX_LEN_DESCRIPTION, MAX_LEN_DESCRIPTION_SHORT, MAX_LEN_ENTITY_NAME,
         MAX_LEN_EVENT_LABELS_PER_EVENT, MAX_LEN_L, MAX_LEN_S, MAX_LEN_TIMEZONE, MAX_PAGINATION_LIMIT,

@@ -7,10 +7,11 @@ use serde_with::skip_serializing_none;
 use uuid::Uuid;
 
 use crate::{
-    templates::{PageId, auth::User, common::UserSummary, filters, helpers::user_initials},
+    templates::{PageId, auth::User, filters, helpers::user_initials},
     types::{
         event::{EventCfsLabel, EventFull, EventKind, EventSummary},
         site::SiteSettings,
+        user::UserSummary,
     },
 };
 
