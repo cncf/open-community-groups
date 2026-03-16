@@ -12,10 +12,7 @@ use uuid::Uuid;
 use crate::{
     auth::AuthSession,
     db::DynDB,
-    handlers::{
-        auth::{SELECTED_COMMUNITY_ID_KEY, SELECTED_GROUP_ID_KEY},
-        error::HandlerError,
-    },
+    handlers::{auth::sync_selected_community_and_group, error::HandlerError},
 };
 
 #[cfg(test)]
@@ -41,19 +38,8 @@ pub(crate) async fn select_community(
     // Get user from session (endpoint is behind login_required)
     let user = auth_session.user.expect("user to be logged in");
 
-    // Get user's groups and find groups in the selected community
-    let groups_by_community = db.list_user_groups(&user.user_id).await?;
-    let community_groups = groups_by_community
-        .iter()
-        .find(|c| c.community.community_id == community_id);
-
     // Update the selected community and group in the session
-    session.insert(SELECTED_COMMUNITY_ID_KEY, community_id).await?;
-    if let Some(first_group_id) = community_groups.and_then(|c| c.groups.first()).map(|g| g.group_id) {
-        session.insert(SELECTED_GROUP_ID_KEY, first_group_id).await?;
-    } else {
-        session.remove::<Uuid>(SELECTED_GROUP_ID_KEY).await?;
-    }
+    sync_selected_community_and_group(&db, &session, &user.user_id, community_id).await?;
 
     Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-body")]))
 }
