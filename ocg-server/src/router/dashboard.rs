@@ -31,10 +31,11 @@ pub(super) fn setup_community_dashboard_router(state: &State) -> Router<State> {
             auth::user_has_selected_community_permission,
         )
     };
+    let check_community_dashboard_permission =
+        || middleware::from_fn_with_state(state.db.clone(), auth::user_has_community_dashboard_permission);
 
     // Read-only community dashboard endpoints
     let dashboard_read = Router::new()
-        .route("/", get(dashboard::community::home::page))
         .route("/analytics", get(dashboard::community::analytics::page))
         .route(
             "/event-categories",
@@ -166,6 +167,10 @@ pub(super) fn setup_community_dashboard_router(state: &State) -> Router<State> {
 
     // Setup router
     Router::new()
+        .route(
+            "/",
+            get(dashboard::community::home::page).route_layer(check_community_dashboard_permission()),
+        )
         .merge(dashboard_read)
         .merge(groups_management)
         .merge(settings_management)

@@ -672,6 +672,30 @@ pub(crate) async fn select_first_community_and_group(
     Ok(())
 }
 
+/// Syncs the selected community and first available group in the session.
+pub(crate) async fn sync_selected_community_and_group(
+    db: &DynDB,
+    session: &Session,
+    user_id: &Uuid,
+    community_id: Uuid,
+) -> Result<(), HandlerError> {
+    // Load the user's groups to keep the selected group in sync
+    let groups_by_community = db.list_user_groups(user_id).await?;
+    let community_groups = groups_by_community
+        .iter()
+        .find(|c| c.community.community_id == community_id);
+
+    // Persist the community selection and align the group selection with it
+    session.insert(SELECTED_COMMUNITY_ID_KEY, community_id).await?;
+    if let Some(first_group_id) = community_groups.and_then(|c| c.groups.first()).map(|g| g.group_id) {
+        session.insert(SELECTED_GROUP_ID_KEY, first_group_id).await?;
+    } else {
+        session.remove::<Uuid>(SELECTED_GROUP_ID_KEY).await?;
+    }
+
+    Ok(())
+}
+
 // Types.
 
 /// Login form data from the user.
@@ -704,6 +728,53 @@ pub(crate) struct NextUrl {
 }
 
 // Authorization middleware.
+
+/// Ensures the user can enter the community dashboard, falling back to the
+/// first accessible community when the selected one is no longer available.
+#[instrument(skip_all)]
+pub(crate) async fn user_has_community_dashboard_permission(
+    State(db): State<DynDB>,
+    auth_session: AuthSession,
+    session: Session,
+    request: Request,
+    next: Next,
+) -> impl IntoResponse {
+    // Require an authenticated user
+    let Some(user) = auth_session.user else {
+        return StatusCode::FORBIDDEN.into_response();
+    };
+
+    // Resolve selected community from session context
+    let community_id = match get_selected_community_id(&session).await {
+        Ok(community_id) => community_id,
+        Err(response) => return response,
+    };
+
+    // Check required permission in the selected community
+    let Ok(has_permission) = db
+        .user_has_community_permission(&community_id, &user.user_id, CommunityPermission::Read)
+        .await
+    else {
+        return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+    };
+
+    // Fall back to the first accessible community when the current selection is stale
+    let community_id = if has_permission {
+        community_id
+    } else {
+        match select_first_accessible_community_for_dashboard(&db, &session, &user.user_id).await {
+            Ok(Some(community_id)) => community_id,
+            Ok(None) => return StatusCode::FORBIDDEN.into_response(),
+            Err(error) => return error.into_response(),
+        }
+    };
+
+    // Store selected community context for downstream extractors
+    let mut request = request;
+    request.extensions_mut().insert(SelectedCommunityId(community_id));
+
+    next.run(request).await.into_response()
+}
 
 /// Check if the user has a specific community permission in a path community.
 #[instrument(skip_all)]
@@ -867,4 +938,20 @@ async fn get_selected_community_and_group_ids(session: &Session) -> Result<(Uuid
     };
 
     Ok((community_id, group_id))
+}
+
+/// Selects the first community dashboard the user can still access.
+async fn select_first_accessible_community_for_dashboard(
+    db: &DynDB,
+    session: &Session,
+    user_id: &Uuid,
+) -> Result<Option<Uuid>, HandlerError> {
+    let communities = db.list_user_communities(user_id).await?;
+    let Some(first_community) = communities.first() else {
+        return Ok(None);
+    };
+
+    sync_selected_community_and_group(db, session, user_id, first_community.community_id).await?;
+
+    Ok(Some(first_community.community_id))
 }
