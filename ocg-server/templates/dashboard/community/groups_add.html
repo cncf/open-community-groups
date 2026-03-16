@@ -332,7 +332,7 @@
   <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
     {# Tags -#}
     <div class="col-span-3">
-      <multiple-inputs field-name="tags" input-type="text" label="Tag">
+      <multiple-inputs field-name="tags" input-type="text" max-length="{{ crate::validation::MAX_LEN_TAG }}" label="Tag" legend="Optional tags for the group. Max {{ crate::validation::MAX_LEN_TAG }} characters per tag.">
       </multiple-inputs>
     </div>
     {# End Tags -#}
