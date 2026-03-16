@@ -173,10 +173,13 @@
                     {% let end_tz = ends_at.with_timezone(event.timezone) -%}
                     {% if start_tz.date_naive() != end_tz.date_naive() -%}
                       {# Multi-day event: FROM → TO layout #}
-                      <div class="flex items-start gap-8">
+                      <div class="flex items-start gap-4 sm:gap-8">
                         <div>
                           <div class="text-xs uppercase font-medium mb-0.5">From</div>
-                          <div class="text-lg sm:text-xl xl:text-2xl font-semibold text-stone-800">
+                          <div class="text-base sm:hidden text-lg font-semibold text-stone-800 whitespace-nowrap">
+                            {{ start_tz.format("%b %e, %y") }}
+                          </div>
+                          <div class="hidden sm:block text-lg sm:text-xl xl:text-2xl font-semibold text-stone-800 whitespace-nowrap">
                             {{ start_tz.format("%b %e, %G") }}
                           </div>
                           <div class="mt-1 text-sm text-stone-600">{{ start_tz.format("%I:%M %p") }}</div>
@@ -184,7 +187,10 @@
                         <div class="text-stone-400 mt-6 xl:mt-7">→</div>
                         <div>
                           <div class="text-xs uppercase font-medium mb-0.5">To</div>
-                          <div class="text-lg sm:text-xl xl:text-2xl font-semibold text-stone-800">
+                          <div class="text-base sm:hidden text-lg font-semibold text-stone-800 whitespace-nowrap">
+                            {{ end_tz.format("%b %e, %y") }}
+                          </div>
+                          <div class="hidden sm:block text-lg sm:text-xl xl:text-2xl font-semibold text-stone-800 whitespace-nowrap">
                             {{ end_tz.format("%b %e, %G") }}
                           </div>
                           <div class="mt-1 text-sm text-stone-600">{{ end_tz.format("%I:%M %p") }}</div>
@@ -192,7 +198,10 @@
                       </div>
                     {% else -%}
                       {# Single-day event with end time: show time range #}
-                      <div class="text-lg sm:text-xl xl:text-3xl font-semibold text-stone-800">
+                      <div class="text-base sm:hidden font-semibold text-stone-800 whitespace-nowrap">
+                        {{ start_tz.format("%b %e, %y") }}
+                      </div>
+                      <div class="hidden sm:block text-lg sm:text-xl xl:text-3xl font-semibold text-stone-800 whitespace-nowrap">
                         {{ start_tz.format("%B %e, %G") }}
                       </div>
                       <div class="mt-2 text-base text-stone-600">
@@ -201,7 +210,10 @@
                     {% endif -%}
                     {% when None -%}
                     {# Single-day event without end time #}
-                    <div class="text-lg sm:text-xl xl:text-3xl font-semibold text-stone-800">
+                    <div class="text-base sm:hidden font-semibold text-stone-800 whitespace-nowrap">
+                      {{ start_tz.format("%b %e, %y") }}
+                    </div>
+                    <div class="hidden sm:block text-lg sm:text-xl xl:text-3xl font-semibold text-stone-800 whitespace-nowrap">
                       {{ start_tz.format("%B %e, %G") }}
                     </div>
                     <div class="mt-2 text-base text-stone-600">{{ start_tz.format("%I:%M %p %Z") }}</div>
