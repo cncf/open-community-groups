@@ -2,8 +2,7 @@
 
 use anyhow::Result;
 use async_trait::async_trait;
-use tokio_postgres::types::Json;
-use tracing::{instrument, trace};
+use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
@@ -82,39 +81,27 @@ impl DBEvent for PgDB {
         session_proposal_id: Uuid,
         label_ids: &[Uuid],
     ) -> Result<Uuid> {
-        trace!("db: add cfs submission");
-
-        let db = self.pool.get().await?;
-        let id = db
-            .query_one(
-                "select add_cfs_submission($1::uuid, $2::uuid, $3::uuid, $4::uuid, $5::uuid[])::uuid",
-                &[
-                    &community_id,
-                    &event_id,
-                    &user_id,
-                    &session_proposal_id,
-                    &label_ids,
-                ],
-            )
-            .await?
-            .get(0);
-
-        Ok(id)
+        self.fetch_scalar_one(
+            "select add_cfs_submission($1::uuid, $2::uuid, $3::uuid, $4::uuid, $5::uuid[])::uuid",
+            &[
+                &community_id,
+                &event_id,
+                &user_id,
+                &session_proposal_id,
+                &label_ids,
+            ],
+        )
+        .await
     }
 
     /// [`DB::attend_event`]
     #[instrument(skip(self), err)]
     async fn attend_event(&self, community_id: Uuid, event_id: Uuid, user_id: Uuid) -> Result<()> {
-        trace!("db: attend event");
-
-        let db = self.pool.get().await?;
-        db.execute(
+        self.execute(
             "select attend_event($1::uuid, $2::uuid, $3::uuid)",
             &[&community_id, &event_id, &user_id],
         )
-        .await?;
-
-        Ok(())
+        .await
     }
 
     /// [`DBEvent::check_in_event`]
@@ -126,16 +113,11 @@ impl DBEvent for PgDB {
         user_id: Uuid,
         bypass_window: bool,
     ) -> Result<()> {
-        trace!("db: check in event");
-
-        let db = self.pool.get().await?;
-        db.execute(
+        self.execute(
             "select check_in_event($1::uuid, $2::uuid, $3::uuid, $4::bool)",
             &[&community_id, &event_id, &user_id, &bypass_window],
         )
-        .await?;
-
-        Ok(())
+        .await
     }
 
     /// [`DBEvent::get_event_full_by_slug`]
@@ -146,35 +128,21 @@ impl DBEvent for PgDB {
         group_slug: &str,
         event_slug: &str,
     ) -> Result<EventFull> {
-        trace!("db: get event");
-
-        let db = self.pool.get().await?;
-        let row = db
-            .query_one(
-                "select get_event_full_by_slug($1::uuid, $2::text, $3::text)",
-                &[&community_id, &group_slug, &event_slug],
-            )
-            .await?;
-        let event = row.try_get::<_, Json<EventFull>>(0)?.0;
-
-        Ok(event)
+        self.fetch_json_one(
+            "select get_event_full_by_slug($1::uuid, $2::text, $3::text)",
+            &[&community_id, &group_slug, &event_slug],
+        )
+        .await
     }
 
     /// [`DBEvent::get_event_summary_by_id`]
     #[instrument(skip(self), err)]
     async fn get_event_summary_by_id(&self, community_id: Uuid, event_id: Uuid) -> Result<EventSummary> {
-        trace!("db: get event summary by id");
-
-        let db = self.pool.get().await?;
-        let row = db
-            .query_one(
-                "select get_event_summary_by_id($1::uuid, $2::uuid)",
-                &[&community_id, &event_id],
-            )
-            .await?;
-        let event = row.try_get::<_, Json<EventSummary>>(0)?.0;
-
-        Ok(event)
+        self.fetch_json_one(
+            "select get_event_summary_by_id($1::uuid, $2::uuid)",
+            &[&community_id, &event_id],
+        )
+        .await
     }
 
     /// [`DB::is_event_attendee`]
@@ -185,8 +153,6 @@ impl DBEvent for PgDB {
         event_id: Uuid,
         user_id: Uuid,
     ) -> Result<(bool, bool)> {
-        trace!("db: check event attendance");
-
         let db = self.pool.get().await?;
         let row = db
             .query_one(
@@ -203,33 +169,21 @@ impl DBEvent for PgDB {
     /// [`DBEvent::is_event_check_in_window_open`]
     #[instrument(skip(self), err)]
     async fn is_event_check_in_window_open(&self, community_id: Uuid, event_id: Uuid) -> Result<bool> {
-        trace!("db: check event check-in window open");
-
-        let db = self.pool.get().await?;
-        let is_open = db
-            .query_one(
-                "select is_event_check_in_window_open($1::uuid, $2::uuid)",
-                &[&community_id, &event_id],
-            )
-            .await?
-            .get::<_, bool>(0);
-
-        Ok(is_open)
+        self.fetch_scalar_one(
+            "select is_event_check_in_window_open($1::uuid, $2::uuid)",
+            &[&community_id, &event_id],
+        )
+        .await
     }
 
     /// [`DB::leave_event`]
     #[instrument(skip(self), err)]
     async fn leave_event(&self, community_id: Uuid, event_id: Uuid, user_id: Uuid) -> Result<()> {
-        trace!("db: leave event");
-
-        let db = self.pool.get().await?;
-        db.execute(
+        self.execute(
             "select leave_event($1::uuid, $2::uuid, $3::uuid)",
             &[&community_id, &event_id, &user_id],
         )
-        .await?;
-
-        Ok(())
+        .await
     }
 
     /// [`DBEvent::list_user_session_proposals_for_cfs_event`]
@@ -239,17 +193,10 @@ impl DBEvent for PgDB {
         user_id: Uuid,
         event_id: Uuid,
     ) -> Result<Vec<SessionProposal>> {
-        trace!("db: list user session proposals for cfs event");
-
-        let db = self.pool.get().await?;
-        let row = db
-            .query_one(
-                "select list_user_session_proposals_for_cfs_event($1::uuid, $2::uuid)",
-                &[&user_id, &event_id],
-            )
-            .await?;
-        let proposals = row.try_get::<_, Json<Vec<SessionProposal>>>(0)?.0;
-
-        Ok(proposals)
+        self.fetch_json_one(
+            "select list_user_session_proposals_for_cfs_event($1::uuid, $2::uuid)",
+            &[&user_id, &event_id],
+        )
+        .await
     }
 }

@@ -4,7 +4,7 @@ use anyhow::Result;
 use async_trait::async_trait;
 use axum_login::tower_sessions::session;
 use tokio_postgres::types::Json;
-use tracing::{instrument, trace};
+use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
@@ -81,10 +81,7 @@ pub(crate) trait DBAuth {
 impl DBAuth for PgDB {
     #[instrument(skip(self, record), err)]
     async fn create_session(&self, record: &session::Record) -> Result<()> {
-        trace!("db: create session");
-
-        let db = self.pool.get().await?;
-        db.execute(
+        self.execute(
             "
             insert into auth_session (
                 auth_session_id,
@@ -98,29 +95,20 @@ impl DBAuth for PgDB {
             ",
             &[&record.id.to_string(), &Json(&record.data), &record.expiry_date],
         )
-        .await?;
-
-        Ok(())
+        .await
     }
 
     #[instrument(skip(self, session_id), err)]
     async fn delete_session(&self, session_id: &session::Id) -> Result<()> {
-        trace!("db: delete session");
-
-        let db = self.pool.get().await?;
-        db.execute(
+        self.execute(
             "delete from auth_session where auth_session_id = $1::text;",
             &[&session_id.to_string()],
         )
-        .await?;
-
-        Ok(())
+        .await
     }
 
     #[instrument(skip(self, session_id), err)]
     async fn get_session(&self, session_id: &session::Id) -> Result<Option<session::Record>> {
-        trace!("db: get session");
-
         let db = self.pool.get().await?;
         let row = db
             .query_opt(
@@ -143,60 +131,29 @@ impl DBAuth for PgDB {
 
     #[instrument(skip(self, email), err)]
     async fn get_user_by_email(&self, email: &str) -> Result<Option<User>> {
-        trace!("db: get user (by email)");
-
-        let db = self.pool.get().await?;
-        let user = db
-            .query_one("select get_user_by_email($1::text);", &[&email])
-            .await?
-            .try_get::<_, Option<Json<User>>>(0)?
-            .map(|user| user.0);
-
-        Ok(user)
+        self.fetch_json_opt("select get_user_by_email($1::text);", &[&email])
+            .await
     }
 
     #[instrument(skip(self, user_id), err)]
     async fn get_user_by_id(&self, user_id: &Uuid) -> Result<Option<User>> {
-        trace!("db: get user (by id)");
-
-        let db = self.pool.get().await?;
-        let user = db
-            .query_one("select get_user_by_id_verified($1::uuid);", &[&user_id])
-            .await?
-            .try_get::<_, Option<Json<User>>>(0)?
-            .map(|user| user.0);
-
-        Ok(user)
+        self.fetch_json_opt("select get_user_by_id_verified($1::uuid);", &[&user_id])
+            .await
     }
 
     #[instrument(skip(self, username), err)]
     async fn get_user_by_username(&self, username: &str) -> Result<Option<User>> {
-        trace!("db: get user (by username)");
-
-        let db = self.pool.get().await?;
-        let user = db
-            .query_one("select get_user_by_username($1::text);", &[&username])
-            .await?
-            .try_get::<_, Option<Json<User>>>(0)?
-            .map(|user| user.0);
-
-        Ok(user)
+        self.fetch_json_opt("select get_user_by_username($1::text);", &[&username])
+            .await
     }
 
     #[instrument(skip(self, user_id), err)]
     async fn get_user_password(&self, user_id: &Uuid) -> Result<Option<String>> {
-        trace!("db: get user password");
-
-        let db = self.pool.get().await?;
-        let password = db
-            .query_opt(
-                r#"select password from "user" where user_id = $1::uuid;"#,
-                &[&user_id],
-            )
-            .await?
-            .map(|row| row.get("password"));
-
-        Ok(password)
+        self.fetch_scalar_opt(
+            r#"select password from "user" where user_id = $1::uuid;"#,
+            &[&user_id],
+        )
+        .await
     }
 
     #[instrument(skip(self, user_summary), err)]
@@ -205,8 +162,6 @@ impl DBAuth for PgDB {
         user_summary: &UserSummary,
         email_verified: bool,
     ) -> Result<(User, Option<Uuid>)> {
-        trace!("db: sign up user");
-
         let db = self.pool.get().await?;
         let row = db
             .query_one(
@@ -223,10 +178,7 @@ impl DBAuth for PgDB {
 
     #[instrument(skip(self, record), err)]
     async fn update_session(&self, record: &session::Record) -> Result<()> {
-        trace!("db: update session");
-
-        let db = self.pool.get().await?;
-        db.execute(
+        self.execute(
             "
             update auth_session
             set
@@ -236,37 +188,25 @@ impl DBAuth for PgDB {
             ",
             &[&record.id.to_string(), &Json(&record.data), &record.expiry_date],
         )
-        .await?;
-
-        Ok(())
+        .await
     }
 
     #[instrument(skip(self, user), err)]
     async fn update_user_details(&self, user_id: &Uuid, user: &UserDetails) -> Result<()> {
-        trace!("db: update user details");
-
-        let db = self.pool.get().await?;
-        db.execute(
+        self.execute(
             "select update_user_details($1::uuid, $2::jsonb);",
             &[user_id, &Json(user)],
         )
-        .await?;
-
-        Ok(())
+        .await
     }
 
     #[instrument(skip(self, new_password), err)]
     async fn update_user_password(&self, user_id: &Uuid, new_password: &str) -> Result<()> {
-        trace!("db: update user password");
-
-        let db = self.pool.get().await?;
-        db.execute(
+        self.execute(
             "select update_user_password($1::uuid, $2::text);",
             &[&user_id, &new_password],
         )
-        .await?;
-
-        Ok(())
+        .await
     }
 
     #[instrument(skip(self, permission), err)]
@@ -276,16 +216,11 @@ impl DBAuth for PgDB {
         user_id: &Uuid,
         permission: CommunityPermission,
     ) -> Result<bool> {
-        trace!("db: check if user has community permission");
-        let db = self.pool.get().await?;
-        let row = db
-            .query_one(
-                "select user_has_community_permission($1::uuid, $2::uuid, $3::text) as has_permission;",
-                &[&community_id, &user_id, &permission.as_str()],
-            )
-            .await?;
-
-        Ok(row.get("has_permission"))
+        self.fetch_scalar_one(
+            "select user_has_community_permission($1::uuid, $2::uuid, $3::text);",
+            &[&community_id, &user_id, &permission.as_str()],
+        )
+        .await
     }
 
     #[instrument(skip(self, permission), err)]
@@ -296,25 +231,15 @@ impl DBAuth for PgDB {
         user_id: &Uuid,
         permission: GroupPermission,
     ) -> Result<bool> {
-        trace!("db: check if user has group permission");
-        let db = self.pool.get().await?;
-        let row = db
-            .query_one(
-                "select user_has_group_permission($1::uuid, $2::uuid, $3::uuid, $4::text) as has_permission;",
-                &[&community_id, &group_id, &user_id, &permission.as_str()],
-            )
-            .await?;
-
-        Ok(row.get("has_permission"))
+        self.fetch_scalar_one(
+            "select user_has_group_permission($1::uuid, $2::uuid, $3::uuid, $4::text);",
+            &[&community_id, &group_id, &user_id, &permission.as_str()],
+        )
+        .await
     }
 
     #[instrument(skip(self), err)]
     async fn verify_email(&self, code: &Uuid) -> Result<()> {
-        trace!("db: verify email");
-
-        let db = self.pool.get().await?;
-        db.execute("select verify_email($1::uuid);", &[&code]).await?;
-
-        Ok(())
+        self.execute("select verify_email($1::uuid);", &[&code]).await
     }
 }

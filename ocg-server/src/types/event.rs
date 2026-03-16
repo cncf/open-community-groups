@@ -11,11 +11,12 @@ use uuid::Uuid;
 
 use crate::{
     services::meetings::MeetingProvider,
-    templates::{
-        common::User,
-        helpers::location::{LocationParts, build_location},
+    types::{
+        community::CommunitySummary,
+        group::GroupSummary,
+        location::{LocationParts, build_location},
+        user::User,
     },
-    types::{community::CommunitySummary, group::GroupSummary},
     validation::{MAX_LEN_EVENT_LABEL_NAME, trimmed_non_empty, valid_cfs_label_color},
 };
 

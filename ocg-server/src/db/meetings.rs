@@ -1,16 +1,15 @@
 //! This module defines database functionality used to manage meeting synchronization.
 
-use std::{sync::Arc, time::Duration};
+use std::time::Duration;
 
-use anyhow::{Result, bail};
+use anyhow::Result;
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
-use tracing::{instrument, trace};
+use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
     PgDB,
-    db::TX_CLIENT_NOT_FOUND,
     services::meetings::{Meeting, MeetingAutoEndCheckOutcome, MeetingProvider},
 };
 
@@ -66,18 +65,8 @@ pub(crate) trait DBMeetings {
 impl DBMeetings for PgDB {
     #[instrument(skip(self, meeting), err)]
     async fn add_meeting(&self, client_id: Uuid, meeting: &Meeting) -> Result<()> {
-        trace!("db: add meeting");
+        let tx = self.tx_client(client_id).await?;
 
-        // Get transaction client
-        let tx = {
-            let clients = self.txs_clients.read().await;
-            let Some((tx, _)) = clients.get(&client_id) else {
-                bail!(TX_CLIENT_NOT_FOUND);
-            };
-            Arc::clone(tx)
-        };
-
-        // Add meeting
         tx.execute(
             "select add_meeting($1, $2, $3, $4, $5, $6, $7)",
             &[
@@ -97,18 +86,8 @@ impl DBMeetings for PgDB {
 
     #[instrument(skip(self, meeting), err)]
     async fn delete_meeting(&self, client_id: Uuid, meeting: &Meeting) -> Result<()> {
-        trace!("db: delete meeting");
+        let tx = self.tx_client(client_id).await?;
 
-        // Get transaction client
-        let tx = {
-            let clients = self.txs_clients.read().await;
-            let Some((tx, _)) = clients.get(&client_id) else {
-                bail!(TX_CLIENT_NOT_FOUND);
-            };
-            Arc::clone(tx)
-        };
-
-        // Delete meeting
         tx.execute(
             "select delete_meeting($1, $2, $3)",
             &[&meeting.meeting_id, &meeting.event_id, &meeting.session_id],
@@ -127,16 +106,7 @@ impl DBMeetings for PgDB {
         starts_at: DateTime<Utc>,
         ends_at: DateTime<Utc>,
     ) -> Result<Option<String>> {
-        trace!("db: get available zoom host user");
-
-        // Get transaction client
-        let tx = {
-            let clients = self.txs_clients.read().await;
-            let Some((tx, _)) = clients.get(&client_id) else {
-                bail!(TX_CLIENT_NOT_FOUND);
-            };
-            Arc::clone(tx)
-        };
+        let tx = self.tx_client(client_id).await?;
 
         // Find one host user with available slots
         let row = tx
@@ -156,16 +126,7 @@ impl DBMeetings for PgDB {
 
     #[instrument(skip(self), err)]
     async fn get_meeting_for_auto_end(&self, client_id: Uuid) -> Result<Option<MeetingAutoEndCandidate>> {
-        trace!("db: get meeting for auto end");
-
-        // Get transaction client
-        let tx = {
-            let clients = self.txs_clients.read().await;
-            let Some((tx, _)) = clients.get(&client_id) else {
-                bail!(TX_CLIENT_NOT_FOUND);
-            };
-            Arc::clone(tx)
-        };
+        let tx = self.tx_client(client_id).await?;
 
         // Get one overdue meeting for auto-end checks (if any)
         let Some(row) = tx.query_opt("select * from get_meeting_for_auto_end()", &[]).await? else {
@@ -187,16 +148,7 @@ impl DBMeetings for PgDB {
 
     #[instrument(skip(self), err)]
     async fn get_meeting_out_of_sync(&self, client_id: Uuid) -> Result<Option<Meeting>> {
-        trace!("db: get meeting out of sync");
-
-        // Get transaction client
-        let tx = {
-            let clients = self.txs_clients.read().await;
-            let Some((tx, _)) = clients.get(&client_id) else {
-                bail!(TX_CLIENT_NOT_FOUND);
-            };
-            Arc::clone(tx)
-        };
+        let tx = self.tx_client(client_id).await?;
 
         // Get out of sync meeting (if any)
         let Some(row) = tx.query_opt("select * from get_meeting_out_of_sync()", &[]).await? else {
@@ -239,18 +191,8 @@ impl DBMeetings for PgDB {
         meeting_id: Uuid,
         outcome: MeetingAutoEndCheckOutcome,
     ) -> Result<()> {
-        trace!("db: set meeting auto end check outcome");
+        let tx = self.tx_client(client_id).await?;
 
-        // Get transaction client
-        let tx = {
-            let clients = self.txs_clients.read().await;
-            let Some((tx, _)) = clients.get(&client_id) else {
-                bail!(TX_CLIENT_NOT_FOUND);
-            };
-            Arc::clone(tx)
-        };
-
-        // Record auto-end check outcome
         tx.execute(
             "select set_meeting_auto_end_check_outcome($1::uuid, $2::text)",
             &[&meeting_id, &outcome.as_ref()],
@@ -262,18 +204,8 @@ impl DBMeetings for PgDB {
 
     #[instrument(skip(self, meeting), err)]
     async fn set_meeting_error(&self, client_id: Uuid, meeting: &Meeting, error: &str) -> Result<()> {
-        trace!("db: set meeting error");
+        let tx = self.tx_client(client_id).await?;
 
-        // Get transaction client
-        let tx = {
-            let clients = self.txs_clients.read().await;
-            let Some((tx, _)) = clients.get(&client_id) else {
-                bail!(TX_CLIENT_NOT_FOUND);
-            };
-            Arc::clone(tx)
-        };
-
-        // Update meeting error and mark the target as synced
         tx.execute(
             "select set_meeting_error($1::text, $2::uuid, $3::uuid, $4::uuid)",
             &[
@@ -290,18 +222,8 @@ impl DBMeetings for PgDB {
 
     #[instrument(skip(self, meeting), err)]
     async fn update_meeting(&self, client_id: Uuid, meeting: &Meeting) -> Result<()> {
-        trace!("db: update meeting");
+        let tx = self.tx_client(client_id).await?;
 
-        // Get transaction client
-        let tx = {
-            let clients = self.txs_clients.read().await;
-            let Some((tx, _)) = clients.get(&client_id) else {
-                bail!(TX_CLIENT_NOT_FOUND);
-            };
-            Arc::clone(tx)
-        };
-
-        // Update meeting
         tx.execute(
             "select update_meeting($1, $2, $3, $4, $5, $6)",
             &[
@@ -325,16 +247,11 @@ impl DBMeetings for PgDB {
         provider_meeting_id: &str,
         recording_url: &str,
     ) -> Result<()> {
-        trace!("db: update meeting recording url");
-
-        let db = self.pool.get().await?;
-        db.execute(
+        self.execute(
             "select update_meeting_recording_url($1, $2, $3)",
             &[&provider.as_ref(), &provider_meeting_id, &recording_url],
         )
-        .await?;
-
-        Ok(())
+        .await
     }
 }
 

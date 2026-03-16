@@ -9,11 +9,11 @@ use serde_with::skip_serializing_none;
 use uuid::Uuid;
 
 use crate::{
-    templates::{
-        dashboard,
+    templates::dashboard,
+    types::{
+        group::{GroupCategory, GroupFull, GroupRegion, GroupSummary},
         pagination::{self, Pagination, ToRawQuery},
     },
-    types::group::{GroupCategory, GroupFull, GroupRegion, GroupSummary},
     validation::{
         MAX_LEN_COUNTRY_CODE, MAX_LEN_DESCRIPTION, MAX_LEN_ENTITY_NAME, MAX_LEN_L, MAX_LEN_M, MAX_LEN_S,
         MAX_PAGINATION_LIMIT, image_url_opt, image_url_vec, trimmed_non_empty, trimmed_non_empty_opt,

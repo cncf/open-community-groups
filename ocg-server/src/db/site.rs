@@ -7,7 +7,7 @@ use async_trait::async_trait;
 use cached::proc_macro::cached;
 use deadpool_postgres::Client;
 use tokio_postgres::types::Json;
-use tracing::{instrument, trace};
+use tracing::instrument;
 
 use crate::{
     db::PgDB,
@@ -62,40 +62,22 @@ impl DBSite for PgDB {
         community_name: Option<String>,
         entity: Option<Entity>,
     ) -> Result<FiltersOptions> {
-        trace!("db: get filters options");
-
-        let db = self.pool.get().await?;
-        let row = db
-            .query_one(
-                "select get_filters_options($1::text, $2::text)",
-                &[&community_name, &entity.map(|e| e.to_string())],
-            )
-            .await?;
-        let filters_options = row.try_get::<_, Json<FiltersOptions>>(0)?.0;
-
-        Ok(filters_options)
+        self.fetch_json_one(
+            "select get_filters_options($1::text, $2::text)",
+            &[&community_name, &entity.map(|e| e.to_string())],
+        )
+        .await
     }
 
     #[instrument(skip(self), err)]
     async fn get_site_home_stats(&self) -> Result<SiteHomeStats> {
-        trace!("db: get site home stats");
-
-        let db = self.pool.get().await?;
-        let row = db.query_one("select get_site_home_stats()", &[]).await?;
-        let stats = row.try_get::<_, Json<SiteHomeStats>>(0)?.0;
-
-        Ok(stats)
+        self.fetch_json_one("select get_site_home_stats()", &[]).await
     }
 
     #[instrument(skip(self), err)]
     async fn get_site_recently_added_groups(&self) -> Result<Vec<GroupSummary>> {
-        trace!("db: get site recently added groups");
-
-        let db = self.pool.get().await?;
-        let row = db.query_one("select get_site_recently_added_groups()", &[]).await?;
-        let groups = row.try_get::<_, Json<Vec<GroupSummary>>>(0)?.0;
-
-        Ok(groups)
+        self.fetch_json_one("select get_site_recently_added_groups()", &[])
+            .await
     }
 
     #[instrument(skip(self), err)]
@@ -108,8 +90,6 @@ impl DBSite for PgDB {
             result = true
         )]
         async fn inner(db: Client) -> Result<SiteSettings> {
-            trace!("db: get site settings");
-
             let row = db.query_one("select get_site_settings()", &[]).await?;
             let settings = row.try_get::<_, Json<SiteSettings>>(0)?.0;
 
@@ -122,27 +102,14 @@ impl DBSite for PgDB {
 
     #[instrument(skip(self), err)]
     async fn get_site_stats(&self) -> Result<SiteStats> {
-        trace!("db: get site stats");
-
-        let db = self.pool.get().await?;
-        let row = db.query_one("select get_site_stats()", &[]).await?;
-        let stats = row.try_get::<_, Json<SiteStats>>(0)?.0;
-
-        Ok(stats)
+        self.fetch_json_one("select get_site_stats()", &[]).await
     }
 
     #[instrument(skip(self), err)]
     async fn get_site_upcoming_events(&self, event_kinds: Vec<EventKind>) -> Result<Vec<EventSummary>> {
-        trace!("db: get site upcoming events");
-
         let event_kinds = event_kinds.into_iter().map(|k| k.to_string()).collect::<Vec<_>>();
-        let db = self.pool.get().await?;
-        let row = db
-            .query_one("select get_site_upcoming_events($1::text[])", &[&event_kinds])
-            .await?;
-        let events = row.try_get::<_, Json<Vec<EventSummary>>>(0)?.0;
-
-        Ok(events)
+        self.fetch_json_one("select get_site_upcoming_events($1::text[])", &[&event_kinds])
+            .await
     }
 
     #[instrument(skip(self), err)]
@@ -155,8 +122,6 @@ impl DBSite for PgDB {
             result = true
         )]
         async fn inner(db: Client) -> Result<Vec<CommunitySummary>> {
-            trace!("db: list communities");
-
             let row = db.query_one("select list_communities();", &[]).await?;
             let communities = row.try_get::<_, Json<Vec<CommunitySummary>>>(0)?.0;
 

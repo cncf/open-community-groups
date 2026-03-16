@@ -5,7 +5,7 @@ use std::sync::Arc;
 use anyhow::Result;
 use async_trait::async_trait;
 use tokio_postgres::types::Json;
-use tracing::{instrument, trace};
+use tracing::instrument;
 use uuid::Uuid;
 
 use crate::db::PgDB;
@@ -34,34 +34,19 @@ pub(crate) type DynDBActivityTracker = Arc<dyn DBActivityTracker + Send + Sync>;
 impl DBActivityTracker for PgDB {
     #[instrument(skip(self), err)]
     async fn update_community_views(&self, data: Vec<(Uuid, Day, Total)>) -> Result<()> {
-        trace!("db: update community views");
-
-        let db = self.pool.get().await?;
-        db.execute("select update_community_views($1::jsonb)", &[&Json(&data)])
-            .await?;
-
-        Ok(())
+        self.execute("select update_community_views($1::jsonb)", &[&Json(&data)])
+            .await
     }
 
     #[instrument(skip(self), err)]
     async fn update_event_views(&self, data: Vec<(Uuid, Day, Total)>) -> Result<()> {
-        trace!("db: update event views");
-
-        let db = self.pool.get().await?;
-        db.execute("select update_event_views($1::jsonb)", &[&Json(&data)])
-            .await?;
-
-        Ok(())
+        self.execute("select update_event_views($1::jsonb)", &[&Json(&data)])
+            .await
     }
 
     #[instrument(skip(self), err)]
     async fn update_group_views(&self, data: Vec<(Uuid, Day, Total)>) -> Result<()> {
-        trace!("db: update group views");
-
-        let db = self.pool.get().await?;
-        db.execute("select update_group_views($1::jsonb)", &[&Json(&data)])
-            .await?;
-
-        Ok(())
+        self.execute("select update_group_views($1::jsonb)", &[&Json(&data)])
+            .await
     }
 }

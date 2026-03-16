@@ -30,7 +30,6 @@ use crate::{
         notifications::{DynNotificationsManager, MockNotificationsManager},
     },
     templates::{
-        common::{User as TemplateUser, UserSummary},
         dashboard::{
             community::{
                 analytics::{
@@ -78,6 +77,7 @@ use crate::{
             GroupSummary,
         },
         site::{SiteSettings, Theme},
+        user::{User as TemplateUser, UserSummary},
     },
 };
 

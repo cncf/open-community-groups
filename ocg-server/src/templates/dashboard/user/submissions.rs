@@ -8,12 +8,12 @@ use serde_with::skip_serializing_none;
 use uuid::Uuid;
 
 use crate::{
-    templates::{
-        common::UserSummary,
-        dashboard,
+    templates::dashboard,
+    types::{
+        event::{EventCfsLabel, EventSummary},
         pagination::{self, Pagination, ToRawQuery},
+        user::UserSummary,
     },
-    types::event::{EventCfsLabel, EventSummary},
     validation::MAX_PAGINATION_LIMIT,
 };
 

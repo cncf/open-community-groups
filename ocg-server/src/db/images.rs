@@ -2,7 +2,7 @@
 
 use anyhow::Result;
 use async_trait::async_trait;
-use tracing::{instrument, trace};
+use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{db::PgDB, services::images::Image};
@@ -22,8 +22,6 @@ pub(crate) trait DBImages {
 impl DBImages for PgDB {
     #[instrument(skip(self), err)]
     async fn get_image(&self, file_name: &str) -> Result<Option<Image>> {
-        trace!("db: get image");
-
         let db = self.pool.get().await?;
         let image = db
             .query_opt(
@@ -51,10 +49,7 @@ impl DBImages for PgDB {
         data: &[u8],
         content_type: &str,
     ) -> Result<()> {
-        trace!("db: save image");
-
-        let db = self.pool.get().await?;
-        db.execute(
+        self.execute(
             "
             insert into images (created_by, file_name, data, content_type)
             values ($1::uuid, $2::text, $3::bytea, $4::text)
@@ -62,8 +57,6 @@ impl DBImages for PgDB {
             ",
             &[&user_id, &file_name, &data, &content_type],
         )
-        .await?;
-
-        Ok(())
+        .await
     }
 }

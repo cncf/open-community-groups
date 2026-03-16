@@ -7,12 +7,10 @@ use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use uuid::Uuid;
 
-use crate::{
-    templates::{
-        common::User,
-        helpers::location::{LocationParts, build_location},
-    },
-    types::community::CommunitySummary,
+use crate::types::{
+    community::CommunitySummary,
+    location::{LocationParts, build_location},
+    user::User,
 };
 
 // Group types: minimal, summary and full.

@@ -3,7 +3,7 @@
 use anyhow::Result;
 use async_trait::async_trait;
 use tokio_postgres::types::Json;
-use tracing::{instrument, trace};
+use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
@@ -114,31 +114,21 @@ impl DBDashboardUser for PgDB {
     /// [`DBDashboardUser::accept_community_team_invitation`]
     #[instrument(skip(self), err)]
     async fn accept_community_team_invitation(&self, community_id: Uuid, user_id: Uuid) -> Result<()> {
-        trace!("db: accept community team invitation");
-
-        let db = self.pool.get().await?;
-        db.execute(
+        self.execute(
             "select accept_community_team_invitation($1::uuid, $2::uuid)",
             &[&community_id, &user_id],
         )
-        .await?;
-
-        Ok(())
+        .await
     }
 
     /// [`DBDashboardUser::accept_group_team_invitation`]
     #[instrument(skip(self), err)]
     async fn accept_group_team_invitation(&self, group_id: Uuid, user_id: Uuid) -> Result<()> {
-        trace!("db: accept group team invitation");
-
-        let db = self.pool.get().await?;
-        db.execute(
+        self.execute(
             "select accept_group_team_invitation($1::uuid, $2::uuid)",
             &[&group_id, &user_id],
         )
-        .await?;
-
-        Ok(())
+        .await
     }
 
     /// [`DBDashboardUser::accept_session_proposal_co_speaker_invitation`]
@@ -148,16 +138,11 @@ impl DBDashboardUser for PgDB {
         user_id: Uuid,
         session_proposal_id: Uuid,
     ) -> Result<()> {
-        trace!("db: accept session proposal co-speaker invitation");
-
-        let db = self.pool.get().await?;
-        db.execute(
+        self.execute(
             "select accept_session_proposal_co_speaker_invitation($1::uuid, $2::uuid)",
             &[&user_id, &session_proposal_id],
         )
-        .await?;
-
-        Ok(())
+        .await
     }
 
     /// [`DBDashboardUser::add_session_proposal`]
@@ -167,33 +152,21 @@ impl DBDashboardUser for PgDB {
         user_id: Uuid,
         session_proposal: &SessionProposalInput,
     ) -> Result<Uuid> {
-        trace!("db: add session proposal");
-
-        let db = self.pool.get().await?;
-        let id = db
-            .query_one(
-                "select add_session_proposal($1::uuid, $2::jsonb)::uuid",
-                &[&user_id, &Json(session_proposal)],
-            )
-            .await?
-            .get(0);
-
-        Ok(id)
+        self.fetch_scalar_one(
+            "select add_session_proposal($1::uuid, $2::jsonb)::uuid",
+            &[&user_id, &Json(session_proposal)],
+        )
+        .await
     }
 
     /// [`DBDashboardUser::delete_session_proposal`]
     #[instrument(skip(self), err)]
     async fn delete_session_proposal(&self, user_id: Uuid, session_proposal_id: Uuid) -> Result<()> {
-        trace!("db: delete session proposal");
-
-        let db = self.pool.get().await?;
-        db.execute(
+        self.execute(
             "select delete_session_proposal($1::uuid, $2::uuid)",
             &[&user_id, &session_proposal_id],
         )
-        .await?;
-
-        Ok(())
+        .await
     }
 
     /// [`DBDashboardUser::get_session_proposal_co_speaker_user_id`]
@@ -203,8 +176,6 @@ impl DBDashboardUser for PgDB {
         user_id: Uuid,
         session_proposal_id: Uuid,
     ) -> Result<Option<SessionProposalCoSpeakerUser>> {
-        trace!("db: get session proposal co-speaker user id");
-
         let db = self.pool.get().await?;
         let row = db
             .query_opt(
@@ -226,13 +197,8 @@ impl DBDashboardUser for PgDB {
     /// [`DBDashboardUser::list_session_proposal_levels`]
     #[instrument(skip(self), err)]
     async fn list_session_proposal_levels(&self) -> Result<Vec<SessionProposalLevel>> {
-        trace!("db: list session proposal levels");
-
-        let db = self.pool.get().await?;
-        let row = db.query_one("select list_session_proposal_levels()", &[]).await?;
-        let levels = row.try_get::<_, Json<Vec<SessionProposalLevel>>>(0)?.0;
-
-        Ok(levels)
+        self.fetch_json_one("select list_session_proposal_levels()", &[])
+            .await
     }
 
     /// [`DBDashboardUser::list_user_cfs_submissions`]
@@ -242,18 +208,11 @@ impl DBDashboardUser for PgDB {
         user_id: Uuid,
         filters: &CfsSubmissionsFilters,
     ) -> Result<CfsSubmissionsOutput> {
-        trace!("db: list user cfs submissions");
-
-        let db = self.pool.get().await?;
-        let row = db
-            .query_one(
-                "select list_user_cfs_submissions($1::uuid, $2::jsonb)",
-                &[&user_id, &Json(filters)],
-            )
-            .await?;
-        let submissions = row.try_get::<_, Json<CfsSubmissionsOutput>>(0)?.0;
-
-        Ok(submissions)
+        self.fetch_json_one(
+            "select list_user_cfs_submissions($1::uuid, $2::jsonb)",
+            &[&user_id, &Json(filters)],
+        )
+        .await
     }
 
     /// [`DBDashboardUser::list_user_community_team_invitations`]
@@ -262,49 +221,28 @@ impl DBDashboardUser for PgDB {
         &self,
         user_id: Uuid,
     ) -> Result<Vec<CommunityTeamInvitation>> {
-        trace!("db: list user community team invitations");
-
-        let db = self.pool.get().await?;
-        let row = db
-            .query_one(
-                "select list_user_community_team_invitations($1::uuid)",
-                &[&user_id],
-            )
-            .await?;
-        let invitations = row.try_get::<_, Json<Vec<CommunityTeamInvitation>>>(0)?.0;
-
-        Ok(invitations)
+        self.fetch_json_one(
+            "select list_user_community_team_invitations($1::uuid)",
+            &[&user_id],
+        )
+        .await
     }
 
     /// [`DBDashboardUser::list_user_events`]
     #[instrument(skip(self, filters), err)]
     async fn list_user_events(&self, user_id: Uuid, filters: &UserEventsFilters) -> Result<UserEventsOutput> {
-        trace!("db: list user events");
-
-        let db = self.pool.get().await?;
-        let row = db
-            .query_one(
-                "select list_user_events($1::uuid, $2::jsonb)",
-                &[&user_id, &Json(filters)],
-            )
-            .await?;
-        let events = row.try_get::<_, Json<UserEventsOutput>>(0)?.0;
-
-        Ok(events)
+        self.fetch_json_one(
+            "select list_user_events($1::uuid, $2::jsonb)",
+            &[&user_id, &Json(filters)],
+        )
+        .await
     }
 
     /// [`DBDashboardUser::list_user_group_team_invitations`]
     #[instrument(skip(self), err)]
     async fn list_user_group_team_invitations(&self, user_id: Uuid) -> Result<Vec<GroupTeamInvitation>> {
-        trace!("db: list user group team invitations");
-
-        let db = self.pool.get().await?;
-        let row = db
-            .query_one("select list_user_group_team_invitations($1::uuid)", &[&user_id])
-            .await?;
-        let invitations = row.try_get::<_, Json<Vec<GroupTeamInvitation>>>(0)?.0;
-
-        Ok(invitations)
+        self.fetch_json_one("select list_user_group_team_invitations($1::uuid)", &[&user_id])
+            .await
     }
 
     /// [`DBDashboardUser::list_user_pending_session_proposal_co_speaker_invitations`]
@@ -313,18 +251,11 @@ impl DBDashboardUser for PgDB {
         &self,
         user_id: Uuid,
     ) -> Result<Vec<PendingCoSpeakerInvitation>> {
-        trace!("db: list user pending session proposal co-speaker invitations");
-
-        let db = self.pool.get().await?;
-        let row = db
-            .query_one(
-                "select list_user_pending_session_proposal_co_speaker_invitations($1::uuid)",
-                &[&user_id],
-            )
-            .await?;
-        let invitations = row.try_get::<_, Json<Vec<PendingCoSpeakerInvitation>>>(0)?.0;
-
-        Ok(invitations)
+        self.fetch_json_one(
+            "select list_user_pending_session_proposal_co_speaker_invitations($1::uuid)",
+            &[&user_id],
+        )
+        .await
     }
 
     /// [`DBDashboardUser::list_user_session_proposals`]
@@ -334,18 +265,11 @@ impl DBDashboardUser for PgDB {
         user_id: Uuid,
         filters: &SessionProposalsFilters,
     ) -> Result<SessionProposalsOutput> {
-        trace!("db: list user session proposals");
-
-        let db = self.pool.get().await?;
-        let row = db
-            .query_one(
-                "select list_user_session_proposals($1::uuid, $2::jsonb)",
-                &[&user_id, &Json(filters)],
-            )
-            .await?;
-        let session_proposals_output = row.try_get::<_, Json<SessionProposalsOutput>>(0)?.0;
-
-        Ok(session_proposals_output)
+        self.fetch_json_one(
+            "select list_user_session_proposals($1::uuid, $2::jsonb)",
+            &[&user_id, &Json(filters)],
+        )
+        .await
     }
 
     /// [`DBDashboardUser::reject_session_proposal_co_speaker_invitation`]
@@ -355,31 +279,21 @@ impl DBDashboardUser for PgDB {
         user_id: Uuid,
         session_proposal_id: Uuid,
     ) -> Result<()> {
-        trace!("db: reject session proposal co-speaker invitation");
-
-        let db = self.pool.get().await?;
-        db.execute(
+        self.execute(
             "select reject_session_proposal_co_speaker_invitation($1::uuid, $2::uuid)",
             &[&user_id, &session_proposal_id],
         )
-        .await?;
-
-        Ok(())
+        .await
     }
 
     /// [`DBDashboardUser::resubmit_cfs_submission`]
     #[instrument(skip(self), err)]
     async fn resubmit_cfs_submission(&self, user_id: Uuid, cfs_submission_id: Uuid) -> Result<()> {
-        trace!("db: resubmit cfs submission");
-
-        let db = self.pool.get().await?;
-        db.execute(
+        self.execute(
             "select resubmit_cfs_submission($1::uuid, $2::uuid)",
             &[&user_id, &cfs_submission_id],
         )
-        .await?;
-
-        Ok(())
+        .await
     }
 
     /// [`DBDashboardUser::update_session_proposal`]
@@ -390,31 +304,21 @@ impl DBDashboardUser for PgDB {
         session_proposal_id: Uuid,
         session_proposal: &SessionProposalInput,
     ) -> Result<()> {
-        trace!("db: update session proposal");
-
-        let db = self.pool.get().await?;
-        db.execute(
+        self.execute(
             "select update_session_proposal($1::uuid, $2::uuid, $3::jsonb)",
             &[&user_id, &session_proposal_id, &Json(session_proposal)],
         )
-        .await?;
-
-        Ok(())
+        .await
     }
 
     /// [`DBDashboardUser::withdraw_cfs_submission`]
     #[instrument(skip(self), err)]
     async fn withdraw_cfs_submission(&self, user_id: Uuid, cfs_submission_id: Uuid) -> Result<()> {
-        trace!("db: withdraw cfs submission");
-
-        let db = self.pool.get().await?;
-        db.execute(
+        self.execute(
             "select withdraw_cfs_submission($1::uuid, $2::uuid)",
             &[&user_id, &cfs_submission_id],
         )
-        .await?;
-
-        Ok(())
+        .await
     }
 }
 

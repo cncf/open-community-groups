@@ -6,8 +6,9 @@ use anyhow::{Result, bail};
 use async_trait::async_trait;
 use chrono::{DateTime, TimeDelta, Utc};
 use deadpool_postgres::{Client, Pool};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use tokio::{select, sync::RwLock, time::sleep};
+use tokio_postgres::types::{FromSql, Json, ToSql};
 use tokio_util::sync::CancellationToken;
 use tracing::instrument;
 use uuid::Uuid;
@@ -138,6 +139,71 @@ impl PgDB {
                 }
             }
         }
+    }
+
+    /// Executes a SQL statement, discarding the row count.
+    async fn execute(&self, sql: &str, params: &[&(dyn ToSql + Sync)]) -> Result<()> {
+        let db = self.pool.get().await?;
+        db.execute(sql, params).await?;
+        Ok(())
+    }
+
+    /// Fetches a single row and deserializes a non-null JSON column.
+    async fn fetch_json_one<T: DeserializeOwned>(
+        &self,
+        sql: &str,
+        params: &[&(dyn ToSql + Sync)],
+    ) -> Result<T> {
+        let db = self.pool.get().await?;
+        let row = db.query_one(sql, params).await?;
+        let value = row.try_get::<_, Json<T>>(0)?.0;
+        Ok(value)
+    }
+
+    /// Fetches a single row and deserializes a nullable JSON column.
+    async fn fetch_json_opt<T: DeserializeOwned>(
+        &self,
+        sql: &str,
+        params: &[&(dyn ToSql + Sync)],
+    ) -> Result<Option<T>> {
+        let db = self.pool.get().await?;
+        let value = db
+            .query_one(sql, params)
+            .await?
+            .try_get::<_, Option<Json<T>>>(0)?
+            .map(|v| v.0);
+        Ok(value)
+    }
+
+    /// Fetches exactly one row and extracts a scalar column value.
+    async fn fetch_scalar_one<T: for<'a> FromSql<'a>>(
+        &self,
+        sql: &str,
+        params: &[&(dyn ToSql + Sync)],
+    ) -> Result<T> {
+        let db = self.pool.get().await?;
+        let value = db.query_one(sql, params).await?.get(0);
+        Ok(value)
+    }
+
+    /// Fetches at most one row and extracts a scalar column value.
+    async fn fetch_scalar_opt<T: for<'a> FromSql<'a>>(
+        &self,
+        sql: &str,
+        params: &[&(dyn ToSql + Sync)],
+    ) -> Result<Option<T>> {
+        let db = self.pool.get().await?;
+        let value = db.query_opt(sql, params).await?.and_then(|row| row.get(0));
+        Ok(value)
+    }
+
+    /// Looks up the transaction client for the given client ID.
+    async fn tx_client(&self, client_id: Uuid) -> Result<Arc<Client>> {
+        let clients = self.txs_clients.read().await;
+        let Some((tx, _)) = clients.get(&client_id) else {
+            bail!(TX_CLIENT_NOT_FOUND);
+        };
+        Ok(Arc::clone(tx))
     }
 }
 
