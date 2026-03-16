@@ -4,7 +4,7 @@ use anyhow::Result;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use tokio_postgres::types::Json;
-use tracing::{instrument, trace};
+use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{db::PgDB, templates::dashboard::community::groups::Group};
@@ -24,28 +24,17 @@ impl DBDashboardCommon for PgDB {
     /// [`DBDashboardCommon::search_user`]
     #[instrument(skip(self), err)]
     async fn search_user(&self, query: &str) -> Result<Vec<User>> {
-        trace!("db: search user");
-
-        let db = self.pool.get().await?;
-        let row = db.query_one("select search_user($1::text)", &[&query]).await?;
-        let users = row.try_get::<_, Json<Vec<User>>>(0)?.0;
-
-        Ok(users)
+        self.fetch_json_one("select search_user($1::text)", &[&query]).await
     }
 
     /// [`DBDashboardCommon::update_group`]
     #[instrument(skip(self, group), err)]
     async fn update_group(&self, community_id: Uuid, group_id: Uuid, group: &Group) -> Result<()> {
-        trace!("db: update group");
-
-        let db = self.pool.get().await?;
-        db.execute(
+        self.execute(
             "select update_group($1::uuid, $2::uuid, $3::jsonb)",
             &[&community_id, &group_id, &Json(group)],
         )
-        .await?;
-
-        Ok(())
+        .await
     }
 }
 

@@ -2,8 +2,7 @@
 
 use anyhow::Result;
 use async_trait::async_trait;
-use tokio_postgres::types::Json;
-use tracing::{instrument, trace};
+use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
@@ -53,18 +52,11 @@ impl DBGroup for PgDB {
     /// [`DBGroup::get_group_full_by_slug`]
     #[instrument(skip(self), err)]
     async fn get_group_full_by_slug(&self, community_id: Uuid, group_slug: &str) -> Result<GroupFull> {
-        trace!("db: get group");
-
-        let db = self.pool.get().await?;
-        let row = db
-            .query_one(
-                "select get_group_full_by_slug($1::uuid, $2::text)",
-                &[&community_id, &group_slug],
-            )
-            .await?;
-        let group = row.try_get::<_, Json<GroupFull>>(0)?.0;
-
-        Ok(group)
+        self.fetch_json_one(
+            "select get_group_full_by_slug($1::uuid, $2::text)",
+            &[&community_id, &group_slug],
+        )
+        .await
     }
 
     /// [`DB::get_group_past_events`]
@@ -76,19 +68,12 @@ impl DBGroup for PgDB {
         event_kinds: Vec<EventKind>,
         limit: i32,
     ) -> Result<Vec<EventSummary>> {
-        trace!("db: get group past events");
-
         let event_kind_ids: Vec<String> = event_kinds.iter().map(ToString::to_string).collect();
-        let db = self.pool.get().await?;
-        let row = db
-            .query_one(
-                "select get_group_past_events($1::uuid, $2::text, $3::text[], $4::int)",
-                &[&community_id, &group_slug, &event_kind_ids, &limit],
-            )
-            .await?;
-        let events = row.try_get::<_, Json<Vec<EventSummary>>>(0)?.0;
-
-        Ok(events)
+        self.fetch_json_one(
+            "select get_group_past_events($1::uuid, $2::text, $3::text[], $4::int)",
+            &[&community_id, &group_slug, &event_kind_ids, &limit],
+        )
+        .await
     }
 
     /// [`DB::get_group_upcoming_events`]
@@ -100,65 +85,41 @@ impl DBGroup for PgDB {
         event_kinds: Vec<EventKind>,
         limit: i32,
     ) -> Result<Vec<EventSummary>> {
-        trace!("db: get group upcoming events");
-
         let event_kind_ids: Vec<String> = event_kinds.iter().map(ToString::to_string).collect();
-        let db = self.pool.get().await?;
-        let row = db
-            .query_one(
-                "select get_group_upcoming_events($1::uuid, $2::text, $3::text[], $4::int)",
-                &[&community_id, &group_slug, &event_kind_ids, &limit],
-            )
-            .await?;
-        let events = row.try_get::<_, Json<Vec<EventSummary>>>(0)?.0;
-
-        Ok(events)
+        self.fetch_json_one(
+            "select get_group_upcoming_events($1::uuid, $2::text, $3::text[], $4::int)",
+            &[&community_id, &group_slug, &event_kind_ids, &limit],
+        )
+        .await
     }
 
     /// [`DB::is_group_member`]
     #[instrument(skip(self), err)]
     async fn is_group_member(&self, community_id: Uuid, group_id: Uuid, user_id: Uuid) -> Result<bool> {
-        trace!("db: check group membership");
-
-        let db = self.pool.get().await?;
-        let is_group_member = db
-            .query_one(
-                "select is_group_member($1::uuid, $2::uuid, $3::uuid)",
-                &[&community_id, &group_id, &user_id],
-            )
-            .await?
-            .get::<_, bool>(0);
-
-        Ok(is_group_member)
+        self.fetch_scalar_one(
+            "select is_group_member($1::uuid, $2::uuid, $3::uuid)",
+            &[&community_id, &group_id, &user_id],
+        )
+        .await
     }
 
     /// [`DB::join_group`]
     #[instrument(skip(self), err)]
     async fn join_group(&self, community_id: Uuid, group_id: Uuid, user_id: Uuid) -> Result<()> {
-        trace!("db: join group");
-
-        let db = self.pool.get().await?;
-        db.execute(
+        self.execute(
             "select join_group($1::uuid, $2::uuid, $3::uuid)",
             &[&community_id, &group_id, &user_id],
         )
-        .await?;
-
-        Ok(())
+        .await
     }
 
     /// [`DB::leave_group`]
     #[instrument(skip(self), err)]
     async fn leave_group(&self, community_id: Uuid, group_id: Uuid, user_id: Uuid) -> Result<()> {
-        trace!("db: leave group");
-
-        let db = self.pool.get().await?;
-        db.execute(
+        self.execute(
             "select leave_group($1::uuid, $2::uuid, $3::uuid)",
             &[&community_id, &group_id, &user_id],
         )
-        .await?;
-
-        Ok(())
+        .await
     }
 }

@@ -1,20 +1,19 @@
 //! This module defines database functionality used to manage notifications, including
 //! enqueueing, retrieving, and updating notification records.
 
-use std::{sync::Arc, time::Duration};
+use std::time::Duration;
 
-use anyhow::{Result, anyhow, bail};
+use anyhow::{Result, anyhow};
 use async_trait::async_trait;
 use base64::{Engine, engine::general_purpose::STANDARD as BASE64};
 use cached::proc_macro::cached;
 use deadpool_postgres::Client;
 use serde::Serialize;
-use tracing::{instrument, trace};
+use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
     PgDB,
-    db::TX_CLIENT_NOT_FOUND,
     services::notifications::{Attachment, NewNotification, Notification},
 };
 
@@ -56,8 +55,6 @@ pub(crate) trait DBNotifications {
 impl DBNotifications for PgDB {
     #[instrument(skip(self), err)]
     async fn enqueue_due_event_reminders(&self, base_url: &str) -> Result<usize> {
-        trace!("db: enqueue due event reminders");
-
         let db = self.pool.get().await?;
         let count = db
             .query_one(
@@ -76,8 +73,6 @@ impl DBNotifications for PgDB {
 
     #[instrument(skip(self, notification), err)]
     async fn enqueue_notification(&self, notification: &NewNotification) -> Result<()> {
-        trace!("db: enqueue notification");
-
         // Nothing to enqueue
         if notification.recipients.is_empty() {
             return Ok(());
@@ -130,8 +125,6 @@ impl DBNotifications for PgDB {
             result = true
         )]
         async fn inner(db: Client, attachment_id: Uuid) -> Result<Attachment> {
-            trace!(attachment_id = ?attachment_id, "db: get notification attachment");
-
             let row = db
                 .query_one(
                     "
@@ -157,13 +150,7 @@ impl DBNotifications for PgDB {
     #[instrument(skip(self), err)]
     async fn get_pending_notification(&self, client_id: Uuid) -> Result<Option<Notification>> {
         // Get transaction client
-        let tx = {
-            let clients = self.txs_clients.read().await;
-            let Some((tx, _)) = clients.get(&client_id) else {
-                bail!(TX_CLIENT_NOT_FOUND);
-            };
-            Arc::clone(tx)
-        };
+        let tx = self.tx_client(client_id).await?;
 
         // Get pending notification (if any)
         let Some(row) = tx.query_opt("select * from get_pending_notification();", &[]).await? else {
@@ -204,18 +191,8 @@ impl DBNotifications for PgDB {
         notification: &Notification,
         error: Option<String>,
     ) -> Result<()> {
-        trace!("db: update notification");
+        let tx = self.tx_client(client_id).await?;
 
-        // Get transaction client
-        let tx = {
-            let clients = self.txs_clients.read().await;
-            let Some((tx, _)) = clients.get(&client_id) else {
-                bail!(TX_CLIENT_NOT_FOUND);
-            };
-            Arc::clone(tx)
-        };
-
-        // Update notification
         tx.execute(
             "
             update notification set
@@ -240,19 +217,14 @@ impl DBNotifications for PgDB {
         subject: &str,
         body: &str,
     ) -> Result<()> {
-        trace!("db: track custom notification");
-
-        let db = self.pool.get().await?;
-        db.execute(
+        self.execute(
             "
             insert into custom_notification (created_by, event_id, group_id, subject, body)
             values ($1, $2, $3, $4, $5);
             ",
             &[&created_by, &event_id, &group_id, &subject, &body],
         )
-        .await?;
-
-        Ok(())
+        .await
     }
 }
 

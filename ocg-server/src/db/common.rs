@@ -8,7 +8,7 @@ use cached::proc_macro::cached;
 use deadpool_postgres::Client;
 use serde::{Deserialize, Serialize};
 use tokio_postgres::types::Json;
-use tracing::{instrument, trace};
+use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
@@ -65,46 +65,25 @@ impl DBCommon for PgDB {
     /// [`DBCommon::get_community_full`]
     #[instrument(skip(self), err)]
     async fn get_community_full(&self, community_id: Uuid) -> Result<CommunityFull> {
-        trace!("db: get community full");
-
-        let db = self.pool.get().await?;
-        let row = db
-            .query_one("select get_community_full($1::uuid)", &[&community_id])
-            .await?;
-        let community = row.try_get::<_, Json<CommunityFull>>(0)?.0;
-
-        Ok(community)
+        self.fetch_json_one("select get_community_full($1::uuid)", &[&community_id])
+            .await
     }
 
     /// [`DBCommon::get_community_summary`]
     #[instrument(skip(self), err)]
     async fn get_community_summary(&self, community_id: Uuid) -> Result<CommunitySummary> {
-        trace!("db: get community summary");
-
-        let db = self.pool.get().await?;
-        let row = db
-            .query_one("select get_community_summary($1::uuid)", &[&community_id])
-            .await?;
-        let community = row.try_get::<_, Json<CommunitySummary>>(0)?.0;
-
-        Ok(community)
+        self.fetch_json_one("select get_community_summary($1::uuid)", &[&community_id])
+            .await
     }
 
     /// [`DBCommon::get_event_full`]
     #[instrument(skip(self), err)]
     async fn get_event_full(&self, community_id: Uuid, group_id: Uuid, event_id: Uuid) -> Result<EventFull> {
-        trace!("db: get event full");
-
-        let db = self.pool.get().await?;
-        let row = db
-            .query_one(
-                "select get_event_full($1::uuid, $2::uuid, $3::uuid)",
-                &[&community_id, &group_id, &event_id],
-            )
-            .await?;
-        let event = row.try_get::<_, Json<EventFull>>(0)?.0;
-
-        Ok(event)
+        self.fetch_json_one(
+            "select get_event_full($1::uuid, $2::uuid, $3::uuid)",
+            &[&community_id, &group_id, &event_id],
+        )
+        .await
     }
 
     /// [`DBCommon::get_event_summary`]
@@ -115,66 +94,38 @@ impl DBCommon for PgDB {
         group_id: Uuid,
         event_id: Uuid,
     ) -> Result<EventSummary> {
-        trace!("db: get event summary");
-
-        let db = self.pool.get().await?;
-        let row = db
-            .query_one(
-                "select get_event_summary($1::uuid, $2::uuid, $3::uuid)",
-                &[&community_id, &group_id, &event_id],
-            )
-            .await?;
-        let event = row.try_get::<_, Json<EventSummary>>(0)?.0;
-
-        Ok(event)
+        self.fetch_json_one(
+            "select get_event_summary($1::uuid, $2::uuid, $3::uuid)",
+            &[&community_id, &group_id, &event_id],
+        )
+        .await
     }
 
     /// [`DBCommon::get_group_full`]
     #[instrument(skip(self), err)]
     async fn get_group_full(&self, community_id: Uuid, group_id: Uuid) -> Result<GroupFull> {
-        trace!("db: get group full");
-
-        let db = self.pool.get().await?;
-        let row = db
-            .query_one(
-                "select get_group_full($1::uuid, $2::uuid)",
-                &[&community_id, &group_id],
-            )
-            .await?;
-        let group = row.try_get::<_, Json<GroupFull>>(0)?.0;
-
-        Ok(group)
+        self.fetch_json_one(
+            "select get_group_full($1::uuid, $2::uuid)",
+            &[&community_id, &group_id],
+        )
+        .await
     }
 
     /// [`DBCommon::get_group_summary`]
     #[instrument(skip(self), err)]
     async fn get_group_summary(&self, community_id: Uuid, group_id: Uuid) -> Result<GroupSummary> {
-        trace!("db: get group summary");
-
-        let db = self.pool.get().await?;
-        let row = db
-            .query_one(
-                "select get_group_summary($1::uuid, $2::uuid)",
-                &[&community_id, &group_id],
-            )
-            .await?;
-        let group = row.try_get::<_, Json<GroupSummary>>(0)?.0;
-
-        Ok(group)
+        self.fetch_json_one(
+            "select get_group_summary($1::uuid, $2::uuid)",
+            &[&community_id, &group_id],
+        )
+        .await
     }
 
     /// [`DBCommon::list_event_cfs_labels`]
     #[instrument(skip(self), err)]
     async fn list_event_cfs_labels(&self, event_id: Uuid) -> Result<Vec<EventCfsLabel>> {
-        trace!("db: list event cfs labels");
-
-        let db = self.pool.get().await?;
-        let row = db
-            .query_one("select list_event_cfs_labels($1::uuid)", &[&event_id])
-            .await?;
-        let labels = row.try_get::<_, Json<Vec<EventCfsLabel>>>(0)?.0;
-
-        Ok(labels)
+        self.fetch_json_one("select list_event_cfs_labels($1::uuid)", &[&event_id])
+            .await
     }
 
     /// [`DBCommon::list_timezones`]
@@ -188,8 +139,6 @@ impl DBCommon for PgDB {
             result = true
         )]
         async fn inner(db: Client) -> Result<Vec<String>> {
-            trace!("db: list timezones");
-
             let timezones = db
                 .query(
                     "
@@ -216,45 +165,15 @@ impl DBCommon for PgDB {
     /// [`DBCommon::search_events`]
     #[instrument(skip(self), err)]
     async fn search_events(&self, filters: &SearchEventsFilters) -> Result<SearchEventsOutput> {
-        trace!("db: search events");
-
-        // Query database
-        let db = self.pool.get().await?;
-        let row = db
-            .query_one(
-                "
-                select search_events($1::jsonb)
-                ",
-                &[&Json(filters)],
-            )
-            .await?;
-
-        // Prepare search output
-        let output = row.try_get::<_, Json<SearchEventsOutput>>(0)?.0;
-
-        Ok(output)
+        self.fetch_json_one("select search_events($1::jsonb)", &[&Json(filters)])
+            .await
     }
 
     /// [`DBCommon::search_groups`]
     #[instrument(skip(self), err)]
     async fn search_groups(&self, filters: &SearchGroupsFilters) -> Result<SearchGroupsOutput> {
-        trace!("db: search groups");
-
-        // Query database
-        let db = self.pool.get().await?;
-        let row = db
-            .query_one(
-                "
-                select search_groups($1::jsonb)
-                ",
-                &[&Json(filters)],
-            )
-            .await?;
-
-        // Prepare search output
-        let output = row.try_get::<_, Json<SearchGroupsOutput>>(0)?.0;
-
-        Ok(output)
+        self.fetch_json_one("select search_groups($1::jsonb)", &[&Json(filters)])
+            .await
     }
 }
 

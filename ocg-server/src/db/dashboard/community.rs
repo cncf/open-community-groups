@@ -7,7 +7,7 @@ use async_trait::async_trait;
 use cached::proc_macro::cached;
 use deadpool_postgres::Client;
 use tokio_postgres::types::Json;
-use tracing::{instrument, trace};
+use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
@@ -137,16 +137,11 @@ impl DBDashboardCommunity for PgDB {
     /// [`DBDashboardCommunity::activate_group`]
     #[instrument(skip(self), err)]
     async fn activate_group(&self, community_id: Uuid, group_id: Uuid) -> Result<()> {
-        trace!("db: activate group");
-
-        let db = self.pool.get().await?;
-        db.execute(
+        self.execute(
             "select activate_group($1::uuid, $2::uuid)",
             &[&community_id, &group_id],
         )
-        .await?;
-
-        Ok(())
+        .await
     }
 
     /// [`DBDashboardCommunity::add_community_team_member`]
@@ -157,16 +152,11 @@ impl DBDashboardCommunity for PgDB {
         user_id: Uuid,
         role: &CommunityRole,
     ) -> Result<()> {
-        trace!("db: add community team member");
-
-        let db = self.pool.get().await?;
-        db.execute(
+        self.execute(
             "select add_community_team_member($1::uuid, $2::uuid, $3::text)",
             &[&community_id, &user_id, &role.to_string()],
         )
-        .await?;
-
-        Ok(())
+        .await
     }
 
     /// [`DBDashboardCommunity::add_event_category`]
@@ -176,35 +166,21 @@ impl DBDashboardCommunity for PgDB {
         community_id: Uuid,
         event_category: &EventCategoryInput,
     ) -> Result<Uuid> {
-        trace!("db: add event category");
-
-        let db = self.pool.get().await?;
-        let event_category_id = db
-            .query_one(
-                "select add_event_category($1::uuid, $2::jsonb)::uuid",
-                &[&community_id, &Json(event_category)],
-            )
-            .await?
-            .get(0);
-
-        Ok(event_category_id)
+        self.fetch_scalar_one(
+            "select add_event_category($1::uuid, $2::jsonb)::uuid",
+            &[&community_id, &Json(event_category)],
+        )
+        .await
     }
 
     /// [`DBDashboardCommunity::add_group`]
     #[instrument(skip(self, group), err)]
     async fn add_group(&self, community_id: Uuid, group: &Group) -> Result<Uuid> {
-        trace!("db: add group");
-
-        let db = self.pool.get().await?;
-        let group_id = db
-            .query_one(
-                "select add_group($1::uuid, $2::jsonb)::uuid",
-                &[&community_id, &Json(group)],
-            )
-            .await?
-            .get(0);
-
-        Ok(group_id)
+        self.fetch_scalar_one(
+            "select add_group($1::uuid, $2::jsonb)::uuid",
+            &[&community_id, &Json(group)],
+        )
+        .await
     }
 
     /// [`DBDashboardCommunity::add_group_category`]
@@ -214,125 +190,81 @@ impl DBDashboardCommunity for PgDB {
         community_id: Uuid,
         group_category: &GroupCategoryInput,
     ) -> Result<Uuid> {
-        trace!("db: add group category");
-
-        let db = self.pool.get().await?;
-        let group_category_id = db
-            .query_one(
-                "select add_group_category($1::uuid, $2::jsonb)::uuid",
-                &[&community_id, &Json(group_category)],
-            )
-            .await?
-            .get(0);
-
-        Ok(group_category_id)
+        self.fetch_scalar_one(
+            "select add_group_category($1::uuid, $2::jsonb)::uuid",
+            &[&community_id, &Json(group_category)],
+        )
+        .await
     }
 
     /// [`DBDashboardCommunity::add_region`]
     #[instrument(skip(self, region), err)]
     async fn add_region(&self, community_id: Uuid, region: &RegionInput) -> Result<Uuid> {
-        trace!("db: add region");
-
-        let db = self.pool.get().await?;
-        let region_id = db
-            .query_one(
-                "select add_region($1::uuid, $2::jsonb)::uuid",
-                &[&community_id, &Json(region)],
-            )
-            .await?
-            .get(0);
-
-        Ok(region_id)
+        self.fetch_scalar_one(
+            "select add_region($1::uuid, $2::jsonb)::uuid",
+            &[&community_id, &Json(region)],
+        )
+        .await
     }
 
     /// [`DBDashboardCommunity::deactivate_group`]
     #[instrument(skip(self), err)]
     async fn deactivate_group(&self, community_id: Uuid, group_id: Uuid) -> Result<()> {
-        trace!("db: deactivate group");
-
-        let db = self.pool.get().await?;
-        db.execute(
+        self.execute(
             "select deactivate_group($1::uuid, $2::uuid)",
             &[&community_id, &group_id],
         )
-        .await?;
-
-        Ok(())
+        .await
     }
 
     /// [`DBDashboardCommunity::delete_community_team_member`]
     #[instrument(skip(self), err)]
     async fn delete_community_team_member(&self, community_id: Uuid, user_id: Uuid) -> Result<()> {
-        trace!("db: delete community team member");
-
-        let db = self.pool.get().await?;
-        db.execute(
+        self.execute(
             "select delete_community_team_member($1::uuid, $2::uuid)",
             &[&community_id, &user_id],
         )
-        .await?;
-
-        Ok(())
+        .await
     }
 
     /// [`DBDashboardCommunity::delete_event_category`]
     #[instrument(skip(self), err)]
     async fn delete_event_category(&self, community_id: Uuid, event_category_id: Uuid) -> Result<()> {
-        trace!("db: delete event category");
-
-        let db = self.pool.get().await?;
-        db.execute(
+        self.execute(
             "select delete_event_category($1::uuid, $2::uuid)",
             &[&community_id, &event_category_id],
         )
-        .await?;
-
-        Ok(())
+        .await
     }
 
     /// [`DBDashboardCommunity::delete_group`]
     #[instrument(skip(self), err)]
     async fn delete_group(&self, community_id: Uuid, group_id: Uuid) -> Result<()> {
-        trace!("db: delete group");
-
-        let db = self.pool.get().await?;
-        db.execute(
+        self.execute(
             "select delete_group($1::uuid, $2::uuid)",
             &[&community_id, &group_id],
         )
-        .await?;
-
-        Ok(())
+        .await
     }
 
     /// [`DBDashboardCommunity::delete_group_category`]
     #[instrument(skip(self), err)]
     async fn delete_group_category(&self, community_id: Uuid, group_category_id: Uuid) -> Result<()> {
-        trace!("db: delete group category");
-
-        let db = self.pool.get().await?;
-        db.execute(
+        self.execute(
             "select delete_group_category($1::uuid, $2::uuid)",
             &[&community_id, &group_category_id],
         )
-        .await?;
-
-        Ok(())
+        .await
     }
 
     /// [`DBDashboardCommunity::delete_region`]
     #[instrument(skip(self), err)]
     async fn delete_region(&self, community_id: Uuid, region_id: Uuid) -> Result<()> {
-        trace!("db: delete region");
-
-        let db = self.pool.get().await?;
-        db.execute(
+        self.execute(
             "select delete_region($1::uuid, $2::uuid)",
             &[&community_id, &region_id],
         )
-        .await?;
-
-        Ok(())
+        .await
     }
 
     /// [`DBDashboardCommunity::get_community_stats`]
@@ -346,8 +278,6 @@ impl DBDashboardCommunity for PgDB {
             result = true
         )]
         async fn inner(db: Client, community_id: Uuid) -> Result<CommunityDashboardStats> {
-            trace!(community_id = ?community_id, "db: get community stats");
-
             let row = db
                 .query_one("select get_community_stats($1::uuid)", &[&community_id])
                 .await?;
@@ -371,8 +301,6 @@ impl DBDashboardCommunity for PgDB {
             result = true
         )]
         async fn inner(db: Client) -> Result<Vec<CommunityRoleSummary>> {
-            trace!("db: list community roles");
-
             let row = db.query_one("select list_community_roles()", &[]).await?;
             let roles = row.try_get::<_, Json<Vec<CommunityRoleSummary>>>(0)?.0;
 
@@ -390,75 +318,42 @@ impl DBDashboardCommunity for PgDB {
         community_id: Uuid,
         filters: &CommunityTeamFilters,
     ) -> Result<CommunityTeamOutput> {
-        trace!("db: list community team");
-
-        let db = self.pool.get().await?;
-        let row = db
-            .query_one(
-                "select list_community_team_members($1::uuid, $2::jsonb)",
-                &[&community_id, &Json(filters)],
-            )
-            .await?;
-        let output = row.try_get::<_, Json<CommunityTeamOutput>>(0)?.0;
-
-        Ok(output)
+        self.fetch_json_one(
+            "select list_community_team_members($1::uuid, $2::jsonb)",
+            &[&community_id, &Json(filters)],
+        )
+        .await
     }
 
     /// [`DBDashboardCommunity::list_group_categories`]
     #[instrument(skip(self), err)]
     async fn list_group_categories(&self, community_id: Uuid) -> Result<Vec<GroupCategory>> {
-        trace!("db: list group categories");
-
-        let db = self.pool.get().await?;
-        let row = db
-            .query_one("select list_group_categories($1::uuid)", &[&community_id])
-            .await?;
-        let categories = row.try_get::<_, Json<Vec<GroupCategory>>>(0)?.0;
-
-        Ok(categories)
+        self.fetch_json_one("select list_group_categories($1::uuid)", &[&community_id])
+            .await
     }
 
     /// [`DBDashboardCommunity::list_regions`]
     #[instrument(skip(self), err)]
     async fn list_regions(&self, community_id: Uuid) -> Result<Vec<GroupRegion>> {
-        trace!("db: list regions");
-
-        let db = self.pool.get().await?;
-        let row = db
-            .query_one("select list_regions($1::uuid)", &[&community_id])
-            .await?;
-        let regions = row.try_get::<_, Json<Vec<GroupRegion>>>(0)?.0;
-
-        Ok(regions)
+        self.fetch_json_one("select list_regions($1::uuid)", &[&community_id])
+            .await
     }
 
     /// [`DBDashboardCommunity::list_user_communities`]
     #[instrument(skip(self), err)]
     async fn list_user_communities(&self, user_id: &Uuid) -> Result<Vec<CommunitySummary>> {
-        trace!("db: list user communities");
-
-        let db = self.pool.get().await?;
-        let row = db
-            .query_one("select list_user_communities($1::uuid)", &[&user_id])
-            .await?;
-        let communities = row.try_get::<_, Json<Vec<CommunitySummary>>>(0)?.0;
-
-        Ok(communities)
+        self.fetch_json_one("select list_user_communities($1::uuid)", &[&user_id])
+            .await
     }
 
     /// [`DBDashboardCommunity::update_community`]
     #[instrument(skip(self, community), err)]
     async fn update_community(&self, community_id: Uuid, community: &CommunityUpdate) -> Result<()> {
-        trace!("db: update community");
-
-        let db = self.pool.get().await?;
-        db.execute(
+        self.execute(
             "select update_community($1::uuid, $2::jsonb)",
             &[&community_id, &Json(community)],
         )
-        .await?;
-
-        Ok(())
+        .await
     }
 
     /// [`DBDashboardCommunity::update_community_team_member_role`]
@@ -469,16 +364,11 @@ impl DBDashboardCommunity for PgDB {
         user_id: Uuid,
         role: &CommunityRole,
     ) -> Result<()> {
-        trace!("db: update community team member role");
-
-        let db = self.pool.get().await?;
-        db.execute(
+        self.execute(
             "select update_community_team_member_role($1::uuid, $2::uuid, $3::text)",
             &[&community_id, &user_id, &role.to_string()],
         )
-        .await?;
-
-        Ok(())
+        .await
     }
 
     /// [`DBDashboardCommunity::update_event_category`]
@@ -489,16 +379,11 @@ impl DBDashboardCommunity for PgDB {
         event_category_id: Uuid,
         event_category: &EventCategoryInput,
     ) -> Result<()> {
-        trace!("db: update event category");
-
-        let db = self.pool.get().await?;
-        db.execute(
+        self.execute(
             "select update_event_category($1::uuid, $2::uuid, $3::jsonb)",
             &[&community_id, &event_category_id, &Json(event_category)],
         )
-        .await?;
-
-        Ok(())
+        .await
     }
 
     /// [`DBDashboardCommunity::update_group_category`]
@@ -509,30 +394,20 @@ impl DBDashboardCommunity for PgDB {
         group_category_id: Uuid,
         group_category: &GroupCategoryInput,
     ) -> Result<()> {
-        trace!("db: update group category");
-
-        let db = self.pool.get().await?;
-        db.execute(
+        self.execute(
             "select update_group_category($1::uuid, $2::uuid, $3::jsonb)",
             &[&community_id, &group_category_id, &Json(group_category)],
         )
-        .await?;
-
-        Ok(())
+        .await
     }
 
     /// [`DBDashboardCommunity::update_region`]
     #[instrument(skip(self, region), err)]
     async fn update_region(&self, community_id: Uuid, region_id: Uuid, region: &RegionInput) -> Result<()> {
-        trace!("db: update region");
-
-        let db = self.pool.get().await?;
-        db.execute(
+        self.execute(
             "select update_region($1::uuid, $2::uuid, $3::jsonb)",
             &[&community_id, &region_id, &Json(region)],
         )
-        .await?;
-
-        Ok(())
+        .await
     }
 }

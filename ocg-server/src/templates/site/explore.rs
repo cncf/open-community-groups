@@ -17,8 +17,7 @@ use crate::{
         helpers::user_initials,
     },
     types::{
-        event::EventKind,
-        event::EventSummary,
+        event::{EventKind, EventSummary},
         group::GroupSummary,
         pagination::NavigationLinks,
         search::{SearchEventsFilters, SearchGroupsFilters, ViewMode},
