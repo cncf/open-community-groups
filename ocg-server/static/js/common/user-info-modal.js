@@ -80,8 +80,8 @@ export class UserInfoModal extends LitWrapper {
     }
   }
 
-  _renderSocialLinks() {
-    if (!this._userData) return "";
+  _getSocialLinks() {
+    if (!this._userData) return [];
 
     const links = [];
 
@@ -121,6 +121,14 @@ export class UserInfoModal extends LitWrapper {
       });
     }
 
+    return links;
+  }
+
+  _hasProfileDetails(bio, socialLinks) {
+    return Boolean(bio) || socialLinks.length > 0;
+  }
+
+  _renderSocialLinks(links) {
     if (links.length === 0) return "";
 
     return html`
@@ -160,12 +168,49 @@ export class UserInfoModal extends LitWrapper {
     return html` <div class="text-stone-600 text-base mt-2">${parts.join(" at ")}</div> `;
   }
 
+  _renderLinuxFoundationLink() {
+    const linuxFoundationUsername = this._userData?.provider?.linuxfoundation?.username?.trim();
+
+    if (!linuxFoundationUsername) {
+      return "";
+    }
+
+    const openProfileUrl = `https://openprofile.dev/profile/${encodeURIComponent(linuxFoundationUsername)}`;
+
+    return html`
+      <a
+        href=${openProfileUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        class="group btn-primary-outline-anchor inline-flex items-center gap-2 h-10 md:h-[30px]"
+      >
+        <span>OpenProfile</span>
+        <div class="svg-icon size-3 icon-external-link"></div>
+      </a>
+    `;
+  }
+
+  _renderProfilePlaceholder(bio, socialLinks) {
+    if (this._hasProfileDetails(bio, socialLinks)) {
+      return "";
+    }
+
+    return html`
+      <div class="border-2 border-dashed border-stone-300 rounded-lg bg-stone-50 px-6 py-8 text-center">
+        <div class="text-lg text-stone-600 mb-3">Profile not completed</div>
+        <p class="text-sm text-stone-600">This user hasn’t finished setting up their profile yet.</p>
+      </div>
+    `;
+  }
+
   render() {
     if (!this._isOpen || !this._userData) {
       return html``;
     }
 
+    const bio = this._userData.bio?.trim() || "";
     const initials = computeUserInitials(this._userData.name, this._userData.username, 2);
+    const socialLinks = this._getSocialLinks();
 
     return html`
       <div
@@ -181,20 +226,23 @@ export class UserInfoModal extends LitWrapper {
 
         <div class="modal-panel p-4 max-w-2xl">
           <div class="modal-card rounded-lg">
-            <div class="flex items-center justify-between p-6 border-b border-stone-200 rounded-t">
-              <h3 id="user-info-modal-title" class="text-2xl font-semibold text-stone-900">
+            <div class="flex items-center justify-between gap-4 p-6 border-b border-stone-200 rounded-t">
+              <h3 id="user-info-modal-title" class="text-2xl font-semibold text-stone-900 min-w-0">
                 User Information
               </h3>
-              <button
-                type="button"
-                class="group text-stone-400 bg-transparent hover:bg-stone-200 hover:text-stone-900 transition-colors rounded-lg text-sm w-10 h-10 inline-flex justify-center items-center"
-                @click=${this._closeModal}
-                aria-label="Close modal"
-              >
-                <div
-                  class="svg-icon w-6 h-6 bg-stone-500 group-hover:bg-stone-900 transition-colors icon-close"
-                ></div>
-              </button>
+              <div class="flex items-center gap-5 pe-2 shrink-0">
+                ${this._renderLinuxFoundationLink()}
+                <button
+                  type="button"
+                  class="group shrink-0 text-stone-400 bg-transparent hover:bg-stone-200 hover:text-stone-900 transition-colors rounded-lg text-sm w-10 h-10 inline-flex justify-center items-center"
+                  @click=${this._closeModal}
+                  aria-label="Close modal"
+                >
+                  <div
+                    class="svg-icon w-6 h-6 bg-stone-500 group-hover:bg-stone-900 transition-colors icon-close"
+                  ></div>
+                </button>
+              </div>
             </div>
 
             <div class="modal-body p-8">
@@ -213,16 +261,16 @@ export class UserInfoModal extends LitWrapper {
                 </div>
               </div>
 
-              ${this._userData.bio
+              ${bio
                 ? html`
                     <div class="text-stone-700 text-base leading-relaxed">
                       ${this._userData.bioIsHtml
-                        ? html`<div class="markdown">${unsafeHTML(this._userData.bio)}</div>`
-                        : html`<div>${this._userData.bio}</div>`}
+                        ? html`<div class="markdown">${unsafeHTML(bio)}</div>`
+                        : html`<div>${bio}</div>`}
                     </div>
                   `
                 : ""}
-              ${this._renderSocialLinks()}
+              ${this._renderProfilePlaceholder(bio, socialLinks)} ${this._renderSocialLinks(socialLinks)}
             </div>
           </div>
         </div>
