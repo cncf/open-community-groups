@@ -12,6 +12,7 @@ use crate::{
     db::PgDB,
     templates::auth::UserDetails,
     types::permissions::{CommunityPermission, GroupPermission},
+    types::user::UserProvider,
 };
 
 /// Trait for database operations related to authentication and authorization.
@@ -53,6 +54,9 @@ pub(crate) trait DBAuth {
 
     /// Updates a user's password in the database.
     async fn update_user_password(&self, user_id: &Uuid, new_password: &str) -> Result<()>;
+
+    /// Updates externally sourced provider metadata for a user.
+    async fn update_user_provider(&self, user_id: &Uuid, provider: &UserProvider) -> Result<()>;
 
     /// Checks whether a user has a permission in a specific community.
     async fn user_has_community_permission(
@@ -205,6 +209,15 @@ impl DBAuth for PgDB {
         self.execute(
             "select update_user_password($1::uuid, $2::text);",
             &[&user_id, &new_password],
+        )
+        .await
+    }
+
+    #[instrument(skip(self, provider), err)]
+    async fn update_user_provider(&self, user_id: &Uuid, provider: &UserProvider) -> Result<()> {
+        self.execute(
+            "select update_user_provider($1::uuid, $2::jsonb);",
+            &[user_id, &Json(provider)],
         )
         .await
     }

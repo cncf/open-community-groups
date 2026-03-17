@@ -27,6 +27,7 @@ returns json as $$
         'linkedin_url', linkedin_url,
         'password', case when p_include_password then password else null end,
         'photo_url', photo_url,
+        'provider', provider,
         'timezone', timezone,
         'title', title,
         'twitter_url', twitter_url,

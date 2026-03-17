@@ -13,6 +13,7 @@ use crate::{
         OAuth2Config, OAuth2Provider, OAuth2ProviderConfig, OidcConfig, OidcProvider, OidcProviderConfig,
     },
     db::{DynDB, mock::MockDB},
+    types::user::{GitHubUserProvider, LinuxFoundationUserProvider, UserProvider},
 };
 
 use super::*;
@@ -289,6 +290,193 @@ fn from_user_to_user_summary_drops_password() {
     // Check result
     assert!(summary.has_password.unwrap());
     assert!(summary.password.is_none());
+    assert_eq!(summary.provider, Some(sample_user_provider()));
+}
+
+#[tokio::test]
+async fn get_or_sign_up_external_user_merges_provider_into_existing_user() {
+    // Setup database mock
+    let mut db = MockDB::new();
+    let existing_user = sample_user();
+    let existing_user_id = existing_user.user_id;
+    let incoming_provider = sample_linuxfoundation_user_provider();
+    let user_summary = sample_external_user_summary(Some(incoming_provider.clone()));
+
+    db.expect_get_user_by_email()
+        .times(1)
+        .withf(|email| email == "user@example.com")
+        .returning(move |_| Ok(Some(existing_user.clone())));
+    db.expect_update_user_provider()
+        .times(1)
+        .withf(move |user_id, provider| *user_id == existing_user_id && provider == &incoming_provider)
+        .returning(|_, _| Ok(()));
+    db.expect_sign_up_user().times(0);
+    let db: DynDB = Arc::new(db);
+
+    // Execute helper
+    let backend = authn_backend(db).await;
+    let user = backend.get_or_sign_up_external_user(&user_summary).await.unwrap();
+
+    // Check result
+    assert_eq!(
+        user.provider,
+        Some(UserProvider {
+            github: Some(GitHubUserProvider {
+                username: "test-user-gh".to_string(),
+            }),
+            linuxfoundation: Some(LinuxFoundationUserProvider {
+                username: "test-user-lf".to_string(),
+            }),
+        })
+    );
+}
+
+#[tokio::test]
+async fn get_or_sign_up_external_user_sets_provider_for_existing_user_without_provider() {
+    // Setup database mock
+    let mut db = MockDB::new();
+    let existing_user = sample_user_without_provider();
+    let existing_user_id = existing_user.user_id;
+    let incoming_provider = sample_user_provider();
+    let user_summary = sample_external_user_summary(Some(incoming_provider.clone()));
+
+    db.expect_get_user_by_email()
+        .times(1)
+        .withf(|email| email == "user@example.com")
+        .returning(move |_| Ok(Some(existing_user.clone())));
+    db.expect_update_user_provider()
+        .times(1)
+        .withf(move |user_id, provider| *user_id == existing_user_id && provider == &incoming_provider)
+        .returning(|_, _| Ok(()));
+    db.expect_sign_up_user().times(0);
+    let db: DynDB = Arc::new(db);
+
+    // Execute helper
+    let backend = authn_backend(db).await;
+    let user = backend.get_or_sign_up_external_user(&user_summary).await.unwrap();
+
+    // Check result
+    assert_eq!(user.provider, Some(sample_user_provider()));
+}
+
+#[tokio::test]
+async fn get_or_sign_up_external_user_skips_provider_update_when_unchanged() {
+    // Setup database mock
+    let mut db = MockDB::new();
+    let existing_user = sample_user();
+    let user_summary = sample_external_user_summary(Some(sample_user_provider()));
+
+    db.expect_get_user_by_email()
+        .times(1)
+        .withf(|email| email == "user@example.com")
+        .returning(move |_| Ok(Some(existing_user.clone())));
+    db.expect_update_user_provider().times(0);
+    db.expect_sign_up_user().times(0);
+    let db: DynDB = Arc::new(db);
+
+    // Execute helper
+    let backend = authn_backend(db).await;
+    let user = backend.get_or_sign_up_external_user(&user_summary).await.unwrap();
+
+    // Check result
+    assert_eq!(user.provider, Some(sample_user_provider()));
+}
+
+#[tokio::test]
+async fn get_or_sign_up_external_user_signs_up_new_user() {
+    // Setup database mock
+    let mut db = MockDB::new();
+    let provider = sample_user_provider();
+    let user_summary = sample_external_user_summary(Some(provider.clone()));
+    let signed_up_user = sample_user();
+
+    db.expect_get_user_by_email()
+        .times(1)
+        .withf(|email| email == "user@example.com")
+        .returning(|_| Ok(None));
+    db.expect_update_user_provider().times(0);
+    db.expect_sign_up_user()
+        .times(1)
+        .withf(move |summary, email_verified| {
+            summary.email == "user@example.com"
+                && summary.name == "Test User"
+                && summary.provider == Some(provider.clone())
+                && summary.username == "test-user"
+                && *email_verified
+        })
+        .returning(move |_, _| Ok((signed_up_user.clone(), None)));
+    let db: DynDB = Arc::new(db);
+
+    // Execute helper
+    let backend = authn_backend(db).await;
+    let user = backend.get_or_sign_up_external_user(&user_summary).await.unwrap();
+
+    // Check result
+    assert_eq!(user.provider, Some(sample_user_provider()));
+}
+
+#[tokio::test]
+async fn get_or_sign_up_external_user_skips_provider_update_when_missing() {
+    // Setup database mock
+    let mut db = MockDB::new();
+    let existing_user = sample_user();
+    let user_summary = sample_external_user_summary(None);
+
+    db.expect_get_user_by_email()
+        .times(1)
+        .withf(|email| email == "user@example.com")
+        .returning(move |_| Ok(Some(existing_user.clone())));
+    db.expect_update_user_provider().times(0);
+    db.expect_sign_up_user().times(0);
+    let db: DynDB = Arc::new(db);
+
+    // Execute helper
+    let backend = authn_backend(db).await;
+    let user = backend.get_or_sign_up_external_user(&user_summary).await.unwrap();
+
+    // Check result
+    assert_eq!(user.provider, Some(sample_user_provider()));
+}
+
+#[tokio::test]
+async fn get_user_maps_db_error_to_auth_error() {
+    // Setup database mock
+    let user_id = Uuid::new_v4();
+    let mut db = MockDB::new();
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(|_| Err(anyhow!("database unavailable")));
+    let db: DynDB = Arc::new(db);
+
+    // Execute get user
+    let backend = authn_backend(db).await;
+    let result = axum_login::AuthnBackend::get_user(&backend, &user_id).await;
+
+    // Check result
+    match result {
+        Err(AuthError(err)) => assert!(err.to_string().contains("database unavailable")),
+        Ok(_) => panic!("expected get_user backend error"),
+    }
+}
+
+#[tokio::test]
+async fn get_user_returns_none_when_user_not_found() {
+    // Setup database mock
+    let user_id = Uuid::new_v4();
+    let mut db = MockDB::new();
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(|_| Ok(None));
+    let db: DynDB = Arc::new(db);
+
+    // Execute get user
+    let backend = authn_backend(db).await;
+    let result = axum_login::AuthnBackend::get_user(&backend, &user_id).await.unwrap();
+
+    // Check result
+    assert!(result.is_none());
 }
 
 #[tokio::test]
@@ -371,47 +559,6 @@ fn setup_oauth2_providers_rejects_invalid_token_url() {
     assert!(result.is_err());
 }
 
-#[tokio::test]
-async fn get_user_maps_db_error_to_auth_error() {
-    // Setup database mock
-    let user_id = Uuid::new_v4();
-    let mut db = MockDB::new();
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(|_| Err(anyhow!("database unavailable")));
-    let db: DynDB = Arc::new(db);
-
-    // Execute get user
-    let backend = authn_backend(db).await;
-    let result = axum_login::AuthnBackend::get_user(&backend, &user_id).await;
-
-    // Check result
-    match result {
-        Err(AuthError(err)) => assert!(err.to_string().contains("database unavailable")),
-        Ok(_) => panic!("expected get_user backend error"),
-    }
-}
-
-#[tokio::test]
-async fn get_user_returns_none_when_user_not_found() {
-    // Setup database mock
-    let user_id = Uuid::new_v4();
-    let mut db = MockDB::new();
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(|_| Ok(None));
-    let db: DynDB = Arc::new(db);
-
-    // Execute get user
-    let backend = authn_backend(db).await;
-    let result = axum_login::AuthnBackend::get_user(&backend, &user_id).await.unwrap();
-
-    // Check result
-    assert!(result.is_none());
-}
-
 #[test]
 fn user_debug_does_not_expose_sensitive_fields() {
     // Setup input user
@@ -437,6 +584,7 @@ fn user_summary_debug_does_not_expose_password() {
         username: "test-user".to_string(),
         has_password: Some(true),
         password: Some("private-password-hash".to_string()),
+        provider: Some(sample_user_provider()),
     };
 
     // Execute debug format
@@ -463,6 +611,15 @@ fn user_summary_from_oidc_id_token_claims_extracts_verified_user() {
     // Check result
     assert_eq!(result.email, "user@example.com");
     assert_eq!(result.name, "Test User");
+    assert_eq!(
+        result.provider,
+        Some(UserProvider {
+            github: None,
+            linuxfoundation: Some(LinuxFoundationUserProvider {
+                username: "test-user".to_string(),
+            }),
+        })
+    );
     assert_eq!(result.username, "test-user");
     assert_eq!(result.has_password, Some(false));
     assert!(result.password.is_none());
@@ -620,7 +777,44 @@ fn sample_user() -> User {
         email: "user@example.com".to_string(),
         email_verified: true,
         name: "Test User".to_string(),
+        provider: Some(sample_user_provider()),
         username: "test-user".to_string(),
         ..User::default()
+    }
+}
+
+fn sample_user_without_provider() -> User {
+    User {
+        provider: None,
+        ..sample_user()
+    }
+}
+
+fn sample_external_user_summary(provider: Option<UserProvider>) -> UserSummary {
+    UserSummary {
+        email: "user@example.com".to_string(),
+        name: "Test User".to_string(),
+        username: "test-user".to_string(),
+        has_password: Some(false),
+        password: None,
+        provider,
+    }
+}
+
+fn sample_user_provider() -> UserProvider {
+    UserProvider {
+        github: Some(GitHubUserProvider {
+            username: "test-user-gh".to_string(),
+        }),
+        linuxfoundation: None,
+    }
+}
+
+fn sample_linuxfoundation_user_provider() -> UserProvider {
+    UserProvider {
+        github: None,
+        linuxfoundation: Some(LinuxFoundationUserProvider {
+            username: "test-user-lf".to_string(),
+        }),
     }
 }

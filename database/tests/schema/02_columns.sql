@@ -596,6 +596,7 @@ select columns_are('user', array[
     'name',
     'password',
     'photo_url',
+    'provider',
     'timezone',
     'title',
     'twitter_url',

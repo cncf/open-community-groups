@@ -5,6 +5,7 @@
 {{ template "auth/sign_up_user.sql" }}
 {{ template "auth/update_user_details.sql" }}
 {{ template "auth/update_user_password.sql" }}
+{{ template "auth/update_user_provider.sql" }}
 {{ template "auth/user_has_community_permission.sql" }}
 {{ template "auth/user_has_group_permission.sql" }}
 {{ template "auth/verify_email.sql" }}

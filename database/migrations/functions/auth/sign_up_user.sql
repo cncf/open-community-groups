@@ -47,6 +47,7 @@ begin
         email_verified,
         name,
         password,
+        provider,
         username
     ) values (
         encode(gen_random_bytes(32), 'hex'),
@@ -54,6 +55,7 @@ begin
         p_email_verified,
         p_user->>'name',
         p_user->>'password',
+        p_user->'provider',
         v_username
     )
     returning user_id into v_user_id;
@@ -73,6 +75,7 @@ begin
             'email', u.email,
             'email_verified', u.email_verified,
             'name', u.name,
+            'provider', u.provider,
             'user_id', u.user_id,
             'username', u.username
         )),
