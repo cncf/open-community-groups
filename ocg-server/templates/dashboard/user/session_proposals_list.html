@@ -27,7 +27,7 @@ description = "Create reusable session proposals to submit to events.") -}}
               <th scope="col" class="px-3 xl:px-5 py-3">Proposal</th>
               <th scope="col" class="px-3 xl:px-5 py-3">Invited by</th>
               <th scope="col" class="px-3 xl:px-5 py-3 hidden xl:table-cell">Updated</th>
-              <th scope="col" class="px-3 xl:px-5 py-3 w-28">
+              <th scope="col" class="px-3 xl:px-5 py-3 w-[152px]">
                 <span class="sr-only">Actions</span>
               </th>
             </tr>
@@ -56,7 +56,7 @@ description = "Create reusable session proposals to submit to events.") -}}
                     {{ invitation.session_proposal.created_at.format("%b %d, %Y") }}
                   {% endif -%}
                 </td>
-                <td class="px-3 xl:px-5 py-4">
+                <td class="px-3 xl:px-5 py-4 w-[152px]">
                   <div class="flex items-center justify-end gap-2">
                     <button type="button"
                             class="btn-tertiary p-2"
@@ -121,7 +121,7 @@ description = "Create reusable session proposals to submit to events.") -}}
           <th scope="col" class="px-3 xl:px-5 py-3 hidden xl:table-cell">Co-speaker</th>
           <th scope="col" class="px-3 xl:px-5 py-3 hidden 2xl:table-cell">Updated</th>
           <th scope="col" class="px-3 xl:px-5 py-3">Status</th>
-          <th scope="col" class="px-3 xl:px-5 py-3 w-28">
+          <th scope="col" class="px-3 xl:px-5 py-3 w-[152px]">
             <span class="sr-only">Actions</span>
           </th>
         </tr>
@@ -184,7 +184,7 @@ description = "Create reusable session proposals to submit to events.") -}}
                   {{ badges::status_badge(label = session_proposal.status_name.as_str() , extra_styles = Some("px-2.5 py-0.5 uppercase") , title = "This proposal is waiting for co-speaker response.") -}}
                 {% endif -%}
               </td>
-              <td class="px-3 xl:px-5 py-4">
+              <td class="px-3 xl:px-5 py-4 w-[152px]">
                 <div class="flex items-center justify-end gap-2">
                   {% set edit_disabled = session_proposal.linked_session_id.is_some() -%}
                   <button type="button"

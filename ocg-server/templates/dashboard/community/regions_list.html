@@ -37,7 +37,7 @@
       <tr>
         <th scope="col" class="px-3 xl:px-5 py-3">Name</th>
         <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3">Groups</th>
-        <th scope="col" class="px-3 xl:px-5 py-3 w-27">
+        <th scope="col" class="px-3 xl:px-5 py-3 w-[112px]">
           <span class="sr-only">Actions</span>
         </th>
       </tr>
@@ -65,8 +65,8 @@
               </div>
             </td>
             <td class="hidden xl:table-cell px-3 xl:px-5 py-4">{{ groups_count }}</td>
-            <td class="px-3 xl:px-5 py-4 w-32 xl:w-40">
-              <div class="flex items-center gap-x-3">
+            <td class="px-3 xl:px-5 py-4 w-[112px]">
+              <div class="flex items-center justify-end gap-2">
                 <button hx-get="/dashboard/community/regions/{{ region.region_id }}/update"
                         hx-target="#dashboard-content"
                         hx-indicator="#dashboard-spinner"
