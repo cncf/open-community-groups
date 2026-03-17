@@ -165,7 +165,7 @@ export class UserInfoModal extends LitWrapper {
 
     if (parts.length === 0) return "";
 
-    return html` <div class="text-stone-600 text-base mt-2">${parts.join(" at ")}</div> `;
+    return html` <div class="mt-1 text-sm text-stone-600 sm:mt-2 sm:text-base">${parts.join(" at ")}</div> `;
   }
 
   _renderLinuxFoundationLink() {
@@ -182,7 +182,7 @@ export class UserInfoModal extends LitWrapper {
         href=${openProfileUrl}
         target="_blank"
         rel="noopener noreferrer"
-        class="group btn-primary-outline-anchor inline-flex items-center gap-2 h-10 md:h-[30px]"
+        class="group btn-primary-outline-anchor inline-flex max-w-full items-center justify-center gap-2 h-10 md:h-[30px]"
       >
         <span>OpenProfile</span>
         <div class="svg-icon size-3 icon-external-link"></div>
@@ -196,8 +196,10 @@ export class UserInfoModal extends LitWrapper {
     }
 
     return html`
-      <div class="border-2 border-dashed border-stone-300 rounded-lg bg-stone-50 px-6 py-8 text-center">
-        <div class="text-lg text-stone-600 mb-3">Profile not completed</div>
+      <div
+        class="border-2 border-dashed border-stone-300 rounded-lg bg-stone-50 px-4 py-6 text-center sm:px-6 sm:py-8"
+      >
+        <div class="text-base text-stone-600 mb-3 sm:text-lg">Profile not completed</div>
         <p class="text-sm text-stone-600">This user hasn’t finished setting up their profile yet.</p>
       </div>
     `;
@@ -226,11 +228,17 @@ export class UserInfoModal extends LitWrapper {
 
         <div class="modal-panel p-4 max-w-2xl">
           <div class="modal-card rounded-lg">
-            <div class="flex items-center justify-between gap-4 p-6 border-b border-stone-200 rounded-t">
-              <h3 id="user-info-modal-title" class="text-2xl font-semibold text-stone-900 min-w-0">
-                User Information
+            <div
+              class="flex items-center justify-between gap-3 border-b border-stone-200 rounded-t p-5 sm:gap-4 sm:p-6"
+            >
+              <h3
+                id="user-info-modal-title"
+                class="min-w-0 flex-1 text-lg font-semibold leading-tight text-stone-900 sm:text-2xl"
+              >
+                <span class="sm:hidden">User</span>
+                <span class="hidden sm:inline">User Information</span>
               </h3>
-              <div class="flex items-center gap-5 pe-2 shrink-0">
+              <div class="flex shrink-0 items-center gap-3 sm:gap-5 sm:pe-2">
                 ${this._renderLinuxFoundationLink()}
                 <button
                   type="button"
@@ -245,16 +253,16 @@ export class UserInfoModal extends LitWrapper {
               </div>
             </div>
 
-            <div class="modal-body p-8">
-              <div class="flex items-center gap-6 mb-6">
+            <div class="modal-body p-6 sm:p-8">
+              <div class="mb-6 flex items-center gap-4 text-left sm:gap-6">
                 <logo-image
                   image-url=${this._userData.imageUrl || ""}
                   placeholder=${initials}
-                  size="size-24"
-                  font-size="text-3xl"
+                  size="size-16 sm:size-24"
+                  font-size="text-xl sm:text-3xl"
                 ></logo-image>
                 <div class="flex-1 min-w-0">
-                  <div class="font-semibold text-2xl text-stone-900">
+                  <div class="font-semibold text-lg leading-tight text-stone-900 sm:text-2xl">
                     ${this._userData.name || this._userData.username}
                   </div>
                   ${this._renderTitleCompany()}
