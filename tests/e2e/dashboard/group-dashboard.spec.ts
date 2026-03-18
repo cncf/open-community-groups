@@ -2,6 +2,7 @@ import { expect, test } from "../fixtures";
 
 import { navigateToPath } from "../utils";
 
+const ALPHA_EVENT_ONE_ID = "55555555-5555-5555-5555-555555555501";
 const CFS_EVENT_ID = "55555555-5555-5555-5555-555555555519";
 
 test.describe("group dashboard", () => {
@@ -97,5 +98,59 @@ test.describe("group dashboard", () => {
       "Your role cannot manage events.",
     );
     await expect(reviewButtons.first()).toBeDisabled();
+  });
+
+  test("organizer can unpublish and publish an event from the list", async ({
+    organizerGroupPage,
+  }) => {
+    await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
+
+    const dashboardContent = organizerGroupPage.locator("#dashboard-content");
+    const eventRow = dashboardContent.locator("tr", {
+      hasText: "Alpha Event One",
+    });
+    await expect(eventRow).toBeVisible();
+    await expect(eventRow).toContainText("Published");
+
+    const actionsButton = eventRow.locator(`.btn-actions[data-event-id="${ALPHA_EVENT_ONE_ID}"]`);
+    await actionsButton.click();
+
+    const unpublishButton = organizerGroupPage.locator(
+      `#unpublish-event-${ALPHA_EVENT_ONE_ID}`,
+    );
+    await expect(unpublishButton).toBeVisible();
+
+    await Promise.all([
+      organizerGroupPage.waitForResponse(
+        (response) =>
+          response.request().method() === "PUT" &&
+          response.url().includes(`/dashboard/group/events/${ALPHA_EVENT_ONE_ID}/unpublish`) &&
+          response.ok(),
+      ),
+      unpublishButton.click(),
+      organizerGroupPage.getByRole("button", { name: "Yes" }).click(),
+    ]);
+
+    await expect(eventRow).toContainText("Draft");
+
+    await eventRow.locator(`.btn-actions[data-event-id="${ALPHA_EVENT_ONE_ID}"]`).click();
+
+    const publishButton = organizerGroupPage.locator(
+      `#publish-event-${ALPHA_EVENT_ONE_ID}`,
+    );
+    await expect(publishButton).toBeVisible();
+
+    await Promise.all([
+      organizerGroupPage.waitForResponse(
+        (response) =>
+          response.request().method() === "PUT" &&
+          response.url().includes(`/dashboard/group/events/${ALPHA_EVENT_ONE_ID}/publish`) &&
+          response.ok(),
+      ),
+      publishButton.click(),
+      organizerGroupPage.getByRole("button", { name: "Yes" }).click(),
+    ]);
+
+    await expect(eventRow).toContainText("Published");
   });
 });
