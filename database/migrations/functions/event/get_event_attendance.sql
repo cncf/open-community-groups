@@ -15,6 +15,8 @@ create or replace function get_event_attendance(
         and e.published = true
         and e.canceled = false
         and (
+            -- Keep started events without an end time readable for check-in and status views
+            -- even though attend_event and leave_event treat them as inactive for mutations
             e.ends_at is null
             or e.ends_at >= current_timestamp
         )

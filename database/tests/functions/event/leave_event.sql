@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(14);
+select plan(15);
 
 -- ============================================================================
 -- VARIABLES
@@ -19,6 +19,7 @@ select plan(14);
 \set eventInactiveGroup '00000000-0000-0000-0000-000000000045'
 \set eventOK '00000000-0000-0000-0000-000000000041'
 \set eventPast '00000000-0000-0000-0000-000000000047'
+\set eventStartedNoEnd '00000000-0000-0000-0000-000000000053'
 \set eventUnlimited '00000000-0000-0000-0000-000000000049'
 \set eventUnpublished '00000000-0000-0000-0000-000000000046'
 \set eventWaitlist '00000000-0000-0000-0000-000000000051'
@@ -83,6 +84,7 @@ values
     (:'eventInactiveGroup', 'Inactive Group', 'inactive-group', 'd', 'UTC', :'eventCategoryID', 'in-person', :'inactiveGroupID', true, false, false, null, null, null, false),
     (:'eventUnpublished', 'Unpublished', 'unpublished', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', false, false, false, null, null, null, false),
     (:'eventPast', 'Past', 'past', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', true, false, false, current_timestamp - interval '2 hours', current_timestamp - interval '1 hour', null, false),
+    (:'eventStartedNoEnd', 'Started No End', 'started-no-end', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', true, false, false, current_timestamp - interval '1 hour', null, null, false),
     (:'eventDisabledWaitlist', 'Disabled Waitlist', 'disabled-waitlist', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', true, false, false, null, null, 2, false),
     (:'eventFull', 'Full', 'full', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', true, false, false, null, null, 1, true),
     (:'eventUnlimited', 'Unlimited', 'unlimited', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', true, false, false, null, null, null, false),
@@ -94,6 +96,7 @@ insert into event_attendee (event_id, user_id) values
     (:'eventDisabledWaitlist', :'user1ID'),
     (:'eventDisabledWaitlist', :'user2ID'),
     (:'eventPast', :'user1ID'),
+    (:'eventStartedNoEnd', :'user1ID'),
     (:'eventFull', :'user1ID'),
     (:'eventUnlimited', :'user1ID');
 
@@ -232,6 +235,16 @@ select throws_ok(
     ),
     'event not found or inactive',
     'Rejects leave requests for past events'
+);
+
+-- Should reject started events without an end time
+select throws_ok(
+    format(
+        'select leave_event(%L::uuid,%L::uuid,%L::uuid)',
+        :'communityID', :'eventStartedNoEnd', :'user1ID'
+    ),
+    'event not found or inactive',
+    'Rejects started events without an end time for leave requests'
 );
 
 -- Should reject waitlist leave requests for canceled events
