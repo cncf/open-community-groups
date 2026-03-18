@@ -3,6 +3,9 @@ import { expect, test } from "../fixtures";
 import { navigateToPath } from "../utils";
 
 const ALPHA_EVENT_ONE_ID = "55555555-5555-5555-5555-555555555501";
+const ALPHA_GROUP_ID = "44444444-4444-4444-4444-444444444441";
+const BETA_GROUP_ID = "44444444-4444-4444-4444-444444444442";
+const BETA_GROUP_SLUG = "test-group-beta";
 const CFS_EVENT_ID = "55555555-5555-5555-5555-555555555519";
 
 test.describe("group dashboard", () => {
@@ -130,6 +133,32 @@ test.describe("group dashboard", () => {
     await expect(
       sponsorRow.getByRole("button", { name: "Delete sponsor: Tech Corp" }),
     ).toHaveAttribute("title", "Your role cannot delete sponsors.");
+  });
+
+  test("organizer can filter groups in the dashboard selector", async ({
+    organizerGroupPage,
+  }) => {
+    await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
+
+    const groupSelectorButton = organizerGroupPage.locator("#group-selector-button");
+    await expect(groupSelectorButton).toContainText("E2E Test Group Alpha");
+
+    await groupSelectorButton.click();
+
+    const groupSearchInput = organizerGroupPage.locator("#group-search-input");
+    await expect(groupSearchInput).toBeVisible();
+    await groupSearchInput.fill("Alpha");
+
+    const groupOption = organizerGroupPage.locator(`#group-option-${ALPHA_GROUP_ID}`);
+    await expect(groupOption).toBeVisible();
+    await expect(groupOption).toBeDisabled();
+
+    await groupSearchInput.fill("No matching group");
+    await expect(organizerGroupPage.getByText("No groups found.", { exact: true })).toBeVisible();
+
+    await groupSearchInput.press("Escape");
+    await expect(groupSearchInput).toBeHidden();
+    await expect(groupSelectorButton).toContainText("E2E Test Group Alpha");
   });
 
   test("organizer can unpublish and publish an event from the list", async ({
