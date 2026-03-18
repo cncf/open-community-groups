@@ -18,6 +18,9 @@ import {
   navigateToSiteHome,
 } from "../utils";
 
+// Site home explore links are currently hardcoded to cncf in shared templates.
+const SITE_HOME_EXPLORE_COMMUNITY_NAME = "cncf";
+
 test.describe("site home page", () => {
   test.describe("default viewport", () => {
     test.beforeEach(async ({ page }) => {
@@ -200,7 +203,7 @@ test.describe("site home page", () => {
       await expect(desktopLink).toBeVisible();
       await expect(desktopLink).toHaveAttribute(
         "href",
-        "/explore?community[0]=cncf&entity=events",
+        `/explore?community[0]=${SITE_HOME_EXPLORE_COMMUNITY_NAME}&entity=events`,
       );
     });
 
@@ -213,7 +216,7 @@ test.describe("site home page", () => {
       );
       await expect(desktopLink).toHaveAttribute(
         "href",
-        "/explore?community[0]=cncf&entity=groups",
+        `/explore?community[0]=${SITE_HOME_EXPLORE_COMMUNITY_NAME}&entity=groups`,
       );
     });
 
@@ -277,7 +280,7 @@ test.describe("site home page", () => {
       await expect(mobileLink).toBeVisible();
       await expect(mobileLink).toHaveAttribute(
         "href",
-        "/explore?community[0]=cncf&entity=events",
+        `/explore?community[0]=${SITE_HOME_EXPLORE_COMMUNITY_NAME}&entity=events`,
       );
     });
 
@@ -290,7 +293,7 @@ test.describe("site home page", () => {
       );
       await expect(mobileLink).toHaveAttribute(
         "href",
-        "/explore?community[0]=cncf&entity=groups",
+        `/explore?community[0]=${SITE_HOME_EXPLORE_COMMUNITY_NAME}&entity=groups`,
       );
     });
 
