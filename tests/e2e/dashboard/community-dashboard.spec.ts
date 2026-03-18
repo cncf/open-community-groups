@@ -4,6 +4,8 @@ import {
   navigateToPath,
 } from "../utils";
 
+const BETA_GROUP_ID = "44444444-4444-4444-4444-444444444442";
+
 const taxonomyCases = [
   {
     path: "/dashboard/community?tab=regions",
@@ -63,6 +65,75 @@ test.describe("community dashboard", () => {
     await expect(
       dashboardContent.locator("tr", { hasText: "E2E Pending One" }),
     ).toContainText("Invitation sent");
+  });
+
+  test("admin can deactivate and reactivate a group from the list", async ({
+    adminCommunityPage,
+  }) => {
+    await navigateToPath(adminCommunityPage, "/dashboard/community?tab=groups");
+
+    const dashboardContent = adminCommunityPage.locator("#dashboard-content");
+    await expect(dashboardContent.getByText("Groups", { exact: true })).toBeVisible();
+
+    let betaGroupRow = dashboardContent.locator("tr", {
+      hasText: "E2E Test Group Beta",
+    });
+    await expect(betaGroupRow).toBeVisible();
+    await expect(betaGroupRow.getByText("Inactive", { exact: true })).toHaveCount(0);
+
+    const openActionsMenu = async () => {
+      await dashboardContent
+        .locator(`.btn-group-actions[data-group-id="${BETA_GROUP_ID}"]`)
+        .click();
+    };
+
+    await openActionsMenu();
+
+    const deactivateButton = dashboardContent.locator(`#deactivate-group-${BETA_GROUP_ID}`);
+    await expect(deactivateButton).toBeVisible();
+
+    await Promise.all([
+      adminCommunityPage.waitForResponse(
+        (response) =>
+          response.request().method() === "PUT" &&
+          response.url().includes(`/dashboard/community/groups/${BETA_GROUP_ID}/deactivate`) &&
+          response.ok(),
+      ),
+      deactivateButton.click(),
+      adminCommunityPage.getByRole("button", { name: "Yes" }).click(),
+    ]);
+
+    betaGroupRow = dashboardContent.locator("tr", {
+      hasText: "E2E Test Group Beta",
+    });
+    await expect(betaGroupRow).toContainText("Inactive");
+    await expect(
+      betaGroupRow.getByRole("button", { name: "View group page: E2E Test Group Beta" }),
+    ).toBeDisabled();
+
+    await openActionsMenu();
+
+    const activateButton = dashboardContent.locator(`#activate-group-${BETA_GROUP_ID}`);
+    await expect(activateButton).toBeVisible();
+
+    await Promise.all([
+      adminCommunityPage.waitForResponse(
+        (response) =>
+          response.request().method() === "PUT" &&
+          response.url().includes(`/dashboard/community/groups/${BETA_GROUP_ID}/activate`) &&
+          response.ok(),
+      ),
+      activateButton.click(),
+      adminCommunityPage.getByRole("button", { name: "Yes" }).click(),
+    ]);
+
+    betaGroupRow = dashboardContent.locator("tr", {
+      hasText: "E2E Test Group Beta",
+    });
+    await expect(betaGroupRow.getByText("Inactive", { exact: true })).toHaveCount(0);
+    await expect(
+      betaGroupRow.getByRole("link", { name: "View group page: E2E Test Group Beta" }),
+    ).toBeVisible();
   });
 
   for (const taxonomyCase of taxonomyCases) {
