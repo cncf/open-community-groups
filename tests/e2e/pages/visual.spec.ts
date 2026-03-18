@@ -15,8 +15,6 @@ import {
   navigateToSiteHome,
 } from "../utils";
 
-const isCI = process.env.CI === "true";
-
 /**
  * Waits for a page to settle before taking a visual snapshot.
  */
@@ -30,7 +28,6 @@ const expectPageScreenshot = async (page: Page, screenshotName: string) => {
     animations: "disabled",
     caret: "hide",
     fullPage: true,
-    ...(isCI ? { maxDiffPixelRatio: 0.03 } : {}),
   });
 };
 

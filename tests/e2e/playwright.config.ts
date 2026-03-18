@@ -31,6 +31,9 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
   retries: isCI ? 2 : 0,
+  expect: {
+    toHaveScreenshot: isCI ? { maxDiffPixelRatio: 0.03 } : undefined,
+  },
   reporter: [["html", { open: "never", outputFolder: reportDir }], ["list"]],
   outputDir: resultsDir,
   snapshotPathTemplate:
