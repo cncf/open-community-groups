@@ -100,6 +100,38 @@ test.describe("group dashboard", () => {
     await expect(reviewButtons.first()).toBeDisabled();
   });
 
+  test("viewer sees read-only members and sponsors controls", async ({
+    groupViewerPage,
+  }) => {
+    await navigateToPath(groupViewerPage, "/dashboard/group?tab=members");
+
+    const membersContent = groupViewerPage.locator("#dashboard-content");
+    await expect(membersContent.getByText("Members", { exact: true })).toBeVisible();
+    await expect(
+      membersContent.getByRole("button", { name: "Send email" }),
+    ).toBeDisabled();
+    await expect(
+      membersContent.getByRole("button", { name: "Send email" }),
+    ).toHaveAttribute("title", "Your role cannot send emails to members.");
+
+    await navigateToPath(groupViewerPage, "/dashboard/group?tab=sponsors");
+
+    const sponsorsContent = groupViewerPage.locator("#dashboard-content");
+    await expect(sponsorsContent.getByText("Sponsors", { exact: true })).toBeVisible();
+    await expect(
+      sponsorsContent.getByRole("button", { name: "Add Sponsor" }),
+    ).toBeDisabled();
+
+    const sponsorRow = sponsorsContent.locator("tr", { hasText: "Tech Corp" });
+    await expect(sponsorRow).toBeVisible();
+    await expect(
+      sponsorRow.getByRole("button", { name: "Delete sponsor: Tech Corp" }),
+    ).toBeDisabled();
+    await expect(
+      sponsorRow.getByRole("button", { name: "Delete sponsor: Tech Corp" }),
+    ).toHaveAttribute("title", "Your role cannot delete sponsors.");
+  });
+
   test("organizer can unpublish and publish an event from the list", async ({
     organizerGroupPage,
   }) => {
