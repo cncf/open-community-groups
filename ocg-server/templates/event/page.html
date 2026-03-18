@@ -103,15 +103,17 @@
                         {% if let Some(remaining_capacity) = &event.remaining_capacity -%}
                           <span class="text-sm">Attendees: {{ capacity - remaining_capacity }}</span>
                         {% else -%}
-                          <span class="text-sm">Capacity: {{ capacity }}</span>
+                          <span class="text-sm"><span class="md:hidden lg:inline">Capacity:</span><span class="ms-1 md:ms-0 xl:ms-1">{{ capacity }}</span></span>
                         {% endif -%}
                       {% else -%}
-                        <span class="text-sm">Capacity: {{ capacity }}</span>
+                        <span class="text-sm"><span class="md:hidden lg:inline">Capacity:</span><span class="ms-1 md:ms-0 xl:ms-1">{{ capacity }}</span></span>
                         {% if let Some(remaining_capacity) = &event.remaining_capacity %}
                           {% if *remaining_capacity > 0 %}
-                            <span class="text-xs text-stone-500 ms-2">(Remaining: {{ remaining_capacity }})</span>
+                            <span class="text-xs text-stone-500 ms-2 md:hidden lg:inline">(Remaining: {{ remaining_capacity }})</span>
+                            <span class="hidden md:inline lg:hidden text-xs text-stone-500 ms-1">/ {{ remaining_capacity }} left</span>
                           {% else if event.waitlist_count > 0 %}
-                            <span class="text-xs text-stone-500 ms-2">(Waitlist: {{ event.waitlist_count }})</span>
+                            <span class="text-xs text-stone-500 ms-2 md:hidden lg:inline">(Waitlist: {{ event.waitlist_count }})</span>
+
                           {% endif %}
                         {% endif %}
                       {% endif -%}
