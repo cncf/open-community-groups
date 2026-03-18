@@ -51,8 +51,7 @@ If you prefer to manage the server separately:
 
 ```bash
 # Terminal 1: Start server with test config
-just e2e-write-server-config
-cargo run -- -c /tmp/ocg-e2e.yml
+just e2e-server
 
 # Terminal 2: Run tests
 just e2e-tests
