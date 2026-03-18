@@ -5,6 +5,7 @@ import {
 } from "../utils";
 
 const BETA_GROUP_ID = "44444444-4444-4444-4444-444444444442";
+const GAMMA_GROUP_SLUG = "test-group-gamma";
 
 const taxonomyCases = [
   {
@@ -186,6 +187,7 @@ test.describe("community dashboard", () => {
     await expect(dashboardContent.locator("tr", { hasText: "E2E Test Group Alpha" })).toBeVisible();
     await expect(dashboardContent.locator("tr", { hasText: "E2E Test Group Gamma" })).toBeVisible();
   });
+
   test("admin can open a selected group dashboard from the groups list", async ({
     adminCommunityPage,
   }) => {
@@ -211,6 +213,55 @@ test.describe("community dashboard", () => {
       "data-group-slug",
       GAMMA_GROUP_SLUG,
     );
+  });
+
+  test("viewer sees read-only controls on community groups", async ({
+    communityViewerPage,
+  }) => {
+    await navigateToPath(communityViewerPage, "/dashboard/community?tab=groups");
+
+    const dashboardContent = communityViewerPage.locator("#dashboard-content");
+    await expect(dashboardContent.getByText("Groups", { exact: true })).toBeVisible();
+    await expect(
+      dashboardContent.getByRole("button", { name: "Add Group" }),
+    ).toBeDisabled();
+    await expect(
+      dashboardContent.getByRole("button", { name: "Add Group" }),
+    ).toHaveAttribute("title", "Your role cannot add groups.");
+
+    const betaGroupRow = dashboardContent.locator("tr", {
+      hasText: "E2E Test Group Beta",
+    });
+    await expect(betaGroupRow).toBeVisible();
+
+    const actionsButton = betaGroupRow.getByRole("button", {
+      name: "Open actions menu for group E2E Test Group Beta",
+    });
+    await expect(actionsButton).toBeDisabled();
+    await expect(actionsButton).toHaveAttribute(
+      "title",
+      "Your role cannot activate, deactivate, or delete groups.",
+    );
+
+    await Promise.all([
+      communityViewerPage.waitForResponse(
+        (response) =>
+          response.request().method() === "GET" &&
+          response.url().includes(`/dashboard/community/groups/${BETA_GROUP_ID}/update`) &&
+          response.ok(),
+      ),
+      betaGroupRow.locator(`button[hx-get="/dashboard/community/groups/${BETA_GROUP_ID}/update"]`).click(),
+    ]);
+
+    await expect(dashboardContent.getByText("Group Details", { exact: true })).toBeVisible();
+    await expect(
+      dashboardContent.getByText("Your role cannot update groups.", { exact: true }),
+    ).toBeVisible();
+    await expect(dashboardContent.locator(".inert-form")).toHaveAttribute("inert", "");
+    await expect(dashboardContent.getByRole("button", { name: "Update Group" })).toBeDisabled();
+    await expect(
+      dashboardContent.getByRole("button", { name: "Update Group" }),
+    ).toHaveAttribute("title", "Your role cannot update groups.");
   });
 
   for (const taxonomyCase of taxonomyCases) {
