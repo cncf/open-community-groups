@@ -14,6 +14,8 @@ const smokeSpecPaths = [
   "dashboard/access-control.spec.ts",
   "public/public.spec.ts",
 ];
+const visualSpecPaths = ["pages/visual.spec.ts"];
+const isVisualOnlyRun = process.argv.some((arg) => arg.includes("pages/visual.spec.ts"));
 
 const webServer =
   shouldStartServer && webServerCommand
@@ -62,7 +64,9 @@ export default defineConfig({
     },
     {
       name: "chromium-deep",
-      testIgnore: smokeSpecPaths,
+      testIgnore: isVisualOnlyRun
+        ? smokeSpecPaths
+        : [...smokeSpecPaths, ...visualSpecPaths],
       use: { ...devices["Desktop Chrome"] },
     },
   ],
