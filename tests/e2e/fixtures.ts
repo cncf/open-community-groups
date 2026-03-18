@@ -87,8 +87,11 @@ const authenticatedPageFixture = (
   async ({ browser }: { browser: Browser }, use: (page: Page) => Promise<void>) => {
     const preparedPage = await createPreparedPage(browser, credentials, preparePage);
 
-    await use(preparedPage.page);
-    await preparedPage.close();
+    try {
+      await use(preparedPage.page);
+    } finally {
+      await preparedPage.close();
+    }
   };
 
 export const test = base.extend<E2eFixtures>({
