@@ -27,6 +27,8 @@ pub(crate) struct User {
     pub name: Option<String>,
     /// URL to the user's profile photo.
     pub photo_url: Option<String>,
+    /// External provider metadata.
+    pub provider: Option<UserProvider>,
     /// User's job title.
     pub title: Option<String>,
     /// Twitter profile URL.
@@ -49,6 +51,60 @@ pub(crate) struct UserSummary {
     pub name: Option<String>,
     /// URL to user's avatar.
     pub photo_url: Option<String>,
+    /// External provider metadata.
+    pub provider: Option<UserProvider>,
     /// Title held by the user.
     pub title: Option<String>,
+}
+
+/// External provider metadata associated with a user.
+#[skip_serializing_none]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub(crate) struct UserProvider {
+    /// GitHub metadata.
+    pub github: Option<GitHubUserProvider>,
+    /// Linux Foundation SSO metadata.
+    pub linuxfoundation: Option<LinuxFoundationUserProvider>,
+}
+
+impl UserProvider {
+    /// Build provider metadata for a GitHub account.
+    pub(crate) fn from_github_username(username: String) -> Self {
+        Self {
+            github: Some(GitHubUserProvider { username }),
+            linuxfoundation: None,
+        }
+    }
+
+    /// Build provider metadata for a Linux Foundation SSO account.
+    pub(crate) fn from_linuxfoundation_username(username: String) -> Self {
+        Self {
+            github: None,
+            linuxfoundation: Some(LinuxFoundationUserProvider { username }),
+        }
+    }
+
+    /// Merge another provider payload into this one.
+    pub(crate) fn merge(&mut self, other: Self) {
+        if let Some(github) = other.github {
+            self.github = Some(github);
+        }
+        if let Some(linuxfoundation) = other.linuxfoundation {
+            self.linuxfoundation = Some(linuxfoundation);
+        }
+    }
+}
+
+/// GitHub-specific user metadata.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub(crate) struct GitHubUserProvider {
+    /// Username on GitHub.
+    pub username: String,
+}
+
+/// Linux Foundation-specific user metadata.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub(crate) struct LinuxFoundationUserProvider {
+    /// Username on Linux Foundation SSO.
+    pub username: String,
 }

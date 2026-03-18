@@ -53,12 +53,12 @@ insert into group_category (group_category_id, name, community_id)
 values (:'categoryID', 'Technology', :'communityID');
 
 -- User
-insert into "user" (user_id, email, username, email_verified, auth_hash, bio, bluesky_url, name, photo_url, company, title, facebook_url, linkedin_url, twitter_url, website_url)
+insert into "user" (user_id, email, username, email_verified, auth_hash, bio, bluesky_url, name, photo_url, provider, company, title, facebook_url, linkedin_url, twitter_url, website_url)
 values
-    (:'user1ID', 'alice@seattle.cloudnative.org', 'alice-organizer', false, 'test_hash', 'Community meetup organizer', 'https://bsky.app/profile/alice', 'Alice Johnson', 'https://example.com/alice.png', 'Cloud Co', 'Manager', 'https://facebook.com/alice', 'https://linkedin.com/in/alice', 'https://twitter.com/alice', 'https://alice.com'),
-    (:'user2ID', 'bob@seattle.cloudnative.org', 'bob-organizer', false, 'test_hash', 'Cloud native program lead', null, 'Bob Wilson', 'https://example.com/bob.png', 'StartUp', 'Engineer', null, 'https://linkedin.com/in/bob', null, 'https://bob.com'),
-    (:'user3ID', 'charlie@seattle.cloudnative.org', 'charlie-member', false, 'test_hash', null, null, 'Charlie Brown', null, null, null, null, null, null, null),
-    (:'user4ID', 'diana@seattle.cloudnative.org', 'diana-member', false, 'test_hash', null, null, 'Diana Prince', null, null, null, null, null, null, null);
+    (:'user1ID', 'alice@seattle.cloudnative.org', 'alice-organizer', false, 'test_hash', 'Community meetup organizer', 'https://bsky.app/profile/alice', 'Alice Johnson', 'https://example.com/alice.png', jsonb_build_object('github', jsonb_build_object('username', 'alice-gh')), 'Cloud Co', 'Manager', 'https://facebook.com/alice', 'https://linkedin.com/in/alice', 'https://twitter.com/alice', 'https://alice.com'),
+    (:'user2ID', 'bob@seattle.cloudnative.org', 'bob-organizer', false, 'test_hash', 'Cloud native program lead', null, 'Bob Wilson', 'https://example.com/bob.png', null, 'StartUp', 'Engineer', null, 'https://linkedin.com/in/bob', null, 'https://bob.com'),
+    (:'user3ID', 'charlie@seattle.cloudnative.org', 'charlie-member', false, 'test_hash', null, null, 'Charlie Brown', null, null, null, null, null, null, null, null),
+    (:'user4ID', 'diana@seattle.cloudnative.org', 'diana-member', false, 'test_hash', null, null, 'Diana Prince', null, null, null, null, null, null, null, null);
 
 -- Group
 insert into "group" (
@@ -241,6 +241,11 @@ select is(
                 "facebook_url": "https://facebook.com/alice",
                 "linkedin_url": "https://linkedin.com/in/alice",
                 "photo_url": "https://example.com/alice.png",
+                "provider": {
+                    "github": {
+                        "username": "alice-gh"
+                    }
+                },
                 "title": "Manager",
                 "twitter_url": "https://twitter.com/alice",
                 "website_url": "https://alice.com"

@@ -61,6 +61,11 @@ mock! {
             user_id: &Uuid,
             new_password: &str,
         ) -> Result<()>;
+        async fn update_user_provider(
+            &self,
+            user_id: &Uuid,
+            provider: &crate::types::user::UserProvider,
+        ) -> Result<()>;
         async fn user_has_community_permission(
             &self,
             community_id: &Uuid,

@@ -478,13 +478,13 @@
             {% if let Some(legacy_hosts) = &event.legacy_hosts -%}
               {% for host in legacy_hosts -%}
                 {% if host.name.is_some() -%}
-                  <user-chip user='{{ host|json }}'></user-chip>
+                  <user-chip user='{{ host|json }}' display-modal></user-chip>
                 {% endif -%}
               {% endfor -%}
             {% endif -%}
             {% for host in event.hosts -%}
               {% if host.name.is_some() -%}
-                <user-chip user='{{ host|json }}'></user-chip>
+                <user-chip user='{{ host|json }}' display-modal></user-chip>
               {% endif -%}
             {% endfor -%}
           </div>
@@ -499,7 +499,7 @@
               <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {% for host in legacy_hosts -%}
                   {% if host.name.is_some() -%}
-                    <user-chip user='{{ host|json }}'></user-chip>
+                    <user-chip user='{{ host|json }}' display-modal></user-chip>
                   {% endif -%}
                 {% endfor -%}
               </div>
@@ -518,7 +518,7 @@
           <div class="featured-speakers-grid grid grid-cols-1 md:grid-cols-2 gap-4">
             {% for speaker in event.speakers -%}
               {% if speaker.featured && speaker.user.name.is_some() -%}
-                <user-chip user='{{ speaker.user|json }}' featured></user-chip>
+                <user-chip user='{{ speaker.user|json }}' featured display-modal></user-chip>
               {% endif -%}
             {% endfor -%}
           </div>
@@ -532,13 +532,13 @@
             {% if let Some(legacy_speakers) = &event.legacy_speakers -%}
               {% for speaker in legacy_speakers -%}
                 {% if speaker.name.is_some() -%}
-                  <user-chip user='{{ speaker|json }}' bio-is-html></user-chip>
+                  <user-chip user='{{ speaker|json }}' bio-is-html display-modal></user-chip>
                 {% endif -%}
               {% endfor -%}
             {% endif -%}
             {% for speaker in event.speakers -%}
               {% if !speaker.featured && speaker.user.name.is_some() -%}
-                <user-chip user='{{ speaker.user|json }}'></user-chip>
+                <user-chip user='{{ speaker.user|json }}' display-modal></user-chip>
               {% endif -%}
             {% endfor -%}
           </div>
@@ -553,7 +553,7 @@
               <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {% for speaker in legacy_speakers -%}
                   {% if speaker.name.is_some() -%}
-                    <user-chip user='{{ speaker|json }}' bio-is-html></user-chip>
+                    <user-chip user='{{ speaker|json }}' bio-is-html display-modal></user-chip>
                   {% endif -%}
                 {% endfor -%}
               </div>
@@ -572,7 +572,7 @@
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {% for organizer in event.organizers -%}
               {% if organizer.name.is_some() -%}
-                <user-chip user='{{ organizer|json }}'></user-chip>
+                <user-chip user='{{ organizer|json }}' display-modal></user-chip>
               {% endif -%}
             {% endfor -%}
           </div>
@@ -689,14 +689,14 @@
         <div class="featured-sessions-grid grid gap-3">
           {% for speaker in session.speakers -%}
             {% if speaker.featured && speaker.user.name.is_some() -%}
-              <user-chip user='{{ speaker.user|json }}' featured small></user-chip>
+              <user-chip user='{{ speaker.user|json }}' featured small display-modal></user-chip>
             {% endif -%}
           {% endfor -%}
         </div>
         <div class="regular-sessions-speakers flex flex-wrap gap-3">
           {% for speaker in session.speakers -%}
             {% if !speaker.featured && speaker.user.name.is_some() -%}
-              <user-chip user='{{ speaker.user|json }}' small></user-chip>
+              <user-chip user='{{ speaker.user|json }}' small display-modal></user-chip>
             {% endif -%}
           {% endfor -%}
         </div>

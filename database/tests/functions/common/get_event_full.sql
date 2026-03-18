@@ -116,11 +116,11 @@ insert into "group" (
 );
 
 -- User
-insert into "user" (user_id, email, username, email_verified, auth_hash, bio, bluesky_url, name, photo_url, company, title, facebook_url, linkedin_url, twitter_url, website_url)
+insert into "user" (user_id, email, username, email_verified, auth_hash, bio, bluesky_url, name, photo_url, provider, company, title, facebook_url, linkedin_url, twitter_url, website_url)
 values
-    (:'user1ID', 'host@seattle.cloudnative.org', 'sarah-host', false, 'test_hash', 'Cloud native community leader', 'https://bsky.app/profile/sarahchen', 'Sarah Chen', 'https://example.com/sarah.png', 'Microsoft', 'Principal Engineer', 'https://facebook.com/sarahchen', 'https://linkedin.com/in/sarahchen', 'https://twitter.com/sarahchen', 'https://sarahchen.dev'),
-    (:'user2ID', 'organizer@seattle.cloudnative.org', 'mike-organizer', false, 'test_hash', 'Event organizer and speaker', 'https://bsky.app/profile/mikerod', 'Mike Rodriguez', 'https://example.com/mike.png', 'AWS', 'Solutions Architect', 'https://facebook.com/mikerod', 'https://linkedin.com/in/mikerod', 'https://twitter.com/mikerod', 'https://mikerodriguez.io'),
-    (:'user3ID', 'speaker@seattle.cloudnative.org', 'alex-speaker', false, 'test_hash', 'Kubernetes expert and speaker', 'https://bsky.app/profile/alexthompson', 'Alex Thompson', 'https://example.com/alex.png', 'Google', 'Staff Engineer', null, 'https://linkedin.com/in/alexthompson', null, null);
+    (:'user1ID', 'host@seattle.cloudnative.org', 'sarah-host', false, 'test_hash', 'Cloud native community leader', 'https://bsky.app/profile/sarahchen', 'Sarah Chen', 'https://example.com/sarah.png', jsonb_build_object('linuxfoundation', jsonb_build_object('username', 'sarah-lf')), 'Microsoft', 'Principal Engineer', 'https://facebook.com/sarahchen', 'https://linkedin.com/in/sarahchen', 'https://twitter.com/sarahchen', 'https://sarahchen.dev'),
+    (:'user2ID', 'organizer@seattle.cloudnative.org', 'mike-organizer', false, 'test_hash', 'Event organizer and speaker', 'https://bsky.app/profile/mikerod', 'Mike Rodriguez', 'https://example.com/mike.png', jsonb_build_object('github', jsonb_build_object('username', 'mike-gh')), 'AWS', 'Solutions Architect', 'https://facebook.com/mikerod', 'https://linkedin.com/in/mikerod', 'https://twitter.com/mikerod', 'https://mikerodriguez.io'),
+    (:'user3ID', 'speaker@seattle.cloudnative.org', 'alex-speaker', false, 'test_hash', 'Kubernetes expert and speaker', 'https://bsky.app/profile/alexthompson', 'Alex Thompson', 'https://example.com/alex.png', null, 'Google', 'Staff Engineer', null, 'https://linkedin.com/in/alexthompson', null, null);
 
 -- Event
 insert into event (
@@ -579,6 +579,11 @@ select is(
                 "facebook_url": "https://facebook.com/sarahchen",
                 "linkedin_url": "https://linkedin.com/in/sarahchen",
                 "photo_url": "https://example.com/sarah.png",
+                "provider": {
+                    "linuxfoundation": {
+                        "username": "sarah-lf"
+                    }
+                },
                 "title": "Principal Engineer",
                 "twitter_url": "https://twitter.com/sarahchen",
                 "website_url": "https://sarahchen.dev"
@@ -623,6 +628,11 @@ select is(
                 "facebook_url": "https://facebook.com/mikerod",
                 "linkedin_url": "https://linkedin.com/in/mikerod",
                 "photo_url": "https://example.com/mike.png",
+                "provider": {
+                    "github": {
+                        "username": "mike-gh"
+                    }
+                },
                 "title": "Solutions Architect",
                 "twitter_url": "https://twitter.com/mikerod",
                 "website_url": "https://mikerodriguez.io"
@@ -652,6 +662,11 @@ select is(
                             "featured": false,
                             "linkedin_url": "https://linkedin.com/in/sarahchen",
                             "photo_url": "https://example.com/sarah.png",
+                            "provider": {
+                                "linuxfoundation": {
+                                    "username": "sarah-lf"
+                                }
+                            },
                             "title": "Principal Engineer",
                             "twitter_url": "https://twitter.com/sarahchen",
                             "website_url": "https://sarahchen.dev"
@@ -667,6 +682,11 @@ select is(
                             "featured": false,
                             "linkedin_url": "https://linkedin.com/in/mikerod",
                             "photo_url": "https://example.com/mike.png",
+                            "provider": {
+                                "github": {
+                                    "username": "mike-gh"
+                                }
+                            },
                             "title": "Solutions Architect",
                             "twitter_url": "https://twitter.com/mikerod",
                             "website_url": "https://mikerodriguez.io"
@@ -708,6 +728,11 @@ select is(
                             "featured": false,
                             "linkedin_url": "https://linkedin.com/in/sarahchen",
                             "photo_url": "https://example.com/sarah.png",
+                            "provider": {
+                                "linuxfoundation": {
+                                    "username": "sarah-lf"
+                                }
+                            },
                             "title": "Principal Engineer",
                             "twitter_url": "https://twitter.com/sarahchen",
                             "website_url": "https://sarahchen.dev"
@@ -758,6 +783,11 @@ select is(
                 "featured": false,
                 "linkedin_url": "https://linkedin.com/in/mikerod",
                 "photo_url": "https://example.com/mike.png",
+                "provider": {
+                    "github": {
+                        "username": "mike-gh"
+                    }
+                },
                 "title": "Solutions Architect",
                 "twitter_url": "https://twitter.com/mikerod",
                 "website_url": "https://mikerodriguez.io"
@@ -773,6 +803,11 @@ select is(
                 "featured": false,
                 "linkedin_url": "https://linkedin.com/in/sarahchen",
                 "photo_url": "https://example.com/sarah.png",
+                "provider": {
+                    "linuxfoundation": {
+                        "username": "sarah-lf"
+                    }
+                },
                 "title": "Principal Engineer",
                 "twitter_url": "https://twitter.com/sarahchen",
                 "website_url": "https://sarahchen.dev"

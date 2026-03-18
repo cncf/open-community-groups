@@ -50,6 +50,7 @@ insert into "user" (
     username,
     email_verified,
     name,
+    provider,
     auth_hash,
     password
 ) values (
@@ -59,6 +60,7 @@ insert into "user" (
     'testuser',
     true,
     'Test User',
+    jsonb_build_object('github', jsonb_build_object('username', 'testuser-gh')),
     'test_hash',
     'hashed_password_here'
 );
@@ -253,6 +255,11 @@ select is(
         "email_verified": true,
         "has_password": true,
         "name": "Test User",
+        "provider": {
+            "github": {
+                "username": "testuser-gh"
+            }
+        },
         "user_id": "00000000-0000-0000-0001-000000000001",
         "username": "testuser"
     }'::jsonb,
@@ -272,6 +279,11 @@ select is(
         "has_password": true,
         "name": "Test User",
         "password": "hashed_password_here",
+        "provider": {
+            "github": {
+                "username": "testuser-gh"
+            }
+        },
         "user_id": "00000000-0000-0000-0001-000000000001",
         "username": "testuser"
     }'::jsonb,

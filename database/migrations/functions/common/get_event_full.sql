@@ -82,6 +82,7 @@ returns json as $$
                     'linkedin_url', u.linkedin_url,
                     'name', u.name,
                     'photo_url', u.photo_url,
+                    'provider', u.provider,
                     'title', u.title,
                     'twitter_url', u.twitter_url,
                     'website_url', u.website_url
@@ -125,6 +126,7 @@ returns json as $$
                     'linkedin_url', u.linkedin_url,
                     'name', u.name,
                     'photo_url', u.photo_url,
+                    'provider', u.provider,
                     'title', u.title,
                     'twitter_url', u.twitter_url,
                     'website_url', u.website_url
@@ -181,6 +183,7 @@ returns json as $$
                                         'linkedin_url', u.linkedin_url,
                                         'name', u.name,
                                         'photo_url', u.photo_url,
+                                        'provider', u.provider,
                                         'title', u.title,
                                         'twitter_url', u.twitter_url,
                                         'website_url', u.website_url
@@ -202,6 +205,7 @@ returns json as $$
                                         'linkedin_url', u.linkedin_url,
                                         'name', u.name,
                                         'photo_url', u.photo_url,
+                                        'provider', u.provider,
                                         'title', u.title,
                                         'twitter_url', u.twitter_url,
                                         'website_url', u.website_url
@@ -246,6 +250,7 @@ returns json as $$
                     'linkedin_url', u.linkedin_url,
                     'name', u.name,
                     'photo_url', u.photo_url,
+                    'provider', u.provider,
                     'title', u.title,
                     'twitter_url', u.twitter_url,
                     'website_url', u.website_url

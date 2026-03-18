@@ -16,7 +16,12 @@ with verified_user_result as (
             'email', 'verified@example.com',
             'username', 'verifieduser',
             'name', 'Verified User',
-            'password', 'hashedpassword123'
+            'password', 'hashedpassword123',
+            'provider', jsonb_build_object(
+                'github', jsonb_build_object(
+                    'username', 'verifieduser-gh'
+                )
+            )
         ),
         true
     )
@@ -26,6 +31,11 @@ select ok(
         "email": "verified@example.com",
         "email_verified": true,
         "name": "Verified User",
+        "provider": {
+            "github": {
+                "username": "verifieduser-gh"
+            }
+        },
         "username": "verifieduser"
     }'::jsonb)
     and ("user"::jsonb ? 'auth_hash')

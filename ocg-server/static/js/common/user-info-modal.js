@@ -80,8 +80,8 @@ export class UserInfoModal extends LitWrapper {
     }
   }
 
-  _renderSocialLinks() {
-    if (!this._userData) return "";
+  _getSocialLinks() {
+    if (!this._userData) return [];
 
     const links = [];
 
@@ -121,6 +121,14 @@ export class UserInfoModal extends LitWrapper {
       });
     }
 
+    return links;
+  }
+
+  _hasProfileDetails(bio, socialLinks) {
+    return Boolean(bio) || socialLinks.length > 0;
+  }
+
+  _renderSocialLinks(links) {
     if (links.length === 0) return "";
 
     return html`
@@ -157,7 +165,44 @@ export class UserInfoModal extends LitWrapper {
 
     if (parts.length === 0) return "";
 
-    return html` <div class="text-stone-600 text-base mt-2">${parts.join(" at ")}</div> `;
+    return html` <div class="mt-1 text-sm text-stone-600 sm:mt-2 sm:text-base">${parts.join(" at ")}</div> `;
+  }
+
+  _renderLinuxFoundationLink() {
+    const linuxFoundationUsername = this._userData?.provider?.linuxfoundation?.username?.trim();
+
+    if (!linuxFoundationUsername) {
+      return "";
+    }
+
+    const openProfileUrl = `https://openprofile.dev/profile/${encodeURIComponent(linuxFoundationUsername)}`;
+
+    return html`
+      <a
+        href=${openProfileUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        class="group btn-primary-outline-anchor inline-flex max-w-full items-center justify-center gap-2 h-10 md:h-[30px]"
+      >
+        <span>OpenProfile</span>
+        <div class="svg-icon size-3 icon-external-link"></div>
+      </a>
+    `;
+  }
+
+  _renderProfilePlaceholder(bio, socialLinks) {
+    if (this._hasProfileDetails(bio, socialLinks)) {
+      return "";
+    }
+
+    return html`
+      <div
+        class="border-2 border-dashed border-stone-300 rounded-lg bg-stone-50 px-4 py-6 text-center sm:px-6 sm:py-8"
+      >
+        <div class="text-base text-stone-600 mb-3 sm:text-lg">Profile not completed</div>
+        <p class="text-sm text-stone-600">This user hasn’t finished setting up their profile yet.</p>
+      </div>
+    `;
   }
 
   render() {
@@ -165,7 +210,9 @@ export class UserInfoModal extends LitWrapper {
       return html``;
     }
 
+    const bio = this._userData.bio?.trim() || "";
     const initials = computeUserInitials(this._userData.name, this._userData.username, 2);
+    const socialLinks = this._getSocialLinks();
 
     return html`
       <div
@@ -181,48 +228,57 @@ export class UserInfoModal extends LitWrapper {
 
         <div class="modal-panel p-4 max-w-2xl">
           <div class="modal-card rounded-lg">
-            <div class="flex items-center justify-between p-6 border-b border-stone-200 rounded-t">
-              <h3 id="user-info-modal-title" class="text-2xl font-semibold text-stone-900">
-                User Information
-              </h3>
-              <button
-                type="button"
-                class="group text-stone-400 bg-transparent hover:bg-stone-200 hover:text-stone-900 transition-colors rounded-lg text-sm w-10 h-10 inline-flex justify-center items-center"
-                @click=${this._closeModal}
-                aria-label="Close modal"
+            <div
+              class="flex items-center justify-between gap-3 border-b border-stone-200 rounded-t p-5 sm:gap-4 sm:p-6"
+            >
+              <h3
+                id="user-info-modal-title"
+                class="min-w-0 flex-1 text-lg font-semibold leading-tight text-stone-900 sm:text-2xl"
               >
-                <div
-                  class="svg-icon w-6 h-6 bg-stone-500 group-hover:bg-stone-900 transition-colors icon-close"
-                ></div>
-              </button>
+                <span class="sm:hidden">User</span>
+                <span class="hidden sm:inline">User Information</span>
+              </h3>
+              <div class="flex shrink-0 items-center gap-3 sm:gap-5 sm:pe-2">
+                ${this._renderLinuxFoundationLink()}
+                <button
+                  type="button"
+                  class="group shrink-0 text-stone-400 bg-transparent hover:bg-stone-200 hover:text-stone-900 transition-colors rounded-lg text-sm w-10 h-10 inline-flex justify-center items-center"
+                  @click=${this._closeModal}
+                  aria-label="Close modal"
+                >
+                  <div
+                    class="svg-icon w-6 h-6 bg-stone-500 group-hover:bg-stone-900 transition-colors icon-close"
+                  ></div>
+                </button>
+              </div>
             </div>
 
-            <div class="modal-body p-8">
-              <div class="flex items-center gap-6 mb-6">
+            <div class="modal-body p-6 sm:p-8">
+              <div class="mb-6 flex items-center gap-4 text-left sm:gap-6">
                 <logo-image
                   image-url=${this._userData.imageUrl || ""}
                   placeholder=${initials}
-                  size="size-24"
-                  font-size="text-3xl"
+                  size="size-16 sm:size-24"
+                  font-size="text-xl sm:text-3xl"
                 ></logo-image>
                 <div class="flex-1 min-w-0">
-                  <div class="font-semibold text-2xl text-stone-900">
+                  <div class="font-semibold text-lg leading-tight text-stone-900 sm:text-2xl">
                     ${this._userData.name || this._userData.username}
                   </div>
                   ${this._renderTitleCompany()}
                 </div>
               </div>
 
-              ${this._userData.bio
+              ${bio
                 ? html`
                     <div class="text-stone-700 text-base leading-relaxed">
                       ${this._userData.bioIsHtml
-                        ? html`<div class="markdown">${unsafeHTML(this._userData.bio)}</div>`
-                        : html`<div>${this._userData.bio}</div>`}
+                        ? html`<div class="markdown">${unsafeHTML(bio)}</div>`
+                        : html`<div>${bio}</div>`}
                     </div>
                   `
                 : ""}
-              ${this._renderSocialLinks()}
+              ${this._renderProfilePlaceholder(bio, socialLinks)} ${this._renderSocialLinks(socialLinks)}
             </div>
           </div>
         </div>

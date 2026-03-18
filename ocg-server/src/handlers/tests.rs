@@ -983,6 +983,7 @@ pub(crate) fn sample_user_summary(user_id: Uuid, username: &str) -> UserSummary 
         company: None,
         name: None,
         photo_url: None,
+        provider: None,
         title: None,
     }
 }

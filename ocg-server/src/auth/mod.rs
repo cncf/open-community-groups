@@ -23,6 +23,7 @@ use uuid::Uuid;
 use crate::{
     config::{HttpServerConfig, OAuth2Config, OAuth2Provider, OidcConfig, OidcProvider},
     db::DynDB,
+    types::user::UserProvider,
     validation::{
         MAX_LEN_DISPLAY_NAME, MAX_LEN_S, MIN_PASSWORD_LEN, trimmed_non_empty, trimmed_non_empty_opt,
     },
@@ -175,12 +176,7 @@ impl AuthnBackend {
         let user_summary = match creds.provider {
             OAuth2Provider::GitHub => UserSummary::from_github_profile(&access_token).await?,
         };
-        let user = if let Some(user) = self.db.get_user_by_email(&user_summary.email).await? {
-            user
-        } else {
-            let (user, _) = self.db.sign_up_user(&user_summary, true).await?;
-            user
-        };
+        let user = self.get_or_sign_up_external_user(&user_summary).await?;
 
         Ok(Some(user))
     }
@@ -208,12 +204,7 @@ impl AuthnBackend {
         let user_summary = match creds.provider {
             OidcProvider::LinuxFoundation => UserSummary::from_oidc_id_token_claims(claims)?,
         };
-        let user = if let Some(user) = self.db.get_user_by_email(&user_summary.email).await? {
-            user
-        } else {
-            let (user, _) = self.db.sign_up_user(&user_summary, true).await?;
-            user
-        };
+        let user = self.get_or_sign_up_external_user(&user_summary).await?;
 
         Ok(Some(user))
     }
@@ -241,6 +232,26 @@ impl AuthnBackend {
         }
 
         Ok(None)
+    }
+
+    /// Get an existing external-auth user or sign them up.
+    async fn get_or_sign_up_external_user(&self, user_summary: &UserSummary) -> Result<User> {
+        if let Some(mut user) = self.db.get_user_by_email(&user_summary.email).await? {
+            if let Some(provider) = user_summary.provider.clone() {
+                let mut merged_provider = user.provider.clone().unwrap_or_default();
+                merged_provider.merge(provider.clone());
+
+                // Update the user's provider metadata if it has changed
+                if user.provider.as_ref() != Some(&merged_provider) {
+                    self.db.update_user_provider(&user.user_id, &provider).await?;
+                    user.provider = Some(merged_provider);
+                }
+            }
+            Ok(user)
+        } else {
+            let (user, _) = self.db.sign_up_user(user_summary, true).await?;
+            Ok(user)
+        }
     }
 
     /// Set up `OAuth2` providers from configuration.
@@ -444,6 +455,8 @@ pub(crate) struct User {
     pub password: Option<String>,
     /// User's photo URL.
     pub photo_url: Option<String>,
+    /// External provider metadata.
+    pub provider: Option<UserProvider>,
     /// User's timezone.
     pub timezone: Option<String>,
     /// User's title.
@@ -497,6 +510,9 @@ pub(crate) struct UserSummary {
     /// User's password (if present).
     #[garde(custom(trimmed_non_empty_opt), length(min = MIN_PASSWORD_LEN, max = MAX_LEN_S))]
     pub password: Option<String>,
+    /// External provider metadata.
+    #[garde(skip)]
+    pub provider: Option<UserProvider>,
 }
 
 impl UserSummary {
@@ -534,6 +550,7 @@ impl UserSummary {
         Ok(Self {
             email: email.email,
             name: profile.name,
+            provider: Some(UserProvider::from_github_username(profile.login.clone())),
             username: profile.login,
             has_password: Some(false),
             password: None,
@@ -556,6 +573,7 @@ impl UserSummary {
         Ok(Self {
             email,
             name: name.to_string(),
+            provider: Some(UserProvider::from_linuxfoundation_username(username.to_string())),
             username: username.to_string(),
             has_password: Some(false),
             password: None,
@@ -572,6 +590,7 @@ impl From<User> for UserSummary {
             username: user.username,
             has_password: user.has_password,
             password: None,
+            provider: user.provider,
         }
     }
 }
