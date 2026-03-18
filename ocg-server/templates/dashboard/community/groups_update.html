@@ -45,7 +45,7 @@
           </div>
           {# End Group name -#}
 
-          <div class="col-span-3"></div>
+          <div class="hidden lg:flex col-span-3"></div>
 
           {# Group category -#}
           <div class="col-span-full lg:col-span-3">
@@ -372,7 +372,7 @@
 
   <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
     {# Tags -#}
-    <div class="col-span-3">
+    <div class="col-span-6 xl:col-span-3">
       <multiple-inputs field-name="tags" input-type="text" items="{%- if let Some(tags) = &group.tags -%}{{ tags|json }}{%- endif -%}" max-length="{{ crate::validation::MAX_LEN_TAG }}" label="Tag" legend="Optional tags for the group. Max {{ crate::validation::MAX_LEN_TAG }} characters per tag.">
       </multiple-inputs>
     </div>

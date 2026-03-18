@@ -48,7 +48,7 @@
         {# End timezone -#}
 
         {# Company -#}
-        <div class="col-span-3">
+        <div class="col-span-full lg:col-span-3">
           <label for="company" class="form-label">Company</label>
           <div class="mt-2">
             <input type="text"
@@ -69,7 +69,7 @@
         {# End company -#}
 
         {# Title -#}
-        <div class="col-span-3">
+        <div class="col-span-full lg:col-span-3">
           <label for="title" class="form-label">Title</label>
           <div class="mt-2">
             <input type="text"
@@ -113,7 +113,7 @@
       {# End bio -#}
 
       {# Interests -#}
-      <div class="col-span-3">
+      <div class="col-span-full xl:col-span-3">
         <label for="interests" class="form-label">Interests (topics and technologies you're interested in)</label>
         <div class="mt-2">
           <multiple-inputs field-name="interests" input-type="text" label="Interest" items="{%- if let Some(interests) = &user.interests -%}{{ interests|json }}{%- endif -%}">
