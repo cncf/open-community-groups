@@ -271,8 +271,7 @@ pub(crate) async fn leave_event(
     let response = (
         StatusCode::OK,
         Json(json!({
-            "left_status": &leave_result.left_status,
-            "promoted_user_ids": &leave_result.promoted_user_ids
+            "left_status": &leave_result.left_status
         })),
     );
 

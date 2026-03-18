@@ -708,10 +708,7 @@ async fn test_leave_event_success() {
     // Check response matches expectations
     assert_eq!(parts.status, StatusCode::OK);
     let body: serde_json::Value = from_slice(&bytes).unwrap();
-    assert_eq!(
-        body,
-        json!({ "left_status": "attendee", "promoted_user_ids": [] })
-    );
+    assert_eq!(body, json!({ "left_status": "attendee" }));
 }
 
 #[tokio::test]
@@ -787,10 +784,7 @@ async fn test_leave_waitlist_success() {
     // Check response matches expectations
     assert_eq!(parts.status, StatusCode::OK);
     let body: serde_json::Value = from_slice(&bytes).unwrap();
-    assert_eq!(
-        body,
-        json!({ "left_status": "waitlisted", "promoted_user_ids": [] })
-    );
+    assert_eq!(body, json!({ "left_status": "waitlisted" }));
 }
 
 #[tokio::test]
@@ -875,10 +869,7 @@ async fn test_leave_event_promotes_waitlisted_users_and_enqueues_notification() 
     // Check response matches expectations
     assert_eq!(parts.status, StatusCode::OK);
     let body: serde_json::Value = from_slice(&bytes).unwrap();
-    assert_eq!(
-        body,
-        json!({ "left_status": "attendee", "promoted_user_ids": [promoted_user_id] })
-    );
+    assert_eq!(body, json!({ "left_status": "attendee" }));
 }
 
 #[tokio::test]
@@ -940,10 +931,7 @@ async fn test_leave_event_success_when_notification_context_load_fails() {
     // Check response matches expectations
     assert_eq!(parts.status, StatusCode::OK);
     let body: serde_json::Value = from_slice(&bytes).unwrap();
-    assert_eq!(
-        body,
-        json!({ "left_status": "attendee", "promoted_user_ids": [] })
-    );
+    assert_eq!(body, json!({ "left_status": "attendee" }));
 }
 
 #[tokio::test]
