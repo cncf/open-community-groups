@@ -240,7 +240,16 @@ e2e-db-setup: e2e-write-tern-config
 
 # Run full e2e setup: database, dependencies, server, and tests.
 e2e-full: e2e-db-setup e2e-install e2e-write-server-config
+    #!/usr/bin/env bash
+    set -euo pipefail
     cargo run -p ocg-server -- -c "{{ e2e_server_config }}" &
-    i=0; while [ $i -lt 30 ]; do curl -sf http://localhost:9000/health-check > /dev/null && break; i=$((i+1)); sleep 2; done
+    server_pid=$!
+    trap 'kill "$server_pid" 2>/dev/null || true; wait "$server_pid" 2>/dev/null || true' EXIT INT TERM
+    i=0
+    while [ "$i" -lt 30 ]; do
+        curl -sf http://localhost:9000/health-check > /dev/null && break
+        i=$((i + 1))
+        sleep 2
+    done
     curl -sf http://localhost:9000/health-check > /dev/null
     yarn test:e2e
