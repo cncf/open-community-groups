@@ -17,7 +17,9 @@
 {% endblock logo %}
 
 {% block corner_badge -%}
-  {{ badges::sold_out_corner_ribbon(remaining_capacity = event.remaining_capacity, capacity = event.capacity) -}}
+  {% if !event.waitlist_enabled -%}
+    {{ badges::sold_out_corner_ribbon(remaining_capacity = event.remaining_capacity, capacity = event.capacity) -}}
+  {% endif -%}
 {% endblock corner_badge %}
 
 {% block top_row_classes -%}

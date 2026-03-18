@@ -35,7 +35,9 @@
   <div class="relative container mx-auto max-w-7xl p-4 sm:p-6 lg:p-8 pb-8 md:pb-10 lg:pb-16 flex grow h-full">
     <div class="bg-white border border-stone-200 rounded-lg flex flex-col w-full relative overflow-hidden">
       {# Sold out badge -#}
-      {{ badges::sold_out_corner_ribbon(remaining_capacity = event.remaining_capacity, capacity = event.capacity) -}}
+      {% if !event.waitlist_enabled -%}
+        {{ badges::sold_out_corner_ribbon(remaining_capacity = event.remaining_capacity, capacity = event.capacity) -}}
+      {% endif -%}
       {# End sold out badge -#}
 
       <div class="flex gap-y-6 sm:gap-y-8 lg:gap-y-12 flex-col px-4 sm:px-6 lg:px-10 py-4 sm:py-6 lg:py-10">
@@ -110,8 +112,8 @@
                         {% if let Some(remaining_capacity) = &event.remaining_capacity %}
                           {% if *remaining_capacity > 0 %}
                             <span class="text-xs text-stone-500 ms-2">(Remaining: {{ remaining_capacity }})</span>
-                          {% else if event.waitlist_enabled && event.waitlist_count > 0 %}
-                            <span class="text-xs text-stone-500 ms-2">(Waitlist: {{ event.waitlist_count }})</span>
+                          {% else %}
+                            <span class="text-xs text-stone-500 ms-2">(Sold out)</span>
                           {% endif %}
                         {% endif %}
                       {% endif -%}
