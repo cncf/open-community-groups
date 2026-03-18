@@ -22,6 +22,9 @@ jobs:
           - suite: deep
             command: yarn test:e2e:deep
             artifact_name: playwright-artifacts-deep
+          - suite: visual
+            command: yarn test:e2e:visual
+            artifact_name: playwright-artifacts-visual
     permissions:
       contents: read
     services:

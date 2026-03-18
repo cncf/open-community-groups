@@ -33,6 +33,8 @@ export default defineConfig({
   retries: isCI ? 2 : 0,
   reporter: [["html", { open: "never", outputFolder: reportDir }], ["list"]],
   outputDir: resultsDir,
+  snapshotPathTemplate:
+    "{testFileDir}/{testFileName}-snapshots/{arg}-{projectName}{ext}",
   use: {
     baseURL,
     screenshot: "only-on-failure",

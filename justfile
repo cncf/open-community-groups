@@ -228,6 +228,10 @@ e2e-tests-headed:
 e2e-tests-ui:
     yarn test:e2e:ui
 
+# Update e2e visual regression snapshots.
+e2e-tests-visual-update:
+    yarn test:e2e:visual:update
+
 # Set up e2e test database (drop, create, migrate, seed).
 e2e-db-setup: e2e-write-tern-config
     just pg dropdb {{ pg_conn }} --if-exists --force {{ db_name_e2e }}

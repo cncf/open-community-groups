@@ -78,6 +78,15 @@ yarn test:e2e:smoke
 
 # Run only the deeper Chromium suite
 yarn test:e2e:deep
+
+# Run visual regression checks for stable public pages
+yarn test:e2e:visual
+
+# Refresh visual baselines after intentional UI changes
+yarn test:e2e:visual:update
+
+# Refresh visual baselines with just
+just e2e-tests-visual-update
 ```
 
 ## Test Structure
@@ -86,6 +95,7 @@ yarn test:e2e:deep
 tests/e2e/
 ├── playwright.config.ts       # Playwright configuration
 ├── utils.ts                   # Helper functions and constants
+├── pages/visual.spec.ts       # Visual regression checks for stable pages
 ├── public/public.spec.ts      # Public pages suite
 ├── auth/auth.spec.ts          # Email/password authentication suite
 ├── auth/oauth.spec.ts         # OAuth redirect smoke tests
@@ -128,6 +138,16 @@ Test data is defined in `/database/tests/data/e2e.sql` and includes:
 ✅ Group page displays group information
 ✅ Event page displays event information
 ✅ Search returns matching groups
+✅ Visual baselines for site, community, group, and event pages on desktop and mobile
+
+### Visual Regression Tests
+
+- `tests/e2e/pages/visual.spec.ts` snapshots stable public pages
+- Visual checks run on Chromium only as part of the deep suite to reduce noise
+- `yarn test:e2e:visual` writes the e2e server config and starts the app automatically
+- Update snapshots with `yarn test:e2e:visual:update` after intentional UI changes
+- `just e2e-tests-visual-update` provides the same snapshot refresh flow through `just`
+- Snapshot paths are shared across platforms to keep local and CI baseline names aligned
 
 ### Current Tests (Authentication)
 
