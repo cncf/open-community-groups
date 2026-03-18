@@ -186,6 +186,32 @@ test.describe("community dashboard", () => {
     await expect(dashboardContent.locator("tr", { hasText: "E2E Test Group Alpha" })).toBeVisible();
     await expect(dashboardContent.locator("tr", { hasText: "E2E Test Group Gamma" })).toBeVisible();
   });
+  test("admin can open a selected group dashboard from the groups list", async ({
+    adminCommunityPage,
+  }) => {
+    await navigateToPath(adminCommunityPage, "/dashboard/community?tab=groups");
+
+    const dashboardContent = adminCommunityPage.locator("#dashboard-content");
+    const openGroupButton = dashboardContent.getByRole("button", {
+      name: "Open group dashboard: E2E Test Group Gamma",
+    });
+
+    await expect(openGroupButton).toBeVisible();
+
+    await Promise.all([
+      adminCommunityPage.waitForURL(/\/dashboard\/group$/),
+      openGroupButton.click(),
+    ]);
+
+    await expect(adminCommunityPage.getByText("Group Dashboard", { exact: true }).last()).toBeVisible();
+    await expect(adminCommunityPage.locator("#group-selector-button")).toContainText(
+      "E2E Test Group Gamma",
+    );
+    await expect(adminCommunityPage.locator("#dashboard-content")).toHaveAttribute(
+      "data-group-slug",
+      GAMMA_GROUP_SLUG,
+    );
+  });
 
   for (const taxonomyCase of taxonomyCases) {
     test(`admin can distinguish used and unused entries on ${taxonomyCase.heading}`, async ({
