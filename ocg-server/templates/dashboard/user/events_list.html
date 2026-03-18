@@ -38,29 +38,31 @@ description = "Upcoming events where you'll participate.") -}}
           <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
             <th scope="row"
                 class="px-3 xl:px-5 py-4 font-medium text-stone-900 min-w-[100px] max-w-[200px] xl:max-w-auto">
-              <div class="min-w-0">
-                <a href="/{{ item.event.community_name }}/group/{{ item.event.group_slug }}/event/{{ item.event.slug }}"
-                   target="_blank"
-                   rel="noopener noreferrer"
-                   class="block max-w-full truncate hover:underline text-left font-medium text-stone-900">
-                  {{ item.event.name }}
-                </a>
-                <div class="text-xs text-stone-400 truncate">{{ item.event.group_name }}</div>
+              <div class="flex items-center">
+                <div class="min-w-0">
+                  <a href="/{{ item.event.community_name }}/group/{{ item.event.group_slug }}/event/{{ item.event.slug }}"
+                     target="_blank"
+                     rel="noopener noreferrer"
+                     class="block max-w-full truncate md:whitespace-normal md:line-clamp-2 xl:line-clamp-1 hover:underline text-left leading-5 font-medium text-stone-900">
+                    {{ item.event.name }}
+                  </a>
+                  <div class="text-xs text-stone-400 truncate">{{ item.event.group_name }}</div>
 
-                <div class="block xl:hidden mt-1.5 space-y-1 text-xs text-stone-500">
-                  {% if item.event.kind.to_string() == "virtual" -%}
-                    <div class="max-w-full truncate">Virtual</div>
-                  {% else if let Some(location) = &item.event.location(90) -%}
-                    <div class="max-w-full truncate">{{ location }}</div>
-                  {% else -%}
-                    <div class="max-w-full truncate">-</div>
-                  {% endif -%}
+                  <div class="block xl:hidden mt-1.5 space-y-1 text-xs text-stone-500">
+                    {% if item.event.kind.to_string() == "virtual" -%}
+                      <div class="max-w-full truncate">Virtual</div>
+                    {% else if let Some(location) = &item.event.location(90) -%}
+                      <div class="max-w-full truncate">{{ location }}</div>
+                    {% else -%}
+                      <div class="max-w-full truncate">-</div>
+                    {% endif -%}
 
-                  {% if let Some(start_time) = &item.event.starts_at -%}
-                    <div class="max-w-full truncate">
-                      {{ start_time.with_timezone(item.event.timezone).format("%b %d, %Y at %I:%M %p %Z") }}
-                    </div>
-                  {% endif -%}
+                    {% if let Some(start_time) = &item.event.starts_at -%}
+                      <div class="max-w-full truncate">
+                        {{ start_time.with_timezone(item.event.timezone).format("%b %d, %Y at %I:%M %p %Z") }}
+                      </div>
+                    {% endif -%}
+                  </div>
                 </div>
               </div>
             </th>
