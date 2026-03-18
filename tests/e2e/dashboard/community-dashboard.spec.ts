@@ -136,6 +136,57 @@ test.describe("community dashboard", () => {
     ).toBeVisible();
   });
 
+  test("admin can search community groups and clear the filter", async ({
+    adminCommunityPage,
+  }) => {
+    await navigateToPath(adminCommunityPage, "/dashboard/community?tab=groups");
+
+    const dashboardContent = adminCommunityPage.locator("#dashboard-content");
+    await expect(dashboardContent.getByText("Groups", { exact: true })).toBeVisible();
+
+    const searchInput = dashboardContent.getByPlaceholder("Search groups");
+    await searchInput.fill("Gamma");
+
+    await Promise.all([
+      adminCommunityPage.waitForResponse(
+        (response) =>
+          response.request().method() === "GET" &&
+          response.url().includes("/dashboard/community/groups?ts_query=Gamma") &&
+          response.ok(),
+      ),
+      searchInput.press("Enter"),
+    ]);
+
+    await expect(adminCommunityPage).toHaveURL(/tab=groups.*ts_query=Gamma/);
+    await expect(dashboardContent.locator("tr", { hasText: "E2E Test Group Gamma" })).toBeVisible();
+    await expect(dashboardContent.locator("tr", { hasText: "E2E Test Group Alpha" })).toHaveCount(0);
+
+    await searchInput.fill("");
+    await searchInput.fill("No matching group");
+
+    await searchInput.press("Enter");
+
+    const noResultsRow = dashboardContent.locator("tbody tr", {
+      hasText: "No groups found matching your search.",
+    });
+    await expect(noResultsRow).toBeVisible();
+
+    await Promise.all([
+      adminCommunityPage.waitForResponse(
+        (response) =>
+          response.request().method() === "GET" &&
+          response.url().includes("/dashboard/community/groups") &&
+          !response.url().includes("ts_query=") &&
+          response.ok(),
+      ),
+      dashboardContent.locator("button .icon-close").click(),
+    ]);
+
+    await expect(adminCommunityPage).toHaveURL(/\/dashboard\/community\?tab=groups(?:&limit=50&offset=0)?$/);
+    await expect(dashboardContent.locator("tr", { hasText: "E2E Test Group Alpha" })).toBeVisible();
+    await expect(dashboardContent.locator("tr", { hasText: "E2E Test Group Gamma" })).toBeVisible();
+  });
+
   for (const taxonomyCase of taxonomyCases) {
     test(`admin can distinguish used and unused entries on ${taxonomyCase.heading}`, async ({
       adminCommunityPage,
