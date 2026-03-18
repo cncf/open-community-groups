@@ -17,7 +17,8 @@ use crate::{
     handlers::tests::*,
     router::CACHE_CONTROL_NO_CACHE,
     services::notifications::{MockNotificationsManager, NotificationKind},
-    templates::notifications::EventWelcome,
+    templates::notifications::{EventWaitlistJoined, EventWaitlistLeft, EventWaitlistPromoted, EventWelcome},
+    types::event::{EventAttendanceInfo, EventAttendanceStatus, EventLeaveOutcome},
 };
 
 #[tokio::test]
@@ -137,10 +138,15 @@ async fn test_check_in_page_success() {
         .times(1)
         .withf(move |cid, eid| *cid == community_id && *eid == event_id)
         .returning(move |_, _| Ok(event_summary.clone()));
-    db.expect_is_event_attendee()
+    db.expect_get_event_attendance()
         .times(1)
         .withf(move |cid, eid, uid| *cid == community_id && *eid == event_id && *uid == user_id)
-        .returning(|_, _, _| Ok((true, false)));
+        .returning(|_, _, _| {
+            Ok(EventAttendanceInfo {
+                is_checked_in: false,
+                status: EventAttendanceStatus::Attendee,
+            })
+        });
     db.expect_is_event_check_in_window_open()
         .times(1)
         .withf(move |cid, eid| *cid == community_id && *eid == event_id)
@@ -360,7 +366,7 @@ async fn test_attend_event_success() {
     db.expect_attend_event()
         .times(1)
         .withf(move |id, eid, uid| *id == community_id && *eid == event_id && *uid == user_id)
-        .returning(|_, _, _| Ok(()));
+        .returning(|_, _, _| Ok(EventAttendanceStatus::Attendee));
     db.expect_get_event_summary_by_id()
         .times(1)
         .withf(move |cid, eid| *cid == community_id && *eid == event_id)
@@ -397,8 +403,137 @@ async fn test_attend_event_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert!(bytes.is_empty());
+    assert_eq!(parts.status, StatusCode::OK);
+    let body: serde_json::Value = from_slice(&bytes).unwrap();
+    assert_eq!(body, json!({ "status": "attendee" }));
+}
+
+#[tokio::test]
+async fn test_attend_event_waitlist_success() {
+    // Setup identifiers and data structures
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let event_summary = sample_event_summary(event_id, group_id);
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_get_community_id_by_name()
+        .times(1)
+        .withf(|name| name == "test-community")
+        .returning(move |_| Ok(Some(community_id)));
+    db.expect_attend_event()
+        .times(1)
+        .withf(move |id, eid, uid| *id == community_id && *eid == event_id && *uid == user_id)
+        .returning(|_, _, _| Ok(EventAttendanceStatus::Waitlisted));
+    db.expect_get_event_summary_by_id()
+        .times(1)
+        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .returning(move |_, _| Ok(event_summary.clone()));
+    db.expect_get_site_settings()
+        .times(1)
+        .returning(|| Ok(sample_site_settings()));
+
+    // Setup notifications manager mock
+    let mut nm = MockNotificationsManager::new();
+    nm.expect_enqueue()
+        .times(1)
+        .withf(move |notification| {
+            matches!(notification.kind, NotificationKind::EventWaitlistJoined)
+                && notification.recipients == vec![user_id]
+                && notification.template_data.as_ref().is_some_and(|value| {
+                    from_value::<EventWaitlistJoined>(value.clone())
+                        .map(|template| template.link == "/test-community/group/def5678/event/ghi9abc")
+                        .unwrap_or(false)
+                })
+        })
+        .returning(|_| Box::pin(async { Ok(()) }));
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("POST")
+        .uri(format!("/test-community/event/{event_id}/attend"))
+        .header(COOKIE, format!("id={session_id}"))
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_eq!(parts.status, StatusCode::OK);
+    let body: serde_json::Value = from_slice(&bytes).unwrap();
+    assert_eq!(body, json!({ "status": "waitlisted" }));
+}
+
+#[tokio::test]
+async fn test_attend_event_success_when_notification_context_load_fails() {
+    // Setup identifiers and data structures
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_get_community_id_by_name()
+        .times(1)
+        .withf(|name| name == "test-community")
+        .returning(move |_| Ok(Some(community_id)));
+    db.expect_attend_event()
+        .times(1)
+        .withf(move |id, eid, uid| *id == community_id && *eid == event_id && *uid == user_id)
+        .returning(|_, _, _| Ok(EventAttendanceStatus::Attendee));
+    db.expect_get_event_summary_by_id()
+        .times(1)
+        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .returning(move |_, _| Err(anyhow!("db error")));
+    db.expect_get_site_settings()
+        .times(1)
+        .returning(|| Ok(sample_site_settings()));
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("POST")
+        .uri(format!("/test-community/event/{event_id}/attend"))
+        .header(COOKIE, format!("id={session_id}"))
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_eq!(parts.status, StatusCode::OK);
+    let body: serde_json::Value = from_slice(&bytes).unwrap();
+    assert_eq!(body, json!({ "status": "attendee" }));
 }
 
 #[tokio::test]
@@ -425,10 +560,15 @@ async fn test_attendance_status_success() {
         .times(1)
         .withf(|name| name == "test-community")
         .returning(move |_| Ok(Some(community_id)));
-    db.expect_is_event_attendee()
+    db.expect_get_event_attendance()
         .times(1)
         .withf(move |id, eid, uid| *id == community_id && *eid == event_id && *uid == user_id)
-        .returning(|_, _, _| Ok((true, false)));
+        .returning(|_, _, _| {
+            Ok(EventAttendanceInfo {
+                is_checked_in: false,
+                status: EventAttendanceStatus::Attendee,
+            })
+        });
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
@@ -456,7 +596,7 @@ async fn test_attendance_status_success() {
         &HeaderValue::from_static(CACHE_CONTROL_NO_CACHE)
     );
     let body: serde_json::Value = from_slice(&bytes).unwrap();
-    assert_eq!(body, json!({ "is_attendee": true, "is_checked_in": false }));
+    assert_eq!(body, json!({ "status": "attendee", "is_checked_in": false }));
 }
 
 #[tokio::test]
@@ -536,7 +676,19 @@ async fn test_leave_event_success() {
     db.expect_leave_event()
         .times(1)
         .withf(move |id, eid, uid| *id == community_id && *eid == event_id && *uid == user_id)
-        .returning(|_, _, _| Ok(()));
+        .returning(|_, _, _| {
+            Ok(EventLeaveOutcome {
+                left_status: EventAttendanceStatus::Attendee,
+                promoted_user_ids: vec![],
+            })
+        });
+    db.expect_get_event_summary_by_id()
+        .times(1)
+        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .returning(move |_, _| Ok(sample_event_summary(event_id, Uuid::new_v4())));
+    db.expect_get_site_settings()
+        .times(1)
+        .returning(|| Ok(sample_site_settings()));
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
@@ -554,8 +706,244 @@ async fn test_leave_event_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert!(bytes.is_empty());
+    assert_eq!(parts.status, StatusCode::OK);
+    let body: serde_json::Value = from_slice(&bytes).unwrap();
+    assert_eq!(
+        body,
+        json!({ "left_status": "attendee", "promoted_user_ids": [] })
+    );
+}
+
+#[tokio::test]
+async fn test_leave_waitlist_success() {
+    // Setup identifiers and data structures
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
+    let event_summary = sample_event_summary(event_id, group_id);
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_get_community_id_by_name()
+        .times(1)
+        .withf(|name| name == "test-community")
+        .returning(move |_| Ok(Some(community_id)));
+    db.expect_leave_event()
+        .times(1)
+        .withf(move |id, eid, uid| *id == community_id && *eid == event_id && *uid == user_id)
+        .returning(|_, _, _| {
+            Ok(EventLeaveOutcome {
+                left_status: EventAttendanceStatus::Waitlisted,
+                promoted_user_ids: vec![],
+            })
+        });
+    db.expect_get_event_summary_by_id()
+        .times(1)
+        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .returning(move |_, _| Ok(event_summary.clone()));
+    db.expect_get_site_settings()
+        .times(1)
+        .returning(|| Ok(sample_site_settings()));
+
+    // Setup notifications manager mock
+    let mut nm = MockNotificationsManager::new();
+    nm.expect_enqueue()
+        .times(1)
+        .withf(move |notification| {
+            matches!(notification.kind, NotificationKind::EventWaitlistLeft)
+                && notification.recipients == vec![user_id]
+                && notification.template_data.as_ref().is_some_and(|value| {
+                    from_value::<EventWaitlistLeft>(value.clone())
+                        .map(|template| template.link == "/test-community/group/def5678/event/ghi9abc")
+                        .unwrap_or(false)
+                })
+        })
+        .returning(|_| Box::pin(async { Ok(()) }));
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("DELETE")
+        .uri(format!("/test-community/event/{event_id}/leave"))
+        .header(COOKIE, format!("id={session_id}"))
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_eq!(parts.status, StatusCode::OK);
+    let body: serde_json::Value = from_slice(&bytes).unwrap();
+    assert_eq!(
+        body,
+        json!({ "left_status": "waitlisted", "promoted_user_ids": [] })
+    );
+}
+
+#[tokio::test]
+async fn test_leave_event_promotes_waitlisted_users_and_enqueues_notification() {
+    // Setup identifiers and data structures
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let promoted_user_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
+    let event_summary = sample_event_summary(event_id, group_id);
+    let site_settings = sample_site_settings();
+    let site_settings_for_notification = site_settings.clone();
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_get_community_id_by_name()
+        .times(1)
+        .withf(|name| name == "test-community")
+        .returning(move |_| Ok(Some(community_id)));
+    db.expect_leave_event()
+        .times(1)
+        .withf(move |id, eid, uid| *id == community_id && *eid == event_id && *uid == user_id)
+        .returning(move |_, _, _| {
+            Ok(EventLeaveOutcome {
+                left_status: EventAttendanceStatus::Attendee,
+                promoted_user_ids: vec![promoted_user_id],
+            })
+        });
+    db.expect_get_event_summary_by_id()
+        .times(1)
+        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .returning(move |_, _| Ok(event_summary.clone()));
+    db.expect_get_site_settings()
+        .times(1)
+        .returning(move || Ok(site_settings.clone()));
+
+    // Setup notifications manager mock
+    let mut nm = MockNotificationsManager::new();
+    nm.expect_enqueue()
+        .times(1)
+        .withf(move |notification| {
+            matches!(notification.kind, NotificationKind::EventWaitlistPromoted)
+                && notification.recipients == vec![promoted_user_id]
+                && notification.attachments.len() == 1
+                && notification.attachments[0].file_name == "event-ghi9abc.ics"
+                && notification.template_data.as_ref().is_some_and(|value| {
+                    from_value::<EventWaitlistPromoted>(value.clone())
+                        .map(|template| {
+                            template.link == "/test-community/group/def5678/event/ghi9abc"
+                                && template.theme.primary_color
+                                    == site_settings_for_notification.theme.primary_color
+                        })
+                        .unwrap_or(false)
+                })
+        })
+        .returning(|_| Box::pin(async { Ok(()) }));
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("DELETE")
+        .uri(format!("/test-community/event/{event_id}/leave"))
+        .header(COOKIE, format!("id={session_id}"))
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_eq!(parts.status, StatusCode::OK);
+    let body: serde_json::Value = from_slice(&bytes).unwrap();
+    assert_eq!(
+        body,
+        json!({ "left_status": "attendee", "promoted_user_ids": [promoted_user_id] })
+    );
+}
+
+#[tokio::test]
+async fn test_leave_event_success_when_notification_context_load_fails() {
+    // Setup identifiers and data structures
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_get_community_id_by_name()
+        .times(1)
+        .withf(|name| name == "test-community")
+        .returning(move |_| Ok(Some(community_id)));
+    db.expect_leave_event()
+        .times(1)
+        .withf(move |id, eid, uid| *id == community_id && *eid == event_id && *uid == user_id)
+        .returning(|_, _, _| {
+            Ok(EventLeaveOutcome {
+                left_status: EventAttendanceStatus::Attendee,
+                promoted_user_ids: vec![],
+            })
+        });
+    db.expect_get_event_summary_by_id()
+        .times(1)
+        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .returning(move |_, _| Err(anyhow!("db error")));
+    db.expect_get_site_settings()
+        .times(1)
+        .returning(|| Ok(sample_site_settings()));
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("DELETE")
+        .uri(format!("/test-community/event/{event_id}/leave"))
+        .header(COOKIE, format!("id={session_id}"))
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_eq!(parts.status, StatusCode::OK);
+    let body: serde_json::Value = from_slice(&bytes).unwrap();
+    assert_eq!(
+        body,
+        json!({ "left_status": "attendee", "promoted_user_ids": [] })
+    );
 }
 
 #[tokio::test]

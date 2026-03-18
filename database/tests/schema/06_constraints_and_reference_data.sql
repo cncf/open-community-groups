@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(33);
+select plan(34);
 
 -- ============================================================================
 -- TESTS
@@ -23,6 +23,7 @@ select has_check('event', 'event_meeting_conflict_chk');
 select has_check('event', 'event_meeting_kind_chk');
 select has_check('event', 'event_meeting_provider_required_chk');
 select has_check('event', 'event_meeting_requested_times_chk');
+select has_check('event', 'event_waitlist_capacity_required_chk');
 
 -- Test: group table expected constraints exist
 select has_check('group', 'group_check');
@@ -90,6 +91,9 @@ select results_eq(
         ('event-published'),
         ('event-reminder'),
         ('event-rescheduled'),
+        ('event-waitlist-joined'),
+        ('event-waitlist-left'),
+        ('event-waitlist-promoted'),
         ('event-welcome'),
         ('group-custom'),
         ('group-team-invitation'),

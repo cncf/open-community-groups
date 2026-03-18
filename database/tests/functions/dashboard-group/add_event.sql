@@ -109,7 +109,9 @@ select ok(
         "published": false,
         "sponsors": [],
         "sessions": {},
-        "timezone": "America/New_York"
+        "timezone": "America/New_York",
+        "waitlist_count": 0,
+        "waitlist_enabled": false
     }'::jsonb,
     'Should create event with minimal required fields and return expected structure'
 );
@@ -226,6 +228,8 @@ select ok(
         "venue_name": "Tech Center",
         "venue_state": "CA",
         "venue_zip_code": "94105",
+        "waitlist_count": 0,
+        "waitlist_enabled": false,
         "sponsors": [
             {"group_sponsor_id": "00000000-0000-0000-0000-000000000062", "level": "Silver", "logo_url": "https://example.com/cloudinc.png", "name": "CloudInc"},
             {"group_sponsor_id": "00000000-0000-0000-0000-000000000061", "level": "Gold", "logo_url": "https://example.com/techcorp.png", "name": "TechCorp", "website_url": "https://techcorp.com"}

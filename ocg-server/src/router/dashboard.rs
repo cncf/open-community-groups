@@ -228,6 +228,10 @@ pub(super) fn setup_group_dashboard_router(state: &State) -> Router<State> {
             "/events/{event_id}/update",
             get(dashboard::group::events::update_page),
         )
+        .route(
+            "/events/{event_id}/waitlist",
+            get(dashboard::group::waitlist::list_page),
+        )
         .route("/members", get(dashboard::group::members::list_page))
         .route("/settings/update", get(dashboard::group::settings::update_page))
         .route("/sponsors", get(dashboard::group::sponsors::list_page))

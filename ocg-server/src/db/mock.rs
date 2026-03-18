@@ -333,6 +333,11 @@ mock! {
         ) -> Result<crate::templates::dashboard::group::submissions::CfsSubmissionsOutput>;
         async fn list_event_kinds(&self)
             -> Result<Vec<crate::types::event::EventKindSummary>>;
+        async fn list_event_waitlist_ids(
+            &self,
+            group_id: Uuid,
+            event_id: Uuid,
+        ) -> Result<Vec<Uuid>>;
         async fn list_group_events(
             &self,
             group_id: Uuid,
@@ -384,6 +389,11 @@ mock! {
             group_id: Uuid,
             filters: &crate::templates::dashboard::group::attendees::AttendeesFilters,
         ) -> Result<crate::templates::dashboard::group::attendees::AttendeesOutput>;
+        async fn search_event_waitlist(
+            &self,
+            group_id: Uuid,
+            filters: &crate::templates::dashboard::group::waitlist::WaitlistFilters,
+        ) -> Result<crate::templates::dashboard::group::waitlist::WaitlistOutput>;
         async fn unpublish_event(&self, group_id: Uuid, event_id: Uuid) -> Result<()>;
         async fn update_event(
             &self,
@@ -391,7 +401,7 @@ mock! {
             event_id: Uuid,
             event: &serde_json::Value,
             cfg_max_participants: &HashMap<crate::services::meetings::MeetingProvider, i32>,
-        ) -> Result<()>;
+        ) -> Result<Vec<Uuid>>;
         async fn update_cfs_submission(
             &self,
             reviewer_id: Uuid,
@@ -519,7 +529,7 @@ mock! {
             community_id: Uuid,
             event_id: Uuid,
             user_id: Uuid,
-        ) -> Result<()>;
+        ) -> Result<crate::types::event::EventAttendanceStatus>;
         async fn check_in_event(
             &self,
             community_id: Uuid,
@@ -538,12 +548,12 @@ mock! {
             community_id: Uuid,
             event_id: Uuid,
         ) -> Result<crate::types::event::EventSummary>;
-        async fn is_event_attendee(
+        async fn get_event_attendance(
             &self,
             community_id: Uuid,
             event_id: Uuid,
             user_id: Uuid,
-        ) -> Result<(bool, bool)>;
+        ) -> Result<crate::types::event::EventAttendanceInfo>;
         async fn is_event_check_in_window_open(
             &self,
             community_id: Uuid,
@@ -554,7 +564,7 @@ mock! {
             community_id: Uuid,
             event_id: Uuid,
             user_id: Uuid,
-        ) -> Result<()>;
+        ) -> Result<crate::types::event::EventLeaveOutcome>;
         async fn list_user_session_proposals_for_cfs_event(
             &self,
             user_id: Uuid,

@@ -260,6 +260,9 @@ pub(crate) struct Event {
     /// Venue zip code.
     #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_S))]
     pub venue_zip_code: Option<String>,
+    /// Whether the event waiting list is enabled.
+    #[garde(skip)]
+    pub waitlist_enabled: Option<bool>,
 }
 
 /// Filter parameters for events list pagination.

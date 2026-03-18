@@ -13,9 +13,13 @@ select plan(6);
 \set attendee2ID '00000000-0000-0000-0000-000000000042'
 \set categoryID '00000000-0000-0000-0000-000000000011'
 \set communityID '00000000-0000-0000-0000-000000000001'
+\set eventCommunityLogoFallbackID '00000000-0000-0000-0000-000000000033'
 \set eventCategoryID '00000000-0000-0000-0000-000000000012'
+\set eventGroupLogoFallbackID '00000000-0000-0000-0000-000000000032'
 \set eventID '00000000-0000-0000-0000-000000000031'
 \set groupID '00000000-0000-0000-0000-000000000021'
+\set groupNoLogoID '00000000-0000-0000-0000-000000000022'
+\set waitlistUserID '00000000-0000-0000-0000-000000000043'
 
 -- ============================================================================
 -- SEED DATA
@@ -67,6 +71,23 @@ insert into "group" (
     'https://example.com/group-logo.png'
 );
 
+-- Group without logo
+insert into "group" (
+    group_id,
+    name,
+    slug,
+    community_id,
+    group_category_id,
+    active
+) values (
+    :'groupNoLogoID',
+    'Seattle Kubernetes Meetup No Logo',
+    'abc5678',
+    :'communityID',
+    :'categoryID',
+    true
+);
+
 -- Attendees for remaining capacity verification
 insert into "user" (
     user_id,
@@ -86,6 +107,13 @@ insert into "user" (
     :'attendee2ID',
     'attendee2@example.com',
     'attendee2',
+    true,
+    'attendee-hash',
+    '2024-01-01 00:00:00+00'
+), (
+    :'waitlistUserID',
+    'waitlist@example.com',
+    'waitlist-user',
     true,
     'attendee-hash',
     '2024-01-01 00:00:00+00'
@@ -114,6 +142,7 @@ insert into event (
     venue_state,
     venue_zip_code,
     capacity,
+    waitlist_enabled,
     location,
     logo_url
 ) values (
@@ -138,8 +167,59 @@ insert into event (
     'NY',
     '10001',
     5,
+    true,
     ST_SetSRID(ST_MakePoint(-122.3321, 47.6062), 4326),  -- Seattle coordinates (different from group)
     'https://example.com/event-logo.png'
+), (
+    :'eventGroupLogoFallbackID',
+    'KubeCon Seattle 2024 Group Logo',
+    'def5679',
+    'Annual Kubernetes conference featuring workshops, talks, and hands-on sessions with industry experts',
+    'Annual Kubernetes conference short summary',
+    'in-person',
+    :'eventCategoryID',
+    :'groupID',
+    true,
+    '2024-06-15 09:00:00+00',
+    '2024-06-15 17:00:00+00',
+    'America/New_York',
+    null,
+    '123 Main St',
+    'New York',
+    'US',
+    'United States',
+    'Convention Center',
+    'NY',
+    '10001',
+    5,
+    true,
+    ST_SetSRID(ST_MakePoint(-122.3321, 47.6062), 4326),
+    null
+), (
+    :'eventCommunityLogoFallbackID',
+    'KubeCon Seattle 2024 Community Logo',
+    'def5680',
+    'Annual Kubernetes conference featuring workshops, talks, and hands-on sessions with industry experts',
+    'Annual Kubernetes conference short summary',
+    'in-person',
+    :'eventCategoryID',
+    :'groupNoLogoID',
+    true,
+    '2024-06-15 09:00:00+00',
+    '2024-06-15 17:00:00+00',
+    'America/New_York',
+    null,
+    '123 Main St',
+    'New York',
+    'US',
+    'United States',
+    'Convention Center',
+    'NY',
+    '10001',
+    5,
+    true,
+    ST_SetSRID(ST_MakePoint(-122.3321, 47.6062), 4326),
+    null
 );
 
 -- Link meeting to event
@@ -157,6 +237,10 @@ insert into event_attendee (event_id, user_id)
 values
     (:'eventID', :'attendee1ID'),
     (:'eventID', :'attendee2ID');
+
+-- Event Waitlist
+insert into event_waitlist (event_id, user_id)
+values (:'eventID', :'waitlistUserID');
 
 -- ============================================================================
 -- TESTS
@@ -190,6 +274,7 @@ select is(
         "longitude": -122.3321,
         "meeting_join_url": "https://meeting.example.com/summary",
         "meeting_password": "secret123",
+        "remaining_capacity": 3,
         "starts_at": 1718442000,
         "venue_address": "123 Main St",
         "venue_city": "New York",
@@ -197,37 +282,34 @@ select is(
         "venue_country_name": "United States",
         "venue_name": "Convention Center",
         "venue_state": "NY",
-        "zip_code": "10001",
-        "remaining_capacity": 3
+        "waitlist_count": 1,
+        "waitlist_enabled": true,
+        "zip_code": "10001"
     }'::jsonb,
     'Should return correct event summary data as JSON'
 );
 
 -- Should use group logo when event has no logo
-update event set logo_url = null where event_id = :'eventID';
 select is(
     (get_event_summary(
         :'communityID'::uuid,
         :'groupID'::uuid,
-        :'eventID'::uuid
+        :'eventGroupLogoFallbackID'::uuid
     )::jsonb)->>'logo_url',
     'https://example.com/group-logo.png',
     'Should use group logo when event has no logo'
 );
 
 -- Should use community logo when event and group have no logo
-update "group" set logo_url = null where group_id = :'groupID';
 select is(
     (get_event_summary(
         :'communityID'::uuid,
-        :'groupID'::uuid,
-        :'eventID'::uuid
+        :'groupNoLogoID'::uuid,
+        :'eventCommunityLogoFallbackID'::uuid
     )::jsonb)->>'logo_url',
     'https://example.com/logo.png',
     'Should use community logo when event and group have no logo'
 );
-update "group" set logo_url = 'https://example.com/group-logo.png' where group_id = :'groupID';
-update event set logo_url = 'https://example.com/event-logo.png' where event_id = :'eventID';
 
 -- Should return null for non-existent event ID
 select ok(

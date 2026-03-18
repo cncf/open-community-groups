@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(4);
+select plan(7);
 
 -- ============================================================================
 -- VARIABLES
@@ -12,8 +12,10 @@ select plan(4);
 \set categoryID '00000000-0000-0000-0000-000000000011'
 \set community2ID '00000000-0000-0000-0000-000000000002'
 \set communityID '00000000-0000-0000-0000-000000000001'
+\set eventCanceledID '00000000-0000-0000-0000-000000000042'
 \set eventCategoryID '00000000-0000-0000-0000-000000000012'
 \set eventID '00000000-0000-0000-0000-000000000041'
+\set eventStartedNoEndID '00000000-0000-0000-0000-000000000043'
 \set groupID '00000000-0000-0000-0000-000000000031'
 \set user1ID '00000000-0000-0000-0000-000000000051'
 \set user2ID '00000000-0000-0000-0000-000000000052'
@@ -56,7 +58,9 @@ insert into event (
     event_category_id,
     event_kind_id,
     group_id,
-    published
+    published,
+    canceled,
+    starts_at
 ) values (
     :'eventID',
     'Event',
@@ -66,7 +70,33 @@ insert into event (
     :'eventCategoryID',
     'in-person',
     :'groupID',
-    true
+    true,
+    false,
+    null
+), (
+    :'eventCanceledID',
+    'Canceled Event',
+    'canceled-event',
+    'desc',
+    'UTC',
+    :'eventCategoryID',
+    'in-person',
+    :'groupID',
+    false,
+    true,
+    null
+), (
+    :'eventStartedNoEndID',
+    'Started Event Without End',
+    'started-event-without-end',
+    'desc',
+    'UTC',
+    :'eventCategoryID',
+    'in-person',
+    :'groupID',
+    true,
+    false,
+    current_timestamp - interval '1 hour'
 );
 
 -- Event Attendee - user1 is checked in
@@ -75,48 +105,83 @@ insert into event_attendee (event_id, user_id, checked_in, checked_in_at) values
 -- Event Attendee - user2 is not checked in
 insert into event_attendee (event_id, user_id, checked_in) values (:'eventID', :'user2ID', false);
 
+-- Event Attendee - started event without end should still report attendee
+insert into event_attendee (event_id, user_id, checked_in)
+values (:'eventStartedNoEndID', :'user1ID', false);
+
+-- Event Waitlist
+insert into event_waitlist (event_id, user_id)
+values
+    (:'eventID', '00000000-0000-0000-0000-000000000053'),
+    (:'eventCanceledID', '00000000-0000-0000-0000-000000000053');
+
 -- ============================================================================
 -- TESTS
 -- ============================================================================
 
--- Should return (true, true) for checked-in attendee
+-- Should return attendee status for checked-in attendee
 select is(
-    (
-        select row(is_attendee, is_checked_in)::text
-        from is_event_attendee(:'communityID'::uuid, :'eventID'::uuid, :'user1ID'::uuid)
-    ),
-    '(t,t)',
-    'Should return (true, true) for a checked-in attendee'
+    get_event_attendance(:'communityID'::uuid, :'eventID'::uuid, :'user1ID'::uuid)::jsonb,
+    '{"is_checked_in":true,"status":"attendee"}'::jsonb,
+    'Should return attendee status for a checked-in attendee'
 );
 
--- Should return (true, false) for attendee not checked in
+-- Should return attendee status for attendee not checked in
 select is(
-    (
-        select row(is_attendee, is_checked_in)::text
-        from is_event_attendee(:'communityID'::uuid, :'eventID'::uuid, :'user2ID'::uuid)
-    ),
-    '(t,f)',
-    'Should return (true, false) for an attendee not checked in'
+    get_event_attendance(:'communityID'::uuid, :'eventID'::uuid, :'user2ID'::uuid)::jsonb,
+    '{"is_checked_in":false,"status":"attendee"}'::jsonb,
+    'Should return attendee status for an attendee not checked in'
 );
 
--- Should return (false, false) when scoped by wrong community
+-- Should return attendee status for a started event without an end time
 select is(
-    (
-        select row(is_attendee, is_checked_in)::text
-        from is_event_attendee(:'community2ID'::uuid, :'eventID'::uuid, :'user1ID'::uuid)
-    ),
-    '(f,f)',
-    'Should return (false, false) when scoped by wrong community'
+    get_event_attendance(
+        :'communityID'::uuid,
+        :'eventStartedNoEndID'::uuid,
+        :'user1ID'::uuid
+    )::jsonb,
+    '{"is_checked_in":false,"status":"attendee"}'::jsonb,
+    'Should return attendee status for a started event without an end time'
 );
 
--- Should return (false, false) for non-attendee
+-- Should return none when scoped by wrong community
 select is(
-    (
-        select row(is_attendee, is_checked_in)::text
-        from is_event_attendee(:'communityID'::uuid, :'eventID'::uuid, '00000000-0000-0000-0000-000000000053'::uuid)
-    ),
-    '(f,f)',
-    'Should return (false, false) for a non-attendee'
+    get_event_attendance(:'community2ID'::uuid, :'eventID'::uuid, :'user1ID'::uuid)::jsonb,
+    '{"is_checked_in":false,"status":"none"}'::jsonb,
+    'Should return none when scoped by wrong community'
+);
+
+-- Should return waitlisted status for waitlisted user
+select is(
+    get_event_attendance(
+        :'communityID'::uuid,
+        :'eventID'::uuid,
+        '00000000-0000-0000-0000-000000000053'::uuid
+    )::jsonb,
+    '{"is_checked_in":false,"status":"waitlisted"}'::jsonb,
+    'Should return waitlisted status for a waitlisted user'
+);
+
+-- Should return none for waitlisted users on canceled events
+select is(
+    get_event_attendance(
+        :'communityID'::uuid,
+        :'eventCanceledID'::uuid,
+        '00000000-0000-0000-0000-000000000053'::uuid
+    )::jsonb,
+    '{"is_checked_in":false,"status":"none"}'::jsonb,
+    'Should return none for waitlisted users on canceled events'
+);
+
+-- Should return none for non-attendee
+select is(
+    get_event_attendance(
+        :'communityID'::uuid,
+        :'eventID'::uuid,
+        '00000000-0000-0000-0000-000000000054'::uuid
+    )::jsonb,
+    '{"is_checked_in":false,"status":"none"}'::jsonb,
+    'Should return none for a non-attendee'
 );
 
 -- ============================================================================

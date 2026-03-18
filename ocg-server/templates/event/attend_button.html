@@ -6,6 +6,7 @@
      {% if let Some(remaining_capacity) = &event.remaining_capacity %}
        data-remaining-capacity="{{ remaining_capacity }}"
      {% endif %}
+     data-waitlist-enabled="{{ event.waitlist_enabled }}"
      data-is-live="{{ event.is_live() }}"
      data-has-recording="{{ event.meeting_recording_url.is_some() }}"
      class="flex flex-row flex-wrap gap-2">
@@ -24,9 +25,10 @@
   <button id="signin-btn-{{ attendance_instance }}"
           data-attendance-role="signin-btn"
           data-path="{{ path }}"
+          data-default-label="Attend event"
           class="hidden group btn-primary-outline-anchor h-10 md:h-[30px] flex items-center justify-center space-x-2">
     <div class="svg-icon size-3 icon-user-plus"></div>
-    <span>Attend event</span>
+    <span data-attendance-label>Attend event</span>
   </button>
 
   <!-- Attend button (hidden initially) -->
@@ -34,9 +36,11 @@
           data-attendance-role="attend-btn"
           hx-post="/{{ event.community.name }}/event/{{ event.event_id }}/attend"
           hx-swap="none"
+          data-attend-label="Attend event"
+          data-waitlist-label="Join waiting list"
           class="hidden group btn-primary-outline h-10 md:h-[30px] flex items-center justify-center space-x-2">
     <div class="svg-icon size-3 icon-user-plus"></div>
-    <span>Attend event</span>
+    <span data-attendance-label>Attend event</span>
   </button>
 
   <!-- Join meeting button (hidden initially, shown for attendees when live) -->
@@ -59,9 +63,11 @@
           hx-delete="/{{ event.community.name }}/event/{{ event.event_id }}/leave"
           hx-trigger="confirmed"
           hx-swap="none"
+          data-attendee-label="Cancel attendance"
+          data-waitlist-label="Leave waiting list"
           class="hidden group btn-primary-outline h-10 md:h-[30px] flex items-center justify-center space-x-2">
     <div class="svg-icon size-3 icon-logout"></div>
-    <span>Cancel attendance</span>
+    <span data-attendance-label>Cancel attendance</span>
   </button>
 
   <!-- Hidden element that checks attendance status -->

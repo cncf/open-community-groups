@@ -298,7 +298,9 @@ select is(
         "venue_zip_code": "10001",
         "description_short": "Annual tech conference",
         "registration_required": true,
-        "event_reminder_enabled": true
+        "event_reminder_enabled": true,
+        "waitlist_count": 0,
+        "waitlist_enabled": false
     }'::jsonb,
     'Should return correct event data as JSON'
 );

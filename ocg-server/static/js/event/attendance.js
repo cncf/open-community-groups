@@ -13,6 +13,18 @@ const getAttendanceControl = (container, role) =>
   container?.querySelector(`[data-attendance-role="${role}"]`) ?? null;
 
 /**
+ * Sets the visible label for an attendance control.
+ * @param {HTMLElement|null} button - Attendance control button
+ * @param {string} label - Label to display
+ */
+const setAttendanceControlLabel = (button, label) => {
+  const labelNode = button?.querySelector("[data-attendance-label]");
+  if (labelNode) {
+    labelNode.textContent = label;
+  }
+};
+
+/**
  * Returns all attendance containers within a root node.
  * @param {Document|HTMLElement} root - Root node to search
  * @returns {HTMLElement[]} Attendance containers
@@ -65,16 +77,32 @@ const parseRemainingCapacity = (container) => {
 };
 
 /**
+ * Updates the sign-in control label.
+ * @param {HTMLButtonElement|null} button - Sign-in control button
+ * @param {{isSoldOut: boolean, waitlistEnabled: boolean}} meta - Attendance metadata
+ */
+const updateSigninButtonLabel = (button, meta) => {
+  if (!button) {
+    return;
+  }
+
+  const label = meta.isSoldOut && meta.waitlistEnabled ? "Join waiting list" : "Attend event";
+  setAttendanceControlLabel(button, label);
+  button.dataset.defaultLabel = label;
+};
+
+/**
  * Computes attendance metadata for the current event.
  * @param {HTMLElement} container - Attendance container element
- * @returns {{isSoldOut: boolean, isPastEvent: boolean, eventIsLive: boolean}}
+ * @returns {{isSoldOut: boolean, isPastEvent: boolean, eventIsLive: boolean, waitlistEnabled: boolean}}
  */
 const getAttendanceMeta = (container) => {
   const startsAtValue = container?.dataset?.starts ?? null;
   const capacity = parseCapacity(container);
   const remainingCapacity = parseRemainingCapacity(container);
-  const isSoldOut = capacity !== null && capacity > 0 && remainingCapacity !== null && remainingCapacity <= 0;
+  const isSoldOut = capacity !== null && remainingCapacity !== null && remainingCapacity <= 0;
   const eventIsLive = container?.dataset?.isLive === "true";
+  const waitlistEnabled = container?.dataset?.waitlistEnabled === "true";
   const isPastEvent = (() => {
     if (!startsAtValue) {
       return false;
@@ -90,6 +118,7 @@ const getAttendanceMeta = (container) => {
     isSoldOut,
     isPastEvent,
     eventIsLive,
+    waitlistEnabled,
   };
 };
 
@@ -122,14 +151,44 @@ const applySoldOutState = (button, meta) => {
   if (!button) {
     return;
   }
+  if (meta.isPastEvent) {
+    return;
+  }
   if (meta.isSoldOut) {
-    button.disabled = true;
-    button.title = "This event is sold out.";
-    button.classList.add("cursor-not-allowed", "opacity-50");
+    if (meta.waitlistEnabled) {
+      button.disabled = false;
+      button.removeAttribute("title");
+      button.classList.remove("cursor-not-allowed", "opacity-50");
+      setAttendanceControlLabel(button, button.dataset.waitlistLabel || "Join waiting list");
+    } else {
+      button.disabled = true;
+      button.title = "This event is sold out.";
+      button.classList.add("cursor-not-allowed", "opacity-50");
+    }
   } else if (!meta.isPastEvent) {
     button.removeAttribute("title");
     button.classList.remove("cursor-not-allowed", "opacity-50");
+    setAttendanceControlLabel(button, button.dataset.attendLabel || "Attend event");
   }
+};
+
+/**
+ * Shows the appropriate unauthenticated attendance control for an event.
+ * @param {HTMLButtonElement|null} attendButton - Attend control button
+ * @param {HTMLButtonElement|null} signinButton - Sign-in control button
+ * @param {{isSoldOut: boolean, isPastEvent: boolean, waitlistEnabled: boolean}} meta - Attendance metadata
+ */
+const showSignedOutAttendanceState = (attendButton, signinButton, meta) => {
+  if (meta.isSoldOut && !meta.waitlistEnabled) {
+    attendButton?.classList.remove("hidden");
+    updateButtonStateForEventDate(attendButton, meta);
+    applySoldOutState(attendButton, meta);
+    return;
+  }
+
+  signinButton?.classList.remove("hidden");
+  updateButtonStateForEventDate(signinButton, meta);
+  updateSigninButtonLabel(signinButton, meta);
 };
 
 /**
@@ -169,10 +228,14 @@ const initializeAttendanceContainer = (container) => {
   const meta = getAttendanceMeta(container);
   const attendButton = getAttendanceControl(container, "attend-btn");
   const leaveButton = getAttendanceControl(container, "leave-btn");
+  const signinButton = getAttendanceControl(container, "signin-btn");
 
   updateButtonStateForEventDate(attendButton, meta);
   applySoldOutState(attendButton, meta);
   updateButtonStateForEventDate(leaveButton, meta);
+  setAttendanceControlLabel(leaveButton, leaveButton?.dataset.attendeeLabel || "Cancel attendance");
+  updateButtonStateForEventDate(signinButton, meta);
+  updateSigninButtonLabel(signinButton, meta);
 
   container.dataset.attendanceReady = "true";
 };
@@ -213,10 +276,16 @@ const handleAttendanceCheckResponse = (event) => {
     try {
       const response = JSON.parse(xhr.responseText);
 
-      if (response.is_attendee) {
+      if (response.status === "attendee") {
         leaveButton.classList.remove("hidden");
+        setAttendanceControlLabel(leaveButton, leaveButton.dataset.attendeeLabel || "Cancel attendance");
         updateButtonStateForEventDate(leaveButton, meta);
         toggleMeetingDetailsVisibility(true, meta);
+      } else if (response.status === "waitlisted") {
+        leaveButton.classList.remove("hidden");
+        setAttendanceControlLabel(leaveButton, leaveButton.dataset.waitlistLabel || "Leave waiting list");
+        updateButtonStateForEventDate(leaveButton, meta);
+        toggleMeetingDetailsVisibility(false, meta);
       } else {
         attendButton.classList.remove("hidden");
         if (meta.isSoldOut) {
@@ -228,25 +297,13 @@ const handleAttendanceCheckResponse = (event) => {
       }
       return;
     } catch (error) {
-      if (meta.isSoldOut) {
-        attendButton.classList.remove("hidden");
-        applySoldOutState(attendButton, meta);
-      } else {
-        signinButton.classList.remove("hidden");
-        updateButtonStateForEventDate(signinButton, meta);
-      }
+      showSignedOutAttendanceState(attendButton, signinButton, meta);
       toggleMeetingDetailsVisibility(false, meta);
       return;
     }
   }
 
-  if (meta.isSoldOut) {
-    attendButton.classList.remove("hidden");
-    applySoldOutState(attendButton, meta);
-  } else {
-    signinButton.classList.remove("hidden");
-    updateButtonStateForEventDate(signinButton, meta);
-  }
+  showSignedOutAttendanceState(attendButton, signinButton, meta);
   toggleMeetingDetailsVisibility(false, meta);
 };
 
@@ -312,11 +369,21 @@ const handleAttendAfterRequest = (event) => {
   const xhr = event.detail?.xhr;
   const ok = handleHtmxResponse({
     xhr,
-    successMessage: "You have successfully registered for this event.",
+    successMessage: "",
     errorMessage: "Something went wrong registering for this event. Please try again later.",
   });
 
   if (ok) {
+    try {
+      const response = JSON.parse(xhr.responseText);
+      if (response.status === "waitlisted") {
+        showInfoAlert("You have joined the waiting list for this event.");
+      } else {
+        showInfoAlert("You have successfully registered for this event.");
+      }
+    } catch {
+      showInfoAlert("You have successfully registered for this event.");
+    }
     document.body.dispatchEvent(new Event("attendance-changed"));
   } else {
     loadingButton.classList.add("hidden");
@@ -348,11 +415,21 @@ const handleLeaveAfterRequest = (event) => {
   const xhr = event.detail?.xhr;
   const ok = handleHtmxResponse({
     xhr,
-    successMessage: "You have successfully canceled your attendance.",
+    successMessage: "",
     errorMessage: "Something went wrong canceling your attendance. Please try again later.",
   });
 
   if (ok) {
+    try {
+      const response = JSON.parse(xhr.responseText);
+      if (response.left_status === "waitlisted") {
+        showInfoAlert("You have left the waiting list for this event.");
+      } else {
+        showInfoAlert("You have successfully canceled your attendance.");
+      }
+    } catch {
+      showInfoAlert("You have successfully canceled your attendance.");
+    }
     document.body.dispatchEvent(new Event("attendance-changed"));
   } else {
     loadingButton.classList.add("hidden");
@@ -405,8 +482,10 @@ const handleAttendanceClick = (event) => {
   const signinButton = target.closest('[data-attendance-role="signin-btn"]');
   if (signinButton) {
     const path = signinButton.dataset.path || window.location.pathname;
+    const label = signinButton.querySelector("[data-attendance-label]")?.textContent || "Attend event";
+    const actionText = label === "Join waiting list" ? "join the waiting list" : "attend this event";
     showInfoAlert(
-      `You need to be <a href='/log-in?next_url=${path}' class='underline font-medium' hx-boost='true'>logged in</a> to attend this event.`,
+      `You need to be <a href='/log-in?next_url=${path}' class='underline font-medium' hx-boost='true'>logged in</a> to ${actionText}.`,
       true,
     );
     return;
@@ -414,7 +493,12 @@ const handleAttendanceClick = (event) => {
 
   const leaveButton = target.closest('[data-attendance-role="leave-btn"]');
   if (leaveButton) {
-    showConfirmAlert("Are you sure you want to cancel your attendance?", leaveButton.id, "Yes");
+    const label = leaveButton.querySelector("[data-attendance-label]")?.textContent || "Cancel attendance";
+    const message =
+      label === "Leave waiting list"
+        ? "Are you sure you want to leave the waiting list?"
+        : "Are you sure you want to cancel your attendance?";
+    showConfirmAlert(message, leaveButton.id, "Yes");
   }
 };
 

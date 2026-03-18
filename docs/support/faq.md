@@ -31,6 +31,14 @@ available.
 
 No. Only attendees can check in.
 
+## What Happens If An Event Is Full?
+
+If organizers did not enable a waitlist, the event is sold out.
+
+If organizers enabled a waitlist, you can join it from the event page and may be promoted
+automatically if someone leaves, capacity increases, or organizers remove the
+capacity limit later.
+
 ## Can I Use Automatic Meeting Creation on In-Person Events?
 
 No. Automatic meeting requests are allowed only for `virtual` and `hybrid` events.

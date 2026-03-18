@@ -86,6 +86,21 @@
         <span class="text-[10px] lg:text-xs">Attendees</span>
       </button>
     </li>
+    <li>
+      <button type="button"
+              data-section="waitlist"
+              data-active="false"
+              hx-get="/dashboard/group/events/{{ event.event_id }}/waitlist"
+              hx-trigger="click once"
+              hx-target="#waitlist-content"
+              hx-swap="innerHTML"
+              hx-indicator="#waitlist-loading"
+              class="px-3 xl:w-[120px] xl:px-0 cursor-pointer inline-flex flex-col items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group">
+        <div class="svg-icon size-4 lg:size-5 mb-2 icon-attendees bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
+        </div>
+        <span class="text-[10px] lg:text-xs">Waitlist</span>
+      </button>
+    </li>
   </ul>
 
   {% if !can_manage_events -%}
@@ -113,7 +128,7 @@
               {% if !can_manage_events -%}
                 disabled title="Your role cannot update events."
               {% endif -%}
-              hx-exclude="[name=toggle_registration_required], [name=toggle_meeting_requested], [name=toggle_cfs_enabled], [name=toggle_event_reminder_enabled]">
+              hx-exclude="[name=toggle_registration_required], [name=toggle_waitlist_enabled], [name=toggle_meeting_requested], [name=toggle_cfs_enabled], [name=toggle_event_reminder_enabled]">
         Save
       </button>
     </div>
@@ -301,6 +316,30 @@
           <p class="form-legend">Whether attendees must register in advance.</p>
         </div>
         {# End Registration required -#}
+
+        {# Waitlist enabled -#}
+        <div class="col-span-full lg:col-span-3">
+          <label class="inline-flex items-center cursor-pointer">
+            <input id="toggle_waitlist_enabled"
+                   name="toggle_waitlist_enabled"
+                   value="enabled"
+                   type="checkbox"
+                   class="sr-only peer"
+                   {% if event.waitlist_enabled %}checked{% endif %}>
+            <input type="hidden"
+                   id="waitlist_enabled"
+                   name="waitlist_enabled"
+                   value="{{ event.waitlist_enabled }}">
+            <div class="relative w-11 h-6 bg-stone-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-stone-300 after:border after:border-stone-200 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500">
+            </div>
+            <span class="ms-3 text-sm font-medium text-stone-900">Enable Waitlist</span>
+          </label>
+          <p class="form-legend">
+            Allow full events to add people to a waiting list instead of rejecting them.
+            Set a capacity first to enable waitlist safely.
+          </p>
+        </div>
+        {# End Waitlist enabled -#}
 
         {# Meetup URL -#}
         <div class="col-span-full lg:col-span-3">
@@ -724,6 +763,19 @@
 </div>
 {# End Attendees Tab -#}
 
+{# Waitlist Tab -#}
+<div data-content="waitlist" class="hidden">
+  <div id="waitlist-content">
+    <div id="waitlist-loading" class="flex items-center justify-center py-12">
+      <div class="flex flex-col items-center space-y-4">
+        {{ ui::spinner(size = "size-10") -}}
+        <div class="text-sm text-stone-500">Loading waitlist...</div>
+      </div>
+    </div>
+  </div>
+</div>
+{# End Waitlist Tab -#}
+
 {# Form buttons -#}
 <div class="flex items-center justify-end mt-6">
   <button id="cancel-button"
@@ -971,6 +1023,13 @@
   if (toggleRegistrationRequired) {
     toggleRegistrationRequired.addEventListener('change', () => {
       document.getElementById('registration_required').value = toggleRegistrationRequired.checked;
+    });
+  }
+
+  const toggleWaitlistEnabled = document.getElementById('toggle_waitlist_enabled');
+  if (toggleWaitlistEnabled) {
+    toggleWaitlistEnabled.addEventListener('change', () => {
+      document.getElementById('waitlist_enabled').value = toggleWaitlistEnabled.checked;
     });
   }
 

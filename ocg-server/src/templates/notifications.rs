@@ -110,6 +110,42 @@ pub(crate) struct EventRescheduled {
     pub theme: Theme,
 }
 
+/// Template for event waitlist joined notification.
+#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[template(path = "notifications/event_waitlist_joined.html")]
+pub(crate) struct EventWaitlistJoined {
+    /// Event summary data.
+    pub event: EventSummary,
+    /// Link to the event page.
+    pub link: String,
+    /// Theme configuration for the community.
+    pub theme: Theme,
+}
+
+/// Template for event waitlist left notification.
+#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[template(path = "notifications/event_waitlist_left.html")]
+pub(crate) struct EventWaitlistLeft {
+    /// Event summary data.
+    pub event: EventSummary,
+    /// Link to the event page.
+    pub link: String,
+    /// Theme configuration for the community.
+    pub theme: Theme,
+}
+
+/// Template for event waitlist promotion notification.
+#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[template(path = "notifications/event_waitlist_promoted.html")]
+pub(crate) struct EventWaitlistPromoted {
+    /// Event summary data.
+    pub event: EventSummary,
+    /// Link to the event page.
+    pub link: String,
+    /// Theme configuration for the community.
+    pub theme: Theme,
+}
+
 /// Template for event welcome notification.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "notifications/event_welcome.html")]

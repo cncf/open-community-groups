@@ -26,8 +26,9 @@ use crate::{
     db::DynDB,
     templates::notifications::{
         CfsSubmissionUpdated, CommunityTeamInvitation, EmailVerification, EventCanceled, EventCustom,
-        EventPublished, EventReminder, EventRescheduled, EventWelcome, GroupCustom, GroupTeamInvitation,
-        GroupWelcome, SessionProposalCoSpeakerInvitation, SpeakerWelcome,
+        EventPublished, EventReminder, EventRescheduled, EventWaitlistJoined, EventWaitlistLeft,
+        EventWaitlistPromoted, EventWelcome, GroupCustom, GroupTeamInvitation, GroupWelcome,
+        SessionProposalCoSpeakerInvitation, SpeakerWelcome,
     },
 };
 
@@ -254,6 +255,7 @@ impl DeliveryWorker {
     }
 
     /// Prepare the subject and body for a notification email.
+    #[allow(clippy::too_many_lines)]
     fn prepare_content(notification: &Notification) -> Result<(String, String)> {
         let template_data = notification
             .template_data
@@ -306,6 +308,24 @@ impl DeliveryWorker {
             NotificationKind::EventRescheduled => {
                 let subject = "Event rescheduled".to_string();
                 let template: EventRescheduled = serde_json::from_value(template_data)?;
+                let body = template.render()?;
+                (subject, body)
+            }
+            NotificationKind::EventWaitlistJoined => {
+                let subject = "You joined the waiting list".to_string();
+                let template: EventWaitlistJoined = serde_json::from_value(template_data)?;
+                let body = template.render()?;
+                (subject, body)
+            }
+            NotificationKind::EventWaitlistLeft => {
+                let subject = "You left the waiting list".to_string();
+                let template: EventWaitlistLeft = serde_json::from_value(template_data)?;
+                let body = template.render()?;
+                (subject, body)
+            }
+            NotificationKind::EventWaitlistPromoted => {
+                let subject = "You moved off the waiting list".to_string();
+                let template: EventWaitlistPromoted = serde_json::from_value(template_data)?;
                 let body = template.render()?;
                 (subject, body)
             }
@@ -496,6 +516,12 @@ pub(crate) enum NotificationKind {
     EventReminder,
     /// Notification for an event rescheduled.
     EventRescheduled,
+    /// Notification for joining an event waiting list.
+    EventWaitlistJoined,
+    /// Notification for leaving an event waiting list.
+    EventWaitlistLeft,
+    /// Notification for being promoted from an event waiting list.
+    EventWaitlistPromoted,
     /// Notification welcoming a new event attendee.
     EventWelcome,
     /// Notification for a custom group message.

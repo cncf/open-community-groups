@@ -95,6 +95,18 @@ Helpful details:
 - Canceling RSVP is immediate through `Cancel attendance`.
 - After RSVP, OCG sends a confirmation message with a calendar file attached.
 
+When an event has a capacity limit, the button behavior depends on organizer settings:
+
+- If the event is full and waitlist is disabled, it is sold out.
+- If the event is full and waitlist is enabled, `Attend event` becomes `Join waiting list`.
+- When the waitlist is enabled and already has people queued, the event page can show a public
+  `(Waitlist: N)` count next to capacity.
+- Logged-out visitors are asked to sign in before they can RSVP or join the waitlist.
+- If you later leave the waitlist, that change is immediate.
+- If a seat opens because someone leaves, capacity increases, or organizers remove the capacity
+  limit, OCG can promote you automatically and send a promotion notification.
+- If organizers remove the capacity limit entirely, everyone still on the waitlist is promoted.
+
 !> RSVP is only available before event start time.
 You must RSVP first to be eligible for event-day check-in.
 

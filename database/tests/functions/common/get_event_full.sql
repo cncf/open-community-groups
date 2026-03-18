@@ -12,12 +12,15 @@ select plan(6);
 \set cfsSubmissionID '00000000-0000-0000-0000-000000000082'
 \set communityID '00000000-0000-0000-0000-000000000001'
 \set eventCategoryID '00000000-0000-0000-0000-000000000012'
+\set eventCommunityLogoFallbackID '00000000-0000-0000-0000-000000000034'
 \set eventID '00000000-0000-0000-0000-000000000031'
+\set eventGroupLogoFallbackID '00000000-0000-0000-0000-000000000035'
 \set eventInactiveGroupID '00000000-0000-0000-0000-000000000033'
 \set eventUnpublishedID '00000000-0000-0000-0000-000000000032'
 \set groupCategoryID '00000000-0000-0000-0000-000000000011'
 \set groupID '00000000-0000-0000-0000-000000000021'
 \set groupInactiveID '00000000-0000-0000-0000-000000000022'
+\set groupNoLogoID '00000000-0000-0000-0000-000000000023'
 \set label1ID '00000000-0000-0000-0000-000000000075'
 \set label2ID '00000000-0000-0000-0000-000000000076'
 \set legacyHost1ID '00000000-0000-0000-0000-000000000071'
@@ -113,6 +116,23 @@ insert into "group" (
     :'communityID',
     :'groupCategoryID',
     false
+);
+
+-- Group without logo
+insert into "group" (
+    group_id,
+    name,
+    slug,
+    community_id,
+    group_category_id,
+    active
+) values (
+    :'groupNoLogoID',
+    'Seattle Kubernetes Meetup No Logo',
+    'abc5678',
+    :'communityID',
+    :'groupCategoryID',
+    true
 );
 
 -- User
@@ -478,6 +498,60 @@ insert into event (
     'America/New_York'
 );
 
+-- Event with no logo for group-logo fallback checks
+insert into event (
+    event_id,
+    name,
+    slug,
+    description,
+    event_kind_id,
+    event_category_id,
+    group_id,
+    published,
+    starts_at,
+    timezone,
+    logo_url
+) values (
+    :'eventGroupLogoFallbackID',
+    'Logo Fallback Event',
+    'logo-fallback-event',
+    'An event with no logo that should fall back to the group logo',
+    'virtual',
+    :'eventCategoryID',
+    :'groupID',
+    true,
+    '2024-09-15 09:00:00+00',
+    'America/New_York',
+    null
+);
+
+-- Event with no logo for community-logo fallback checks
+insert into event (
+    event_id,
+    name,
+    slug,
+    description,
+    event_kind_id,
+    event_category_id,
+    group_id,
+    published,
+    starts_at,
+    timezone,
+    logo_url
+) values (
+    :'eventCommunityLogoFallbackID',
+    'Community Logo Fallback Event',
+    'community-logo-fallback-event',
+    'An event with no logo in a group with no logo that should fall back to the community logo',
+    'virtual',
+    :'eventCategoryID',
+    :'groupNoLogoID',
+    true,
+    '2024-10-15 09:00:00+00',
+    'America/New_York',
+    null
+);
+
 -- ============================================================================
 -- TESTS
 -- ============================================================================
@@ -539,6 +613,8 @@ select is(
         "venue_state": "NY",
         "venue_zip_code": "10001",
         "remaining_capacity": 498,
+        "waitlist_count": 0,
+        "waitlist_enabled": false,
         "community": {
             "banner_mobile_url": "https://example.com/banner_mobile.png",
             "banner_url": "https://example.com/banner.png",
@@ -833,30 +909,26 @@ select is(
 );
 
 -- Should use group logo when event has no logo
-update event set logo_url = null where event_id = :'eventID';
 select is(
     (get_event_full(
         :'communityID'::uuid,
         :'groupID'::uuid,
-        :'eventID'::uuid
+        :'eventGroupLogoFallbackID'::uuid
     )::jsonb)->>'logo_url',
     'https://example.com/group-logo.png',
     'Should use group logo when event has no logo'
 );
 
 -- Should use community logo when event and group have no logo
-update "group" set logo_url = null where group_id = :'groupID';
 select is(
     (get_event_full(
         :'communityID'::uuid,
-        :'groupID'::uuid,
-        :'eventID'::uuid
+        :'groupNoLogoID'::uuid,
+        :'eventCommunityLogoFallbackID'::uuid
     )::jsonb)->>'logo_url',
     'https://example.com/logo.png',
     'Should use community logo when event and group have no logo'
 );
-update "group" set logo_url = 'https://example.com/group-logo.png' where group_id = :'groupID';
-update event set logo_url = 'https://example.com/event-logo.png' where event_id = :'eventID';
 
 -- Should return null for non-existent event
 

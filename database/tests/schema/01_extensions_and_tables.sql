@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(56);
+select plan(57);
 
 -- ============================================================================
 -- TESTS
@@ -39,6 +39,7 @@ select has_table('event_cfs_label');
 select has_table('event_speaker');
 select has_table('event_sponsor');
 select has_table('event_views');
+select has_table('event_waitlist');
 select has_table('group');
 select has_table('group_category');
 select has_table('group_member');

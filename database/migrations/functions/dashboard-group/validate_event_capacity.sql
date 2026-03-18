@@ -10,6 +10,11 @@ declare
     v_capacity int := (p_event->>'capacity')::int;
     v_provider_max_participants int;
 begin
+    -- Validate waitlist configuration against capacity requirements
+    if coalesce((p_event->>'waitlist_enabled')::boolean, false) = true and v_capacity is null then
+        raise exception 'waitlist enabled events must define a capacity';
+    end if;
+
     -- Validate event capacity against provider limits for meetings
     if (p_event->>'meeting_requested')::boolean = true then
         v_provider_max_participants := (p_cfg_max_participants->>(p_event->>'meeting_provider_id'))::int;

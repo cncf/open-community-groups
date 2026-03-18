@@ -1,0 +1,23 @@
+{% extends "notifications/base.html" -%}
+{% import "macros/email.html" as email -%}
+
+{% block subject -%}
+  You left the waitlist: {{ event.name }}
+{% endblock subject -%}
+
+{% block preheader -%}
+  You are no longer on the waiting list for {{ event.name }}.
+{% endblock preheader -%}
+
+{% block content -%}
+  <p class="default mb-30">
+    You have left the waiting list for <strong>{{ event.name }}</strong> from
+    <strong>{{ event.group_name }}</strong>.
+  </p>
+
+  {{ email::button(link = link, text = "View event") }}
+{% endblock content -%}
+
+{% block footer -%}
+  You are receiving this because you left the waiting list for {{ event.name }}.
+{% endblock footer -%}

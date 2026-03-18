@@ -66,6 +66,12 @@ window.
 
 After RSVP, OCG sends a confirmation message with a calendar attachment.
 
+If the event is already full, you may instead see `Join waiting list` when
+organizers have enabled waitlisting for that capacity-limited event.
+
+If a seat opens because someone leaves, capacity increases, or organizers
+remove the capacity limit, OCG may promote you automatically.
+
 ![Event page and RSVP action](../screenshots/event-page.png)
 
 ## Apply to Speak at an Event

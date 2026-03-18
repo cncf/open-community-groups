@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(122);
+select plan(125);
 
 -- ============================================================================
 -- TESTS
@@ -33,6 +33,7 @@ select has_pk('event_kind');
 select has_pk('event_speaker');
 select has_pk('event_sponsor');
 select hasnt_pk('event_views');
+select has_pk('event_waitlist');
 select has_pk('group');
 select has_pk('group_category');
 select has_pk('group_member');
@@ -97,6 +98,8 @@ select col_is_fk('event_speaker', 'user_id', 'user');
 select col_is_fk('event_sponsor', 'event_id', 'event');
 select col_is_fk('event_sponsor', 'group_sponsor_id', 'group_sponsor');
 select col_is_fk('event_views', 'event_id', 'event');
+select col_is_fk('event_waitlist', 'event_id', 'event');
+select col_is_fk('event_waitlist', 'user_id', 'user');
 select col_is_fk('group', 'community_id', 'community');
 select col_is_fk('group', 'group_category_id', 'group_category');
 select col_is_fk('group', 'group_site_layout_id', 'group_site_layout');

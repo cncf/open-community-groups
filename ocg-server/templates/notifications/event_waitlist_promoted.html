@@ -1,0 +1,32 @@
+{% extends "notifications/base.html" -%}
+{% import "macros/email.html" as email -%}
+
+{% block subject -%}
+  You're in: {{ event.name }}
+{% endblock subject -%}
+
+{% block preheader -%}
+  A seat opened up and you were moved from the waiting list into the event.
+{% endblock preheader -%}
+
+{% block content -%}
+  <p class="default mb-30">
+    Good news - a seat opened up for <strong>{{ event.name }}</strong> from
+    <strong>{{ event.group_name }}</strong>, and you are now registered.
+    <br />
+    <br />
+    {% if let Some(starts_at) = &event.starts_at -%}
+      Date &amp; time:
+      {{ starts_at.with_timezone(event.timezone).format("%A, %B %e, %G · %I:%M %p %Z") }}
+      <br />
+    {% endif -%}
+  </p>
+
+  {{ email::button(link = link, text = "View event") }}
+
+  <p class="default mt-30 mb-15">Please find attached an .ics file containing the event details.</p>
+{% endblock content -%}
+
+{% block footer -%}
+  You are receiving this because you were promoted from the waiting list for {{ event.name }}.
+{% endblock footer -%}

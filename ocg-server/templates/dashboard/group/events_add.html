@@ -97,7 +97,7 @@
               hx-target="#dashboard-content"
               hx-indicator="#dashboard-spinner"
               hx-disabled-elt="#add-event-button, #cancel-button"
-              hx-exclude="[name=toggle_registration_required], [name=toggle_meeting_requested], [name=toggle_cfs_enabled], [name=toggle_event_reminder_enabled]">
+              hx-exclude="[name=toggle_registration_required], [name=toggle_waitlist_enabled], [name=toggle_meeting_requested], [name=toggle_cfs_enabled], [name=toggle_event_reminder_enabled]">
         Save
       </button>
     </div>
@@ -275,6 +275,29 @@
           <p class="form-legend">Whether attendees must register in advance.</p>
         </div>
         {# End Registration required -#}
+
+        {# Waitlist enabled -#}
+        <div class="col-span-full lg:col-span-3">
+          <label class="inline-flex items-center cursor-pointer">
+            <input id="toggle_waitlist_enabled"
+                   name="toggle_waitlist_enabled"
+                   value="enabled"
+                   type="checkbox"
+                   class="sr-only peer">
+            <input type="hidden"
+                   id="waitlist_enabled"
+                   name="waitlist_enabled"
+                   value="false">
+            <div class="relative w-11 h-6 bg-stone-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-stone-300 after:border after:border-stone-200 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500">
+            </div>
+            <span class="ms-3 text-sm font-medium text-stone-900">Enable Waitlist</span>
+          </label>
+          <p class="form-legend">
+            Allow full events to add people to a waiting list instead of rejecting them.
+            Set a capacity first to enable waitlist safely.
+          </p>
+        </div>
+        {# End Waitlist enabled -#}
 
         {# Meetup URL -#}
         <div class="col-span-full lg:col-span-3">
@@ -750,6 +773,13 @@
   if (toggleRegistrationRequired) {
     toggleRegistrationRequired.addEventListener('change', () => {
       document.getElementById('registration_required').value = toggleRegistrationRequired.checked;
+    });
+  }
+
+  const toggleWaitlistEnabled = document.getElementById('toggle_waitlist_enabled');
+  if (toggleWaitlistEnabled) {
+    toggleWaitlistEnabled.addEventListener('change', () => {
+      document.getElementById('waitlist_enabled').value = toggleWaitlistEnabled.checked;
     });
   }
 

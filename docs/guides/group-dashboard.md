@@ -51,11 +51,11 @@ them.
 
 Group role permissions are fixed and enforced by middleware plus database checks:
 
-| Group role | Group read | Events | Members | Settings | Sponsors | Team |
-| --- | --- | --- | --- | --- | --- | --- |
-| `admin` | Yes | Write | Write | Write | Write | Write |
-| `events-manager` | Yes | Write | Read only | Read only | Read only | Read only |
-| `viewer` | Yes | Read only | Read only | Read only | Read only | Read only |
+| Group role       | Group read | Events    | Members   | Settings  | Sponsors  | Team      |
+| ---------------- | ---------- | --------- | --------- | --------- | --------- | --------- |
+| `admin`          | Yes        | Write     | Write     | Write     | Write     | Write     |
+| `events-manager` | Yes        | Write     | Read only | Read only | Read only | Read only |
+| `viewer`         | Yes        | Read only | Read only | Read only | Read only | Read only |
 
 ![Group roles](../screenshots/dashboard-group-members-list-roles.png)
 
@@ -179,6 +179,15 @@ List classification is based on event start time:
 Starting from [Add Event](/dashboard/group/events/add ':ignore') gives organizers a structured editor with
 tabbed sections that map directly to delivery needs (details, schedule, roles, sessions, CFS,
 attendees).
+
+Waitlist-aware event operations also include:
+
+- A `Waitlist enabled` toggle in event details.
+- Waitlist requires a numeric event capacity; unlimited-capacity events cannot enable it.
+- Separate `Attendees` and `Waitlist` tabs inside the event editor.
+- Automatic promotion from the waitlist when attendees leave, capacity increases, or capacity is
+  removed.
+- Waitlist recipients included in event cancellation notifications.
 
 ![Add event flow](../screenshots/dashboard-group-add-event.png)
 
