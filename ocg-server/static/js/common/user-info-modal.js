@@ -184,7 +184,7 @@ export class UserInfoModal extends LitWrapper {
         rel="noopener noreferrer"
         class="group btn-primary-outline-anchor inline-flex max-w-full items-center justify-center gap-2 h-10 md:h-[30px]"
       >
-        <span>OpenProfile</span>
+        <span>openprofile.dev</span>
         <div class="svg-icon size-3 icon-external-link"></div>
       </a>
     `;
