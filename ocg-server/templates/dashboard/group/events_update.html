@@ -120,11 +120,13 @@
                        opacity-50 cursor-not-allowed
                      {% endif -%}"
               hx-put="/dashboard/group/events/{{ event.event_id }}/update"
+              hx-trigger="click, confirmed"
               hx-ext="no-empty-vals"
               hx-include="#details-form, #cfs-form, #date-venue-form, #sessions-form, #hosts-sponsors-form"
               hx-target="#dashboard-content"
               hx-indicator="#dashboard-spinner"
               hx-disabled-elt="#update-event-button, #cancel-button"
+              data-waitlist-count="{{ event.waitlist_count }}"
               {% if !can_manage_events -%}
                 disabled title="Your role cannot update events."
               {% endif -%}
@@ -797,6 +799,7 @@
   } from '/static/js/common/common.js';
   import {
     handleHtmxResponse,
+    showConfirmAlert,
     showErrorAlert
   } from '/static/js/common/alerts.js';
   import {
@@ -827,6 +830,7 @@
   const approvedSubmissionsEvent = 'event-approved-submissions-updated';
   const isPastEvent = document.querySelector('[data-event-past]')?.dataset.eventPast === 'true';
   const canManageEvents = '{{ can_manage_events }}' === 'true';
+  const initialWaitlistCount = Number.parseInt(updateEventButton?.dataset.waitlistCount || '0', 10);
   const inertForm = document.querySelector('.inert-form');
 
   const syncSessionsDateRange = () => {
@@ -1235,6 +1239,27 @@
   });
 
   if (updateEventButton) {
+    updateEventButton.addEventListener('click', (e) => {
+      if (!capacityInput || initialWaitlistCount <= 0) {
+        return;
+      }
+
+      const capacityWasCleared = capacityInput.value.trim() === '';
+      if (!capacityWasCleared) {
+        return;
+      }
+
+      e.preventDefault();
+      e.stopImmediatePropagation();
+
+      const queuedPeopleLabel = initialWaitlistCount === 1 ? 'person is' : 'people are';
+      showConfirmAlert(
+        `${initialWaitlistCount} ${queuedPeopleLabel} currently on the waitlist. Removing capacity will make this event unlimited and add them as attendees. Do you want to continue?`,
+        'update-event-button',
+        'Continue',
+      );
+    }, true);
+
     // Validation before form submission
     updateEventButton.addEventListener('htmx:beforeRequest', (e) => {
       if (e.detail.elt.id === 'update-event-button') {
