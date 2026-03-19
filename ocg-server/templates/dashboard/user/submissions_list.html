@@ -19,7 +19,7 @@ description = "Track and manage your call for speakers submissions.") -}}
         <col />
         <col class="hidden xl:table-column w-[220px]" />
         <col class="hidden 2xl:table-column w-32" />
-        <col class="w-24" />
+        <col class="w-[112px]" />
       </colgroup>
       <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
         <tr>
@@ -27,7 +27,7 @@ description = "Track and manage your call for speakers submissions.") -}}
           <th scope="col" class="px-3 xl:px-5 py-3">Proposal</th>
           <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3">Status</th>
           <th scope="col" class="hidden 2xl:table-cell px-3 xl:px-5 py-3">Updated</th>
-          <th scope="col" class="px-3 xl:px-5 py-3 w-32">
+          <th scope="col" class="px-3 xl:px-5 py-3 w-[112px]">
             <span class="sr-only">Actions</span>
           </th>
         </tr>
@@ -85,7 +85,7 @@ description = "Track and manage your call for speakers submissions.") -}}
                   {{ submission.created_at.format("%b %d, %Y") }}
                 {% endif -%}
               </td>
-              <td class="px-3 xl:px-5 py-4">
+              <td class="px-3 xl:px-5 py-4 w-[112px]">
                 <div class="flex items-center justify-end gap-2">
                   {% if submission.status_id == "information-requested" -%}
                     <button type="button"
@@ -156,7 +156,7 @@ description = "Track and manage your call for speakers submissions.") -}}
      aria-modal="true"
      aria-labelledby="action-required-modal-title"
      aria-describedby="action-required-modal-message"
-     class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-[1000] justify-center items-center w-full md:inset-0 max-h-full flex">
+     class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-[1000] justify-center items-center w-full md:inset-0 h-full max-h-full flex">
   <div id="overlay-action-required-modal"
        class="modal-overlay absolute w-full h-full bg-stone-950 opacity-[0.35]"></div>
   <div class="modal-panel p-4 max-w-2xl">

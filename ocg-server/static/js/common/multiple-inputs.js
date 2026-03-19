@@ -1,4 +1,4 @@
-import { html, repeat } from "/static/vendor/js/lit-all.v3.3.1.min.js";
+import { html, nothing, repeat } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 
 /**
@@ -18,6 +18,7 @@ export class MultipleInputs extends LitWrapper {
    * @property {string} legend - Optional legend text displayed below the inputs
    * @property {boolean} required - If true, prevents removing the last input
    * @property {number} maxItems - Maximum number of items allowed (0 = unlimited)
+   * @property {number} maxLength - Maximum length allowed for each input value
    */
   static properties = {
     items: { type: Array },
@@ -28,6 +29,7 @@ export class MultipleInputs extends LitWrapper {
     legend: { type: String },
     required: { type: Boolean },
     maxItems: { type: Number, attribute: "max-items" },
+    maxLength: { type: Number, attribute: "max-length" },
   };
 
   constructor() {
@@ -40,6 +42,7 @@ export class MultipleInputs extends LitWrapper {
     this.legend = "";
     this.required = false;
     this.maxItems = 0; // 0 means no limit
+    this.maxLength = 0; // 0 means no limit
     this._nextId = 0;
   }
 
@@ -195,6 +198,7 @@ export class MultipleInputs extends LitWrapper {
                     autocorrect="off"
                     autocapitalize="off"
                     spellcheck="false"
+                    maxlength=${this.maxLength > 0 ? this.maxLength : nothing}
                   />
                 </div>
                 <button

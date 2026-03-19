@@ -30,7 +30,7 @@
       <button type="button"
               data-section="details"
               data-active="true"
-              class="px-3 xl:w-[120px] xl:px-0 cursor-pointer inline-flex flex-col items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 active data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group">
+              class="px-2 xl:w-[100px] 2xl:w-[120px] xl:px-0 cursor-pointer inline-flex flex-col items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 active data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group">
         <div class="svg-icon size-4 lg:size-5 mb-2 icon-event bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
         </div>
         <span class="text-[10px] lg:text-xs">Details</span>
@@ -40,29 +40,29 @@
       <button type="button"
               data-section="date-venue"
               data-active="false"
-              class="px-3 xl:w-[120px] xl:px-0 cursor-pointer inline-flex flex-col items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group">
+              class="px-2 xl:w-[100px] 2xl:w-[120px] xl:px-0 cursor-pointer inline-flex flex-col items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group">
         <div class="svg-icon size-4 lg:size-5 mb-2 icon-calendar bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
         </div>
-        <span class="text-[10px] lg:text-xs hidden lg:inline">Date & Venue</span>
-        <span class="text-[10px] lg:hidden">Schedule</span>
+        <span class="text-[10px] lg:text-xs hidden xl:inline">Date & Venue</span>
+        <span class="text-[10px] lg:text-xs xl:hidden">Schedule</span>
       </button>
     </li>
     <li>
       <button type="button"
               data-section="hosts-sponsors"
               data-active="false"
-              class="px-3 xl:w-[120px] xl:px-0 cursor-pointer inline-flex flex-col items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group">
+              class="px-2 xl:w-[100px] 2xl:w-[120px] xl:px-0 cursor-pointer inline-flex flex-col items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group">
         <div class="svg-icon size-4 lg:size-5 mb-2 icon-user-plus bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
         </div>
-        <span class="text-[10px] lg:text-xs hidden xl:inline">Hosts & Speakers</span>
-        <span class="text-[10px] lg:text-xs xl:hidden">Hosts</span>
+        <span class="text-[10px] lg:text-xs hidden 2xl:inline">Hosts & Speakers</span>
+        <span class="text-[10px] lg:text-xs 2xl:hidden">Hosts</span>
       </button>
     </li>
     <li>
       <button type="button"
               data-section="sessions"
               data-active="false"
-              class="px-3 xl:w-[120px] xl:px-0 cursor-pointer inline-flex flex-col items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group">
+              class="px-2 xl:w-[100px] 2xl:w-[120px] xl:px-0 cursor-pointer inline-flex flex-col items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group">
         <div class="svg-icon size-4 lg:size-5 mb-2 icon-presentation bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
         </div>
         <span class="text-[10px] lg:text-xs">Sessions</span>
@@ -72,7 +72,7 @@
       <button type="button"
               data-section="cfs"
               data-active="false"
-              class="px-3 xl:w-[120px] xl:px-0 cursor-pointer inline-flex flex-col items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group">
+              class="px-2 xl:w-[100px] 2xl:w-[120px] xl:px-0 cursor-pointer inline-flex flex-col items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group">
         <div class="svg-icon size-4 lg:size-5 mb-2 icon-megaphone bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
         </div>
         <span class="text-[10px] lg:text-xs">CFS</span>
@@ -135,7 +135,7 @@
               </div>
               {# End Event name -#}
 
-              <div class="col-span-3"></div>
+              <div class="hidden lg:flex col-span-3"></div>
 
               {# Event kind -#}
               <div class="col-span-full lg:col-span-3">
@@ -314,7 +314,7 @@
         </div>
         {# End Meetup URL -#}
 
-        <div class="col-span-3"></div>
+        <div class="hidden lg:flex col-span-3"></div>
 
         {# Photos -#}
         <div class="col-span-full">
@@ -326,7 +326,7 @@
         <div class="col-span-3">
           <label for="tags" class="form-label">Tags</label>
           <div class="mt-2">
-            <multiple-inputs field-name="tags" input-type="text" label="Tag" legend="Optional tags to help categorize and find the event.">
+            <multiple-inputs field-name="tags" input-type="text" max-length="{{ crate::validation::MAX_LEN_TAG }}" label="Tag" legend="Optional tags to help categorize and find the event. Max {{ crate::validation::MAX_LEN_TAG }} characters per tag.">
             </multiple-inputs>
           </div>
         </div>
@@ -362,7 +362,7 @@
         </div>
         {# End Enable CFS toggle -#}
 
-        <div class="col-span-3"></div>
+        <div class="hidden lg:flex col-span-3"></div>
 
         {# Opens at -#}
         <div class="col-span-full lg:col-span-3">
@@ -451,7 +451,7 @@
           </div>
           {# End Timezone -#}
 
-          <div class="col-span-3"></div>
+          <div class="hidden lg:flex col-span-3"></div>
 
           {# Start date/time -#}
           <div class="col-span-full lg:col-span-3">

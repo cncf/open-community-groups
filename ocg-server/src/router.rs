@@ -298,5 +298,5 @@ async fn redirect_old_hosts(
 
 /// Returns the `serde_qs` configuration for query string parsing.
 pub(crate) fn serde_qs_config() -> serde_qs::Config {
-    serde_qs::Config::new().max_depth(3).use_form_encoding(true)
+    serde_qs::Config::new().max_depth(6).use_form_encoding(true)
 }

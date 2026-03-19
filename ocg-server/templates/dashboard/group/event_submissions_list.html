@@ -81,7 +81,7 @@ description = "Review and manage call for speakers submissions.") -}}
         <col class="w-[190px]" />
         <col class="hidden xl:table-column w-[150px]" />
         <col class="hidden 2xl:table-column w-[110px]" />
-        <col class="w-20" />
+        <col class="w-[72px]" />
       </colgroup>
       <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
         <tr>
@@ -90,7 +90,7 @@ description = "Review and manage call for speakers submissions.") -}}
           <th scope="col" class="px-3 xl:px-5 py-3">Status</th>
           <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3">Ratings</th>
           <th scope="col" class="hidden 2xl:table-cell px-3 xl:px-5 py-3">Submitted</th>
-          <th scope="col" class="px-3 xl:px-5 py-3">
+          <th scope="col" class="px-3 xl:px-5 py-3 w-[72px]">
             <span class="sr-only">Actions</span>
           </th>
         </tr>
@@ -161,7 +161,7 @@ description = "Review and manage call for speakers submissions.") -}}
               <td class="hidden 2xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap">
                 {{ submission.created_at.format("%b %d, %Y") }}
               </td>
-              <td class="px-3 xl:px-5 py-4">
+              <td class="px-3 xl:px-5 py-4 w-[72px] text-right">
                 <button type="button"
                         class="btn-tertiary p-2
                                {% if !can_manage_events -%}

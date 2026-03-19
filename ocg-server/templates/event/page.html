@@ -103,15 +103,17 @@
                         {% if let Some(remaining_capacity) = &event.remaining_capacity -%}
                           <span class="text-sm">Attendees: {{ capacity - remaining_capacity }}</span>
                         {% else -%}
-                          <span class="text-sm">Capacity: {{ capacity }}</span>
+                          <span class="text-sm"><span class="md:hidden lg:inline">Capacity:</span><span class="ms-1 md:ms-0 xl:ms-1">{{ capacity }}</span></span>
                         {% endif -%}
                       {% else -%}
-                        <span class="text-sm">Capacity: {{ capacity }}</span>
+                        <span class="text-sm"><span class="md:hidden lg:inline">Capacity:</span><span class="ms-1 md:ms-0 xl:ms-1">{{ capacity }}</span></span>
                         {% if let Some(remaining_capacity) = &event.remaining_capacity %}
                           {% if *remaining_capacity > 0 %}
-                            <span class="text-xs text-stone-500 ms-2">(Remaining: {{ remaining_capacity }})</span>
+                            <span class="text-xs text-stone-500 ms-2 md:hidden lg:inline">(Remaining: {{ remaining_capacity }})</span>
+                            <span class="hidden md:inline lg:hidden text-xs text-stone-500 ms-1">/ {{ remaining_capacity }} left</span>
                           {% else if event.waitlist_count > 0 %}
-                            <span class="text-xs text-stone-500 ms-2">(Waitlist: {{ event.waitlist_count }})</span>
+                            <span class="text-xs text-stone-500 ms-2 md:hidden lg:inline">(Waitlist: {{ event.waitlist_count }})</span>
+                            <span class="hidden md:inline lg:hidden text-xs text-stone-500 ms-1">/ {{ event.waitlist_count }} waitlist</span>
                           {% endif %}
                         {% endif %}
                       {% endif -%}
@@ -173,10 +175,13 @@
                     {% let end_tz = ends_at.with_timezone(event.timezone) -%}
                     {% if start_tz.date_naive() != end_tz.date_naive() -%}
                       {# Multi-day event: FROM → TO layout #}
-                      <div class="flex items-start gap-8">
+                      <div class="flex items-start gap-4 sm:gap-8">
                         <div>
                           <div class="text-xs uppercase font-medium mb-0.5">From</div>
-                          <div class="text-lg sm:text-xl xl:text-2xl font-semibold text-stone-800">
+                          <div class="text-base sm:hidden font-semibold text-stone-800 whitespace-nowrap">
+                            {{ start_tz.format("%b %e, %y") }}
+                          </div>
+                          <div class="hidden sm:block text-lg sm:text-xl xl:text-2xl font-semibold text-stone-800 whitespace-nowrap">
                             {{ start_tz.format("%b %e, %G") }}
                           </div>
                           <div class="mt-1 text-sm text-stone-600">{{ start_tz.format("%I:%M %p") }}</div>
@@ -184,7 +189,10 @@
                         <div class="text-stone-400 mt-6 xl:mt-7">→</div>
                         <div>
                           <div class="text-xs uppercase font-medium mb-0.5">To</div>
-                          <div class="text-lg sm:text-xl xl:text-2xl font-semibold text-stone-800">
+                          <div class="text-base sm:hidden font-semibold text-stone-800 whitespace-nowrap">
+                            {{ end_tz.format("%b %e, %y") }}
+                          </div>
+                          <div class="hidden sm:block text-lg sm:text-xl xl:text-2xl font-semibold text-stone-800 whitespace-nowrap">
                             {{ end_tz.format("%b %e, %G") }}
                           </div>
                           <div class="mt-1 text-sm text-stone-600">{{ end_tz.format("%I:%M %p") }}</div>
@@ -192,7 +200,10 @@
                       </div>
                     {% else -%}
                       {# Single-day event with end time: show time range #}
-                      <div class="text-lg sm:text-xl xl:text-3xl font-semibold text-stone-800">
+                      <div class="text-base sm:hidden font-semibold text-stone-800 whitespace-nowrap">
+                        {{ start_tz.format("%b %e, %y") }}
+                      </div>
+                      <div class="hidden sm:block text-lg sm:text-xl xl:text-3xl font-semibold text-stone-800 whitespace-nowrap">
                         {{ start_tz.format("%B %e, %G") }}
                       </div>
                       <div class="mt-2 text-base text-stone-600">
@@ -201,7 +212,10 @@
                     {% endif -%}
                     {% when None -%}
                     {# Single-day event without end time #}
-                    <div class="text-lg sm:text-xl xl:text-3xl font-semibold text-stone-800">
+                    <div class="text-base sm:hidden font-semibold text-stone-800 whitespace-nowrap">
+                      {{ start_tz.format("%b %e, %y") }}
+                    </div>
+                    <div class="hidden sm:block text-lg sm:text-xl xl:text-3xl font-semibold text-stone-800 whitespace-nowrap">
                       {{ start_tz.format("%B %e, %G") }}
                     </div>
                     <div class="mt-2 text-base text-stone-600">{{ start_tz.format("%I:%M %p %Z") }}</div>
@@ -311,7 +325,7 @@
                role="dialog"
                aria-modal="true"
                aria-labelledby="cfs-modal-title"
-               class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 justify-center items-center w-full md:inset-0 max-h-full flex z-[1000]">
+               class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 justify-center items-center w-full md:inset-0 h-full max-h-full flex z-[1000]">
             <div id="overlay-cfs-modal"
                  class="modal-overlay absolute w-full h-full bg-stone-950 opacity-[0.35]"></div>
             <div class="modal-panel p-4 max-w-2xl">
@@ -405,7 +419,7 @@
             </div>
             <div class="flex flex-wrap gap-2">
               {% for tag in tags -%}
-                <span class="inline-block px-3 py-1 bg-stone-50 text-stone-700 text-sm rounded-full uppercase">{{ tag }}</span>
+                <span class="inline-block max-w-full truncate px-3 py-1 bg-stone-50 text-stone-700 text-sm rounded-full uppercase">{{ tag }}</span>
               {% endfor -%}
             </div>
           </div>
