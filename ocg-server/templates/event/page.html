@@ -110,6 +110,8 @@
                         {% if let Some(remaining_capacity) = &event.remaining_capacity %}
                           {% if *remaining_capacity > 0 %}
                             <span class="text-xs text-stone-500 ms-2">(Remaining: {{ remaining_capacity }})</span>
+                          {% else if event.waitlist_count > 0 %}
+                            <span class="text-xs text-stone-500 ms-2">(Waitlist: {{ event.waitlist_count }})</span>
                           {% endif %}
                         {% endif %}
                       {% endif -%}
