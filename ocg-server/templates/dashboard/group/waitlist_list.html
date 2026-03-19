@@ -22,11 +22,11 @@
     <tbody id="waitlist-list" role="rowgroup">
       {% if waitlist.is_empty() -%}
         <tr class="bg-white border-b border-stone-200">
-          <td class="px-8 py-12 text-center" colspan="3">
-            <div class="flex flex-col items-center gap-2 text-sm text-stone-500">
-              <div class="svg-icon size-8 bg-stone-300 icon-waitlist"></div>
-              <p>No one is currently on the waiting list.</p>
-            </div>
+          <td class="xl:hidden px-8 py-12 text-center" colspan="2">
+            {% include "dashboard/placeholders/group_waitlist_table.html" -%}
+          </td>
+          <td class="hidden xl:table-cell px-8 py-12 text-center" colspan="3">
+            {% include "dashboard/placeholders/group_waitlist_table.html" -%}
           </td>
         </tr>
       {% else -%}
