@@ -13,7 +13,6 @@ use tower::ServiceExt;
 use uuid::Uuid;
 
 use crate::{
-    config::{MeetingsConfig, MeetingsZoomConfig},
     db::mock::MockDB,
     handlers::tests::*,
     router::CACHE_CONTROL_NO_CACHE,
@@ -452,18 +451,7 @@ async fn test_add_success() {
     let nm = MockNotificationsManager::new();
 
     // Setup meetings config with Zoom
-    let meetings_cfg = MeetingsConfig {
-        zoom: Some(MeetingsZoomConfig {
-            account_id: "test-account".to_string(),
-            client_id: "test-client".to_string(),
-            client_secret: "test-secret".to_string(),
-            enabled: true,
-            host_pool_users: vec!["host@example.com".to_string()],
-            max_participants: 100,
-            max_simultaneous_meetings_per_host: 1,
-            webhook_secret_token: "test-token".to_string(),
-        }),
-    };
+    let meetings_cfg = sample_zoom_meetings_cfg("test-token");
 
     // Setup router with meetings config and send request
     let router = TestRouterBuilder::new(db, nm)

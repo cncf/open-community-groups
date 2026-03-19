@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::Arc};
+use std::sync::Arc;
 
 use anyhow::anyhow;
 use axum::extract::Query;
@@ -17,7 +17,6 @@ use axum_login::tower_sessions::session;
 use oauth2::{AuthUrl, ClientId, ClientSecret, RedirectUrl, TokenUrl, basic::BasicClient};
 use openidconnect as oidc;
 use serde_json::json;
-use time::OffsetDateTime;
 use tower::ServiceExt;
 use tower_sessions::{MemoryStore, Session};
 use uuid::Uuid;
@@ -30,7 +29,7 @@ use crate::{
         extractors::{OAuth2, Oidc},
         tests::*,
     },
-    router::{CACHE_CONTROL_NO_CACHE, State, serde_qs_config},
+    router::CACHE_CONTROL_NO_CACHE,
     services::{
         images::MockImageStorage,
         notifications::{MockNotificationsManager, NotificationKind},
@@ -341,7 +340,7 @@ async fn test_log_in_success() {
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
     let password_hash = password_auth::generate_hash("secret-password");
-    let session_record = empty_session_record(session_id);
+    let session_record = sample_empty_session_record(session_id);
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -363,7 +362,7 @@ async fn test_log_in_success() {
         .returning(|_| Ok(()));
     db.expect_create_session()
         .times(1)
-        .withf(move |record| record_contains_selected_group(record, group_id))
+        .withf(move |record| session_record_contains_selected_group(record, group_id))
         .returning(|_| Ok(()));
     db.expect_list_user_groups()
         .times(1)
@@ -407,7 +406,7 @@ async fn test_log_in_success() {
 async fn test_log_in_invalid_credentials() {
     // Setup identifiers and data structures
     let session_id = session::Id::default();
-    let session_record = empty_session_record(session_id);
+    let session_record = sample_empty_session_record(session_id);
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -465,7 +464,7 @@ async fn test_log_in_invalid_credentials() {
 async fn test_log_in_validation_error() {
     // Setup identifiers and data structures
     let session_id = session::Id::default();
-    let session_record = empty_session_record(session_id);
+    let session_record = sample_empty_session_record(session_id);
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -602,7 +601,7 @@ async fn test_log_out_invalid_session() {
 async fn test_oauth2_callback_missing_state() {
     // Setup identifiers and data structures
     let session_id = session::Id::default();
-    let session_record = empty_session_record(session_id);
+    let session_record = sample_empty_session_record(session_id);
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -662,7 +661,7 @@ async fn test_oauth2_callback_missing_state() {
 async fn test_oauth2_callback_state_mismatch() {
     // Setup identifiers and data structures
     let session_id = session::Id::default();
-    let mut session_record = empty_session_record(session_id);
+    let mut session_record = sample_empty_session_record(session_id);
     session_record
         .data
         .insert(OAUTH2_CSRF_STATE_KEY.to_string(), json!("state-in-session"));
@@ -854,7 +853,7 @@ async fn test_oauth2_callback_success() {
 async fn test_oauth2_callback_returns_error_when_provider_is_not_configured() {
     // Setup identifiers and data structures
     let session_id = session::Id::default();
-    let mut session_record = empty_session_record(session_id);
+    let mut session_record = sample_empty_session_record(session_id);
     session_record
         .data
         .insert(OAUTH2_CSRF_STATE_KEY.to_string(), json!("state-in-session"));
@@ -961,7 +960,7 @@ async fn test_oauth2_redirect_success() {
 async fn test_oidc_callback_missing_nonce() {
     // Setup identifiers and data structures
     let session_id = session::Id::default();
-    let mut session_record = empty_session_record(session_id);
+    let mut session_record = sample_empty_session_record(session_id);
     session_record
         .data
         .insert(OAUTH2_CSRF_STATE_KEY.to_string(), json!("state-in-session"));
@@ -1013,7 +1012,7 @@ async fn test_oidc_callback_missing_nonce() {
 async fn test_oidc_callback_missing_state() {
     // Setup identifiers and data structures
     let session_id = session::Id::default();
-    let session_record = empty_session_record(session_id);
+    let session_record = sample_empty_session_record(session_id);
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -1062,7 +1061,7 @@ async fn test_oidc_callback_missing_state() {
 async fn test_oidc_callback_state_mismatch() {
     // Setup identifiers and data structures
     let session_id = session::Id::default();
-    let mut session_record = empty_session_record(session_id);
+    let mut session_record = sample_empty_session_record(session_id);
     session_record
         .data
         .insert(OAUTH2_CSRF_STATE_KEY.to_string(), json!("state-in-session"));
@@ -1252,7 +1251,7 @@ async fn test_oidc_callback_success() {
 async fn test_oidc_callback_returns_error_when_provider_is_not_configured() {
     // Setup identifiers and data structures
     let session_id = session::Id::default();
-    let mut session_record = empty_session_record(session_id);
+    let mut session_record = sample_empty_session_record(session_id);
     session_record
         .data
         .insert(OAUTH2_CSRF_STATE_KEY.to_string(), json!("state-in-session"));
@@ -1384,7 +1383,7 @@ async fn test_oidc_redirect_success() {
 async fn test_sign_up_success() {
     // Setup identifiers and data structures
     let session_id = session::Id::default();
-    let session_record = empty_session_record(session_id);
+    let session_record = sample_empty_session_record(session_id);
     let email_verification_code = Uuid::new_v4();
     let user = sample_auth_user(Uuid::new_v4(), "hash");
     let user_for_notifications = user.clone();
@@ -1480,7 +1479,7 @@ async fn test_sign_up_success() {
 async fn test_sign_up_missing_password() {
     // Setup identifiers and data structures
     let session_id = session::Id::default();
-    let session_record = empty_session_record(session_id);
+    let session_record = sample_empty_session_record(session_id);
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -1524,7 +1523,7 @@ async fn test_sign_up_missing_password() {
 async fn test_sign_up_db_error() {
     // Setup identifiers and data structures
     let session_id = session::Id::default();
-    let session_record = empty_session_record(session_id);
+    let session_record = sample_empty_session_record(session_id);
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -1583,7 +1582,7 @@ async fn test_sign_up_db_error() {
 async fn test_sign_up_validation_error() {
     // Setup identifiers and data structures
     let session_id = session::Id::default();
-    let session_record = empty_session_record(session_id);
+    let session_record = sample_empty_session_record(session_id);
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -1980,7 +1979,7 @@ async fn test_update_user_password_returns_error_on_db_failure() {
 async fn test_verify_email_success() {
     // Setup identifiers and data structures
     let session_id = session::Id::default();
-    let session_record = empty_session_record(session_id);
+    let session_record = sample_empty_session_record(session_id);
     let verification_code = Uuid::new_v4();
 
     // Setup database mock
@@ -2037,7 +2036,7 @@ async fn test_verify_email_success() {
 async fn test_verify_email_failure() {
     // Setup identifiers and data structures
     let session_id = session::Id::default();
-    let session_record = empty_session_record(session_id);
+    let session_record = sample_empty_session_record(session_id);
     let verification_code = Uuid::new_v4();
 
     // Setup database mock
@@ -2194,7 +2193,12 @@ async fn test_user_has_community_dashboard_permission_allows_request() {
     let server_cfg = HttpServerConfig::default();
     let db: DynDB = Arc::new(db);
     let nm = Arc::new(MockNotificationsManager::new());
-    let state = build_state(db.clone(), nm.clone(), &server_cfg);
+    let state = test_state_with_server_cfg(
+        db.clone(),
+        Arc::new(MockImageStorage::new()),
+        nm.clone(),
+        &server_cfg,
+    );
     let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
     let router = Router::new()
         .route("/protected", get(|| async { StatusCode::OK }))
@@ -2254,7 +2258,12 @@ async fn test_user_has_community_dashboard_permission_returns_error_on_db_failur
     let server_cfg = HttpServerConfig::default();
     let db: DynDB = Arc::new(db);
     let nm = Arc::new(MockNotificationsManager::new());
-    let state = build_state(db.clone(), nm.clone(), &server_cfg);
+    let state = test_state_with_server_cfg(
+        db.clone(),
+        Arc::new(MockImageStorage::new()),
+        nm.clone(),
+        &server_cfg,
+    );
     let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
     let router = Router::new()
         .route("/protected", get(|| async { StatusCode::OK }))
@@ -2308,7 +2317,12 @@ async fn test_user_has_community_dashboard_permission_redirects_when_selected_co
     let server_cfg = HttpServerConfig::default();
     let db: DynDB = Arc::new(db);
     let nm = Arc::new(MockNotificationsManager::new());
-    let state = build_state(db.clone(), nm.clone(), &server_cfg);
+    let state = test_state_with_server_cfg(
+        db.clone(),
+        Arc::new(MockImageStorage::new()),
+        nm.clone(),
+        &server_cfg,
+    );
     let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
     let router = Router::new()
         .route("/protected", get(|| async { StatusCode::OK }))
@@ -2401,7 +2415,12 @@ async fn test_user_has_community_dashboard_permission_falls_back_to_first_access
     let server_cfg = HttpServerConfig::default();
     let db: DynDB = Arc::new(db);
     let nm = Arc::new(MockNotificationsManager::new());
-    let state = build_state(db.clone(), nm.clone(), &server_cfg);
+    let state = test_state_with_server_cfg(
+        db.clone(),
+        Arc::new(MockImageStorage::new()),
+        nm.clone(),
+        &server_cfg,
+    );
     let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
     let router = Router::new()
         .route("/protected", get(|| async { StatusCode::OK }))
@@ -2485,7 +2504,12 @@ async fn test_user_has_community_dashboard_permission_clears_selected_group_when
     let server_cfg = HttpServerConfig::default();
     let db: DynDB = Arc::new(db);
     let nm = Arc::new(MockNotificationsManager::new());
-    let state = build_state(db.clone(), nm.clone(), &server_cfg);
+    let state = test_state_with_server_cfg(
+        db.clone(),
+        Arc::new(MockImageStorage::new()),
+        nm.clone(),
+        &server_cfg,
+    );
     let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
     let router = Router::new()
         .route("/protected", get(|| async { StatusCode::OK }))
@@ -2555,7 +2579,12 @@ async fn test_user_has_community_dashboard_permission_forbidden_without_accessib
     let server_cfg = HttpServerConfig::default();
     let db: DynDB = Arc::new(db);
     let nm = Arc::new(MockNotificationsManager::new());
-    let state = build_state(db.clone(), nm.clone(), &server_cfg);
+    let state = test_state_with_server_cfg(
+        db.clone(),
+        Arc::new(MockImageStorage::new()),
+        nm.clone(),
+        &server_cfg,
+    );
     let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
     let router = Router::new()
         .route("/protected", get(|| async { StatusCode::OK }))
@@ -2612,7 +2641,12 @@ async fn test_user_has_path_community_permission_select_route_allows_request() {
     let server_cfg = HttpServerConfig::default();
     let db: DynDB = Arc::new(db);
     let nm = Arc::new(MockNotificationsManager::new());
-    let state = build_state(db.clone(), nm.clone(), &server_cfg);
+    let state = test_state_with_server_cfg(
+        db.clone(),
+        Arc::new(MockImageStorage::new()),
+        nm.clone(),
+        &server_cfg,
+    );
     let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
     let router = Router::new()
         .route("/{community_id}/protected", get(|| async { StatusCode::OK }))
@@ -2669,7 +2703,12 @@ async fn test_user_has_path_community_permission_select_route_forbidden_without_
     let server_cfg = HttpServerConfig::default();
     let db: DynDB = Arc::new(db);
     let nm = Arc::new(MockNotificationsManager::new());
-    let state = build_state(db.clone(), nm.clone(), &server_cfg);
+    let state = test_state_with_server_cfg(
+        db.clone(),
+        Arc::new(MockImageStorage::new()),
+        nm.clone(),
+        &server_cfg,
+    );
     let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
     let router = Router::new()
         .route("/{community_id}/protected", get(|| async { StatusCode::OK }))
@@ -2726,7 +2765,12 @@ async fn test_user_has_path_community_permission_select_route_returns_error_on_d
     let server_cfg = HttpServerConfig::default();
     let db: DynDB = Arc::new(db);
     let nm = Arc::new(MockNotificationsManager::new());
-    let state = build_state(db.clone(), nm.clone(), &server_cfg);
+    let state = test_state_with_server_cfg(
+        db.clone(),
+        Arc::new(MockImageStorage::new()),
+        nm.clone(),
+        &server_cfg,
+    );
     let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
     let router = Router::new()
         .route("/{community_id}/protected", get(|| async { StatusCode::OK }))
@@ -2783,7 +2827,12 @@ async fn test_user_has_path_community_permission_allows_request() {
     let server_cfg = HttpServerConfig::default();
     let db: DynDB = Arc::new(db);
     let nm = Arc::new(MockNotificationsManager::new());
-    let state = build_state(db.clone(), nm.clone(), &server_cfg);
+    let state = test_state_with_server_cfg(
+        db.clone(),
+        Arc::new(MockImageStorage::new()),
+        nm.clone(),
+        &server_cfg,
+    );
     let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
     let router = Router::new()
         .route(
@@ -2843,7 +2892,12 @@ async fn test_user_has_path_community_permission_forbidden_without_permission() 
     let server_cfg = HttpServerConfig::default();
     let db: DynDB = Arc::new(db);
     let nm = Arc::new(MockNotificationsManager::new());
-    let state = build_state(db.clone(), nm.clone(), &server_cfg);
+    let state = test_state_with_server_cfg(
+        db.clone(),
+        Arc::new(MockImageStorage::new()),
+        nm.clone(),
+        &server_cfg,
+    );
     let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
     let router = Router::new()
         .route(
@@ -2903,7 +2957,12 @@ async fn test_user_has_path_community_permission_returns_error_on_db_failure() {
     let server_cfg = HttpServerConfig::default();
     let db: DynDB = Arc::new(db);
     let nm = Arc::new(MockNotificationsManager::new());
-    let state = build_state(db.clone(), nm.clone(), &server_cfg);
+    let state = test_state_with_server_cfg(
+        db.clone(),
+        Arc::new(MockImageStorage::new()),
+        nm.clone(),
+        &server_cfg,
+    );
     let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
     let router = Router::new()
         .route(
@@ -2962,7 +3021,12 @@ async fn test_user_has_path_group_permission_allows_request() {
     let server_cfg = HttpServerConfig::default();
     let db: DynDB = Arc::new(db);
     let nm = Arc::new(MockNotificationsManager::new());
-    let state = build_state(db.clone(), nm.clone(), &server_cfg);
+    let state = test_state_with_server_cfg(
+        db.clone(),
+        Arc::new(MockImageStorage::new()),
+        nm.clone(),
+        &server_cfg,
+    );
     let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
     let router = Router::new()
         .route("/groups/{group_id}", get(|| async { StatusCode::OK }))
@@ -3018,7 +3082,12 @@ async fn test_user_has_path_group_permission_forbidden_without_permission() {
     let server_cfg = HttpServerConfig::default();
     let db: DynDB = Arc::new(db);
     let nm = Arc::new(MockNotificationsManager::new());
-    let state = build_state(db.clone(), nm.clone(), &server_cfg);
+    let state = test_state_with_server_cfg(
+        db.clone(),
+        Arc::new(MockImageStorage::new()),
+        nm.clone(),
+        &server_cfg,
+    );
     let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
     let router = Router::new()
         .route("/groups/{group_id}", get(|| async { StatusCode::OK }))
@@ -3074,7 +3143,12 @@ async fn test_user_has_path_group_permission_returns_error_on_db_failure() {
     let server_cfg = HttpServerConfig::default();
     let db: DynDB = Arc::new(db);
     let nm = Arc::new(MockNotificationsManager::new());
-    let state = build_state(db.clone(), nm.clone(), &server_cfg);
+    let state = test_state_with_server_cfg(
+        db.clone(),
+        Arc::new(MockImageStorage::new()),
+        nm.clone(),
+        &server_cfg,
+    );
     let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
     let router = Router::new()
         .route("/groups/{group_id}", get(|| async { StatusCode::OK }))
@@ -3126,7 +3200,12 @@ async fn test_user_has_path_group_permission_redirects_when_selected_community_i
     let server_cfg = HttpServerConfig::default();
     let db: DynDB = Arc::new(db);
     let nm = Arc::new(MockNotificationsManager::new());
-    let state = build_state(db.clone(), nm.clone(), &server_cfg);
+    let state = test_state_with_server_cfg(
+        db.clone(),
+        Arc::new(MockImageStorage::new()),
+        nm.clone(),
+        &server_cfg,
+    );
     let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
     let router = Router::new()
         .route("/groups/{group_id}", get(|| async { StatusCode::OK }))
@@ -3187,7 +3266,12 @@ async fn test_user_has_selected_community_permission_allows_request() {
     let server_cfg = HttpServerConfig::default();
     let db: DynDB = Arc::new(db);
     let nm = Arc::new(MockNotificationsManager::new());
-    let state = build_state(db.clone(), nm.clone(), &server_cfg);
+    let state = test_state_with_server_cfg(
+        db.clone(),
+        Arc::new(MockImageStorage::new()),
+        nm.clone(),
+        &server_cfg,
+    );
     let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
     let router = Router::new()
         .route("/protected", get(|| async { StatusCode::OK }))
@@ -3244,7 +3328,12 @@ async fn test_user_has_selected_community_permission_forbidden_without_permissio
     let server_cfg = HttpServerConfig::default();
     let db: DynDB = Arc::new(db);
     let nm = Arc::new(MockNotificationsManager::new());
-    let state = build_state(db.clone(), nm.clone(), &server_cfg);
+    let state = test_state_with_server_cfg(
+        db.clone(),
+        Arc::new(MockImageStorage::new()),
+        nm.clone(),
+        &server_cfg,
+    );
     let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
     let router = Router::new()
         .route("/protected", get(|| async { StatusCode::OK }))
@@ -3301,7 +3390,12 @@ async fn test_user_has_selected_community_permission_returns_error_on_db_failure
     let server_cfg = HttpServerConfig::default();
     let db: DynDB = Arc::new(db);
     let nm = Arc::new(MockNotificationsManager::new());
-    let state = build_state(db.clone(), nm.clone(), &server_cfg);
+    let state = test_state_with_server_cfg(
+        db.clone(),
+        Arc::new(MockImageStorage::new()),
+        nm.clone(),
+        &server_cfg,
+    );
     let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
     let router = Router::new()
         .route("/protected", get(|| async { StatusCode::OK }))
@@ -3352,7 +3446,12 @@ async fn test_user_has_selected_community_permission_redirects_when_selected_com
     let server_cfg = HttpServerConfig::default();
     let db: DynDB = Arc::new(db);
     let nm = Arc::new(MockNotificationsManager::new());
-    let state = build_state(db.clone(), nm.clone(), &server_cfg);
+    let state = test_state_with_server_cfg(
+        db.clone(),
+        Arc::new(MockImageStorage::new()),
+        nm.clone(),
+        &server_cfg,
+    );
     let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
     let router = Router::new()
         .route("/protected", get(|| async { StatusCode::OK }))
@@ -3418,7 +3517,12 @@ async fn test_user_has_selected_group_permission_allows_request() {
     let server_cfg = HttpServerConfig::default();
     let db: DynDB = Arc::new(db);
     let nm = Arc::new(MockNotificationsManager::new());
-    let state = build_state(db.clone(), nm.clone(), &server_cfg);
+    let state = test_state_with_server_cfg(
+        db.clone(),
+        Arc::new(MockImageStorage::new()),
+        nm.clone(),
+        &server_cfg,
+    );
     let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
     let router = Router::new()
         .route("/protected", get(|| async { StatusCode::OK }))
@@ -3480,7 +3584,12 @@ async fn test_user_has_selected_group_permission_forbidden_without_permission() 
     let server_cfg = HttpServerConfig::default();
     let db: DynDB = Arc::new(db);
     let nm = Arc::new(MockNotificationsManager::new());
-    let state = build_state(db.clone(), nm.clone(), &server_cfg);
+    let state = test_state_with_server_cfg(
+        db.clone(),
+        Arc::new(MockImageStorage::new()),
+        nm.clone(),
+        &server_cfg,
+    );
     let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
     let router = Router::new()
         .route("/protected", get(|| async { StatusCode::OK }))
@@ -3542,7 +3651,12 @@ async fn test_user_has_selected_group_permission_returns_error_on_db_failure() {
     let server_cfg = HttpServerConfig::default();
     let db: DynDB = Arc::new(db);
     let nm = Arc::new(MockNotificationsManager::new());
-    let state = build_state(db.clone(), nm.clone(), &server_cfg);
+    let state = test_state_with_server_cfg(
+        db.clone(),
+        Arc::new(MockImageStorage::new()),
+        nm.clone(),
+        &server_cfg,
+    );
     let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
     let router = Router::new()
         .route("/protected", get(|| async { StatusCode::OK }))
@@ -3594,7 +3708,12 @@ async fn test_user_has_selected_group_permission_redirects_when_selected_group_i
     let server_cfg = HttpServerConfig::default();
     let db: DynDB = Arc::new(db);
     let nm = Arc::new(MockNotificationsManager::new());
-    let state = build_state(db.clone(), nm.clone(), &server_cfg);
+    let state = test_state_with_server_cfg(
+        db.clone(),
+        Arc::new(MockImageStorage::new()),
+        nm.clone(),
+        &server_cfg,
+    );
     let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
     let router = Router::new()
         .route("/protected", get(|| async { StatusCode::OK }))
@@ -3630,7 +3749,7 @@ async fn test_user_has_path_community_permission_select_route_forbidden_when_not
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
     let session_id = session::Id::default();
-    let session_record = empty_session_record(session_id);
+    let session_record = sample_empty_session_record(session_id);
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -3645,7 +3764,12 @@ async fn test_user_has_path_community_permission_select_route_forbidden_when_not
     let server_cfg = HttpServerConfig::default();
     let db: DynDB = Arc::new(db);
     let nm = Arc::new(MockNotificationsManager::new());
-    let state = build_state(db.clone(), nm.clone(), &server_cfg);
+    let state = test_state_with_server_cfg(
+        db.clone(),
+        Arc::new(MockImageStorage::new()),
+        nm.clone(),
+        &server_cfg,
+    );
     let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
     let router = Router::new()
         .route(
@@ -3680,7 +3804,7 @@ async fn test_user_has_path_community_permission_protected_route_forbidden_when_
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
     let session_id = session::Id::default();
-    let session_record = empty_session_record(session_id);
+    let session_record = sample_empty_session_record(session_id);
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -3695,7 +3819,12 @@ async fn test_user_has_path_community_permission_protected_route_forbidden_when_
     let server_cfg = HttpServerConfig::default();
     let db: DynDB = Arc::new(db);
     let nm = Arc::new(MockNotificationsManager::new());
-    let state = build_state(db.clone(), nm.clone(), &server_cfg);
+    let state = test_state_with_server_cfg(
+        db.clone(),
+        Arc::new(MockImageStorage::new()),
+        nm.clone(),
+        &server_cfg,
+    );
     let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
     let router = Router::new()
         .route("/{community_id}/protected", get(|| async { StatusCode::OK }))
@@ -3728,7 +3857,7 @@ async fn test_user_has_path_group_permission_forbidden_when_not_logged_in() {
     let community_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
-    let mut session_record = empty_session_record(session_id);
+    let mut session_record = sample_empty_session_record(session_id);
     session_record
         .data
         .insert(SELECTED_COMMUNITY_ID_KEY.to_string(), json!(community_id));
@@ -3746,7 +3875,12 @@ async fn test_user_has_path_group_permission_forbidden_when_not_logged_in() {
     let server_cfg = HttpServerConfig::default();
     let db: DynDB = Arc::new(db);
     let nm = Arc::new(MockNotificationsManager::new());
-    let state = build_state(db.clone(), nm.clone(), &server_cfg);
+    let state = test_state_with_server_cfg(
+        db.clone(),
+        Arc::new(MockImageStorage::new()),
+        nm.clone(),
+        &server_cfg,
+    );
     let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
     let router = Router::new()
         .route("/groups/{group_id}", get(|| async { StatusCode::OK }))
@@ -3778,7 +3912,7 @@ async fn test_user_has_selected_community_permission_forbidden_when_not_logged_i
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
     let session_id = session::Id::default();
-    let mut session_record = empty_session_record(session_id);
+    let mut session_record = sample_empty_session_record(session_id);
     session_record
         .data
         .insert(SELECTED_COMMUNITY_ID_KEY.to_string(), json!(community_id));
@@ -3796,7 +3930,12 @@ async fn test_user_has_selected_community_permission_forbidden_when_not_logged_i
     let server_cfg = HttpServerConfig::default();
     let db: DynDB = Arc::new(db);
     let nm = Arc::new(MockNotificationsManager::new());
-    let state = build_state(db.clone(), nm.clone(), &server_cfg);
+    let state = test_state_with_server_cfg(
+        db.clone(),
+        Arc::new(MockImageStorage::new()),
+        nm.clone(),
+        &server_cfg,
+    );
     let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
     let router = Router::new()
         .route("/protected", get(|| async { StatusCode::OK }))
@@ -3829,7 +3968,7 @@ async fn test_user_has_selected_group_permission_forbidden_when_not_logged_in() 
     let community_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
-    let mut session_record = empty_session_record(session_id);
+    let mut session_record = sample_empty_session_record(session_id);
     session_record
         .data
         .insert(SELECTED_COMMUNITY_ID_KEY.to_string(), json!(community_id));
@@ -3850,7 +3989,12 @@ async fn test_user_has_selected_group_permission_forbidden_when_not_logged_in() 
     let server_cfg = HttpServerConfig::default();
     let db: DynDB = Arc::new(db);
     let nm = Arc::new(MockNotificationsManager::new());
-    let state = build_state(db.clone(), nm.clone(), &server_cfg);
+    let state = test_state_with_server_cfg(
+        db.clone(),
+        Arc::new(MockImageStorage::new()),
+        nm.clone(),
+        &server_cfg,
+    );
     let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
     let router = Router::new()
         .route("/protected", get(|| async { StatusCode::OK }))
@@ -3915,40 +4059,4 @@ impl CallbackAuth for MockCallbackAuth {
             .take()
             .expect("callback login result should be configured in tests")
     }
-}
-
-/// Build the route's state.
-fn build_state(
-    db: DynDB,
-    notifications_manager: Arc<MockNotificationsManager>,
-    server_cfg: &HttpServerConfig,
-) -> State {
-    State {
-        activity_tracker: Arc::new(crate::activity_tracker::MockActivityTracker::new()),
-        db,
-        image_storage: Arc::new(MockImageStorage::new()),
-        meetings_cfg: None,
-        notifications_manager,
-        serde_qs_de: serde_qs_config(),
-        server_cfg: server_cfg.clone(),
-    }
-}
-
-/// Sample session record with specified session ID.
-fn empty_session_record(session_id: session::Id) -> session::Record {
-    session::Record {
-        data: HashMap::default(),
-        expiry_date: OffsetDateTime::now_utc(),
-        id: session_id,
-    }
-}
-
-/// Checks if the session record contains the selected group ID.
-fn record_contains_selected_group(record: &session::Record, group_id: Uuid) -> bool {
-    record
-        .data
-        .get(SELECTED_GROUP_ID_KEY)
-        .and_then(|value| value.as_str())
-        .and_then(|value| value.parse::<Uuid>().ok())
-        == Some(group_id)
 }

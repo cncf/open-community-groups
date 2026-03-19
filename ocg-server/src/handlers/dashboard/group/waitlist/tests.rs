@@ -6,7 +6,6 @@ use axum::{
     },
 };
 use axum_login::tower_sessions::session;
-use chrono::{TimeZone, Utc};
 use tower::ServiceExt;
 use uuid::Uuid;
 
@@ -15,10 +14,7 @@ use crate::{
     handlers::tests::*,
     router::CACHE_CONTROL_NO_CACHE,
     services::notifications::MockNotificationsManager,
-    templates::{
-        dashboard::DASHBOARD_PAGINATION_LIMIT,
-        dashboard::group::waitlist::{WaitlistEntry, WaitlistOutput},
-    },
+    templates::{dashboard::DASHBOARD_PAGINATION_LIMIT, dashboard::group::waitlist::WaitlistOutput},
     types::permissions::GroupPermission,
 };
 
@@ -109,19 +105,4 @@ async fn test_list_page_success() {
         &HeaderValue::from_static(CACHE_CONTROL_NO_CACHE),
     );
     assert!(!bytes.is_empty());
-}
-
-// Helpers.
-
-fn sample_waitlist_entry() -> WaitlistEntry {
-    WaitlistEntry {
-        created_at: Utc.with_ymd_and_hms(2024, 1, 1, 12, 0, 0).unwrap(),
-        user_id: Uuid::new_v4(),
-        username: "waitlisted-user".to_string(),
-
-        company: Some("Example".to_string()),
-        name: Some("Waitlisted User".to_string()),
-        photo_url: Some("https://example.test/avatar.png".to_string()),
-        title: Some("Engineer".to_string()),
-    }
 }

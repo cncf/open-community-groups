@@ -13,13 +13,14 @@ use tower::ServiceExt;
 use uuid::Uuid;
 
 use crate::{
-    config::HttpServerConfig,
-    db::{DynDB, mock::MockDB},
-    handlers::tests::{TestRouterBuilder, sample_auth_user, sample_session_record},
-    router::{State as RouterState, serde_qs_config},
+    db::mock::MockDB,
+    handlers::tests::{
+        TestRouterBuilder, sample_auth_user, sample_session_record, sample_tracking_server_cfg,
+        test_state_with_server_cfg,
+    },
     services::{
-        images::{DynImageStorage, Image, MockImageStorage},
-        notifications::{DynNotificationsManager, MockNotificationsManager},
+        images::{Image, MockImageStorage},
+        notifications::MockNotificationsManager,
     },
 };
 
@@ -140,7 +141,12 @@ async fn test_serve_allows_missing_referer_when_checks_disabled() {
     let image_storage: DynImageStorage = Arc::new(storage);
 
     // Setup router and send request without referer
-    let mut state = build_state(Arc::clone(&image_storage));
+    let mut state = test_state_with_server_cfg(
+        Arc::new(MockDB::new()),
+        Arc::clone(&image_storage),
+        Arc::new(MockNotificationsManager::new()),
+        &sample_tracking_server_cfg(),
+    );
     state.server_cfg.disable_referer_checks = true;
     let router = Router::new()
         .route("/images/{file_name}", get(serve))
@@ -161,9 +167,15 @@ async fn test_serve_rejects_mismatched_referer() {
     storage.expect_get().never();
 
     // Setup router and send request
-    let router = Router::new()
-        .route("/images/{file_name}", get(serve))
-        .with_state(build_state(Arc::new(storage)));
+    let router =
+        Router::new()
+            .route("/images/{file_name}", get(serve))
+            .with_state(test_state_with_server_cfg(
+                Arc::new(MockDB::new()),
+                Arc::new(storage),
+                Arc::new(MockNotificationsManager::new()),
+                &sample_tracking_server_cfg(),
+            ));
     let response = router
         .oneshot(
             Request::builder()
@@ -196,9 +208,15 @@ async fn test_serve_returns_bytes_with_headers() {
         });
 
     // Setup router and send request
-    let router = Router::new()
-        .route("/images/{file_name}", get(serve))
-        .with_state(build_state(Arc::new(storage)));
+    let router =
+        Router::new()
+            .route("/images/{file_name}", get(serve))
+            .with_state(test_state_with_server_cfg(
+                Arc::new(MockDB::new()),
+                Arc::new(storage),
+                Arc::new(MockNotificationsManager::new()),
+                &sample_tracking_server_cfg(),
+            ));
     let response = router
         .oneshot(
             Request::builder()
@@ -241,9 +259,15 @@ async fn test_serve_returns_not_found_for_missing_image() {
         .returning(|_| Box::pin(async { Ok(None) }));
 
     // Setup router and send request
-    let router = Router::new()
-        .route("/images/{file_name}", get(serve))
-        .with_state(build_state(Arc::new(storage)));
+    let router =
+        Router::new()
+            .route("/images/{file_name}", get(serve))
+            .with_state(test_state_with_server_cfg(
+                Arc::new(MockDB::new()),
+                Arc::new(storage),
+                Arc::new(MockNotificationsManager::new()),
+                &sample_tracking_server_cfg(),
+            ));
     let response = router
         .oneshot(
             Request::builder()
@@ -473,23 +497,4 @@ fn build_multipart_body(boundary: &str, bytes: &[u8]) -> Vec<u8> {
     body.extend_from_slice(bytes);
     body.extend_from_slice(format!("\r\n--{boundary}--\r\n").as_bytes());
     body
-}
-
-fn build_state(image_storage: DynImageStorage) -> RouterState {
-    let activity_tracker = Arc::new(crate::activity_tracker::MockActivityTracker::new());
-    let db: DynDB = Arc::new(MockDB::new());
-    let notifications_manager: DynNotificationsManager = Arc::new(MockNotificationsManager::new());
-
-    RouterState {
-        activity_tracker,
-        db,
-        image_storage,
-        meetings_cfg: None,
-        notifications_manager,
-        serde_qs_de: serde_qs_config(),
-        server_cfg: HttpServerConfig {
-            base_url: "https://example.test".to_string(),
-            ..HttpServerConfig::default()
-        },
-    }
 }
