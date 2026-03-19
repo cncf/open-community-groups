@@ -424,6 +424,28 @@ fn test_delivery_worker_prepare_content_event_reminder() {
 }
 
 #[test]
+fn test_delivery_worker_prepare_content_event_reminder_legacy_template_data() {
+    // Setup notification
+    let notification = Notification {
+        attachments: vec![],
+        email: "user@example.test".to_string(),
+        kind: NotificationKind::EventReminder,
+        notification_id: Uuid::new_v4(),
+        template_data: Some(sample_event_reminder_legacy_template_data()),
+    };
+
+    // Prepare content
+    let (subject, body) = DeliveryWorker::prepare_content(&notification).unwrap();
+
+    // Check content matches expectations
+    assert_eq!(subject, "Reminder: Reminder Event starts in 24 hours");
+    assert!(body.contains("Reminder Event"));
+    assert!(
+        body.contains("https://example.test/test-community/group/notification-group/event/reminder-event")
+    );
+}
+
+#[test]
 fn test_delivery_worker_prepare_content_event_waitlist_joined() {
     // Setup notification
     let notification = Notification {
@@ -634,6 +656,33 @@ fn sample_event_custom_template_data() -> serde_json::Value {
             "waitlist_enabled": false
         },
         "link": "https://example.test/test-community/group/notification-group/event/custom-event",
+        "theme": {
+            "primary_color": "#000000"
+        }
+    })
+}
+
+/// Sample legacy payload for event reminder notifications without waitlist data.
+fn sample_event_reminder_legacy_template_data() -> serde_json::Value {
+    json!({
+        "event": {
+            "canceled": false,
+            "community_display_name": "Test Community",
+            "community_name": "test-community",
+            "event_id": "11111111-1111-1111-1111-111111111111",
+            "group_category_name": "Community",
+            "group_name": "Notification Group",
+            "group_slug": "notification-group",
+            "kind": "hybrid",
+            "logo_url": "https://example.com/logo.png",
+            "name": "Reminder Event",
+            "published": true,
+            "slug": "reminder-event",
+            "starts_at": 1_914_724_800,
+            "timezone": "UTC",
+            "venue_name": "Conference Hall"
+        },
+        "link": "https://example.test/test-community/group/notification-group/event/reminder-event",
         "theme": {
             "primary_color": "#000000"
         }

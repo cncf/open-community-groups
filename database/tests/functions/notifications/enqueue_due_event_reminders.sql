@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(11);
+select plan(13);
 
 -- ============================================================================
 -- VARIABLES
@@ -427,6 +427,35 @@ select is(
     ),
     'https://example.test/test-community/group/test-group/event/due-event',
     'Should build reminder link using the provided base URL'
+);
+
+-- Should include waitlist fields in reminder template data
+select is(
+    (
+        select jsonb_build_object(
+            'waitlist_count', ntd.data->'event'->'waitlist_count',
+            'waitlist_enabled', ntd.data->'event'->'waitlist_enabled'
+        )
+        from notification n
+        join notification_template_data ntd using (notification_template_data_id)
+        where n.kind = 'event-reminder'
+        limit 1
+    ),
+    '{"waitlist_count": 0, "waitlist_enabled": false}'::jsonb,
+    'Should include waitlist fields in reminder template data'
+);
+
+-- Should include the latest site theme in reminder template data
+select is(
+    (
+        select ntd.data->'theme'
+        from notification n
+        join notification_template_data ntd using (notification_template_data_id)
+        where n.kind = 'event-reminder'
+        limit 1
+    ),
+    '{"primary_color": "#2563eb"}'::jsonb,
+    'Should include the latest site theme in reminder template data'
 );
 
 -- Should mark due event as evaluated for its current start date

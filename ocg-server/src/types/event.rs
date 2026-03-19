@@ -53,8 +53,10 @@ pub struct EventSummary {
     /// Timezone in which the event times should be displayed.
     pub timezone: Tz,
     /// Current number of users on the waiting list.
+    #[serde(default)]
     pub waitlist_count: i32,
     /// Whether joining the waiting list is enabled for the event.
+    #[serde(default)]
     pub waitlist_enabled: bool,
 
     /// Maximum capacity for the event.
@@ -129,6 +131,9 @@ pub struct EventFull {
     pub canceled: bool,
     /// Event category information.
     pub category_name: String,
+    /// Call for speakers labels.
+    #[serde(default)]
+    pub cfs_labels: Vec<EventCfsLabel>,
     /// Community this event belongs to.
     pub community: CommunitySummary,
     /// When the event was created.
@@ -162,6 +167,10 @@ pub struct EventFull {
     pub sponsors: Vec<EventSponsor>,
     /// Timezone for event times.
     pub timezone: Tz,
+    /// Whether joining the waiting list is enabled for the event.
+    pub waitlist_enabled: bool,
+    /// Current number of users on the waiting list.
+    pub waitlist_count: i32,
 
     /// URL to the event banner image optimized for mobile devices.
     pub banner_mobile_url: Option<String>,
@@ -176,9 +185,6 @@ pub struct EventFull {
     /// Call for speakers end time in UTC.
     #[serde(default, with = "chrono::serde::ts_seconds_option")]
     pub cfs_ends_at: Option<DateTime<Utc>>,
-    /// Call for speakers labels.
-    #[serde(default)]
-    pub cfs_labels: Vec<EventCfsLabel>,
     /// Call for speakers start time in UTC.
     #[serde(default, with = "chrono::serde::ts_seconds_option")]
     pub cfs_starts_at: Option<DateTime<Utc>>,
@@ -224,10 +230,6 @@ pub struct EventFull {
     pub registration_required: Option<bool>,
     /// Remaining capacity after subtracting registered attendees.
     pub remaining_capacity: Option<i32>,
-    /// Whether joining the waiting list is enabled for the event.
-    pub waitlist_enabled: bool,
-    /// Current number of users on the waiting list.
-    pub waitlist_count: i32,
     /// Event start time in UTC.
     #[serde(default, with = "chrono::serde::ts_seconds_option")]
     pub starts_at: Option<DateTime<Utc>>,
