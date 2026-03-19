@@ -16,7 +16,7 @@ use uuid::Uuid;
 use crate::{
     activity_tracker::DynActivityTracker,
     auth::User as AuthUser,
-    config::HttpServerConfig,
+    config::{HttpServerConfig, MeetingsConfig, MeetingsZoomConfig},
     db::{
         BBox, DynDB,
         common::{SearchEventsOutput, SearchGroupsOutput},
@@ -55,6 +55,7 @@ use crate::{
                     CfsSessionProposal as GroupCfsSessionProposal, CfsSubmission as GroupCfsSubmission,
                 },
                 team::GroupTeamMember,
+                waitlist::WaitlistEntry,
             },
             user::{
                 invitations::{CommunityTeamInvitation, GroupTeamInvitation},
@@ -297,6 +298,15 @@ pub(crate) fn sample_dashboard_user(user_id: Uuid) -> DashboardUser {
 
         name: Some("Test User".to_string()),
         photo_url: Some("https://example.test/avatar.png".to_string()),
+    }
+}
+
+/// Sample session record with no stored values.
+pub(crate) fn sample_empty_session_record(session_id: session::Id) -> session::Record {
+    session::Record {
+        data: HashMap::default(),
+        expiry_date: OffsetDateTime::now_utc(),
+        id: session_id,
     }
 }
 
@@ -990,6 +1000,78 @@ pub(crate) fn sample_user_summary(user_id: Uuid, username: &str) -> UserSummary 
         photo_url: None,
         provider: None,
         title: None,
+    }
+}
+
+/// Sample waitlist entry used in dashboard group waitlist tests.
+pub(crate) fn sample_waitlist_entry() -> WaitlistEntry {
+    WaitlistEntry {
+        created_at: Utc.with_ymd_and_hms(2024, 1, 1, 12, 0, 0).unwrap(),
+        user_id: Uuid::new_v4(),
+        username: "waitlisted-user".to_string(),
+
+        company: Some("Example".to_string()),
+        name: Some("Waitlisted User".to_string()),
+        photo_url: Some("https://example.test/avatar.png".to_string()),
+        title: Some("Engineer".to_string()),
+    }
+}
+
+/// Sample Zoom meetings configuration used in handler tests.
+pub(crate) fn sample_zoom_meetings_cfg(secret: &str) -> MeetingsConfig {
+    MeetingsConfig {
+        zoom: Some(MeetingsZoomConfig {
+            account_id: "account-id".to_string(),
+            client_id: "client-id".to_string(),
+            client_secret: "client-secret".to_string(),
+            enabled: true,
+            host_pool_users: vec!["host@example.com".to_string()],
+            max_participants: 100,
+            max_simultaneous_meetings_per_host: 1,
+            webhook_secret_token: secret.to_string(),
+        }),
+    }
+}
+
+/// Checks if the session record contains the selected group ID.
+pub(crate) fn session_record_contains_selected_group(record: &session::Record, group_id: Uuid) -> bool {
+    record
+        .data
+        .get(SELECTED_GROUP_ID_KEY)
+        .and_then(|value| value.as_str())
+        .and_then(|value| value.parse::<Uuid>().ok())
+        == Some(group_id)
+}
+
+/// Builds test router state with default server configuration.
+pub(crate) fn test_state(
+    db: DynDB,
+    image_storage: DynImageStorage,
+    notifications_manager: DynNotificationsManager,
+) -> router::State {
+    test_state_with_server_cfg(
+        db,
+        image_storage,
+        notifications_manager,
+        &HttpServerConfig::default(),
+    )
+}
+
+/// Builds test router state with the provided server configuration.
+pub(crate) fn test_state_with_server_cfg(
+    db: DynDB,
+    image_storage: DynImageStorage,
+    notifications_manager: DynNotificationsManager,
+    server_cfg: &HttpServerConfig,
+) -> router::State {
+    router::State {
+        activity_tracker: Arc::new(crate::activity_tracker::MockActivityTracker::new()),
+        db,
+        image_storage,
+        meetings_cfg: None,
+        notifications_manager,
+        serde_qs_de: router::serde_qs_config(),
+        server_cfg: server_cfg.clone(),
     }
 }
 

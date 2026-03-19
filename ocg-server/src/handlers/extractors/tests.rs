@@ -20,8 +20,7 @@ use crate::{
     auth::AuthnBackend,
     config::{HttpServerConfig, OAuth2ProviderConfig},
     db::{DynDB, mock::MockDB},
-    handlers::tests::sample_auth_user,
-    router::{self, serde_qs_config},
+    handlers::tests::{sample_auth_user, test_state},
     services::{
         images::{DynImageStorage, MockImageStorage},
         notifications::{DynNotificationsManager, MockNotificationsManager},
@@ -48,7 +47,7 @@ async fn test_community_id_extractor_success() {
     let nm: DynNotificationsManager = Arc::new(MockNotificationsManager::new());
 
     // Setup router with test endpoint that uses CommunityId extractor
-    let state = build_state(db, is, nm);
+    let state = test_state(db, is, nm);
     let router = Router::new()
         .route(
             "/{community}/test",
@@ -85,7 +84,7 @@ async fn test_community_id_extractor_unknown_community() {
     let nm: DynNotificationsManager = Arc::new(MockNotificationsManager::new());
 
     // Setup router with test endpoint that uses CommunityId extractor
-    let state = build_state(db, is, nm);
+    let state = test_state(db, is, nm);
     let router = Router::new()
         .route(
             "/{community}/test",
@@ -119,7 +118,7 @@ async fn test_community_id_extractor_db_error() {
     let nm: DynNotificationsManager = Arc::new(MockNotificationsManager::new());
 
     // Setup router with test endpoint that uses CommunityId extractor
-    let state = build_state(db, is, nm);
+    let state = test_state(db, is, nm);
     let router = Router::new()
         .route(
             "/{community}/test",
@@ -153,7 +152,7 @@ async fn test_current_user_extractor_missing_auth_session() {
             "/test",
             get(|_current_user: CurrentUser| async { StatusCode::OK }),
         )
-        .with_state(build_state(db, is, nm));
+        .with_state(test_state(db, is, nm));
 
     // Send request
     let request = Request::builder().uri("/test").body(Body::empty()).unwrap();
@@ -201,7 +200,7 @@ async fn test_current_user_extractor_session_without_user() {
             get(|CurrentUser(_user): CurrentUser| async move { StatusCode::OK }),
         )
         .layer(auth_layer)
-        .with_state(build_state(db, is, nm));
+        .with_state(test_state(db, is, nm));
 
     // Initialize session without logging in
     let init_request = Request::builder().uri("/init").body(Body::empty()).unwrap();
@@ -274,7 +273,7 @@ async fn test_current_user_extractor_success() {
             get(|CurrentUser(user): CurrentUser| async move { user.username }),
         )
         .layer(auth_layer)
-        .with_state(build_state(db, is, nm));
+        .with_state(test_state(db, is, nm));
 
     // Log in to create authenticated session
     let login_request = Request::builder().uri("/log-in").body(Body::empty()).unwrap();
@@ -339,7 +338,7 @@ async fn test_oauth2_extractor_success() {
     let auth_layer = AuthManagerLayerBuilder::new(backend, session_layer).build();
 
     // Setup router
-    let mut state = build_state(db, is, nm);
+    let mut state = test_state(db, is, nm);
     state.server_cfg = server_cfg;
     let router = Router::new()
         .route(
@@ -377,7 +376,7 @@ async fn test_oauth2_extractor_missing_oauth2_provider() {
     // Setup router
     let router = Router::new()
         .route("/log-in/oauth2", get(|_oauth2: OAuth2| async { StatusCode::OK }))
-        .with_state(build_state(db, is, nm));
+        .with_state(test_state(db, is, nm));
 
     // Send request
     let request = Request::builder().uri("/log-in/oauth2").body(Body::empty()).unwrap();
@@ -405,7 +404,7 @@ async fn test_oauth2_extractor_missing_auth_session() {
             "/log-in/oauth2/{provider}",
             get(|_oauth2: OAuth2| async { StatusCode::OK }),
         )
-        .with_state(build_state(db, is, nm));
+        .with_state(test_state(db, is, nm));
 
     // Send request
     let request = Request::builder()
@@ -445,7 +444,7 @@ async fn test_oauth2_extractor_unsupported_provider() {
             get(|_oauth2: OAuth2| async { StatusCode::OK }),
         )
         .layer(auth_layer)
-        .with_state(build_state(db, is, nm));
+        .with_state(test_state(db, is, nm));
 
     // Send request
     let request = Request::builder()
@@ -473,7 +472,7 @@ async fn test_oidc_extractor_missing_oidc_provider() {
     // Setup router
     let router = Router::new()
         .route("/log-in/oidc", get(|_oidc: Oidc| async { StatusCode::OK }))
-        .with_state(build_state(db, is, nm));
+        .with_state(test_state(db, is, nm));
 
     // Send request
     let request = Request::builder().uri("/log-in/oidc").body(Body::empty()).unwrap();
@@ -501,7 +500,7 @@ async fn test_oidc_extractor_missing_auth_session() {
             "/log-in/oidc/{provider}",
             get(|_oidc: Oidc| async { StatusCode::OK }),
         )
-        .with_state(build_state(db, is, nm));
+        .with_state(test_state(db, is, nm));
 
     // Send request
     let request = Request::builder()
@@ -541,7 +540,7 @@ async fn test_oidc_extractor_unsupported_provider() {
             get(|_oidc: Oidc| async { StatusCode::OK }),
         )
         .layer(auth_layer)
-        .with_state(build_state(db, is, nm));
+        .with_state(test_state(db, is, nm));
 
     // Send request
     let request = Request::builder()
@@ -569,7 +568,7 @@ async fn test_selected_community_id_extractor_missing_context() {
     // Setup request parts and state
     let request = Request::builder().uri("/").body(Body::empty()).unwrap();
     let (mut parts, _) = request.into_parts();
-    let state = build_state(db, is, nm);
+    let state = test_state(db, is, nm);
 
     // Check extraction matches expectations
     let result = SelectedCommunityId::from_request_parts(&mut parts, &state).await;
@@ -598,7 +597,7 @@ async fn test_selected_community_id_extractor_success() {
     let mut request = Request::builder().uri("/").body(Body::empty()).unwrap();
     request.extensions_mut().insert(SelectedCommunityId(community_id));
     let (mut parts, _) = request.into_parts();
-    let state = build_state(db, is, nm);
+    let state = test_state(db, is, nm);
 
     // Check extraction matches expectations
     let SelectedCommunityId(extracted) = SelectedCommunityId::from_request_parts(&mut parts, &state)
@@ -623,7 +622,7 @@ async fn test_selected_group_id_extractor_success() {
     let mut request = Request::builder().uri("/").body(Body::empty()).unwrap();
     request.extensions_mut().insert(SelectedGroupId(group_id));
     let (mut parts, _) = request.into_parts();
-    let state = build_state(db, is, nm);
+    let state = test_state(db, is, nm);
 
     // Check extraction matches expectations
     let SelectedGroupId(extracted) = SelectedGroupId::from_request_parts(&mut parts, &state)
@@ -644,7 +643,7 @@ async fn test_selected_group_id_extractor_missing_context() {
     // Setup request parts and state
     let request = Request::builder().uri("/").body(Body::empty()).unwrap();
     let (mut parts, _) = request.into_parts();
-    let state = build_state(db, is, nm);
+    let state = test_state(db, is, nm);
 
     // Check extraction matches expectations
     let result = SelectedGroupId::from_request_parts(&mut parts, &state).await;
@@ -667,7 +666,7 @@ async fn test_validated_form_success() {
     let nm: DynNotificationsManager = Arc::new(MockNotificationsManager::new());
 
     // Setup router with a handler that uses ValidatedForm
-    let state = build_state(db, is, nm);
+    let state = test_state(db, is, nm);
     let router = Router::new()
         .route(
             "/test",
@@ -701,7 +700,7 @@ async fn test_validated_form_validation_error() {
     let nm: DynNotificationsManager = Arc::new(MockNotificationsManager::new());
 
     // Setup router with a handler that uses ValidatedForm
-    let state = build_state(db, is, nm);
+    let state = test_state(db, is, nm);
     let router = Router::new()
         .route(
             "/test",
@@ -734,7 +733,7 @@ async fn test_validated_form_qs_success() {
     let nm: DynNotificationsManager = Arc::new(MockNotificationsManager::new());
 
     // Setup router with a handler that uses ValidatedFormQs
-    let state = build_state(db, is, nm);
+    let state = test_state(db, is, nm);
     let router = Router::new()
         .route(
             "/test",
@@ -769,7 +768,7 @@ async fn test_validated_form_qs_validation_error() {
     let nm: DynNotificationsManager = Arc::new(MockNotificationsManager::new());
 
     // Setup router with a handler that uses ValidatedFormQs
-    let state = build_state(db, is, nm);
+    let state = test_state(db, is, nm);
     let router = Router::new()
         .route(
             "/test",
@@ -809,19 +808,4 @@ struct TestFormQs {
 
     #[garde(skip)]
     tags: Option<Vec<String>>,
-}
-
-// Helpers.
-
-/// Builds router state with the provided database and notifications manager.
-fn build_state(db: DynDB, image_storage: DynImageStorage, nm: DynNotificationsManager) -> router::State {
-    router::State {
-        activity_tracker: Arc::new(crate::activity_tracker::MockActivityTracker::new()),
-        db,
-        image_storage,
-        meetings_cfg: None,
-        notifications_manager: nm,
-        serde_qs_de: serde_qs_config(),
-        server_cfg: HttpServerConfig::default(),
-    }
 }

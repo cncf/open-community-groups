@@ -7,9 +7,8 @@ use serde_json::{Value, json};
 use tower::ServiceExt;
 
 use crate::{
-    config::{MeetingsConfig, MeetingsZoomConfig},
     db::mock::MockDB,
-    handlers::tests::TestRouterBuilder,
+    handlers::tests::{TestRouterBuilder, sample_zoom_meetings_cfg},
     services::notifications::MockNotificationsManager,
 };
 
@@ -107,7 +106,7 @@ async fn test_zoom_event_returns_bad_request_for_invalid_payload() {
 
     // Setup router
     let router = TestRouterBuilder::new(db, nm)
-        .with_meetings_cfg(zoom_meetings_cfg(secret))
+        .with_meetings_cfg(sample_zoom_meetings_cfg(secret))
         .build()
         .await;
 
@@ -153,7 +152,7 @@ async fn test_zoom_event_returns_internal_server_error_when_recording_update_fai
 
     // Setup router
     let router = TestRouterBuilder::new(db, nm)
-        .with_meetings_cfg(zoom_meetings_cfg(secret))
+        .with_meetings_cfg(sample_zoom_meetings_cfg(secret))
         .build()
         .await;
 
@@ -216,7 +215,7 @@ async fn test_zoom_event_returns_unauthorized_for_invalid_signature() {
 
     // Setup router
     let router = TestRouterBuilder::new(db, nm)
-        .with_meetings_cfg(zoom_meetings_cfg("zoom-secret"))
+        .with_meetings_cfg(sample_zoom_meetings_cfg("zoom-secret"))
         .build()
         .await;
 
@@ -262,7 +261,7 @@ async fn test_zoom_event_updates_recording_url() {
 
     // Setup router
     let router = TestRouterBuilder::new(db, nm)
-        .with_meetings_cfg(zoom_meetings_cfg(secret))
+        .with_meetings_cfg(sample_zoom_meetings_cfg(secret))
         .build()
         .await;
 
@@ -298,7 +297,7 @@ async fn test_zoom_event_validates_url() {
 
     // Setup router
     let router = TestRouterBuilder::new(db, nm)
-        .with_meetings_cfg(zoom_meetings_cfg(secret))
+        .with_meetings_cfg(sample_zoom_meetings_cfg(secret))
         .build()
         .await;
 
@@ -329,19 +328,4 @@ fn signed_zoom_webhook_request(body: &str, secret: &str) -> Request<Body> {
         .header(HEADER_TIMESTAMP, timestamp)
         .body(Body::from(body.to_string()))
         .unwrap()
-}
-
-fn zoom_meetings_cfg(secret: &str) -> MeetingsConfig {
-    MeetingsConfig {
-        zoom: Some(MeetingsZoomConfig {
-            account_id: "account-id".to_string(),
-            client_id: "client-id".to_string(),
-            client_secret: "client-secret".to_string(),
-            enabled: true,
-            host_pool_users: vec!["host@example.com".to_string()],
-            max_participants: 100,
-            max_simultaneous_meetings_per_host: 1,
-            webhook_secret_token: secret.to_string(),
-        }),
-    }
 }
