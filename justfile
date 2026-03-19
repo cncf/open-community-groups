@@ -36,7 +36,7 @@ e2e_github_auth_url := env("OCG_E2E_GITHUB_AUTH_URL", "https://example.test/oaut
 e2e_github_token_url := env("OCG_E2E_GITHUB_TOKEN_URL", "https://example.test/oauth/token")
 e2e_github_client_id := env("OCG_E2E_GITHUB_CLIENT_ID", "e2e-client")
 e2e_github_client_secret := env("OCG_E2E_GITHUB_CLIENT_SECRET", "e2e-secret")
-e2e_github_redirect_uri := env("OCG_E2E_GITHUB_REDIRECT_URI", "http://test-community.localhost:9000/log-in/oauth2/github/callback")
+e2e_github_redirect_uri := env("OCG_E2E_GITHUB_REDIRECT_URI", "http://localhost:9000/log-in/oauth2/github/callback")
 
 # Helper to run PostgreSQL commands with the configured binary path
 [private]
