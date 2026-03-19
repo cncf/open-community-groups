@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(58);
+select plan(66);
 
 -- ============================================================================
 -- VARIABLES
@@ -21,10 +21,18 @@ select plan(58);
 \set event10ID '00000000-0000-0000-0000-000000000010'
 \set event11ID '00000000-0000-0000-0000-000000000013'
 \set event12ID '00000000-0000-0000-0000-000000000014'
+\set event13ID '00000000-0000-0000-0000-000000000015'
+\set event14ID '00000000-0000-0000-0000-000000000016'
+\set event15ID '00000000-0000-0000-0000-000000000017'
+\set event16ID '00000000-0000-0000-0000-000000000018'
+\set event17ID '00000000-0000-0000-0000-000000000019'
+\set event18ID '00000000-0000-0000-0000-000000000020'
 \set group1ID '00000000-0000-0000-0000-000000000002'
 \set invalidUserID '99999999-9999-9999-9999-999999999999'
 \set label1ID '00000000-0000-0000-0000-000000000401'
 \set label2ID '00000000-0000-0000-0000-000000000402'
+\set label3ID '00000000-0000-0000-0000-000000000403'
+\set label4ID '00000000-0000-0000-0000-000000000404'
 \set meeting1ID '00000000-0000-0000-0000-000000000301'
 \set session1ID '00000000-0000-0000-0000-000000000101'
 \set session2ID '00000000-0000-0000-0000-000000000102'
@@ -33,6 +41,8 @@ select plan(58);
 \set user1ID '00000000-0000-0000-0000-000000000020'
 \set user2ID '00000000-0000-0000-0000-000000000021'
 \set user3ID '00000000-0000-0000-0000-000000000022'
+\set user4ID '00000000-0000-0000-0000-000000000023'
+\set user5ID '00000000-0000-0000-0000-000000000024'
 
 -- ============================================================================
 -- SEED DATA
@@ -46,7 +56,9 @@ values (:'community1ID', 'test-community', 'Test Community', 'A test community f
 insert into "user" (user_id, auth_hash, email, username, name) values
     (:'user1ID', 'hash1', 'host1@example.com', 'host1', 'Host One'),
     (:'user2ID', 'hash2', 'host2@example.com', 'host2', 'Host Two'),
-    (:'user3ID', 'hash3', 'speaker1@example.com', 'speaker1', 'Speaker One');
+    (:'user3ID', 'hash3', 'speaker1@example.com', 'speaker1', 'Speaker One'),
+    (:'user4ID', 'hash4', 'waitlist1@example.com', 'waitlist1', 'Waitlist One'),
+    (:'user5ID', 'hash5', 'waitlist2@example.com', 'waitlist2', 'Waitlist Two');
 
 -- Event Category
 insert into event_category (event_category_id, name, community_id)
@@ -122,6 +134,7 @@ insert into event (
     meeting_provider_id,
     meeting_requested,
     meeting_in_sync,
+    published,
     starts_at,
     ends_at
 ) values (
@@ -137,8 +150,146 @@ insert into event (
     'zoom',
     true,
     false,
+    true,
     '2030-03-01 10:00:00-05',
     '2030-03-01 12:00:00-05'
+);
+
+-- Published dateless event for waitlist promotion checks
+insert into event (
+    event_id,
+    group_id,
+    name,
+    slug,
+    description,
+    timezone,
+    event_category_id,
+    event_kind_id,
+    capacity,
+    published,
+    waitlist_enabled
+) values (
+    :'event13ID',
+    :'group1ID',
+    'Published Dateless Event',
+    'dateless-waitlist',
+    'Published event without dates for waitlist promotion checks',
+    'UTC',
+    :'category1ID',
+    'in-person',
+    1,
+    true,
+    true
+);
+
+-- Published event used for attendee floor validation checks
+insert into event (
+    event_id,
+    group_id,
+    name,
+    slug,
+    description,
+    timezone,
+    event_category_id,
+    event_kind_id,
+    capacity,
+    published
+) values (
+    :'event14ID',
+    :'group1ID',
+    'Capacity Validation Event',
+    'capacity-validation',
+    'Published event for attendee floor validation checks',
+    'America/New_York',
+    :'category1ID',
+    'in-person',
+    3,
+    true
+);
+
+-- Published event used for waitlist promotion on capacity increase
+insert into event (
+    event_id,
+    group_id,
+    name,
+    slug,
+    description,
+    timezone,
+    event_category_id,
+    event_kind_id,
+    capacity,
+    published,
+    starts_at,
+    ends_at,
+    waitlist_enabled
+) values (
+    :'event15ID',
+    :'group1ID',
+    'Waitlist Promotion Event',
+    'waitlist-promotion',
+    'Published event for waitlist capacity increase promotion checks',
+    'America/New_York',
+    :'category1ID',
+    'in-person',
+    3,
+    true,
+    '2030-03-01 10:00:00-05',
+    '2030-03-01 12:00:00-05',
+    true
+);
+
+-- Published dateless event used when waitlist is disabled for new joins
+insert into event (
+    event_id,
+    group_id,
+    name,
+    slug,
+    description,
+    timezone,
+    event_category_id,
+    event_kind_id,
+    capacity,
+    published,
+    waitlist_enabled
+) values (
+    :'event16ID',
+    :'group1ID',
+    'Dateless Waitlist Disabled Event',
+    'dateless-waitlist-disabled',
+    'Published dateless event for disabled waitlist promotion checks',
+    'UTC',
+    :'category1ID',
+    'in-person',
+    2,
+    true,
+    true
+);
+
+-- Published dateless event used when capacity becomes unlimited
+insert into event (
+    event_id,
+    group_id,
+    name,
+    slug,
+    description,
+    timezone,
+    event_category_id,
+    event_kind_id,
+    capacity,
+    published,
+    waitlist_enabled
+) values (
+    :'event17ID',
+    :'group1ID',
+    'Dateless Unlimited Event',
+    'dateless-unlimited',
+    'Published dateless event for unlimited capacity promotion checks',
+    'UTC',
+    :'category1ID',
+    'in-person',
+    1,
+    true,
+    true
 );
 
 -- Event with session having meeting_in_sync=false
@@ -329,11 +480,27 @@ insert into event (
     current_timestamp + interval '2 hours'
 );
 
--- Event Attendees (for capacity validation tests)
+-- Event Attendees (for capacity validation and waitlist promotion tests)
 insert into event_attendee (event_id, user_id) values
-    (:'event5ID', :'user1ID'),
-    (:'event5ID', :'user2ID'),
-    (:'event5ID', :'user3ID');
+    (:'event13ID', :'user2ID'),
+    (:'event14ID', :'user1ID'),
+    (:'event14ID', :'user2ID'),
+    (:'event14ID', :'user3ID'),
+    (:'event15ID', :'user1ID'),
+    (:'event15ID', :'user2ID'),
+    (:'event15ID', :'user3ID'),
+    (:'event16ID', :'user2ID'),
+    (:'event16ID', :'user3ID'),
+    (:'event17ID', :'user2ID');
+
+-- Event Waitlist (for waitlist promotion tests)
+insert into event_waitlist (event_id, user_id, created_at) values
+    (:'event13ID', :'user3ID', current_timestamp),
+    (:'event15ID', :'user4ID', current_timestamp),
+    (:'event15ID', :'user5ID', current_timestamp + interval '1 minute'),
+    (:'event16ID', :'user1ID', current_timestamp + interval '2 minutes'),
+    (:'event17ID', :'user4ID', current_timestamp + interval '3 minutes'),
+    (:'event17ID', :'user5ID', current_timestamp + interval '4 minutes');
 
 -- Published event used for reminder evaluation checks
 insert into event (
@@ -422,9 +589,46 @@ insert into event (
     '2030-01-15 12:00:00+00'
 );
 
+-- Event used for CFS label upsert checks
+insert into event (
+    event_id,
+    group_id,
+    name,
+    slug,
+    description,
+    timezone,
+    event_category_id,
+    event_kind_id,
+    cfs_description,
+    cfs_enabled,
+    cfs_ends_at,
+    cfs_starts_at,
+    starts_at,
+    ends_at
+) values (
+    :'event18ID',
+    :'group1ID',
+    'Event With Labels For Upsert',
+    'upsert-labels',
+    'Event seeded for CFS labels upsert tests',
+    'UTC',
+    :'category1ID',
+    'virtual',
+    'Initial CFS description',
+    true,
+    '2030-01-05 00:00:00+00',
+    '2029-12-20 00:00:00+00',
+    '2030-01-15 10:00:00+00',
+    '2030-01-15 12:00:00+00'
+);
+
+-- Event CFS Labels
 insert into event_cfs_label (event_cfs_label_id, event_id, color, name) values
     (:'label1ID', :'event12ID', '#CCFBF1', 'track / backend'),
     (:'label2ID', :'event12ID', '#FEE2E2', 'track / frontend');
+insert into event_cfs_label (event_cfs_label_id, event_id, color, name) values
+    (:'label3ID', :'event18ID', '#CCFBF1', 'track / backend'),
+    (:'label4ID', :'event18ID', '#FEE2E2', 'track / frontend');
 
 -- ============================================================================
 -- TESTS
@@ -480,7 +684,9 @@ select is(
         "meeting_provider": "zoom",
         "meeting_requested": true,
         "sessions": {},
-        "starts_at": 1896213600
+        "starts_at": 1896213600,
+        "waitlist_count": 0,
+        "waitlist_enabled": false
     }'::jsonb,
     'Should persist basic update and clear omitted hosts, sponsors, and sessions'
 );
@@ -608,6 +814,8 @@ select is(
         "venue_name": "New Venue",
         "venue_state": "TK",
         "venue_zip_code": "100-0001",
+        "waitlist_count": 0,
+        "waitlist_enabled": false,
         "sponsors": [
             {"group_sponsor_id": "00000000-0000-0000-0000-000000000062", "level": "Platinum", "logo_url": "https://example.com/newsponsor.png", "name": "NewSponsor Inc", "website_url": "https://newsponsor.com"}
         ]
@@ -705,19 +913,14 @@ select is(
     'Should delete all CFS labels when payload omits cfs_labels'
 );
 
--- Re-seed labels for upsert tests
-insert into event_cfs_label (event_cfs_label_id, event_id, color, name) values
-    (:'label1ID', :'event12ID', '#CCFBF1', 'track / backend'),
-    (:'label2ID', :'event12ID', '#FEE2E2', 'track / frontend');
-
 -- Should update CFS labels for an event
 select lives_ok(
     $$select update_event(
         '00000000-0000-0000-0000-000000000002'::uuid,
-        '00000000-0000-0000-0000-000000000014'::uuid,
+        '00000000-0000-0000-0000-000000000020'::uuid,
         '{
-            "name": "Event With Labels",
-            "description": "Event seeded for CFS labels update tests",
+            "name": "Event With Labels For Upsert",
+            "description": "Event seeded for CFS labels upsert tests",
             "timezone": "UTC",
             "category_id": "00000000-0000-0000-0000-000000000011",
             "kind_id": "virtual",
@@ -729,7 +932,7 @@ select lives_ok(
             "ends_at": "2030-01-15T12:00:00",
             "cfs_labels": [
                 {
-                    "event_cfs_label_id": "00000000-0000-0000-0000-000000000401",
+                    "event_cfs_label_id": "00000000-0000-0000-0000-000000000403",
                     "name": "track / ai + ml",
                     "color": "#DBEAFE"
                 },
@@ -754,7 +957,7 @@ select is(
             order by name
         )
         from event_cfs_label
-        where event_id = :'event12ID'::uuid
+        where event_id = :'event18ID'::uuid
     ),
     '[
         {"color": "#DBEAFE", "name": "track / ai + ml"},
@@ -777,7 +980,7 @@ select is(
             get_event_full(
                 :'community1ID'::uuid,
                 :'group1ID'::uuid,
-                :'event12ID'::uuid
+                :'event18ID'::uuid
             )::jsonb->'cfs_labels'
         ) as label
     ),
@@ -1371,8 +1574,8 @@ select lives_ok(
 select throws_ok(
     $$select update_event(
         '00000000-0000-0000-0000-000000000002'::uuid,
-        '00000000-0000-0000-0000-000000000005'::uuid,
-        '{"name": "Event With Pending Sync", "description": "Test", "timezone": "America/New_York", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "capacity": 2}'::jsonb
+        '00000000-0000-0000-0000-000000000016'::uuid,
+        '{"name": "Capacity Validation Event", "description": "Test", "timezone": "America/New_York", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "capacity": 2}'::jsonb
     )$$,
     'event capacity (2) cannot be less than current number of attendees (3)',
     'Should throw error when capacity is reduced below attendee count'
@@ -1382,8 +1585,8 @@ select throws_ok(
 select lives_ok(
     $$select update_event(
         '00000000-0000-0000-0000-000000000002'::uuid,
-        '00000000-0000-0000-0000-000000000005'::uuid,
-        '{"name": "Event With Pending Sync", "description": "Test capacity equals", "timezone": "America/New_York", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "capacity": 3}'::jsonb
+        '00000000-0000-0000-0000-000000000016'::uuid,
+        '{"name": "Capacity Validation Event", "description": "Test capacity equals", "timezone": "America/New_York", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "capacity": 3}'::jsonb
     )$$,
     'Should succeed when capacity equals attendee count'
 );
@@ -1392,10 +1595,173 @@ select lives_ok(
 select lives_ok(
     $$select update_event(
         '00000000-0000-0000-0000-000000000002'::uuid,
-        '00000000-0000-0000-0000-000000000005'::uuid,
-        '{"name": "Event With Pending Sync", "description": "Test capacity exceeds", "timezone": "America/New_York", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "capacity": 100}'::jsonb
+        '00000000-0000-0000-0000-000000000016'::uuid,
+        '{"name": "Capacity Validation Event", "description": "Test capacity exceeds", "timezone": "America/New_York", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "capacity": 100}'::jsonb
     )$$,
     'Should succeed when capacity exceeds attendee count'
+);
+
+-- Should promote waitlisted users when increasing capacity on a waitlist-enabled event
+select is(
+    update_event(
+        :'group1ID'::uuid,
+        :'event15ID'::uuid,
+        '{
+            "name": "Waitlist Promotion Event",
+            "description": "Test capacity promotion",
+            "timezone": "America/New_York",
+            "category_id": "00000000-0000-0000-0000-000000000011",
+            "kind_id": "in-person",
+            "capacity": 5,
+            "starts_at": "2030-03-01T10:00:00",
+            "ends_at": "2030-03-01T12:00:00",
+            "waitlist_enabled": true
+        }'::jsonb
+    )::jsonb,
+    format('["%s","%s"]', :'user4ID', :'user5ID')::jsonb,
+    'Should return promoted waitlist user ids when capacity increase opens seats'
+);
+
+-- Should move promoted users into attendees and empty the waitlist
+select is(
+    (
+        select jsonb_build_object(
+            'attendees', (
+                select jsonb_agg(user_id order by user_id)
+                from event_attendee
+                where event_id = :'event15ID'::uuid
+            ),
+            'waitlist', (
+                select coalesce(jsonb_agg(user_id order by user_id), '[]'::jsonb)
+                from event_waitlist
+                where event_id = :'event15ID'::uuid
+            )
+        )
+    ),
+    format(
+        '{"attendees":["%s","%s","%s","%s","%s"],"waitlist":[]}',
+        :'user1ID', :'user2ID', :'user3ID', :'user4ID', :'user5ID'
+    )::jsonb,
+    'Should move promoted waitlist users into attendees when capacity increases'
+);
+
+-- Should promote waitlisted users for a published dateless event when capacity increases
+select is(
+    update_event(
+        :'group1ID'::uuid,
+        :'event13ID'::uuid,
+        format(
+            '{
+                "name": "Published Dateless Event",
+                "description": "Published event without dates for waitlist promotion checks",
+                "timezone": "UTC",
+                "category_id": "%s",
+                "kind_id": "in-person",
+                "capacity": 2,
+                "waitlist_enabled": true
+            }',
+            :'category1ID'
+        )::jsonb
+    )::jsonb,
+    format('["%s"]', :'user3ID')::jsonb,
+    'Should return promoted waitlist user ids when a dateless event gains capacity'
+);
+
+-- Should move promoted users into attendees for a published dateless event
+select is(
+    (
+        select jsonb_build_object(
+            'attendees', (
+                select jsonb_agg(user_id order by user_id)
+                from event_attendee
+                where event_id = :'event13ID'::uuid
+            ),
+            'waitlist', (
+                select coalesce(jsonb_agg(user_id order by user_id), '[]'::jsonb)
+                from event_waitlist
+                where event_id = :'event13ID'::uuid
+            )
+        )
+    ),
+    format(
+        '{"attendees":["%s","%s"],"waitlist":[]}',
+        :'user2ID', :'user3ID'
+    )::jsonb,
+    'Should move promoted users into attendees when a dateless event gains capacity'
+);
+
+-- Should continue promoting queued users when waitlist is disabled for new joins
+select is(
+    update_event(
+        :'group1ID'::uuid,
+        :'event16ID'::uuid,
+        format(
+            '{
+                "name": "Dateless Waitlist Disabled Event",
+                "description": "Published dateless event for disabled waitlist promotion checks",
+                "timezone": "UTC",
+                "category_id": "%s",
+                "kind_id": "in-person",
+                "capacity": 3,
+                "waitlist_enabled": false
+            }',
+            :'category1ID'
+        )::jsonb
+    )::jsonb,
+    format('["%s"]', :'user1ID')::jsonb,
+    'Should promote existing waitlist users even when waitlist is disabled for new joins'
+);
+
+-- Should leave the queue empty after promoting existing users with waitlist disabled
+select is(
+    (select coalesce(jsonb_agg(user_id order by user_id), '[]'::jsonb) from event_waitlist where event_id = :'event16ID'::uuid),
+    '[]'::jsonb,
+    'Should empty the remaining waitlist after promotion when waitlist is disabled'
+);
+
+-- Should promote all queued users when capacity becomes unlimited
+select is(
+    update_event(
+        :'group1ID'::uuid,
+        :'event17ID'::uuid,
+        format(
+            '{
+                "name": "Dateless Unlimited Event",
+                "description": "Published dateless event for unlimited capacity promotion checks",
+                "timezone": "UTC",
+                "category_id": "%s",
+                "kind_id": "in-person",
+                "capacity": null,
+                "waitlist_enabled": false
+            }',
+            :'category1ID'
+        )::jsonb
+    )::jsonb,
+    format('["%s","%s"]', :'user4ID', :'user5ID')::jsonb,
+    'Should promote the full queue when capacity becomes unlimited'
+);
+
+-- Should empty the queue when capacity becomes unlimited
+select is(
+        (
+            select jsonb_build_object(
+                'attendees', (
+                    select jsonb_agg(user_id order by user_id)
+                    from event_attendee
+                    where event_id = :'event17ID'::uuid
+                ),
+                'waitlist', (
+                    select coalesce(jsonb_agg(user_id order by user_id), '[]'::jsonb)
+                    from event_waitlist
+                    where event_id = :'event17ID'::uuid
+                )
+            )
+        ),
+    format(
+        '{"attendees":["%s","%s","%s"],"waitlist":[]}',
+        :'user2ID', :'user4ID', :'user5ID'
+    )::jsonb,
+    'Should move all waitlisted users into attendees when capacity becomes unlimited'
 );
 
 -- Should evaluate reminder immediately when published event starts within 24 hours

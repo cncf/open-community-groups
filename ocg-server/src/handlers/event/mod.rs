@@ -11,7 +11,7 @@ use chrono::Duration;
 use garde::Validate;
 use serde::Deserialize;
 use serde_json::{json, to_value};
-use tracing::instrument;
+use tracing::{instrument, warn};
 use uuid::Uuid;
 
 use crate::{
@@ -28,8 +28,9 @@ use crate::{
         PageId,
         auth::User,
         event::{CfsModal, CheckInPage, Page},
-        notifications::EventWelcome,
+        notifications::{EventWaitlistJoined, EventWaitlistLeft, EventWaitlistPromoted, EventWelcome},
     },
+    types::event::EventAttendanceStatus,
     util::{build_event_calendar_attachment, build_event_page_link},
     validation::MAX_LEN_EVENT_LABELS_PER_SUBMISSION,
 };
@@ -81,13 +82,14 @@ pub(crate) async fn check_in_page(
     let user = auth_session.user.as_ref().expect("user to be logged in").clone();
 
     // Get site settings and event details
-    let (event, site_settings, (user_is_attendee, user_is_checked_in), check_in_window_open) = tokio::try_join!(
+    let (event, site_settings, attendance, check_in_window_open) = tokio::try_join!(
         db.get_event_summary_by_id(community_id, event_id),
         db.get_site_settings(),
-        db.is_event_attendee(community_id, event_id, user.user_id),
+        db.get_event_attendance(community_id, event_id, user.user_id),
         db.is_event_check_in_window_open(community_id, event_id),
     )?;
 
+    // Prepare template
     let template = CheckInPage {
         check_in_window_open,
         event,
@@ -95,8 +97,8 @@ pub(crate) async fn check_in_page(
         path: uri.path().to_string(),
         site_settings,
         user: User::from_session(auth_session).await?,
-        user_is_attendee,
-        user_is_checked_in,
+        user_is_attendee: attendance.status == EventAttendanceStatus::Attendee,
+        user_is_checked_in: attendance.is_checked_in,
     };
 
     Ok(Html(template.render()?))
@@ -152,30 +154,75 @@ pub(crate) async fn attend_event(
     Path((_, event_id)): Path<(String, Uuid)>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Attend event
-    db.attend_event(community_id, event_id, user.user_id).await?;
+    let attend_result = db.attend_event(community_id, event_id, user.user_id).await?;
+    let response = (
+        StatusCode::OK,
+        Json(json!({
+            "status": &attend_result,
+        })),
+    );
 
-    // Enqueue welcome to event notification
-    let (site_settings, event) = tokio::try_join!(
+    // Enqueue attendee or waitlist notification best-effort after the RSVP succeeds
+
+    // Get site settings and event details for notifications
+    let (site_settings, event) = match tokio::try_join!(
         db.get_site_settings(),
-        db.get_event_summary_by_id(community_id, event_id),
-    )?;
+        db.get_event_summary_by_id(community_id, event_id)
+    ) {
+        Ok(context) => context,
+        Err(err) => {
+            warn!(error = %err, "failed to load event notification context after attendance change");
+            return Ok(response);
+        }
+    };
+
+    // Prepare the event page link for notifications
     let base_url = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
     let link = build_event_page_link(base_url, &event);
-    let calendar_ics = build_event_calendar_attachment(base_url, &event);
-    let template_data = EventWelcome {
-        link,
-        event,
-        theme: site_settings.theme,
-    };
-    let notification = NewNotification {
-        attachments: vec![calendar_ics],
-        kind: NotificationKind::EventWelcome,
-        recipients: vec![user.user_id],
-        template_data: Some(to_value(&template_data)?),
-    };
-    notifications_manager.enqueue(&notification).await?;
 
-    Ok(StatusCode::NO_CONTENT)
+    // Build the notification that matches the new attendance status
+    let notification_result = match &attend_result {
+        EventAttendanceStatus::Attendee => {
+            // Confirm the RSVP with the event details and calendar attachment
+            let calendar_ics = build_event_calendar_attachment(base_url, &event);
+            let template_data = EventWelcome {
+                link: link.clone(),
+                event: event.clone(),
+                theme: site_settings.theme.clone(),
+            };
+            let notification = NewNotification {
+                attachments: vec![calendar_ics],
+                kind: NotificationKind::EventWelcome,
+                recipients: vec![user.user_id],
+                template_data: Some(to_value(&template_data)?),
+            };
+            notifications_manager.enqueue(&notification).await
+        }
+        EventAttendanceStatus::Waitlisted => {
+            // Let the user know they were added to the waitlist
+            let template_data = EventWaitlistJoined {
+                event: event.clone(),
+                link: link.clone(),
+                theme: site_settings.theme.clone(),
+            };
+            let notification = NewNotification {
+                attachments: vec![],
+                kind: NotificationKind::EventWaitlistJoined,
+                recipients: vec![user.user_id],
+                template_data: Some(to_value(&template_data)?),
+            };
+            notifications_manager.enqueue(&notification).await
+        }
+        EventAttendanceStatus::None => {
+            unreachable!("attend_event cannot return an unattached attendance status")
+        }
+    };
+
+    if let Err(err) = notification_result {
+        warn!(error = %err, "failed to enqueue event attendance notification");
+    }
+
+    Ok(response)
 }
 
 /// Handler for checking event attendance status.
@@ -187,11 +234,11 @@ pub(crate) async fn attendance_status(
     Path((_, event_id)): Path<(String, Uuid)>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Check attendance and check-in status
-    let (is_attendee, is_checked_in) = db.is_event_attendee(community_id, event_id, user.user_id).await?;
+    let attendance = db.get_event_attendance(community_id, event_id, user.user_id).await?;
 
     Ok(Json(json!({
-        "is_attendee": is_attendee,
-        "is_checked_in": is_checked_in
+        "is_checked_in": attendance.is_checked_in,
+        "status": attendance.status
     })))
 }
 
@@ -214,13 +261,76 @@ pub(crate) async fn check_in(
 pub(crate) async fn leave_event(
     CurrentUser(user): CurrentUser,
     State(db): State<DynDB>,
+    State(notifications_manager): State<DynNotificationsManager>,
+    State(server_cfg): State<HttpServerConfig>,
     CommunityId(community_id): CommunityId,
     Path((_, event_id)): Path<(String, Uuid)>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Leave event
-    db.leave_event(community_id, event_id, user.user_id).await?;
+    let leave_result = db.leave_event(community_id, event_id, user.user_id).await?;
+    let response = (
+        StatusCode::OK,
+        Json(json!({
+            "left_status": &leave_result.left_status
+        })),
+    );
 
-    Ok(StatusCode::NO_CONTENT)
+    // Enqueue waitlist leave and promotion notifications best-effort after the leave action succeeds
+
+    // Get site settings and event details for notifications
+    let (site_settings, event) = match tokio::try_join!(
+        db.get_site_settings(),
+        db.get_event_summary_by_id(community_id, event_id)
+    ) {
+        Ok(context) => context,
+        Err(err) => {
+            warn!(error = %err, "failed to load event notification context after attendance change");
+            return Ok(response);
+        }
+    };
+
+    // Prepare the event page link for notifications
+    let base_url = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
+    let link = build_event_page_link(base_url, &event);
+
+    // Only send a leave notification when the user exits the waitlist
+    if leave_result.left_status == EventAttendanceStatus::Waitlisted {
+        let template_data = EventWaitlistLeft {
+            event: event.clone(),
+            link: link.clone(),
+            theme: site_settings.theme.clone(),
+        };
+        let notification = NewNotification {
+            attachments: vec![],
+            kind: NotificationKind::EventWaitlistLeft,
+            recipients: vec![user.user_id],
+            template_data: Some(to_value(&template_data)?),
+        };
+        if let Err(err) = notifications_manager.enqueue(&notification).await {
+            warn!(error = %err, "failed to enqueue event waitlist leave notification");
+        }
+    }
+
+    // Notify users promoted off the waitlist after a spot opens up
+    if !leave_result.promoted_user_ids.is_empty() {
+        let calendar_ics = build_event_calendar_attachment(base_url, &event);
+        let template_data = EventWaitlistPromoted {
+            event: event.clone(),
+            link: link.clone(),
+            theme: site_settings.theme.clone(),
+        };
+        let notification = NewNotification {
+            attachments: vec![calendar_ics],
+            kind: NotificationKind::EventWaitlistPromoted,
+            recipients: leave_result.promoted_user_ids.clone(),
+            template_data: Some(to_value(&template_data)?),
+        };
+        if let Err(err) = notifications_manager.enqueue(&notification).await {
+            warn!(error = %err, "failed to enqueue waitlist promotion notification");
+        }
+    }
+
+    Ok(response)
 }
 
 /// Handler for submitting a CFS proposal to an event.

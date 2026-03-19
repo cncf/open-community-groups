@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(122);
+select plan(129);
 
 -- ============================================================================
 -- TESTS
@@ -41,6 +41,7 @@ select has_function('get_community_recently_added_groups');
 select has_function('get_community_site_stats');
 select has_function('get_community_stats');
 select has_function('get_community_upcoming_events');
+select has_function('get_event_attendance');
 select has_function('get_event_full');
 select has_function('get_event_full_by_slug');
 select has_function('get_event_summary');
@@ -59,7 +60,6 @@ select has_function('get_site_settings');
 select has_function('get_site_upcoming_events');
 select has_function('get_user_by_id');
 select has_function('i_array_to_string');
-select has_function('is_event_attendee');
 select has_function('is_group_member');
 select has_function('join_group');
 select has_function('leave_event');
@@ -72,8 +72,9 @@ select has_function('list_event_approved_cfs_submissions');
 select has_function('list_event_attendees_ids');
 select has_function('list_event_categories');
 select has_function('list_event_cfs_submissions');
-select has_function('list_event_kinds');
 select has_function('list_event_cfs_labels');
+select has_function('list_event_kinds');
+select has_function('list_event_waitlist_ids');
 select has_function('list_group_categories');
 select has_function('list_group_events');
 select has_function('list_group_members');
@@ -93,10 +94,12 @@ select has_function('list_user_groups');
 select has_function('list_user_pending_session_proposal_co_speaker_invitations');
 select has_function('list_user_session_proposals');
 select has_function('list_user_session_proposals_for_cfs_event');
+select has_function('promote_event_waitlist');
 select has_function('publish_event');
 select has_function('reject_session_proposal_co_speaker_invitation');
 select has_function('resubmit_cfs_submission');
 select has_function('search_event_attendees');
+select has_function('search_event_waitlist');
 select has_function('search_events');
 select has_function('search_groups');
 select has_function('search_user');
@@ -122,16 +125,20 @@ select has_function('verify_email');
 select has_function('withdraw_cfs_submission');
 
 -- Test: check expected trigger functions exist
+select has_function('check_event_attendee_waitlist');
 select has_function('check_event_category_community');
 select has_function('check_event_sponsor_group');
+select has_function('check_event_waitlist_attendee');
 select has_function('check_group_category_community');
 select has_function('check_group_region_community');
 select has_function('check_session_cfs_submission_approved');
 select has_function('check_session_within_event_bounds');
 
 -- Test: check expected triggers exist
+select has_trigger('event_attendee', 'event_attendee_waitlist_check');
 select has_trigger('event', 'event_category_community_check');
 select has_trigger('event_sponsor', 'event_sponsor_group_check');
+select has_trigger('event_waitlist', 'event_waitlist_attendee_check');
 select has_trigger('group', 'group_category_community_check');
 select has_trigger('group', 'group_region_community_check');
 select has_trigger('session', 'session_cfs_submission_approved_check');

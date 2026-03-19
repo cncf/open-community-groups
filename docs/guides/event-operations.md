@@ -18,6 +18,7 @@ For scope boundaries and non-event responsibilities, pair this with
 - [Event Editor Tabs](#event-editor-tabs)
 - [CFS Workflow (End to End)](#cfs-workflow-end-to-end)
 - [Automatic Meeting Creation](#automatic-meeting-creation)
+- [Attendance and Waitlist Operations](#attendance-and-waitlist-operations)
 - [Publish, Unpublish, Cancel, Delete](#publish-unpublish-cancel-delete)
 - [Public Event Result](#public-event-result)
 - [Event-Day Checklist](#event-day-checklist)
@@ -117,6 +118,18 @@ Publish readiness checks in this tab:
 - Branding is consistent with group/community standards.
 - Capacity and registration policy match expected demand.
 
+Waitlist control also lives here:
+
+- `Waitlist enabled` is an explicit toggle, separate from `capacity`.
+- Enabling the waitlist requires a numeric capacity value.
+- Leaving `Capacity` blank makes the event unlimited-capacity, and unlimited-capacity events cannot
+  enable waitlist.
+- If capacity is full and waitlist is off, the public page shows the event as sold out.
+- If capacity is full and waitlist is on, people can join the waitlist instead of RSVP'ing.
+
+!> If you want a waitlist, set capacity first.
+Unlimited-capacity events always keep waitlist disabled.
+
 Brand inheritance model in event details:
 
 - If event logo is not provided, OCG falls back to group logo, then community logo.
@@ -186,6 +199,36 @@ that label.
 ?> Renaming a label updates existing submissions that already reference that label.
 
 ![Event CFS](../screenshots/dashboard-group-event-cfs.png)
+
+### Attendance and Waitlist Operations
+
+The dashboard now separates confirmed attendees from people still waiting for a seat.
+
+Organizer behavior:
+
+- `Attendees` shows only confirmed attendees.
+- `Waitlist` shows people in FIFO order based on when they joined.
+- Canceling an event notifies attendees, speakers, and waitlisted users.
+
+Capacity behavior:
+
+- If an attendee leaves and the event has a capacity limit, OCG automatically promotes the oldest
+  waitlisted person.
+- If you raise event capacity on a published event and seats become available, OCG also promotes from
+  the waitlist automatically.
+- If you later disable the waitlist, OCG stops accepting new waitlist sign-ups. People who were
+  already on the waitlist remain queued and may still be promoted automatically when attendee spots
+  open up, for example after a cancellation or a capacity increase.
+- If you clear `Capacity` and disable waitlist, OCG treats the event as unlimited-capacity and
+  immediately promotes everyone still on the waitlist.
+- Promotion notifications are best-effort; the seat change still succeeds even if notification
+  enqueue fails.
+
+Member-facing behavior:
+
+- Joining the waitlist sends a waitlist confirmation notification.
+- Leaving the waitlist sends a waitlist removal notification.
+- Promotion sends a confirmation notification with calendar attachment.
 
 ### Submissions
 
@@ -335,9 +378,9 @@ Message behavior:
 
 - `Publish` on a future unpublished event can notify group members/team members and listed
   speakers.
-- `Cancel` on a future published event notifies attendees and speakers.
+- `Cancel` on a future published event notifies attendees, speakers, and waitlisted users.
 - Rescheduling a future published event can notify attendees and speakers when the start or end
-  time changes by at least 15 minutes.
+  time changes by at least 15 minutes. Waitlisted users are not included in reschedule notices.
 - `Unpublish` and `Delete` do not send broad attendee updates in this flow.
 
 Automatic-meeting lifecycle in these actions:

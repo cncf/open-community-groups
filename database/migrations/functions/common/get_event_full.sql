@@ -65,6 +65,8 @@ returns json as $$
             'venue_name', e.venue_name,
             'venue_state', e.venue_state,
             'venue_zip_code', e.venue_zip_code,
+            'waitlist_count', coalesce(ew.waitlist_count, 0),
+            'waitlist_enabled', e.waitlist_enabled,
 
             -- Include community and group summaries
             'community', get_community_summary(g.community_id),
@@ -285,6 +287,11 @@ returns json as $$
         from event_attendee
         group by event_id
     ) ea on ea.event_id = e.event_id
+    left join (
+        select event_id, count(*)::int as waitlist_count
+        from event_waitlist
+        group by event_id
+    ) ew on ew.event_id = e.event_id
     where e.event_id = p_event_id
     and g.group_id = p_group_id
     and g.community_id = p_community_id;

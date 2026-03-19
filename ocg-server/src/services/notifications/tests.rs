@@ -424,6 +424,88 @@ fn test_delivery_worker_prepare_content_event_reminder() {
 }
 
 #[test]
+fn test_delivery_worker_prepare_content_event_reminder_legacy_template_data() {
+    // Setup notification
+    let notification = Notification {
+        attachments: vec![],
+        email: "user@example.test".to_string(),
+        kind: NotificationKind::EventReminder,
+        notification_id: Uuid::new_v4(),
+        template_data: Some(sample_event_reminder_legacy_template_data()),
+    };
+
+    // Prepare content
+    let (subject, body) = DeliveryWorker::prepare_content(&notification).unwrap();
+
+    // Check content matches expectations
+    assert_eq!(subject, "Reminder: Reminder Event starts in 24 hours");
+    assert!(body.contains("Reminder Event"));
+    assert!(
+        body.contains("https://example.test/test-community/group/notification-group/event/reminder-event")
+    );
+}
+
+#[test]
+fn test_delivery_worker_prepare_content_event_waitlist_joined() {
+    // Setup notification
+    let notification = Notification {
+        attachments: vec![],
+        email: "user@example.test".to_string(),
+        kind: NotificationKind::EventWaitlistJoined,
+        notification_id: Uuid::new_v4(),
+        template_data: Some(sample_event_waitlist_template_data()),
+    };
+
+    // Prepare content
+    let (subject, body) = DeliveryWorker::prepare_content(&notification).unwrap();
+
+    // Check content matches expectations
+    assert_eq!(subject, "You joined the waiting list");
+    assert!(body.contains("You have been added to the waiting list"));
+    assert!(body.contains("Waitlist Event"));
+}
+
+#[test]
+fn test_delivery_worker_prepare_content_event_waitlist_left() {
+    // Setup notification
+    let notification = Notification {
+        attachments: vec![],
+        email: "user@example.test".to_string(),
+        kind: NotificationKind::EventWaitlistLeft,
+        notification_id: Uuid::new_v4(),
+        template_data: Some(sample_event_waitlist_template_data()),
+    };
+
+    // Prepare content
+    let (subject, body) = DeliveryWorker::prepare_content(&notification).unwrap();
+
+    // Check content matches expectations
+    assert_eq!(subject, "You left the waiting list");
+    assert!(body.contains("You have left the waiting list"));
+    assert!(body.contains("Waitlist Event"));
+}
+
+#[test]
+fn test_delivery_worker_prepare_content_event_waitlist_promoted() {
+    // Setup notification
+    let notification = Notification {
+        attachments: vec![],
+        email: "user@example.test".to_string(),
+        kind: NotificationKind::EventWaitlistPromoted,
+        notification_id: Uuid::new_v4(),
+        template_data: Some(sample_event_waitlist_template_data()),
+    };
+
+    // Prepare content
+    let (subject, body) = DeliveryWorker::prepare_content(&notification).unwrap();
+
+    // Check content matches expectations
+    assert_eq!(subject, "You moved off the waiting list");
+    assert!(body.contains("you are now registered"));
+    assert!(body.contains("Waitlist Event"));
+}
+
+#[test]
 fn test_delivery_worker_prepare_content_group_custom() {
     // Setup notification
     let notification = Notification {
@@ -569,9 +651,38 @@ fn sample_event_custom_template_data() -> serde_json::Value {
             "name": "Custom Event",
             "published": true,
             "slug": "custom-event",
-            "timezone": "UTC"
+            "timezone": "UTC",
+            "waitlist_count": 0,
+            "waitlist_enabled": false
         },
         "link": "https://example.test/test-community/group/notification-group/event/custom-event",
+        "theme": {
+            "primary_color": "#000000"
+        }
+    })
+}
+
+/// Sample legacy payload for event reminder notifications without waitlist data.
+fn sample_event_reminder_legacy_template_data() -> serde_json::Value {
+    json!({
+        "event": {
+            "canceled": false,
+            "community_display_name": "Test Community",
+            "community_name": "test-community",
+            "event_id": "11111111-1111-1111-1111-111111111111",
+            "group_category_name": "Community",
+            "group_name": "Notification Group",
+            "group_slug": "notification-group",
+            "kind": "hybrid",
+            "logo_url": "https://example.com/logo.png",
+            "name": "Reminder Event",
+            "published": true,
+            "slug": "reminder-event",
+            "starts_at": 1_914_724_800,
+            "timezone": "UTC",
+            "venue_name": "Conference Hall"
+        },
+        "link": "https://example.test/test-community/group/notification-group/event/reminder-event",
         "theme": {
             "primary_color": "#000000"
         }
@@ -596,9 +707,39 @@ fn sample_event_reminder_template_data() -> serde_json::Value {
             "slug": "reminder-event",
             "starts_at": 1_914_724_800,
             "timezone": "UTC",
-            "venue_name": "Conference Hall"
+            "venue_name": "Conference Hall",
+            "waitlist_count": 0,
+            "waitlist_enabled": false
         },
         "link": "https://example.test/test-community/group/notification-group/event/reminder-event",
+        "theme": {
+            "primary_color": "#000000"
+        }
+    })
+}
+
+/// Sample template payload for event waitlist notifications.
+fn sample_event_waitlist_template_data() -> serde_json::Value {
+    json!({
+        "event": {
+            "canceled": false,
+            "community_display_name": "Test Community",
+            "community_name": "test-community",
+            "event_id": "11111111-1111-1111-1111-111111111111",
+            "group_category_name": "Community",
+            "group_name": "Notification Group",
+            "group_slug": "notification-group",
+            "kind": "virtual",
+            "logo_url": "https://example.com/logo.png",
+            "name": "Waitlist Event",
+            "published": true,
+            "slug": "waitlist-event",
+            "starts_at": 1_914_724_800,
+            "timezone": "UTC",
+            "waitlist_count": 3,
+            "waitlist_enabled": true
+        },
+        "link": "https://example.test/test-community/group/notification-group/event/waitlist-event",
         "theme": {
             "primary_color": "#000000"
         }

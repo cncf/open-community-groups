@@ -8,7 +8,7 @@ use uuid::Uuid;
 use crate::{
     db::PgDB,
     templates::event::SessionProposal,
-    types::event::{EventFull, EventSummary},
+    types::event::{EventAttendanceInfo, EventAttendanceStatus, EventFull, EventLeaveOutcome, EventSummary},
 };
 
 /// Database trait defining all data access operations for event page.
@@ -24,8 +24,13 @@ pub(crate) trait DBEvent {
         label_ids: &[Uuid],
     ) -> Result<Uuid>;
 
-    /// Adds a user as an attendee of an event.
-    async fn attend_event(&self, community_id: Uuid, event_id: Uuid, user_id: Uuid) -> Result<()>;
+    /// Registers attendance and returns the resulting attendance status.
+    async fn attend_event(
+        &self,
+        community_id: Uuid,
+        event_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<EventAttendanceStatus>;
 
     /// Marks an attendee as checked in for an event.
     async fn check_in_event(
@@ -35,6 +40,14 @@ pub(crate) trait DBEvent {
         user_id: Uuid,
         bypass_window: bool,
     ) -> Result<()>;
+
+    /// Returns the user's attendance details and check-in status for an event.
+    async fn get_event_attendance(
+        &self,
+        community_id: Uuid,
+        event_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<EventAttendanceInfo>;
 
     /// Retrieves detailed event information.
     async fn get_event_full_by_slug(
@@ -47,19 +60,16 @@ pub(crate) trait DBEvent {
     /// Retrieves summary event information by its identifier.
     async fn get_event_summary_by_id(&self, community_id: Uuid, event_id: Uuid) -> Result<EventSummary>;
 
-    /// Checks if a user is an attendee of an event and their check-in status.
-    async fn is_event_attendee(
+    /// Checks if the check-in window is open for an event.
+    async fn is_event_check_in_window_open(&self, community_id: Uuid, event_id: Uuid) -> Result<bool>;
+
+    /// Removes a user from an event and returns the leave outcome.
+    async fn leave_event(
         &self,
         community_id: Uuid,
         event_id: Uuid,
         user_id: Uuid,
-    ) -> Result<(bool, bool)>;
-
-    /// Checks if the check-in window is open for an event.
-    async fn is_event_check_in_window_open(&self, community_id: Uuid, event_id: Uuid) -> Result<bool>;
-
-    /// Removes a user from an event attendees.
-    async fn leave_event(&self, community_id: Uuid, event_id: Uuid, user_id: Uuid) -> Result<()>;
+    ) -> Result<EventLeaveOutcome>;
 
     /// Lists session proposals with submission status for a given event.
     async fn list_user_session_proposals_for_cfs_event(
@@ -94,14 +104,24 @@ impl DBEvent for PgDB {
         .await
     }
 
-    /// [`DB::attend_event`]
+    /// [`DBEvent::attend_event`]
     #[instrument(skip(self), err)]
-    async fn attend_event(&self, community_id: Uuid, event_id: Uuid, user_id: Uuid) -> Result<()> {
-        self.execute(
-            "select attend_event($1::uuid, $2::uuid, $3::uuid)",
-            &[&community_id, &event_id, &user_id],
-        )
-        .await
+    async fn attend_event(
+        &self,
+        community_id: Uuid,
+        event_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<EventAttendanceStatus> {
+        let status: String = self
+            .fetch_scalar_one(
+                "select attend_event($1::uuid, $2::uuid, $3::uuid)::text",
+                &[&community_id, &event_id, &user_id],
+            )
+            .await?;
+
+        status
+            .parse()
+            .map_err(|_| anyhow::anyhow!("unknown attendance status returned by database: {status}"))
     }
 
     /// [`DBEvent::check_in_event`]
@@ -116,6 +136,21 @@ impl DBEvent for PgDB {
         self.execute(
             "select check_in_event($1::uuid, $2::uuid, $3::uuid, $4::bool)",
             &[&community_id, &event_id, &user_id, &bypass_window],
+        )
+        .await
+    }
+
+    /// [`DBEvent::get_event_attendance`]
+    #[instrument(skip(self), err)]
+    async fn get_event_attendance(
+        &self,
+        community_id: Uuid,
+        event_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<EventAttendanceInfo> {
+        self.fetch_json_one(
+            "select get_event_attendance($1::uuid, $2::uuid, $3::uuid)",
+            &[&community_id, &event_id, &user_id],
         )
         .await
     }
@@ -145,27 +180,6 @@ impl DBEvent for PgDB {
         .await
     }
 
-    /// [`DB::is_event_attendee`]
-    #[instrument(skip(self), err)]
-    async fn is_event_attendee(
-        &self,
-        community_id: Uuid,
-        event_id: Uuid,
-        user_id: Uuid,
-    ) -> Result<(bool, bool)> {
-        let db = self.pool.get().await?;
-        let row = db
-            .query_one(
-                "select * from is_event_attendee($1::uuid, $2::uuid, $3::uuid)",
-                &[&community_id, &event_id, &user_id],
-            )
-            .await?;
-        let is_attendee = row.get::<_, bool>(0);
-        let is_checked_in = row.get::<_, bool>(1);
-
-        Ok((is_attendee, is_checked_in))
-    }
-
     /// [`DBEvent::is_event_check_in_window_open`]
     #[instrument(skip(self), err)]
     async fn is_event_check_in_window_open(&self, community_id: Uuid, event_id: Uuid) -> Result<bool> {
@@ -176,10 +190,15 @@ impl DBEvent for PgDB {
         .await
     }
 
-    /// [`DB::leave_event`]
+    /// [`DBEvent::leave_event`]
     #[instrument(skip(self), err)]
-    async fn leave_event(&self, community_id: Uuid, event_id: Uuid, user_id: Uuid) -> Result<()> {
-        self.execute(
+    async fn leave_event(
+        &self,
+        community_id: Uuid,
+        event_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<EventLeaveOutcome> {
+        self.fetch_json_one(
             "select leave_event($1::uuid, $2::uuid, $3::uuid)",
             &[&community_id, &event_id, &user_id],
         )

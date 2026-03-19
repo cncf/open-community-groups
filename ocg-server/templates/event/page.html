@@ -110,6 +110,8 @@
                         {% if let Some(remaining_capacity) = &event.remaining_capacity %}
                           {% if *remaining_capacity > 0 %}
                             <span class="text-xs text-stone-500 ms-2">(Remaining: {{ remaining_capacity }})</span>
+                          {% else if event.waitlist_count > 0 %}
+                            <span class="text-xs text-stone-500 ms-2">(Waitlist: {{ event.waitlist_count }})</span>
                           {% endif %}
                         {% endif %}
                       {% endif -%}
@@ -137,10 +139,12 @@
                   </share-modal>
                   {# End share button -#}
 
-                  {# Attend button section -#}
-                  {% let attendance_instance = "main" -%}
-                  {% include "event/attend_button.html" %}
-                  {# End attend button section -#}
+                  {% if !event.canceled -%}
+                    {# Attend button section -#}
+                    {% let attendance_instance = "main" -%}
+                    {% include "event/attend_button.html" %}
+                    {# End attend button section -#}
+                  {% endif -%}
                 </div>
 
               </div>
@@ -344,7 +348,10 @@
         {% if show_join_link || show_recording_link -%}
           <div data-meeting-details
                data-has-recording="{{ show_recording_link }}"
-               class="hidden mt-6 sm:mt-8">
+               class="{% if !show_recording_link %}
+                        hidden
+                      {% endif %}
+                      mt-6 sm:mt-8">
             <div class="border border-stone-200 bg-stone-50 rounded-lg p-4 sm:p-5">
               <div class="flex items-center gap-2 mb-3">
                 <div class="svg-icon size-4 bg-stone-700 icon-meeting"></div>
@@ -655,7 +662,10 @@
     {% if show_join_link_session || show_recording_link_session -%}
       <div data-meeting-details
            data-has-recording="{{ show_recording_link_session }}"
-           class="hidden mt-3">
+           class="{% if !show_recording_link_session %}
+                    hidden
+                  {% endif %}
+                  mt-3">
         <div class="flex flex-wrap items-center gap-3">
           {% if show_join_link_session -%}
             {% if let Some(meeting_join_url) = &session.meeting_join_url -%}

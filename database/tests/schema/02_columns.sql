@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(54);
+select plan(55);
 
 -- ============================================================================
 -- TESTS
@@ -211,7 +211,8 @@ select columns_are('event', array[
     'venue_country_name',
     'venue_name',
     'venue_state',
-    'venue_zip_code'
+    'venue_zip_code',
+    'waitlist_enabled'
 ]);
 
 -- Test: event_attendee columns should match expected
@@ -276,6 +277,13 @@ select columns_are('event_views', array[
     'event_id',
     'day',
     'total'
+]);
+
+-- Test: event_waitlist columns should match expected
+select columns_are('event_waitlist', array[
+    'event_id',
+    'user_id',
+    'created_at'
 ]);
 
 -- Test: meeting columns should match expected

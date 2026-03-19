@@ -1,0 +1,26 @@
+{% extends "notifications/base.html" -%}
+{% import "macros/email.html" as email -%}
+
+{% block subject -%}
+  You joined the waitlist: {{ event.name }}
+{% endblock subject -%}
+
+{% block preheader -%}
+  {{ event.name }} is full, and you are now on the waiting list.
+{% endblock preheader -%}
+
+{% block content -%}
+  <p class="default mb-30">
+    {{ event.name }} from <strong>{{ event.group_name }}</strong> is currently full.
+    <br />
+    <br />
+    You have been added to the waiting list. If a seat opens up and you are promoted,
+    we will send you a follow-up email.
+  </p>
+
+  {{ email::button(link = link, text = "View event") }}
+{% endblock content -%}
+
+{% block footer -%}
+  You are receiving this because you joined the waiting list for {{ event.name }}.
+{% endblock footer -%}

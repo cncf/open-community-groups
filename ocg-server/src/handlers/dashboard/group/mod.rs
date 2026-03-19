@@ -30,6 +30,7 @@ pub(crate) mod settings;
 pub(crate) mod sponsors;
 pub(crate) mod submissions;
 pub(crate) mod team;
+pub(crate) mod waitlist;
 
 /// Sets the selected community and auto-selects the first group in session.
 #[instrument(skip_all, err)]

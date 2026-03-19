@@ -344,6 +344,7 @@ pub(crate) fn sample_event_form() -> GroupEventForm {
         capacity: Some(100),
         description_short: Some("Short".to_string()),
         registration_required: Some(true),
+        waitlist_enabled: Some(false),
         ..Default::default()
     }
 }
@@ -386,6 +387,8 @@ pub(crate) fn sample_event_full(community_id: Uuid, event_id: Uuid, group_id: Uu
         venue_country_name: Some("United States".to_string()),
         venue_name: Some("Main Venue".to_string()),
         venue_state: Some("CA".to_string()),
+        waitlist_count: 0,
+        waitlist_enabled: false,
         ..Default::default()
     }
 }
@@ -433,6 +436,8 @@ pub(crate) fn sample_event_summary(event_id: Uuid, _group_id: Uuid) -> EventSumm
         venue_country_name: Some("United States".to_string()),
         venue_name: Some("Sample Venue".to_string()),
         venue_state: Some("MA".to_string()),
+        waitlist_count: 0,
+        waitlist_enabled: false,
         zip_code: Some("02101".to_string()),
     }
 }

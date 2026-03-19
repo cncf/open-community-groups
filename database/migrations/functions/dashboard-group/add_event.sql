@@ -106,7 +106,8 @@ begin
                 venue_country_name,
                 venue_name,
                 venue_state,
-                venue_zip_code
+                venue_zip_code,
+                waitlist_enabled
             ) values (
                 p_group_id,
                 p_event->>'name',
@@ -152,7 +153,8 @@ begin
                 p_event->>'venue_country_name',
                 p_event->>'venue_name',
                 p_event->>'venue_state',
-                p_event->>'venue_zip_code'
+                p_event->>'venue_zip_code',
+                coalesce((p_event->>'waitlist_enabled')::boolean, false)
             )
             returning event_id into v_event_id;
 

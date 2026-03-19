@@ -24,6 +24,7 @@ use crate::{
             CfsSubmissionNotificationData, CfsSubmissionUpdate, CfsSubmissionsFilters, CfsSubmissionsOutput,
         },
         team::{GroupTeamFilters, GroupTeamOutput},
+        waitlist::{WaitlistFilters, WaitlistOutput},
     },
     types::{
         event::{EventCategory, EventKindSummary as EventKind, SessionKindSummary as SessionKind},
@@ -98,6 +99,9 @@ pub(crate) trait DBDashboardGroup {
     /// Lists all available event kinds.
     async fn list_event_kinds(&self) -> Result<Vec<EventKind>>;
 
+    /// Lists all verified waitlisted user ids for an event.
+    async fn list_event_waitlist_ids(&self, group_id: Uuid, event_id: Uuid) -> Result<Vec<Uuid>>;
+
     /// Lists all events for a group for management.
     async fn list_group_events(&self, group_id: Uuid, filters: &EventsListFilters) -> Result<GroupEvents>;
 
@@ -149,6 +153,13 @@ pub(crate) trait DBDashboardGroup {
         filters: &AttendeesFilters,
     ) -> Result<AttendeesOutput>;
 
+    /// Searches waitlist entries for a group's event using filters.
+    async fn search_event_waitlist(
+        &self,
+        group_id: Uuid,
+        filters: &WaitlistFilters,
+    ) -> Result<WaitlistOutput>;
+
     /// Unpublishes an event (sets published=false and clears publication metadata).
     async fn unpublish_event(&self, group_id: Uuid, event_id: Uuid) -> Result<()>;
 
@@ -161,14 +172,14 @@ pub(crate) trait DBDashboardGroup {
         submission: &CfsSubmissionUpdate,
     ) -> Result<bool>;
 
-    /// Updates an existing event.
+    /// Updates an existing event and returns any waitlisted users promoted.
     async fn update_event(
         &self,
         group_id: Uuid,
         event_id: Uuid,
         event: &serde_json::Value,
         cfg_max_participants: &HashMap<MeetingProvider, i32>,
-    ) -> Result<()>;
+    ) -> Result<Vec<Uuid>>;
 
     /// Updates an existing sponsor.
     async fn update_group_sponsor(
@@ -380,6 +391,16 @@ impl DBDashboardGroup for PgDB {
         inner(db).await
     }
 
+    /// [`DBDashboardGroup::list_event_waitlist_ids`]
+    #[instrument(skip(self), err)]
+    async fn list_event_waitlist_ids(&self, group_id: Uuid, event_id: Uuid) -> Result<Vec<Uuid>> {
+        self.fetch_json_one(
+            "select list_event_waitlist_ids($1::uuid, $2::uuid)",
+            &[&group_id, &event_id],
+        )
+        .await
+    }
+
     /// [`DBDashboardGroup::list_group_events`]
     #[instrument(skip(self), err)]
     async fn list_group_events(&self, group_id: Uuid, filters: &EventsListFilters) -> Result<GroupEvents> {
@@ -520,6 +541,20 @@ impl DBDashboardGroup for PgDB {
         .await
     }
 
+    /// [`DBDashboardGroup::search_event_waitlist`]
+    #[instrument(skip(self, filters), err)]
+    async fn search_event_waitlist(
+        &self,
+        group_id: Uuid,
+        filters: &WaitlistFilters,
+    ) -> Result<WaitlistOutput> {
+        self.fetch_json_one(
+            "select search_event_waitlist($1::uuid, $2::jsonb)",
+            &[&group_id, &Json(filters)],
+        )
+        .await
+    }
+
     /// [`DBDashboardGroup::unpublish_event`]
     #[instrument(skip(self), err)]
     async fn unpublish_event(&self, group_id: Uuid, event_id: Uuid) -> Result<()> {
@@ -554,8 +589,8 @@ impl DBDashboardGroup for PgDB {
         event_id: Uuid,
         event: &serde_json::Value,
         cfg_max_participants: &HashMap<MeetingProvider, i32>,
-    ) -> Result<()> {
-        self.execute(
+    ) -> Result<Vec<Uuid>> {
+        self.fetch_json_one(
             "select update_event($1::uuid, $2::uuid, $3::jsonb, $4::jsonb)",
             &[&group_id, &event_id, &Json(event), &Json(cfg_max_participants)],
         )

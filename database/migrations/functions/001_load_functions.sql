@@ -58,6 +58,7 @@
 
 {{ template "dashboard-group/validate_event_capacity.sql" }} -- Dependency for add/update_event
 {{ template "dashboard-group/validate_event_cfs_labels_payload.sql" }} -- Dependency for add/update_event
+{{ template "event/promote_event_waitlist.sql" }} -- Dependency for update_event and leave_event
 {{ template "dashboard-group/add_event.sql" }}
 {{ template "dashboard-group/add_group_sponsor.sql" }}
 {{ template "dashboard-group/add_group_team_member.sql" }}
@@ -76,6 +77,7 @@
 {{ template "dashboard-group/list_event_categories.sql" }}
 {{ template "dashboard-group/list_event_cfs_submissions.sql" }}
 {{ template "dashboard-group/list_event_kinds.sql" }}
+{{ template "dashboard-group/list_event_waitlist_ids.sql" }}
 {{ template "dashboard-group/list_group_events.sql" }}
 {{ template "dashboard-group/list_group_members.sql" }}
 {{ template "dashboard-group/list_group_members_ids.sql" }}
@@ -87,6 +89,7 @@
 {{ template "dashboard-group/list_user_groups.sql" }}
 {{ template "dashboard-group/publish_event.sql" }}
 {{ template "dashboard-group/search_event_attendees.sql" }}
+{{ template "dashboard-group/search_event_waitlist.sql" }}
 {{ template "dashboard-group/sync_event_cfs_labels.sql" }} -- Dependency for update_event
 {{ template "dashboard-group/sync_event_sessions.sql" }} -- Dependency for update_event
 {{ template "dashboard-group/unpublish_event.sql" }}
@@ -116,9 +119,9 @@
 {{ template "event/add_cfs_submission.sql" }}
 {{ template "event/attend_event.sql" }}
 {{ template "event/check_in_event.sql" }}
+{{ template "event/get_event_attendance.sql" }}
 {{ template "event/get_event_full_by_slug.sql" }}
 {{ template "event/get_event_summary_by_id.sql" }}
-{{ template "event/is_event_attendee.sql" }}
 {{ template "event/is_event_check_in_window_open.sql" }}
 {{ template "event/leave_event.sql" }}
 {{ template "event/list_user_session_proposals_for_cfs_event.sql" }}

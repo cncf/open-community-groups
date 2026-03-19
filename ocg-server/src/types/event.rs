@@ -52,6 +52,12 @@ pub struct EventSummary {
     pub slug: String,
     /// Timezone in which the event times should be displayed.
     pub timezone: Tz,
+    /// Current number of users on the waiting list.
+    #[serde(default)]
+    pub waitlist_count: i32,
+    /// Whether joining the waiting list is enabled for the event.
+    #[serde(default)]
+    pub waitlist_enabled: bool,
 
     /// Maximum capacity for the event.
     pub capacity: Option<i32>,
@@ -125,6 +131,9 @@ pub struct EventFull {
     pub canceled: bool,
     /// Event category information.
     pub category_name: String,
+    /// Call for speakers labels.
+    #[serde(default)]
+    pub cfs_labels: Vec<EventCfsLabel>,
     /// Community this event belongs to.
     pub community: CommunitySummary,
     /// When the event was created.
@@ -158,6 +167,10 @@ pub struct EventFull {
     pub sponsors: Vec<EventSponsor>,
     /// Timezone for event times.
     pub timezone: Tz,
+    /// Whether joining the waiting list is enabled for the event.
+    pub waitlist_enabled: bool,
+    /// Current number of users on the waiting list.
+    pub waitlist_count: i32,
 
     /// URL to the event banner image optimized for mobile devices.
     pub banner_mobile_url: Option<String>,
@@ -172,9 +185,6 @@ pub struct EventFull {
     /// Call for speakers end time in UTC.
     #[serde(default, with = "chrono::serde::ts_seconds_option")]
     pub cfs_ends_at: Option<DateTime<Utc>>,
-    /// Call for speakers labels.
-    #[serde(default)]
-    pub cfs_labels: Vec<EventCfsLabel>,
     /// Call for speakers start time in UTC.
     #[serde(default, with = "chrono::serde::ts_seconds_option")]
     pub cfs_starts_at: Option<DateTime<Utc>>,
@@ -352,6 +362,8 @@ impl From<&EventFull> for EventSummary {
             published: event.published,
             slug: event.slug.clone(),
             timezone: event.timezone,
+            waitlist_count: event.waitlist_count,
+            waitlist_enabled: event.waitlist_enabled,
 
             capacity: event.capacity,
             description_short: event.description_short.clone(),
@@ -376,6 +388,28 @@ impl From<&EventFull> for EventSummary {
 }
 
 // Other related types.
+
+/// Attendance status for the current user on an event.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, strum::EnumString)]
+#[serde(rename_all = "kebab-case")]
+#[strum(serialize_all = "kebab-case")]
+pub enum EventAttendanceStatus {
+    /// The user has no attendance relationship with the event.
+    None,
+    /// The user became a confirmed attendee.
+    Attendee,
+    /// The user joined the waiting list.
+    Waitlisted,
+}
+
+/// Attendance details for a user's relationship to an event.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct EventAttendanceInfo {
+    /// Whether the user has checked in.
+    pub is_checked_in: bool,
+    /// Current attendance status.
+    pub status: EventAttendanceStatus,
+}
 
 /// Event category information.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -429,6 +463,15 @@ pub struct EventKindSummary {
     pub event_kind_id: String,
     /// Display name.
     pub display_name: String,
+}
+
+/// Result returned when leaving an event or waiting list.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct EventLeaveOutcome {
+    /// The status the user left from.
+    pub left_status: EventAttendanceStatus,
+    /// Users promoted from the waiting list as part of the operation.
+    pub promoted_user_ids: Vec<Uuid>,
 }
 
 /// Event sponsor information.

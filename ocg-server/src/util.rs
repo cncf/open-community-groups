@@ -305,6 +305,8 @@ mod tests {
             popover_html: None,
             remaining_capacity: Some(15),
             starts_at: Some(Utc.with_ymd_and_hms(2026, 1, 12, 19, 0, 0).unwrap()),
+            waitlist_count: 0,
+            waitlist_enabled: false,
             venue_address: Some("123 Main St".to_string()),
             venue_city: Some("San Francisco".to_string()),
             venue_country_code: Some("US".to_string()),

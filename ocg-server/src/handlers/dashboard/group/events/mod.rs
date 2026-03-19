@@ -12,7 +12,7 @@ use axum::{
 };
 use chrono::{TimeDelta, Utc};
 use garde::Validate;
-use tracing::instrument;
+use tracing::{instrument, warn};
 use uuid::Uuid;
 
 use crate::{
@@ -32,7 +32,9 @@ use crate::{
             events::{self, Event, EventsListFilters, EventsTab},
             sponsors::GroupSponsorsFilters,
         },
-        notifications::{EventCanceled, EventPublished, EventRescheduled, SpeakerWelcome},
+        notifications::{
+            EventCanceled, EventPublished, EventRescheduled, EventWaitlistPromoted, SpeakerWelcome,
+        },
     },
     types::{
         event::EventSummary,
@@ -241,15 +243,17 @@ pub(crate) async fn cancel(
     );
     if should_notify {
         // Fetch event full and attendee IDs concurrently
-        let (event_full, attendee_ids) = tokio::try_join!(
+        let (event_full, attendee_ids, waitlist_ids) = tokio::try_join!(
             db.get_event_full(community_id, group_id, event_id),
-            db.list_event_attendees_ids(group_id, event_id)
+            db.list_event_attendees_ids(group_id, event_id),
+            db.list_event_waitlist_ids(group_id, event_id)
         )?;
 
         // Combine attendee and speaker IDs (deduplicated)
         let speaker_ids = event_full.speakers_ids();
         let recipients: Vec<Uuid> = attendee_ids
             .into_iter()
+            .chain(waitlist_ids)
             .chain(speaker_ids)
             .collect::<HashSet<_>>()
             .into_iter()
@@ -438,8 +442,42 @@ pub(crate) async fn update(
     // Update event in database
     let cfg_max_participants = build_meetings_max_participants(meetings_cfg.as_ref());
     let event_json = serde_json::to_value(&event)?;
-    db.update_event(group_id, event_id, &event_json, &cfg_max_participants)
+    let promoted_user_ids = db
+        .update_event(group_id, event_id, &event_json, &cfg_max_participants)
         .await?;
+
+    // Notify users promoted from the waitlist when the update opens capacity
+    if !promoted_user_ids.is_empty() {
+        // Fetch notification context and updated event summary concurrently
+        match tokio::try_join!(
+            db.get_site_settings(),
+            db.get_event_summary(community_id, group_id, event_id),
+        ) {
+            Ok((site_settings, event)) => {
+                // Build and enqueue the waitlist promotion notification
+                let base_url = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
+                let link = build_event_page_link(base_url, &event);
+                let calendar_ics = build_event_calendar_attachment(base_url, &event);
+                let template_data = EventWaitlistPromoted {
+                    event,
+                    link,
+                    theme: site_settings.theme,
+                };
+                let notification = NewNotification {
+                    attachments: vec![calendar_ics],
+                    kind: NotificationKind::EventWaitlistPromoted,
+                    recipients: promoted_user_ids,
+                    template_data: Some(serde_json::to_value(&template_data)?),
+                };
+                if let Err(err) = notifications_manager.enqueue(&notification).await {
+                    warn!(error = %err, "failed to enqueue waitlist promotion notification");
+                }
+            }
+            Err(err) => {
+                warn!(error = %err, "failed to load event notification context after event update");
+            }
+        }
+    }
 
     // Notify attendees and speakers if event was rescheduled (only if not past)
     if !before.is_past() {

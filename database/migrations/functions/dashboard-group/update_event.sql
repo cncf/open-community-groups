@@ -5,16 +5,22 @@ create or replace function update_event(
     p_event jsonb,
     p_cfg_max_participants jsonb default null
 )
-returns void as $$
+returns json as $$
 declare
+    v_event_before jsonb;
+    v_event_capacity_before int;
     v_event_location geography;
     v_event_meeting_hosts text[];
     v_event_photos_urls text[];
-    v_event_before jsonb;
     v_event_reminder_enabled boolean;
     v_event_tags text[];
+    v_event_waitlist_enabled boolean;
+    v_has_new_waitlist_capacity boolean;
+    v_is_promotable_event boolean;
+    v_new_capacity int := (p_event->>'capacity')::int;
     v_new_ends_at timestamptz;
     v_new_starts_at timestamptz;
+    v_promoted_user_ids json := '[]'::json;
     v_timezone text := p_event->>'timezone';
 begin
     -- Load the locked event state used by the update flow
@@ -35,6 +41,7 @@ begin
     end if;
 
     -- Precompute derived values used across the update flow
+    v_event_capacity_before := (v_event_before->>'capacity')::int;
     v_event_location := case
         when (p_event->>'latitude') is not null and (p_event->>'longitude') is not null
         then ST_SetSRID(ST_MakePoint((p_event->>'longitude')::float, (p_event->>'latitude')::float), 4326)::geography
@@ -56,6 +63,7 @@ begin
         then array(select jsonb_array_elements_text(p_event->'tags'))
         else null
     end;
+    v_event_waitlist_enabled := coalesce((p_event->>'waitlist_enabled')::boolean, false);
 
     -- Parse event timestamps once for validation and row updates
     if p_event->>'ends_at' is not null then
@@ -65,6 +73,26 @@ begin
     if p_event->>'starts_at' is not null then
         v_new_starts_at := (p_event->>'starts_at')::timestamp at time zone v_timezone;
     end if;
+
+    -- Precompute promotion conditions for waitlist processing
+    v_has_new_waitlist_capacity := (
+        -- Removing the capacity limit makes every queued seat available
+        (
+            v_new_capacity is null
+            and v_event_capacity_before is not null
+        )
+        -- Increasing a bounded capacity opens additional attendee seats
+        or (
+            v_new_capacity is not null
+            and (v_event_capacity_before is null or v_new_capacity > v_event_capacity_before)
+        )
+    );
+    -- Only published events that are still upcoming or dateless can promote the waitlist
+    v_is_promotable_event := (v_event_before->>'published')::boolean = true
+        and (
+            coalesce(v_new_ends_at, v_new_starts_at) is null
+            or coalesce(v_new_ends_at, v_new_starts_at) >= current_timestamp
+        );
 
     -- Validate update-specific event and session date rules
     perform validate_update_event_dates(p_event, v_event_before);
@@ -137,11 +165,18 @@ begin
         venue_country_name = nullif(p_event->>'venue_country_name', ''),
         venue_name = nullif(p_event->>'venue_name', ''),
         venue_state = nullif(p_event->>'venue_state', ''),
-        venue_zip_code = nullif(p_event->>'venue_zip_code', '')
+        venue_zip_code = nullif(p_event->>'venue_zip_code', ''),
+        waitlist_enabled = v_event_waitlist_enabled
     where event_id = p_event_id
     and group_id = p_group_id
     and deleted = false
     and canceled = false;
+
+    -- Promote waitlisted users when the update creates new attendee capacity
+    if v_has_new_waitlist_capacity and v_is_promotable_event then
+        select promote_event_waitlist(p_event_id)
+        into v_promoted_user_ids;
+    end if;
 
     -- Synchronize event CFS labels
     perform sync_event_cfs_labels(p_event_id, p_event->'cfs_labels');
@@ -174,5 +209,7 @@ begin
 
     -- Synchronize event sessions and speakers
     perform sync_event_sessions(p_event_id, p_event, v_event_before);
+
+    return v_promoted_user_ids;
 end;
 $$ language plpgsql;

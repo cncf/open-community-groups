@@ -1,0 +1,75 @@
+{% import "macros/pagination.html" as pagination -%}
+
+<div class="flex flex-col lg:flex-row lg:items-center justify-between my-5">
+  <div class="text-sm text-stone-600 mb-4 lg:mb-0">
+    {{ pagination::range_display(offset = offset.unwrap_or(0) , count = waitlist.len(), total = total, label = "waitlist entry") }}
+  </div>
+</div>
+
+{# Waitlist table -#}
+<div class="relative overflow-visible pb-12">
+  <table class="table-auto w-full text-xs lg:text-sm text-left text-stone-500 mb-8"
+         role="table"
+         aria-label="Waitlist entries">
+    <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200"
+           role="rowgroup">
+      <tr>
+        <th scope="col" class="px-3 xl:px-5 py-3">Entry</th>
+        <th scope="col" class="px-3 xl:px-5 py-3">Position</th>
+        <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3 w-40">Joined</th>
+      </tr>
+    </thead>
+    <tbody id="waitlist-list" role="rowgroup">
+      {% if waitlist.is_empty() -%}
+        <tr class="bg-white border-b border-stone-200">
+          <td class="xl:hidden px-8 py-12 text-center" colspan="2">
+            {% if event.waitlist_enabled -%}
+              {% include "dashboard/placeholders/group_waitlist_table.html" -%}
+            {% else -%}
+              {% include "dashboard/placeholders/group_waitlist_disabled_table.html" -%}
+            {% endif -%}
+          </td>
+          <td class="hidden xl:table-cell px-8 py-12 text-center" colspan="3">
+            {% if event.waitlist_enabled -%}
+              {% include "dashboard/placeholders/group_waitlist_table.html" -%}
+            {% else -%}
+              {% include "dashboard/placeholders/group_waitlist_disabled_table.html" -%}
+            {% endif -%}
+          </td>
+        </tr>
+      {% else -%}
+        {% for entry in waitlist -%}
+          <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
+            <td class="px-3 xl:px-5 py-4">
+              <div class="flex items-center space-x-5">
+                <logo-image
+                {% if let Some(photo_url) = &entry.photo_url -%}
+                  image-url="{{ photo_url }}"
+                {% endif -%}
+                size="size-10" placeholder="{{ self::user_initials(entry.name.as_deref() , entry.username.as_str()) }}">
+                </logo-image>
+                <div class="min-w-0">
+                  <div class="font-medium text-stone-900 truncate mb-1">{{ entry.name|assigned_or(entry.username) }}</div>
+                  {% if entry.name.is_some() -%}
+                    <div class="text-xs text-stone-600 truncate">{{ entry.username }}</div>
+                  {% endif -%}
+                </div>
+              </div>
+            </td>
+            <td class="px-3 xl:px-5 py-4">{{ offset.unwrap_or(0) + loop.index }}</td>
+            <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap w-40">
+              {{ entry.created_at.format("%b %d, %Y") }}
+            </td>
+          </tr>
+        {% endfor -%}
+      {% endif -%}
+    </tbody>
+  </table>
+</div>
+{# End waitlist table -#}
+
+{# Pagination -#}
+{% if total > waitlist.len() -%}
+  {{ pagination::navigation_links(links = navigation_links, hx_target = "#waitlist-content", hx_indicator = "#dashboard-spinner") }}
+{% endif -%}
+{# End pagination -#}

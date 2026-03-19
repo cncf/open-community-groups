@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(54);
+select plan(55);
 
 -- ============================================================================
 -- TESTS
@@ -240,6 +240,13 @@ select indexes_are('event_sponsor', array[
 -- Test: event_views indexes should match expected
 select indexes_are('event_views', array[
     'event_views_event_id_day_key'
+]);
+
+-- Test: event_waitlist indexes should match expected
+select indexes_are('event_waitlist', array[
+    'event_waitlist_pkey',
+    'event_waitlist_user_id_idx',
+    'event_waitlist_event_id_created_at_idx'
 ]);
 
 -- Test: group_team indexes should match expected
