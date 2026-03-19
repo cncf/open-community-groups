@@ -216,13 +216,11 @@ Capacity behavior:
   waitlisted person.
 - If you raise event capacity on a published event and seats become available, OCG also promotes from
   the waitlist automatically.
-- If you later disable waitlist, OCG stops accepting new waitlist joins but still promotes people who
-  were already queued.
+- If you later disable the waitlist, OCG stops accepting new waitlist sign-ups. People who were
+  already on the waitlist remain queued and may still be promoted automatically when attendee spots
+  open up, for example after a cancellation or a capacity increase.
 - If you clear `Capacity` and disable waitlist, OCG treats the event as unlimited-capacity and
   immediately promotes everyone still on the waitlist.
-- If you reduce capacity so it exactly matches the current number of confirmed attendees, OCG does
-  not promote anyone from the waitlist. Existing waitlist entries stay queued until an attendee
-  leaves or you increase capacity again.
 - Promotion notifications are best-effort; the seat change still succeeds even if notification
   enqueue fails.
 
