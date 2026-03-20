@@ -1,3 +1,5 @@
+import * as path from "node:path";
+
 import { expect, test } from "../fixtures";
 
 import { navigateToPath } from "../utils";
@@ -7,8 +9,70 @@ const ORIGINAL_SPONSOR_NAME = "Tech Corp";
 const UPDATED_SPONSOR_NAME = "Tech Corp Updated";
 const ORIGINAL_SPONSOR_WEBSITE = "https://techcorp.example.com";
 const UPDATED_SPONSOR_WEBSITE = "https://updated-techcorp.example.com";
+const TEST_SPONSOR_LOGO_PATH = path.resolve(__dirname, "../../../docs/images/logo.svg");
 
 test.describe("group sponsors dashboard", () => {
+  test("organizer can add and delete a sponsor", async ({
+    organizerGroupPage,
+  }) => {
+    const sponsorName = `E2E Sponsor ${Date.now()}`;
+    const sponsorWebsite = "https://e2e-sponsor.example.com";
+
+    await navigateToPath(organizerGroupPage, "/dashboard/group?tab=sponsors");
+
+    const dashboardContent = organizerGroupPage.locator("#dashboard-content");
+    await expect(dashboardContent.getByText("Sponsors", { exact: true })).toBeVisible();
+
+    await organizerGroupPage.getByRole("button", { name: "Add Sponsor" }).click();
+    await expect(dashboardContent.getByText("Sponsor Details", { exact: true })).toBeVisible();
+
+    await organizerGroupPage.getByLabel("Name").fill(sponsorName);
+    await organizerGroupPage.getByLabel("Website").fill(sponsorWebsite);
+
+    const logoField = organizerGroupPage.locator('image-field[name="logo_url"]');
+    await Promise.all([
+      organizerGroupPage.waitForResponse(
+        (response) =>
+          response.request().method() === "POST" &&
+          response.url().includes("/images") &&
+          response.status() === 201,
+      ),
+      logoField.locator('input[type="file"]').setInputFiles(TEST_SPONSOR_LOGO_PATH),
+    ]);
+    await expect(logoField.locator('input[name="logo_url"]')).toHaveValue(/\/images\//);
+
+    await Promise.all([
+      organizerGroupPage.waitForResponse(
+        (response) =>
+          response.request().method() === "POST" &&
+          response.url().includes("/dashboard/group/sponsors/add") &&
+          response.status() === 201,
+      ),
+      organizerGroupPage.getByRole("button", { name: "Add Sponsor" }).click(),
+    ]);
+
+    const sponsorRow = dashboardContent.locator("tr", { hasText: sponsorName });
+    await expect(sponsorRow).toBeVisible();
+    await expect(sponsorRow).toContainText(sponsorWebsite);
+
+    await sponsorRow.getByRole("button", { name: `Delete sponsor: ${sponsorName}` }).click();
+    await expect(organizerGroupPage.locator(".swal2-popup")).toContainText(
+      "Are you sure you would like to delete this sponsor?",
+    );
+
+    await Promise.all([
+      organizerGroupPage.waitForResponse(
+        (response) =>
+          response.request().method() === "DELETE" &&
+          response.url().includes("/dashboard/group/sponsors/") &&
+          response.ok(),
+      ),
+      organizerGroupPage.getByRole("button", { name: "Yes" }).click(),
+    ]);
+
+    await expect(dashboardContent.locator("tr", { hasText: sponsorName })).toHaveCount(0);
+  });
+
   test("organizer can update a sponsor and restore the original values", async ({
     organizerGroupPage,
   }) => {
