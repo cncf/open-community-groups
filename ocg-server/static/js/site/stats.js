@@ -51,10 +51,10 @@ const styleStatsPageLegend = (option, legendOverrides = {}) => {
  */
 const getMonthlyLabelTarget = () => {
   if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
-    return 7;
+    return 8;
   }
 
-  return window.matchMedia("(max-width: 640px)").matches ? 3 : 7;
+  return window.matchMedia("(max-width: 640px)").matches ? 4 : 8;
 };
 
 /**
