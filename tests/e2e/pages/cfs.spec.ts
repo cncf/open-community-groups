@@ -31,7 +31,7 @@ const createSessionProposal = async (title: string, page: Page) => {
   await modal.getByLabel("Level").selectOption("intermediate");
   await modal.getByLabel("Duration (minutes)").fill("45");
   await modal
-    .locator("markdown-editor#session-proposal-description textarea")
+    .locator("markdown-editor#session-proposal-description .CodeMirror textarea")
     .fill("A proposal created from the e2e suite.");
 
   await Promise.all([
