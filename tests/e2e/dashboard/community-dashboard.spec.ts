@@ -63,9 +63,12 @@ test.describe("community dashboard", () => {
       hasText: "E2E Community Viewer One",
     });
     await expect(viewerRow.locator('select[name="role"]')).toHaveValue("viewer");
-    await expect(
-      dashboardContent.locator("tr", { hasText: "E2E Pending One" }),
-    ).toContainText("Invitation sent");
+
+    const pendingRow = dashboardContent.locator("tr", {
+      hasText: "E2E Pending One",
+    });
+    await expect(pendingRow).toContainText("e2e-pending-1");
+    await expect(pendingRow.locator('select[name="role"]')).toHaveValue("viewer");
   });
 
   test("admin can deactivate and reactivate a group from the list", async ({

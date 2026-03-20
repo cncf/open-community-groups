@@ -126,7 +126,7 @@ test.describe("event page", () => {
     test.skip(!isAlphaEventOne, "Requires Alpha Event One seed data");
 
     test("capacity displays when set", async ({ page }) => {
-      await expect(page.getByText("Capacity: 100")).toBeVisible();
+      await expect(page.getByText(/Capacity:\s*100/)).toBeVisible();
     });
 
     test("location displays venue information for in-person event", async ({
