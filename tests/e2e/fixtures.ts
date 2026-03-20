@@ -24,6 +24,7 @@ type E2eFixtures = {
   member1Page: Page;
   member2Page: Page;
   pending1Page: Page;
+  pending2Page: Page;
 };
 
 type BrowserStorageState = Awaited<ReturnType<BrowserContext["storageState"]>>;
@@ -128,6 +129,7 @@ export const test = base.extend<E2eFixtures>({
   member1Page: authenticatedPageFixture(TEST_USER_CREDENTIALS.member1),
   member2Page: authenticatedPageFixture(TEST_USER_CREDENTIALS.member2),
   pending1Page: authenticatedPageFixture(TEST_USER_CREDENTIALS.pending1),
+  pending2Page: authenticatedPageFixture(TEST_USER_CREDENTIALS.pending2),
 });
 
 export { expect };

@@ -359,4 +359,44 @@ test.describe("user dashboard", () => {
       dashboardContent.locator("tr", { hasText: "E2E Test Group Beta" }),
     ).toHaveCount(0);
   });
+
+  test("rejecting a pending group invitation removes it from the user dashboard", async ({
+    pending2Page,
+  }) => {
+    await openUserDashboardPath("/dashboard/user?tab=invitations", pending2Page);
+
+    const dashboardContent = pending2Page.locator("#dashboard-content");
+    const groupInvitationRow = dashboardContent.locator("tr", {
+      hasText: "E2E Test Group Alpha",
+    });
+    const rejectGroupInvitationButton = groupInvitationRow.getByTitle("Reject");
+
+    await expect(
+      dashboardContent.getByText("Group Invitations", { exact: true }),
+    ).toBeVisible();
+    await expect(groupInvitationRow).toContainText("viewer");
+    await expect(rejectGroupInvitationButton).toBeVisible();
+
+    await rejectGroupInvitationButton.click();
+    await expect(pending2Page.locator(".swal2-popup")).toContainText(
+      "Are you sure you would like to reject this invitation?",
+    );
+
+    await Promise.all([
+      pending2Page.waitForResponse(
+        (response) =>
+          response.request().method() === "PUT" &&
+          response.ok() &&
+          response.url().includes("/dashboard/user/invitations/group/") &&
+          response.url().endsWith("/reject"),
+      ),
+      pending2Page.getByRole("button", { name: "Yes" }).click(),
+    ]);
+
+    await pending2Page.reload();
+
+    await expect(
+      dashboardContent.locator("tr", { hasText: "E2E Test Group Alpha" }),
+    ).toHaveCount(0);
+  });
 });
