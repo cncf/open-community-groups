@@ -41,6 +41,8 @@ use crate::{
 
 /// Cache-Control header value instructing clients not to cache responses.
 pub(crate) const CACHE_CONTROL_NO_CACHE: &str = "max-age=0, private, must-revalidate";
+/// Cache-Control header value for favicon redirects.
+const CACHE_CONTROL_FAVICON_REDIRECT: &str = "public, max-age=604800";
 
 /// Static file embedder using rust-embed.
 ///
@@ -149,6 +151,11 @@ pub(crate) async fn setup(
         ))
         // Global site routes (no community prefix)
         .route("/", get(site::home::page))
+        .route(
+            "/apple-touch-icon-precomposed.png",
+            get(|| async { StatusCode::NOT_FOUND }),
+        )
+        .route("/apple-touch-icon.png", get(|| async { StatusCode::NOT_FOUND }))
         .route("/docs", get(site::docs::page))
         .route("/explore", get(site::explore::page))
         .route("/explore/events-section", get(site::explore::events_section))
@@ -163,6 +170,7 @@ pub(crate) async fn setup(
         )
         .route("/explore/events/search", get(site::explore::search_events))
         .route("/explore/groups/search", get(site::explore::search_groups))
+        .route("/favicon.ico", get(favicon))
         .route("/health-check", get(health_check))
         .route("/images/{file_name}", get(images::serve))
         .route("/log-in", get(auth::log_in_page))
@@ -223,6 +231,29 @@ pub(crate) async fn setup(
 }
 
 // Handlers.
+
+/// Redirects favicon requests to the configured site favicon URL.
+#[instrument(skip_all)]
+async fn favicon(AxumState(db): AxumState<DynDB>) -> impl IntoResponse {
+    // Load the configured site settings to resolve the favicon target
+    let Ok(site_settings) = db.get_site_settings().await else {
+        return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+    };
+
+    // Return a plain 404 when no favicon has been configured
+    let Some(favicon_url) = site_settings.favicon_url else {
+        return StatusCode::NOT_FOUND.into_response();
+    };
+
+    // Cache the redirect so browsers avoid repeating this lookup on every visit
+    let mut response = Redirect::to(&favicon_url).into_response();
+    response.headers_mut().insert(
+        CACHE_CONTROL,
+        HeaderValue::from_static(CACHE_CONTROL_FAVICON_REDIRECT),
+    );
+
+    response
+}
 
 /// Health check endpoint handler.
 ///

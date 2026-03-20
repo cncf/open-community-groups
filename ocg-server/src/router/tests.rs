@@ -1,10 +1,103 @@
+use anyhow::anyhow;
 use axum::{
     body::{Body, to_bytes},
     http::{HeaderValue, StatusCode, Uri, header::LOCATION},
 };
 use tower::ServiceExt;
 
+use crate::{db::mock::MockDB, handlers::tests::*, services::notifications::MockNotificationsManager};
+
 use super::*;
+
+#[tokio::test]
+async fn test_favicon_route_returns_not_found_without_configured_url() {
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_site_settings()
+        .times(1)
+        .returning(|| Ok(sample_site_settings()));
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("GET")
+        .uri("/favicon.ico")
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_eq!(parts.status, StatusCode::NOT_FOUND);
+    assert!(bytes.is_empty());
+}
+
+#[tokio::test]
+async fn test_favicon_route_returns_redirect_with_cache_header() {
+    // Setup database mock
+    let favicon_url = "https://example.test/favicon.ico".to_string();
+    let mut site_settings = sample_site_settings();
+    site_settings.favicon_url = Some(favicon_url.clone());
+
+    let mut db = MockDB::new();
+    db.expect_get_site_settings()
+        .times(1)
+        .returning(move || Ok(site_settings.clone()));
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("GET")
+        .uri("/favicon.ico")
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_eq!(parts.status, StatusCode::SEE_OTHER);
+    assert_eq!(
+        parts.headers.get(CACHE_CONTROL).unwrap(),
+        &HeaderValue::from_static("public, max-age=604800")
+    );
+    assert_eq!(
+        parts.headers.get(LOCATION).unwrap(),
+        &HeaderValue::from_str(&favicon_url).unwrap()
+    );
+    assert!(bytes.is_empty());
+}
+
+#[tokio::test]
+async fn test_favicon_route_surfaces_db_errors_as_internal_server_error() {
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_site_settings()
+        .times(1)
+        .returning(|| Err(anyhow!("db error")));
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("GET")
+        .uri("/favicon.ico")
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+
+    // Check response matches expectations
+    assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
+}
 
 #[tokio::test]
 async fn test_health_check_returns_ok() {
