@@ -17,7 +17,10 @@ use uuid::Uuid;
 use crate::{
     activity_tracker::{Activity, DynActivityTracker},
     db::DynDB,
-    handlers::{error::HandlerError, extractors::CommunityId, prepare_headers, request_matches_site},
+    handlers::{
+        error::HandlerError, extractors::CommunityId, prepare_headers, request_matches_site,
+        trim_public_gallery_images,
+    },
     templates::{PageId, auth::User, community},
     types::event::EventKind,
 };
@@ -36,7 +39,7 @@ pub(crate) async fn page(
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
     let (
-        community,
+        mut community,
         recently_added_groups,
         site_settings,
         upcoming_in_person_events,
@@ -50,6 +53,7 @@ pub(crate) async fn page(
         db.get_community_upcoming_events(community_id, vec![EventKind::Virtual, EventKind::Hybrid]),
         db.get_community_site_stats(community_id),
     )?;
+    trim_public_gallery_images(&mut community.photos_urls);
     let template = community::Page {
         community,
         page_id: PageId::Community,

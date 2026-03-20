@@ -3,9 +3,10 @@ create or replace function get_community_upcoming_events(p_community_id uuid, p_
 returns json as $$
     select coalesce(json_agg(
         get_event_summary(p_community_id, e.group_id, e.event_id)
+        order by e.starts_at asc, e.event_id asc
     ), '[]')
     from (
-        select e.event_id, e.group_id
+        select e.event_id, e.group_id, e.starts_at
         from event e
         join "group" g using (group_id)
         where g.community_id = p_community_id
@@ -16,7 +17,7 @@ returns json as $$
         and e.starts_at is not null
         and e.starts_at > now()
         and e.canceled = false
-        order by e.starts_at asc
+        order by e.starts_at asc, e.event_id asc
         limit 8
     ) e;
 $$ language sql;

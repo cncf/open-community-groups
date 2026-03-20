@@ -36,6 +36,9 @@ pub(crate) mod site;
 #[cfg(test)]
 pub(crate) mod tests;
 
+/// Maximum number of gallery images rendered on public pages.
+pub(crate) const MAX_PUBLIC_GALLERY_IMAGES: usize = 50;
+
 /// Helper function to prepare headers for HTTP responses, including cache control and
 /// additional custom headers.
 #[allow(unused_variables)]
@@ -98,6 +101,13 @@ pub(crate) fn request_matches_site(server_cfg: &HttpServerConfig, headers: &Head
         .and_then(|uri| uri.host().map(str::to_ascii_lowercase));
 
     Ok(referer_host.is_some_and(|referer_host| referer_host == site_host))
+}
+
+/// Truncates gallery image URLs to the public display limit while preserving order.
+pub(crate) fn trim_public_gallery_images(photos_urls: &mut Option<Vec<String>>) {
+    if let Some(photos_urls) = photos_urls {
+        photos_urls.truncate(MAX_PUBLIC_GALLERY_IMAGES);
+    }
 }
 
 #[cfg(test)]
@@ -187,6 +197,40 @@ mod helpers_tests {
         assert!(!request_matches_site(&server_cfg, &HeaderMap::new()).unwrap());
     }
 
+    #[test]
+    fn test_trim_public_gallery_images_keeps_none_unchanged() {
+        let mut photos_urls = None;
+
+        trim_public_gallery_images(&mut photos_urls);
+
+        assert_eq!(photos_urls, None);
+    }
+
+    #[test]
+    fn test_trim_public_gallery_images_keeps_short_vec_unchanged() {
+        let mut photos_urls = Some(vec![sample_photo_url(0), sample_photo_url(1)]);
+
+        trim_public_gallery_images(&mut photos_urls);
+
+        assert_eq!(photos_urls, Some(vec![sample_photo_url(0), sample_photo_url(1)]));
+    }
+
+    #[test]
+    fn test_trim_public_gallery_images_truncates_long_vec() {
+        let mut photos_urls = Some((0..=MAX_PUBLIC_GALLERY_IMAGES).map(sample_photo_url).collect());
+
+        trim_public_gallery_images(&mut photos_urls);
+
+        assert_eq!(
+            photos_urls.as_ref().map(Vec::len),
+            Some(MAX_PUBLIC_GALLERY_IMAGES)
+        );
+        assert_eq!(
+            photos_urls.as_ref().and_then(|photos_urls| photos_urls.last()),
+            Some(&sample_photo_url(MAX_PUBLIC_GALLERY_IMAGES - 1))
+        );
+    }
+
     // Helpers
 
     fn sample_server_cfg(base_url: &str, disable_referer_checks: bool) -> HttpServerConfig {
@@ -195,5 +239,9 @@ mod helpers_tests {
             disable_referer_checks,
             ..Default::default()
         }
+    }
+
+    fn sample_photo_url(idx: usize) -> String {
+        format!("https://example.test/photo-{idx}.png")
     }
 }
