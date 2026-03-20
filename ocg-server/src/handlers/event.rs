@@ -21,7 +21,7 @@ use crate::{
     db::DynDB,
     handlers::{
         extractors::{CurrentUser, ValidatedFormQs},
-        prepare_headers, request_matches_site,
+        prepare_headers, request_matches_site, trim_public_gallery_images,
     },
     services::notifications::{DynNotificationsManager, NewNotification, NotificationKind},
     templates::{
@@ -51,10 +51,11 @@ pub(crate) async fn page(
     uri: Uri,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
-    let (event, site_settings) = tokio::try_join!(
+    let (mut event, site_settings) = tokio::try_join!(
         db.get_event_full_by_slug(community_id, &group_slug, &event_slug),
         db.get_site_settings()
     )?;
+    trim_public_gallery_images(&mut event.photos_urls);
     let template = Page {
         event,
         page_id: PageId::Event,
