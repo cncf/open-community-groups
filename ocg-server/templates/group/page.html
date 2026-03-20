@@ -273,7 +273,7 @@
       {% if !upcoming_events.is_empty() -%}
         {% let upcoming_events_link = "/explore?entity=events&group[0]=".to_owned() + &group.slug + "&community[0]=" + &group.community.name -%}
         <div>
-          <div class="flex items-center justify-between pb-8 lg:pb-12">
+          <div class="flex items-center justify-between pb-6 sm:pb-8 lg:pb-12">
             <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 lg:py-2">Upcoming Events</div>
             {# See all events on desktop -#}
             <div class="hidden justify-self-end md:flex">
@@ -309,7 +309,7 @@
         {% let past_events_date_to = past_events_date_option|display_some_datetime_tz("%Y-%m-%d", chrono_tz::UTC) -%}
         {% let past_events_link = "/explore?entity=events&group[0]=".to_owned() + &group.slug + "&community[0]=" + &group.community.name + "&date_from=1900-01-01&sort_direction=desc" + "&date_to=" + &past_events_date_to -%}
         <div>
-          <div class="flex items-center justify-between pb-8 lg:pb-12">
+          <div class="flex items-center justify-between pb-6 sm:pb-8 lg:pb-12">
             <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 lg:py-2">Past Events</div>
             {# See all events on desktop -#}
             <div class="hidden justify-self-end md:flex">

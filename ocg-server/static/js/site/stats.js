@@ -1,7 +1,9 @@
 import {
   createAreaChart,
   createMonthlyBarChart,
+  dashboardFontFamily,
   getThemePalette,
+  getChartUiColors,
   hasChartData,
   hasTimeSeriesData,
   loadEChartsScript,
@@ -12,6 +14,48 @@ import {
   registerChartResizeHandler,
   renderChart,
 } from "/static/js/common/stats.js";
+
+/**
+ * Apply stats-page specific legend styling without affecting dashboard charts.
+ * @param {Object} option - ECharts option object.
+ * @param {Object} legendOverrides - Legend overrides.
+ * @returns {Object} Styled ECharts option.
+ */
+const styleStatsPageLegend = (option, legendOverrides = {}) => {
+  const uiColors = getChartUiColors();
+  const legend = {
+    bottom: 10,
+    left: "center",
+    itemGap: 12,
+    textStyle: {
+      fontFamily: dashboardFontFamily,
+      fontSize: 12,
+      color: uiColors.muted,
+    },
+    ...legendOverrides,
+  };
+
+  if (option?.baseOption) {
+    option.baseOption.legend = Object.assign({}, option.baseOption.legend, legend);
+    option.baseOption.grid = Object.assign({}, option.baseOption.grid, { bottom: 100 });
+    return option;
+  }
+
+  option.legend = Object.assign({}, option.legend, legend);
+  return option;
+};
+
+/**
+ * Returns the target number of visible monthly x-axis labels for the viewport.
+ * @returns {number} Visible label target.
+ */
+const getMonthlyLabelTarget = () => {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+    return 8;
+  }
+
+  return window.matchMedia("(max-width: 640px)").matches ? 4 : 8;
+};
 
 /**
  * Initialize charts for a stats section.
@@ -26,7 +70,9 @@ const initSectionCharts = async (key, label, stats = {}, palette) => {
   const charts = [];
 
   const runningData = section.running_total || [];
-  const runningOption = createAreaChart(`${label} over time`, label, runningData, palette);
+  const runningOption = styleStatsPageLegend(
+    createAreaChart(`${label} over time`, label, runningData, palette),
+  );
   runningOption.xAxis = Object.assign({}, runningOption.xAxis, {
     axisLabel: Object.assign({}, runningOption.xAxis?.axisLabel, {
       formatter: "{yyyy}-{MM}",
@@ -38,11 +84,16 @@ const initSectionCharts = async (key, label, stats = {}, palette) => {
   if (runningChart) charts.push(runningChart);
 
   const monthlyData = section.per_month || [];
-  const monthlyOption = createMonthlyBarChart(`New ${label} per Month`, label, monthlyData, palette);
+  const monthlyOption = styleStatsPageLegend(
+    createMonthlyBarChart(`New ${label} per Month`, label, monthlyData, palette),
+  );
+  const monthlyCategoryCount = monthlyOption.xAxis?.data?.length || monthlyData.length;
   monthlyOption.xAxis = Object.assign({}, monthlyOption.xAxis, {
     axisLabel: Object.assign({}, monthlyOption.xAxis?.axisLabel, {
-      hideOverlap: true,
-      interval: getCategoryLabelInterval(monthlyData.length),
+      hideOverlap: false,
+      rotate: 0,
+      interval: getCategoryLabelInterval(monthlyCategoryCount, getMonthlyLabelTarget()),
+      formatter: (value) => value,
     }),
   });
   const monthlyChart = renderChart(`${key}-monthly-chart`, monthlyOption, hasChartData(monthlyData));
