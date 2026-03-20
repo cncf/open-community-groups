@@ -46,6 +46,18 @@ const styleStatsPageLegend = (option, legendOverrides = {}) => {
 };
 
 /**
+ * Returns the target number of visible monthly x-axis labels for the viewport.
+ * @returns {number} Visible label target.
+ */
+const getMonthlyLabelTarget = () => {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+    return 7;
+  }
+
+  return window.matchMedia("(max-width: 640px)").matches ? 3 : 7;
+};
+
+/**
  * Initialize charts for a stats section.
  * @param {string} key - Section key.
  * @param {string} label - Label for chart titles.
@@ -80,7 +92,7 @@ const initSectionCharts = async (key, label, stats = {}, palette) => {
     axisLabel: Object.assign({}, monthlyOption.xAxis?.axisLabel, {
       hideOverlap: false,
       rotate: 0,
-      interval: getCategoryLabelInterval(monthlyCategoryCount, 7),
+      interval: getCategoryLabelInterval(monthlyCategoryCount, getMonthlyLabelTarget()),
       formatter: (value) => value,
     }),
   });
