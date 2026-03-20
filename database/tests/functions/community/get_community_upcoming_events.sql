@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(3);
+select plan(4);
 
 -- ============================================================================
 -- VARIABLES
@@ -16,6 +16,7 @@ select plan(3);
 \set event3ID '00000000-0000-0000-0000-000000000043'
 \set event4ID '00000000-0000-0000-0000-000000000044'
 \set event5ID '00000000-0000-0000-0000-000000000045'
+\set event6ID '00000000-0000-0000-0000-000000000046'
 \set eventCategory1ID '00000000-0000-0000-0000-000000000021'
 \set group1ID '00000000-0000-0000-0000-000000000031'
 
@@ -122,6 +123,49 @@ select is(
     get_community_upcoming_events('00000000-0000-0000-0000-999999999999'::uuid, array['in-person', 'virtual', 'hybrid'])::jsonb,
     '[]'::jsonb,
     'Should return empty array for non-existing community'
+);
+
+-- Add a tied future event to verify deterministic ordering
+insert into event (
+    event_id,
+    name,
+    slug,
+    description,
+    timezone,
+    event_category_id,
+    event_kind_id,
+    group_id,
+    published,
+    starts_at,
+    ends_at,
+    canceled,
+    logo_url
+) values (
+    :'event6ID',
+    'Future Event 5',
+    'future-event-5',
+    'A future event with a tied start time',
+    'UTC',
+    :'eventCategory1ID',
+    'virtual',
+    :'group1ID',
+    true,
+    now() + interval '1 month',
+    now() + interval '1 month' + interval '4 hours',
+    false,
+    'https://example.com/event-5-logo.png'
+);
+
+-- Should order tied future events by event ID
+select is(
+    (
+        select jsonb_agg(event_item->>'event_id')
+        from jsonb_array_elements(
+            get_community_upcoming_events(:'communityID'::uuid, array['virtual'])::jsonb
+        ) event_item
+    ),
+    jsonb_build_array(:'event2ID', :'event6ID'),
+    'Should order tied future events by event ID'
 );
 
 -- ============================================================================

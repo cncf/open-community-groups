@@ -4,7 +4,7 @@ returns json as $$
     select coalesce(
         json_agg(
             get_event_summary(e.community_id, e.group_id, e.event_id)
-            order by e.starts_at asc
+            order by e.starts_at asc, e.event_id asc
         ),
         '[]'
     )
@@ -19,7 +19,7 @@ returns json as $$
         and e.starts_at is not null
         and e.starts_at > now()
         and e.canceled = false
-        order by e.starts_at asc
+        order by e.starts_at asc, e.event_id asc
         limit 8
     ) e;
 $$ language sql;
