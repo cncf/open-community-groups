@@ -33,7 +33,6 @@ const expectPageScreenshot = async (page: Page, screenshotName: string) => {
 
 test.describe("visual regression", () => {
   test("site home matches desktop snapshot", async ({ page }) => {
-    await page.setViewportSize({ width: 1280, height: 800 });
     await navigateToSiteHome(page);
 
     await expect(
@@ -43,8 +42,7 @@ test.describe("visual regression", () => {
     await expectPageScreenshot(page, "site-home-desktop.png");
   });
 
-  test("site home matches mobile snapshot", async ({ page }) => {
-    await page.setViewportSize({ width: 375, height: 667 });
+  test("site home matches mobile snapshot @mobile", async ({ page }) => {
     await navigateToSiteHome(page);
 
     await expect(
@@ -55,7 +53,6 @@ test.describe("visual regression", () => {
   });
 
   test("community home matches desktop snapshot", async ({ page }) => {
-    await page.setViewportSize({ width: 1280, height: 800 });
     await navigateToCommunityHome(page, TEST_COMMUNITY_NAME);
 
     await expect(page.getByText("About this community")).toBeVisible();
@@ -66,8 +63,7 @@ test.describe("visual regression", () => {
     await expectPageScreenshot(page, "community-home-desktop.png");
   });
 
-  test("community home matches mobile snapshot", async ({ page }) => {
-    await page.setViewportSize({ width: 375, height: 667 });
+  test("community home matches mobile snapshot @mobile", async ({ page }) => {
     await navigateToCommunityHome(page, TEST_COMMUNITY_NAME);
 
     await expect(page.getByText("About this community")).toBeVisible();
@@ -79,7 +75,6 @@ test.describe("visual regression", () => {
   });
 
   test("group page matches desktop snapshot", async ({ page }) => {
-    await page.setViewportSize({ width: 1280, height: 800 });
     await navigateToGroup(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUGS.community1.alpha);
 
     await expect(
@@ -91,8 +86,7 @@ test.describe("visual regression", () => {
     await expectPageScreenshot(page, "group-page-desktop.png");
   });
 
-  test("group page matches mobile snapshot", async ({ page }) => {
-    await page.setViewportSize({ width: 375, height: 667 });
+  test("group page matches mobile snapshot @mobile", async ({ page }) => {
     await navigateToGroup(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUGS.community1.alpha);
 
     await expect(
@@ -105,7 +99,6 @@ test.describe("visual regression", () => {
   });
 
   test("event page matches desktop snapshot", async ({ page }) => {
-    await page.setViewportSize({ width: 1280, height: 800 });
     await navigateToEvent(
       page,
       TEST_COMMUNITY_NAME,
@@ -121,8 +114,7 @@ test.describe("visual regression", () => {
     await expectPageScreenshot(page, "event-page-desktop.png");
   });
 
-  test("event page matches mobile snapshot", async ({ page }) => {
-    await page.setViewportSize({ width: 375, height: 667 });
+  test("event page matches mobile snapshot @mobile", async ({ page }) => {
     await navigateToEvent(
       page,
       TEST_COMMUNITY_NAME,

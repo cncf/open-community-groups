@@ -200,8 +200,9 @@ test.describe("event page", () => {
 
 /** Responsive layout assertions. */
 test.describe("event page - responsive", () => {
-  test("event page renders correctly on mobile viewport", async ({ page }) => {
-    await page.setViewportSize({ width: 375, height: 667 });
+  test("event page renders correctly on mobile viewport @mobile", async ({
+    page,
+  }) => {
     await navigateToEvent(
       page,
       TEST_COMMUNITY_NAME,
@@ -221,7 +222,6 @@ test.describe("event page - responsive", () => {
   });
 
   test("event page renders correctly on desktop viewport", async ({ page }) => {
-    await page.setViewportSize({ width: 1280, height: 800 });
     await navigateToEvent(
       page,
       TEST_COMMUNITY_NAME,
@@ -246,7 +246,6 @@ test.describe("event page - alpha event logo", () => {
   test.skip(!isAlphaEventOne, "Requires Alpha Event One seed data");
 
   test("event logo is visible on desktop", async ({ page }) => {
-    await page.setViewportSize({ width: 1280, height: 800 });
     await navigateToEvent(
       page,
       TEST_COMMUNITY_NAME,

@@ -16,6 +16,7 @@ const smokeSpecPaths = [
 ];
 const visualSpecPaths = ["pages/visual.spec.ts"];
 const isVisualOnlyRun = process.argv.some((arg) => arg.includes("pages/visual.spec.ts"));
+const mobileTestPattern = /@mobile/;
 
 const webServer =
   shouldStartServer && webServerCommand
@@ -67,7 +68,16 @@ export default defineConfig({
       testIgnore: isVisualOnlyRun
         ? smokeSpecPaths
         : [...smokeSpecPaths, ...visualSpecPaths],
+      grepInvert: mobileTestPattern,
       use: { ...devices["Desktop Chrome"] },
+    },
+    {
+      name: "chromium-mobile-deep",
+      testIgnore: isVisualOnlyRun
+        ? smokeSpecPaths
+        : [...smokeSpecPaths, ...visualSpecPaths],
+      grep: mobileTestPattern,
+      use: { ...devices["iPhone 12"] },
     },
   ],
   webServer,

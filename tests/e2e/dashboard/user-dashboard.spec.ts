@@ -28,20 +28,16 @@ test.describe("user dashboard", () => {
     const communityRow = dashboardContent.locator("tr", {
       hasText: "e2e-test-community",
     });
-    if ((await communityRow.count()) > 0) {
-      await expect(communityRow).toContainText("viewer");
-      await expect(communityRow.getByTitle("Approve")).toBeVisible();
-      await expect(communityRow.getByTitle("Reject")).toBeVisible();
-    }
+    await expect(communityRow).toContainText("viewer");
+    await expect(communityRow.getByTitle("Approve")).toBeVisible();
+    await expect(communityRow.getByTitle("Reject")).toBeVisible();
 
     const groupRow = dashboardContent.locator("tr", {
       hasText: "E2E Test Group Beta",
     });
-    if ((await groupRow.count()) > 0) {
-      await expect(groupRow).toContainText("events-manager");
-      await expect(groupRow.getByTitle("Approve")).toBeVisible();
-      await expect(groupRow.getByTitle("Reject")).toBeVisible();
-    }
+    await expect(groupRow).toContainText("events-manager");
+    await expect(groupRow.getByTitle("Approve")).toBeVisible();
+    await expect(groupRow.getByTitle("Reject")).toBeVisible();
   });
 
   test("my events page lists only upcoming published participation", async ({
@@ -129,17 +125,13 @@ test.describe("user dashboard", () => {
       hasText: "Collaborative Roadmaps",
     });
 
-    if ((await invitationAlert.count()) > 0) {
-      await expect(invitationAlert).toContainText(
-        "co-speaker invitation waiting for your response",
-      );
-      await expect(invitationRow).toContainText("E2E Member One");
-      await expect(invitationRow.getByTitle("View proposal")).toBeVisible();
-      await expect(invitationRow.getByTitle("Accept invitation")).toBeVisible();
-      await expect(invitationRow.getByTitle("Decline invitation")).toBeVisible();
-    } else {
-      await expect(invitationRow).toHaveCount(0);
-    }
+    await expect(invitationAlert).toContainText(
+      "co-speaker invitation waiting for your response",
+    );
+    await expect(invitationRow).toContainText("E2E Member One");
+    await expect(invitationRow.getByTitle("View proposal")).toBeVisible();
+    await expect(invitationRow.getByTitle("Accept invitation")).toBeVisible();
+    await expect(invitationRow.getByTitle("Decline invitation")).toBeVisible();
   });
 
   test("accepting a co-speaker invitation updates both users' proposal views", async ({
@@ -155,25 +147,24 @@ test.describe("user dashboard", () => {
     const invitationRow = member2Dashboard.locator("tr", {
       hasText: "Collaborative Roadmaps",
     });
+    const acceptInvitationButton = invitationRow.getByTitle("Accept invitation");
+    await expect(member2Dashboard.locator("[role='alert']")).toContainText(
+      "co-speaker invitation waiting for your response",
+    );
+    await expect(invitationRow).toContainText("E2E Member One");
+    await expect(acceptInvitationButton).toBeVisible();
 
-    if ((await invitationRow.getByTitle("Accept invitation").count()) > 0) {
-      await expect(member2Dashboard.locator("[role='alert']")).toContainText(
-        "co-speaker invitation waiting for your response",
-      );
-      await expect(invitationRow).toContainText("E2E Member One");
-
-      await Promise.all([
-        member2Page.waitForResponse(
-          (response) =>
-            response.request().method() === "PUT" &&
-            response.ok() &&
-            response
-              .url()
-              .includes("/co-speaker-invitation/accept"),
-        ),
-        invitationRow.getByTitle("Accept invitation").click(),
-      ]);
-    }
+    await Promise.all([
+      member2Page.waitForResponse(
+        (response) =>
+          response.request().method() === "PUT" &&
+          response.ok() &&
+          response
+            .url()
+            .includes("/co-speaker-invitation/accept"),
+      ),
+      acceptInvitationButton.click(),
+    ]);
 
     await member2Page.reload();
     await expect(member2Dashboard.locator("[role='alert']")).toHaveCount(0);
@@ -260,40 +251,41 @@ test.describe("user dashboard", () => {
     const communityInvitationRow = dashboardContent.locator("tr", {
       hasText: "e2e-test-community",
     });
+    const approveCommunityInvitationButton =
+      communityInvitationRow.getByTitle("Approve");
+    await expect(approveCommunityInvitationButton).toBeVisible();
 
-    if ((await communityInvitationRow.getByTitle("Approve").count()) > 0) {
-      await Promise.all([
-        pending1Page.waitForResponse(
-          (response) =>
-            response.request().method() === "PUT" &&
-            response.ok() &&
-            response.url().includes("/dashboard/user/invitations/community/") &&
-            response.url().endsWith("/accept"),
-        ),
-        communityInvitationRow.getByTitle("Approve").click(),
-      ]);
+    await Promise.all([
+      pending1Page.waitForResponse(
+        (response) =>
+          response.request().method() === "PUT" &&
+          response.ok() &&
+          response.url().includes("/dashboard/user/invitations/community/") &&
+          response.url().endsWith("/accept"),
+      ),
+      approveCommunityInvitationButton.click(),
+    ]);
 
-      await pending1Page.reload();
-    }
+    await pending1Page.reload();
 
     const groupInvitationRow = dashboardContent.locator("tr", {
       hasText: "E2E Test Group Beta",
     });
+    const approveGroupInvitationButton = groupInvitationRow.getByTitle("Approve");
+    await expect(approveGroupInvitationButton).toBeVisible();
 
-    if ((await groupInvitationRow.getByTitle("Approve").count()) > 0) {
-      await Promise.all([
-        pending1Page.waitForResponse(
-          (response) =>
-            response.request().method() === "PUT" &&
-            response.ok() &&
-            response.url().includes("/dashboard/user/invitations/group/") &&
-            response.url().endsWith("/accept"),
-        ),
-        groupInvitationRow.getByTitle("Approve").click(),
-      ]);
+    await Promise.all([
+      pending1Page.waitForResponse(
+        (response) =>
+          response.request().method() === "PUT" &&
+          response.ok() &&
+          response.url().includes("/dashboard/user/invitations/group/") &&
+          response.url().endsWith("/accept"),
+      ),
+      approveGroupInvitationButton.click(),
+    ]);
 
-      await pending1Page.reload();
-    }
+    await pending1Page.reload();
 
     await expect(
       dashboardContent.locator("tr", { hasText: "e2e-test-community" }),

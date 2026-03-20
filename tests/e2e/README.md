@@ -141,7 +141,7 @@ Test data is defined in `/database/tests/data/e2e.sql` and includes:
 ### Suite Split
 
 - `smoke`: `public/public.spec.ts`, `auth/oauth.spec.ts`, and `dashboard/access-control.spec.ts`
-- `deep`: all remaining E2E specs, executed on Chromium only
+- `deep`: all remaining E2E specs, executed on desktop Chromium plus mobile-emulated Chromium
 - `yarn test:e2e`: runs both suites together
 - `yarn test:e2e:firefox` and `yarn test:e2e:webkit` run the smoke suite only
 
@@ -157,7 +157,7 @@ Test data is defined in `/database/tests/data/e2e.sql` and includes:
 
 ### Visual Regression Tests
 
-- `tests/e2e/pages/visual.spec.ts` snapshots stable public pages
+- `tests/e2e/pages/visual.spec.ts` snapshots stable public pages on desktop and mobile emulation
 - Visual checks run on Chromium only as part of the deep suite to reduce noise
 - `yarn test:e2e:visual` writes the e2e server config and starts the app automatically
 - Update snapshots with `yarn test:e2e:visual:update` after intentional UI changes

@@ -150,7 +150,6 @@ test.describe("community home page", () => {
 
   test.describe("desktop viewport", () => {
     test.beforeEach(async ({ page }) => {
-      await page.setViewportSize({ width: 1280, height: 800 });
       await navigateToCommunityHome(page, TEST_COMMUNITY_NAME);
     });
 
@@ -211,9 +210,8 @@ test.describe("community home page", () => {
     });
   });
 
-  test.describe("mobile viewport", () => {
+  test.describe("mobile viewport @mobile", () => {
     test.beforeEach(async ({ page }) => {
-      await page.setViewportSize({ width: 375, height: 667 });
       await navigateToCommunityHome(page, TEST_COMMUNITY_NAME);
     });
 
