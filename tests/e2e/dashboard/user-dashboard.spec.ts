@@ -11,6 +11,40 @@ const openUserDashboardPath = async (path: string, page: Page) => {
   await navigateToPath(page, path);
 };
 
+const createSessionProposal = async (page: Page, title: string) => {
+  await openUserDashboardPath("/dashboard/user?tab=session-proposals", page);
+
+  const dashboardContent = page.locator("#dashboard-content");
+  await expect(
+    dashboardContent.getByText("Session proposals", { exact: true }),
+  ).toBeVisible();
+
+  await page.getByRole("button", { name: "New proposal" }).click();
+
+  const modal = page.getByRole("dialog", { name: "New session proposal" });
+  await expect(modal).toBeVisible();
+
+  await modal.getByLabel("Title").fill(title);
+  await modal.getByLabel("Level").selectOption("intermediate");
+  await modal.getByLabel("Duration (minutes)").fill("45");
+  await modal
+    .locator("markdown-editor#session-proposal-description textarea")
+    .fill("A reusable proposal created from the e2e suite.");
+
+  await Promise.all([
+    page.waitForResponse(
+      (response) =>
+        response.request().method() === "POST" &&
+        response.url().includes("/dashboard/user/session-proposals") &&
+        response.status() === 201,
+    ),
+    modal.getByRole("button", { name: "Save" }).click(),
+  ]);
+
+  await expect(modal).toBeHidden();
+  return dashboardContent;
+};
+
 test.describe("user dashboard", () => {
   test("invitations page shows pending community and group roles", async ({
     pending1Page,
@@ -109,6 +143,37 @@ test.describe("user dashboard", () => {
       hasText: "Co-Speaker Retrospective",
     });
     await expect(declinedRow).toContainText("Declined by co-speaker");
+  });
+
+  test("user can create and delete a session proposal", async ({
+    pending1Page,
+  }) => {
+    const proposalTitle = `Pending1 reusable proposal ${Date.now()}`;
+    const dashboardContent = await createSessionProposal(pending1Page, proposalTitle);
+
+    const proposalRow = dashboardContent.locator("tr", {
+      hasText: proposalTitle,
+    });
+    await expect(proposalRow).toContainText("Ready for submission");
+
+    await proposalRow.getByTitle("Delete proposal").click();
+    await expect(pending1Page.locator(".swal2-popup")).toContainText(
+      "Are you sure you want to delete this session proposal?",
+    );
+
+    await Promise.all([
+      pending1Page.waitForResponse(
+        (response) =>
+          response.request().method() === "DELETE" &&
+          response.url().includes("/dashboard/user/session-proposals/") &&
+          response.ok(),
+      ),
+      pending1Page.getByRole("button", { name: "Delete" }).click(),
+    ]);
+
+    await expect(
+      dashboardContent.locator("tr", { hasText: proposalTitle }),
+    ).toHaveCount(0);
   });
 
   test("pending co-speaker invitations are surfaced to the invited user", async ({
