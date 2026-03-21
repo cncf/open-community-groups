@@ -7,6 +7,7 @@ const ALPHA_GROUP_ID = "44444444-4444-4444-4444-444444444441";
 const BETA_GROUP_ID = "44444444-4444-4444-4444-444444444442";
 const BETA_GROUP_SLUG = "test-group-beta";
 const CFS_EVENT_ID = "55555555-5555-5555-5555-555555555519";
+const PENDING1_USER_ID = "77777777-7777-7777-7777-777777777707";
 
 test.describe("group dashboard", () => {
   test("group team page shows seeded roles and last-admin protection", async ({
@@ -45,6 +46,69 @@ test.describe("group dashboard", () => {
     await expect(
       dashboardContent.locator("tr", { hasText: "E2E Pending Two" }),
     ).toContainText("Invitation sent");
+  });
+
+  test("organizer can invite and remove a pending group team member", async ({
+    organizerGroupPage,
+  }) => {
+    await navigateToPath(organizerGroupPage, "/dashboard/group?tab=team");
+
+    const dashboardContent = organizerGroupPage.locator("#dashboard-content");
+    await expect(dashboardContent.getByText("Group Team", { exact: true })).toBeVisible();
+
+    await dashboardContent.getByRole("button", { name: "Add member" }).click();
+
+    const addMemberForm = organizerGroupPage.locator("#team-add-form");
+    await expect(addMemberForm).toBeVisible();
+
+    const searchInput = addMemberForm.locator("#search-input");
+    await Promise.all([
+      organizerGroupPage.waitForResponse(
+        (response) =>
+          response.request().method() === "GET" &&
+          response.url().includes("/dashboard/group/users/search?q=e2e-pending-1") &&
+          response.ok(),
+      ),
+      searchInput.fill("e2e-pending-1"),
+    ]);
+
+    await addMemberForm.getByText("E2E Pending One", { exact: true }).click();
+    await addMemberForm.locator("#team-add-role").selectOption("viewer");
+
+    await Promise.all([
+      organizerGroupPage.waitForResponse(
+        (response) =>
+          response.request().method() === "POST" &&
+          response.url().includes("/dashboard/group/team/add") &&
+          response.status() === 201,
+      ),
+      addMemberForm.locator("#team-add-submit").click(),
+    ]);
+
+    const pendingRow = dashboardContent.locator("tr", { hasText: "E2E Pending One" });
+    await expect(pendingRow).toBeVisible();
+    await expect(pendingRow).toContainText("Invitation sent");
+    await expect(pendingRow.locator('select[name="role"]')).toHaveValue("viewer");
+
+    const removeButton = pendingRow.locator(`#remove-member-${PENDING1_USER_ID}`);
+    await removeButton.click();
+    await expect(organizerGroupPage.locator(".swal2-popup")).toContainText(
+      "Are you sure you would like to delete this team member?",
+    );
+
+    await Promise.all([
+      organizerGroupPage.waitForResponse(
+        (response) =>
+          response.request().method() === "DELETE" &&
+          response.url().includes(`/dashboard/group/team/${PENDING1_USER_ID}/delete`) &&
+          response.ok(),
+      ),
+      organizerGroupPage.getByRole("button", { name: "Yes" }).click(),
+    ]);
+
+    await expect(
+      dashboardContent.locator("tr", { hasText: "E2E Pending One" }),
+    ).toHaveCount(0);
   });
 
   test("events manager can review CFS submissions with labels and ratings", async ({
