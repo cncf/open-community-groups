@@ -258,6 +258,48 @@ test.describe("group dashboard", () => {
     await expect(reviewButtons.first()).toBeDisabled();
   });
 
+  test("organizer can open the waitlist tab for an event with waitlist disabled", async ({
+    organizerGroupPage,
+  }) => {
+    await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
+
+    const eventRow = organizerGroupPage.locator("tr", {
+      hasText: "Alpha Event One",
+    });
+    await expect(eventRow).toBeVisible();
+
+    await Promise.all([
+      organizerGroupPage.waitForResponse(
+        (response) =>
+          response.request().method() === "GET" &&
+          response.url().includes(`/dashboard/group/events/${ALPHA_EVENT_ONE_ID}/update`) &&
+          response.ok(),
+      ),
+      eventRow
+        .locator('td button[aria-label="Edit event: Alpha Event One"]')
+        .click(),
+    ]);
+
+    await Promise.all([
+      organizerGroupPage.waitForResponse(
+        (response) =>
+          response.request().method() === "GET" &&
+          response.url().includes(`/dashboard/group/events/${ALPHA_EVENT_ONE_ID}/waitlist`) &&
+          response.ok(),
+      ),
+      organizerGroupPage.locator('button[data-section="waitlist"]').click(),
+    ]);
+
+    const waitlistContent = organizerGroupPage.locator("#waitlist-content");
+    await expect(
+      waitlistContent
+        .locator('p.text-sm.lg\\:text-md.text-stone-700:visible')
+        .filter({
+          hasText: "Enable waitlist to allow full events to add people to the queue.",
+        }),
+    ).toBeVisible();
+  });
+
   test("viewer sees read-only members and sponsors controls", async ({
     groupViewerPage,
   }) => {
