@@ -267,6 +267,52 @@ test.describe("community dashboard", () => {
     ).toHaveAttribute("title", "Your role cannot update groups.");
   });
 
+  test("admin can add and delete a region", async ({
+    adminCommunityPage,
+  }) => {
+    const regionName = `E2E Region ${Date.now()}`;
+
+    await navigateToPath(adminCommunityPage, "/dashboard/community?tab=regions");
+
+    const dashboardContent = adminCommunityPage.locator("#dashboard-content");
+    await expect(dashboardContent.getByText("Regions", { exact: true })).toBeVisible();
+
+    await dashboardContent.getByRole("button", { name: "Add Region" }).click();
+    await expect(dashboardContent.getByText("Region Details", { exact: true })).toBeVisible();
+
+    await adminCommunityPage.getByLabel("Name").fill(regionName);
+
+    await Promise.all([
+      adminCommunityPage.waitForResponse(
+        (response) =>
+          response.request().method() === "POST" &&
+          response.url().includes("/dashboard/community/regions/add") &&
+          response.status() === 201,
+      ),
+      adminCommunityPage.getByRole("button", { name: "Add Region" }).click(),
+    ]);
+
+    const regionRow = dashboardContent.locator("tr", { hasText: regionName });
+    await expect(regionRow).toBeVisible();
+
+    await regionRow.getByRole("button", { name: `Delete region: ${regionName}` }).click();
+    await expect(adminCommunityPage.locator(".swal2-popup")).toContainText(
+      "Are you sure you would like to delete this region?",
+    );
+
+    await Promise.all([
+      adminCommunityPage.waitForResponse(
+        (response) =>
+          response.request().method() === "DELETE" &&
+          response.url().includes("/dashboard/community/regions/") &&
+          response.ok(),
+      ),
+      adminCommunityPage.getByRole("button", { name: "Yes" }).click(),
+    ]);
+
+    await expect(dashboardContent.locator("tr", { hasText: regionName })).toHaveCount(0);
+  });
+
   for (const taxonomyCase of taxonomyCases) {
     test(`admin can distinguish used and unused entries on ${taxonomyCase.heading}`, async ({
       adminCommunityPage,
