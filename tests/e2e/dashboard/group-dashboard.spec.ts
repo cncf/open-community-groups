@@ -8,6 +8,7 @@ const BETA_GROUP_ID = "44444444-4444-4444-4444-444444444442";
 const BETA_GROUP_SLUG = "test-group-beta";
 const CFS_EVENT_ID = "55555555-5555-5555-5555-555555555519";
 const PENDING1_USER_ID = "77777777-7777-7777-7777-777777777707";
+const GROUP_VIEWER_USER_ID = "77777777-7777-7777-7777-777777777712";
 
 test.describe("group dashboard", () => {
   test("group team page shows seeded roles and last-admin protection", async ({
@@ -109,6 +110,45 @@ test.describe("group dashboard", () => {
     await expect(
       dashboardContent.locator("tr", { hasText: "E2E Pending One" }),
     ).toHaveCount(0);
+  });
+
+  test("organizer can update and restore a group team member role", async ({
+    organizerGroupPage,
+  }) => {
+    await navigateToPath(organizerGroupPage, "/dashboard/group?tab=team");
+
+    const dashboardContent = organizerGroupPage.locator("#dashboard-content");
+    const viewerRow = dashboardContent.locator("tr", {
+      hasText: "E2E Group Viewer One",
+    });
+    const roleSelect = viewerRow.locator('select[name="role"]');
+
+    await expect(dashboardContent.getByText("Group Team", { exact: true })).toBeVisible();
+    await expect(roleSelect).toHaveValue("viewer");
+
+    await Promise.all([
+      organizerGroupPage.waitForResponse(
+        (response) =>
+          response.request().method() === "PUT" &&
+          response.url().includes(`/dashboard/group/team/${GROUP_VIEWER_USER_ID}/role`) &&
+          response.ok(),
+      ),
+      roleSelect.selectOption("events-manager"),
+    ]);
+
+    await expect(roleSelect).toHaveValue("events-manager");
+
+    await Promise.all([
+      organizerGroupPage.waitForResponse(
+        (response) =>
+          response.request().method() === "PUT" &&
+          response.url().includes(`/dashboard/group/team/${GROUP_VIEWER_USER_ID}/role`) &&
+          response.ok(),
+      ),
+      roleSelect.selectOption("viewer"),
+    ]);
+
+    await expect(roleSelect).toHaveValue("viewer");
   });
 
   test("events manager can review CFS submissions with labels and ratings", async ({
