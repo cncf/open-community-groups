@@ -39,4 +39,33 @@ test.describe("group explore", () => {
     await expect(page.locator("#map-box.leaflet-container")).toBeVisible();
     await expect(page.locator("#sort_selector")).toHaveCount(0);
   });
+
+  test("shows an empty state when no groups match the search", async ({ page }) => {
+    await navigateToPath(
+      page,
+      `/explore?entity=groups&community[0]=${TEST_COMMUNITY_NAME}`,
+    );
+
+    const searchInput = page.getByPlaceholder("Search groups");
+
+    await expect(searchInput).toBeVisible();
+
+    await Promise.all([
+      page.waitForResponse(
+        (response) =>
+          response.request().method() === "GET" &&
+          response.url().includes("/explore/groups-section") &&
+          response.url().includes("ts_query=No%20matching%20group") &&
+          response.ok(),
+      ),
+      searchInput.fill("No matching group").then(() => searchInput.press("Enter")),
+    ]);
+
+    await expect(page.getByText("We're sorry!", { exact: true })).toBeVisible();
+    await expect(
+      page.getByText(
+        "We can't seem to find any groups that match your search criteria. You can reset your filters or try a different search.",
+      ),
+    ).toBeVisible();
+  });
 });
