@@ -779,6 +779,59 @@ test.describe("group dashboard", () => {
     ).toHaveAttribute("title", "No attendees to send emails to.");
   });
 
+  test("organizer can open and close the attendee email modal", async ({
+    organizerGroupPage,
+  }) => {
+    await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
+
+    const eventRow = organizerGroupPage.locator("tr", {
+      hasText: "Alpha Waitlist Lab",
+    });
+    await expect(eventRow).toBeVisible();
+
+    await Promise.all([
+      organizerGroupPage.waitForResponse(
+        (response) =>
+          response.request().method() === "GET" &&
+          response.url().includes(`/dashboard/group/events/${WAITLIST_EVENT_ID}/update`) &&
+          response.ok(),
+      ),
+      eventRow
+        .locator('td button[aria-label="Edit event: Alpha Waitlist Lab"]')
+        .click(),
+    ]);
+
+    await Promise.all([
+      organizerGroupPage.waitForResponse(
+        (response) =>
+          response.request().method() === "GET" &&
+          response.url().includes(`/dashboard/group/events/${WAITLIST_EVENT_ID}/attendees`) &&
+          response.ok(),
+      ),
+      organizerGroupPage.locator('button[data-section="attendees"]').click(),
+    ]);
+
+    const attendeesContent = organizerGroupPage.locator("#attendees-content");
+    const openModalButton = attendeesContent.getByRole("button", {
+      name: "Send email",
+    });
+
+    await expect(openModalButton).toBeEnabled();
+    await openModalButton.click();
+
+    const modal = organizerGroupPage.locator("#attendee-notification-modal");
+    await expect(modal).toBeVisible();
+    await expect(modal.getByRole("heading", { name: "Send email" })).toBeVisible();
+    await expect(
+      modal.getByText("This email will be sent to all event attendees."),
+    ).toBeVisible();
+    await expect(modal.locator("#attendee-title")).toHaveValue("");
+    await expect(modal.locator("#attendee-body")).toHaveValue("");
+
+    await modal.getByRole("button", { name: "Cancel" }).click();
+    await expect(modal).toBeHidden();
+  });
+
   test("organizer can update and restore group settings", async ({
     organizerGroupPage,
   }) => {
