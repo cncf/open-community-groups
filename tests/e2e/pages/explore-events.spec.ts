@@ -36,4 +36,40 @@ test.describe("event explore", () => {
     await expect(page.locator("#current-month-btn")).toBeVisible();
     await expect(page.locator('#sort_selector')).toHaveCount(0);
   });
+
+  test("shows a filtered empty state when no events match the search", async ({
+    page,
+  }) => {
+    await navigateToPath(
+      page,
+      `/explore?entity=events&community[0]=${TEST_COMMUNITY_NAME}`,
+    );
+
+    const searchInput = page.getByPlaceholder("Search events");
+
+    await expect(searchInput).toBeVisible();
+
+    await Promise.all([
+      page.waitForResponse(
+        (response) =>
+          response.request().method() === "GET" &&
+          response.url().includes("/explore/events-section") &&
+          response.url().includes("ts_query=No%20matching%20event") &&
+          response.ok(),
+      ),
+      searchInput.fill("No matching event").then(() => searchInput.press("Enter")),
+    ]);
+
+    const filteredEmptyState = page.locator(".no-results-filtered:not(.hidden)");
+
+    await expect(filteredEmptyState).toBeVisible();
+    await expect(
+      filteredEmptyState.getByText("No events found", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      filteredEmptyState.getByText(
+        "We can't seem to find any events that match your search criteria. You can reset your filters or try a different search.",
+      ),
+    ).toBeVisible();
+  });
 });
