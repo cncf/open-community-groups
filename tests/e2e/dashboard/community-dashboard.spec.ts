@@ -581,6 +581,27 @@ test.describe("community dashboard", () => {
     await submitSettings(originalDisplayName, originalWebsite);
   });
 
+  test("viewer sees read-only controls on community settings", async ({
+    communityViewerPage,
+  }) => {
+    await navigateToPath(communityViewerPage, "/dashboard/community?tab=settings");
+
+    const dashboardContent = communityViewerPage.locator("#dashboard-content");
+    await expect(
+      dashboardContent.getByText("General Settings", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      dashboardContent.getByText("Your role cannot update community settings.", { exact: true }),
+    ).toBeVisible();
+    await expect(dashboardContent.locator(".inert-form")).toHaveAttribute("inert", "");
+    await expect(
+      dashboardContent.getByRole("button", { name: "Update Settings" }),
+    ).toBeDisabled();
+    await expect(
+      dashboardContent.getByRole("button", { name: "Update Settings" }),
+    ).toHaveAttribute("title", "Your role cannot update community settings.");
+  });
+
   for (const taxonomyCase of taxonomyCases) {
     test(`admin can distinguish used and unused entries on ${taxonomyCase.heading}`, async ({
       adminCommunityPage,
