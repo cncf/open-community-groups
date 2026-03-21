@@ -7,6 +7,7 @@ import {
 const BETA_GROUP_ID = "44444444-4444-4444-4444-444444444442";
 const GAMMA_GROUP_SLUG = "test-group-gamma";
 const PENDING2_USER_ID = "77777777-7777-7777-7777-777777777708";
+const COMMUNITY_VIEWER_USER_ID = "77777777-7777-7777-7777-777777777710";
 
 const taxonomyCases = [
   {
@@ -137,6 +138,47 @@ test.describe("community dashboard", () => {
     await expect(
       dashboardContent.locator("tr", { hasText: "E2E Pending Two" }),
     ).toHaveCount(0);
+  });
+
+  test("admin can update and restore a community team member role", async ({
+    adminCommunityPage,
+  }) => {
+    await navigateToPath(adminCommunityPage, "/dashboard/community?tab=team");
+
+    const dashboardContent = adminCommunityPage.locator("#dashboard-content");
+    const viewerRow = dashboardContent.locator("tr", {
+      hasText: "E2E Community Viewer One",
+    });
+    const roleSelect = viewerRow.locator('select[name="role"]');
+
+    await expect(
+      dashboardContent.getByText("Community Team", { exact: true }),
+    ).toBeVisible();
+    await expect(roleSelect).toHaveValue("viewer");
+
+    await Promise.all([
+      adminCommunityPage.waitForResponse(
+        (response) =>
+          response.request().method() === "PUT" &&
+          response.url().includes(`/dashboard/community/team/${COMMUNITY_VIEWER_USER_ID}/role`) &&
+          response.ok(),
+      ),
+      roleSelect.selectOption("groups-manager"),
+    ]);
+
+    await expect(roleSelect).toHaveValue("groups-manager");
+
+    await Promise.all([
+      adminCommunityPage.waitForResponse(
+        (response) =>
+          response.request().method() === "PUT" &&
+          response.url().includes(`/dashboard/community/team/${COMMUNITY_VIEWER_USER_ID}/role`) &&
+          response.ok(),
+      ),
+      roleSelect.selectOption("viewer"),
+    ]);
+
+    await expect(roleSelect).toHaveValue("viewer");
   });
 
   test("admin can deactivate and reactivate a group from the list", async ({
