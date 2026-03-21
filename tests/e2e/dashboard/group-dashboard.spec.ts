@@ -1,6 +1,7 @@
 import { expect, test } from "../fixtures";
 
 import {
+  buildE2eUrl,
   TEST_COMMUNITY_NAME,
   TEST_EVENT_SLUGS,
   TEST_GROUP_SLUGS,
@@ -10,12 +11,16 @@ import {
 
 const ALPHA_EVENT_ONE_ID = "55555555-5555-5555-5555-555555555501";
 const ALPHA_EVENT_TWO_ID = "55555555-5555-5555-5555-555555555502";
+const ALPHA_CFS_SUMMIT_SLUG = "alpha-cfs-summit";
 const ALPHA_GROUP_ID = "44444444-4444-4444-4444-444444444441";
 const BETA_GROUP_ID = "44444444-4444-4444-4444-444444444442";
 const BETA_GROUP_SLUG = "test-group-beta";
 const CFS_EVENT_ID = "55555555-5555-5555-5555-555555555519";
 const MEMBER2_USER_ID = "77777777-7777-7777-7777-777777777706";
 const WAITLIST_EVENT_ID = "55555555-5555-5555-5555-555555555521";
+const ATTENDEE_NOTIFICATION_TITLE = "E2E attendee notification";
+const ATTENDEE_NOTIFICATION_BODY =
+  "Reminder for all event attendees from the e2e suite.";
 const PENDING1_USER_ID = "77777777-7777-7777-7777-777777777707";
 const PENDING2_USER_ID = "77777777-7777-7777-7777-777777777708";
 
@@ -832,6 +837,382 @@ test.describe("group dashboard", () => {
     await expect(modal).toBeHidden();
   });
 
+  test("organizer can send an attendee email from the event dashboard", async ({
+    organizerGroupPage,
+  }) => {
+    await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
+
+    const eventRow = organizerGroupPage.locator("tr", {
+      hasText: "Alpha Waitlist Lab",
+    });
+    await expect(eventRow).toBeVisible();
+
+    await Promise.all([
+      organizerGroupPage.waitForResponse(
+        (response) =>
+          response.request().method() === "GET" &&
+          response.url().includes(`/dashboard/group/events/${WAITLIST_EVENT_ID}/update`) &&
+          response.ok(),
+      ),
+      eventRow
+        .locator('td button[aria-label="Edit event: Alpha Waitlist Lab"]')
+        .click(),
+    ]);
+
+    await Promise.all([
+      organizerGroupPage.waitForResponse(
+        (response) =>
+          response.request().method() === "GET" &&
+          response.url().includes(`/dashboard/group/events/${WAITLIST_EVENT_ID}/attendees`) &&
+          response.ok(),
+      ),
+      organizerGroupPage.locator('button[data-section="attendees"]').click(),
+    ]);
+
+    const attendeesContent = organizerGroupPage.locator("#attendees-content");
+    const openModalButton = attendeesContent.getByRole("button", {
+      name: "Send email",
+    });
+
+    await expect(openModalButton).toBeEnabled();
+    await openModalButton.click();
+
+    const modal = organizerGroupPage.locator("#attendee-notification-modal");
+    await expect(modal).toBeVisible();
+
+    await modal.locator("#attendee-title").fill(ATTENDEE_NOTIFICATION_TITLE);
+    await modal.locator("#attendee-body").fill(ATTENDEE_NOTIFICATION_BODY);
+
+    await Promise.all([
+      organizerGroupPage.waitForResponse(
+        (response) =>
+          response.request().method() === "POST" &&
+          response.url().includes(`/dashboard/group/notifications/${WAITLIST_EVENT_ID}`) &&
+          response.ok(),
+      ),
+      modal.getByRole("button", { name: "Send email" }).click(),
+    ]);
+
+    await expect(modal).toBeHidden();
+    await expect(organizerGroupPage.locator(".swal2-popup")).toContainText(
+      "Email sent successfully to all event attendees!",
+    );
+  });
+
+  test("organizer can open the event QR code modal with populated details", async ({
+    organizerGroupPage,
+  }) => {
+    await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
+
+    const eventRow = organizerGroupPage.locator("tr", {
+      hasText: "Alpha Waitlist Lab",
+    });
+    await expect(eventRow).toBeVisible();
+
+    await Promise.all([
+      organizerGroupPage.waitForResponse(
+        (response) =>
+          response.request().method() === "GET" &&
+          response.url().includes(`/dashboard/group/events/${WAITLIST_EVENT_ID}/update`) &&
+          response.ok(),
+      ),
+      eventRow
+        .locator('td button[aria-label="Edit event: Alpha Waitlist Lab"]')
+        .click(),
+    ]);
+
+    await Promise.all([
+      organizerGroupPage.waitForResponse(
+        (response) =>
+          response.request().method() === "GET" &&
+          response.url().includes(`/dashboard/group/events/${WAITLIST_EVENT_ID}/attendees`) &&
+          response.ok(),
+      ),
+      organizerGroupPage.locator('button[data-section="attendees"]').click(),
+    ]);
+
+    const attendeesContent = organizerGroupPage.locator("#attendees-content");
+    const openModalButton = attendeesContent.locator("#open-event-qr-code-modal");
+
+    await expect(openModalButton).toBeVisible();
+    await openModalButton.click();
+
+    const modal = organizerGroupPage.locator("#event-qr-code-modal");
+    await expect(modal).toBeVisible();
+    await expect(
+      modal.getByRole("heading", { name: "Event check-in QR code" }),
+    ).toBeVisible();
+    await expect(modal.locator("#event-qr-code-group-name")).toHaveText(
+      "E2E Test Group Alpha",
+    );
+    await expect(modal.locator("#event-qr-code-name")).toHaveText("Alpha Waitlist Lab");
+    await expect(modal.locator("#event-qr-code-start")).not.toHaveText("");
+    await expect(modal.locator("#event-qr-code-link")).toHaveAttribute(
+      "href",
+      buildE2eUrl(`/${TEST_COMMUNITY_NAME}/check-in/${WAITLIST_EVENT_ID}`),
+    );
+    await expect(modal.locator("#event-qr-code-image")).toHaveAttribute(
+      "src",
+      `/dashboard/group/check-in/${WAITLIST_EVENT_ID}/qr-code`,
+    );
+    await expect(modal.locator("#print-event-qr-code")).toBeEnabled();
+
+    await modal.locator("#close-event-qr-code-modal").click();
+    await expect(modal).toBeHidden();
+  });
+
+  test("organizer can create and delete an event", async ({
+    organizerGroupPage,
+  }) => {
+    const eventName = `E2E Group Event ${Date.now()}`;
+
+    await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
+
+    const dashboardContent = organizerGroupPage.locator("#dashboard-content");
+    await expect(dashboardContent.getByText("Events", { exact: true })).toBeVisible();
+
+    await dashboardContent.getByRole("button", { name: "Add Event" }).click();
+    await expect(organizerGroupPage.locator("#name")).toBeVisible();
+
+    await organizerGroupPage.locator("#name").fill(eventName);
+    await organizerGroupPage.locator("#kind_id").selectOption("virtual");
+    await organizerGroupPage
+      .locator("#category_id")
+      .selectOption("33333333-3333-3333-3333-333333333331");
+    await organizerGroupPage.locator("#description_short").fill(
+      "A dashboard-created event from the e2e suite.",
+    );
+    await organizerGroupPage
+      .locator('markdown-editor#description .CodeMirror textarea')
+      .fill("A dashboard event created and removed by the e2e suite.");
+    await organizerGroupPage
+      .locator('timezone-selector[name="timezone"]')
+      .evaluate((selector) => {
+        const timezoneSelector = selector as HTMLElement & { value?: string };
+        timezoneSelector.value = "UTC";
+        timezoneSelector.dispatchEvent(new Event("change", { bubbles: true }));
+      });
+    await organizerGroupPage.locator('button[data-section="date-venue"]').click();
+    await expect(organizerGroupPage.locator("#starts_at")).toBeVisible();
+    await organizerGroupPage.locator("#starts_at").fill("2030-05-10T10:00");
+    await organizerGroupPage.locator("#ends_at").fill("2030-05-10T12:00");
+    await organizerGroupPage.locator("#meeting_join_url").fill(
+      "https://meet.example.com/e2e-created-event",
+    );
+    const visibleAddEventButton = organizerGroupPage.locator(
+      "#pending-changes-alert:not(.hidden) #add-event-button",
+    );
+    await expect(organizerGroupPage.locator("#pending-changes-alert")).not.toHaveClass(
+      /hidden/,
+    );
+    await expect(visibleAddEventButton).toBeVisible();
+
+    await Promise.all([
+      organizerGroupPage.waitForResponse(
+        (response) =>
+          response.request().method() === "POST" &&
+          response.url().includes("/dashboard/group/events/add") &&
+          response.status() === 201,
+      ),
+      visibleAddEventButton.click(),
+    ]);
+
+    const eventRow = dashboardContent.locator("tr", { hasText: eventName });
+    await expect(eventRow).toBeVisible();
+
+    await eventRow.locator(".btn-actions").click();
+
+    const deleteButton = eventRow.locator('button[id^="delete-event-"]');
+    await expect(deleteButton).toBeVisible();
+
+    await Promise.all([
+      organizerGroupPage.waitForResponse(
+        (response) =>
+          response.request().method() === "DELETE" &&
+          response.url().includes("/dashboard/group/events/") &&
+          response.url().includes("/delete") &&
+          response.ok(),
+      ),
+      deleteButton.click(),
+      organizerGroupPage.getByRole("button", { name: "Yes" }).click(),
+    ]);
+
+    await expect(dashboardContent.locator("tr", { hasText: eventName })).toHaveCount(0);
+  });
+
+  test("organizer can update and restore event fields across multiple tabs", async ({
+    organizerGroupPage,
+  }) => {
+    const cfsSummitPath = `/${TEST_COMMUNITY_NAME}/group/${TEST_GROUP_SLUGS.community1.alpha}/event/${TEST_EVENT_SLUGS.alphaDashboard[0]}`;
+
+    const openCfsSummitEditor = async () => {
+      await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
+
+      const eventRow = organizerGroupPage
+        .locator("tr")
+        .filter({
+          has: organizerGroupPage.locator(`a[href="${cfsSummitPath}"]`),
+        });
+      await expect(eventRow).toBeVisible();
+
+      await Promise.all([
+        organizerGroupPage.waitForResponse(
+          (response) =>
+            response.request().method() === "GET" &&
+            response.url().includes(`/dashboard/group/events/${CFS_EVENT_ID}/update`) &&
+            response.ok(),
+        ),
+        eventRow.locator(`td button[hx-get="/dashboard/group/events/${CFS_EVENT_ID}/update"]`).click(),
+      ]);
+    };
+
+    const readEventValues = async () => {
+      await openCfsSummitEditor();
+
+      return {
+        cfsEndsAt: await organizerGroupPage.locator("#cfs_ends_at").inputValue(),
+        cfsStartsAt: await organizerGroupPage.locator("#cfs_starts_at").inputValue(),
+        endsAt: await organizerGroupPage.locator("#ends_at").inputValue(),
+        meetupUrl: await organizerGroupPage.locator("#meetup_url").inputValue(),
+        name: await organizerGroupPage.locator("#name").inputValue(),
+        startsAt: await organizerGroupPage.locator("#starts_at").inputValue(),
+      };
+    };
+
+    const saveUpdatedValues = async (values: {
+      cfsEndsAt: string;
+      cfsStartsAt: string;
+      endsAt: string;
+      meetupUrl: string;
+      name: string;
+      startsAt: string;
+    }) => {
+      await openCfsSummitEditor();
+
+      await organizerGroupPage.locator("#name").fill(values.name);
+      await organizerGroupPage.locator("#meetup_url").fill(values.meetupUrl);
+
+      await organizerGroupPage.locator('button[data-section="date-venue"]').click();
+      await expect(organizerGroupPage.locator("#starts_at")).toBeVisible();
+      await organizerGroupPage.locator("#starts_at").fill(values.startsAt);
+      await organizerGroupPage.locator("#ends_at").fill(values.endsAt);
+
+      await organizerGroupPage.locator('button[data-section="cfs"]').click();
+      await expect(organizerGroupPage.locator("#cfs_starts_at")).toBeVisible();
+      await organizerGroupPage.locator("#cfs_starts_at").fill(values.cfsStartsAt);
+      await organizerGroupPage.locator("#cfs_ends_at").fill(values.cfsEndsAt);
+      await expect(organizerGroupPage.locator("#pending-changes-alert")).not.toHaveClass(
+        /hidden/,
+      );
+
+      const serializedBody = await organizerGroupPage.evaluate(() => {
+        const excludedNames = new Set([
+          "toggle_registration_required",
+          "toggle_waitlist_enabled",
+          "toggle_meeting_requested",
+          "toggle_cfs_enabled",
+          "toggle_event_reminder_enabled",
+        ]);
+        const formSelectors = [
+          "#details-form",
+          "#cfs-form",
+          "#date-venue-form",
+          "#sessions-form",
+          "#hosts-sponsors-form",
+        ];
+        const params = new URLSearchParams();
+
+        for (const selector of formSelectors) {
+          const form = document.querySelector<HTMLFormElement>(selector);
+          if (!form) {
+            continue;
+          }
+
+          const formData = new FormData(form);
+          for (const [key, value] of formData.entries()) {
+            if (excludedNames.has(key)) {
+              continue;
+            }
+
+            const stringValue = String(value);
+            if (stringValue === "") {
+              continue;
+            }
+
+            if (
+              /^(starts_at|ends_at|cfs_starts_at|cfs_ends_at)$/.test(key) ||
+              /^sessions\[\d+\]\[(starts_at|ends_at)\]$/.test(key)
+            ) {
+              params.append(key, `${stringValue}:00`);
+              continue;
+            }
+
+            params.append(key, stringValue);
+          }
+        }
+
+        return params.toString();
+      });
+
+      const response = await organizerGroupPage.request.put(
+        `/dashboard/group/events/${CFS_EVENT_ID}/update`,
+        {
+          data: serializedBody,
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+        },
+      );
+      expect(response.ok()).toBeTruthy();
+    };
+
+    const originalValues = await readEventValues();
+    const updatedValues = {
+      cfsEndsAt: "2026-04-16T18:00",
+      cfsStartsAt: "2026-04-01T09:00",
+      endsAt: "2026-05-05T19:30",
+      meetupUrl: "https://meetup.com/e2e-alpha-cfs-summit",
+      name: `Alpha CFS Summit ${Date.now()}`,
+      startsAt: "2026-05-05T17:30",
+    };
+
+    await saveUpdatedValues(updatedValues);
+
+    await openCfsSummitEditor();
+    await expect(organizerGroupPage.locator("#name")).toHaveValue(updatedValues.name);
+    await expect(organizerGroupPage.locator("#meetup_url")).toHaveValue(
+      updatedValues.meetupUrl,
+    );
+    await organizerGroupPage.locator('button[data-section="date-venue"]').click();
+    await expect(organizerGroupPage.locator("#starts_at")).toHaveValue(updatedValues.startsAt);
+    await expect(organizerGroupPage.locator("#ends_at")).toHaveValue(updatedValues.endsAt);
+    await organizerGroupPage.locator('button[data-section="cfs"]').click();
+    await expect(organizerGroupPage.locator("#cfs_starts_at")).toHaveValue(
+      updatedValues.cfsStartsAt,
+    );
+    await expect(organizerGroupPage.locator("#cfs_ends_at")).toHaveValue(
+      updatedValues.cfsEndsAt,
+    );
+
+    await saveUpdatedValues(originalValues);
+
+    await openCfsSummitEditor();
+    await expect(organizerGroupPage.locator("#name")).toHaveValue(originalValues.name);
+    await expect(organizerGroupPage.locator("#meetup_url")).toHaveValue(
+      originalValues.meetupUrl,
+    );
+    await organizerGroupPage.locator('button[data-section="date-venue"]').click();
+    await expect(organizerGroupPage.locator("#starts_at")).toHaveValue(originalValues.startsAt);
+    await expect(organizerGroupPage.locator("#ends_at")).toHaveValue(originalValues.endsAt);
+    await organizerGroupPage.locator('button[data-section="cfs"]').click();
+    await expect(organizerGroupPage.locator("#cfs_starts_at")).toHaveValue(
+      originalValues.cfsStartsAt,
+    );
+    await expect(organizerGroupPage.locator("#cfs_ends_at")).toHaveValue(
+      originalValues.cfsEndsAt,
+    );
+  });
+
   test("organizer can update and restore group settings", async ({
     organizerGroupPage,
   }) => {
@@ -843,43 +1224,72 @@ test.describe("group dashboard", () => {
       const settingsForm = organizerGroupPage.locator("#groups-form");
       await expect(settingsForm).toBeVisible();
 
+      const descriptionEditor = organizerGroupPage.locator("markdown-editor#description");
+      const description =
+        (await descriptionEditor.getAttribute("content")) ??
+        (await descriptionEditor.locator('textarea[name="description"]').first().inputValue());
+      const regionId = await organizerGroupPage.locator("#region_id").inputValue();
+
       return {
+        categoryId: await organizerGroupPage.locator("#category_id").inputValue(),
+        description,
         name: await organizerGroupPage.locator("#name").inputValue(),
+        regionId,
         websiteUrl: await organizerGroupPage.locator("#website_url").inputValue(),
       };
     };
 
     const submitSettings = async ({
+      categoryId,
+      description,
       name,
+      regionId,
       websiteUrl,
     }: {
+      categoryId: string;
+      description: string;
       name: string;
+      regionId: string;
       websiteUrl: string;
     }) => {
-      await navigateToPath(organizerGroupPage, settingsPath);
+      const formData: Record<string, string> = {
+        category_id: categoryId,
+        description,
+        name,
+      };
 
-      await organizerGroupPage.locator("#name").fill(name);
-      await organizerGroupPage.locator("#website_url").fill(websiteUrl);
+      if (regionId !== "") {
+        formData.region_id = regionId;
+      }
 
-      await Promise.all([
-        organizerGroupPage.waitForResponse(
-          (response) =>
-            response.request().method() === "PUT" &&
-            response.url().includes("/dashboard/group/settings/update") &&
-            response.ok(),
-        ),
-        organizerGroupPage.getByRole("button", { name: "Update Group" }).click(),
-      ]);
+      if (websiteUrl !== "") {
+        formData.website_url = websiteUrl;
+      }
+
+      const response = await organizerGroupPage.request.put(
+        "/dashboard/group/settings/update",
+        {
+          form: formData,
+        },
+      );
+      expect(response.ok()).toBeTruthy();
 
       await navigateToPath(organizerGroupPage, settingsPath);
     };
 
     const originalFormValues = await readSettingsFormValues();
+    test.skip(
+      originalFormValues.description.trim() === "",
+      "Requires a seeded non-empty group description for a round-trip update.",
+    );
     const updatedName = `${originalFormValues.name} Updated`;
     const updatedWebsiteUrl = "https://group-e2e.example.com";
 
     await submitSettings({
+      categoryId: originalFormValues.categoryId,
+      description: originalFormValues.description,
       name: updatedName,
+      regionId: originalFormValues.regionId,
       websiteUrl: updatedWebsiteUrl,
     });
 

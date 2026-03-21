@@ -368,6 +368,10 @@ insert into "group" (
 );
 
 update "group"
+set description = 'E2E Test Group Alpha seeded description'
+where group_id = '44444444-4444-4444-4444-444444444441';
+
+update "group"
 set region_id = '22222222-2222-2222-2222-222222222301'
 where group_id in (
     '44444444-4444-4444-4444-444444444441',
