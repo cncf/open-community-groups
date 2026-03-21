@@ -12,26 +12,18 @@ import {
 
 const eventId = "55555555-5555-5555-5555-555555555501";
 
-/**
- * Returns the public attendance container for the current event page.
- */
+/** Returns the public attendance container for the current event page. */
 const getAttendanceContainer = (page: Page) => page.locator("[data-attendance-container]").first();
 
-/**
- * Returns the attend button within the public attendance controls.
- */
+/** Returns the attend button within the public attendance controls. */
 const getAttendButton = (page: Page) =>
   getAttendanceContainer(page).locator('[data-attendance-role="attend-btn"]');
 
-/**
- * Returns the cancel attendance button within the public attendance controls.
- */
+/** Returns the cancel attendance button within the public attendance controls. */
 const getLeaveButton = (page: Page) =>
   getAttendanceContainer(page).locator('[data-attendance-role="leave-btn"]');
 
-/**
- * Waits until the attendance widget resolves to either attend or cancel state.
- */
+/** Waits until the attendance widget resolves to either attend or cancel state. */
 const waitForAttendanceState = async (page: Page) => {
   await Promise.race([
     getAttendButton(page).waitFor({ state: "visible" }),
@@ -39,9 +31,7 @@ const waitForAttendanceState = async (page: Page) => {
   ]);
 };
 
-/**
- * Cancels attendance when the current user is already registered.
- */
+/** Cancels attendance when the current user is already registered. */
 const cancelAttendance = async (page: Page) => {
   const leaveButton = getLeaveButton(page);
   await expect(leaveButton).toBeVisible();

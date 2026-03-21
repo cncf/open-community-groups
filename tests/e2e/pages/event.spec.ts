@@ -1,7 +1,3 @@
-/**
- * E2E tests for the event page template.
- */
-
 import { expect, test } from "@playwright/test";
 
 import {
@@ -16,7 +12,6 @@ import {
   navigateToEvent,
 } from "../utils";
 
-/** Alpha Event One seed data gate. */
 const isAlphaEventOne = TEST_EVENT_SLUG === "alpha-event-1";
 
 test.describe("event page", () => {
@@ -29,13 +24,11 @@ test.describe("event page", () => {
     );
   });
 
-  /** Breadcrumb. */
   test("breadcrumb navigation is visible", async ({ page }) => {
     const breadcrumb = page.locator("breadcrumb-nav");
     await expect(breadcrumb).toBeVisible();
   });
 
-  /** Event header. */
   test("event name displays as h1 heading", async ({ page }) => {
     const heading = page.getByRole("heading", {
       level: 1,
@@ -53,13 +46,11 @@ test.describe("event page", () => {
     );
   });
 
-  /** Event kind badge. */
   test("event kind badge displays for event", async ({ page }) => {
     const badge = page.getByText(/^(in-person|virtual|hybrid)$/i).first();
     await expect(badge).toBeVisible();
   });
 
-  /** Event date. */
   test("event date section renders with heading", async ({ page }) => {
     await expect(page.getByText("Event date", { exact: true })).toBeVisible();
   });
@@ -82,7 +73,6 @@ test.describe("event page", () => {
     }
   });
 
-  /** Location. */
   test("location section renders with heading", async ({ page }) => {
     await expect(page.getByText("Location", { exact: true })).toBeVisible();
   });
@@ -121,7 +111,6 @@ test.describe("event page", () => {
     }
   });
 
-  /** Alpha event seed data. */
   test.describe("alpha event seed data", () => {
     test.skip(!isAlphaEventOne, "Requires Alpha Event One seed data");
 
@@ -198,7 +187,6 @@ test.describe("event page", () => {
   });
 });
 
-/** Responsive layout assertions. */
 test.describe("event page - responsive", () => {
   test("event page renders correctly on mobile viewport @mobile", async ({
     page,
@@ -241,7 +229,6 @@ test.describe("event page - responsive", () => {
   });
 });
 
-/** Alpha event logo visibility. */
 test.describe("event page - alpha event logo", () => {
   test.skip(!isAlphaEventOne, "Requires Alpha Event One seed data");
 
@@ -258,7 +245,6 @@ test.describe("event page - alpha event logo", () => {
   });
 });
 
-/** Virtual event recording link. */
 test.describe("event page - virtual event with recording", () => {
   test("recording link is hidden until the event is past", async ({
     page,

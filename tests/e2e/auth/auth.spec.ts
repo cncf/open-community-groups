@@ -12,9 +12,7 @@ import {
 const userDashboardEventsPath = "/dashboard/user?tab=events";
 type EmailCredentials = Pick<AuthUser, "username" | "password">;
 
-/**
- * Completes the sign-up form using email and password credentials.
- */
+/** Completes the sign-up form using email and password credentials. */
 const signUpWithEmail = async (page: Page, user: AuthUser) => {
   await navigateToPath(page, "/sign-up");
 
@@ -33,9 +31,7 @@ const signUpWithEmail = async (page: Page, user: AuthUser) => {
   await expect(page.getByRole("heading", { name: "Log In" })).toBeVisible();
 };
 
-/**
- * Logs in using email username and password credentials.
- */
+/** Logs in using email username and password credentials. */
 const logInWithEmail = async (page: Page, user: EmailCredentials) => {
   await expect(page.getByRole("heading", { name: "Log In" })).toBeVisible();
   await page.getByLabel("Username").fill(user.username);
@@ -45,13 +41,7 @@ const logInWithEmail = async (page: Page, user: EmailCredentials) => {
   await page.getByRole("button", { name: "Sign In" }).click();
 };
 
-/**
- * Authentication flow tests for email sign-up and subsequent login attempts.
- */
 test.describe("authentication", () => {
-  /**
-   * Ensures email sign-up requires verification before log in is allowed.
-   */
   test("email sign up requires verification before log in", async ({ page }) => {
     const user = buildAuthUser();
 

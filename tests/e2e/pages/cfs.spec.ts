@@ -11,9 +11,7 @@ import {
 
 const CFS_EVENT_SLUG = "alpha-cfs-summit";
 
-/**
- * Creates a new reusable session proposal from the user dashboard.
- */
+/** Creates a new reusable session proposal from the user dashboard. */
 const createSessionProposal = async (title: string, page: Page) => {
   await navigateToPath(page, "/dashboard/user?tab=session-proposals");
 
@@ -50,9 +48,7 @@ const createSessionProposal = async (title: string, page: Page) => {
   );
 };
 
-/**
- * Submits a reusable proposal to the open CFS event from the public event page.
- */
+/** Submits a reusable proposal to the open CFS event from the public event page. */
 const submitProposalToCfs = async (proposalTitle: string, page: Page) => {
   await navigateToEvent(
     page,

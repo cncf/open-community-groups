@@ -1,7 +1,3 @@
-/**
- * E2E tests for the community home template.
- */
-
 import { expect, test } from "@playwright/test";
 
 import {
@@ -25,7 +21,6 @@ test.describe("community home page", () => {
       await navigateToCommunityHome(page, TEST_COMMUNITY_NAME);
     });
 
-    /** About section. */
     test("about section renders with heading and CTA link", async ({ page }) => {
       await expect(page.getByText("About this community")).toBeVisible();
 
@@ -52,7 +47,6 @@ test.describe("community home page", () => {
       );
     });
 
-    /** Breadcrumb. */
     test("breadcrumb navigation displays community name", async ({ page }) => {
       const breadcrumb = page.locator("breadcrumb-nav");
       await expect(breadcrumb).toBeVisible();
@@ -75,7 +69,6 @@ test.describe("community home page", () => {
       expect(itemsAttr).toContain(TEST_COMMUNITY_TITLE);
     });
 
-    /** Stats strip. */
     test("stats strip displays all stat labels", async ({ page }) => {
       const statLabels = ["Groups", "Members", "Events", "Attendees"];
       for (const label of statLabels) {
@@ -85,7 +78,6 @@ test.describe("community home page", () => {
       }
     });
 
-    /** Upcoming events. */
     test("upcoming in-person events section renders with title", async ({
       page,
     }) => {
@@ -109,7 +101,6 @@ test.describe("community home page", () => {
       await expect(page.getByText(TEST_EVENT_NAMES.gamma[1])).toBeVisible();
     });
 
-    /** Latest groups. */
     test("latest groups section renders heading and explore link", async ({
       page,
     }) => {

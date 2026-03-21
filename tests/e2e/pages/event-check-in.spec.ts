@@ -15,26 +15,18 @@ import {
 const eventId = "55555555-5555-5555-5555-555555555501";
 const member2Id = "77777777-7777-7777-7777-777777777706";
 
-/**
- * Returns the public attendance container for the current event page.
- */
+/** Returns the public attendance container for the current event page. */
 const getAttendanceContainer = (page: Page) => page.locator("[data-attendance-container]").first();
 
-/**
- * Returns the attend button within the public attendance controls.
- */
+/** Returns the attend button within the public attendance controls. */
 const getAttendButton = (page: Page) =>
   getAttendanceContainer(page).locator('[data-attendance-role="attend-btn"]');
 
-/**
- * Returns the cancel attendance button within the public attendance controls.
- */
+/** Returns the cancel attendance button within the public attendance controls. */
 const getLeaveButton = (page: Page) =>
   getAttendanceContainer(page).locator('[data-attendance-role="leave-btn"]');
 
-/**
- * Waits until the attendance widget resolves to either attend or cancel state.
- */
+/** Waits until the attendance widget resolves to either attend or cancel state. */
 const waitForAttendanceState = async (page: Page) => {
   await Promise.race([
     getAttendButton(page).waitFor({ state: "visible" }),
@@ -42,16 +34,12 @@ const waitForAttendanceState = async (page: Page) => {
   ]);
 };
 
-/**
- * Navigates to the public attendee check-in page.
- */
+/** Navigates to the public attendee check-in page. */
 const navigateToCheckInPage = async (page: Page) => {
   await navigateToPath(page, `/${TEST_COMMUNITY_NAME}/check-in/${eventId}`);
 };
 
-/**
- * Registers the current user as an attendee for the test event.
- */
+/** Registers the current user as an attendee for the test event. */
 const attendEvent = async (page: Page) => {
   const attendButton = getAttendButton(page);
   await expect(attendButton).toBeVisible();
@@ -69,9 +57,7 @@ const attendEvent = async (page: Page) => {
   await expect(getLeaveButton(page)).toBeVisible();
 };
 
-/**
- * Cancels attendance to return the event to a reusable test state.
- */
+/** Cancels attendance to return the event to a reusable test state. */
 const leaveEvent = async (page: Page) => {
   const leaveButton = getLeaveButton(page);
   await expect(leaveButton).toBeVisible();

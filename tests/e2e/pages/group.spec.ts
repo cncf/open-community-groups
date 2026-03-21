@@ -1,7 +1,3 @@
-/**
- * E2E tests for the group page template.
- */
-
 import { expect, test } from "@playwright/test";
 
 import {

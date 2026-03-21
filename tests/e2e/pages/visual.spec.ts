@@ -15,9 +15,7 @@ import {
   navigateToSiteHome,
 } from "../utils";
 
-/**
- * Waits for a page to settle before taking a visual snapshot.
- */
+/** Waits for a page to settle before taking a visual snapshot. */
 const expectPageScreenshot = async (page: Page, screenshotName: string) => {
   await page.waitForLoadState("networkidle");
   await page.evaluate(async () => {

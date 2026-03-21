@@ -12,24 +12,16 @@ import {
 
 const groupId = TEST_GROUP_IDS.community1.alpha;
 
-/**
- * Returns the public membership container for the current group page.
- */
+/** Returns the public membership container for the current group page. */
 const getMembershipContainer = (page: Page) => page.locator("#membership-container");
 
-/**
- * Returns the join button inside the membership container.
- */
+/** Returns the join button inside the membership container. */
 const getJoinButton = (page: Page) => getMembershipContainer(page).locator("#join-btn");
 
-/**
- * Returns the leave button inside the membership container.
- */
+/** Returns the leave button inside the membership container. */
 const getLeaveButton = (page: Page) => getMembershipContainer(page).locator("#leave-btn");
 
-/**
- * Waits until the membership widget resolves to a join or leave state.
- */
+/** Waits until the membership widget resolves to a join or leave state. */
 const waitForMembershipState = async (page: Page) => {
   await Promise.race([
     getJoinButton(page).waitFor({ state: "visible" }),
@@ -37,9 +29,7 @@ const waitForMembershipState = async (page: Page) => {
   ]);
 };
 
-/**
- * Leaves the group when the current user is already a member.
- */
+/** Leaves the group when the current user is already a member. */
 const leaveGroup = async (page: Page) => {
   const leaveButton = getLeaveButton(page);
   await expect(leaveButton).toBeVisible();

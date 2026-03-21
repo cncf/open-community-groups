@@ -1,7 +1,3 @@
-/**
- * E2E tests for the site home template.
- */
-
 import { expect, test } from "@playwright/test";
 
 import {
@@ -27,7 +23,6 @@ test.describe("site home page", () => {
       await navigateToSiteHome(page);
     });
 
-    /** Jumbotron section. */
     test("jumbotron renders with title, description, and CTA link", async ({
       page,
     }) => {
@@ -43,7 +38,6 @@ test.describe("site home page", () => {
       await expect(ctaLink).toHaveAttribute("href", /\/explore/);
     });
 
-    /** Stats strip. */
     test("stats strip displays all stat labels with values", async ({
       page,
     }) => {
@@ -55,7 +49,6 @@ test.describe("site home page", () => {
       }
     });
 
-    /** Community cards. */
     test("communities section lists community cards with correct links", async ({
       page,
     }) => {
@@ -78,7 +71,6 @@ test.describe("site home page", () => {
       );
     });
 
-    /** Upcoming events. */
     test("upcoming in-person events section renders with title", async ({
       page,
     }) => {
@@ -101,7 +93,6 @@ test.describe("site home page", () => {
       await expect(page.getByText(TEST_EVENT_NAMES.alpha[1])).toBeVisible();
     });
 
-    /** Latest groups. */
     test("latest groups section renders heading and explore link", async ({
       page,
     }) => {
@@ -113,7 +104,6 @@ test.describe("site home page", () => {
       await expect(exploreGroupsLinks.first()).toBeVisible();
     });
 
-    /** Groups grid layout. */
     test("groups grid renders in the latest groups section", async ({
       page,
     }) => {

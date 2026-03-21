@@ -31,9 +31,7 @@ type BrowserStorageState = Awaited<ReturnType<BrowserContext["storageState"]>>;
 
 const storageStateCache = new Map<string, BrowserStorageState>();
 
-/**
- * Returns a cached authenticated storage state for a seeded E2E user.
- */
+/** Returns a cached authenticated storage state for a seeded E2E user. */
 const getStorageState = async (
   browser: Browser,
   credentials: (typeof TEST_USER_CREDENTIALS)[keyof typeof TEST_USER_CREDENTIALS],
@@ -56,9 +54,7 @@ const getStorageState = async (
   return storageState;
 };
 
-/**
- * Creates an authenticated page and applies optional dashboard context setup.
- */
+/** Creates an authenticated page and applies optional dashboard context setup. */
 const createPreparedPage = async (
   browser: Browser,
   credentials: (typeof TEST_USER_CREDENTIALS)[keyof typeof TEST_USER_CREDENTIALS],
@@ -78,9 +74,7 @@ const createPreparedPage = async (
   };
 };
 
-/**
- * Builds a reusable page fixture for an authenticated seeded user.
- */
+/** Builds a reusable page fixture for an authenticated seeded user. */
 const authenticatedPageFixture = (
   credentials: (typeof TEST_USER_CREDENTIALS)[keyof typeof TEST_USER_CREDENTIALS],
   preparePage?: (page: Page) => Promise<void>,
