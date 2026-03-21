@@ -9,7 +9,7 @@ import {
   type AuthUser,
 } from "../utils";
 
-const userDashboardEventsPath = "/dashboard/user?tab=events";
+const USER_DASHBOARD_EVENTS_PATH = "/dashboard/user?tab=events";
 type EmailCredentials = Pick<AuthUser, "username" | "password">;
 
 /** Completes the sign-up form using email and password credentials. */
@@ -55,10 +55,10 @@ test.describe("authentication", () => {
   test("seeded user can log in and is redirected to the requested page", async ({
     page,
   }) => {
-    await navigateToPath(page, userDashboardEventsPath);
+    await navigateToPath(page, USER_DASHBOARD_EVENTS_PATH);
 
     await expect(page).toHaveURL(/\/log-in\?next_url=/);
-    expect(page.url()).toContain(encodeURIComponent(userDashboardEventsPath));
+    expect(page.url()).toContain(encodeURIComponent(USER_DASHBOARD_EVENTS_PATH));
 
     await Promise.all([
       page.waitForURL((url) => url.pathname === "/dashboard/user"),
