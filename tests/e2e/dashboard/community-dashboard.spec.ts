@@ -525,6 +525,44 @@ test.describe("community dashboard", () => {
     await expect(dashboardContent.locator("tr", { hasText: categoryName })).toHaveCount(0);
   });
 
+  test("admin can update and restore community settings", async ({
+    adminCommunityPage,
+  }) => {
+    const originalDisplayName = "E2E Test Community";
+    const originalWebsite = "";
+    const updatedDisplayName = `E2E Test Community ${Date.now()}`;
+    const updatedWebsite = "https://community-e2e.example.com";
+    const settingsPath = "/dashboard/community/settings/update";
+
+    const submitSettings = async (displayName: string, websiteUrl: string) => {
+      await navigateToPath(adminCommunityPage, settingsPath);
+
+      const displayNameInput = adminCommunityPage.getByLabel("Display Name");
+      const websiteInput = adminCommunityPage.getByLabel("Website");
+
+      await expect(displayNameInput).toBeVisible();
+      await displayNameInput.fill(displayName);
+      await websiteInput.fill(websiteUrl);
+
+      await Promise.all([
+        adminCommunityPage.waitForResponse(
+          (response) =>
+            response.request().method() === "PUT" &&
+            response.url().includes("/dashboard/community/settings/update") &&
+            response.ok(),
+        ),
+        adminCommunityPage.getByRole("button", { name: "Update Settings" }).click(),
+      ]);
+
+      await navigateToPath(adminCommunityPage, settingsPath);
+      await expect(adminCommunityPage.getByLabel("Display Name")).toHaveValue(displayName);
+      await expect(adminCommunityPage.getByLabel("Website")).toHaveValue(websiteUrl);
+    };
+
+    await submitSettings(updatedDisplayName, updatedWebsite);
+    await submitSettings(originalDisplayName, originalWebsite);
+  });
+
   for (const taxonomyCase of taxonomyCases) {
     test(`admin can distinguish used and unused entries on ${taxonomyCase.heading}`, async ({
       adminCommunityPage,
