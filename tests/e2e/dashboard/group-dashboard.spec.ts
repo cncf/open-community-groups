@@ -265,6 +265,54 @@ test.describe("group dashboard", () => {
     await expect(reviewButtons.first()).toBeDisabled();
   });
 
+  test("viewer sees read-only attendee controls in the event dashboard", async ({
+    groupViewerPage,
+  }) => {
+    await navigateToPath(groupViewerPage, "/dashboard/group?tab=events");
+
+    const eventRow = groupViewerPage.locator("tr", {
+      hasText: "Alpha Waitlist Lab",
+    });
+    await expect(eventRow).toBeVisible();
+
+    await Promise.all([
+      groupViewerPage.waitForResponse(
+        (response) =>
+          response.request().method() === "GET" &&
+          response.url().includes(`/dashboard/group/events/${WAITLIST_EVENT_ID}/update`) &&
+          response.ok(),
+      ),
+      eventRow
+        .locator('td button[aria-label="Edit event: Alpha Waitlist Lab"]')
+        .click(),
+    ]);
+
+    await Promise.all([
+      groupViewerPage.waitForResponse(
+        (response) =>
+          response.request().method() === "GET" &&
+          response.url().includes(`/dashboard/group/events/${WAITLIST_EVENT_ID}/attendees`) &&
+          response.ok(),
+      ),
+      groupViewerPage.locator('button[data-section="attendees"]').click(),
+    ]);
+
+    const attendeesContent = groupViewerPage.locator("#attendees-content");
+    const attendeeRow = attendeesContent.locator("tr", {
+      hasText: "E2E Organizer One",
+    });
+
+    await expect(attendeesContent.getByRole("table", { name: "Attendees list" })).toBeVisible();
+    await expect(attendeeRow).toBeVisible();
+    await expect(
+      attendeesContent.getByRole("button", { name: "Send email" }),
+    ).toBeDisabled();
+    await expect(
+      attendeesContent.getByRole("button", { name: "Send email" }),
+    ).toHaveAttribute("title", "Your role cannot send emails to attendees.");
+    await expect(attendeeRow.locator(".check-in-toggle")).toBeDisabled();
+  });
+
   test("organizer can open the waitlist tab for an event with waitlist disabled", async ({
     organizerGroupPage,
   }) => {
