@@ -248,6 +248,71 @@ test.describe("community dashboard", () => {
     ).toBeVisible();
   });
 
+  test("admin can add and delete a community group", async ({
+    adminCommunityPage,
+  }) => {
+    const groupName = `E2E Community Group ${Date.now()}`;
+
+    await navigateToPath(adminCommunityPage, "/dashboard/community?tab=groups");
+
+    const dashboardContent = adminCommunityPage.locator("#dashboard-content");
+    await expect(dashboardContent.getByText("Groups", { exact: true })).toBeVisible();
+
+    await dashboardContent.getByRole("button", { name: "Add Group" }).click();
+    await expect(dashboardContent.getByText("Group Details", { exact: true })).toBeVisible();
+
+    await adminCommunityPage.getByLabel("Name").fill(groupName);
+    await adminCommunityPage.getByLabel("Category").selectOption(
+      "22222222-2222-2222-2222-222222222221",
+    );
+    await adminCommunityPage.getByLabel("Region").selectOption(
+      "22222222-2222-2222-2222-222222222301",
+    );
+    await adminCommunityPage.getByLabel("Short Description").fill(
+      "A short e2e-created community group.",
+    );
+    await adminCommunityPage
+      .locator('markdown-editor#description .CodeMirror textarea')
+      .fill("A community group created and removed by the e2e suite.");
+
+    await Promise.all([
+      adminCommunityPage.waitForResponse(
+        (response) =>
+          response.request().method() === "POST" &&
+          response.url().includes("/dashboard/community/groups/add") &&
+          response.status() === 201,
+      ),
+      adminCommunityPage.getByRole("button", { name: "Create Group" }).click(),
+    ]);
+
+    const groupRow = dashboardContent.locator("tr", { hasText: groupName });
+    await expect(groupRow).toBeVisible();
+
+    await groupRow.getByRole("button", {
+      name: `Open actions menu for group ${groupName}`,
+    }).click();
+
+    const deleteButton = groupRow.locator('button[id^="delete-group-"]');
+    await expect(deleteButton).toBeVisible();
+    await deleteButton.click();
+    await expect(adminCommunityPage.locator(".swal2-popup")).toContainText(
+      "Are you sure you wish to delete this group?",
+    );
+
+    await Promise.all([
+      adminCommunityPage.waitForResponse(
+        (response) =>
+          response.request().method() === "DELETE" &&
+          response.url().includes("/dashboard/community/groups/") &&
+          response.url().endsWith("/delete") &&
+          response.ok(),
+      ),
+      adminCommunityPage.getByRole("button", { name: "Yes" }).click(),
+    ]);
+
+    await expect(dashboardContent.locator("tr", { hasText: groupName })).toHaveCount(0);
+  });
+
   test("admin can search community groups and clear the filter", async ({
     adminCommunityPage,
   }) => {
