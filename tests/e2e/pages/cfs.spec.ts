@@ -50,6 +50,37 @@ const createSessionProposal = async (title: string, page: Page) => {
   );
 };
 
+/**
+ * Submits a reusable proposal to the open CFS event from the public event page.
+ */
+const submitProposalToCfs = async (proposalTitle: string, page: Page) => {
+  await navigateToEvent(
+    page,
+    TEST_COMMUNITY_NAME,
+    TEST_GROUP_SLUGS.community1.alpha,
+    CFS_EVENT_SLUG,
+  );
+
+  await page.getByRole("button", { name: "Submit session proposal" }).click();
+
+  const modal = page.getByRole("dialog", { name: "Submit a proposal" });
+  await expect(modal).toBeVisible();
+
+  await modal.locator("#session_proposal_id").selectOption({ label: proposalTitle });
+
+  await Promise.all([
+    page.waitForResponse(
+      (response) =>
+        response.request().method() === "POST" &&
+        response.url().includes("/cfs-submissions") &&
+        response.ok(),
+    ),
+    modal.getByRole("button", { name: "Submit proposal" }).click(),
+  ]);
+
+  await expect(modal.getByText("Submission received. We'll review it soon.")).toBeVisible();
+};
+
 test.describe("call for speakers", () => {
   test("public event page renders the CFS section for an open event", async ({
     page,
@@ -129,34 +160,7 @@ test.describe("call for speakers", () => {
     const proposalTitle = `Pending1 CFS proposal ${Date.now()}`;
 
     await createSessionProposal(proposalTitle, pending1Page);
-
-    await navigateToEvent(
-      pending1Page,
-      TEST_COMMUNITY_NAME,
-      TEST_GROUP_SLUGS.community1.alpha,
-      CFS_EVENT_SLUG,
-    );
-
-    await pending1Page
-      .getByRole("button", { name: "Submit session proposal" })
-      .click();
-
-    const modal = pending1Page.getByRole("dialog", { name: "Submit a proposal" });
-    await expect(modal).toBeVisible();
-
-    await modal.locator("#session_proposal_id").selectOption({ label: proposalTitle });
-
-    await Promise.all([
-      pending1Page.waitForResponse(
-        (response) =>
-          response.request().method() === "POST" &&
-          response.url().includes("/cfs-submissions") &&
-          response.ok(),
-      ),
-      modal.getByRole("button", { name: "Submit proposal" }).click(),
-    ]);
-
-    await expect(modal.getByText("Submission received. We'll review it soon.")).toBeVisible();
+    await submitProposalToCfs(proposalTitle, pending1Page);
 
     await navigateToPath(pending1Page, "/dashboard/user?tab=submissions");
 
@@ -166,5 +170,50 @@ test.describe("call for speakers", () => {
     await expect(dashboardContent.getByText("Submissions", { exact: true })).toBeVisible();
     await expect(submissionRow).toContainText("Alpha CFS Summit");
     await expect(submissionRow).toContainText("Not reviewed");
+  });
+
+  test("user can withdraw a newly submitted CFS submission", async ({
+    pending2Page,
+  }) => {
+    const proposalTitle = `Pending2 CFS proposal ${Date.now()}`;
+
+    await createSessionProposal(proposalTitle, pending2Page);
+    await submitProposalToCfs(proposalTitle, pending2Page);
+
+    await navigateToPath(pending2Page, "/dashboard/user?tab=submissions");
+
+    const dashboardContent = pending2Page.locator("#dashboard-content");
+    const submissionRow = dashboardContent.locator("tr", { hasText: proposalTitle });
+    const withdrawButton = submissionRow.getByTitle("Withdraw");
+
+    await expect(dashboardContent.getByText("Submissions", { exact: true })).toBeVisible();
+    await expect(submissionRow).toContainText("Not reviewed");
+    await expect(withdrawButton).toBeVisible();
+
+    await withdrawButton.click();
+    await expect(pending2Page.locator(".swal2-popup")).toContainText(
+      "Are you sure you want to withdraw this submission?",
+    );
+
+    await Promise.all([
+      pending2Page.waitForResponse(
+        (response) =>
+          response.request().method() === "PUT" &&
+          response.url().includes("/dashboard/user/submissions/") &&
+          response.url().endsWith("/withdraw") &&
+          response.ok(),
+      ),
+      pending2Page.getByRole("button", { name: "Withdraw" }).click(),
+    ]);
+
+    await pending2Page.reload();
+
+    const withdrawnRow = pending2Page.locator("#dashboard-content").locator("tr", {
+      hasText: proposalTitle,
+    });
+    await expect(withdrawnRow).toContainText("Withdrawn");
+    await expect(
+      withdrawnRow.getByTitle("This submission has been withdrawn and cannot be removed."),
+    ).toBeDisabled();
   });
 });
