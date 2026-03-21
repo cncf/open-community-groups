@@ -1,12 +1,18 @@
 import { expect, test } from "../fixtures";
 
-import { navigateToPath } from "../utils";
+import {
+  TEST_COMMUNITY_NAME,
+  TEST_GROUP_SLUGS,
+  navigateToEvent,
+  navigateToPath,
+} from "../utils";
 
 const ALPHA_EVENT_ONE_ID = "55555555-5555-5555-5555-555555555501";
 const ALPHA_GROUP_ID = "44444444-4444-4444-4444-444444444441";
 const BETA_GROUP_ID = "44444444-4444-4444-4444-444444444442";
 const BETA_GROUP_SLUG = "test-group-beta";
 const CFS_EVENT_ID = "55555555-5555-5555-5555-555555555519";
+const WAITLIST_EVENT_ID = "55555555-5555-5555-5555-555555555521";
 const PENDING1_USER_ID = "77777777-7777-7777-7777-777777777707";
 const PENDING2_USER_ID = "77777777-7777-7777-7777-777777777708";
 
@@ -376,6 +382,96 @@ test.describe("group dashboard", () => {
 
     await openAlphaEventEditor();
     await expect(organizerGroupPage.locator("#waitlist_enabled")).toHaveValue("false");
+  });
+
+  test("organizer can see a public waitlist entry in the event dashboard", async ({
+    member2Page,
+    organizerGroupPage,
+  }) => {
+    await navigateToEvent(
+      member2Page,
+      TEST_COMMUNITY_NAME,
+      TEST_GROUP_SLUGS.community1.alpha,
+      "alpha-waitlist-lab",
+    );
+
+    const attendButton = member2Page.locator('[data-attendance-role="attend-btn"]');
+    const leaveButton = member2Page.locator('[data-attendance-role="leave-btn"]');
+
+    await expect(attendButton).toContainText("Join waiting list");
+
+    await Promise.all([
+      member2Page.waitForResponse(
+        (response) =>
+          response.request().method() === "POST" &&
+          response.url().includes(`/event/${WAITLIST_EVENT_ID}/attend`) &&
+          response.ok(),
+      ),
+      attendButton.click(),
+    ]);
+
+    await expect(leaveButton).toContainText("Leave waiting list");
+
+    await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
+
+    const eventRow = organizerGroupPage.locator("tr", {
+      hasText: "Alpha Waitlist Lab",
+    });
+    await expect(eventRow).toBeVisible();
+
+    await Promise.all([
+      organizerGroupPage.waitForResponse(
+        (response) =>
+          response.request().method() === "GET" &&
+          response.url().includes(`/dashboard/group/events/${WAITLIST_EVENT_ID}/update`) &&
+          response.ok(),
+      ),
+      eventRow
+        .locator('td button[aria-label="Edit event: Alpha Waitlist Lab"]')
+        .click(),
+    ]);
+
+    await Promise.all([
+      organizerGroupPage.waitForResponse(
+        (response) =>
+          response.request().method() === "GET" &&
+          response.url().includes(`/dashboard/group/events/${WAITLIST_EVENT_ID}/waitlist`) &&
+          response.ok(),
+      ),
+      organizerGroupPage.locator('button[data-section="waitlist"]').click(),
+    ]);
+
+    const waitlistContent = organizerGroupPage.locator("#waitlist-content");
+    const waitlistRow = waitlistContent.locator("tr", {
+      hasText: "E2E Member Two",
+    });
+
+    await expect(waitlistContent.getByRole("table", { name: "Waitlist entries" })).toBeVisible();
+    await expect(waitlistRow).toBeVisible();
+    await expect(waitlistRow).toContainText("e2e-member-2");
+    await expect(waitlistRow).toContainText("1");
+
+    await navigateToEvent(
+      member2Page,
+      TEST_COMMUNITY_NAME,
+      TEST_GROUP_SLUGS.community1.alpha,
+      "alpha-waitlist-lab",
+    );
+
+    await leaveButton.click();
+    await expect(member2Page.getByRole("button", { name: "Yes" })).toBeVisible();
+
+    await Promise.all([
+      member2Page.waitForResponse(
+        (response) =>
+          response.request().method() === "DELETE" &&
+          response.url().includes(`/event/${WAITLIST_EVENT_ID}/leave`) &&
+          response.ok(),
+      ),
+      member2Page.getByRole("button", { name: "Yes" }).click(),
+    ]);
+
+    await expect(attendButton).toContainText("Join waiting list");
   });
 
   test("viewer sees read-only members and sponsors controls", async ({
