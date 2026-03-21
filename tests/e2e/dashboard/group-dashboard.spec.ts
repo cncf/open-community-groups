@@ -2,6 +2,7 @@ import { expect, test } from "../fixtures";
 
 import {
   TEST_COMMUNITY_NAME,
+  TEST_EVENT_SLUGS,
   TEST_GROUP_SLUGS,
   navigateToEvent,
   navigateToPath,
@@ -472,6 +473,98 @@ test.describe("group dashboard", () => {
     ]);
 
     await expect(attendButton).toContainText("Join waiting list");
+  });
+
+  test("organizer can see a public attendee in the event dashboard", async ({
+    member2Page,
+    organizerGroupPage,
+  }) => {
+    await navigateToEvent(
+      member2Page,
+      TEST_COMMUNITY_NAME,
+      TEST_GROUP_SLUGS.community1.alpha,
+      TEST_EVENT_SLUGS.alpha[0],
+    );
+
+    const attendButton = member2Page.locator('[data-attendance-role="attend-btn"]');
+    const leaveButton = member2Page.locator('[data-attendance-role="leave-btn"]');
+
+    await expect(attendButton).toContainText("Attend event");
+
+    await Promise.all([
+      member2Page.waitForResponse(
+        (response) =>
+          response.request().method() === "POST" &&
+          response.url().includes(`/event/${ALPHA_EVENT_ONE_ID}/attend`) &&
+          response.ok(),
+      ),
+      attendButton.click(),
+    ]);
+
+    await expect(leaveButton).toContainText("Cancel attendance");
+
+    await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
+
+    const eventRow = organizerGroupPage.locator("tr", {
+      hasText: "Alpha Event One",
+    });
+    await expect(eventRow).toBeVisible();
+
+    await Promise.all([
+      organizerGroupPage.waitForResponse(
+        (response) =>
+          response.request().method() === "GET" &&
+          response.url().includes(`/dashboard/group/events/${ALPHA_EVENT_ONE_ID}/update`) &&
+          response.ok(),
+      ),
+      eventRow
+        .locator('td button[aria-label="Edit event: Alpha Event One"]')
+        .click(),
+    ]);
+
+    await Promise.all([
+      organizerGroupPage.waitForResponse(
+        (response) =>
+          response.request().method() === "GET" &&
+          response.url().includes(`/dashboard/group/events/${ALPHA_EVENT_ONE_ID}/attendees`) &&
+          response.ok(),
+      ),
+      organizerGroupPage.locator('button[data-section="attendees"]').click(),
+    ]);
+
+    const attendeesContent = organizerGroupPage.locator("#attendees-content");
+    const attendeeRow = attendeesContent.locator("tr", {
+      hasText: "E2E Member Two",
+    });
+
+    await expect(attendeesContent.getByRole("table", { name: "Attendees list" })).toBeVisible();
+    await expect(attendeeRow).toBeVisible();
+    await expect(attendeeRow).toContainText("e2e-member-2");
+    await expect(
+      attendeesContent.getByRole("button", { name: "Send email" }),
+    ).toBeEnabled();
+
+    await navigateToEvent(
+      member2Page,
+      TEST_COMMUNITY_NAME,
+      TEST_GROUP_SLUGS.community1.alpha,
+      TEST_EVENT_SLUGS.alpha[0],
+    );
+
+    await leaveButton.click();
+    await expect(member2Page.getByRole("button", { name: "Yes" })).toBeVisible();
+
+    await Promise.all([
+      member2Page.waitForResponse(
+        (response) =>
+          response.request().method() === "DELETE" &&
+          response.url().includes(`/event/${ALPHA_EVENT_ONE_ID}/leave`) &&
+          response.ok(),
+      ),
+      member2Page.getByRole("button", { name: "Yes" }).click(),
+    ]);
+
+    await expect(attendButton).toContainText("Attend event");
   });
 
   test("organizer can update and restore group settings", async ({
