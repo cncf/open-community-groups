@@ -300,6 +300,84 @@ test.describe("group dashboard", () => {
     ).toBeVisible();
   });
 
+  test("organizer can enable waitlist for an event and then restore it", async ({
+    organizerGroupPage,
+  }) => {
+    const openAlphaEventEditor = async () => {
+      await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
+
+      const eventRow = organizerGroupPage.locator("tr", {
+        hasText: "Alpha Event One",
+      });
+      await expect(eventRow).toBeVisible();
+
+      await Promise.all([
+        organizerGroupPage.waitForResponse(
+          (response) =>
+            response.request().method() === "GET" &&
+            response.url().includes(`/dashboard/group/events/${ALPHA_EVENT_ONE_ID}/update`) &&
+            response.ok(),
+        ),
+        eventRow
+          .locator('td button[aria-label="Edit event: Alpha Event One"]')
+          .click(),
+      ]);
+    };
+
+    const submitWaitlistValue = async (nextValue: "true" | "false") => {
+      await organizerGroupPage.locator("#toggle_waitlist_enabled").evaluate((input, value) => {
+        if (!(input instanceof HTMLInputElement)) {
+          throw new Error("waitlist toggle not found");
+        }
+
+        input.checked = value === "true";
+        input.dispatchEvent(new Event("change", { bubbles: true }));
+      }, nextValue);
+
+      await expect(organizerGroupPage.locator("#waitlist_enabled")).toHaveValue(nextValue);
+
+      await Promise.all([
+        organizerGroupPage.waitForResponse(
+          (response) =>
+            response.request().method() === "PUT" &&
+            response.url().includes(`/dashboard/group/events/${ALPHA_EVENT_ONE_ID}/update`) &&
+            response.ok(),
+        ),
+        organizerGroupPage.locator("#update-event-button").click(),
+      ]);
+    };
+
+    await openAlphaEventEditor();
+    await expect(organizerGroupPage.locator("#waitlist_enabled")).toHaveValue("false");
+
+    await submitWaitlistValue("true");
+
+    await openAlphaEventEditor();
+    await expect(organizerGroupPage.locator("#waitlist_enabled")).toHaveValue("true");
+
+    await Promise.all([
+      organizerGroupPage.waitForResponse(
+        (response) =>
+          response.request().method() === "GET" &&
+          response.url().includes(`/dashboard/group/events/${ALPHA_EVENT_ONE_ID}/waitlist`) &&
+          response.ok(),
+      ),
+      organizerGroupPage.locator('button[data-section="waitlist"]').click(),
+    ]);
+
+    const waitlistContent = organizerGroupPage.locator("#waitlist-content");
+    await expect(
+      waitlistContent
+        .locator('p.text-sm.lg\\:text-md.text-stone-700:visible')
+        .filter({ hasText: "Waitlist entries for this event will appear here." }),
+    ).toBeVisible();
+
+    await submitWaitlistValue("false");
+
+    await openAlphaEventEditor();
+    await expect(organizerGroupPage.locator("#waitlist_enabled")).toHaveValue("false");
+  });
+
   test("viewer sees read-only members and sponsors controls", async ({
     groupViewerPage,
   }) => {
