@@ -290,6 +290,25 @@ test.describe("group dashboard", () => {
     ).toHaveAttribute("title", "Your role cannot delete sponsors.");
   });
 
+  test("viewer sees read-only controls on group settings", async ({
+    groupViewerPage,
+  }) => {
+    await navigateToPath(groupViewerPage, "/dashboard/group?tab=settings");
+
+    const dashboardContent = groupViewerPage.locator("#dashboard-content");
+    await expect(dashboardContent.getByText("Group Details", { exact: true })).toBeVisible();
+    await expect(
+      dashboardContent.getByText("Your role cannot update group settings.", { exact: true }),
+    ).toBeVisible();
+    await expect(dashboardContent.locator(".inert-form")).toHaveAttribute("inert", "");
+    await expect(
+      dashboardContent.getByRole("button", { name: "Update Group" }),
+    ).toBeDisabled();
+    await expect(
+      dashboardContent.getByRole("button", { name: "Update Group" }),
+    ).toHaveAttribute("title", "Your role cannot update group settings.");
+  });
+
   test("organizer can filter groups in the dashboard selector", async ({
     organizerGroupPage,
   }) => {
