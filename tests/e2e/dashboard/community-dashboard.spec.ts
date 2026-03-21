@@ -365,6 +365,58 @@ test.describe("community dashboard", () => {
     await expect(dashboardContent.locator("tr", { hasText: categoryName })).toHaveCount(0);
   });
 
+  test("admin can add and delete a group category", async ({
+    adminCommunityPage,
+  }) => {
+    const categoryName = `E2E Group Category ${Date.now()}`;
+
+    await navigateToPath(adminCommunityPage, "/dashboard/community?tab=group-categories");
+
+    const dashboardContent = adminCommunityPage.locator("#dashboard-content");
+    await expect(
+      dashboardContent.getByText("Group Categories", { exact: true }),
+    ).toBeVisible();
+
+    await dashboardContent.getByRole("button", { name: "Add Group Category" }).click();
+    await expect(
+      dashboardContent.getByText("Group Category Details", { exact: true }),
+    ).toBeVisible();
+
+    await adminCommunityPage.getByLabel("Name").fill(categoryName);
+
+    await Promise.all([
+      adminCommunityPage.waitForResponse(
+        (response) =>
+          response.request().method() === "POST" &&
+          response.url().includes("/dashboard/community/group-categories/add") &&
+          response.status() === 201,
+      ),
+      adminCommunityPage.getByRole("button", { name: "Add Group Category" }).click(),
+    ]);
+
+    const categoryRow = dashboardContent.locator("tr", { hasText: categoryName });
+    await expect(categoryRow).toBeVisible();
+
+    await categoryRow
+      .getByRole("button", { name: `Delete group category: ${categoryName}` })
+      .click();
+    await expect(adminCommunityPage.locator(".swal2-popup")).toContainText(
+      "Are you sure you would like to delete this group category?",
+    );
+
+    await Promise.all([
+      adminCommunityPage.waitForResponse(
+        (response) =>
+          response.request().method() === "DELETE" &&
+          response.url().includes("/dashboard/community/group-categories/") &&
+          response.ok(),
+      ),
+      adminCommunityPage.getByRole("button", { name: "Yes" }).click(),
+    ]);
+
+    await expect(dashboardContent.locator("tr", { hasText: categoryName })).toHaveCount(0);
+  });
+
   for (const taxonomyCase of taxonomyCases) {
     test(`admin can distinguish used and unused entries on ${taxonomyCase.heading}`, async ({
       adminCommunityPage,
