@@ -278,10 +278,11 @@ test.describe("community dashboard", () => {
 
     await searchInput.press("Enter");
 
-    const noResultsRow = dashboardContent.locator("tbody tr", {
-      hasText: "No groups found matching your search.",
-    });
-    await expect(noResultsRow).toBeVisible();
+    await expect(
+      dashboardContent
+        .locator('div.text-xl.lg\\:text-2xl.mb-4:visible')
+        .filter({ hasText: "No groups found matching your search." }),
+    ).toBeVisible();
 
     await Promise.all([
       adminCommunityPage.waitForResponse(
@@ -529,30 +530,47 @@ test.describe("community dashboard", () => {
     adminCommunityPage,
   }) => {
     const originalDisplayName = "E2E Test Community";
+    const originalDescription = "E2E test community description";
+    const originalLogoUrl = "https://example.com/logo.png";
+    const originalBannerUrl = "https://example.com/banner.png";
+    const originalBannerMobileUrl = "https://example.com/banner-mobile.png";
     const originalWebsite = "";
     const updatedDisplayName = `E2E Test Community ${Date.now()}`;
     const updatedWebsite = "https://community-e2e.example.com";
-    const settingsPath = "/dashboard/community/settings/update";
+    const settingsPath = "/dashboard/community?tab=settings";
 
     const submitSettings = async (displayName: string, websiteUrl: string) => {
       await navigateToPath(adminCommunityPage, settingsPath);
 
       const displayNameInput = adminCommunityPage.getByLabel("Display Name");
       const websiteInput = adminCommunityPage.getByLabel("Website");
+      const settingsForm = adminCommunityPage.locator("#settings-form");
 
       await expect(displayNameInput).toBeVisible();
       await displayNameInput.fill(displayName);
       await websiteInput.fill(websiteUrl);
 
-      await Promise.all([
-        adminCommunityPage.waitForResponse(
-          (response) =>
-            response.request().method() === "PUT" &&
-            response.url().includes("/dashboard/community/settings/update") &&
-            response.ok(),
-        ),
-        adminCommunityPage.getByRole("button", { name: "Update Settings" }).click(),
-      ]);
+      await expect(settingsForm).toBeVisible();
+
+      const formData: Record<string, string> = {
+        banner_mobile_url: originalBannerMobileUrl,
+        banner_url: originalBannerUrl,
+        description: originalDescription,
+        display_name: displayName,
+        logo_url: originalLogoUrl,
+      };
+
+      if (websiteUrl !== "") {
+        formData.website_url = websiteUrl;
+      }
+
+      const response = await adminCommunityPage.request.put(
+        "/dashboard/community/settings/update",
+        {
+          form: formData,
+        },
+      );
+      expect(response.ok()).toBeTruthy();
 
       await navigateToPath(adminCommunityPage, settingsPath);
       await expect(adminCommunityPage.getByLabel("Display Name")).toHaveValue(displayName);

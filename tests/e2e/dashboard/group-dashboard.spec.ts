@@ -153,13 +153,40 @@ test.describe("group dashboard", () => {
   test("events manager can review CFS submissions with labels and ratings", async ({
     eventsManagerGroupPage,
   }) => {
-    await navigateToPath(
-      eventsManagerGroupPage,
-      `/dashboard/group/events/${CFS_EVENT_ID}/submissions`,
-    );
+    await navigateToPath(eventsManagerGroupPage, "/dashboard/group?tab=events");
+
+    const cfsEventRow = eventsManagerGroupPage.locator("tr", {
+      hasText: "Alpha CFS Summit",
+    });
+    await expect(cfsEventRow).toBeVisible();
+
+    await Promise.all([
+      eventsManagerGroupPage.waitForResponse(
+        (response) =>
+          response.request().method() === "GET" &&
+          response.url().includes(`/dashboard/group/events/${CFS_EVENT_ID}/update`) &&
+          response.ok(),
+      ),
+      cfsEventRow
+        .locator('td button[aria-label="Edit event: Alpha CFS Summit"]')
+        .click(),
+    ]);
+
+    await Promise.all([
+      eventsManagerGroupPage.waitForResponse(
+        (response) =>
+          response.request().method() === "GET" &&
+          response.url().includes(`/dashboard/group/events/${CFS_EVENT_ID}/submissions`) &&
+          response.ok(),
+      ),
+      eventsManagerGroupPage.locator('button[data-section="submissions"]').click(),
+    ]);
 
     await expect(
-      eventsManagerGroupPage.getByText("Submissions", { exact: true }),
+      eventsManagerGroupPage.locator("#submissions-content").getByText(
+        "Submissions",
+        { exact: true },
+      ),
     ).toBeVisible();
     const sortBy = eventsManagerGroupPage.getByLabel("Sort by");
     await expect(sortBy).toBeVisible();
@@ -198,7 +225,32 @@ test.describe("group dashboard", () => {
       dashboardContent.getByRole("button", { name: "Add Event" }),
     ).toBeDisabled();
 
-    await navigateToPath(groupViewerPage, `/dashboard/group/events/${CFS_EVENT_ID}/submissions`);
+    const cfsEventRow = groupViewerPage.locator("tr", {
+      hasText: "Alpha CFS Summit",
+    });
+    await expect(cfsEventRow).toBeVisible();
+
+    await Promise.all([
+      groupViewerPage.waitForResponse(
+        (response) =>
+          response.request().method() === "GET" &&
+          response.url().includes(`/dashboard/group/events/${CFS_EVENT_ID}/update`) &&
+          response.ok(),
+      ),
+      cfsEventRow
+        .locator('td button[aria-label="Edit event: Alpha CFS Summit"]')
+        .click(),
+    ]);
+
+    await Promise.all([
+      groupViewerPage.waitForResponse(
+        (response) =>
+          response.request().method() === "GET" &&
+          response.url().includes(`/dashboard/group/events/${CFS_EVENT_ID}/submissions`) &&
+          response.ok(),
+      ),
+      groupViewerPage.locator('button[data-section="submissions"]').click(),
+    ]);
 
     const reviewButtons = groupViewerPage.getByTitle(
       "Your role cannot manage events.",
