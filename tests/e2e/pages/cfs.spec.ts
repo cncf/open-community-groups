@@ -117,6 +117,41 @@ test.describe("call for speakers", () => {
     await expect(page.getByRole("link", { name: "Sign in" })).toBeVisible();
   });
 
+  test("logged in users without proposals are sent to manage session proposals", async ({
+    adminCommunityPage,
+  }) => {
+    await navigateToEvent(
+      adminCommunityPage,
+      TEST_COMMUNITY_NAME,
+      TEST_GROUP_SLUGS.community1.alpha,
+      CFS_EVENT_SLUG,
+    );
+
+    await adminCommunityPage
+      .getByRole("button", { name: "Submit session proposal" })
+      .click();
+
+    const modal = adminCommunityPage.getByRole("dialog", { name: "Submit a proposal" });
+    const manageLink = modal.getByRole("link", { name: "Manage session proposals" });
+
+    await expect(
+      modal.getByText("It looks like you haven't created any session proposals yet."),
+    ).toBeVisible();
+    await expect(manageLink).toHaveAttribute("href", "/dashboard/user?tab=session-proposals");
+
+    await Promise.all([
+      adminCommunityPage.waitForURL(/\/dashboard\/user\?tab=session-proposals/),
+      manageLink.click(),
+    ]);
+
+    await expect(
+      adminCommunityPage.locator("#dashboard-content").getByText(
+        "Session proposals",
+        { exact: true },
+      ),
+    ).toBeVisible();
+  });
+
   test("eligible and already-submitted proposals are distinguished in the modal", async ({
     member1Page,
   }) => {
