@@ -104,11 +104,16 @@ delete from event_host where event_id in (
     '55555555-5555-5555-5555-555555555501'
 );
 
+delete from event_waitlist where event_id in (
+    '55555555-5555-5555-5555-555555555521'
+);
+
 delete from event_attendee where event_id in (
     '55555555-5555-5555-5555-555555555501',
     '55555555-5555-5555-5555-555555555504',
     '55555555-5555-5555-5555-555555555519',
-    '55555555-5555-5555-5555-555555555520'
+    '55555555-5555-5555-5555-555555555520',
+    '55555555-5555-5555-5555-555555555521'
 );
 
 delete from event_sponsor where event_id in (
@@ -158,7 +163,8 @@ delete from event where event_id in (
     '55555555-5555-5555-5555-555555555517',
     '55555555-5555-5555-5555-555555555518',
     '55555555-5555-5555-5555-555555555519',
-    '55555555-5555-5555-5555-555555555520'
+    '55555555-5555-5555-5555-555555555520',
+    '55555555-5555-5555-5555-555555555521'
 );
 
 delete from "group" where group_id in (
@@ -717,6 +723,27 @@ insert into event (
     null
 );
 
+insert into event (
+    event_id, name, slug, description, timezone, event_category_id,
+    event_kind_id, group_id, published, starts_at, ends_at,
+    capacity, registration_required, waitlist_enabled
+) values (
+    '55555555-5555-5555-5555-555555555521',
+    'Alpha Waitlist Lab',
+    'alpha-waitlist-lab',
+    'Future event dedicated to waitlist E2E coverage.',
+    'UTC',
+    '33333333-3333-3333-3333-333333333331',
+    'virtual',
+    '44444444-4444-4444-4444-444444444441',
+    true,
+    now() + interval '60 days',
+    now() + interval '60 days 2 hours',
+    1,
+    true,
+    true
+);
+
 -- ============================================================================
 -- USERS (8 total, all email_verified=true)
 -- Password: Password123!
@@ -1205,6 +1232,9 @@ values (
 ), (
     '55555555-5555-5555-5555-555555555520',
     '77777777-7777-7777-7777-777777777705'
+), (
+    '55555555-5555-5555-5555-555555555521',
+    '77777777-7777-7777-7777-777777777703'
 );
 
 -- ============================================================================
