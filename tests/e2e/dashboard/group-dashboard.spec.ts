@@ -474,6 +474,68 @@ test.describe("group dashboard", () => {
     await expect(attendButton).toContainText("Join waiting list");
   });
 
+  test("organizer can update and restore group settings", async ({
+    organizerGroupPage,
+  }) => {
+    const settingsPath = "/dashboard/group?tab=settings";
+
+    const readSettingsFormValues = async () => {
+      await navigateToPath(organizerGroupPage, settingsPath);
+
+      const settingsForm = organizerGroupPage.locator("#groups-form");
+      await expect(settingsForm).toBeVisible();
+
+      return {
+        name: await organizerGroupPage.locator("#name").inputValue(),
+        websiteUrl: await organizerGroupPage.locator("#website_url").inputValue(),
+      };
+    };
+
+    const submitSettings = async ({
+      name,
+      websiteUrl,
+    }: {
+      name: string;
+      websiteUrl: string;
+    }) => {
+      await navigateToPath(organizerGroupPage, settingsPath);
+
+      await organizerGroupPage.locator("#name").fill(name);
+      await organizerGroupPage.locator("#website_url").fill(websiteUrl);
+
+      await Promise.all([
+        organizerGroupPage.waitForResponse(
+          (response) =>
+            response.request().method() === "PUT" &&
+            response.url().includes("/dashboard/group/settings/update") &&
+            response.ok(),
+        ),
+        organizerGroupPage.getByRole("button", { name: "Update Group" }).click(),
+      ]);
+
+      await navigateToPath(organizerGroupPage, settingsPath);
+    };
+
+    const originalFormValues = await readSettingsFormValues();
+    const updatedName = `${originalFormValues.name} Updated`;
+    const updatedWebsiteUrl = "https://group-e2e.example.com";
+
+    await submitSettings({
+      name: updatedName,
+      websiteUrl: updatedWebsiteUrl,
+    });
+
+    await expect(organizerGroupPage.locator("#name")).toHaveValue(updatedName);
+    await expect(organizerGroupPage.locator("#website_url")).toHaveValue(updatedWebsiteUrl);
+
+    await submitSettings(originalFormValues);
+
+    await expect(organizerGroupPage.locator("#name")).toHaveValue(originalFormValues.name);
+    await expect(organizerGroupPage.locator("#website_url")).toHaveValue(
+      originalFormValues.websiteUrl,
+    );
+  });
+
   test("viewer sees read-only members and sponsors controls", async ({
     groupViewerPage,
   }) => {
