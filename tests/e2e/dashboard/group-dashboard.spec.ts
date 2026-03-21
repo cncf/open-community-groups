@@ -1044,6 +1044,12 @@ test.describe("group dashboard", () => {
     organizerGroupPage,
   }) => {
     const cfsSummitPath = `/${TEST_COMMUNITY_NAME}/group/${TEST_GROUP_SLUGS.community1.alpha}/event/${TEST_EVENT_SLUGS.alphaDashboard[0]}`;
+    const shiftDateTimeLocalMinutes = (value: string, minutes: number) => {
+      const shiftedDate = new Date(`${value}:00Z`);
+      shiftedDate.setUTCMinutes(shiftedDate.getUTCMinutes() + minutes);
+
+      return shiftedDate.toISOString().slice(0, 16);
+    };
 
     const openCfsSummitEditor = async () => {
       await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
@@ -1168,12 +1174,12 @@ test.describe("group dashboard", () => {
 
     const originalValues = await readEventValues();
     const updatedValues = {
-      cfsEndsAt: "2026-04-16T18:00",
-      cfsStartsAt: "2026-04-01T09:00",
-      endsAt: "2026-05-05T19:30",
+      cfsEndsAt: shiftDateTimeLocalMinutes(originalValues.cfsEndsAt, 60),
+      cfsStartsAt: shiftDateTimeLocalMinutes(originalValues.cfsStartsAt, 60),
+      endsAt: shiftDateTimeLocalMinutes(originalValues.endsAt, -30),
       meetupUrl: "https://meetup.com/e2e-alpha-cfs-summit",
       name: `Alpha CFS Summit ${Date.now()}`,
-      startsAt: "2026-05-05T17:30",
+      startsAt: shiftDateTimeLocalMinutes(originalValues.startsAt, 30),
     };
 
     await saveUpdatedValues(updatedValues);
