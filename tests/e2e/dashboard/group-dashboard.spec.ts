@@ -9,6 +9,7 @@ import {
 } from "../utils";
 
 const ALPHA_EVENT_ONE_ID = "55555555-5555-5555-5555-555555555501";
+const ALPHA_EVENT_TWO_ID = "55555555-5555-5555-5555-555555555502";
 const ALPHA_GROUP_ID = "44444444-4444-4444-4444-444444444441";
 const BETA_GROUP_ID = "44444444-4444-4444-4444-444444444442";
 const BETA_GROUP_SLUG = "test-group-beta";
@@ -728,6 +729,54 @@ test.describe("group dashboard", () => {
     ]);
 
     await expect(attendButton).toContainText("Attend event");
+  });
+
+  test("organizer sees the empty attendees state for an event without RSVPs", async ({
+    organizerGroupPage,
+  }) => {
+    await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
+
+    const eventRow = organizerGroupPage.locator("tr", {
+      hasText: "Alpha Event Two",
+    });
+    await expect(eventRow).toBeVisible();
+
+    await Promise.all([
+      organizerGroupPage.waitForResponse(
+        (response) =>
+          response.request().method() === "GET" &&
+          response.url().includes(`/dashboard/group/events/${ALPHA_EVENT_TWO_ID}/update`) &&
+          response.ok(),
+      ),
+      eventRow
+        .locator('td button[aria-label="Edit event: Alpha Event Two"]')
+        .click(),
+    ]);
+
+    await Promise.all([
+      organizerGroupPage.waitForResponse(
+        (response) =>
+          response.request().method() === "GET" &&
+          response.url().includes(`/dashboard/group/events/${ALPHA_EVENT_TWO_ID}/attendees`) &&
+          response.ok(),
+      ),
+      organizerGroupPage.locator('button[data-section="attendees"]').click(),
+    ]);
+
+    const attendeesContent = organizerGroupPage.locator("#attendees-content");
+
+    await expect(attendeesContent.getByRole("table", { name: "Attendees list" })).toBeVisible();
+    await expect(
+      attendeesContent.locator('div.text-xl.lg\\:text-2xl:visible').filter({
+        hasText: "No attendees found for this event.",
+      }),
+    ).toBeVisible();
+    await expect(
+      attendeesContent.getByRole("button", { name: "Send email" }),
+    ).toBeDisabled();
+    await expect(
+      attendeesContent.getByRole("button", { name: "Send email" }),
+    ).toHaveAttribute("title", "No attendees to send emails to.");
   });
 
   test("organizer can update and restore group settings", async ({
