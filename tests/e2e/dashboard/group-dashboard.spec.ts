@@ -13,6 +13,7 @@ const ALPHA_GROUP_ID = "44444444-4444-4444-4444-444444444441";
 const BETA_GROUP_ID = "44444444-4444-4444-4444-444444444442";
 const BETA_GROUP_SLUG = "test-group-beta";
 const CFS_EVENT_ID = "55555555-5555-5555-5555-555555555519";
+const MEMBER2_USER_ID = "77777777-7777-7777-7777-777777777706";
 const WAITLIST_EVENT_ID = "55555555-5555-5555-5555-555555555521";
 const PENDING1_USER_ID = "77777777-7777-7777-7777-777777777707";
 const PENDING2_USER_ID = "77777777-7777-7777-7777-777777777708";
@@ -591,6 +592,120 @@ test.describe("group dashboard", () => {
     await expect(
       attendeesContent.getByRole("button", { name: "Send email" }),
     ).toBeEnabled();
+
+    await navigateToEvent(
+      member2Page,
+      TEST_COMMUNITY_NAME,
+      TEST_GROUP_SLUGS.community1.alpha,
+      TEST_EVENT_SLUGS.alpha[0],
+    );
+
+    await leaveButton.click();
+    await expect(member2Page.getByRole("button", { name: "Yes" })).toBeVisible();
+
+    await Promise.all([
+      member2Page.waitForResponse(
+        (response) =>
+          response.request().method() === "DELETE" &&
+          response.url().includes(`/event/${ALPHA_EVENT_ONE_ID}/leave`) &&
+          response.ok(),
+      ),
+      member2Page.getByRole("button", { name: "Yes" }).click(),
+    ]);
+
+    await expect(attendButton).toContainText("Attend event");
+  });
+
+  test("organizer can check in an attendee from the event dashboard", async ({
+    member2Page,
+    organizerGroupPage,
+  }) => {
+    await navigateToEvent(
+      member2Page,
+      TEST_COMMUNITY_NAME,
+      TEST_GROUP_SLUGS.community1.alpha,
+      TEST_EVENT_SLUGS.alpha[0],
+    );
+
+    const attendButton = member2Page.locator('[data-attendance-role="attend-btn"]');
+    const leaveButton = member2Page.locator('[data-attendance-role="leave-btn"]');
+
+    await expect(attendButton).toContainText("Attend event");
+
+    await Promise.all([
+      member2Page.waitForResponse(
+        (response) =>
+          response.request().method() === "POST" &&
+          response.url().includes(`/event/${ALPHA_EVENT_ONE_ID}/attend`) &&
+          response.ok(),
+      ),
+      attendButton.click(),
+    ]);
+
+    await expect(leaveButton).toContainText("Cancel attendance");
+
+    await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
+
+    const eventRow = organizerGroupPage.locator("tr", {
+      hasText: "Alpha Event One",
+    });
+    await expect(eventRow).toBeVisible();
+
+    await Promise.all([
+      organizerGroupPage.waitForResponse(
+        (response) =>
+          response.request().method() === "GET" &&
+          response.url().includes(`/dashboard/group/events/${ALPHA_EVENT_ONE_ID}/update`) &&
+          response.ok(),
+      ),
+      eventRow
+        .locator('td button[aria-label="Edit event: Alpha Event One"]')
+        .click(),
+    ]);
+
+    await Promise.all([
+      organizerGroupPage.waitForResponse(
+        (response) =>
+          response.request().method() === "GET" &&
+          response.url().includes(`/dashboard/group/events/${ALPHA_EVENT_ONE_ID}/attendees`) &&
+          response.ok(),
+      ),
+      organizerGroupPage.locator('button[data-section="attendees"]').click(),
+    ]);
+
+    const attendeesContent = organizerGroupPage.locator("#attendees-content");
+    const attendeeRow = attendeesContent.locator("tr", {
+      hasText: "E2E Member Two",
+    });
+    const checkInToggle = attendeeRow.locator(".check-in-toggle");
+
+    await expect(attendeeRow).toBeVisible();
+    await expect(checkInToggle).toBeEnabled();
+
+    await Promise.all([
+      organizerGroupPage.waitForResponse(
+        (response) =>
+          response.request().method() === "POST" &&
+          response
+            .url()
+            .includes(`/dashboard/group/events/${ALPHA_EVENT_ONE_ID}/attendees/${MEMBER2_USER_ID}/check-in`) &&
+          response.ok(),
+      ),
+      checkInToggle.evaluate((checkbox) => {
+        if (!(checkbox instanceof HTMLInputElement)) {
+          throw new Error("check-in toggle not found");
+        }
+
+        checkbox.checked = true;
+        checkbox.dispatchEvent(new Event("change", { bubbles: true }));
+      }),
+    ]);
+
+    await expect(checkInToggle).toBeChecked();
+    await expect(checkInToggle).toBeDisabled();
+
+    await navigateToPath(member2Page, `/${TEST_COMMUNITY_NAME}/check-in/${ALPHA_EVENT_ONE_ID}`);
+    await expect(member2Page.getByText("You're checked in")).toBeVisible();
 
     await navigateToEvent(
       member2Page,
