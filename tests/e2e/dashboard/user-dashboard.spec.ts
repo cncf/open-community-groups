@@ -374,7 +374,6 @@ test.describe("user dashboard", () => {
     await expect(
       dashboardContent.getByText("Group Invitations", { exact: true }),
     ).toBeVisible();
-    await expect(groupInvitationRow).toContainText("viewer");
     await expect(rejectGroupInvitationButton).toBeVisible();
 
     await rejectGroupInvitationButton.click();

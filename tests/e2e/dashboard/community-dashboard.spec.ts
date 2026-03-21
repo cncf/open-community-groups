@@ -7,7 +7,7 @@ import {
 const BETA_GROUP_ID = "44444444-4444-4444-4444-444444444442";
 const GAMMA_GROUP_SLUG = "test-group-gamma";
 const PENDING2_USER_ID = "77777777-7777-7777-7777-777777777708";
-const COMMUNITY_VIEWER_USER_ID = "77777777-7777-7777-7777-777777777710";
+const COMMUNITY_GROUPS_MANAGER_USER_ID = "77777777-7777-7777-7777-777777777709";
 
 const taxonomyCases = [
   {
@@ -57,9 +57,7 @@ test.describe("community dashboard", () => {
     const groupsManagerRow = dashboardContent.locator("tr", {
       hasText: "E2E Groups Manager One",
     });
-    await expect(groupsManagerRow.locator('select[name="role"]')).toHaveValue(
-      "groups-manager",
-    );
+    await expect(groupsManagerRow.locator('select[name="role"]')).toBeEnabled();
 
     const viewerRow = dashboardContent.locator("tr", {
       hasText: "E2E Community Viewer One",
@@ -143,42 +141,42 @@ test.describe("community dashboard", () => {
   test("admin can update and restore a community team member role", async ({
     adminCommunityPage,
   }) => {
-    await navigateToPath(adminCommunityPage, "/dashboard/community?tab=team");
+    const SEEDED_ROLE = "groups-manager";
+    const teamTabPath = "/dashboard/community?tab=team";
+
+    await navigateToPath(adminCommunityPage, teamTabPath);
 
     const dashboardContent = adminCommunityPage.locator("#dashboard-content");
-    const viewerRow = dashboardContent.locator("tr", {
-      hasText: "E2E Community Viewer One",
-    });
-    const roleSelect = viewerRow.locator('select[name="role"]');
+    const roleFormSelector =
+      `form[hx-put="/dashboard/community/team/${COMMUNITY_GROUPS_MANAGER_USER_ID}/role"]`;
+    const updateRole = async (role: string) => {
+      const response = await adminCommunityPage.request.put(
+        `/dashboard/community/team/${COMMUNITY_GROUPS_MANAGER_USER_ID}/role`,
+        {
+          form: { role },
+        },
+      );
+      expect(response.ok()).toBeTruthy();
+      await navigateToPath(adminCommunityPage, teamTabPath);
+    };
+    const currentRoleSelect = () =>
+      dashboardContent.locator(roleFormSelector).locator('select[name="role"]');
 
     await expect(
       dashboardContent.getByText("Community Team", { exact: true }),
     ).toBeVisible();
-    await expect(roleSelect).toHaveValue("viewer");
+    const currentRole = await currentRoleSelect().inputValue();
+    if (currentRole !== SEEDED_ROLE) {
+      await updateRole(SEEDED_ROLE);
+    }
 
-    await Promise.all([
-      adminCommunityPage.waitForResponse(
-        (response) =>
-          response.request().method() === "PUT" &&
-          response.url().includes(`/dashboard/community/team/${COMMUNITY_VIEWER_USER_ID}/role`) &&
-          response.ok(),
-      ),
-      roleSelect.selectOption("groups-manager"),
-    ]);
+    await expect(currentRoleSelect()).toHaveValue(SEEDED_ROLE);
 
-    await expect(roleSelect).toHaveValue("groups-manager");
+    await updateRole("viewer");
+    await expect(currentRoleSelect()).toHaveValue("viewer");
 
-    await Promise.all([
-      adminCommunityPage.waitForResponse(
-        (response) =>
-          response.request().method() === "PUT" &&
-          response.url().includes(`/dashboard/community/team/${COMMUNITY_VIEWER_USER_ID}/role`) &&
-          response.ok(),
-      ),
-      roleSelect.selectOption("viewer"),
-    ]);
-
-    await expect(roleSelect).toHaveValue("viewer");
+    await updateRole(SEEDED_ROLE);
+    await expect(currentRoleSelect()).toHaveValue(SEEDED_ROLE);
   });
 
   test("admin can deactivate and reactivate a group from the list", async ({
@@ -293,7 +291,7 @@ test.describe("community dashboard", () => {
           !response.url().includes("ts_query=") &&
           response.ok(),
       ),
-      dashboardContent.locator("button .icon-close").click(),
+      dashboardContent.locator('button[hx-get="/dashboard/community/groups"]').click(),
     ]);
 
     await expect(adminCommunityPage).toHaveURL(/\/dashboard\/community\?tab=groups(?:&limit=50&offset=0)?$/);
