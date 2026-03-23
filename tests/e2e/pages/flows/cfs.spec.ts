@@ -1,13 +1,13 @@
 import type { Page } from "@playwright/test";
 
-import { expect, test } from "../fixtures";
+import { expect, test } from "../../fixtures";
 
 import {
   TEST_COMMUNITY_NAME,
   TEST_GROUP_SLUGS,
   navigateToPath,
   navigateToEvent,
-} from "../utils";
+} from "../../utils";
 
 const CFS_EVENT_SLUG = "alpha-cfs-summit";
 

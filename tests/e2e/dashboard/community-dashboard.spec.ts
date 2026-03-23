@@ -349,18 +349,14 @@ test.describe("community dashboard", () => {
         .filter({ hasText: "No groups found matching your search." }),
     ).toBeVisible();
 
-    await Promise.all([
-      adminCommunityPage.waitForResponse(
-        (response) =>
-          response.request().method() === "GET" &&
-          response.url().includes("/dashboard/community/groups") &&
-          !response.url().includes("ts_query=") &&
-          response.ok(),
-      ),
-      dashboardContent.locator('button[hx-get="/dashboard/community/groups"]').click(),
-    ]);
+    const clearFilterButton = dashboardContent.locator(
+      'button[hx-get="/dashboard/community/groups"]',
+    );
+    await expect(clearFilterButton).toBeVisible();
+    await clearFilterButton.click();
 
     await expect(adminCommunityPage).toHaveURL(/\/dashboard\/community\?tab=groups(?:&limit=50&offset=0)?$/);
+    await expect(searchInput).toHaveValue("");
     await expect(dashboardContent.locator("tr", { hasText: "E2E Test Group Alpha" })).toBeVisible();
     await expect(dashboardContent.locator("tr", { hasText: "E2E Test Group Gamma" })).toBeVisible();
   });

@@ -23,7 +23,7 @@ jobs:
             command: yarn test:e2e:deep
             artifact_name: playwright-artifacts-deep
           - suite: visual
-            command: yarn playwright test --config tests/e2e/playwright.config.ts tests/e2e/pages/visual.spec.ts --project=chromium-deep --project=chromium-mobile-deep
+            command: yarn playwright test --config tests/e2e/playwright.config.ts tests/e2e/visual/visual.spec.ts --project=chromium-deep --project=chromium-mobile-deep
             artifact_name: playwright-artifacts-visual
     permissions:
       contents: read

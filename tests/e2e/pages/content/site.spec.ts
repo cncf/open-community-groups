@@ -12,7 +12,7 @@ import {
   getStatsContainer,
   getStatValue,
   navigateToSiteHome,
-} from "../utils";
+} from "../../utils";
 
 // Site home explore links are currently hardcoded to cncf in shared templates.
 const SITE_HOME_EXPLORE_COMMUNITY_NAME = "cncf";

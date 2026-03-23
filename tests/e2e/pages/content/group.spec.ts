@@ -8,7 +8,7 @@ import {
   TEST_GROUP_SLUGS,
   getSectionLink,
   navigateToGroup,
-} from "../utils";
+} from "../../utils";
 
 test.describe("group page", () => {
   test.beforeEach(async ({ page }) => {

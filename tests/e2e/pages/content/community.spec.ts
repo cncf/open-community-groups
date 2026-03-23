@@ -13,7 +13,7 @@ import {
   getStatsContainer,
   getStatValue,
   navigateToCommunityHome,
-} from "../utils";
+} from "../../utils";
 
 test.describe("community home page", () => {
   test.describe("default viewport", () => {

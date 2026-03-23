@@ -10,7 +10,7 @@ import {
   TEST_GROUP_NAME,
   TEST_GROUP_SLUG,
   navigateToEvent,
-} from "../utils";
+} from "../../utils";
 
 const isAlphaEventOne = TEST_EVENT_SLUG === "alpha-event-1";
 

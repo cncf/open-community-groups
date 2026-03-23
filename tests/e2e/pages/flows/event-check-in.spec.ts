@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
 
-import { expect, test } from "../fixtures";
+import { expect, test } from "../../fixtures";
 
 import {
   buildE2eUrl,
@@ -10,7 +10,7 @@ import {
   TEST_GROUP_SLUGS,
   navigateToEvent,
   navigateToPath,
-} from "../utils";
+} from "../../utils";
 
 const eventId = "55555555-5555-5555-5555-555555555501";
 const member2Id = "77777777-7777-7777-7777-777777777706";

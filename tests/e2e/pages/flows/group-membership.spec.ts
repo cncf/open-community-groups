@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
 
-import { expect, test } from "../fixtures";
+import { expect, test } from "../../fixtures";
 
 import {
   TEST_COMMUNITY_NAME,
@@ -8,7 +8,7 @@ import {
   TEST_GROUP_NAMES,
   TEST_GROUP_SLUGS,
   navigateToGroup,
-} from "../utils";
+} from "../../utils";
 
 const groupId = TEST_GROUP_IDS.community1.alpha;
 

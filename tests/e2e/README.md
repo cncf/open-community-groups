@@ -101,11 +101,13 @@ just e2e-tests-visual-update
 tests/e2e/
 ├── playwright.config.ts       # Playwright configuration
 ├── utils.ts                   # Helper functions and constants
-├── pages/visual.spec.ts       # Visual regression checks for stable pages
+├── pages/content/             # Public page rendering and browse flows
+├── pages/flows/               # Stateful public page interactions
 ├── public/public.spec.ts      # Public pages suite
 ├── auth/auth.spec.ts          # Email/password authentication suite
 ├── auth/oauth.spec.ts         # OAuth redirect smoke tests
 ├── dashboard/access-control.spec.ts  # Dashboard auth gate checks
+├── visual/visual.spec.ts      # Visual regression checks for stable pages
 ├── tsconfig.json              # TypeScript configuration
 └── README.md                  # This file
 ```
@@ -157,7 +159,7 @@ Test data is defined in `/database/tests/data/e2e.sql` and includes:
 
 ### Visual Regression Tests
 
-- `tests/e2e/pages/visual.spec.ts` snapshots stable public pages on desktop and mobile emulation
+- `tests/e2e/visual/visual.spec.ts` snapshots stable public pages on desktop and mobile emulation
 - Visual checks run on Chromium only as part of the deep suite to reduce noise
 - `yarn test:e2e:visual` writes the e2e server config and starts the app automatically
 - Update snapshots with `yarn test:e2e:visual:update` after intentional UI changes

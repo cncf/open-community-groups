@@ -1,12 +1,12 @@
 import type { Page } from "@playwright/test";
 
-import { expect, test } from "../fixtures";
+import { expect, test } from "../../fixtures";
 
 import {
   TEST_COMMUNITY_NAME,
   TEST_GROUP_SLUGS,
   navigateToEvent,
-} from "../utils";
+} from "../../utils";
 
 const WAITLIST_EVENT_ID = "55555555-5555-5555-5555-555555555521";
 const WAITLIST_EVENT_NAME = "Alpha Waitlist Lab";

@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
 
-import { expect, test } from "../fixtures";
+import { expect, test } from "../../fixtures";
 
 import {
   TEST_COMMUNITY_NAME,
@@ -8,7 +8,7 @@ import {
   TEST_EVENT_SLUGS,
   TEST_GROUP_SLUGS,
   navigateToEvent,
-} from "../utils";
+} from "../../utils";
 
 const eventId = "55555555-5555-5555-5555-555555555501";
 

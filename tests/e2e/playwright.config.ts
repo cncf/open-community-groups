@@ -14,8 +14,8 @@ const smokeSpecPaths = [
   "dashboard/access-control.spec.ts",
   "public/public.spec.ts",
 ];
-const visualSpecPaths = ["pages/visual.spec.ts"];
-const isVisualOnlyRun = process.argv.some((arg) => arg.includes("pages/visual.spec.ts"));
+const visualSpecPaths = ["visual/visual.spec.ts"];
+const isVisualOnlyRun = process.argv.some((arg) => arg.includes("visual/visual.spec.ts"));
 const mobileTestPattern = /@mobile/;
 
 const webServer =
