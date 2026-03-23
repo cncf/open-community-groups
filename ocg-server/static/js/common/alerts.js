@@ -175,15 +175,15 @@ export const showInfoAlert = (message, withHtml = false) => {
 };
 
 /**
- * Displays a confirmation dialog with Yes/No options.
- * Triggers an HTMX 'confirmed' event on the specified button if confirmed.
- * @param {string} message - The confirmation message to display
- * @param {string} buttonId - ID of the button to trigger on confirmation
- * @param {string} confirmText - Text for the confirm button
- * @param {string} cancelText - Text for the cancel button
- * @param {boolean} withHtml - Whether to display the message as HTML content
+ * Displays an awaitable confirmation dialog with Yes/No options.
+ * @param {Object} options - Dialog options
+ * @param {string} options.message - The confirmation message to display
+ * @param {string} options.confirmText - Text for the confirm button
+ * @param {string} [options.cancelText] - Text for the cancel button
+ * @param {boolean} [options.withHtml] - Whether to display HTML content
+ * @returns {Promise<boolean>} True when the user confirms the action
  */
-export const showConfirmAlert = (message, buttonId, confirmText, cancelText = "No", withHtml = false) => {
+export const confirmAction = async ({ message, confirmText, cancelText = "No", withHtml = false }) => {
   const alertOptions = {
     text: message,
     icon: "warning",
@@ -197,8 +197,28 @@ export const showConfirmAlert = (message, buttonId, confirmText, cancelText = "N
   if (withHtml) {
     alertOptions.html = message;
   }
-  Swal.fire(alertOptions).then((result) => {
-    if (result.isConfirmed) {
+
+  const result = await Swal.fire(alertOptions);
+  return result.isConfirmed;
+};
+
+/**
+ * Displays a confirmation dialog with Yes/No options.
+ * Triggers an HTMX 'confirmed' event on the specified button if confirmed.
+ * @param {string} message - The confirmation message to display
+ * @param {string} buttonId - ID of the button to trigger on confirmation
+ * @param {string} confirmText - Text for the confirm button
+ * @param {string} cancelText - Text for the cancel button
+ * @param {boolean} withHtml - Whether to display the message as HTML content
+ */
+export const showConfirmAlert = (message, buttonId, confirmText, cancelText = "No", withHtml = false) => {
+  confirmAction({
+    message,
+    confirmText,
+    cancelText,
+    withHtml,
+  }).then((confirmed) => {
+    if (confirmed) {
       htmx.trigger(`#${buttonId}`, "confirmed");
     }
   });
