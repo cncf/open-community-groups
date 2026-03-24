@@ -984,7 +984,9 @@
   });
 
   if (addEventButton) {
-    initializeSessionsRemovalWarning({ saveButton: addEventButton });
+    initializeSessionsRemovalWarning({
+      saveButton: addEventButton
+    });
 
     // Validation before form submission
     addEventButton.addEventListener('htmx:beforeRequest', (e) => {

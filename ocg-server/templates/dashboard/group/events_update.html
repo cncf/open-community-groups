@@ -1242,7 +1242,9 @@
   });
 
   if (updateEventButton) {
-    initializeSessionsRemovalWarning({ saveButton: updateEventButton });
+    initializeSessionsRemovalWarning({
+      saveButton: updateEventButton
+    });
 
     updateEventButton.addEventListener('click', (e) => {
       if (!capacityInput || initialWaitlistCount <= 0) {
