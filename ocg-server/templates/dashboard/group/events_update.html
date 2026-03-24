@@ -818,6 +818,9 @@
     validateSessionDateBounds
   } from '/static/js/common/form-validation.js';
   import {
+    initializeSessionsRemovalWarning
+  } from '/static/js/dashboard/group/event-form-helpers.js';
+  import {
     initializePendingChangesAlert
   } from '/static/js/dashboard/group/pending-changes-alert.js';
 
@@ -1239,6 +1242,10 @@
   });
 
   if (updateEventButton) {
+    initializeSessionsRemovalWarning({
+      saveButton: updateEventButton
+    });
+
     updateEventButton.addEventListener('click', (e) => {
       if (!capacityInput || initialWaitlistCount <= 0) {
         return;

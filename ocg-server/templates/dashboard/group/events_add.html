@@ -656,6 +656,9 @@
     validateSessionDateBounds
   } from '/static/js/common/form-validation.js';
   import {
+    initializeSessionsRemovalWarning
+  } from '/static/js/dashboard/group/event-form-helpers.js';
+  import {
     initializePendingChangesAlert
   } from '/static/js/dashboard/group/pending-changes-alert.js';
 
@@ -981,6 +984,10 @@
   });
 
   if (addEventButton) {
+    initializeSessionsRemovalWarning({
+      saveButton: addEventButton
+    });
+
     // Validation before form submission
     addEventButton.addEventListener('htmx:beforeRequest', (e) => {
       if (e.detail.elt.id === 'add-event-button') {

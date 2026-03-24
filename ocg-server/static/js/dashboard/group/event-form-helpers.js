@@ -4,6 +4,7 @@ import {
   toOptionalString,
   toTrimmedString,
 } from "/static/js/common/utils.js";
+import { confirmAction } from "/static/js/common/alerts.js";
 
 /**
  * Adds the copy suffix to a given event name.
@@ -257,9 +258,78 @@ const updateTimezone = (timezone) => {
   }
 };
 
+/**
+ * Wires a confirmation warning when clearing event dates would remove sessions.
+ * @param {Object} options - Helper options
+ * @param {HTMLElement|null} options.saveButton - Button that triggers the save
+ * @param {string} [options.startsAtInputId] - Event start input id
+ * @param {string} [options.endsAtInputId] - Event end input id
+ * @param {string} [options.sessionsFormSelector] - Sessions form selector
+ */
+const initializeSessionsRemovalWarning = ({
+  saveButton,
+  startsAtInputId = "starts_at",
+  endsAtInputId = "ends_at",
+  sessionsFormSelector = "#sessions-form",
+} = {}) => {
+  if (!saveButton) {
+    return;
+  }
+
+  let skipSessionsRemovalWarning = false;
+
+  const hasConfiguredSessions = () => {
+    const sessionsSection = document.querySelector("sessions-section");
+    if (Array.isArray(sessionsSection?.sessions)) {
+      return sessionsSection.sessions.length > 0;
+    }
+
+    return document.querySelectorAll(`${sessionsFormSelector} input[name^="sessions["]`).length > 0;
+  };
+
+  const shouldWarnAboutRemovingSessions = () => {
+    const startsAtValue = document.getElementById(startsAtInputId)?.value.trim() || "";
+    const endsAtValue = document.getElementById(endsAtInputId)?.value.trim() || "";
+
+    return !startsAtValue && !endsAtValue && hasConfiguredSessions();
+  };
+
+  saveButton.addEventListener(
+    "click",
+    (event) => {
+      if (skipSessionsRemovalWarning) {
+        skipSessionsRemovalWarning = false;
+        return;
+      }
+
+      if (!shouldWarnAboutRemovingSessions()) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopImmediatePropagation();
+
+      void confirmAction({
+        message:
+          "Saving this event without start and end dates will remove all sessions. Do you want to continue?",
+        confirmText: "Continue",
+      }).then((confirmed) => {
+        if (!confirmed) {
+          return;
+        }
+
+        skipSessionsRemovalWarning = true;
+        saveButton.click();
+      });
+    },
+    true,
+  );
+};
+
 export {
   appendCopySuffix,
   buildSessionEntries,
+  initializeSessionsRemovalWarning,
   normalizeSpeakers,
   setCategoryValue,
   setEventReminderEnabled,
