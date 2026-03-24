@@ -1219,6 +1219,46 @@ test.describe("group dashboard", () => {
     );
   });
 
+  test("organizer is warned before removing dates from an event with sessions", async ({
+    organizerGroupPage,
+  }) => {
+    const alphaEventPath =
+      `/${TEST_COMMUNITY_NAME}/group/${TEST_GROUP_SLUGS.community1.alpha}/event/${TEST_EVENT_SLUGS.alpha[0]}`;
+
+    await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
+
+    const eventRow = organizerGroupPage.locator("tr").filter({
+      has: organizerGroupPage.locator(`a[href="${alphaEventPath}"]`),
+    });
+    await expect(eventRow).toBeVisible();
+
+    await Promise.all([
+      organizerGroupPage.waitForResponse(
+        (response) =>
+          response.request().method() === "GET" &&
+          response.url().includes(`/dashboard/group/events/${ALPHA_EVENT_ONE_ID}/update`) &&
+          response.ok(),
+      ),
+      eventRow.locator(`td button[hx-get="/dashboard/group/events/${ALPHA_EVENT_ONE_ID}/update"]`).click(),
+    ]);
+
+    await organizerGroupPage.locator('button[data-section="date-venue"]').click();
+    await expect(organizerGroupPage.locator("#starts_at")).toBeVisible();
+    await organizerGroupPage.locator("#starts_at").fill("");
+    await organizerGroupPage.locator("#ends_at").fill("");
+
+    await expect(organizerGroupPage.locator("#pending-changes-alert")).not.toHaveClass(/hidden/);
+
+    await organizerGroupPage.locator("#update-event-button").click();
+
+    const confirmationDialog = organizerGroupPage.locator(".swal2-popup");
+    await expect(confirmationDialog).toContainText(
+      "Saving this event without start and end dates will remove all sessions.",
+    );
+
+    await confirmationDialog.getByRole("button", { name: "No" }).click();
+  });
+
   test("organizer can update and restore group settings", async ({
     organizerGroupPage,
   }) => {
