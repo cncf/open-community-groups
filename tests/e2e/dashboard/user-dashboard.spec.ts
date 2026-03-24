@@ -4,11 +4,77 @@ import { expect, test } from "../fixtures";
 
 import {
   TEST_EVENT_NAMES,
+  TEST_COMMUNITY_IDS,
+  TEST_GROUP_IDS,
   navigateToPath,
+  selectCommunityContext,
+  selectGroupContext,
 } from "../utils";
+
+const MEMBER2_USER_ID = "77777777-7777-7777-7777-777777777706";
+const PENDING1_USER_ID = "77777777-7777-7777-7777-777777777707";
+
+type SessionProposalPayload = {
+  co_speaker?: { user_id: string } | null;
+  description: string;
+  duration_minutes: number;
+  session_proposal_id: string;
+  session_proposal_level_id: string;
+  title: string;
+};
 
 const openUserDashboardPath = async (path: string, page: Page) => {
   await navigateToPath(page, path);
+};
+
+const getSessionProposalPayload = async (
+  page: Page,
+  proposalTitle: string,
+): Promise<SessionProposalPayload> => {
+  await openUserDashboardPath("/dashboard/user?tab=session-proposals", page);
+
+  const editButton = page
+    .locator("#dashboard-content")
+    .locator("tr", { hasText: proposalTitle })
+    .locator('button[data-action="edit-session-proposal"]');
+  const proposalJson = await editButton.getAttribute("data-session-proposal");
+
+  expect(proposalJson).not.toBeNull();
+
+  return JSON.parse(proposalJson ?? "{}") as SessionProposalPayload;
+};
+
+const restoreCoSpeakerInvitation = async (
+  page: Page,
+  proposalTitle: string,
+  coSpeakerUserId: string,
+) => {
+  const proposal = await getSessionProposalPayload(page, proposalTitle);
+  const baseForm = {
+    description: proposal.description,
+    duration_minutes: String(proposal.duration_minutes),
+    session_proposal_level_id: proposal.session_proposal_level_id,
+    title: proposal.title,
+  };
+
+  const clearCoSpeakerResponse = await page.request.put(
+    `/dashboard/user/session-proposals/${proposal.session_proposal_id}`,
+    {
+      form: baseForm,
+    },
+  );
+  expect(clearCoSpeakerResponse.ok()).toBeTruthy();
+
+  const restoreInvitationResponse = await page.request.put(
+    `/dashboard/user/session-proposals/${proposal.session_proposal_id}`,
+    {
+      form: {
+        ...baseForm,
+        co_speaker_user_id: coSpeakerUserId,
+      },
+    },
+  );
+  expect(restoreInvitationResponse.ok()).toBeTruthy();
 };
 
 const createSessionProposal = async (page: Page, title: string) => {
@@ -219,37 +285,63 @@ test.describe("user dashboard", () => {
     await expect(invitationRow).toContainText("E2E Member One");
     await expect(acceptInvitationButton).toBeVisible();
 
-    await Promise.all([
-      member2Page.waitForResponse(
-        (response) =>
-          response.request().method() === "PUT" &&
-          response.ok() &&
-          response
-            .url()
-            .includes("/co-speaker-invitation/accept"),
-      ),
-      acceptInvitationButton.click(),
-    ]);
+    let invitationAccepted = false;
 
-    await member2Page.reload();
-    await expect(member2Dashboard.locator("[role='alert']")).toHaveCount(0);
-    await expect(
-      member2Dashboard.locator("tr", { hasText: "Collaborative Roadmaps" }),
-    ).toHaveCount(0);
+    try {
+      await Promise.all([
+        member2Page.waitForResponse(
+          (response) =>
+            response.request().method() === "PUT" &&
+            response.ok() &&
+            response
+              .url()
+              .includes("/co-speaker-invitation/accept"),
+        ),
+        acceptInvitationButton.click(),
+      ]);
+      invitationAccepted = true;
 
-    await openUserDashboardPath(
-      "/dashboard/user?tab=session-proposals",
-      member1Page,
-    );
+      await member2Page.reload();
+      await expect(member2Dashboard.locator("[role='alert']")).toHaveCount(0);
+      await expect(
+        member2Dashboard.locator("tr", { hasText: "Collaborative Roadmaps" }),
+      ).toHaveCount(0);
 
-    const member1Dashboard = member1Page.locator("#dashboard-content");
-    const proposalRow = member1Dashboard.locator("tr", {
-      hasText: "Collaborative Roadmaps",
-    });
+      await openUserDashboardPath(
+        "/dashboard/user?tab=session-proposals",
+        member1Page,
+      );
 
-    await expect(proposalRow).toContainText("E2E Member Two");
-    await expect(proposalRow).toContainText("Ready for submission");
-    await expect(proposalRow).not.toContainText("Awaiting co-speaker response");
+      const member1Dashboard = member1Page.locator("#dashboard-content");
+      const proposalRow = member1Dashboard.locator("tr", {
+        hasText: "Collaborative Roadmaps",
+      });
+
+      await expect(proposalRow).toContainText("E2E Member Two");
+      await expect(proposalRow).toContainText("Ready for submission");
+      await expect(proposalRow).not.toContainText("Awaiting co-speaker response");
+    } finally {
+      if (invitationAccepted) {
+        await restoreCoSpeakerInvitation(
+          member1Page,
+          "Collaborative Roadmaps",
+          MEMBER2_USER_ID,
+        );
+
+        await openUserDashboardPath(
+          "/dashboard/user?tab=session-proposals",
+          member2Page,
+        );
+        await expect(member2Dashboard.locator("[role='alert']")).toContainText(
+          "co-speaker invitation waiting for your response",
+        );
+        await expect(
+          member2Dashboard.locator("tr", {
+            hasText: "Collaborative Roadmaps",
+          }),
+        ).toContainText("E2E Member One");
+      }
+    }
   });
 
   test("submissions page shows review statuses and available actions", async ({
@@ -308,6 +400,8 @@ test.describe("user dashboard", () => {
   });
 
   test("accepting pending invitations removes them from the user dashboard", async ({
+    adminCommunityPage,
+    organizerGroupPage,
     pending1Page,
   }) => {
     await openUserDashboardPath("/dashboard/user?tab=invitations", pending1Page);
@@ -320,44 +414,96 @@ test.describe("user dashboard", () => {
       communityInvitationRow.getByTitle("Approve");
     await expect(approveCommunityInvitationButton).toBeVisible();
 
-    await Promise.all([
-      pending1Page.waitForResponse(
-        (response) =>
-          response.request().method() === "PUT" &&
-          response.ok() &&
-          response.url().includes("/dashboard/user/invitations/community/") &&
-          response.url().endsWith("/accept"),
-      ),
-      approveCommunityInvitationButton.click(),
-    ]);
+    let communityInvitationAccepted = false;
+    let groupInvitationAccepted = false;
 
-    await pending1Page.reload();
+    try {
+      await Promise.all([
+        pending1Page.waitForResponse(
+          (response) =>
+            response.request().method() === "PUT" &&
+            response.ok() &&
+            response.url().includes("/dashboard/user/invitations/community/") &&
+            response.url().endsWith("/accept"),
+        ),
+        approveCommunityInvitationButton.click(),
+      ]);
+      communityInvitationAccepted = true;
 
-    const groupInvitationRow = dashboardContent.locator("tr", {
-      hasText: "E2E Test Group Beta",
-    });
-    const approveGroupInvitationButton = groupInvitationRow.getByTitle("Approve");
-    await expect(approveGroupInvitationButton).toBeVisible();
+      await pending1Page.reload();
 
-    await Promise.all([
-      pending1Page.waitForResponse(
-        (response) =>
-          response.request().method() === "PUT" &&
-          response.ok() &&
-          response.url().includes("/dashboard/user/invitations/group/") &&
-          response.url().endsWith("/accept"),
-      ),
-      approveGroupInvitationButton.click(),
-    ]);
+      const groupInvitationRow = dashboardContent.locator("tr", {
+        hasText: "E2E Test Group Beta",
+      });
+      const approveGroupInvitationButton = groupInvitationRow.getByTitle("Approve");
+      await expect(approveGroupInvitationButton).toBeVisible();
 
-    await pending1Page.reload();
+      await Promise.all([
+        pending1Page.waitForResponse(
+          (response) =>
+            response.request().method() === "PUT" &&
+            response.ok() &&
+            response.url().includes("/dashboard/user/invitations/group/") &&
+            response.url().endsWith("/accept"),
+        ),
+        approveGroupInvitationButton.click(),
+      ]);
+      groupInvitationAccepted = true;
 
-    await expect(
-      dashboardContent.locator("tr", { hasText: "e2e-test-community" }),
-    ).toHaveCount(0);
-    await expect(
-      dashboardContent.locator("tr", { hasText: "E2E Test Group Beta" }),
-    ).toHaveCount(0);
+      await pending1Page.reload();
+
+      await expect(
+        dashboardContent.locator("tr", { hasText: "e2e-test-community" }),
+      ).toHaveCount(0);
+      await expect(
+        dashboardContent.locator("tr", { hasText: "E2E Test Group Beta" }),
+      ).toHaveCount(0);
+    } finally {
+      if (communityInvitationAccepted) {
+        await selectCommunityContext(
+          adminCommunityPage,
+          TEST_COMMUNITY_IDS.community1,
+        );
+        const communityInviteRestoreResponse = await adminCommunityPage.request.post(
+          "/dashboard/community/team/add",
+          {
+            form: {
+              role: "viewer",
+              user_id: PENDING1_USER_ID,
+            },
+          },
+        );
+        expect(communityInviteRestoreResponse.ok()).toBeTruthy();
+      }
+
+      if (groupInvitationAccepted) {
+        await selectGroupContext(
+          organizerGroupPage,
+          TEST_COMMUNITY_IDS.community1,
+          TEST_GROUP_IDS.community1.beta,
+        );
+        const groupInviteRestoreResponse = await organizerGroupPage.request.post(
+          "/dashboard/group/team/add",
+          {
+            form: {
+              role: "events-manager",
+              user_id: PENDING1_USER_ID,
+            },
+          },
+        );
+        expect(groupInviteRestoreResponse.ok()).toBeTruthy();
+      }
+
+      if (communityInvitationAccepted || groupInvitationAccepted) {
+        await openUserDashboardPath("/dashboard/user?tab=invitations", pending1Page);
+        await expect(
+          dashboardContent.locator("tr", { hasText: "e2e-test-community" }),
+        ).toContainText("viewer");
+        await expect(
+          dashboardContent.locator("tr", { hasText: "E2E Test Group Beta" }),
+        ).toContainText("events-manager");
+      }
+    }
   });
 
   test("rejecting a pending group invitation removes it from the user dashboard", async ({
