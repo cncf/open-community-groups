@@ -5,25 +5,21 @@ import { expect, test } from "../fixtures";
 import {
   buildE2eUrl,
   TEST_COMMUNITY_NAME,
+  TEST_EVENT_IDS,
   TEST_EVENT_SLUGS,
+  TEST_GROUP_IDS,
   TEST_GROUP_SLUGS,
+  TEST_USER_IDS,
+  getAttendButton,
+  getLeaveButton,
   navigateToEvent,
   navigateToPath,
+  selectTimezone,
 } from "../utils";
 
-const ALPHA_EVENT_ONE_ID = "55555555-5555-5555-5555-555555555501";
-const ALPHA_EVENT_TWO_ID = "55555555-5555-5555-5555-555555555502";
-const ALPHA_CFS_SUMMIT_SLUG = "alpha-cfs-summit";
-const ALPHA_GROUP_ID = "44444444-4444-4444-4444-444444444441";
-const BETA_GROUP_ID = "44444444-4444-4444-4444-444444444442";
-const BETA_GROUP_SLUG = "test-group-beta";
-const CFS_EVENT_ID = "55555555-5555-5555-5555-555555555519";
-const MEMBER2_USER_ID = "77777777-7777-7777-7777-777777777706";
-const WAITLIST_EVENT_ID = "55555555-5555-5555-5555-555555555521";
 const ATTENDEE_NOTIFICATION_TITLE = "E2E attendee notification";
 const ATTENDEE_NOTIFICATION_BODY =
   "Reminder for all event attendees from the e2e suite.";
-const PENDING1_USER_ID = "77777777-7777-7777-7777-777777777707";
 
 const ensureGroupViewerRole = async (page: Page, role: string) => {
   const teamTabPath = "/dashboard/group?tab=team";
@@ -42,15 +38,18 @@ const ensureGroupViewerRole = async (page: Page, role: string) => {
     return;
   }
 
-  const roleUpdatePath = await viewerRow.locator("form").getAttribute("hx-put");
+  await Promise.all([
+    page.waitForResponse(
+      (response) =>
+        response.request().method() === "PUT" &&
+        response.url().includes("/dashboard/group/team/") &&
+        response.url().endsWith("/role") &&
+        response.ok(),
+    ),
+    currentRoleSelect.selectOption(role),
+  ]);
 
-  expect(roleUpdatePath).not.toBeNull();
-
-  const response = await page.request.put(buildE2eUrl(roleUpdatePath ?? ""), {
-    form: { role },
-  });
-  expect(response.ok()).toBeTruthy();
-  await navigateToPath(page, teamTabPath);
+  await expect(currentRoleSelect).toHaveValue(role);
 };
 
 test.describe("group dashboard", () => {
@@ -132,7 +131,7 @@ test.describe("group dashboard", () => {
     await expect(pendingRow).toContainText("Invitation sent");
     await expect(pendingRow.locator('select[name="role"]')).toHaveValue("viewer");
 
-    const removeButton = pendingRow.locator(`#remove-member-${PENDING1_USER_ID}`);
+    const removeButton = pendingRow.locator(`#remove-member-${TEST_USER_IDS.pending1}`);
     await removeButton.click();
     await expect(organizerGroupPage.locator(".swal2-popup")).toContainText(
       "Are you sure you would like to delete this team member?",
@@ -142,7 +141,7 @@ test.describe("group dashboard", () => {
       organizerGroupPage.waitForResponse(
         (response) =>
           response.request().method() === "DELETE" &&
-          response.url().includes(`/dashboard/group/team/${PENDING1_USER_ID}/delete`) &&
+          response.url().includes(`/dashboard/group/team/${TEST_USER_IDS.pending1}/delete`) &&
           response.ok(),
       ),
       organizerGroupPage.getByRole("button", { name: "Yes" }).click(),
@@ -166,32 +165,27 @@ test.describe("group dashboard", () => {
       await navigateToPath(organizerGroupPage, teamTabPath);
 
       const dashboardContent = organizerGroupPage.locator("#dashboard-content");
-      const currentRoleForm = () =>
-        dashboardContent.locator("tr", { hasText: "E2E Group Viewer One" }).locator("form");
-      const currentRoleSelect = () =>
-        currentRoleForm().locator('select[name="role"]');
-      const updateRole = async (role: string) => {
-        const roleUpdatePath = await currentRoleForm().getAttribute("hx-put");
-
-        expect(roleUpdatePath).not.toBeNull();
-
-        const response = await organizerGroupPage.request.put(
-          buildE2eUrl(roleUpdatePath ?? ""),
-          {
-            form: { role },
-          },
-        );
-        expect(response.ok()).toBeTruthy();
-        await navigateToPath(organizerGroupPage, teamTabPath);
-      };
+      const currentRoleSelect = dashboardContent
+        .locator("tr", { hasText: "E2E Group Viewer One" })
+        .locator('select[name="role"]');
 
       await expect(
         dashboardContent.getByText("Group Team", { exact: true }),
       ).toBeVisible();
-      await expect(currentRoleSelect()).toHaveValue(SEEDED_ROLE);
+      await expect(currentRoleSelect).toHaveValue(SEEDED_ROLE);
 
-      await updateRole(UPDATED_ROLE);
-      await expect(currentRoleSelect()).toHaveValue(UPDATED_ROLE);
+      await Promise.all([
+        organizerGroupPage.waitForResponse(
+          (response) =>
+            response.request().method() === "PUT" &&
+            response.url().includes("/dashboard/group/team/") &&
+            response.url().endsWith("/role") &&
+            response.ok(),
+        ),
+        currentRoleSelect.selectOption(UPDATED_ROLE),
+      ]);
+
+      await expect(currentRoleSelect).toHaveValue(UPDATED_ROLE);
     } finally {
       await ensureGroupViewerRole(organizerGroupPage, SEEDED_ROLE);
     }
@@ -211,7 +205,7 @@ test.describe("group dashboard", () => {
       eventsManagerGroupPage.waitForResponse(
         (response) =>
           response.request().method() === "GET" &&
-          response.url().includes(`/dashboard/group/events/${CFS_EVENT_ID}/update`) &&
+          response.url().includes(`/dashboard/group/events/${TEST_EVENT_IDS.alpha.cfsSummit}/update`) &&
           response.ok(),
       ),
       cfsEventRow
@@ -223,7 +217,9 @@ test.describe("group dashboard", () => {
       eventsManagerGroupPage.waitForResponse(
         (response) =>
           response.request().method() === "GET" &&
-          response.url().includes(`/dashboard/group/events/${CFS_EVENT_ID}/submissions`) &&
+          response.url().includes(
+            `/dashboard/group/events/${TEST_EVENT_IDS.alpha.cfsSummit}/submissions`,
+          ) &&
           response.ok(),
       ),
       eventsManagerGroupPage.locator('button[data-section="submissions"]').click(),
@@ -281,7 +277,7 @@ test.describe("group dashboard", () => {
       groupViewerPage.waitForResponse(
         (response) =>
           response.request().method() === "GET" &&
-          response.url().includes(`/dashboard/group/events/${CFS_EVENT_ID}/update`) &&
+          response.url().includes(`/dashboard/group/events/${TEST_EVENT_IDS.alpha.cfsSummit}/update`) &&
           response.ok(),
       ),
       cfsEventRow
@@ -293,7 +289,9 @@ test.describe("group dashboard", () => {
       groupViewerPage.waitForResponse(
         (response) =>
           response.request().method() === "GET" &&
-          response.url().includes(`/dashboard/group/events/${CFS_EVENT_ID}/submissions`) &&
+          response.url().includes(
+            `/dashboard/group/events/${TEST_EVENT_IDS.alpha.cfsSummit}/submissions`,
+          ) &&
           response.ok(),
       ),
       groupViewerPage.locator('button[data-section="submissions"]').click(),
@@ -319,7 +317,7 @@ test.describe("group dashboard", () => {
       groupViewerPage.waitForResponse(
         (response) =>
           response.request().method() === "GET" &&
-          response.url().includes(`/dashboard/group/events/${WAITLIST_EVENT_ID}/update`) &&
+          response.url().includes(`/dashboard/group/events/${TEST_EVENT_IDS.alpha.waitlistLab}/update`) &&
           response.ok(),
       ),
       eventRow
@@ -331,7 +329,9 @@ test.describe("group dashboard", () => {
       groupViewerPage.waitForResponse(
         (response) =>
           response.request().method() === "GET" &&
-          response.url().includes(`/dashboard/group/events/${WAITLIST_EVENT_ID}/attendees`) &&
+          response
+            .url()
+            .includes(`/dashboard/group/events/${TEST_EVENT_IDS.alpha.waitlistLab}/attendees`) &&
           response.ok(),
       ),
       groupViewerPage.locator('button[data-section="attendees"]').click(),
@@ -367,7 +367,7 @@ test.describe("group dashboard", () => {
       organizerGroupPage.waitForResponse(
         (response) =>
           response.request().method() === "GET" &&
-          response.url().includes(`/dashboard/group/events/${ALPHA_EVENT_ONE_ID}/update`) &&
+          response.url().includes(`/dashboard/group/events/${TEST_EVENT_IDS.alpha.one}/update`) &&
           response.ok(),
       ),
       eventRow
@@ -379,7 +379,7 @@ test.describe("group dashboard", () => {
       organizerGroupPage.waitForResponse(
         (response) =>
           response.request().method() === "GET" &&
-          response.url().includes(`/dashboard/group/events/${ALPHA_EVENT_ONE_ID}/waitlist`) &&
+          response.url().includes(`/dashboard/group/events/${TEST_EVENT_IDS.alpha.one}/waitlist`) &&
           response.ok(),
       ),
       organizerGroupPage.locator('button[data-section="waitlist"]').click(),
@@ -410,7 +410,7 @@ test.describe("group dashboard", () => {
         organizerGroupPage.waitForResponse(
           (response) =>
             response.request().method() === "GET" &&
-            response.url().includes(`/dashboard/group/events/${ALPHA_EVENT_ONE_ID}/update`) &&
+            response.url().includes(`/dashboard/group/events/${TEST_EVENT_IDS.alpha.one}/update`) &&
             response.ok(),
         ),
         eventRow
@@ -420,22 +420,23 @@ test.describe("group dashboard", () => {
     };
 
     const submitWaitlistValue = async (nextValue: "true" | "false") => {
-      await organizerGroupPage.locator("#toggle_waitlist_enabled").evaluate((input, value) => {
-        if (!(input instanceof HTMLInputElement)) {
-          throw new Error("waitlist toggle not found");
-        }
+      const waitlistToggle = organizerGroupPage.locator("#toggle_waitlist_enabled");
+      const waitlistToggleLabel = organizerGroupPage.locator("#waitlist-toggle-label");
 
-        input.checked = value === "true";
-        input.dispatchEvent(new Event("change", { bubbles: true }));
-      }, nextValue);
+      await expect(waitlistToggle).toBeEnabled();
 
+      if ((await waitlistToggle.isChecked()) !== (nextValue === "true")) {
+        await waitlistToggleLabel.click();
+      }
+
+      await expect(waitlistToggle).toBeChecked({ checked: nextValue === "true" });
       await expect(organizerGroupPage.locator("#waitlist_enabled")).toHaveValue(nextValue);
 
       await Promise.all([
         organizerGroupPage.waitForResponse(
           (response) =>
             response.request().method() === "PUT" &&
-            response.url().includes(`/dashboard/group/events/${ALPHA_EVENT_ONE_ID}/update`) &&
+            response.url().includes(`/dashboard/group/events/${TEST_EVENT_IDS.alpha.one}/update`) &&
             response.ok(),
         ),
         organizerGroupPage.locator("#update-event-button").click(),
@@ -454,7 +455,7 @@ test.describe("group dashboard", () => {
       organizerGroupPage.waitForResponse(
         (response) =>
           response.request().method() === "GET" &&
-          response.url().includes(`/dashboard/group/events/${ALPHA_EVENT_ONE_ID}/waitlist`) &&
+          response.url().includes(`/dashboard/group/events/${TEST_EVENT_IDS.alpha.one}/waitlist`) &&
           response.ok(),
       ),
       organizerGroupPage.locator('button[data-section="waitlist"]').click(),
@@ -493,7 +494,7 @@ test.describe("group dashboard", () => {
       member2Page.waitForResponse(
         (response) =>
           response.request().method() === "POST" &&
-          response.url().includes(`/event/${WAITLIST_EVENT_ID}/attend`) &&
+          response.url().includes(`/event/${TEST_EVENT_IDS.alpha.waitlistLab}/attend`) &&
           response.ok(),
       ),
       attendButton.click(),
@@ -512,7 +513,7 @@ test.describe("group dashboard", () => {
       organizerGroupPage.waitForResponse(
         (response) =>
           response.request().method() === "GET" &&
-          response.url().includes(`/dashboard/group/events/${WAITLIST_EVENT_ID}/update`) &&
+          response.url().includes(`/dashboard/group/events/${TEST_EVENT_IDS.alpha.waitlistLab}/update`) &&
           response.ok(),
       ),
       eventRow
@@ -524,7 +525,7 @@ test.describe("group dashboard", () => {
       organizerGroupPage.waitForResponse(
         (response) =>
           response.request().method() === "GET" &&
-          response.url().includes(`/dashboard/group/events/${WAITLIST_EVENT_ID}/waitlist`) &&
+          response.url().includes(`/dashboard/group/events/${TEST_EVENT_IDS.alpha.waitlistLab}/waitlist`) &&
           response.ok(),
       ),
       organizerGroupPage.locator('button[data-section="waitlist"]').click(),
@@ -554,7 +555,7 @@ test.describe("group dashboard", () => {
       member2Page.waitForResponse(
         (response) =>
           response.request().method() === "DELETE" &&
-          response.url().includes(`/event/${WAITLIST_EVENT_ID}/leave`) &&
+          response.url().includes(`/event/${TEST_EVENT_IDS.alpha.waitlistLab}/leave`) &&
           response.ok(),
       ),
       member2Page.getByRole("button", { name: "Yes" }).click(),
@@ -583,7 +584,7 @@ test.describe("group dashboard", () => {
       member2Page.waitForResponse(
         (response) =>
           response.request().method() === "POST" &&
-          response.url().includes(`/event/${ALPHA_EVENT_ONE_ID}/attend`) &&
+          response.url().includes(`/event/${TEST_EVENT_IDS.alpha.one}/attend`) &&
           response.ok(),
       ),
       attendButton.click(),
@@ -602,7 +603,7 @@ test.describe("group dashboard", () => {
       organizerGroupPage.waitForResponse(
         (response) =>
           response.request().method() === "GET" &&
-          response.url().includes(`/dashboard/group/events/${ALPHA_EVENT_ONE_ID}/update`) &&
+          response.url().includes(`/dashboard/group/events/${TEST_EVENT_IDS.alpha.one}/update`) &&
           response.ok(),
       ),
       eventRow
@@ -614,7 +615,7 @@ test.describe("group dashboard", () => {
       organizerGroupPage.waitForResponse(
         (response) =>
           response.request().method() === "GET" &&
-          response.url().includes(`/dashboard/group/events/${ALPHA_EVENT_ONE_ID}/attendees`) &&
+          response.url().includes(`/dashboard/group/events/${TEST_EVENT_IDS.alpha.one}/attendees`) &&
           response.ok(),
       ),
       organizerGroupPage.locator('button[data-section="attendees"]').click(),
@@ -646,7 +647,7 @@ test.describe("group dashboard", () => {
       member2Page.waitForResponse(
         (response) =>
           response.request().method() === "DELETE" &&
-          response.url().includes(`/event/${ALPHA_EVENT_ONE_ID}/leave`) &&
+          response.url().includes(`/event/${TEST_EVENT_IDS.alpha.one}/leave`) &&
           response.ok(),
       ),
       member2Page.getByRole("button", { name: "Yes" }).click(),
@@ -675,7 +676,7 @@ test.describe("group dashboard", () => {
       member2Page.waitForResponse(
         (response) =>
           response.request().method() === "POST" &&
-          response.url().includes(`/event/${ALPHA_EVENT_ONE_ID}/attend`) &&
+          response.url().includes(`/event/${TEST_EVENT_IDS.alpha.one}/attend`) &&
           response.ok(),
       ),
       attendButton.click(),
@@ -694,7 +695,7 @@ test.describe("group dashboard", () => {
       organizerGroupPage.waitForResponse(
         (response) =>
           response.request().method() === "GET" &&
-          response.url().includes(`/dashboard/group/events/${ALPHA_EVENT_ONE_ID}/update`) &&
+          response.url().includes(`/dashboard/group/events/${TEST_EVENT_IDS.alpha.one}/update`) &&
           response.ok(),
       ),
       eventRow
@@ -706,7 +707,7 @@ test.describe("group dashboard", () => {
       organizerGroupPage.waitForResponse(
         (response) =>
           response.request().method() === "GET" &&
-          response.url().includes(`/dashboard/group/events/${ALPHA_EVENT_ONE_ID}/attendees`) &&
+          response.url().includes(`/dashboard/group/events/${TEST_EVENT_IDS.alpha.one}/attendees`) &&
           response.ok(),
       ),
       organizerGroupPage.locator('button[data-section="attendees"]').click(),
@@ -727,23 +728,21 @@ test.describe("group dashboard", () => {
           response.request().method() === "POST" &&
           response
             .url()
-            .includes(`/dashboard/group/events/${ALPHA_EVENT_ONE_ID}/attendees/${MEMBER2_USER_ID}/check-in`) &&
+            .includes(
+              `/dashboard/group/events/${TEST_EVENT_IDS.alpha.one}/attendees/${TEST_USER_IDS.member2}/check-in`,
+            ) &&
           response.ok(),
       ),
-      checkInToggle.evaluate((checkbox) => {
-        if (!(checkbox instanceof HTMLInputElement)) {
-          throw new Error("check-in toggle not found");
-        }
-
-        checkbox.checked = true;
-        checkbox.dispatchEvent(new Event("change", { bubbles: true }));
-      }),
+      attendeeRow.locator("label").click(),
     ]);
 
     await expect(checkInToggle).toBeChecked();
     await expect(checkInToggle).toBeDisabled();
 
-    await navigateToPath(member2Page, `/${TEST_COMMUNITY_NAME}/check-in/${ALPHA_EVENT_ONE_ID}`);
+    await navigateToPath(
+      member2Page,
+      `/${TEST_COMMUNITY_NAME}/check-in/${TEST_EVENT_IDS.alpha.one}`,
+    );
     await expect(member2Page.getByText("You're checked in")).toBeVisible();
 
     await navigateToEvent(
@@ -760,7 +759,7 @@ test.describe("group dashboard", () => {
       member2Page.waitForResponse(
         (response) =>
           response.request().method() === "DELETE" &&
-          response.url().includes(`/event/${ALPHA_EVENT_ONE_ID}/leave`) &&
+          response.url().includes(`/event/${TEST_EVENT_IDS.alpha.one}/leave`) &&
           response.ok(),
       ),
       member2Page.getByRole("button", { name: "Yes" }).click(),
@@ -783,7 +782,7 @@ test.describe("group dashboard", () => {
       organizerGroupPage.waitForResponse(
         (response) =>
           response.request().method() === "GET" &&
-          response.url().includes(`/dashboard/group/events/${ALPHA_EVENT_TWO_ID}/update`) &&
+          response.url().includes(`/dashboard/group/events/${TEST_EVENT_IDS.alpha.two}/update`) &&
           response.ok(),
       ),
       eventRow
@@ -795,7 +794,7 @@ test.describe("group dashboard", () => {
       organizerGroupPage.waitForResponse(
         (response) =>
           response.request().method() === "GET" &&
-          response.url().includes(`/dashboard/group/events/${ALPHA_EVENT_TWO_ID}/attendees`) &&
+          response.url().includes(`/dashboard/group/events/${TEST_EVENT_IDS.alpha.two}/attendees`) &&
           response.ok(),
       ),
       organizerGroupPage.locator('button[data-section="attendees"]').click(),
@@ -831,7 +830,7 @@ test.describe("group dashboard", () => {
       organizerGroupPage.waitForResponse(
         (response) =>
           response.request().method() === "GET" &&
-          response.url().includes(`/dashboard/group/events/${WAITLIST_EVENT_ID}/update`) &&
+          response.url().includes(`/dashboard/group/events/${TEST_EVENT_IDS.alpha.waitlistLab}/update`) &&
           response.ok(),
       ),
       eventRow
@@ -843,7 +842,9 @@ test.describe("group dashboard", () => {
       organizerGroupPage.waitForResponse(
         (response) =>
           response.request().method() === "GET" &&
-          response.url().includes(`/dashboard/group/events/${WAITLIST_EVENT_ID}/attendees`) &&
+          response
+            .url()
+            .includes(`/dashboard/group/events/${TEST_EVENT_IDS.alpha.waitlistLab}/attendees`) &&
           response.ok(),
       ),
       organizerGroupPage.locator('button[data-section="attendees"]').click(),
@@ -881,10 +882,10 @@ test.describe("group dashboard", () => {
     await expect(eventRow).toBeVisible();
 
     await Promise.all([
-      organizerGroupPage.waitForResponse(
-        (response) =>
-          response.request().method() === "GET" &&
-          response.url().includes(`/dashboard/group/events/${WAITLIST_EVENT_ID}/update`) &&
+        organizerGroupPage.waitForResponse(
+          (response) =>
+            response.request().method() === "GET" &&
+          response.url().includes(`/dashboard/group/events/${TEST_EVENT_IDS.alpha.waitlistLab}/update`) &&
           response.ok(),
       ),
       eventRow
@@ -893,10 +894,12 @@ test.describe("group dashboard", () => {
     ]);
 
     await Promise.all([
-      organizerGroupPage.waitForResponse(
-        (response) =>
-          response.request().method() === "GET" &&
-          response.url().includes(`/dashboard/group/events/${WAITLIST_EVENT_ID}/attendees`) &&
+        organizerGroupPage.waitForResponse(
+          (response) =>
+            response.request().method() === "GET" &&
+          response
+            .url()
+            .includes(`/dashboard/group/events/${TEST_EVENT_IDS.alpha.waitlistLab}/attendees`) &&
           response.ok(),
       ),
       organizerGroupPage.locator('button[data-section="attendees"]').click(),
@@ -920,7 +923,9 @@ test.describe("group dashboard", () => {
       organizerGroupPage.waitForResponse(
         (response) =>
           response.request().method() === "POST" &&
-          response.url().includes(`/dashboard/group/notifications/${WAITLIST_EVENT_ID}`) &&
+          response
+            .url()
+            .includes(`/dashboard/group/notifications/${TEST_EVENT_IDS.alpha.waitlistLab}`) &&
           response.ok(),
       ),
       modal.getByRole("button", { name: "Send email" }).click(),
@@ -946,7 +951,7 @@ test.describe("group dashboard", () => {
       organizerGroupPage.waitForResponse(
         (response) =>
           response.request().method() === "GET" &&
-          response.url().includes(`/dashboard/group/events/${WAITLIST_EVENT_ID}/update`) &&
+          response.url().includes(`/dashboard/group/events/${TEST_EVENT_IDS.alpha.waitlistLab}/update`) &&
           response.ok(),
       ),
       eventRow
@@ -958,7 +963,9 @@ test.describe("group dashboard", () => {
       organizerGroupPage.waitForResponse(
         (response) =>
           response.request().method() === "GET" &&
-          response.url().includes(`/dashboard/group/events/${WAITLIST_EVENT_ID}/attendees`) &&
+          response
+            .url()
+            .includes(`/dashboard/group/events/${TEST_EVENT_IDS.alpha.waitlistLab}/attendees`) &&
           response.ok(),
       ),
       organizerGroupPage.locator('button[data-section="attendees"]').click(),
@@ -982,11 +989,11 @@ test.describe("group dashboard", () => {
     await expect(modal.locator("#event-qr-code-start")).not.toHaveText("");
     await expect(modal.locator("#event-qr-code-link")).toHaveAttribute(
       "href",
-      buildE2eUrl(`/${TEST_COMMUNITY_NAME}/check-in/${WAITLIST_EVENT_ID}`),
+      buildE2eUrl(`/${TEST_COMMUNITY_NAME}/check-in/${TEST_EVENT_IDS.alpha.waitlistLab}`),
     );
     await expect(modal.locator("#event-qr-code-image")).toHaveAttribute(
       "src",
-      `/dashboard/group/check-in/${WAITLIST_EVENT_ID}/qr-code`,
+      `/dashboard/group/check-in/${TEST_EVENT_IDS.alpha.waitlistLab}/qr-code`,
     );
     await expect(modal.locator("#print-event-qr-code")).toBeEnabled();
 
@@ -1018,13 +1025,7 @@ test.describe("group dashboard", () => {
     await organizerGroupPage
       .locator('markdown-editor#description .CodeMirror textarea')
       .fill("A dashboard event created and removed by the e2e suite.");
-    await organizerGroupPage
-      .locator('timezone-selector[name="timezone"]')
-      .evaluate((selector) => {
-        const timezoneSelector = selector as HTMLElement & { value?: string };
-        timezoneSelector.value = "UTC";
-        timezoneSelector.dispatchEvent(new Event("change", { bubbles: true }));
-      });
+    await selectTimezone(organizerGroupPage, "UTC");
     await organizerGroupPage.locator('button[data-section="date-venue"]').click();
     await expect(organizerGroupPage.locator("#starts_at")).toBeVisible();
     await organizerGroupPage.locator("#starts_at").fill("2030-05-10T10:00");
@@ -1096,12 +1097,14 @@ test.describe("group dashboard", () => {
 
       await Promise.all([
         organizerGroupPage.waitForResponse(
-          (response) =>
-            response.request().method() === "GET" &&
-            response.url().includes(`/dashboard/group/events/${CFS_EVENT_ID}/update`) &&
-            response.ok(),
-        ),
-        eventRow.locator(`td button[hx-get="/dashboard/group/events/${CFS_EVENT_ID}/update"]`).click(),
+        (response) =>
+          response.request().method() === "GET" &&
+          response.url().includes(`/dashboard/group/events/${TEST_EVENT_IDS.alpha.cfsSummit}/update`) &&
+          response.ok(),
+      ),
+        eventRow
+          .locator(`td button[hx-get="/dashboard/group/events/${TEST_EVENT_IDS.alpha.cfsSummit}/update"]`)
+          .click(),
       ]);
     };
 
@@ -1144,65 +1147,17 @@ test.describe("group dashboard", () => {
         /hidden/,
       );
 
-      const serializedBody = await organizerGroupPage.evaluate(() => {
-        const excludedNames = new Set([
-          "toggle_registration_required",
-          "toggle_waitlist_enabled",
-          "toggle_meeting_requested",
-          "toggle_cfs_enabled",
-          "toggle_event_reminder_enabled",
-        ]);
-        const formSelectors = [
-          "#details-form",
-          "#cfs-form",
-          "#date-venue-form",
-          "#sessions-form",
-          "#hosts-sponsors-form",
-        ];
-        const params = new URLSearchParams();
-
-        for (const selector of formSelectors) {
-          const form = document.querySelector<HTMLFormElement>(selector);
-          if (!form) {
-            continue;
-          }
-
-          const formData = new FormData(form);
-          for (const [key, value] of formData.entries()) {
-            if (excludedNames.has(key)) {
-              continue;
-            }
-
-            const stringValue = String(value);
-            if (stringValue === "") {
-              continue;
-            }
-
-            if (
-              /^(starts_at|ends_at|cfs_starts_at|cfs_ends_at)$/.test(key) ||
-              /^sessions\[\d+\]\[(starts_at|ends_at)\]$/.test(key)
-            ) {
-              params.append(key, `${stringValue}:00`);
-              continue;
-            }
-
-            params.append(key, stringValue);
-          }
-        }
-
-        return params.toString();
-      });
-
-      const response = await organizerGroupPage.request.put(
-        `/dashboard/group/events/${CFS_EVENT_ID}/update`,
-        {
-          data: serializedBody,
-          headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
-          },
-        },
-      );
-      expect(response.ok()).toBeTruthy();
+      await Promise.all([
+        organizerGroupPage.waitForResponse(
+          (response) =>
+            response.request().method() === "PUT" &&
+            response
+              .url()
+              .includes(`/dashboard/group/events/${TEST_EVENT_IDS.alpha.cfsSummit}/update`) &&
+            response.ok(),
+        ),
+        organizerGroupPage.locator("#update-event-button").click(),
+      ]);
     };
 
     const originalValues = await readEventValues();
@@ -1269,10 +1224,12 @@ test.describe("group dashboard", () => {
       organizerGroupPage.waitForResponse(
         (response) =>
           response.request().method() === "GET" &&
-          response.url().includes(`/dashboard/group/events/${ALPHA_EVENT_ONE_ID}/update`) &&
+          response.url().includes(`/dashboard/group/events/${TEST_EVENT_IDS.alpha.one}/update`) &&
           response.ok(),
       ),
-      eventRow.locator(`td button[hx-get="/dashboard/group/events/${ALPHA_EVENT_ONE_ID}/update"]`).click(),
+      eventRow
+        .locator(`td button[hx-get="/dashboard/group/events/${TEST_EVENT_IDS.alpha.one}/update"]`)
+        .click(),
     ]);
 
     await organizerGroupPage.locator('button[data-section="date-venue"]').click();
@@ -1319,41 +1276,25 @@ test.describe("group dashboard", () => {
     };
 
     const submitSettings = async ({
-      categoryId,
-      description,
       name,
-      regionId,
       websiteUrl,
     }: {
-      categoryId: string;
-      description: string;
       name: string;
-      regionId: string;
       websiteUrl: string;
     }) => {
-      const formData: Record<string, string> = {
-        category_id: categoryId,
-        description,
-        name,
-      };
-
-      if (regionId !== "") {
-        formData.region_id = regionId;
-      }
-
-      if (websiteUrl !== "") {
-        formData.website_url = websiteUrl;
-      }
-
-      const response = await organizerGroupPage.request.put(
-        "/dashboard/group/settings/update",
-        {
-          form: formData,
-        },
-      );
-      expect(response.ok()).toBeTruthy();
-
       await navigateToPath(organizerGroupPage, settingsPath);
+      await organizerGroupPage.locator("#name").fill(name);
+      await organizerGroupPage.locator("#website_url").fill(websiteUrl);
+
+      await Promise.all([
+        organizerGroupPage.waitForResponse(
+          (response) =>
+            response.request().method() === "PUT" &&
+            response.url().includes("/dashboard/group/settings/update") &&
+            response.ok(),
+        ),
+        organizerGroupPage.getByRole("button", { name: "Update Group" }).click(),
+      ]);
     };
 
     const originalFormValues = await readSettingsFormValues();
@@ -1365,10 +1306,7 @@ test.describe("group dashboard", () => {
     const updatedWebsiteUrl = "https://group-e2e.example.com";
 
     await submitSettings({
-      categoryId: originalFormValues.categoryId,
-      description: originalFormValues.description,
       name: updatedName,
-      regionId: originalFormValues.regionId,
       websiteUrl: updatedWebsiteUrl,
     });
 
@@ -1448,7 +1386,9 @@ test.describe("group dashboard", () => {
     await expect(groupSearchInput).toBeVisible();
     await groupSearchInput.fill("Alpha");
 
-    const groupOption = organizerGroupPage.locator(`#group-option-${ALPHA_GROUP_ID}`);
+    const groupOption = organizerGroupPage.locator(
+      `#group-option-${TEST_GROUP_IDS.community1.alpha}`,
+    );
     await expect(groupOption).toBeVisible();
     await expect(groupOption).toBeDisabled();
 
@@ -1472,11 +1412,13 @@ test.describe("group dashboard", () => {
     await expect(eventRow).toBeVisible();
     await expect(eventRow).toContainText("Published");
 
-    const actionsButton = eventRow.locator(`.btn-actions[data-event-id="${ALPHA_EVENT_ONE_ID}"]`);
+    const actionsButton = eventRow.locator(
+      `.btn-actions[data-event-id="${TEST_EVENT_IDS.alpha.one}"]`,
+    );
     await actionsButton.click();
 
     const unpublishButton = organizerGroupPage.locator(
-      `#unpublish-event-${ALPHA_EVENT_ONE_ID}`,
+      `#unpublish-event-${TEST_EVENT_IDS.alpha.one}`,
     );
     await expect(unpublishButton).toBeVisible();
 
@@ -1484,7 +1426,7 @@ test.describe("group dashboard", () => {
       organizerGroupPage.waitForResponse(
         (response) =>
           response.request().method() === "PUT" &&
-          response.url().includes(`/dashboard/group/events/${ALPHA_EVENT_ONE_ID}/unpublish`) &&
+          response.url().includes(`/dashboard/group/events/${TEST_EVENT_IDS.alpha.one}/unpublish`) &&
           response.ok(),
       ),
       unpublishButton.click(),
@@ -1493,10 +1435,12 @@ test.describe("group dashboard", () => {
 
     await expect(eventRow).toContainText("Draft");
 
-    await eventRow.locator(`.btn-actions[data-event-id="${ALPHA_EVENT_ONE_ID}"]`).click();
+    await eventRow
+      .locator(`.btn-actions[data-event-id="${TEST_EVENT_IDS.alpha.one}"]`)
+      .click();
 
     const publishButton = organizerGroupPage.locator(
-      `#publish-event-${ALPHA_EVENT_ONE_ID}`,
+      `#publish-event-${TEST_EVENT_IDS.alpha.one}`,
     );
     await expect(publishButton).toBeVisible();
 
@@ -1504,7 +1448,7 @@ test.describe("group dashboard", () => {
       organizerGroupPage.waitForResponse(
         (response) =>
           response.request().method() === "PUT" &&
-          response.url().includes(`/dashboard/group/events/${ALPHA_EVENT_ONE_ID}/publish`) &&
+          response.url().includes(`/dashboard/group/events/${TEST_EVENT_IDS.alpha.one}/publish`) &&
           response.ok(),
       ),
       publishButton.click(),

@@ -3,40 +3,22 @@ import type { Page } from "@playwright/test";
 import { expect, test } from "../../fixtures";
 
 import {
-  buildE2eUrl,
   TEST_COMMUNITY_NAME,
+  TEST_EVENT_IDS,
   TEST_EVENT_NAMES,
   TEST_EVENT_SLUGS,
   TEST_GROUP_SLUGS,
+  TEST_USER_IDS,
+  getAttendButton,
+  getLeaveButton,
   navigateToEvent,
   navigateToPath,
+  waitForAttendanceState,
 } from "../../utils";
-
-const eventId = "55555555-5555-5555-5555-555555555501";
-const member2Id = "77777777-7777-7777-7777-777777777706";
-
-/** Returns the public attendance container for the current event page. */
-const getAttendanceContainer = (page: Page) => page.locator("[data-attendance-container]").first();
-
-/** Returns the attend button within the public attendance controls. */
-const getAttendButton = (page: Page) =>
-  getAttendanceContainer(page).locator('[data-attendance-role="attend-btn"]');
-
-/** Returns the cancel attendance button within the public attendance controls. */
-const getLeaveButton = (page: Page) =>
-  getAttendanceContainer(page).locator('[data-attendance-role="leave-btn"]');
-
-/** Waits until the attendance widget resolves to either attend or cancel state. */
-const waitForAttendanceState = async (page: Page) => {
-  await Promise.race([
-    getAttendButton(page).waitFor({ state: "visible" }),
-    getLeaveButton(page).waitFor({ state: "visible" }),
-  ]);
-};
 
 /** Navigates to the public attendee check-in page. */
 const navigateToCheckInPage = async (page: Page) => {
-  await navigateToPath(page, `/${TEST_COMMUNITY_NAME}/check-in/${eventId}`);
+  await navigateToPath(page, `/${TEST_COMMUNITY_NAME}/check-in/${TEST_EVENT_IDS.alpha.one}`);
 };
 
 /** Registers the current user as an attendee for the test event. */
@@ -48,7 +30,7 @@ const attendEvent = async (page: Page) => {
     page.waitForResponse(
       (response) =>
         response.request().method() === "POST" &&
-        response.url().includes(`/event/${eventId}/attend`) &&
+        response.url().includes(`/event/${TEST_EVENT_IDS.alpha.one}/attend`) &&
         response.ok(),
     ),
     attendButton.click(),
@@ -70,7 +52,7 @@ const leaveEvent = async (page: Page) => {
     page.waitForResponse(
       (response) =>
         response.request().method() === "DELETE" &&
-        response.url().includes(`/event/${eventId}/leave`) &&
+        response.url().includes(`/event/${TEST_EVENT_IDS.alpha.one}/leave`) &&
         response.ok(),
     ),
     confirmButton.click(),
@@ -106,10 +88,59 @@ test.describe("event check-in", () => {
     await navigateToCheckInPage(member2Page);
     await expect(member2Page.getByText("Check-in opens closer to the event")).toBeVisible();
 
-    const checkInResponse = await organizerGroupPage.request.post(
-      buildE2eUrl(`/dashboard/group/events/${eventId}/attendees/${member2Id}/check-in`),
-    );
-    expect(checkInResponse.ok()).toBeTruthy();
+    await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
+
+    const eventRow = organizerGroupPage.locator("tr", {
+      hasText: TEST_EVENT_NAMES.alpha[0],
+    });
+    await expect(eventRow).toBeVisible();
+
+    await Promise.all([
+      organizerGroupPage.waitForResponse(
+        (response) =>
+          response.request().method() === "GET" &&
+          response.url().includes(`/dashboard/group/events/${TEST_EVENT_IDS.alpha.one}/update`) &&
+          response.ok(),
+      ),
+      eventRow
+        .locator(`td button[aria-label="Edit event: ${TEST_EVENT_NAMES.alpha[0]}"]`)
+        .click(),
+    ]);
+
+    await Promise.all([
+      organizerGroupPage.waitForResponse(
+        (response) =>
+          response.request().method() === "GET" &&
+          response.url().includes(`/dashboard/group/events/${TEST_EVENT_IDS.alpha.one}/attendees`) &&
+          response.ok(),
+      ),
+      organizerGroupPage.locator('button[data-section="attendees"]').click(),
+    ]);
+
+    const attendeeRow = organizerGroupPage.locator("#attendees-content").locator("tr", {
+      hasText: "E2E Member Two",
+    });
+    const checkInToggle = attendeeRow.locator(".check-in-toggle");
+
+    await expect(attendeeRow).toBeVisible();
+    await expect(checkInToggle).toBeEnabled();
+
+    await Promise.all([
+      organizerGroupPage.waitForResponse(
+        (response) =>
+          response.request().method() === "POST" &&
+          response
+            .url()
+            .includes(
+              `/dashboard/group/events/${TEST_EVENT_IDS.alpha.one}/attendees/${TEST_USER_IDS.member2}/check-in`,
+            ) &&
+          response.ok(),
+      ),
+      attendeeRow.locator("label").click(),
+    ]);
+
+    await expect(checkInToggle).toBeChecked();
+    await expect(checkInToggle).toBeDisabled();
 
     await navigateToCheckInPage(member2Page);
     await expect(member2Page.getByText("You're checked in")).toBeVisible();

@@ -1,13 +1,11 @@
 import { expect, test } from "../fixtures";
 
 import {
+  TEST_GROUP_IDS,
+  TEST_GROUP_SLUGS,
+  TEST_USER_IDS,
   navigateToPath,
 } from "../utils";
-
-const BETA_GROUP_ID = "44444444-4444-4444-4444-444444444442";
-const GAMMA_GROUP_SLUG = "test-group-gamma";
-const PENDING2_USER_ID = "77777777-7777-7777-7777-777777777708";
-const COMMUNITY_GROUPS_MANAGER_USER_ID = "77777777-7777-7777-7777-777777777709";
 
 const taxonomyCases = [
   {
@@ -32,6 +30,37 @@ const taxonomyCases = [
     unusedDeleteId: "delete-event-category-33333333-3333-3333-3333-333333333333",
   },
 ] as const;
+
+const ensureCommunityGroupsManagerRole = async (role: string, page: Parameters<typeof navigateToPath>[0]) => {
+  const teamTabPath = "/dashboard/community?tab=team";
+
+  await navigateToPath(page, teamTabPath);
+
+  const dashboardContent = page.locator("#dashboard-content");
+  const groupsManagerRow = dashboardContent.locator("tr", {
+    hasText: "E2E Groups Manager One",
+  });
+  const currentRoleSelect = groupsManagerRow.locator('select[name="role"]');
+
+  await expect(groupsManagerRow).toBeVisible();
+
+  if ((await currentRoleSelect.inputValue()) === role) {
+    return;
+  }
+
+  await Promise.all([
+    page.waitForResponse(
+      (response) =>
+        response.request().method() === "PUT" &&
+        response.url().includes("/dashboard/community/team/") &&
+        response.url().endsWith("/role") &&
+        response.ok(),
+    ),
+    currentRoleSelect.selectOption(role),
+  ]);
+
+  await expect(currentRoleSelect).toHaveValue(role);
+};
 
 test.describe("community dashboard", () => {
   test("community team page shows seeded roles and final-admin protection", async ({
@@ -117,7 +146,7 @@ test.describe("community dashboard", () => {
     await expect(pendingRow).toContainText("Invitation sent");
     await expect(pendingRow.locator('select[name="role"]')).toHaveValue("viewer");
 
-    const removeButton = pendingRow.locator(`#remove-member-${PENDING2_USER_ID}`);
+    const removeButton = pendingRow.locator(`#remove-member-${TEST_USER_IDS.pending2}`);
     await removeButton.click();
     await expect(adminCommunityPage.locator(".swal2-popup")).toContainText(
       "Are you sure you would like to delete this team member?",
@@ -127,7 +156,7 @@ test.describe("community dashboard", () => {
       adminCommunityPage.waitForResponse(
         (response) =>
           response.request().method() === "DELETE" &&
-          response.url().includes(`/dashboard/community/team/${PENDING2_USER_ID}/delete`) &&
+          response.url().includes(`/dashboard/community/team/${TEST_USER_IDS.pending2}/delete`) &&
           response.ok(),
       ),
       adminCommunityPage.getByRole("button", { name: "Yes" }).click(),
@@ -144,39 +173,37 @@ test.describe("community dashboard", () => {
     const SEEDED_ROLE = "groups-manager";
     const teamTabPath = "/dashboard/community?tab=team";
 
-    await navigateToPath(adminCommunityPage, teamTabPath);
+    await ensureCommunityGroupsManagerRole(SEEDED_ROLE, adminCommunityPage);
 
-    const dashboardContent = adminCommunityPage.locator("#dashboard-content");
-    const roleFormSelector =
-      `form[hx-put="/dashboard/community/team/${COMMUNITY_GROUPS_MANAGER_USER_ID}/role"]`;
-    const updateRole = async (role: string) => {
-      const response = await adminCommunityPage.request.put(
-        `/dashboard/community/team/${COMMUNITY_GROUPS_MANAGER_USER_ID}/role`,
-        {
-          form: { role },
-        },
-      );
-      expect(response.ok()).toBeTruthy();
+    try {
       await navigateToPath(adminCommunityPage, teamTabPath);
-    };
-    const currentRoleSelect = () =>
-      dashboardContent.locator(roleFormSelector).locator('select[name="role"]');
 
-    await expect(
-      dashboardContent.getByText("Community Team", { exact: true }),
-    ).toBeVisible();
-    const currentRole = await currentRoleSelect().inputValue();
-    if (currentRole !== SEEDED_ROLE) {
-      await updateRole(SEEDED_ROLE);
+      const dashboardContent = adminCommunityPage.locator("#dashboard-content");
+      const groupsManagerRow = dashboardContent.locator("tr", {
+        hasText: "E2E Groups Manager One",
+      });
+      const currentRoleSelect = groupsManagerRow.locator('select[name="role"]');
+
+      await expect(
+        dashboardContent.getByText("Community Team", { exact: true }),
+      ).toBeVisible();
+      await expect(currentRoleSelect).toHaveValue(SEEDED_ROLE);
+
+      await Promise.all([
+        adminCommunityPage.waitForResponse(
+          (response) =>
+            response.request().method() === "PUT" &&
+            response.url().includes("/dashboard/community/team/") &&
+            response.url().endsWith("/role") &&
+            response.ok(),
+        ),
+        currentRoleSelect.selectOption("viewer"),
+      ]);
+
+      await expect(currentRoleSelect).toHaveValue("viewer");
+    } finally {
+      await ensureCommunityGroupsManagerRole(SEEDED_ROLE, adminCommunityPage);
     }
-
-    await expect(currentRoleSelect()).toHaveValue(SEEDED_ROLE);
-
-    await updateRole("viewer");
-    await expect(currentRoleSelect()).toHaveValue("viewer");
-
-    await updateRole(SEEDED_ROLE);
-    await expect(currentRoleSelect()).toHaveValue(SEEDED_ROLE);
   });
 
   test("admin can deactivate and reactivate a group from the list", async ({
@@ -195,20 +222,24 @@ test.describe("community dashboard", () => {
 
     const openActionsMenu = async () => {
       await dashboardContent
-        .locator(`.btn-group-actions[data-group-id="${BETA_GROUP_ID}"]`)
+        .locator(`.btn-group-actions[data-group-id="${TEST_GROUP_IDS.community1.beta}"]`)
         .click();
     };
 
     await openActionsMenu();
 
-    const deactivateButton = dashboardContent.locator(`#deactivate-group-${BETA_GROUP_ID}`);
+    const deactivateButton = dashboardContent.locator(
+      `#deactivate-group-${TEST_GROUP_IDS.community1.beta}`,
+    );
     await expect(deactivateButton).toBeVisible();
 
     await Promise.all([
       adminCommunityPage.waitForResponse(
         (response) =>
           response.request().method() === "PUT" &&
-          response.url().includes(`/dashboard/community/groups/${BETA_GROUP_ID}/deactivate`) &&
+          response
+            .url()
+            .includes(`/dashboard/community/groups/${TEST_GROUP_IDS.community1.beta}/deactivate`) &&
           response.ok(),
       ),
       deactivateButton.click(),
@@ -225,14 +256,18 @@ test.describe("community dashboard", () => {
 
     await openActionsMenu();
 
-    const activateButton = dashboardContent.locator(`#activate-group-${BETA_GROUP_ID}`);
+    const activateButton = dashboardContent.locator(
+      `#activate-group-${TEST_GROUP_IDS.community1.beta}`,
+    );
     await expect(activateButton).toBeVisible();
 
     await Promise.all([
       adminCommunityPage.waitForResponse(
         (response) =>
           response.request().method() === "PUT" &&
-          response.url().includes(`/dashboard/community/groups/${BETA_GROUP_ID}/activate`) &&
+          response
+            .url()
+            .includes(`/dashboard/community/groups/${TEST_GROUP_IDS.community1.beta}/activate`) &&
           response.ok(),
       ),
       activateButton.click(),
@@ -384,7 +419,7 @@ test.describe("community dashboard", () => {
     );
     await expect(adminCommunityPage.locator("#dashboard-content")).toHaveAttribute(
       "data-group-slug",
-      GAMMA_GROUP_SLUG,
+      TEST_GROUP_SLUGS.community1.gamma,
     );
   });
 
@@ -420,10 +455,16 @@ test.describe("community dashboard", () => {
       communityViewerPage.waitForResponse(
         (response) =>
           response.request().method() === "GET" &&
-          response.url().includes(`/dashboard/community/groups/${BETA_GROUP_ID}/update`) &&
+          response
+            .url()
+            .includes(`/dashboard/community/groups/${TEST_GROUP_IDS.community1.beta}/update`) &&
           response.ok(),
       ),
-      betaGroupRow.locator(`button[hx-get="/dashboard/community/groups/${BETA_GROUP_ID}/update"]`).click(),
+      betaGroupRow
+        .locator(
+          `button[hx-get="/dashboard/community/groups/${TEST_GROUP_IDS.community1.beta}/update"]`,
+        )
+        .click(),
     ]);
 
     await expect(dashboardContent.getByText("Group Details", { exact: true })).toBeVisible();
@@ -590,56 +631,47 @@ test.describe("community dashboard", () => {
   test("admin can update and restore community settings", async ({
     adminCommunityPage,
   }) => {
-    const originalDisplayName = "E2E Test Community";
-    const originalDescription = "E2E test community description";
-    const originalLogoUrl = "https://example.com/logo.png";
-    const originalBannerUrl = "https://example.com/banner.png";
-    const originalBannerMobileUrl = "https://example.com/banner-mobile.png";
-    const originalWebsite = "";
     const updatedDisplayName = `E2E Test Community ${Date.now()}`;
-    const updatedWebsite = "https://community-e2e.example.com";
     const settingsPath = "/dashboard/community?tab=settings";
 
-    const submitSettings = async (displayName: string, websiteUrl: string) => {
+    const readSettingsFormValues = async () => {
       await navigateToPath(adminCommunityPage, settingsPath);
 
       const displayNameInput = adminCommunityPage.getByLabel("Display Name");
       const websiteInput = adminCommunityPage.getByLabel("Website");
-      const settingsForm = adminCommunityPage.locator("#settings-form");
 
       await expect(displayNameInput).toBeVisible();
-      await displayNameInput.fill(displayName);
-      await websiteInput.fill(websiteUrl);
 
-      await expect(settingsForm).toBeVisible();
-
-      const formData: Record<string, string> = {
-        banner_mobile_url: originalBannerMobileUrl,
-        banner_url: originalBannerUrl,
-        description: originalDescription,
-        display_name: displayName,
-        logo_url: originalLogoUrl,
+      return {
+        displayName: await displayNameInput.inputValue(),
+        websiteUrl: await websiteInput.inputValue(),
       };
+    };
 
-      if (websiteUrl !== "") {
-        formData.website_url = websiteUrl;
-      }
-
-      const response = await adminCommunityPage.request.put(
-        "/dashboard/community/settings/update",
-        {
-          form: formData,
-        },
-      );
-      expect(response.ok()).toBeTruthy();
-
+    const submitSettings = async (displayName: string, websiteUrl: string) => {
       await navigateToPath(adminCommunityPage, settingsPath);
+
+      await adminCommunityPage.getByLabel("Display Name").fill(displayName);
+      await adminCommunityPage.getByLabel("Website").fill(websiteUrl);
+
+      await Promise.all([
+        adminCommunityPage.waitForResponse(
+          (response) =>
+            response.request().method() === "PUT" &&
+            response.url().includes("/dashboard/community/settings/update") &&
+            response.ok(),
+        ),
+        adminCommunityPage.getByRole("button", { name: "Update Settings" }).click(),
+      ]);
+
       await expect(adminCommunityPage.getByLabel("Display Name")).toHaveValue(displayName);
       await expect(adminCommunityPage.getByLabel("Website")).toHaveValue(websiteUrl);
     };
 
-    await submitSettings(updatedDisplayName, updatedWebsite);
-    await submitSettings(originalDisplayName, originalWebsite);
+    const originalValues = await readSettingsFormValues();
+
+    await submitSettings(updatedDisplayName, "https://community-e2e.example.com");
+    await submitSettings(originalValues.displayName, originalValues.websiteUrl);
   });
 
   test("viewer sees read-only controls on community settings", async ({

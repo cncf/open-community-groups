@@ -30,6 +30,8 @@ db_server_host_opt := if db_host =~ '^/' { "-k " + db_host } else { "-h " + db_h
 source_dir := justfile_directory()
 e2e_tern_conf := env("OCG_E2E_TERN_CONF", "/tmp/ocg-tern-e2e.conf")
 e2e_server_config := env("OCG_E2E_SERVER_CONFIG", "/tmp/ocg-e2e.yml")
+e2e_server_addr := env("OCG_E2E_SERVER_ADDR", "127.0.0.1:9000")
+e2e_server_base_url := env("OCG_E2E_SERVER_BASE_URL", "http://localhost:9000")
 e2e_login_github := env("OCG_E2E_GITHUB_ENABLED", "true")
 e2e_login_linuxfoundation := env("OCG_E2E_LINUXFOUNDATION_ENABLED", "false")
 e2e_github_auth_url := env("OCG_E2E_GITHUB_AUTH_URL", "https://example.test/oauth/authorize")
@@ -185,8 +187,8 @@ e2e-write-server-config:
     "images:" \
     "  provider: db" \
     "server:" \
-    "  addr: 127.0.0.1:9000" \
-    "  base_url: http://localhost:9000" \
+    "  addr: {{ e2e_server_addr }}" \
+    "  base_url: {{ e2e_server_base_url }}" \
     "  cookie:" \
     "    secure: false" \
     "  disable_referer_checks: false" \

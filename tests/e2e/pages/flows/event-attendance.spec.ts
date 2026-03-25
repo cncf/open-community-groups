@@ -4,32 +4,15 @@ import { expect, test } from "../../fixtures";
 
 import {
   TEST_COMMUNITY_NAME,
+  TEST_EVENT_IDS,
   TEST_EVENT_NAMES,
   TEST_EVENT_SLUGS,
   TEST_GROUP_SLUGS,
+  getAttendButton,
+  getLeaveButton,
   navigateToEvent,
+  waitForAttendanceState,
 } from "../../utils";
-
-const eventId = "55555555-5555-5555-5555-555555555501";
-
-/** Returns the public attendance container for the current event page. */
-const getAttendanceContainer = (page: Page) => page.locator("[data-attendance-container]").first();
-
-/** Returns the attend button within the public attendance controls. */
-const getAttendButton = (page: Page) =>
-  getAttendanceContainer(page).locator('[data-attendance-role="attend-btn"]');
-
-/** Returns the cancel attendance button within the public attendance controls. */
-const getLeaveButton = (page: Page) =>
-  getAttendanceContainer(page).locator('[data-attendance-role="leave-btn"]');
-
-/** Waits until the attendance widget resolves to either attend or cancel state. */
-const waitForAttendanceState = async (page: Page) => {
-  await Promise.race([
-    getAttendButton(page).waitFor({ state: "visible" }),
-    getLeaveButton(page).waitFor({ state: "visible" }),
-  ]);
-};
 
 /** Cancels attendance when the current user is already registered. */
 const cancelAttendance = async (page: Page) => {
@@ -44,7 +27,7 @@ const cancelAttendance = async (page: Page) => {
     page.waitForResponse(
       (response) =>
         response.request().method() === "DELETE" &&
-        response.url().includes(`/event/${eventId}/leave`) &&
+        response.url().includes(`/event/${TEST_EVENT_IDS.alpha.one}/leave`) &&
         response.ok(),
     ),
     confirmButton.click(),
@@ -81,7 +64,7 @@ test.describe("event attendance", () => {
       member2Page.waitForResponse(
         (response) =>
           response.request().method() === "POST" &&
-          response.url().includes(`/event/${eventId}/attend`) &&
+          response.url().includes(`/event/${TEST_EVENT_IDS.alpha.one}/attend`) &&
           response.ok(),
       ),
       attendButton.click(),

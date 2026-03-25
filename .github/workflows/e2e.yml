@@ -42,6 +42,11 @@ jobs:
           --health-timeout 5s
           --health-retries 5
     env:
+      OCG_DB_HOST: 127.0.0.1
+      OCG_DB_PASSWORD: postgres
+      OCG_E2E_GITHUB_REDIRECT_URI: http://127.0.0.1:9000/log-in/oauth2/github/callback
+      OCG_E2E_SERVER_BASE_URL: http://127.0.0.1:9000
+      OCG_PG_BIN: /usr/bin
       PGPASSWORD: postgres
 
     steps:
@@ -73,6 +78,9 @@ jobs:
       - name: Enable Corepack
         run: corepack enable
 
+      - name: Install just
+        run: cargo install just --locked
+
       - name: Install yarn dependencies
         run: yarn install --frozen-lockfile
 
@@ -91,75 +99,11 @@ jobs:
           tar -xzf tern.tar.gz
           sudo mv tern /usr/local/bin/tern
 
-      - name: Write e2e tern config
-        run: |
-          cat <<'EOF' > /tmp/ocg-tern-e2e.conf
-          [database]
-          host = 127.0.0.1
-          port = 5432
-          database = ocg_e2e
-          user = postgres
-          password = postgres
-          EOF
-
-      - name: Enable database extensions
-        run: |
-          psql -h 127.0.0.1 -U postgres -d ocg_e2e -c "CREATE EXTENSION IF NOT EXISTS pgcrypto"
-          psql -h 127.0.0.1 -U postgres -d ocg_e2e -c "CREATE EXTENSION IF NOT EXISTS postgis"
-
-      - name: Run database migrations
-        working-directory: database/migrations
-        env:
-          TERN_CONF: /tmp/ocg-tern-e2e.conf
-        run: ./migrate.sh
-
-      - name: Load e2e seed data
-        run: psql -h 127.0.0.1 -U postgres -d ocg_e2e -f database/tests/data/e2e.sql
-
-      - name: Normalize e2e user passwords
-        run: psql -h 127.0.0.1 -U postgres -d ocg_e2e -c "update \"user\" set password = '\$argon2id\$v=19\$m=19456,t=2,p=1\$q55jlxUx8bffhFM3xN36ZA\$te6OiWkZ/q35lpSEAZbd/A3iJyCByxbive9F61sTp7g' where username like 'e2e-%'"
+      - name: Set up e2e database
+        run: just e2e-db-setup
 
       - name: Write e2e server config
-        run: |
-          cat <<'EOF' > /tmp/ocg-e2e.yml
-          db:
-            host: 127.0.0.1
-            port: 5432
-            dbname: ocg_e2e
-            user: postgres
-            password: "postgres"
-          email:
-            from_address: noreply@test.com
-            from_name: Test
-            smtp:
-              host: localhost
-              port: 1025
-              username: ""
-              password: ""
-          images:
-            provider: db
-          server:
-            addr: 127.0.0.1:9000
-            base_url: http://127.0.0.1:9000
-            cookie:
-              secure: false
-            disable_referer_checks: false
-            login:
-              email: true
-              github: true
-              linuxfoundation: false
-            oauth2:
-              github:
-                auth_url: https://example.test/oauth/authorize
-                client_id: e2e-client
-                client_secret: e2e-secret
-                redirect_uri: http://127.0.0.1:9000/log-in/oauth2/github/callback
-                scopes:
-                  - read:user
-                  - user:email
-                token_url: https://example.test/oauth/token
-            oidc: {}
-          EOF
+        run: just e2e-write-server-config
 
       - name: Build e2e server binary
         run: cargo build --bin ocg-server

@@ -4,33 +4,16 @@ import { expect, test } from "../../fixtures";
 
 import {
   TEST_COMMUNITY_NAME,
+  TEST_EVENT_IDS,
   TEST_GROUP_SLUGS,
+  getAttendButton,
+  getLeaveButton,
   navigateToEvent,
+  waitForAttendanceState,
 } from "../../utils";
 
-const WAITLIST_EVENT_ID = "55555555-5555-5555-5555-555555555521";
 const WAITLIST_EVENT_NAME = "Alpha Waitlist Lab";
 const WAITLIST_EVENT_SLUG = "alpha-waitlist-lab";
-
-/** Returns the public attendance container for the current event page. */
-const getAttendanceContainer = (page: Page) =>
-  page.locator("[data-attendance-container]").first();
-
-/** Returns the attend button within the public attendance controls. */
-const getAttendButton = (page: Page) =>
-  getAttendanceContainer(page).locator('[data-attendance-role="attend-btn"]');
-
-/** Returns the cancel/leave button within the public attendance controls. */
-const getLeaveButton = (page: Page) =>
-  getAttendanceContainer(page).locator('[data-attendance-role="leave-btn"]');
-
-/** Waits until the attendance widget resolves to either attend or leave state. */
-const waitForAttendanceState = async (page: Page) => {
-  await Promise.race([
-    getAttendButton(page).waitFor({ state: "visible" }),
-    getLeaveButton(page).waitFor({ state: "visible" }),
-  ]);
-};
 
 test.describe("event waitlist", () => {
   test("member can join and leave the waitlist from the public event page", async ({
@@ -55,7 +38,7 @@ test.describe("event waitlist", () => {
       member2Page.waitForResponse(
         (response) =>
           response.request().method() === "POST" &&
-          response.url().includes(`/event/${WAITLIST_EVENT_ID}/attend`) &&
+          response.url().includes(`/event/${TEST_EVENT_IDS.alpha.waitlistLab}/attend`) &&
           response.ok(),
       ),
       getAttendButton(member2Page).click(),
@@ -70,7 +53,7 @@ test.describe("event waitlist", () => {
       member2Page.waitForResponse(
         (response) =>
           response.request().method() === "DELETE" &&
-          response.url().includes(`/event/${WAITLIST_EVENT_ID}/leave`) &&
+          response.url().includes(`/event/${TEST_EVENT_IDS.alpha.waitlistLab}/leave`) &&
           response.ok(),
       ),
       member2Page.getByRole("button", { name: "Yes" }).click(),
@@ -96,7 +79,7 @@ test.describe("event waitlist", () => {
       member2Page.waitForResponse(
         (response) =>
           response.request().method() === "POST" &&
-          response.url().includes(`/event/${WAITLIST_EVENT_ID}/attend`) &&
+          response.url().includes(`/event/${TEST_EVENT_IDS.alpha.waitlistLab}/attend`) &&
           response.ok(),
       ),
       getAttendButton(member2Page).click(),
@@ -121,7 +104,7 @@ test.describe("event waitlist", () => {
       organizerGroupPage.waitForResponse(
         (response) =>
           response.request().method() === "DELETE" &&
-          response.url().includes(`/event/${WAITLIST_EVENT_ID}/leave`) &&
+          response.url().includes(`/event/${TEST_EVENT_IDS.alpha.waitlistLab}/leave`) &&
           response.ok(),
       ),
       organizerGroupPage.getByRole("button", { name: "Yes" }).click(),
@@ -144,7 +127,7 @@ test.describe("event waitlist", () => {
       member2Page.waitForResponse(
         (response) =>
           response.request().method() === "DELETE" &&
-          response.url().includes(`/event/${WAITLIST_EVENT_ID}/leave`) &&
+          response.url().includes(`/event/${TEST_EVENT_IDS.alpha.waitlistLab}/leave`) &&
           response.ok(),
       ),
       member2Page.getByRole("button", { name: "Yes" }).click(),
@@ -164,7 +147,7 @@ test.describe("event waitlist", () => {
       organizerGroupPage.waitForResponse(
         (response) =>
           response.request().method() === "POST" &&
-          response.url().includes(`/event/${WAITLIST_EVENT_ID}/attend`) &&
+          response.url().includes(`/event/${TEST_EVENT_IDS.alpha.waitlistLab}/attend`) &&
           response.ok(),
       ),
       getAttendButton(organizerGroupPage).click(),

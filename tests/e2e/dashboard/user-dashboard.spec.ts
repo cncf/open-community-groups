@@ -4,17 +4,14 @@ import { expect, test } from "../fixtures";
 
 import {
   buildE2eUrl,
-  TEST_EVENT_NAMES,
   TEST_COMMUNITY_IDS,
+  TEST_EVENT_NAMES,
   TEST_GROUP_IDS,
+  TEST_USER_IDS,
   navigateToPath,
   selectCommunityContext,
   selectGroupContext,
 } from "../utils";
-
-const MEMBER2_USER_ID = "77777777-7777-7777-7777-777777777706";
-const PENDING1_USER_ID = "77777777-7777-7777-7777-777777777707";
-const PENDING2_USER_ID = "77777777-7777-7777-7777-777777777708";
 
 type SessionProposalPayload = {
   co_speaker?: { user_id: string } | null;
@@ -196,11 +193,11 @@ test.describe("user dashboard", () => {
     adminCommunityPage,
     pending1Page,
   }) => {
-    await resetCommunityInvitation(adminCommunityPage, PENDING1_USER_ID, "viewer");
+    await resetCommunityInvitation(adminCommunityPage, TEST_USER_IDS.pending1, "viewer");
     await resetGroupInvitation(
       adminCommunityPage,
       TEST_GROUP_IDS.community1.beta,
-      PENDING1_USER_ID,
+      TEST_USER_IDS.pending1,
       "events-manager",
     );
 
@@ -414,7 +411,7 @@ test.describe("user dashboard", () => {
         await restoreCoSpeakerInvitation(
           member1Page,
           "Collaborative Roadmaps",
-          MEMBER2_USER_ID,
+          TEST_USER_IDS.member2,
         );
 
         await openUserDashboardPath(
@@ -492,11 +489,11 @@ test.describe("user dashboard", () => {
     adminCommunityPage,
     pending1Page,
   }) => {
-    await resetCommunityInvitation(adminCommunityPage, PENDING1_USER_ID, "viewer");
+    await resetCommunityInvitation(adminCommunityPage, TEST_USER_IDS.pending1, "viewer");
     await resetGroupInvitation(
       adminCommunityPage,
       TEST_GROUP_IDS.community1.beta,
-      PENDING1_USER_ID,
+      TEST_USER_IDS.pending1,
       "events-manager",
     );
 
@@ -550,11 +547,11 @@ test.describe("user dashboard", () => {
         dashboardContent.locator("tr", { hasText: "E2E Test Group Beta" }),
       ).toHaveCount(0);
     } finally {
-      await resetCommunityInvitation(adminCommunityPage, PENDING1_USER_ID, "viewer");
+      await resetCommunityInvitation(adminCommunityPage, TEST_USER_IDS.pending1, "viewer");
       await resetGroupInvitation(
         adminCommunityPage,
         TEST_GROUP_IDS.community1.beta,
-        PENDING1_USER_ID,
+        TEST_USER_IDS.pending1,
         "events-manager",
       );
 
@@ -575,7 +572,7 @@ test.describe("user dashboard", () => {
     await ensureGroupInvitation(
       organizerGroupPage,
       TEST_GROUP_IDS.community1.alpha,
-      PENDING2_USER_ID,
+      TEST_USER_IDS.pending2,
       "viewer",
     );
 
@@ -618,7 +615,7 @@ test.describe("user dashboard", () => {
       await ensureGroupInvitation(
         organizerGroupPage,
         TEST_GROUP_IDS.community1.alpha,
-        PENDING2_USER_ID,
+        TEST_USER_IDS.pending2,
         "viewer",
       );
     }

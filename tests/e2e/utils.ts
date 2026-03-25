@@ -68,6 +68,16 @@ export const TEST_GROUP_IDS = {
   },
 } as const;
 
+/** Event ids organized by seeded coverage area. */
+export const TEST_EVENT_IDS = {
+  alpha: {
+    one: "55555555-5555-5555-5555-555555555501",
+    two: "55555555-5555-5555-5555-555555555502",
+    cfsSummit: "55555555-5555-5555-5555-555555555519",
+    waitlistLab: "55555555-5555-5555-5555-555555555521",
+  },
+} as const;
+
 /** Event slugs organized by group. */
 export const TEST_EVENT_SLUGS = {
   alpha: ["alpha-event-1", "alpha-event-2", "alpha-event-3"],
@@ -77,6 +87,14 @@ export const TEST_EVENT_SLUGS = {
   epsilon: ["epsilon-event-1", "epsilon-event-2", "epsilon-event-3"],
   zeta: ["zeta-event-1", "zeta-event-2", "zeta-event-3"],
   alphaDashboard: ["alpha-cfs-summit", "alpha-past-roundup"],
+} as const;
+
+/** Pre-seeded user ids for state resets and dashboard assertions. */
+export const TEST_USER_IDS = {
+  communityGroupsManager1: "77777777-7777-7777-7777-777777777709",
+  member2: "77777777-7777-7777-7777-777777777706",
+  pending1: "77777777-7777-7777-7777-777777777707",
+  pending2: "77777777-7777-7777-7777-777777777708",
 } as const;
 
 /** Pre-seeded user credentials for e2e tests. */
@@ -184,6 +202,34 @@ export const getCommunityBanner = (
 };
 
 /**
+ * Selects the public attendance controls container.
+ */
+export const getAttendanceContainer = (page: Page) =>
+  page.locator("[data-attendance-container]").first();
+
+/**
+ * Selects the public attend button.
+ */
+export const getAttendButton = (page: Page) =>
+  getAttendanceContainer(page).locator('[data-attendance-role="attend-btn"]');
+
+/**
+ * Selects the public leave button.
+ */
+export const getLeaveButton = (page: Page) =>
+  getAttendanceContainer(page).locator('[data-attendance-role="leave-btn"]');
+
+/**
+ * Waits until public attendance controls resolve to a stable state.
+ */
+export const waitForAttendanceState = async (page: Page) => {
+  await Promise.race([
+    getAttendButton(page).waitFor({ state: "visible" }),
+    getLeaveButton(page).waitFor({ state: "visible" }),
+  ]);
+};
+
+/**
  * Selects an event detail card from its heading.
  */
 export const getEventInfoSection = (page: Page, heading: string) =>
@@ -277,6 +323,26 @@ export const navigateToEvent = async (
  */
 export const navigateToPath = async (page: Page, path: string) => {
   await page.goto(buildUrl(path));
+};
+
+/**
+ * Chooses a timezone from the custom timezone selector.
+ */
+export const selectTimezone = async (page: Page, timezone: string) => {
+  const timezoneSelector = page.locator('timezone-selector[name="timezone"]');
+  await timezoneSelector.locator("#timezone-selector-button").click();
+
+  const searchInput = timezoneSelector.locator("#timezone-search-input");
+  await expect(searchInput).toBeVisible();
+  await searchInput.fill(timezone);
+
+  const option = timezoneSelector.getByRole("option", { name: timezone, exact: true });
+  await expect(option).toBeVisible();
+  await option.click();
+
+  await expect(
+    timezoneSelector.locator('input[name="timezone"]'),
+  ).toHaveValue(timezone);
 };
 
 /**
