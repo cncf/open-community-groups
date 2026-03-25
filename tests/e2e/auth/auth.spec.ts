@@ -1,3 +1,5 @@
+import { execFileSync } from "node:child_process";
+
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
@@ -11,6 +13,67 @@ import {
 
 const USER_DASHBOARD_EVENTS_PATH = "/dashboard/user?tab=events";
 type EmailCredentials = Pick<AuthUser, "username" | "password">;
+
+/** Returns the configured psql executable path for E2E DB access. */
+const getPsqlPath = () => {
+  const pgBin = process.env.OCG_PG_BIN;
+
+  return pgBin ? `${pgBin}/psql` : "psql";
+};
+
+/** Reads the email verification code for a newly created user from the E2E DB. */
+const readEmailVerificationCode = (email: string) => {
+  const escapedEmail = email.replace(/'/g, "''");
+  const sql = `
+    select evc.email_verification_code_id
+    from email_verification_code evc
+    join "user" u on u.user_id = evc.user_id
+    where u.email = '${escapedEmail}'
+  `;
+
+  const output = execFileSync(
+    getPsqlPath(),
+    [
+      "-h",
+      process.env.OCG_DB_HOST || "localhost",
+      "-p",
+      process.env.OCG_DB_PORT || "5432",
+      "-U",
+      process.env.OCG_DB_USER || "postgres",
+      "-d",
+      process.env.OCG_DB_NAME_E2E || "ocg_e2e",
+      "-tA",
+      "-c",
+      sql,
+    ],
+    {
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        PGPASSWORD: process.env.OCG_DB_PASSWORD || "",
+      },
+    },
+  ).trim();
+
+  return output || null;
+};
+
+/** Waits until sign-up persistence creates an email verification code. */
+const waitForEmailVerificationCode = async (email: string) => {
+  const timeoutAt = Date.now() + 10_000;
+
+  while (Date.now() < timeoutAt) {
+    const code = readEmailVerificationCode(email);
+
+    if (code) {
+      return code;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+
+  throw new Error(`Timed out waiting for verification code for ${email}`);
+};
 
 /** Completes the sign-up form using email and password credentials. */
 const signUpWithEmail = async (page: Page, user: AuthUser) => {
@@ -50,6 +113,35 @@ test.describe("authentication", () => {
 
     await expect(page).toHaveURL(/\/log-in/);
     await expect(page.getByRole("button", { name: "Sign In" })).toBeVisible();
+  });
+
+  test("email sign up can verify and then log in", async ({ page }) => {
+    const user = buildAuthUser();
+
+    await signUpWithEmail(page, user);
+
+    const verificationCode = await waitForEmailVerificationCode(user.email);
+
+    await navigateToPath(page, `/verify-email/${verificationCode}`);
+    await expect(page).toHaveURL(/\/log-in/);
+    await expect(
+      page.getByText("Email verified successfully. You can now log in using your credentials."),
+    ).toBeVisible();
+
+    await navigateToPath(page, USER_DASHBOARD_EVENTS_PATH);
+
+    await expect(page).toHaveURL(/\/log-in\?next_url=/);
+
+    await Promise.all([
+      page.waitForURL((url) => url.pathname === "/dashboard/user"),
+      logInWithEmail(page, user),
+    ]);
+
+    await expect(page).toHaveURL(
+      (url) =>
+        url.pathname === "/dashboard/user" && url.searchParams.get("tab") === "events",
+    );
+    await expect(page.locator("#dashboard-content")).toBeVisible();
   });
 
   test("seeded user can log in and is redirected to the requested page", async ({
