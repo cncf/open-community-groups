@@ -1,5 +1,6 @@
 import { expect, test } from "../../fixtures";
 
+import { fillMarkdownEditor } from "../form-helpers";
 import { navigateToPath } from "../../utils";
 
 test.describe("group dashboard settings tab", () => {
@@ -30,14 +31,23 @@ test.describe("group dashboard settings tab", () => {
     };
 
     const submitSettings = async ({
+      categoryId,
+      description,
       name,
+      regionId,
       websiteUrl,
     }: {
+      categoryId: string;
+      description: string;
       name: string;
+      regionId: string;
       websiteUrl: string;
     }) => {
       await navigateToPath(organizerGroupPage, settingsPath);
+      await organizerGroupPage.locator("#category_id").selectOption(categoryId);
+      await organizerGroupPage.locator("#region_id").selectOption(regionId);
       await organizerGroupPage.locator("#name").fill(name);
+      await fillMarkdownEditor(organizerGroupPage, "description", description);
       await organizerGroupPage.locator("#website_url").fill(websiteUrl);
 
       await Promise.all([
@@ -52,24 +62,44 @@ test.describe("group dashboard settings tab", () => {
     };
 
     const originalFormValues = await readSettingsFormValues();
-    test.skip(
-      originalFormValues.description.trim() === "",
-      "Requires a seeded non-empty group description for a round-trip update.",
+    const updatedValues = {
+      ...originalFormValues,
+      categoryId:
+        originalFormValues.categoryId === "22222222-2222-2222-2222-222222222221"
+          ? "22222222-2222-2222-2222-222222222223"
+          : "22222222-2222-2222-2222-222222222221",
+      description: "Updated primary meetup details for group settings coverage.",
+      name: `${originalFormValues.name} Updated`,
+      regionId:
+        originalFormValues.regionId === "22222222-2222-2222-2222-222222222301"
+          ? "22222222-2222-2222-2222-222222222302"
+          : "22222222-2222-2222-2222-222222222301",
+    };
+
+    await submitSettings(updatedValues);
+
+    await expect(organizerGroupPage.locator("#category_id")).toHaveValue(updatedValues.categoryId);
+    await expect(organizerGroupPage.locator("#region_id")).toHaveValue(updatedValues.regionId);
+    await expect(organizerGroupPage.locator("#name")).toHaveValue(updatedValues.name);
+    await expect(organizerGroupPage.locator("markdown-editor#description")).toHaveAttribute(
+      "content",
+      updatedValues.description,
     );
-    const updatedName = `${originalFormValues.name} Updated`;
-    const updatedWebsiteUrl = "https://group-e2e.example.com";
-
-    await submitSettings({
-      name: updatedName,
-      websiteUrl: updatedWebsiteUrl,
-    });
-
-    await expect(organizerGroupPage.locator("#name")).toHaveValue(updatedName);
-    await expect(organizerGroupPage.locator("#website_url")).toHaveValue(updatedWebsiteUrl);
+    await expect(organizerGroupPage.locator("#website_url")).toHaveValue(
+      updatedValues.websiteUrl,
+    );
 
     await submitSettings(originalFormValues);
 
+    await expect(organizerGroupPage.locator("#category_id")).toHaveValue(
+      originalFormValues.categoryId,
+    );
+    await expect(organizerGroupPage.locator("#region_id")).toHaveValue(originalFormValues.regionId);
     await expect(organizerGroupPage.locator("#name")).toHaveValue(originalFormValues.name);
+    await expect(organizerGroupPage.locator("markdown-editor#description")).toHaveAttribute(
+      "content",
+      originalFormValues.description,
+    );
     await expect(organizerGroupPage.locator("#website_url")).toHaveValue(
       originalFormValues.websiteUrl,
     );

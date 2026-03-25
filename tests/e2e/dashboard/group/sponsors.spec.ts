@@ -1,7 +1,6 @@
-import * as path from "node:path";
-
 import { expect, test } from "../../fixtures";
 
+import { TEST_UPLOAD_ASSET_PATHS, setImageFieldValue, uploadImageField } from "../form-helpers";
 import { navigateToPath } from "../../utils";
 
 const TECH_CORP_SPONSOR_ID = "66666666-6666-6666-6666-666666666601";
@@ -9,7 +8,8 @@ const ORIGINAL_SPONSOR_NAME = "Tech Corp";
 const UPDATED_SPONSOR_NAME = "Tech Corp Updated";
 const ORIGINAL_SPONSOR_WEBSITE = "https://techcorp.example.com";
 const UPDATED_SPONSOR_WEBSITE = "https://updated-techcorp.example.com";
-const TEST_SPONSOR_LOGO_PATH = path.resolve(__dirname, "../../../../docs/images/logo.svg");
+const ORIGINAL_SPONSOR_LOGO_URL = "/static/images/e2e/sponsor-logo.svg";
+const UPDATED_SPONSOR_LOGO_URL = "/static/images/e2e/community-secondary-logo.svg";
 
 test.describe("group sponsors dashboard", () => {
   test("organizer can add and delete a sponsor", async ({
@@ -29,17 +29,7 @@ test.describe("group sponsors dashboard", () => {
     await organizerGroupPage.getByLabel("Name").fill(sponsorName);
     await organizerGroupPage.getByLabel("Website").fill(sponsorWebsite);
 
-    const logoField = organizerGroupPage.locator('image-field[name="logo_url"]');
-    await Promise.all([
-      organizerGroupPage.waitForResponse(
-        (response) =>
-          response.request().method() === "POST" &&
-          response.url().includes("/images") &&
-          response.status() === 201,
-      ),
-      logoField.locator('input[type="file"]').setInputFiles(TEST_SPONSOR_LOGO_PATH),
-    ]);
-    await expect(logoField.locator('input[name="logo_url"]')).toHaveValue(/\/images\//);
+    await uploadImageField(organizerGroupPage, "logo_url", TEST_UPLOAD_ASSET_PATHS.logo);
 
     await Promise.all([
       organizerGroupPage.waitForResponse(
@@ -90,6 +80,7 @@ test.describe("group sponsors dashboard", () => {
     await expect(dashboardContent.getByText("Sponsor Details", { exact: true })).toBeVisible();
     await organizerGroupPage.getByLabel("Name").fill(UPDATED_SPONSOR_NAME);
     await organizerGroupPage.getByLabel("Website").fill(UPDATED_SPONSOR_WEBSITE);
+    await setImageFieldValue(organizerGroupPage, "logo_url", UPDATED_SPONSOR_LOGO_URL);
 
     await Promise.all([
       organizerGroupPage.waitForResponse(
@@ -108,8 +99,12 @@ test.describe("group sponsors dashboard", () => {
     await updatedRow.getByRole("button", { name: `Edit sponsor: ${UPDATED_SPONSOR_NAME}` }).click();
 
     await expect(dashboardContent.getByText("Sponsor Details", { exact: true })).toBeVisible();
+    await expect(
+      organizerGroupPage.locator('image-field[name="logo_url"] input[name="logo_url"]'),
+    ).toHaveValue(UPDATED_SPONSOR_LOGO_URL);
     await organizerGroupPage.getByLabel("Name").fill(ORIGINAL_SPONSOR_NAME);
     await organizerGroupPage.getByLabel("Website").fill(ORIGINAL_SPONSOR_WEBSITE);
+    await setImageFieldValue(organizerGroupPage, "logo_url", ORIGINAL_SPONSOR_LOGO_URL);
 
     await Promise.all([
       organizerGroupPage.waitForResponse(
