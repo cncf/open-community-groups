@@ -420,9 +420,12 @@ test.describe("group dashboard", () => {
     };
 
     const submitWaitlistValue = async (nextValue: "true" | "false") => {
+      await organizerGroupPage.locator('button[data-section="details"]').click();
+
       const waitlistToggle = organizerGroupPage.locator("#toggle_waitlist_enabled");
       const waitlistToggleLabel = organizerGroupPage.locator("#waitlist-toggle-label");
 
+      await expect(waitlistToggleLabel).toBeVisible();
       await expect(waitlistToggle).toBeEnabled();
 
       if ((await waitlistToggle.isChecked()) !== (nextValue === "true")) {
@@ -1025,8 +1028,8 @@ test.describe("group dashboard", () => {
     await organizerGroupPage
       .locator('markdown-editor#description .CodeMirror textarea')
       .fill("A dashboard event created and removed by the e2e suite.");
-    await selectTimezone(organizerGroupPage, "UTC");
     await organizerGroupPage.locator('button[data-section="date-venue"]').click();
+    await selectTimezone(organizerGroupPage, "UTC");
     await expect(organizerGroupPage.locator("#starts_at")).toBeVisible();
     await organizerGroupPage.locator("#starts_at").fill("2030-05-10T10:00");
     await organizerGroupPage.locator("#ends_at").fill("2030-05-10T12:00");
