@@ -8,15 +8,19 @@ describe("page views", () => {
   const originalSendBeacon = navigator.sendBeacon;
   const originalFetch = globalThis.fetch;
   const originalVisibilityState = Object.getOwnPropertyDescriptor(Document.prototype, "visibilityState");
+  const originalWindowAddEventListener = window.addEventListener.bind(window);
+  const originalDocumentAddEventListener = document.addEventListener.bind(document);
 
   let beaconCalls;
   let fetchCalls;
   let visibilityState;
+  let listenersToRemove;
 
   beforeEach(() => {
     beaconCalls = [];
     fetchCalls = [];
     visibilityState = "visible";
+    listenersToRemove = [];
 
     navigator.sendBeacon = (endpoint, payload) => {
       beaconCalls.push({ endpoint, payload });
@@ -33,6 +37,16 @@ describe("page views", () => {
       get: () => visibilityState,
     });
 
+    window.addEventListener = (type, listener, options) => {
+      listenersToRemove.push(() => window.removeEventListener(type, listener, options));
+      return originalWindowAddEventListener(type, listener, options);
+    };
+
+    document.addEventListener = (type, listener, options) => {
+      listenersToRemove.push(() => document.removeEventListener(type, listener, options));
+      return originalDocumentAddEventListener(type, listener, options);
+    };
+
     delete window.__ocgPageViewTracker;
   });
 
@@ -46,6 +60,9 @@ describe("page views", () => {
     }
 
     globalThis.fetch = originalFetch;
+    window.addEventListener = originalWindowAddEventListener;
+    document.addEventListener = originalDocumentAddEventListener;
+    listenersToRemove.forEach((removeListener) => removeListener());
 
     if (originalVisibilityState) {
       Object.defineProperty(Document.prototype, "visibilityState", originalVisibilityState);
