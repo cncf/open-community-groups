@@ -3,6 +3,7 @@ import type { Page } from "@playwright/test";
 import { expect, test } from "../fixtures";
 
 import {
+  buildE2eUrl,
   TEST_EVENT_NAMES,
   TEST_COMMUNITY_IDS,
   TEST_GROUP_IDS,
@@ -13,6 +14,7 @@ import {
 
 const MEMBER2_USER_ID = "77777777-7777-7777-7777-777777777706";
 const PENDING1_USER_ID = "77777777-7777-7777-7777-777777777707";
+const PENDING2_USER_ID = "77777777-7777-7777-7777-777777777708";
 
 type SessionProposalPayload = {
   co_speaker?: { user_id: string } | null;
@@ -77,6 +79,84 @@ const restoreCoSpeakerInvitation = async (
   expect(restoreInvitationResponse.ok()).toBeTruthy();
 };
 
+/**
+ * Resets a community team invitation to a pending state for the target user.
+ */
+const resetCommunityInvitation = async (
+  page: Page,
+  userId: string,
+  role: string,
+) => {
+  await selectCommunityContext(page, TEST_COMMUNITY_IDS.community1);
+
+  const deleteResponse = await page.request.delete(
+    buildE2eUrl(`/dashboard/community/team/${userId}/delete`),
+  );
+  expect([200, 204, 400, 404].includes(deleteResponse.status())).toBeTruthy();
+
+  const addResponse = await page.request.post(
+    buildE2eUrl("/dashboard/community/team/add"),
+    {
+      form: {
+        role,
+        user_id: userId,
+      },
+    },
+  );
+  expect(addResponse.ok()).toBeTruthy();
+};
+
+/**
+ * Resets a group team invitation to a pending state for the target user.
+ */
+const resetGroupInvitation = async (
+  page: Page,
+  groupId: string,
+  userId: string,
+  role: string,
+) => {
+  await selectGroupContext(page, TEST_COMMUNITY_IDS.community1, groupId);
+
+  const deleteResponse = await page.request.delete(
+    buildE2eUrl(`/dashboard/group/team/${userId}/delete`),
+  );
+  expect([200, 204, 400, 404].includes(deleteResponse.status())).toBeTruthy();
+
+  const addResponse = await page.request.post(
+    buildE2eUrl("/dashboard/group/team/add"),
+    {
+      form: {
+        role,
+        user_id: userId,
+      },
+    },
+  );
+  expect(addResponse.ok()).toBeTruthy();
+};
+
+/**
+ * Ensures a pending group invitation exists for the target user.
+ */
+const ensureGroupInvitation = async (
+  page: Page,
+  groupId: string,
+  userId: string,
+  role: string,
+) => {
+  await selectGroupContext(page, TEST_COMMUNITY_IDS.community1, groupId);
+
+  const addResponse = await page.request.post(
+    buildE2eUrl("/dashboard/group/team/add"),
+    {
+      form: {
+        role,
+        user_id: userId,
+      },
+    },
+  );
+  expect(addResponse.status()).toBeLessThan(500);
+};
+
 const createSessionProposal = async (page: Page, title: string) => {
   await openUserDashboardPath("/dashboard/user?tab=session-proposals", page);
 
@@ -113,8 +193,17 @@ const createSessionProposal = async (page: Page, title: string) => {
 
 test.describe("user dashboard", () => {
   test("invitations page shows pending community and group roles", async ({
+    adminCommunityPage,
     pending1Page,
   }) => {
+    await resetCommunityInvitation(adminCommunityPage, PENDING1_USER_ID, "viewer");
+    await resetGroupInvitation(
+      adminCommunityPage,
+      TEST_GROUP_IDS.community1.beta,
+      PENDING1_USER_ID,
+      "events-manager",
+    );
+
     await openUserDashboardPath("/dashboard/user?tab=invitations", pending1Page);
 
     const dashboardContent = pending1Page.locator("#dashboard-content");
@@ -401,9 +490,16 @@ test.describe("user dashboard", () => {
 
   test("accepting pending invitations removes them from the user dashboard", async ({
     adminCommunityPage,
-    organizerGroupPage,
     pending1Page,
   }) => {
+    await resetCommunityInvitation(adminCommunityPage, PENDING1_USER_ID, "viewer");
+    await resetGroupInvitation(
+      adminCommunityPage,
+      TEST_GROUP_IDS.community1.beta,
+      PENDING1_USER_ID,
+      "events-manager",
+    );
+
     await openUserDashboardPath("/dashboard/user?tab=invitations", pending1Page);
 
     const dashboardContent = pending1Page.locator("#dashboard-content");
@@ -413,9 +509,6 @@ test.describe("user dashboard", () => {
     const approveCommunityInvitationButton =
       communityInvitationRow.getByTitle("Approve");
     await expect(approveCommunityInvitationButton).toBeVisible();
-
-    let communityInvitationAccepted = false;
-    let groupInvitationAccepted = false;
 
     try {
       await Promise.all([
@@ -428,7 +521,6 @@ test.describe("user dashboard", () => {
         ),
         approveCommunityInvitationButton.click(),
       ]);
-      communityInvitationAccepted = true;
 
       await pending1Page.reload();
 
@@ -448,7 +540,6 @@ test.describe("user dashboard", () => {
         ),
         approveGroupInvitationButton.click(),
       ]);
-      groupInvitationAccepted = true;
 
       await pending1Page.reload();
 
@@ -459,56 +550,35 @@ test.describe("user dashboard", () => {
         dashboardContent.locator("tr", { hasText: "E2E Test Group Beta" }),
       ).toHaveCount(0);
     } finally {
-      if (communityInvitationAccepted) {
-        await selectCommunityContext(
-          adminCommunityPage,
-          TEST_COMMUNITY_IDS.community1,
-        );
-        const communityInviteRestoreResponse = await adminCommunityPage.request.post(
-          "/dashboard/community/team/add",
-          {
-            form: {
-              role: "viewer",
-              user_id: PENDING1_USER_ID,
-            },
-          },
-        );
-        expect(communityInviteRestoreResponse.ok()).toBeTruthy();
-      }
+      await resetCommunityInvitation(adminCommunityPage, PENDING1_USER_ID, "viewer");
+      await resetGroupInvitation(
+        adminCommunityPage,
+        TEST_GROUP_IDS.community1.beta,
+        PENDING1_USER_ID,
+        "events-manager",
+      );
 
-      if (groupInvitationAccepted) {
-        await selectGroupContext(
-          organizerGroupPage,
-          TEST_COMMUNITY_IDS.community1,
-          TEST_GROUP_IDS.community1.beta,
-        );
-        const groupInviteRestoreResponse = await organizerGroupPage.request.post(
-          "/dashboard/group/team/add",
-          {
-            form: {
-              role: "events-manager",
-              user_id: PENDING1_USER_ID,
-            },
-          },
-        );
-        expect(groupInviteRestoreResponse.ok()).toBeTruthy();
-      }
-
-      if (communityInvitationAccepted || groupInvitationAccepted) {
-        await openUserDashboardPath("/dashboard/user?tab=invitations", pending1Page);
-        await expect(
-          dashboardContent.locator("tr", { hasText: "e2e-test-community" }),
-        ).toContainText("viewer");
-        await expect(
-          dashboardContent.locator("tr", { hasText: "E2E Test Group Beta" }),
-        ).toContainText("events-manager");
-      }
+      await openUserDashboardPath("/dashboard/user?tab=invitations", pending1Page);
+      await expect(
+        dashboardContent.locator("tr", { hasText: "e2e-test-community" }),
+      ).toContainText("viewer");
+      await expect(
+        dashboardContent.locator("tr", { hasText: "E2E Test Group Beta" }),
+      ).toContainText("events-manager");
     }
   });
 
   test("rejecting a pending group invitation removes it from the user dashboard", async ({
+    organizerGroupPage,
     pending2Page,
   }) => {
+    await ensureGroupInvitation(
+      organizerGroupPage,
+      TEST_GROUP_IDS.community1.alpha,
+      PENDING2_USER_ID,
+      "viewer",
+    );
+
     await openUserDashboardPath("/dashboard/user?tab=invitations", pending2Page);
 
     const dashboardContent = pending2Page.locator("#dashboard-content");
@@ -517,31 +587,40 @@ test.describe("user dashboard", () => {
     });
     const rejectGroupInvitationButton = groupInvitationRow.getByTitle("Reject");
 
-    await expect(
-      dashboardContent.getByText("Group Invitations", { exact: true }),
-    ).toBeVisible();
-    await expect(rejectGroupInvitationButton).toBeVisible();
+    try {
+      await expect(
+        dashboardContent.getByText("Group Invitations", { exact: true }),
+      ).toBeVisible();
+      await expect(rejectGroupInvitationButton).toBeVisible();
 
-    await rejectGroupInvitationButton.click();
-    await expect(pending2Page.locator(".swal2-popup")).toContainText(
-      "Are you sure you would like to reject this invitation?",
-    );
+      await rejectGroupInvitationButton.click();
+      await expect(pending2Page.locator(".swal2-popup")).toContainText(
+        "Are you sure you would like to reject this invitation?",
+      );
 
-    await Promise.all([
-      pending2Page.waitForResponse(
-        (response) =>
-          response.request().method() === "PUT" &&
-          response.ok() &&
-          response.url().includes("/dashboard/user/invitations/group/") &&
-          response.url().endsWith("/reject"),
-      ),
-      pending2Page.getByRole("button", { name: "Yes" }).click(),
-    ]);
+      await Promise.all([
+        pending2Page.waitForResponse(
+          (response) =>
+            response.request().method() === "PUT" &&
+            response.ok() &&
+            response.url().includes("/dashboard/user/invitations/group/") &&
+            response.url().endsWith("/reject"),
+        ),
+        pending2Page.getByRole("button", { name: "Yes" }).click(),
+      ]);
 
-    await pending2Page.reload();
+      await pending2Page.reload();
 
-    await expect(
-      dashboardContent.locator("tr", { hasText: "E2E Test Group Alpha" }),
-    ).toHaveCount(0);
+      await expect(
+        dashboardContent.locator("tr", { hasText: "E2E Test Group Alpha" }),
+      ).toHaveCount(0);
+    } finally {
+      await ensureGroupInvitation(
+        organizerGroupPage,
+        TEST_GROUP_IDS.community1.alpha,
+        PENDING2_USER_ID,
+        "viewer",
+      );
+    }
   });
 });

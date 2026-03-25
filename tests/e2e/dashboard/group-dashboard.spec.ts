@@ -1,3 +1,5 @@
+import type { Page } from "@playwright/test";
+
 import { expect, test } from "../fixtures";
 
 import {
@@ -22,12 +24,40 @@ const ATTENDEE_NOTIFICATION_TITLE = "E2E attendee notification";
 const ATTENDEE_NOTIFICATION_BODY =
   "Reminder for all event attendees from the e2e suite.";
 const PENDING1_USER_ID = "77777777-7777-7777-7777-777777777707";
-const PENDING2_USER_ID = "77777777-7777-7777-7777-777777777708";
+
+const ensureGroupViewerRole = async (page: Page, role: string) => {
+  const teamTabPath = "/dashboard/group?tab=team";
+
+  await navigateToPath(page, teamTabPath);
+
+  const dashboardContent = page.locator("#dashboard-content");
+  const viewerRow = dashboardContent.locator("tr", {
+    hasText: "E2E Group Viewer One",
+  });
+  const currentRoleSelect = viewerRow.locator('select[name="role"]');
+
+  await expect(viewerRow).toBeVisible();
+
+  if ((await currentRoleSelect.inputValue()) === role) {
+    return;
+  }
+
+  const roleUpdatePath = await viewerRow.locator("form").getAttribute("hx-put");
+
+  expect(roleUpdatePath).not.toBeNull();
+
+  const response = await page.request.put(buildE2eUrl(roleUpdatePath ?? ""), {
+    form: { role },
+  });
+  expect(response.ok()).toBeTruthy();
+  await navigateToPath(page, teamTabPath);
+};
 
 test.describe("group dashboard", () => {
   test("group team page shows seeded roles and last-admin protection", async ({
     organizerGroupPage,
   }) => {
+    await ensureGroupViewerRole(organizerGroupPage, "viewer");
     await navigateToPath(organizerGroupPage, "/dashboard/group?tab=team");
 
     const dashboardContent = organizerGroupPage.locator("#dashboard-content");
@@ -58,9 +88,6 @@ test.describe("group dashboard", () => {
       hasText: "E2E Group Viewer One",
     });
     await expect(viewerRow.locator('select[name="role"]')).toHaveValue("viewer");
-    await expect(
-      dashboardContent.locator("tr", { hasText: "E2E Pending Two" }),
-    ).toContainText("Invitation sent");
   });
 
   test("organizer can invite and remove a pending group team member", async ({
@@ -130,38 +157,44 @@ test.describe("group dashboard", () => {
     organizerGroupPage,
   }) => {
     const SEEDED_ROLE = "viewer";
+    const UPDATED_ROLE = "events-manager";
     const teamTabPath = "/dashboard/group?tab=team";
 
-    await navigateToPath(organizerGroupPage, teamTabPath);
+    await ensureGroupViewerRole(organizerGroupPage, SEEDED_ROLE);
 
-    const dashboardContent = organizerGroupPage.locator("#dashboard-content");
-    const roleFormSelector = `form[hx-put="/dashboard/group/team/${PENDING2_USER_ID}/role"]`;
-    const updateRole = async (role: string) => {
-      const response = await organizerGroupPage.request.put(
-        `/dashboard/group/team/${PENDING2_USER_ID}/role`,
-        {
-          form: { role },
-        },
-      );
-      expect(response.ok()).toBeTruthy();
+    try {
       await navigateToPath(organizerGroupPage, teamTabPath);
-    };
-    const currentRoleSelect = () =>
-      dashboardContent.locator(roleFormSelector).locator('select[name="role"]');
 
-    await expect(dashboardContent.getByText("Group Team", { exact: true })).toBeVisible();
-    const currentRole = await currentRoleSelect().inputValue();
-    if (currentRole !== SEEDED_ROLE) {
-      await updateRole(SEEDED_ROLE);
+      const dashboardContent = organizerGroupPage.locator("#dashboard-content");
+      const currentRoleForm = () =>
+        dashboardContent.locator("tr", { hasText: "E2E Group Viewer One" }).locator("form");
+      const currentRoleSelect = () =>
+        currentRoleForm().locator('select[name="role"]');
+      const updateRole = async (role: string) => {
+        const roleUpdatePath = await currentRoleForm().getAttribute("hx-put");
+
+        expect(roleUpdatePath).not.toBeNull();
+
+        const response = await organizerGroupPage.request.put(
+          buildE2eUrl(roleUpdatePath ?? ""),
+          {
+            form: { role },
+          },
+        );
+        expect(response.ok()).toBeTruthy();
+        await navigateToPath(organizerGroupPage, teamTabPath);
+      };
+
+      await expect(
+        dashboardContent.getByText("Group Team", { exact: true }),
+      ).toBeVisible();
+      await expect(currentRoleSelect()).toHaveValue(SEEDED_ROLE);
+
+      await updateRole(UPDATED_ROLE);
+      await expect(currentRoleSelect()).toHaveValue(UPDATED_ROLE);
+    } finally {
+      await ensureGroupViewerRole(organizerGroupPage, SEEDED_ROLE);
     }
-
-    await expect(currentRoleSelect()).toHaveValue(SEEDED_ROLE);
-
-    await updateRole("events-manager");
-    await expect(currentRoleSelect()).toHaveValue("events-manager");
-
-    await updateRole(SEEDED_ROLE);
-    await expect(currentRoleSelect()).toHaveValue(SEEDED_ROLE);
   });
 
   test("events manager can review CFS submissions with labels and ratings", async ({
