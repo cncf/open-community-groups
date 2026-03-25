@@ -132,7 +132,7 @@ test.describe("group dashboard events view", () => {
       bannerMobilePath: TEST_UPLOAD_ASSET_PATHS.bannerMobile,
       bannerPath: TEST_UPLOAD_ASSET_PATHS.banner,
       capacity: "180",
-      categoryId: "33333333-3333-3333-3333-333333333333",
+      categoryId: "33333333-3333-3333-3333-333333333331",
       cfsDescription:
         "Updated speaker program details for a temporary event.",
       cfsEndsAt: "2030-09-24T18:00",

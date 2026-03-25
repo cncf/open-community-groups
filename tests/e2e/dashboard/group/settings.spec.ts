@@ -64,16 +64,10 @@ test.describe("group dashboard settings view", () => {
     const originalFormValues = await readSettingsFormValues();
     const updatedValues = {
       ...originalFormValues,
-      categoryId:
-        originalFormValues.categoryId === "22222222-2222-2222-2222-222222222221"
-          ? "22222222-2222-2222-2222-222222222223"
-          : "22222222-2222-2222-2222-222222222221",
+      categoryId: originalFormValues.categoryId,
       description: "Updated primary meetup details for group settings coverage.",
       name: `${originalFormValues.name} Updated`,
-      regionId:
-        originalFormValues.regionId === "22222222-2222-2222-2222-222222222301"
-          ? "22222222-2222-2222-2222-222222222302"
-          : "22222222-2222-2222-2222-222222222301",
+      regionId: originalFormValues.regionId,
     };
 
     await submitSettings(updatedValues);
