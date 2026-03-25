@@ -1,9 +1,6 @@
 name: End-to-end tests
 
 on:
-  push:
-    branches:
-      - cynthia-sg/e2e
   pull_request:
     branches:
       - main
