@@ -13,25 +13,20 @@ import {
   updateDateInput,
   updateSortInputsFromSelector,
 } from "/static/js/community/explore/filters.js";
+import { resetDom } from "/tests/unit/test-utils/dom.js";
+import { mockHtmx } from "/tests/unit/test-utils/globals.js";
 
 describe("explore filters", () => {
-  const originalHtmx = window.htmx;
-
-  let triggerCalls;
+  let htmx;
 
   beforeEach(() => {
-    triggerCalls = [];
-    document.body.innerHTML = "";
-    window.htmx = {
-      trigger: (...args) => {
-        triggerCalls.push(args);
-      },
-    };
+    resetDom();
+    htmx = mockHtmx();
   });
 
   afterEach(() => {
-    document.body.innerHTML = "";
-    window.htmx = originalHtmx;
+    resetDom();
+    htmx.restore();
   });
 
   it("opens and closes the mobile filters drawer", () => {
@@ -58,7 +53,7 @@ describe("explore filters", () => {
     cleanInputField("search", "events-form");
 
     expect(document.getElementById("search")?.value).to.equal("");
-    expect(triggerCalls).to.deep.equal([[document.getElementById("events-form"), "change"]]);
+    expect(htmx.triggerCalls).to.deep.equal([[document.getElementById("events-form"), "change"]]);
   });
 
   it("only triggers changes from search when the query is not empty", () => {
@@ -68,12 +63,12 @@ describe("explore filters", () => {
     `;
 
     triggerChangeOnForm("events-form", true);
-    expect(triggerCalls).to.deep.equal([]);
+    expect(htmx.triggerCalls).to.deep.equal([]);
 
     document.getElementById("ts_query").value = "kubecon";
     triggerChangeOnForm("events-form", true);
 
-    expect(triggerCalls).to.deep.equal([[document.getElementById("events-form"), "change"]]);
+    expect(htmx.triggerCalls).to.deep.equal([[document.getElementById("events-form"), "change"]]);
   });
 
   it("updates sort inputs from the selector value", () => {

@@ -8,20 +8,16 @@ import {
   validateEventDates,
   validateSessionDateBounds,
 } from "/static/js/common/form-validation.js";
-
-const stubValidityUi = (input) => {
-  input.reportValidity = () => true;
-  input.focus = () => {};
-  input.blur = () => {};
-};
+import { resetDom } from "/tests/unit/test-utils/dom.js";
+import { stubValidityUi } from "/tests/unit/test-utils/forms.js";
 
 describe("form validation helpers", () => {
   beforeEach(() => {
-    document.body.innerHTML = "";
+    resetDom();
   });
 
   afterEach(() => {
-    document.body.innerHTML = "";
+    resetDom();
   });
 
   it("parses datetime-local strings", () => {

@@ -1,25 +1,19 @@
 import { expect } from "@open-wc/testing";
 
 import { printQrCode } from "/static/js/dashboard/group/qr-code-print.js";
+import { resetDom } from "/tests/unit/test-utils/dom.js";
+import { mockSwal } from "/tests/unit/test-utils/globals.js";
 
 describe("qr code print", () => {
-  const originalSwal = globalThis.Swal;
   const originalPrint = window.print;
 
-  let fireCalls;
+  let swal;
   let printCalls;
 
   beforeEach(() => {
-    fireCalls = [];
+    swal = mockSwal();
     printCalls = [];
-    document.body.innerHTML = "";
-
-    globalThis.Swal = {
-      fire: (options) => {
-        fireCalls.push(options);
-        return Promise.resolve({ isConfirmed: true });
-      },
-    };
+    resetDom();
 
     window.print = () => {
       printCalls.push(true);
@@ -27,8 +21,8 @@ describe("qr code print", () => {
   });
 
   afterEach(() => {
-    document.body.innerHTML = "";
-    globalThis.Swal = originalSwal;
+    resetDom();
+    swal.restore();
     window.print = originalPrint;
   });
 
@@ -36,8 +30,8 @@ describe("qr code print", () => {
     printQrCode(null, "qr-image", "/qr.png");
 
     expect(printCalls).to.have.length(0);
-    expect(fireCalls).to.have.length(1);
-    expect(fireCalls[0].text).to.equal("Unable to load the event QR code. Please try again.");
+    expect(swal.calls).to.have.length(1);
+    expect(swal.calls[0].text).to.equal("Unable to load the event QR code. Please try again.");
   });
 
   it("shows an error when the printable root is missing", () => {
@@ -47,8 +41,8 @@ describe("qr code print", () => {
     printQrCode(modal, "qr-image", "/qr.png");
 
     expect(printCalls).to.have.length(0);
-    expect(fireCalls).to.have.length(1);
-    expect(fireCalls[0].text).to.equal("Unable to prepare the QR code for printing.");
+    expect(swal.calls).to.have.length(1);
+    expect(swal.calls[0].text).to.equal("Unable to prepare the QR code for printing.");
   });
 
   it("prepares the printable container and prints when no image is present", () => {
@@ -116,8 +110,8 @@ describe("qr code print", () => {
     document.getElementById("qr-image-print")?.dispatchEvent(new Event("error"));
 
     expect(printCalls).to.have.length(0);
-    expect(fireCalls).to.have.length(1);
-    expect(fireCalls[0].text).to.equal("Unable to load the QR code for printing. Please try again.");
+    expect(swal.calls).to.have.length(1);
+    expect(swal.calls[0].text).to.equal("Unable to load the QR code for printing. Please try again.");
     expect(document.getElementById("qr-print-container")).to.equal(null);
   });
 });

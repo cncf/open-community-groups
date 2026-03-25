@@ -14,19 +14,21 @@ import {
   toggleModalVisibility,
   unlockBodyScroll,
 } from "/static/js/common/common.js";
+import { resetDom, setLocationPath, mockScrollTo } from "/tests/unit/test-utils/dom.js";
 
 describe("common utilities", () => {
   const originalPath = window.location.pathname;
-  const originalScrollTo = window.scrollTo;
+
+  let scrollToMock;
+
+  beforeEach(() => {
+    resetDom();
+  });
 
   afterEach(() => {
-    document.body.innerHTML = "";
-    document.body.removeAttribute("style");
-    delete document.body.dataset.modalOpenCount;
-    delete document.body.dataset.modalOverflow;
-    delete document.body.dataset.modalPaddingRight;
-    history.replaceState({}, "", originalPath);
-    window.scrollTo = originalScrollTo;
+    resetDom();
+    scrollToMock?.restore();
+    setLocationPath(originalPath);
   });
 
   it("toggles the loading spinner class by element id", () => {
@@ -42,20 +44,17 @@ describe("common utilities", () => {
   });
 
   it("detects dashboard paths and scrolls only on dashboard pages", () => {
-    const scrollCalls = [];
-    window.scrollTo = (options) => {
-      scrollCalls.push(options);
-    };
+    scrollToMock = mockScrollTo();
 
-    history.replaceState({}, "", "/communities/cncf");
+    setLocationPath("/communities/cncf");
     expect(isDashboardPath()).to.equal(false);
     scrollToDashboardTop();
-    expect(scrollCalls).to.deep.equal([]);
+    expect(scrollToMock.calls).to.deep.equal([]);
 
-    history.replaceState({}, "", "/dashboard/groups");
+    setLocationPath("/dashboard/groups");
     expect(isDashboardPath()).to.equal(true);
     scrollToDashboardTop();
-    expect(scrollCalls).to.deep.equal([{ top: 0, behavior: "auto" }]);
+    expect(scrollToMock.calls).to.deep.equal([{ top: 0, behavior: "auto" }]);
   });
 
   it("locks and unlocks body scroll when toggling a modal", () => {

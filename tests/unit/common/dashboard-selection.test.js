@@ -4,26 +4,20 @@ import {
   selectDashboardAndKeepTab,
   selectDashboardAndSwapBody,
 } from "/static/js/common/dashboard-selection.js";
+import { mockHtmx } from "/tests/unit/test-utils/globals.js";
 
 describe("dashboard selection", () => {
   const originalFetch = globalThis.fetch;
-  const originalHtmx = window.htmx;
   const originalPushState = window.history.pushState.bind(window.history);
 
-  let ajaxCalls;
+  let htmx;
   let fetchCalls;
   let pushedUrls;
 
   beforeEach(() => {
-    ajaxCalls = [];
     fetchCalls = [];
     pushedUrls = [];
-
-    window.htmx = {
-      ajax: async (...args) => {
-        ajaxCalls.push(args);
-      },
-    };
+    htmx = mockHtmx();
 
     globalThis.fetch = async (...args) => {
       fetchCalls.push(args);
@@ -36,7 +30,7 @@ describe("dashboard selection", () => {
   });
 
   afterEach(() => {
-    window.htmx = originalHtmx;
+    htmx.restore();
     globalThis.fetch = originalFetch;
     window.history.pushState = originalPushState;
   });
@@ -44,7 +38,7 @@ describe("dashboard selection", () => {
   it("persists dashboard selection with htmx and keeps the current tab", async () => {
     await selectDashboardAndKeepTab("/dashboard/select/community-1");
 
-    expect(ajaxCalls).to.deep.equal([
+    expect(htmx.ajaxCalls).to.deep.equal([
       [
         "PUT",
         "/dashboard/select/community-1",
@@ -69,7 +63,7 @@ describe("dashboard selection", () => {
       ],
     ]);
 
-    expect(ajaxCalls).to.deep.equal([
+    expect(htmx.ajaxCalls).to.deep.equal([
       [
         "GET",
         "/dashboard/groups/group-1",
@@ -112,7 +106,7 @@ describe("dashboard selection", () => {
     }
 
     expect(thrownError?.message).to.equal("Select dashboard entity failed: 500");
-    expect(ajaxCalls).to.deep.equal([]);
+    expect(htmx.ajaxCalls).to.deep.equal([]);
     expect(pushedUrls).to.deep.equal([]);
   });
 });

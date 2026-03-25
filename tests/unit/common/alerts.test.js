@@ -9,51 +9,31 @@ import {
   showServerErrorAlert,
   showSuccessAlert,
 } from "/static/js/common/alerts.js";
-
-const waitForMicrotask = () => new Promise((resolve) => setTimeout(resolve, 0));
+import { waitForMicrotask } from "/tests/unit/test-utils/async.js";
+import { resetDom, setLocationPath, mockScrollTo } from "/tests/unit/test-utils/dom.js";
+import { mockHtmx, mockSwal } from "/tests/unit/test-utils/globals.js";
 
 describe("alerts", () => {
-  const originalSwal = globalThis.Swal;
-  const originalHtmx = globalThis.htmx;
-  const originalScrollTo = window.scrollTo;
   const originalPath = window.location.pathname;
 
-  let fireCalls;
-  let triggerCalls;
-  let nextConfirmResult;
-  let scrollCalls;
+  let swal;
+  let htmx;
+  let scrollToMock;
 
   beforeEach(() => {
-    fireCalls = [];
-    triggerCalls = [];
-    scrollCalls = [];
-    nextConfirmResult = { isConfirmed: true };
-
-    globalThis.Swal = {
-      fire: async (options) => {
-        fireCalls.push(options);
-        return nextConfirmResult;
-      },
-    };
-
-    globalThis.htmx = {
-      trigger: (...args) => {
-        triggerCalls.push(args);
-      },
-    };
-
-    window.scrollTo = (options) => {
-      scrollCalls.push(options);
-    };
-
-    history.replaceState({}, "", "/dashboard/groups");
+    resetDom();
+    swal = mockSwal();
+    htmx = mockHtmx();
+    scrollToMock = mockScrollTo();
+    setLocationPath("/dashboard/groups");
   });
 
   afterEach(() => {
-    globalThis.Swal = originalSwal;
-    globalThis.htmx = originalHtmx;
-    window.scrollTo = originalScrollTo;
-    history.replaceState({}, "", originalPath);
+    resetDom();
+    swal.restore();
+    htmx.restore();
+    scrollToMock.restore();
+    setLocationPath(originalPath);
   });
 
   it("renders success, error, info, and server error alerts", () => {
@@ -62,20 +42,20 @@ describe("alerts", () => {
     showInfoAlert("Heads up");
     showServerErrorAlert("Validation failed", "Missing field");
 
-    expect(fireCalls).to.have.length(4);
-    expect(fireCalls[0]).to.include({ text: "Saved", icon: "success", timer: 5000 });
-    expect(fireCalls[1]).to.include({ text: "Failed", icon: "error", timer: 30000 });
-    expect(fireCalls[2]).to.include({ text: "Heads up", icon: "info", timer: 10000 });
-    expect(fireCalls[3].html).to.include("Validation failed");
-    expect(fireCalls[3].html).to.include("Missing field");
+    expect(swal.calls).to.have.length(4);
+    expect(swal.calls[0]).to.include({ text: "Saved", icon: "success", timer: 5000 });
+    expect(swal.calls[1]).to.include({ text: "Failed", icon: "error", timer: 30000 });
+    expect(swal.calls[2]).to.include({ text: "Heads up", icon: "info", timer: 10000 });
+    expect(swal.calls[3].html).to.include("Validation failed");
+    expect(swal.calls[3].html).to.include("Missing field");
   });
 
   it("supports persistent and html error alerts", () => {
     showErrorAlert("<strong>Broken</strong>", true, true);
 
-    expect(fireCalls).to.have.length(1);
-    expect(fireCalls[0].html).to.equal("<strong>Broken</strong>");
-    expect("timer" in fireCalls[0]).to.equal(false);
+    expect(swal.calls).to.have.length(1);
+    expect(swal.calls[0].html).to.equal("<strong>Broken</strong>");
+    expect("timer" in swal.calls[0]).to.equal(false);
   });
 
   it("handles successful, forbidden, validation, and missing xhr responses", () => {
@@ -111,15 +91,15 @@ describe("alerts", () => {
       }),
     ).to.equal(false);
 
-    expect(fireCalls).to.have.length(4);
-    expect(fireCalls[0]).to.include({ text: "Updated", icon: "success" });
-    expect(fireCalls[1].text).to.equal(
+    expect(swal.calls).to.have.length(4);
+    expect(swal.calls[0]).to.include({ text: "Updated", icon: "success" });
+    expect(swal.calls[1].text).to.equal(
       "Delete failed. It looks like you don't have permission to perform this operation.",
     );
-    expect(fireCalls[2].html).to.include("Save failed");
-    expect(fireCalls[2].html).to.include("Slug already taken");
-    expect(fireCalls[3].text).to.equal("Unexpected failure");
-    expect(scrollCalls).to.deep.equal([
+    expect(swal.calls[2].html).to.include("Save failed");
+    expect(swal.calls[2].html).to.include("Slug already taken");
+    expect(swal.calls[3].text).to.equal("Unexpected failure");
+    expect(scrollToMock.calls).to.deep.equal([
       { top: 0, behavior: "auto" },
       { top: 0, behavior: "auto" },
       { top: 0, behavior: "auto" },
@@ -127,14 +107,14 @@ describe("alerts", () => {
   });
 
   it("resolves confirm actions from the swal result", async () => {
-    nextConfirmResult = { isConfirmed: false };
+    swal.setNextResult({ isConfirmed: false });
 
     const declined = await confirmAction({
       message: "Delete entry?",
       confirmText: "Yes",
     });
 
-    nextConfirmResult = { isConfirmed: true };
+    swal.setNextResult({ isConfirmed: true });
 
     const confirmed = await confirmAction({
       message: "<strong>Delete entry?</strong>",
@@ -145,31 +125,31 @@ describe("alerts", () => {
 
     expect(declined).to.equal(false);
     expect(confirmed).to.equal(true);
-    expect(fireCalls[0]).to.include({
+    expect(swal.calls[0]).to.include({
       text: "Delete entry?",
       icon: "warning",
       confirmButtonText: "Yes",
       cancelButtonText: "No",
     });
-    expect(fireCalls[1].html).to.equal("<strong>Delete entry?</strong>");
-    expect(fireCalls[1].confirmButtonText).to.equal("Delete");
-    expect(fireCalls[1].cancelButtonText).to.equal("Cancel");
+    expect(swal.calls[1].html).to.equal("<strong>Delete entry?</strong>");
+    expect(swal.calls[1].confirmButtonText).to.equal("Delete");
+    expect(swal.calls[1].cancelButtonText).to.equal("Cancel");
   });
 
   it("triggers htmx confirmed events after confirmation", async () => {
-    nextConfirmResult = { isConfirmed: true };
+    swal.setNextResult({ isConfirmed: true });
 
     showConfirmAlert("Proceed?", "save-button", "Yes");
     await waitForMicrotask();
 
-    expect(triggerCalls).to.deep.equal([["#save-button", "confirmed"]]);
+    expect(htmx.triggerCalls).to.deep.equal([["#save-button", "confirmed"]]);
 
-    triggerCalls = [];
-    nextConfirmResult = { isConfirmed: false };
+    htmx.triggerCalls.length = 0;
+    swal.setNextResult({ isConfirmed: false });
 
     showConfirmAlert("Proceed?", "save-button", "Yes");
     await waitForMicrotask();
 
-    expect(triggerCalls).to.deep.equal([]);
+    expect(htmx.triggerCalls).to.deep.equal([]);
   });
 });

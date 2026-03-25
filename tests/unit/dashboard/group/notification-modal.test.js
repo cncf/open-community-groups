@@ -1,39 +1,27 @@
 import { expect } from "@open-wc/testing";
 
 import { createNotificationModal } from "/static/js/dashboard/group/notificationModal.js";
+import { resetDom, setLocationPath, mockScrollTo } from "/tests/unit/test-utils/dom.js";
+import { mockSwal } from "/tests/unit/test-utils/globals.js";
 
 describe("notification modal", () => {
-  const originalSwal = globalThis.Swal;
   const originalPath = window.location.pathname;
-  const originalScrollTo = window.scrollTo;
 
-  let fireCalls;
-  let scrollCalls;
+  let swal;
+  let scrollToMock;
 
   beforeEach(() => {
-    fireCalls = [];
-    scrollCalls = [];
-    document.body.innerHTML = "";
-
-    globalThis.Swal = {
-      fire: async (options) => {
-        fireCalls.push(options);
-        return { isConfirmed: true };
-      },
-    };
-
-    window.scrollTo = (options) => {
-      scrollCalls.push(options);
-    };
-
-    history.replaceState({}, "", "/dashboard/groups");
+    resetDom();
+    swal = mockSwal();
+    scrollToMock = mockScrollTo();
+    setLocationPath("/dashboard/groups");
   });
 
   afterEach(() => {
-    document.body.innerHTML = "";
-    globalThis.Swal = originalSwal;
-    window.scrollTo = originalScrollTo;
-    history.replaceState({}, "", originalPath);
+    resetDom();
+    swal.restore();
+    scrollToMock.restore();
+    setLocationPath(originalPath);
   });
 
   it("updates the form endpoint and toggles the modal from controls", () => {
@@ -115,8 +103,8 @@ describe("notification modal", () => {
 
     expect(resetCalls).to.equal(1);
     expect(document.getElementById("notification-modal")?.classList.contains("hidden")).to.equal(true);
-    expect(fireCalls).to.have.length(1);
-    expect(fireCalls[0]).to.include({ text: "Email sent.", icon: "success" });
+    expect(swal.calls).to.have.length(1);
+    expect(swal.calls[0]).to.include({ text: "Email sent.", icon: "success" });
   });
 
   it("shows an error and keeps the modal open after a failed htmx request", () => {
@@ -145,8 +133,8 @@ describe("notification modal", () => {
     );
 
     expect(document.getElementById("notification-modal")?.classList.contains("hidden")).to.equal(false);
-    expect(fireCalls).to.have.length(1);
-    expect(fireCalls[0]).to.include({ text: "Server exploded", icon: "error" });
-    expect(scrollCalls).to.deep.equal([{ top: 0, behavior: "auto" }]);
+    expect(swal.calls).to.have.length(1);
+    expect(swal.calls[0]).to.include({ text: "Server exploded", icon: "error" });
+    expect(scrollToMock.calls).to.deep.equal([{ top: 0, behavior: "auto" }]);
   });
 });

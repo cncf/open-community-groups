@@ -1,29 +1,23 @@
 import { expect } from "@open-wc/testing";
 
 import { fetchData, updateResults } from "/static/js/community/explore/explore.js";
+import { resetDom } from "/tests/unit/test-utils/dom.js";
+import { mockSwal } from "/tests/unit/test-utils/globals.js";
 
 describe("explore helpers", () => {
   const originalFetch = globalThis.fetch;
-  const originalSwal = globalThis.Swal;
 
-  let alertCalls;
+  let swal;
 
   beforeEach(() => {
-    document.body.innerHTML = "";
-    alertCalls = [];
-
-    globalThis.Swal = {
-      fire: (options) => {
-        alertCalls.push(options);
-        return Promise.resolve({ isConfirmed: true });
-      },
-    };
+    resetDom();
+    swal = mockSwal();
   });
 
   afterEach(() => {
-    document.body.innerHTML = "";
+    resetDom();
     globalThis.fetch = originalFetch;
-    globalThis.Swal = originalSwal;
+    swal.restore();
   });
 
   it("updates the results container html", () => {
@@ -50,7 +44,7 @@ describe("explore helpers", () => {
     const result = await fetchData("events", "kind=conference");
 
     expect(result).to.deep.equal({ items: [1, 2, 3] });
-    expect(alertCalls).to.have.length(0);
+    expect(swal.calls).to.have.length(0);
   });
 
   it("shows an alert and throws when the request fails", async () => {
@@ -67,8 +61,8 @@ describe("explore helpers", () => {
     }
 
     expect(thrownError?.message).to.equal("network error");
-    expect(alertCalls).to.have.length(1);
-    expect(alertCalls[0].text).to.equal("Something went wrong loading results. Please try again later.");
+    expect(swal.calls).to.have.length(1);
+    expect(swal.calls[0].text).to.equal("Something went wrong loading results. Please try again later.");
   });
 
   it("shows an alert and throws when the server responds with an error", async () => {
@@ -87,8 +81,8 @@ describe("explore helpers", () => {
     }
 
     expect(thrownError?.message).to.equal("Failed to fetch groups data (status 500)");
-    expect(alertCalls).to.have.length(1);
-    expect(alertCalls[0].text).to.equal("Something went wrong loading results. Please try again later.");
+    expect(swal.calls).to.have.length(1);
+    expect(swal.calls[0].text).to.equal("Something went wrong loading results. Please try again later.");
   });
 
   it("shows an alert and throws when the response body is not valid json", async () => {
@@ -108,7 +102,7 @@ describe("explore helpers", () => {
     }
 
     expect(thrownError?.message).to.equal("invalid json");
-    expect(alertCalls).to.have.length(1);
-    expect(alertCalls[0].text).to.equal("Something went wrong loading results. Please try again later.");
+    expect(swal.calls).to.have.length(1);
+    expect(swal.calls[0].text).to.equal("Something went wrong loading results. Please try again later.");
   });
 });

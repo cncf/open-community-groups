@@ -10,29 +10,20 @@ import {
   updateSectionVisibility,
   validateMeetingRequest,
 } from "/static/js/dashboard/group/meeting-validations.js";
+import { resetDom } from "/tests/unit/test-utils/dom.js";
+import { mockSwal } from "/tests/unit/test-utils/globals.js";
 
 describe("meeting validations", () => {
-  const originalSwal = globalThis.Swal;
-
-  let swalCalls;
-  let nextConfirmResult;
+  let swal;
 
   beforeEach(() => {
-    swalCalls = [];
-    nextConfirmResult = { isConfirmed: true };
-    document.body.innerHTML = "";
-
-    globalThis.Swal = {
-      fire: async (options) => {
-        swalCalls.push(options);
-        return nextConfirmResult;
-      },
-    };
+    resetDom();
+    swal = mockSwal();
   });
 
   afterEach(() => {
-    document.body.innerHTML = "";
-    globalThis.Swal = originalSwal;
+    resetDom();
+    swal.restore();
   });
 
   it("exposes the expected meeting constants", () => {
@@ -247,14 +238,14 @@ describe("meeting validations", () => {
   });
 
   it("confirms venue data deletion through swal", async () => {
-    nextConfirmResult = { isConfirmed: true };
+    swal.setNextResult({ isConfirmed: true });
     expect(await confirmVenueDataDeletion()).to.equal(true);
 
-    nextConfirmResult = { isConfirmed: false };
+    swal.setNextResult({ isConfirmed: false });
     expect(await confirmVenueDataDeletion()).to.equal(false);
 
-    expect(swalCalls).to.have.length(2);
-    expect(swalCalls[0].text).to.include("Switching to a virtual event will delete the venue information");
-    expect(swalCalls[0].confirmButtonText).to.equal("Yes, delete venue info");
+    expect(swal.calls).to.have.length(2);
+    expect(swal.calls[0].text).to.include("Switching to a virtual event will delete the venue information");
+    expect(swal.calls[0].confirmButtonText).to.equal("Yes, delete venue info");
   });
 });

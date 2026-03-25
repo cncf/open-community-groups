@@ -1,25 +1,22 @@
 import { expect } from "@open-wc/testing";
 
 import { initUserDropdown } from "/static/js/common/header.js";
+import { resetDom, setLocationPath, mockScrollTo } from "/tests/unit/test-utils/dom.js";
 
 describe("header", () => {
-  const originalScrollTo = window.scrollTo;
   const originalPath = window.location.pathname;
 
-  let scrollCalls;
+  let scrollToMock;
 
   beforeEach(() => {
-    document.body.innerHTML = "";
-    scrollCalls = [];
-    window.scrollTo = (options) => {
-      scrollCalls.push(options);
-    };
+    resetDom();
+    scrollToMock = mockScrollTo();
   });
 
   afterEach(() => {
-    document.body.innerHTML = "";
-    window.scrollTo = originalScrollTo;
-    history.replaceState({}, "", originalPath);
+    resetDom();
+    scrollToMock.restore();
+    setLocationPath(originalPath);
   });
 
   it("toggles the dropdown and closes it on outside click", () => {
@@ -88,7 +85,7 @@ describe("header", () => {
   });
 
   it("scrolls to the top after dashboard swaps", () => {
-    history.replaceState({}, "", "/dashboard/groups");
+    setLocationPath("/dashboard/groups");
     document.body.innerHTML = `
       <button id="user-dropdown-button" type="button">User</button>
       <div id="user-dropdown" class="hidden"></div>
@@ -103,11 +100,11 @@ describe("header", () => {
       }),
     );
 
-    expect(scrollCalls).to.deep.equal([{ top: 0, behavior: "auto" }]);
+    expect(scrollToMock.calls).to.deep.equal([{ top: 0, behavior: "auto" }]);
   });
 
   it("does not scroll after swaps outside dashboard pages", () => {
-    history.replaceState({}, "", "/communities/cncf");
+    setLocationPath("/communities/cncf");
     document.body.innerHTML = `
       <button id="user-dropdown-button" type="button">User</button>
       <div id="user-dropdown" class="hidden"></div>
@@ -122,6 +119,6 @@ describe("header", () => {
       }),
     );
 
-    expect(scrollCalls).to.deep.equal([]);
+    expect(scrollToMock.calls).to.deep.equal([]);
   });
 });

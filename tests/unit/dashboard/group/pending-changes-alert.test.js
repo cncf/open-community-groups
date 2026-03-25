@@ -1,45 +1,24 @@
 import { expect } from "@open-wc/testing";
 
 import { initializePendingChangesAlert } from "/static/js/dashboard/group/pending-changes-alert.js";
-
-const waitForAnimationFrames = async (count = 2) => {
-  for (let index = 0; index < count; index += 1) {
-    await new Promise((resolve) => requestAnimationFrame(() => resolve()));
-  }
-};
-
-const waitForMicrotask = () => new Promise((resolve) => setTimeout(resolve, 0));
+import { waitForAnimationFrames, waitForMicrotask } from "/tests/unit/test-utils/async.js";
+import { resetDom } from "/tests/unit/test-utils/dom.js";
+import { mockHtmx, mockSwal } from "/tests/unit/test-utils/globals.js";
 
 describe("pending changes alert", () => {
-  const originalSwal = globalThis.Swal;
-  const originalHtmx = globalThis.htmx;
-
-  let fireCalls;
-  let triggerCalls;
+  let swal;
+  let htmx;
 
   beforeEach(() => {
-    fireCalls = [];
-    triggerCalls = [];
-    document.body.innerHTML = "";
-
-    globalThis.Swal = {
-      fire: async (options) => {
-        fireCalls.push(options);
-        return { isConfirmed: true };
-      },
-    };
-
-    globalThis.htmx = {
-      trigger: (...args) => {
-        triggerCalls.push(args);
-      },
-    };
+    resetDom();
+    swal = mockSwal();
+    htmx = mockHtmx();
   });
 
   afterEach(() => {
-    document.body.innerHTML = "";
-    globalThis.Swal = originalSwal;
-    globalThis.htmx = originalHtmx;
+    resetDom();
+    swal.restore();
+    htmx.restore();
   });
 
   it("tracks dirty state for form changes and shows the alert", async () => {
@@ -127,9 +106,9 @@ describe("pending changes alert", () => {
     await waitForMicrotask();
 
     expect(api.hasPendingChanges()).to.equal(true);
-    expect(fireCalls).to.have.length(1);
-    expect(fireCalls[0].text).to.equal("Discard pending changes?");
-    expect(fireCalls[0].confirmButtonText).to.equal("Discard");
-    expect(triggerCalls).to.deep.equal([["#cancel-button", "confirmed"]]);
+    expect(swal.calls).to.have.length(1);
+    expect(swal.calls[0].text).to.equal("Discard pending changes?");
+    expect(swal.calls[0].confirmButtonText).to.equal("Discard");
+    expect(htmx.triggerCalls).to.deep.equal([["#cancel-button", "confirmed"]]);
   });
 });

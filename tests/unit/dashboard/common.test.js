@@ -11,24 +11,19 @@ import {
   toTimeSeries,
   triggerChangeOnForm,
 } from "/static/js/dashboard/common.js";
+import { resetDom } from "/tests/unit/test-utils/dom.js";
+import { mockHtmx } from "/tests/unit/test-utils/globals.js";
 
 describe("dashboard common utilities", () => {
-  const originalHtmx = window.htmx;
   const originalEcharts = globalThis.echarts;
 
-  let triggerCalls;
+  let htmx;
   let disposedCharts;
 
   beforeEach(() => {
-    triggerCalls = [];
     disposedCharts = [];
-    document.body.innerHTML = "";
-
-    window.htmx = {
-      trigger: (...args) => {
-        triggerCalls.push(args);
-      },
-    };
+    resetDom();
+    htmx = mockHtmx();
 
     globalThis.echarts = {
       getInstanceByDom: () => ({
@@ -40,11 +35,9 @@ describe("dashboard common utilities", () => {
   });
 
   afterEach(() => {
-    document.body.innerHTML = "";
-    window.htmx = originalHtmx;
+    resetDom();
+    htmx.restore();
     globalThis.echarts = originalEcharts;
-    document.documentElement.removeAttribute("style");
-    document.body.className = "";
   });
 
   it("renders and clears chart empty states", () => {
@@ -86,7 +79,7 @@ describe("dashboard common utilities", () => {
 
     triggerChangeOnForm("filters-form");
 
-    expect(triggerCalls).to.deep.equal([[form, "change"]]);
+    expect(htmx.triggerCalls).to.deep.equal([[form, "change"]]);
   });
 
   it("reads palette values with fallback and normalizes time series", () => {

@@ -1,8 +1,7 @@
 import { expect } from "@open-wc/testing";
 
 import { trackPageView } from "/static/js/common/page-views.js";
-
-const waitForMicrotask = () => new Promise((resolve) => setTimeout(resolve, 0));
+import { waitForMicrotask } from "/tests/unit/test-utils/async.js";
 
 describe("page views", () => {
   const originalSendBeacon = navigator.sendBeacon;
