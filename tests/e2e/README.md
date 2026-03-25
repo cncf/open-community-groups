@@ -200,7 +200,7 @@ Configure test behavior via environment variables:
 - `OCG_E2E_GITHUB_CLIENT_ID` - GitHub OAuth client id (default: `e2e-client`)
 - `OCG_E2E_GITHUB_CLIENT_SECRET` - GitHub OAuth client secret (default: `e2e-secret`)
 - `OCG_E2E_GITHUB_REDIRECT_URI` - GitHub OAuth redirect uri (default: `http://localhost:9000/log-in/oauth2/github/callback`)
-- `OCG_E2E_LINUXFOUNDATION_ENABLED` - Enable Linux Foundation SSO tests (default: `false`)
+- `OCG_E2E_LINUXFOUNDATION_ENABLED` - Enable Linux Foundation SSO link coverage (default: `true`)
 
 ### Database Configuration
 
@@ -231,8 +231,9 @@ Email/password tests require `login.email` enabled in the server config. The
 `just e2e-write-server-config` task enables this by default.
 GitHub redirect tests use dummy OAuth values by default and do not contact an
 external provider.
-Linux Foundation SSO tests are skipped unless a reachable OIDC issuer is
-configured.
+Linux Foundation SSO smoke coverage only checks that the login link is visible
+when the e2e config enables it. A reachable OIDC issuer is only needed for a
+real redirect or callback flow.
 
 ## Troubleshooting
 

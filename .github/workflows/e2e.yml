@@ -44,6 +44,7 @@ jobs:
     env:
       OCG_DB_HOST: 127.0.0.1
       OCG_DB_PASSWORD: postgres
+      OCG_E2E_LINUXFOUNDATION_ENABLED: "true"
       OCG_E2E_GITHUB_REDIRECT_URI: http://127.0.0.1:9000/log-in/oauth2/github/callback
       OCG_E2E_SERVER_BASE_URL: http://127.0.0.1:9000
       OCG_PG_BIN: /usr/bin
