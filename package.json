@@ -10,6 +10,7 @@
     "typescript": "^5.7.2"
   },
   "scripts": {
+    "test:unit": "web-test-runner --config web-test-runner.config.mjs",
     "test:e2e": "playwright test --config tests/e2e/playwright.config.ts",
     "test:e2e:smoke": "playwright test --config tests/e2e/playwright.config.ts --project=chromium-smoke --project=firefox-smoke --project=webkit-smoke",
     "test:e2e:deep": "playwright test --config tests/e2e/playwright.config.ts --project=chromium-deep --project=chromium-mobile-deep",
