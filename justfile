@@ -245,6 +245,10 @@ e2e-db-load-data:
 # Set up the e2e test database.
 e2e-db-setup: e2e-db-recreate e2e-db-load-data
 
+# Run the Playwright e2e test suite.
+e2e-tests:
+    npx playwright test --config tests/e2e/playwright.config.ts
+
 # Run full e2e setup: database, dependencies, server, and tests.
 e2e-full: e2e-db-setup e2e-install e2e-write-server-config
     OCG_E2E_START_SERVER=true OCG_E2E_SERVER_CMD='cargo run -p ocg-server -- -c "{{ e2e_server_config }}"' yarn test:e2e
