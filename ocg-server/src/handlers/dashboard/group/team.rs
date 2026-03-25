@@ -70,6 +70,7 @@ pub(crate) async fn list_page(
 /// Adds a user to the group team.
 #[instrument(skip_all, err)]
 pub(crate) async fn add(
+    CurrentUser(user): CurrentUser,
     SelectedCommunityId(community_id): SelectedCommunityId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
@@ -78,7 +79,7 @@ pub(crate) async fn add(
     ValidatedForm(member): ValidatedForm<NewTeamMember>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Add team member to database using provided role
-    db.add_group_team_member(group_id, member.user_id, &member.role)
+    db.add_group_team_member(user.user_id, group_id, member.user_id, &member.role)
         .await?;
 
     // Enqueue invitation email notification
@@ -111,12 +112,13 @@ pub(crate) async fn add(
 /// Deletes a user from the group team.
 #[instrument(skip_all, err)]
 pub(crate) async fn delete(
+    CurrentUser(user): CurrentUser,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     Path(user_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Remove team member from database
-    db.delete_group_team_member(group_id, user_id).await?;
+    db.delete_group_team_member(user.user_id, group_id, user_id).await?;
 
     Ok((
         StatusCode::NO_CONTENT,
@@ -127,13 +129,14 @@ pub(crate) async fn delete(
 /// Updates a user role in the group team.
 #[instrument(skip_all, err)]
 pub(crate) async fn update_role(
+    CurrentUser(user): CurrentUser,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     Path(user_id): Path<Uuid>,
     ValidatedForm(input): ValidatedForm<NewTeamRole>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Update team member role in database
-    db.update_group_team_member_role(group_id, user_id, &input.role)
+    db.update_group_team_member_role(user.user_id, group_id, user_id, &input.role)
         .await?;
 
     Ok((

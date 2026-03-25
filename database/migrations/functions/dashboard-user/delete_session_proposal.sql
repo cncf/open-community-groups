@@ -1,6 +1,6 @@
 -- Deletes a session proposal for a user.
 create or replace function delete_session_proposal(
-    p_user_id uuid,
+    p_actor_user_id uuid,
     p_session_proposal_id uuid
 )
 returns void as $$
@@ -9,7 +9,7 @@ begin
     perform 1
     from session_proposal sp
     where sp.session_proposal_id = p_session_proposal_id
-    and sp.user_id = p_user_id;
+    and sp.user_id = p_actor_user_id;
 
     if not found then
         raise exception 'session proposal not found';
@@ -27,10 +27,18 @@ begin
     -- Proceed to delete the session proposal
     delete from session_proposal
     where session_proposal_id = p_session_proposal_id
-    and user_id = p_user_id;
+    and user_id = p_actor_user_id;
 
     if not found then
         raise exception 'session proposal not found';
     end if;
+
+    -- Track the deleted session proposal
+    perform insert_audit_log(
+        'session_proposal_deleted',
+        p_actor_user_id,
+        'session_proposal',
+        p_session_proposal_id
+    );
 end;
 $$ language plpgsql;

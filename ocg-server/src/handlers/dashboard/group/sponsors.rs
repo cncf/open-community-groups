@@ -117,12 +117,13 @@ pub(crate) async fn update_page(
 /// Adds a new sponsor to the database.
 #[instrument(skip_all, err)]
 pub(crate) async fn add(
+    CurrentUser(user): CurrentUser,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     ValidatedForm(sponsor): ValidatedForm<Sponsor>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Add sponsor to database
-    db.add_group_sponsor(group_id, &sponsor).await?;
+    db.add_group_sponsor(user.user_id, group_id, &sponsor).await?;
 
     Ok((
         StatusCode::CREATED,
@@ -134,12 +135,14 @@ pub(crate) async fn add(
 /// Deletes a sponsor from the database.
 #[instrument(skip_all, err)]
 pub(crate) async fn delete(
+    CurrentUser(user): CurrentUser,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     Path(group_sponsor_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Delete the sponsor from database
-    db.delete_group_sponsor(group_id, group_sponsor_id).await?;
+    db.delete_group_sponsor(user.user_id, group_id, group_sponsor_id)
+        .await?;
 
     Ok((
         StatusCode::NO_CONTENT,
@@ -150,13 +153,15 @@ pub(crate) async fn delete(
 /// Updates an existing sponsor in the database.
 #[instrument(skip_all, err)]
 pub(crate) async fn update(
+    CurrentUser(user): CurrentUser,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     Path(group_sponsor_id): Path<Uuid>,
     ValidatedForm(sponsor): ValidatedForm<Sponsor>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Update sponsor in database
-    db.update_group_sponsor(group_id, group_sponsor_id, &sponsor).await?;
+    db.update_group_sponsor(user.user_id, group_id, group_sponsor_id, &sponsor)
+        .await?;
 
     Ok((
         StatusCode::NO_CONTENT,

@@ -462,13 +462,13 @@ async fn test_add_success_auto_selects_group() {
         .returning(|_, _, _| Ok(true));
     db.expect_add_group()
         .times(1)
-        .withf(move |cid, group| {
+        .withf(move |_, cid, group| {
             *cid == community_id
                 && group.name == "Test Group"
                 && group.category_id == category_id
                 && group.description == "Group description"
         })
-        .returning(move |_, _| Ok(new_group_id));
+        .returning(move |_, _, _| Ok(new_group_id));
     db.expect_update_session()
         .times(1)
         .withf(move |record| {
@@ -542,8 +542,8 @@ async fn test_add_success_keeps_existing_group_selection() {
         .returning(|_, _, _| Ok(true));
     db.expect_add_group()
         .times(1)
-        .withf(move |cid, group| *cid == community_id && group.category_id == category_id)
-        .returning(|_, _| Ok(Uuid::new_v4()));
+        .withf(move |_, cid, group| *cid == community_id && group.category_id == category_id)
+        .returning(|_, _, _| Ok(Uuid::new_v4()));
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
@@ -648,8 +648,8 @@ async fn test_add_db_error() {
         .returning(|_, _, _| Ok(true));
     db.expect_add_group()
         .times(1)
-        .withf(move |cid, group| *cid == community_id && group.category_id == category_id)
-        .returning(move |_, _| Err(anyhow!("db error")));
+        .withf(move |_, cid, group| *cid == community_id && group.category_id == category_id)
+        .returning(move |_, _, _| Err(anyhow!("db error")));
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
@@ -703,10 +703,10 @@ async fn test_update_success() {
         .returning(|_, _, _| Ok(true));
     db.expect_update_group()
         .times(1)
-        .withf(move |cid, gid, group| {
+        .withf(move |_, cid, gid, group| {
             *cid == community_id && *gid == group_id && group.category_id == category_id
         })
-        .returning(|_, _, _| Ok(()));
+        .returning(|_, _, _, _| Ok(()));
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
@@ -813,10 +813,10 @@ async fn test_update_db_error() {
         .returning(|_, _, _| Ok(true));
     db.expect_update_group()
         .times(1)
-        .withf(move |cid, gid, group| {
+        .withf(move |_, cid, gid, group| {
             *cid == community_id && *gid == group_id && group.category_id == category_id
         })
-        .returning(move |_, _, _| Err(anyhow!("db error")));
+        .returning(move |_, _, _, _| Err(anyhow!("db error")));
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
@@ -868,8 +868,8 @@ async fn test_activate_success() {
         .returning(|_, _, _| Ok(true));
     db.expect_activate_group()
         .times(1)
-        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
-        .returning(move |_, _| Ok(()));
+        .withf(move |_, cid, gid| *cid == community_id && *gid == group_id)
+        .returning(move |_, _, _| Ok(()));
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
@@ -924,8 +924,8 @@ async fn test_deactivate_success() {
         .returning(|_, _, _| Ok(true));
     db.expect_deactivate_group()
         .times(1)
-        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
-        .returning(move |_, _| Ok(()));
+        .withf(move |_, cid, gid| *cid == community_id && *gid == group_id)
+        .returning(move |_, _, _| Ok(()));
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
@@ -987,8 +987,8 @@ async fn test_delete_non_selected_group() {
         .returning(|_, _, _| Ok(true));
     db.expect_delete_group()
         .times(1)
-        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
-        .returning(move |_, _| Ok(()));
+        .withf(move |_, cid, gid| *cid == community_id && *gid == group_id)
+        .returning(move |_, _, _| Ok(()));
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
@@ -1051,8 +1051,8 @@ async fn test_delete_selected_group_selects_another() {
         .returning(|_, _, _| Ok(true));
     db.expect_delete_group()
         .times(1)
-        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
-        .returning(move |_, _| Ok(()));
+        .withf(move |_, cid, gid| *cid == community_id && *gid == group_id)
+        .returning(move |_, _, _| Ok(()));
     db.expect_list_user_groups()
         .times(1)
         .withf(move |uid| *uid == user_id)
@@ -1127,8 +1127,8 @@ async fn test_delete_selected_group_clears_selection() {
         .returning(|_, _, _| Ok(true));
     db.expect_delete_group()
         .times(1)
-        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
-        .returning(move |_, _| Ok(()));
+        .withf(move |_, cid, gid| *cid == community_id && *gid == group_id)
+        .returning(move |_, _, _| Ok(()));
     db.expect_list_user_groups()
         .times(1)
         .withf(move |uid| *uid == user_id)

@@ -90,11 +90,12 @@ pub(crate) async fn update_page(
 /// Adds a new region to the selected community.
 #[instrument(skip_all, err)]
 pub(crate) async fn add(
+    CurrentUser(user): CurrentUser,
     SelectedCommunityId(community_id): SelectedCommunityId,
     State(db): State<DynDB>,
     ValidatedForm(region): ValidatedForm<RegionInput>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    db.add_region(community_id, &region).await?;
+    db.add_region(user.user_id, community_id, &region).await?;
 
     Ok((
         StatusCode::CREATED,
@@ -105,11 +106,12 @@ pub(crate) async fn add(
 /// Deletes a region from the selected community.
 #[instrument(skip_all, err)]
 pub(crate) async fn delete(
+    CurrentUser(user): CurrentUser,
     SelectedCommunityId(community_id): SelectedCommunityId,
     State(db): State<DynDB>,
     Path(region_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    db.delete_region(community_id, region_id).await?;
+    db.delete_region(user.user_id, community_id, region_id).await?;
 
     Ok((
         StatusCode::NO_CONTENT,
@@ -120,12 +122,14 @@ pub(crate) async fn delete(
 /// Updates a region in the selected community.
 #[instrument(skip_all, err)]
 pub(crate) async fn update(
+    CurrentUser(user): CurrentUser,
     SelectedCommunityId(community_id): SelectedCommunityId,
     State(db): State<DynDB>,
     Path(region_id): Path<Uuid>,
     ValidatedForm(region): ValidatedForm<RegionInput>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    db.update_region(community_id, region_id, &region).await?;
+    db.update_region(user.user_id, community_id, region_id, &region)
+        .await?;
 
     Ok((
         StatusCode::NO_CONTENT,

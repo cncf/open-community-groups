@@ -93,11 +93,13 @@ pub(crate) async fn update_page(
 /// Adds a new group category to the selected community.
 #[instrument(skip_all, err)]
 pub(crate) async fn add(
+    CurrentUser(user): CurrentUser,
     SelectedCommunityId(community_id): SelectedCommunityId,
     State(db): State<DynDB>,
     ValidatedForm(group_category): ValidatedForm<GroupCategoryInput>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    db.add_group_category(community_id, &group_category).await?;
+    db.add_group_category(user.user_id, community_id, &group_category)
+        .await?;
 
     Ok((
         StatusCode::CREATED,
@@ -108,11 +110,13 @@ pub(crate) async fn add(
 /// Deletes a group category from the selected community.
 #[instrument(skip_all, err)]
 pub(crate) async fn delete(
+    CurrentUser(user): CurrentUser,
     SelectedCommunityId(community_id): SelectedCommunityId,
     State(db): State<DynDB>,
     Path(group_category_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    db.delete_group_category(community_id, group_category_id).await?;
+    db.delete_group_category(user.user_id, community_id, group_category_id)
+        .await?;
 
     Ok((
         StatusCode::NO_CONTENT,
@@ -123,12 +127,13 @@ pub(crate) async fn delete(
 /// Updates a group category in the selected community.
 #[instrument(skip_all, err)]
 pub(crate) async fn update(
+    CurrentUser(user): CurrentUser,
     SelectedCommunityId(community_id): SelectedCommunityId,
     State(db): State<DynDB>,
     Path(group_category_id): Path<Uuid>,
     ValidatedForm(group_category): ValidatedForm<GroupCategoryInput>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    db.update_group_category(community_id, group_category_id, &group_category)
+    db.update_group_category(user.user_id, community_id, group_category_id, &group_category)
         .await?;
 
     Ok((

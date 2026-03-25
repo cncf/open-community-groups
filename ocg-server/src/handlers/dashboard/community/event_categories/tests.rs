@@ -307,8 +307,8 @@ async fn test_add_success() {
         .returning(|_, _, _| Ok(true));
     db.expect_add_event_category()
         .times(1)
-        .withf(move |cid, category| *cid == community_id && category.name == expected_name)
-        .returning(|_, _| Ok(Uuid::new_v4()));
+        .withf(move |_, cid, category| *cid == community_id && category.name == expected_name)
+        .returning(|_, _, _| Ok(Uuid::new_v4()));
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
@@ -364,8 +364,8 @@ async fn test_delete_success() {
         .returning(|_, _, _| Ok(true));
     db.expect_delete_event_category()
         .times(1)
-        .withf(move |cid, ecid| *cid == community_id && *ecid == event_category_id)
-        .returning(|_, _| Ok(()));
+        .withf(move |_, cid, ecid| *cid == community_id && *ecid == event_category_id)
+        .returning(|_, _, _| Ok(()));
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
@@ -427,10 +427,10 @@ async fn test_update_success() {
         .returning(|_, _, _| Ok(true));
     db.expect_update_event_category()
         .times(1)
-        .withf(move |cid, ecid, category| {
+        .withf(move |_, cid, ecid, category| {
             *cid == community_id && *ecid == event_category_id && category.name == expected_name
         })
-        .returning(|_, _, _| Ok(()));
+        .returning(|_, _, _, _| Ok(()));
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();

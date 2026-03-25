@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(6);
+select plan(7);
 
 -- ============================================================================
 -- VARIABLES
@@ -60,7 +60,7 @@ insert into community_team (accepted, community_id, role, user_id) values
 
 -- Should allow deleting an accepted member when another accepted member remains
 select lives_ok(
-    $$ select delete_community_team_member('00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000012'::uuid) $$,
+    $$ select delete_community_team_member(null::uuid, '00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000012'::uuid) $$,
     'Should allow deleting an accepted member when another accepted member exists'
 );
 select results_eq(
@@ -69,15 +69,40 @@ select results_eq(
     'Deleted accepted membership row should be removed'
 );
 
+-- Should create the expected audit row
+select results_eq(
+    $$
+        select
+            action,
+            actor_user_id,
+            actor_username,
+            community_id,
+            resource_type,
+            resource_id
+        from audit_log
+    $$,
+    $$
+        values (
+            'community_team_member_removed',
+            null::uuid,
+            null::text,
+            '00000000-0000-0000-0000-000000000001'::uuid,
+            'user',
+            '00000000-0000-0000-0000-000000000012'::uuid
+        )
+    $$,
+    'Should create the expected audit row'
+);
+
 -- Should allow deleting a pending invitation when there is one accepted member left
 select lives_ok(
-    $$ select delete_community_team_member('00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000013'::uuid) $$,
+    $$ select delete_community_team_member(null::uuid, '00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000013'::uuid) $$,
     'Should allow deleting a pending invitation with only one accepted member left'
 );
 
 -- Should block deleting the last accepted member
 select throws_ok(
-    $$ select delete_community_team_member('00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000011'::uuid) $$,
+    $$ select delete_community_team_member(null::uuid, '00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000011'::uuid) $$,
     'cannot remove the last accepted community admin',
     'Should block deleting the last accepted member'
 );
@@ -89,7 +114,7 @@ select results_eq(
 
 -- Should not allow deleting when membership does not exist
 select throws_ok(
-    $$ select delete_community_team_member('00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000014'::uuid) $$,
+    $$ select delete_community_team_member(null::uuid, '00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000014'::uuid) $$,
     'user is not a community team member',
     'Should not allow deleting when membership does not exist'
 );

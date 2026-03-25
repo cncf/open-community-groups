@@ -289,10 +289,10 @@ async fn test_add_success() {
         .returning(move |_, _, _| Ok(true));
     db.expect_add_community_team_member()
         .times(1)
-        .withf(move |cid, uid, role| {
+        .withf(move |_, cid, uid, role| {
             *cid == community_id && *uid == new_member_id && *role == CommunityRole::Admin
         })
-        .returning(move |_, _, _| Ok(()));
+        .returning(move |_, _, _, _| Ok(()));
     db.expect_get_community_summary()
         .times(1)
         .withf(move |cid| *cid == community_id)
@@ -377,10 +377,10 @@ async fn test_add_db_error() {
         .returning(move |_, _, _| Ok(true));
     db.expect_add_community_team_member()
         .times(1)
-        .withf(move |cid, uid, role| {
+        .withf(move |_, cid, uid, role| {
             *cid == community_id && *uid == new_member_id && *role == CommunityRole::Admin
         })
-        .returning(move |_, _, _| Err(anyhow!("db error")));
+        .returning(move |_, _, _, _| Err(anyhow!("db error")));
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
@@ -432,8 +432,8 @@ async fn test_delete_success() {
         .returning(move |_, _, _| Ok(true));
     db.expect_delete_community_team_member()
         .times(1)
-        .withf(move |cid, uid| *cid == community_id && *uid == member_id)
-        .returning(move |_, _| Ok(()));
+        .withf(move |_, cid, uid| *cid == community_id && *uid == member_id)
+        .returning(move |_, _, _| Ok(()));
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();

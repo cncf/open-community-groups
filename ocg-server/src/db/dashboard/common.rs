@@ -16,7 +16,13 @@ pub(crate) trait DBDashboardCommon {
     async fn search_user(&self, query: &str) -> Result<Vec<User>>;
 
     /// Updates an existing group.
-    async fn update_group(&self, community_id: Uuid, group_id: Uuid, group: &Group) -> Result<()>;
+    async fn update_group(
+        &self,
+        actor_user_id: Uuid,
+        community_id: Uuid,
+        group_id: Uuid,
+        group: &Group,
+    ) -> Result<()>;
 }
 
 #[async_trait]
@@ -29,10 +35,16 @@ impl DBDashboardCommon for PgDB {
 
     /// [`DBDashboardCommon::update_group`]
     #[instrument(skip(self, group), err)]
-    async fn update_group(&self, community_id: Uuid, group_id: Uuid, group: &Group) -> Result<()> {
+    async fn update_group(
+        &self,
+        actor_user_id: Uuid,
+        community_id: Uuid,
+        group_id: Uuid,
+        group: &Group,
+    ) -> Result<()> {
         self.execute(
-            "select update_group($1::uuid, $2::uuid, $3::jsonb)",
-            &[&community_id, &group_id, &Json(group)],
+            "select update_group($1::uuid, $2::uuid, $3::uuid, $4::jsonb)",
+            &[&actor_user_id, &community_id, &group_id, &Json(group)],
         )
         .await
     }

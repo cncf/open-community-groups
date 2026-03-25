@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(5);
+select plan(6);
 
 -- ============================================================================
 -- VARIABLES
@@ -207,6 +207,30 @@ select is(
         'user_id', :'userID'::uuid
     ),
     'Should persist updated session proposal fields'
+);
+
+-- Should create the expected audit row
+select results_eq(
+    $$
+        select
+            action,
+            actor_user_id,
+            actor_username,
+            resource_type,
+            resource_id
+        from audit_log
+    $$,
+    $$
+        select
+            'session_proposal_updated',
+            '00000000-0000-0000-0000-000000000071'::uuid,
+            'alice',
+            'session_proposal',
+            session_proposal_id
+        from session_proposal
+        where title = 'Rust 102'
+    $$,
+    'Should create the expected audit row'
 );
 
 -- Should reject changing co-speaker for proposals with submissions

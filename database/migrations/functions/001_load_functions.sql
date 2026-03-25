@@ -18,6 +18,7 @@
 {{ template "common/get_event_full.sql" }}
 {{ template "common/get_event_summary.sql" }}
 {{ template "common/get_group_full.sql" }}
+{{ template "common/insert_audit_log.sql" }}
 {{ template "common/list_event_cfs_labels.sql" }}
 {{ template "common/list_redirects.sql" }}
 {{ template "common/search_events.sql" }}
@@ -87,6 +88,7 @@
 {{ template "dashboard-group/list_group_team_members_ids.sql" }}
 {{ template "dashboard-group/list_session_kinds.sql" }}
 {{ template "dashboard-group/list_user_groups.sql" }}
+{{ template "dashboard-group/manual_check_in_event.sql" }}
 {{ template "dashboard-group/publish_event.sql" }}
 {{ template "dashboard-group/search_event_attendees.sql" }}
 {{ template "dashboard-group/search_event_waitlist.sql" }}
@@ -111,6 +113,8 @@
 {{ template "dashboard-user/list_user_group_team_invitations.sql" }}
 {{ template "dashboard-user/list_user_pending_session_proposal_co_speaker_invitations.sql" }}
 {{ template "dashboard-user/list_user_session_proposals.sql" }}
+{{ template "dashboard-user/reject_community_team_invitation.sql" }}
+{{ template "dashboard-user/reject_group_team_invitation.sql" }}
 {{ template "dashboard-user/reject_session_proposal_co_speaker_invitation.sql" }}
 {{ template "dashboard-user/resubmit_cfs_submission.sql" }}
 {{ template "dashboard-user/update_session_proposal.sql" }}
@@ -148,6 +152,8 @@
 {{ template "notifications/enqueue_due_event_reminders.sql" }}
 {{ template "notifications/enqueue_notification.sql" }}
 {{ template "notifications/get_pending_notification.sql" }}
+{{ template "notifications/track_custom_notification.sql" }}
+{{ template "notifications/update_notification.sql" }}
 
 {{ template "site/get_filters_options.sql" }}
 {{ template "site/get_site_home_stats.sql" }}
@@ -158,6 +164,7 @@
 {{ template "site/list_communities.sql" }}
 
 {{ template "triggers/check_session_within_event_bounds.sql" }}
+{{ template "triggers/prevent_audit_log_mutation.sql" }}
 
 ---- create above / drop below ----
 

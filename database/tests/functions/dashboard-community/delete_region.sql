@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(4);
+select plan(5);
 
 -- ============================================================================
 -- VARIABLES
@@ -82,6 +82,7 @@ insert into "group" (
 -- Should block deleting region that is still referenced by groups
 select throws_ok(
     $$ select delete_region(
+        null::uuid,
         '00000000-0000-0000-0000-000000000001'::uuid,
         '00000000-0000-0000-0000-000000000012'::uuid
     ) $$,
@@ -92,6 +93,7 @@ select throws_ok(
 -- Should delete region with no group references
 select lives_ok(
     $$ select delete_region(
+        null::uuid,
         '00000000-0000-0000-0000-000000000001'::uuid,
         '00000000-0000-0000-0000-000000000013'::uuid
     ) $$,
@@ -107,9 +109,35 @@ select results_eq(
     'Unused region should be deleted'
 );
 
+-- Should create the expected audit row
+select results_eq(
+    $$
+        select
+            action,
+            actor_user_id,
+            actor_username,
+            community_id,
+            resource_type,
+            resource_id
+        from audit_log
+    $$,
+    $$
+        values (
+            'region_deleted',
+            null::uuid,
+            null::text,
+            '00000000-0000-0000-0000-000000000001'::uuid,
+            'region',
+            '00000000-0000-0000-0000-000000000013'::uuid
+        )
+    $$,
+    'Should create the expected audit row'
+);
+
 -- Should fail when target region does not exist
 select throws_ok(
     $$ select delete_region(
+        null::uuid,
         '00000000-0000-0000-0000-000000000001'::uuid,
         '00000000-0000-0000-0000-000000000099'::uuid
     ) $$,

@@ -38,28 +38,46 @@ pub(crate) trait DBDashboardGroup {
     /// Adds a new event to the database.
     async fn add_event(
         &self,
+        actor_user_id: Uuid,
         group_id: Uuid,
         event: &Event,
         cfg_max_participants: &HashMap<MeetingProvider, i32>,
     ) -> Result<Uuid>;
 
     /// Adds a new sponsor to the database.
-    async fn add_group_sponsor(&self, group_id: Uuid, sponsor: &Sponsor) -> Result<Uuid>;
+    async fn add_group_sponsor(&self, actor_user_id: Uuid, group_id: Uuid, sponsor: &Sponsor)
+    -> Result<Uuid>;
 
     /// Adds a user to the group team (pending by default).
-    async fn add_group_team_member(&self, group_id: Uuid, user_id: Uuid, role: &GroupRole) -> Result<()>;
+    async fn add_group_team_member(
+        &self,
+        actor_user_id: Uuid,
+        group_id: Uuid,
+        user_id: Uuid,
+        role: &GroupRole,
+    ) -> Result<()>;
 
     /// Cancels an event (sets canceled=true).
-    async fn cancel_event(&self, group_id: Uuid, event_id: Uuid) -> Result<()>;
+    async fn cancel_event(&self, actor_user_id: Uuid, group_id: Uuid, event_id: Uuid) -> Result<()>;
 
     /// Deletes an event (soft delete by setting deleted=true and `deleted_at`).
-    async fn delete_event(&self, group_id: Uuid, event_id: Uuid) -> Result<()>;
+    async fn delete_event(&self, actor_user_id: Uuid, group_id: Uuid, event_id: Uuid) -> Result<()>;
 
     /// Deletes a sponsor from the database.
-    async fn delete_group_sponsor(&self, group_id: Uuid, group_sponsor_id: Uuid) -> Result<()>;
+    async fn delete_group_sponsor(
+        &self,
+        actor_user_id: Uuid,
+        group_id: Uuid,
+        group_sponsor_id: Uuid,
+    ) -> Result<()>;
 
     /// Deletes a user from the group team.
-    async fn delete_group_team_member(&self, group_id: Uuid, user_id: Uuid) -> Result<()>;
+    async fn delete_group_team_member(
+        &self,
+        actor_user_id: Uuid,
+        group_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<()>;
 
     /// Gets submission notification data.
     async fn get_cfs_submission_notification_data(
@@ -143,8 +161,17 @@ pub(crate) trait DBDashboardGroup {
     /// Lists all groups where the user is a team member, grouped by community.
     async fn list_user_groups(&self, user_id: &Uuid) -> Result<Vec<UserGroupsByCommunity>>;
 
+    /// Manually checks in an attendee for an event.
+    async fn manual_check_in_event(
+        &self,
+        actor_user_id: Uuid,
+        community_id: Uuid,
+        event_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<()>;
+
     /// Publishes an event (sets published=true and records publication metadata).
-    async fn publish_event(&self, group_id: Uuid, event_id: Uuid, user_id: Uuid) -> Result<()>;
+    async fn publish_event(&self, actor_user_id: Uuid, group_id: Uuid, event_id: Uuid) -> Result<()>;
 
     /// Searches attendees for a group's event using filters.
     async fn search_event_attendees(
@@ -161,7 +188,7 @@ pub(crate) trait DBDashboardGroup {
     ) -> Result<WaitlistOutput>;
 
     /// Unpublishes an event (sets published=false and clears publication metadata).
-    async fn unpublish_event(&self, group_id: Uuid, event_id: Uuid) -> Result<()>;
+    async fn unpublish_event(&self, actor_user_id: Uuid, group_id: Uuid, event_id: Uuid) -> Result<()>;
 
     /// Updates a CFS submission for an event.
     async fn update_cfs_submission(
@@ -175,6 +202,7 @@ pub(crate) trait DBDashboardGroup {
     /// Updates an existing event and returns any waitlisted users promoted.
     async fn update_event(
         &self,
+        actor_user_id: Uuid,
         group_id: Uuid,
         event_id: Uuid,
         event: &serde_json::Value,
@@ -184,6 +212,7 @@ pub(crate) trait DBDashboardGroup {
     /// Updates an existing sponsor.
     async fn update_group_sponsor(
         &self,
+        actor_user_id: Uuid,
         group_id: Uuid,
         group_sponsor_id: Uuid,
         sponsor: &Sponsor,
@@ -192,6 +221,7 @@ pub(crate) trait DBDashboardGroup {
     /// Updates a group team member role.
     async fn update_group_team_member_role(
         &self,
+        actor_user_id: Uuid,
         group_id: Uuid,
         user_id: Uuid,
         role: &GroupRole,
@@ -204,67 +234,100 @@ impl DBDashboardGroup for PgDB {
     #[instrument(skip(self, event, cfg_max_participants), err)]
     async fn add_event(
         &self,
+        actor_user_id: Uuid,
         group_id: Uuid,
         event: &Event,
         cfg_max_participants: &HashMap<MeetingProvider, i32>,
     ) -> Result<Uuid> {
         self.fetch_scalar_one(
-            "select add_event($1::uuid, $2::jsonb, $3::jsonb)::uuid",
-            &[&group_id, &Json(event), &Json(cfg_max_participants)],
+            "select add_event($1::uuid, $2::uuid, $3::jsonb, $4::jsonb)::uuid",
+            &[
+                &actor_user_id,
+                &group_id,
+                &Json(event),
+                &Json(cfg_max_participants),
+            ],
         )
         .await
     }
 
     /// [`DBDashboardGroup::add_group_sponsor`]
     #[instrument(skip(self, sponsor), err)]
-    async fn add_group_sponsor(&self, group_id: Uuid, sponsor: &Sponsor) -> Result<Uuid> {
+    async fn add_group_sponsor(
+        &self,
+        actor_user_id: Uuid,
+        group_id: Uuid,
+        sponsor: &Sponsor,
+    ) -> Result<Uuid> {
         self.fetch_scalar_one(
-            "select add_group_sponsor($1::uuid, $2::jsonb)::uuid",
-            &[&group_id, &Json(sponsor)],
+            "select add_group_sponsor($1::uuid, $2::uuid, $3::jsonb)::uuid",
+            &[&actor_user_id, &group_id, &Json(sponsor)],
         )
         .await
     }
 
     /// [`DBDashboardGroup::add_group_team_member`]
     #[instrument(skip(self), err)]
-    async fn add_group_team_member(&self, group_id: Uuid, user_id: Uuid, role: &GroupRole) -> Result<()> {
+    async fn add_group_team_member(
+        &self,
+        actor_user_id: Uuid,
+        group_id: Uuid,
+        user_id: Uuid,
+        role: &GroupRole,
+    ) -> Result<()> {
         self.execute(
-            "select add_group_team_member($1::uuid, $2::uuid, $3::text)",
-            &[&group_id, &user_id, &role.to_string()],
+            "select add_group_team_member($1::uuid, $2::uuid, $3::uuid, $4::text)",
+            &[&actor_user_id, &group_id, &user_id, &role.to_string()],
         )
         .await
     }
 
     /// [`DBDashboardGroup::cancel_event`]
     #[instrument(skip(self), err)]
-    async fn cancel_event(&self, group_id: Uuid, event_id: Uuid) -> Result<()> {
-        self.execute("select cancel_event($1::uuid, $2::uuid)", &[&group_id, &event_id])
-            .await
+    async fn cancel_event(&self, actor_user_id: Uuid, group_id: Uuid, event_id: Uuid) -> Result<()> {
+        self.execute(
+            "select cancel_event($1::uuid, $2::uuid, $3::uuid)",
+            &[&actor_user_id, &group_id, &event_id],
+        )
+        .await
     }
 
     /// [`DBDashboardGroup::delete_event`]
     #[instrument(skip(self), err)]
-    async fn delete_event(&self, group_id: Uuid, event_id: Uuid) -> Result<()> {
-        self.execute("select delete_event($1::uuid, $2::uuid)", &[&group_id, &event_id])
-            .await
+    async fn delete_event(&self, actor_user_id: Uuid, group_id: Uuid, event_id: Uuid) -> Result<()> {
+        self.execute(
+            "select delete_event($1::uuid, $2::uuid, $3::uuid)",
+            &[&actor_user_id, &group_id, &event_id],
+        )
+        .await
     }
 
     /// [`DBDashboardGroup::delete_group_sponsor`]
     #[instrument(skip(self), err)]
-    async fn delete_group_sponsor(&self, group_id: Uuid, group_sponsor_id: Uuid) -> Result<()> {
+    async fn delete_group_sponsor(
+        &self,
+        actor_user_id: Uuid,
+        group_id: Uuid,
+        group_sponsor_id: Uuid,
+    ) -> Result<()> {
         self.execute(
-            "select delete_group_sponsor($1::uuid, $2::uuid)",
-            &[&group_id, &group_sponsor_id],
+            "select delete_group_sponsor($1::uuid, $2::uuid, $3::uuid)",
+            &[&actor_user_id, &group_id, &group_sponsor_id],
         )
         .await
     }
 
     /// [`DBDashboardGroup::delete_group_team_member`]
     #[instrument(skip(self), err)]
-    async fn delete_group_team_member(&self, group_id: Uuid, user_id: Uuid) -> Result<()> {
+    async fn delete_group_team_member(
+        &self,
+        actor_user_id: Uuid,
+        group_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<()> {
         self.execute(
-            "select delete_group_team_member($1::uuid, $2::uuid)",
-            &[&group_id, &user_id],
+            "select delete_group_team_member($1::uuid, $2::uuid, $3::uuid)",
+            &[&actor_user_id, &group_id, &user_id],
         )
         .await
     }
@@ -517,12 +580,28 @@ impl DBDashboardGroup for PgDB {
             .await
     }
 
+    /// [`DBDashboardGroup::manual_check_in_event`]
+    #[instrument(skip(self), err)]
+    async fn manual_check_in_event(
+        &self,
+        actor_user_id: Uuid,
+        community_id: Uuid,
+        event_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<()> {
+        self.execute(
+            "select manual_check_in_event($1::uuid, $2::uuid, $3::uuid, $4::uuid)",
+            &[&actor_user_id, &community_id, &event_id, &user_id],
+        )
+        .await
+    }
+
     /// [`DBDashboardGroup::publish_event`]
     #[instrument(skip(self), err)]
-    async fn publish_event(&self, group_id: Uuid, event_id: Uuid, user_id: Uuid) -> Result<()> {
+    async fn publish_event(&self, actor_user_id: Uuid, group_id: Uuid, event_id: Uuid) -> Result<()> {
         self.execute(
             "select publish_event($1::uuid, $2::uuid, $3::uuid)",
-            &[&group_id, &event_id, &user_id],
+            &[&actor_user_id, &group_id, &event_id],
         )
         .await
     }
@@ -557,10 +636,10 @@ impl DBDashboardGroup for PgDB {
 
     /// [`DBDashboardGroup::unpublish_event`]
     #[instrument(skip(self), err)]
-    async fn unpublish_event(&self, group_id: Uuid, event_id: Uuid) -> Result<()> {
+    async fn unpublish_event(&self, actor_user_id: Uuid, group_id: Uuid, event_id: Uuid) -> Result<()> {
         self.execute(
-            "select unpublish_event($1::uuid, $2::uuid)",
-            &[&group_id, &event_id],
+            "select unpublish_event($1::uuid, $2::uuid, $3::uuid)",
+            &[&actor_user_id, &group_id, &event_id],
         )
         .await
     }
@@ -585,14 +664,21 @@ impl DBDashboardGroup for PgDB {
     #[instrument(skip(self, event, cfg_max_participants), err)]
     async fn update_event(
         &self,
+        actor_user_id: Uuid,
         group_id: Uuid,
         event_id: Uuid,
         event: &serde_json::Value,
         cfg_max_participants: &HashMap<MeetingProvider, i32>,
     ) -> Result<Vec<Uuid>> {
         self.fetch_json_one(
-            "select update_event($1::uuid, $2::uuid, $3::jsonb, $4::jsonb)",
-            &[&group_id, &event_id, &Json(event), &Json(cfg_max_participants)],
+            "select update_event($1::uuid, $2::uuid, $3::uuid, $4::jsonb, $5::jsonb)",
+            &[
+                &actor_user_id,
+                &group_id,
+                &event_id,
+                &Json(event),
+                &Json(cfg_max_participants),
+            ],
         )
         .await
     }
@@ -601,13 +687,14 @@ impl DBDashboardGroup for PgDB {
     #[instrument(skip(self, sponsor), err)]
     async fn update_group_sponsor(
         &self,
+        actor_user_id: Uuid,
         group_id: Uuid,
         group_sponsor_id: Uuid,
         sponsor: &Sponsor,
     ) -> Result<()> {
         self.execute(
-            "select update_group_sponsor($1::uuid, $2::uuid, $3::jsonb)",
-            &[&group_id, &group_sponsor_id, &Json(sponsor)],
+            "select update_group_sponsor($1::uuid, $2::uuid, $3::uuid, $4::jsonb)",
+            &[&actor_user_id, &group_id, &group_sponsor_id, &Json(sponsor)],
         )
         .await
     }
@@ -616,13 +703,14 @@ impl DBDashboardGroup for PgDB {
     #[instrument(skip(self), err)]
     async fn update_group_team_member_role(
         &self,
+        actor_user_id: Uuid,
         group_id: Uuid,
         user_id: Uuid,
         role: &GroupRole,
     ) -> Result<()> {
         self.execute(
-            "select update_group_team_member_role($1::uuid, $2::uuid, $3::text)",
-            &[&group_id, &user_id, &role.to_string()],
+            "select update_group_team_member_role($1::uuid, $2::uuid, $3::uuid, $4::text)",
+            &[&actor_user_id, &group_id, &user_id, &role.to_string()],
         )
         .await
     }

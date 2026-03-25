@@ -204,6 +204,7 @@ pub(crate) async fn details(
 /// Adds a new event to the database.
 #[instrument(skip_all, err)]
 pub(crate) async fn add(
+    CurrentUser(user): CurrentUser,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     State(meetings_cfg): State<Option<MeetingsConfig>>,
@@ -211,7 +212,8 @@ pub(crate) async fn add(
 ) -> Result<impl IntoResponse, HandlerError> {
     // Add event to database
     let cfg_max_participants = build_meetings_max_participants(meetings_cfg.as_ref());
-    db.add_event(group_id, &event, &cfg_max_participants).await?;
+    db.add_event(user.user_id, group_id, &event, &cfg_max_participants)
+        .await?;
 
     Ok((
         StatusCode::CREATED,
@@ -223,6 +225,7 @@ pub(crate) async fn add(
 /// Cancels an event (sets canceled=true).
 #[instrument(skip_all, err)]
 pub(crate) async fn cancel(
+    CurrentUser(user): CurrentUser,
     SelectedCommunityId(community_id): SelectedCommunityId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
@@ -234,7 +237,7 @@ pub(crate) async fn cancel(
     let event = db.get_event_summary(community_id, group_id, event_id).await?;
 
     // Mark event as canceled in database
-    db.cancel_event(group_id, event_id).await?;
+    db.cancel_event(user.user_id, group_id, event_id).await?;
 
     // Notify attendees and speakers about canceled event
     let should_notify = matches!(
@@ -304,7 +307,7 @@ pub(crate) async fn publish(
     let event = db.get_event_summary(community_id, group_id, event_id).await?;
 
     // Mark event as published in database
-    db.publish_event(group_id, event_id, user.user_id).await?;
+    db.publish_event(user.user_id, group_id, event_id).await?;
 
     // Notify group members and speakers about published event
     let should_notify = matches!(
@@ -387,12 +390,13 @@ pub(crate) async fn publish(
 /// Deletes an event from the database (soft delete).
 #[instrument(skip_all, err)]
 pub(crate) async fn delete(
+    CurrentUser(user): CurrentUser,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     Path(event_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Delete event from database (soft delete)
-    db.delete_event(group_id, event_id).await?;
+    db.delete_event(user.user_id, group_id, event_id).await?;
 
     Ok((
         StatusCode::NO_CONTENT,
@@ -403,12 +407,13 @@ pub(crate) async fn delete(
 /// Unpublishes an event (sets published=false and clears publication metadata).
 #[instrument(skip_all, err)]
 pub(crate) async fn unpublish(
+    CurrentUser(user): CurrentUser,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     Path(event_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Mark event as unpublished in database
-    db.unpublish_event(group_id, event_id).await?;
+    db.unpublish_event(user.user_id, group_id, event_id).await?;
 
     Ok((
         StatusCode::NO_CONTENT,
@@ -420,6 +425,7 @@ pub(crate) async fn unpublish(
 #[allow(clippy::too_many_arguments)]
 #[instrument(skip_all, err)]
 pub(crate) async fn update(
+    CurrentUser(user): CurrentUser,
     SelectedCommunityId(community_id): SelectedCommunityId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
@@ -443,7 +449,13 @@ pub(crate) async fn update(
     let cfg_max_participants = build_meetings_max_participants(meetings_cfg.as_ref());
     let event_json = serde_json::to_value(&event)?;
     let promoted_user_ids = db
-        .update_event(group_id, event_id, &event_json, &cfg_max_participants)
+        .update_event(
+            group_id,
+            user.user_id,
+            event_id,
+            &event_json,
+            &cfg_max_participants,
+        )
         .await?;
 
     // Notify users promoted from the waitlist when the update opens capacity

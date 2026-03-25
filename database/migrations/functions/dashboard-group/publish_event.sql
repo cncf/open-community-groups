@@ -1,8 +1,8 @@
 -- publish_event sets published=true and records publication metadata for an event.
 create or replace function publish_event(
+    p_actor_user_id uuid,
     p_group_id uuid,
-    p_event_id uuid,
-    p_user_id uuid
+    p_event_id uuid
 )
 returns void as $$
 declare
@@ -36,7 +36,7 @@ begin
         end,
         published = true,
         published_at = now(),
-        published_by = p_user_id,
+        published_by = p_actor_user_id,
         -- Mark reminder as evaluated when publish happens inside the 24-hour window
         event_reminder_evaluated_for_starts_at = case
             when event_reminder_enabled = true
@@ -55,5 +55,16 @@ begin
     update session set meeting_in_sync = false
     where event_id = p_event_id
     and meeting_requested = true;
+
+    -- Track the publish action
+    perform insert_audit_log(
+        'event_published',
+        p_actor_user_id,
+        'event',
+        p_event_id,
+        (select community_id from "group" where group_id = p_group_id),
+        p_group_id,
+        p_event_id
+    );
 end;
 $$ language plpgsql;

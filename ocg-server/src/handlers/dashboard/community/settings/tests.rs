@@ -168,8 +168,8 @@ async fn test_update_success() {
         .returning(|_, _, _| Ok(true));
     db.expect_update_community()
         .times(1)
-        .withf(move |cid, update| *cid == community_id && update.display_name == expected_display_name)
-        .returning(|_, _| Ok(()));
+        .withf(move |_, cid, update| *cid == community_id && update.display_name == expected_display_name)
+        .returning(|_, _, _| Ok(()));
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
@@ -274,8 +274,8 @@ async fn test_update_db_error() {
         .returning(|_, _, _| Ok(true));
     db.expect_update_community()
         .times(1)
-        .withf(move |cid, _| *cid == community_id)
-        .returning(move |_, _| Err(anyhow!("db error")));
+        .withf(move |_, cid, _| *cid == community_id)
+        .returning(move |_, _, _| Err(anyhow!("db error")));
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();

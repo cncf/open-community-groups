@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(57);
+select plan(58);
 
 -- ============================================================================
 -- TESTS
@@ -15,6 +15,7 @@ select has_extension('postgis');
 
 -- Test: check expected tables exist
 select has_table('attachment');
+select has_table('audit_log');
 select has_table('auth_session');
 select has_table('cfs_submission');
 select has_table('cfs_submission_label');

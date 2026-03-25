@@ -1,5 +1,6 @@
 -- Deletes a sponsor from the group.
 create or replace function delete_group_sponsor(
+    p_actor_user_id uuid,
     p_group_id uuid,
     p_group_sponsor_id uuid
 )
@@ -18,5 +19,17 @@ begin
     delete from group_sponsor
     where group_sponsor_id = p_group_sponsor_id
     and group_id = p_group_id;
+
+    if found then
+        -- Track the deleted sponsor
+        perform insert_audit_log(
+            'group_sponsor_deleted',
+            p_actor_user_id,
+            'group_sponsor',
+            p_group_sponsor_id,
+            (select community_id from "group" where group_id = p_group_id),
+            p_group_id
+        );
+    end if;
 end;
 $$ language plpgsql;

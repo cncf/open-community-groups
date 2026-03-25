@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(55);
+select plan(56);
 
 -- ============================================================================
 -- TESTS
@@ -17,6 +17,22 @@ select columns_are('attachment', array[
     'data',
     'file_name',
     'hash'
+]);
+
+-- Test: audit_log columns should match expected
+select columns_are('audit_log', array[
+    'audit_log_id',
+    'action',
+    'created_at',
+    'resource_id',
+    'resource_type',
+
+    'actor_user_id',
+    'actor_username',
+    'community_id',
+    'details',
+    'event_id',
+    'group_id'
 ]);
 
 -- Test: auth_session columns should match expected

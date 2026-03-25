@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(25);
+select plan(26);
 
 -- ============================================================================
 -- VARIABLES
@@ -92,6 +92,7 @@ select ok(
             :'communityID'::uuid,
             :'groupID'::uuid,
             add_event(
+                null::uuid,
                 :'groupID'::uuid,
                 '{"name": "Kubernetes Fundamentals Workshop", "description": "Learn the basics of Kubernetes deployment and management", "timezone": "America/New_York", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person"}'::jsonb
             )
@@ -116,9 +117,40 @@ select ok(
     'Should create event with minimal required fields and return expected structure'
 );
 
+-- Should create the expected audit row
+select results_eq(
+    $$
+        select
+            action,
+            actor_user_id,
+            actor_username,
+            community_id,
+            group_id,
+            event_id,
+            resource_type,
+            resource_id
+        from audit_log
+    $$,
+    $$
+        select
+            'event_added',
+            null::uuid,
+            null::text,
+            '00000000-0000-0000-0000-000000000001'::uuid,
+            '00000000-0000-0000-0000-000000000002'::uuid,
+            event_id,
+            'event',
+            event_id
+        from event
+        where name = 'Kubernetes Fundamentals Workshop'
+    $$,
+    'Should create the expected audit row'
+);
+
 -- Should create event with all fields including hosts, sponsors, and sessions
 with new_event as (
     select add_event(
+        null::uuid,
         '00000000-0000-0000-0000-000000000002'::uuid,
         '{
             "name": "CloudNativeCon Seattle 2025",
@@ -281,6 +313,7 @@ select ok(
 -- Should create event with CFS labels
 with cfs_labels_event as (
     select add_event(
+        null::uuid,
         :'groupID'::uuid,
         '{
             "name": "CloudNativeCon Labels Event",
@@ -351,6 +384,7 @@ select is(
 -- Should throw error when CFS labels contain duplicate names
 select throws_ok(
     $$select add_event(
+        null::uuid,
         '00000000-0000-0000-0000-000000000002'::uuid,
         '{
             "name": "CloudNativeCon Duplicate Labels Event",
@@ -371,6 +405,7 @@ select throws_ok(
 -- Should set meeting flags consistently for events and sessions when requested
 with request_event as (
     select add_event(
+        null::uuid,
         :'groupID'::uuid,
         '{
             "name": "Meeting Requested Event",
@@ -439,6 +474,7 @@ select is(
 -- Should throw error when capacity exceeds max_participants with meeting_requested
 select throws_ok(
     $$select add_event(
+        null::uuid,
         '00000000-0000-0000-0000-000000000002'::uuid,
         '{"name": "Capacity Exceed Event", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "virtual", "capacity": 200, "meeting_requested": true, "meeting_provider_id": "zoom", "starts_at": "2030-03-01T10:00:00", "ends_at": "2030-03-01T11:00:00"}'::jsonb,
         '{"zoom": 100}'::jsonb
@@ -450,6 +486,7 @@ select throws_ok(
 -- Should succeed when capacity is within max_participants
 select ok(
     (select add_event(
+        null::uuid,
         '00000000-0000-0000-0000-000000000002'::uuid,
         '{"name": "Valid Capacity Event", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "virtual", "capacity": 50, "meeting_requested": true, "meeting_provider_id": "zoom", "starts_at": "2030-03-01T10:00:00", "ends_at": "2030-03-01T11:00:00"}'::jsonb,
         '{"zoom": 100}'::jsonb
@@ -460,6 +497,7 @@ select ok(
 -- Should succeed with high capacity when meeting_requested is false
 select ok(
     (select add_event(
+        null::uuid,
         '00000000-0000-0000-0000-000000000002'::uuid,
         '{"name": "No Meeting Event", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "capacity": 500}'::jsonb,
         '{"zoom": 100}'::jsonb
@@ -470,6 +508,7 @@ select ok(
 -- Should succeed when cfg_max_participants is null
 select ok(
     (select add_event(
+        null::uuid,
         '00000000-0000-0000-0000-000000000002'::uuid,
         '{"name": "No Limit Event", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "virtual", "capacity": 1000, "meeting_requested": true, "meeting_provider_id": "zoom", "starts_at": "2030-03-01T10:00:00", "ends_at": "2030-03-01T11:00:00"}'::jsonb,
         null
@@ -480,6 +519,7 @@ select ok(
 -- Should throw error when event starts_at is in the past
 select throws_ok(
     $$select add_event(
+        null::uuid,
         '00000000-0000-0000-0000-000000000002'::uuid,
         '{"name": "Past Event", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "starts_at": "2020-01-01T10:00:00"}'::jsonb
     )$$,
@@ -490,6 +530,7 @@ select throws_ok(
 -- Should throw error when event ends_at is in the past
 select throws_ok(
     $$select add_event(
+        null::uuid,
         '00000000-0000-0000-0000-000000000002'::uuid,
         '{"name": "Past End Event", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "ends_at": "2020-01-01T12:00:00"}'::jsonb
     )$$,
@@ -500,6 +541,7 @@ select throws_ok(
 -- Should throw error when session starts_at is in the past
 select throws_ok(
     $$select add_event(
+        null::uuid,
         '00000000-0000-0000-0000-000000000002'::uuid,
         '{"name": "Session Past Start", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "starts_at": "2030-01-01T10:00:00", "sessions": [{"name": "Past Session", "starts_at": "2020-01-01T10:00:00", "kind": "in-person"}]}'::jsonb
     )$$,
@@ -510,6 +552,7 @@ select throws_ok(
 -- Should throw error when session ends_at is in the past
 select throws_ok(
     $$select add_event(
+        null::uuid,
         '00000000-0000-0000-0000-000000000002'::uuid,
         '{"name": "Session Past End", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "starts_at": "2030-01-01T10:00:00", "sessions": [{"name": "Past End Session", "starts_at": "2030-01-01T10:00:00", "ends_at": "2020-01-01T11:00:00", "kind": "in-person"}]}'::jsonb
     )$$,
@@ -520,6 +563,7 @@ select throws_ok(
 -- Should throw error when event ends_at is before starts_at
 select throws_like(
     $$select add_event(
+        null::uuid,
         '00000000-0000-0000-0000-000000000002'::uuid,
         '{"name": "Invalid Range Event", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "starts_at": "2030-01-01T12:00:00", "ends_at": "2030-01-01T10:00:00"}'::jsonb
     )$$,
@@ -530,6 +574,7 @@ select throws_like(
 -- Should throw error when session ends_at is before starts_at
 select throws_like(
     $$select add_event(
+        null::uuid,
         '00000000-0000-0000-0000-000000000002'::uuid,
         '{"name": "Invalid Session Range", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "starts_at": "2030-01-01T10:00:00", "sessions": [{"name": "Invalid Session", "starts_at": "2030-01-01T12:00:00", "ends_at": "2030-01-01T10:00:00", "kind": "in-person"}]}'::jsonb
     )$$,
@@ -540,6 +585,7 @@ select throws_like(
 -- Should throw error when event ends_at is set without starts_at
 select throws_like(
     $$select add_event(
+        null::uuid,
         '00000000-0000-0000-0000-000000000002'::uuid,
         '{"name": "No Start Event", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "ends_at": "2030-01-01T12:00:00"}'::jsonb
     )$$,
@@ -550,6 +596,7 @@ select throws_like(
 -- Should succeed with event ends_at null when starts_at is null
 select ok(
     (select add_event(
+        null::uuid,
         '00000000-0000-0000-0000-000000000002'::uuid,
         '{"name": "No Dates Event", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person"}'::jsonb
     ) is not null),
@@ -559,6 +606,7 @@ select ok(
 -- Should succeed with session ends_at null when starts_at is set
 select ok(
     (select add_event(
+        null::uuid,
         '00000000-0000-0000-0000-000000000002'::uuid,
         '{"name": "Session No End", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "starts_at": "2030-01-01T10:00:00", "sessions": [{"name": "No End Session", "starts_at": "2030-01-01T10:00:00", "kind": "in-person"}]}'::jsonb
     ) is not null),
@@ -568,6 +616,7 @@ select ok(
 -- Should succeed with valid future dates for event and sessions
 select ok(
     (select add_event(
+        null::uuid,
         '00000000-0000-0000-0000-000000000002'::uuid,
         '{"name": "Future Event", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "starts_at": "2030-01-01T10:00:00", "ends_at": "2030-01-01T12:00:00", "sessions": [{"name": "Future Session", "starts_at": "2030-01-01T10:00:00", "ends_at": "2030-01-01T11:00:00", "kind": "in-person"}]}'::jsonb
     ) is not null),
@@ -577,6 +626,7 @@ select ok(
 -- Should throw error when session starts_at is before event starts_at
 select throws_ok(
     $$select add_event(
+        null::uuid,
         '00000000-0000-0000-0000-000000000002'::uuid,
         '{"name": "Session Before Event", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "starts_at": "2030-01-01T10:00:00", "ends_at": "2030-01-01T12:00:00", "sessions": [{"name": "Early Session", "starts_at": "2030-01-01T09:00:00", "ends_at": "2030-01-01T10:30:00", "kind": "in-person"}]}'::jsonb
     )$$,
@@ -587,6 +637,7 @@ select throws_ok(
 -- Should throw error when session starts_at is after event ends_at
 select throws_ok(
     $$select add_event(
+        null::uuid,
         '00000000-0000-0000-0000-000000000002'::uuid,
         '{"name": "Session After Event", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "starts_at": "2030-01-01T10:00:00", "ends_at": "2030-01-01T12:00:00", "sessions": [{"name": "Late Session", "starts_at": "2030-01-01T13:00:00", "ends_at": "2030-01-01T14:00:00", "kind": "in-person"}]}'::jsonb
     )$$,
@@ -597,6 +648,7 @@ select throws_ok(
 -- Should throw error when session ends_at is after event ends_at
 select throws_ok(
     $$select add_event(
+        null::uuid,
         '00000000-0000-0000-0000-000000000002'::uuid,
         '{"name": "Session Exceeds Event", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "starts_at": "2030-01-01T10:00:00", "ends_at": "2030-01-01T12:00:00", "sessions": [{"name": "Long Session", "starts_at": "2030-01-01T11:00:00", "ends_at": "2030-01-01T13:00:00", "kind": "in-person"}]}'::jsonb
     )$$,
@@ -607,6 +659,7 @@ select throws_ok(
 -- Should succeed when session is within event bounds
 select ok(
     (select add_event(
+        null::uuid,
         '00000000-0000-0000-0000-000000000002'::uuid,
         '{"name": "Session Within Bounds", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "starts_at": "2030-01-01T10:00:00", "ends_at": "2030-01-01T14:00:00", "sessions": [{"name": "Valid Session", "starts_at": "2030-01-01T11:00:00", "ends_at": "2030-01-01T12:00:00", "kind": "in-person"}]}'::jsonb
     ) is not null),

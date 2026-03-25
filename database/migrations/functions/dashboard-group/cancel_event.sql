@@ -1,5 +1,6 @@
 -- cancel_event marks an event as canceled and clears publication metadata.
 create or replace function cancel_event(
+    p_actor_user_id uuid,
     p_group_id uuid,
     p_event_id uuid
 )
@@ -36,5 +37,16 @@ begin
     update session set meeting_in_sync = false
     where event_id = p_event_id
     and meeting_requested = true;
+
+    -- Track the event cancellation
+    perform insert_audit_log(
+        'event_canceled',
+        p_actor_user_id,
+        'event',
+        p_event_id,
+        (select community_id from "group" where group_id = p_group_id),
+        p_group_id,
+        p_event_id
+    );
 end;
 $$ language plpgsql;

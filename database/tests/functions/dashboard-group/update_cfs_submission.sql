@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(15);
+select plan(16);
 
 -- ============================================================================
 -- VARIABLES
@@ -207,6 +207,35 @@ select is(
     (select reviewed_by from cfs_submission where cfs_submission_id = :'submissionID'::uuid),
     :'reviewerID'::uuid,
     'Should store reviewer'
+);
+
+-- Should create the expected audit row
+select results_eq(
+    $$
+        select
+            action,
+            actor_user_id,
+            actor_username,
+            community_id,
+            group_id,
+            event_id,
+            resource_type,
+            resource_id
+        from audit_log
+    $$,
+    $$
+        values (
+            'cfs_submission_updated',
+            '00000000-0000-0000-0000-000000000081'::uuid,
+            'reviewer',
+            '00000000-0000-0000-0000-000000000001'::uuid,
+            '00000000-0000-0000-0000-000000000031'::uuid,
+            '00000000-0000-0000-0000-000000000051'::uuid,
+            'cfs_submission',
+            '00000000-0000-0000-0000-000000000071'::uuid
+        )
+    $$,
+    'Should create the expected audit row'
 );
 
 -- Should return false when only labels change

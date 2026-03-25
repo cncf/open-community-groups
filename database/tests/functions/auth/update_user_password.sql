@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(4);
+select plan(5);
 
 -- ============================================================================
 -- VARIABLES
@@ -76,6 +76,29 @@ select isnt(
     (select auth_hash from "user" where user_id = :'userID'::uuid),
     'initial_hash_target',
     'Should rotate auth_hash for target user'
+);
+
+-- Should create the expected audit row
+select results_eq(
+    $$
+        select
+            action,
+            actor_user_id,
+            actor_username,
+            resource_type,
+            resource_id
+        from audit_log
+    $$,
+    $$
+        values (
+            'user_password_updated',
+            '00000000-0000-0000-0000-000000000132'::uuid,
+            'target-user',
+            'user',
+            '00000000-0000-0000-0000-000000000132'::uuid
+        )
+    $$,
+    'Should create the expected audit row'
 );
 
 -- Should not modify other users

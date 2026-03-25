@@ -1,5 +1,6 @@
 -- Deletes a region from a community when not in use.
 create or replace function delete_region(
+    p_actor_user_id uuid,
     p_community_id uuid,
     p_region_id uuid
 )
@@ -31,5 +32,14 @@ begin
     delete from region r
     where r.community_id = p_community_id
       and r.region_id = p_region_id;
+
+    -- Track the deletion
+    perform insert_audit_log(
+        'region_deleted',
+        p_actor_user_id,
+        'region',
+        p_region_id,
+        p_community_id
+    );
 end;
 $$ language plpgsql;

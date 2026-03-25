@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(4);
+select plan(5);
 
 -- ============================================================================
 -- VARIABLES
@@ -153,6 +153,29 @@ select is(
     (select action_required_message from cfs_submission where cfs_submission_id = :'submission1ID'::uuid),
     null,
     'Should clear action required message'
+);
+
+-- Should create the expected audit row
+select results_eq(
+    $$
+        select
+            action,
+            actor_user_id,
+            actor_username,
+            resource_type,
+            resource_id
+        from audit_log
+    $$,
+    $$
+        values (
+            'submission_resubmitted',
+            '00000000-0000-0000-0000-000000000081'::uuid,
+            'alice',
+            'cfs_submission',
+            '00000000-0000-0000-0000-000000000071'::uuid
+        )
+    $$,
+    'Should create the expected audit row'
 );
 
 -- Should reject resubmitting approved submission

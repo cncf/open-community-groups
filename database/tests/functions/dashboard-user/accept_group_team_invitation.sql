@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(3);
+select plan(4);
 
 -- ============================================================================
 -- VARIABLES
@@ -37,7 +37,7 @@ values (:'groupID', :'user1ID', 'admin', false);
 
 -- Should flip accepted to true when accepting pending invite
 select lives_ok(
-    $$ select accept_group_team_invitation('00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000031'::uuid) $$,
+    $$ select accept_group_team_invitation('00000000-0000-0000-0000-000000000031'::uuid, '00000000-0000-0000-0000-000000000021'::uuid) $$,
     'Should succeed for pending invite'
 );
 select results_eq(
@@ -46,9 +46,36 @@ select results_eq(
     'Invite should be marked as accepted'
 );
 
+-- Should create the expected audit row
+select results_eq(
+    $$
+        select
+            action,
+            actor_user_id,
+            actor_username,
+            community_id,
+            group_id,
+            resource_type,
+            resource_id
+        from audit_log
+    $$,
+    $$
+        values (
+            'group_team_invitation_accepted',
+            '00000000-0000-0000-0000-000000000031'::uuid,
+            'alice',
+            '00000000-0000-0000-0000-000000000001'::uuid,
+            '00000000-0000-0000-0000-000000000021'::uuid,
+            'user',
+            '00000000-0000-0000-0000-000000000031'::uuid
+        )
+    $$,
+    'Should create the expected audit row'
+);
+
 -- Should raise error when no pending invitation exists
 select throws_ok(
-    $$ select accept_group_team_invitation('00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000031'::uuid) $$,
+    $$ select accept_group_team_invitation('00000000-0000-0000-0000-000000000031'::uuid, '00000000-0000-0000-0000-000000000021'::uuid) $$,
     'no pending group invitation found',
     'Second accept should fail since invite is no longer pending'
 );

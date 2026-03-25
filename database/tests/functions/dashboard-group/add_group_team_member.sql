@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(4);
+select plan(5);
 
 -- ============================================================================
 -- VARIABLES
@@ -42,7 +42,7 @@ insert into "user" (user_id, auth_hash, email, name, username, email_verified) v
 
 -- Should create pending membership
 select lives_ok(
-    $$ select add_group_team_member('00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000031'::uuid, 'admin') $$,
+    $$ select add_group_team_member(null::uuid, '00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000031'::uuid, 'admin') $$,
     'Should succeed for valid user'
 );
 select results_eq(
@@ -56,9 +56,38 @@ select results_eq(
     'Membership should be created with accepted = false'
 );
 
+-- Should create the expected audit row
+select results_eq(
+    $$
+        select
+            action,
+            actor_user_id,
+            actor_username,
+            community_id,
+            group_id,
+            resource_type,
+            resource_id,
+            details
+        from audit_log
+    $$,
+    $$
+        values (
+            'group_team_member_added',
+            null::uuid,
+            null::text,
+            '00000000-0000-0000-0000-000000000001'::uuid,
+            '00000000-0000-0000-0000-000000000021'::uuid,
+            'user',
+            '00000000-0000-0000-0000-000000000031'::uuid,
+            jsonb_build_object('role', 'admin')
+        )
+    $$,
+    'Should create the expected audit row'
+);
+
 -- Should not allow adding membership with invalid role
 select throws_ok(
-    $$ select add_group_team_member('00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000033'::uuid, 'invalid') $$,
+    $$ select add_group_team_member(null::uuid, '00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000033'::uuid, 'invalid') $$,
     '23503',
     'insert or update on table "group_team" violates foreign key constraint "group_team_role_fkey"',
     'Should not allow adding membership with invalid role'
@@ -66,7 +95,7 @@ select throws_ok(
 
 -- Should not allow duplicate group team membership
 select throws_ok(
-    $$ select add_group_team_member('00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000031'::uuid, 'admin') $$,
+    $$ select add_group_team_member(null::uuid, '00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000031'::uuid, 'admin') $$,
     'user is already a group team member',
     'Should not allow duplicate group team membership'
 );

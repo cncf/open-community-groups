@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(3);
+select plan(4);
 
 -- ============================================================================
 -- VARIABLES
@@ -133,6 +133,29 @@ select is(
     (select status_id from cfs_submission where cfs_submission_id = :'submission1ID'::uuid),
     'withdrawn',
     'Should set submission status to withdrawn'
+);
+
+-- Should create the expected audit row
+select results_eq(
+    $$
+        select
+            action,
+            actor_user_id,
+            actor_username,
+            resource_type,
+            resource_id
+        from audit_log
+    $$,
+    $$
+        values (
+            'submission_withdrawn',
+            '00000000-0000-0000-0000-000000000081'::uuid,
+            'alice',
+            'cfs_submission',
+            '00000000-0000-0000-0000-000000000071'::uuid
+        )
+    $$,
+    'Should create the expected audit row'
 );
 
 -- Should reject withdrawing approved submission

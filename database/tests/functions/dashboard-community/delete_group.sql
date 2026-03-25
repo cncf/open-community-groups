@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(7);
+select plan(8);
 
 -- ============================================================================
 -- VARIABLES
@@ -67,7 +67,7 @@ insert into "group" (
 -- Should perform soft delete
 select lives_ok(
     format(
-        'select delete_group(%L::uuid, %L::uuid)',
+        'select delete_group(null::uuid, %L::uuid, %L::uuid)',
         :'communityID',
         :'groupID'
     ),
@@ -98,16 +98,43 @@ select is(
     'Should set active to false when deleting'
 );
 
+-- Should create the expected audit row
+select results_eq(
+    $$
+        select
+            action,
+            actor_user_id,
+            actor_username,
+            community_id,
+            group_id,
+            resource_type,
+            resource_id
+        from audit_log
+    $$,
+    $$
+        values (
+            'group_deleted',
+            null::uuid,
+            null::text,
+            '00000000-0000-0000-0000-000000000001'::uuid,
+            '00000000-0000-0000-0000-000000000021'::uuid,
+            'group',
+            '00000000-0000-0000-0000-000000000021'::uuid
+        )
+    $$,
+    'Should create the expected audit row'
+);
+
 -- Should throw error for already deleted group
 select throws_ok(
-    $$select delete_group('00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000022'::uuid)$$,
+    $$select delete_group(null::uuid, '00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000022'::uuid)$$,
     'group not found or inactive',
     'Should throw error when trying to delete already deleted group'
 );
 
 -- Should throw error for wrong community_id
 select throws_ok(
-    $$select delete_group('00000000-0000-0000-0000-000000000099'::uuid, '00000000-0000-0000-0000-000000000021'::uuid)$$,
+    $$select delete_group(null::uuid, '00000000-0000-0000-0000-000000000099'::uuid, '00000000-0000-0000-0000-000000000021'::uuid)$$,
     'group not found or inactive',
     'Should throw error when community_id does not match'
 );

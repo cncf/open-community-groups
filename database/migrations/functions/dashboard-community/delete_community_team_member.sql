@@ -1,5 +1,6 @@
 -- Deletes a user from the community team.
 create or replace function delete_community_team_member(
+    p_actor_user_id uuid,
     p_community_id uuid,
     p_user_id uuid
 ) returns void as $$
@@ -49,5 +50,14 @@ begin
     delete from community_team
     where community_id = p_community_id
       and user_id = p_user_id;
+
+    -- Track the removal
+    perform insert_audit_log(
+        'community_team_member_removed',
+        p_actor_user_id,
+        'user',
+        p_user_id,
+        p_community_id
+    );
 end;
 $$ language plpgsql;

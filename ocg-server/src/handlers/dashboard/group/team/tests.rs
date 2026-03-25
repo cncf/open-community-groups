@@ -244,8 +244,8 @@ async fn test_add_success() {
         .returning(move |_, _, _, _| Ok(true));
     db.expect_add_group_team_member()
         .times(1)
-        .withf(move |id, uid, role| *id == group_id && *uid == new_member_id && role == &GroupRole::Admin)
-        .returning(move |_, _, _| Ok(()));
+        .withf(move |_, id, uid, role| *id == group_id && *uid == new_member_id && role == &GroupRole::Admin)
+        .returning(move |_, _, _, _| Ok(()));
     db.expect_get_group_summary()
         .times(1)
         .withf(move |cid, gid| *cid == community_id && *gid == group_id)
@@ -334,8 +334,8 @@ async fn test_delete_success() {
         .returning(move |_, _, _, _| Ok(true));
     db.expect_delete_group_team_member()
         .times(1)
-        .withf(move |id, uid| *id == group_id && *uid == member_id)
-        .returning(move |_, _| Ok(()));
+        .withf(move |_, id, uid| *id == group_id && *uid == member_id)
+        .returning(move |_, _, _| Ok(()));
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
@@ -403,8 +403,8 @@ async fn test_update_role_success() {
         .returning(move |_, _, _, _| Ok(true));
     db.expect_update_group_team_member_role()
         .times(1)
-        .withf(move |id, uid, role| *id == group_id && *uid == member_id && role == &GroupRole::Admin)
-        .returning(move |_, _, _| Ok(()));
+        .withf(move |_, id, uid, role| *id == group_id && *uid == member_id && role == &GroupRole::Admin)
+        .returning(move |_, _, _, _| Ok(()));
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();

@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(125);
+select plan(130);
 
 -- ============================================================================
 -- TESTS
@@ -11,6 +11,7 @@ select plan(125);
 
 -- Test: check tables have expected primary keys
 select has_pk('attachment');
+select has_pk('audit_log');
 select has_pk('auth_session');
 select has_pk('cfs_submission');
 select has_pk('cfs_submission_rating');
@@ -66,6 +67,10 @@ select has_pk('user');
 
 -- Test: check tables have expected foreign keys
 select col_is_fk('community', 'community_site_layout_id', 'community_site_layout');
+select col_is_fk('audit_log', 'actor_user_id', 'user');
+select col_is_fk('audit_log', 'community_id', 'community');
+select col_is_fk('audit_log', 'event_id', 'event');
+select col_is_fk('audit_log', 'group_id', 'group');
 select col_is_fk('community_role_community_permission', 'community_permission_id', 'community_permission');
 select col_is_fk('community_role_community_permission', 'community_role_id', 'community_role');
 select col_is_fk('community_role_group_permission', 'community_role_id', 'community_role');

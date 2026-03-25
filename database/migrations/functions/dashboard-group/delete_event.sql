@@ -1,5 +1,6 @@
 -- delete_event performs a soft delete on an event by setting deleted=true and deleted_at.
 create or replace function delete_event(
+    p_actor_user_id uuid,
     p_group_id uuid,
     p_event_id uuid
 )
@@ -35,5 +36,16 @@ begin
     update session set meeting_in_sync = false
     where event_id = p_event_id
     and meeting_requested = true;
+
+    -- Track the event deletion
+    perform insert_audit_log(
+        'event_deleted',
+        p_actor_user_id,
+        'event',
+        p_event_id,
+        (select community_id from "group" where group_id = p_group_id),
+        p_group_id,
+        p_event_id
+    );
 end;
 $$ language plpgsql;

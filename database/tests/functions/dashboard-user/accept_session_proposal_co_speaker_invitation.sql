@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(4);
+select plan(5);
 
 -- ============================================================================
 -- VARIABLES
@@ -80,6 +80,29 @@ select is(
     ),
     'ready-for-submission',
     'Should set proposal status to ready for submission after acceptance'
+);
+
+-- Should create the expected audit row
+select results_eq(
+    $$
+        select
+            action,
+            actor_user_id,
+            actor_username,
+            resource_type,
+            resource_id
+        from audit_log
+    $$,
+    $$
+        values (
+            'session_proposal_co_speaker_invitation_accepted',
+            '00000000-0000-0000-0000-000000000071'::uuid,
+            'co-speaker',
+            'session_proposal',
+            '00000000-0000-0000-0000-000000000081'::uuid
+        )
+    $$,
+    'Should create the expected audit row'
 );
 
 -- Should reject acceptance when invitation is not pending

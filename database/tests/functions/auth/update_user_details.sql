@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(6);
+select plan(7);
 
 -- ============================================================================
 -- VARIABLES
@@ -177,6 +177,29 @@ select is(
         "website_url": "https://example.com/updateduser"
     }'::jsonb,
     'Should persist all provided user fields'
+);
+
+-- Should create the expected audit row
+select results_eq(
+    $$
+        select
+            action,
+            actor_user_id,
+            actor_username,
+            resource_type,
+            resource_id
+        from audit_log
+    $$,
+    $$
+        values (
+            'user_details_updated',
+            '00000000-0000-0000-0000-000000000002'::uuid,
+            'testuser',
+            'user',
+            '00000000-0000-0000-0000-000000000002'::uuid
+        )
+    $$,
+    'Should create the expected audit row'
 );
 
 -- Update user with only required field (name), rest are null

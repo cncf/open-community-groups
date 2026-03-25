@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(10);
+select plan(11);
 
 -- ============================================================================
 -- VARIABLES
@@ -182,7 +182,7 @@ insert into session (
 
 -- Should clear published flags and metadata
 select lives_ok(
-    $$select unpublish_event('00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000031'::uuid)$$,
+    $$select unpublish_event(null::uuid, '00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000031'::uuid)$$,
     'Should clear published flags and metadata'
 );
 
@@ -205,6 +205,35 @@ select is(
     (select published_by from event where event_id = :'eventID'),
     null,
     'Should set published_by to null'
+);
+
+-- Should create the expected audit row
+select results_eq(
+    $$
+        select
+            action,
+            actor_user_id,
+            actor_username,
+            community_id,
+            group_id,
+            event_id,
+            resource_type,
+            resource_id
+        from audit_log
+    $$,
+    $$
+        values (
+            'event_unpublished',
+            null::uuid,
+            null::text,
+            '00000000-0000-0000-0000-000000000001'::uuid,
+            '00000000-0000-0000-0000-000000000021'::uuid,
+            '00000000-0000-0000-0000-000000000031'::uuid,
+            'event',
+            '00000000-0000-0000-0000-000000000031'::uuid
+        )
+    $$,
+    'Should create the expected audit row'
 );
 
 -- Should set event meeting_in_sync to false
@@ -230,7 +259,7 @@ select is(
 
 -- Should unpublish event when meeting_requested=false
 select lives_ok(
-    $$select unpublish_event('00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000032'::uuid)$$,
+    $$select unpublish_event(null::uuid, '00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000032'::uuid)$$,
     'Should unpublish event when meeting_requested=false'
 );
 
@@ -243,7 +272,7 @@ select is(
 
 -- Should throw error when group_id does not match
 select throws_ok(
-    $$select unpublish_event('00000000-0000-0000-0000-000000000099'::uuid, '00000000-0000-0000-0000-000000000031'::uuid)$$,
+    $$select unpublish_event(null::uuid, '00000000-0000-0000-0000-000000000099'::uuid, '00000000-0000-0000-0000-000000000031'::uuid)$$,
     'event not found or inactive',
     'Should throw error when group_id does not match'
 );

@@ -113,12 +113,13 @@ pub(crate) async fn update_page(
 /// Activates a group (sets active=true).
 #[instrument(skip_all, err)]
 pub(crate) async fn activate(
+    CurrentUser(user): CurrentUser,
     SelectedCommunityId(community_id): SelectedCommunityId,
     State(db): State<DynDB>,
     Path(group_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Mark group as active in database
-    db.activate_group(community_id, group_id).await?;
+    db.activate_group(user.user_id, community_id, group_id).await?;
 
     Ok((
         StatusCode::NO_CONTENT,
@@ -130,12 +131,13 @@ pub(crate) async fn activate(
 #[instrument(skip_all, err)]
 pub(crate) async fn add(
     session: Session,
+    CurrentUser(user): CurrentUser,
     SelectedCommunityId(community_id): SelectedCommunityId,
     State(db): State<DynDB>,
     ValidatedFormQs(group): ValidatedFormQs<Group>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Add group to database
-    let group_id = db.add_group(community_id, &group).await?;
+    let group_id = db.add_group(user.user_id, community_id, &group).await?;
 
     // Auto-select the new group if none was selected
     if session.get::<Uuid>(SELECTED_GROUP_ID_KEY).await?.is_none() {
@@ -152,12 +154,13 @@ pub(crate) async fn add(
 /// Deactivates a group (sets active=false without deleting).
 #[instrument(skip_all, err)]
 pub(crate) async fn deactivate(
+    CurrentUser(user): CurrentUser,
     SelectedCommunityId(community_id): SelectedCommunityId,
     State(db): State<DynDB>,
     Path(group_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Mark group as not active in database
-    db.deactivate_group(community_id, group_id).await?;
+    db.deactivate_group(user.user_id, community_id, group_id).await?;
 
     Ok((
         StatusCode::NO_CONTENT,
@@ -175,7 +178,7 @@ pub(crate) async fn delete(
     Path(group_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Delete group from database (soft delete)
-    db.delete_group(community_id, group_id).await?;
+    db.delete_group(user.user_id, community_id, group_id).await?;
 
     // Update selection if deleted group was selected
     if session.get::<Uuid>(SELECTED_GROUP_ID_KEY).await? == Some(group_id) {
@@ -201,13 +204,14 @@ pub(crate) async fn delete(
 /// Updates an existing group's information in the database.
 #[instrument(skip_all, err)]
 pub(crate) async fn update(
+    CurrentUser(user): CurrentUser,
     SelectedCommunityId(community_id): SelectedCommunityId,
     State(db): State<DynDB>,
     Path(group_id): Path<Uuid>,
     ValidatedFormQs(group): ValidatedFormQs<Group>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Update group in database
-    db.update_group(community_id, group_id, &group).await?;
+    db.update_group(user.user_id, community_id, group_id, &group).await?;
 
     Ok((
         StatusCode::NO_CONTENT,
