@@ -2,6 +2,7 @@ import { expect } from "@open-wc/testing";
 
 import "/static/js/common/timezone-selector.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
+import { mountLitComponent, removeMountedElements } from "/tests/unit/test-utils/lit.js";
 
 describe("timezone-selector", () => {
   beforeEach(() => {
@@ -9,7 +10,7 @@ describe("timezone-selector", () => {
   });
 
   afterEach(() => {
-    document.querySelectorAll("timezone-selector").forEach((element) => element.remove());
+    removeMountedElements("timezone-selector");
     resetDom();
   });
 
@@ -20,15 +21,13 @@ describe("timezone-selector", () => {
     required = false,
     disabled = false,
   } = {}) => {
-    const element = document.createElement("timezone-selector");
-    element.name = name;
-    element.value = value;
-    element.timezones = timezones;
-    element.required = required;
-    element.disabled = disabled;
-    document.body.append(element);
-    await element.updateComplete;
-    return element;
+    return mountLitComponent("timezone-selector", {
+      name,
+      value,
+      timezones,
+      required,
+      disabled,
+    });
   };
 
   it("renders the selected timezone and hidden input state", async () => {

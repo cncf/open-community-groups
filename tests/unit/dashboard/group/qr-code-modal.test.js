@@ -3,26 +3,22 @@ import { expect } from "@open-wc/testing";
 import { initializeQrCodeModal } from "/static/js/dashboard/group/qr-code-modal.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
 import { mockSwal } from "/tests/unit/test-utils/globals.js";
+import { mockWindowPrint } from "/tests/unit/test-utils/print.js";
 
 describe("qr code modal", () => {
-  const originalPrint = window.print;
-
+  let printMock;
   let swal;
-  let printCalls;
 
   beforeEach(() => {
     resetDom();
     swal = mockSwal();
-    printCalls = [];
-    window.print = () => {
-      printCalls.push(true);
-    };
+    printMock = mockWindowPrint();
   });
 
   afterEach(() => {
     resetDom();
     swal.restore();
-    window.print = originalPrint;
+    printMock.restore();
   });
 
   const renderModalFixture = ({
@@ -152,7 +148,7 @@ describe("qr code modal", () => {
 
     printImage?.dispatchEvent(new Event("load"));
 
-    expect(printCalls).to.have.length(1);
+    expect(printMock.calls).to.have.length(1);
     expect(document.getElementById("qr-print-container")?.style.display).to.equal("flex");
   });
 });

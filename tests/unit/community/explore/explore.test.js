@@ -3,20 +3,21 @@ import { expect } from "@open-wc/testing";
 import { fetchData, updateResults } from "/static/js/community/explore/explore.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
 import { mockSwal } from "/tests/unit/test-utils/globals.js";
+import { mockFetch } from "/tests/unit/test-utils/network.js";
 
 describe("explore helpers", () => {
-  const originalFetch = globalThis.fetch;
-
+  let fetchMock;
   let swal;
 
   beforeEach(() => {
     resetDom();
     swal = mockSwal();
+    fetchMock = mockFetch();
   });
 
   afterEach(() => {
     resetDom();
-    globalThis.fetch = originalFetch;
+    fetchMock.restore();
     swal.restore();
   });
 
@@ -29,7 +30,7 @@ describe("explore helpers", () => {
   });
 
   it("fetches explore data as json", async () => {
-    globalThis.fetch = async (url, options) => {
+    fetchMock.setImpl(async (url, options) => {
       expect(url).to.equal("/explore/events/search?kind=conference");
       expect(options).to.deep.equal({
         headers: { Accept: "application/json" },
@@ -39,7 +40,7 @@ describe("explore helpers", () => {
         ok: true,
         json: async () => ({ items: [1, 2, 3] }),
       };
-    };
+    });
 
     const result = await fetchData("events", "kind=conference");
 
@@ -48,9 +49,9 @@ describe("explore helpers", () => {
   });
 
   it("shows an alert and throws when the request fails", async () => {
-    globalThis.fetch = async () => {
+    fetchMock.setImpl(async () => {
       throw new Error("network error");
-    };
+    });
 
     let thrownError = null;
 
@@ -66,11 +67,11 @@ describe("explore helpers", () => {
   });
 
   it("shows an alert and throws when the server responds with an error", async () => {
-    globalThis.fetch = async () => ({
+    fetchMock.setImpl(async () => ({
       ok: false,
       status: 500,
       text: async () => "Internal error",
-    });
+    }));
 
     let thrownError = null;
 
@@ -86,12 +87,12 @@ describe("explore helpers", () => {
   });
 
   it("shows an alert and throws when the response body is not valid json", async () => {
-    globalThis.fetch = async () => ({
+    fetchMock.setImpl(async () => ({
       ok: true,
       json: async () => {
         throw new Error("invalid json");
       },
-    });
+    }));
 
     let thrownError = null;
 

@@ -1,32 +1,29 @@
 import { expect } from "@open-wc/testing";
 
 import "/static/js/common/people-list.js";
+import { resetDom } from "/tests/unit/test-utils/dom.js";
+import { mountLitComponent } from "/tests/unit/test-utils/lit.js";
 
 describe("people-list", () => {
   afterEach(() => {
-    document.body.innerHTML = "";
+    resetDom();
   });
 
   it("renders nothing when there are no people", async () => {
-    const element = document.createElement("people-list");
-    document.body.append(element);
-
-    await element.updateComplete;
+    const element = await mountLitComponent("people-list");
 
     expect(element.children.length).to.equal(0);
   });
 
   it("renders the initial subset with the show more control", async () => {
-    const element = document.createElement("people-list");
-    element.people = [
-      { name: "Ada Lovelace", title: "Mathematician" },
-      { name: "Grace Hopper", company: "US Navy" },
-      { name: "Margaret Hamilton", title: "Engineer" },
-    ];
-    element.initialCount = 2;
-    document.body.append(element);
-
-    await element.updateComplete;
+    const element = await mountLitComponent("people-list", {
+      people: [
+        { name: "Ada Lovelace", title: "Mathematician" },
+        { name: "Grace Hopper", company: "US Navy" },
+        { name: "Margaret Hamilton", title: "Engineer" },
+      ],
+      initialCount: 2,
+    });
 
     const headings = Array.from(element.querySelectorAll("h3")).map((node) => node.textContent.trim());
     const toggle = element.querySelector("button");
@@ -37,16 +34,14 @@ describe("people-list", () => {
   });
 
   it("toggles between collapsed and expanded lists", async () => {
-    const element = document.createElement("people-list");
-    element.people = [
-      { name: "Ada Lovelace" },
-      { name: "Grace Hopper" },
-      { name: "Margaret Hamilton" },
-    ];
-    element.initialCount = 1;
-    document.body.append(element);
-
-    await element.updateComplete;
+    const element = await mountLitComponent("people-list", {
+      people: [
+        { name: "Ada Lovelace" },
+        { name: "Grace Hopper" },
+        { name: "Margaret Hamilton" },
+      ],
+      initialCount: 1,
+    });
 
     element.querySelector("button")?.click();
     await element.updateComplete;
@@ -63,11 +58,9 @@ describe("people-list", () => {
   });
 
   it("passes initials into logo-image placeholders", async () => {
-    const element = document.createElement("people-list");
-    element.people = [{ name: "Open Community" }];
-    document.body.append(element);
-
-    await element.updateComplete;
+    const element = await mountLitComponent("people-list", {
+      people: [{ name: "Open Community" }],
+    });
 
     expect(element.querySelector("logo-image")?.getAttribute("placeholder")).to.equal("OC");
   });

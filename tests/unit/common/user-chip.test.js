@@ -1,32 +1,29 @@
 import { expect } from "@open-wc/testing";
 
 import "/static/js/common/user-chip.js";
+import { resetDom } from "/tests/unit/test-utils/dom.js";
+import { mountLitComponent } from "/tests/unit/test-utils/lit.js";
 
 describe("user-chip", () => {
   afterEach(() => {
-    document.body.innerHTML = "";
+    resetDom();
   });
 
   it("renders nothing when no user is provided", async () => {
-    const element = document.createElement("user-chip");
-    document.body.append(element);
-
-    await element.updateComplete;
+    const element = await mountLitComponent("user-chip");
 
     expect(element.children.length).to.equal(0);
   });
 
   it("parses a json user payload and renders the display name", async () => {
-    const element = document.createElement("user-chip");
-    element.user = JSON.stringify({
-      name: "Ada Lovelace",
-      username: "ada",
-      title: "Mathematician",
-      photo_url: "https://example.com/ada.png",
+    const element = await mountLitComponent("user-chip", {
+      user: JSON.stringify({
+        name: "Ada Lovelace",
+        username: "ada",
+        title: "Mathematician",
+        photo_url: "https://example.com/ada.png",
+      }),
     });
-    document.body.append(element);
-
-    await element.updateComplete;
 
     expect(element.textContent).to.include("Ada Lovelace");
     expect(element.textContent).to.include("Mathematician");
@@ -34,21 +31,19 @@ describe("user-chip", () => {
   });
 
   it("dispatches the user modal event on click when display-modal is enabled", async () => {
-    const element = document.createElement("user-chip");
-    element.user = {
-      name: "Grace Hopper",
-      username: "grace",
-      title: "Rear Admiral",
-      company: "US Navy",
-      bio: "Compiler pioneer",
-      photo_url: "https://example.com/grace.png",
-      website_url: "https://example.com/grace",
-    };
-    element.displayModal = true;
-    element.bioIsHtml = true;
-    document.body.append(element);
-
-    await element.updateComplete;
+    const element = await mountLitComponent("user-chip", {
+      user: {
+        name: "Grace Hopper",
+        username: "grace",
+        title: "Rear Admiral",
+        company: "US Navy",
+        bio: "Compiler pioneer",
+        photo_url: "https://example.com/grace.png",
+        website_url: "https://example.com/grace",
+      },
+      displayModal: true,
+      bioIsHtml: true,
+    });
 
     let eventDetail = null;
     element.addEventListener("open-user-modal", (event) => {
@@ -75,15 +70,13 @@ describe("user-chip", () => {
   });
 
   it("opens the modal from keyboard interactions when clickable", async () => {
-    const element = document.createElement("user-chip");
-    element.user = {
-      name: "Margaret Hamilton",
-      username: "margaret",
-    };
-    element.displayModal = true;
-    document.body.append(element);
-
-    await element.updateComplete;
+    const element = await mountLitComponent("user-chip", {
+      user: {
+        name: "Margaret Hamilton",
+        username: "margaret",
+      },
+      displayModal: true,
+    });
 
     const openedBy = [];
 
@@ -99,16 +92,14 @@ describe("user-chip", () => {
   });
 
   it("renders the compact featured variant", async () => {
-    const element = document.createElement("user-chip");
-    element.user = {
-      name: "Radia Perlman",
-      username: "radia",
-    };
-    element.small = true;
-    element.featured = true;
-    document.body.append(element);
-
-    await element.updateComplete;
+    const element = await mountLitComponent("user-chip", {
+      user: {
+        name: "Radia Perlman",
+        username: "radia",
+      },
+      small: true,
+      featured: true,
+    });
 
     const card = element.firstElementChild;
 

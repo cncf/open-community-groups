@@ -5,34 +5,23 @@ import {
   selectDashboardAndSwapBody,
 } from "/static/js/common/dashboard-selection.js";
 import { mockHtmx } from "/tests/unit/test-utils/globals.js";
+import { mockFetch, mockPushState } from "/tests/unit/test-utils/network.js";
 
 describe("dashboard selection", () => {
-  const originalFetch = globalThis.fetch;
-  const originalPushState = window.history.pushState.bind(window.history);
-
   let htmx;
-  let fetchCalls;
-  let pushedUrls;
+  let fetchMock;
+  let pushStateMock;
 
   beforeEach(() => {
-    fetchCalls = [];
-    pushedUrls = [];
     htmx = mockHtmx();
-
-    globalThis.fetch = async (...args) => {
-      fetchCalls.push(args);
-      return { ok: true, status: 200 };
-    };
-
-    window.history.pushState = (...args) => {
-      pushedUrls.push(args);
-    };
+    fetchMock = mockFetch();
+    pushStateMock = mockPushState();
   });
 
   afterEach(() => {
     htmx.restore();
-    globalThis.fetch = originalFetch;
-    window.history.pushState = originalPushState;
+    fetchMock.restore();
+    pushStateMock.restore();
   });
 
   it("persists dashboard selection with htmx and keeps the current tab", async () => {
@@ -53,7 +42,7 @@ describe("dashboard selection", () => {
   it("persists the selection, swaps the dashboard body, and updates history", async () => {
     await selectDashboardAndSwapBody("/dashboard/select/group-1", "/dashboard/groups/group-1");
 
-    expect(fetchCalls).to.deep.equal([
+    expect(fetchMock.calls).to.deep.equal([
       [
         "/dashboard/select/group-1",
         {
@@ -74,7 +63,7 @@ describe("dashboard selection", () => {
       ],
     ]);
 
-    expect(pushedUrls).to.deep.equal([[{}, "", "/dashboard/groups/group-1"]]);
+    expect(pushStateMock.calls).to.deep.equal([[{}, "", "/dashboard/groups/group-1"]]);
   });
 
   it("throws when htmx is unavailable", async () => {
@@ -92,10 +81,7 @@ describe("dashboard selection", () => {
   });
 
   it("stops when persisting the selection fails", async () => {
-    globalThis.fetch = async (...args) => {
-      fetchCalls.push(args);
-      return { ok: false, status: 500 };
-    };
+    fetchMock.setImpl(async () => ({ ok: false, status: 500 }));
 
     let thrownError = null;
 
@@ -107,6 +93,6 @@ describe("dashboard selection", () => {
 
     expect(thrownError?.message).to.equal("Select dashboard entity failed: 500");
     expect(htmx.ajaxCalls).to.deep.equal([]);
-    expect(pushedUrls).to.deep.equal([]);
+    expect(pushStateMock.calls).to.deep.equal([]);
   });
 });

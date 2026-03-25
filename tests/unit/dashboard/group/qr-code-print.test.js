@@ -3,33 +3,28 @@ import { expect } from "@open-wc/testing";
 import { printQrCode } from "/static/js/dashboard/group/qr-code-print.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
 import { mockSwal } from "/tests/unit/test-utils/globals.js";
+import { mockWindowPrint } from "/tests/unit/test-utils/print.js";
 
 describe("qr code print", () => {
-  const originalPrint = window.print;
-
+  let printMock;
   let swal;
-  let printCalls;
 
   beforeEach(() => {
     swal = mockSwal();
-    printCalls = [];
     resetDom();
-
-    window.print = () => {
-      printCalls.push(true);
-    };
+    printMock = mockWindowPrint();
   });
 
   afterEach(() => {
     resetDom();
     swal.restore();
-    window.print = originalPrint;
+    printMock.restore();
   });
 
   it("shows an error when the modal is missing", () => {
     printQrCode(null, "qr-image", "/qr.png");
 
-    expect(printCalls).to.have.length(0);
+    expect(printMock.calls).to.have.length(0);
     expect(swal.calls).to.have.length(1);
     expect(swal.calls[0].text).to.equal("Unable to load the event QR code. Please try again.");
   });
@@ -40,7 +35,7 @@ describe("qr code print", () => {
 
     printQrCode(modal, "qr-image", "/qr.png");
 
-    expect(printCalls).to.have.length(0);
+    expect(printMock.calls).to.have.length(0);
     expect(swal.calls).to.have.length(1);
     expect(swal.calls[0].text).to.equal("Unable to prepare the QR code for printing.");
   });
@@ -66,7 +61,7 @@ describe("qr code print", () => {
     expect(container?.style.display).to.equal("flex");
     expect(container?.querySelector("button")).to.equal(null);
     expect(container?.querySelector("[data-qr-print-actions]")).to.equal(null);
-    expect(printCalls).to.have.length(1);
+    expect(printMock.calls).to.have.length(1);
 
     window.dispatchEvent(new Event("afterprint"));
 
@@ -88,11 +83,11 @@ describe("qr code print", () => {
 
     expect(printImage).to.not.equal(null);
     expect(printImage?.getAttribute("src")).to.include("https://example.com/qr.png?print=");
-    expect(printCalls).to.have.length(0);
+    expect(printMock.calls).to.have.length(0);
 
     printImage?.dispatchEvent(new Event("load"));
 
-    expect(printCalls).to.have.length(1);
+    expect(printMock.calls).to.have.length(1);
     expect(document.getElementById("qr-print-container")?.style.display).to.equal("flex");
   });
 
@@ -109,7 +104,7 @@ describe("qr code print", () => {
 
     document.getElementById("qr-image-print")?.dispatchEvent(new Event("error"));
 
-    expect(printCalls).to.have.length(0);
+    expect(printMock.calls).to.have.length(0);
     expect(swal.calls).to.have.length(1);
     expect(swal.calls[0].text).to.equal("Unable to load the QR code for printing. Please try again.");
     expect(document.getElementById("qr-print-container")).to.equal(null);
