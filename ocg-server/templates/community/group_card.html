@@ -3,8 +3,8 @@
 {% import "macros/cards.html" as cards -%}
 
 {% block href -%}
-  /{{ group.community_name }}/group/{{ group.slug }}
-{% endblock href %}
+  {{- "/" -}}{{- group.community_name -}}/group/{{- group.slug -}}
+{%- endblock href %}
 
 {% block logo -%}
   {{ ui::logo(logo_url = group.logo_url, classes = "h-[60px] w-[60px] min-w-[60px]", size = 60) -}}
@@ -13,17 +13,17 @@
 {% block preheader -%}
   <span>
     {% if let Some(region) = &group.region -%}
-      {{ region.name }}
+      {{- region.name -}}
     {% else -%}
-      {{ group.category.name }}
+      {{- group.category.name -}}
     {% endif -%}
   </span>
-{% endblock preheader %}
+{%- endblock preheader %}
 
 {% block title -%}
-  {{ group.name|demoji }}
-{% endblock title %}
+  {{- group.name|demoji -}}
+{%- endblock title %}
 
 {% block footer -%}
-  {{ cards::group_footer(group = group, location_max_len = 32, left_width_classes = "w-[60px] min-w-[60px]") -}}
-{% endblock footer %}
+  {{- cards::group_footer(group = group, location_max_len = 32, left_width_classes = "w-[60px] min-w-[60px]") -}}
+{%- endblock footer %}
