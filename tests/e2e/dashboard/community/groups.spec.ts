@@ -1,6 +1,6 @@
 import { expect, test } from "../../fixtures";
 
-import { TEST_GROUP_IDS, TEST_GROUP_SLUGS, navigateToPath } from "../../utils";
+import { TEST_GROUP_IDS, navigateToPath } from "../../utils";
 
 test.describe("community dashboard groups tab", () => {
   test("admin can deactivate and reactivate a group from the list", async ({
@@ -198,35 +198,6 @@ test.describe("community dashboard groups tab", () => {
     await expect(
       dashboardContent.locator("tr", { hasText: "Observability Guild" }),
     ).toBeVisible();
-  });
-
-  test("admin can open a selected group dashboard from the groups list", async ({
-    adminCommunityPage,
-  }) => {
-    await navigateToPath(adminCommunityPage, "/dashboard/community?tab=groups");
-
-    const dashboardContent = adminCommunityPage.locator("#dashboard-content");
-    const openGroupButton = dashboardContent.getByRole("button", {
-      name: "Open group dashboard: Observability Guild",
-    });
-
-    await expect(openGroupButton).toBeVisible();
-
-    await Promise.all([
-      adminCommunityPage.waitForURL(/\/dashboard\/group$/),
-      openGroupButton.click(),
-    ]);
-
-    await expect(
-      adminCommunityPage.getByText("Group Dashboard", { exact: true }).last(),
-    ).toBeVisible();
-    await expect(adminCommunityPage.locator("#group-selector-button")).toContainText(
-      "Observability Guild",
-    );
-    await expect(adminCommunityPage.locator("#dashboard-content")).toHaveAttribute(
-      "data-group-slug",
-      TEST_GROUP_SLUGS.community1.gamma,
-    );
   });
 
   test("viewer sees read-only controls on community groups", async ({

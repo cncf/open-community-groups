@@ -3,8 +3,11 @@ import type { Page } from "@playwright/test";
 import { expect } from "../../fixtures";
 import {
   buildE2eUrl,
+  TEST_COMMUNITY_NAME,
   TEST_COMMUNITY_IDS,
+  TEST_GROUP_SLUGS,
   navigateToPath,
+  navigateToEvent,
   selectCommunityContext,
   selectGroupContext,
 } from "../../utils";
@@ -173,4 +176,32 @@ export const createSessionProposal = async (page: Page, title: string) => {
 
   await expect(modal).toBeHidden();
   return dashboardContent;
+};
+
+export const submitProposalToOpenCfsEvent = async (page: Page, proposalTitle: string) => {
+  await navigateToEvent(
+    page,
+    TEST_COMMUNITY_NAME,
+    TEST_GROUP_SLUGS.community1.alpha,
+    "alpha-cfs-summit",
+  );
+
+  await page.getByRole("button", { name: "Submit session proposal" }).click();
+
+  const modal = page.getByRole("dialog", { name: "Submit a proposal" });
+  await expect(modal).toBeVisible();
+
+  await modal.locator("#session_proposal_id").selectOption({ label: proposalTitle });
+
+  await Promise.all([
+    page.waitForResponse(
+      (response) =>
+        response.request().method() === "POST" &&
+        response.url().includes("/cfs-submissions") &&
+        response.ok(),
+    ),
+    modal.getByRole("button", { name: "Submit proposal" }).click(),
+  ]);
+
+  await expect(modal.getByText("Submission received. We'll review it soon.")).toBeVisible();
 };

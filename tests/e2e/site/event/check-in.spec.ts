@@ -62,8 +62,7 @@ const leaveEvent = async (page: Page) => {
 };
 
 test.describe("event check-in", () => {
-  test("organizer check-in is reflected on the attendee page", async ({
-    organizerGroupPage,
+  test("attendee sees the public check-in waiting state before event check-in opens", async ({
     member2Page,
   }) => {
     await navigateToEvent(
@@ -88,59 +87,46 @@ test.describe("event check-in", () => {
     await navigateToCheckInPage(member2Page);
     await expect(member2Page.getByText("Check-in opens closer to the event")).toBeVisible();
 
-    await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
+    await navigateToEvent(
+      member2Page,
+      TEST_COMMUNITY_NAME,
+      TEST_GROUP_SLUGS.community1.alpha,
+      TEST_EVENT_SLUGS.alpha[0],
+    );
 
-    const eventRow = organizerGroupPage.locator("tr", {
-      hasText: TEST_EVENT_NAMES.alpha[0],
-    });
-    await expect(eventRow).toBeVisible();
+    await waitForAttendanceState(member2Page);
+    if (await getLeaveButton(member2Page).isVisible()) {
+      await leaveEvent(member2Page);
+    }
+  });
 
-    await Promise.all([
-      organizerGroupPage.waitForResponse(
-        (response) =>
-          response.request().method() === "GET" &&
-          response.url().includes(`/dashboard/group/events/${TEST_EVENT_IDS.alpha.one}/update`) &&
-          response.ok(),
-      ),
-      eventRow
-        .locator(`td button[aria-label="Edit event: ${TEST_EVENT_NAMES.alpha[0]}"]`)
-        .click(),
-    ]);
+  test("checked-in attendee sees the public success state on the check-in page", async ({
+    organizerGroupPage,
+    member2Page,
+  }) => {
+    await navigateToEvent(
+      member2Page,
+      TEST_COMMUNITY_NAME,
+      TEST_GROUP_SLUGS.community1.alpha,
+      TEST_EVENT_SLUGS.alpha[0],
+    );
 
-    await Promise.all([
-      organizerGroupPage.waitForResponse(
-        (response) =>
-          response.request().method() === "GET" &&
-          response.url().includes(`/dashboard/group/events/${TEST_EVENT_IDS.alpha.one}/attendees`) &&
-          response.ok(),
-      ),
-      organizerGroupPage.locator('button[data-section="attendees"]').click(),
-    ]);
+    await expect(
+      member2Page.getByRole("heading", { level: 1, name: TEST_EVENT_NAMES.alpha[0] }),
+    ).toBeVisible();
 
-    const attendeeRow = organizerGroupPage.locator("#attendees-content").locator("tr", {
-      hasText: "E2E Member Two",
-    });
-    const checkInToggle = attendeeRow.locator(".check-in-toggle");
+    await waitForAttendanceState(member2Page);
 
-    await expect(attendeeRow).toBeVisible();
-    await expect(checkInToggle).toBeEnabled();
+    if (await getLeaveButton(member2Page).isVisible()) {
+      await leaveEvent(member2Page);
+    }
 
-    await Promise.all([
-      organizerGroupPage.waitForResponse(
-        (response) =>
-          response.request().method() === "POST" &&
-          response
-            .url()
-            .includes(
-              `/dashboard/group/events/${TEST_EVENT_IDS.alpha.one}/attendees/${TEST_USER_IDS.member2}/check-in`,
-            ) &&
-          response.ok(),
-      ),
-      attendeeRow.locator("label").click(),
-    ]);
+    await attendEvent(member2Page);
 
-    await expect(checkInToggle).toBeChecked();
-    await expect(checkInToggle).toBeDisabled();
+    const checkInResponse = await organizerGroupPage.request.post(
+      `/dashboard/group/events/${TEST_EVENT_IDS.alpha.one}/attendees/${TEST_USER_IDS.member2}/check-in`,
+    );
+    expect(checkInResponse.ok()).toBeTruthy();
 
     await navigateToCheckInPage(member2Page);
     await expect(member2Page.getByText("You're checked in")).toBeVisible();

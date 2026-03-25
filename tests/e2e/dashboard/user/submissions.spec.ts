@@ -1,6 +1,6 @@
 import { expect, test } from "../../fixtures";
 
-import { openUserDashboardPath } from "./helpers";
+import { createSessionProposal, openUserDashboardPath, submitProposalToOpenCfsEvent } from "./helpers";
 
 test.describe("user dashboard submissions tab", () => {
   test("submissions page shows review statuses and available actions", async ({
@@ -55,6 +55,67 @@ test.describe("user dashboard submissions tab", () => {
       withdrawnRow.getByTitle(
         "This submission has been withdrawn and cannot be removed.",
       ),
+    ).toBeDisabled();
+  });
+
+  test("user can submit a newly created proposal and see it in submissions", async ({
+    pending1Page,
+  }) => {
+    const proposalTitle = `Pending1 CFS proposal ${Date.now()}`;
+
+    await createSessionProposal(pending1Page, proposalTitle);
+    await submitProposalToOpenCfsEvent(pending1Page, proposalTitle);
+    await openUserDashboardPath("/dashboard/user?tab=submissions", pending1Page);
+
+    const dashboardContent = pending1Page.locator("#dashboard-content");
+    const submissionRow = dashboardContent.locator("tr", { hasText: proposalTitle });
+
+    await expect(dashboardContent.getByText("Submissions", { exact: true })).toBeVisible();
+    await expect(submissionRow).toContainText("Event With Active CFS");
+    await expect(submissionRow).toContainText("Not reviewed");
+  });
+
+  test("user can withdraw a newly submitted CFS submission from submissions", async ({
+    pending2Page,
+  }) => {
+    const proposalTitle = `Pending2 CFS proposal ${Date.now()}`;
+
+    await createSessionProposal(pending2Page, proposalTitle);
+    await submitProposalToOpenCfsEvent(pending2Page, proposalTitle);
+    await openUserDashboardPath("/dashboard/user?tab=submissions", pending2Page);
+
+    const dashboardContent = pending2Page.locator("#dashboard-content");
+    const submissionRow = dashboardContent.locator("tr", { hasText: proposalTitle });
+    const withdrawButton = submissionRow.getByTitle("Withdraw");
+
+    await expect(dashboardContent.getByText("Submissions", { exact: true })).toBeVisible();
+    await expect(submissionRow).toContainText("Not reviewed");
+    await expect(withdrawButton).toBeVisible();
+
+    await withdrawButton.click();
+    await expect(pending2Page.locator(".swal2-popup")).toContainText(
+      "Are you sure you want to withdraw this submission?",
+    );
+
+    await Promise.all([
+      pending2Page.waitForResponse(
+        (response) =>
+          response.request().method() === "PUT" &&
+          response.url().includes("/dashboard/user/submissions/") &&
+          response.url().endsWith("/withdraw") &&
+          response.ok(),
+      ),
+      pending2Page.getByRole("button", { name: "Withdraw" }).click(),
+    ]);
+
+    await pending2Page.reload();
+
+    const withdrawnRow = pending2Page.locator("#dashboard-content").locator("tr", {
+      hasText: proposalTitle,
+    });
+    await expect(withdrawnRow).toContainText("Withdrawn");
+    await expect(
+      withdrawnRow.getByTitle("This submission has been withdrawn and cannot be removed."),
     ).toBeDisabled();
   });
 });
