@@ -13,31 +13,44 @@ export const TEST_GROUP_SLUG =
   process.env.OCG_E2E_GROUP_SLUG || "test-group-alpha";
 export const TEST_EVENT_SLUG =
   process.env.OCG_E2E_EVENT_SLUG || "alpha-event-1";
-export const TEST_GROUP_NAME = "E2E Test Group Alpha";
-export const TEST_EVENT_NAME = "Alpha Event One";
+export const TEST_GROUP_NAME = "Platform Ops Meetup";
+export const TEST_EVENT_NAME = "Upcoming In-Person Event";
 export const TEST_SEARCH_QUERY = "Test";
 export const TEST_SITE_TITLE = "E2E Test Site";
-export const TEST_COMMUNITY_TITLE = "E2E Test Community";
-export const TEST_COMMUNITY_TITLE_2 = "E2E Second Community";
+export const TEST_COMMUNITY_TITLE = "Platform Engineering Community";
+export const TEST_COMMUNITY_TITLE_2 = "Developer Experience Community";
 
 /** Community details for assertions. */
-export const TEST_COMMUNITY_DESCRIPTION = "E2E test community description";
+export const TEST_COMMUNITY_DESCRIPTION =
+  "Platform engineering community used for end-to-end coverage.";
 export const TEST_COMMUNITY_BANNER_URL = "https://example.com/banner.png";
 export const TEST_COMMUNITY_BANNER_MOBILE_URL =
   "https://example.com/banner-mobile.png";
 
 /** Group names organized by community. */
 export const TEST_GROUP_NAMES = {
-  alpha: "E2E Test Group Alpha",
-  beta: "E2E Test Group Beta",
-  gamma: "E2E Test Group Gamma",
+  alpha: "Platform Ops Meetup",
+  beta: "Inactive Local Chapter",
+  gamma: "Observability Guild",
 } as const;
 
 /** Event names organized by group. */
 export const TEST_EVENT_NAMES = {
-  alpha: ["Alpha Event One", "Alpha Event Two", "Alpha Event Three"],
-  beta: ["Beta Event One", "Beta Event Two", "Beta Event Three"],
-  gamma: ["Gamma Event One", "Gamma Event Two", "Gamma Event Three"],
+  alpha: [
+    "Upcoming In-Person Event",
+    "Upcoming Virtual Event",
+    "Upcoming Hybrid Event",
+  ],
+  beta: [
+    "Canceled In-Person Event",
+    "Secondary Virtual Event",
+    "Secondary Hybrid Event",
+  ],
+  gamma: [
+    "Observability In-Person Event",
+    "Observability Virtual Event",
+    "Observability Hybrid Event",
+  ],
 } as const;
 
 /** Group slugs organized by community. */

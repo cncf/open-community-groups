@@ -38,7 +38,7 @@ test.describe("group page", () => {
     await expect(page.getByText(TEST_EVENT_NAMES.alpha[2], { exact: true })).toBeVisible();
 
     await expect(page.getByText("Past Events", { exact: true })).toBeVisible();
-    await expect(page.getByText("Alpha Past Roundup", { exact: true })).toBeVisible();
+    await expect(page.getByText("Past Event For Filtering", { exact: true })).toBeVisible();
   });
 
   test("renders organizers and sponsors sections from seeded data", async ({ page }) => {

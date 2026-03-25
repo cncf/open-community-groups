@@ -12,7 +12,7 @@ import {
   waitForAttendanceState,
 } from "../../utils";
 
-const WAITLIST_EVENT_NAME = "Alpha Waitlist Lab";
+const WAITLIST_EVENT_NAME = "Full Event With Waitlist";
 const WAITLIST_EVENT_SLUG = "alpha-waitlist-lab";
 
 test.describe("event waitlist", () => {

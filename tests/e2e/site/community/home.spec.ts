@@ -91,14 +91,14 @@ test.describe("community home page", () => {
     test("upcoming in-person events shows published event titles", async ({
       page,
     }) => {
-      await expect(page.getByText(TEST_EVENT_NAMES.alpha[0])).toBeVisible();
-      await expect(page.getByText(TEST_EVENT_NAMES.gamma[0])).toBeVisible();
+      await expect(page.getByText(TEST_EVENT_NAMES.alpha[0], { exact: true })).toBeVisible();
+      await expect(page.getByText(TEST_EVENT_NAMES.gamma[0], { exact: true })).toBeVisible();
     });
 
     test("upcoming virtual events shows seeded event titles", async ({ page }) => {
-      await expect(page.getByText(TEST_EVENT_NAMES.alpha[1])).toBeVisible();
-      await expect(page.getByText(TEST_EVENT_NAMES.beta[1])).toBeVisible();
-      await expect(page.getByText(TEST_EVENT_NAMES.gamma[1])).toBeVisible();
+      await expect(page.getByText(TEST_EVENT_NAMES.alpha[1], { exact: true })).toBeVisible();
+      await expect(page.getByText(TEST_EVENT_NAMES.beta[1], { exact: true })).toBeVisible();
+      await expect(page.getByText(TEST_EVENT_NAMES.gamma[1], { exact: true })).toBeVisible();
     });
 
     test("latest groups section renders heading and explore link", async ({

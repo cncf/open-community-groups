@@ -1,15 +1,15 @@
 import * as path from "node:path";
 
-import { expect, test } from "../fixtures";
+import { expect, test } from "../../fixtures";
 
-import { navigateToPath } from "../utils";
+import { navigateToPath } from "../../utils";
 
 const TECH_CORP_SPONSOR_ID = "66666666-6666-6666-6666-666666666601";
 const ORIGINAL_SPONSOR_NAME = "Tech Corp";
 const UPDATED_SPONSOR_NAME = "Tech Corp Updated";
 const ORIGINAL_SPONSOR_WEBSITE = "https://techcorp.example.com";
 const UPDATED_SPONSOR_WEBSITE = "https://updated-techcorp.example.com";
-const TEST_SPONSOR_LOGO_PATH = path.resolve(__dirname, "../../../docs/images/logo.svg");
+const TEST_SPONSOR_LOGO_PATH = path.resolve(__dirname, "../../../../docs/images/logo.svg");
 
 test.describe("group sponsors dashboard", () => {
   test("organizer can add and delete a sponsor", async ({
@@ -124,5 +124,26 @@ test.describe("group sponsors dashboard", () => {
     const restoredRow = dashboardContent.locator("tr", { hasText: ORIGINAL_SPONSOR_NAME });
     await expect(restoredRow).toBeVisible();
     await expect(restoredRow).toContainText(ORIGINAL_SPONSOR_WEBSITE);
+  });
+
+  test("viewer sees read-only controls on the sponsors page", async ({
+    groupViewerPage,
+  }) => {
+    await navigateToPath(groupViewerPage, "/dashboard/group?tab=sponsors");
+
+    const sponsorsContent = groupViewerPage.locator("#dashboard-content");
+    await expect(sponsorsContent.getByText("Sponsors", { exact: true })).toBeVisible();
+    await expect(
+      sponsorsContent.getByRole("button", { name: "Add Sponsor" }),
+    ).toBeDisabled();
+
+    const sponsorRow = sponsorsContent.locator("tr", { hasText: "Tech Corp" });
+    await expect(sponsorRow).toBeVisible();
+    await expect(
+      sponsorRow.getByRole("button", { name: "Delete sponsor: Tech Corp" }),
+    ).toBeDisabled();
+    await expect(
+      sponsorRow.getByRole("button", { name: "Delete sponsor: Tech Corp" }),
+    ).toHaveAttribute("title", "Your role cannot delete sponsors.");
   });
 });

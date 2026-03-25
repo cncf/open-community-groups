@@ -11,8 +11,10 @@ const reportDir = path.resolve(__dirname, "../../playwright-report");
 const resultsDir = path.resolve(__dirname, "../../test-results");
 const smokeSpecPaths = [
   "auth/oauth.spec.ts",
-  "dashboard/access-control.spec.ts",
-  "public/public.spec.ts",
+  "dashboard/common/access.spec.ts",
+  "dashboard/user/my-events.spec.ts",
+  "site/common/header.spec.ts",
+  "site/home/home.spec.ts",
 ];
 const visualSpecPaths = ["visual/visual.spec.ts"];
 const isVisualOnlyRun = process.argv.some((arg) => arg.includes("visual/visual.spec.ts"));
@@ -51,16 +53,19 @@ export default defineConfig({
     {
       name: "chromium-smoke",
       testMatch: smokeSpecPaths,
+      grepInvert: mobileTestPattern,
       use: { ...devices["Desktop Chrome"] },
     },
     {
       name: "firefox-smoke",
       testMatch: smokeSpecPaths,
+      grepInvert: mobileTestPattern,
       use: { ...devices["Desktop Firefox"] },
     },
     {
       name: "webkit-smoke",
       testMatch: smokeSpecPaths,
+      grepInvert: mobileTestPattern,
       use: { ...devices["Desktop Safari"] },
     },
     {

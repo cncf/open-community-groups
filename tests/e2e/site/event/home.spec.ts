@@ -12,7 +12,7 @@ import {
   navigateToEvent,
 } from "../../utils";
 
-const isAlphaEventOne = TEST_EVENT_SLUG === "alpha-event-1";
+const isPrimaryEvent = TEST_EVENT_SLUG === "alpha-event-1";
 
 test.describe("event page", () => {
   test.beforeEach(async ({ page }) => {
@@ -111,8 +111,8 @@ test.describe("event page", () => {
     }
   });
 
-  test.describe("alpha event seed data", () => {
-    test.skip(!isAlphaEventOne, "Requires Alpha Event One seed data");
+  test.describe("primary event seed data", () => {
+    test.skip(!isPrimaryEvent, "Requires Upcoming In-Person Event seed data");
 
     test("capacity displays when set", async ({ page }) => {
       await expect(page.getByText(/Capacity:\s*100/)).toBeVisible();
@@ -147,7 +147,7 @@ test.describe("event page", () => {
     });
 
     test("meetup social link is visible", async ({ page }) => {
-      const meetupLink = page.getByRole("link", { name: "Meetup" });
+      const meetupLink = page.getByRole("link", { name: "Meetup", exact: true });
       await expect(meetupLink).toBeVisible();
       await expect(meetupLink).toHaveAttribute(
         "href",
@@ -230,7 +230,7 @@ test.describe("event page - responsive", () => {
 });
 
 test.describe("event page - alpha event logo", () => {
-  test.skip(!isAlphaEventOne, "Requires Alpha Event One seed data");
+  test.skip(!isPrimaryEvent, "Requires Upcoming In-Person Event seed data");
 
   test("event logo is visible on desktop", async ({ page }) => {
     await navigateToEvent(

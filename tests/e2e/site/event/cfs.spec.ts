@@ -199,7 +199,7 @@ test.describe("call for speakers", () => {
     const submissionRow = dashboardContent.locator("tr", { hasText: proposalTitle });
 
     await expect(dashboardContent.getByText("Submissions", { exact: true })).toBeVisible();
-    await expect(submissionRow).toContainText("Alpha CFS Summit");
+    await expect(submissionRow).toContainText("Event With Active CFS");
     await expect(submissionRow).toContainText("Not reviewed");
   });
 

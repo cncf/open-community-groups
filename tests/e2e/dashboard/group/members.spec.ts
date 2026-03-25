@@ -1,6 +1,6 @@
-import { expect, test } from "../fixtures";
+import { expect, test } from "../../fixtures";
 
-import { navigateToPath } from "../utils";
+import { navigateToPath } from "../../utils";
 
 const NOTIFICATION_TITLE = "E2E member notification";
 const NOTIFICATION_BODY = "Reminder for all members from the e2e suite.";
@@ -38,5 +38,20 @@ test.describe("group members dashboard", () => {
     await expect(organizerGroupPage.locator(".swal2-popup")).toContainText(
       "Email sent successfully to all group members.",
     );
+  });
+
+  test("viewer sees read-only controls on the members page", async ({
+    groupViewerPage,
+  }) => {
+    await navigateToPath(groupViewerPage, "/dashboard/group?tab=members");
+
+    const dashboardContent = groupViewerPage.locator("#dashboard-content");
+    await expect(dashboardContent.getByText("Members", { exact: true })).toBeVisible();
+    await expect(
+      dashboardContent.getByRole("button", { name: "Send email" }),
+    ).toBeDisabled();
+    await expect(
+      dashboardContent.getByRole("button", { name: "Send email" }),
+    ).toHaveAttribute("title", "Your role cannot send emails to members.");
   });
 });

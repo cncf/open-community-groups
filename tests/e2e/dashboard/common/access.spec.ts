@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { navigateToPath } from "../utils";
+import { navigateToPath } from "../../utils";
 
 const DASHBOARD_ROUTES = [
   "/dashboard/community",

@@ -231,16 +231,16 @@ insert into community (
 ) values (
     '11111111-1111-1111-1111-111111111111',
     'e2e-test-community',
-    'E2E Test Community',
-    'E2E test community description',
+    'Platform Engineering Community',
+    'Platform engineering community used for end-to-end coverage.',
     'https://example.com/banner.png',
     'https://example.com/banner-mobile.png',
     'https://example.com/logo.png'
 ), (
     '11111111-1111-1111-1111-111111111112',
     'e2e-second-community',
-    'E2E Second Community',
-    'E2E second community description',
+    'Developer Experience Community',
+    'Developer experience community used for end-to-end coverage.',
     'https://example.com/banner2.png',
     'https://example.com/banner2-mobile.png',
     'https://example.com/logo2.png'
@@ -317,21 +317,21 @@ insert into "group" (
     '44444444-4444-4444-4444-444444444441',
     '11111111-1111-1111-1111-111111111111',
     '22222222-2222-2222-2222-222222222221',
-    'E2E Test Group Alpha',
+    'Platform Ops Meetup',
     'test-group-alpha',
     true
 ), (
     '44444444-4444-4444-4444-444444444442',
     '11111111-1111-1111-1111-111111111111',
     '22222222-2222-2222-2222-222222222221',
-    'E2E Test Group Beta',
+    'Inactive Local Chapter',
     'test-group-beta',
     true
 ), (
     '44444444-4444-4444-4444-444444444443',
     '11111111-1111-1111-1111-111111111111',
     '22222222-2222-2222-2222-222222222221',
-    'E2E Test Group Gamma',
+    'Observability Guild',
     'test-group-gamma',
     true
 );
@@ -368,7 +368,7 @@ insert into "group" (
 );
 
 update "group"
-set description = 'E2E Test Group Alpha seeded description'
+set description = 'Primary meetup used for end-to-end dashboard and site coverage.'
 where group_id = '44444444-4444-4444-4444-444444444441';
 
 update "group"
@@ -382,7 +382,7 @@ where group_id in (
 -- EVENTS (18 total - 3 per group, mixed types)
 -- ============================================================================
 
--- Alpha group events (community 1)
+-- Primary group events (community 1)
 -- Event 1: future in-person event with full location data
 insert into event (
     event_id, name, slug, description, description_short, timezone, event_category_id,
@@ -392,10 +392,10 @@ insert into event (
     registration_required, tags, meetup_url, meeting_join_url, photos_urls
 ) values (
     '55555555-5555-5555-5555-555555555501',
-    'Alpha Event One',
+    'Upcoming In-Person Event',
     'alpha-event-1',
-    'In-person event for Alpha group.',
-    'Join us for the Alpha group meetup!',
+    'Upcoming in-person event used for attendance and dashboard coverage.',
+    'Join the primary meetup for end-to-end coverage.',
     'UTC',
     '33333333-3333-3333-3333-333333333331',
     'in-person',
@@ -427,9 +427,9 @@ insert into event (
     meeting_recording_url
 ) values (
     '55555555-5555-5555-5555-555555555502',
-    'Alpha Event Two',
+    'Upcoming Virtual Event',
     'alpha-event-2',
-    'Virtual event for Alpha group.',
+    'Upcoming virtual event used for attendee empty-state coverage.',
     'UTC',
     '33333333-3333-3333-3333-333333333331',
     'virtual',
@@ -447,9 +447,9 @@ insert into event (
     event_kind_id, group_id, published, starts_at, ends_at, venue_city
 ) values (
     '55555555-5555-5555-5555-555555555503',
-    'Alpha Event Three',
+    'Upcoming Hybrid Event',
     'alpha-event-3',
-    'Hybrid event for Alpha group.',
+    'Upcoming hybrid event used for public group-page coverage.',
     'UTC',
     '33333333-3333-3333-3333-333333333331',
     'hybrid',
@@ -460,16 +460,16 @@ insert into event (
     null
 );
 
--- Beta group events (community 1)
+-- Secondary group events (community 1)
 -- Event 1: future in-person event (canceled - must be unpublished)
 insert into event (
     event_id, name, slug, description, timezone, event_category_id,
     event_kind_id, group_id, published, starts_at, ends_at, venue_city, canceled
 ) values (
     '55555555-5555-5555-5555-555555555504',
-    'Beta Event One',
+    'Canceled In-Person Event',
     'beta-event-1',
-    'In-person event for Beta group.',
+    'Canceled in-person event used for filtering coverage.',
     'UTC',
     '33333333-3333-3333-3333-333333333331',
     'in-person',
@@ -487,9 +487,9 @@ insert into event (
     event_kind_id, group_id, published, starts_at, ends_at, venue_city
 ) values (
     '55555555-5555-5555-5555-555555555505',
-    'Beta Event Two',
+    'Secondary Virtual Event',
     'beta-event-2',
-    'Virtual event for Beta group.',
+    'Secondary virtual event for user dashboard filtering coverage.',
     'UTC',
     '33333333-3333-3333-3333-333333333331',
     'virtual',
@@ -500,9 +500,9 @@ insert into event (
     'Los Angeles'
 ), (
     '55555555-5555-5555-5555-555555555506',
-    'Beta Event Three',
+    'Secondary Hybrid Event',
     'beta-event-3',
-    'Hybrid event for Beta group.',
+    'Secondary hybrid event for explore coverage.',
     'UTC',
     '33333333-3333-3333-3333-333333333331',
     'hybrid',
@@ -513,16 +513,16 @@ insert into event (
     null
 );
 
--- Gamma group events (community 1)
+-- Searchable group events (community 1)
 -- Event 1: future in-person event
 insert into event (
     event_id, name, slug, description, timezone, event_category_id,
     event_kind_id, group_id, published, starts_at, ends_at, venue_city
 ) values (
     '55555555-5555-5555-5555-555555555507',
-    'Gamma Event One',
+    'Observability In-Person Event',
     'gamma-event-1',
-    'In-person event for Gamma group.',
+    'In-person event for the observability-focused group.',
     'UTC',
     '33333333-3333-3333-3333-333333333331',
     'in-person',
@@ -533,9 +533,9 @@ insert into event (
     'Chicago'
 ), (
     '55555555-5555-5555-5555-555555555508',
-    'Gamma Event Two',
+    'Observability Virtual Event',
     'gamma-event-2',
-    'Virtual event for Gamma group.',
+    'Virtual event for the observability-focused group.',
     'UTC',
     '33333333-3333-3333-3333-333333333331',
     'virtual',
@@ -546,9 +546,9 @@ insert into event (
     'Chicago'
 ), (
     '55555555-5555-5555-5555-555555555509',
-    'Gamma Event Three',
+    'Observability Hybrid Event',
     'gamma-event-3',
-    'Hybrid event for Gamma group.',
+    'Hybrid event for the observability-focused group.',
     'UTC',
     '33333333-3333-3333-3333-333333333331',
     'hybrid',
@@ -688,16 +688,16 @@ insert into event (
     now() + interval '35 days 2 hours'
 );
 
--- Additional Alpha group events for dashboard and CFS coverage
+-- Additional primary-group events for dashboard and CFS coverage
 insert into event (
     event_id, name, slug, description, timezone, event_category_id,
     event_kind_id, group_id, published, starts_at, ends_at,
     cfs_enabled, cfs_description, cfs_starts_at, cfs_ends_at
 ) values (
     '55555555-5555-5555-5555-555555555519',
-    'Alpha CFS Summit',
+    'Event With Active CFS',
     'alpha-cfs-summit',
-    'Future event with an open call for speakers.',
+    'Future event with an active call for speakers.',
     'UTC',
     '33333333-3333-3333-3333-333333333331',
     'virtual',
@@ -711,9 +711,9 @@ insert into event (
     now() + interval '30 days'
 ), (
     '55555555-5555-5555-5555-555555555520',
-    'Alpha Past Roundup',
+    'Past Event For Filtering',
     'alpha-past-roundup',
-    'Past event used for dashboard filtering coverage.',
+    'Past event used for dashboard and user filtering coverage.',
     'UTC',
     '33333333-3333-3333-3333-333333333331',
     'virtual',
@@ -733,9 +733,9 @@ insert into event (
     capacity, registration_required, waitlist_enabled
 ) values (
     '55555555-5555-5555-5555-555555555521',
-    'Alpha Waitlist Lab',
+    'Full Event With Waitlist',
     'alpha-waitlist-lab',
-    'Future event dedicated to waitlist E2E coverage.',
+    'Future event dedicated to waitlist and attendee coverage.',
     'UTC',
     '33333333-3333-3333-3333-333333333331',
     'virtual',
@@ -907,7 +907,7 @@ values (
 -- GROUP TEAM (organizers + pending invitations)
 -- ============================================================================
 
--- Organizer 1 is an accepted organizer of Alpha group
+-- Organizer 1 is an accepted organizer of the primary group
 insert into group_team (group_id, user_id, accepted, role)
 values (
     '44444444-4444-4444-4444-444444444441',
@@ -925,7 +925,7 @@ values (
     'admin'
 );
 
--- Events manager can manage Alpha group events without full admin access
+-- Events manager can manage primary-group events without full admin access
 insert into group_team (group_id, user_id, accepted, role)
 values (
     '44444444-4444-4444-4444-444444444441',
@@ -934,7 +934,7 @@ values (
     'events-manager'
 );
 
--- Group viewer has read-only access to Alpha group dashboard pages
+-- Group viewer has read-only access to primary-group dashboard pages
 insert into group_team (group_id, user_id, accepted, role)
 values (
     '44444444-4444-4444-4444-444444444441',
@@ -943,7 +943,7 @@ values (
     'viewer'
 );
 
--- Pending 2 has a pending Beta group team invitation
+-- Pending 2 has a pending secondary-group team invitation
 insert into group_team (group_id, user_id, accepted, role)
 values (
     '44444444-4444-4444-4444-444444444442',
@@ -952,7 +952,7 @@ values (
     'events-manager'
 );
 
--- Pending 3 has a pending Alpha group team invitation with viewer access
+-- Pending 3 has a pending primary-group team invitation with viewer access
 insert into group_team (group_id, user_id, accepted, role)
 values (
     '44444444-4444-4444-4444-444444444441',
@@ -965,7 +965,7 @@ values (
 -- GROUP MEMBERS
 -- ============================================================================
 
--- Member 1 is a member of Alpha and Beta groups
+-- Member 1 is a member of the primary and secondary groups
 insert into group_member (group_id, user_id)
 values (
     '44444444-4444-4444-4444-444444444441',
