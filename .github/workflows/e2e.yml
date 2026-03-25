@@ -44,9 +44,8 @@ jobs:
     env:
       OCG_DB_HOST: 127.0.0.1
       OCG_DB_PASSWORD: postgres
+      OCG_E2E_BASE_URL: http://127.0.0.1:9000
       OCG_E2E_LINUXFOUNDATION_ENABLED: "true"
-      OCG_E2E_GITHUB_REDIRECT_URI: http://127.0.0.1:9000/log-in/oauth2/github/callback
-      OCG_E2E_SERVER_BASE_URL: http://127.0.0.1:9000
       OCG_PG_BIN: /usr/bin
       PGPASSWORD: postgres
 
@@ -109,18 +108,10 @@ jobs:
       - name: Build e2e server binary
         run: cargo build --bin ocg-server
 
-      - name: Start server and wait for it to be ready
-        uses: JarvusInnovations/background-action@v1
-        with:
-          run: ${{ github.workspace }}/target/debug/ocg-server -c /tmp/ocg-e2e.yml &
-          wait-on: http://127.0.0.1:9000/health-check
-          tail: true
-          log-output: "stdout,stderr"
-          log-output-if: true
-
       - name: Run Playwright ${{ matrix.suite }} tests
         env:
-          OCG_E2E_BASE_URL: http://127.0.0.1:9000
+          OCG_E2E_START_SERVER: "true"
+          OCG_E2E_SERVER_CMD: ${{ github.workspace }}/target/debug/ocg-server -c /tmp/ocg-e2e.yml
         run: ${{ matrix.command }}
 
       - name: Upload Playwright artifacts

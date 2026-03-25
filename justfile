@@ -30,15 +30,16 @@ db_server_host_opt := if db_host =~ '^/' { "-k " + db_host } else { "-h " + db_h
 source_dir := justfile_directory()
 e2e_tern_conf := env("OCG_E2E_TERN_CONF", "/tmp/ocg-tern-e2e.conf")
 e2e_server_config := env("OCG_E2E_SERVER_CONFIG", "/tmp/ocg-e2e.yml")
+e2e_base_url := env("OCG_E2E_BASE_URL", "http://localhost:9000")
 e2e_server_addr := env("OCG_E2E_SERVER_ADDR", "127.0.0.1:9000")
-e2e_server_base_url := env("OCG_E2E_SERVER_BASE_URL", "http://localhost:9000")
+e2e_server_base_url := env("OCG_E2E_SERVER_BASE_URL", e2e_base_url)
 e2e_login_github := env("OCG_E2E_GITHUB_ENABLED", "true")
-e2e_login_linuxfoundation := env("OCG_E2E_LINUXFOUNDATION_ENABLED", "true")
+e2e_linuxfoundation_enabled := env("OCG_E2E_LINUXFOUNDATION_ENABLED", "true")
 e2e_github_auth_url := env("OCG_E2E_GITHUB_AUTH_URL", "https://example.test/oauth/authorize")
 e2e_github_token_url := env("OCG_E2E_GITHUB_TOKEN_URL", "https://example.test/oauth/token")
 e2e_github_client_id := env("OCG_E2E_GITHUB_CLIENT_ID", "e2e-client")
 e2e_github_client_secret := env("OCG_E2E_GITHUB_CLIENT_SECRET", "e2e-secret")
-e2e_github_redirect_uri := env("OCG_E2E_GITHUB_REDIRECT_URI", "http://localhost:9000/log-in/oauth2/github/callback")
+e2e_github_redirect_uri := env("OCG_E2E_GITHUB_REDIRECT_URI", e2e_server_base_url + "/log-in/oauth2/github/callback")
 
 # Helper to run PostgreSQL commands with the configured binary path
 [private]
@@ -169,45 +170,53 @@ e2e-write-tern-config:
 
 [private]
 e2e-write-server-config:
-    printf '%s\n' \
-    "db:" \
-    "  host: {{ db_host }}" \
-    "  port: {{ db_port }}" \
-    "  dbname: {{ db_name_e2e }}" \
-    "  user: {{ db_user }}" \
-    "  password: \"{{ db_password }}\"" \
-    "email:" \
-    "  from_address: noreply@test.com" \
-    "  from_name: Test" \
-    "  smtp:" \
-    "    host: localhost" \
-    "    port: 1025" \
-    "    username: \"\"" \
-    "    password: \"\"" \
-    "images:" \
-    "  provider: db" \
-    "server:" \
-    "  addr: {{ e2e_server_addr }}" \
-    "  base_url: {{ e2e_server_base_url }}" \
-    "  cookie:" \
-    "    secure: false" \
-    "  disable_referer_checks: false" \
-    "  login:" \
-    "    email: true" \
-    "    github: {{ e2e_login_github }}" \
-    "    linuxfoundation: {{ e2e_login_linuxfoundation }}" \
-    "  oauth2:" \
-    "    github:" \
-    "      auth_url: {{ e2e_github_auth_url }}" \
-    "      client_id: {{ e2e_github_client_id }}" \
-    "      client_secret: {{ e2e_github_client_secret }}" \
-    "      redirect_uri: {{ e2e_github_redirect_uri }}" \
-    "      scopes:" \
-    "        - read:user" \
-    "        - user:email" \
-    "      token_url: {{ e2e_github_token_url }}" \
-    "  oidc: {}" \
-    > "{{ e2e_server_config }}"
+    #!/usr/bin/env bash
+    set -euo pipefail
+    server_addr="{{ e2e_server_addr }}"
+    server_base_url="{{ e2e_server_base_url }}"
+    if [ -z "${OCG_E2E_SERVER_ADDR:-}" ] && [[ "$server_base_url" =~ ^http://(localhost|127\.0\.0\.1):([0-9]+)$ ]]; then
+        server_addr="127.0.0.1:${BASH_REMATCH[2]}"
+    fi
+    {
+        printf '%s\n' \
+        "db:" \
+        "  host: {{ db_host }}" \
+        "  port: {{ db_port }}" \
+        "  dbname: {{ db_name_e2e }}" \
+        "  user: {{ db_user }}" \
+        "  password: \"{{ db_password }}\"" \
+        "email:" \
+        "  from_address: noreply@test.com" \
+        "  from_name: Test" \
+        "  smtp:" \
+        "    host: localhost" \
+        "    port: 1025" \
+        "    username: \"\"" \
+        "    password: \"\"" \
+        "images:" \
+        "  provider: db" \
+        "server:" \
+        "  addr: ${server_addr}" \
+        "  base_url: ${server_base_url}" \
+        "  cookie:" \
+        "    secure: false" \
+        "  disable_referer_checks: false" \
+        "  login:" \
+        "    email: true" \
+        "    github: {{ e2e_login_github }}" \
+        "    linuxfoundation: {{ e2e_linuxfoundation_enabled }}" \
+        "  oauth2:" \
+        "    github:" \
+        "      auth_url: {{ e2e_github_auth_url }}" \
+        "      client_id: {{ e2e_github_client_id }}" \
+        "      client_secret: {{ e2e_github_client_secret }}" \
+        "      redirect_uri: {{ e2e_github_redirect_uri }}" \
+        "      scopes:" \
+        "        - read:user" \
+        "        - user:email" \
+        "      token_url: {{ e2e_github_token_url }}" \
+        "  oidc: {}"
+    } > "{{ e2e_server_config }}"
 
 # Run the server with the generated e2e config.
 e2e-server: e2e-write-server-config
@@ -218,44 +227,24 @@ e2e-install:
     yarn install
     yarn playwright install --with-deps
 
-# Run e2e tests.
-e2e-tests:
-    yarn test:e2e
-
-# Run e2e tests in headed mode (browser visible).
-e2e-tests-headed:
-    yarn test:e2e:headed
-
-# Run e2e tests with Playwright UI for debugging.
-e2e-tests-ui:
-    yarn test:e2e:ui
-
-# Update e2e visual regression snapshots.
-e2e-tests-visual-update:
-    yarn test:e2e:visual:update
-
-# Set up e2e test database (drop, create, migrate, seed).
-e2e-db-setup: e2e-write-tern-config
+# Recreate and migrate the e2e test database.
+[private]
+e2e-db-recreate: e2e-write-tern-config
     just pg dropdb {{ pg_conn }} --if-exists --force {{ db_name_e2e }}
     just pg createdb {{ pg_conn }} {{ db_name_e2e }}
     PGPASSWORD="{{ db_password }}" PATH="{{ pg_bin }}:$PATH" psql {{ pg_conn }} {{ db_name_e2e }} -c "CREATE EXTENSION IF NOT EXISTS pgcrypto"
     PGPASSWORD="{{ db_password }}" PATH="{{ pg_bin }}:$PATH" psql {{ pg_conn }} {{ db_name_e2e }} -c "CREATE EXTENSION IF NOT EXISTS postgis"
     cd "{{ source_dir }}/database/migrations" && TERN_CONF="{{ e2e_tern_conf }}" ./migrate.sh
+
+# Load seeded data into the e2e test database.
+[private]
+e2e-db-load-data:
     PGPASSWORD="{{ db_password }}" PATH="{{ pg_bin }}:$PATH" psql {{ pg_conn }} {{ db_name_e2e }} -f "{{ source_dir }}/database/tests/data/e2e.sql"
     PGPASSWORD="{{ db_password }}" PATH="{{ pg_bin }}:$PATH" psql {{ pg_conn }} {{ db_name_e2e }} -c "update \"user\" set password = '\$argon2id\$v=19\$m=19456,t=2,p=1\$q55jlxUx8bffhFM3xN36ZA\$te6OiWkZ/q35lpSEAZbd/A3iJyCByxbive9F61sTp7g' where username like 'e2e-%'"
 
+# Set up the e2e test database.
+e2e-db-setup: e2e-db-recreate e2e-db-load-data
+
 # Run full e2e setup: database, dependencies, server, and tests.
 e2e-full: e2e-db-setup e2e-install e2e-write-server-config
-    #!/usr/bin/env bash
-    set -euo pipefail
-    cargo run -p ocg-server -- -c "{{ e2e_server_config }}" &
-    server_pid=$!
-    trap 'kill "$server_pid" 2>/dev/null || true; wait "$server_pid" 2>/dev/null || true' EXIT INT TERM
-    i=0
-    while [ "$i" -lt 30 ]; do
-        curl -sf http://localhost:9000/health-check > /dev/null && break
-        i=$((i + 1))
-        sleep 2
-    done
-    curl -sf http://localhost:9000/health-check > /dev/null
-    yarn test:e2e
+    OCG_E2E_START_SERVER=true OCG_E2E_SERVER_CMD='cargo run -p ocg-server -- -c "{{ e2e_server_config }}"' yarn test:e2e
