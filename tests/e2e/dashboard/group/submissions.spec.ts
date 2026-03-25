@@ -2,7 +2,7 @@ import { expect, test } from "../../fixtures";
 
 import { TEST_EVENT_IDS, navigateToPath } from "../../utils";
 
-test.describe("group dashboard submissions view", () => {
+test.describe("group dashboard submissions tab", () => {
   test("events manager can review CFS submissions with labels and ratings", async ({
     eventsManagerGroupPage,
   }) => {
@@ -68,7 +68,7 @@ test.describe("group dashboard submissions view", () => {
     await expect(approvedRow.getByTitle("Review submission")).toBeEnabled();
   });
 
-  test("viewer sees read-only event and submission controls", async ({
+  test("viewer sees read-only event and submission controls on the submissions tab", async ({
     groupViewerPage,
   }) => {
     await navigateToPath(groupViewerPage, "/dashboard/group?tab=events");

@@ -61,8 +61,8 @@ const leaveEvent = async (page: Page) => {
   await expect(getAttendButton(page)).toBeVisible();
 };
 
-test.describe("event check-in", () => {
-  test("attendee sees the public check-in waiting state before event check-in opens", async ({
+test.describe("public event check-in page", () => {
+  test("attendee sees the waiting state before public check-in opens", async ({
     member2Page,
   }) => {
     await navigateToEvent(
@@ -100,7 +100,7 @@ test.describe("event check-in", () => {
     }
   });
 
-  test("checked-in attendee sees the public success state on the check-in page", async ({
+  test("checked-in attendee sees the success state on the public check-in page", async ({
     organizerGroupPage,
     member2Page,
   }) => {

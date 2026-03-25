@@ -5,7 +5,7 @@ import { navigateToPath } from "../../utils";
 const NOTIFICATION_TITLE = "E2E member notification";
 const NOTIFICATION_BODY = "Reminder for all members from the e2e suite.";
 
-test.describe("group members dashboard", () => {
+test.describe("group dashboard members view", () => {
   test("organizer can send a notification to group members", async ({
     organizerGroupPage,
   }) => {
@@ -40,7 +40,7 @@ test.describe("group members dashboard", () => {
     );
   });
 
-  test("viewer sees read-only controls on the members page", async ({
+  test("viewer sees read-only controls in the members view", async ({
     groupViewerPage,
   }) => {
     await navigateToPath(groupViewerPage, "/dashboard/group?tab=members");

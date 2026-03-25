@@ -3,7 +3,7 @@ import { expect, test } from "../../fixtures";
 import { fillMarkdownEditor } from "../form-helpers";
 import { navigateToPath } from "../../utils";
 
-test.describe("group dashboard settings tab", () => {
+test.describe("group dashboard settings view", () => {
   test("organizer can update and restore group settings", async ({
     organizerGroupPage,
   }) => {

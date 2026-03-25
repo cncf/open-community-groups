@@ -9,7 +9,7 @@ import {
   resetGroupInvitation,
 } from "./helpers";
 
-test.describe("user dashboard invitations tab", () => {
+test.describe("user dashboard invitations view", () => {
   test("invitations page shows pending community and group roles", async ({
     adminCommunityPage,
     pending1Page,

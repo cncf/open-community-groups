@@ -8,7 +8,7 @@ import {
   navigateToPath,
 } from "../../utils";
 
-test.describe("group dashboard waitlist views", () => {
+test.describe("group dashboard waitlist tab", () => {
   test("organizer can open the waitlist tab for an event with waitlist disabled", async ({
     organizerGroupPage,
   }) => {
@@ -133,7 +133,7 @@ test.describe("group dashboard waitlist views", () => {
     await expect(organizerGroupPage.locator("#waitlist_enabled")).toHaveValue("false");
   });
 
-  test("organizer can see a public waitlist entry in the event dashboard", async ({
+  test("organizer can see a public waitlist entry on the waitlist tab", async ({
     member2Page,
     organizerGroupPage,
   }) => {

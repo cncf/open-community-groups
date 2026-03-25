@@ -2,7 +2,7 @@ import { expect, test } from "../../fixtures";
 
 import { TEST_EVENT_NAMES, navigateToPath } from "../../utils";
 
-test.describe("user dashboard my events tab", () => {
+test.describe("user dashboard my events view", () => {
   test("my events page lists only upcoming published participation", async ({
     member1Page,
   }) => {

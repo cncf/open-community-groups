@@ -4,7 +4,7 @@ import { TEST_USER_IDS, navigateToPath } from "../../utils";
 
 import { ensureCommunityGroupsManagerRole } from "./helpers";
 
-test.describe("community dashboard team tab", () => {
+test.describe("community dashboard team view", () => {
   test("community team page shows seeded roles and final-admin protection", async ({
     adminCommunityPage,
   }) => {

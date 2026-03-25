@@ -8,7 +8,7 @@ import {
   restoreCoSpeakerInvitation,
 } from "./helpers";
 
-test.describe("user dashboard session proposals tab", () => {
+test.describe("user dashboard session proposals view", () => {
   test("session proposals page shows seeded proposal states and locks", async ({
     member1Page,
   }) => {

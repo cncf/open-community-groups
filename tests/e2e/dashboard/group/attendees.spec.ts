@@ -16,8 +16,8 @@ import {
   ATTENDEE_NOTIFICATION_TITLE,
 } from "./helpers";
 
-test.describe("group dashboard attendees views", () => {
-  test("viewer sees read-only attendee controls in the event dashboard", async ({
+test.describe("group dashboard attendees tab", () => {
+  test("viewer sees read-only attendee controls on the attendees tab", async ({
     groupViewerPage,
   }) => {
     await navigateToPath(groupViewerPage, "/dashboard/group?tab=events");
@@ -67,7 +67,7 @@ test.describe("group dashboard attendees views", () => {
     await expect(attendeeRow.locator(".check-in-toggle")).toBeDisabled();
   });
 
-  test("organizer can see a public attendee in the event dashboard", async ({
+  test("organizer can see a public attendee on the attendees tab", async ({
     member2Page,
     organizerGroupPage,
   }) => {
@@ -159,7 +159,7 @@ test.describe("group dashboard attendees views", () => {
     await expect(attendButton).toContainText("Attend event");
   });
 
-  test("organizer can check in an attendee from the event dashboard", async ({
+  test("organizer can check in an attendee from the attendees tab", async ({
     member2Page,
     organizerGroupPage,
   }) => {
@@ -271,7 +271,7 @@ test.describe("group dashboard attendees views", () => {
     await expect(attendButton).toContainText("Attend event");
   });
 
-  test("organizer sees the empty attendees state for an event without RSVPs", async ({
+  test("organizer sees the empty state on the attendees tab for an event without RSVPs", async ({
     organizerGroupPage,
   }) => {
     await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
@@ -319,7 +319,7 @@ test.describe("group dashboard attendees views", () => {
     ).toHaveAttribute("title", "No attendees to send emails to.");
   });
 
-  test("organizer can open and close the attendee email modal", async ({
+  test("organizer can open and close the attendee email modal from the attendees tab", async ({
     organizerGroupPage,
   }) => {
     await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
@@ -374,7 +374,7 @@ test.describe("group dashboard attendees views", () => {
     await expect(modal).toBeHidden();
   });
 
-  test("organizer can send an attendee email from the event dashboard", async ({
+  test("organizer can send an attendee email from the attendees tab", async ({
     organizerGroupPage,
   }) => {
     await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
@@ -440,7 +440,7 @@ test.describe("group dashboard attendees views", () => {
     );
   });
 
-  test("organizer can open the event QR code modal with populated details", async ({
+  test("organizer can open the event QR code modal from the attendees tab", async ({
     organizerGroupPage,
   }) => {
     await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");

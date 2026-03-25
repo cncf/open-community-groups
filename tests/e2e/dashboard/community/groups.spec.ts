@@ -13,7 +13,7 @@ import {
   uploadImageField,
 } from "../form-helpers";
 
-test.describe("community dashboard groups tab", () => {
+test.describe("community dashboard groups view", () => {
   test("admin can deactivate and reactivate a group from the list", async ({
     adminCommunityPage,
   }) => {

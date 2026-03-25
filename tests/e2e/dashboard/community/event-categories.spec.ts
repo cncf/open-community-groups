@@ -4,7 +4,7 @@ import { navigateToPath } from "../../utils";
 
 import { taxonomyCases } from "./helpers";
 
-test.describe("community dashboard event categories tab", () => {
+test.describe("community dashboard event categories view", () => {
   test("admin can add and delete an event category", async ({ adminCommunityPage }) => {
     const categoryName = `E2E Event Category ${Date.now()}`;
 

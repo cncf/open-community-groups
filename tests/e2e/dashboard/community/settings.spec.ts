@@ -3,7 +3,7 @@ import { expect, test } from "../../fixtures";
 import { fillMarkdownEditor, setImageFieldValue } from "../form-helpers";
 import { navigateToPath } from "../../utils";
 
-test.describe("community dashboard settings tab", () => {
+test.describe("community dashboard settings view", () => {
   test("admin can update and restore community settings", async ({
     adminCommunityPage,
   }) => {

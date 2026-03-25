@@ -11,7 +11,7 @@ const UPDATED_SPONSOR_WEBSITE = "https://updated-techcorp.example.com";
 const ORIGINAL_SPONSOR_LOGO_URL = "/static/images/e2e/sponsor-logo.svg";
 const UPDATED_SPONSOR_LOGO_URL = "/static/images/e2e/community-secondary-logo.svg";
 
-test.describe("group sponsors dashboard", () => {
+test.describe("group dashboard sponsors view", () => {
   test("organizer can add and delete a sponsor", async ({
     organizerGroupPage,
   }) => {
@@ -121,7 +121,7 @@ test.describe("group sponsors dashboard", () => {
     await expect(restoredRow).toContainText(ORIGINAL_SPONSOR_WEBSITE);
   });
 
-  test("viewer sees read-only controls on the sponsors page", async ({
+  test("viewer sees read-only controls in the sponsors view", async ({
     groupViewerPage,
   }) => {
     await navigateToPath(groupViewerPage, "/dashboard/group?tab=sponsors");

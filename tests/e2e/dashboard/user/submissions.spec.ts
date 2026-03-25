@@ -2,7 +2,7 @@ import { expect, test } from "../../fixtures";
 
 import { createSessionProposal, openUserDashboardPath, submitProposalToOpenCfsEvent } from "./helpers";
 
-test.describe("user dashboard submissions tab", () => {
+test.describe("user dashboard submissions view", () => {
   test("submissions page shows review statuses and available actions", async ({
     member1Page,
   }) => {

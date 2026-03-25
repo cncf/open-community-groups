@@ -8,8 +8,8 @@ import {
 
 const CFS_EVENT_SLUG = "alpha-cfs-summit";
 
-test.describe("call for speakers", () => {
-  test("public event page renders the CFS section for an open event", async ({
+test.describe("event page call for speakers", () => {
+  test("public event page renders the call for speakers section for an open event", async ({
     page,
   }) => {
     await navigateToEvent(
@@ -26,7 +26,7 @@ test.describe("call for speakers", () => {
     ).toBeEnabled();
   });
 
-  test("anonymous users are prompted to sign in before submitting", async ({
+  test("anonymous users are prompted to sign in before opening the submission flow", async ({
     page,
   }) => {
     await navigateToEvent(
@@ -44,7 +44,7 @@ test.describe("call for speakers", () => {
     await expect(page.getByRole("link", { name: "Sign in" })).toBeVisible();
   });
 
-  test("logged in users without proposals are sent to manage session proposals", async ({
+  test("logged in users without proposals see a link to manage session proposals", async ({
     adminCommunityPage,
   }) => {
     await navigateToEvent(
@@ -67,7 +67,7 @@ test.describe("call for speakers", () => {
     await expect(manageLink).toHaveAttribute("href", "/dashboard/user?tab=session-proposals");
   });
 
-  test("eligible and already-submitted proposals are distinguished in the modal", async ({
+  test("the submit proposal modal distinguishes eligible and already-submitted proposals", async ({
     member1Page,
   }) => {
     await navigateToEvent(

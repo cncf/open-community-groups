@@ -19,7 +19,7 @@ import {
   uploadImageField,
 } from "../form-helpers";
 
-test.describe("group dashboard events views", () => {
+test.describe("group dashboard events view", () => {
   test("organizer can create and delete an event", async ({ organizerGroupPage }) => {
     const eventName = `E2E Group Event ${Date.now()}`;
 

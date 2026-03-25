@@ -4,7 +4,7 @@ import { TEST_USER_IDS, navigateToPath } from "../../utils";
 
 import { ensureGroupViewerRole } from "./helpers";
 
-test.describe("group dashboard team tab", () => {
+test.describe("group dashboard team view", () => {
   test("group team page shows seeded roles and last-admin protection", async ({
     organizerGroupPage,
   }) => {

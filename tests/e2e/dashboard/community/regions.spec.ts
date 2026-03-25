@@ -4,7 +4,7 @@ import { navigateToPath } from "../../utils";
 
 import { taxonomyCases } from "./helpers";
 
-test.describe("community dashboard regions tab", () => {
+test.describe("community dashboard regions view", () => {
   test("admin can add and delete a region", async ({ adminCommunityPage }) => {
     const regionName = `E2E Region ${Date.now()}`;
 
