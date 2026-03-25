@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" role="img" aria-label="Event gallery image two">
+  <rect width="1280" height="720" fill="#1e1b4b"/>
+  <rect x="0" y="0" width="1280" height="220" fill="#312e81"/>
+  <circle cx="1020" cy="156" r="72" fill="#c4b5fd"/>
+  <rect x="160" y="220" width="960" height="360" rx="40" fill="#f5f3ff" fill-opacity="0.08"/>
+  <path d="M220 540 l160 -150 l140 112 l198 -188 l342 226 z" fill="#f9a8d4"/>
+  <text x="90" y="108" fill="#ede9fe" font-family="Arial, sans-serif" font-size="48" font-weight="700">Gallery Image Two</text>
+</svg>

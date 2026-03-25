@@ -233,17 +233,17 @@ insert into community (
     'e2e-test-community',
     'Platform Engineering Community',
     'Platform engineering community used for end-to-end coverage.',
-    'https://example.com/banner.png',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/logo.png'
+    '/static/images/e2e/community-primary-banner.svg',
+    '/static/images/e2e/community-primary-banner-mobile.svg',
+    '/static/images/e2e/community-primary-logo.svg'
 ), (
     '11111111-1111-1111-1111-111111111112',
     'e2e-second-community',
     'Developer Experience Community',
     'Developer experience community used for end-to-end coverage.',
-    'https://example.com/banner2.png',
-    'https://example.com/banner2-mobile.png',
-    'https://example.com/logo2.png'
+    '/static/images/e2e/community-secondary-banner.svg',
+    '/static/images/e2e/community-secondary-banner-mobile.svg',
+    '/static/images/e2e/community-secondary-logo.svg'
 );
 
 -- ============================================================================
@@ -410,14 +410,14 @@ insert into event (
     'United States',
     'US',
     '10001',
-    'https://example.com/event-banner.png',
-    'https://example.com/event-logo.png',
+    '/static/images/e2e/event-banner.svg',
+    '/static/images/e2e/event-logo.svg',
     100,
     true,
     '{"meetup", "tech", "networking"}',
     'https://www.meetup.com/test-group/events/123456789/',
     'https://zoom.us/j/1234567890',
-    '{"https://example.com/photo1.jpg", "https://example.com/photo2.jpg"}'
+    '{"/static/images/e2e/event-photo-1.svg", "/static/images/e2e/event-photo-2.svg"}'
 );
 
 -- Event 2: future virtual event with recording
@@ -1194,7 +1194,7 @@ values (
     '66666666-6666-6666-6666-666666666601',
     '44444444-4444-4444-4444-444444444441',
     'Tech Corp',
-    'https://example.com/sponsor-logo.png',
+    '/static/images/e2e/sponsor-logo.svg',
     'https://techcorp.example.com'
 );
 

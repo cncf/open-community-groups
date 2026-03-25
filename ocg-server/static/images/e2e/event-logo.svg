@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 360" role="img" aria-label="Upcoming In-Person Event logo">
+  <rect width="360" height="360" rx="72" fill="#1e293b"/>
+  <rect x="72" y="76" width="216" height="208" rx="28" fill="#ecfeff" fill-opacity="0.12"/>
+  <rect x="98" y="108" width="164" height="30" rx="12" fill="#99f6e4"/>
+  <rect x="98" y="160" width="164" height="24" rx="12" fill="#f8fafc"/>
+  <rect x="98" y="204" width="164" height="24" rx="12" fill="#f8fafc"/>
+  <rect x="98" y="248" width="106" height="24" rx="12" fill="#5eead4"/>
+</svg>

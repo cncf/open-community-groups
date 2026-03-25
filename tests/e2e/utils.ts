@@ -23,9 +23,10 @@ export const TEST_COMMUNITY_TITLE_2 = "Developer Experience Community";
 /** Community details for assertions. */
 export const TEST_COMMUNITY_DESCRIPTION =
   "Platform engineering community used for end-to-end coverage.";
-export const TEST_COMMUNITY_BANNER_URL = "https://example.com/banner.png";
+export const TEST_COMMUNITY_BANNER_URL =
+  "/static/images/e2e/community-primary-banner.svg";
 export const TEST_COMMUNITY_BANNER_MOBILE_URL =
-  "https://example.com/banner-mobile.png";
+  "/static/images/e2e/community-primary-banner-mobile.svg";
 
 /** Group names organized by community. */
 export const TEST_GROUP_NAMES = {

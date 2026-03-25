@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1220 192" role="img" aria-label="Developer Experience Community mobile banner">
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#9a3412"/>
+      <stop offset="100%" stop-color="#e11d48"/>
+    </linearGradient>
+  </defs>
+  <rect width="1220" height="192" fill="url(#bg)"/>
+  <rect x="760" y="32" width="360" height="128" rx="24" fill="#fff7ed" fill-opacity="0.14"/>
+  <text x="90" y="88" fill="#fff7ed" font-family="Arial, sans-serif" font-size="30" font-weight="700">Developer Experience</text>
+  <text x="90" y="124" fill="#fecdd3" font-family="Arial, sans-serif" font-size="18">Community</text>
+</svg>

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2428 192" role="img" aria-label="Platform Engineering Community banner">
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#0f766e"/>
+      <stop offset="100%" stop-color="#1d4ed8"/>
+    </linearGradient>
+  </defs>
+  <rect width="2428" height="192" fill="url(#bg)"/>
+  <circle cx="180" cy="96" r="58" fill="#f0fdfa" fill-opacity="0.18"/>
+  <circle cx="2248" cy="44" r="34" fill="#dbeafe" fill-opacity="0.28"/>
+  <path d="M0 140 C220 90 360 178 560 138 S980 88 1180 136 S1600 184 1820 126 S2190 94 2428 146 L2428 192 L0 192 Z" fill="#ffffff" fill-opacity="0.12"/>
+  <text x="120" y="86" fill="#f8fafc" font-family="Arial, sans-serif" font-size="34" font-weight="700" letter-spacing="1.5">PLATFORM ENGINEERING COMMUNITY</text>
+  <text x="120" y="128" fill="#ccfbf1" font-family="Arial, sans-serif" font-size="18">Reliable assets for end-to-end screenshots and seeded UI coverage.</text>
+</svg>
