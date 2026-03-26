@@ -13,18 +13,22 @@ use uuid::Uuid;
 use crate::{
     db::PgDB,
     services::meetings::MeetingProvider,
-    templates::dashboard::group::{
-        analytics::GroupDashboardStats,
-        attendees::{AttendeesFilters, AttendeesOutput},
-        events::{ApprovedSubmissionSummary, CfsSubmissionStatus, Event, EventsListFilters, GroupEvents},
-        home::UserGroupsByCommunity,
-        members::{GroupMembersFilters, GroupMembersOutput},
-        sponsors::{GroupSponsorsFilters, GroupSponsorsOutput, Sponsor},
-        submissions::{
-            CfsSubmissionNotificationData, CfsSubmissionUpdate, CfsSubmissionsFilters, CfsSubmissionsOutput,
+    templates::dashboard::{
+        audit::{AuditLogFilters, AuditLogsOutput},
+        group::{
+            analytics::GroupDashboardStats,
+            attendees::{AttendeesFilters, AttendeesOutput},
+            events::{ApprovedSubmissionSummary, CfsSubmissionStatus, Event, EventsListFilters, GroupEvents},
+            home::UserGroupsByCommunity,
+            members::{GroupMembersFilters, GroupMembersOutput},
+            sponsors::{GroupSponsorsFilters, GroupSponsorsOutput, Sponsor},
+            submissions::{
+                CfsSubmissionNotificationData, CfsSubmissionUpdate, CfsSubmissionsFilters,
+                CfsSubmissionsOutput,
+            },
+            team::{GroupTeamFilters, GroupTeamOutput},
+            waitlist::{WaitlistFilters, WaitlistOutput},
         },
-        team::{GroupTeamFilters, GroupTeamOutput},
-        waitlist::{WaitlistFilters, WaitlistOutput},
     },
     types::{
         event::{EventCategory, EventKindSummary as EventKind, SessionKindSummary as SessionKind},
@@ -94,6 +98,13 @@ pub(crate) trait DBDashboardGroup {
 
     /// Lists reviewer-available CFS submission statuses.
     async fn list_cfs_submission_statuses_for_review(&self) -> Result<Vec<CfsSubmissionStatus>>;
+
+    /// Lists group dashboard audit log rows.
+    async fn list_group_audit_logs(
+        &self,
+        group_id: Uuid,
+        filters: &AuditLogFilters,
+    ) -> Result<AuditLogsOutput>;
 
     /// Lists approved CFS submissions for an event.
     async fn list_event_approved_cfs_submissions(
@@ -387,6 +398,20 @@ impl DBDashboardGroup for PgDB {
     async fn list_cfs_submission_statuses_for_review(&self) -> Result<Vec<CfsSubmissionStatus>> {
         self.fetch_json_one("select list_cfs_submission_statuses_for_review()", &[])
             .await
+    }
+
+    /// [`DBDashboardGroup::list_group_audit_logs`]
+    #[instrument(skip(self, filters), err)]
+    async fn list_group_audit_logs(
+        &self,
+        group_id: Uuid,
+        filters: &AuditLogFilters,
+    ) -> Result<AuditLogsOutput> {
+        self.fetch_json_one(
+            "select list_group_audit_logs($1::uuid, $2::jsonb)",
+            &[&group_id, &Json(filters)],
+        )
+        .await
     }
 
     /// [`DBDashboardGroup::list_event_approved_cfs_submissions`]

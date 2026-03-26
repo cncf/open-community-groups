@@ -9,7 +9,10 @@ use crate::{
     templates::{
         PageId,
         auth::User,
-        dashboard::group::{analytics, events, members, settings, sponsors, team},
+        dashboard::{
+            audit,
+            group::{analytics, events, members, settings, sponsors, team},
+        },
         filters,
         helpers::user_initials,
     },
@@ -78,6 +81,8 @@ pub(crate) enum Content {
     Analytics(Box<analytics::Page>),
     /// Events management page.
     Events(Box<events::ListPage>),
+    /// Audit logs page.
+    Logs(audit::ListPage),
     /// Members list page.
     Members(members::ListPage),
     /// Settings management page.
@@ -97,6 +102,11 @@ impl Content {
     /// Check if the content is the events page.
     fn is_events(&self) -> bool {
         matches!(self, Content::Events(_))
+    }
+
+    /// Check if the content is the logs page.
+    fn is_logs(&self) -> bool {
+        matches!(self, Content::Logs(_))
     }
 
     /// Check if the content is the members page.
@@ -125,6 +135,7 @@ impl std::fmt::Display for Content {
         match self {
             Content::Analytics(template) => write!(f, "{}", template.render()?),
             Content::Events(template) => write!(f, "{}", template.render()?),
+            Content::Logs(template) => write!(f, "{}", template.render()?),
             Content::Members(template) => write!(f, "{}", template.render()?),
             Content::Settings(template) => write!(f, "{}", template.render()?),
             Content::Sponsors(template) => write!(f, "{}", template.render()?),
@@ -143,6 +154,8 @@ pub(crate) enum Tab {
     Analytics,
     /// Events management tab.
     Events,
+    /// Audit logs tab.
+    Logs,
     /// Members list tab.
     Members,
     /// Settings management tab.

@@ -22,6 +22,7 @@ Path: [/dashboard/community](/dashboard/community ':ignore')
 - [Event Categories: Event Taxonomy](#event-categories-event-taxonomy)
 - [Analytics: Momentum](#analytics-momentum)
 - [Groups: Portfolio](#groups-portfolio)
+- [Audit: Logs](#audit-logs)
 - [Recommended Cadence](#recommended-cadence)
 
 ## What This Dashboard Owns
@@ -41,6 +42,7 @@ Main areas:
 - [Analytics](/dashboard/community?tab=analytics ':ignore'): community growth trends and volume metrics.
 - [Groups](/dashboard/community?tab=groups ':ignore'): group creation, maintenance, activation state,
   and lifecycle transitions.
+- [Logs](/dashboard/community?tab=logs ':ignore'): read-only audit trail for community dashboard actions.
 
 ![Community dashboard analytics](../screenshots/dashboard-community-analytics.png)
 
@@ -61,11 +63,11 @@ For invitation acceptance and dashboard access, see
 
 Community role permissions are fixed and enforced by middleware plus database checks:
 
-| Community role | Community read | Groups | Settings | Taxonomy | Team |
-| --- | --- | --- | --- | --- | --- |
-| `admin` | Yes | Write | Write | Write | Write |
-| `groups-manager` | Yes | Write | Read only | Read only | Read only |
-| `viewer` | Yes | Read only | Read only | Read only | Read only |
+| Community role   | Community read | Groups    | Settings  | Taxonomy  | Team      |
+| ---------------- | -------------- | --------- | --------- | --------- | --------- |
+| `admin`          | Yes            | Write     | Write     | Write     | Write     |
+| `groups-manager` | Yes            | Write     | Read only | Read only | Read only |
+| `viewer`         | Yes            | Read only | Read only | Read only | Read only |
 
 ![Community roles](../screenshots/dashboard-community-team-roles.png)
 
@@ -258,6 +260,39 @@ Group-branding inheritance from this flow:
 
 - `Activate` restores visibility and operational flow.
 - `Deactivate` pauses activity while preserving metadata.
+
+## Audit: Logs
+
+`AUDIT -> Logs` is the last section in the left dashboard menu. It gives community leads a
+read-only activity stream for community dashboard operations.
+
+Coverage in this view includes:
+
+- Community settings updates.
+- Community team membership changes.
+- Region, group category, and event category changes.
+- Group portfolio actions done from the community dashboard, including add, activate, deactivate,
+  delete, and update.
+
+Table behavior:
+
+- Rows are ordered by newest first by default.
+- You can filter by `Action`, `Actor`, and date range.
+- You can switch ordering between newest first and oldest first.
+- Pagination keeps the active filters applied.
+- `Details` opens a popover when an audit row has extra metadata.
+
+Target display behavior:
+
+- OCG shows the resource type plus the current resource name.
+- If the current resource row no longer exists, the audit row still remains and falls back to the
+  stored resource identifier.
+
+Scope note:
+
+- This screen is community-dashboard focused.
+- Some overlapping actions, such as `group_updated`, can also appear in the group dashboard audit
+  view when they match that dashboard's accepted scope.
 - `Delete` is permanent retirement for groups that should no longer exist operationally.
 
 When a group is inactive, its public-view shortcut is disabled in the groups table.

@@ -1,0 +1,168 @@
+{% import "macros/dashboard.html" as dashboard -%}
+{% import "macros/pagination.html" as pagination -%}
+
+{{ dashboard::page_title(title = "Logs", docs_href = docs_href, description = page_description) -}}
+
+<div class="mt-6 rounded-xl border border-stone-200 bg-stone-50 p-4 lg:p-5">
+  <form hx-get="{{ filter_url }}"
+        hx-indicator="#dashboard-spinner"
+        hx-swap="innerHTML"
+        hx-target="#dashboard-content"
+        class="grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_180px_180px_220px_auto]">
+    <div>
+      <label for="audit-action" class="form-label">Action</label>
+      <select id="audit-action"
+              name="action"
+              class="select select-primary mt-2">
+        <option value="">All actions</option>
+        {% for option in action_options -%}
+          <option value="{{ option.value }}" {% if option.selected %}selected{% endif %}>
+            {{ option.label }}
+          </option>
+        {% endfor -%}
+      </select>
+    </div>
+
+    {% if show_actor -%}
+      <div>
+        <label for="audit-actor" class="form-label">Actor</label>
+        <input id="audit-actor"
+               type="text"
+               name="actor"
+               value="{{ actor_value.as_deref().unwrap_or_default() }}"
+               class="input-primary mt-2"
+               placeholder="Filter by username">
+      </div>
+    {% endif -%}
+
+    <div>
+      <label for="audit-date-from" class="form-label">From</label>
+      <input id="audit-date-from"
+             type="date"
+             name="date_from"
+             value="{{ date_from_value.as_deref().unwrap_or_default() }}"
+             class="input-primary mt-2">
+    </div>
+
+    <div>
+      <label for="audit-date-to" class="form-label">To</label>
+      <input id="audit-date-to"
+             type="date"
+             name="date_to"
+             value="{{ date_to_value.as_deref().unwrap_or_default() }}"
+             class="input-primary mt-2">
+    </div>
+
+    <div>
+      <label for="audit-sort" class="form-label">Sort by</label>
+      <select id="audit-sort"
+              name="sort"
+              class="select select-primary mt-2">
+        <option value="created-desc" {% if sort_value == "created-desc" %}selected{% endif %}>
+          Newest first
+        </option>
+        <option value="created-asc" {% if sort_value == "created-asc" %}selected{% endif %}>
+          Oldest first
+        </option>
+      </select>
+    </div>
+
+    <div class="flex items-end gap-3">
+      <button type="submit" class="btn-primary">Apply</button>
+      <a href="{{ reset_url }}"
+         hx-get="{{ filter_url }}"
+         hx-indicator="#dashboard-spinner"
+         hx-swap="innerHTML"
+         hx-target="#dashboard-content"
+         class="btn-primary-outline">Reset</a>
+    </div>
+  </form>
+</div>
+
+<div class="mt-5 text-sm text-stone-600">
+  {{ pagination::range_display(offset = offset.unwrap_or(0), count = logs.len(), total = total, label = "log") }}
+</div>
+
+<div class="relative mt-5 overflow-visible">
+  <table class="table-auto w-full text-xs lg:text-sm text-left text-stone-500"
+         role="table"
+         aria-label="Audit logs table">
+    <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200"
+           role="rowgroup">
+      <tr>
+        <th scope="col" class="px-3 xl:px-5 py-3 w-44">When</th>
+        {% if show_actor -%}
+          <th scope="col" class="px-3 xl:px-5 py-3 w-40">Actor</th>
+        {% endif -%}
+        <th scope="col" class="px-3 xl:px-5 py-3 w-56">Action</th>
+        <th scope="col" class="px-3 xl:px-5 py-3">Target</th>
+        <th scope="col" class="px-3 xl:px-5 py-3 w-28">Details</th>
+      </tr>
+    </thead>
+    <tbody role="rowgroup">
+      {% if logs.is_empty() -%}
+        <tr class="bg-white border-b border-stone-200">
+          <td class="px-8 py-12 text-center text-stone-600"
+              colspan="{% if show_actor %}5{% else %}4{% endif %}">
+            No audit log entries found for the current filters.
+          </td>
+        </tr>
+      {% else -%}
+        {% for log in logs -%}
+          <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
+            <td class="px-3 xl:px-5 py-4 whitespace-nowrap">
+              <div class="font-medium text-stone-900">{{ log.created_at.format("%b %d, %Y") }}</div>
+              <div class="mt-1 text-xs text-stone-600">{{ log.created_at.format("%I:%M %p UTC") }}</div>
+            </td>
+
+            {% if show_actor -%}
+              <td class="px-3 xl:px-5 py-4">
+                <div class="font-medium text-stone-900">
+                  {{ log.actor_username.as_deref().unwrap_or("-") }}
+                </div>
+              </td>
+            {% endif -%}
+
+            <td class="px-3 xl:px-5 py-4">
+              <div class="font-medium text-stone-900">{{ log.action_label }}</div>
+            </td>
+
+            <td class="px-3 xl:px-5 py-4 max-w-0">
+              <div class="font-medium text-stone-900 truncate">{{ log.resource_display_name }}</div>
+              <div class="mt-1 text-xs text-stone-600 truncate">{{ log.resource_type_label }}</div>
+            </td>
+
+            <td class="px-3 xl:px-5 py-4">
+              {% if log.details.is_empty() -%}
+                <span class="text-stone-500">-</span>
+              {% else -%}
+                <button type="button"
+                        popovertarget="{{ log.details_popover_id }}"
+                        class="btn-primary-outline px-3 py-1.5 text-xs">View</button>
+                <div id="{{ log.details_popover_id }}"
+                     popover
+                     class="w-80 max-w-[calc(100vw-2rem)] rounded-xl border border-stone-200 bg-white p-4 text-left text-sm text-stone-700 shadow-xl backdrop:bg-stone-950/30">
+                  <div class="mb-3 text-sm font-semibold text-stone-900">Log details</div>
+                  <div class="space-y-3">
+                    {% for detail in log.details -%}
+                      <div class="border-b border-stone-100 pb-3 last:border-b-0 last:pb-0">
+                        <div class="text-xs font-semibold uppercase tracking-wide text-stone-500">
+                          {{ detail.key_label }}
+                        </div>
+                        <div class="mt-1 break-words text-stone-900">{{ detail.value }}</div>
+                      </div>
+                    {% endfor -%}
+                  </div>
+                </div>
+              {% endif -%}
+            </td>
+          </tr>
+        {% endfor -%}
+      {% endif -%}
+    </tbody>
+  </table>
+</div>
+
+{% if total > logs.len() -%}
+  {{ pagination::navigation_links(links = navigation_links, hx_target = "#dashboard-content", hx_indicator = "#dashboard-spinner") }}
+{% endif -%}

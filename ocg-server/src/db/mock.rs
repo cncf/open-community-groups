@@ -226,6 +226,11 @@ mock! {
             &self,
             community_id: Uuid,
         ) -> Result<crate::templates::dashboard::community::analytics::CommunityDashboardStats>;
+        async fn list_community_audit_logs(
+            &self,
+            community_id: Uuid,
+            filters: &crate::templates::dashboard::audit::AuditLogFilters,
+        ) -> Result<crate::templates::dashboard::audit::AuditLogsOutput>;
         async fn list_community_team_members(
             &self,
             community_id: Uuid,
@@ -340,6 +345,14 @@ mock! {
             community_id: Uuid,
             group_id: Uuid,
         ) -> Result<crate::templates::dashboard::group::analytics::GroupDashboardStats>;
+        async fn list_cfs_submission_statuses_for_review(
+            &self,
+        ) -> Result<Vec<crate::templates::dashboard::group::events::CfsSubmissionStatus>>;
+        async fn list_group_audit_logs(
+            &self,
+            group_id: Uuid,
+            filters: &crate::templates::dashboard::audit::AuditLogFilters,
+        ) -> Result<crate::templates::dashboard::audit::AuditLogsOutput>;
         async fn list_event_attendees_ids(
             &self,
             group_id: Uuid,
@@ -396,9 +409,6 @@ mock! {
             &self,
             group_id: Uuid,
         ) -> Result<Vec<Uuid>>;
-        async fn list_cfs_submission_statuses_for_review(
-            &self,
-        ) -> Result<Vec<crate::templates::dashboard::group::events::CfsSubmissionStatus>>;
         async fn list_session_kinds(&self)
             -> Result<Vec<crate::types::event::SessionKindSummary>>;
         async fn list_user_groups(
@@ -499,6 +509,11 @@ mock! {
         async fn list_session_proposal_levels(
             &self,
         ) -> Result<Vec<crate::templates::dashboard::user::session_proposals::SessionProposalLevel>>;
+        async fn list_user_audit_logs(
+            &self,
+            actor_user_id: Uuid,
+            filters: &crate::templates::dashboard::audit::AuditLogFilters,
+        ) -> Result<crate::templates::dashboard::audit::AuditLogsOutput>;
         async fn list_user_cfs_submissions(
             &self,
             user_id: Uuid,

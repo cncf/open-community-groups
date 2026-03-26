@@ -9,8 +9,9 @@ use crate::{
     templates::{
         PageId,
         auth::User,
-        dashboard::community::{
-            analytics, event_categories, group_categories, groups, regions, settings, team,
+        dashboard::{
+            audit,
+            community::{analytics, event_categories, group_categories, groups, regions, settings, team},
         },
         filters,
         helpers::user_initials,
@@ -51,6 +52,8 @@ pub(crate) enum Content {
     GroupCategories(group_categories::ListPage),
     /// Groups management page.
     Groups(groups::ListPage),
+    /// Audit logs page.
+    Logs(audit::ListPage),
     /// Regions management page.
     Regions(regions::ListPage),
     /// Settings page.
@@ -80,6 +83,11 @@ impl Content {
         matches!(self, Content::Groups(_))
     }
 
+    /// Check if the content is the logs page.
+    fn is_logs(&self) -> bool {
+        matches!(self, Content::Logs(_))
+    }
+
     /// Check if the content is the regions page.
     fn is_regions(&self) -> bool {
         matches!(self, Content::Regions(_))
@@ -103,6 +111,7 @@ impl std::fmt::Display for Content {
             Content::EventCategories(template) => write!(f, "{}", template.render()?),
             Content::GroupCategories(template) => write!(f, "{}", template.render()?),
             Content::Groups(template) => write!(f, "{}", template.render()?),
+            Content::Logs(template) => write!(f, "{}", template.render()?),
             Content::Regions(template) => write!(f, "{}", template.render()?),
             Content::Settings(template) => write!(f, "{}", template.render()?),
             Content::Team(template) => write!(f, "{}", template.render()?),
@@ -124,6 +133,8 @@ pub(crate) enum Tab {
     GroupCategories,
     /// Groups management tab.
     Groups,
+    /// Audit logs tab.
+    Logs,
     /// Regions management tab.
     Regions,
     /// Settings tab.

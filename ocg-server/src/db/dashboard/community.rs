@@ -12,14 +12,17 @@ use uuid::Uuid;
 
 use crate::{
     db::PgDB,
-    templates::dashboard::community::{
-        analytics::CommunityDashboardStats,
-        event_categories::EventCategoryInput,
-        group_categories::GroupCategoryInput,
-        groups::Group,
-        regions::RegionInput,
-        settings::CommunityUpdate,
-        team::{CommunityTeamFilters, CommunityTeamOutput},
+    templates::dashboard::{
+        audit::{AuditLogFilters, AuditLogsOutput},
+        community::{
+            analytics::CommunityDashboardStats,
+            event_categories::EventCategoryInput,
+            group_categories::GroupCategoryInput,
+            groups::Group,
+            regions::RegionInput,
+            settings::CommunityUpdate,
+            team::{CommunityTeamFilters, CommunityTeamOutput},
+        },
     },
     types::{
         community::{CommunityRole, CommunityRoleSummary, CommunitySummary},
@@ -100,6 +103,13 @@ pub(crate) trait DBDashboardCommunity {
 
     /// Retrieves analytics statistics for a community.
     async fn get_community_stats(&self, community_id: Uuid) -> Result<CommunityDashboardStats>;
+
+    /// Lists community dashboard audit log rows.
+    async fn list_community_audit_logs(
+        &self,
+        community_id: Uuid,
+        filters: &AuditLogFilters,
+    ) -> Result<AuditLogsOutput>;
 
     /// Lists all available community roles.
     async fn list_community_roles(&self) -> Result<Vec<CommunityRoleSummary>>;
@@ -344,6 +354,20 @@ impl DBDashboardCommunity for PgDB {
 
         let db = self.pool.get().await?;
         inner(db, community_id).await
+    }
+
+    /// [`DBDashboardCommunity::list_community_audit_logs`]
+    #[instrument(skip(self, filters), err)]
+    async fn list_community_audit_logs(
+        &self,
+        community_id: Uuid,
+        filters: &AuditLogFilters,
+    ) -> Result<AuditLogsOutput> {
+        self.fetch_json_one(
+            "select list_community_audit_logs($1::uuid, $2::jsonb)",
+            &[&community_id, &Json(filters)],
+        )
+        .await
     }
 
     /// [`DBDashboardCommunity::list_community_roles`]

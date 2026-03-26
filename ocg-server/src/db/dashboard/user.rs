@@ -8,14 +8,17 @@ use uuid::Uuid;
 
 use crate::{
     db::PgDB,
-    templates::dashboard::user::{
-        events::{UserEventsFilters, UserEventsOutput},
-        invitations::{CommunityTeamInvitation, GroupTeamInvitation},
-        session_proposals::{
-            PendingCoSpeakerInvitation, SessionProposalInput, SessionProposalLevel, SessionProposalsFilters,
-            SessionProposalsOutput,
+    templates::dashboard::{
+        audit::{AuditLogFilters, AuditLogsOutput},
+        user::{
+            events::{UserEventsFilters, UserEventsOutput},
+            invitations::{CommunityTeamInvitation, GroupTeamInvitation},
+            session_proposals::{
+                PendingCoSpeakerInvitation, SessionProposalInput, SessionProposalLevel,
+                SessionProposalsFilters, SessionProposalsOutput,
+            },
+            submissions::{CfsSubmissionsFilters, CfsSubmissionsOutput},
         },
-        submissions::{CfsSubmissionsFilters, CfsSubmissionsOutput},
     },
 };
 
@@ -54,6 +57,13 @@ pub(crate) trait DBDashboardUser {
 
     /// Lists all available session proposal levels.
     async fn list_session_proposal_levels(&self) -> Result<Vec<SessionProposalLevel>>;
+
+    /// Lists user dashboard audit log rows.
+    async fn list_user_audit_logs(
+        &self,
+        actor_user_id: Uuid,
+        filters: &AuditLogFilters,
+    ) -> Result<AuditLogsOutput>;
 
     /// Lists all CFS submissions for the user.
     async fn list_user_cfs_submissions(
@@ -205,6 +215,20 @@ impl DBDashboardUser for PgDB {
     async fn list_session_proposal_levels(&self) -> Result<Vec<SessionProposalLevel>> {
         self.fetch_json_one("select list_session_proposal_levels()", &[])
             .await
+    }
+
+    /// [`DBDashboardUser::list_user_audit_logs`]
+    #[instrument(skip(self, filters), err)]
+    async fn list_user_audit_logs(
+        &self,
+        actor_user_id: Uuid,
+        filters: &AuditLogFilters,
+    ) -> Result<AuditLogsOutput> {
+        self.fetch_json_one(
+            "select list_user_audit_logs($1::uuid, $2::jsonb)",
+            &[&actor_user_id, &Json(filters)],
+        )
+        .await
     }
 
     /// [`DBDashboardUser::list_user_cfs_submissions`]

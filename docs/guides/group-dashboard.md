@@ -12,15 +12,17 @@ Path: [/dashboard/group](/dashboard/group ':ignore')
 
 **Sections:**
 
-- [What This Dashboard Owns](#what-this-dashboard-owns)
-- [Access and Context](#access-and-context)
-- [Roles and Permissions](#roles-and-permissions)
-- [Settings: Group Identity](#settings-group-identity)
-- [Team: Organizer Capacity](#team-organizer-capacity)
-- [Analytics: Delivery Health](#analytics-delivery-health)
-- [Members: Communication](#members-communication)
-- [Sponsors: Reusable Profiles](#sponsors-reusable-profiles)
-- [Events: Operations Hub](#events-operations-hub)
+- [Group Dashboard Guide](#group-dashboard-guide)
+  - [What This Dashboard Owns](#what-this-dashboard-owns)
+  - [Access and Context](#access-and-context)
+  - [Roles and Permissions](#roles-and-permissions)
+  - [Settings: Group Identity](#settings-group-identity)
+  - [Team: Organizer Capacity](#team-organizer-capacity)
+  - [Analytics: Delivery Health](#analytics-delivery-health)
+  - [Members: Communication](#members-communication)
+  - [Sponsors: Reusable Profiles](#sponsors-reusable-profiles)
+  - [Events: Operations Hub](#events-operations-hub)
+  - [Audit: Logs](#audit-logs)
 
 ## What This Dashboard Owns
 
@@ -35,6 +37,7 @@ Main areas:
 - [Events](/dashboard/group?tab=events ':ignore'): full event lifecycle operations.
 - [Members](/dashboard/group?tab=members ':ignore'): membership view and group-wide communication.
 - [Sponsors](/dashboard/group?tab=sponsors ':ignore'): reusable sponsor records for event use.
+- [Logs](/dashboard/group?tab=logs ':ignore'): read-only audit trail for group dashboard actions.
 
 ## Access and Context
 
@@ -197,3 +200,37 @@ For complete mechanics, continue to:
 
 To understand how attendees experience the published result, see
 [Public Site Guide](public-site.md).
+
+## Audit: Logs
+
+`AUDIT -> Logs` is the last section in the left dashboard menu. It provides a read-only record of
+group dashboard activity for the selected group.
+
+Coverage in this view includes:
+
+- Group settings updates.
+- Group team changes.
+- Sponsor changes.
+- Event lifecycle actions such as add, update, publish, unpublish, cancel, and delete.
+- Check-ins, CFS submission reviews, and custom notification sends.
+
+Table behavior:
+
+- Rows are ordered by newest first by default.
+- You can filter by `Action`, `Actor`, and date range.
+- You can switch ordering between newest first and oldest first.
+- Pagination keeps the active filters applied.
+- `Details` opens a popover when an audit row has extra metadata such as a role or notification
+  subject.
+
+Target display behavior:
+
+- OCG shows the resource type plus the current resource name.
+- If the current resource row no longer exists, the audit row still remains and falls back to the
+  stored resource identifier.
+
+Scope note:
+
+- This screen is group-dashboard focused.
+- Some overlapping actions, such as `group_updated`, can also appear in the community dashboard
+  audit view when they match that dashboard's accepted scope.

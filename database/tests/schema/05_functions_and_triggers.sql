@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(137);
+select plan(140);
 
 -- ============================================================================
 -- TESTS
@@ -66,6 +66,7 @@ select has_function('join_group');
 select has_function('leave_event');
 select has_function('leave_group');
 select has_function('list_communities');
+select has_function('list_community_audit_logs');
 select has_function('list_community_team_members');
 select has_function('list_community_roles');
 select has_function('list_cfs_submission_statuses_for_review');
@@ -77,6 +78,7 @@ select has_function('list_event_cfs_labels');
 select has_function('list_event_kinds');
 select has_function('list_event_waitlist_ids');
 select has_function('list_group_categories');
+select has_function('list_group_audit_logs');
 select has_function('list_group_events');
 select has_function('list_group_members');
 select has_function('list_group_members_ids');
@@ -88,6 +90,7 @@ select has_function('list_redirects');
 select has_function('list_regions');
 select has_function('list_session_kinds');
 select has_function('list_session_proposal_levels');
+select has_function('list_user_audit_logs');
 select has_function('list_user_cfs_submissions');
 select has_function('list_user_community_team_invitations');
 select has_function('list_user_group_team_invitations');
