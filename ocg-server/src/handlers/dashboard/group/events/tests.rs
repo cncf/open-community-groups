@@ -440,8 +440,9 @@ async fn test_add_success() {
         .returning(|_, _, _, _| Ok(true));
     db.expect_add_event()
         .times(1)
-        .withf(move |_, id, event, cfg_max_participants| {
-            *id == group_id
+        .withf(move |uid, id, event, cfg_max_participants| {
+            *uid == user_id
+                && *id == group_id
                 && event.name == event_form.name
                 && cfg_max_participants.get(&MeetingProvider::Zoom) == Some(&100)
         })
@@ -590,7 +591,7 @@ async fn test_cancel_success() {
         .returning(move |_, _, _| Ok(event_summary.clone()));
     db.expect_cancel_event()
         .times(1)
-        .withf(move |_, id, eid| *id == group_id && *eid == event_id)
+        .withf(move |uid, id, eid| *uid == user_id && *id == group_id && *eid == event_id)
         .returning(move |_, _, _| Ok(()));
     db.expect_get_event_full()
         .times(1)
@@ -1011,7 +1012,7 @@ async fn test_delete_success() {
         .returning(|_, _, _, _| Ok(true));
     db.expect_delete_event()
         .times(1)
-        .withf(move |_, gid, eid| *gid == group_id && *eid == event_id)
+        .withf(move |uid, gid, eid| *uid == user_id && *gid == group_id && *eid == event_id)
         .returning(move |_, _, _| Ok(()));
 
     // Setup notifications manager mock
@@ -1076,7 +1077,7 @@ async fn test_unpublish_success() {
         .returning(|_, _, _, _| Ok(true));
     db.expect_unpublish_event()
         .times(1)
-        .withf(move |_, gid, eid| *gid == group_id && *eid == event_id)
+        .withf(move |uid, gid, eid| *uid == user_id && *gid == group_id && *eid == event_id)
         .returning(move |_, _, _| Ok(()));
 
     // Setup notifications manager mock
@@ -1175,8 +1176,9 @@ async fn test_update_success() {
         });
     db.expect_update_event()
         .times(1)
-        .withf(move |_, gid, eid, event, cfg_max_participants| {
-            *gid == group_id
+        .withf(move |uid, gid, eid, event, cfg_max_participants| {
+            *uid == user_id
+                && *gid == group_id
                 && *eid == event_id
                 && event.get("name").and_then(serde_json::Value::as_str) == Some(event_form.name.as_str())
                 && cfg_max_participants.is_empty()
@@ -1310,8 +1312,9 @@ async fn test_update_promotes_waitlist_and_sends_reschedule_notification() {
         });
     db.expect_update_event()
         .times(1)
-        .withf(move |_, gid, eid, event, cfg_max_participants| {
-            *gid == group_id
+        .withf(move |uid, gid, eid, event, cfg_max_participants| {
+            *uid == user_id
+                && *gid == group_id
                 && *eid == event_id
                 && event.get("name").and_then(serde_json::Value::as_str) == Some(event_form.name.as_str())
                 && cfg_max_participants.is_empty()
@@ -1438,8 +1441,9 @@ async fn test_update_promotion_notification_failure_is_ignored() {
         .returning(move |_, _, _| Ok(after.clone()));
     db.expect_update_event()
         .times(1)
-        .withf(move |_, gid, eid, event, cfg_max_participants| {
-            *gid == group_id
+        .withf(move |uid, gid, eid, event, cfg_max_participants| {
+            *uid == user_id
+                && *gid == group_id
                 && *eid == event_id
                 && event.get("name").and_then(serde_json::Value::as_str) == Some(event_form.name.as_str())
                 && cfg_max_participants.is_empty()
@@ -1549,8 +1553,9 @@ async fn test_update_promotion_notification_context_failure_is_ignored() {
         });
     db.expect_update_event()
         .times(1)
-        .withf(move |_, gid, eid, event, cfg_max_participants| {
-            *gid == group_id
+        .withf(move |uid, gid, eid, event, cfg_max_participants| {
+            *uid == user_id
+                && *gid == group_id
                 && *eid == event_id
                 && event.get("name").and_then(serde_json::Value::as_str) == Some(event_form.name.as_str())
                 && cfg_max_participants.is_empty()
@@ -1646,8 +1651,9 @@ async fn test_update_no_notification_when_shift_too_small() {
         });
     db.expect_update_event()
         .times(1)
-        .withf(move |_, gid, eid, event, cfg_max_participants| {
-            *gid == group_id
+        .withf(move |uid, gid, eid, event, cfg_max_participants| {
+            *uid == user_id
+                && *gid == group_id
                 && *eid == event_id
                 && event.get("name").and_then(serde_json::Value::as_str) == Some(event_form.name.as_str())
                 && cfg_max_participants.is_empty()
@@ -1744,8 +1750,9 @@ async fn test_update_no_notification_when_unpublished() {
         });
     db.expect_update_event()
         .times(1)
-        .withf(move |_, gid, eid, event, cfg_max_participants| {
-            *gid == group_id
+        .withf(move |uid, gid, eid, event, cfg_max_participants| {
+            *uid == user_id
+                && *gid == group_id
                 && *eid == event_id
                 && event.get("name").and_then(serde_json::Value::as_str) == Some(event_form.name.as_str())
                 && cfg_max_participants.is_empty()
@@ -1831,8 +1838,9 @@ async fn test_update_past_event_success() {
         .returning(move |_, _, _| Ok(past_event.clone()));
     db.expect_update_event()
         .times(1)
-        .withf(move |_, gid, eid, event, cfg_max_participants| {
-            *gid == group_id
+        .withf(move |uid, gid, eid, event, cfg_max_participants| {
+            *uid == user_id
+                && *gid == group_id
                 && *eid == event_id
                 && event.get("description").and_then(serde_json::Value::as_str)
                     == Some("Updated past event description")

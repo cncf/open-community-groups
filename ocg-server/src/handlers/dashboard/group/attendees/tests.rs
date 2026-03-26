@@ -462,6 +462,7 @@ async fn test_send_event_custom_notification_success() {
     // Create copies for the track_custom_notification closure
     let track_user_id = user_id;
     let track_event_id = event_id;
+    let track_group_id = group_id;
     let track_subject = notification_subject.to_string();
     let track_body = notification_body.to_string();
 
@@ -501,7 +502,7 @@ async fn test_send_event_custom_notification_success() {
             move |created_by, event_id, group_id, recipient_count, subject, body| {
                 *created_by == track_user_id
                     && *event_id == Some(track_event_id)
-                    && group_id.is_none()
+                    && *group_id == Some(track_group_id)
                     && *recipient_count == 2
                     && subject == track_subject
                     && body == track_body

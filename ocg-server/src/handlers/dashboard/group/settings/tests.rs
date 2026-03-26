@@ -205,8 +205,8 @@ async fn test_update_success() {
         .returning(|_, _, _, _| Ok(true));
     db.expect_update_group()
         .times(1)
-        .withf(move |_, cid, gid, group| {
-            *cid == community_id && *gid == group_id && group.name == update.name
+        .withf(move |uid, cid, gid, group| {
+            *uid == user_id && *cid == community_id && *gid == group_id && group.name == update.name
         })
         .returning(move |_, _, _, _| Ok(()));
 

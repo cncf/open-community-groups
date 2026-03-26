@@ -450,8 +450,8 @@ pub(crate) async fn update(
     let event_json = serde_json::to_value(&event)?;
     let promoted_user_ids = db
         .update_event(
-            group_id,
             user.user_id,
+            group_id,
             event_id,
             &event_json,
             &cfg_max_participants,

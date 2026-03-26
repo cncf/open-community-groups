@@ -307,7 +307,9 @@ async fn test_add_success() {
         .returning(|_, _, _| Ok(true));
     db.expect_add_event_category()
         .times(1)
-        .withf(move |_, cid, category| *cid == community_id && category.name == expected_name)
+        .withf(move |uid, cid, category| {
+            *uid == user_id && *cid == community_id && category.name == expected_name
+        })
         .returning(|_, _, _| Ok(Uuid::new_v4()));
 
     // Setup notifications manager mock
@@ -364,7 +366,7 @@ async fn test_delete_success() {
         .returning(|_, _, _| Ok(true));
     db.expect_delete_event_category()
         .times(1)
-        .withf(move |_, cid, ecid| *cid == community_id && *ecid == event_category_id)
+        .withf(move |uid, cid, ecid| *uid == user_id && *cid == community_id && *ecid == event_category_id)
         .returning(|_, _, _| Ok(()));
 
     // Setup notifications manager mock
@@ -427,8 +429,11 @@ async fn test_update_success() {
         .returning(|_, _, _| Ok(true));
     db.expect_update_event_category()
         .times(1)
-        .withf(move |_, cid, ecid, category| {
-            *cid == community_id && *ecid == event_category_id && category.name == expected_name
+        .withf(move |uid, cid, ecid, category| {
+            *uid == user_id
+                && *cid == community_id
+                && *ecid == event_category_id
+                && category.name == expected_name
         })
         .returning(|_, _, _, _| Ok(()));
 

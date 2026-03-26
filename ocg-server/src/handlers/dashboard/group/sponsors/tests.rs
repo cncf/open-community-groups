@@ -367,8 +367,11 @@ async fn test_add_success() {
         .returning(|_, _, _, _| Ok(true));
     db.expect_add_group_sponsor()
         .times(1)
-        .withf(move |_, id, sponsor| {
-            *id == group_id && sponsor.name == form.name && sponsor.logo_url == form.logo_url
+        .withf(move |actor_user_id, id, sponsor| {
+            *actor_user_id == user_id
+                && *id == group_id
+                && sponsor.name == form.name
+                && sponsor.logo_url == form.logo_url
         })
         .returning(move |_, _, _| Ok(Uuid::new_v4()));
 
@@ -435,7 +438,9 @@ async fn test_delete_success() {
         .returning(|_, _, _, _| Ok(true));
     db.expect_delete_group_sponsor()
         .times(1)
-        .withf(move |_, id, sponsor_id| *id == group_id && *sponsor_id == group_sponsor_id)
+        .withf(move |actor_user_id, id, sponsor_id| {
+            *actor_user_id == user_id && *id == group_id && *sponsor_id == group_sponsor_id
+        })
         .returning(move |_, _, _| Ok(()));
 
     // Setup notifications manager mock
@@ -502,8 +507,11 @@ async fn test_update_success() {
         .returning(|_, _, _, _| Ok(true));
     db.expect_update_group_sponsor()
         .times(1)
-        .withf(move |_, id, sponsor_id, sponsor| {
-            *id == group_id && *sponsor_id == group_sponsor_id && sponsor.name == form.name
+        .withf(move |actor_user_id, id, sponsor_id, sponsor| {
+            *actor_user_id == user_id
+                && *id == group_id
+                && *sponsor_id == group_sponsor_id
+                && sponsor.name == form.name
         })
         .returning(move |_, _, _, _| Ok(()));
 
