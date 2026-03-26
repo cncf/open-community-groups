@@ -11,14 +11,11 @@
         class="grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_180px_180px_220px_auto]">
     <div>
       <label for="audit-action" class="form-label">Action</label>
-      <select id="audit-action"
-              name="action"
-              class="select select-primary mt-2">
+      <select id="audit-action" name="action" class="select select-primary mt-2">
         <option value="">All actions</option>
         {% for option in action_options -%}
-          <option value="{{ option.value }}" {% if option.selected %}selected{% endif %}>
-            {{ option.label }}
-          </option>
+          <option value="{{ option.value }}"
+                  {% if option.selected %}selected{% endif %}>{{ option.label }}</option>
         {% endfor -%}
       </select>
     </div>
@@ -55,15 +52,11 @@
 
     <div>
       <label for="audit-sort" class="form-label">Sort by</label>
-      <select id="audit-sort"
-              name="sort"
-              class="select select-primary mt-2">
-        <option value="created-desc" {% if sort_value == "created-desc" %}selected{% endif %}>
-          Newest first
-        </option>
-        <option value="created-asc" {% if sort_value == "created-asc" %}selected{% endif %}>
-          Oldest first
-        </option>
+      <select id="audit-sort" name="sort" class="select select-primary mt-2">
+        <option value="created-desc"
+                {% if sort_value == "created-desc" %}selected{% endif %}>Newest first</option>
+        <option value="created-asc"
+                {% if sort_value == "created-asc" %}selected{% endif %}>Oldest first</option>
       </select>
     </div>
 
@@ -80,7 +73,7 @@
 </div>
 
 <div class="mt-5 text-sm text-stone-600">
-  {{ pagination::range_display(offset = offset.unwrap_or(0), count = logs.len(), total = total, label = "log") }}
+  {{ pagination::range_display(offset = offset.unwrap_or(0) , count = logs.len(), total = total, label = "log") }}
 </div>
 
 <div class="relative mt-5 overflow-visible">
@@ -103,9 +96,11 @@
       {% if logs.is_empty() -%}
         <tr class="bg-white border-b border-stone-200">
           <td class="px-8 py-12 text-center text-stone-600"
-              colspan="{% if show_actor %}5{% else %}4{% endif %}">
-            No audit log entries found for the current filters.
-          </td>
+              colspan="{% if show_actor %}
+                         5
+                       {% else %}
+                         4
+                       {% endif %}">No audit log entries found for the current filters.</td>
         </tr>
       {% else -%}
         {% for log in logs -%}
@@ -117,9 +112,7 @@
 
             {% if show_actor -%}
               <td class="px-3 xl:px-5 py-4">
-                <div class="font-medium text-stone-900">
-                  {{ log.actor_username.as_deref().unwrap_or("-") }}
-                </div>
+                <div class="font-medium text-stone-900">{{ log.actor_username.as_deref().unwrap_or("-") }}</div>
               </td>
             {% endif -%}
 
@@ -146,9 +139,7 @@
                   <div class="space-y-3">
                     {% for detail in log.details -%}
                       <div class="border-b border-stone-100 pb-3 last:border-b-0 last:pb-0">
-                        <div class="text-xs font-semibold uppercase tracking-wide text-stone-500">
-                          {{ detail.key_label }}
-                        </div>
+                        <div class="text-xs font-semibold uppercase tracking-wide text-stone-500">{{ detail.key_label }}</div>
                         <div class="mt-1 break-words text-stone-900">{{ detail.value }}</div>
                       </div>
                     {% endfor -%}
