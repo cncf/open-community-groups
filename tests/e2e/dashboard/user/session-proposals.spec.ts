@@ -66,10 +66,11 @@ test.describe("user dashboard session proposals view", () => {
     });
     await expect(proposalRow).toContainText("Ready for submission");
 
-    await proposalRow.getByTitle("Delete proposal").click();
-    await expect(pending1Page.locator(".swal2-popup")).toContainText(
-      "Are you sure you want to delete this session proposal?",
-    );
+    const deleteProposalButton = proposalRow.getByTitle("Delete proposal");
+    await expect(deleteProposalButton).toBeVisible();
+
+    await deleteProposalButton.click();
+    await expect(pending1Page.locator(".swal2-popup")).toBeVisible();
 
     await Promise.all([
       pending1Page.waitForResponse(

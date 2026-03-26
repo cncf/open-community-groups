@@ -74,9 +74,11 @@ test.describe("group dashboard events view", () => {
     await organizerGroupPage.locator("#description_short").fill(
       "A dashboard-created event from the e2e suite.",
     );
-    await organizerGroupPage
-      .locator('markdown-editor#description .CodeMirror textarea')
-      .fill("A dashboard event created and removed by the e2e suite.");
+    await fillMarkdownEditor(
+      organizerGroupPage,
+      "description",
+      "A dashboard event created and removed by the e2e suite.",
+    );
     await organizerGroupPage.locator('button[data-section="date-venue"]').click();
     await selectTimezone(organizerGroupPage, "UTC");
     await expect(organizerGroupPage.locator("#starts_at")).toBeVisible();
@@ -110,6 +112,10 @@ test.describe("group dashboard events view", () => {
 
     const deleteButton = eventRow.locator('button[id^="delete-event-"]');
     await expect(deleteButton).toBeVisible();
+    await deleteButton.click();
+    await expect(organizerGroupPage.locator(".swal2-popup")).toContainText(
+      "Are you sure you wish to delete this event?",
+    );
 
     await Promise.all([
       organizerGroupPage.waitForResponse(
@@ -119,7 +125,6 @@ test.describe("group dashboard events view", () => {
           response.url().includes("/delete") &&
           response.ok(),
       ),
-      deleteButton.click(),
       organizerGroupPage.getByRole("button", { name: "Yes" }).click(),
     ]);
 

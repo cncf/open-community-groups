@@ -11,6 +11,7 @@ import {
   selectCommunityContext,
   selectGroupContext,
 } from "../../utils";
+import { fillMarkdownEditor } from "../form-helpers";
 
 type SessionProposalPayload = {
   co_speaker?: { user_id: string } | null;
@@ -160,9 +161,11 @@ export const createSessionProposal = async (page: Page, title: string) => {
   await modal.getByLabel("Title").fill(title);
   await modal.getByLabel("Level").selectOption("intermediate");
   await modal.getByLabel("Duration (minutes)").fill("45");
-  await modal
-    .locator("markdown-editor#session-proposal-description .CodeMirror textarea")
-    .fill("A reusable proposal created from the e2e suite.");
+  await fillMarkdownEditor(
+    page,
+    "session-proposal-description",
+    "A reusable proposal created from the e2e suite.",
+  );
 
   await Promise.all([
     page.waitForResponse(

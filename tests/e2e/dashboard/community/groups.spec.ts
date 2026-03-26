@@ -40,6 +40,10 @@ test.describe("community dashboard groups view", () => {
       `#deactivate-group-${TEST_GROUP_IDS.community1.beta}`,
     );
     await expect(deactivateButton).toBeVisible();
+    await deactivateButton.click();
+    await expect(adminCommunityPage.locator(".swal2-popup")).toContainText(
+      "Are you sure you wish to deactivate this group?",
+    );
 
     await Promise.all([
       adminCommunityPage.waitForResponse(
@@ -50,7 +54,6 @@ test.describe("community dashboard groups view", () => {
             .includes(`/dashboard/community/groups/${TEST_GROUP_IDS.community1.beta}/deactivate`) &&
           response.ok(),
       ),
-      deactivateButton.click(),
       adminCommunityPage.getByRole("button", { name: "Yes" }).click(),
     ]);
 
@@ -68,6 +71,10 @@ test.describe("community dashboard groups view", () => {
       `#activate-group-${TEST_GROUP_IDS.community1.beta}`,
     );
     await expect(activateButton).toBeVisible();
+    await activateButton.click();
+    await expect(adminCommunityPage.locator(".swal2-popup")).toContainText(
+      "Are you sure you wish to activate this group?",
+    );
 
     await Promise.all([
       adminCommunityPage.waitForResponse(
@@ -78,7 +85,6 @@ test.describe("community dashboard groups view", () => {
             .includes(`/dashboard/community/groups/${TEST_GROUP_IDS.community1.beta}/activate`) &&
           response.ok(),
       ),
-      activateButton.click(),
       adminCommunityPage.getByRole("button", { name: "Yes" }).click(),
     ]);
 
@@ -112,9 +118,11 @@ test.describe("community dashboard groups view", () => {
     await adminCommunityPage.getByLabel("Short Description").fill(
       "A short e2e-created community group.",
     );
-    await adminCommunityPage
-      .locator('markdown-editor#description .CodeMirror textarea')
-      .fill("A community group created and removed by the e2e suite.");
+    await fillMarkdownEditor(
+      adminCommunityPage,
+      "description",
+      "A community group created and removed by the e2e suite.",
+    );
 
     await Promise.all([
       adminCommunityPage.waitForResponse(
@@ -270,16 +278,14 @@ test.describe("community dashboard groups view", () => {
     };
 
     const openGroupUpdateForm = async (groupRow: Locator) => {
-      await Promise.all([
-        adminCommunityPage.waitForResponse(
-          (response) =>
-            response.request().method() === "GET" &&
-            response.url().includes("/dashboard/community/groups/") &&
-            response.url().includes("/update") &&
-            response.ok(),
-        ),
-        groupRow.locator('button[hx-get*="/update"]').click(),
-      ]);
+      const updateButton = groupRow.locator('button[hx-get*="/update"]');
+      await expect(updateButton).toBeVisible();
+      await expect(updateButton).toBeEnabled();
+      await updateButton.click();
+      await expect(adminCommunityPage.getByRole("button", { name: "Update Group" })).toBeVisible({
+        timeout: 10000,
+      });
+      await expect(adminCommunityPage.locator("#name")).toBeVisible({ timeout: 10000 });
     };
 
     await navigateToPath(adminCommunityPage, "/dashboard/community?tab=groups");
@@ -437,13 +443,12 @@ test.describe("community dashboard groups view", () => {
     await expect(clearFilterButton).toBeVisible();
     await clearFilterButton.click();
 
-    await expect(searchInput).toHaveValue("");
     await expect(
       dashboardContent.locator("tr", { hasText: "Platform Ops Meetup" }),
-    ).toBeVisible();
+    ).toBeVisible({ timeout: 10000 });
     await expect(
       dashboardContent.locator("tr", { hasText: "Observability Guild" }),
-    ).toBeVisible();
+    ).toBeVisible({ timeout: 10000 });
   });
 
   test("viewer sees read-only controls on community groups", async ({

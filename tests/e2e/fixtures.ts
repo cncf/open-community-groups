@@ -2,6 +2,7 @@ import { test as base, expect } from "@playwright/test";
 import type { Browser, BrowserContext, Page } from "@playwright/test";
 
 import {
+  buildE2eUrl,
   TEST_COMMUNITY_IDS,
   TEST_GROUP_IDS,
   TEST_USER_CREDENTIALS,
@@ -30,6 +31,13 @@ type E2eFixtures = {
 type BrowserStorageState = Awaited<ReturnType<BrowserContext["storageState"]>>;
 
 const storageStateCache = new Map<string, BrowserStorageState>();
+
+/** Returns true when the cached storage state still has an authenticated session. */
+const hasValidSession = async (page: Page) => {
+  const response = await page.request.get(buildE2eUrl("/dashboard/user"));
+
+  return response.ok();
+};
 
 /** Returns a cached authenticated storage state for a seeded E2E user. */
 const getStorageState = async (
@@ -60,9 +68,18 @@ const createPreparedPage = async (
   credentials: (typeof TEST_USER_CREDENTIALS)[keyof typeof TEST_USER_CREDENTIALS],
   preparePage?: (page: Page) => Promise<void>,
 ): Promise<PreparedPage> => {
-  const storageState = await getStorageState(browser, credentials);
-  const context = await browser.newContext({ storageState });
-  const page = await context.newPage();
+  let storageState = await getStorageState(browser, credentials);
+  let context = await browser.newContext({ storageState });
+  let page = await context.newPage();
+
+  if (!(await hasValidSession(page))) {
+    storageStateCache.delete(credentials.username);
+    await context.close();
+
+    storageState = await getStorageState(browser, credentials);
+    context = await browser.newContext({ storageState });
+    page = await context.newPage();
+  }
 
   if (preparePage) {
     await preparePage(page);
