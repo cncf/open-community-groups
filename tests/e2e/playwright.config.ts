@@ -4,6 +4,7 @@ import { defineConfig, devices } from "@playwright/test";
 const baseURL = process.env.OCG_E2E_BASE_URL || "http://localhost:9000";
 const isCI = process.env.CI === "true";
 const shouldStartServer = process.env.OCG_E2E_START_SERVER === "true";
+const shouldReuseExistingServer = process.env.OCG_E2E_REUSE_SERVER === "true";
 const webServerCommand = process.env.OCG_E2E_SERVER_CMD;
 const webServerTimeout = Number(process.env.OCG_E2E_SERVER_TIMEOUT || 300_000);
 const webServerCwd = path.resolve(__dirname, "../..");
@@ -26,7 +27,7 @@ const webServer =
         command: webServerCommand,
         cwd: webServerCwd,
         url: baseURL,
-        reuseExistingServer: true,
+        reuseExistingServer: shouldReuseExistingServer,
         timeout: webServerTimeout,
       }
     : undefined;

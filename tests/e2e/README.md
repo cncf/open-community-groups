@@ -84,6 +84,8 @@ Playwright server management:
 - `OCG_E2E_START_SERVER`
 - `OCG_E2E_SERVER_CMD`
 - `OCG_E2E_SERVER_TIMEOUT`
+- `OCG_E2E_REUSE_SERVER`
+  Opt in to attaching to an already running app when `OCG_E2E_START_SERVER=true`
 
 Optional auth provider overrides:
 
@@ -94,6 +96,7 @@ Optional auth provider overrides:
 - `OCG_E2E_GITHUB_CLIENT_SECRET`
 - `OCG_E2E_GITHUB_REDIRECT_URI`
 - `OCG_E2E_LINUXFOUNDATION_ENABLED`
+  Default: `false` for the generated E2E server config
 
 Database settings come from the usual `OCG_DB_*` variables, including
 `OCG_DB_NAME_E2E` for the E2E database name.

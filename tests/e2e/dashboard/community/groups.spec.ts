@@ -443,12 +443,18 @@ test.describe("community dashboard groups view", () => {
     await expect(clearFilterButton).toBeVisible();
     await clearFilterButton.click();
 
+    await expect(dashboardContent.locator("#search_groups")).toHaveValue("");
+    await expect(
+      dashboardContent
+        .locator('div.text-xl.lg\\:text-2xl.mb-4:visible')
+        .filter({ hasText: "No groups found matching your search." }),
+    ).toHaveCount(0);
     await expect(
       dashboardContent.locator("tr", { hasText: "Platform Ops Meetup" }),
-    ).toBeVisible({ timeout: 10000 });
+    ).toBeVisible();
     await expect(
       dashboardContent.locator("tr", { hasText: "Observability Guild" }),
-    ).toBeVisible({ timeout: 10000 });
+    ).toBeVisible();
   });
 
   test("viewer sees read-only controls on community groups", async ({
