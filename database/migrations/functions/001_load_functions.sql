@@ -10,6 +10,7 @@
 {{ template "auth/user_has_group_permission.sql" }}
 {{ template "auth/verify_email.sql" }}
 
+{{ template "common/escape_ilike_pattern.sql" }}
 {{ template "common/generate_slug.sql" }}
 {{ template "common/generate_slug_from_source.sql" }}
 {{ template "common/get_community_full.sql" }}

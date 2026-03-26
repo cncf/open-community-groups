@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(3);
+select plan(4);
 
 -- ============================================================================
 -- VARIABLES
@@ -20,6 +20,8 @@ select plan(3);
 \set groupCategoryID '00000000-0000-0000-0000-000000000021'
 \set groupID '00000000-0000-0000-0000-000000000031'
 \set missingRegionID '00000000-0000-0000-0000-000000000041'
+\set wildcardActorID '00000000-0000-0000-0000-000000000013'
+\set wildcardAuditID '00000000-0000-0000-0000-000000000105'
 
 -- ============================================================================
 -- SEED DATA
@@ -29,7 +31,8 @@ select plan(3);
 insert into "user" (user_id, auth_hash, email, email_verified, username)
 values
     (:'actor1ID', gen_random_bytes(32), 'alice@example.com', true, 'alice'),
-    (:'actor2ID', gen_random_bytes(32), 'bob@example.com', true, 'bob');
+    (:'actor2ID', gen_random_bytes(32), 'bob@example.com', true, 'bob'),
+    (:'wildcardActorID', gen_random_bytes(32), 'userx1@example.com', true, 'userx1');
 
 -- Communities
 insert into community (
@@ -123,6 +126,17 @@ insert into audit_log (
         '{}'::jsonb,
         :'groupID',
         'event'
+    ),
+    (
+        :'wildcardAuditID',
+        'community_updated',
+        :'wildcardActorID',
+        'userx1',
+        :'community1ID',
+        '2024-02-05 10:00:00+00',
+        '{}'::jsonb,
+        :'community1ID',
+        'community'
     );
 
 -- ============================================================================
@@ -138,6 +152,16 @@ select is(
     jsonb_build_object(
         'logs',
         '[
+            {
+                "action": "community_updated",
+                "actor_username": "userx1",
+                "audit_log_id": "00000000-0000-0000-0000-000000000105",
+                "created_at": 1707127200,
+                "details": {},
+                "resource_id": "00000000-0000-0000-0000-000000000001",
+                "resource_name": "Community One",
+                "resource_type": "community"
+            },
             {
                 "action": "region_added",
                 "actor_username": "alice",
@@ -170,7 +194,7 @@ select is(
             }
         ]'::jsonb,
         'total',
-        3
+        4
     ),
     'Should return only community dashboard actions for the selected community'
 );
@@ -225,6 +249,21 @@ select is(
         2
     ),
     'Should return community audit logs in ascending order with pagination'
+);
+
+-- Should treat actor filter metacharacters as literal text
+select is(
+    list_community_audit_logs(
+        :'community1ID'::uuid,
+        '{"actor": "user_1", "limit": 50, "offset": 0, "sort": "created-desc"}'::jsonb
+    )::jsonb,
+    jsonb_build_object(
+        'logs',
+        '[]'::jsonb,
+        'total',
+        0
+    ),
+    'Should treat actor filter metacharacters as literal text'
 );
 
 -- ============================================================================

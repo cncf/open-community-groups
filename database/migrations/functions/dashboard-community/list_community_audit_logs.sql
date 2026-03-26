@@ -42,7 +42,9 @@ returns json as $$
             and (f.action_value is null or al.action = f.action_value)
             and (
                 f.actor_value is null
-                or coalesce(al.actor_username, '') ilike '%' || f.actor_value || '%'
+                or coalesce(al.actor_username, '') ilike (
+                    '%' || escape_ilike_pattern(f.actor_value) || '%'
+                ) escape '\'
             )
             and (
                 f.date_from_value is null

@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(3);
+select plan(4);
 
 -- ============================================================================
 -- VARIABLES
@@ -20,6 +20,8 @@ select plan(3);
 \set groupID '00000000-0000-0000-0000-000000000031'
 \set otherGroupID '00000000-0000-0000-0000-000000000032'
 \set targetUserID '00000000-0000-0000-0000-000000000041'
+\set wildcardActorID '00000000-0000-0000-0000-000000000013'
+\set wildcardAuditID '00000000-0000-0000-0000-000000000105'
 
 -- ============================================================================
 -- SEED DATA
@@ -30,6 +32,7 @@ insert into "user" (user_id, auth_hash, email, email_verified, name, username)
 values
     (:'actor1ID', gen_random_bytes(32), 'alice@example.com', true, 'Alice', 'alice'),
     (:'actor2ID', gen_random_bytes(32), 'bob@example.com', true, 'Bob', 'bob'),
+    (:'wildcardActorID', gen_random_bytes(32), 'userx1@example.com', true, 'User X1', 'userx1'),
     (:'targetUserID', gen_random_bytes(32), 'sara@example.com', true, 'Sara', 'sara');
 
 -- Community
@@ -121,6 +124,18 @@ insert into audit_log (
         :'groupID',
         :'communityID',
         'community'
+    ),
+    (
+        :'wildcardAuditID',
+        'group_updated',
+        :'wildcardActorID',
+        'userx1',
+        :'communityID',
+        '2024-03-05 10:00:00+00',
+        '{}'::jsonb,
+        :'groupID',
+        :'groupID',
+        'group'
     );
 
 -- ============================================================================
@@ -136,6 +151,16 @@ select is(
     jsonb_build_object(
         'logs',
         '[
+            {
+                "action": "group_updated",
+                "actor_username": "userx1",
+                "audit_log_id": "00000000-0000-0000-0000-000000000105",
+                "created_at": 1709632800,
+                "details": {},
+                "resource_id": "00000000-0000-0000-0000-000000000031",
+                "resource_name": "Platform",
+                "resource_type": "group"
+            },
             {
                 "action": "group_team_member_added",
                 "actor_username": "bob",
@@ -158,7 +183,7 @@ select is(
             }
         ]'::jsonb,
         'total',
-        2
+        3
     ),
     'Should return only group dashboard actions for the selected group'
 );
@@ -213,6 +238,21 @@ select is(
         2
     ),
     'Should return group audit logs in ascending order with pagination'
+);
+
+-- Should treat actor filter metacharacters as literal text
+select is(
+    list_group_audit_logs(
+        :'groupID'::uuid,
+        '{"actor": "user_1", "limit": 50, "offset": 0, "sort": "created-desc"}'::jsonb
+    )::jsonb,
+    jsonb_build_object(
+        'logs',
+        '[]'::jsonb,
+        'total',
+        0
+    ),
+    'Should treat actor filter metacharacters as literal text'
 );
 
 -- ============================================================================

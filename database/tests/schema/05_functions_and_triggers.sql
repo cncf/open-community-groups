@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(140);
+select plan(141);
 
 -- ============================================================================
 -- TESTS
@@ -30,6 +30,7 @@ select has_function('delete_group');
 select has_function('delete_group_sponsor');
 select has_function('delete_group_team_member');
 select has_function('delete_session_proposal');
+select has_function('escape_ilike_pattern');
 select has_function('generate_slug');
 select has_function('generate_slug_from_source');
 select has_function('get_available_zoom_host_user');
