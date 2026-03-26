@@ -7,12 +7,12 @@ create table audit_log (
     resource_id uuid not null,
     resource_type text not null check (btrim(resource_type) <> ''),
 
-    actor_user_id uuid references "user" (user_id) on delete set null,
+    actor_user_id uuid,
     actor_username text check (actor_username is null or btrim(actor_username) <> ''),
-    community_id uuid references community (community_id) on delete set null,
+    community_id uuid,
     details jsonb not null default '{}'::jsonb check (jsonb_typeof(details) = 'object'),
-    event_id uuid references event (event_id) on delete set null,
-    group_id uuid references "group" (group_id) on delete set null
+    event_id uuid,
+    group_id uuid
 );
 
 create index audit_log_actor_user_id_created_at_idx on audit_log (actor_user_id, created_at desc);

@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(2);
+select plan(4);
 
 -- ============================================================================
 -- VARIABLES
@@ -40,6 +40,19 @@ select throws_ok(
     $$delete from audit_log$$,
     'audit_log is append-only',
     'Should reject deletes from audit_log'
+);
+
+-- Should allow deleting referenced users
+select lives_ok(
+    $$delete from "user" where user_id = '00000000-0000-0000-0000-000000000041'$$,
+    'Should allow deleting referenced users'
+);
+
+-- Should keep actor snapshots after parent deletes
+select results_eq(
+    $$select actor_user_id::text, actor_username from audit_log$$,
+    $$values ('00000000-0000-0000-0000-000000000041', 'user')$$,
+    'Should keep actor snapshots after deleting referenced users'
 );
 
 -- ============================================================================
