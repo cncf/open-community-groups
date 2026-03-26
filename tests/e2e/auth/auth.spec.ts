@@ -41,7 +41,7 @@ const readEmailVerificationCode = (email: string) => {
       "-U",
       process.env.OCG_DB_USER || "postgres",
       "-d",
-      process.env.OCG_DB_NAME_E2E || "ocg_e2e",
+      process.env.OCG_DB_NAME_E2E || "ocg_tests_e2e",
       "-tA",
       "-c",
       sql,

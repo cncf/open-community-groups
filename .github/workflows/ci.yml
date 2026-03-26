@@ -5,6 +5,9 @@ on:
     branches:
       - main
 
+env:
+  RUST_VERSION: "1.93.1"
+
 jobs:
   changes:
     permissions:
@@ -54,7 +57,7 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: 1.93.1
+          toolchain: ${{ env.RUST_VERSION }}
           components: clippy, rustfmt
       - name: Install Tailwind CSS
         run: |

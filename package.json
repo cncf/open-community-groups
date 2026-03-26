@@ -7,16 +7,16 @@
     "typescript": "^5.7.2"
   },
   "scripts": {
-    "test:e2e": "playwright test --config tests/e2e/playwright.config.ts",
-    "test:e2e:smoke": "playwright test --config tests/e2e/playwright.config.ts --project=chromium-smoke --project=firefox-smoke --project=webkit-smoke",
-    "test:e2e:deep": "playwright test --config tests/e2e/playwright.config.ts --project=chromium-deep --project=chromium-mobile-deep",
-    "test:e2e:visual": "just e2e-write-server-config && OCG_E2E_START_SERVER=true OCG_E2E_SERVER_CMD='cargo run -p ocg-server -- -c \"/tmp/ocg-e2e.yml\"' playwright test --config tests/e2e/playwright.config.ts tests/e2e/visual/visual.spec.ts --project=chromium-deep --project=chromium-mobile-deep",
-    "test:e2e:visual:update": "just e2e-write-server-config && OCG_E2E_START_SERVER=true OCG_E2E_SERVER_CMD='cargo run -p ocg-server -- -c \"/tmp/ocg-e2e.yml\"' playwright test --config tests/e2e/playwright.config.ts tests/e2e/visual/visual.spec.ts --project=chromium-deep --project=chromium-mobile-deep --update-snapshots",
-    "test:e2e:headed": "playwright test --config tests/e2e/playwright.config.ts --headed",
-    "test:e2e:debug": "PWDEBUG=1 playwright test --config tests/e2e/playwright.config.ts",
-    "test:e2e:ui": "playwright test --config tests/e2e/playwright.config.ts --ui",
-    "test:e2e:chromium": "playwright test --config tests/e2e/playwright.config.ts --project=chromium-smoke --project=chromium-deep",
-    "test:e2e:firefox": "playwright test --config tests/e2e/playwright.config.ts --project=firefox-smoke",
-    "test:e2e:webkit": "playwright test --config tests/e2e/playwright.config.ts --project=webkit-smoke"
+    "test:e2e": "OCG_E2E_START_SERVER=true OCG_E2E_SERVER_CMD='just e2e-server' playwright test --config tests/e2e/playwright.config.ts",
+    "test:e2e:smoke": "OCG_E2E_START_SERVER=true OCG_E2E_SERVER_CMD='just e2e-server' playwright test --config tests/e2e/playwright.config.ts --project=chromium-smoke --project=firefox-smoke --project=webkit-smoke",
+    "test:e2e:deep": "OCG_E2E_START_SERVER=true OCG_E2E_SERVER_CMD='just e2e-server' playwright test --config tests/e2e/playwright.config.ts --project=chromium-deep --project=chromium-mobile-deep",
+    "test:e2e:visual": "OCG_E2E_START_SERVER=true OCG_E2E_SERVER_CMD='just e2e-server' playwright test --config tests/e2e/playwright.config.ts tests/e2e/visual/visual.spec.ts --project=chromium-deep --project=chromium-mobile-deep",
+    "test:e2e:visual:update": "OCG_E2E_START_SERVER=true OCG_E2E_SERVER_CMD='just e2e-server' playwright test --config tests/e2e/playwright.config.ts tests/e2e/visual/visual.spec.ts --project=chromium-deep --project=chromium-mobile-deep --update-snapshots",
+    "test:e2e:headed": "OCG_E2E_START_SERVER=true OCG_E2E_SERVER_CMD='just e2e-server' playwright test --config tests/e2e/playwright.config.ts --headed",
+    "test:e2e:debug": "PWDEBUG=1 OCG_E2E_START_SERVER=true OCG_E2E_SERVER_CMD='just e2e-server' playwright test --config tests/e2e/playwright.config.ts",
+    "test:e2e:ui": "OCG_E2E_START_SERVER=true OCG_E2E_SERVER_CMD='just e2e-server' playwright test --config tests/e2e/playwright.config.ts --ui",
+    "test:e2e:chromium": "OCG_E2E_START_SERVER=true OCG_E2E_SERVER_CMD='just e2e-server' playwright test --config tests/e2e/playwright.config.ts --project=chromium-smoke --project=chromium-deep",
+    "test:e2e:firefox": "OCG_E2E_START_SERVER=true OCG_E2E_SERVER_CMD='just e2e-server' playwright test --config tests/e2e/playwright.config.ts --project=firefox-smoke",
+    "test:e2e:webkit": "OCG_E2E_START_SERVER=true OCG_E2E_SERVER_CMD='just e2e-server' playwright test --config tests/e2e/playwright.config.ts --project=webkit-smoke"
   }
 }

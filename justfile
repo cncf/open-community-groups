@@ -20,7 +20,7 @@ config_dir := env("OCG_CONFIG", env_var("HOME") / ".config/ocg")
 db_host := env("OCG_DB_HOST", "localhost")
 db_name := env("OCG_DB_NAME", "ocg")
 db_name_tests := env("OCG_DB_NAME_TESTS", "ocg_tests")
-db_name_e2e := env("OCG_DB_NAME_E2E", "ocg_e2e")
+db_name_tests_e2e := env("OCG_DB_NAME_E2E", "ocg_tests_e2e")
 db_port := env("OCG_DB_PORT", "5432")
 db_user := env("OCG_DB_USER", "postgres")
 db_password := env("OCG_DB_PASSWORD", "")
@@ -156,7 +156,7 @@ e2e-write-tern-config:
     "[database]" \
     "host = {{ db_host }}" \
     "port = {{ db_port }}" \
-    "database = {{ db_name_e2e }}" \
+    "database = {{ db_name_tests_e2e }}" \
     "user = {{ db_user }}" \
     "password = {{ db_password }}" \
     > "{{ e2e_tern_conf }}"
@@ -175,7 +175,7 @@ e2e-write-server-config:
         "db:" \
         "  host: {{ db_host }}" \
         "  port: {{ db_port }}" \
-        "  dbname: {{ db_name_e2e }}" \
+        "  dbname: {{ db_name_tests_e2e }}" \
         "  user: {{ db_user }}" \
         "  password: \"{{ db_password }}\"" \
         "email:" \
@@ -202,29 +202,29 @@ e2e-write-server-config:
         "  oidc: {}"
     } > "{{ e2e_server_config }}"
 
-# Run the server with the generated e2e config.
-e2e-server: e2e-write-server-config
+# Run the server with a recreated e2e database and generated config.
+e2e-server: e2e-db-setup e2e-write-server-config
     cargo run -p ocg-server -- -c "{{ e2e_server_config }}"
 
 # Install e2e dependencies and Playwright browsers.
 e2e-install:
-    yarn install
-    yarn playwright install --with-deps
+    npm install --no-package-lock
+    npx playwright install --with-deps
 
 # Recreate and migrate the e2e test database.
 [private]
 e2e-db-recreate: e2e-write-tern-config
-    just pg dropdb {{ pg_conn }} --if-exists --force {{ db_name_e2e }}
-    just pg createdb {{ pg_conn }} {{ db_name_e2e }}
-    PGPASSWORD="{{ db_password }}" PATH="{{ pg_bin }}:$PATH" psql {{ pg_conn }} {{ db_name_e2e }} -c "CREATE EXTENSION IF NOT EXISTS pgcrypto"
-    PGPASSWORD="{{ db_password }}" PATH="{{ pg_bin }}:$PATH" psql {{ pg_conn }} {{ db_name_e2e }} -c "CREATE EXTENSION IF NOT EXISTS postgis"
+    just pg dropdb {{ pg_conn }} --if-exists --force {{ db_name_tests_e2e }}
+    just pg createdb {{ pg_conn }} {{ db_name_tests_e2e }}
+    PGPASSWORD="{{ db_password }}" PATH="{{ pg_bin }}:$PATH" psql {{ pg_conn }} {{ db_name_tests_e2e }} -c "CREATE EXTENSION IF NOT EXISTS pgcrypto"
+    PGPASSWORD="{{ db_password }}" PATH="{{ pg_bin }}:$PATH" psql {{ pg_conn }} {{ db_name_tests_e2e }} -c "CREATE EXTENSION IF NOT EXISTS postgis"
     cd "{{ source_dir }}/database/migrations" && TERN_CONF="{{ e2e_tern_conf }}" ./migrate.sh
 
 # Load seeded data into the e2e test database.
 [private]
 e2e-db-load-data:
-    PGPASSWORD="{{ db_password }}" PATH="{{ pg_bin }}:$PATH" psql {{ pg_conn }} {{ db_name_e2e }} -f "{{ source_dir }}/database/tests/data/e2e.sql"
-    PGPASSWORD="{{ db_password }}" PATH="{{ pg_bin }}:$PATH" psql {{ pg_conn }} {{ db_name_e2e }} -c "update \"user\" set password = '\$argon2id\$v=19\$m=19456,t=2,p=1\$q55jlxUx8bffhFM3xN36ZA\$te6OiWkZ/q35lpSEAZbd/A3iJyCByxbive9F61sTp7g' where username like 'e2e-%'"
+    PGPASSWORD="{{ db_password }}" PATH="{{ pg_bin }}:$PATH" psql {{ pg_conn }} {{ db_name_tests_e2e }} -f "{{ source_dir }}/database/tests/data/e2e.sql"
+    PGPASSWORD="{{ db_password }}" PATH="{{ pg_bin }}:$PATH" psql {{ pg_conn }} {{ db_name_tests_e2e }} -c "update \"user\" set password = '\$argon2id\$v=19\$m=19456,t=2,p=1\$q55jlxUx8bffhFM3xN36ZA\$te6OiWkZ/q35lpSEAZbd/A3iJyCByxbive9F61sTp7g' where username like 'e2e-%'"
 
 # Set up the e2e test database.
 e2e-db-setup: e2e-db-recreate e2e-db-load-data
@@ -237,6 +237,6 @@ e2e-tests:
 e2e-update-snapshots:
     npx playwright test --config tests/e2e/playwright.config.ts tests/e2e/visual/visual.spec.ts --project=chromium-deep --project=chromium-mobile-deep --update-snapshots
 
-# Run full e2e setup: database, dependencies, server, and tests.
-e2e-full: e2e-db-setup e2e-install e2e-write-server-config
-    OCG_E2E_START_SERVER=true OCG_E2E_SERVER_CMD='cargo run -p ocg-server -- -c "{{ e2e_server_config }}"' yarn test:e2e
+# Run full e2e setup: dependencies, database, server, and tests.
+e2e-full: e2e-install
+    OCG_E2E_START_SERVER=true OCG_E2E_SERVER_CMD='just e2e-server' npx playwright test --config tests/e2e/playwright.config.ts

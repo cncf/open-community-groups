@@ -20,14 +20,11 @@ or `tern`.
 # Install dependencies and Playwright browsers
 just e2e-install
 
-# Recreate the e2e database and load seed data
-just e2e-db-setup
-
 # Run the full e2e flow
-just e2e-full
+yarn test:e2e
 ```
 
-`just e2e-full`:
+`yarn test:e2e`:
 - Recreates the e2e database and loads seed data
 - Writes a temporary server config
 - Lets Playwright start the server
@@ -36,10 +33,16 @@ just e2e-full
 ## Common Commands
 
 ```bash
+# Recreate the e2e database and load seed data
+just e2e-db-setup
+
 # Start the app with the generated e2e config
 just e2e-server
 
-# Run tests against an already running server
+# Install dependencies and run the full e2e flow
+just e2e-full
+
+# Run the full Playwright suite
 yarn test:e2e
 
 # Debug in Playwright UI
@@ -87,19 +90,21 @@ Playwright server management:
 - `OCG_E2E_REUSE_SERVER`
   Opt in to attaching to an already running app when `OCG_E2E_START_SERVER=true`
 
-Database settings come from the usual `OCG_DB_*` variables, including
-`OCG_DB_NAME_E2E` for the E2E database name.
+Database settings come from the usual `OCG_DB_*` variables. The default E2E
+database name is `ocg_tests_e2e`, and you can override it with
+`OCG_DB_NAME_E2E`.
 
 ## Notes
 
-- `yarn test:e2e` runs the full Playwright config.
+- `yarn test:e2e` recreates the E2E database, starts the server, and runs the
+  full Playwright config.
 - Firefox and WebKit only run the smoke suite.
-- Visual tests start the server automatically using the generated E2E config.
+- Visual tests follow the same recreate-and-start flow.
 
 ## Troubleshooting
 
-- If navigation fails, use `just e2e-full` or verify the server is reachable at
+- If navigation fails, rerun `yarn test:e2e` or verify the server is reachable at
   `<OCG_E2E_BASE_URL>/health-check`.
-- If seeded pages or users are missing, rerun `just e2e-db-setup`.
+- If you want to inspect the seeded state manually, run `just e2e-server`.
 - If port `9000` is busy, run with
-  `OCG_E2E_BASE_URL=http://localhost:9001 just e2e-full`.
+  `OCG_E2E_BASE_URL=http://localhost:9001 yarn test:e2e`.

@@ -4,6 +4,9 @@ on:
   pull_request:
     branches:
       - main
+  push:
+    branches:
+      - cynthia-sg/e2e
   workflow_dispatch:
 
 jobs:
@@ -14,13 +17,13 @@ jobs:
       matrix:
         include:
           - suite: smoke
-            command: yarn test:e2e:smoke
+            command: npx playwright test --config tests/e2e/playwright.config.ts --project=chromium-smoke --project=firefox-smoke --project=webkit-smoke
             artifact_name: playwright-artifacts-smoke
           - suite: deep
-            command: yarn test:e2e:deep
+            command: npx playwright test --config tests/e2e/playwright.config.ts --project=chromium-deep --project=chromium-mobile-deep
             artifact_name: playwright-artifacts-deep
           - suite: visual
-            command: yarn playwright test --config tests/e2e/playwright.config.ts tests/e2e/visual/visual.spec.ts --project=chromium-deep --project=chromium-mobile-deep
+            command: npx playwright test --config tests/e2e/playwright.config.ts tests/e2e/visual/visual.spec.ts --project=chromium-deep --project=chromium-mobile-deep
             artifact_name: playwright-artifacts-visual
     permissions:
       contents: read
@@ -30,16 +33,17 @@ jobs:
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: ocg_e2e
+          POSTGRES_DB: ocg_tests_e2e
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U postgres -d ocg_e2e"
+          --health-cmd "pg_isready -U postgres -d ocg_tests_e2e"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
     env:
       OCG_DB_HOST: 127.0.0.1
+      OCG_DB_NAME_E2E: ocg_tests_e2e
       OCG_DB_PASSWORD: postgres
       OCG_E2E_BASE_URL: http://127.0.0.1:9000
       OCG_PG_BIN: /usr/bin
@@ -69,16 +73,12 @@ jobs:
         uses: actions/setup-node@v5
         with:
           node-version: "22"
-          cache: yarn
-
-      - name: Enable Corepack
-        run: corepack enable
 
       - name: Install just
         run: cargo install just --locked
 
-      - name: Install yarn dependencies
-        run: yarn install --frozen-lockfile
+      - name: Install Node.js dependencies
+        run: npm install --no-package-lock
 
       - name: Install Playwright browsers
         run: npx playwright install --with-deps

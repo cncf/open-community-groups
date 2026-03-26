@@ -1,206 +1,6 @@
 begin;
 
 -- ============================================================================
--- CLEANUP - Delete in correct order for FK constraints
--- ============================================================================
-
-delete from cfs_submission_label where cfs_submission_id in (
-    '99999999-9999-9999-9999-999999999911',
-    '99999999-9999-9999-9999-999999999912',
-    '99999999-9999-9999-9999-999999999913',
-    '99999999-9999-9999-9999-999999999914',
-    '99999999-9999-9999-9999-999999999915'
-);
-
-delete from cfs_submission_rating where cfs_submission_id in (
-    '99999999-9999-9999-9999-999999999911',
-    '99999999-9999-9999-9999-999999999912',
-    '99999999-9999-9999-9999-999999999913',
-    '99999999-9999-9999-9999-999999999914',
-    '99999999-9999-9999-9999-999999999915'
-);
-
-delete from group_member where user_id in (
-    '77777777-7777-7777-7777-777777777701',
-    '77777777-7777-7777-7777-777777777702',
-    '77777777-7777-7777-7777-777777777703',
-    '77777777-7777-7777-7777-777777777704',
-    '77777777-7777-7777-7777-777777777705',
-    '77777777-7777-7777-7777-777777777706',
-    '77777777-7777-7777-7777-777777777707',
-    '77777777-7777-7777-7777-777777777708',
-    '77777777-7777-7777-7777-777777777709',
-    '77777777-7777-7777-7777-777777777710',
-    '77777777-7777-7777-7777-777777777711',
-    '77777777-7777-7777-7777-777777777712'
-);
-
-delete from group_team where user_id in (
-    '77777777-7777-7777-7777-777777777701',
-    '77777777-7777-7777-7777-777777777702',
-    '77777777-7777-7777-7777-777777777703',
-    '77777777-7777-7777-7777-777777777704',
-    '77777777-7777-7777-7777-777777777705',
-    '77777777-7777-7777-7777-777777777706',
-    '77777777-7777-7777-7777-777777777707',
-    '77777777-7777-7777-7777-777777777708',
-    '77777777-7777-7777-7777-777777777709',
-    '77777777-7777-7777-7777-777777777710',
-    '77777777-7777-7777-7777-777777777711',
-    '77777777-7777-7777-7777-777777777712'
-);
-
-delete from community_team where user_id in (
-    '77777777-7777-7777-7777-777777777701',
-    '77777777-7777-7777-7777-777777777702',
-    '77777777-7777-7777-7777-777777777703',
-    '77777777-7777-7777-7777-777777777704',
-    '77777777-7777-7777-7777-777777777705',
-    '77777777-7777-7777-7777-777777777706',
-    '77777777-7777-7777-7777-777777777707',
-    '77777777-7777-7777-7777-777777777708',
-    '77777777-7777-7777-7777-777777777709',
-    '77777777-7777-7777-7777-777777777710',
-    '77777777-7777-7777-7777-777777777711',
-    '77777777-7777-7777-7777-777777777712'
-);
-
-delete from session_speaker where session_id in (
-    '88888888-8888-8888-8888-888888888801',
-    '88888888-8888-8888-8888-888888888802',
-    '88888888-8888-8888-8888-888888888803'
-);
-
-delete from session where session_id in (
-    '88888888-8888-8888-8888-888888888801',
-    '88888888-8888-8888-8888-888888888802',
-    '88888888-8888-8888-8888-888888888803'
-);
-
-delete from cfs_submission where cfs_submission_id in (
-    '99999999-9999-9999-9999-999999999911',
-    '99999999-9999-9999-9999-999999999912',
-    '99999999-9999-9999-9999-999999999913',
-    '99999999-9999-9999-9999-999999999914',
-    '99999999-9999-9999-9999-999999999915'
-);
-
-delete from session_proposal where session_proposal_id in (
-    '99999999-9999-9999-9999-999999999801',
-    '99999999-9999-9999-9999-999999999802',
-    '99999999-9999-9999-9999-999999999803',
-    '99999999-9999-9999-9999-999999999804',
-    '99999999-9999-9999-9999-999999999805',
-    '99999999-9999-9999-9999-999999999806',
-    '99999999-9999-9999-9999-999999999807',
-    '99999999-9999-9999-9999-999999999808'
-);
-
-delete from event_speaker where event_id in (
-    '55555555-5555-5555-5555-555555555501'
-);
-
-delete from event_host where event_id in (
-    '55555555-5555-5555-5555-555555555501'
-);
-
-delete from event_waitlist where event_id in (
-    '55555555-5555-5555-5555-555555555521'
-);
-
-delete from event_attendee where event_id in (
-    '55555555-5555-5555-5555-555555555501',
-    '55555555-5555-5555-5555-555555555504',
-    '55555555-5555-5555-5555-555555555519',
-    '55555555-5555-5555-5555-555555555520',
-    '55555555-5555-5555-5555-555555555521'
-);
-
-delete from event_sponsor where event_id in (
-    '55555555-5555-5555-5555-555555555501'
-);
-
-delete from event_cfs_label where event_id in (
-    '55555555-5555-5555-5555-555555555519'
-);
-
-delete from "user" where user_id in (
-    '77777777-7777-7777-7777-777777777701',
-    '77777777-7777-7777-7777-777777777702',
-    '77777777-7777-7777-7777-777777777703',
-    '77777777-7777-7777-7777-777777777704',
-    '77777777-7777-7777-7777-777777777705',
-    '77777777-7777-7777-7777-777777777706',
-    '77777777-7777-7777-7777-777777777707',
-    '77777777-7777-7777-7777-777777777708',
-    '77777777-7777-7777-7777-777777777709',
-    '77777777-7777-7777-7777-777777777710',
-    '77777777-7777-7777-7777-777777777711',
-    '77777777-7777-7777-7777-777777777712'
-);
-
-delete from group_sponsor where group_sponsor_id in (
-    '66666666-6666-6666-6666-666666666601'
-);
-
-delete from event where event_id in (
-    '55555555-5555-5555-5555-555555555501',
-    '55555555-5555-5555-5555-555555555502',
-    '55555555-5555-5555-5555-555555555503',
-    '55555555-5555-5555-5555-555555555504',
-    '55555555-5555-5555-5555-555555555505',
-    '55555555-5555-5555-5555-555555555506',
-    '55555555-5555-5555-5555-555555555507',
-    '55555555-5555-5555-5555-555555555508',
-    '55555555-5555-5555-5555-555555555509',
-    '55555555-5555-5555-5555-555555555510',
-    '55555555-5555-5555-5555-555555555511',
-    '55555555-5555-5555-5555-555555555512',
-    '55555555-5555-5555-5555-555555555513',
-    '55555555-5555-5555-5555-555555555514',
-    '55555555-5555-5555-5555-555555555515',
-    '55555555-5555-5555-5555-555555555516',
-    '55555555-5555-5555-5555-555555555517',
-    '55555555-5555-5555-5555-555555555518',
-    '55555555-5555-5555-5555-555555555519',
-    '55555555-5555-5555-5555-555555555520',
-    '55555555-5555-5555-5555-555555555521'
-);
-
-delete from "group" where group_id in (
-    '44444444-4444-4444-4444-444444444441',
-    '44444444-4444-4444-4444-444444444442',
-    '44444444-4444-4444-4444-444444444443',
-    '44444444-4444-4444-4444-444444444444',
-    '44444444-4444-4444-4444-444444444445',
-    '44444444-4444-4444-4444-444444444446'
-);
-
-delete from event_category where event_category_id in (
-    '33333333-3333-3333-3333-333333333331',
-    '33333333-3333-3333-3333-333333333332',
-    '33333333-3333-3333-3333-333333333333'
-);
-
-delete from group_category where group_category_id in (
-    '22222222-2222-2222-2222-222222222221',
-    '22222222-2222-2222-2222-222222222222',
-    '22222222-2222-2222-2222-222222222223'
-);
-
-delete from region where region_id in (
-    '22222222-2222-2222-2222-222222222301',
-    '22222222-2222-2222-2222-222222222302'
-);
-
-delete from community where community_id in (
-    '11111111-1111-1111-1111-111111111111',
-    '11111111-1111-1111-1111-111111111112'
-);
-
-delete from site where site_id = '00000000-0000-0000-0000-000000000000';
-
--- ============================================================================
 -- SITE
 -- ============================================================================
 
@@ -217,7 +17,7 @@ insert into site (
 );
 
 -- ============================================================================
--- COMMUNITIES (2)
+-- COMMUNITIES
 -- ============================================================================
 
 insert into community (
@@ -247,7 +47,7 @@ insert into community (
 );
 
 -- ============================================================================
--- GROUP CATEGORIES (2 - one per community)
+-- GROUP CATEGORIES
 -- ============================================================================
 
 insert into group_category (group_category_id, name, community_id)
@@ -266,7 +66,7 @@ values (
 );
 
 -- ============================================================================
--- EVENT CATEGORIES (2 - one per community)
+-- EVENT CATEGORIES
 -- ============================================================================
 
 insert into event_category (event_category_id, name, community_id)
@@ -285,7 +85,7 @@ values (
 );
 
 -- ============================================================================
--- REGIONS (2 for community 1)
+-- REGIONS
 -- ============================================================================
 
 insert into region (region_id, community_id, name, "order")
@@ -302,16 +102,18 @@ values (
 );
 
 -- ============================================================================
--- GROUPS (6 total - 3 per community)
+-- GROUPS
 -- ============================================================================
 
--- Community 1 groups
+-- Primary community groups used across the main e2e scenarios
 insert into "group" (
     group_id,
     community_id,
     group_category_id,
     name,
     slug,
+    description,
+    region_id,
     active
 ) values (
     '44444444-4444-4444-4444-444444444441',
@@ -319,6 +121,8 @@ insert into "group" (
     '22222222-2222-2222-2222-222222222221',
     'Platform Ops Meetup',
     'test-group-alpha',
+    'Primary meetup used for end-to-end dashboard and site coverage.',
+    '22222222-2222-2222-2222-222222222301',
     true
 ), (
     '44444444-4444-4444-4444-444444444442',
@@ -326,6 +130,8 @@ insert into "group" (
     '22222222-2222-2222-2222-222222222221',
     'Inactive Local Chapter',
     'test-group-beta',
+    null,
+    '22222222-2222-2222-2222-222222222301',
     true
 ), (
     '44444444-4444-4444-4444-444444444443',
@@ -333,10 +139,12 @@ insert into "group" (
     '22222222-2222-2222-2222-222222222221',
     'Observability Guild',
     'test-group-gamma',
+    null,
+    null,
     true
 );
 
--- Community 2 groups
+-- Secondary community groups used for cross-community coverage
 insert into "group" (
     group_id,
     community_id,
@@ -367,23 +175,12 @@ insert into "group" (
     true
 );
 
-update "group"
-set description = 'Primary meetup used for end-to-end dashboard and site coverage.'
-where group_id = '44444444-4444-4444-4444-444444444441';
-
-update "group"
-set region_id = '22222222-2222-2222-2222-222222222301'
-where group_id in (
-    '44444444-4444-4444-4444-444444444441',
-    '44444444-4444-4444-4444-444444444442'
-);
-
 -- ============================================================================
--- EVENTS (18 total - 3 per group, mixed types)
+-- EVENTS
 -- ============================================================================
 
--- Primary group events (community 1)
--- Event 1: future in-person event with full location data
+-- Primary group events
+-- Upcoming in-person event with full location data
 insert into event (
     event_id, name, slug, description, description_short, timezone, event_category_id,
     event_kind_id, group_id, published, starts_at, ends_at,
@@ -420,7 +217,7 @@ insert into event (
     '{"/static/images/e2e/event-photo-1.svg", "/static/images/e2e/event-photo-2.svg"}'
 );
 
--- Event 2: future virtual event with recording
+-- Upcoming virtual event with recording
 insert into event (
     event_id, name, slug, description, timezone, event_category_id,
     event_kind_id, group_id, published, starts_at, ends_at, venue_city,
@@ -441,7 +238,7 @@ insert into event (
     'https://www.youtube.com/watch?v=test123'
 );
 
--- Event 3: future hybrid event
+-- Upcoming hybrid event
 insert into event (
     event_id, name, slug, description, timezone, event_category_id,
     event_kind_id, group_id, published, starts_at, ends_at, venue_city
@@ -460,8 +257,8 @@ insert into event (
     null
 );
 
--- Secondary group events (community 1)
--- Event 1: future in-person event (canceled - must be unpublished)
+-- Secondary group events
+-- Canceled in-person event for unpublished-state coverage
 insert into event (
     event_id, name, slug, description, timezone, event_category_id,
     event_kind_id, group_id, published, starts_at, ends_at, venue_city, canceled
@@ -481,7 +278,7 @@ insert into event (
     true
 );
 
--- Event 2 and 3: future virtual and hybrid events
+-- Upcoming virtual and hybrid events
 insert into event (
     event_id, name, slug, description, timezone, event_category_id,
     event_kind_id, group_id, published, starts_at, ends_at, venue_city
@@ -513,8 +310,8 @@ insert into event (
     null
 );
 
--- Searchable group events (community 1)
--- Event 1: future in-person event
+-- Search-focused group events
+-- In-person, virtual, and hybrid events for search coverage
 insert into event (
     event_id, name, slug, description, timezone, event_category_id,
     event_kind_id, group_id, published, starts_at, ends_at, venue_city
@@ -559,8 +356,8 @@ insert into event (
     null
 );
 
--- Delta group events (community 2)
--- Event 1: past in-person event
+-- Delta group events
+-- Past, virtual, and hybrid events
 insert into event (
     event_id, name, slug, description, timezone, event_category_id,
     event_kind_id, group_id, published, starts_at, ends_at
@@ -602,8 +399,8 @@ insert into event (
     now() + interval '33 days 2 hours'
 );
 
--- Epsilon group events (community 2)
--- Event 1: past in-person event
+-- Epsilon group events
+-- Past, virtual, and hybrid events
 insert into event (
     event_id, name, slug, description, timezone, event_category_id,
     event_kind_id, group_id, published, starts_at, ends_at
@@ -645,8 +442,8 @@ insert into event (
     now() + interval '34 days 2 hours'
 );
 
--- Zeta group events (community 2)
--- Event 1: past in-person event
+-- Zeta group events
+-- Past, virtual, and hybrid events
 insert into event (
     event_id, name, slug, description, timezone, event_category_id,
     event_kind_id, group_id, published, starts_at, ends_at
@@ -688,7 +485,7 @@ insert into event (
     now() + interval '35 days 2 hours'
 );
 
--- Additional primary-group events for dashboard and CFS coverage
+-- Primary group events for CFS, filtering, and waitlist coverage
 insert into event (
     event_id, name, slug, description, timezone, event_category_id,
     event_kind_id, group_id, published, starts_at, ends_at,
@@ -749,7 +546,7 @@ insert into event (
 );
 
 -- ============================================================================
--- USERS (8 total, all email_verified=true)
+-- USERS
 -- Password: Password123!
 -- Hash generated with Argon2id (password_auth crate default)
 -- ============================================================================
@@ -855,10 +652,11 @@ insert into "user" (
 );
 
 -- ============================================================================
--- COMMUNITY TEAM (admins + pending invitations)
+-- COMMUNITY TEAM
+-- Accepted roles and pending invitations for community dashboards
 -- ============================================================================
 
--- Admin 1 is an accepted admin of community 1
+-- Accepted admin for the primary community
 insert into community_team (community_id, user_id, accepted, role)
 values (
     '11111111-1111-1111-1111-111111111111',
@@ -867,7 +665,7 @@ values (
     'admin'
 );
 
--- Admin 2 is an accepted admin of community 2
+-- Accepted admin for the secondary community
 insert into community_team (community_id, user_id, accepted, role)
 values (
     '11111111-1111-1111-1111-111111111112',
@@ -876,7 +674,7 @@ values (
     'admin'
 );
 
--- Groups manager can manage community 1 groups without being a community admin
+-- Groups manager for the primary community
 insert into community_team (community_id, user_id, accepted, role)
 values (
     '11111111-1111-1111-1111-111111111111',
@@ -885,7 +683,7 @@ values (
     'groups-manager'
 );
 
--- Viewer has read-only access to the community dashboard
+-- Read-only viewer for the primary community dashboard
 insert into community_team (community_id, user_id, accepted, role)
 values (
     '11111111-1111-1111-1111-111111111111',
@@ -894,7 +692,7 @@ values (
     'viewer'
 );
 
--- Pending 1 has a pending community 1 team invitation
+-- Pending invitation for the primary community team
 insert into community_team (community_id, user_id, accepted, role)
 values (
     '11111111-1111-1111-1111-111111111111',
@@ -904,10 +702,11 @@ values (
 );
 
 -- ============================================================================
--- GROUP TEAM (organizers + pending invitations)
+-- GROUP TEAM
+-- Accepted roles and pending invitations for group dashboards
 -- ============================================================================
 
--- Organizer 1 is an accepted organizer of the primary group
+-- Accepted organizer for the primary group
 insert into group_team (group_id, user_id, accepted, role)
 values (
     '44444444-4444-4444-4444-444444444441',
@@ -916,7 +715,7 @@ values (
     'admin'
 );
 
--- Organizer 2 is an accepted organizer of Delta group
+-- Accepted organizer for the Delta group
 insert into group_team (group_id, user_id, accepted, role)
 values (
     '44444444-4444-4444-4444-444444444444',
@@ -925,7 +724,7 @@ values (
     'admin'
 );
 
--- Events manager can manage primary-group events without full admin access
+-- Events manager for the primary group
 insert into group_team (group_id, user_id, accepted, role)
 values (
     '44444444-4444-4444-4444-444444444441',
@@ -934,7 +733,7 @@ values (
     'events-manager'
 );
 
--- Group viewer has read-only access to primary-group dashboard pages
+-- Read-only viewer for the primary group dashboard
 insert into group_team (group_id, user_id, accepted, role)
 values (
     '44444444-4444-4444-4444-444444444441',
@@ -943,7 +742,7 @@ values (
     'viewer'
 );
 
--- Pending 2 has a pending secondary-group team invitation
+-- Pending invitation for the secondary group team
 insert into group_team (group_id, user_id, accepted, role)
 values (
     '44444444-4444-4444-4444-444444444442',
@@ -952,7 +751,7 @@ values (
     'events-manager'
 );
 
--- Pending 3 has a pending primary-group team invitation with viewer access
+-- Pending viewer invitation for the primary group team
 insert into group_team (group_id, user_id, accepted, role)
 values (
     '44444444-4444-4444-4444-444444444441',
@@ -963,9 +762,10 @@ values (
 
 -- ============================================================================
 -- GROUP MEMBERS
+-- Membership relationships used by site and dashboard flows
 -- ============================================================================
 
--- Member 1 is a member of the primary and secondary groups
+-- Member of the primary and secondary groups
 insert into group_member (group_id, user_id)
 values (
     '44444444-4444-4444-4444-444444444441',
@@ -975,7 +775,7 @@ values (
     '77777777-7777-7777-7777-777777777705'
 );
 
--- Member 2 is a member of Delta and Epsilon groups
+-- Member of the Delta and Epsilon groups
 insert into group_member (group_id, user_id)
 values (
     '44444444-4444-4444-4444-444444444444',
@@ -1260,7 +1060,16 @@ values (
 -- SESSIONS
 -- ============================================================================
 
-insert into session (session_id, event_id, name, session_kind_id, starts_at, ends_at, description)
+insert into session (
+    session_id,
+    event_id,
+    name,
+    session_kind_id,
+    starts_at,
+    ends_at,
+    description,
+    cfs_submission_id
+)
 values (
     '88888888-8888-8888-8888-888888888801',
     '55555555-5555-5555-5555-555555555501',
@@ -1268,7 +1077,8 @@ values (
     'in-person',
     now() + interval '10 days',
     now() + interval '10 days 1 hour',
-    'Welcome and introduction to the event.'
+    'Welcome and introduction to the event.',
+    null
 ), (
     '88888888-8888-8888-8888-888888888802',
     '55555555-5555-5555-5555-555555555501',
@@ -1276,7 +1086,8 @@ values (
     'in-person',
     now() + interval '10 days 1 hour',
     now() + interval '10 days 2 hours',
-    'Hands-on technical session.'
+    'Hands-on technical session.',
+    null
 ), (
     '88888888-8888-8888-8888-888888888803',
     '55555555-5555-5555-5555-555555555519',
@@ -1284,12 +1095,9 @@ values (
     'virtual',
     now() + interval '45 days 1 hour',
     now() + interval '45 days 1 hour 45 minutes',
-    'Approved proposal linked into the CFS agenda.'
+    'Approved proposal linked into the CFS agenda.',
+    '99999999-9999-9999-9999-999999999913'
 );
-
-update session
-set cfs_submission_id = '99999999-9999-9999-9999-999999999913'
-where session_id = '88888888-8888-8888-8888-888888888803';
 
 -- ============================================================================
 -- SESSION SPEAKERS
