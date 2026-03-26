@@ -327,10 +327,10 @@ async fn test_manual_check_in_success() {
         .times(1)
         .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
         .returning(move |_, _, _| Ok(event.clone()));
-    db.expect_check_in_event()
+    db.expect_manual_check_in_event()
         .times(1)
-        .withf(move |cid, eid, uid, bypass_window| {
-            *cid == community_id && *eid == event_id && *uid == target_user_id && *bypass_window
+        .withf(move |actor_uid, cid, eid, uid| {
+            *actor_uid == user_id && *cid == community_id && *eid == event_id && *uid == target_user_id
         })
         .returning(|_, _, _, _| Ok(()));
 
