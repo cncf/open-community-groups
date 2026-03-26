@@ -5,6 +5,7 @@ import { expect, test } from "../../fixtures";
 import {
   TEST_COMMUNITY_NAME,
   TEST_EVENT_IDS,
+  TEST_EVENT_NAMES,
   TEST_EVENT_SLUGS,
   TEST_GROUP_SLUGS,
   navigateToPath,
@@ -20,6 +21,40 @@ import {
 } from "../form-helpers";
 
 test.describe("group dashboard events view", () => {
+  test("organizer can switch between upcoming and past events tabs", async ({
+    organizerGroupPage,
+  }) => {
+    await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
+
+    const dashboardContent = organizerGroupPage.locator("#dashboard-content");
+    const upcomingTab = dashboardContent.locator("#upcoming-tab");
+    const pastTab = dashboardContent.locator("#past-tab");
+    const upcomingContent = dashboardContent.locator("#upcoming-content");
+    const pastContent = dashboardContent.locator("#past-content");
+
+    await expect(upcomingTab).toHaveAttribute("data-active", "true");
+    await expect(pastTab).toHaveAttribute("data-active", "false");
+    await expect(upcomingContent).toBeVisible();
+    await expect(pastContent).toBeHidden();
+    await expect(upcomingContent.locator("tr", { hasText: TEST_EVENT_NAMES.alpha[0] })).toBeVisible();
+
+    await pastTab.click();
+
+    await expect(pastTab).toHaveAttribute("data-active", "true");
+    await expect(upcomingTab).toHaveAttribute("data-active", "false");
+    await expect(pastContent).toBeVisible();
+    await expect(upcomingContent).toBeHidden();
+    await expect(pastContent.locator("tr", { hasText: "Past Event For Filtering" })).toBeVisible();
+
+    await upcomingTab.click();
+
+    await expect(upcomingTab).toHaveAttribute("data-active", "true");
+    await expect(pastTab).toHaveAttribute("data-active", "false");
+    await expect(upcomingContent).toBeVisible();
+    await expect(pastContent).toBeHidden();
+    await expect(upcomingContent.locator("tr", { hasText: TEST_EVENT_NAMES.alpha[0] })).toBeVisible();
+  });
+
   test("organizer can create and delete an event", async ({ organizerGroupPage }) => {
     const eventName = `E2E Group Event ${Date.now()}`;
 

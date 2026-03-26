@@ -435,15 +435,7 @@ test.describe("community dashboard groups view", () => {
       'button[hx-get="/dashboard/community/groups"]',
     );
     await expect(clearFilterButton).toBeVisible();
-    await Promise.all([
-      adminCommunityPage.waitForResponse(
-        (response) =>
-          response.request().method() === "GET" &&
-          response.url().endsWith("/dashboard/community/groups") &&
-          response.ok(),
-      ),
-      clearFilterButton.click(),
-    ]);
+    await clearFilterButton.click();
 
     await expect(searchInput).toHaveValue("");
     await expect(

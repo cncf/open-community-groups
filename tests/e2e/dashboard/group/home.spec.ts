@@ -31,6 +31,9 @@ test.describe("group dashboard home", () => {
       organizerGroupPage.locator('a[hx-get="/dashboard/group?tab=sponsors"]'),
     ).toContainText("Sponsors");
     await expect(
+      organizerGroupPage.locator('a[hx-get="/dashboard/group?tab=analytics"]'),
+    ).toContainText("Analytics");
+    await expect(
       organizerGroupPage.getByRole("link", { name: "Group public site" }),
     ).toHaveAttribute("href", /\/e2e-test-community\/group\/test-group-alpha$/);
   });
