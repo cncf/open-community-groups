@@ -87,17 +87,6 @@ Playwright server management:
 - `OCG_E2E_REUSE_SERVER`
   Opt in to attaching to an already running app when `OCG_E2E_START_SERVER=true`
 
-Optional auth provider overrides:
-
-- `OCG_E2E_GITHUB_ENABLED`
-- `OCG_E2E_GITHUB_AUTH_URL`
-- `OCG_E2E_GITHUB_TOKEN_URL`
-- `OCG_E2E_GITHUB_CLIENT_ID`
-- `OCG_E2E_GITHUB_CLIENT_SECRET`
-- `OCG_E2E_GITHUB_REDIRECT_URI`
-- `OCG_E2E_LINUXFOUNDATION_ENABLED`
-  Default: `false` for the generated E2E server config
-
 Database settings come from the usual `OCG_DB_*` variables, including
 `OCG_DB_NAME_E2E` for the E2E database name.
 
@@ -106,7 +95,6 @@ Database settings come from the usual `OCG_DB_*` variables, including
 - `yarn test:e2e` runs the full Playwright config.
 - Firefox and WebKit only run the smoke suite.
 - Visual tests start the server automatically using the generated E2E config.
-- OAuth coverage only checks which auth buttons are visible on the login page.
 
 ## Troubleshooting
 

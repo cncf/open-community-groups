@@ -11,7 +11,6 @@ const webServerCwd = path.resolve(__dirname, "../..");
 const reportDir = path.resolve(__dirname, "../../playwright-report");
 const resultsDir = path.resolve(__dirname, "../../test-results");
 const smokeSpecPaths = [
-  "auth/oauth.spec.ts",
   "dashboard/home/home.spec.ts",
   "dashboard/user/my-events.spec.ts",
   "site/common/header.spec.ts",
