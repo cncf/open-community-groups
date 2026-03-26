@@ -17,51 +17,52 @@ or `tern`.
 ## Quick Start
 
 ```bash
-# Install dependencies and Playwright browsers
+# Install e2e dependencies from tests/e2e/package.json
 just e2e-install
 
-# Run the full e2e flow
-yarn test:e2e
+# Recreate and migrate the main database
+just db-recreate
+
+# Load the e2e seed data into the main database
+just db-load-e2e-data
+
+# Start the server in another terminal
+just server
+
+# Run the Playwright suite
+just e2e-tests
 ```
 
-`yarn test:e2e`:
-- Recreates the e2e database and loads seed data
-- Writes a temporary server config
-- Lets Playwright start the server
-- Runs the E2E suite
+Locally this now follows the same shape as `gitjobs`: use the main database and
+load the e2e seed data into it. CI still keeps its isolated e2e database flow
+in [`.github/workflows/e2e.yml`](/Users/cintiasanchezgarcia/projects/open-community-groups/.github/workflows/e2e.yml).
 
 ## Common Commands
 
 ```bash
-# Recreate the e2e database and load seed data
-just e2e-db-setup
+# Recreate and migrate the main database
+just db-recreate
 
-# Start the app with the generated e2e config
-just e2e-server
+# Load the e2e seed data into the main database
+just db-load-e2e-data
 
-# Install dependencies and run the full e2e flow
-just e2e-full
+# Start the main server config
+just server
 
 # Run the full Playwright suite
-yarn test:e2e
-
-# Debug in Playwright UI
-yarn test:e2e:ui
-
-# Run with a visible browser
-yarn test:e2e:headed
-
-# Run only smoke coverage
-yarn test:e2e:smoke
-
-# Run only the deeper Chromium suites
-yarn test:e2e:deep
-
-# Run visual regression checks
-yarn test:e2e:visual
+just e2e-tests
 
 # Update visual snapshots
-yarn test:e2e:visual:update
+just e2e-update-snapshots
+
+# Run a specific Playwright project
+cd tests/e2e && npx playwright test --config playwright.config.ts --project=chromium-smoke
+
+# Open the Playwright UI
+cd tests/e2e && npx playwright test --config playwright.config.ts --ui
+
+# Run with a visible browser
+cd tests/e2e && npx playwright test --config playwright.config.ts --headed
 ```
 
 ## Configuration
@@ -70,11 +71,6 @@ Most runs only need:
 
 - `OCG_E2E_BASE_URL`
   Base URL used by Playwright. Default: `http://localhost:9000`
-- `OCG_E2E_SERVER_BASE_URL`
-  Base URL written into the generated server config. Default: `OCG_E2E_BASE_URL`
-- `OCG_E2E_SERVER_ADDR`
-  Listen address written into the generated server config. Default:
-  `127.0.0.1:9000`
 
 Useful test data overrides:
 
@@ -91,20 +87,24 @@ Playwright server management:
   Opt in to attaching to an already running app when `OCG_E2E_START_SERVER=true`
 
 Database settings come from the usual `OCG_DB_*` variables. The default E2E
-database name is `ocg_tests_e2e`, and you can override it with
-`OCG_DB_NAME_E2E`.
+tests run against the main local database configured by `OCG_DB_NAME`.
+
+When `OCG_DB_*` variables are not set, the email verification test also falls
+back to the `db` section in `server.yml`.
 
 ## Notes
 
-- `yarn test:e2e` recreates the E2E database, starts the server, and runs the
-  full Playwright config.
+- The committed e2e Node manifest lives at
+  [`tests/e2e/package.json`](/Users/cintiasanchezgarcia/projects/open-community-groups/tests/e2e/package.json).
+- `npm install` may write `tests/e2e/package-lock.json`, which is ignored by git.
+- Local e2e runs use the main app database and main server config, like `gitjobs`.
 - Firefox and WebKit only run the smoke suite.
-- Visual tests follow the same recreate-and-start flow.
 
 ## Troubleshooting
 
-- If navigation fails, rerun `yarn test:e2e` or verify the server is reachable at
+- If navigation fails, verify the server is reachable at
   `<OCG_E2E_BASE_URL>/health-check`.
-- If you want to inspect the seeded state manually, run `just e2e-server`.
+- If the database is missing seed data, follow the recreate/migrate/load steps
+  from [`.github/workflows/e2e.yml`](/Users/cintiasanchezgarcia/projects/open-community-groups/.github/workflows/e2e.yml).
 - If port `9000` is busy, run with
-  `OCG_E2E_BASE_URL=http://localhost:9001 yarn test:e2e`.
+  `OCG_E2E_BASE_URL=http://localhost:9001 just e2e-tests`.

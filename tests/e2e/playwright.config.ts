@@ -8,8 +8,8 @@ const shouldReuseExistingServer = process.env.OCG_E2E_REUSE_SERVER === "true";
 const webServerCommand = process.env.OCG_E2E_SERVER_CMD;
 const webServerTimeout = Number(process.env.OCG_E2E_SERVER_TIMEOUT || 300_000);
 const webServerCwd = path.resolve(__dirname, "../..");
-const reportDir = path.resolve(__dirname, "../../playwright-report");
-const resultsDir = path.resolve(__dirname, "../../test-results");
+const reportDir = path.resolve(__dirname, "playwright-report");
+const resultsDir = path.resolve(__dirname, "test-results");
 const smokeSpecPaths = [
   "dashboard/home/home.spec.ts",
   "dashboard/user/my-events.spec.ts",
