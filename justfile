@@ -249,6 +249,10 @@ e2e-db-setup: e2e-db-recreate e2e-db-load-data
 e2e-tests:
     npx playwright test --config tests/e2e/playwright.config.ts
 
+# Update Playwright visual snapshots for the e2e suite.
+e2e-update-snapshots:
+    npx playwright test --config tests/e2e/playwright.config.ts tests/e2e/visual/visual.spec.ts --project=chromium-deep --project=chromium-mobile-deep --update-snapshots
+
 # Run full e2e setup: database, dependencies, server, and tests.
 e2e-full: e2e-db-setup e2e-install e2e-write-server-config
     OCG_E2E_START_SERVER=true OCG_E2E_SERVER_CMD='cargo run -p ocg-server -- -c "{{ e2e_server_config }}"' yarn test:e2e
