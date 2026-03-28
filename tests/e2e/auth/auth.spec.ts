@@ -1,4 +1,6 @@
 import { execFileSync } from "node:child_process";
+import { existsSync, readFileSync } from "node:fs";
+import * as path from "node:path";
 
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
@@ -13,6 +15,13 @@ import {
 
 const USER_DASHBOARD_EVENTS_PATH = "/dashboard/user?tab=events";
 type EmailCredentials = Pick<AuthUser, "username" | "password">;
+type DbConfig = {
+  host: string;
+  port: string;
+  user: string;
+  password: string;
+  database: string;
+};
 
 /** Returns the configured psql executable path for E2E DB access. */
 const getPsqlPath = () => {
@@ -20,6 +29,104 @@ const getPsqlPath = () => {
 
   return pgBin ? `${pgBin}/psql` : "psql";
 };
+
+/** Normalizes a simple YAML scalar value from server config. */
+const parseYamlScalar = (value: string) => {
+  const trimmedValue = value.trim();
+
+  if (
+    (trimmedValue.startsWith('"') && trimmedValue.endsWith('"')) ||
+    (trimmedValue.startsWith("'") && trimmedValue.endsWith("'"))
+  ) {
+    return trimmedValue.slice(1, -1);
+  }
+
+  return trimmedValue;
+};
+
+/** Reads DB settings from the local server config when env vars are unset. */
+const readServerDbConfig = (): Partial<DbConfig> => {
+  const configDir = process.env.OCG_CONFIG || path.join(process.env.HOME || "", ".config/ocg");
+  const serverConfigPath = path.join(configDir, "server.yml");
+
+  if (!existsSync(serverConfigPath)) {
+    return {};
+  }
+
+  const config = readFileSync(serverConfigPath, "utf8");
+  const dbConfig: Partial<DbConfig> = {};
+  let dbSectionIndent = -1;
+
+  for (const line of config.split(/\r?\n/u)) {
+    const trimmedLine = line.trim();
+
+    if (!trimmedLine || trimmedLine.startsWith("#")) {
+      continue;
+    }
+
+    const indent = line.length - line.trimStart().length;
+
+    if (dbSectionIndent === -1) {
+      if (trimmedLine === "db:") {
+        dbSectionIndent = indent;
+      }
+
+      continue;
+    }
+
+    if (indent <= dbSectionIndent && /^[A-Za-z0-9_-]+:/u.test(trimmedLine)) {
+      break;
+    }
+
+    const match = trimmedLine.match(/^(host|port|dbname|user|password):\s*(.+)$/u);
+
+    if (!match) {
+      continue;
+    }
+
+    const [, key, rawValue] = match;
+    const parsedValue = parseYamlScalar(rawValue);
+
+    switch (key) {
+      case "host":
+        dbConfig.host = parsedValue;
+        break;
+      case "port":
+        dbConfig.port = parsedValue;
+        break;
+      case "dbname":
+        dbConfig.database = parsedValue;
+        break;
+      case "user":
+        dbConfig.user = parsedValue;
+        break;
+      case "password":
+        dbConfig.password = parsedValue;
+        break;
+    }
+  }
+
+  return dbConfig;
+};
+
+/** Resolves the DB connection used by the email verification helper. */
+const getDbConfig = (): DbConfig => {
+  const serverDbConfig = readServerDbConfig();
+
+  return {
+    host: process.env.OCG_DB_HOST ?? serverDbConfig.host ?? "localhost",
+    port: process.env.OCG_DB_PORT ?? serverDbConfig.port ?? "5432",
+    user: process.env.OCG_DB_USER ?? serverDbConfig.user ?? "postgres",
+    password: process.env.OCG_DB_PASSWORD ?? serverDbConfig.password ?? "",
+    database:
+      process.env.OCG_DB_NAME_E2E ??
+      process.env.OCG_DB_NAME ??
+      serverDbConfig.database ??
+      "ocg",
+  };
+};
+
+const emailVerificationDbConfig = getDbConfig();
 
 /** Reads the email verification code for a newly created user from the E2E DB. */
 const readEmailVerificationCode = (email: string) => {
@@ -35,13 +142,13 @@ const readEmailVerificationCode = (email: string) => {
     getPsqlPath(),
     [
       "-h",
-      process.env.OCG_DB_HOST || "localhost",
+      emailVerificationDbConfig.host,
       "-p",
-      process.env.OCG_DB_PORT || "5432",
+      emailVerificationDbConfig.port,
       "-U",
-      process.env.OCG_DB_USER || "postgres",
+      emailVerificationDbConfig.user,
       "-d",
-      process.env.OCG_DB_NAME_E2E || "ocg_tests_e2e",
+      emailVerificationDbConfig.database,
       "-tA",
       "-c",
       sql,
@@ -50,7 +157,7 @@ const readEmailVerificationCode = (email: string) => {
       encoding: "utf8",
       env: {
         ...process.env,
-        PGPASSWORD: process.env.OCG_DB_PASSWORD || "",
+        PGPASSWORD: emailVerificationDbConfig.password,
       },
     },
   ).trim();
