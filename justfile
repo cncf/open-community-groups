@@ -82,6 +82,7 @@ db-recreate-tests: db-drop-tests db-create-tests db-migrate-tests
 # Load e2e seed data into main database.
 db-load-e2e-data:
     just pg psql {{ pg_conn }} {{ db_name }} -f "{{ source_dir }}/database/tests/data/e2e.sql"
+    PGPASSWORD="{{ db_password }}" PATH="{{ pg_bin }}:$PATH" psql {{ pg_conn }} {{ db_name }} -c 'update "user" set password = $$$argon2id$v=19$m=19456,t=2,p=1$q55jlxUx8bffhFM3xN36ZA$te6OiWkZ/q35lpSEAZbd/A3iJyCByxbive9F61sTp7g$$ where username like $$e2e-%$$'
 
 # Start PostgreSQL server.
 db-server data_dir:

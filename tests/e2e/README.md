@@ -36,6 +36,8 @@ just e2e-tests
 Locally this now follows the same shape as `gitjobs`: use the main database and
 load the e2e seed data into it. CI still keeps its isolated e2e database flow
 in [`.github/workflows/e2e.yml`](/Users/cintiasanchezgarcia/projects/open-community-groups/.github/workflows/e2e.yml).
+`just db-load-e2e-data` also normalizes the seeded `e2e-*` user passwords to
+the credentials expected by the Playwright suite.
 
 ## Common Commands
 
@@ -98,6 +100,7 @@ back to the `db` section in `server.yml`.
   [`tests/e2e/package.json`](/Users/cintiasanchezgarcia/projects/open-community-groups/tests/e2e/package.json).
 - `npm install` may write `tests/e2e/package-lock.json`, which is ignored by git.
 - Local e2e runs use the main app database and main server config, like `gitjobs`.
+- Seeded e2e users use the password `Password123!` after `just db-load-e2e-data`.
 - Firefox and WebKit only run the smoke suite.
 
 ## Troubleshooting
