@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1220 192" role="img" aria-label="Platform Engineering Community mobile banner">
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#115e59"/>
+      <stop offset="100%" stop-color="#2563eb"/>
+    </linearGradient>
+  </defs>
+  <rect width="1220" height="192" fill="url(#bg)"/>
+  <circle cx="108" cy="96" r="52" fill="#f0fdfa" fill-opacity="0.16"/>
+  <path d="M0 148 C160 116 280 180 420 150 S720 102 920 144 S1080 168 1220 138 L1220 192 L0 192 Z" fill="#ffffff" fill-opacity="0.13"/>
+  <text x="92" y="88" fill="#f8fafc" font-family="Arial, sans-serif" font-size="30" font-weight="700">Platform Engineering</text>
+  <text x="92" y="124" fill="#ccfbf1" font-family="Arial, sans-serif" font-size="18">Community</text>
+</svg>

@@ -1,8 +1,11 @@
 .DS_Store
 .playwright-cli
 .vscode
-/playwright
 /target
+/tests/e2e/node_modules
+/tests/e2e/package-lock.json
+/tests/e2e/playwright-report
+/tests/e2e/test-results
 /tmp
 Chart.lock
 chart/charts

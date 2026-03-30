@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2428 192" role="img" aria-label="Developer Experience Community banner">
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#7c2d12"/>
+      <stop offset="100%" stop-color="#be123c"/>
+    </linearGradient>
+  </defs>
+  <rect width="2428" height="192" fill="url(#bg)"/>
+  <rect x="1760" y="34" width="490" height="124" rx="24" fill="#fff7ed" fill-opacity="0.12"/>
+  <path d="M0 120 C240 76 420 162 670 126 S1140 72 1390 124 S1870 182 2130 130 S2300 108 2428 120 L2428 192 L0 192 Z" fill="#ffffff" fill-opacity="0.1"/>
+  <text x="120" y="86" fill="#fff7ed" font-family="Arial, sans-serif" font-size="34" font-weight="700" letter-spacing="1.5">DEVELOPER EXPERIENCE COMMUNITY</text>
+  <text x="120" y="128" fill="#fecdd3" font-family="Arial, sans-serif" font-size="18">Seeded visuals for public site cards, banners, and mobile snapshots.</text>
+</svg>

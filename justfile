@@ -22,6 +22,7 @@ db_name := env("OCG_DB_NAME", "ocg")
 db_name_tests := env("OCG_DB_NAME_TESTS", "ocg_tests")
 db_port := env("OCG_DB_PORT", "5432")
 db_user := env("OCG_DB_USER", "postgres")
+db_password := env("OCG_DB_PASSWORD", "")
 pg_bin := env("OCG_PG_BIN", "/opt/homebrew/opt/postgresql@17/bin")
 pg_conn := "-h " + db_host + " -p " + db_port + " -U " + db_user
 db_server_host_opt := if db_host =~ '^/' { "-k " + db_host } else { "-h " + db_host }
@@ -30,7 +31,7 @@ source_dir := justfile_directory()
 # Helper to run PostgreSQL commands with the configured binary path
 [private]
 pg command *args:
-    PATH="{{ pg_bin }}:$PATH" {{ command }} {{ args }}
+    PGPASSWORD="{{ db_password }}" PATH="{{ pg_bin }}:$PATH" {{ command }} {{ args }}
 
 # Database
 
@@ -49,7 +50,7 @@ db-create:
 # Create test database with pgtap extension.
 db-create-tests:
     just pg createdb {{ pg_conn }} {{ db_name_tests }}
-    PATH="{{ pg_bin }}:$PATH" psql {{ pg_conn }} {{ db_name_tests }} -c "CREATE EXTENSION IF NOT EXISTS pgtap"
+    PGPASSWORD="{{ db_password }}" PATH="{{ pg_bin }}:$PATH" psql {{ pg_conn }} {{ db_name_tests }} -c "CREATE EXTENSION IF NOT EXISTS pgtap"
 
 # Drop main database.
 db-drop:
@@ -77,6 +78,11 @@ db-recreate: db-drop db-create db-migrate
 
 # Drop, create, and migrate test database.
 db-recreate-tests: db-drop-tests db-create-tests db-migrate-tests
+
+# Load e2e seed data into main database.
+db-load-e2e-data:
+    just pg psql {{ pg_conn }} {{ db_name }} -f "{{ source_dir }}/database/tests/data/e2e.sql"
+    PGPASSWORD="{{ db_password }}" PATH="{{ pg_bin }}:$PATH" psql {{ pg_conn }} {{ db_name }} -c 'update "user" set password = $$$argon2id$v=19$m=19456,t=2,p=1$q55jlxUx8bffhFM3xN36ZA$te6OiWkZ/q35lpSEAZbd/A3iJyCByxbive9F61sTp7g$$ where username like $$e2e-%$$'
 
 # Start PostgreSQL server.
 db-server data_dir:
@@ -140,3 +146,18 @@ server-watch:
 frontend-fmt-and-lint:
     prettier --config ocg-server/static/js/.prettierrc.yaml --write "ocg-server/static/js/**/*.js"
     djlint --check --configuration ocg-server/templates/.djlintrc ocg-server/templates
+
+# E2E
+
+# Install e2e dependencies and Playwright browsers.
+e2e-install:
+    cd tests/e2e && npm install
+    cd tests/e2e && npx playwright install --with-deps
+
+# Run the Playwright e2e test suite.
+e2e-tests:
+    cd tests/e2e && npx playwright test --config playwright.config.ts
+
+# Update Playwright visual snapshots for the e2e suite.
+e2e-update-snapshots:
+    cd tests/e2e && npx playwright test --config playwright.config.ts --grep @visual --project=chromium-deep --project=chromium-mobile-deep --update-snapshots
