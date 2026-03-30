@@ -594,6 +594,7 @@ input:placeholder-shown {
 .icon-list { --icon-url: url('/static/images/icons/list.svg'); }
 .icon-list-magnifying-glass { --icon-url: url('/static/images/icons/list_magnifying_glass.svg'); }
 .icon-location { --icon-url: url('/static/images/icons/location.svg'); }
+.icon-logs { --icon-url: url('/static/images/icons/logs.svg'); }
 .icon-login { --icon-url: url('/static/images/icons/login.svg'); }
 .icon-logout { --icon-url: url('/static/images/icons/logout.svg'); }
 .icon-magnifying-glass { --icon-url: url('/static/images/icons/magnifying_glass.svg'); }
