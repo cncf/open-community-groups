@@ -340,6 +340,25 @@ export const navigateToPath = async (page: Page, path: string) => {
 };
 
 /**
+ * Waits for a page to settle before taking a visual snapshot.
+ */
+export const expectPageScreenshot = async (
+  page: Page,
+  screenshotName: string,
+) => {
+  await page.waitForLoadState("networkidle");
+  await page.evaluate(async () => {
+    await document.fonts.ready;
+  });
+
+  await expect(page).toHaveScreenshot(screenshotName, {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+  });
+};
+
+/**
  * Chooses a timezone from the custom timezone selector.
  */
 export const selectTimezone = async (page: Page, timezone: string) => {
