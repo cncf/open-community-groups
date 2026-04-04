@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(6);
+select plan(7);
 
 -- ============================================================================
 -- VARIABLES
@@ -39,7 +39,7 @@ values
 
 -- Should change existing member role
 select lives_ok(
-    $$ select update_community_team_member_role('00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000031'::uuid, 'admin') $$,
+    $$ select update_community_team_member_role(null::uuid, '00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000031'::uuid, 'admin') $$,
     'Should succeed'
 );
 select results_eq(
@@ -48,16 +48,43 @@ select results_eq(
     'Role should be updated to admin'
 );
 
+-- Should create the expected audit row
+select results_eq(
+    $$
+        select
+            action,
+            actor_user_id,
+            actor_username,
+            community_id,
+            resource_type,
+            resource_id,
+            details
+        from audit_log
+    $$,
+    $$
+        values (
+            'community_team_member_role_updated',
+            null::uuid,
+            null::text,
+            '00000000-0000-0000-0000-000000000001'::uuid,
+            'user',
+            '00000000-0000-0000-0000-000000000031'::uuid,
+            jsonb_build_object('role', 'admin')
+        )
+    $$,
+    'Should create the expected audit row'
+);
+
 -- Should error when updating role for non-existing member
 select throws_ok(
-    $$ select update_community_team_member_role('00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000099'::uuid, 'admin') $$,
+    $$ select update_community_team_member_role(null::uuid, '00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000099'::uuid, 'admin') $$,
     'user is not a community team member',
     'Should error when updating role for non-existing member'
 );
 
 -- Should error when updating role to an invalid value
 select throws_ok(
-    $$ select update_community_team_member_role('00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000031'::uuid, 'invalid') $$,
+    $$ select update_community_team_member_role(null::uuid, '00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000031'::uuid, 'invalid') $$,
     '23503',
     'insert or update on table "community_team" violates foreign key constraint "community_team_role_fkey"',
     'Should error when updating role to an invalid value'
@@ -65,13 +92,13 @@ select throws_ok(
 
 -- Should allow demoting an admin when another accepted admin remains
 select lives_ok(
-    $$ select update_community_team_member_role('00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000031'::uuid, 'viewer') $$,
+    $$ select update_community_team_member_role(null::uuid, '00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000031'::uuid, 'viewer') $$,
     'Should allow demotion when another accepted admin exists'
 );
 
 -- Should block demoting the last accepted community admin
 select throws_ok(
-    $$ select update_community_team_member_role('00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000032'::uuid, 'viewer') $$,
+    $$ select update_community_team_member_role(null::uuid, '00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000032'::uuid, 'viewer') $$,
     'cannot change role for the last accepted community admin',
     'Should block demoting the last accepted community admin'
 );

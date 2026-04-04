@@ -1,5 +1,6 @@
 -- add_group adds a new group to the database.
 create or replace function add_group(
+    p_actor_user_id uuid,
     p_community_id uuid,
     p_group jsonb
 )
@@ -84,6 +85,16 @@ begin
                 nullif(p_group->>'youtube_url', '')
             )
             returning group_id into v_group_id;
+
+            -- Track the created group
+            perform insert_audit_log(
+                'group_added',
+                p_actor_user_id,
+                'group',
+                v_group_id,
+                p_community_id,
+                v_group_id
+            );
 
             -- Return immediately once insertion succeeds
             return v_group_id;

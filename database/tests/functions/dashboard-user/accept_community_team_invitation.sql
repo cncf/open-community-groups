@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(2);
+select plan(3);
 
 -- ============================================================================
 -- VARIABLES
@@ -43,13 +43,38 @@ insert into community_team (
 
 -- Should flip accepted to true when accepting invitation
 select lives_ok(
-    $$ select accept_community_team_invitation('00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000011'::uuid) $$,
+    $$ select accept_community_team_invitation('00000000-0000-0000-0000-000000000011'::uuid, '00000000-0000-0000-0000-000000000001'::uuid) $$,
     'Should execute successfully'
 );
 select results_eq(
     $$ select accepted from community_team where community_id = '00000000-0000-0000-0000-000000000001'::uuid and user_id = '00000000-0000-0000-0000-000000000011'::uuid $$,
     $$ values (true) $$,
     'Invitation should be marked as accepted'
+);
+
+-- Should create the expected audit row
+select results_eq(
+    $$
+        select
+            action,
+            actor_user_id,
+            actor_username,
+            community_id,
+            resource_type,
+            resource_id
+        from audit_log
+    $$,
+    $$
+        values (
+            'community_team_invitation_accepted',
+            '00000000-0000-0000-0000-000000000011'::uuid,
+            'user',
+            '00000000-0000-0000-0000-000000000001'::uuid,
+            'user',
+            '00000000-0000-0000-0000-000000000011'::uuid
+        )
+    $$,
+    'Should create the expected audit row'
 );
 
 -- ============================================================================

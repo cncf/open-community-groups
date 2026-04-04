@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(3);
+select plan(4);
 
 -- ============================================================================
 -- VARIABLES
@@ -77,7 +77,7 @@ values (:'eventID', :'sponsorID', 'Gold');
 
 -- Should fail when sponsor is referenced by event
 select throws_like(
-    $$select delete_group_sponsor('40000000-0000-0000-0000-000000000002'::uuid, '40000000-0000-0000-0000-000000000003'::uuid)$$,
+    $$select delete_group_sponsor(null::uuid, '40000000-0000-0000-0000-000000000002'::uuid, '40000000-0000-0000-0000-000000000003'::uuid)$$,
     '%sponsor is used by one or more events%',
     'Should fail when sponsor is referenced by event'
 );
@@ -87,7 +87,7 @@ delete from event_sponsor where group_sponsor_id = :'sponsorID'::uuid;
 
 -- Should remove sponsor when unreferenced
 select lives_ok(
-    $$select delete_group_sponsor('40000000-0000-0000-0000-000000000002'::uuid, '40000000-0000-0000-0000-000000000003'::uuid)$$,
+    $$select delete_group_sponsor(null::uuid, '40000000-0000-0000-0000-000000000002'::uuid, '40000000-0000-0000-0000-000000000003'::uuid)$$,
     'Should not error when unreferenced'
 );
 
@@ -95,6 +95,33 @@ select is(
     (select count(*) from group_sponsor where group_sponsor_id = '40000000-0000-0000-0000-000000000003'::uuid),
     0::bigint,
     'Should remove sponsor'
+);
+
+-- Should create the expected audit row
+select results_eq(
+    $$
+        select
+            action,
+            actor_user_id,
+            actor_username,
+            community_id,
+            group_id,
+            resource_type,
+            resource_id
+        from audit_log
+    $$,
+    $$
+        values (
+            'group_sponsor_deleted',
+            null::uuid,
+            null::text,
+            '40000000-0000-0000-0000-000000000001'::uuid,
+            '40000000-0000-0000-0000-000000000002'::uuid,
+            'group_sponsor',
+            '40000000-0000-0000-0000-000000000003'::uuid
+        )
+    $$,
+    'Should create the expected audit row'
 );
 
 -- ============================================================================

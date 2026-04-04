@@ -1,8 +1,11 @@
 -- Updates a community's settings.
 create or replace function update_community(
+    p_actor_user_id uuid,
     p_community_id uuid,
     p_data jsonb
 ) returns void as $$
+begin
+    -- Update the community fields from the payload
     update community
     set
         banner_mobile_url = coalesce(p_data->>'banner_mobile_url', banner_mobile_url),
@@ -32,4 +35,14 @@ create or replace function update_community(
         wechat_url = nullif(p_data->>'wechat_url', ''),
         youtube_url = nullif(p_data->>'youtube_url', '')
     where community_id = p_community_id;
-$$ language sql;
+
+    -- Track the community update
+    perform insert_audit_log(
+        'community_updated',
+        p_actor_user_id,
+        'community',
+        p_community_id,
+        p_community_id
+    );
+end;
+$$ language plpgsql;

@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(5);
+select plan(6);
 
 -- ============================================================================
 -- VARIABLES
@@ -70,7 +70,7 @@ insert into "group" (
 -- Should set active to true
 select lives_ok(
     format(
-        'select activate_group(%L::uuid, %L::uuid)',
+        'select activate_group(null::uuid, %L::uuid, %L::uuid)',
         :'communityID',
         :'groupID'
     ),
@@ -84,23 +84,50 @@ select is(
     'Should set active flag to true'
 );
 
+-- Should create the expected audit row
+select results_eq(
+    $$
+        select
+            action,
+            actor_user_id,
+            actor_username,
+            community_id,
+            group_id,
+            resource_type,
+            resource_id
+        from audit_log
+    $$,
+    $$
+        values (
+            'group_activated',
+            null::uuid,
+            null::text,
+            '00000000-0000-0000-0000-000000000001'::uuid,
+            '00000000-0000-0000-0000-000000000031'::uuid,
+            'group',
+            '00000000-0000-0000-0000-000000000031'::uuid
+        )
+    $$,
+    'Should create the expected audit row'
+);
+
 -- Should throw error for already deleted group
 select throws_ok(
-    $$select activate_group('00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000032'::uuid)$$,
+    $$select activate_group(null::uuid, '00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000032'::uuid)$$,
     'group not found or inactive',
     'Should throw error when trying to activate already deleted group'
 );
 
 -- Should throw error for wrong community_id
 select throws_ok(
-    $$select activate_group('00000000-0000-0000-0000-000000000099'::uuid, '00000000-0000-0000-0000-000000000031'::uuid)$$,
+    $$select activate_group(null::uuid, '00000000-0000-0000-0000-000000000099'::uuid, '00000000-0000-0000-0000-000000000031'::uuid)$$,
     'group not found or inactive',
     'Should throw error when community_id does not match'
 );
 
 -- Should throw error for non-existent group
 select throws_ok(
-    $$select activate_group('00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000099'::uuid)$$,
+    $$select activate_group(null::uuid, '00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000099'::uuid)$$,
     'group not found or inactive',
     'Should throw error for non-existent group'
 );

@@ -11,7 +11,7 @@ use axum::{
 use axum_messages::Messages;
 use tracing::instrument;
 
-use super::{events, invitations, session_proposals, submissions};
+use super::{events, invitations, logs, session_proposals, submissions};
 
 use crate::{
     auth::AuthSession,
@@ -66,6 +66,10 @@ pub(crate) async fn page(
             Content::Events(template)
         }
         Tab::Invitations => Content::Invitations(invitations::prepare_list_page(&db, user.user_id).await?),
+        Tab::Logs => {
+            let (_, template) = logs::prepare_list_page(&db, user.user_id, raw_query).await?;
+            Content::Logs(template)
+        }
         Tab::SessionProposals => {
             let (_, template) = session_proposals::prepare_list_page(&db, user.user_id, raw_query).await?;
             Content::SessionProposals(template)

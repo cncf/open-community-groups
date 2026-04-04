@@ -327,10 +327,10 @@ async fn test_manual_check_in_success() {
         .times(1)
         .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
         .returning(move |_, _, _| Ok(event.clone()));
-    db.expect_check_in_event()
+    db.expect_manual_check_in_event()
         .times(1)
-        .withf(move |cid, eid, uid, bypass_window| {
-            *cid == community_id && *eid == event_id && *uid == target_user_id && *bypass_window
+        .withf(move |actor_uid, cid, eid, uid| {
+            *actor_uid == user_id && *cid == community_id && *eid == event_id && *uid == target_user_id
         })
         .returning(|_, _, _, _| Ok(()));
 
@@ -462,6 +462,7 @@ async fn test_send_event_custom_notification_success() {
     // Create copies for the track_custom_notification closure
     let track_user_id = user_id;
     let track_event_id = event_id;
+    let track_group_id = group_id;
     let track_subject = notification_subject.to_string();
     let track_body = notification_body.to_string();
 
@@ -497,14 +498,17 @@ async fn test_send_event_custom_notification_success() {
         .returning(move || Ok(site_settings.clone()));
     db.expect_track_custom_notification()
         .times(1)
-        .withf(move |created_by, event_id, group_id, subject, body| {
-            *created_by == track_user_id
-                && *event_id == Some(track_event_id)
-                && group_id.is_none()
-                && subject == track_subject
-                && body == track_body
-        })
-        .returning(|_, _, _, _, _| Ok(()));
+        .withf(
+            move |created_by, event_id, group_id, recipient_count, subject, body| {
+                *created_by == track_user_id
+                    && *event_id == Some(track_event_id)
+                    && *group_id == Some(track_group_id)
+                    && *recipient_count == 2
+                    && subject == track_subject
+                    && body == track_body
+            },
+        )
+        .returning(|_, _, _, _, _, _| Ok(()));
 
     // Setup notifications manager mock
     let mut nm = MockNotificationsManager::new();

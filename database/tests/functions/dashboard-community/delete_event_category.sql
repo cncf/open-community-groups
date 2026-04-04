@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(4);
+select plan(5);
 
 -- ============================================================================
 -- VARIABLES
@@ -102,6 +102,7 @@ insert into event (
 -- Should block deleting category that is still referenced by events
 select throws_ok(
     $$ select delete_event_category(
+        null::uuid,
         '00000000-0000-0000-0000-000000000001'::uuid,
         '00000000-0000-0000-0000-000000000013'::uuid
     ) $$,
@@ -112,6 +113,7 @@ select throws_ok(
 -- Should delete event category with no event references
 select lives_ok(
     $$ select delete_event_category(
+        null::uuid,
         '00000000-0000-0000-0000-000000000001'::uuid,
         '00000000-0000-0000-0000-000000000014'::uuid
     ) $$,
@@ -127,9 +129,35 @@ select results_eq(
     'Unused event category should be deleted'
 );
 
+-- Should create the expected audit row
+select results_eq(
+    $$
+        select
+            action,
+            actor_user_id,
+            actor_username,
+            community_id,
+            resource_type,
+            resource_id
+        from audit_log
+    $$,
+    $$
+        values (
+            'event_category_deleted',
+            null::uuid,
+            null::text,
+            '00000000-0000-0000-0000-000000000001'::uuid,
+            'event_category',
+            '00000000-0000-0000-0000-000000000014'::uuid
+        )
+    $$,
+    'Should create the expected audit row'
+);
+
 -- Should fail when target category does not exist
 select throws_ok(
     $$ select delete_event_category(
+        null::uuid,
         '00000000-0000-0000-0000-000000000001'::uuid,
         '00000000-0000-0000-0000-000000000099'::uuid
     ) $$,

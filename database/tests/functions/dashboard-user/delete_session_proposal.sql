@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(4);
+select plan(5);
 
 -- ============================================================================
 -- VARIABLES
@@ -164,6 +164,33 @@ select is(
     (select count(*) from session_proposal where session_proposal_id = :'sessionProposalID'::uuid),
     0::bigint,
     'Should remove session proposal record'
+);
+
+-- Should create the expected audit row
+select results_eq(
+    $$
+        select
+            action,
+            actor_user_id,
+            actor_username,
+            resource_type,
+            resource_id
+        from audit_log
+    $$,
+    format(
+        $$
+        values (
+            'session_proposal_deleted',
+            %L::uuid,
+            'alice',
+            'session_proposal',
+            %L::uuid
+        )
+        $$,
+        :'userID',
+        :'sessionProposalID'
+    ),
+    'Should create the expected audit row'
 );
 
 -- Should reject deleting proposals with submissions

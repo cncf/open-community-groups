@@ -132,6 +132,7 @@ pub(crate) async fn generate_check_in_qr_code(
 /// Manually checks in a user for an event, bypassing the check-in window validation.
 #[instrument(skip_all, err)]
 pub(crate) async fn manual_check_in(
+    CurrentUser(user): CurrentUser,
     SelectedCommunityId(community_id): SelectedCommunityId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
@@ -140,8 +141,9 @@ pub(crate) async fn manual_check_in(
     // Validate event belongs to the selected group
     db.get_event_summary(community_id, group_id, event_id).await?;
 
-    // Check-in with bypass_window = true
-    db.check_in_event(community_id, event_id, user_id, true).await?;
+    // Check-in with dashboard-specific auditing
+    db.manual_check_in_event(user.user_id, community_id, event_id, user_id)
+        .await?;
 
     Ok(StatusCode::NO_CONTENT)
 }
@@ -196,7 +198,8 @@ pub(crate) async fn send_event_custom_notification(
     db.track_custom_notification(
         user.user_id,
         Some(event_id),
-        None, // group_id is None for event notifications
+        Some(group_id),
+        new_notification.recipients.len(),
         &notification.title,
         &notification.body,
     )

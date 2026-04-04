@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(11);
+select plan(12);
 
 -- ============================================================================
 -- VARIABLES
@@ -210,7 +210,7 @@ insert into session (
 
 -- Should mark as canceled and clear publication metadata
 select lives_ok(
-    $$select cancel_event('00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000031'::uuid)$$,
+    $$select cancel_event(null::uuid, '00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000031'::uuid)$$,
     'Should mark as canceled and clear publication metadata'
 );
 
@@ -242,6 +242,35 @@ select is(
     'Should set published_by to null'
 );
 
+-- Should create the expected audit row
+select results_eq(
+    $$
+        select
+            action,
+            actor_user_id,
+            actor_username,
+            community_id,
+            group_id,
+            event_id,
+            resource_type,
+            resource_id
+        from audit_log
+    $$,
+    $$
+        values (
+            'event_canceled',
+            null::uuid,
+            null::text,
+            '00000000-0000-0000-0000-000000000001'::uuid,
+            '00000000-0000-0000-0000-000000000021'::uuid,
+            '00000000-0000-0000-0000-000000000031'::uuid,
+            'event',
+            '00000000-0000-0000-0000-000000000031'::uuid
+        )
+    $$,
+    'Should create the expected audit row'
+);
+
 -- Should mark meeting_in_sync false when meeting was requested
 select is(
     (select meeting_in_sync from event where event_id = :'eventID'),
@@ -265,7 +294,7 @@ select is(
 
 -- Should not change event meeting_in_sync when meeting_requested=false
 select lives_ok(
-    $$select cancel_event('00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000032'::uuid)$$,
+    $$select cancel_event(null::uuid, '00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000032'::uuid)$$,
     'Should cancel event when meeting_requested=false'
 );
 
@@ -278,7 +307,7 @@ select is(
 
 -- Should throw error when group_id does not match
 select throws_ok(
-    $$select cancel_event('00000000-0000-0000-0000-000000000099'::uuid, '00000000-0000-0000-0000-000000000031'::uuid)$$,
+    $$select cancel_event(null::uuid, '00000000-0000-0000-0000-000000000099'::uuid, '00000000-0000-0000-0000-000000000031'::uuid)$$,
     'event not found or inactive',
     'Should throw error when group_id does not match'
 );

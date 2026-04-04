@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(1);
+select plan(2);
 
 -- ============================================================================
 -- VARIABLES
@@ -51,7 +51,7 @@ values (:'groupID', :'communityID', 'Group NYC', 'group-nyc', '10000000-0000-000
 select is(
     (
         select (get_group_sponsor(
-            add_group_sponsor(:'groupID'::uuid, '{
+            add_group_sponsor(null::uuid, :'groupID'::uuid, '{
                 "name":"Epsilon",
                 "logo_url":"https://ex.com/epsilon.png",
                 "website_url":"https://epsi.io"
@@ -66,6 +66,34 @@ select is(
         "website_url":"https://epsi.io"
     }'::jsonb,
     'Should return created sponsor'
+);
+
+-- Should create the expected audit row
+select results_eq(
+    $$
+        select
+            action,
+            actor_user_id,
+            actor_username,
+            community_id,
+            group_id,
+            resource_type,
+            resource_id
+        from audit_log
+    $$,
+    $$
+        select
+            'group_sponsor_added',
+            null::uuid,
+            null::text,
+            '10000000-0000-0000-0000-000000000001'::uuid,
+            '10000000-0000-0000-0000-000000000002'::uuid,
+            'group_sponsor',
+            group_sponsor_id
+        from group_sponsor
+        where name = 'Epsilon'
+    $$,
+    'Should create the expected audit row'
 );
 
 -- ============================================================================

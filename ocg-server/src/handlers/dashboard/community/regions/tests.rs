@@ -303,8 +303,10 @@ async fn test_add_success() {
         .returning(|_, _, _| Ok(true));
     db.expect_add_region()
         .times(1)
-        .withf(move |cid, region| *cid == community_id && region.name == expected_name)
-        .returning(|_, _| Ok(Uuid::new_v4()));
+        .withf(move |uid, cid, region| {
+            *uid == user_id && *cid == community_id && region.name == expected_name
+        })
+        .returning(|_, _, _| Ok(Uuid::new_v4()));
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
@@ -360,8 +362,8 @@ async fn test_delete_success() {
         .returning(|_, _, _| Ok(true));
     db.expect_delete_region()
         .times(1)
-        .withf(move |cid, rid| *cid == community_id && *rid == region_id)
-        .returning(|_, _| Ok(()));
+        .withf(move |uid, cid, rid| *uid == user_id && *cid == community_id && *rid == region_id)
+        .returning(|_, _, _| Ok(()));
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
@@ -421,10 +423,10 @@ async fn test_update_success() {
         .returning(|_, _, _| Ok(true));
     db.expect_update_region()
         .times(1)
-        .withf(move |cid, rid, region| {
-            *cid == community_id && *rid == region_id && region.name == expected_name
+        .withf(move |uid, cid, rid, region| {
+            *uid == user_id && *cid == community_id && *rid == region_id && region.name == expected_name
         })
-        .returning(|_, _, _| Ok(()));
+        .returning(|_, _, _, _| Ok(()));
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();

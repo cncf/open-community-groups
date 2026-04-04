@@ -152,7 +152,7 @@ async fn test_accept_community_team_invitation_success() {
         .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
     db.expect_accept_community_team_invitation()
         .times(1)
-        .withf(move |cid, uid| *cid == community_id && *uid == user_id)
+        .withf(move |uid, cid| *uid == user_id && *cid == community_id)
         .returning(|_, _| Ok(()));
     db.expect_list_user_groups()
         .times(1)
@@ -223,7 +223,7 @@ async fn test_accept_group_team_invitation_success() {
         .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
     db.expect_accept_group_team_invitation()
         .times(1)
-        .withf(move |gid, uid| *gid == group_id && *uid == user_id)
+        .withf(move |uid, gid| *uid == user_id && *gid == group_id)
         .returning(|_, _| Ok(()));
     db.expect_list_user_groups()
         .times(1)
@@ -288,9 +288,9 @@ async fn test_reject_community_team_invitation_success() {
         .times(1)
         .withf(move |id| *id == user_id)
         .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_delete_community_team_member()
+    db.expect_reject_community_team_invitation()
         .times(1)
-        .withf(move |cid, uid| *cid == community_id && *uid == user_id)
+        .withf(move |uid, cid| *uid == user_id && *cid == community_id)
         .returning(|_, _| Ok(()));
     db.expect_update_session()
         .times(1)
@@ -342,9 +342,9 @@ async fn test_reject_group_team_invitation_success() {
         .times(1)
         .withf(move |id| *id == user_id)
         .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_delete_group_team_member()
+    db.expect_reject_group_team_invitation()
         .times(1)
-        .withf(move |gid, uid| *gid == group_id && *uid == user_id)
+        .withf(move |uid, gid| *uid == user_id && *gid == group_id)
         .returning(|_, _| Ok(()));
     db.expect_update_session()
         .times(1)

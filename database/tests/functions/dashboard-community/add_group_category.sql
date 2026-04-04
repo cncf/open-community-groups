@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(3);
+select plan(4);
 
 -- ============================================================================
 -- VARIABLES
@@ -41,6 +41,7 @@ insert into community (
 -- Should create a new group category and auto-generate normalized name
 select lives_ok(
     $$ select add_group_category(
+        null::uuid,
         '00000000-0000-0000-0000-000000000001'::uuid,
         jsonb_build_object('name', 'Platform Engineering')
     ) $$,
@@ -58,9 +59,36 @@ select results_eq(
     'Should store category name and generated normalized name'
 );
 
+-- Should create the expected audit row
+select results_eq(
+    $$
+        select
+            action,
+            actor_user_id,
+            actor_username,
+            community_id,
+            resource_type,
+            resource_id
+        from audit_log
+    $$,
+    $$
+        select
+            'group_category_added',
+            null::uuid,
+            null::text,
+            '00000000-0000-0000-0000-000000000001'::uuid,
+            'group_category',
+            group_category_id
+        from group_category
+        where community_id = '00000000-0000-0000-0000-000000000001'::uuid
+    $$,
+    'Should create the expected audit row'
+);
+
 -- Should not allow duplicate group category normalized name in same community
 select throws_ok(
     $$ select add_group_category(
+        null::uuid,
         '00000000-0000-0000-0000-000000000001'::uuid,
         jsonb_build_object('name', 'platform engineering')
     ) $$,

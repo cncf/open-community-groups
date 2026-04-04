@@ -1,5 +1,6 @@
 -- add_event adds a new event to the database.
 create or replace function add_event(
+    p_actor_user_id uuid,
     p_group_id uuid,
     p_event jsonb,
     p_cfg_max_participants jsonb default null
@@ -270,6 +271,17 @@ begin
             end if;
         end loop;
     end if;
+
+    -- Track the created event
+    perform insert_audit_log(
+        'event_added',
+        p_actor_user_id,
+        'event',
+        v_event_id,
+        (select community_id from "group" where group_id = p_group_id),
+        p_group_id,
+        v_event_id
+    );
 
     return v_event_id;
 end;

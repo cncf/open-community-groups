@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(2);
+select plan(3);
 
 -- ============================================================================
 -- VARIABLES
@@ -60,6 +60,30 @@ select is(
         'user_id', :'userID'::uuid
     ),
     'Should store proposal details'
+);
+
+-- Should create the expected audit row
+select results_eq(
+    $$
+        select
+            action,
+            actor_user_id,
+            actor_username,
+            resource_type,
+            resource_id
+        from audit_log
+    $$,
+    $$
+        select
+            'session_proposal_added',
+            '00000000-0000-0000-0000-000000000071'::uuid,
+            'alice',
+            'session_proposal',
+            session_proposal_id
+        from session_proposal
+        where title = 'Rust 101'
+    $$,
+    'Should create the expected audit row'
 );
 
 -- Should set ready-for-submission when no co-speaker is provided

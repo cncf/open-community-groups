@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(6);
+select plan(7);
 
 -- ============================================================================
 -- VARIABLES
@@ -53,7 +53,7 @@ values
 
 -- Should allow deleting an accepted member when another accepted member remains
 select lives_ok(
-    $$ select delete_group_team_member('00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000032'::uuid) $$,
+    $$ select delete_group_team_member(null::uuid, '00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000032'::uuid) $$,
     'Should allow deleting an accepted member when another accepted member exists'
 );
 select results_eq(
@@ -62,15 +62,42 @@ select results_eq(
     'Deleted accepted membership should be removed'
 );
 
+-- Should create the expected audit row
+select results_eq(
+    $$
+        select
+            action,
+            actor_user_id,
+            actor_username,
+            community_id,
+            group_id,
+            resource_type,
+            resource_id
+        from audit_log
+    $$,
+    $$
+        values (
+            'group_team_member_removed',
+            null::uuid,
+            null::text,
+            '00000000-0000-0000-0000-000000000001'::uuid,
+            '00000000-0000-0000-0000-000000000021'::uuid,
+            'user',
+            '00000000-0000-0000-0000-000000000032'::uuid
+        )
+    $$,
+    'Should create the expected audit row'
+);
+
 -- Should allow deleting a pending invitation when there is one accepted member left
 select lives_ok(
-    $$ select delete_group_team_member('00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000033'::uuid) $$,
+    $$ select delete_group_team_member(null::uuid, '00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000033'::uuid) $$,
     'Should allow deleting a pending invitation with only one accepted member left'
 );
 
 -- Should block deleting the last accepted member
 select throws_ok(
-    $$ select delete_group_team_member('00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000031'::uuid) $$,
+    $$ select delete_group_team_member(null::uuid, '00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000031'::uuid) $$,
     'cannot remove the last accepted group admin',
     'Should block deleting the last accepted member'
 );
@@ -82,7 +109,7 @@ select results_eq(
 
 -- Should raise error when deleting non-existing member
 select throws_ok(
-    $$ select delete_group_team_member('00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000034'::uuid) $$,
+    $$ select delete_group_team_member(null::uuid, '00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000034'::uuid) $$,
     'user is not a group team member',
     'Should raise error when deleting non-existing member'
 );

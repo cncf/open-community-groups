@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(4);
+select plan(5);
 
 -- ============================================================================
 -- VARIABLES
@@ -52,6 +52,7 @@ insert into group_category (
 -- Should update category name and generated normalized name
 select lives_ok(
     $$ select update_group_category(
+        null::uuid,
         '00000000-0000-0000-0000-000000000001'::uuid,
         '00000000-0000-0000-0000-000000000011'::uuid,
         jsonb_build_object('name', 'Lightning Talks')
@@ -70,9 +71,35 @@ select results_eq(
     'Should persist updated group category values'
 );
 
+-- Should create the expected audit row
+select results_eq(
+    $$
+        select
+            action,
+            actor_user_id,
+            actor_username,
+            community_id,
+            resource_type,
+            resource_id
+        from audit_log
+    $$,
+    $$
+        values (
+            'group_category_updated',
+            null::uuid,
+            null::text,
+            '00000000-0000-0000-0000-000000000001'::uuid,
+            'group_category',
+            '00000000-0000-0000-0000-000000000011'::uuid
+        )
+    $$,
+    'Should create the expected audit row'
+);
+
 -- Should reject duplicate normalized names in same community
 select throws_ok(
     $$ select update_group_category(
+        null::uuid,
         '00000000-0000-0000-0000-000000000001'::uuid,
         '00000000-0000-0000-0000-000000000011'::uuid,
         jsonb_build_object('name', 'Conference')
@@ -84,6 +111,7 @@ select throws_ok(
 -- Should fail when target category does not exist
 select throws_ok(
     $$ select update_group_category(
+        null::uuid,
         '00000000-0000-0000-0000-000000000001'::uuid,
         '00000000-0000-0000-0000-000000000099'::uuid,
         jsonb_build_object('name', 'Workshops')

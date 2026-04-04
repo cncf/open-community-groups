@@ -1,5 +1,6 @@
 -- Updates a group team member's role.
 create or replace function update_group_team_member_role(
+    p_actor_user_id uuid,
     p_group_id uuid,
     p_user_id uuid,
     p_role text
@@ -52,5 +53,17 @@ begin
             raise exception 'cannot change role for the last accepted group admin';
         end if;
     end if;
+
+    -- Track the role update
+    perform insert_audit_log(
+        'group_team_member_role_updated',
+        p_actor_user_id,
+        'user',
+        p_user_id,
+        (select community_id from "group" where group_id = p_group_id),
+        p_group_id,
+        null,
+        jsonb_build_object('role', p_role)
+    );
 end;
 $$ language plpgsql;

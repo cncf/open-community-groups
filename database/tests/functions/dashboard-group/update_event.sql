@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(66);
+select plan(67);
 
 -- ============================================================================
 -- VARIABLES
@@ -637,6 +637,7 @@ insert into event_cfs_label (event_cfs_label_id, event_id, color, name) values
 -- Should update basic fields and clear hosts/sponsors/sessions when not provided
 select lives_ok(
     $$select update_event(
+        null::uuid,
         '00000000-0000-0000-0000-000000000002'::uuid,
         '00000000-0000-0000-0000-000000000003'::uuid,
         '{
@@ -691,6 +692,35 @@ select is(
     'Should persist basic update and clear omitted hosts, sponsors, and sessions'
 );
 
+-- Should create the expected audit row
+select results_eq(
+    $$
+        select
+            action,
+            actor_user_id,
+            actor_username,
+            community_id,
+            group_id,
+            event_id,
+            resource_type,
+            resource_id
+        from audit_log
+    $$,
+    $$
+        values (
+            'event_updated',
+            null::uuid,
+            null::text,
+            '00000000-0000-0000-0000-000000000001'::uuid,
+            '00000000-0000-0000-0000-000000000002'::uuid,
+            '00000000-0000-0000-0000-000000000003'::uuid,
+            'event',
+            '00000000-0000-0000-0000-000000000003'::uuid
+        )
+    $$,
+    'Should create the expected audit row'
+);
+
 -- Should initialize meeting flags for requested event without sessions
 select is(
     (
@@ -711,6 +741,7 @@ select is(
 -- Should update all fields (excluding sessions) with full payload
 select lives_ok(
     $$select update_event(
+        null::uuid,
         '00000000-0000-0000-0000-000000000002'::uuid,
         '00000000-0000-0000-0000-000000000003'::uuid,
         '{
@@ -887,6 +918,7 @@ select is(
 -- Should clear CFS labels when payload omits cfs_labels
 select lives_ok(
     $$select update_event(
+        null::uuid,
         '00000000-0000-0000-0000-000000000002'::uuid,
         '00000000-0000-0000-0000-000000000014'::uuid,
         '{
@@ -916,6 +948,7 @@ select is(
 -- Should update CFS labels for an event
 select lives_ok(
     $$select update_event(
+        null::uuid,
         '00000000-0000-0000-0000-000000000002'::uuid,
         '00000000-0000-0000-0000-000000000020'::uuid,
         '{
@@ -994,6 +1027,7 @@ select is(
 -- Should throw error when group_id does not match
 select throws_ok(
     $$select update_event(
+        null::uuid,
         '00000000-0000-0000-0000-000000000099'::uuid,
         '00000000-0000-0000-0000-000000000003'::uuid,
         '{"name": "Won''t Work", "description": "This should fail", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person"}'::jsonb
@@ -1005,6 +1039,7 @@ select throws_ok(
 -- Should preserve meeting_in_sync=false when updating unrelated fields
 select lives_ok(
     $$select update_event(
+        null::uuid,
         '00000000-0000-0000-0000-000000000002'::uuid,
         '00000000-0000-0000-0000-000000000005'::uuid,
         '{
@@ -1031,6 +1066,7 @@ select is(
 -- Should keep meeting_in_sync=false when meeting_requested changes to false
 select lives_ok(
     $$select update_event(
+        null::uuid,
         '00000000-0000-0000-0000-000000000002'::uuid,
         '00000000-0000-0000-0000-000000000005'::uuid,
         '{
@@ -1055,6 +1091,7 @@ select is(
 -- Should preserve session meeting_in_sync=false when updating unrelated fields
 select lives_ok(
     $$select update_event(
+        null::uuid,
         '00000000-0000-0000-0000-000000000002'::uuid,
         '00000000-0000-0000-0000-000000000006'::uuid,
         '{
@@ -1090,6 +1127,7 @@ select is(
 -- Should keep session meeting_in_sync=false when meeting_requested changes to false
 select lives_ok(
     $$select update_event(
+        null::uuid,
         '00000000-0000-0000-0000-000000000002'::uuid,
         '00000000-0000-0000-0000-000000000006'::uuid,
         '{
@@ -1124,6 +1162,7 @@ select is(
 -- Should throw error when updating cancelled event
 select throws_ok(
     $$select update_event(
+        null::uuid,
         '00000000-0000-0000-0000-000000000002'::uuid,
         '00000000-0000-0000-0000-000000000004'::uuid,
         '{"name": "Try to Update Canceled", "description": "This should fail", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person"}'::jsonb
@@ -1135,6 +1174,7 @@ select throws_ok(
 -- Should throw error for invalid host user_id (FK violation)
 select throws_ok(
     $$select update_event(
+        null::uuid,
         '00000000-0000-0000-0000-000000000002'::uuid,
         '00000000-0000-0000-0000-000000000003'::uuid,
         '{"name": "Event with Invalid Host", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "hosts": ["99999999-9999-9999-9999-999999999999"]}'::jsonb
@@ -1147,6 +1187,7 @@ select throws_ok(
 -- Should throw error for invalid speaker user_id (FK violation)
 select throws_ok(
     $$select update_event(
+        null::uuid,
         '00000000-0000-0000-0000-000000000002'::uuid,
         '00000000-0000-0000-0000-000000000003'::uuid,
         '{"name": "Event with Invalid Speaker", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "speakers": [{"user_id": "99999999-9999-9999-9999-999999999999", "featured": false}]}'::jsonb
@@ -1164,6 +1205,7 @@ select ok(
 -- Update event without the session (removes it via cascade)
 select lives_ok(
     $$select update_event(
+        null::uuid,
         '00000000-0000-0000-0000-000000000002'::uuid,
         '00000000-0000-0000-0000-000000000007'::uuid,
         '{
@@ -1194,6 +1236,7 @@ select is(
 -- Should throw error when event ends_at is in the past
 select throws_ok(
     $$select update_event(
+        null::uuid,
         '00000000-0000-0000-0000-000000000002'::uuid,
         '00000000-0000-0000-0000-000000000003'::uuid,
         '{"name": "Past End Event", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "ends_at": "2020-01-01T12:00:00"}'::jsonb
@@ -1205,6 +1248,7 @@ select throws_ok(
 -- Should throw error when session ends_at is in the past
 select throws_ok(
     $$select update_event(
+        null::uuid,
         '00000000-0000-0000-0000-000000000002'::uuid,
         '00000000-0000-0000-0000-000000000003'::uuid,
         '{"name": "Session Past End", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "starts_at": "2030-01-01T10:00:00", "sessions": [{"name": "Past End Session", "starts_at": "2030-01-01T10:00:00", "ends_at": "2020-01-01T11:00:00", "kind": "in-person"}]}'::jsonb
@@ -1216,6 +1260,7 @@ select throws_ok(
 -- Should throw error when event ends_at is before starts_at
 select throws_like(
     $$select update_event(
+        null::uuid,
         '00000000-0000-0000-0000-000000000002'::uuid,
         '00000000-0000-0000-0000-000000000003'::uuid,
         '{"name": "Invalid Range Event", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "starts_at": "2030-01-01T12:00:00", "ends_at": "2030-01-01T10:00:00"}'::jsonb
@@ -1227,6 +1272,7 @@ select throws_like(
 -- Should throw error when session ends_at is before starts_at
 select throws_like(
     $$select update_event(
+        null::uuid,
         '00000000-0000-0000-0000-000000000002'::uuid,
         '00000000-0000-0000-0000-000000000003'::uuid,
         '{"name": "Invalid Session Range", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "starts_at": "2030-01-01T10:00:00", "sessions": [{"name": "Invalid Session", "starts_at": "2030-01-01T12:00:00", "ends_at": "2030-01-01T10:00:00", "kind": "in-person"}]}'::jsonb
@@ -1238,6 +1284,7 @@ select throws_like(
 -- Should throw error when event ends_at is set without starts_at
 select throws_like(
     $$select update_event(
+        null::uuid,
         '00000000-0000-0000-0000-000000000002'::uuid,
         '00000000-0000-0000-0000-000000000003'::uuid,
         '{"name": "No Start Event", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "ends_at": "2030-01-01T12:00:00"}'::jsonb
@@ -1249,6 +1296,7 @@ select throws_like(
 -- Should succeed with event ends_at null when starts_at is null
 select lives_ok(
     $$select update_event(
+        null::uuid,
         '00000000-0000-0000-0000-000000000002'::uuid,
         '00000000-0000-0000-0000-000000000003'::uuid,
         '{"name": "No Dates Event", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person"}'::jsonb
@@ -1259,6 +1307,7 @@ select lives_ok(
 -- Should succeed with session ends_at null when starts_at is set
 select lives_ok(
     $$select update_event(
+        null::uuid,
         '00000000-0000-0000-0000-000000000002'::uuid,
         '00000000-0000-0000-0000-000000000003'::uuid,
         '{"name": "Session No End", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "starts_at": "2030-01-01T10:00:00", "sessions": [{"name": "No End Session", "starts_at": "2030-01-01T10:00:00", "kind": "in-person"}]}'::jsonb
@@ -1269,6 +1318,7 @@ select lives_ok(
 -- Should succeed with valid future dates for event and sessions
 select lives_ok(
     $$select update_event(
+        null::uuid,
         '00000000-0000-0000-0000-000000000002'::uuid,
         '00000000-0000-0000-0000-000000000003'::uuid,
         '{"name": "Future Event", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "starts_at": "2030-01-01T10:00:00", "ends_at": "2030-01-01T12:00:00", "sessions": [{"name": "Future Session", "starts_at": "2030-01-01T10:00:00", "ends_at": "2030-01-01T11:00:00", "kind": "in-person"}]}'::jsonb
@@ -1279,6 +1329,7 @@ select lives_ok(
 -- Should throw error when session starts_at is before event starts_at
 select throws_ok(
     $$select update_event(
+        null::uuid,
         '00000000-0000-0000-0000-000000000002'::uuid,
         '00000000-0000-0000-0000-000000000003'::uuid,
         '{"name": "Session Before Event", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "starts_at": "2030-01-01T10:00:00", "ends_at": "2030-01-01T12:00:00", "sessions": [{"name": "Early Session", "starts_at": "2030-01-01T09:00:00", "ends_at": "2030-01-01T10:30:00", "kind": "in-person"}]}'::jsonb
@@ -1290,6 +1341,7 @@ select throws_ok(
 -- Should throw error when session starts_at is after event ends_at
 select throws_ok(
     $$select update_event(
+        null::uuid,
         '00000000-0000-0000-0000-000000000002'::uuid,
         '00000000-0000-0000-0000-000000000003'::uuid,
         '{"name": "Session After Event", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "starts_at": "2030-01-01T10:00:00", "ends_at": "2030-01-01T12:00:00", "sessions": [{"name": "Late Session", "starts_at": "2030-01-01T13:00:00", "ends_at": "2030-01-01T14:00:00", "kind": "in-person"}]}'::jsonb
@@ -1301,6 +1353,7 @@ select throws_ok(
 -- Should throw error when session ends_at is after event ends_at
 select throws_ok(
     $$select update_event(
+        null::uuid,
         '00000000-0000-0000-0000-000000000002'::uuid,
         '00000000-0000-0000-0000-000000000003'::uuid,
         '{"name": "Session Exceeds Event", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "starts_at": "2030-01-01T10:00:00", "ends_at": "2030-01-01T12:00:00", "sessions": [{"name": "Long Session", "starts_at": "2030-01-01T11:00:00", "ends_at": "2030-01-01T13:00:00", "kind": "in-person"}]}'::jsonb
@@ -1312,6 +1365,7 @@ select throws_ok(
 -- Should succeed when session is within event bounds
 select lives_ok(
     $$select update_event(
+        null::uuid,
         '00000000-0000-0000-0000-000000000002'::uuid,
         '00000000-0000-0000-0000-000000000003'::uuid,
         '{"name": "Session Within Bounds", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "starts_at": "2030-01-01T10:00:00", "ends_at": "2030-01-01T14:00:00", "sessions": [{"name": "Valid Session", "starts_at": "2030-01-01T11:00:00", "ends_at": "2030-01-01T12:00:00", "kind": "in-person"}]}'::jsonb
@@ -1322,6 +1376,7 @@ select lives_ok(
 -- Should update all fields on past events
 select lives_ok(
     $$select update_event(
+        null::uuid,
         '00000000-0000-0000-0000-000000000002'::uuid,
         '00000000-0000-0000-0000-000000000008'::uuid,
         '{
@@ -1498,6 +1553,7 @@ select is(
 -- Should throw error when past event ends_at is in the future
 select throws_ok(
     $$select update_event(
+        null::uuid,
         '00000000-0000-0000-0000-000000000002'::uuid,
         '00000000-0000-0000-0000-000000000008'::uuid,
         '{"name": "Future Past Event", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000012", "kind_id": "virtual", "starts_at": "2020-01-02T10:00:00", "ends_at": "2099-01-02T12:30:00"}'::jsonb
@@ -1509,6 +1565,7 @@ select throws_ok(
 -- Should throw error when past event session starts_at is in the future
 select throws_ok(
     $$select update_event(
+        null::uuid,
         '00000000-0000-0000-0000-000000000002'::uuid,
         '00000000-0000-0000-0000-000000000008'::uuid,
         '{"name": "Future Past Session", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000012", "kind_id": "virtual", "starts_at": "2020-01-02T10:00:00", "ends_at": "2020-01-02T12:30:00", "sessions": [{"name": "Future Session", "starts_at": "2099-01-02T10:30:00", "ends_at": "2020-01-02T11:30:00", "kind": "virtual"}]}'::jsonb
@@ -1520,6 +1577,7 @@ select throws_ok(
 -- Should throw error when past event session ends_at is in the future
 select throws_ok(
     $$select update_event(
+        null::uuid,
         '00000000-0000-0000-0000-000000000002'::uuid,
         '00000000-0000-0000-0000-000000000008'::uuid,
         '{"name": "Future Past Session", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000012", "kind_id": "virtual", "starts_at": "2020-01-02T10:00:00", "ends_at": "2020-01-02T12:30:00", "sessions": [{"name": "Future Session", "starts_at": "2020-01-02T10:30:00", "ends_at": "2099-01-02T11:30:00", "kind": "virtual"}]}'::jsonb
@@ -1532,6 +1590,7 @@ select throws_ok(
 select lives_ok(
     format(
         $$select update_event(
+            null::uuid,
             '%s'::uuid,
             '%s'::uuid,
             jsonb_build_object(
@@ -1553,6 +1612,7 @@ select lives_ok(
 select lives_ok(
     format(
         $$select update_event(
+            null::uuid,
             '%s'::uuid,
             '%s'::uuid,
             jsonb_build_object(
@@ -1573,6 +1633,7 @@ select lives_ok(
 -- Should throw error when capacity is reduced below attendee count
 select throws_ok(
     $$select update_event(
+        null::uuid,
         '00000000-0000-0000-0000-000000000002'::uuid,
         '00000000-0000-0000-0000-000000000016'::uuid,
         '{"name": "Capacity Validation Event", "description": "Test", "timezone": "America/New_York", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "capacity": 2}'::jsonb
@@ -1584,6 +1645,7 @@ select throws_ok(
 -- Should succeed when capacity equals attendee count
 select lives_ok(
     $$select update_event(
+        null::uuid,
         '00000000-0000-0000-0000-000000000002'::uuid,
         '00000000-0000-0000-0000-000000000016'::uuid,
         '{"name": "Capacity Validation Event", "description": "Test capacity equals", "timezone": "America/New_York", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "capacity": 3}'::jsonb
@@ -1594,6 +1656,7 @@ select lives_ok(
 -- Should succeed when capacity exceeds attendee count
 select lives_ok(
     $$select update_event(
+        null::uuid,
         '00000000-0000-0000-0000-000000000002'::uuid,
         '00000000-0000-0000-0000-000000000016'::uuid,
         '{"name": "Capacity Validation Event", "description": "Test capacity exceeds", "timezone": "America/New_York", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "capacity": 100}'::jsonb
@@ -1604,6 +1667,7 @@ select lives_ok(
 -- Should promote waitlisted users when increasing capacity on a waitlist-enabled event
 select is(
     update_event(
+        null::uuid,
         :'group1ID'::uuid,
         :'event15ID'::uuid,
         '{
@@ -1648,6 +1712,7 @@ select is(
 -- Should promote waitlisted users for a published dateless event when capacity increases
 select is(
     update_event(
+        null::uuid,
         :'group1ID'::uuid,
         :'event13ID'::uuid,
         format(
@@ -1693,6 +1758,7 @@ select is(
 -- Should continue promoting queued users when waitlist is disabled for new joins
 select is(
     update_event(
+        null::uuid,
         :'group1ID'::uuid,
         :'event16ID'::uuid,
         format(
@@ -1722,6 +1788,7 @@ select is(
 -- Should promote all queued users when capacity becomes unlimited
 select is(
     update_event(
+        null::uuid,
         :'group1ID'::uuid,
         :'event17ID'::uuid,
         format(
@@ -1768,6 +1835,7 @@ select is(
 select lives_ok(
     format(
         $$select update_event(
+            null::uuid,
             '%s'::uuid,
             '%s'::uuid,
             jsonb_build_object(
@@ -1797,6 +1865,7 @@ select is(
 select lives_ok(
     format(
         $$select update_event(
+            null::uuid,
             '%s'::uuid,
             '%s'::uuid,
             jsonb_build_object(

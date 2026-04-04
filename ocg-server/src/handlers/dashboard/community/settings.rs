@@ -49,12 +49,14 @@ pub(crate) async fn update_page(
 /// Updates community settings in the database.
 #[instrument(skip_all, err)]
 pub(crate) async fn update(
+    CurrentUser(user): CurrentUser,
     SelectedCommunityId(community_id): SelectedCommunityId,
     State(db): State<DynDB>,
     ValidatedFormQs(community_update): ValidatedFormQs<CommunityUpdate>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Update community in database
-    db.update_community(community_id, &community_update).await?;
+    db.update_community(user.user_id, community_id, &community_update)
+        .await?;
 
     Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-body")]).into_response())
 }

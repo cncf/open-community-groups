@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(55);
+select plan(56);
 
 -- ============================================================================
 -- TESTS
@@ -13,6 +13,16 @@ select plan(55);
 select indexes_are('attachment', array[
     'attachment_pkey',
     'attachment_hash_idx'
+]);
+
+-- Test: audit_log indexes should match expected
+select indexes_are('audit_log', array[
+    'audit_log_pkey',
+    'audit_log_actor_user_id_created_at_idx',
+    'audit_log_community_id_created_at_idx',
+    'audit_log_created_at_idx',
+    'audit_log_group_id_created_at_idx',
+    'audit_log_resource_type_resource_id_created_at_idx'
 ]);
 
 -- Test: auth_session indexes should match expected

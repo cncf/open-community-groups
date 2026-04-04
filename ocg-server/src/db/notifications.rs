@@ -38,6 +38,7 @@ pub(crate) trait DBNotifications {
         created_by: Uuid,
         event_id: Option<Uuid>,
         group_id: Option<Uuid>,
+        recipient_count: usize,
         subject: &str,
         body: &str,
     ) -> Result<()>;
@@ -182,6 +183,44 @@ impl DBNotifications for PgDB {
         Ok(Some(notification))
     }
 
+    #[instrument(skip(self), err)]
+    async fn track_custom_notification(
+        &self,
+        created_by: Uuid,
+        event_id: Option<Uuid>,
+        group_id: Option<Uuid>,
+        recipient_count: usize,
+        subject: &str,
+        body: &str,
+    ) -> Result<()> {
+        // Convert recipient count to the database integer type
+        let recipient_count =
+            i32::try_from(recipient_count).map_err(|_| anyhow!("recipient count cannot exceed i32::MAX"))?;
+
+        // Store the custom notification and corresponding audit entry
+        self.execute(
+            "
+            select track_custom_notification(
+                $1::uuid,
+                $2::uuid,
+                $3::uuid,
+                $4::int,
+                $5::text,
+                $6::text
+            );
+            ",
+            &[
+                &created_by,
+                &event_id,
+                &group_id,
+                &recipient_count,
+                &subject,
+                &body,
+            ],
+        )
+        .await
+    }
+
     /// Updates the notification record after processing, marking it as processed and
     /// recording any error.
     #[instrument(skip(self, notification), err)]
@@ -191,40 +230,19 @@ impl DBNotifications for PgDB {
         notification: &Notification,
         error: Option<String>,
     ) -> Result<()> {
+        // Get transaction client
         let tx = self.tx_client(client_id).await?;
 
+        // Mark the notification as processed
         tx.execute(
             "
-            update notification set
-                processed = true,
-                processed_at = current_timestamp,
-                error = $2::text
-            where notification_id = $1::uuid;
+            select update_notification($1::uuid, $2::text);
             ",
             &[&notification.notification_id, &error],
         )
         .await?;
 
         Ok(())
-    }
-
-    #[instrument(skip(self), err)]
-    async fn track_custom_notification(
-        &self,
-        created_by: Uuid,
-        event_id: Option<Uuid>,
-        group_id: Option<Uuid>,
-        subject: &str,
-        body: &str,
-    ) -> Result<()> {
-        self.execute(
-            "
-            insert into custom_notification (created_by, event_id, group_id, subject, body)
-            values ($1, $2, $3, $4, $5);
-            ",
-            &[&created_by, &event_id, &group_id, &subject, &body],
-        )
-        .await
     }
 }
 

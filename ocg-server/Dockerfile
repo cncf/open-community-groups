@@ -9,7 +9,7 @@ COPY docs docs
 COPY ocg-redirector/Cargo.* ocg-redirector
 COPY ocg-server ocg-server
 WORKDIR /ocg/ocg-server
-RUN cargo build --release
+RUN cargo build --locked --release
 
 # Final stage
 FROM alpine:3.23.3

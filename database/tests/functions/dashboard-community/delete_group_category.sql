@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(4);
+select plan(5);
 
 -- ============================================================================
 -- VARIABLES
@@ -68,6 +68,7 @@ insert into "group" (
 -- Should block deleting category that is still referenced by groups
 select throws_ok(
     $$ select delete_group_category(
+        null::uuid,
         '00000000-0000-0000-0000-000000000001'::uuid,
         '00000000-0000-0000-0000-000000000011'::uuid
     ) $$,
@@ -78,6 +79,7 @@ select throws_ok(
 -- Should delete category with no group references
 select lives_ok(
     $$ select delete_group_category(
+        null::uuid,
         '00000000-0000-0000-0000-000000000001'::uuid,
         '00000000-0000-0000-0000-000000000012'::uuid
     ) $$,
@@ -93,9 +95,35 @@ select results_eq(
     'Unused group category should be deleted'
 );
 
+-- Should create the expected audit row
+select results_eq(
+    $$
+        select
+            action,
+            actor_user_id,
+            actor_username,
+            community_id,
+            resource_type,
+            resource_id
+        from audit_log
+    $$,
+    $$
+        values (
+            'group_category_deleted',
+            null::uuid,
+            null::text,
+            '00000000-0000-0000-0000-000000000001'::uuid,
+            'group_category',
+            '00000000-0000-0000-0000-000000000012'::uuid
+        )
+    $$,
+    'Should create the expected audit row'
+);
+
 -- Should fail when target category does not exist
 select throws_ok(
     $$ select delete_group_category(
+        null::uuid,
         '00000000-0000-0000-0000-000000000001'::uuid,
         '00000000-0000-0000-0000-000000000099'::uuid
     ) $$,

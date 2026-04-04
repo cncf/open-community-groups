@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(4);
+select plan(5);
 
 -- ============================================================================
 -- VARIABLES
@@ -41,6 +41,7 @@ insert into community (
 -- Should create a new event category and auto-generate slug
 select lives_ok(
     $$ select add_event_category(
+        null::uuid,
         '00000000-0000-0000-0000-000000000001'::uuid,
         jsonb_build_object('name', 'Cloud Native Meetup')
     ) $$,
@@ -58,9 +59,36 @@ select results_eq(
     'Should store category name and generated slug'
 );
 
+-- Should create the expected audit row
+select results_eq(
+    $$
+        select
+            action,
+            actor_user_id,
+            actor_username,
+            community_id,
+            resource_type,
+            resource_id
+        from audit_log
+    $$,
+    $$
+        select
+            'event_category_added',
+            null::uuid,
+            null::text,
+            '00000000-0000-0000-0000-000000000001'::uuid,
+            'event_category',
+            event_category_id
+        from event_category
+        where community_id = '00000000-0000-0000-0000-000000000001'::uuid
+    $$,
+    'Should create the expected audit row'
+);
+
 -- Should not allow duplicate event category slug in same community
 select throws_ok(
     $$ select add_event_category(
+        null::uuid,
         '00000000-0000-0000-0000-000000000001'::uuid,
         jsonb_build_object('name', 'cloud native meetup')
     ) $$,
@@ -71,6 +99,7 @@ select throws_ok(
 -- Should reject names that generate an empty slug
 select throws_ok(
     $$ select add_event_category(
+        null::uuid,
         '00000000-0000-0000-0000-000000000001'::uuid,
         jsonb_build_object('name', '!!!')
     ) $$,

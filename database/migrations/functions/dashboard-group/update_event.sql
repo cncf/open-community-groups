@@ -1,5 +1,6 @@
 -- update_event updates an existing event in the database.
 create or replace function update_event(
+    p_actor_user_id uuid,
     p_group_id uuid,
     p_event_id uuid,
     p_event jsonb,
@@ -209,6 +210,22 @@ begin
 
     -- Synchronize event sessions and speakers
     perform sync_event_sessions(p_event_id, p_event, v_event_before);
+
+    -- Track the updated event
+    perform insert_audit_log(
+        'event_updated',
+        p_actor_user_id,
+        'event',
+        p_event_id,
+        (
+            select g.community_id
+            from event e
+            join "group" g on g.group_id = e.group_id
+            where e.event_id = p_event_id
+        ),
+        p_group_id,
+        p_event_id
+    );
 
     return v_promoted_user_ids;
 end;
