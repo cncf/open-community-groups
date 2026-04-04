@@ -540,29 +540,19 @@ input:placeholder-shown {
 /* End tooltip */
 
 .audit-log-details-popover {
-  max-width: min(18rem, calc(100vw - 2rem));
-  width: 18rem;
+  max-width: 90vw;
+  width: min(24rem, 90vw);
 }
 
-.audit-log-details-popover::before,
 .audit-log-details-popover::after {
   border: 6px solid transparent;
   content: "";
   height: 0;
   position: absolute;
-  right: 0.5rem;
+  right: 0.625rem;
   width: 0;
-}
-
-.audit-log-details-popover::before {
-  border-bottom-color: white;
-  top: 1px;
-  z-index: 1;
-}
-
-.audit-log-details-popover::after {
   border-bottom-color: rgb(231, 229, 228);
-  top: -1px;
+  top: 1px;
 }
 
 .audit-log-details-card {
@@ -573,6 +563,23 @@ input:placeholder-shown {
     rgba(15, 23, 42, 0.08) 0 18px 38px -18px,
     rgba(15, 23, 42, 0.12) 0 12px 20px -14px;
   overflow: hidden;
+}
+
+.audit-log-row:nth-last-child(-n+4) .audit-log-details-popover {
+  bottom: 100%;
+  padding-bottom: 0.75rem;
+  padding-top: 0;
+  top: auto;
+}
+
+.audit-log-row:nth-last-child(-n+4) .audit-log-details-popover::after {
+  top: auto;
+}
+
+.audit-log-row:nth-last-child(-n+4) .audit-log-details-popover::after {
+  border-bottom-color: transparent;
+  border-top-color: rgb(231, 229, 228);
+  bottom: 1px;
 }
 
 /* Icons */
