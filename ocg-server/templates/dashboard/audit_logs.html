@@ -95,12 +95,21 @@
     <tbody role="rowgroup">
       {% if logs.is_empty() -%}
         <tr class="bg-white border-b border-stone-200">
-          <td class="px-8 py-12 text-center text-stone-600"
-              colspan="{% if show_actor %}
-                         5
-                       {% else %}
-                         4
-                       {% endif %}">No audit log entries found for the current filters.</td>
+          {% if show_actor -%}
+            <td class="xl:hidden px-8 py-12 text-center" colspan="4">
+              {% include "dashboard/placeholders/audit_logs_table.html" -%}
+            </td>
+            <td class="hidden xl:table-cell px-8 py-12 text-center" colspan="5">
+              {% include "dashboard/placeholders/audit_logs_table.html" -%}
+            </td>
+          {% else -%}
+            <td class="xl:hidden px-8 py-12 text-center" colspan="3">
+              {% include "dashboard/placeholders/audit_logs_table.html" -%}
+            </td>
+            <td class="hidden xl:table-cell px-8 py-12 text-center" colspan="4">
+              {% include "dashboard/placeholders/audit_logs_table.html" -%}
+            </td>
+          {% endif -%}
         </tr>
       {% else -%}
         {% for log in logs -%}
