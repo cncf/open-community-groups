@@ -3,77 +3,22 @@
 
 {{ dashboard::page_title(title = "Logs", docs_href = docs_href, description = page_description) -}}
 
-<div class="mt-6 rounded-xl border border-stone-200 bg-stone-50 p-4 lg:p-5">
-  <form hx-get="{{ filter_url }}"
-        hx-indicator="#dashboard-spinner"
-        hx-swap="innerHTML"
-        hx-target="#dashboard-content"
-        class="grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_180px_180px_220px_auto]">
-    <div>
-      <label for="audit-action" class="form-label">Action</label>
-      <select id="audit-action" name="action" class="select select-primary mt-2">
-        <option value="">All actions</option>
-        {% for option in action_options -%}
-          <option value="{{ option.value }}"
-                  {% if option.selected %}selected{% endif %}>{{ option.label }}</option>
-        {% endfor -%}
-      </select>
-    </div>
-
-    {% if show_actor -%}
-      <div>
-        <label for="audit-actor" class="form-label">Actor</label>
-        <input id="audit-actor"
-               type="text"
-               name="actor"
-               value="{{ actor_value.as_deref().unwrap_or_default() }}"
-               class="input-primary mt-2"
-               placeholder="Filter by username">
-      </div>
-    {% endif -%}
-
-    <div>
-      <label for="audit-date-from" class="form-label">From</label>
-      <input id="audit-date-from"
-             type="date"
-             name="date_from"
-             value="{{ date_from_value.as_deref().unwrap_or_default() }}"
-             class="input-primary mt-2">
-    </div>
-
-    <div>
-      <label for="audit-date-to" class="form-label">To</label>
-      <input id="audit-date-to"
-             type="date"
-             name="date_to"
-             value="{{ date_to_value.as_deref().unwrap_or_default() }}"
-             class="input-primary mt-2">
-    </div>
-
-    <div>
-      <label for="audit-sort" class="form-label">Sort by</label>
-      <select id="audit-sort" name="sort" class="select select-primary mt-2">
-        <option value="created-desc"
-                {% if sort_value == "created-desc" %}selected{% endif %}>Newest first</option>
-        <option value="created-asc"
-                {% if sort_value == "created-asc" %}selected{% endif %}>Oldest first</option>
-      </select>
-    </div>
-
-    <div class="flex items-end gap-3">
-      <button type="submit" class="btn-primary">Apply</button>
-      <a href="{{ reset_url }}"
-         hx-get="{{ filter_url }}"
-         hx-indicator="#dashboard-spinner"
-         hx-swap="innerHTML"
-         hx-target="#dashboard-content"
-         class="btn-primary-outline">Reset</a>
-    </div>
-  </form>
-</div>
-
-<div class="mt-5 text-sm text-stone-600">
-  {{ pagination::range_display(offset = offset.unwrap_or(0) , count = logs.len(), total = total, label = "log") }}
+<div class="mt-5 flex items-center justify-between gap-3">
+  <div class="text-sm text-stone-600">
+    {{ pagination::range_display(offset = offset.unwrap_or(0) , count = logs.len(), total = total, label = "log") }}
+  </div>
+  <div class="relative">
+    <button id="open-audit-log-filters-modal"
+            type="button"
+            class="btn-primary inline-flex items-center gap-2 px-4">
+      <span class="inline-flex items-center justify-center">
+        <div class="svg-icon size-4 bg-white icon-filter"></div>
+      </span>
+      <span>Filters</span>
+    </button>
+    <span id="audit-log-filters-active-indicator"
+          class="hidden absolute -right-0.5 -top-0.5 size-3 rounded-full border-2 border-white bg-primary-700"></span>
+  </div>
 </div>
 
 <div class="relative mt-5 overflow-visible">
@@ -155,25 +100,25 @@
                     <div class="border-b border-stone-200 bg-stone-50 px-4 py-3">
                       <div class="text-sm font-semibold text-stone-900">Log details</div>
                     </div>
-                    <div class="divide-y divide-stone-100 px-4 py-1.5">
-                      <div class="grid grid-cols-[max-content_minmax(0,1fr)] items-start gap-x-4 gap-y-1 py-3 xl:hidden">
-                        <div class="whitespace-nowrap text-[11px] font-semibold uppercase tracking-[0.14em] text-stone-500">
+                    <div class="divide-y divide-stone-100 px-4 py-1">
+                      <div class="grid grid-cols-[5.75rem_minmax(0,1fr)] items-center gap-x-4 py-2.5 xl:hidden">
+                        <div class="whitespace-nowrap text-[11px]/5 font-semibold uppercase tracking-[0.14em] text-stone-500">
                           Target
                         </div>
-                        <div class="min-w-0 break-words text-sm leading-6 text-stone-900">{{ log.resource_display_name }}</div>
+                        <div class="min-w-0 break-words text-sm/5 font-medium text-stone-900">{{ log.resource_display_name }}</div>
                       </div>
-                      <div class="grid grid-cols-[max-content_minmax(0,1fr)] items-start gap-x-4 gap-y-1 py-3 xl:hidden">
-                        <div class="whitespace-nowrap text-[11px] font-semibold uppercase tracking-[0.14em] text-stone-500">
+                      <div class="grid grid-cols-[5.75rem_minmax(0,1fr)] items-center gap-x-4 py-2.5 xl:hidden">
+                        <div class="whitespace-nowrap text-[11px]/5 font-semibold uppercase tracking-[0.14em] text-stone-500">
                           Type
                         </div>
-                        <div class="min-w-0 break-words text-sm leading-6 text-stone-900">{{ log.resource_type_label }}</div>
+                        <div class="min-w-0 break-words text-sm/5 font-medium text-stone-900">{{ log.resource_type_label }}</div>
                       </div>
                       {% for detail in log.details -%}
-                        <div class="grid grid-cols-[max-content_minmax(0,1fr)] items-start gap-x-4 gap-y-1 py-3">
-                          <div class="whitespace-nowrap text-[11px] font-semibold uppercase tracking-[0.14em] text-stone-500">
+                        <div class="grid grid-cols-[5.75rem_minmax(0,1fr)] items-center gap-x-4 py-2.5">
+                          <div class="whitespace-nowrap text-[11px]/5 font-semibold uppercase tracking-[0.14em] text-stone-500">
                             {{ detail.key_label }}
                           </div>
-                          <div class="min-w-0 break-words text-sm leading-6 text-stone-900">{{ detail.value }}</div>
+                          <div class="min-w-0 break-words text-sm/5 font-medium text-stone-900">{{ detail.value }}</div>
                         </div>
                       {% endfor -%}
                     </div>
@@ -191,3 +136,149 @@
 {% if total > logs.len() -%}
   {{ pagination::navigation_links(links = navigation_links, hx_target = "#dashboard-content", hx_indicator = "#dashboard-spinner") }}
 {% endif -%}
+
+<div id="audit-log-filters-modal"
+     role="dialog"
+     aria-modal="true"
+     aria-labelledby="audit-log-filters-modal-title"
+     class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 h-full max-h-full flex z-[1000]">
+  <div id="overlay-audit-log-filters-modal"
+       class="modal-overlay absolute w-full h-full bg-stone-950 opacity-[0.35]"></div>
+  <div class="modal-panel p-4 max-w-3xl">
+    <div class="modal-card rounded-lg">
+      <div class="flex items-center justify-between p-4 md:p-5 border-b border-stone-200 rounded-t">
+        <h3 id="audit-log-filters-modal-title"
+            class="text-xl font-semibold text-stone-900">Filter logs</h3>
+        <button id="close-audit-log-filters-modal"
+                type="button"
+                class="group text-stone-400 bg-transparent hover:bg-stone-200 hover:text-stone-900 transition-colors rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center">
+          <div class="svg-icon w-5 h-5 bg-stone-500 group-hover:bg-stone-900 transition-colors icon-close"></div>
+          <span class="sr-only">Close modal</span>
+        </button>
+      </div>
+      <div class="modal-body p-4 md:p-8">
+        <form id="audit-log-filters-form"
+              hx-get="{{ filter_url }}"
+              hx-indicator="#dashboard-spinner"
+              hx-swap="innerHTML"
+              hx-target="#dashboard-content"
+              hx-ext="no-empty-vals">
+          <div class="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+            <div>
+              <label for="audit-action" class="form-label">Action</label>
+              <select id="audit-action" name="action" class="select select-primary mt-2">
+                <option value="">All actions</option>
+                {% for option in action_options -%}
+                  <option value="{{ option.value }}"
+                          {% if option.selected %}selected{% endif %}>{{ option.label }}</option>
+                {% endfor -%}
+              </select>
+            </div>
+
+            {% if show_actor -%}
+              <div>
+                <label for="audit-actor" class="form-label">Actor</label>
+                <input id="audit-actor"
+                       type="text"
+                       name="actor"
+                       value="{{ actor_value.as_deref().unwrap_or_default() }}"
+                       class="input-primary mt-2"
+                       placeholder="Filter by username">
+              </div>
+            {% endif -%}
+
+            <div>
+              <label for="audit-date-from" class="form-label">From</label>
+              <input id="audit-date-from"
+                     type="date"
+                     name="date_from"
+                     value="{{ date_from_value.as_deref().unwrap_or_default() }}"
+                     class="input-primary mt-2">
+            </div>
+
+            <div>
+              <label for="audit-date-to" class="form-label">To</label>
+              <input id="audit-date-to"
+                     type="date"
+                     name="date_to"
+                     value="{{ date_to_value.as_deref().unwrap_or_default() }}"
+                     class="input-primary mt-2">
+            </div>
+
+            <div class="{% if show_actor %}xl:col-span-2{% endif %}">
+              <label for="audit-sort" class="form-label">Sort by</label>
+              <select id="audit-sort" name="sort" class="select select-primary mt-2">
+                <option value="created-desc"
+                        {% if sort_value == "created-desc" %}selected{% endif %}>Newest first</option>
+                <option value="created-asc"
+                        {% if sort_value == "created-asc" %}selected{% endif %}>Oldest first</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="mt-6 flex justify-end gap-3 border-t border-stone-200 pt-6">
+            <a id="reset-audit-log-filters"
+               href="{{ reset_url }}"
+               hx-get="{{ filter_url }}"
+               hx-indicator="#dashboard-spinner"
+               hx-swap="innerHTML"
+               hx-target="#dashboard-content"
+               class="btn-primary-outline">Reset</a>
+            <button type="submit" class="btn-primary">Apply</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import {
+    toggleModalVisibility
+  } from "/static/js/common/common.js";
+
+  const modalId = "audit-log-filters-modal";
+  const modal = document.getElementById(modalId);
+  const openButton = document.getElementById("open-audit-log-filters-modal");
+  const activeIndicator = document.getElementById("audit-log-filters-active-indicator");
+  const closeButton = document.getElementById("close-audit-log-filters-modal");
+  const overlay = document.getElementById("overlay-audit-log-filters-modal");
+  const form = document.getElementById("audit-log-filters-form");
+  const resetButton = document.getElementById("reset-audit-log-filters");
+  const actionFilter = document.getElementById("audit-action");
+  const actorFilter = document.getElementById("audit-actor");
+  const dateFromFilter = document.getElementById("audit-date-from");
+  const dateToFilter = document.getElementById("audit-date-to");
+
+  if (modal && modal.dataset.bound !== "true") {
+    modal.dataset.bound = "true";
+
+    const hasActiveFilters = () => [actionFilter, actorFilter, dateFromFilter, dateToFilter].some((field) => field?.value.trim());
+
+    const syncActiveFiltersIndicator = () => {
+      const active = hasActiveFilters();
+
+      activeIndicator?.classList.toggle("hidden", !active);
+      openButton?.setAttribute("aria-pressed", String(active));
+    };
+
+    const closeModal = () => {
+      if (!modal.classList.contains("hidden")) {
+        toggleModalVisibility(modalId);
+      }
+    };
+
+    openButton?.addEventListener("click", () => toggleModalVisibility(modalId));
+    closeButton?.addEventListener("click", closeModal);
+    overlay?.addEventListener("click", closeModal);
+    form?.addEventListener("submit", closeModal);
+    resetButton?.addEventListener("click", closeModal);
+    syncActiveFiltersIndicator();
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && !modal.classList.contains("hidden")) {
+        closeModal();
+      }
+    });
+  }
+</script>
