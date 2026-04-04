@@ -129,20 +129,32 @@
               {% if log.details.is_empty() -%}
                 <span class="text-stone-500">-</span>
               {% else -%}
-                <button type="button"
-                        popovertarget="{{ log.details_popover_id }}"
-                        class="btn-primary-outline px-3 py-1.5 text-xs">View</button>
-                <div id="{{ log.details_popover_id }}"
-                     popover
-                     class="w-80 max-w-[calc(100vw-2rem)] rounded-xl border border-stone-200 bg-white p-4 text-left text-sm text-stone-700 shadow-xl backdrop:bg-stone-950/30">
-                  <div class="mb-3 text-sm font-semibold text-stone-900">Log details</div>
-                  <div class="space-y-3">
-                    {% for detail in log.details -%}
-                      <div class="border-b border-stone-100 pb-3 last:border-b-0 last:pb-0">
-                        <div class="text-xs font-semibold uppercase tracking-wide text-stone-500">{{ detail.key_label }}</div>
-                        <div class="mt-1 break-words text-stone-900">{{ detail.value }}</div>
+                <div class="group relative ml-auto inline-flex align-middle">
+                  <button type="button"
+                          data-audit-log-details-trigger
+                          aria-controls="{{ log.details_popover_id }}"
+                          aria-label="View log details"
+                          class="inline-flex size-7 items-center justify-center rounded-full border border-stone-200 bg-white transition-colors hover:border-stone-300 hover:bg-stone-50 focus-visible:border-primary-500 focus-visible:outline-none">
+                    <div class="svg-icon size-2.5 icon-info bg-stone-500"></div>
+                  </button>
+                  <div id="{{ log.details_popover_id }}"
+                       data-audit-log-details-card
+                       class="audit-log-details-popover absolute right-0 top-full z-20 hidden pt-3 text-left group-hover:block group-focus-within:block">
+                    <div class="audit-log-details-card">
+                      <div class="border-b border-stone-200 bg-stone-50 px-4 py-3">
+                        <div class="text-sm font-semibold text-stone-900">Log details</div>
                       </div>
-                    {% endfor -%}
+                      <div class="divide-y divide-stone-100 px-4 py-1.5">
+                        {% for detail in log.details -%}
+                          <div class="flex flex-wrap items-center gap-x-3 gap-y-1 py-3">
+                            <div class="w-16 shrink-0 text-[11px] font-semibold uppercase tracking-[0.14em] text-stone-500">
+                              {{ detail.key_label }}
+                            </div>
+                            <div class="min-w-0 flex-1 break-words text-sm leading-6 text-stone-900">{{ detail.value }}</div>
+                          </div>
+                        {% endfor -%}
+                      </div>
+                    </div>
                   </div>
                 </div>
               {% endif -%}
