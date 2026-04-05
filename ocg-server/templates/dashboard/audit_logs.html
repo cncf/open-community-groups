@@ -22,19 +22,19 @@
 </div>
 
 <div class="relative mt-5 overflow-visible">
-  <table class="table-auto w-full text-xs lg:text-sm text-left text-stone-500"
+  <table class="table-fixed w-full text-xs lg:text-sm text-left text-stone-500"
          role="table"
          aria-label="Audit logs table">
     <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200"
            role="rowgroup">
       <tr>
-        <th scope="col" class="px-3 xl:px-5 py-3 w-44">When</th>
+        <th scope="col" class="px-3 xl:px-5 py-3">Action</th>
         {% if show_actor -%}
-          <th scope="col" class="px-3 xl:px-5 py-3 w-40">Actor</th>
+          <th scope="col" class="px-3 xl:px-5 py-3 w-28">Actor</th>
         {% endif -%}
-        <th scope="col" class="px-3 xl:px-5 py-3 w-56">Action</th>
         <th scope="col" class="hidden px-3 py-3 xl:table-cell xl:px-5">Target</th>
-        <th scope="col" class="px-3 xl:px-5 py-3 w-28">Details</th>
+        <th scope="col" class="px-3 xl:px-5 py-3 w-36">Date</th>
+        <th scope="col" class="px-3 xl:px-5 py-3 w-24">Details</th>
       </tr>
     </thead>
     <tbody role="rowgroup">
@@ -59,27 +59,27 @@
       {% else -%}
         {% for log in logs -%}
           <tr class="audit-log-row odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
-            <td class="px-3 xl:px-5 py-4 whitespace-nowrap">
-              <div class="font-medium text-stone-900">{{ log.created_at.format("%b %d, %Y") }}</div>
-              <div class="mt-1 text-xs text-stone-600">{{ log.created_at.format("%I:%M %p UTC") }}</div>
+            <td class="px-3 xl:px-5 py-4">
+              <div class="font-medium text-stone-900 break-words">{{ log.action_label }}</div>
             </td>
 
             {% if show_actor -%}
-              <td class="px-3 xl:px-5 py-4">
-                <div class="font-medium text-stone-900">{{ log.actor_username.as_deref().unwrap_or("-") }}</div>
+              <td class="px-3 xl:px-5 py-4 w-28">
+                <div class="font-medium text-stone-900 truncate">{{ log.actor_username.as_deref().unwrap_or("-") }}</div>
               </td>
             {% endif -%}
-
-            <td class="px-3 xl:px-5 py-4">
-              <div class="font-medium text-stone-900">{{ log.action_label }}</div>
-            </td>
 
             <td class="hidden max-w-0 px-3 py-4 xl:table-cell xl:px-5">
               <div class="font-medium text-stone-900 truncate">{{ log.resource_display_name }}</div>
               <div class="mt-1 text-xs text-stone-600 truncate">{{ log.resource_type_label }}</div>
             </td>
 
-            <td class="px-3 xl:px-5 py-4">
+            <td class="px-3 xl:px-5 py-4 w-36 whitespace-nowrap">
+              <div class="font-medium text-stone-900">{{ log.created_at.format("%b %d, %Y") }}</div>
+              <div class="mt-1 text-xs text-stone-600">{{ log.created_at.format("%I:%M %p UTC") }}</div>
+            </td>
+
+            <td class="px-3 xl:px-5 py-4 w-24">
               {% if log.details.is_empty() -%}
                 <span class="hidden text-stone-500 xl:inline">-</span>
               {% endif -%}
@@ -103,21 +103,17 @@
                       <div class="text-sm font-semibold text-stone-900">Log details</div>
                     </div>
                     <div class="divide-y divide-stone-100 px-4 py-1">
-                      <div class="grid grid-cols-[5.75rem_minmax(0,1fr)] items-center gap-x-4 py-2.5 xl:hidden">
-                        <div class="whitespace-nowrap text-[11px]/5 font-semibold uppercase tracking-[0.14em] text-stone-500">
-                          Target
-                        </div>
+                      <div class="grid grid-cols-[9rem_minmax(0,1fr)] items-start gap-x-5 py-2.5 xl:hidden">
+                        <div class="text-[11px]/5 font-semibold uppercase tracking-[0.14em] text-stone-500">Target</div>
                         <div class="min-w-0 break-words text-sm/5 font-medium text-stone-900">{{ log.resource_display_name }}</div>
                       </div>
-                      <div class="grid grid-cols-[5.75rem_minmax(0,1fr)] items-center gap-x-4 py-2.5 xl:hidden">
-                        <div class="whitespace-nowrap text-[11px]/5 font-semibold uppercase tracking-[0.14em] text-stone-500">
-                          Type
-                        </div>
+                      <div class="grid grid-cols-[9rem_minmax(0,1fr)] items-start gap-x-5 py-2.5 xl:hidden">
+                        <div class="text-[11px]/5 font-semibold uppercase tracking-[0.14em] text-stone-500">Type</div>
                         <div class="min-w-0 break-words text-sm/5 font-medium text-stone-900">{{ log.resource_type_label }}</div>
                       </div>
                       {% for detail in log.details -%}
-                        <div class="grid grid-cols-[5.75rem_minmax(0,1fr)] items-center gap-x-4 py-2.5">
-                          <div class="whitespace-nowrap text-[11px]/5 font-semibold uppercase tracking-[0.14em] text-stone-500">
+                        <div class="grid grid-cols-[9rem_minmax(0,1fr)] items-start gap-x-5 py-2.5">
+                          <div class="text-[11px]/5 font-semibold uppercase tracking-[0.14em] text-stone-500">
                             {{ detail.key_label }}
                           </div>
                           <div class="min-w-0 break-words text-sm/5 font-medium text-stone-900">{{ detail.value }}</div>

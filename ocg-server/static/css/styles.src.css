@@ -540,8 +540,8 @@ input:placeholder-shown {
 /* End tooltip */
 
 .audit-log-details-popover {
-  max-width: 90vw;
-  width: min(24rem, 90vw);
+  max-width: calc(100vw - 2rem);
+  width: min(30rem, calc(100vw - 2rem));
 }
 
 .audit-log-details-popover::after {
