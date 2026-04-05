@@ -84,18 +84,20 @@
                 <span class="hidden text-stone-500 xl:inline">-</span>
               {% endif -%}
 
-              <div class="{% if log.details.is_empty() -%}
+              <div data-audit-log-details-group
+                   class="{% if log.details.is_empty() -%}
                             group relative ml-auto inline-flex align-middle xl:hidden {%- else -%} group relative ml-auto inline-flex align-middle {%- endif %}">
                 <button type="button"
                         data-audit-log-details-trigger
                         aria-controls="{{ log.details_popover_id }}"
+                        aria-expanded="false"
                         aria-label="View log details"
                         class="inline-flex size-7 items-center justify-center rounded-full border border-stone-200 bg-white transition-colors hover:border-stone-300 hover:bg-stone-50 focus-visible:border-stone-300 focus-visible:bg-stone-50 focus-visible:outline-none">
                   <div class="svg-icon size-2.5 icon-info bg-stone-500"></div>
                 </button>
                 <div id="{{ log.details_popover_id }}"
                      data-audit-log-details-card
-                     class="audit-log-details-popover absolute right-0 top-full z-20 hidden pt-3 text-left group-hover:block group-focus-within:block">
+                     class="audit-log-details-popover absolute right-0 top-full z-20 hidden pt-3 text-left group-hover:block">
                   <div class="audit-log-details-card">
                     <div class="border-b border-stone-200 bg-stone-50 px-4 py-3">
                       <div class="text-sm font-semibold text-stone-900">Log details</div>
@@ -249,6 +251,97 @@
   const actorFilter = document.getElementById("audit-actor");
   const dateFromFilter = document.getElementById("audit-date-from");
   const dateToFilter = document.getElementById("audit-date-to");
+  const auditLogDetailsGroupSelector = "[data-audit-log-details-group]";
+  const auditLogDetailsTriggerSelector = "[data-audit-log-details-trigger]";
+  const auditLogDetailsCardSelector = "[data-audit-log-details-card]";
+
+  /**
+   * Returns the popover card controlled by the provided trigger.
+   * @param {Element} trigger - Details popover trigger button.
+   * @returns {HTMLElement | null} Matching popover card element.
+   */
+  const getAuditLogDetailsCard = (trigger) => {
+    const popoverId = trigger.getAttribute("aria-controls");
+    return popoverId ? document.getElementById(popoverId) : null;
+  };
+
+  /**
+   * Syncs the details trigger state with its associated popover visibility.
+   * @param {Element} trigger - Details popover trigger button.
+   * @param {boolean} expanded - Whether the popover should be shown.
+   * @returns {void}
+   */
+  const setAuditLogDetailsExpanded = (trigger, expanded) => {
+    const card = getAuditLogDetailsCard(trigger);
+
+    trigger.setAttribute("aria-expanded", String(expanded));
+    card?.classList.toggle("hidden", !expanded);
+  };
+
+  /**
+   * Closes all audit log detail popovers except the optional open trigger.
+   * @param {Element | null} triggerToKeepOpen - Trigger that should remain open.
+   * @returns {void}
+   */
+  const closeAuditLogDetails = (triggerToKeepOpen = null) => {
+    document.querySelectorAll(auditLogDetailsTriggerSelector).forEach((trigger) => {
+      setAuditLogDetailsExpanded(trigger, trigger === triggerToKeepOpen);
+    });
+  };
+
+  /**
+   * Resets all audit log detail popovers after an HTMX content swap.
+   * @returns {void}
+   */
+  const syncAuditLogDetails = () => {
+    closeAuditLogDetails();
+    document.querySelectorAll(auditLogDetailsCardSelector).forEach((card) => {
+      card.classList.add("hidden");
+    });
+  };
+
+  /**
+   * Closes the audit log filters modal when it is currently open.
+   * @returns {void}
+   */
+  const closeAuditLogFiltersModal = () => {
+    const currentModal = document.getElementById(modalId);
+    if (currentModal && !currentModal.classList.contains("hidden")) {
+      toggleModalVisibility(modalId);
+    }
+  };
+
+  if (window.__auditLogDetailsHandlersBound !== true) {
+    window.__auditLogDetailsHandlersBound = true;
+
+    document.addEventListener("click", (event) => {
+      if (!(event.target instanceof Element)) {
+        return;
+      }
+
+      const trigger = event.target.closest(auditLogDetailsTriggerSelector);
+
+      if (trigger) {
+        const isExpanded = trigger.getAttribute("aria-expanded") === "true";
+
+        closeAuditLogDetails(isExpanded ? null : trigger);
+        return;
+      }
+
+      if (!event.target.closest(auditLogDetailsGroupSelector)) {
+        closeAuditLogDetails();
+      }
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key !== "Escape") {
+        return;
+      }
+
+      closeAuditLogFiltersModal();
+      closeAuditLogDetails();
+    });
+  }
 
   if (modal && modal.dataset.bound !== "true") {
     modal.dataset.bound = "true";
@@ -262,11 +355,7 @@
       openButton?.setAttribute("aria-pressed", String(active));
     };
 
-    const closeModal = () => {
-      if (!modal.classList.contains("hidden")) {
-        toggleModalVisibility(modalId);
-      }
-    };
+    const closeModal = () => closeAuditLogFiltersModal();
 
     openButton?.addEventListener("click", () => toggleModalVisibility(modalId));
     closeButton?.addEventListener("click", closeModal);
@@ -274,11 +363,7 @@
     form?.addEventListener("submit", closeModal);
     resetButton?.addEventListener("click", closeModal);
     syncActiveFiltersIndicator();
-
-    document.addEventListener("keydown", (event) => {
-      if (event.key === "Escape" && !modal.classList.contains("hidden")) {
-        closeModal();
-      }
-    });
   }
+
+  syncAuditLogDetails();
 </script>
