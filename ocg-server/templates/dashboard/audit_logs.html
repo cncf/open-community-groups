@@ -93,7 +93,7 @@
                 </button>
                 <div id="{{ log.details_popover_id }}"
                      data-audit-log-details-card
-                     class="audit-log-details-popover absolute right-0 top-full z-20 hidden pt-3 text-left group-hover:block">
+                     class="audit-log-details-popover absolute right-0 top-full z-20 hidden pt-3 text-left">
                   <div class="audit-log-details-card">
                     <div class="border-b border-stone-200 bg-stone-50 px-4 py-3">
                       <div class="text-sm font-semibold text-stone-900">Log details</div>
@@ -247,7 +247,8 @@
   const dateToFilter = document.getElementById("audit-date-to");
   const auditLogDetailsGroupSelector = "[data-audit-log-details-group]";
   const auditLogDetailsTriggerSelector = "[data-audit-log-details-trigger]";
-  const auditLogDetailsCardSelector = "[data-audit-log-details-card]";
+  const auditLogDetailsHoverDisabledAttribute = "data-audit-log-hover-disabled";
+  const auditLogDetailsHoverBoundAttribute = "data-audit-log-hover-bound";
 
   /**
    * Returns the popover card controlled by the provided trigger.
@@ -257,6 +258,37 @@
   const getAuditLogDetailsCard = (trigger) => {
     const popoverId = trigger.getAttribute("aria-controls");
     return popoverId ? document.getElementById(popoverId) : null;
+  };
+
+  /**
+   * Returns the popover group that contains the provided trigger.
+   * @param {Element} trigger - Details popover trigger button.
+   * @returns {HTMLElement | null} Matching popover group element.
+   */
+  const getAuditLogDetailsGroup = (trigger) => {
+    const group = trigger.closest(auditLogDetailsGroupSelector);
+    return group instanceof HTMLElement ? group : null;
+  };
+
+  /**
+   * Enables or disables hover-driven popover visibility for the trigger group.
+   * @param {Element} trigger - Details popover trigger button.
+   * @param {boolean} disabled - Whether hover behavior should be disabled.
+   * @returns {void}
+   */
+  const setAuditLogDetailsHoverDisabled = (trigger, disabled) => {
+    const group = getAuditLogDetailsGroup(trigger);
+
+    if (!group) {
+      return;
+    }
+
+    if (disabled) {
+      group.setAttribute(auditLogDetailsHoverDisabledAttribute, "true");
+      return;
+    }
+
+    group.removeAttribute(auditLogDetailsHoverDisabledAttribute);
   };
 
   /**
@@ -279,6 +311,7 @@
    */
   const closeAuditLogDetails = (triggerToKeepOpen = null) => {
     document.querySelectorAll(auditLogDetailsTriggerSelector).forEach((trigger) => {
+      setAuditLogDetailsHoverDisabled(trigger, false);
       setAuditLogDetailsExpanded(trigger, trigger === triggerToKeepOpen);
     });
   };
@@ -289,8 +322,16 @@
    */
   const syncAuditLogDetails = () => {
     closeAuditLogDetails();
-    document.querySelectorAll(auditLogDetailsCardSelector).forEach((card) => {
-      card.classList.add("hidden");
+
+    document.querySelectorAll(auditLogDetailsGroupSelector).forEach((group) => {
+      if (group.getAttribute(auditLogDetailsHoverBoundAttribute) === "true") {
+        return;
+      }
+
+      group.setAttribute(auditLogDetailsHoverBoundAttribute, "true");
+      group.addEventListener("mouseleave", () => {
+        group.removeAttribute(auditLogDetailsHoverDisabledAttribute);
+      });
     });
   };
 
@@ -319,6 +360,7 @@
         const isExpanded = trigger.getAttribute("aria-expanded") === "true";
 
         closeAuditLogDetails(isExpanded ? null : trigger);
+        setAuditLogDetailsHoverDisabled(trigger, isExpanded);
         return;
       }
 

@@ -565,6 +565,12 @@ input:placeholder-shown {
   overflow: hidden;
 }
 
+@media (hover: hover) and (pointer: fine) {
+  [data-audit-log-details-group]:not([data-audit-log-hover-disabled="true"]):hover .audit-log-details-popover {
+    display: block;
+  }
+}
+
 .audit-log-row:nth-last-child(-n+4) .audit-log-details-popover {
   bottom: 100%;
   padding-bottom: 0.75rem;
@@ -573,13 +579,10 @@ input:placeholder-shown {
 }
 
 .audit-log-row:nth-last-child(-n+4) .audit-log-details-popover::after {
-  top: auto;
-}
-
-.audit-log-row:nth-last-child(-n+4) .audit-log-details-popover::after {
   border-bottom-color: transparent;
   border-top-color: rgb(231, 229, 228);
   bottom: 1px;
+  top: auto;
 }
 
 /* Icons */
