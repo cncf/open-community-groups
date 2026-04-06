@@ -346,6 +346,7 @@ export const expectPageScreenshot = async (
   page: Page,
   screenshotName: string,
   screenshotOptions: {
+    mask?: Locator[];
     maxDiffPixels?: number;
   } = {},
 ) => {
