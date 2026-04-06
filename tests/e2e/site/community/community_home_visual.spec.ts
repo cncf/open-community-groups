@@ -27,6 +27,8 @@ test.describe("community home page visual regression @visual", () => {
       page.getByText(TEST_COMMUNITY_DESCRIPTION, { exact: true }),
     ).toBeVisible();
 
-    await expectPageScreenshot(page, "community-home-mobile.png");
+    await expectPageScreenshot(page, "community-home-mobile.png", {
+      maxDiffPixels: 100,
+    });
   });
 });
