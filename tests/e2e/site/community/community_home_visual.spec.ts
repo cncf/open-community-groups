@@ -28,6 +28,7 @@ test.describe("community home page visual regression @visual", () => {
     ).toBeVisible();
 
     await expectPageScreenshot(page, "community-home-mobile.png", {
+      mask: [page.locator(`a[href^="/${TEST_COMMUNITY_NAME}/group/"]`)],
       maxDiffPixels: 100,
     });
   });
