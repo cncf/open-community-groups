@@ -1,6 +1,10 @@
 import { hideLoadingSpinner, showLoadingSpinner, navigateWithHtmx } from "/static/js/common/common.js";
 import { fetchData } from "/static/js/community/explore/explore.js";
-import { getFirstAndLastDayOfMonth, updateDateInput } from "/static/js/community/explore/filters.js";
+import {
+  getFirstAndLastDayOfMonth,
+  hasActiveFilters,
+  updateDateInput,
+} from "/static/js/community/explore/filters.js";
 
 export class Calendar {
   /**
@@ -171,17 +175,18 @@ export class Calendar {
     // Toggle placeholder visibility and calendar opacity
     const calendarEl = document.getElementById("calendar-box");
     const wrapper = calendarEl ? calendarEl.parentElement : null;
-    const placeholderAlert = wrapper ? wrapper.querySelector('[role="alert"]') : null;
-    const placeholderContainer = placeholderAlert ? placeholderAlert.closest(".absolute") : null;
+    const placeholderContainers = wrapper
+      ? wrapper.querySelectorAll(".no-results-default, .no-results-filtered")
+      : [];
+
+    placeholderContainers.forEach((container) => {
+      container.classList.add("hidden");
+    });
 
     if (events && events.length > 0) {
       // Ensure calendar is fully visible
       if (calendarEl) {
         calendarEl.classList.remove("opacity-30");
-      }
-      // Hide placeholder overlay if present
-      if (placeholderContainer) {
-        placeholderContainer.classList.add("hidden");
       }
       this.addEvents(events);
     } else {
@@ -189,11 +194,15 @@ export class Calendar {
       if (calendarEl) {
         calendarEl.classList.add("opacity-30");
       }
-      if (placeholderContainer) {
-        placeholderContainer.classList.remove("hidden");
+      this.addEvents([]);
+      const visiblePlaceholder = wrapper
+        ? wrapper.querySelector(
+            hasActiveFilters("events-form") ? ".no-results-filtered" : ".no-results-default",
+          )
+        : null;
+      if (visiblePlaceholder) {
+        visiblePlaceholder.classList.remove("hidden");
       }
-      // Hide loading spinner
-      hideLoadingSpinner("loading-calendar");
     }
   }
 
