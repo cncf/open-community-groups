@@ -19,7 +19,7 @@ jobs:
     steps:
       - name: Determine changed paths
         id: filter
-        uses: dorny/paths-filter@v3
+        uses: dorny/paths-filter@v4
         with:
           filters: |
             database:
@@ -109,7 +109,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
       - name: Run markdownlint
-        uses: DavidAnson/markdownlint-cli2-action@v22
+        uses: DavidAnson/markdownlint-cli2-action@v23
         with:
           globs: 'docs/**/*.md'
 
