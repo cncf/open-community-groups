@@ -2,7 +2,7 @@ import { hideLoadingSpinner, showLoadingSpinner, navigateWithHtmx } from "/stati
 import { fetchData } from "/static/js/community/explore/explore.js";
 import {
   getFirstAndLastDayOfMonth,
-  hasActiveFilters,
+  hasActiveCalendarFilters,
   updateDateInput,
 } from "/static/js/community/explore/filters.js";
 
@@ -197,7 +197,7 @@ export class Calendar {
       this.addEvents([]);
       const visiblePlaceholder = wrapper
         ? wrapper.querySelector(
-            hasActiveFilters("events-form") ? ".no-results-filtered" : ".no-results-default",
+            hasActiveCalendarFilters("events-form") ? ".no-results-filtered" : ".no-results-default",
           )
         : null;
       if (visiblePlaceholder) {

@@ -67,6 +67,21 @@ test.describe("site explore events page", () => {
         "We can't seem to find any events that match your search criteria. You can reset your filters or try a different search.",
       ),
     ).toBeVisible();
+
+    await Promise.all([
+      page.waitForResponse(
+        (response) =>
+          response.request().method() === "GET" &&
+          response.url().includes("/explore/events-section") &&
+          response.url().includes("view_mode=calendar") &&
+          response.ok(),
+      ),
+      page.locator('label[for="calendar"]').click(),
+    ]);
+
+    await expect(page.locator("#calendar-box")).toBeVisible();
+    await expect(page.locator(".no-results-filtered:not(.hidden)")).toBeVisible();
+    await expect(page.locator(".no-results-default:not(.hidden)")).toHaveCount(0);
   });
 
   test("hides the empty state after navigating from an empty month to one with events", async ({
@@ -80,7 +95,7 @@ test.describe("site explore events page", () => {
     await page.locator('label[for="calendar"]').click();
     await expect(page.locator("#calendar-box")).toBeVisible();
 
-    const emptyState = page.locator(".no-results-filtered:not(.hidden)");
+    const emptyState = page.locator(".no-results-default:not(.hidden)");
     const nextMonthButton = page.locator("#next-month-btn");
     const previousMonthButton = page.locator("#prev-month-btn");
     const calendarEvents = page.locator(".fc-daygrid-event");
@@ -103,6 +118,7 @@ test.describe("site explore events page", () => {
 
     expect(foundEmptyMonth).toBeTruthy();
     await expect(emptyState).toBeVisible();
+    await expect(page.locator(".no-results-filtered:not(.hidden)")).toHaveCount(0);
 
     let foundMonthWithEvents = false;
     let urlUpdated = false;

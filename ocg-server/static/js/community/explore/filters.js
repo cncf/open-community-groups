@@ -253,9 +253,11 @@ export const getDefaultDateRange = () => {
 /**
  * Checks if any filters have been actively applied by the user.
  * @param {string} formId - The ID of the form to check
+ * @param {object} options - Options for filter detection
+ * @param {boolean} options.ignoreDateRange - Whether to ignore date range inputs
  * @returns {boolean} True if any filter is active
  */
-export const hasActiveFilters = (formId) => {
+export const hasActiveFilters = (formId, { ignoreDateRange = false } = {}) => {
   const form = document.getElementById(formId);
   if (!form) return false;
 
@@ -270,8 +272,10 @@ export const hasActiveFilters = (formId) => {
   const dateToInput = form.querySelector('input[name="date_to"]');
   const dateFrom = dateFromInput ? dateFromInput.value.trim() : "";
   const dateTo = dateToInput ? dateToInput.value.trim() : "";
-  if (dateFrom && dateFrom !== defaultDateRange.from) return true;
-  if (dateTo && dateTo !== defaultDateRange.to) return true;
+  if (!ignoreDateRange) {
+    if (dateFrom && dateFrom !== defaultDateRange.from) return true;
+    if (dateTo && dateTo !== defaultDateRange.to) return true;
+  }
 
   // Check custom filter components
   const customFilters = form.querySelectorAll(
@@ -294,6 +298,16 @@ export const hasActiveFilters = (formId) => {
   if (tsQuery && tsQuery.value.trim() !== "") return true;
 
   return false;
+};
+
+/**
+ * Checks for active filters in calendar view.
+ * Ignores the visible month range because it represents calendar state.
+ * @param {string} formId - The ID of the form to check
+ * @returns {boolean} True if any non-calendar filter is active
+ */
+export const hasActiveCalendarFilters = (formId) => {
+  return hasActiveFilters(formId, { ignoreDateRange: true });
 };
 
 /**

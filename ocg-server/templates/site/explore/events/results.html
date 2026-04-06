@@ -186,9 +186,16 @@
 {% if events.len() == 0 -%}
   {# djlint:off #}
 <script type="module">
-  import { hasActiveFilters } from '/static/js/community/explore/filters.js';
+  import {
+    hasActiveCalendarFilters,
+    hasActiveFilters
+  } from '/static/js/community/explore/filters.js';
 
-  const filtered = hasActiveFilters('events-form');
+  const filtered = {% if view_mode == ViewMode::Calendar -%}
+    hasActiveCalendarFilters('events-form');
+  {% else -%}
+    hasActiveFilters('events-form');
+  {% endif -%}
   document.querySelectorAll('.no-results-default')
     .forEach((el) => el.classList.toggle('hidden', filtered));
   document.querySelectorAll('.no-results-filtered')
