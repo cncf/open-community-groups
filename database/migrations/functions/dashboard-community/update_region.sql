@@ -1,5 +1,6 @@
 -- Updates a region in a community.
 create or replace function update_region(
+    p_actor_user_id uuid,
     p_community_id uuid,
     p_region_id uuid,
     p_region jsonb
@@ -21,6 +22,15 @@ begin
         name = p_region->>'name'
     where community_id = p_community_id
       and region_id = p_region_id;
+
+    -- Track the updated region
+    perform insert_audit_log(
+        'region_updated',
+        p_actor_user_id,
+        'region',
+        p_region_id,
+        p_community_id
+    );
 exception when unique_violation then
     raise exception 'region already exists';
 end;

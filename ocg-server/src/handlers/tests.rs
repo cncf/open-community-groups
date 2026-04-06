@@ -31,6 +31,7 @@ use crate::{
     },
     templates::{
         dashboard::{
+            audit::{AuditLogRecord, AuditLogsOutput},
             community::{
                 analytics::{
                     AttendeesStats, CommunityDashboardStats, CommunityPageViewsStats, EventsStats,
@@ -108,6 +109,24 @@ pub(crate) fn sample_attendee() -> Attendee {
         name: Some("Event Attendee".to_string()),
         photo_url: Some("https://example.test/avatar.png".to_string()),
         title: Some("Engineer".to_string()),
+    }
+}
+
+/// Sample audit log output used across dashboard audit tests.
+pub(crate) fn sample_audit_logs_output() -> AuditLogsOutput {
+    AuditLogsOutput {
+        logs: vec![AuditLogRecord {
+            action: "community_updated".to_string(),
+            audit_log_id: Uuid::new_v4(),
+            created_at: Utc.with_ymd_and_hms(2024, 1, 1, 12, 0, 0).unwrap(),
+            details: BTreeMap::from([("subject".to_string(), json!("Schedule updated"))]),
+            resource_id: Uuid::new_v4(),
+            resource_type: "community".to_string(),
+
+            actor_username: Some("test-user".to_string()),
+            resource_name: Some("Test".to_string()),
+        }],
+        total: 1,
     }
 }
 

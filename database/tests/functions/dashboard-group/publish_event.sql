@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(12);
+select plan(13);
 
 -- ============================================================================
 -- VARIABLES
@@ -198,7 +198,7 @@ insert into session (
 
 -- Should set published and metadata
 select lives_ok(
-    $$select publish_event('00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000031'::uuid, '00000000-0000-0000-0000-000000000041'::uuid)$$,
+    $$select publish_event('00000000-0000-0000-0000-000000000041'::uuid, '00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000031'::uuid)$$,
     'Should set published and metadata'
 );
 
@@ -221,6 +221,35 @@ select is(
     (select published_by from event where event_id = :'eventID')::text,
     :'userID',
     'Should set published_by to the user'
+);
+
+-- Should create the expected audit row
+select results_eq(
+    $$
+        select
+            action,
+            actor_user_id,
+            actor_username,
+            community_id,
+            group_id,
+            event_id,
+            resource_type,
+            resource_id
+        from audit_log
+    $$,
+    $$
+        values (
+            'event_published',
+            '00000000-0000-0000-0000-000000000041'::uuid,
+            'user',
+            '00000000-0000-0000-0000-000000000001'::uuid,
+            '00000000-0000-0000-0000-000000000021'::uuid,
+            '00000000-0000-0000-0000-000000000031'::uuid,
+            'event',
+            '00000000-0000-0000-0000-000000000031'::uuid
+        )
+    $$,
+    'Should create the expected audit row'
 );
 
 -- Should set event meeting_in_sync to false
@@ -246,7 +275,7 @@ select is(
 
 -- Should publish event when meeting_requested=false
 select lives_ok(
-    $$select publish_event('00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000032'::uuid, '00000000-0000-0000-0000-000000000041'::uuid)$$,
+    $$select publish_event('00000000-0000-0000-0000-000000000041'::uuid, '00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000032'::uuid)$$,
     'Should publish event when meeting_requested=false'
 );
 
@@ -266,14 +295,14 @@ select is(
 
 -- Should throw error when group_id does not match
 select throws_ok(
-    $$select publish_event('00000000-0000-0000-0000-000000000099'::uuid, '00000000-0000-0000-0000-000000000031'::uuid, '00000000-0000-0000-0000-000000000041'::uuid)$$,
+    $$select publish_event('00000000-0000-0000-0000-000000000041'::uuid, '00000000-0000-0000-0000-000000000099'::uuid, '00000000-0000-0000-0000-000000000031'::uuid)$$,
     'event not found or inactive',
     'Should throw error when group_id does not match'
 );
 
 -- Should throw error when event has no start date
 select throws_ok(
-    $$select publish_event('00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000033'::uuid, '00000000-0000-0000-0000-000000000041'::uuid)$$,
+    $$select publish_event('00000000-0000-0000-0000-000000000041'::uuid, '00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000033'::uuid)$$,
     'event must have a start date to be published',
     'Should throw error when event has no start date'
 );

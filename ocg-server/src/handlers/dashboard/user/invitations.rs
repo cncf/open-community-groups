@@ -50,7 +50,7 @@ pub(crate) async fn accept_community_team_invitation(
     Path(community_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Accept community team invitation
-    db.accept_community_team_invitation(community_id, user.user_id)
+    db.accept_community_team_invitation(user.user_id, community_id)
         .await?;
     messages.success("Team invitation accepted.");
 
@@ -72,7 +72,7 @@ pub(crate) async fn accept_group_team_invitation(
     Path(group_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Mark invitation as accepted
-    db.accept_group_team_invitation(group_id, user.user_id).await?;
+    db.accept_group_team_invitation(user.user_id, group_id).await?;
     messages.success("Team invitation accepted.");
 
     // Select first community and group if none selected
@@ -91,8 +91,9 @@ pub(crate) async fn reject_community_team_invitation(
     State(db): State<DynDB>,
     Path(community_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Delete community team member
-    db.delete_community_team_member(community_id, user.user_id).await?;
+    // Reject the pending invitation
+    db.reject_community_team_invitation(user.user_id, community_id)
+        .await?;
     messages.success("Team invitation rejected.");
 
     Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-body")]))
@@ -106,8 +107,8 @@ pub(crate) async fn reject_group_team_invitation(
     State(db): State<DynDB>,
     Path(group_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Delete group team member from database
-    db.delete_group_team_member(group_id, user.user_id).await?;
+    // Reject the pending invitation
+    db.reject_group_team_invitation(user.user_id, group_id).await?;
     messages.success("Team invitation rejected.");
 
     Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-body")]))

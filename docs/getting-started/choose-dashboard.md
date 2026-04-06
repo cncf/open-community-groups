@@ -12,9 +12,9 @@ expected outcomes in one view:
 
 | If you need to... | Use this dashboard | Who gets it | Core outcomes |
 | --- | --- | --- | --- |
-| Manage your profile, invitations, proposals, and submissions | [User Dashboard](/dashboard/user ':ignore') | Any logged-in user | Keep profile current, accept invitations, submit to CFS |
-| Manage community-wide identity, admins, taxonomy, analytics, and groups | [Community Dashboard](/dashboard/community ':ignore') | Community team members | Manage team access, branding, regions, categories, analytics, and groups |
-| Run events, organizers, members, sponsors, and day-to-day operations | [Group Dashboard](/dashboard/group ':ignore') | Group team members | Deliver events, manage members, coordinate organizers and sponsors |
+| Manage your profile, invitations, proposals, submissions, and your own audit history | [User Dashboard](/dashboard/user ':ignore') | Any logged-in user | Keep profile current, accept invitations, submit to CFS, review your actions |
+| Manage community-wide identity, admins, taxonomy, analytics, groups, and community audit logs | [Community Dashboard](/dashboard/community ':ignore') | Community team members | Manage team access, branding, regions, categories, analytics, groups, and review community actions |
+| Run events, organizers, members, sponsors, and group audit review | [Group Dashboard](/dashboard/group ':ignore') | Group team members | Deliver events, manage members, coordinate organizers and sponsors, and review group actions |
 
 ![Dashboard options from user menu](../screenshots/navigation-user-menu.png)
 
@@ -105,6 +105,7 @@ membership first, then review [Regions](/dashboard/community?tab=regions ':ignor
 [Group Categories](/dashboard/community?tab=group-categories ':ignore'), and
 [Event Categories](/dashboard/community?tab=event-categories ':ignore'). Move to
 [Groups](/dashboard/community?tab=groups ':ignore') after taxonomy and ownership structure are in place.
+Use [Logs](/dashboard/community?tab=logs ':ignore') when you need a historical view of community dashboard activity.
 
 Continue with [Community Dashboard Guide](../guides/community-dashboard.md).
 
@@ -112,7 +113,8 @@ Continue with [Community Dashboard Guide](../guides/community-dashboard.md).
 
 Start in [Group Dashboard](/dashboard/group?tab=settings ':ignore') and move straight into
 [Events](/dashboard/group?tab=events ':ignore'), because event setup, publishing, attendance, and
-submissions are the operational center of group work.
+submissions are the operational center of group work. Use
+[Logs](/dashboard/group?tab=logs ':ignore') when you need a historical view of group dashboard activity.
 
 Continue with [Group Dashboard Guide](../guides/group-dashboard.md) and
 [Event Operations](../guides/event-operations.md).

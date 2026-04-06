@@ -35,6 +35,9 @@ test.describe("community dashboard home", () => {
     await expect(
       adminCommunityPage.locator('a[hx-get="/dashboard/community?tab=analytics"]'),
     ).toContainText("Analytics");
+    await expect(
+      adminCommunityPage.locator('a[hx-get="/dashboard/community?tab=logs"]'),
+    ).toContainText("Logs");
   });
 
   test("community navigation can open a selected group dashboard", async ({

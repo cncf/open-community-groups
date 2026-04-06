@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(5);
+select plan(6);
 
 -- ============================================================================
 -- VARIABLES
@@ -52,6 +52,7 @@ insert into event_category (
 -- Should update category name and regenerate slug
 select lives_ok(
     $$ select update_event_category(
+        null::uuid,
         '00000000-0000-0000-0000-000000000001'::uuid,
         '00000000-0000-0000-0000-000000000011'::uuid,
         jsonb_build_object('name', 'Lightning Talks')
@@ -70,9 +71,35 @@ select results_eq(
     'Should persist updated event category values'
 );
 
+-- Should create the expected audit row
+select results_eq(
+    $$
+        select
+            action,
+            actor_user_id,
+            actor_username,
+            community_id,
+            resource_type,
+            resource_id
+        from audit_log
+    $$,
+    $$
+        values (
+            'event_category_updated',
+            null::uuid,
+            null::text,
+            '00000000-0000-0000-0000-000000000001'::uuid,
+            'event_category',
+            '00000000-0000-0000-0000-000000000011'::uuid
+        )
+    $$,
+    'Should create the expected audit row'
+);
+
 -- Should reject duplicated slug in same community
 select throws_ok(
     $$ select update_event_category(
+        null::uuid,
         '00000000-0000-0000-0000-000000000001'::uuid,
         '00000000-0000-0000-0000-000000000011'::uuid,
         jsonb_build_object('name', 'Conference')
@@ -84,6 +111,7 @@ select throws_ok(
 -- Should reject names that generate an empty slug
 select throws_ok(
     $$ select update_event_category(
+        null::uuid,
         '00000000-0000-0000-0000-000000000001'::uuid,
         '00000000-0000-0000-0000-000000000011'::uuid,
         jsonb_build_object('name', '!!!')
@@ -95,6 +123,7 @@ select throws_ok(
 -- Should fail when target category does not exist
 select throws_ok(
     $$ select update_event_category(
+        null::uuid,
         '00000000-0000-0000-0000-000000000001'::uuid,
         '00000000-0000-0000-0000-000000000099'::uuid,
         jsonb_build_object('name', 'Workshops')

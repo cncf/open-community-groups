@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(8);
+select plan(9);
 
 -- ============================================================================
 -- VARIABLES
@@ -121,6 +121,7 @@ insert into "group" (
 -- Should update all provided fields correctly
 select lives_ok(
     $$select update_group(
+        null::uuid,
         '00000000-0000-0000-0000-000000000001'::uuid,
         '00000000-0000-0000-0000-000000000021'::uuid,
         '{
@@ -181,9 +182,37 @@ select is(
     'Should update all provided fields and return expected structure'
 );
 
+-- Should create the expected audit row
+select results_eq(
+    $$
+        select
+            action,
+            actor_user_id,
+            actor_username,
+            community_id,
+            group_id,
+            resource_type,
+            resource_id
+        from audit_log
+    $$,
+    $$
+        values (
+            'group_updated',
+            null::uuid,
+            null::text,
+            '00000000-0000-0000-0000-000000000001'::uuid,
+            '00000000-0000-0000-0000-000000000021'::uuid,
+            'group',
+            '00000000-0000-0000-0000-000000000021'::uuid
+        )
+    $$,
+    'Should create the expected audit row'
+);
+
 -- Should throw error when updating deleted group
 select throws_ok(
     $$select update_group(
+        null::uuid,
         '00000000-0000-0000-0000-000000000001'::uuid,
         '00000000-0000-0000-0000-000000000022'::uuid,
         '{"name": "Won''t Work", "category_id": "00000000-0000-0000-0000-000000000011", "description": "This should fail"}'::jsonb
@@ -225,6 +254,7 @@ insert into "group" (
 
 select lives_ok(
     $$select update_group(
+        null::uuid,
         '00000000-0000-0000-0000-000000000001'::uuid,
         '00000000-0000-0000-0000-000000000023'::uuid,
         '{
@@ -269,6 +299,7 @@ select is(
 -- Should throw error when community_id mismatches
 select throws_ok(
     $$select update_group(
+        null::uuid,
         '00000000-0000-0000-0000-000000000099'::uuid,
         '00000000-0000-0000-0000-000000000021'::uuid,
         '{"name": "Won''t Work", "category_id": "00000000-0000-0000-0000-000000000011", "description": "This should fail"}'::jsonb
@@ -280,6 +311,7 @@ select throws_ok(
 -- Should handle explicit null values for array fields
 select lives_ok(
     $$select update_group(
+        null::uuid,
         '00000000-0000-0000-0000-000000000001'::uuid,
         '00000000-0000-0000-0000-000000000024'::uuid,
         '{

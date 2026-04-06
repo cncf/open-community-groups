@@ -59,13 +59,15 @@ pub(crate) async fn update_page(
 /// Updates group settings in the database.
 #[instrument(skip_all, err)]
 pub(crate) async fn update(
+    CurrentUser(user): CurrentUser,
     SelectedCommunityId(community_id): SelectedCommunityId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     ValidatedFormQs(group_update): ValidatedFormQs<GroupUpdate>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Update group in database
-    db.update_group(community_id, group_id, &group_update).await?;
+    db.update_group(user.user_id, community_id, group_id, &group_update)
+        .await?;
 
     Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-body")]).into_response())
 }

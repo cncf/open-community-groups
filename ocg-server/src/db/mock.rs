@@ -53,12 +53,12 @@ mock! {
         ) -> Result<()>;
         async fn update_user_details(
             &self,
-            user_id: &Uuid,
+            actor_user_id: &Uuid,
             user: &crate::templates::auth::UserDetails,
         ) -> Result<()>;
         async fn update_user_password(
             &self,
-            user_id: &Uuid,
+            actor_user_id: &Uuid,
             new_password: &str,
         ) -> Result<()>;
         async fn update_user_provider(
@@ -159,6 +159,7 @@ mock! {
         ) -> Result<Vec<crate::db::dashboard::common::User>>;
         async fn update_group(
             &self,
+            actor_user_id: Uuid,
             community_id: Uuid,
             group_id: Uuid,
             group: &crate::templates::dashboard::community::groups::Group,
@@ -167,55 +168,69 @@ mock! {
 
     #[async_trait]
     impl crate::db::dashboard::community::DBDashboardCommunity for DB {
-        async fn activate_group(&self, community_id: Uuid, group_id: Uuid) -> Result<()>;
+        async fn activate_group(&self, actor_user_id: Uuid, community_id: Uuid, group_id: Uuid) -> Result<()>;
         async fn add_community_team_member(
             &self,
+            actor_user_id: Uuid,
             community_id: Uuid,
             user_id: Uuid,
             role: &crate::types::community::CommunityRole,
         ) -> Result<()>;
         async fn add_event_category(
             &self,
+            actor_user_id: Uuid,
             community_id: Uuid,
             event_category: &crate::templates::dashboard::community::event_categories::EventCategoryInput,
         ) -> Result<Uuid>;
         async fn add_group(
             &self,
+            actor_user_id: Uuid,
             community_id: Uuid,
             group: &crate::templates::dashboard::community::groups::Group,
         ) -> Result<Uuid>;
         async fn add_group_category(
             &self,
+            actor_user_id: Uuid,
             community_id: Uuid,
             group_category: &crate::templates::dashboard::community::group_categories::GroupCategoryInput,
         ) -> Result<Uuid>;
         async fn add_region(
             &self,
+            actor_user_id: Uuid,
             community_id: Uuid,
             region: &crate::templates::dashboard::community::regions::RegionInput,
         ) -> Result<Uuid>;
-        async fn deactivate_group(&self, community_id: Uuid, group_id: Uuid) -> Result<()>;
+        async fn deactivate_group(&self, actor_user_id: Uuid, community_id: Uuid, group_id: Uuid)
+            -> Result<()>;
         async fn delete_community_team_member(
             &self,
+            actor_user_id: Uuid,
             community_id: Uuid,
             user_id: Uuid,
         ) -> Result<()>;
         async fn delete_event_category(
             &self,
+            actor_user_id: Uuid,
             community_id: Uuid,
             event_category_id: Uuid,
         ) -> Result<()>;
-        async fn delete_group(&self, community_id: Uuid, group_id: Uuid) -> Result<()>;
+        async fn delete_group(&self, actor_user_id: Uuid, community_id: Uuid, group_id: Uuid) -> Result<()>;
         async fn delete_group_category(
             &self,
+            actor_user_id: Uuid,
             community_id: Uuid,
             group_category_id: Uuid,
         ) -> Result<()>;
-        async fn delete_region(&self, community_id: Uuid, region_id: Uuid) -> Result<()>;
+        async fn delete_region(&self, actor_user_id: Uuid, community_id: Uuid, region_id: Uuid) -> Result<()>;
         async fn get_community_stats(
             &self,
             community_id: Uuid,
         ) -> Result<crate::templates::dashboard::community::analytics::CommunityDashboardStats>;
+        async fn list_community_audit_logs(
+            &self,
+            community_id: Uuid,
+            filters: &crate::templates::dashboard::audit::AuditLogFilters,
+        ) -> Result<crate::templates::dashboard::audit::AuditLogsOutput>;
         async fn list_community_team_members(
             &self,
             community_id: Uuid,
@@ -238,29 +253,34 @@ mock! {
         ) -> Result<Vec<crate::types::community::CommunitySummary>>;
         async fn update_community(
             &self,
+            actor_user_id: Uuid,
             community_id: Uuid,
             community: &crate::templates::dashboard::community::settings::CommunityUpdate,
         ) -> Result<()>;
         async fn update_community_team_member_role(
             &self,
+            actor_user_id: Uuid,
             community_id: Uuid,
             user_id: Uuid,
             role: &crate::types::community::CommunityRole,
         ) -> Result<()>;
         async fn update_event_category(
             &self,
+            actor_user_id: Uuid,
             community_id: Uuid,
             event_category_id: Uuid,
             event_category: &crate::templates::dashboard::community::event_categories::EventCategoryInput,
         ) -> Result<()>;
         async fn update_group_category(
             &self,
+            actor_user_id: Uuid,
             community_id: Uuid,
             group_category_id: Uuid,
             group_category: &crate::templates::dashboard::community::group_categories::GroupCategoryInput,
         ) -> Result<()>;
         async fn update_region(
             &self,
+            actor_user_id: Uuid,
             community_id: Uuid,
             region_id: Uuid,
             region: &crate::templates::dashboard::community::regions::RegionInput,
@@ -271,31 +291,43 @@ mock! {
     impl crate::db::dashboard::group::DBDashboardGroup for DB {
         async fn add_event(
             &self,
+            actor_user_id: Uuid,
             group_id: Uuid,
             event: &crate::templates::dashboard::group::events::Event,
             cfg_max_participants: &HashMap<crate::services::meetings::MeetingProvider, i32>,
         ) -> Result<Uuid>;
         async fn add_group_sponsor(
             &self,
+            actor_user_id: Uuid,
             group_id: Uuid,
             sponsor: &crate::templates::dashboard::group::sponsors::Sponsor,
         ) -> Result<Uuid>;
         async fn add_group_team_member(
             &self,
+            actor_user_id: Uuid,
             group_id: Uuid,
             user_id: Uuid,
             role: &crate::types::group::GroupRole,
         ) -> Result<()>;
-        async fn cancel_event(&self, group_id: Uuid, event_id: Uuid) -> Result<()>;
-        async fn delete_event(&self, group_id: Uuid, event_id: Uuid) -> Result<()>;
+        async fn cancel_event(&self, actor_user_id: Uuid, group_id: Uuid, event_id: Uuid) -> Result<()>;
+        async fn delete_event(&self, actor_user_id: Uuid, group_id: Uuid, event_id: Uuid) -> Result<()>;
         async fn delete_group_sponsor(
             &self,
+            actor_user_id: Uuid,
             group_id: Uuid,
             group_sponsor_id: Uuid,
         ) -> Result<()>;
         async fn delete_group_team_member(
             &self,
+            actor_user_id: Uuid,
             group_id: Uuid,
+            user_id: Uuid,
+        ) -> Result<()>;
+        async fn manual_check_in_event(
+            &self,
+            actor_user_id: Uuid,
+            community_id: Uuid,
+            event_id: Uuid,
             user_id: Uuid,
         ) -> Result<()>;
         async fn get_cfs_submission_notification_data(
@@ -313,6 +345,14 @@ mock! {
             community_id: Uuid,
             group_id: Uuid,
         ) -> Result<crate::templates::dashboard::group::analytics::GroupDashboardStats>;
+        async fn list_cfs_submission_statuses_for_review(
+            &self,
+        ) -> Result<Vec<crate::templates::dashboard::group::events::CfsSubmissionStatus>>;
+        async fn list_group_audit_logs(
+            &self,
+            group_id: Uuid,
+            filters: &crate::templates::dashboard::audit::AuditLogFilters,
+        ) -> Result<crate::templates::dashboard::audit::AuditLogsOutput>;
         async fn list_event_attendees_ids(
             &self,
             group_id: Uuid,
@@ -369,9 +409,6 @@ mock! {
             &self,
             group_id: Uuid,
         ) -> Result<Vec<Uuid>>;
-        async fn list_cfs_submission_statuses_for_review(
-            &self,
-        ) -> Result<Vec<crate::templates::dashboard::group::events::CfsSubmissionStatus>>;
         async fn list_session_kinds(&self)
             -> Result<Vec<crate::types::event::SessionKindSummary>>;
         async fn list_user_groups(
@@ -380,9 +417,9 @@ mock! {
         ) -> Result<Vec<crate::templates::dashboard::group::home::UserGroupsByCommunity>>;
         async fn publish_event(
             &self,
+            actor_user_id: Uuid,
             group_id: Uuid,
             event_id: Uuid,
-            user_id: Uuid,
         ) -> Result<()>;
         async fn search_event_attendees(
             &self,
@@ -394,9 +431,11 @@ mock! {
             group_id: Uuid,
             filters: &crate::templates::dashboard::group::waitlist::WaitlistFilters,
         ) -> Result<crate::templates::dashboard::group::waitlist::WaitlistOutput>;
-        async fn unpublish_event(&self, group_id: Uuid, event_id: Uuid) -> Result<()>;
+        async fn unpublish_event(&self, actor_user_id: Uuid, group_id: Uuid, event_id: Uuid)
+            -> Result<()>;
         async fn update_event(
             &self,
+            actor_user_id: Uuid,
             group_id: Uuid,
             event_id: Uuid,
             event: &serde_json::Value,
@@ -411,12 +450,14 @@ mock! {
         ) -> Result<bool>;
         async fn update_group_sponsor(
             &self,
+            actor_user_id: Uuid,
             group_id: Uuid,
             group_sponsor_id: Uuid,
             sponsor: &crate::templates::dashboard::group::sponsors::Sponsor,
         ) -> Result<()>;
         async fn update_group_team_member_role(
             &self,
+            actor_user_id: Uuid,
             group_id: Uuid,
             user_id: Uuid,
             role: &crate::types::group::GroupRole,
@@ -427,28 +468,38 @@ mock! {
     impl crate::db::dashboard::user::DBDashboardUser for DB {
         async fn accept_community_team_invitation(
             &self,
+            actor_user_id: Uuid,
             community_id: Uuid,
-            user_id: Uuid,
         ) -> Result<()>;
         async fn accept_group_team_invitation(
             &self,
+            actor_user_id: Uuid,
             group_id: Uuid,
-            user_id: Uuid,
         ) -> Result<()>;
         async fn accept_session_proposal_co_speaker_invitation(
             &self,
-            user_id: Uuid,
+            actor_user_id: Uuid,
             session_proposal_id: Uuid,
         ) -> Result<()>;
         async fn add_session_proposal(
             &self,
-            user_id: Uuid,
+            actor_user_id: Uuid,
             session_proposal: &crate::templates::dashboard::user::session_proposals::SessionProposalInput,
         ) -> Result<Uuid>;
         async fn delete_session_proposal(
             &self,
-            user_id: Uuid,
+            actor_user_id: Uuid,
             session_proposal_id: Uuid,
+        ) -> Result<()>;
+        async fn reject_community_team_invitation(
+            &self,
+            actor_user_id: Uuid,
+            community_id: Uuid,
+        ) -> Result<()>;
+        async fn reject_group_team_invitation(
+            &self,
+            actor_user_id: Uuid,
+            group_id: Uuid,
         ) -> Result<()>;
         async fn get_session_proposal_co_speaker_user_id(
             &self,
@@ -458,6 +509,11 @@ mock! {
         async fn list_session_proposal_levels(
             &self,
         ) -> Result<Vec<crate::templates::dashboard::user::session_proposals::SessionProposalLevel>>;
+        async fn list_user_audit_logs(
+            &self,
+            actor_user_id: Uuid,
+            filters: &crate::templates::dashboard::audit::AuditLogFilters,
+        ) -> Result<crate::templates::dashboard::audit::AuditLogsOutput>;
         async fn list_user_cfs_submissions(
             &self,
             user_id: Uuid,
@@ -493,23 +549,23 @@ mock! {
         ) -> Result<crate::templates::dashboard::user::session_proposals::SessionProposalsOutput>;
         async fn reject_session_proposal_co_speaker_invitation(
             &self,
-            user_id: Uuid,
+            actor_user_id: Uuid,
             session_proposal_id: Uuid,
         ) -> Result<()>;
         async fn resubmit_cfs_submission(
             &self,
-            user_id: Uuid,
+            actor_user_id: Uuid,
             cfs_submission_id: Uuid,
         ) -> Result<()>;
         async fn update_session_proposal(
             &self,
-            user_id: Uuid,
+            actor_user_id: Uuid,
             session_proposal_id: Uuid,
             session_proposal: &crate::templates::dashboard::user::session_proposals::SessionProposalInput,
         ) -> Result<()>;
         async fn withdraw_cfs_submission(
             &self,
-            user_id: Uuid,
+            actor_user_id: Uuid,
             cfs_submission_id: Uuid,
         ) -> Result<()>;
     }
@@ -711,6 +767,7 @@ mock! {
             created_by: Uuid,
             event_id: Option<Uuid>,
             group_id: Option<Uuid>,
+            recipient_count: usize,
             subject: &str,
             body: &str,
         ) -> Result<()>;

@@ -539,6 +539,52 @@ input:placeholder-shown {
 }
 /* End tooltip */
 
+.audit-log-details-popover {
+  max-width: calc(100vw - 2rem);
+  width: min(30rem, calc(100vw - 2rem));
+}
+
+.audit-log-details-popover::after {
+  border: 6px solid transparent;
+  content: "";
+  height: 0;
+  position: absolute;
+  right: 0.625rem;
+  width: 0;
+  border-bottom-color: rgb(231, 229, 228);
+  top: 1px;
+}
+
+.audit-log-details-card {
+  background-color: white;
+  border: 1px solid rgb(231, 229, 228);
+  border-radius: 0.75rem;
+  box-shadow:
+    rgba(15, 23, 42, 0.08) 0 18px 38px -18px,
+    rgba(15, 23, 42, 0.12) 0 12px 20px -14px;
+  overflow: hidden;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-audit-log-details-group]:not([data-audit-log-hover-disabled="true"]):hover .audit-log-details-popover {
+    display: block;
+  }
+}
+
+.audit-log-row:nth-last-child(-n+4) .audit-log-details-popover {
+  bottom: 100%;
+  padding-bottom: 0.75rem;
+  padding-top: 0;
+  top: auto;
+}
+
+.audit-log-row:nth-last-child(-n+4) .audit-log-details-popover::after {
+  border-bottom-color: transparent;
+  border-top-color: rgb(231, 229, 228);
+  bottom: 1px;
+  top: auto;
+}
+
 /* Icons */
 [class*="icon-"] {
   mask-image: var(--icon-url);
@@ -594,6 +640,7 @@ input:placeholder-shown {
 .icon-list { --icon-url: url('/static/images/icons/list.svg'); }
 .icon-list-magnifying-glass { --icon-url: url('/static/images/icons/list_magnifying_glass.svg'); }
 .icon-location { --icon-url: url('/static/images/icons/location.svg'); }
+.icon-logs { --icon-url: url('/static/images/icons/logs.svg'); }
 .icon-login { --icon-url: url('/static/images/icons/login.svg'); }
 .icon-logout { --icon-url: url('/static/images/icons/logout.svg'); }
 .icon-magnifying-glass { --icon-url: url('/static/images/icons/magnifying_glass.svg'); }

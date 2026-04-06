@@ -19,6 +19,7 @@ Path: [/dashboard/user](/dashboard/user ':ignore')
 - [Invitations: Unlock Organizer Access](#invitations-unlock-organizer-access)
 - [Session Proposals: Reusable Talks](#session-proposals-reusable-talks)
 - [Submissions: Track and Respond](#submissions-track-and-respond)
+- [Audit: Logs](#audit-logs)
 - [Recommended Working Rhythm](#recommended-working-rhythm)
 
 ## User Dashboard Structure
@@ -30,9 +31,10 @@ The dashboard is organized into five areas:
 - [Invitations](/dashboard/user?tab=invitations ':ignore')
 - [Session proposals](/dashboard/user?tab=session-proposals ':ignore')
 - [Submissions](/dashboard/user?tab=submissions ':ignore')
+- [Logs](/dashboard/user?tab=logs ':ignore')
 
 Each area supports a different part of your participation in OCG: events,
-profile, access, proposals, and submissions.
+profile, access, audit visibility, proposals, and submissions.
 
 ## My Events: Upcoming Participation
 
@@ -183,6 +185,31 @@ status and any action you need to take.
 
 To understand where submission decisions are made, see
 [Event Operations](event-operations.md).
+
+## Audit: Logs
+
+`AUDIT -> Logs` is the last section in the left dashboard menu. It provides an actor-based audit
+trail for actions you performed from the user dashboard and account settings.
+
+Coverage in this view includes:
+
+- Invitation accept and reject actions.
+- Session proposal create, update, delete, and co-speaker invitation decisions.
+- Submission resubmits and withdrawals.
+- Account profile and password updates.
+
+Table behavior:
+
+- Rows are ordered by newest first by default.
+- You can filter by `Action` and date range.
+- You can switch ordering between newest first and oldest first.
+- Pagination keeps the active filters applied.
+- `Details` opens a popover when an audit row has extra metadata.
+
+Scope note:
+
+- This screen shows actions performed by the signed-in user.
+- It does not try to list unrelated actions performed by other people against your account.
 
 ## Recommended Working Rhythm
 

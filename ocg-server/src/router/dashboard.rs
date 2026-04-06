@@ -67,6 +67,7 @@ pub(super) fn setup_community_dashboard_router(state: &State) -> Router<State> {
             "/groups/{group_id}/update",
             get(dashboard::community::groups::update_page),
         )
+        .route("/logs", get(dashboard::community::logs::list_page))
         .route(
             "/settings/update",
             get(dashboard::community::settings::update_page),
@@ -232,6 +233,7 @@ pub(super) fn setup_group_dashboard_router(state: &State) -> Router<State> {
             "/events/{event_id}/waitlist",
             get(dashboard::group::waitlist::list_page),
         )
+        .route("/logs", get(dashboard::group::logs::list_page))
         .route("/members", get(dashboard::group::members::list_page))
         .route("/settings/update", get(dashboard::group::settings::update_page))
         .route("/sponsors", get(dashboard::group::sponsors::list_page))
@@ -350,6 +352,7 @@ pub(super) fn setup_user_dashboard_router() -> Router<State> {
             "/invitations/group/{group_id}/reject",
             put(dashboard::user::invitations::reject_group_team_invitation),
         )
+        .route("/logs", get(dashboard::user::logs::list_page))
         .route(
             "/session-proposals",
             get(dashboard::user::session_proposals::list_page).post(dashboard::user::session_proposals::add),

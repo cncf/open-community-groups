@@ -345,16 +345,55 @@ export const navigateToPath = async (page: Page, path: string) => {
 export const expectPageScreenshot = async (
   page: Page,
   screenshotName: string,
+  screenshotOptions: {
+    mask?: Locator[];
+    maxDiffPixels?: number;
+  } = {},
 ) => {
   await page.waitForLoadState("networkidle");
   await page.evaluate(async () => {
     await document.fonts.ready;
+  });
+  await page.evaluate(() => {
+    const viewportWidth = window.innerWidth;
+
+    if (viewportWidth > 430) {
+      return;
+    }
+
+    const documentElement = document.documentElement;
+    const body = document.body;
+    const scrollHeight = Math.max(
+      documentElement.scrollHeight,
+      documentElement.offsetHeight,
+      body?.scrollHeight ?? 0,
+      body?.offsetHeight ?? 0,
+    );
+    const normalizedHeightPadding = (4 - (scrollHeight % 4)) % 4;
+
+    if (!body || normalizedHeightPadding === 0) {
+      return;
+    }
+
+    let screenshotSpacer = document.getElementById("ocg-e2e-screenshot-spacer");
+
+    if (!screenshotSpacer) {
+      screenshotSpacer = document.createElement("div");
+      screenshotSpacer.id = "ocg-e2e-screenshot-spacer";
+      screenshotSpacer.setAttribute("aria-hidden", "true");
+      screenshotSpacer.style.pointerEvents = "none";
+      screenshotSpacer.style.width = "100%";
+      body.append(screenshotSpacer);
+    }
+
+    screenshotSpacer.style.height = `${normalizedHeightPadding}px`;
   });
 
   await expect(page).toHaveScreenshot(screenshotName, {
     animations: "disabled",
     caret: "hide",
     fullPage: true,
+    ...screenshotOptions,
   });
 };
 

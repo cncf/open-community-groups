@@ -443,7 +443,9 @@ test.describe("community dashboard groups view", () => {
     await expect(clearFilterButton).toBeVisible();
     await clearFilterButton.click();
 
-    await expect(dashboardContent.locator("#search_groups")).toHaveValue("");
+    await expect(adminCommunityPage).toHaveURL(
+      /\/dashboard\/community\?tab=groups(?:&limit=50&offset=0)?$/,
+    );
     await expect(
       dashboardContent
         .locator('div.text-xl.lg\\:text-2xl.mb-4:visible')
@@ -455,6 +457,7 @@ test.describe("community dashboard groups view", () => {
     await expect(
       dashboardContent.locator("tr", { hasText: "Observability Guild" }),
     ).toBeVisible();
+    await expect(dashboardContent.getByPlaceholder("Search groups")).toHaveValue("");
   });
 
   test("viewer sees read-only controls on community groups", async ({

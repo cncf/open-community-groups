@@ -1,6 +1,6 @@
 -- Updates a session proposal for a user.
 create or replace function update_session_proposal(
-    p_user_id uuid,
+    p_actor_user_id uuid,
     p_session_proposal_id uuid,
     p_session_proposal jsonb
 )
@@ -14,7 +14,7 @@ begin
     into v_current_co_speaker_user_id
     from session_proposal sp
     where sp.session_proposal_id = p_session_proposal_id
-    and sp.user_id = p_user_id;
+    and sp.user_id = p_actor_user_id;
 
     if not found then
         raise exception 'session proposal not found';
@@ -61,10 +61,18 @@ begin
         title = p_session_proposal->>'title',
         updated_at = current_timestamp
     where session_proposal_id = p_session_proposal_id
-    and user_id = p_user_id;
+    and user_id = p_actor_user_id;
 
     if not found then
         raise exception 'session proposal not found';
     end if;
+
+    -- Track the session proposal update
+    perform insert_audit_log(
+        'session_proposal_updated',
+        p_actor_user_id,
+        'session_proposal',
+        p_session_proposal_id
+    );
 end;
 $$ language plpgsql;

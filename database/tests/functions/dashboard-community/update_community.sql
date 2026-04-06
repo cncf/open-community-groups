@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(6);
+select plan(7);
 
 -- ============================================================================
 -- VARIABLES
@@ -77,6 +77,7 @@ insert into community (
 -- Should update required fields and set optional fields to null when not provided
 select lives_ok(
     $$select update_community(
+        null::uuid,
         '00000000-0000-0000-0000-000000000001'::uuid,
         '{
             "description": "Updated description for Seattle cloud native community",
@@ -102,9 +103,35 @@ select is(
     'Should persist required fields and clear omitted optional fields'
 );
 
+-- Should create the expected audit row
+select results_eq(
+    $$
+        select
+            action,
+            actor_user_id,
+            actor_username,
+            community_id,
+            resource_type,
+            resource_id
+        from audit_log
+    $$,
+    $$
+        values (
+            'community_updated',
+            null::uuid,
+            null::text,
+            '00000000-0000-0000-0000-000000000001'::uuid,
+            'community',
+            '00000000-0000-0000-0000-000000000001'::uuid
+        )
+    $$,
+    'Should create the expected audit row'
+);
+
 -- Should update all fields including optional ones
 select lives_ok(
     $$select update_community(
+        null::uuid,
         '00000000-0000-0000-0000-000000000001'::uuid,
         '{
             "description": "Comprehensive cloud native community in Seattle",
@@ -167,6 +194,7 @@ select is(
 -- Should convert empty strings to null for nullable fields
 select lives_ok(
     $$select update_community(
+        null::uuid,
         '00000000-0000-0000-0000-000000000001'::uuid,
         '{
             "ad_banner_url": "",

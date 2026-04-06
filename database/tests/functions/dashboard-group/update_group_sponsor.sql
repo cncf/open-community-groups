@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(4);
+select plan(5);
 
 -- ============================================================================
 -- VARIABLES
@@ -39,7 +39,7 @@ values (:'sponsorID', :'groupID', 'Iota', 'https://ex.com/iota.png', null);
 
 -- Should update provided fields
 select lives_ok(
-    $$select update_group_sponsor('30000000-0000-0000-0000-000000000002'::uuid, '30000000-0000-0000-0000-000000000003'::uuid, '{
+    $$select update_group_sponsor(null::uuid, '30000000-0000-0000-0000-000000000002'::uuid, '30000000-0000-0000-0000-000000000003'::uuid, '{
         "name":"Iota Updated",
         "level":"Gold",
         "logo_url":"https://ex.com/iota2.png",
@@ -54,9 +54,37 @@ select results_eq(
     'Should update fields'
 );
 
+-- Should create the expected audit row
+select results_eq(
+    $$
+        select
+            action,
+            actor_user_id,
+            actor_username,
+            community_id,
+            group_id,
+            resource_type,
+            resource_id
+        from audit_log
+    $$,
+    $$
+        values (
+            'group_sponsor_updated',
+            null::uuid,
+            null::text,
+            '30000000-0000-0000-0000-000000000001'::uuid,
+            '30000000-0000-0000-0000-000000000002'::uuid,
+            'group_sponsor',
+            '30000000-0000-0000-0000-000000000003'::uuid
+        )
+    $$,
+    'Should create the expected audit row'
+);
+
 -- Should set website_url to null when field not provided
 select lives_ok(
     $$select update_group_sponsor(
+        null::uuid,
         '30000000-0000-0000-0000-000000000002'::uuid,
         '30000000-0000-0000-0000-000000000003'::uuid,
         '{

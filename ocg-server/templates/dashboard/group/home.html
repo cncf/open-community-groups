@@ -91,6 +91,13 @@
       {{ dashboard::menu_item(name = "Sponsors", icon = "handshake", is_active = content.is_sponsors() , href = "/dashboard/group?tab=sponsors") -}}
     </div>
     {# End members and sponsors -#}
+
+    {# Audit -#}
+    <div class="leading-10 pt-6 border-t border-stone-200 grid gap-y-0.5">
+      {{ dashboard::menu_title(text = "AUDIT", extra_styles = "py-1.5") -}}
+      {{ dashboard::menu_item(name = "Logs", icon = "logs", is_active = content.is_logs() , href = "/dashboard/group?tab=logs") -}}
+    </div>
+    {# End audit -#}
   </div>
 {% endblock menu -%}
 
@@ -99,7 +106,7 @@
   <div id="dashboard-content"
        data-community="{{ current_selection.0.name }}"
        data-group-slug="{{ current_selection.1.slug }}"
-       hx-get="/dashboard/group/{%- if content.is_team() -%}team{%- else if content.is_settings() -%}settings{%- else if content.is_sponsors() -%}sponsors{%- else -%}events{%- endif -%}"
+       hx-get="/dashboard/group/{%- if content.is_team() -%}team{%- else if content.is_settings() -%}settings{%- else if content.is_sponsors() -%}sponsors{%- else if content.is_logs() -%}logs{%- else -%}events{%- endif -%}"
        hx-trigger="refresh-group-dashboard-table"
        hx-swap="innerHTML show:window:top"
        hx-indicator="#dashboard-spinner"

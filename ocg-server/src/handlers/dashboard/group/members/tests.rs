@@ -324,14 +324,17 @@ async fn test_send_group_custom_notification_success() {
         .returning(move |_, _| Ok(group_for_db.clone()));
     db.expect_track_custom_notification()
         .times(1)
-        .withf(move |created_by, event_id, group_id, subject, body| {
-            *created_by == track_user_id
-                && event_id.is_none()
-                && *group_id == Some(track_group_id)
-                && subject == track_subject
-                && body == track_body
-        })
-        .returning(|_, _, _, _, _| Ok(()));
+        .withf(
+            move |created_by, event_id, group_id, recipient_count, subject, body| {
+                *created_by == track_user_id
+                    && event_id.is_none()
+                    && *group_id == Some(track_group_id)
+                    && *recipient_count == 3
+                    && subject == track_subject
+                    && body == track_body
+            },
+        )
+        .returning(|_, _, _, _, _, _| Ok(()));
 
     // Setup notifications manager mock
     let mut nm = MockNotificationsManager::new();

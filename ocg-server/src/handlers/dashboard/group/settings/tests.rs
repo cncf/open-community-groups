@@ -205,8 +205,10 @@ async fn test_update_success() {
         .returning(|_, _, _, _| Ok(true));
     db.expect_update_group()
         .times(1)
-        .withf(move |cid, gid, group| *cid == community_id && *gid == group_id && group.name == update.name)
-        .returning(move |_, _, _| Ok(()));
+        .withf(move |uid, cid, gid, group| {
+            *uid == user_id && *cid == community_id && *gid == group_id && group.name == update.name
+        })
+        .returning(move |_, _, _, _| Ok(()));
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();

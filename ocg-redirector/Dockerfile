@@ -6,7 +6,7 @@ COPY Cargo.* ./
 COPY ocg-redirector ocg-redirector
 COPY ocg-server/Cargo.* ocg-server
 WORKDIR /ocg/ocg-redirector
-RUN cargo build --release
+RUN cargo build --locked --release
 
 # Final stage
 FROM alpine:3.23.3

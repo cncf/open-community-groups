@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(125);
+select plan(126);
 
 -- ============================================================================
 -- TESTS
@@ -11,6 +11,7 @@ select plan(125);
 
 -- Test: check tables have expected primary keys
 select has_pk('attachment');
+select has_pk('audit_log');
 select has_pk('auth_session');
 select has_pk('cfs_submission');
 select has_pk('cfs_submission_rating');

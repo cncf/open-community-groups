@@ -13,9 +13,7 @@ base64 = { workspace = true }
 async-trait = { workspace = true }
 aws-credential-types = { workspace = true }
 aws-sdk-s3 = { workspace = true }
-aws-types = { workspace = true }
 axum = { workspace = true }
-axum-extra = { workspace = true }
 axum-login = { workspace = true }
 axum-messages = { workspace = true }
 bytes = { workspace = true }

@@ -122,6 +122,7 @@ pub(crate) async fn send_group_custom_notification(
         user.user_id,
         None, // event_id is None for group notifications
         Some(group_id),
+        new_notification.recipients.len(),
         &notification.title,
         &notification.body,
     )

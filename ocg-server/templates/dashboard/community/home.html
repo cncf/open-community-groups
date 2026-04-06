@@ -59,12 +59,19 @@
       {{ dashboard::menu_item(name = "Groups", icon = "groups", is_active = content.is_groups() , href = "/dashboard/community?tab=groups") -}}
     </div>
     {# End groups -#}
+
+    {# Audit -#}
+    <div class="leading-10 pt-6 border-t border-stone-200 grid gap-y-0.5">
+      {{ dashboard::menu_title(text = "AUDIT", extra_styles = "py-1.5") -}}
+      {{ dashboard::menu_item(name = "Logs", icon = "logs", is_active = content.is_logs() , href = "/dashboard/community?tab=logs") -}}
+    </div>
+    {# End audit -#}
   </div>
 {% endblock menu -%}
 
 {% block dashboard_main -%}
   <div id="dashboard-content"
-       hx-get="/dashboard/community/{%- if content.is_team() -%}team{%- elif content.is_settings() -%}settings/update{%- elif content.is_regions() -%}regions{%- elif content.is_group_categories() -%}group-categories{%- elif content.is_event_categories() -%}event-categories{%- elif content.is_analytics() -%}analytics{%- else -%}groups{%- endif -%}"
+       hx-get="/dashboard/community/{%- if content.is_team() -%}team{%- elif content.is_settings() -%}settings/update{%- elif content.is_regions() -%}regions{%- elif content.is_logs() -%}logs{%- elif content.is_group_categories() -%}group-categories{%- elif content.is_event_categories() -%}event-categories{%- elif content.is_analytics() -%}analytics{%- else -%}groups{%- endif -%}"
        hx-trigger="refresh-community-dashboard-table"
        hx-swap="innerHTML show:window:top"
        hx-indicator="#dashboard-spinner"

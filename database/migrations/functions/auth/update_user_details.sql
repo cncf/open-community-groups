@@ -1,8 +1,10 @@
 -- update_user_details updates a user's profile information.
 create or replace function update_user_details(
-    p_user_id uuid,
+    p_actor_user_id uuid,
     p_user jsonb
 ) returns void as $$
+begin
+    -- Update the user fields from the payload
     update "user"
     set
         name = p_user->>'name',
@@ -23,5 +25,14 @@ create or replace function update_user_details(
         title = nullif(p_user->>'title', ''),
         twitter_url = nullif(p_user->>'twitter_url', ''),
         website_url = nullif(p_user->>'website_url', '')
-    where user_id = p_user_id;
-$$ language sql;
+    where user_id = p_actor_user_id;
+
+    -- Track the profile update
+    perform insert_audit_log(
+        'user_details_updated',
+        p_actor_user_id,
+        'user',
+        p_actor_user_id
+    );
+end;
+$$ language plpgsql;

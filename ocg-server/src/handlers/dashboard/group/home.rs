@@ -11,7 +11,7 @@ use axum::{
 use axum_messages::Messages;
 use tracing::instrument;
 
-use super::{events, members, sponsors, team};
+use super::{events, logs, members, sponsors, team};
 
 use crate::{
     auth::AuthSession,
@@ -89,6 +89,11 @@ pub(crate) async fn page(
             )
             .await?;
             Content::Members(template)
+        }
+        Tab::Logs => {
+            let (_, template) =
+                logs::prepare_list_page(&db, group_id, raw_query.as_deref().unwrap_or_default()).await?;
+            Content::Logs(template)
         }
         Tab::Settings => {
             let (can_manage_settings, group, categories, regions) = tokio::try_join!(

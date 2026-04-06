@@ -1,6 +1,6 @@
 -- Resubmits a CFS submission after information is requested.
 create or replace function resubmit_cfs_submission(
-    p_user_id uuid,
+    p_actor_user_id uuid,
     p_cfs_submission_id uuid
 )
 returns void as $$
@@ -13,7 +13,7 @@ begin
     from session_proposal sp
     where cs.cfs_submission_id = p_cfs_submission_id
     and cs.session_proposal_id = sp.session_proposal_id
-    and sp.user_id = p_user_id
+    and sp.user_id = p_actor_user_id
     and cs.status_id = 'information-requested'
     and not exists (
         select 1
@@ -25,5 +25,13 @@ begin
     if not found then
         raise exception 'submission not found or cannot be resubmitted';
     end if;
+
+    -- Track the resubmission
+    perform insert_audit_log(
+        'submission_resubmitted',
+        p_actor_user_id,
+        'cfs_submission',
+        p_cfs_submission_id
+    );
 end;
 $$ language plpgsql;

@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(3);
+select plan(4);
 
 -- ============================================================================
 -- VARIABLES
@@ -41,6 +41,7 @@ insert into community (
 -- Should create a new region and auto-generate normalized name
 select lives_ok(
     $$ select add_region(
+        null::uuid,
         '00000000-0000-0000-0000-000000000001'::uuid,
         jsonb_build_object('name', 'North America')
     ) $$,
@@ -58,9 +59,36 @@ select results_eq(
     'Should store region name and generated normalized name'
 );
 
+-- Should create the expected audit row
+select results_eq(
+    $$
+        select
+            action,
+            actor_user_id,
+            actor_username,
+            community_id,
+            resource_type,
+            resource_id
+        from audit_log
+    $$,
+    $$
+        select
+            'region_added',
+            null::uuid,
+            null::text,
+            '00000000-0000-0000-0000-000000000001'::uuid,
+            'region',
+            region_id
+        from region
+        where community_id = '00000000-0000-0000-0000-000000000001'::uuid
+    $$,
+    'Should create the expected audit row'
+);
+
 -- Should not allow duplicate region normalized name in same community
 select throws_ok(
     $$ select add_region(
+        null::uuid,
         '00000000-0000-0000-0000-000000000001'::uuid,
         jsonb_build_object('name', 'north america')
     ) $$,

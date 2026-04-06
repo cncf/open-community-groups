@@ -93,11 +93,13 @@ pub(crate) async fn update_page(
 /// Adds a new event category to the selected community.
 #[instrument(skip_all, err)]
 pub(crate) async fn add(
+    CurrentUser(user): CurrentUser,
     SelectedCommunityId(community_id): SelectedCommunityId,
     State(db): State<DynDB>,
     ValidatedForm(event_category): ValidatedForm<EventCategoryInput>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    db.add_event_category(community_id, &event_category).await?;
+    db.add_event_category(user.user_id, community_id, &event_category)
+        .await?;
 
     Ok((
         StatusCode::CREATED,
@@ -108,11 +110,13 @@ pub(crate) async fn add(
 /// Deletes an event category from the selected community.
 #[instrument(skip_all, err)]
 pub(crate) async fn delete(
+    CurrentUser(user): CurrentUser,
     SelectedCommunityId(community_id): SelectedCommunityId,
     State(db): State<DynDB>,
     Path(event_category_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    db.delete_event_category(community_id, event_category_id).await?;
+    db.delete_event_category(user.user_id, community_id, event_category_id)
+        .await?;
 
     Ok((
         StatusCode::NO_CONTENT,
@@ -123,12 +127,13 @@ pub(crate) async fn delete(
 /// Updates an event category in the selected community.
 #[instrument(skip_all, err)]
 pub(crate) async fn update(
+    CurrentUser(user): CurrentUser,
     SelectedCommunityId(community_id): SelectedCommunityId,
     State(db): State<DynDB>,
     Path(event_category_id): Path<Uuid>,
     ValidatedForm(event_category): ValidatedForm<EventCategoryInput>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    db.update_event_category(community_id, event_category_id, &event_category)
+    db.update_event_category(user.user_id, community_id, event_category_id, &event_category)
         .await?;
 
     Ok((

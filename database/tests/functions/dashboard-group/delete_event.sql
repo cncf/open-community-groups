@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(11);
+select plan(12);
 
 -- ============================================================================
 -- VARIABLES
@@ -185,7 +185,7 @@ insert into session (
 -- Should set deleted=true
 select lives_ok(
     format(
-        'select delete_event(%L::uuid, %L::uuid)',
+        'select delete_event(null::uuid, %L::uuid, %L::uuid)',
         :'groupID',
         :'eventID'
     ),
@@ -209,6 +209,35 @@ select is(
     (select published from event where event_id = :'eventID'),
     false,
     'Should set published=false'
+);
+
+-- Should create the expected audit row
+select results_eq(
+    $$
+        select
+            action,
+            actor_user_id,
+            actor_username,
+            community_id,
+            group_id,
+            event_id,
+            resource_type,
+            resource_id
+        from audit_log
+    $$,
+    $$
+        values (
+            'event_deleted',
+            null::uuid,
+            null::text,
+            '00000000-0000-0000-0000-000000000001'::uuid,
+            '00000000-0000-0000-0000-000000000002'::uuid,
+            '00000000-0000-0000-0000-000000000003'::uuid,
+            'event',
+            '00000000-0000-0000-0000-000000000003'::uuid
+        )
+    $$,
+    'Should create the expected audit row'
 );
 
 -- Should set meeting_in_sync=false
@@ -235,7 +264,7 @@ select is(
 -- Should not change event meeting_in_sync when meeting_requested=false
 select lives_ok(
     format(
-        'select delete_event(%L::uuid, %L::uuid)',
+        'select delete_event(null::uuid, %L::uuid, %L::uuid)',
         :'groupID',
         :'eventNoMeetingID'
     ),
@@ -256,7 +285,7 @@ select is(
 
 -- Should throw error when group_id does not match
 select throws_ok(
-    $$select delete_event('00000000-0000-0000-0000-000000000099'::uuid, '00000000-0000-0000-0000-000000000003'::uuid)$$,
+    $$select delete_event(null::uuid, '00000000-0000-0000-0000-000000000099'::uuid, '00000000-0000-0000-0000-000000000003'::uuid)$$,
     'event not found or inactive',
     'Should throw error when group_id does not match'
 );

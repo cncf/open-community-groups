@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(4);
+select plan(5);
 
 -- ============================================================================
 -- VARIABLES
@@ -54,6 +54,7 @@ select is(
         get_group_full(
             :'communityID'::uuid,
             add_group(
+                null::uuid,
                 :'communityID'::uuid,
                 '{"name": "Simple Test Group", "category_id": "00000000-0000-0000-0000-000000000011", "description": "A simple test group", "description_short": "Brief overview of the test group"}'::jsonb
             )
@@ -75,12 +76,41 @@ select is(
     'Should create group with minimal required fields and return expected structure'
 );
 
+-- Should create the expected audit row
+select results_eq(
+    $$
+        select
+            action,
+            actor_user_id,
+            actor_username,
+            community_id,
+            group_id,
+            resource_type,
+            resource_id
+        from audit_log
+    $$,
+    $$
+        select
+            'group_added',
+            null::uuid,
+            null::text,
+            '00000000-0000-0000-0000-000000000001'::uuid,
+            group_id,
+            'group',
+            group_id
+        from "group"
+        where name = 'Simple Test Group'
+    $$,
+    'Should create the expected audit row'
+);
+
 -- Should auto-generate a valid slug
 select ok(
     (select (
         get_group_full(
             :'communityID'::uuid,
             add_group(
+                null::uuid,
                 :'communityID'::uuid,
                 '{"name": "Slug Test Group", "category_id": "00000000-0000-0000-0000-000000000011", "description": "Testing slug generation", "description_short": "Brief"}'::jsonb
             )
@@ -95,6 +125,7 @@ select is(
         get_group_full(
             :'communityID'::uuid,
             add_group(
+                null::uuid,
                 :'communityID'::uuid,
                 '{
                 "name": "Full Test Group",
@@ -173,6 +204,7 @@ declare
     v_group_record record;
 begin
     v_group_id := add_group(
+        null::uuid,
         '00000000-0000-0000-0000-000000000001'::uuid,
         '{
             "name": "Empty String Test Group",

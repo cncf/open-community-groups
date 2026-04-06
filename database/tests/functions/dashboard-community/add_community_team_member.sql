@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(3);
+select plan(4);
 
 -- ============================================================================
 -- VARIABLES
@@ -34,7 +34,7 @@ insert into "user" (
 
 -- Adding a user should create membership
 select lives_ok(
-    $$ select add_community_team_member('00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000011'::uuid, 'admin') $$,
+    $$ select add_community_team_member(null::uuid, '00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000011'::uuid, 'admin') $$,
     'Should succeed for valid user'
 );
 select results_eq(
@@ -50,9 +50,36 @@ select results_eq(
     'Membership should be created with accepted = false'
 );
 
+-- Should create the expected audit row
+select results_eq(
+    $$
+        select
+            action,
+            actor_user_id,
+            actor_username,
+            community_id,
+            resource_type,
+            resource_id,
+            details
+        from audit_log
+    $$,
+    $$
+        values (
+            'community_team_member_added',
+            null::uuid,
+            null::text,
+            '00000000-0000-0000-0000-000000000001'::uuid,
+            'user',
+            '00000000-0000-0000-0000-000000000011'::uuid,
+            jsonb_build_object('role', 'admin')
+        )
+    $$,
+    'Should create the expected audit row'
+);
+
 -- Should not allow duplicate community team membership
 select throws_ok(
-    $$ select add_community_team_member('00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000011'::uuid, 'admin') $$,
+    $$ select add_community_team_member(null::uuid, '00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000011'::uuid, 'admin') $$,
     'user is already a community team member',
     'Should not allow duplicate community team membership'
 );

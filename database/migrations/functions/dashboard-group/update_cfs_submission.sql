@@ -133,6 +133,22 @@ begin
             is distinct from coalesce(nullif(p_submission->>'action_required_message', ''), '')
     );
 
+    -- Track the submission update
+    perform insert_audit_log(
+        'cfs_submission_updated',
+        p_reviewer_id,
+        'cfs_submission',
+        p_cfs_submission_id,
+        (
+            select g.community_id
+            from event e
+            join "group" g on g.group_id = e.group_id
+            where e.event_id = p_event_id
+        ),
+        (select group_id from event where event_id = p_event_id),
+        p_event_id
+    );
+
     return v_notify;
 end;
 $$ language plpgsql;

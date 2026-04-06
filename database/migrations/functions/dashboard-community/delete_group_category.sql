@@ -1,5 +1,6 @@
 -- Deletes a group category from a community when not in use.
 create or replace function delete_group_category(
+    p_actor_user_id uuid,
     p_community_id uuid,
     p_group_category_id uuid
 )
@@ -31,5 +32,14 @@ begin
     delete from group_category gc
     where gc.community_id = p_community_id
       and gc.group_category_id = p_group_category_id;
+
+    -- Track the deletion
+    perform insert_audit_log(
+        'group_category_deleted',
+        p_actor_user_id,
+        'group_category',
+        p_group_category_id,
+        p_community_id
+    );
 end;
 $$ language plpgsql;
