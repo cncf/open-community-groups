@@ -4,6 +4,9 @@ on:
   pull_request:
     branches:
       - main
+  push:
+    branches:
+      - cynthia-sg/fix-visual-e2e-tests
   workflow_dispatch:
 
 jobs:
@@ -19,6 +22,9 @@ jobs:
           - suite: Deep e2e tests
             command: npx playwright test --config playwright.config.ts --project=chromium-deep --project=chromium-mobile-deep
             artifact_name: playwright-artifacts-deep
+          - suite: Visual e2e tests
+            command: npx playwright test --config playwright.config.ts --grep @visual --project=chromium-deep --project=chromium-mobile-deep
+            artifact_name: playwright-artifacts-visual
     permissions:
       contents: read
     services:
