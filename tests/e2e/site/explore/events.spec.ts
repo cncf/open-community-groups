@@ -105,6 +105,7 @@ test.describe("site explore events page", () => {
     await expect(emptyState).toBeVisible();
 
     let foundMonthWithEvents = false;
+    let urlUpdated = false;
 
     for (let attempt = 0; attempt < 12 && !foundMonthWithEvents; attempt += 1) {
       await Promise.all([
@@ -117,11 +118,20 @@ test.describe("site explore events page", () => {
         previousMonthButton.click(),
       ]);
 
+      urlUpdated = await page.evaluate(() => {
+        const params = new URLSearchParams(window.location.search);
+        return (
+          params.get("view_mode") === "calendar" &&
+          params.has("date_from") &&
+          params.has("date_to")
+        );
+      });
       foundMonthWithEvents =
         !(await emptyState.isVisible()) && (await calendarEvents.count()) > 0;
     }
 
     expect(foundMonthWithEvents).toBeTruthy();
+    expect(urlUpdated).toBeTruthy();
     await expect(emptyState).toHaveCount(0);
     await expect(calendarEvents.first()).toBeVisible();
   });

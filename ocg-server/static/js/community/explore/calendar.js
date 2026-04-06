@@ -214,8 +214,8 @@ export class Calendar {
     // Prepare query params
     const params = new URLSearchParams(location.search);
 
-    // Remove view mode and date range from query params
-    params.delete("view_mode");
+    // Update view mode and date range in query params
+    params.set("view_mode", "calendar");
     params.delete("date_from");
     params.delete("date_to");
 
@@ -223,11 +223,12 @@ export class Calendar {
     const date = this.fullCalendar.getDate();
     const { first, last } = getFirstAndLastDayOfMonth(date);
 
-    params.append("date_from", first);
-    params.append("date_to", last);
+    params.set("date_from", first);
+    params.set("date_to", last);
 
     // Update inputs
     updateDateInput(date);
+    updateCalendarUrl(params);
 
     // Fetch events
     const data = await fetchData("events", params.toString());
@@ -410,4 +411,14 @@ function createPopoverIfNeeded(parent, event) {
   // Set popovertarget and create popover
   parent.setAttribute("popovertarget", id);
   parent.insertAdjacentHTML("beforeend", newEventPopover(id, event, horizontal, vertical));
+}
+
+/**
+ * Updates the browser URL to reflect the current calendar filters.
+ * @param {URLSearchParams} params - Query params to write to the URL
+ */
+function updateCalendarUrl(params) {
+  const nextUrl = new URL(window.location.href);
+  nextUrl.search = params.toString();
+  window.history.replaceState({}, "", nextUrl);
 }
