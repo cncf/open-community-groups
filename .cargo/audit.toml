@@ -1,0 +1,4 @@
+[advisories]
+# openidconnect pulls rsa transitively, but we only use it for OIDC token
+# exchange and ID token verification, not for application-side RSA decryption.
+ignore = ["RUSTSEC-2023-0071"]

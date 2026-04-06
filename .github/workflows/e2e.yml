@@ -50,7 +50,7 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: 1.93.1
+          toolchain: 1.94.1
 
       - name: Cache Cargo dependencies
         uses: actions/cache@v5

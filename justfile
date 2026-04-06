@@ -136,9 +136,9 @@ server-fmt-and-lint:
 server-tests:
     cargo test -p ocg-server
 
-# Run the server with cargo watch for auto-reload.
+# Run the server with watchexec for auto-reload.
 server-watch:
-    cargo watch -x "run -p ocg-server -- -c {{ config_dir }}/server.yml"
+    watchexec -r -- cargo run -p ocg-server -- -c "{{ config_dir }}/server.yml"
 
 # Frontend
 
