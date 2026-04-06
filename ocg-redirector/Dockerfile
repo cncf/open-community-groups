@@ -4,7 +4,9 @@ RUN apk --no-cache add musl-dev perl make
 WORKDIR /ocg
 COPY Cargo.* ./
 COPY ocg-redirector ocg-redirector
+COPY ocg-server/build.rs ocg-server/build.rs
 COPY ocg-server/Cargo.* ocg-server
+COPY ocg-server/src/main.rs ocg-server/src/main.rs
 WORKDIR /ocg/ocg-redirector
 RUN cargo build --locked --release
 

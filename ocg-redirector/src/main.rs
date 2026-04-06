@@ -18,7 +18,7 @@ use tracing::{error, info};
 use tracing_subscriber::EnvFilter;
 
 use crate::{
-    config::{Config, LogFormat},
+    config::{Config, HttpServerConfig, LogFormat},
     db::PgDB,
 };
 
@@ -41,11 +41,28 @@ struct Args {
 /// Main entry point for the application.
 #[tokio::main]
 async fn main() -> Result<()> {
-    // Setup configuration
-    let args = Args::parse();
-    let cfg = Config::new(args.config_file.as_ref()).context("error setting up configuration")?;
+    // Load configuration and initialize logging
+    let cfg = setup_config()?;
+    setup_logging(&cfg.log.format);
 
-    // Setup logging based on configuration
+    // Setup the database connection used to load redirect mappings
+    let db = setup_db(&cfg)?;
+
+    // Serve HTTP requests until a shutdown signal is received
+    run_server(db, &cfg.server).await?;
+
+    Ok(())
+}
+
+/// Parse the command line arguments and load configuration.
+fn setup_config() -> Result<Config> {
+    let args = Args::parse();
+    Config::new(args.config_file.as_ref()).context("error setting up configuration")
+}
+
+/// Configure tracing based on the configured log format.
+fn setup_logging(log_format: &LogFormat) {
+    // Build the shared subscriber configuration first
     let ts = tracing_subscriber::fmt()
         .with_env_filter(
             EnvFilter::try_from_default_env()
@@ -53,24 +70,40 @@ async fn main() -> Result<()> {
         )
         .with_file(true)
         .with_line_number(true);
-    match cfg.log.format {
+
+    // Select the configured output formatter
+    match log_format {
         LogFormat::Json => ts.json().init(),
         LogFormat::Pretty => ts.init(),
     }
+}
 
-    // Setup database connection pool
+/// Configure the database pool used by the redirector.
+fn setup_db(cfg: &Config) -> Result<PgDB> {
+    // Build the TLS connector used by the Postgres pool
     let mut builder = SslConnector::builder(SslMethod::tls())?;
     builder.set_verify(SslVerifyMode::NONE);
+
+    // Create the pool with the configured TLS connector
     let connector = MakeTlsConnector::new(builder.build());
     let pool = cfg.db.create_pool(Some(Runtime::Tokio1), connector)?;
-    let db = PgDB::new(pool);
 
-    // Setup and launch the HTTP server
+    Ok(PgDB::new(pool))
+}
+
+/// Build the router and serve HTTP requests until shutdown.
+async fn run_server(db: PgDB, server_cfg: &HttpServerConfig) -> Result<()> {
+    // Load redirects before building the router
     let redirects = db.load_redirects().await?;
-    let router = router::setup(redirects, &cfg.server);
-    let listener = TcpListener::bind(&cfg.server.addr).await?;
+
+    // Build the router before binding the TCP listener
+    let router = router::setup(redirects, server_cfg);
+    let listener = TcpListener::bind(&server_cfg.addr).await?;
+
+    // Serve requests until a graceful shutdown signal arrives
     info!("server started");
-    info!(%cfg.server.addr, "listening");
+    info!(%server_cfg.addr, "listening");
+
     if let Err(err) = axum::serve(listener, router)
         .with_graceful_shutdown(shutdown_signal())
         .await
@@ -78,6 +111,7 @@ async fn main() -> Result<()> {
         error!(?err, "server error");
         return Err(anyhow::Error::new(err));
     }
+
     info!("server stopped");
 
     Ok(())

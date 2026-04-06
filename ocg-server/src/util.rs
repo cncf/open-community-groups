@@ -87,22 +87,6 @@ pub(crate) fn build_event_calendar_attachment(base_url: &str, event: &EventSumma
     }
 }
 
-/// Build the event page link based on the base URL and event and group slugs.
-pub(crate) fn build_event_page_link(base_url: &str, event: &EventSummary) -> String {
-    let base = base_url.strip_suffix('/').unwrap_or(base_url);
-    format!(
-        "{}/{}/group/{}/event/{}",
-        base, event.community_name, event.group_slug, event.slug
-    )
-}
-
-/// Computes the SHA-256 hash of the provided bytes and returns a hex string.
-pub(crate) fn compute_hash(bytes: &[u8]) -> String {
-    let mut hasher = Sha256::new();
-    hasher.update(bytes);
-    format!("{:x}", hasher.finalize())
-}
-
 /// Build the event description for the calendar entry.
 fn build_event_calendar_description(event: &EventSummary) -> String {
     let mut description = Vec::new();
@@ -132,6 +116,22 @@ fn build_event_calendar_description(event: &EventSummary) -> String {
     }
 
     description.join("\n\n")
+}
+
+/// Build the event page link based on the base URL and event and group slugs.
+pub(crate) fn build_event_page_link(base_url: &str, event: &EventSummary) -> String {
+    let base = base_url.strip_suffix('/').unwrap_or(base_url);
+    format!(
+        "{}/{}/group/{}/event/{}",
+        base, event.community_name, event.group_slug, event.slug
+    )
+}
+
+/// Computes the SHA-256 hash of the provided bytes and returns a hex string.
+pub(crate) fn compute_hash(bytes: &[u8]) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(bytes);
+    format!("{:x}", hasher.finalize())
 }
 
 /// Helper function to format `DateTime` with timezone for ICS format (YYYYMMDDTHHMMSS)

@@ -229,8 +229,6 @@ pub fn valid_longitude(value: &Option<f64>, _ctx: &()) -> garde::Result {
     Ok(())
 }
 
-// Helpers.
-
 // Validates a single image URL string (absolute or relative)
 fn validate_image_url(url: &str) -> garde::Result {
     if url.trim().is_empty() {
