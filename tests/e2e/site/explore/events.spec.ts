@@ -281,4 +281,73 @@ test.describe("site explore events page", () => {
         dateTo: populatedRange.last,
       });
   });
+
+  test("shows the empty state after navigating from a populated month to an empty one", async ({
+    page,
+  }) => {
+    await navigateToPath(
+      page,
+      `/explore?entity=events&community[0]=${TEST_COMMUNITY_NAME}`,
+    );
+
+    const scenario = await findCalendarNavigationScenario(page);
+    test.skip(!scenario, "Requires seeded calendar event data");
+
+    const { emptyMonth, populatedMonth } = scenario;
+    const populatedRange = getMonthRange(populatedMonth);
+
+    await navigateToPath(
+      page,
+      `/explore?entity=events&community[0]=${TEST_COMMUNITY_NAME}` +
+        `&view_mode=calendar&date_from=${populatedRange.first}&date_to=${populatedRange.last}`,
+    );
+
+    await expect(page.locator("#calendar-box")).toBeVisible();
+
+    const calendarEvents = page.locator(".fc-daygrid-event");
+    await expect(calendarEvents.first()).toBeVisible();
+    await expect(page.locator(".no-results-filtered:not(.hidden)")).toHaveCount(0);
+    await expect(page.locator(".no-results-default:not(.hidden)")).toHaveCount(0);
+
+    const monthDistance = getMonthDistance(populatedMonth, emptyMonth);
+    expect(monthDistance).not.toBe(0);
+
+    const navigationButton =
+      monthDistance > 0 ? page.locator("#next-month-btn") : page.locator("#prev-month-btn");
+
+    for (let step = 0; step < Math.abs(monthDistance); step += 1) {
+      await Promise.all([
+        page.waitForResponse(
+          (response) =>
+            response.request().method() === "GET" &&
+            response.url().includes("/explore/events/search") &&
+            response.ok(),
+        ),
+        navigationButton.click(),
+      ]);
+    }
+
+    const emptyRange = getMonthRange(emptyMonth);
+    const filteredEmptyState = page.locator(".no-results-filtered:not(.hidden)");
+    await expect(filteredEmptyState).toBeVisible();
+    await expect(page.locator(".no-results-default:not(.hidden)")).toHaveCount(0);
+    await expect(calendarEvents).toHaveCount(0);
+    await expect
+      .poll(async () =>
+        page.evaluate(() => {
+          const params = new URLSearchParams(window.location.search);
+
+          return {
+            viewMode: params.get("view_mode"),
+            dateFrom: params.get("date_from"),
+            dateTo: params.get("date_to"),
+          };
+        }),
+      )
+      .toEqual({
+        viewMode: "calendar",
+        dateFrom: emptyRange.first,
+        dateTo: emptyRange.last,
+      });
+  });
 });

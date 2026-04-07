@@ -43,14 +43,12 @@
 
   <div class="relative">
     {# Placeholder calendar -#}
-    {% if events.len() == 0 -%}
-      <div class="absolute mt-10 z-[10] no-results-default hidden">
-        {{ feedback::alert(title = "No events found", content = "By default, only upcoming events are displayed. You can adjust the date range in the filters to search for past events, or try different search criteria.") -}}
-      </div>
-      <div class="absolute mt-10 z-[10] no-results-filtered hidden">
-        {{ feedback::alert(title = "No events found", content = "We can't seem to find any events that match your search criteria. You can reset your filters or try a different search.") -}}
-      </div>
-    {% endif -%}
+    <div class="absolute mt-10 z-[10] no-results-default hidden">
+      {{ feedback::alert(title = "No events found", content = "By default, only upcoming events are displayed. You can adjust the date range in the filters to search for past events, or try different search criteria.") -}}
+    </div>
+    <div class="absolute mt-10 z-[10] no-results-filtered hidden">
+      {{ feedback::alert(title = "No events found", content = "We can't seem to find any events that match your search criteria. You can reset your filters or try a different search.") -}}
+    </div>
     {# End placeholder calendar -#}
     <div id="calendar-box"
          class="min-h-[500px] fc fc-media-screen fc-direction-ltr fc-theme-standard
