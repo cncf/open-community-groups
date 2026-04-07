@@ -233,14 +233,14 @@ test.describe("site explore events page", () => {
 
     await expect(page.locator("#calendar-box")).toBeVisible();
 
-    const emptyState = page.locator(".no-results-default:not(.hidden)");
+    const filteredEmptyState = page.locator(".no-results-filtered:not(.hidden)");
     const navigationButton =
       direction === "next"
         ? page.locator("#next-month-btn")
         : page.locator("#prev-month-btn");
     const calendarEvents = page.locator(".fc-daygrid-event");
-    await expect(emptyState).toBeVisible();
-    await expect(page.locator(".no-results-filtered:not(.hidden)")).toHaveCount(0);
+    await expect(filteredEmptyState).toBeVisible();
+    await expect(page.locator(".no-results-default:not(.hidden)")).toHaveCount(0);
     await expect(calendarEvents).toHaveCount(0);
 
     const monthSteps = Math.abs(getMonthDistance(emptyMonth, populatedMonth));
@@ -259,8 +259,9 @@ test.describe("site explore events page", () => {
     }
 
     const populatedRange = getMonthRange(populatedMonth);
+    await expect(page.locator(".no-results-filtered:not(.hidden)")).toHaveCount(0);
     await expect(page.locator(".no-results-default:not(.hidden)")).toHaveCount(0);
-    await expect(emptyState).toHaveCount(0);
+    await expect(filteredEmptyState).toHaveCount(0);
     await expect(calendarEvents.first()).toBeVisible();
     await expect
       .poll(async () =>
