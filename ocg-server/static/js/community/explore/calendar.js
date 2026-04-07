@@ -1,6 +1,10 @@
 import { hideLoadingSpinner, showLoadingSpinner, navigateWithHtmx } from "/static/js/common/common.js";
 import { fetchData } from "/static/js/community/explore/explore.js";
-import { getFirstAndLastDayOfMonth, updateDateInput } from "/static/js/community/explore/filters.js";
+import {
+  getFirstAndLastDayOfMonth,
+  hasActiveCalendarFilters,
+  updateDateInput,
+} from "/static/js/community/explore/filters.js";
 
 export class Calendar {
   /**
@@ -171,17 +175,18 @@ export class Calendar {
     // Toggle placeholder visibility and calendar opacity
     const calendarEl = document.getElementById("calendar-box");
     const wrapper = calendarEl ? calendarEl.parentElement : null;
-    const placeholderAlert = wrapper ? wrapper.querySelector('[role="alert"]') : null;
-    const placeholderContainer = placeholderAlert ? placeholderAlert.closest(".absolute") : null;
+    const placeholderContainers = wrapper
+      ? wrapper.querySelectorAll(".no-results-default, .no-results-filtered")
+      : [];
+
+    placeholderContainers.forEach((container) => {
+      container.classList.add("hidden");
+    });
 
     if (events && events.length > 0) {
       // Ensure calendar is fully visible
       if (calendarEl) {
         calendarEl.classList.remove("opacity-30");
-      }
-      // Hide placeholder overlay if present
-      if (placeholderContainer) {
-        placeholderContainer.classList.add("hidden");
       }
       this.addEvents(events);
     } else {
@@ -189,11 +194,15 @@ export class Calendar {
       if (calendarEl) {
         calendarEl.classList.add("opacity-30");
       }
-      if (placeholderContainer) {
-        placeholderContainer.classList.remove("hidden");
+      this.addEvents([]);
+      const visiblePlaceholder = wrapper
+        ? wrapper.querySelector(
+            hasActiveCalendarFilters("events-form") ? ".no-results-filtered" : ".no-results-default",
+          )
+        : null;
+      if (visiblePlaceholder) {
+        visiblePlaceholder.classList.remove("hidden");
       }
-      // Hide loading spinner
-      hideLoadingSpinner("loading-calendar");
     }
   }
 
@@ -205,8 +214,8 @@ export class Calendar {
     // Prepare query params
     const params = new URLSearchParams(location.search);
 
-    // Remove view mode and date range from query params
-    params.delete("view_mode");
+    // Update view mode and date range in query params
+    params.set("view_mode", "calendar");
     params.delete("date_from");
     params.delete("date_to");
 
@@ -214,11 +223,12 @@ export class Calendar {
     const date = this.fullCalendar.getDate();
     const { first, last } = getFirstAndLastDayOfMonth(date);
 
-    params.append("date_from", first);
-    params.append("date_to", last);
+    params.set("date_from", first);
+    params.set("date_to", last);
 
     // Update inputs
     updateDateInput(date);
+    updateCalendarUrl(params);
 
     // Fetch events
     const data = await fetchData("events", params.toString());
@@ -401,4 +411,14 @@ function createPopoverIfNeeded(parent, event) {
   // Set popovertarget and create popover
   parent.setAttribute("popovertarget", id);
   parent.insertAdjacentHTML("beforeend", newEventPopover(id, event, horizontal, vertical));
+}
+
+/**
+ * Updates the browser URL to reflect the current calendar filters.
+ * @param {URLSearchParams} params - Query params to write to the URL
+ */
+function updateCalendarUrl(params) {
+  const nextUrl = new URL(window.location.href);
+  nextUrl.search = params.toString();
+  window.history.replaceState({}, "", nextUrl);
 }
