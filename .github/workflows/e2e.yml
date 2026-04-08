@@ -4,9 +4,6 @@ on:
   pull_request:
     branches:
       - main
-  push:
-    branches:
-      - cynthia-sg/fix-visual-e2e-tests
   workflow_dispatch:
 
 jobs:
