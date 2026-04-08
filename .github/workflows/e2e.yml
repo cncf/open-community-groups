@@ -71,7 +71,6 @@ jobs:
         uses: actions/setup-node@v5
         with:
           node-version: "22"
-          cache: yarn
 
       - name: Install Node.js dependencies
         working-directory: tests/e2e

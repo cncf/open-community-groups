@@ -103,11 +103,6 @@ back to the `db` section in `server.yml`.
 - Seeded e2e users use the password `Password123!` after `just db-load-e2e-data`.
 - Firefox and WebKit only run the smoke suite.
 
-- `yarn test:e2e` runs the full Playwright config.
-- Firefox and WebKit only run the smoke suite.
-- Visual tests start the server automatically using the generated E2E config.
-- OAuth coverage only checks which auth buttons are visible on the login page.
-
 ## Troubleshooting
 
 - If navigation fails, verify the server is reachable at
