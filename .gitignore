@@ -11,8 +11,3 @@ Chart.lock
 chart/charts
 ocg-server/dist
 ocg-server/static/css/styles.css
-node_modules/
-package-lock.json
-test-results/
-playwright-report/
-playwright/.cache/

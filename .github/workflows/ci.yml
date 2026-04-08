@@ -34,12 +34,10 @@ jobs:
               - '.cargo/audit.toml'
             javascript:
               - '.github/workflows/ci.yml'
-              - 'package.json'
               - 'tests/unit/**'
               - 'ocg-server/static/js/**'
               - 'ocg-server/static/js/.prettierrc.yaml'
-              - 'web-test-runner.config.mjs'
-              - 'yarn.lock'
+              - 'tests/unit/package-lock.json'
             markdown:
               - '.github/workflows/ci.yml'
               - '**/*.md'
