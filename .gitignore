@@ -6,6 +6,7 @@
 /tests/e2e/package-lock.json
 /tests/e2e/playwright-report
 /tests/e2e/test-results
+/tests/unit/node_modules
 /tmp
 Chart.lock
 chart/charts
