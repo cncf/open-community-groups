@@ -143,4 +143,28 @@ describe("session-proposal-modal", () => {
 
     expect(element._selectedCoSpeaker).to.deep.equal({ user_id: "speaker-2", username: "grace" });
   });
+
+  it("removes the document keydown listener when disconnected", async () => {
+    const originalRemoveEventListener = document.removeEventListener.bind(document);
+    const removedListeners = [];
+
+    document.removeEventListener = (type, listener, options) => {
+      removedListeners.push({ type, listener, options });
+      return originalRemoveEventListener(type, listener, options);
+    };
+
+    try {
+      const element = await mountLitComponent("session-proposal-modal");
+      const keydownListener = element._onKeydown;
+
+      element.openCreate();
+      await element.updateComplete;
+      element.remove();
+
+      expect(removedListeners.some(({ type, listener }) => type === "keydown" && listener === keydownListener)).to
+        .equal(true);
+    } finally {
+      document.removeEventListener = originalRemoveEventListener;
+    }
+  });
 });

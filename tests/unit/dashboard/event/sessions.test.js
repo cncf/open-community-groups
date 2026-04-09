@@ -210,6 +210,20 @@ describe("sessions-section", () => {
     ]);
   });
 
+  it("starts session ids at zero when adding the first saved session", async () => {
+    const element = await renderSessionsSection();
+    element.sessions = [];
+
+    element._handleSessionSaved({
+      detail: {
+        isNew: true,
+        session: { name: "First session", starts_at: "2025-05-10T09:00" },
+      },
+    });
+
+    expect(element.sessions).to.deep.equal([{ id: 0, name: "First session", starts_at: "2025-05-10T09:00" }]);
+  });
+
   it("registers htmx cleanup that removes empty session buckets", async () => {
     await renderSessionsSection();
 

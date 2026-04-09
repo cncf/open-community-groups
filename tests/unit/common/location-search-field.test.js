@@ -231,7 +231,7 @@ describe("location-search-field", () => {
     element._searchQuery = "Má";
     element._showDropdown = true;
     element._searchResults = [];
-    element._abortController = { abortCalled: 0, abort() { this.abortCalled += 1; } };
+    element._abortController = { abort() {} };
 
     element._handleKeyDown(event);
 

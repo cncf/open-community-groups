@@ -76,7 +76,7 @@ describe("form validation helpers", () => {
     ).to.equal(true);
   });
 
-  it("reports past or future event dates through the active section callback", () => {
+  it("reports past dates and resolves future-date limits from the form timezone field", () => {
     const form = document.createElement("form");
     const timezoneInput = document.createElement("input");
     const startsInput = document.createElement("input");

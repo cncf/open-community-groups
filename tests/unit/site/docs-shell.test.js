@@ -8,23 +8,36 @@ describe("site docs shell", () => {
   let fetchMock;
   let listenerTracker;
   let originalAppendChild;
+  let originalAppend;
+  let originalInsertBefore;
   let processCalls;
 
+  const docsHeadSelector = [
+    "#ocg-docsify-vue-scoped-style",
+    "#ocg-docs-theme-scoped-style",
+    "#ocg-docs-shell-overrides",
+    'script[src="/static/vendor/js/docsify.v4.13.1.min.js"]',
+    'script[src="/static/vendor/js/docsify-copy-code.v3.0.2.min.js"]',
+  ].join(", ");
+
   const cleanupDocsHead = () => {
-    document.head
-      .querySelectorAll(
-        [
-          "#ocg-docsify-vue-scoped-style",
-          "#ocg-docs-theme-scoped-style",
-          "#ocg-docs-shell-overrides",
-          'script[src="/static/vendor/js/docsify.v4.13.1.min.js"]',
-          'script[src="/static/vendor/js/docsify-copy-code.v3.0.2.min.js"]',
-        ].join(", "),
-      )
-      .forEach((node) => node.remove());
+    document.head.querySelectorAll(docsHeadSelector).forEach((node) => node.remove());
   };
 
   const importDocsShell = () => import(`/static/js/site/docs-shell.js?test=${Date.now()}-${Math.random()}`);
+
+  const scheduleScriptLoad = (...nodes) => {
+    nodes.flat().forEach((node) => {
+      if (!(node instanceof HTMLScriptElement)) {
+        return;
+      }
+
+      queueMicrotask(() => {
+        node.dataset.loaded = "1";
+        node.dispatchEvent(new Event("load"));
+      });
+    });
+  };
 
   beforeEach(() => {
     resetDom();
@@ -39,20 +52,29 @@ describe("site docs shell", () => {
     };
 
     originalAppendChild = document.head.appendChild.bind(document.head);
+    originalAppend = document.head.append.bind(document.head);
+    originalInsertBefore = document.head.insertBefore.bind(document.head);
     document.head.appendChild = (node) => {
       const appendedNode = originalAppendChild(node);
-      if (node instanceof HTMLScriptElement) {
-        queueMicrotask(() => {
-          node.dataset.loaded = "1";
-          node.dispatchEvent(new Event("load"));
-        });
-      }
+      scheduleScriptLoad(node);
       return appendedNode;
+    };
+    document.head.append = (...nodes) => {
+      const result = originalAppend(...nodes);
+      scheduleScriptLoad(...nodes);
+      return result;
+    };
+    document.head.insertBefore = (node, child) => {
+      const insertedNode = originalInsertBefore(node, child);
+      scheduleScriptLoad(node);
+      return insertedNode;
     };
   });
 
   afterEach(() => {
     document.head.appendChild = originalAppendChild;
+    document.head.append = originalAppend;
+    document.head.insertBefore = originalInsertBefore;
     listenerTracker.restore();
     fetchMock.restore();
     cleanupDocsHead();
@@ -92,7 +114,6 @@ describe("site docs shell", () => {
   });
 
   it("rewrites app links, mirrors body classes, and enhances markdown tables after mount", async () => {
-    document.body.classList.add("close");
     document.body.innerHTML = `
       <div class="ocg-docs-root">
         <div id="ocg-docs-app">
@@ -116,6 +137,7 @@ describe("site docs shell", () => {
         </div>
       </div>
     `;
+    document.body.classList.add("close");
 
     fetchMock.setImpl(async () => ({
       ok: true,
@@ -144,5 +166,30 @@ describe("site docs shell", () => {
     await waitForMicrotask();
 
     expect(docsRoot?.classList.contains("close")).to.equal(false);
+  });
+
+  it("removes injected docs styles and scripts during head cleanup", async () => {
+    document.body.innerHTML = `
+      <div class="ocg-docs-root">
+        <div id="ocg-docs-app"></div>
+      </div>
+    `;
+
+    fetchMock.setImpl(async () => ({
+      ok: true,
+      async text() {
+        return "body { color: black; }";
+      },
+    }));
+
+    await importDocsShell();
+    await waitForMicrotask();
+    await waitForAnimationFrames(3);
+
+    expect(document.head.querySelectorAll(docsHeadSelector).length).to.equal(5);
+
+    cleanupDocsHead();
+
+    expect(document.head.querySelectorAll(docsHeadSelector).length).to.equal(0);
   });
 });
