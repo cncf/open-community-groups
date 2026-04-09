@@ -5,8 +5,10 @@ import {
   closeFiltersDrawer,
   getDefaultDateRange,
   getFirstAndLastDayOfMonth,
+  hasActiveCalendarFilters,
   hasActiveFilters,
   openFiltersDrawer,
+  resetFilters,
   resetDateFiltersOnCalendarViewMode,
   triggerChangeOnForm,
   unckeckAllKinds,
@@ -153,5 +155,71 @@ describe("explore filters", () => {
     expect(document.querySelector('input[name="date_from"]')?.value).to.equal("");
     expect(document.querySelector('input[name="date_to"]')?.value).to.equal("");
     expect(document.querySelectorAll("input[name='kind[]']:checked")).to.have.length(0);
+  });
+
+  it("resets filters, custom components, search, and sort inputs back to defaults", async () => {
+    const { from, to } = getDefaultDateRange();
+    const collapsible = document.createElement("collapsible-filter");
+    collapsible.cleanSelected = () => {
+      collapsible.setAttribute("data-cleared", "true");
+    };
+    collapsible.updateComplete = Promise.resolve();
+
+    const multiSelect = document.createElement("multi-select-filter");
+    multiSelect.cleanSelected = () => {
+      multiSelect.setAttribute("data-cleared", "true");
+    };
+    multiSelect.updateComplete = Promise.resolve();
+
+    document.body.innerHTML = `
+      <form id="events-form">
+        <input type="checkbox" name="kind[]" checked />
+        <input type="radio" name="view" value="" />
+        <input type="date" name="date_from" value="2025-01-01" />
+        <input type="date" name="date_to" value="2025-12-31" />
+      </form>
+      <input name="ts_query" value="kubecon" />
+      <select id="sort_selector">
+        <option value="date-asc">Date</option>
+        <option value="name" selected>Name</option>
+      </select>
+      <input id="sort_by" value="name" />
+      <input id="sort_direction" value="desc" />
+    `;
+    document.getElementById("events-form")?.append(collapsible, multiSelect);
+
+    await resetFilters("events-form");
+
+    expect(collapsible.dataset.cleared).to.equal("true");
+    expect(multiSelect.dataset.cleared).to.equal("true");
+    expect(document.querySelectorAll('input[name="kind[]"]:checked')).to.have.length(0);
+    expect(document.querySelector('input[name="date_from"]')?.value).to.equal(from);
+    expect(document.querySelector('input[name="date_to"]')?.value).to.equal(to);
+    expect(document.querySelector('input[name="ts_query"]')?.value).to.equal("");
+    expect(document.getElementById("sort_selector")?.value).to.equal("date-asc");
+    expect(document.getElementById("sort_by")?.value).to.equal("date");
+    expect(document.getElementById("sort_direction")?.value).to.equal("asc");
+    expect(document.querySelector('input[type="radio"][value=""]')?.checked).to.equal(true);
+    expect(htmx.triggerCalls.at(-1)).to.deep.equal([document.getElementById("events-form"), "change"]);
+  });
+
+  it("detects active calendar filters from current-month dates and other active filters", () => {
+    const { first, last } = getFirstAndLastDayOfMonth();
+    document.body.innerHTML = `
+      <form id="events-form">
+        <input name="date_from" value="${first}" />
+        <input name="date_to" value="${last}" />
+      </form>
+      <input name="ts_query" value="" />
+    `;
+
+    expect(hasActiveCalendarFilters("events-form")).to.equal(false);
+
+    document.querySelector('input[name="ts_query"]').value = "cloud";
+    expect(hasActiveCalendarFilters("events-form")).to.equal(true);
+
+    document.querySelector('input[name="ts_query"]').value = "";
+    document.querySelector('input[name="date_to"]').value = "2099-12-31";
+    expect(hasActiveCalendarFilters("events-form")).to.equal(true);
   });
 });

@@ -24,4 +24,28 @@ describe("community home", () => {
 
     expect(window.location.pathname).to.equal("/");
   });
+
+  it("redirects to explore with the text search query when the input is filled", () => {
+    const assignedUrls = [];
+    const executeLoadExplorePage = new Function(
+      "document",
+      `const loadExplorePage = ${loadExplorePage.toString()}; return loadExplorePage();`,
+    );
+
+    executeLoadExplorePage({
+      getElementById(id) {
+        if (id === "ts_query") {
+          return { value: "cloud native" };
+        }
+        return null;
+      },
+      location: {
+        assign(url) {
+          assignedUrls.push(url);
+        },
+      },
+    });
+
+    expect(assignedUrls).to.deep.equal(["/explore?ts_query=cloud%20native"]);
+  });
 });

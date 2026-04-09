@@ -131,4 +131,74 @@ describe("group membership", () => {
     });
     expect(env.htmx.triggerCalls).to.deep.equal([["#leave-btn", "confirmed"]]);
   });
+
+  it("emits membership-changed after a successful join request", () => {
+    const { joinButton } = renderMembershipDom();
+    let changedEvents = 0;
+    document.body.addEventListener("membership-changed", () => {
+      changedEvents += 1;
+    });
+
+    joinButton.dispatchEvent(
+      new CustomEvent("htmx:afterRequest", {
+        bubbles: true,
+        detail: {
+          xhr: {
+            status: 200,
+          },
+        },
+      }),
+    );
+
+    expect(changedEvents).to.equal(1);
+    expect(env.swal.calls.at(-1)).to.include({
+      text: "You have successfully joined this group.",
+      icon: "success",
+    });
+  });
+
+  it("emits membership-changed after leaving and restores the leave button on failure", () => {
+    const { leaveButton, loadingButton } = renderMembershipDom();
+    let changedEvents = 0;
+    document.body.addEventListener("membership-changed", () => {
+      changedEvents += 1;
+    });
+
+    leaveButton.dispatchEvent(
+      new CustomEvent("htmx:afterRequest", {
+        bubbles: true,
+        detail: {
+          xhr: {
+            status: 200,
+          },
+        },
+      }),
+    );
+
+    expect(changedEvents).to.equal(1);
+    expect(env.swal.calls.at(-1)).to.include({
+      text: "You have successfully left this group.",
+      icon: "success",
+    });
+
+    leaveButton.classList.add("hidden");
+    loadingButton.classList.remove("hidden");
+    leaveButton.dispatchEvent(
+      new CustomEvent("htmx:afterRequest", {
+        bubbles: true,
+        detail: {
+          xhr: {
+            status: 500,
+          },
+        },
+      }),
+    );
+
+    expect(leaveButton.classList.contains("hidden")).to.equal(false);
+    expect(loadingButton.classList.contains("hidden")).to.equal(true);
+    expect(env.swal.calls.at(-1)).to.include({
+      text: "Something went wrong leaving this group. Please try again later.",
+      icon: "error",
+    });
+  });
 });

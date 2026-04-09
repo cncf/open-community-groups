@@ -1,7 +1,7 @@
 import { expect } from "@open-wc/testing";
 
 import { waitForAnimationFrames, waitForMicrotask } from "/tests/unit/test-utils/async.js";
-import { resetDom, trackAddedEventListeners } from "/tests/unit/test-utils/dom.js";
+import { mockScrollTo, resetDom, setLocationPath, trackAddedEventListeners } from "/tests/unit/test-utils/dom.js";
 import { mockFetch } from "/tests/unit/test-utils/network.js";
 
 describe("site docs shell", () => {
@@ -11,6 +11,7 @@ describe("site docs shell", () => {
   let originalAppend;
   let originalInsertBefore;
   let processCalls;
+  let scrollToMock;
 
   const docsHeadSelector = [
     "#ocg-docsify-vue-scoped-style",
@@ -45,6 +46,7 @@ describe("site docs shell", () => {
     listenerTracker = trackAddedEventListeners();
     fetchMock = mockFetch();
     processCalls = [];
+    scrollToMock = mockScrollTo();
     window.htmx = {
       process(target) {
         processCalls.push(target);
@@ -77,6 +79,7 @@ describe("site docs shell", () => {
     document.head.insertBefore = originalInsertBefore;
     listenerTracker.restore();
     fetchMock.restore();
+    scrollToMock.restore();
     cleanupDocsHead();
     delete window.$docsify;
     delete window.htmx;
@@ -191,5 +194,117 @@ describe("site docs shell", () => {
     cleanupDocsHead();
 
     expect(document.head.querySelectorAll(docsHeadSelector).length).to.equal(0);
+  });
+
+  it("updates the docs hash, scrolls to the section, and syncs the active sidebar item", async () => {
+    setLocationPath("/docs");
+    window.location.hash = "#/guide";
+    document.body.innerHTML = `
+      <div class="ocg-docs-root">
+        <div id="ocg-docs-app">
+          <div class="sidebar-nav">
+            <ul>
+              <li id="guide-item" class="collapse">
+                <a href="#/guide">Guide</a>
+                <ul class="app-sub-sidebar">
+                  <li id="section-item">
+                    <a id="section-link" href="#/guide?id=section-a">Section A</a>
+                  </li>
+                </ul>
+              </li>
+            </ul>
+          </div>
+          <div class="markdown-section">
+            <h2 id="section-a">Section A</h2>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.getElementById("section-a").getBoundingClientRect = () => ({
+      top: 120,
+      bottom: 160,
+      left: 0,
+      right: 100,
+      width: 100,
+      height: 40,
+      x: 0,
+      y: 120,
+      toJSON() {},
+    });
+
+    fetchMock.setImpl(async () => ({
+      ok: true,
+      async text() {
+        return "body { color: black; }";
+      },
+    }));
+
+    await importDocsShell();
+    await waitForMicrotask();
+    await waitForAnimationFrames(3);
+
+    document.getElementById("section-link")?.dispatchEvent(
+      new MouseEvent("click", {
+        bubbles: true,
+        cancelable: true,
+        composed: true,
+      }),
+    );
+    await waitForAnimationFrames(3);
+
+    expect(window.location.hash).to.equal("#/guide?id=section-a");
+    expect(scrollToMock.calls.at(-1)).to.deep.equal({
+      behavior: "auto",
+      top: 90,
+    });
+    expect(document.getElementById("guide-item")?.classList.contains("collapse")).to.equal(false);
+    expect(document.getElementById("section-item")?.classList.contains("active")).to.equal(true);
+  });
+
+  it("cleans up and remounts docs lifecycle on swap and page events", async () => {
+    document.body.innerHTML = `
+      <div class="ocg-docs-root">
+        <div id="ocg-docs-app">
+          <div class="markdown-section">
+            <a id="docs-link" href="#/dashboard/groups">Dashboard</a>
+          </div>
+        </div>
+      </div>
+    `;
+
+    fetchMock.setImpl(async () => ({
+      ok: true,
+      async text() {
+        return "body { color: black; }";
+      },
+    }));
+
+    await importDocsShell();
+    await waitForMicrotask();
+    await waitForAnimationFrames(3);
+
+    expect(document.head.querySelectorAll(docsHeadSelector).length).to.equal(5);
+
+    document.body.innerHTML = "";
+    document.dispatchEvent(new CustomEvent("htmx:afterSwap"));
+    await waitForMicrotask();
+
+    document.body.innerHTML = `
+      <div class="ocg-docs-root">
+        <div id="ocg-docs-app">
+          <div class="markdown-section">
+            <a id="remounted-link" href="#/dashboard/groups">Dashboard</a>
+          </div>
+        </div>
+      </div>
+    `;
+    window.dispatchEvent(new Event("pageshow"));
+    await waitForMicrotask();
+    await waitForAnimationFrames(3);
+
+    expect(document.head.querySelectorAll(docsHeadSelector).length).to.equal(5);
+    expect(window.$docsify?.basePath).to.equal("/static/docs/");
+    expect(document.getElementById("remounted-link")?.getAttribute("hx-boost")).to.equal("true");
   });
 });

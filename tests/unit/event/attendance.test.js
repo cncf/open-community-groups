@@ -196,4 +196,108 @@ describe("event attendance", () => {
     });
     expect(env.htmx.triggerCalls).to.deep.equal([["#leave-btn", "confirmed"]]);
   });
+
+  it("disables attendance changes for past events", () => {
+    const { checker, attendButton } = renderAttendanceDom({
+      starts: "2000-05-10T10:00:00Z",
+      capacity: "10",
+      remainingCapacity: "5",
+    });
+
+    checker.dispatchEvent(
+      new CustomEvent("htmx:afterRequest", {
+        bubbles: true,
+        detail: {
+          xhr: {
+            status: 200,
+            responseText: JSON.stringify({ status: "guest" }),
+          },
+        },
+      }),
+    );
+
+    expect(attendButton.classList.contains("hidden")).to.equal(false);
+    expect(attendButton.disabled).to.equal(true);
+    expect(attendButton.title).to.equal(
+      "You cannot change attendance because the event has already started.",
+    );
+  });
+
+  it("shows a sold-out attend button when no waitlist is available", () => {
+    const { checker, attendButton, signinButton } = renderAttendanceDom({
+      capacity: "10",
+      remainingCapacity: "0",
+      waitlistEnabled: "false",
+    });
+
+    checker.dispatchEvent(
+      new CustomEvent("htmx:afterRequest", {
+        bubbles: true,
+        detail: {
+          xhr: {
+            status: 200,
+            responseText: JSON.stringify({ status: "guest" }),
+          },
+        },
+      }),
+    );
+
+    expect(attendButton.classList.contains("hidden")).to.equal(false);
+    expect(attendButton.disabled).to.equal(true);
+    expect(attendButton.title).to.equal("This event is sold out.");
+    expect(signinButton.classList.contains("hidden")).to.equal(true);
+  });
+
+  it("emits a success message when leaving the waitlist and restores the button on failure", () => {
+    const { leaveButton, loadingButton } = renderAttendanceDom();
+    let changedEvents = 0;
+    document.body.addEventListener("attendance-changed", () => {
+      changedEvents += 1;
+    });
+
+    leaveButton.querySelector("[data-attendance-label]").textContent = "Leave waiting list";
+    leaveButton.dispatchEvent(
+      new CustomEvent("htmx:beforeRequest", {
+        bubbles: true,
+      }),
+    );
+
+    leaveButton.dispatchEvent(
+      new CustomEvent("htmx:afterRequest", {
+        bubbles: true,
+        detail: {
+          xhr: {
+            status: 200,
+            responseText: JSON.stringify({ left_status: "waitlisted" }),
+          },
+        },
+      }),
+    );
+
+    expect(changedEvents).to.equal(1);
+    expect(env.swal.calls.at(-1)).to.include({
+      text: "You have left the waiting list for this event.",
+      icon: "info",
+    });
+
+    leaveButton.classList.remove("hidden");
+    loadingButton.classList.remove("hidden");
+    leaveButton.dispatchEvent(
+      new CustomEvent("htmx:afterRequest", {
+        bubbles: true,
+        detail: {
+          xhr: {
+            status: 500,
+          },
+        },
+      }),
+    );
+
+    expect(leaveButton.classList.contains("hidden")).to.equal(false);
+    expect(loadingButton.classList.contains("hidden")).to.equal(true);
+    expect(env.swal.calls.at(-1)).to.include({
+      text: "Something went wrong canceling your attendance. Please try again later.",
+      icon: "error",
+    });
+  });
 });

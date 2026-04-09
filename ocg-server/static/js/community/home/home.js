@@ -5,6 +5,6 @@
 export const loadExplorePage = () => {
   const input = document.getElementById("ts_query");
   if (input && input.value !== "") {
-    document.location.href = `/explore?ts_query=${input.value}`;
+    document.location.assign(`/explore?ts_query=${encodeURIComponent(input.value)}`);
   }
 };
