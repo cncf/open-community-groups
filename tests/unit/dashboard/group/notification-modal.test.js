@@ -1,21 +1,14 @@
 import { expect } from "@open-wc/testing";
 
 import { createNotificationModal } from "/static/js/dashboard/group/notificationModal.js";
-import { setupDashboardTestEnv } from "/tests/unit/test-utils/env.js";
+import { useDashboardTestEnv } from "/tests/unit/test-utils/env.js";
+import { dispatchHtmxAfterRequest } from "/tests/unit/test-utils/htmx.js";
 
 describe("notification modal", () => {
-  let env;
-
-  beforeEach(() => {
-    env = setupDashboardTestEnv({
-      path: "/dashboard/groups",
-      withScroll: true,
-      withSwal: true,
-    });
-  });
-
-  afterEach(() => {
-    env.restore();
+  const env = useDashboardTestEnv({
+    path: "/dashboard/groups",
+    withScroll: true,
+    withSwal: true,
   });
 
   it("updates the form endpoint and toggles the modal from controls", () => {
@@ -86,19 +79,14 @@ describe("notification modal", () => {
       successMessage: "Email sent.",
     });
 
-    form.dispatchEvent(
-      new CustomEvent("htmx:afterRequest", {
-        bubbles: true,
-        detail: {
-          xhr: { status: 204, responseText: "" },
-        },
-      }),
-    );
+    dispatchHtmxAfterRequest(form, {
+      status: 204,
+    });
 
     expect(resetCalls).to.equal(1);
     expect(document.getElementById("notification-modal")?.classList.contains("hidden")).to.equal(true);
-    expect(env.swal.calls).to.have.length(1);
-    expect(env.swal.calls[0]).to.include({ text: "Email sent.", icon: "success" });
+    expect(env.current.swal.calls).to.have.length(1);
+    expect(env.current.swal.calls[0]).to.include({ text: "Email sent.", icon: "success" });
   });
 
   it("shows an error and keeps the modal open after a failed htmx request", () => {
@@ -117,18 +105,14 @@ describe("notification modal", () => {
       openButtonId: "open-modal",
     });
 
-    document.getElementById("notification-form")?.dispatchEvent(
-      new CustomEvent("htmx:afterRequest", {
-        bubbles: true,
-        detail: {
-          xhr: { status: 500, responseText: "Server exploded" },
-        },
-      }),
-    );
+    dispatchHtmxAfterRequest(document.getElementById("notification-form"), {
+      status: 500,
+      responseText: "Server exploded",
+    });
 
     expect(document.getElementById("notification-modal")?.classList.contains("hidden")).to.equal(false);
-    expect(env.swal.calls).to.have.length(1);
-    expect(env.swal.calls[0]).to.include({ text: "Server exploded", icon: "error" });
-    expect(env.scrollToMock.calls).to.deep.equal([{ top: 0, behavior: "auto" }]);
+    expect(env.current.swal.calls).to.have.length(1);
+    expect(env.current.swal.calls[0]).to.include({ text: "Server exploded", icon: "error" });
+    expect(env.current.scrollToMock.calls).to.deep.equal([{ top: 0, behavior: "auto" }]);
   });
 });

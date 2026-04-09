@@ -1,24 +1,29 @@
 import { expect } from "@open-wc/testing";
 
 import "/static/js/dashboard/community/team-add-member.js";
-import { resetDom } from "/tests/unit/test-utils/dom.js";
-import { setupDashboardTestEnv } from "/tests/unit/test-utils/env.js";
-import { mountLitComponent, removeMountedElements } from "/tests/unit/test-utils/lit.js";
+import { useDashboardTestEnv } from "/tests/unit/test-utils/env.js";
+import { dispatchHtmxAfterRequest } from "/tests/unit/test-utils/htmx.js";
+import {
+  mountLitComponent,
+  mountLitComponentWithAttributes,
+  useMountedElementsCleanup,
+} from "/tests/unit/test-utils/lit.js";
 
 describe("team-add-member", () => {
   const userSearchFieldPrototype = customElements.get("user-search-field").prototype;
   const originalFocusInput = userSearchFieldPrototype.focusInput;
 
-  let env;
+  const env = useDashboardTestEnv({
+    path: "/dashboard/community/team",
+    withHtmx: true,
+    withSwal: true,
+  });
+
+  useMountedElementsCleanup("team-add-member");
+
   let processCalls;
 
   beforeEach(() => {
-    env = setupDashboardTestEnv({
-      path: "/dashboard/community/team",
-      withHtmx: true,
-      withSwal: true,
-    });
-
     processCalls = [];
     globalThis.htmx.process = (form) => {
       processCalls.push(form);
@@ -27,34 +32,20 @@ describe("team-add-member", () => {
 
   afterEach(() => {
     userSearchFieldPrototype.focusInput = originalFocusInput;
-    removeMountedElements("team-add-member");
-    resetDom();
-    env.restore();
   });
 
-  const renderWithAttributes = async (attributes = {}) => {
-    const element = document.createElement("team-add-member");
-
-    Object.entries(attributes).forEach(([name, value]) => {
-      element.setAttribute(name, value);
-    });
-
-    document.body.append(element);
-    await element.updateComplete;
-
-    return element;
-  };
-
   it("parses selected users and role options from attributes", async () => {
-    const element = await renderWithAttributes({
-      "selected-users": JSON.stringify([
-        { user_id: 101, name: "Ada Lovelace" },
-        { user_id: "202", name: "Grace Hopper" },
-      ]),
-      "role-options": JSON.stringify([
-        { display_name: "Maintainer", community_role_id: "role-1" },
-        { display_name: "Reviewer", group_role_id: "role-2" },
-      ]),
+    const element = await mountLitComponentWithAttributes("team-add-member", {
+      attributes: {
+        "selected-users": JSON.stringify([
+          { user_id: 101, name: "Ada Lovelace" },
+          { user_id: "202", name: "Grace Hopper" },
+        ]),
+        "role-options": JSON.stringify([
+          { display_name: "Maintainer", community_role_id: "role-1" },
+          { display_name: "Reviewer", group_role_id: "role-2" },
+        ]),
+      },
     });
 
     expect(element.selectedUsers).to.deep.equal([
@@ -86,8 +77,10 @@ describe("team-add-member", () => {
       focusCalls += 1;
     };
 
-    const element = await renderWithAttributes({
-      "role-options": JSON.stringify([{ display_name: "Maintainer", community_role_id: "role-1" }]),
+    const element = await mountLitComponentWithAttributes("team-add-member", {
+      attributes: {
+        "role-options": JSON.stringify([{ display_name: "Maintainer", community_role_id: "role-1" }]),
+      },
     });
 
     element._open();
@@ -105,8 +98,10 @@ describe("team-add-member", () => {
   });
 
   it("enables submit only after both a user and role have been selected", async () => {
-    const element = await renderWithAttributes({
-      "role-options": JSON.stringify([{ display_name: "Maintainer", community_role_id: "role-1" }]),
+    const element = await mountLitComponentWithAttributes("team-add-member", {
+      attributes: {
+        "role-options": JSON.stringify([{ display_name: "Maintainer", community_role_id: "role-1" }]),
+      },
     });
 
     element._open();
@@ -144,8 +139,10 @@ describe("team-add-member", () => {
   });
 
   it("closes and resets the form after a successful htmx request", async () => {
-    const element = await renderWithAttributes({
-      "role-options": JSON.stringify([{ display_name: "Maintainer", community_role_id: "role-1" }]),
+    const element = await mountLitComponentWithAttributes("team-add-member", {
+      attributes: {
+        "role-options": JSON.stringify([{ display_name: "Maintainer", community_role_id: "role-1" }]),
+      },
     });
 
     element._open();
@@ -168,24 +165,17 @@ describe("team-add-member", () => {
     await element.updateComplete;
 
     const form = element.querySelector("#team-add-form");
-    form.dispatchEvent(
-      new CustomEvent("htmx:afterRequest", {
-        bubbles: true,
-        detail: {
-          xhr: {
-            status: 204,
-          },
-        },
-      }),
-    );
+    dispatchHtmxAfterRequest(form, {
+      status: 204,
+    });
 
     expect(element._isOpen).to.equal(false);
     expect(element._selectedUser).to.equal(null);
     expect(element._selectedRole).to.equal("");
     expect(document.body.style.overflow).to.equal("");
     expect(document.body.dataset.modalOpenCount).to.equal("0");
-    expect(env.swal.calls).to.have.length(1);
-    expect(env.swal.calls[0]).to.include({
+    expect(env.current.swal.calls).to.have.length(1);
+    expect(env.current.swal.calls[0]).to.include({
       text: "Invitation sent to the selected user.",
       icon: "success",
     });

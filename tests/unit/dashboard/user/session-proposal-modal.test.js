@@ -2,35 +2,31 @@ import { expect } from "@open-wc/testing";
 
 import "/static/js/dashboard/user/session-proposal-modal.js";
 import { waitForMicrotask } from "/tests/unit/test-utils/async.js";
-import { resetDom } from "/tests/unit/test-utils/dom.js";
-import { setupDashboardTestEnv } from "/tests/unit/test-utils/env.js";
-import { mountLitComponent, removeMountedElements } from "/tests/unit/test-utils/lit.js";
+import { useDashboardTestEnv } from "/tests/unit/test-utils/env.js";
+import { dispatchHtmxAfterRequest } from "/tests/unit/test-utils/htmx.js";
+import {
+  mountLitComponent,
+  mountLitComponentWithAttributes,
+  useMountedElementsCleanup,
+} from "/tests/unit/test-utils/lit.js";
 
 describe("session-proposal-modal", () => {
-  let env;
-
-  beforeEach(() => {
-    env = setupDashboardTestEnv({
-      path: "/dashboard/user/session-proposals",
-      withHtmx: true,
-      withSwal: true,
-    });
+  useDashboardTestEnv({
+    path: "/dashboard/user/session-proposals",
+    withHtmx: true,
+    withSwal: true,
   });
 
-  afterEach(() => {
-    removeMountedElements("session-proposal-modal");
-    resetDom();
-    env.restore();
-  });
+  useMountedElementsCleanup("session-proposal-modal");
 
   it("opens in edit mode and syncs form endpoints and values", async () => {
-    const element = document.createElement("session-proposal-modal");
-    element.setAttribute(
-      "session-proposal-levels",
-      JSON.stringify([{ session_proposal_level_id: "level-1", display_name: "Beginner" }]),
-    );
-    document.body.append(element);
-    await element.updateComplete;
+    const element = await mountLitComponentWithAttributes("session-proposal-modal", {
+      attributes: {
+        "session-proposal-levels": JSON.stringify([
+          { session_proposal_level_id: "level-1", display_name: "Beginner" },
+        ]),
+      },
+    });
 
     element.openEdit({
       session_proposal_id: 7,
@@ -56,14 +52,9 @@ describe("session-proposal-modal", () => {
     element.openCreate();
     await element.updateComplete;
 
-    element.querySelector("#session-proposal-form").dispatchEvent(
-      new CustomEvent("htmx:afterRequest", {
-        bubbles: true,
-        detail: {
-          xhr: { status: 204 },
-        },
-      }),
-    );
+    dispatchHtmxAfterRequest(element.querySelector("#session-proposal-form"), {
+      status: 204,
+    });
 
     expect(element._isOpen).to.equal(false);
   });
@@ -74,14 +65,9 @@ describe("session-proposal-modal", () => {
     element.openCreate();
     await element.updateComplete;
 
-    element.querySelector("#session-proposal-form").dispatchEvent(
-      new CustomEvent("htmx:afterRequest", {
-        bubbles: true,
-        detail: {
-          xhr: { status: 500 },
-        },
-      }),
-    );
+    dispatchHtmxAfterRequest(element.querySelector("#session-proposal-form"), {
+      status: 500,
+    });
 
     expect(element._isOpen).to.equal(true);
   });

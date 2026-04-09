@@ -2,7 +2,8 @@ import { expect } from "@open-wc/testing";
 
 import "/static/js/group/membership.js";
 import { waitForMicrotask } from "/tests/unit/test-utils/async.js";
-import { setupDashboardTestEnv } from "/tests/unit/test-utils/env.js";
+import { useDashboardTestEnv } from "/tests/unit/test-utils/env.js";
+import { dispatchHtmxAfterRequest, dispatchHtmxBeforeRequest } from "/tests/unit/test-utils/htmx.js";
 
 const renderMembershipDom = () => {
   document.body.innerHTML = `
@@ -25,36 +26,20 @@ const renderMembershipDom = () => {
 };
 
 describe("group membership", () => {
-  let env;
-
-  beforeEach(() => {
-    env = setupDashboardTestEnv({
-      path: "/groups/test-group",
-      withHtmx: true,
-      withScroll: true,
-      withSwal: true,
-    });
-  });
-
-  afterEach(() => {
-    delete document.body.dataset.membershipListenersReady;
-    env.restore();
+  const env = useDashboardTestEnv({
+    path: "/groups/test-group",
+    withHtmx: true,
+    withScroll: true,
+    withSwal: true,
+    bodyDatasetKeysToClear: ["membershipListenersReady"],
   });
 
   it("shows the leave action after a successful membership check", () => {
     const { checker, leaveButton, signinButton, joinButton } = renderMembershipDom();
 
-    checker.dispatchEvent(
-      new CustomEvent("htmx:afterRequest", {
-        bubbles: true,
-        detail: {
-          xhr: {
-            status: 200,
-            responseText: JSON.stringify({ is_member: true }),
-          },
-        },
-      }),
-    );
+    dispatchHtmxAfterRequest(checker, {
+      responseText: JSON.stringify({ is_member: true }),
+    });
 
     expect(leaveButton.classList.contains("hidden")).to.equal(false);
     expect(signinButton.classList.contains("hidden")).to.equal(true);
@@ -64,17 +49,9 @@ describe("group membership", () => {
   it("falls back to the sign-in action when the membership response is invalid", () => {
     const { checker, signinButton, joinButton, leaveButton } = renderMembershipDom();
 
-    checker.dispatchEvent(
-      new CustomEvent("htmx:afterRequest", {
-        bubbles: true,
-        detail: {
-          xhr: {
-            status: 200,
-            responseText: "{invalid json}",
-          },
-        },
-      }),
-    );
+    dispatchHtmxAfterRequest(checker, {
+      responseText: "{invalid json}",
+    });
 
     expect(signinButton.classList.contains("hidden")).to.equal(false);
     expect(joinButton.classList.contains("hidden")).to.equal(true);
@@ -84,33 +61,22 @@ describe("group membership", () => {
   it("shows loading state before a join request and restores the button on failure", () => {
     const { joinButton, loadingButton } = renderMembershipDom();
 
-    joinButton.dispatchEvent(
-      new CustomEvent("htmx:beforeRequest", {
-        bubbles: true,
-      }),
-    );
+    dispatchHtmxBeforeRequest(joinButton);
 
     expect(joinButton.classList.contains("hidden")).to.equal(true);
     expect(loadingButton.classList.contains("hidden")).to.equal(false);
 
-    joinButton.dispatchEvent(
-      new CustomEvent("htmx:afterRequest", {
-        bubbles: true,
-        detail: {
-          xhr: {
-            status: 500,
-          },
-        },
-      }),
-    );
+    dispatchHtmxAfterRequest(joinButton, {
+      status: 500,
+    });
 
     expect(joinButton.classList.contains("hidden")).to.equal(false);
     expect(loadingButton.classList.contains("hidden")).to.equal(true);
-    expect(env.swal.calls.at(-1)).to.include({
+    expect(env.current.swal.calls.at(-1)).to.include({
       text: "Something went wrong joining this group. Please try again later.",
       icon: "error",
     });
-    expect(env.scrollToMock.calls).to.deep.equal([]);
+    expect(env.current.scrollToMock.calls).to.deep.equal([]);
   });
 
   it("shows sign-in info and confirms leave actions", async () => {
@@ -118,18 +84,18 @@ describe("group membership", () => {
 
     signinButton.click();
 
-    expect(env.swal.calls[0].icon).to.equal("info");
-    expect(env.swal.calls[0].html).to.include("/log-in?next_url=/groups/test-group");
+    expect(env.current.swal.calls[0].icon).to.equal("info");
+    expect(env.current.swal.calls[0].html).to.include("/log-in?next_url=/groups/test-group");
 
-    env.swal.setNextResult({ isConfirmed: true });
+    env.current.swal.setNextResult({ isConfirmed: true });
     leaveButton.click();
     await waitForMicrotask();
 
-    expect(env.swal.calls[1]).to.include({
+    expect(env.current.swal.calls[1]).to.include({
       text: "Are you sure you want to leave this group?",
       icon: "warning",
     });
-    expect(env.htmx.triggerCalls).to.deep.equal([["#leave-btn", "confirmed"]]);
+    expect(env.current.htmx.triggerCalls).to.deep.equal([["#leave-btn", "confirmed"]]);
   });
 
   it("emits membership-changed after a successful join request", () => {
@@ -139,19 +105,10 @@ describe("group membership", () => {
       changedEvents += 1;
     });
 
-    joinButton.dispatchEvent(
-      new CustomEvent("htmx:afterRequest", {
-        bubbles: true,
-        detail: {
-          xhr: {
-            status: 200,
-          },
-        },
-      }),
-    );
+    dispatchHtmxAfterRequest(joinButton);
 
     expect(changedEvents).to.equal(1);
-    expect(env.swal.calls.at(-1)).to.include({
+    expect(env.current.swal.calls.at(-1)).to.include({
       text: "You have successfully joined this group.",
       icon: "success",
     });
@@ -164,39 +121,23 @@ describe("group membership", () => {
       changedEvents += 1;
     });
 
-    leaveButton.dispatchEvent(
-      new CustomEvent("htmx:afterRequest", {
-        bubbles: true,
-        detail: {
-          xhr: {
-            status: 200,
-          },
-        },
-      }),
-    );
+    dispatchHtmxAfterRequest(leaveButton);
 
     expect(changedEvents).to.equal(1);
-    expect(env.swal.calls.at(-1)).to.include({
+    expect(env.current.swal.calls.at(-1)).to.include({
       text: "You have successfully left this group.",
       icon: "success",
     });
 
     leaveButton.classList.add("hidden");
     loadingButton.classList.remove("hidden");
-    leaveButton.dispatchEvent(
-      new CustomEvent("htmx:afterRequest", {
-        bubbles: true,
-        detail: {
-          xhr: {
-            status: 500,
-          },
-        },
-      }),
-    );
+    dispatchHtmxAfterRequest(leaveButton, {
+      status: 500,
+    });
 
     expect(leaveButton.classList.contains("hidden")).to.equal(false);
     expect(loadingButton.classList.contains("hidden")).to.equal(true);
-    expect(env.swal.calls.at(-1)).to.include({
+    expect(env.current.swal.calls.at(-1)).to.include({
       text: "Something went wrong leaving this group. Please try again later.",
       icon: "error",
     });

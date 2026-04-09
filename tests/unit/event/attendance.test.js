@@ -2,7 +2,8 @@ import { expect } from "@open-wc/testing";
 
 import "/static/js/event/attendance.js";
 import { waitForMicrotask } from "/tests/unit/test-utils/async.js";
-import { setupDashboardTestEnv } from "/tests/unit/test-utils/env.js";
+import { useDashboardTestEnv } from "/tests/unit/test-utils/env.js";
+import { dispatchHtmxAfterRequest, dispatchHtmxBeforeRequest } from "/tests/unit/test-utils/htmx.js";
 
 const renderAttendanceDom = ({
   starts = "2099-05-10T10:00:00Z",
@@ -70,20 +71,12 @@ const renderAttendanceDom = ({
 };
 
 describe("event attendance", () => {
-  let env;
-
-  beforeEach(() => {
-    env = setupDashboardTestEnv({
-      path: "/events/test-event",
-      withHtmx: true,
-      withScroll: true,
-      withSwal: true,
-    });
-  });
-
-  afterEach(() => {
-    delete document.body.dataset.attendanceListenersReady;
-    env.restore();
+  const env = useDashboardTestEnv({
+    path: "/events/test-event",
+    withHtmx: true,
+    withScroll: true,
+    withSwal: true,
+    bodyDatasetKeysToClear: ["attendanceListenersReady"],
   });
 
   it("shows attendee controls and meeting details after a successful attendance check", () => {
@@ -91,17 +84,9 @@ describe("event attendance", () => {
       isLive: "true",
     });
 
-    checker.dispatchEvent(
-      new CustomEvent("htmx:afterRequest", {
-        bubbles: true,
-        detail: {
-          xhr: {
-            status: 200,
-            responseText: JSON.stringify({ status: "attendee" }),
-          },
-        },
-      }),
-    );
+    dispatchHtmxAfterRequest(checker, {
+      responseText: JSON.stringify({ status: "attendee" }),
+    });
 
     expect(leaveButton.classList.contains("hidden")).to.equal(false);
     expect(leaveButton.querySelector("[data-attendance-label]")?.textContent).to.equal(
@@ -120,17 +105,9 @@ describe("event attendance", () => {
       waitlistEnabled: "true",
     });
 
-    checker.dispatchEvent(
-      new CustomEvent("htmx:afterRequest", {
-        bubbles: true,
-        detail: {
-          xhr: {
-            status: 200,
-            responseText: "{invalid json}",
-          },
-        },
-      }),
-    );
+    dispatchHtmxAfterRequest(checker, {
+      responseText: "{invalid json}",
+    });
 
     expect(signinButton.classList.contains("hidden")).to.equal(false);
     expect(signinButton.querySelector("[data-attendance-label]")?.textContent).to.equal(
@@ -147,29 +124,17 @@ describe("event attendance", () => {
       changedEvents += 1;
     });
 
-    attendButton.dispatchEvent(
-      new CustomEvent("htmx:beforeRequest", {
-        bubbles: true,
-      }),
-    );
+    dispatchHtmxBeforeRequest(attendButton);
 
     expect(attendButton.classList.contains("hidden")).to.equal(true);
     expect(loadingButton.classList.contains("hidden")).to.equal(false);
 
-    attendButton.dispatchEvent(
-      new CustomEvent("htmx:afterRequest", {
-        bubbles: true,
-        detail: {
-          xhr: {
-            status: 200,
-            responseText: JSON.stringify({ status: "waitlisted" }),
-          },
-        },
-      }),
-    );
+    dispatchHtmxAfterRequest(attendButton, {
+      responseText: JSON.stringify({ status: "waitlisted" }),
+    });
 
     expect(changedEvents).to.equal(1);
-    expect(env.swal.calls.at(-1)).to.include({
+    expect(env.current.swal.calls.at(-1)).to.include({
       text: "You have joined the waiting list for this event.",
       icon: "info",
     });
@@ -181,20 +146,20 @@ describe("event attendance", () => {
     signinButton.querySelector("[data-attendance-label]").textContent = "Join waiting list";
     signinButton.click();
 
-    expect(env.swal.calls[0].icon).to.equal("info");
-    expect(env.swal.calls[0].html).to.include("join the waiting list");
-    expect(env.swal.calls[0].html).to.include("/log-in?next_url=/events/test-event");
+    expect(env.current.swal.calls[0].icon).to.equal("info");
+    expect(env.current.swal.calls[0].html).to.include("join the waiting list");
+    expect(env.current.swal.calls[0].html).to.include("/log-in?next_url=/events/test-event");
 
     leaveButton.querySelector("[data-attendance-label]").textContent = "Leave waiting list";
-    env.swal.setNextResult({ isConfirmed: true });
+    env.current.swal.setNextResult({ isConfirmed: true });
     leaveButton.click();
     await waitForMicrotask();
 
-    expect(env.swal.calls[1]).to.include({
+    expect(env.current.swal.calls[1]).to.include({
       text: "Are you sure you want to leave the waiting list?",
       icon: "warning",
     });
-    expect(env.htmx.triggerCalls).to.deep.equal([["#leave-btn", "confirmed"]]);
+    expect(env.current.htmx.triggerCalls).to.deep.equal([["#leave-btn", "confirmed"]]);
   });
 
   it("disables attendance changes for past events", () => {
@@ -204,17 +169,9 @@ describe("event attendance", () => {
       remainingCapacity: "5",
     });
 
-    checker.dispatchEvent(
-      new CustomEvent("htmx:afterRequest", {
-        bubbles: true,
-        detail: {
-          xhr: {
-            status: 200,
-            responseText: JSON.stringify({ status: "guest" }),
-          },
-        },
-      }),
-    );
+    dispatchHtmxAfterRequest(checker, {
+      responseText: JSON.stringify({ status: "guest" }),
+    });
 
     expect(attendButton.classList.contains("hidden")).to.equal(false);
     expect(attendButton.disabled).to.equal(true);
@@ -230,17 +187,9 @@ describe("event attendance", () => {
       waitlistEnabled: "false",
     });
 
-    checker.dispatchEvent(
-      new CustomEvent("htmx:afterRequest", {
-        bubbles: true,
-        detail: {
-          xhr: {
-            status: 200,
-            responseText: JSON.stringify({ status: "guest" }),
-          },
-        },
-      }),
-    );
+    dispatchHtmxAfterRequest(checker, {
+      responseText: JSON.stringify({ status: "guest" }),
+    });
 
     expect(attendButton.classList.contains("hidden")).to.equal(false);
     expect(attendButton.disabled).to.equal(true);
@@ -256,46 +205,27 @@ describe("event attendance", () => {
     });
 
     leaveButton.querySelector("[data-attendance-label]").textContent = "Leave waiting list";
-    leaveButton.dispatchEvent(
-      new CustomEvent("htmx:beforeRequest", {
-        bubbles: true,
-      }),
-    );
+    dispatchHtmxBeforeRequest(leaveButton);
 
-    leaveButton.dispatchEvent(
-      new CustomEvent("htmx:afterRequest", {
-        bubbles: true,
-        detail: {
-          xhr: {
-            status: 200,
-            responseText: JSON.stringify({ left_status: "waitlisted" }),
-          },
-        },
-      }),
-    );
+    dispatchHtmxAfterRequest(leaveButton, {
+      responseText: JSON.stringify({ left_status: "waitlisted" }),
+    });
 
     expect(changedEvents).to.equal(1);
-    expect(env.swal.calls.at(-1)).to.include({
+    expect(env.current.swal.calls.at(-1)).to.include({
       text: "You have left the waiting list for this event.",
       icon: "info",
     });
 
     leaveButton.classList.remove("hidden");
     loadingButton.classList.remove("hidden");
-    leaveButton.dispatchEvent(
-      new CustomEvent("htmx:afterRequest", {
-        bubbles: true,
-        detail: {
-          xhr: {
-            status: 500,
-          },
-        },
-      }),
-    );
+    dispatchHtmxAfterRequest(leaveButton, {
+      status: 500,
+    });
 
     expect(leaveButton.classList.contains("hidden")).to.equal(false);
     expect(loadingButton.classList.contains("hidden")).to.equal(true);
-    expect(env.swal.calls.at(-1)).to.include({
+    expect(env.current.swal.calls.at(-1)).to.include({
       text: "Something went wrong canceling your attendance. Please try again later.",
       icon: "error",
     });

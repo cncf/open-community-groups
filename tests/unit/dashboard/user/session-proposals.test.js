@@ -2,20 +2,20 @@ import { expect } from "@open-wc/testing";
 
 import "/static/js/dashboard/user/session-proposals.js";
 import { waitForMicrotask } from "/tests/unit/test-utils/async.js";
-import { setupDashboardTestEnv } from "/tests/unit/test-utils/env.js";
+import { useDashboardTestEnv } from "/tests/unit/test-utils/env.js";
+import { dispatchHtmxAfterRequest, dispatchHtmxLoad } from "/tests/unit/test-utils/htmx.js";
 
 describe("dashboard user session proposals", () => {
-  let env;
+  const env = useDashboardTestEnv({
+    path: "/dashboard/user/session-proposals",
+    withHtmx: true,
+    withScroll: true,
+    withSwal: true,
+  });
+
   let modalComponent;
 
   beforeEach(() => {
-    env = setupDashboardTestEnv({
-      path: "/dashboard/user/session-proposals",
-      withHtmx: true,
-      withScroll: true,
-      withSwal: true,
-    });
-
     modalComponent = document.createElement("div");
     modalComponent.id = "session-proposal-modal-component";
     modalComponent.openCreateCalls = 0;
@@ -33,12 +33,8 @@ describe("dashboard user session proposals", () => {
     document.body.append(modalComponent);
   });
 
-  afterEach(() => {
-    env.restore();
-  });
-
   const initializeSessionProposalsUi = () => {
-    document.body.dispatchEvent(new CustomEvent("htmx:load", { bubbles: true }));
+    dispatchHtmxLoad();
   };
 
   it("opens the create modal from the dashboard trigger", () => {
@@ -132,38 +128,31 @@ describe("dashboard user session proposals", () => {
     await waitForMicrotask();
 
     expect(deleteButton.id).to.equal("delete-session-proposal-proposal-7");
-    expect(env.swal.calls[0]).to.include({
+    expect(env.current.swal.calls[0]).to.include({
       text: "Are you sure you want to delete this session proposal?",
       confirmButtonText: "Delete",
     });
-    expect(env.htmx.triggerCalls[0]).to.deep.equal(["#delete-session-proposal-proposal-7", "confirmed"]);
+    expect(env.current.htmx.triggerCalls[0]).to.deep.equal(["#delete-session-proposal-proposal-7", "confirmed"]);
 
     const rejectButton = document.querySelector('[data-action="reject-co-speaker-invitation"]');
     rejectButton.click();
     await waitForMicrotask();
 
     expect(rejectButton.id).to.equal("reject-co-speaker-invitation-proposal-9");
-    expect(env.swal.calls[1]).to.include({
+    expect(env.current.swal.calls[1]).to.include({
       text: "Are you sure you want to decline this co-speaker invitation?",
       confirmButtonText: "Decline",
       cancelButtonText: "Cancel",
     });
 
-    rejectButton.dispatchEvent(
-      new CustomEvent("htmx:afterRequest", {
-        bubbles: true,
-        detail: {
-          xhr: {
-            status: 500,
-          },
-        },
-      }),
-    );
+    dispatchHtmxAfterRequest(rejectButton, {
+      status: 500,
+    });
 
-    expect(env.swal.calls[2]).to.include({
+    expect(env.current.swal.calls[2]).to.include({
       text: "Unable to decline this invitation. Please try again later.",
       icon: "error",
     });
-    expect(env.scrollToMock.calls).to.deep.equal([{ top: 0, behavior: "auto" }]);
+    expect(env.current.scrollToMock.calls).to.deep.equal([{ top: 0, behavior: "auto" }]);
   });
 });
