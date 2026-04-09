@@ -53,9 +53,32 @@ describe("cfs-labels-editor", () => {
     element.remove();
     document.body.append(element);
 
+    element.requestUpdate();
     await element.updateComplete;
 
     renderedLegend = element.querySelector(".form-legend");
     expect(renderedLegend?.innerHTML).to.contain('href="/docs/cfs-labels"');
+  });
+
+  it("clears the cached legend when the slotted legend is removed before reconnect", async () => {
+    const element = document.createElement("cfs-labels-editor");
+    element.innerHTML = `
+      <p slot="legend">
+        Custom <a href="/docs/cfs-labels">legend</a>
+      </p>
+    `;
+    document.body.append(element);
+
+    await element.updateComplete;
+
+    let renderedLegend = element.querySelector(".form-legend");
+    expect(renderedLegend?.innerHTML).to.contain('href="/docs/cfs-labels"');
+
+    element.remove();
+    element.innerHTML = "<div></div>";
+    document.body.append(element);
+
+    await element.updateComplete;
+    expect(element._legendHtml).to.equal("");
   });
 });

@@ -293,6 +293,10 @@ export class CfsLabelsEditor extends LitWrapper {
   _captureLegendHtml() {
     const legendNode = this.querySelector('[slot="legend"]');
     if (!legendNode) {
+      const renderedLegendNode = this.querySelector('.form-legend[data-custom-legend="true"]');
+      if (!renderedLegendNode) {
+        this._legendHtml = "";
+      }
       return;
     }
 
@@ -448,7 +452,9 @@ export class CfsLabelsEditor extends LitWrapper {
         ${hasCustomLegend || helperLegend
           ? html`
               <div class="w-full">
-                <p class="form-legend">${hasCustomLegend ? unsafeHTML(this._legendHtml) : helperLegend}</p>
+                <p class="form-legend" data-custom-legend=${hasCustomLegend ? "true" : "false"}>
+                  ${hasCustomLegend ? unsafeHTML(this._legendHtml) : helperLegend}
+                </p>
               </div>
             `
           : ""}
