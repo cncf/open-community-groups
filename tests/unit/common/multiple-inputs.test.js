@@ -1,14 +1,10 @@
 import { expect } from "@open-wc/testing";
 
 import "/static/js/common/multiple-inputs.js";
-import { resetDom } from "/tests/unit/test-utils/dom.js";
-import { mountLitComponent, removeMountedElements } from "/tests/unit/test-utils/lit.js";
+import { mountLitComponent, useMountedElementsCleanup } from "/tests/unit/test-utils/lit.js";
 
 describe("multiple-inputs", () => {
-  afterEach(() => {
-    removeMountedElements("multiple-inputs");
-    resetDom();
-  });
+  useMountedElementsCleanup("multiple-inputs");
 
   it("normalizes initial values and renders hidden inputs", async () => {
     const element = await mountLitComponent("multiple-inputs", {

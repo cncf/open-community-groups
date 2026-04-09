@@ -4,6 +4,7 @@ import "/static/js/dashboard/confirm-actions.js";
 import { waitForMicrotask } from "/tests/unit/test-utils/async.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
 import { mockHtmx, mockSwal } from "/tests/unit/test-utils/globals.js";
+import { dispatchHtmxAfterRequest } from "/tests/unit/test-utils/htmx.js";
 
 describe("confirm actions", () => {
   let swal;
@@ -68,14 +69,9 @@ describe("confirm actions", () => {
       </button>
     `;
 
-    document.getElementById("publish-button")?.dispatchEvent(
-      new CustomEvent("htmx:afterRequest", {
-        bubbles: true,
-        detail: {
-          xhr: { status: 204 },
-        },
-      }),
-    );
+    dispatchHtmxAfterRequest(document.getElementById("publish-button"), {
+      status: 204,
+    });
 
     expect(swal.calls).to.have.length(1);
     expect(swal.calls[0]).to.include({ text: "Published successfully.", icon: "success" });
@@ -92,14 +88,9 @@ describe("confirm actions", () => {
       </button>
     `;
 
-    document.getElementById("publish-button")?.dispatchEvent(
-      new CustomEvent("htmx:afterRequest", {
-        bubbles: true,
-        detail: {
-          xhr: { status: 500 },
-        },
-      }),
-    );
+    dispatchHtmxAfterRequest(document.getElementById("publish-button"), {
+      status: 500,
+    });
 
     expect(swal.calls).to.have.length(1);
     expect(swal.calls[0]).to.include({ text: "Publish failed.", icon: "error" });

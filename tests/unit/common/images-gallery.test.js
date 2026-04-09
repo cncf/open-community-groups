@@ -1,14 +1,10 @@
 import { expect } from "@open-wc/testing";
 
 import "/static/js/common/images-gallery.js";
-import { resetDom } from "/tests/unit/test-utils/dom.js";
-import { mountLitComponent, removeMountedElements } from "/tests/unit/test-utils/lit.js";
+import { mountLitComponent, useMountedElementsCleanup } from "/tests/unit/test-utils/lit.js";
 
 describe("images-gallery", () => {
-  afterEach(() => {
-    removeMountedElements("images-gallery");
-    resetDom();
-  });
+  useMountedElementsCleanup("images-gallery");
 
   it("opens the modal and navigates through the image carousel", async () => {
     const element = await mountLitComponent("images-gallery", {

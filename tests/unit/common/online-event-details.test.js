@@ -1,14 +1,10 @@
 import { expect } from "@open-wc/testing";
 
 import "/static/js/common/online-event-details.js";
-import { resetDom } from "/tests/unit/test-utils/dom.js";
-import { mountLitComponent, removeMountedElements } from "/tests/unit/test-utils/lit.js";
+import { mountLitComponent, useMountedElementsCleanup } from "/tests/unit/test-utils/lit.js";
 
 describe("online-event-details", () => {
-  afterEach(() => {
-    removeMountedElements("online-event-details");
-    resetDom();
-  });
+  useMountedElementsCleanup("online-event-details");
 
   it("returns manual meeting data and resets back to manual defaults", async () => {
     const element = await mountLitComponent("online-event-details", {

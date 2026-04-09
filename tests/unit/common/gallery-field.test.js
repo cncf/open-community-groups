@@ -1,14 +1,10 @@
 import { expect } from "@open-wc/testing";
 
 import "/static/js/common/gallery-field.js";
-import { resetDom } from "/tests/unit/test-utils/dom.js";
-import { mountLitComponent, removeMountedElements } from "/tests/unit/test-utils/lit.js";
+import { mountLitComponent, useMountedElementsCleanup } from "/tests/unit/test-utils/lit.js";
 
 describe("gallery-field", () => {
-  afterEach(() => {
-    removeMountedElements("gallery-field");
-    resetDom();
-  });
+  useMountedElementsCleanup("gallery-field");
 
   it("reorders and removes gallery images while emitting updates", async () => {
     const element = await mountLitComponent("gallery-field", {

@@ -1,14 +1,10 @@
 import { expect } from "@open-wc/testing";
 
 import "/static/js/common/key-value-inputs.js";
-import { resetDom } from "/tests/unit/test-utils/dom.js";
-import { mountLitComponent, removeMountedElements } from "/tests/unit/test-utils/lit.js";
+import { mountLitComponent, useMountedElementsCleanup } from "/tests/unit/test-utils/lit.js";
 
 describe("key-value-inputs", () => {
-  afterEach(() => {
-    removeMountedElements("key-value-inputs");
-    resetDom();
-  });
+  useMountedElementsCleanup("key-value-inputs");
 
   it("normalizes object values and renders hidden inputs for filled rows", async () => {
     const element = await mountLitComponent("key-value-inputs", {

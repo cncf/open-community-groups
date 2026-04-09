@@ -1,14 +1,10 @@
 import { expect } from "@open-wc/testing";
 
 import "/static/js/common/speakers-selector.js";
-import { resetDom } from "/tests/unit/test-utils/dom.js";
-import { mountLitComponent, removeMountedElements } from "/tests/unit/test-utils/lit.js";
+import { mountLitComponent, useMountedElementsCleanup } from "/tests/unit/test-utils/lit.js";
 
 describe("speakers-selector", () => {
-  afterEach(() => {
-    removeMountedElements("speakers-selector");
-    resetDom();
-  });
+  useMountedElementsCleanup("speakers-selector");
 
   it("opens the speaker modal with existing speaker ids disabled", async () => {
     const element = await mountLitComponent("speakers-selector", {

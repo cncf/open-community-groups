@@ -1,14 +1,10 @@
 import { expect } from "@open-wc/testing";
 
 import "/static/js/common/cfs-labels-editor.js";
-import { resetDom } from "/tests/unit/test-utils/dom.js";
-import { mountLitComponent, removeMountedElements } from "/tests/unit/test-utils/lit.js";
+import { mountLitComponent, useMountedElementsCleanup } from "/tests/unit/test-utils/lit.js";
 
 describe("cfs-labels-editor", () => {
-  afterEach(() => {
-    removeMountedElements("cfs-labels-editor");
-    resetDom();
-  });
+  useMountedElementsCleanup("cfs-labels-editor");
 
   it("normalizes and sorts the initial label rows", async () => {
     const element = await mountLitComponent("cfs-labels-editor", {

@@ -1,14 +1,10 @@
 import { expect } from "@open-wc/testing";
 
 import "/static/js/common/cfs-label-selector.js";
-import { resetDom } from "/tests/unit/test-utils/dom.js";
-import { mountLitComponent, removeMountedElements } from "/tests/unit/test-utils/lit.js";
+import { mountLitComponent, useMountedElementsCleanup } from "/tests/unit/test-utils/lit.js";
 
 describe("cfs-label-selector", () => {
-  afterEach(() => {
-    removeMountedElements("cfs-label-selector");
-    resetDom();
-  });
+  useMountedElementsCleanup("cfs-label-selector");
 
   it("normalizes labels and prunes invalid selections", async () => {
     const element = await mountLitComponent("cfs-label-selector", {

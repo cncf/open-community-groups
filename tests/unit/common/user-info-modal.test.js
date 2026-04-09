@@ -1,14 +1,10 @@
 import { expect } from "@open-wc/testing";
 
 import "/static/js/common/user-info-modal.js";
-import { resetDom } from "/tests/unit/test-utils/dom.js";
-import { mountLitComponent, removeMountedElements } from "/tests/unit/test-utils/lit.js";
+import { mountLitComponent, useMountedElementsCleanup } from "/tests/unit/test-utils/lit.js";
 
 describe("user-info-modal", () => {
-  afterEach(() => {
-    removeMountedElements("user-info-modal");
-    resetDom();
-  });
+  useMountedElementsCleanup("user-info-modal");
 
   it("renders nothing while closed", async () => {
     const element = await mountLitComponent("user-info-modal");
