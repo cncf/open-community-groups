@@ -2,6 +2,7 @@ import { expect } from "@open-wc/testing";
 
 import { initUserDropdown } from "/static/js/common/header.js";
 import { resetDom, setLocationPath, mockScrollTo } from "/tests/unit/test-utils/dom.js";
+import { dispatchHtmxAfterSwap } from "/tests/unit/test-utils/htmx.js";
 
 describe("header", () => {
   const originalPath = window.location.pathname;
@@ -94,11 +95,9 @@ describe("header", () => {
 
     initUserDropdown();
 
-    document.dispatchEvent(
-      new CustomEvent("htmx:afterSwap", {
-        detail: { target: document.getElementById("dashboard-content") },
-      }),
-    );
+    dispatchHtmxAfterSwap(document, {
+      target: document.getElementById("dashboard-content"),
+    });
 
     expect(scrollToMock.calls).to.deep.equal([{ top: 0, behavior: "auto" }]);
   });
@@ -113,11 +112,9 @@ describe("header", () => {
 
     initUserDropdown();
 
-    document.dispatchEvent(
-      new CustomEvent("htmx:afterSwap", {
-        detail: { target: document.getElementById("dashboard-content") },
-      }),
-    );
+    dispatchHtmxAfterSwap(document, {
+      target: document.getElementById("dashboard-content"),
+    });
 
     expect(scrollToMock.calls).to.deep.equal([]);
   });

@@ -32,10 +32,11 @@ export const dispatchHtmxLoad = (target = document.body) => {
 };
 
 /** Dispatches an HTMX after-swap event from the provided target. */
-export const dispatchHtmxAfterSwap = (target = document) => {
+export const dispatchHtmxAfterSwap = (target = document, detail = {}) => {
   (target ?? document).dispatchEvent(
     new CustomEvent("htmx:afterSwap", {
       bubbles: true,
+      detail,
     }),
   );
 };

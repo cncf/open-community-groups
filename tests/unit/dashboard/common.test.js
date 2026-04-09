@@ -13,6 +13,7 @@ import {
 } from "/static/js/dashboard/common.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
 import { mockHtmx } from "/tests/unit/test-utils/globals.js";
+import { dispatchHtmxAfterSwap } from "/tests/unit/test-utils/htmx.js";
 
 describe("dashboard common utilities", () => {
   const originalEcharts = globalThis.echarts;
@@ -116,7 +117,7 @@ describe("dashboard common utilities", () => {
 
     expect(executionCount).to.equal(0);
 
-    document.body.dispatchEvent(new Event("htmx:afterSwap"));
+    dispatchHtmxAfterSwap(document.body);
     await taskPromise;
 
     expect(executionCount).to.equal(1);

@@ -2,11 +2,13 @@ import { expect } from "@open-wc/testing";
 
 import "/static/js/dashboard/event/sessions.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
-import { mountLitComponent, removeMountedElements } from "/tests/unit/test-utils/lit.js";
+import { mountLitComponent, useMountedElementsCleanup } from "/tests/unit/test-utils/lit.js";
 
 describe("sessions-section", () => {
   const originalHtmx = globalThis.htmx;
   const SessionsSection = customElements.get("sessions-section");
+
+  useMountedElementsCleanup("sessions-section");
 
   let htmxOnCalls;
 
@@ -22,8 +24,6 @@ describe("sessions-section", () => {
   });
 
   afterEach(() => {
-    removeMountedElements("sessions-section");
-    resetDom();
     SessionsSection._cleanupBound = false;
     globalThis.htmx = originalHtmx;
   });

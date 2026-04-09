@@ -2,11 +2,12 @@ import { expect } from "@open-wc/testing";
 
 import "/static/js/common/user-search-field.js";
 import { waitForMicrotask } from "/tests/unit/test-utils/async.js";
-import { resetDom } from "/tests/unit/test-utils/dom.js";
-import { mountLitComponent, removeMountedElements } from "/tests/unit/test-utils/lit.js";
+import { mountLitComponent, useMountedElementsCleanup } from "/tests/unit/test-utils/lit.js";
 import { mockFetch } from "/tests/unit/test-utils/network.js";
 
 describe("user-search-field", () => {
+  useMountedElementsCleanup("user-search-field");
+
   let fetchMock;
   let originalSetTimeout;
   let originalClearTimeout;
@@ -21,8 +22,6 @@ describe("user-search-field", () => {
     fetchMock.restore();
     window.setTimeout = originalSetTimeout;
     window.clearTimeout = originalClearTimeout;
-    removeMountedElements("user-search-field");
-    resetDom();
   });
 
   it("searches users and excludes configured usernames", async () => {

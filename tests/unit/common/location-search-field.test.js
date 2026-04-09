@@ -3,11 +3,13 @@ import { expect } from "@open-wc/testing";
 import "/static/js/common/location-search-field.js";
 import { waitForMicrotask } from "/tests/unit/test-utils/async.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
-import { mountLitComponent, removeMountedElements } from "/tests/unit/test-utils/lit.js";
+import { mountLitComponent, useMountedElementsCleanup } from "/tests/unit/test-utils/lit.js";
 import { mockFetch } from "/tests/unit/test-utils/network.js";
 
 describe("location-search-field", () => {
   const originalLeaflet = window.L;
+
+  useMountedElementsCleanup("location-search-field");
 
   let fetchMock;
 
@@ -17,8 +19,6 @@ describe("location-search-field", () => {
   });
 
   afterEach(() => {
-    removeMountedElements("location-search-field");
-    resetDom();
     fetchMock.restore();
 
     if (originalLeaflet) {

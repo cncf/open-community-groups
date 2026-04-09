@@ -2,15 +2,12 @@ import { expect } from "@open-wc/testing";
 
 import "/static/js/common/timezone-selector.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
-import { mountLitComponent, removeMountedElements } from "/tests/unit/test-utils/lit.js";
+import { mountLitComponent, useMountedElementsCleanup } from "/tests/unit/test-utils/lit.js";
 
 describe("timezone-selector", () => {
-  beforeEach(() => {
-    resetDom();
-  });
+  useMountedElementsCleanup("timezone-selector");
 
-  afterEach(() => {
-    removeMountedElements("timezone-selector");
+  beforeEach(() => {
     resetDom();
   });
 

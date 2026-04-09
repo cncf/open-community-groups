@@ -1,17 +1,16 @@
 import { expect } from "@open-wc/testing";
 
 import "/static/js/common/user-search-selector.js";
-import { resetDom } from "/tests/unit/test-utils/dom.js";
-import { mountLitComponent, removeMountedElements } from "/tests/unit/test-utils/lit.js";
+import { mountLitComponent, useMountedElementsCleanup } from "/tests/unit/test-utils/lit.js";
 
 describe("user-search-selector", () => {
   const userSearchFieldPrototype = customElements.get("user-search-field").prototype;
   const originalFocusInput = userSearchFieldPrototype.focusInput;
 
+  useMountedElementsCleanup("user-search-selector");
+
   afterEach(() => {
     userSearchFieldPrototype.focusInput = originalFocusInput;
-    removeMountedElements("user-search-selector");
-    resetDom();
   });
 
   it("focuses the search field when the inline panel is opened", async () => {

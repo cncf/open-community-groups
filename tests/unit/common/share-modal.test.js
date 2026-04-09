@@ -3,11 +3,13 @@ import { expect } from "@open-wc/testing";
 import "/static/js/common/share-modal.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
 import { mockSwal } from "/tests/unit/test-utils/globals.js";
-import { mountLitComponent, removeMountedElements } from "/tests/unit/test-utils/lit.js";
+import { mountLitComponent, useMountedElementsCleanup } from "/tests/unit/test-utils/lit.js";
 
 describe("share-modal", () => {
   const originalClipboardDescriptor = Object.getOwnPropertyDescriptor(navigator, "clipboard");
   const originalSharer = window.Sharer;
+
+  useMountedElementsCleanup("share-modal");
 
   let swal;
   let clipboardCalls;
@@ -28,8 +30,6 @@ describe("share-modal", () => {
   });
 
   afterEach(() => {
-    removeMountedElements("share-modal");
-    resetDom();
     swal.restore();
 
     if (originalClipboardDescriptor) {
