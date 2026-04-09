@@ -35,4 +35,27 @@ describe("cfs-labels-editor", () => {
     expect(element._rows).to.have.length(1);
     expect(element._rows[0].name).to.equal("");
   });
+
+  it("preserves a custom legend across reconnects", async () => {
+    const element = document.createElement("cfs-labels-editor");
+    element.innerHTML = `
+      <p slot="legend">
+        Custom <a href="/docs/cfs-labels">legend</a>
+      </p>
+    `;
+    document.body.append(element);
+
+    await element.updateComplete;
+
+    let renderedLegend = element.querySelector(".form-legend");
+    expect(renderedLegend?.innerHTML).to.contain('href="/docs/cfs-labels"');
+
+    element.remove();
+    document.body.append(element);
+
+    await element.updateComplete;
+
+    renderedLegend = element.querySelector(".form-legend");
+    expect(renderedLegend?.innerHTML).to.contain('href="/docs/cfs-labels"');
+  });
 });

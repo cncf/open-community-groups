@@ -292,7 +292,11 @@ export class CfsLabelsEditor extends LitWrapper {
 
   _captureLegendHtml() {
     const legendNode = this.querySelector('[slot="legend"]');
-    this._legendHtml = String(legendNode?.innerHTML || "").trim();
+    if (!legendNode) {
+      return;
+    }
+
+    this._legendHtml = String(legendNode.innerHTML || "").trim();
   }
 
   /**
