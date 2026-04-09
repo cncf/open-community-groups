@@ -1,17 +1,16 @@
 import { expect } from "@open-wc/testing";
 
 import "/static/js/dashboard/event/session-speaker-modal.js";
-import { resetDom } from "/tests/unit/test-utils/dom.js";
-import { mountLitComponent, removeMountedElements } from "/tests/unit/test-utils/lit.js";
+import { mountLitComponent, useMountedElementsCleanup } from "/tests/unit/test-utils/lit.js";
 
 describe("session-speaker-modal", () => {
   const userSearchFieldPrototype = customElements.get("user-search-field").prototype;
   const originalFocusInput = userSearchFieldPrototype.focusInput;
 
+  useMountedElementsCleanup("session-speaker-modal");
+
   afterEach(() => {
     userSearchFieldPrototype.focusInput = originalFocusInput;
-    removeMountedElements("session-speaker-modal");
-    resetDom();
   });
 
   it("opens by resetting state, locking body scroll, and focusing the search field", async () => {

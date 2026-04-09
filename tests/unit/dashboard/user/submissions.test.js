@@ -2,26 +2,19 @@ import { expect } from "@open-wc/testing";
 
 import "/static/js/dashboard/user/submissions.js";
 import { waitForMicrotask } from "/tests/unit/test-utils/async.js";
-import { setupDashboardTestEnv } from "/tests/unit/test-utils/env.js";
+import { useDashboardTestEnv } from "/tests/unit/test-utils/env.js";
+import { dispatchHtmxAfterRequest, dispatchHtmxLoad } from "/tests/unit/test-utils/htmx.js";
 
 describe("dashboard user submissions", () => {
-  let env;
-
-  beforeEach(() => {
-    env = setupDashboardTestEnv({
-      path: "/dashboard/user/submissions",
-      withHtmx: true,
-      withScroll: true,
-      withSwal: true,
-    });
-  });
-
-  afterEach(() => {
-    env.restore();
+  const env = useDashboardTestEnv({
+    path: "/dashboard/user/submissions",
+    withHtmx: true,
+    withScroll: true,
+    withSwal: true,
   });
 
   const initializeSubmissionsUi = () => {
-    document.body.dispatchEvent(new CustomEvent("htmx:load", { bubbles: true }));
+    dispatchHtmxLoad();
   };
 
   it("opens and closes the action required modal with the selected message", () => {
@@ -75,28 +68,21 @@ describe("dashboard user submissions", () => {
     await waitForMicrotask();
 
     expect(button.id).to.equal("withdraw-submission-submission-42");
-    expect(env.swal.calls).to.have.length(1);
-    expect(env.swal.calls[0].html).to.include("Are you sure you want to withdraw this submission?");
-    expect(env.swal.calls[0].confirmButtonText).to.equal("Withdraw");
-    expect(env.htmx.triggerCalls).to.deep.equal([["#withdraw-submission-submission-42", "confirmed"]]);
+    expect(env.current.swal.calls).to.have.length(1);
+    expect(env.current.swal.calls[0].html).to.include("Are you sure you want to withdraw this submission?");
+    expect(env.current.swal.calls[0].confirmButtonText).to.equal("Withdraw");
+    expect(env.current.htmx.triggerCalls).to.deep.equal([["#withdraw-submission-submission-42", "confirmed"]]);
 
-    button.dispatchEvent(
-      new CustomEvent("htmx:afterRequest", {
-        bubbles: true,
-        detail: {
-          xhr: {
-            status: 500,
-          },
-        },
-      }),
-    );
+    dispatchHtmxAfterRequest(button, {
+      status: 500,
+    });
 
-    expect(env.swal.calls).to.have.length(2);
-    expect(env.swal.calls[1]).to.include({
+    expect(env.current.swal.calls).to.have.length(2);
+    expect(env.current.swal.calls[1]).to.include({
       text: "Unable to withdraw this submission. Please try again later.",
       icon: "error",
     });
-    expect(env.scrollToMock.calls).to.deep.equal([{ top: 0, behavior: "auto" }]);
+    expect(env.current.scrollToMock.calls).to.deep.equal([{ top: 0, behavior: "auto" }]);
   });
 
   it("opens a resubmit confirmation dialog and handles successful requests", async () => {
@@ -117,22 +103,15 @@ describe("dashboard user submissions", () => {
     await waitForMicrotask();
 
     expect(button.id).to.equal("resubmit-submission-submission-84");
-    expect(env.swal.calls).to.have.length(1);
-    expect(env.swal.calls[0].html).to.include("Before resubmitting, please make sure");
-    expect(env.swal.calls[0].confirmButtonText).to.equal("Resubmit");
-    expect(env.htmx.triggerCalls).to.deep.equal([["#resubmit-submission-submission-84", "confirmed"]]);
+    expect(env.current.swal.calls).to.have.length(1);
+    expect(env.current.swal.calls[0].html).to.include("Before resubmitting, please make sure");
+    expect(env.current.swal.calls[0].confirmButtonText).to.equal("Resubmit");
+    expect(env.current.htmx.triggerCalls).to.deep.equal([["#resubmit-submission-submission-84", "confirmed"]]);
 
-    button.dispatchEvent(
-      new CustomEvent("htmx:afterRequest", {
-        bubbles: true,
-        detail: {
-          xhr: {
-            status: 204,
-          },
-        },
-      }),
-    );
+    dispatchHtmxAfterRequest(button, {
+      status: 204,
+    });
 
-    expect(env.swal.calls).to.have.length(1);
+    expect(env.current.swal.calls).to.have.length(1);
   });
 });

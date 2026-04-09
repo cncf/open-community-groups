@@ -1,25 +1,22 @@
 import { expect } from "@open-wc/testing";
 
 import "/static/js/common/image-field.js";
-import { resetDom } from "/tests/unit/test-utils/dom.js";
-import { setupDashboardTestEnv } from "/tests/unit/test-utils/env.js";
-import { mountLitComponent, removeMountedElements } from "/tests/unit/test-utils/lit.js";
+import { useDashboardTestEnv } from "/tests/unit/test-utils/env.js";
+import { mountLitComponent, useMountedElementsCleanup } from "/tests/unit/test-utils/lit.js";
 import { mockFetch } from "/tests/unit/test-utils/network.js";
 
 describe("image-field", () => {
-  let env;
+  useDashboardTestEnv({ withSwal: true, withScroll: true });
+  useMountedElementsCleanup("image-field");
+
   let fetchMock;
 
   beforeEach(() => {
-    env = setupDashboardTestEnv({ withSwal: true, withScroll: true });
     fetchMock = mockFetch();
   });
 
   afterEach(() => {
     fetchMock.restore();
-    removeMountedElements("image-field");
-    resetDom();
-    env.restore();
   });
 
   it("uploads an image and emits the new value", async () => {

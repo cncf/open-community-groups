@@ -1,33 +1,28 @@
 import { expect } from "@open-wc/testing";
 
 import "/static/js/dashboard/event/cfs-submissions.js";
-import { setupDashboardTestEnv } from "/tests/unit/test-utils/env.js";
-import { resetDom } from "/tests/unit/test-utils/dom.js";
-import { mountLitComponent, removeMountedElements } from "/tests/unit/test-utils/lit.js";
+import { useDashboardTestEnv } from "/tests/unit/test-utils/env.js";
+import { dispatchHtmxAfterRequest } from "/tests/unit/test-utils/htmx.js";
+import { mountLitComponent, useMountedElementsCleanup } from "/tests/unit/test-utils/lit.js";
 
 describe("review-submission-modal", () => {
-  let env;
+  useDashboardTestEnv({
+    path: "/dashboard/group/events/event-7/submissions",
+    withHtmx: true,
+    withScroll: true,
+    withSwal: true,
+    bodyDatasetKeysToClear: ["cfsSubmissionModalReady"],
+  });
+
+  useMountedElementsCleanup("review-submission-modal");
+
   let processCalls;
 
   beforeEach(() => {
-    env = setupDashboardTestEnv({
-      path: "/dashboard/group/events/event-7/submissions",
-      withHtmx: true,
-      withScroll: true,
-      withSwal: true,
-    });
-
     processCalls = [];
     globalThis.htmx.process = (form) => {
       processCalls.push(form);
     };
-  });
-
-  afterEach(() => {
-    removeMountedElements("review-submission-modal");
-    delete document.body.dataset.cfsSubmissionModalReady;
-    resetDom();
-    env.restore();
   });
 
   const renderModal = async (properties = {}) => {
@@ -179,16 +174,9 @@ describe("review-submission-modal", () => {
     const form = element.querySelector("#cfs-submission-form");
     expect(form).to.not.equal(null);
 
-    form.dispatchEvent(
-      new CustomEvent("htmx:afterRequest", {
-        bubbles: true,
-        detail: {
-          xhr: {
-            status: 204,
-          },
-        },
-      }),
-    );
+    dispatchHtmxAfterRequest(form, {
+      status: 204,
+    });
     await element.updateComplete;
 
     expect(receivedEvents).to.deep.equal([

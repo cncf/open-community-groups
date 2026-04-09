@@ -2,29 +2,29 @@ import { expect } from "@open-wc/testing";
 
 import "/static/js/dashboard/group/attendees.js";
 import { waitForMicrotask } from "/tests/unit/test-utils/async.js";
-import { setupDashboardTestEnv } from "/tests/unit/test-utils/env.js";
+import { useDashboardTestEnv } from "/tests/unit/test-utils/env.js";
+import { dispatchHtmxLoad } from "/tests/unit/test-utils/htmx.js";
 import { mockFetch } from "/tests/unit/test-utils/network.js";
 
 describe("dashboard group attendees", () => {
-  let env;
+  const env = useDashboardTestEnv({
+    path: "/dashboard/group/attendees",
+    withScroll: true,
+    withSwal: true,
+  });
+
   let fetchMock;
 
   beforeEach(() => {
-    env = setupDashboardTestEnv({
-      path: "/dashboard/group/attendees",
-      withScroll: true,
-      withSwal: true,
-    });
     fetchMock = mockFetch();
   });
 
   afterEach(() => {
     fetchMock.restore();
-    env.restore();
   });
 
   const initializeAttendeesUi = () => {
-    document.body.dispatchEvent(new CustomEvent("htmx:load", { bubbles: true }));
+    dispatchHtmxLoad();
   };
 
   it("updates the attendee notification endpoint before opening the modal", () => {
@@ -78,7 +78,7 @@ describe("dashboard group attendees", () => {
     expect(checkbox.disabled).to.equal(true);
     expect(label.classList.contains("cursor-not-allowed")).to.equal(true);
     expect(label.classList.contains("cursor-pointer")).to.equal(false);
-    expect(env.swal.calls).to.have.length(0);
+    expect(env.current.swal.calls).to.have.length(0);
   });
 
   it("reverts the check-in toggle and shows an error when the request fails", async () => {
@@ -106,8 +106,8 @@ describe("dashboard group attendees", () => {
     expect(checkbox.disabled).to.equal(false);
     expect(label.classList.contains("cursor-pointer")).to.equal(true);
     expect(label.classList.contains("cursor-not-allowed")).to.equal(false);
-    expect(env.swal.calls).to.have.length(1);
-    expect(env.swal.calls[0]).to.include({
+    expect(env.current.swal.calls).to.have.length(1);
+    expect(env.current.swal.calls[0]).to.include({
       text: "Failed to check in attendee. Please try again.",
       icon: "error",
     });
