@@ -1,8 +1,7 @@
 import { expect } from "@open-wc/testing";
 
 import "/static/js/dashboard/event/sponsors.js";
-import { resetDom } from "/tests/unit/test-utils/dom.js";
-import { mountLitComponent, removeMountedElements } from "/tests/unit/test-utils/lit.js";
+import { mountLitComponent, useMountedElementsCleanup } from "/tests/unit/test-utils/lit.js";
 
 describe("sponsors-section", () => {
   const sponsors = [
@@ -18,10 +17,7 @@ describe("sponsors-section", () => {
     },
   ];
 
-  afterEach(() => {
-    removeMountedElements("sponsors-section");
-    resetDom();
-  });
+  useMountedElementsCleanup("sponsors-section");
 
   it("normalizes selected sponsor ids into sponsor objects", async () => {
     const element = await mountLitComponent("sponsors-section", {

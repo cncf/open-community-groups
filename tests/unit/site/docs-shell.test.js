@@ -2,6 +2,7 @@ import { expect } from "@open-wc/testing";
 
 import { waitForAnimationFrames, waitForMicrotask } from "/tests/unit/test-utils/async.js";
 import { mockScrollTo, resetDom, setLocationPath, trackAddedEventListeners } from "/tests/unit/test-utils/dom.js";
+import { dispatchHtmxAfterSwap } from "/tests/unit/test-utils/htmx.js";
 import { mockFetch } from "/tests/unit/test-utils/network.js";
 
 describe("site docs shell", () => {
@@ -287,7 +288,7 @@ describe("site docs shell", () => {
     expect(document.head.querySelectorAll(docsHeadSelector).length).to.equal(5);
 
     document.body.innerHTML = "";
-    document.dispatchEvent(new CustomEvent("htmx:afterSwap"));
+    dispatchHtmxAfterSwap();
     await waitForMicrotask();
 
     document.body.innerHTML = `

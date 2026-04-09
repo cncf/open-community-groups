@@ -2,7 +2,7 @@ import { expect } from "@open-wc/testing";
 
 import "/static/js/dashboard/group/event-selector.js";
 import { resetDom, mockScrollTo } from "/tests/unit/test-utils/dom.js";
-import { mountLitComponent, removeMountedElements } from "/tests/unit/test-utils/lit.js";
+import { mountLitComponent, useMountedElementsCleanup } from "/tests/unit/test-utils/lit.js";
 import { mockSwal } from "/tests/unit/test-utils/globals.js";
 
 describe("event-selector", () => {
@@ -11,6 +11,8 @@ describe("event-selector", () => {
   let swal;
   let scrollToMock;
 
+  useMountedElementsCleanup("event-selector");
+
   beforeEach(() => {
     resetDom();
     swal = mockSwal();
@@ -18,8 +20,6 @@ describe("event-selector", () => {
   });
 
   afterEach(() => {
-    removeMountedElements("event-selector");
-    resetDom();
     swal.restore();
     scrollToMock.restore();
   });

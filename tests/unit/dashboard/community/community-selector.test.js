@@ -3,10 +3,12 @@ import { expect } from "@open-wc/testing";
 import "/static/js/dashboard/community/community-selector.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
 import { mockHtmx } from "/tests/unit/test-utils/globals.js";
-import { mountLitComponent, removeMountedElements } from "/tests/unit/test-utils/lit.js";
+import { mountLitComponent, useMountedElementsCleanup } from "/tests/unit/test-utils/lit.js";
 
 describe("community-selector", () => {
   let htmx;
+
+  useMountedElementsCleanup("community-selector");
 
   beforeEach(() => {
     resetDom();
@@ -14,8 +16,6 @@ describe("community-selector", () => {
   });
 
   afterEach(() => {
-    removeMountedElements("community-selector");
-    resetDom();
     htmx.restore();
   });
 

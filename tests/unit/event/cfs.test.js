@@ -2,6 +2,7 @@ import { expect } from "@open-wc/testing";
 
 import { waitForMicrotask } from "/tests/unit/test-utils/async.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
+import { dispatchHtmxAfterSwap } from "/tests/unit/test-utils/htmx.js";
 
 describe("event cfs modal", () => {
   afterEach(() => {
@@ -25,9 +26,7 @@ describe("event cfs modal", () => {
 
     await import(`/static/js/event/cfs.js?test=${Date.now()}`);
 
-    document.getElementById("cfs-modal-root")?.dispatchEvent(
-      new CustomEvent("htmx:afterSwap", { bubbles: true }),
-    );
+    dispatchHtmxAfterSwap(document.getElementById("cfs-modal-root"));
     await waitForMicrotask();
 
     const modal = document.getElementById("cfs-modal");
@@ -67,19 +66,19 @@ describe("event cfs modal", () => {
 
     const root = document.getElementById("cfs-modal-root");
     const modal = document.getElementById("cfs-modal");
-    root?.dispatchEvent(new CustomEvent("htmx:afterSwap", { bubbles: true }));
-    root?.dispatchEvent(new CustomEvent("htmx:afterSwap", { bubbles: true }));
+    dispatchHtmxAfterSwap(root);
+    dispatchHtmxAfterSwap(root);
     await waitForMicrotask();
 
     document.getElementById("close-cfs-modal")?.click();
     expect(modal.classList.contains("hidden")).to.equal(true);
 
-    root?.dispatchEvent(new CustomEvent("htmx:afterSwap", { bubbles: true }));
+    dispatchHtmxAfterSwap(root);
     await waitForMicrotask();
     document.getElementById("overlay-cfs-modal")?.click();
     expect(modal.classList.contains("hidden")).to.equal(true);
 
-    root?.dispatchEvent(new CustomEvent("htmx:afterSwap", { bubbles: true }));
+    dispatchHtmxAfterSwap(root);
     await waitForMicrotask();
     document.getElementById("cancel-cfs-modal")?.click();
     expect(modal.classList.contains("hidden")).to.equal(true);
