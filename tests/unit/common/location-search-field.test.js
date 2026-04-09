@@ -89,6 +89,25 @@ describe("location-search-field", () => {
     expect(element._abortController).to.equal(null);
   });
 
+  it("ignores aborted searches without replacing the existing search state", async () => {
+    const element = await renderField();
+    element._searchResults = [{ place_id: 42, display_name: "Existing result" }];
+    element._searchError = "Previous error";
+
+    fetchMock.setImpl(async () => {
+      const error = new Error("aborted");
+      error.name = "AbortError";
+      throw error;
+    });
+
+    await element._performSearch("Málaga");
+
+    expect(element._searchResults).to.deep.equal([{ place_id: 42, display_name: "Existing result" }]);
+    expect(element._searchError).to.equal("Previous error");
+    expect(element._isSearching).to.equal(false);
+    expect(element._abortController).to.equal(null);
+  });
+
   it("selects a location, populates internal and external fields, and emits an event", async () => {
     document.body.insertAdjacentHTML(
       "beforeend",
@@ -197,6 +216,29 @@ describe("location-search-field", () => {
 
     expect(selected).to.deep.equal([{ place_id: 2 }]);
     expect(event.preventDefaultCalled).to.equal(3);
+  });
+
+  it("hides the dropdown instead of searching when enter is pressed with a short query", async () => {
+    const element = await renderField();
+    const event = {
+      key: "Enter",
+      preventDefaultCalled: 0,
+      preventDefault() {
+        this.preventDefaultCalled += 1;
+      },
+    };
+
+    element._searchQuery = "Má";
+    element._showDropdown = true;
+    element._searchResults = [];
+    element._abortController = { abortCalled: 0, abort() { this.abortCalled += 1; } };
+
+    element._handleKeyDown(event);
+
+    expect(element._showDropdown).to.equal(false);
+    expect(element._searchResults).to.deep.equal([]);
+    expect(event.preventDefaultCalled).to.equal(1);
+    expect(fetchMock.calls).to.have.length(0);
   });
 
   it("clears current values, tears down the map, and emits a clear event", async () => {

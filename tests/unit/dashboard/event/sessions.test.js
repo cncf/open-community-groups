@@ -76,6 +76,20 @@ describe("sessions-section", () => {
     expect(element.meetingMaxParticipants).to.deep.equal({ zoom: 100 });
   });
 
+  it("falls back safely when server attributes contain invalid payloads", async () => {
+    const element = await renderSessionsSection({
+      sessions: "{invalid",
+      sessionKinds: "{invalid",
+      approvedSubmissions: "{invalid",
+      meetingMaxParticipants: "[invalid",
+    });
+
+    expect(element.sessions).to.deep.equal([]);
+    expect(element.sessionKinds).to.deep.equal([]);
+    expect(element.approvedSubmissions).to.deep.equal([]);
+    expect(element.meetingMaxParticipants).to.deep.equal({});
+  });
+
   it("computes event days, groups sessions, and isolates out-of-range entries", async () => {
     const element = await renderSessionsSection({
       eventStartsAt: "2025-01-31T09:00",
@@ -161,6 +175,41 @@ describe("sessions-section", () => {
     );
   });
 
+  it("adds new sessions with the next numeric id and updates existing ones in place", async () => {
+    const element = await renderSessionsSection();
+    element.sessions = [
+      { id: 2, name: "Opening", starts_at: "2025-05-10T09:00" },
+      { id: 7, name: "Panel", starts_at: "2025-05-10T10:00" },
+    ];
+
+    element._handleSessionSaved({
+      detail: {
+        isNew: true,
+        session: { name: "Workshop", starts_at: "2025-05-10T11:00" },
+      },
+    });
+
+    expect(element.sessions.map((session) => session.id)).to.deep.equal([2, 7, 8]);
+    expect(element.sessions.at(-1)).to.include({
+      id: 8,
+      name: "Workshop",
+      starts_at: "2025-05-10T11:00",
+    });
+
+    element._handleSessionSaved({
+      detail: {
+        isNew: false,
+        session: { id: 7, name: "Updated panel", starts_at: "2025-05-10T10:30" },
+      },
+    });
+
+    expect(element.sessions).to.deep.equal([
+      { id: 2, name: "Opening", starts_at: "2025-05-10T09:00" },
+      { id: 7, name: "Updated panel", starts_at: "2025-05-10T10:30" },
+      { id: 8, name: "Workshop", starts_at: "2025-05-10T11:00" },
+    ]);
+  });
+
   it("registers htmx cleanup that removes empty session buckets", async () => {
     await renderSessionsSection();
 
@@ -184,6 +233,30 @@ describe("sessions-section", () => {
     expect(params).to.deep.equal({
       "sessions[1][name]": "Closing keynote",
       "sessions[1][meeting_requested]": "false",
+    });
+  });
+
+  it("keeps session buckets that still contain non-empty array values during htmx cleanup", async () => {
+    await renderSessionsSection();
+
+    const params = {
+      "sessions[0][name]": "",
+      "sessions[0][meeting_requested]": "false",
+      "sessions[0][meeting_hosts]": ["host-1"],
+      "sessions[1][name]": "",
+      "sessions[1][meeting_requested]": "false",
+    };
+
+    htmxOnCalls[0].handler({
+      detail: {
+        parameters: params,
+      },
+    });
+
+    expect(params).to.deep.equal({
+      "sessions[0][name]": "",
+      "sessions[0][meeting_requested]": "false",
+      "sessions[0][meeting_hosts]": ["host-1"],
     });
   });
 });

@@ -76,6 +76,55 @@ describe("form validation helpers", () => {
     ).to.equal(true);
   });
 
+  it("reports past or future event dates through the active section callback", () => {
+    const form = document.createElement("form");
+    const timezoneInput = document.createElement("input");
+    const startsInput = document.createElement("input");
+    const endsInput = document.createElement("input");
+    let dateSectionCalls = 0;
+
+    timezoneInput.name = "timezone";
+    timezoneInput.value = "UTC";
+    startsInput.value = "2020-03-25T10:00";
+    endsInput.value = "2020-03-25T12:00";
+
+    form.append(timezoneInput, startsInput, endsInput);
+    document.body.append(form);
+    stubValidityUi(startsInput);
+    stubValidityUi(endsInput);
+
+    expect(
+      validateEventDates({
+        startsInput,
+        endsInput,
+        onDateSection: () => {
+          dateSectionCalls += 1;
+        },
+      }),
+    ).to.equal(false);
+    expect(startsInput.validationMessage).to.equal("Start date cannot be in the past.");
+    expect(dateSectionCalls).to.equal(1);
+
+    startsInput.value = "2025-03-25T10:00";
+    endsInput.value = "2025-03-25T12:00";
+    startsInput.setCustomValidity("");
+    endsInput.setCustomValidity("");
+
+    expect(
+      validateEventDates({
+        startsInput,
+        endsInput,
+        allowPastDates: true,
+        latestDate: new Date("2025-03-25T11:00:00Z"),
+        onDateSection: () => {
+          dateSectionCalls += 1;
+        },
+      }),
+    ).to.equal(false);
+    expect(endsInput.validationMessage).to.equal("End date cannot be in the future.");
+    expect(dateSectionCalls).to.equal(2);
+  });
+
   it("clears and validates cfs window constraints", () => {
     const cfsEnabledInput = document.createElement("input");
     const cfsStartsInput = document.createElement("input");
@@ -136,6 +185,35 @@ describe("form validation helpers", () => {
     ).to.equal(true);
   });
 
+  it("reports when cfs opens after the event start date", () => {
+    const cfsEnabledInput = document.createElement("input");
+    const cfsStartsInput = document.createElement("input");
+    const cfsEndsInput = document.createElement("input");
+    const eventStartsInput = document.createElement("input");
+    let cfsSectionCalls = 0;
+
+    cfsEnabledInput.value = "true";
+    eventStartsInput.value = "2025-03-25T12:00";
+    cfsStartsInput.value = "2025-03-25T12:00";
+    cfsEndsInput.value = "2025-03-25T12:30";
+
+    [cfsStartsInput, cfsEndsInput, eventStartsInput].forEach(stubValidityUi);
+
+    expect(
+      validateCfsWindow({
+        cfsEnabledInput,
+        cfsStartsInput,
+        cfsEndsInput,
+        eventStartsInput,
+        onCfsSection: () => {
+          cfsSectionCalls += 1;
+        },
+      }),
+    ).to.equal(false);
+    expect(cfsStartsInput.validationMessage).to.equal("CFS open date must be before the event start date.");
+    expect(cfsSectionCalls).to.equal(1);
+  });
+
   it("clears and validates session date bounds", () => {
     document.body.innerHTML = `
       <form id="sessions-form">
@@ -185,5 +263,33 @@ describe("form validation helpers", () => {
         sessionForm,
       }),
     ).to.equal(true);
+  });
+
+  it("reports sessions that end after the event and switches back to the sessions section", () => {
+    document.body.innerHTML = `
+      <form id="sessions-form">
+        <input name="sessions[0][starts_at]" value="2025-03-25T16:00" />
+        <input name="sessions[0][ends_at]" value="2025-03-25T19:00" />
+      </form>
+    `;
+
+    const sessionForm = document.getElementById("sessions-form");
+    const inputs = Array.from(sessionForm.querySelectorAll("input"));
+    let sessionsSectionCalls = 0;
+
+    inputs.forEach(stubValidityUi);
+
+    expect(
+      validateSessionDateBounds({
+        eventStartsAt: new Date("2025-03-25T10:00:00"),
+        eventEndsAt: new Date("2025-03-25T18:00:00"),
+        sessionForm,
+        onSessionsSection: () => {
+          sessionsSectionCalls += 1;
+        },
+      }),
+    ).to.equal(false);
+    expect(inputs[1].validationMessage).to.equal("Session end cannot be after the event end.");
+    expect(sessionsSectionCalls).to.equal(1);
   });
 });
