@@ -5,3 +5,4 @@
     "moduleResolution": "node",
     "types": ["node", "@playwright/test"]
   }
+}
