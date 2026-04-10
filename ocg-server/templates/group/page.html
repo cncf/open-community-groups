@@ -287,7 +287,7 @@
           <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
             {% for event in upcoming_events -%}
               {% if loop.index0 < 6 -%}
-                {{ event|safe }}
+                {{- event|safe -}}
               {% endif -%}
             {% endfor -%}
           </div>
@@ -323,7 +323,7 @@
           <div class="grid grid-cols-1 gap-6 md:gap-8 md:grid-cols-2">
             {% for event in past_events -%}
               {% if loop.index0 < 6 -%}
-                {{ event|safe }}
+                {{- event|safe -}}
               {% endif -%}
             {% endfor -%}
           </div>

@@ -34,8 +34,10 @@ jobs:
               - '.cargo/audit.toml'
             javascript:
               - '.github/workflows/ci.yml'
+              - 'tests/unit/**'
               - 'ocg-server/static/js/**'
               - 'ocg-server/static/js/.prettierrc.yaml'
+              - 'tests/unit/package-lock.json'
             markdown:
               - '.github/workflows/ci.yml'
               - '**/*.md'
@@ -80,6 +82,21 @@ jobs:
         with:
           dry: true
           prettier_options: --check ocg-server/static/js/**/*.js --config ocg-server/static/js/.prettierrc.yaml
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: tests/unit/package-lock.json
+      - name: Install frontend unit test dependencies
+        working-directory: tests/unit
+        run: npm ci
+      - name: Install Playwright browser for frontend unit tests
+        working-directory: tests/unit
+        run: npx playwright install --with-deps chromium
+      - name: Run frontend unit tests
+        working-directory: tests/unit
+        run: npm test
 
   lint-and-test-server:
     needs: changes

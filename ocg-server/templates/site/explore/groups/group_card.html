@@ -3,8 +3,8 @@
 {% import "macros/cards.html" as cards -%}
 
 {% block href -%}
-  /{{ group.community_name }}/group/{{ group.slug }}
-{% endblock href %}
+  {{- "/" -}}{{- group.community_name -}}/group/{{- group.slug -}}
+{%- endblock href %}
 
 {% block anchor_attributes -%}
   hx-boost="true"
@@ -28,16 +28,16 @@
     <span class="hidden text-primary-500 sm:inline">{{ group.community_display_name }}</span>
     <span class="px-1 hidden sm:inline">·</span>
     {% if let Some(region) = &group.region -%}
-      {{ region.name }}
+      {{- region.name -}}
     {% else -%}
-      {{ group.category.name }}
+      {{- group.category.name -}}
     {% endif -%}
   </span>
-{% endblock preheader %}
+{%- endblock preheader %}
 
 {% block title -%}
-  {{ group.name|demoji }}
-{% endblock title %}
+  {{- group.name|demoji -}}
+{%- endblock title %}
 
 {% block inline_details -%}
   {% if let Some(description_short) = &group.description_short -%}
@@ -56,5 +56,5 @@
 {% endblock details %}
 
 {% block footer -%}
-  {{ cards::group_footer(group = group, location_max_len = 40, left_width_classes = "w-[60px] min-w-[60px] md:w-[88px] md:min-w-[88px]") -}}
-{% endblock footer %}
+  {{- cards::group_footer(group = group, location_max_len = 40, left_width_classes = "w-[60px] min-w-[60px] md:w-[88px] md:min-w-[88px]") -}}
+{%- endblock footer %}

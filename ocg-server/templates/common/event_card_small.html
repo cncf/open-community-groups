@@ -4,8 +4,8 @@
 {% import "macros/cards.html" as cards -%}
 
 {% block href -%}
-  /{{ event.community_name }}/group/{{ event.group_slug }}/event/{{ event.slug }}
-{% endblock href %}
+  {{- "/" -}}{{- event.community_name -}}/group/{{- event.group_slug -}}/event/{{- event.slug -}}
+{%- endblock href %}
 
 {% block anchor_attributes -%}
   hx-boost="true"
@@ -25,13 +25,13 @@
 {% endblock top_row_classes %}
 
 {% block preheader -%}
-  <span>{{ event.group_name }}</span>
-{% endblock preheader %}
+  <span>{{- event.group_name -}}</span>
+{%- endblock preheader %}
 
 {% block title -%}
-  {{ event.name|demoji }}
-{% endblock title %}
+  {{- event.name|demoji -}}
+{%- endblock title %}
 
 {% block footer -%}
-  {{ cards::event_footer(event = event, left_width_classes = "w-[60px] min-w-[60px]") -}}
-{% endblock footer %}
+  {{- cards::event_footer(event = event, left_width_classes = "w-[60px] min-w-[60px]") -}}
+{%- endblock footer %}

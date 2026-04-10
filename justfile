@@ -147,6 +147,10 @@ frontend-fmt-and-lint:
     prettier --config ocg-server/static/js/.prettierrc.yaml --write "ocg-server/static/js/**/*.js"
     djlint --check --configuration ocg-server/templates/.djlintrc ocg-server/templates
 
+# Run frontend unit tests.
+frontend-unit-tests:
+    npm --prefix tests/unit test
+
 # E2E
 
 # Install e2e dependencies and Playwright browsers.
