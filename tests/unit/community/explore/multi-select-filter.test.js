@@ -2,11 +2,12 @@ import { expect } from "@open-wc/testing";
 
 import "/static/js/community/explore/multi-select-filter.js";
 import { waitForMicrotask } from "/tests/unit/test-utils/async.js";
-import { resetDom } from "/tests/unit/test-utils/dom.js";
 import { mockHtmx } from "/tests/unit/test-utils/globals.js";
-import { mountLitComponent, removeMountedElements } from "/tests/unit/test-utils/lit.js";
+import { mountLitComponent, useMountedElementsCleanup } from "/tests/unit/test-utils/lit.js";
 
 describe("multi-select-filter", () => {
+  useMountedElementsCleanup("multi-select-filter");
+
   let htmx;
 
   beforeEach(() => {
@@ -15,8 +16,6 @@ describe("multi-select-filter", () => {
 
   afterEach(() => {
     htmx.restore();
-    removeMountedElements("multi-select-filter");
-    resetDom();
   });
 
   it("filters typed options and renders hidden inputs for selected values", async () => {

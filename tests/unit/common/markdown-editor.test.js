@@ -1,12 +1,13 @@
 import { expect } from "@open-wc/testing";
 
 import "/static/js/common/markdown-editor.js";
-import { resetDom } from "/tests/unit/test-utils/dom.js";
-import { mountLitComponent, removeMountedElements } from "/tests/unit/test-utils/lit.js";
+import { mountLitComponent, useMountedElementsCleanup } from "/tests/unit/test-utils/lit.js";
 
 describe("markdown-editor", () => {
   const originalEasyMde = globalThis.EasyMDE;
   let latestEditor;
+
+  useMountedElementsCleanup("markdown-editor");
 
   beforeEach(() => {
     latestEditor = null;
@@ -31,8 +32,6 @@ describe("markdown-editor", () => {
   });
 
   afterEach(() => {
-    removeMountedElements("markdown-editor");
-    resetDom();
     if (originalEasyMde) {
       globalThis.EasyMDE = originalEasyMde;
     } else {

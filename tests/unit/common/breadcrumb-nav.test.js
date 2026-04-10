@@ -1,14 +1,10 @@
 import { expect } from "@open-wc/testing";
 
 import "/static/js/common/breadcrumb-nav.js";
-import { resetDom } from "/tests/unit/test-utils/dom.js";
-import { mountLitComponent, removeMountedElements } from "/tests/unit/test-utils/lit.js";
+import { mountLitComponent, useMountedElementsCleanup } from "/tests/unit/test-utils/lit.js";
 
 describe("breadcrumb-nav", () => {
-  afterEach(() => {
-    removeMountedElements("breadcrumb-nav");
-    resetDom();
-  });
+  useMountedElementsCleanup("breadcrumb-nav");
 
   const breadcrumbItems = [
     { label: "Home", href: "/", icon: "home" },

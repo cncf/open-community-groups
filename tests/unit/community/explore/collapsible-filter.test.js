@@ -1,11 +1,12 @@
 import { expect } from "@open-wc/testing";
 
 import "/static/js/community/explore/collapsible-filter.js";
-import { resetDom } from "/tests/unit/test-utils/dom.js";
 import { mockHtmx } from "/tests/unit/test-utils/globals.js";
-import { mountLitComponent, removeMountedElements } from "/tests/unit/test-utils/lit.js";
+import { mountLitComponent, useMountedElementsCleanup } from "/tests/unit/test-utils/lit.js";
 
 describe("collapsible-filter", () => {
+  useMountedElementsCleanup("collapsible-filter");
+
   let htmx;
 
   beforeEach(() => {
@@ -14,8 +15,6 @@ describe("collapsible-filter", () => {
 
   afterEach(() => {
     htmx.restore();
-    removeMountedElements("collapsible-filter");
-    resetDom();
   });
 
   it("expands when a hidden option is selected initially", async () => {
