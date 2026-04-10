@@ -1,4 +1,4 @@
-name: End-to-end tests
+name: CI / E2E
 
 on:
   pull_request:
@@ -8,17 +8,21 @@ on:
 
 jobs:
   e2e-tests:
+    name: E2E / ${{ matrix.suite }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         include:
-          - suite: Smoke e2e tests
+          - suite: Smoke
             command: npx playwright test --config playwright.config.ts --project=chromium-smoke --project=firefox-smoke --project=webkit-smoke
             artifact_name: playwright-artifacts-smoke
-          - suite: Deep e2e tests
+          - suite: Functional
             command: npx playwright test --config playwright.config.ts --project=chromium-deep --project=chromium-mobile-deep
             artifact_name: playwright-artifacts-deep
+          - suite: Visual
+            command: npx playwright test --config playwright.config.ts --grep @visual --project=chromium-deep --project=chromium-mobile-deep
+            artifact_name: playwright-artifacts-visual
     permissions:
       contents: read
     services:
@@ -158,7 +162,7 @@ jobs:
           log-output: "stdout,stderr"
           log-output-if: true
 
-      - name: Run Playwright ${{ matrix.suite }} tests
+      - name: Run Playwright ${{ matrix.suite }} suite
         working-directory: tests/e2e
         run: ${{ matrix.command }}
 

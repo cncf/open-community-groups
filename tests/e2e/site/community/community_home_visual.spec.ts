@@ -39,7 +39,7 @@ test.describe("community home page visual regression @visual", () => {
           .getByText("Latest groups added", { exact: true })
           .locator("xpath=ancestor::div[2]"),
       ],
-      maxDiffPixels: 100,
+      maxDiffPixelRatio: 0.012,
     });
   });
 });

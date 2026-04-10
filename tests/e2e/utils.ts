@@ -348,6 +348,7 @@ export const expectPageScreenshot = async (
   screenshotOptions: {
     mask?: Locator[];
     maxDiffPixels?: number;
+    maxDiffPixelRatio?: number;
   } = {},
 ) => {
   await page.waitForLoadState("networkidle");
