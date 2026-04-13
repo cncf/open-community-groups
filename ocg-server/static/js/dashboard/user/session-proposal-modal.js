@@ -1,4 +1,4 @@
-import { html, unsafeHTML } from "/static/vendor/js/lit-all.v3.3.1.min.js";
+import { html, unsafeHTML } from "/static/vendor/js/lit-all.v3.3.2.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { handleHtmxResponse } from "/static/js/common/alerts.js";
 import { computeUserInitials, lockBodyScroll, unlockBodyScroll } from "/static/js/common/common.js";
@@ -404,7 +404,7 @@ export class SessionProposalModal extends LitWrapper {
 
   /**
    * Renders selected co-speaker preview in editable or read-only mode.
-   * @returns {import("/static/vendor/js/lit-all.v3.3.1.min.js").TemplateResult}
+   * @returns {import("/static/vendor/js/lit-all.v3.3.2.min.js").TemplateResult}
    */
   _renderCoSpeakerPreview() {
     if (!this._selectedCoSpeaker) {
@@ -463,7 +463,7 @@ export class SessionProposalModal extends LitWrapper {
   /**
    * Renders a badge row for a person.
    * @param {Object} person
-   * @returns {import("/static/vendor/js/lit-all.v3.3.1.min.js").TemplateResult}
+   * @returns {import("/static/vendor/js/lit-all.v3.3.2.min.js").TemplateResult}
    */
   _renderPersonRow(person) {
     const name = person?.name || person?.username || "";
@@ -491,7 +491,7 @@ export class SessionProposalModal extends LitWrapper {
   /**
    * Renders proposal metadata blocks.
    * @param {Object} proposal
-   * @returns {import("/static/vendor/js/lit-all.v3.3.1.min.js").TemplateResult}
+   * @returns {import("/static/vendor/js/lit-all.v3.3.2.min.js").TemplateResult}
    */
   _renderProposalMeta(proposal) {
     const level = proposal?.session_proposal_level_name;
@@ -518,7 +518,7 @@ export class SessionProposalModal extends LitWrapper {
 
   /**
    * Renders read-only proposal details.
-   * @returns {import("/static/vendor/js/lit-all.v3.3.1.min.js").TemplateResult}
+   * @returns {import("/static/vendor/js/lit-all.v3.3.2.min.js").TemplateResult}
    */
   _renderViewContent() {
     const proposal = this._activeProposal || {};
@@ -581,7 +581,7 @@ export class SessionProposalModal extends LitWrapper {
 
   /**
    * Renders editable proposal form.
-   * @returns {import("/static/vendor/js/lit-all.v3.3.1.min.js").TemplateResult}
+   * @returns {import("/static/vendor/js/lit-all.v3.3.2.min.js").TemplateResult}
    */
   _renderFormContent() {
     const isCoSpeakerLocked = this._isCoSpeakerLocked();

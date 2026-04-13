@@ -32,7 +32,7 @@ export class Calendar {
     // Load `fullcalendar` script
     let script = document.createElement("script");
     script.type = "text/javascript";
-    script.src = "/static/vendor/js/fullcalendar.v6.1.19.min.js";
+    script.src = "/static/vendor/js/fullcalendar.v6.1.20.min.js";
     document.getElementsByTagName("head")[0].appendChild(script);
 
     // Setup calendar after script is loaded

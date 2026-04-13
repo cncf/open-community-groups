@@ -1,4 +1,4 @@
-import { html, repeat } from "/static/vendor/js/lit-all.v3.3.1.min.js";
+import { html, repeat } from "/static/vendor/js/lit-all.v3.3.2.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { loadMap } from "/static/js/common/common.js";
 import { setTextValue } from "/static/js/common/utils.js";

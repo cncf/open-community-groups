@@ -1,8 +1,8 @@
-import { html } from "/static/vendor/js/lit-all.v3.3.1.min.js";
+import { html } from "/static/vendor/js/lit-all.v3.3.2.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { lockBodyScroll, unlockBodyScroll } from "/static/js/common/common.js";
 import { showSuccessAlert, showErrorAlert } from "/static/js/common/alerts.js";
-import "/static/vendor/js/sharer.v0.5.3.min.js";
+import "/static/vendor/js/sharer.v0.5.4.min.js";
 
 /**
  * ShareModal displays a Share button that opens a modal with share options.
