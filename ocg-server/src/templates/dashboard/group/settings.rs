@@ -17,6 +17,8 @@ pub(crate) struct UpdatePage {
     pub categories: Vec<GroupCategory>,
     /// Group information.
     pub group: GroupFull,
+    /// Whether payments are globally enabled.
+    pub payments_enabled: bool,
     /// List of available regions.
     pub regions: Vec<GroupRegion>,
 }

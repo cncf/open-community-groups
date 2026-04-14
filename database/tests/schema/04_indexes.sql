@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(56);
+select plan(62);
 
 -- ============================================================================
 -- TESTS
@@ -154,6 +154,14 @@ select indexes_are('event_category', array[
     'event_category_community_id_idx'
 ]);
 
+-- Test: event_discount_code indexes should match expected
+select indexes_are('event_discount_code', array[
+    'event_discount_code_pkey',
+    'event_discount_code_event_id_idx',
+    'event_discount_code_event_id_event_discount_code_id_key',
+    'event_discount_code_event_id_upper_code_idx'
+]);
+
 -- Test: event_host indexes should match expected
 select indexes_are('event_host', array[
     'event_host_pkey',
@@ -165,6 +173,36 @@ select indexes_are('event_host', array[
 select indexes_are('event_kind', array[
     'event_kind_pkey',
     'event_kind_display_name_key'
+]);
+
+-- Test: event_purchase indexes should match expected
+select indexes_are('event_purchase', array[
+    'event_purchase_pkey',
+    'event_purchase_event_id_idx',
+    'event_purchase_event_id_status_idx',
+    'event_purchase_user_id_idx',
+    'event_purchase_provider_checkout_session_idx',
+    'event_purchase_event_id_user_id_active_idx'
+]);
+
+-- Test: event_refund_request indexes should match expected
+select indexes_are('event_refund_request', array[
+    'event_refund_request_pkey',
+    'event_refund_request_event_purchase_id_key',
+    'event_refund_request_status_idx'
+]);
+
+-- Test: event_ticket_price_window indexes should match expected
+select indexes_are('event_ticket_price_window', array[
+    'event_ticket_price_window_pkey',
+    'event_ticket_price_window_event_ticket_type_id_idx'
+]);
+
+-- Test: event_ticket_type indexes should match expected
+select indexes_are('event_ticket_type', array[
+    'event_ticket_type_pkey',
+    'event_ticket_type_event_id_idx',
+    'event_ticket_type_event_id_event_ticket_type_id_key'
 ]);
 
 -- Test: event_cfs_label indexes should match expected
@@ -337,6 +375,12 @@ select indexes_are('notification_kind', array[
 select indexes_are('notification_template_data', array[
     'notification_template_data_hash_idx',
     'notification_template_data_pkey'
+]);
+
+-- Test: payment_provider indexes should match expected
+select indexes_are('payment_provider', array[
+    'payment_provider_display_name_key',
+    'payment_provider_pkey'
 ]);
 
 -- Test: region indexes should match expected

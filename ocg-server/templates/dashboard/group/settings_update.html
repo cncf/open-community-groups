@@ -174,6 +174,36 @@
 </div>
 {# End location section -#}
 
+{% if payments_enabled -%}
+  {# Payments section -#}
+  <div class="border-b border-stone-900/10 pb-12">
+    {{ dashboard::form_title(title = "Payments", description = "Configure how this group receives money for paid events.") -}}
+
+    <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
+      <input type="hidden" name="payment_recipient[provider]" value="stripe">
+
+      <div class="col-span-full lg:col-span-4">
+        <label for="payment_recipient_recipient_id" class="form-label">Stripe Recipient</label>
+        <div class="mt-2">
+          <input type="text"
+                 name="payment_recipient[recipient_id]"
+                 id="payment_recipient_recipient_id"
+                 class="input-primary"
+                 placeholder="acct_..."
+                 {% if let Some(payment_recipient) = &group.payment_recipient %}
+                   value="{{ payment_recipient.recipient_id }}"
+                 {% endif %}>
+        </div>
+        <p class="form-legend">
+          Enter the Stripe connected account that should receive money for this group's paid events.
+          Leave this blank to keep the group on free events only.
+        </p>
+      </div>
+    </div>
+  </div>
+  {# End payments section -#}
+{% endif -%}
+
 {# Social links section -#}
 <div class="border-b border-stone-900/10 pb-12">
   {{ dashboard::form_title(title = "Social links", description = "Optional social media profiles and website links.") -}}

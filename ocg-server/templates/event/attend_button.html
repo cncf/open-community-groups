@@ -1,6 +1,8 @@
 {# Attend button section -#}
 <div id="attendance-container-{{ attendance_instance }}"
      data-attendance-container
+     data-is-ticketed="{{ event.is_ticketed() }}"
+     data-ticket-purchase-available="{{ event.has_sellable_ticket_types() }}"
      {% if let Some(starts_at) = &event.starts_at %}data-starts="{{ starts_at.to_rfc3339() }}"{% endif %}
      {% if let Some(capacity) = &event.capacity %}data-capacity="{{ capacity }}"{% endif %}
      {% if let Some(remaining_capacity) = &event.remaining_capacity %}
@@ -10,6 +12,41 @@
      data-is-live="{{ event.is_live() }}"
      data-has-recording="{{ event.meeting_recording_url.is_some() }}"
      class="flex flex-row flex-wrap gap-2">
+
+  {% if event.is_ticketed() -%}
+    <div class="w-full flex flex-col gap-2 md:flex-row md:items-center">
+      <div class="min-w-0 flex-1">
+        <label for="ticket-type-{{ attendance_instance }}" class="sr-only">Ticket type</label>
+        <select id="ticket-type-{{ attendance_instance }}"
+                name="event_ticket_type_id"
+                class="select-primary"
+                {% if !event.has_sellable_ticket_types() %}disabled{% endif %}>
+          <option value="">Choose a ticket</option>
+          {% for ticket_type in event.active_ticket_types() -%}
+            <option value="{{ ticket_type.event_ticket_type_id }}">
+              {{ ticket_type.title }}
+              {% if let Some(currency_code) = &event.payment_currency_code %}
+                {% if let Some(price_label) = ticket_type.formatted_current_price(currency_code) %}
+                  · {{ price_label }}
+                {% endif %}
+              {% endif %}
+            </option>
+          {% endfor -%}
+        </select>
+      </div>
+
+      <div class="min-w-0 flex-1">
+        <label for="discount-code-{{ attendance_instance }}" class="sr-only">Discount code</label>
+        <input id="discount-code-{{ attendance_instance }}"
+               type="text"
+               name="discount_code"
+               maxlength="{{ crate::validation::MAX_LEN_S }}"
+               class="input-primary"
+               placeholder="Discount code"
+               {% if !event.has_sellable_ticket_types() %}disabled{% endif %}>
+      </div>
+    </div>
+  {% endif -%}
 
   <!-- Loading spinner (shown initially) -->
   <button id="loading-btn-{{ attendance_instance }}"
@@ -25,22 +62,49 @@
   <button id="signin-btn-{{ attendance_instance }}"
           data-attendance-role="signin-btn"
           data-path="{{ path }}"
-          data-default-label="Attend event"
+          data-default-label="{% if event.is_ticketed() %}
+                                Choose ticket
+                              {% else %}
+                                Attend event
+                              {% endif %}"
           class="hidden group btn-primary-outline-anchor h-10 md:h-[30px] flex items-center justify-center space-x-2">
     <div class="svg-icon size-3 icon-user-plus"></div>
-    <span data-attendance-label>Attend event</span>
+    <span data-attendance-label>
+      {% if event.is_ticketed() %}
+        Choose ticket
+      {% else %}
+        Attend event
+      {% endif %}
+    </span>
   </button>
 
   <!-- Attend button (hidden initially) -->
   <button id="attend-btn-{{ attendance_instance }}"
           data-attendance-role="attend-btn"
-          hx-post="/{{ event.community.name }}/event/{{ event.event_id }}/attend"
+          hx-post="{% if event.is_ticketed() %}
+                     /{{ event.community.name }}/event/{{ event.event_id }}/checkout
+                   {% else %}
+                     /{{ event.community.name }}/event/{{ event.event_id }}/attend
+                   {% endif %}"
+          hx-include="closest [data-attendance-container]"
           hx-swap="none"
-          data-attend-label="Attend event"
+          data-attend-label="{% if event.is_ticketed() %}
+                               Continue to payment
+                             {% else %}
+                               Attend event
+                             {% endif %}"
+          data-complete-label="Complete payment"
+          data-unavailable-label="Tickets unavailable"
           data-waitlist-label="Join waiting list"
           class="hidden group btn-primary-outline h-10 md:h-[30px] flex items-center justify-center space-x-2">
     <div class="svg-icon size-3 icon-user-plus"></div>
-    <span data-attendance-label>Attend event</span>
+    <span data-attendance-label>
+      {% if event.is_ticketed() %}
+        Continue to payment
+      {% else %}
+        Attend event
+      {% endif %}
+    </span>
   </button>
 
   <!-- Join meeting button (hidden initially, shown for attendees when live) -->
@@ -68,6 +132,21 @@
           class="hidden group btn-primary-outline h-10 md:h-[30px] flex items-center justify-center space-x-2">
     <div class="svg-icon size-3 icon-logout"></div>
     <span data-attendance-label>Cancel attendance</span>
+  </button>
+
+  <!-- Refund request button (hidden initially) -->
+  <button id="refund-btn-{{ attendance_instance }}"
+          data-attendance-role="refund-btn"
+          hx-post="/{{ event.community.name }}/event/{{ event.event_id }}/refund-request"
+          hx-trigger="confirmed"
+          hx-swap="none"
+          data-approving-label="Refund processing"
+          data-rejected-label="Refund unavailable"
+          data-refund-label="Request refund"
+          data-pending-label="Refund requested"
+          class="hidden group btn-primary-outline h-10 md:h-[30px] flex items-center justify-center space-x-2">
+    <div class="svg-icon size-3 icon-logout"></div>
+    <span data-attendance-label>Request refund</span>
   </button>
 
   <!-- Hidden element that checks attendance status -->

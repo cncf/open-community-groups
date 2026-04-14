@@ -13,6 +13,7 @@ use crate::{
     types::{
         group::{GroupCategory, GroupFull, GroupRegion, GroupSummary},
         pagination::{self, Pagination, ToRawQuery},
+        payments::GroupPaymentRecipient,
     },
     validation::{
         MAX_LEN_COUNTRY_CODE, MAX_LEN_DESCRIPTION, MAX_LEN_ENTITY_NAME, MAX_LEN_L, MAX_LEN_M, MAX_LEN_S,
@@ -150,6 +151,9 @@ pub(crate) struct Group {
     /// URL to the group logo.
     #[garde(custom(image_url_opt))]
     pub logo_url: Option<String>,
+    /// Payments recipient configuration for the group.
+    #[garde(skip)]
+    pub payment_recipient: Option<GroupPaymentRecipient>,
     /// Gallery of photo URLs.
     #[garde(custom(image_url_vec))]
     pub photos_urls: Option<Vec<String>>,

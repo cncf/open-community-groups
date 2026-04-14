@@ -34,6 +34,7 @@ returns json as $$
                 'group_category_updated',
                 'group_deactivated',
                 'group_deleted',
+                'group_payment_recipient_updated',
                 'group_updated',
                 'region_added',
                 'region_deleted',

@@ -15,6 +15,7 @@ use crate::{
         community::CommunitySummary,
         group::GroupSummary,
         location::{LocationParts, build_location},
+        payments::{EventDiscountCode, EventRefundRequestStatus, EventTicketType, format_amount_minor},
         user::User,
     },
     validation::{MAX_LEN_EVENT_LABEL_NAME, trimmed_non_empty, valid_cfs_label_color},
@@ -76,6 +77,8 @@ pub struct EventSummary {
     pub meeting_password: Option<String>,
     /// Desired meeting provider for this event.
     pub meeting_provider: Option<MeetingProvider>,
+    /// Event currency used for ticket purchases.
+    pub payment_currency_code: Option<String>,
     /// Pre-rendered HTML for map/calendar popovers.
     pub popover_html: Option<String>,
     /// Remaining capacity after subtracting registered attendees.
@@ -95,11 +98,26 @@ pub struct EventSummary {
     pub venue_name: Option<String>,
     /// State or province where the venue is located.
     pub venue_state: Option<String>,
+    /// Ticket types available for the event.
+    pub ticket_types: Option<Vec<EventTicketType>>,
     /// Venue zip code.
     pub zip_code: Option<String>,
 }
 
 impl EventSummary {
+    /// Returns the cheapest attendee-facing ticket price available right now.
+    pub fn formatted_ticket_price_badge(&self) -> Option<String> {
+        format_ticket_price_badge(
+            self.payment_currency_code.as_deref(),
+            self.ticket_types.as_deref(),
+        )
+    }
+
+    /// Returns true when attendees can currently select a ticket.
+    pub fn has_sellable_ticket_types(&self) -> bool {
+        has_sellable_ticket_types(self.ticket_types.as_deref())
+    }
+
     /// Check if the event is in the past.
     pub fn is_past(&self) -> bool {
         let reference_time = self.ends_at.or(self.starts_at);
@@ -107,6 +125,11 @@ impl EventSummary {
             Some(time) => time < Utc::now(),
             None => false,
         }
+    }
+
+    /// Returns true when the event uses the ticketing flow.
+    pub fn is_ticketed(&self) -> bool {
+        has_ticket_types(self.ticket_types.as_deref())
     }
 
     /// Build a display-friendly location string from available location data.
@@ -190,6 +213,8 @@ pub struct EventFull {
     pub cfs_starts_at: Option<DateTime<Utc>>,
     /// Brief event description.
     pub description_short: Option<String>,
+    /// Discount codes configured for the event.
+    pub discount_codes: Option<Vec<EventDiscountCode>>,
     /// Event end time in UTC.
     #[serde(default, with = "chrono::serde::ts_seconds_option")]
     pub ends_at: Option<DateTime<Utc>>,
@@ -221,6 +246,8 @@ pub struct EventFull {
     pub meeting_requested: Option<bool>,
     /// Meetup.com URL for the event.
     pub meetup_url: Option<String>,
+    /// Currency used for event ticket purchases.
+    pub payment_currency_code: Option<String>,
     /// URLs to event photos.
     pub photos_urls: Option<Vec<String>>,
     /// When the event was published.
@@ -235,6 +262,8 @@ pub struct EventFull {
     pub starts_at: Option<DateTime<Utc>>,
     /// Event tags for categorization.
     pub tags: Option<Vec<String>>,
+    /// Ticket types available for the event.
+    pub ticket_types: Option<Vec<EventTicketType>>,
     /// Street address of the venue.
     pub venue_address: Option<String>,
     /// City where the event takes place.
@@ -252,6 +281,19 @@ pub struct EventFull {
 }
 
 impl EventFull {
+    /// Returns the selectable ticket types for the event page.
+    pub fn active_ticket_types(&self) -> Vec<&EventTicketType> {
+        self.ticket_types
+            .as_ref()
+            .map(|ticket_types| {
+                ticket_types
+                    .iter()
+                    .filter(|ticket_type| ticket_type.is_sellable_now())
+                    .collect()
+            })
+            .unwrap_or_default()
+    }
+
     /// Check if call for speakers has closed.
     pub fn cfs_is_closed(&self) -> bool {
         if self.cfs_enabled.unwrap_or(false)
@@ -293,6 +335,19 @@ impl EventFull {
         self.event_reminder_enabled.unwrap_or(true)
     }
 
+    /// Returns the cheapest attendee-facing ticket price available right now.
+    pub fn formatted_ticket_price_badge(&self) -> Option<String> {
+        format_ticket_price_badge(
+            self.payment_currency_code.as_deref(),
+            self.ticket_types.as_deref(),
+        )
+    }
+
+    /// Returns true when attendees can currently select a ticket.
+    pub fn has_sellable_ticket_types(&self) -> bool {
+        has_sellable_ticket_types(self.ticket_types.as_deref())
+    }
+
     /// Check if the event is currently live.
     pub fn is_live(&self) -> bool {
         match (self.starts_at, self.ends_at) {
@@ -311,6 +366,11 @@ impl EventFull {
             Some(time) => time < Utc::now(),
             None => false,
         }
+    }
+
+    /// Returns true when the event uses the ticketing flow.
+    pub fn is_ticketed(&self) -> bool {
+        has_ticket_types(self.ticket_types.as_deref())
     }
 
     /// Build a display-friendly location string from available location data.
@@ -373,6 +433,7 @@ impl From<&EventFull> for EventSummary {
             meeting_join_url: event.meeting_join_url.clone(),
             meeting_password: event.meeting_password.clone(),
             meeting_provider: event.meeting_provider,
+            payment_currency_code: event.payment_currency_code.clone(),
             popover_html: None,
             remaining_capacity: event.remaining_capacity,
             starts_at: event.starts_at,
@@ -382,6 +443,7 @@ impl From<&EventFull> for EventSummary {
             venue_country_name: event.venue_country_name.clone(),
             venue_name: event.venue_name.clone(),
             venue_state: event.venue_state.clone(),
+            ticket_types: event.ticket_types.clone(),
             zip_code: event.venue_zip_code.clone(),
         }
     }
@@ -398,17 +460,38 @@ pub enum EventAttendanceStatus {
     None,
     /// The user became a confirmed attendee.
     Attendee,
+    /// The user started checkout but has not completed payment yet.
+    PendingPayment,
     /// The user joined the waiting list.
     Waitlisted,
 }
 
 /// Attendance details for a user's relationship to an event.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EventAttendanceInfo {
     /// Whether the user has checked in.
     pub is_checked_in: bool,
     /// Current attendance status.
     pub status: EventAttendanceStatus,
+
+    /// Refund request state associated with the user purchase.
+    pub refund_request_status: Option<EventRefundRequestStatus>,
+    /// Purchase amount associated with the user and event.
+    pub purchase_amount_minor: Option<i64>,
+    /// Provider URL for resuming a pending checkout.
+    pub resume_checkout_url: Option<String>,
+}
+
+impl EventAttendanceInfo {
+    /// Returns true when the attendee can submit a refund request.
+    pub fn can_request_refund(&self, starts_at: Option<DateTime<Utc>>) -> bool {
+        self.status == EventAttendanceStatus::Attendee
+            && self
+                .purchase_amount_minor
+                .is_some_and(|purchase_amount_minor| purchase_amount_minor > 0)
+            && self.refund_request_status.is_none()
+            && starts_at.is_none_or(|starts_at| starts_at > Utc::now())
+    }
 }
 
 /// Event category information.
@@ -594,13 +677,86 @@ pub struct Speaker {
     pub user: User,
 }
 
+// Helpers.
+
+/// Returns the cheapest attendee-facing ticket price available right now.
+fn format_ticket_price_badge(
+    payment_currency_code: Option<&str>,
+    ticket_types: Option<&[EventTicketType]>,
+) -> Option<String> {
+    let currency_code = payment_currency_code?;
+    let amount_minor = ticket_types?
+        .iter()
+        .filter(|ticket_type| ticket_type.is_sellable_now())
+        .filter_map(EventTicketType::current_amount_minor)
+        .min()?;
+
+    if amount_minor == 0 {
+        return Some("Free".to_string());
+    }
+
+    Some(format!(
+        "From {}",
+        format_amount_minor(amount_minor, currency_code)
+    ))
+}
+
+/// Returns true when the event uses the ticketing flow.
+fn has_ticket_types(ticket_types: Option<&[EventTicketType]>) -> bool {
+    ticket_types.is_some_and(|ticket_types| !ticket_types.is_empty())
+}
+
+/// Returns true when attendees can currently select a ticket.
+fn has_sellable_ticket_types(ticket_types: Option<&[EventTicketType]>) -> bool {
+    ticket_types.is_some_and(|ticket_types| ticket_types.iter().any(EventTicketType::is_sellable_now))
+}
+
 #[cfg(test)]
 mod tests {
     use std::collections::BTreeMap;
 
     use chrono::{Duration, Utc};
 
+    use crate::types::payments::{EventTicketCurrentPrice, EventTicketType};
+
     use super::*;
+
+    #[test]
+    fn event_attendance_info_can_request_refund_allows_tbd_events() {
+        let attendance = EventAttendanceInfo {
+            is_checked_in: false,
+            status: EventAttendanceStatus::Attendee,
+
+            purchase_amount_minor: Some(2_500),
+            refund_request_status: None,
+            resume_checkout_url: None,
+        };
+
+        assert!(attendance.can_request_refund(Some(Utc::now() + Duration::hours(1))));
+        assert!(attendance.can_request_refund(None));
+        assert!(!attendance.can_request_refund(Some(Utc::now() - Duration::hours(1))));
+    }
+
+    #[test]
+    fn event_full_active_ticket_types_filters_unsellable_tiers() {
+        let event = EventFull {
+            ticket_types: Some(vec![
+                sample_ticket_type(false, Some(0), false, "Hidden free"),
+                sample_ticket_type(true, None, false, "No current price"),
+                sample_ticket_type(true, Some(1500), true, "Sold out"),
+                sample_ticket_type(true, Some(2500), false, "General"),
+            ]),
+            ..Default::default()
+        };
+
+        let ticket_titles: Vec<_> = event
+            .active_ticket_types()
+            .into_iter()
+            .map(|ticket_type| ticket_type.title.as_str())
+            .collect();
+
+        assert_eq!(ticket_titles, vec!["General"]);
+    }
 
     #[test]
     fn event_full_cfs_is_enabled_returns_false_when_flag_missing() {
@@ -672,6 +828,21 @@ mod tests {
             ..Default::default()
         };
         assert!(event.cfs_is_upcoming());
+    }
+
+    #[test]
+    fn event_full_has_sellable_ticket_types_returns_false_when_no_tier_is_purchasable() {
+        let event = EventFull {
+            ticket_types: Some(vec![
+                sample_ticket_type(false, Some(0), false, "Hidden free"),
+                sample_ticket_type(true, None, false, "No current price"),
+                sample_ticket_type(true, Some(1500), true, "Sold out"),
+            ]),
+            ..Default::default()
+        };
+
+        assert!(!event.has_sellable_ticket_types());
+        assert!(event.is_ticketed());
     }
 
     #[test]
@@ -891,6 +1062,32 @@ mod tests {
     }
 
     #[test]
+    fn event_summary_formatted_ticket_price_badge_ignores_unsellable_tiers() {
+        let event = sample_event_summary(vec![
+            sample_ticket_type(false, Some(0), false, "Inactive free"),
+            sample_ticket_type(true, Some(1000), true, "Sold out early bird"),
+            sample_ticket_type(true, Some(2500), false, "General"),
+        ]);
+
+        assert_eq!(
+            event.formatted_ticket_price_badge(),
+            Some("From USD 25.00".to_string())
+        );
+    }
+
+    #[test]
+    fn event_summary_has_sellable_ticket_types_returns_false_when_no_tier_is_purchasable() {
+        let event = sample_event_summary(vec![
+            sample_ticket_type(false, Some(0), false, "Inactive free"),
+            sample_ticket_type(true, Some(1000), true, "Sold out early bird"),
+            sample_ticket_type(true, None, false, "No current price"),
+        ]);
+
+        assert!(!event.has_sellable_ticket_types());
+        assert!(event.is_ticketed());
+    }
+
+    #[test]
     fn session_is_live_returns_false_when_ends_at_is_none() {
         let session = Session {
             starts_at: Utc::now() - Duration::hours(1),
@@ -927,5 +1124,74 @@ mod tests {
             ..Default::default()
         };
         assert!(session.is_live());
+    }
+
+    // Helpers.
+
+    /// Build a sample ticket type with specified properties for testing.
+    fn sample_ticket_type(
+        active: bool,
+        amount_minor: Option<i64>,
+        sold_out: bool,
+        title: &str,
+    ) -> EventTicketType {
+        EventTicketType {
+            active,
+            current_price: amount_minor.map(|amount_minor| EventTicketCurrentPrice {
+                amount_minor,
+                ..Default::default()
+            }),
+            event_ticket_type_id: Uuid::nil(),
+            order: 1,
+            price_windows: vec![],
+            sold_out,
+            title: title.to_string(),
+
+            description: None,
+            remaining_seats: None,
+            seats_total: None,
+        }
+    }
+
+    /// Build a sample event summary with specified ticket types for testing.
+    fn sample_event_summary(ticket_types: Vec<EventTicketType>) -> EventSummary {
+        EventSummary {
+            canceled: false,
+            community_display_name: "Community".to_string(),
+            community_name: "community".to_string(),
+            event_id: Uuid::nil(),
+            group_category_name: "Technology".to_string(),
+            group_name: "Group".to_string(),
+            group_slug: "group".to_string(),
+            kind: EventKind::InPerson,
+            logo_url: "https://example.com/logo.png".to_string(),
+            name: "Event".to_string(),
+            payment_currency_code: Some("USD".to_string()),
+            published: true,
+            slug: "event".to_string(),
+            ticket_types: Some(ticket_types),
+            timezone: chrono_tz::UTC,
+            waitlist_count: 0,
+            waitlist_enabled: false,
+
+            capacity: None,
+            description_short: None,
+            ends_at: None,
+            latitude: None,
+            longitude: None,
+            meeting_join_url: None,
+            meeting_password: None,
+            meeting_provider: None,
+            popover_html: None,
+            remaining_capacity: None,
+            starts_at: None,
+            venue_address: None,
+            venue_city: None,
+            venue_country_code: None,
+            venue_country_name: None,
+            venue_name: None,
+            venue_state: None,
+            zip_code: None,
+        }
     }
 }

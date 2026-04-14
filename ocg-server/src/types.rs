@@ -5,6 +5,7 @@ pub mod event;
 pub mod group;
 pub mod location;
 pub mod pagination;
+pub mod payments;
 pub mod permissions;
 pub mod search;
 pub mod site;

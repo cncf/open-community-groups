@@ -8,3 +8,6 @@ pub(crate) mod meetings;
 
 /// Notifications service module.
 pub(crate) mod notifications;
+
+/// Payments service module.
+pub(crate) mod payments;

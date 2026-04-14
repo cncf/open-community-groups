@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(126);
+select plan(143);
 
 -- ============================================================================
 -- TESTS
@@ -29,8 +29,13 @@ select has_pk('email_verification_code');
 select has_pk('event');
 select has_pk('event_attendee');
 select has_pk('event_category');
+select has_pk('event_discount_code');
 select has_pk('event_host');
 select has_pk('event_kind');
+select has_pk('event_purchase');
+select has_pk('event_refund_request');
+select has_pk('event_ticket_price_window');
+select has_pk('event_ticket_type');
 select has_pk('event_speaker');
 select has_pk('event_sponsor');
 select hasnt_pk('event_views');
@@ -55,6 +60,7 @@ select has_pk('notification');
 select has_pk('notification_attachment');
 select has_pk('notification_kind');
 select has_pk('notification_template_data');
+select has_pk('payment_provider');
 select has_pk('region');
 select has_pk('session');
 select has_pk('session_kind');
@@ -92,8 +98,19 @@ select col_is_fk('event', 'published_by', 'user');
 select col_is_fk('event_attendee', 'event_id', 'event');
 select col_is_fk('event_attendee', 'user_id', 'user');
 select col_is_fk('event_category', 'community_id', 'community');
+select col_is_fk('event_discount_code', 'event_id', 'event');
 select col_is_fk('event_host', 'event_id', 'event');
 select col_is_fk('event_host', 'user_id', 'user');
+select col_is_fk('event_purchase', 'event_discount_code_id', 'event_discount_code');
+select col_is_fk('event_purchase', 'event_id', 'event');
+select col_is_fk('event_purchase', 'payment_provider_id', 'payment_provider');
+select col_is_fk('event_purchase', 'event_ticket_type_id', 'event_ticket_type');
+select col_is_fk('event_purchase', 'user_id', 'user');
+select col_is_fk('event_refund_request', 'event_purchase_id', 'event_purchase');
+select col_is_fk('event_refund_request', 'requested_by_user_id', 'user');
+select col_is_fk('event_refund_request', 'reviewed_by_user_id', 'user');
+select col_is_fk('event_ticket_price_window', 'event_ticket_type_id', 'event_ticket_type');
+select col_is_fk('event_ticket_type', 'event_id', 'event');
 select col_is_fk('event_speaker', 'event_id', 'event');
 select col_is_fk('event_speaker', 'user_id', 'user');
 select col_is_fk('event_sponsor', 'event_id', 'event');

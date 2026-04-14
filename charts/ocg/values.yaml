@@ -81,6 +81,16 @@ meetings:
     maxSimultaneousMeetingsPerHost: 1
     webhookSecretToken: ""
 
+# Payments providers configuration
+payments:
+  # Stripe provider configuration (set enabled to true to enable)
+  stripe:
+    enabled: false
+    mode: test
+    publishableKey: ""
+    secretKey: ""
+    webhookSecret: ""
+
 # Database migrator configuration
 dbmigrator:
   job:

@@ -2,12 +2,13 @@
 create or replace function validate_event_capacity(
     p_event jsonb,
     p_cfg_max_participants jsonb default null,
-    p_existing_event_id uuid default null
+    p_existing_event_id uuid default null,
+    p_effective_capacity int default null
 )
 returns void as $$
 declare
     v_attendee_count int;
-    v_capacity int := (p_event->>'capacity')::int;
+    v_capacity int := coalesce(p_effective_capacity, (p_event->>'capacity')::int);
     v_provider_max_participants int;
 begin
     -- Validate waitlist configuration against capacity requirements

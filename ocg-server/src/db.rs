@@ -16,7 +16,7 @@ use uuid::Uuid;
 use crate::db::{
     activity_tracker::DBActivityTracker, auth::DBAuth, common::DBCommon, community::DBCommunity,
     dashboard::DBDashboard, event::DBEvent, group::DBGroup, images::DBImages, meetings::DBMeetings,
-    notifications::DBNotifications, site::DBSite,
+    notifications::DBNotifications, payments::DBPayments, site::DBSite,
 };
 
 /// Module containing authentication database operations.
@@ -53,6 +53,9 @@ pub(crate) mod mock;
 /// Module containing database functionality for managing notifications.
 pub(crate) mod notifications;
 
+/// Module containing database functionality for payments and ticketing.
+pub(crate) mod payments;
+
 /// Module containing database functionality for global site.
 pub(crate) mod site;
 
@@ -79,6 +82,7 @@ pub(crate) trait DB:
     + DBImages
     + DBMeetings
     + DBNotifications
+    + DBPayments
     + DBSite
 {
     /// Begins a new transaction and returns a unique client identifier.

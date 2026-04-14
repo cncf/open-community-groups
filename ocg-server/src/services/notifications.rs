@@ -26,9 +26,9 @@ use crate::{
     db::DynDB,
     templates::notifications::{
         CfsSubmissionUpdated, CommunityTeamInvitation, EmailVerification, EventCanceled, EventCustom,
-        EventPublished, EventReminder, EventRescheduled, EventWaitlistJoined, EventWaitlistLeft,
-        EventWaitlistPromoted, EventWelcome, GroupCustom, GroupTeamInvitation, GroupWelcome,
-        SessionProposalCoSpeakerInvitation, SpeakerWelcome,
+        EventPublished, EventRefundApproved, EventRefundRejected, EventRefundRequested, EventReminder,
+        EventRescheduled, EventWaitlistJoined, EventWaitlistLeft, EventWaitlistPromoted, EventWelcome,
+        GroupCustom, GroupTeamInvitation, GroupWelcome, SessionProposalCoSpeakerInvitation, SpeakerWelcome,
     },
 };
 
@@ -299,6 +299,24 @@ impl DeliveryWorker {
                 let body = template.render()?;
                 (subject, body)
             }
+            NotificationKind::EventRefundApproved => {
+                let subject = "Refund approved".to_string();
+                let template: EventRefundApproved = serde_json::from_value(template_data)?;
+                let body = template.render()?;
+                (subject, body)
+            }
+            NotificationKind::EventRefundRejected => {
+                let subject = "Refund request update".to_string();
+                let template: EventRefundRejected = serde_json::from_value(template_data)?;
+                let body = template.render()?;
+                (subject, body)
+            }
+            NotificationKind::EventRefundRequested => {
+                let subject = "Refund requested".to_string();
+                let template: EventRefundRequested = serde_json::from_value(template_data)?;
+                let body = template.render()?;
+                (subject, body)
+            }
             NotificationKind::EventReminder => {
                 let template: EventReminder = serde_json::from_value(template_data)?;
                 let subject = format!("Reminder: {} starts in 24 hours", template.event.name);
@@ -512,6 +530,12 @@ pub(crate) enum NotificationKind {
     EventCustom,
     /// Notification for an event published.
     EventPublished,
+    /// Notification for an approved refund.
+    EventRefundApproved,
+    /// Notification for a rejected refund request.
+    EventRefundRejected,
+    /// Notification for a newly requested refund.
+    EventRefundRequested,
     /// Notification reminding users about an upcoming event.
     EventReminder,
     /// Notification for an event rescheduled.

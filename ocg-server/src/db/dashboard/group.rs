@@ -18,7 +18,7 @@ use crate::{
         group::{
             analytics::GroupDashboardStats,
             attendees::{AttendeesFilters, AttendeesOutput},
-            events::{ApprovedSubmissionSummary, CfsSubmissionStatus, Event, EventsListFilters, GroupEvents},
+            events::{ApprovedSubmissionSummary, CfsSubmissionStatus, EventsListFilters, GroupEvents},
             home::UserGroupsByCommunity,
             members::{GroupMembersFilters, GroupMembersOutput},
             sponsors::{GroupSponsorsFilters, GroupSponsorsOutput, Sponsor},
@@ -33,6 +33,7 @@ use crate::{
     types::{
         event::{EventCategory, EventKindSummary as EventKind, SessionKindSummary as SessionKind},
         group::{GroupRole, GroupRoleSummary, GroupSponsor},
+        payments::GroupPaymentRecipient,
     },
 };
 
@@ -44,7 +45,7 @@ pub(crate) trait DBDashboardGroup {
         &self,
         actor_user_id: Uuid,
         group_id: Uuid,
-        event: &Event,
+        event: &serde_json::Value,
         cfg_max_participants: &HashMap<MeetingProvider, i32>,
     ) -> Result<Uuid>;
 
@@ -89,6 +90,13 @@ pub(crate) trait DBDashboardGroup {
         event_id: Uuid,
         cfs_submission_id: Uuid,
     ) -> Result<CfsSubmissionNotificationData>;
+
+    /// Gets the configured payment recipient for a group.
+    async fn get_group_payment_recipient(
+        &self,
+        community_id: Uuid,
+        group_id: Uuid,
+    ) -> Result<Option<GroupPaymentRecipient>>;
 
     /// Gets a single sponsor from the database.
     async fn get_group_sponsor(&self, group_id: Uuid, group_sponsor_id: Uuid) -> Result<GroupSponsor>;
@@ -247,7 +255,7 @@ impl DBDashboardGroup for PgDB {
         &self,
         actor_user_id: Uuid,
         group_id: Uuid,
-        event: &Event,
+        event: &serde_json::Value,
         cfg_max_participants: &HashMap<MeetingProvider, i32>,
     ) -> Result<Uuid> {
         self.fetch_scalar_one(
@@ -353,6 +361,27 @@ impl DBDashboardGroup for PgDB {
         self.fetch_json_one(
             "select get_cfs_submission_notification_data($1::uuid, $2::uuid)",
             &[&event_id, &cfs_submission_id],
+        )
+        .await
+    }
+
+    /// [`DBDashboardGroup::get_group_payment_recipient`]
+    #[instrument(skip(self), err)]
+    async fn get_group_payment_recipient(
+        &self,
+        community_id: Uuid,
+        group_id: Uuid,
+    ) -> Result<Option<GroupPaymentRecipient>> {
+        self.fetch_json_opt(
+            "
+            select (
+                select payment_recipient
+                from \"group\"
+                where community_id = $1::uuid
+                and group_id = $2::uuid
+            )
+            ",
+            &[&community_id, &group_id],
         )
         .await
     }

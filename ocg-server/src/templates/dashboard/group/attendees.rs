@@ -12,6 +12,7 @@ use crate::{
     types::{
         event::EventSummary,
         pagination::{self, Pagination, ToRawQuery},
+        payments::{EventRefundRequestStatus, format_amount_minor},
     },
     validation::MAX_PAGINATION_LIMIT,
 };
@@ -54,15 +55,27 @@ pub struct Attendee {
     /// Username.
     pub username: String,
 
+    /// Purchase amount in minor units.
+    pub amount_minor: Option<i64>,
     /// Timestamp when the attendee checked in.
     #[serde(default, with = "chrono::serde::ts_seconds_option")]
     pub checked_in_at: Option<DateTime<Utc>>,
     /// Company the user represents.
     pub company: Option<String>,
+    /// Currency used for the purchase.
+    pub currency_code: Option<String>,
+    /// Discount code applied to the purchase.
+    pub discount_code: Option<String>,
+    /// Purchase identifier.
+    pub event_purchase_id: Option<Uuid>,
     /// Full name.
     pub name: Option<String>,
     /// URL to user's avatar.
     pub photo_url: Option<String>,
+    /// Refund request status for the attendee purchase.
+    pub refund_request_status: Option<EventRefundRequestStatus>,
+    /// Ticket title for the attendee purchase.
+    pub ticket_title: Option<String>,
     /// Title held by the user.
     pub title: Option<String>,
 }
@@ -108,4 +121,22 @@ pub(crate) struct AttendeesOutput {
     pub attendees: Vec<Attendee>,
     /// Total number of attendees for the selected event.
     pub total: usize,
+}
+
+// Helpers.
+
+/// Format an attendee payment amount for display.
+#[allow(clippy::ref_option)]
+pub(crate) fn format_payment_amount(
+    amount_minor: &Option<i64>,
+    currency_code: Option<&str>,
+) -> Option<String> {
+    let amount_minor = (*amount_minor)?;
+    let currency_code = currency_code?;
+
+    if amount_minor == 0 {
+        return Some("Free".to_string());
+    }
+
+    Some(format_amount_minor(amount_minor, currency_code))
 }

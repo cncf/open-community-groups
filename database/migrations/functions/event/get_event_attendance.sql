@@ -43,6 +43,15 @@ create or replace function get_event_attendance(
                 ) then 'attendee'
                 when exists (
                     select 1
+                    from event_purchase ep
+                    where ep.event_id = p_event_id
+                    and ep.user_id = p_user_id
+                    and ep.status = 'pending'
+                    and ep.hold_expires_at > current_timestamp
+                    and exists (select 1 from scoped_event)
+                ) then 'pending-payment'
+                when exists (
+                    select 1
                     from event_waitlist ew
                     where ew.event_id = p_event_id
                     and ew.user_id = p_user_id
@@ -50,10 +59,42 @@ create or replace function get_event_attendance(
                 ) then 'waitlisted'
                 else 'none'
             end as status
+    ),
+    purchase_state as (
+        select
+            ep.event_purchase_id,
+            ep.amount_minor,
+            ep.provider_checkout_url
+        from event_purchase ep
+        where ep.event_id = p_event_id
+        and ep.user_id = p_user_id
+        and (
+            ep.status in ('completed', 'refund-requested')
+            or (ep.status = 'pending' and ep.hold_expires_at > current_timestamp)
+        )
+        and exists (select 1 from scoped_event)
+        order by
+            case when ep.status = 'pending' then 0 else 1 end,
+            ep.created_at desc,
+            ep.event_purchase_id desc
+        limit 1
+    ),
+    refund_request_state as (
+        select
+            err.status as refund_request_status
+        from event_refund_request err
+        join purchase_state ps on ps.event_purchase_id = err.event_purchase_id
+        where err.status in ('approved', 'approving', 'pending', 'rejected')
+        and exists (select 1 from scoped_event)
+        order by err.created_at desc, err.event_refund_request_id desc
+        limit 1
     )
     select
         json_build_object(
             'is_checked_in', is_checked_in,
+            'purchase_amount_minor', (select amount_minor from purchase_state),
+            'refund_request_status', (select refund_request_status from refund_request_state),
+            'resume_checkout_url', (select provider_checkout_url from purchase_state),
             'status', status
         )
     from attendance_state;

@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(7);
+select plan(9);
 
 -- ============================================================================
 -- VARIABLES
@@ -15,10 +15,16 @@ select plan(7);
 \set eventCanceledID '00000000-0000-0000-0000-000000000042'
 \set eventCategoryID '00000000-0000-0000-0000-000000000012'
 \set eventID '00000000-0000-0000-0000-000000000041'
+\set eventPurchaseID '00000000-0000-0000-0000-000000000061'
+\set eventPurchaseCurrentID '00000000-0000-0000-0000-000000000062'
+\set eventPurchaseProcessingID '00000000-0000-0000-0000-000000000063'
+\set eventRefundRequestID '00000000-0000-0000-0000-000000000071'
+\set eventRefundRequestProcessingID '00000000-0000-0000-0000-000000000072'
 \set eventStartedNoEndID '00000000-0000-0000-0000-000000000043'
 \set groupID '00000000-0000-0000-0000-000000000031'
 \set user1ID '00000000-0000-0000-0000-000000000051'
 \set user2ID '00000000-0000-0000-0000-000000000052'
+\set user4ID '00000000-0000-0000-0000-000000000054'
 
 -- ============================================================================
 -- SEED DATA
@@ -46,7 +52,8 @@ insert into "user" (user_id, auth_hash, email, username, name)
 values
     (:'user1ID', 'h1', 'att1@example.com', 'att1', 'Att One'),
     (:'user2ID', 'h2', 'att2@example.com', 'att2', 'Att Two'),
-    ('00000000-0000-0000-0000-000000000053', 'h3', 'att3@example.com', 'att3', 'Att Three');
+    ('00000000-0000-0000-0000-000000000053', 'h3', 'att3@example.com', 'att3', 'Att Three'),
+    (:'user4ID', 'h4', 'att4@example.com', 'att4', 'Att Four');
 
 -- Event
 insert into event (
@@ -58,6 +65,7 @@ insert into event (
     event_category_id,
     event_kind_id,
     group_id,
+    payment_currency_code,
     published,
     canceled,
     starts_at
@@ -70,6 +78,7 @@ insert into event (
     :'eventCategoryID',
     'in-person',
     :'groupID',
+    'USD',
     true,
     false,
     null
@@ -82,6 +91,7 @@ insert into event (
     :'eventCategoryID',
     'in-person',
     :'groupID',
+    null,
     false,
     true,
     null
@@ -94,10 +104,23 @@ insert into event (
     :'eventCategoryID',
     'in-person',
     :'groupID',
+    null,
     true,
     false,
     current_timestamp - interval '1 hour'
 );
+
+-- Event ticket type
+insert into event_ticket_type (
+    event_ticket_type_id,
+    active,
+    event_id,
+    "order",
+    seats_total,
+    title
+) values
+    ('00000000-0000-0000-0000-000000000081'::uuid, true, :'eventID', 1, 100, 'General admission'),
+    ('00000000-0000-0000-0000-000000000082'::uuid, true, :'eventID', 2, 100, 'VIP');
 
 -- Event Attendee - user1 is checked in
 insert into event_attendee (event_id, user_id, checked_in, checked_in_at) values (:'eventID', :'user1ID', true, current_timestamp);
@@ -115,6 +138,71 @@ values
     (:'eventID', '00000000-0000-0000-0000-000000000053'),
     (:'eventCanceledID', '00000000-0000-0000-0000-000000000053');
 
+-- Event purchase
+insert into event_purchase (
+    event_purchase_id,
+    amount_minor,
+    completed_at,
+    currency_code,
+    event_id,
+    event_ticket_type_id,
+    refunded_at,
+    status,
+    ticket_title,
+    user_id
+) values (
+    :'eventPurchaseID',
+    2500,
+    '2030-01-01 00:00:00+00',
+    'USD',
+    :'eventID',
+    '00000000-0000-0000-0000-000000000081',
+    '2030-01-02 00:00:00+00',
+    'refunded',
+    'General admission',
+    :'user4ID'
+), (
+    :'eventPurchaseCurrentID',
+    3000,
+    '2030-01-03 00:00:00+00',
+    'USD',
+    :'eventID',
+    '00000000-0000-0000-0000-000000000082',
+    null,
+    'completed',
+    'VIP',
+    :'user4ID'
+), (
+    :'eventPurchaseProcessingID',
+    3500,
+    '2030-01-04 00:00:00+00',
+    'USD',
+    :'eventID',
+    '00000000-0000-0000-0000-000000000082',
+    null,
+    'refund-requested',
+    'VIP',
+    :'user2ID'
+);
+
+-- Event refund request
+insert into event_refund_request (
+    event_refund_request_id,
+    event_purchase_id,
+    requested_by_user_id,
+    status
+) values (
+    :'eventRefundRequestID',
+    :'eventPurchaseID',
+    :'user4ID',
+    'approved'
+), (
+    :'eventRefundRequestProcessingID',
+    :'eventPurchaseProcessingID',
+    :'user2ID',
+    'approving'
+);
+
 -- ============================================================================
 -- TESTS
 -- ============================================================================
@@ -122,15 +210,27 @@ values
 -- Should return attendee status for checked-in attendee
 select is(
     get_event_attendance(:'communityID'::uuid, :'eventID'::uuid, :'user1ID'::uuid)::jsonb,
-    '{"is_checked_in":true,"status":"attendee"}'::jsonb,
+    '{
+        "is_checked_in": true,
+        "purchase_amount_minor": null,
+        "refund_request_status": null,
+        "resume_checkout_url": null,
+        "status": "attendee"
+    }'::jsonb,
     'Should return attendee status for a checked-in attendee'
 );
 
 -- Should return attendee status for attendee not checked in
 select is(
     get_event_attendance(:'communityID'::uuid, :'eventID'::uuid, :'user2ID'::uuid)::jsonb,
-    '{"is_checked_in":false,"status":"attendee"}'::jsonb,
-    'Should return attendee status for an attendee not checked in'
+    '{
+        "is_checked_in": false,
+        "purchase_amount_minor": 3500,
+        "refund_request_status": "approving",
+        "resume_checkout_url": null,
+        "status": "attendee"
+    }'::jsonb,
+    'Should return attendee purchase and refund processing state when a refund is being approved'
 );
 
 -- Should return attendee status for a started event without an end time
@@ -140,15 +240,53 @@ select is(
         :'eventStartedNoEndID'::uuid,
         :'user1ID'::uuid
     )::jsonb,
-    '{"is_checked_in":false,"status":"attendee"}'::jsonb,
+    '{
+        "is_checked_in": false,
+        "purchase_amount_minor": null,
+        "refund_request_status": null,
+        "resume_checkout_url": null,
+        "status": "attendee"
+    }'::jsonb,
     'Should return attendee status for a started event without an end time'
 );
 
 -- Should return none when scoped by wrong community
 select is(
     get_event_attendance(:'community2ID'::uuid, :'eventID'::uuid, :'user1ID'::uuid)::jsonb,
-    '{"is_checked_in":false,"status":"none"}'::jsonb,
+    '{
+        "is_checked_in": false,
+        "purchase_amount_minor": null,
+        "refund_request_status": null,
+        "resume_checkout_url": null,
+        "status": "none"
+    }'::jsonb,
     'Should return none when scoped by wrong community'
+);
+
+-- Should keep purchase and refund request scoped to the validated community
+select is(
+    get_event_attendance(:'community2ID'::uuid, :'eventID'::uuid, :'user4ID'::uuid)::jsonb,
+    '{
+        "is_checked_in": false,
+        "purchase_amount_minor": null,
+        "refund_request_status": null,
+        "resume_checkout_url": null,
+        "status": "none"
+    }'::jsonb,
+    'Should not expose purchase or refund request details outside the validated community scope'
+);
+
+-- Should only return refund state for the selected current purchase
+select is(
+    get_event_attendance(:'communityID'::uuid, :'eventID'::uuid, :'user4ID'::uuid)::jsonb,
+    '{
+        "is_checked_in": false,
+        "purchase_amount_minor": 3000,
+        "refund_request_status": null,
+        "resume_checkout_url": null,
+        "status": "none"
+    }'::jsonb,
+    'Should not attach an older refund request to the current purchase state'
 );
 
 -- Should return waitlisted status for waitlisted user
@@ -158,7 +296,13 @@ select is(
         :'eventID'::uuid,
         '00000000-0000-0000-0000-000000000053'::uuid
     )::jsonb,
-    '{"is_checked_in":false,"status":"waitlisted"}'::jsonb,
+    '{
+        "is_checked_in": false,
+        "purchase_amount_minor": null,
+        "refund_request_status": null,
+        "resume_checkout_url": null,
+        "status": "waitlisted"
+    }'::jsonb,
     'Should return waitlisted status for a waitlisted user'
 );
 
@@ -169,7 +313,13 @@ select is(
         :'eventCanceledID'::uuid,
         '00000000-0000-0000-0000-000000000053'::uuid
     )::jsonb,
-    '{"is_checked_in":false,"status":"none"}'::jsonb,
+    '{
+        "is_checked_in": false,
+        "purchase_amount_minor": null,
+        "refund_request_status": null,
+        "resume_checkout_url": null,
+        "status": "none"
+    }'::jsonb,
     'Should return none for waitlisted users on canceled events'
 );
 
@@ -178,9 +328,15 @@ select is(
     get_event_attendance(
         :'communityID'::uuid,
         :'eventID'::uuid,
-        '00000000-0000-0000-0000-000000000054'::uuid
+        '00000000-0000-0000-0000-000000000055'::uuid
     )::jsonb,
-    '{"is_checked_in":false,"status":"none"}'::jsonb,
+    '{
+        "is_checked_in": false,
+        "purchase_amount_minor": null,
+        "refund_request_status": null,
+        "resume_checkout_url": null,
+        "status": "none"
+    }'::jsonb,
     'Should return none for a non-attendee'
 );
 

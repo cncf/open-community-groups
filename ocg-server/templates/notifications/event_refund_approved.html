@@ -1,0 +1,25 @@
+{% extends "notifications/base.html" -%}
+{% import "macros/email.html" as email -%}
+
+{% block subject -%}
+  Refund approved: {{ event.name }}
+{% endblock subject -%}
+
+{% block preheader -%}
+  Your refund request for {{ event.name }} has been approved.
+{% endblock preheader -%}
+
+{% block content -%}
+  <p class="default mb-30">
+    Your refund request for <strong>{{ event.name }}</strong> has been approved.
+    <br />
+    <br />
+    The refund is now being processed by Stripe and your ticket has been released.
+  </p>
+
+  {{ email::button(link = link, text = "View event") }}
+{% endblock content -%}
+
+{% block footer -%}
+  You are receiving this because you requested a refund for {{ event.name }}.
+{% endblock footer -%}

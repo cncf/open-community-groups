@@ -18,13 +18,40 @@ returns json as $$
                 u.username,
 
                 extract(epoch from ea.checked_in_at)::bigint as checked_in_at,
+                ep.amount_minor,
                 u.company,
+                ep.currency_code,
+                ep.discount_code,
+                ep.event_purchase_id,
+                ep.ticket_title,
                 u.name,
                 u.photo_url,
+                err.status as refund_request_status,
                 u.title
             from event_attendee ea
             join event e on e.event_id = ea.event_id
             join "user" u on u.user_id = ea.user_id
+            left join lateral (
+                select
+                    event_purchase_id,
+                    amount_minor,
+                    currency_code,
+                    discount_code,
+                    ticket_title
+                from event_purchase
+                where event_id = ea.event_id
+                and user_id = ea.user_id
+                and status in ('completed', 'refund-requested')
+                order by created_at desc, event_purchase_id desc
+                limit 1
+            ) ep on true
+            left join lateral (
+                select status
+                from event_refund_request
+                where event_purchase_id = ep.event_purchase_id
+                order by created_at desc, event_refund_request_id desc
+                limit 1
+            ) err on true
             where e.group_id = p_group_id
             and ea.event_id = (select event_id from filters)
             order by coalesce(lower(u.name), lower(u.username)) asc, u.user_id asc

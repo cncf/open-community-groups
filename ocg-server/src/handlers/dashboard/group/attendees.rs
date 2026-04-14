@@ -23,13 +23,19 @@ use crate::{
         prepare_headers,
     },
     router::serde_qs_config,
-    services::notifications::{DynNotificationsManager, NewNotification, NotificationKind},
+    services::{
+        notifications::{DynNotificationsManager, NewNotification, NotificationKind},
+        payments::{ApproveRefundRequestInput, DynPaymentsManager, RejectRefundRequestInput},
+    },
     templates::{
         dashboard::group::attendees::{self, AttendeesFilters, AttendeesPaginationFilters},
         notifications::EventCustom,
     },
     types::{pagination::NavigationLinks, permissions::GroupPermission},
-    validation::{MAX_LEN_M, MAX_LEN_NOTIFICATION_BODY, trimmed_non_empty},
+    validation::{
+        MAX_LEN_DESCRIPTION_SHORT, MAX_LEN_M, MAX_LEN_NOTIFICATION_BODY, trimmed_non_empty,
+        trimmed_non_empty_opt,
+    },
 };
 
 #[cfg(test)]
@@ -87,6 +93,32 @@ pub(crate) async fn list_page(
 }
 
 // Actions handlers.
+
+/// Approves an attendee refund request.
+#[instrument(skip_all, err)]
+#[allow(clippy::too_many_arguments)]
+pub(crate) async fn approve_refund_request(
+    CurrentUser(user): CurrentUser,
+    SelectedCommunityId(community_id): SelectedCommunityId,
+    SelectedGroupId(group_id): SelectedGroupId,
+    State(payments_manager): State<DynPaymentsManager>,
+    Path((event_id, user_id)): Path<(Uuid, Uuid)>,
+    ValidatedForm(review): ValidatedForm<RefundReviewInput>,
+) -> Result<impl IntoResponse, HandlerError> {
+    payments_manager
+        .approve_refund_request(&ApproveRefundRequestInput {
+            actor_user_id: user.user_id,
+            community_id,
+            event_id,
+            group_id,
+            user_id,
+
+            review_note: review.review_note.clone(),
+        })
+        .await?;
+
+    Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-body")]).into_response())
+}
 
 /// Generates a QR code for event check-in.
 #[instrument(skip_all, err)]
@@ -146,6 +178,32 @@ pub(crate) async fn manual_check_in(
         .await?;
 
     Ok(StatusCode::NO_CONTENT)
+}
+
+/// Rejects an attendee refund request.
+#[instrument(skip_all, err)]
+#[allow(clippy::too_many_arguments)]
+pub(crate) async fn reject_refund_request(
+    CurrentUser(user): CurrentUser,
+    SelectedCommunityId(community_id): SelectedCommunityId,
+    SelectedGroupId(group_id): SelectedGroupId,
+    State(payments_manager): State<DynPaymentsManager>,
+    Path((event_id, user_id)): Path<(Uuid, Uuid)>,
+    ValidatedForm(review): ValidatedForm<RefundReviewInput>,
+) -> Result<impl IntoResponse, HandlerError> {
+    payments_manager
+        .reject_refund_request(&RejectRefundRequestInput {
+            actor_user_id: user.user_id,
+            community_id,
+            event_id,
+            group_id,
+            user_id,
+
+            review_note: review.review_note.clone(),
+        })
+        .await?;
+
+    Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-body")]).into_response())
 }
 
 /// Sends a custom notification to event attendees.
@@ -219,4 +277,12 @@ pub(crate) struct EventCustomNotification {
     /// Title line for the notification email.
     #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_M))]
     pub title: String,
+}
+
+/// Form data for refund reviews.
+#[derive(Debug, Deserialize, Serialize, Validate)]
+pub(crate) struct RefundReviewInput {
+    /// Optional note captured when reviewing a request.
+    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_DESCRIPTION_SHORT))]
+    pub review_note: Option<String>,
 }

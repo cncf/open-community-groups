@@ -10,6 +10,7 @@ use axum::{
 use tracing::instrument;
 
 use crate::{
+    config::PaymentsConfig,
     db::DynDB,
     handlers::{
         error::HandlerError,
@@ -31,6 +32,7 @@ pub(crate) async fn update_page(
     SelectedCommunityId(community_id): SelectedCommunityId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
+    State(payments_cfg): State<Option<PaymentsConfig>>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
     let (can_manage_settings, group, categories, regions) = tokio::try_join!(
@@ -48,6 +50,7 @@ pub(crate) async fn update_page(
         can_manage_settings,
         categories,
         group,
+        payments_enabled: payments_cfg.is_some(),
         regions,
     };
 

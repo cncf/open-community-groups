@@ -79,14 +79,17 @@ const parseRemainingCapacity = (container) => {
 /**
  * Updates the sign-in control label.
  * @param {HTMLButtonElement|null} button - Sign-in control button
- * @param {{isSoldOut: boolean, waitlistEnabled: boolean}} meta - Attendance metadata
+ * @param {{isSoldOut: boolean, isTicketed: boolean, ticketPurchaseAvailable: boolean, waitlistEnabled: boolean}} meta - Attendance metadata
  */
 const updateSigninButtonLabel = (button, meta) => {
   if (!button) {
     return;
   }
 
-  const label = meta.isSoldOut && meta.waitlistEnabled ? "Join waiting list" : "Attend event";
+  let label = meta.isSoldOut && meta.waitlistEnabled ? "Join waiting list" : "Attend event";
+  if (meta.isTicketed) {
+    label = meta.ticketPurchaseAvailable ? "Choose ticket" : "Tickets unavailable";
+  }
   setAttendanceControlLabel(button, label);
   button.dataset.defaultLabel = label;
 };
@@ -94,7 +97,7 @@ const updateSigninButtonLabel = (button, meta) => {
 /**
  * Computes attendance metadata for the current event.
  * @param {HTMLElement} container - Attendance container element
- * @returns {{isSoldOut: boolean, isPastEvent: boolean, eventIsLive: boolean, waitlistEnabled: boolean}}
+ * @returns {{eventIsLive: boolean, isPastEvent: boolean, isSoldOut: boolean, isTicketed: boolean, ticketPurchaseAvailable: boolean, waitlistEnabled: boolean}}
  */
 const getAttendanceMeta = (container) => {
   const startsAtValue = container?.dataset?.starts ?? null;
@@ -102,6 +105,8 @@ const getAttendanceMeta = (container) => {
   const remainingCapacity = parseRemainingCapacity(container);
   const isSoldOut = capacity !== null && remainingCapacity !== null && remainingCapacity <= 0;
   const eventIsLive = container?.dataset?.isLive === "true";
+  const isTicketed = container?.dataset?.isTicketed === "true";
+  const ticketPurchaseAvailable = container?.dataset?.ticketPurchaseAvailable === "true";
   const waitlistEnabled = container?.dataset?.waitlistEnabled === "true";
   const isPastEvent = (() => {
     if (!startsAtValue) {
@@ -118,8 +123,25 @@ const getAttendanceMeta = (container) => {
     isSoldOut,
     isPastEvent,
     eventIsLive,
+    ticketPurchaseAvailable,
     waitlistEnabled,
+    isTicketed,
   };
+};
+
+/**
+ * Applies the unavailable-ticket state to an attendance button.
+ * @param {HTMLButtonElement|null} button - Button to update
+ */
+const applyUnavailableTicketState = (button) => {
+  if (!button) {
+    return;
+  }
+
+  button.disabled = true;
+  button.title = "Tickets are not currently available for this event.";
+  button.classList.add("cursor-not-allowed", "opacity-50");
+  setAttendanceControlLabel(button, button.dataset.unavailableLabel || "Tickets unavailable");
 };
 
 /**
@@ -151,6 +173,9 @@ const applySoldOutState = (button, meta) => {
   if (!button) {
     return;
   }
+  if (meta.isTicketed) {
+    return;
+  }
   if (meta.isPastEvent) {
     return;
   }
@@ -179,6 +204,12 @@ const applySoldOutState = (button, meta) => {
  * @param {{isSoldOut: boolean, isPastEvent: boolean, waitlistEnabled: boolean}} meta - Attendance metadata
  */
 const showSignedOutAttendanceState = (attendButton, signinButton, meta) => {
+  if (meta.isTicketed && !meta.ticketPurchaseAvailable && !meta.isPastEvent) {
+    attendButton?.classList.remove("hidden");
+    applyUnavailableTicketState(attendButton);
+    return;
+  }
+
   if (meta.isSoldOut && !meta.waitlistEnabled) {
     attendButton?.classList.remove("hidden");
     updateButtonStateForEventDate(attendButton, meta);
@@ -228,12 +259,15 @@ const initializeAttendanceContainer = (container) => {
   const meta = getAttendanceMeta(container);
   const attendButton = getAttendanceControl(container, "attend-btn");
   const leaveButton = getAttendanceControl(container, "leave-btn");
+  const refundButton = getAttendanceControl(container, "refund-btn");
   const signinButton = getAttendanceControl(container, "signin-btn");
 
   updateButtonStateForEventDate(attendButton, meta);
   applySoldOutState(attendButton, meta);
   updateButtonStateForEventDate(leaveButton, meta);
   setAttendanceControlLabel(leaveButton, leaveButton?.dataset.attendeeLabel || "Cancel attendance");
+  updateButtonStateForEventDate(refundButton, meta);
+  setAttendanceControlLabel(refundButton, refundButton?.dataset.refundLabel || "Request refund");
   updateButtonStateForEventDate(signinButton, meta);
   updateSigninButtonLabel(signinButton, meta);
 
@@ -259,8 +293,9 @@ const handleAttendanceCheckResponse = (event) => {
   const signinButton = getAttendanceControl(container, "signin-btn");
   const attendButton = getAttendanceControl(container, "attend-btn");
   const leaveButton = getAttendanceControl(container, "leave-btn");
+  const refundButton = getAttendanceControl(container, "refund-btn");
 
-  if (!loadingButton || !signinButton || !attendButton || !leaveButton) {
+  if (!loadingButton || !signinButton || !attendButton || !leaveButton || !refundButton) {
     return;
   }
 
@@ -268,6 +303,8 @@ const handleAttendanceCheckResponse = (event) => {
   signinButton.classList.add("hidden");
   attendButton.classList.add("hidden");
   leaveButton.classList.add("hidden");
+  refundButton.classList.add("hidden");
+  delete attendButton.dataset.resumeUrl;
 
   const meta = getAttendanceMeta(container);
   const xhr = event.detail?.xhr;
@@ -277,10 +314,46 @@ const handleAttendanceCheckResponse = (event) => {
       const response = JSON.parse(xhr.responseText);
 
       if (response.status === "attendee") {
-        leaveButton.classList.remove("hidden");
-        setAttendanceControlLabel(leaveButton, leaveButton.dataset.attendeeLabel || "Cancel attendance");
-        updateButtonStateForEventDate(leaveButton, meta);
+        if (response.refund_request_status === "pending") {
+          refundButton.classList.remove("hidden");
+          refundButton.disabled = true;
+          refundButton.title = "Your refund request is waiting for organizer review.";
+          refundButton.classList.add("cursor-not-allowed", "opacity-50");
+          setAttendanceControlLabel(refundButton, refundButton.dataset.pendingLabel || "Refund requested");
+        } else if (response.refund_request_status === "approving") {
+          refundButton.classList.remove("hidden");
+          refundButton.disabled = true;
+          refundButton.title = "Your refund is being processed.";
+          refundButton.classList.add("cursor-not-allowed", "opacity-50");
+          setAttendanceControlLabel(refundButton, refundButton.dataset.approvingLabel || "Refund processing");
+        } else if (response.refund_request_status === "rejected") {
+          refundButton.classList.remove("hidden");
+          refundButton.disabled = true;
+          refundButton.title = "Your refund request was rejected. Contact the organizers for help.";
+          refundButton.classList.add("cursor-not-allowed", "opacity-50");
+          setAttendanceControlLabel(refundButton, refundButton.dataset.rejectedLabel || "Refund unavailable");
+        } else if (response.can_request_refund) {
+          refundButton.classList.remove("hidden");
+          setAttendanceControlLabel(refundButton, refundButton.dataset.refundLabel || "Request refund");
+          updateButtonStateForEventDate(refundButton, meta);
+        } else if ((response.purchase_amount_minor || 0) > 0) {
+          refundButton.classList.remove("hidden");
+          refundButton.disabled = true;
+          refundButton.title = "Refunds are no longer available for this ticket.";
+          refundButton.classList.add("cursor-not-allowed", "opacity-50");
+          setAttendanceControlLabel(refundButton, refundButton.dataset.rejectedLabel || "Refund unavailable");
+        } else {
+          leaveButton.classList.remove("hidden");
+          setAttendanceControlLabel(leaveButton, leaveButton.dataset.attendeeLabel || "Cancel attendance");
+          updateButtonStateForEventDate(leaveButton, meta);
+        }
         toggleMeetingDetailsVisibility(true, meta);
+      } else if (response.status === "pending-payment") {
+        attendButton.classList.remove("hidden");
+        attendButton.dataset.resumeUrl = response.resume_checkout_url || "";
+        setAttendanceControlLabel(attendButton, attendButton.dataset.completeLabel || "Complete payment");
+        updateButtonStateForEventDate(attendButton, meta);
+        toggleMeetingDetailsVisibility(false, meta);
       } else if (response.status === "waitlisted") {
         leaveButton.classList.remove("hidden");
         setAttendanceControlLabel(leaveButton, leaveButton.dataset.waitlistLabel || "Leave waiting list");
@@ -288,7 +361,9 @@ const handleAttendanceCheckResponse = (event) => {
         toggleMeetingDetailsVisibility(false, meta);
       } else {
         attendButton.classList.remove("hidden");
-        if (meta.isSoldOut) {
+        if (meta.isTicketed && !meta.ticketPurchaseAvailable && !meta.isPastEvent) {
+          applyUnavailableTicketState(attendButton);
+        } else if (meta.isSoldOut) {
           applySoldOutState(attendButton, meta);
         } else {
           updateButtonStateForEventDate(attendButton, meta);
@@ -346,6 +421,25 @@ const handleLeaveBeforeRequest = (target) => {
 };
 
 /**
+ * Handles refund button beforeRequest state.
+ * @param {HTMLElement} target - Event target
+ */
+const handleRefundBeforeRequest = (target) => {
+  if (target.dataset.attendanceRole !== "refund-btn") {
+    return;
+  }
+
+  const container = target.closest(ATTENDANCE_CONTAINER_SELECTOR);
+  const loadingButton = getAttendanceControl(container, "loading-btn");
+  if (!loadingButton) {
+    return;
+  }
+
+  target.classList.add("hidden");
+  loadingButton.classList.remove("hidden");
+};
+
+/**
  * Handles attend button afterRequest state.
  * @param {Event} event - htmx:afterRequest event
  */
@@ -376,8 +470,14 @@ const handleAttendAfterRequest = (event) => {
   if (ok) {
     try {
       const response = JSON.parse(xhr.responseText);
+      if (response.redirect_url) {
+        window.location.assign(response.redirect_url);
+        return;
+      }
       if (response.status === "waitlisted") {
         showInfoAlert("You have joined the waiting list for this event.");
+      } else if (response.status === "pending-payment") {
+        showInfoAlert("Your checkout is ready. Redirecting you to Stripe now.");
       } else {
         showInfoAlert("You have successfully registered for this event.");
       }
@@ -438,6 +538,43 @@ const handleLeaveAfterRequest = (event) => {
 };
 
 /**
+ * Handles refund button afterRequest state.
+ * @param {Event} event - htmx:afterRequest event
+ */
+const handleRefundAfterRequest = (event) => {
+  const target = event.target;
+  if (!(target instanceof HTMLElement) || target.dataset.attendanceRole !== "refund-btn") {
+    return;
+  }
+
+  const container = target.closest(ATTENDANCE_CONTAINER_SELECTOR);
+  if (!container) {
+    return;
+  }
+
+  const loadingButton = getAttendanceControl(container, "loading-btn");
+  const refundButton = getAttendanceControl(container, "refund-btn");
+  if (!loadingButton || !refundButton) {
+    return;
+  }
+
+  const xhr = event.detail?.xhr;
+  const ok = handleHtmxResponse({
+    xhr,
+    successMessage: "",
+    errorMessage: "Something went wrong requesting your refund. Please try again later.",
+  });
+
+  if (ok) {
+    showInfoAlert("Your refund request has been sent to the organizers.");
+    document.body.dispatchEvent(new Event("attendance-changed"));
+  } else {
+    loadingButton.classList.add("hidden");
+    refundButton.classList.remove("hidden");
+  }
+};
+
+/**
  * Handles htmx:beforeRequest events for attendance buttons.
  * @param {Event} event - htmx:beforeRequest event
  */
@@ -453,6 +590,7 @@ const handleBeforeRequest = (event) => {
 
   handleAttendBeforeRequest(target);
   handleLeaveBeforeRequest(target);
+  handleRefundBeforeRequest(target);
 };
 
 /**
@@ -463,6 +601,7 @@ const handleAfterRequest = (event) => {
   handleAttendanceCheckResponse(event);
   handleAttendAfterRequest(event);
   handleLeaveAfterRequest(event);
+  handleRefundAfterRequest(event);
 };
 
 /**
@@ -483,11 +622,21 @@ const handleAttendanceClick = (event) => {
   if (signinButton) {
     const path = signinButton.dataset.path || window.location.pathname;
     const label = signinButton.querySelector("[data-attendance-label]")?.textContent || "Attend event";
-    const actionText = label === "Join waiting list" ? "join the waiting list" : "attend this event";
+    let actionText = label === "Join waiting list" ? "join the waiting list" : "attend this event";
+    if (label === "Choose ticket") {
+      actionText = "buy a ticket for this event";
+    }
     showInfoAlert(
       `You need to be <a href='/log-in?next_url=${path}' class='underline font-medium' hx-boost='true'>logged in</a> to ${actionText}.`,
       true,
     );
+    return;
+  }
+
+  const attendButton = target.closest('[data-attendance-role="attend-btn"]');
+  if (attendButton instanceof HTMLButtonElement && attendButton.dataset.resumeUrl) {
+    event.preventDefault();
+    window.location.assign(attendButton.dataset.resumeUrl);
     return;
   }
 
@@ -499,6 +648,12 @@ const handleAttendanceClick = (event) => {
         ? "Are you sure you want to leave the waiting list?"
         : "Are you sure you want to cancel your attendance?";
     showConfirmAlert(message, leaveButton.id, "Yes");
+    return;
+  }
+
+  const refundButton = target.closest('[data-attendance-role="refund-btn"]');
+  if (refundButton) {
+    showConfirmAlert("Are you sure you want to request a refund for this ticket?", refundButton.id, "Yes");
   }
 };
 

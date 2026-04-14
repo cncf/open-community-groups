@@ -252,6 +252,14 @@ pub(super) fn setup_group_dashboard_router(state: &State) -> Router<State> {
             "/events/{event_id}/attendees/{user_id}/check-in",
             post(dashboard::group::attendees::manual_check_in),
         )
+        .route(
+            "/events/{event_id}/attendees/{user_id}/refund/approve",
+            put(dashboard::group::attendees::approve_refund_request),
+        )
+        .route(
+            "/events/{event_id}/attendees/{user_id}/refund/reject",
+            put(dashboard::group::attendees::reject_refund_request),
+        )
         .route("/events/{event_id}/cancel", put(dashboard::group::events::cancel))
         .route(
             "/events/{event_id}/delete",

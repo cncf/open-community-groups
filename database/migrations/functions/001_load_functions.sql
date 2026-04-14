@@ -15,6 +15,8 @@
 {{ template "common/generate_slug_from_source.sql" }}
 {{ template "common/get_community_full.sql" }}
 {{ template "common/get_community_summary.sql" }} -- Do not sort alphabetically, has dependency
+{{ template "common/list_event_discount_codes.sql" }} -- Dependency for get_event_full and payments
+{{ template "common/list_event_ticket_types.sql" }} -- Dependency for get_event_full and payments
 {{ template "common/get_group_summary.sql" }} -- Do not sort alphabetically, has dependency
 {{ template "common/get_event_full.sql" }}
 {{ template "common/get_event_summary.sql" }}
@@ -59,9 +61,15 @@
 {{ template "dashboard-community/update_group_category.sql" }}
 {{ template "dashboard-community/update_region.sql" }}
 
+{{ template "dashboard-group/get_event_ticket_capacity.sql" }} -- Dependency for add/update_event
 {{ template "dashboard-group/validate_event_capacity.sql" }} -- Dependency for add/update_event
 {{ template "dashboard-group/validate_event_cfs_labels_payload.sql" }} -- Dependency for add/update_event
+{{ template "dashboard-group/validate_event_discount_codes_payload.sql" }} -- Dependency for validate_event_ticketing_payload
+{{ template "dashboard-group/validate_event_ticket_types_payload.sql" }} -- Dependency for validate_event_ticketing_payload
+{{ template "dashboard-group/validate_event_ticketing_payload.sql" }} -- Dependency for add/update_event
 {{ template "event/promote_event_waitlist.sql" }} -- Dependency for update_event and leave_event
+{{ template "dashboard-group/sync_event_discount_codes.sql" }} -- Dependency for add/update_event
+{{ template "dashboard-group/sync_event_ticket_types.sql" }} -- Dependency for add/update_event
 {{ template "dashboard-group/add_event.sql" }}
 {{ template "dashboard-group/add_group_sponsor.sql" }}
 {{ template "dashboard-group/add_group_team_member.sql" }}
@@ -131,6 +139,7 @@
 {{ template "event/get_event_full_by_slug.sql" }}
 {{ template "event/get_event_summary_by_id.sql" }}
 {{ template "event/is_event_check_in_window_open.sql" }}
+{{ template "payments/release_event_discount_code_availability.sql" }} -- Dependency for event and payments flows
 {{ template "event/leave_event.sql" }}
 {{ template "event/list_user_session_proposals_for_cfs_event.sql" }}
 {{ template "event/update_event_views.sql" }}
@@ -158,6 +167,25 @@
 {{ template "notifications/get_pending_notification.sql" }}
 {{ template "notifications/track_custom_notification.sql" }}
 {{ template "notifications/update_notification.sql" }}
+{{ template "payments/approve_event_refund_request.sql" }}
+{{ template "payments/attach_checkout_session_to_event_purchase.sql" }}
+{{ template "payments/begin_event_refund_approval.sql" }}
+{{ template "payments/complete_free_event_purchase.sql" }}
+{{ template "payments/expire_event_purchase_for_checkout_session.sql" }}
+{{ template "payments/prepare_event_checkout_expire_previous_hold.sql" }} -- Dependency for prepare_event_checkout_purchase
+{{ template "payments/prepare_event_checkout_expire_stale_holds.sql" }} -- Dependency for prepare_event_checkout_purchase
+{{ template "payments/prepare_event_checkout_find_existing_purchase.sql" }} -- Dependency for prepare_event_checkout_purchase
+{{ template "payments/prepare_event_checkout_get_purchase_summary.sql" }} -- Dependency for prepare_event_checkout_purchase
+{{ template "payments/prepare_event_checkout_reserve_discount_code_availability.sql" }} -- Dependency for prepare_event_checkout_purchase
+{{ template "payments/prepare_event_checkout_validate_and_resolve_pricing.sql" }} -- Dependency for prepare_event_checkout_purchase
+{{ template "payments/prepare_event_checkout_validate_event.sql" }} -- Dependency for prepare_event_checkout_purchase
+{{ template "payments/prepare_event_checkout_purchase.sql" }}
+{{ template "payments/reconcile_event_purchase_for_checkout_session.sql" }}
+{{ template "payments/record_automatic_refund_for_event_purchase.sql" }}
+{{ template "payments/reject_event_refund_request.sql" }}
+{{ template "payments/release_event_discount_code_availability.sql" }}
+{{ template "payments/request_event_refund.sql" }}
+{{ template "payments/revert_event_refund_approval.sql" }}
 
 {{ template "site/get_filters_options.sql" }}
 {{ template "site/get_site_home_stats.sql" }}

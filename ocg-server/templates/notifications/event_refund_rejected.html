@@ -1,0 +1,25 @@
+{% extends "notifications/base.html" -%}
+{% import "macros/email.html" as email -%}
+
+{% block subject -%}
+  Refund request update: {{ event.name }}
+{% endblock subject -%}
+
+{% block preheader -%}
+  Your refund request for {{ event.name }} was not approved.
+{% endblock preheader -%}
+
+{% block content -%}
+  <p class="default mb-30">
+    Your refund request for <strong>{{ event.name }}</strong> was reviewed and was not approved.
+    <br />
+    <br />
+    Your attendance is still active, and you can continue managing the event from its page.
+  </p>
+
+  {{ email::button(link = link, text = "View event") }}
+{% endblock content -%}
+
+{% block footer -%}
+  You are receiving this because you requested a refund for {{ event.name }}.
+{% endblock footer -%}

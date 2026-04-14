@@ -1,0 +1,25 @@
+{% extends "notifications/base.html" -%}
+{% import "macros/email.html" as email -%}
+
+{% block subject -%}
+  Refund requested: {{ event.name }}
+{% endblock subject -%}
+
+{% block preheader -%}
+  A paid attendee has requested a refund for {{ event.name }}.
+{% endblock preheader -%}
+
+{% block content -%}
+  <p class="default mb-30">
+    A paid attendee has requested a refund for <strong>{{ event.name }}</strong>.
+    <br />
+    <br />
+    Please review the attendee list in the group dashboard to approve or reject the request.
+  </p>
+
+  {{ email::button(link = link, text = "Review attendees") }}
+{% endblock content -%}
+
+{% block footer -%}
+  You are receiving this because you can manage events for {{ event.group_name }}.
+{% endblock footer -%}

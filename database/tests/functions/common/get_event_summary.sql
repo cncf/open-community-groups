@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(6);
+select plan(7);
 
 -- ============================================================================
 -- VARIABLES
@@ -17,8 +17,11 @@ select plan(6);
 \set eventCategoryID '00000000-0000-0000-0000-000000000012'
 \set eventGroupLogoFallbackID '00000000-0000-0000-0000-000000000032'
 \set eventID '00000000-0000-0000-0000-000000000031'
+\set eventPaidID '00000000-0000-0000-0000-000000000034'
 \set groupID '00000000-0000-0000-0000-000000000021'
 \set groupNoLogoID '00000000-0000-0000-0000-000000000022'
+\set ticketPriceWindowID '00000000-0000-0000-0000-000000000045'
+\set ticketTypeID '00000000-0000-0000-0000-000000000044'
 \set waitlistUserID '00000000-0000-0000-0000-000000000043'
 
 -- ============================================================================
@@ -142,6 +145,7 @@ insert into event (
     venue_state,
     venue_zip_code,
     capacity,
+    payment_currency_code,
     waitlist_enabled,
     location,
     logo_url
@@ -167,6 +171,7 @@ insert into event (
     'NY',
     '10001',
     5,
+    null,
     true,
     ST_SetSRID(ST_MakePoint(-122.3321, 47.6062), 4326),  -- Seattle coordinates (different from group)
     'https://example.com/event-logo.png'
@@ -192,6 +197,7 @@ insert into event (
     'NY',
     '10001',
     5,
+    null,
     true,
     ST_SetSRID(ST_MakePoint(-122.3321, 47.6062), 4326),
     null
@@ -217,9 +223,62 @@ insert into event (
     'NY',
     '10001',
     5,
+    null,
     true,
     ST_SetSRID(ST_MakePoint(-122.3321, 47.6062), 4326),
     null
+), (
+    :'eventPaidID',
+    'KubeCon Seattle 2024 Paid',
+    'def5681',
+    'Paid summary event',
+    'Paid summary event short summary',
+    'virtual',
+    :'eventCategoryID',
+    :'groupID',
+    true,
+    '2024-06-16 09:00:00+00',
+    '2024-06-16 17:00:00+00',
+    'America/New_York',
+    null,
+    '123 Main St',
+    'New York',
+    'US',
+    'United States',
+    'Convention Center',
+    'NY',
+    '10001',
+    20,
+    'USD',
+    false,
+    ST_SetSRID(ST_MakePoint(-122.3321, 47.6062), 4326),
+    null
+);
+
+-- Event ticket type
+insert into event_ticket_type (
+    event_ticket_type_id,
+    event_id,
+    "order",
+    seats_total,
+    title
+) values (
+    :'ticketTypeID',
+    :'eventPaidID',
+    1,
+    20,
+    'General admission'
+);
+
+-- Event ticket price window
+insert into event_ticket_price_window (
+    event_ticket_price_window_id,
+    amount_minor,
+    event_ticket_type_id
+) values (
+    :'ticketPriceWindowID',
+    3000,
+    :'ticketTypeID'
 );
 
 -- Link meeting to event
@@ -287,6 +346,53 @@ select is(
         "zip_code": "10001"
     }'::jsonb,
     'Should return correct event summary data as JSON'
+);
+
+-- Should include payment currency and normalized ticket types in event summaries
+select is(
+    jsonb_build_object(
+        'payment_currency_code', (
+            get_event_summary(
+                :'communityID'::uuid,
+                :'groupID'::uuid,
+                :'eventPaidID'::uuid
+            )::jsonb
+        )->'payment_currency_code',
+        'ticket_types', (
+            get_event_summary(
+                :'communityID'::uuid,
+                :'groupID'::uuid,
+                :'eventPaidID'::uuid
+            )::jsonb
+        )->'ticket_types'
+    ),
+    format(
+        '{
+            "payment_currency_code": "USD",
+            "ticket_types": [
+                {
+                    "active": true,
+                    "current_price": {
+                        "amount_minor": 3000
+                    },
+                    "event_ticket_type_id": "%s",
+                    "order": 1,
+                    "price_windows": [
+                        {
+                            "amount_minor": 3000,
+                            "event_ticket_price_window_id": "%s"
+                        }
+                    ],
+                    "remaining_seats": 20,
+                    "seats_total": 20,
+                    "sold_out": false,
+                    "title": "General admission"
+                }
+            ]
+        }',
+        :'ticketTypeID', :'ticketPriceWindowID'
+    )::jsonb,
+    'Should include payment currency and normalized ticket types in event summaries'
 );
 
 -- Should use group logo when event has no logo

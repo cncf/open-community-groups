@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(6);
+select plan(7);
 
 -- ============================================================================
 -- VARIABLES
@@ -16,6 +16,7 @@ select plan(6);
 \set eventID '00000000-0000-0000-0000-000000000031'
 \set eventGroupLogoFallbackID '00000000-0000-0000-0000-000000000035'
 \set eventInactiveGroupID '00000000-0000-0000-0000-000000000033'
+\set eventPaidID '00000000-0000-0000-0000-000000000036'
 \set eventUnpublishedID '00000000-0000-0000-0000-000000000032'
 \set groupCategoryID '00000000-0000-0000-0000-000000000011'
 \set groupID '00000000-0000-0000-0000-000000000021'
@@ -33,6 +34,9 @@ select plan(6);
 \set sessionProposalID '00000000-0000-0000-0000-000000000081'
 \set sponsor1ID '00000000-0000-0000-0000-000000000061'
 \set sponsor2ID '00000000-0000-0000-0000-000000000062'
+\set ticketDiscountCodeID '00000000-0000-0000-0000-000000000083'
+\set ticketPriceWindowID '00000000-0000-0000-0000-000000000084'
+\set ticketTypeID '00000000-0000-0000-0000-000000000085'
 \set user1ID '00000000-0000-0000-0000-000000000041'
 \set user2ID '00000000-0000-0000-0000-000000000042'
 \set user3ID '00000000-0000-0000-0000-000000000043'
@@ -552,6 +556,76 @@ insert into event (
     null
 );
 
+-- Ticketed event for normalized payment payload checks
+insert into event (
+    event_id,
+    name,
+    slug,
+    description,
+    event_kind_id,
+    event_category_id,
+    group_id,
+    payment_currency_code,
+    published,
+    starts_at,
+    timezone
+) values (
+    :'eventPaidID',
+    'Paid KubeCon Seattle 2024',
+    'paid-kubecon-seattle-2024',
+    'A paid event used to verify normalized payment fields',
+    'virtual',
+    :'eventCategoryID',
+    :'groupID',
+    'USD',
+    true,
+    '2024-06-20 09:00:00+00',
+    'America/New_York'
+);
+
+-- Event discount code
+insert into event_discount_code (
+    event_discount_code_id,
+    amount_minor,
+    code,
+    event_id,
+    kind,
+    title
+) values (
+    :'ticketDiscountCodeID',
+    500,
+    'SAVE5',
+    :'eventPaidID',
+    'fixed_amount',
+    'Launch discount'
+);
+
+-- Event ticket type
+insert into event_ticket_type (
+    event_ticket_type_id,
+    event_id,
+    "order",
+    seats_total,
+    title
+) values (
+    :'ticketTypeID',
+    :'eventPaidID',
+    1,
+    25,
+    'General admission'
+);
+
+-- Event ticket price window
+insert into event_ticket_price_window (
+    event_ticket_price_window_id,
+    amount_minor,
+    event_ticket_type_id
+) values (
+    :'ticketPriceWindowID',
+    2500,
+    :'ticketTypeID'
+);
+
 -- ============================================================================
 -- TESTS
 -- ============================================================================
@@ -906,6 +980,70 @@ select is(
         ]
     }'::jsonb,
     'Should return complete event data with hosts, organizers, and sessions as JSON'
+);
+
+-- Should include normalized ticketing fields in the full event payload
+select is(
+    jsonb_build_object(
+        'discount_codes', (
+            get_event_full(
+                :'communityID'::uuid,
+                :'groupID'::uuid,
+                :'eventPaidID'::uuid
+            )::jsonb
+        )->'discount_codes',
+        'payment_currency_code', (
+            get_event_full(
+                :'communityID'::uuid,
+                :'groupID'::uuid,
+                :'eventPaidID'::uuid
+            )::jsonb
+        )->'payment_currency_code',
+        'ticket_types', (
+            get_event_full(
+                :'communityID'::uuid,
+                :'groupID'::uuid,
+                :'eventPaidID'::uuid
+            )::jsonb
+        )->'ticket_types'
+    ),
+    format(
+        '{
+            "discount_codes": [
+                {
+                    "active": true,
+                    "amount_minor": 500,
+                    "code": "SAVE5",
+                    "event_discount_code_id": "%s",
+                    "kind": "fixed_amount",
+                    "title": "Launch discount"
+                }
+            ],
+            "payment_currency_code": "USD",
+            "ticket_types": [
+                {
+                    "active": true,
+                    "current_price": {
+                        "amount_minor": 2500
+                    },
+                    "event_ticket_type_id": "%s",
+                    "order": 1,
+                    "price_windows": [
+                        {
+                            "amount_minor": 2500,
+                            "event_ticket_price_window_id": "%s"
+                        }
+                    ],
+                    "remaining_seats": 25,
+                    "seats_total": 25,
+                    "sold_out": false,
+                    "title": "General admission"
+                }
+            ]
+        }',
+        :'ticketDiscountCodeID', :'ticketTypeID', :'ticketPriceWindowID'
+    )::jsonb,
+    'Should include normalized ticketing fields in the full event payload'
 );
 
 -- Should use group logo when event has no logo

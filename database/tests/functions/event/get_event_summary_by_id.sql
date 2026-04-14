@@ -16,6 +16,8 @@ select plan(3);
 \set groupCategoryID '00000000-0000-0000-0000-000000000021'
 \set groupID '00000000-0000-0000-0000-000000000011'
 \set nonExistingEventID '00000000-0000-0000-0000-000000000099'
+\set ticketPriceWindowID '00000000-0000-0000-0000-000000000062'
+\set ticketTypeID '00000000-0000-0000-0000-000000000061'
 \set userID '00000000-0000-0000-0000-000000000051'
 
 -- ============================================================================
@@ -51,6 +53,7 @@ insert into event (
     event_kind_id,
     group_id,
     name,
+    payment_currency_code,
     published,
     slug,
     timezone,
@@ -65,6 +68,7 @@ insert into event (
     'hybrid',
     :'groupID',
     'Summary Event',
+    'USD',
     true,
     'summary-event',
     'America/New_York',
@@ -72,6 +76,32 @@ insert into event (
     '2025-07-01 10:00:00+00',
     50,
     '2025-06-01 00:00:00+00'
+);
+
+-- Event ticket type
+insert into event_ticket_type (
+    event_ticket_type_id,
+    event_id,
+    "order",
+    seats_total,
+    title
+) values (
+    :'ticketTypeID',
+    :'eventID',
+    1,
+    50,
+    'General admission'
+);
+
+-- Event ticket price window
+insert into event_ticket_price_window (
+    event_ticket_price_window_id,
+    amount_minor,
+    event_ticket_type_id
+) values (
+    :'ticketPriceWindowID',
+    2500,
+    :'ticketTypeID'
 );
 
 -- Event attendee

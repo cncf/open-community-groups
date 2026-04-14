@@ -13,6 +13,7 @@ use tower::ServiceExt;
 use uuid::Uuid;
 
 use crate::{
+    config::{PaymentsConfig, PaymentsStripeConfig},
     db::mock::MockDB,
     handlers::tests::*,
     router::CACHE_CONTROL_NO_CACHE,
@@ -26,8 +27,11 @@ use crate::{
             EventCanceled, EventPublished, EventRescheduled, EventWaitlistPromoted, SpeakerWelcome,
         },
     },
-    types::event::{EventFull, EventSummary, Speaker},
-    types::permissions::GroupPermission,
+    types::{
+        event::{EventFull, EventSummary, Speaker},
+        payments::PaymentMode,
+        permissions::GroupPermission,
+    },
 };
 
 #[tokio::test]
@@ -50,7 +54,6 @@ async fn test_add_page_success() {
     let session_kind = sample_session_kind_summary();
     let sponsor = sample_group_sponsor();
     let timezones = vec!["UTC".to_string()];
-
     // Setup database mock
     let mut db = MockDB::new();
     db.expect_get_session()
@@ -105,6 +108,10 @@ async fn test_add_page_success() {
     db.expect_list_timezones()
         .times(1)
         .returning(move || Ok(timezones.clone()));
+    db.expect_get_group_payment_recipient()
+        .times(1)
+        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
+        .returning(move |_, _| Ok(None));
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
@@ -241,7 +248,6 @@ async fn test_update_page_success() {
     let session_kind = sample_session_kind_summary();
     let sponsor = sample_group_sponsor();
     let timezones = vec!["UTC".to_string()];
-
     // Setup database mock
     let mut db = MockDB::new();
     db.expect_get_session()
@@ -300,6 +306,10 @@ async fn test_update_page_success() {
     db.expect_list_timezones()
         .times(1)
         .returning(move || Ok(timezones.clone()));
+    db.expect_get_group_payment_recipient()
+        .times(1)
+        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
+        .returning(move |_, _| Ok(None));
     db.expect_list_event_approved_cfs_submissions()
         .times(1)
         .withf(move |eid| *eid == event_id)
@@ -441,9 +451,13 @@ async fn test_add_success() {
     db.expect_add_event()
         .times(1)
         .withf(move |uid, id, event, cfg_max_participants| {
+            let event_name = event
+                .get("name")
+                .and_then(serde_json::Value::as_str)
+                .unwrap_or_default();
             *uid == user_id
                 && *id == group_id
-                && event.name == event_form.name
+                && event_name == event_form.name
                 && cfg_max_participants.get(&MeetingProvider::Zoom) == Some(&100)
         })
         .returning(move |_, _, _, _| Ok(Uuid::new_v4()));
@@ -534,6 +548,138 @@ async fn test_add_invalid_body() {
     // Check response matches expectations
     assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
     assert!(!bytes.is_empty());
+}
+
+#[tokio::test]
+async fn test_add_invalid_ticketing_fields_returns_unprocessable_entity() {
+    // Setup identifiers and data structures
+    let community_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(
+        session_id,
+        user_id,
+        &auth_hash,
+        Some(community_id),
+        Some(group_id),
+    );
+    let event_form = sample_event_form();
+    let body = format!(
+        concat!(
+            "{}",
+            "&ticket_types_present=true",
+            "&ticket_types[0][active]=true",
+            "&ticket_types[0][order]=1",
+            "&ticket_types[0][title]=General%20admission",
+            "&ticket_types[0][price_windows][0][amount_minor]=invalid",
+        ),
+        serde_qs::to_string(&event_form).unwrap(),
+    );
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::EventsWrite
+        })
+        .returning(|_, _, _, _| Ok(true));
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("POST")
+        .uri("/dashboard/group/events/add")
+        .header(COOKIE, format!("id={session_id}"))
+        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+        .body(Body::from(body))
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert!(!bytes.is_empty());
+}
+
+#[tokio::test]
+async fn test_add_ticketed_event_without_payments_returns_unprocessable_entity() {
+    // Setup identifiers and data structures
+    let community_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(
+        session_id,
+        user_id,
+        &auth_hash,
+        Some(community_id),
+        Some(group_id),
+    );
+    let body = sample_ticketed_event_body();
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::EventsWrite
+        })
+        .returning(|_, _, _, _| Ok(true));
+    db.expect_get_group_payment_recipient().times(0);
+    db.expect_add_event().times(0);
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("POST")
+        .uri("/dashboard/group/events/add")
+        .header(COOKIE, format!("id={session_id}"))
+        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+        .body(Body::from(body))
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(
+        String::from_utf8(bytes.to_vec()).unwrap(),
+        "payments are not configured on this server",
+    );
 }
 
 #[allow(clippy::too_many_lines)]
@@ -1237,6 +1383,162 @@ async fn test_update_success() {
         &HeaderValue::from_static("refresh-group-dashboard-table"),
     );
     assert!(bytes.is_empty());
+}
+
+#[tokio::test]
+async fn test_update_invalid_ticketing_fields_returns_unprocessable_entity() {
+    // Setup identifiers and data structures
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(
+        session_id,
+        user_id,
+        &auth_hash,
+        Some(community_id),
+        Some(group_id),
+    );
+    let before = sample_event_summary(event_id, group_id);
+    let event_form = sample_event_form();
+    let body = format!(
+        concat!(
+            "{}",
+            "&discount_codes_present=true",
+            "&discount_codes[0][active]=true",
+            "&discount_codes[0][code]=EARLY20",
+            "&discount_codes[0][kind]=percentage",
+            "&discount_codes[0][title]=Early%20supporter",
+            "&discount_codes[0][percentage]=invalid",
+        ),
+        serde_qs::to_string(&event_form).unwrap(),
+    );
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::EventsWrite
+        })
+        .returning(|_, _, _, _| Ok(true));
+    db.expect_get_event_summary()
+        .times(1)
+        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
+        .returning(move |_, _, _| Ok(before.clone()));
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("PUT")
+        .uri(format!("/dashboard/group/events/{event_id}/update"))
+        .header(COOKIE, format!("id={session_id}"))
+        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+        .body(Body::from(body))
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert!(!bytes.is_empty());
+}
+
+#[tokio::test]
+async fn test_update_ticketed_event_without_payment_recipient_returns_unprocessable_entity() {
+    // Setup identifiers and data structures
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(
+        session_id,
+        user_id,
+        &auth_hash,
+        Some(community_id),
+        Some(group_id),
+    );
+    let before = sample_event_summary(event_id, group_id);
+    let body = sample_ticketed_event_body();
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::EventsWrite
+        })
+        .returning(|_, _, _, _| Ok(true));
+    db.expect_get_event_summary()
+        .times(1)
+        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
+        .returning(move |_, _, _| Ok(before.clone()));
+    db.expect_get_group_payment_recipient()
+        .times(1)
+        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
+        .returning(|_, _| Ok(None));
+    db.expect_update_event().times(0);
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm)
+        .with_payments_cfg(PaymentsConfig::Stripe(PaymentsStripeConfig {
+            mode: PaymentMode::Test,
+            publishable_key: "pk_test".to_string(),
+            secret_key: "sk_test".to_string(),
+            webhook_secret: "whsec_test".to_string(),
+        }))
+        .build()
+        .await;
+    let request = Request::builder()
+        .method("PUT")
+        .uri(format!("/dashboard/group/events/{event_id}/update"))
+        .header(COOKIE, format!("id={session_id}"))
+        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+        .body(Body::from(body))
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(
+        String::from_utf8(bytes.to_vec()).unwrap(),
+        "configure a payments recipient in group settings first",
+    );
 }
 
 #[tokio::test]

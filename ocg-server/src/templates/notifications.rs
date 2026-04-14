@@ -86,6 +86,42 @@ pub(crate) struct EventPublished {
     pub theme: Theme,
 }
 
+/// Template for attendee refund approval notification.
+#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[template(path = "notifications/event_refund_approved.html")]
+pub(crate) struct EventRefundApproved {
+    /// Event summary data.
+    pub event: EventSummary,
+    /// Link to the event page.
+    pub link: String,
+    /// Theme configuration for the community.
+    pub theme: Theme,
+}
+
+/// Template for attendee refund rejection notification.
+#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[template(path = "notifications/event_refund_rejected.html")]
+pub(crate) struct EventRefundRejected {
+    /// Event summary data.
+    pub event: EventSummary,
+    /// Link to the event page.
+    pub link: String,
+    /// Theme configuration for the community.
+    pub theme: Theme,
+}
+
+/// Template for organizer refund request notification.
+#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[template(path = "notifications/event_refund_requested.html")]
+pub(crate) struct EventRefundRequested {
+    /// Event summary data.
+    pub event: EventSummary,
+    /// Link to the event page.
+    pub link: String,
+    /// Theme configuration for the community.
+    pub theme: Theme,
+}
+
 /// Template for event reminder notification.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "notifications/event_reminder.html")]

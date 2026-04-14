@@ -8,11 +8,14 @@ create or replace function add_event(
 returns uuid as $$
 declare
     v_cfs_label jsonb;
+    v_discount_codes jsonb := nullif(p_event->'discount_codes', 'null'::jsonb);
+    v_effective_capacity int;
     v_ends_at timestamptz;
     v_event_id uuid;
     v_event_speaker jsonb;
     v_host_id uuid;
     v_max_retries int := 10;
+    v_payment_currency_code text := nullif(p_event->>'payment_currency_code', '');
     v_retries int := 0;
     v_session jsonb;
     v_session_ends_at timestamptz;
@@ -26,7 +29,20 @@ declare
     v_sponsor_id uuid;
     v_sponsor_level text;
     v_starts_at timestamptz;
+    v_ticket_types jsonb := nullif(p_event->'ticket_types', 'null'::jsonb);
+    v_ticket_capacity int := get_event_ticket_capacity(nullif(p_event->'ticket_types', 'null'::jsonb));
 begin
+    -- Determine effective capacity based on ticket types or event capacity
+    v_effective_capacity := coalesce(v_ticket_capacity, (p_event->>'capacity')::int);
+
+    -- Validate ticketing payload rules
+    perform validate_event_ticketing_payload(
+        v_discount_codes,
+        v_payment_currency_code,
+        v_ticket_types,
+        coalesce((p_event->>'waitlist_enabled')::boolean, false)
+    );
+
     -- Validate event dates are not in the past
     if p_event->>'starts_at' is not null then
         v_starts_at := (p_event->>'starts_at')::timestamp at time zone (p_event->>'timezone');
@@ -61,7 +77,7 @@ begin
     end if;
 
     -- Validate capacity and CFS label rules
-    perform validate_event_capacity(p_event, p_cfg_max_participants);
+    perform validate_event_capacity(p_event, p_cfg_max_participants, p_effective_capacity => v_effective_capacity);
     perform validate_event_cfs_labels_payload(p_event->'cfs_labels');
 
     -- Insert event with unique slug generation and collision retry
@@ -97,6 +113,7 @@ begin
                 meeting_recording_url,
                 meeting_requested,
                 meetup_url,
+                payment_currency_code,
                 photos_urls,
                 registration_required,
                 starts_at,
@@ -120,7 +137,7 @@ begin
 
                 p_event->>'banner_mobile_url',
                 p_event->>'banner_url',
-                (p_event->>'capacity')::int,
+                v_effective_capacity,
                 nullif(p_event->>'cfs_description', ''),
                 (p_event->>'cfs_enabled')::boolean,
                 (p_event->>'cfs_ends_at')::timestamp at time zone (p_event->>'timezone'),
@@ -144,6 +161,7 @@ begin
                 p_event->>'meeting_recording_url',
                 (p_event->>'meeting_requested')::boolean,
                 p_event->>'meetup_url',
+                v_payment_currency_code,
                 case when p_event->'photos_urls' is not null then array(select jsonb_array_elements_text(p_event->'photos_urls')) else null end,
                 (p_event->>'registration_required')::boolean,
                 (p_event->>'starts_at')::timestamp at time zone (p_event->>'timezone'),
@@ -155,7 +173,10 @@ begin
                 p_event->>'venue_name',
                 p_event->>'venue_state',
                 p_event->>'venue_zip_code',
-                coalesce((p_event->>'waitlist_enabled')::boolean, false)
+                case
+                    when v_ticket_types is not null then false
+                    else coalesce((p_event->>'waitlist_enabled')::boolean, false)
+                end
             )
             returning event_id into v_event_id;
 
@@ -167,6 +188,10 @@ begin
             end if;
         end;
     end loop;
+
+    -- Insert ticketing data after creating the event row
+    perform sync_event_discount_codes(v_event_id, v_discount_codes);
+    perform sync_event_ticket_types(v_event_id, v_ticket_types);
 
     -- Insert CFS labels
     if p_event->'cfs_labels' is not null then

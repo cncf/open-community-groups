@@ -21,6 +21,8 @@ use garde::rules::email::parse_email;
 use serde::{Deserialize, Serialize};
 use tracing::instrument;
 
+use crate::types::payments::PaymentMode;
+
 /// Root configuration structure for the OCG server.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub(crate) struct Config {
@@ -37,6 +39,8 @@ pub(crate) struct Config {
 
     /// Meetings configuration.
     pub meetings: Option<MeetingsConfig>,
+    /// Payments configuration.
+    pub payments: Option<PaymentsConfig>,
 }
 
 impl Config {
@@ -74,6 +78,10 @@ impl Config {
             && let Some(zoom_cfg) = &meetings_cfg.zoom
         {
             zoom_cfg.validate()?;
+        }
+
+        if let Some(payments_cfg) = &self.payments {
+            payments_cfg.validate()?;
         }
 
         Ok(())
@@ -190,6 +198,58 @@ impl MeetingsZoomConfig {
             if !seen.insert(normalized) {
                 bail!("meetings.zoom.host_pool_users contains duplicate email '{email}'");
             }
+        }
+
+        Ok(())
+    }
+}
+
+/// Payments configuration (multiple providers supported).
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+#[serde(tag = "provider", rename_all = "snake_case")]
+pub(crate) enum PaymentsConfig {
+    /// Stripe payments configuration.
+    Stripe(PaymentsStripeConfig),
+}
+
+impl PaymentsConfig {
+    /// Validate the configured payments provider.
+    fn validate(&self) -> Result<()> {
+        match self {
+            Self::Stripe(cfg) => cfg.validate(),
+        }
+    }
+}
+
+/// Stripe payments configuration.
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+pub(crate) struct PaymentsStripeConfig {
+    /// Mode used for the configured keys.
+    ///
+    /// Use `test` with Stripe test keys and webhook secret during development.
+    /// Use `live` only for real payments in production environments.
+    pub mode: PaymentMode,
+    /// Stripe publishable key used by the frontend.
+    pub publishable_key: String,
+    /// Stripe secret key used by the backend.
+    pub secret_key: String,
+    /// Stripe webhook secret used for signature verification.
+    pub webhook_secret: String,
+}
+
+impl PaymentsStripeConfig {
+    /// Validate Stripe payments configuration.
+    fn validate(&self) -> Result<()> {
+        if self.publishable_key.trim().is_empty() {
+            bail!("payments.stripe.publishable_key cannot be empty");
+        }
+
+        if self.secret_key.trim().is_empty() {
+            bail!("payments.stripe.secret_key cannot be empty");
+        }
+
+        if self.webhook_secret.trim().is_empty() {
+            bail!("payments.stripe.webhook_secret cannot be empty");
         }
 
         Ok(())

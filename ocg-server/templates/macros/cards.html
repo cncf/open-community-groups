@@ -49,6 +49,14 @@
           {{ ui::icon_text(icon_name = "date", text = "Date to be announced", extra_styles = Some("flex-1") , icon_extra_styles = Some("-top-px") ) -}}
         {% endif -%}
       </div>
+
+      {% if let Some(ticket_price_badge) = event.formatted_ticket_price_badge() -%}
+        <div class="mt-2">
+          <span class="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[0.7rem] font-semibold text-emerald-700">
+            {{ ticket_price_badge }}
+          </span>
+        </div>
+      {% endif -%}
     </div>
   </div>
 {% endmacro event_footer -%}

@@ -293,7 +293,7 @@ mock! {
             &self,
             actor_user_id: Uuid,
             group_id: Uuid,
-            event: &crate::templates::dashboard::group::events::Event,
+            event: &serde_json::Value,
             cfg_max_participants: &HashMap<crate::services::meetings::MeetingProvider, i32>,
         ) -> Result<Uuid>;
         async fn add_group_sponsor(
@@ -335,6 +335,11 @@ mock! {
             event_id: Uuid,
             cfs_submission_id: Uuid,
         ) -> Result<crate::templates::dashboard::group::submissions::CfsSubmissionNotificationData>;
+        async fn get_group_payment_recipient(
+            &self,
+            community_id: Uuid,
+            group_id: Uuid,
+        ) -> Result<Option<crate::types::payments::GroupPaymentRecipient>>;
         async fn get_group_sponsor(
             &self,
             group_id: Uuid,
@@ -776,6 +781,78 @@ mock! {
             client_id: Uuid,
             notification: &crate::services::notifications::Notification,
             error: Option<String>,
+        ) -> Result<()>;
+    }
+
+    #[async_trait]
+    impl crate::db::payments::DBPayments for DB {
+        async fn approve_event_refund_request(
+            &self,
+            actor_user_id: Uuid,
+            group_id: Uuid,
+            event_id: Uuid,
+            user_id: Uuid,
+            provider_refund_id: String,
+            review_note: Option<String>,
+        ) -> Result<crate::db::payments::CompletedEventPurchase>;
+        async fn attach_checkout_session_to_event_purchase(
+            &self,
+            event_purchase_id: Uuid,
+            provider: crate::types::payments::PaymentProvider,
+            checkout_session: &crate::services::payments::CheckoutSession,
+        ) -> Result<()>;
+        async fn begin_event_refund_approval(
+            &self,
+            group_id: Uuid,
+            event_id: Uuid,
+            user_id: Uuid,
+        ) -> Result<crate::types::payments::EventPurchaseSummary>;
+        async fn complete_free_event_purchase(
+            &self,
+            event_purchase_id: Uuid,
+        ) -> Result<crate::db::payments::CompletedEventPurchase>;
+        async fn expire_event_purchase_for_checkout_session(
+            &self,
+            provider: crate::types::payments::PaymentProvider,
+            provider_session_id: &str,
+        ) -> Result<()>;
+        async fn prepare_event_checkout_purchase(
+            &self,
+            community_id: Uuid,
+            input: &crate::db::payments::PrepareEventCheckoutPurchaseInput,
+        ) -> Result<crate::types::payments::EventPurchaseSummary>;
+        async fn reconcile_event_purchase_for_checkout_session(
+            &self,
+            provider: crate::types::payments::PaymentProvider,
+            provider_session_id: &str,
+            provider_payment_reference: Option<String>,
+        ) -> Result<crate::db::payments::ReconcileEventPurchaseResult>;
+        async fn record_automatic_refund_for_event_purchase(
+            &self,
+            event_purchase_id: Uuid,
+            provider_refund_id: String,
+        ) -> Result<()>;
+        async fn reject_event_refund_request(
+            &self,
+            actor_user_id: Uuid,
+            group_id: Uuid,
+            event_id: Uuid,
+            user_id: Uuid,
+            review_note: Option<String>,
+        ) -> Result<crate::db::payments::CompletedEventPurchase>;
+        async fn request_event_refund(
+            &self,
+            community_id: Uuid,
+            event_id: Uuid,
+            user_id: Uuid,
+            requested_reason: Option<String>,
+            notification_template_data: serde_json::Value,
+        ) -> Result<()>;
+        async fn revert_event_refund_approval(
+            &self,
+            group_id: Uuid,
+            event_id: Uuid,
+            user_id: Uuid,
         ) -> Result<()>;
     }
 

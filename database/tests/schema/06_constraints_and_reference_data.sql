@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(34);
+select plan(38);
 
 -- ============================================================================
 -- TESTS
@@ -24,6 +24,13 @@ select has_check('event', 'event_meeting_kind_chk');
 select has_check('event', 'event_meeting_provider_required_chk');
 select has_check('event', 'event_meeting_requested_times_chk');
 select has_check('event', 'event_waitlist_capacity_required_chk');
+
+-- Test: event discount code table expected constraints exist
+select has_check('event_discount_code', 'event_discount_code_kind_value_chk');
+select has_check('event_discount_code', 'event_discount_code_window_chk');
+
+-- Test: event ticket price window table expected constraints exist
+select has_check('event_ticket_price_window', 'event_ticket_price_window_window_chk');
 
 -- Test: group table expected constraints exist
 select has_check('group', 'group_check');
@@ -66,6 +73,15 @@ select results_eq(
     'Meeting providers should exist'
 );
 
+-- Test: payment providers should match expected values
+select results_eq(
+    'select * from payment_provider order by payment_provider_id',
+    $$ values
+        ('stripe', 'Stripe')
+    $$,
+    'Payment providers should exist'
+);
+
 -- Test: CFS submission statuses should match expected values
 select results_eq(
     'select * from cfs_submission_status order by cfs_submission_status_id',
@@ -89,6 +105,9 @@ select results_eq(
         ('event-canceled'),
         ('event-custom'),
         ('event-published'),
+        ('event-refund-approved'),
+        ('event-refund-rejected'),
+        ('event-refund-requested'),
         ('event-reminder'),
         ('event-rescheduled'),
         ('event-waitlist-joined'),

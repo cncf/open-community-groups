@@ -30,6 +30,8 @@ pub(crate) mod group;
 pub(crate) mod images;
 /// Meetings handlers.
 pub(crate) mod meetings;
+/// Payments handlers.
+pub(crate) mod payments;
 /// Global site handlers.
 pub(crate) mod site;
 /// Shared tests helpers for handlers modules.

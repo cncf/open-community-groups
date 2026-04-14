@@ -287,6 +287,9 @@
           </div>
           <p class="form-legend">
             Maximum number of attendees.
+            <br />
+            When ticketing is configured, total capacity is derived from ticket seat counts and
+            this field is filled automatically and disabled.
             {%- if meetings_enabled %}
               <br />
               Note: Meeting providers have participant limits. If capacity exceeds your provider
@@ -319,6 +322,98 @@
         </div>
         {# End Registration required -#}
 
+        {% if payments_enabled -%}
+          {# Ticketing configuration -#}
+          <div class="col-span-full">
+            <div class="rounded-lg border border-stone-200 bg-stone-50 p-4 md:p-5">
+              <div class="text-sm font-semibold text-stone-900">Ticketing</div>
+              <p class="mt-2 text-sm text-stone-600">
+                Manage paid or free ticket tiers with the same structured dashboard controls used
+                in the rest of OCG. This section is only active when the group has a payment
+                recipient configured in group settings.
+              </p>
+
+              {% if !payments_ready -%}
+                <p class="mt-3 text-sm text-amber-700">
+                  Add a payment recipient in group settings before editing ticketing settings.
+                </p>
+
+                {% if event.is_ticketed() -%}
+                  <label class="mt-4 inline-flex items-start gap-3 rounded-lg border border-stone-200 bg-white px-4 py-3 text-sm text-stone-700">
+                    <input id="toggle_clear_ticketing"
+                           type="checkbox"
+                           class="mt-0.5 rounded border-stone-300 text-primary-600 focus:ring-primary-500">
+                    <input type="hidden"
+                           id="clear_ticketing"
+                           name="clear_ticketing"
+                           value="false">
+                    <span>Remove ticketing from this event and switch back to the regular RSVP flow.</span>
+                  </label>
+                {% endif -%}
+              {% endif -%}
+
+              {% if event.waitlist_count > 0 -%}
+                <p class="mt-3 text-sm text-amber-700">
+                  Clear the current waitlist before switching this event to ticketing.
+                </p>
+              {% endif -%}
+
+              <div class="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2">
+                <div>
+                  <label for="payment_currency_code" class="form-label">Event Currency</label>
+                  <div class="mt-2">
+                    <input type="text"
+                           name="payment_currency_code"
+                           id="payment_currency_code"
+                           maxlength="{{ crate::validation::MAX_LEN_S }}"
+                           class="input-primary"
+                           placeholder="USD"
+                           {% if let Some(payment_currency_code) = &event.payment_currency_code %}
+                             value="{{ payment_currency_code }}"
+                           {% endif %}
+                           {% if !payments_ready %}disabled{% endif %}>
+                  </div>
+                  <p class="form-legend">Single currency used for all ticket prices on this event.</p>
+                </div>
+
+                <div class="md:col-span-2">
+                  <label class="form-label">Ticket Types</label>
+                  <div class="mt-3">
+                    <ticket-types-editor
+                    {% if let Some(ticket_types) = &event.ticket_types %}ticket-types="{{ ticket_types|json }}"{% endif %}
+
+                    {% if !payments_ready %}disabled{% endif %}
+                    ></ticket-types-editor>
+                  </div>
+                  <p class="form-legend">
+                    Use one ticket type per tier, add price windows for early-bird or late pricing,
+                    and set the ticket amount to <span class="font-semibold">0</span> to make a
+                    specific tier free.
+                  </p>
+                </div>
+
+                <div class="md:col-span-2">
+                  <label class="form-label">Discount Codes</label>
+                  <div class="mt-3">
+                    <discount-codes-editor
+                    {% if let Some(discount_codes) = &event.discount_codes %}
+                      discount-codes="{{ discount_codes|json }}"
+                    {% endif %}
+
+                    {% if !payments_ready %}disabled{% endif %}
+                    ></discount-codes-editor>
+                  </div>
+                  <p class="form-legend">
+                    Discount codes apply to the event currency and can be limited by schedule,
+                    remaining uses, or total redemptions.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+          {# End ticketing configuration -#}
+        {% endif -%}
+
         {# Waitlist enabled -#}
         <div class="col-span-full lg:col-span-3">
           <label id="waitlist-toggle-label"
@@ -340,6 +435,9 @@
           <p class="form-legend">
             Allow full events to add people to a waiting list instead of rejecting them.
             Set a capacity first to enable waitlist safely.
+            {% if payments_enabled -%}
+              Paid events disable waitlist automatically.
+            {% endif -%}
           </p>
         </div>
         {# End Waitlist enabled -#}
@@ -1038,16 +1136,49 @@
   const waitlistEnabledInput = document.getElementById('waitlist_enabled');
   const waitlistToggleLabel = document.getElementById('waitlist-toggle-label');
   const capacityInput = document.getElementById('capacity');
+  const clearTicketingInput = document.getElementById('clear_ticketing');
+  const paymentCurrencyInput = document.getElementById('payment_currency_code');
+  const ticketTypesEditor = document.querySelector('ticket-types-editor');
+  const toggleClearTicketing = document.getElementById('toggle_clear_ticketing');
   const syncWaitlistToggleState = () => {
     if (!toggleWaitlistEnabled || !waitlistEnabledInput || !capacityInput) {
       return;
     }
 
+    const clearingTicketing = toggleClearTicketing?.checked === true;
+    const hasTicketTypes = typeof ticketTypesEditor?.hasConfiguredTicketTypes === 'function' ?
+      ticketTypesEditor.hasConfiguredTicketTypes() && !clearingTicketing :
+      false;
+    const configuredSeatTotal = typeof ticketTypesEditor?.getConfiguredSeatTotal === 'function' ?
+      ticketTypesEditor.getConfiguredSeatTotal() :
+      null;
+
+    if (hasTicketTypes) {
+      if (!capacityInput.disabled) {
+        capacityInput.dataset.manualValue = capacityInput.value;
+      }
+
+      capacityInput.disabled = true;
+      capacityInput.placeholder = 'Derived from ticket seats';
+      capacityInput.value = Number.isFinite(configuredSeatTotal) && configuredSeatTotal > 0 ?
+        String(configuredSeatTotal) :
+        '';
+    } else {
+      capacityInput.disabled = false;
+      capacityInput.placeholder = '100';
+
+      if (capacityInput.dataset.manualValue !== undefined) {
+        capacityInput.value = capacityInput.dataset.manualValue;
+        delete capacityInput.dataset.manualValue;
+      }
+    }
+
     const capacityValue = Number.parseInt(capacityInput.value, 10);
     const capacityIsValid = Number.isFinite(capacityValue) && capacityValue > 0;
+    const canEnableWaitlist = capacityIsValid && !hasTicketTypes;
 
-    toggleWaitlistEnabled.disabled = !capacityIsValid;
-    if (!capacityIsValid) {
+    toggleWaitlistEnabled.disabled = !canEnableWaitlist;
+    if (!canEnableWaitlist) {
       toggleWaitlistEnabled.checked = false;
       waitlistEnabledInput.value = 'false';
     } else {
@@ -1055,9 +1186,14 @@
     }
 
     if (waitlistToggleLabel) {
-      waitlistToggleLabel.classList.toggle('cursor-pointer', capacityIsValid);
-      waitlistToggleLabel.classList.toggle('cursor-not-allowed', !capacityIsValid);
-      waitlistToggleLabel.classList.toggle('opacity-50', !capacityIsValid);
+      waitlistToggleLabel.classList.toggle('cursor-pointer', canEnableWaitlist);
+      waitlistToggleLabel.classList.toggle('cursor-not-allowed', !canEnableWaitlist);
+      waitlistToggleLabel.classList.toggle('opacity-50', !canEnableWaitlist);
+    }
+
+    if (paymentCurrencyInput) {
+      paymentCurrencyInput.required = hasTicketTypes && !paymentCurrencyInput.disabled;
+      paymentCurrencyInput.placeholder = 'USD';
     }
   };
   if (toggleWaitlistEnabled && waitlistEnabledInput) {
@@ -1067,6 +1203,15 @@
   }
   if (capacityInput) {
     capacityInput.addEventListener('input', syncWaitlistToggleState);
+  }
+  if (ticketTypesEditor) {
+    ticketTypesEditor.addEventListener('ticket-types-changed', syncWaitlistToggleState);
+  }
+  if (toggleClearTicketing && clearTicketingInput) {
+    toggleClearTicketing.addEventListener('change', () => {
+      clearTicketingInput.value = String(toggleClearTicketing.checked);
+      syncWaitlistToggleState();
+    });
   }
   syncWaitlistToggleState();
 

@@ -11,6 +11,7 @@
   - [User Dashboard](/guides/user-dashboard.md)
   - [Community Dashboard](/guides/community-dashboard.md)
   - [Group Dashboard](/guides/group-dashboard.md)
+  - [Payments Setup](/guides/payments-setup.md)
   - [Event Operations](/guides/event-operations.md)
 
 - Support
