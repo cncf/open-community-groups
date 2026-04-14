@@ -15,7 +15,7 @@ declare
     v_purchase_status text;
     v_recipients uuid[];
 begin
-    -- Lock the paid purchase before validating refund-request creation
+    -- Lock the attendee's current active paid purchase before validating the request
     select
         ep.event_purchase_id,
         g.group_id,
@@ -31,10 +31,15 @@ begin
     and ep.user_id = p_user_id
     and g.community_id = p_community_id
     and ep.amount_minor > 0
+    and ep.status in ('completed', 'refund-requested')
     and e.deleted = false
     and e.canceled = false
     and e.published = true
     and (e.starts_at is null or e.starts_at > current_timestamp)
+    order by
+        ep.created_at desc,
+        ep.event_purchase_id desc
+    limit 1
     for update of ep;
 
     if not found then

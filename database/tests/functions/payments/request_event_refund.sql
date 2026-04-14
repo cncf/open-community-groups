@@ -18,6 +18,7 @@ select plan(6);
 \set groupID '78000000-0000-0000-0000-000000000007'
 \set groupNoTeamID '78000000-0000-0000-0000-000000000008'
 \set priceWindowID '78000000-0000-0000-0000-000000000009'
+\set purchaseExpiredID '78000000-0000-0000-0000-000000000016'
 \set purchaseID '78000000-0000-0000-0000-000000000010'
 \set purchaseNoTeamID '78000000-0000-0000-0000-000000000011'
 \set refundRequestID '78000000-0000-0000-0000-000000000012'
@@ -120,6 +121,7 @@ insert into event_ticket_price_window (
 insert into event_purchase (
     event_purchase_id,
     amount_minor,
+    created_at,
     currency_code,
     event_id,
     event_ticket_type_id,
@@ -127,8 +129,19 @@ insert into event_purchase (
     ticket_title,
     user_id
 ) values (
+    :'purchaseExpiredID',
+    2500,
+    now() - interval '1 day',
+    'USD',
+    :'eventID',
+    :'eventTicketTypeID',
+    'expired',
+    'General admission',
+    :'requesterID'
+), (
     :'purchaseID',
     2500,
+    now(),
     'USD',
     :'eventID',
     :'eventTicketTypeID',
@@ -138,6 +151,7 @@ insert into event_purchase (
 ), (
     :'purchaseNoTeamID',
     2500,
+    now(),
     'USD',
     :'eventNoTeamID',
     '78000000-0000-0000-0000-000000000099'::uuid,
