@@ -114,13 +114,16 @@ Reference:
 
 ### Step 3: Subscribe the Webhook to the Events OCG Uses
 
-Configure the Stripe webhook endpoint to send at least these events:
+Configure the Stripe webhook endpoint to send only these events:
 
 - `checkout.session.completed`
 - `checkout.session.expired`
 
-These are the Stripe Checkout events the current OCG payments handler uses for
-purchase completion and expired seat holds.
+These are the only Stripe Checkout events the current OCG payments handler
+accepts for purchase completion and expired seat holds.
+
+Subscribing extra Stripe events is not recommended here because unsupported
+events are currently rejected by the webhook handler.
 
 References:
 
@@ -213,7 +216,7 @@ card payments only when OCG creates Stripe Checkout sessions.
 3. Copy the matching Stripe publishable and secret keys.
 4. Create a Stripe webhook endpoint pointing to
    `https://{YOUR_OCG_BASE_URL}/webhooks/stripe`.
-5. Subscribe the webhook to `checkout.session.completed` and
+5. Subscribe the webhook only to `checkout.session.completed` and
    `checkout.session.expired`.
 6. Copy the webhook signing secret into OCG config.
 7. Deploy OCG with `payments.stripe.enabled: true`.

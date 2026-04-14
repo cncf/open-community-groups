@@ -167,7 +167,7 @@ const updateButtonStateForEventDate = (button, meta) => {
 /**
  * Applies sold-out state to the attend button when needed.
  * @param {HTMLButtonElement|null} button - Button to update
- * @param {{isSoldOut: boolean, isPastEvent: boolean}} meta - Attendance metadata
+ * @param {{isSoldOut: boolean, isPastEvent: boolean, isTicketed: boolean, waitlistEnabled: boolean}} meta - Attendance metadata
  */
 const applySoldOutState = (button, meta) => {
   if (!button) {
@@ -201,7 +201,7 @@ const applySoldOutState = (button, meta) => {
  * Shows the appropriate unauthenticated attendance control for an event.
  * @param {HTMLButtonElement|null} attendButton - Attend control button
  * @param {HTMLButtonElement|null} signinButton - Sign-in control button
- * @param {{isSoldOut: boolean, isPastEvent: boolean, waitlistEnabled: boolean}} meta - Attendance metadata
+ * @param {{isSoldOut: boolean, isPastEvent: boolean, isTicketed: boolean, ticketPurchaseAvailable: boolean, waitlistEnabled: boolean}} meta - Attendance metadata
  */
 const showSignedOutAttendanceState = (attendButton, signinButton, meta) => {
   if (meta.isTicketed && !meta.ticketPurchaseAvailable && !meta.isPastEvent) {
