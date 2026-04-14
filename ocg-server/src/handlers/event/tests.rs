@@ -23,7 +23,7 @@ use crate::{
     templates::notifications::{EventWaitlistJoined, EventWaitlistLeft, EventWaitlistPromoted, EventWelcome},
     types::{
         event::{EventAttendanceInfo, EventAttendanceStatus, EventLeaveOutcome},
-        payments::{EventPurchaseStatus, EventTicketCurrentPrice, EventTicketType},
+        payments::{EventPurchaseStatus, EventTicketCurrentPrice, EventTicketType, PreparedEventCheckout},
     },
 };
 
@@ -1150,7 +1150,19 @@ async fn test_start_checkout_rejects_refund_requested_purchase() {
                 && input.event_ticket_type_id == ticket_type_id
                 && input.user_id == user_id
         })
-        .returning(|_, _| Ok(sample_purchase_summary(EventPurchaseStatus::RefundRequested)));
+        .returning(move |_, _| {
+            Ok(PreparedEventCheckout {
+                community_name: "test-community".to_string(),
+                event_id,
+                event_slug: "event".to_string(),
+                group_slug: "group".to_string(),
+                purchase: sample_purchase_summary(EventPurchaseStatus::RefundRequested),
+                recipient: crate::types::payments::GroupPaymentRecipient {
+                    provider: crate::types::payments::PaymentProvider::Stripe,
+                    recipient_id: "acct_test_123".to_string(),
+                },
+            })
+        });
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();

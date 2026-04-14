@@ -14,10 +14,7 @@ use crate::{
     config::HttpServerConfig,
     db::DynDB,
     services::notifications::DynNotificationsManager,
-    types::{
-        event::EventSummary,
-        payments::{EventPurchaseStatus, EventPurchaseSummary},
-    },
+    types::payments::{EventPurchaseStatus, PreparedEventCheckout},
 };
 
 use super::{
@@ -47,9 +44,7 @@ pub(crate) trait PaymentsManager {
     /// Creates or reuses the provider checkout URL for a pending event purchase.
     async fn get_or_create_checkout_redirect_url(
         &self,
-        community_id: Uuid,
-        event: &EventSummary,
-        purchase: &EventPurchaseSummary,
+        prepared_checkout: &PreparedEventCheckout,
         user_id: Uuid,
     ) -> Result<String>;
 
@@ -119,35 +114,33 @@ impl PgPaymentsManager {
         }
 
         // Extract the provider payment reference or roll back the approval state
-        let provider_payment_reference = purchase
-            .provider_payment_reference
-            .clone()
-            .ok_or_else(|| anyhow::anyhow!("provider payment reference is missing"));
-        let provider_payment_reference = match provider_payment_reference {
-            Ok(provider_payment_reference) => provider_payment_reference,
-            Err(err) => {
-                self.revert_refund_approval_state(input.group_id, input.event_id, input.user_id)
-                    .await;
-                return Err(err);
-            }
-        };
+        let provider_payment_reference = self
+            .revert_refund_approval_on_error(
+                input.group_id,
+                input.event_id,
+                input.user_id,
+                purchase
+                    .provider_payment_reference
+                    .clone()
+                    .ok_or_else(|| anyhow::anyhow!("provider payment reference is missing")),
+            )
+            .await?;
 
         // Submit the refund to the payments provider or roll back the approval state
-        let refund = match payments_provider
-            .refund_payment(&RefundPaymentInput {
-                amount_minor: purchase.amount_minor,
-                provider_payment_reference,
-                purchase_id: purchase.event_purchase_id,
-            })
-            .await
-        {
-            Ok(refund) => refund,
-            Err(err) => {
-                self.revert_refund_approval_state(input.group_id, input.event_id, input.user_id)
-                    .await;
-                return Err(err);
-            }
-        };
+        let refund = self
+            .revert_refund_approval_on_error(
+                input.group_id,
+                input.event_id,
+                input.user_id,
+                payments_provider
+                    .refund_payment(&RefundPaymentInput {
+                        amount_minor: purchase.amount_minor,
+                        provider_payment_reference,
+                        purchase_id: purchase.event_purchase_id,
+                    })
+                    .await,
+            )
+            .await?;
 
         // Persist the refund approval in the database
         self.db
@@ -189,57 +182,43 @@ impl PgPaymentsManager {
     /// Creates or reuses the provider checkout URL for a pending event purchase.
     pub(crate) async fn get_or_create_checkout_redirect_url(
         &self,
-        community_id: Uuid,
-        event: &EventSummary,
-        purchase: &EventPurchaseSummary,
+        prepared_checkout: &PreparedEventCheckout,
         user_id: Uuid,
     ) -> Result<String> {
-        if let Some(provider_checkout_url) = purchase.provider_checkout_url.clone() {
+        if let Some(provider_checkout_url) = prepared_checkout.purchase.provider_checkout_url.clone() {
             return Ok(provider_checkout_url);
         }
 
-        // Load the payment provider and recipient details required to open a fresh checkout session
+        // Load the payment provider required to open a fresh checkout session
         let payments_provider = self.payments_provider()?;
-        let event_full = self
-            .db
-            .get_event_full_by_slug(community_id, &event.group_slug, &event.slug)
-            .await?;
-        let group = self
-            .db
-            .get_group_full(community_id, event_full.group.group_id)
-            .await?;
-        let recipient = group
-            .payment_recipient
-            .clone()
-            .ok_or_else(|| anyhow::anyhow!("group payments recipient is not configured"))?;
 
-        if recipient.provider != payments_provider.provider() {
+        if prepared_checkout.recipient.provider != payments_provider.provider() {
             bail!("group payments recipient is not configured for this provider");
         }
 
         // Create the provider checkout session
         let checkout_session = payments_provider
             .create_checkout_session(&CreateCheckoutSessionInput {
-                amount_minor: purchase.amount_minor,
+                amount_minor: prepared_checkout.purchase.amount_minor,
                 base_url: self.server_cfg.base_url.clone(),
-                community_name: event.community_name.clone(),
-                currency_code: purchase.currency_code.clone(),
-                event_id: event.event_id,
-                event_slug: event.slug.clone(),
-                group_slug: event.group_slug.clone(),
-                purchase_id: purchase.event_purchase_id,
-                recipient,
-                ticket_title: purchase.ticket_title.clone(),
+                community_name: prepared_checkout.community_name.clone(),
+                currency_code: prepared_checkout.purchase.currency_code.clone(),
+                event_id: prepared_checkout.event_id,
+                event_slug: prepared_checkout.event_slug.clone(),
+                group_slug: prepared_checkout.group_slug.clone(),
+                purchase_id: prepared_checkout.purchase.event_purchase_id,
+                recipient: prepared_checkout.recipient.clone(),
+                ticket_title: prepared_checkout.purchase.ticket_title.clone(),
                 user_id,
 
-                discount_code: purchase.discount_code.clone(),
+                discount_code: prepared_checkout.purchase.discount_code.clone(),
             })
             .await?;
 
         // Persist the canonical checkout session used for webhook reconciliation
         self.db
             .attach_checkout_session_to_event_purchase(
-                purchase.event_purchase_id,
+                prepared_checkout.purchase.event_purchase_id,
                 payments_provider.provider(),
                 &checkout_session,
             )
@@ -247,7 +226,10 @@ impl PgPaymentsManager {
 
         // Reload the purchase so concurrent requests return the canonical
         // checkout URL stored on the purchase
-        let purchase = self.db.get_event_purchase_summary(purchase.event_purchase_id).await?;
+        let purchase = self
+            .db
+            .get_event_purchase_summary(prepared_checkout.purchase.event_purchase_id)
+            .await?;
 
         purchase
             .provider_checkout_url
@@ -328,6 +310,23 @@ impl PgPaymentsManager {
             .ok_or_else(|| anyhow::anyhow!("payments are not configured"))
     }
 
+    /// Runs a refund approval step and restores the pending state if it fails.
+    async fn revert_refund_approval_on_error<T>(
+        &self,
+        group_id: Uuid,
+        event_id: Uuid,
+        user_id: Uuid,
+        result: Result<T>,
+    ) -> Result<T> {
+        match result {
+            Ok(value) => Ok(value),
+            Err(err) => {
+                self.revert_refund_approval_state(group_id, event_id, user_id).await;
+                Err(err)
+            }
+        }
+    }
+
     /// Reverts the temporary refund approval state after a failed provider call.
     async fn revert_refund_approval_state(&self, group_id: Uuid, event_id: Uuid, user_id: Uuid) {
         if let Err(revert_err) = self
@@ -371,13 +370,10 @@ impl PaymentsManager for PgPaymentsManager {
     /// [`PaymentsManager::get_or_create_checkout_redirect_url`].
     async fn get_or_create_checkout_redirect_url(
         &self,
-        community_id: Uuid,
-        event: &EventSummary,
-        purchase: &EventPurchaseSummary,
+        prepared_checkout: &PreparedEventCheckout,
         user_id: Uuid,
     ) -> Result<String> {
-        PgPaymentsManager::get_or_create_checkout_redirect_url(self, community_id, event, purchase, user_id)
-            .await
+        PgPaymentsManager::get_or_create_checkout_redirect_url(self, prepared_checkout, user_id).await
     }
 
     /// [`PaymentsManager::handle_webhook`].

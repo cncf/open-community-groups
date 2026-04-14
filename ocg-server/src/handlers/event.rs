@@ -35,7 +35,7 @@ use crate::{
     },
     types::{
         event::{EventAttendanceStatus, EventSummary},
-        payments::{EventPurchaseStatus, EventPurchaseSummary},
+        payments::{EventPurchaseStatus, PreparedEventCheckout},
     },
     util::{build_event_calendar_attachment, build_event_page_link},
     validation::{
@@ -397,8 +397,8 @@ pub(crate) async fn start_checkout(
     ValidatedForm(input): ValidatedForm<CheckoutInput>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Load the event and reserve a purchase hold for the attendee
-    let event = load_checkoutable_event(&db, community_id, event_id).await?;
-    let purchase = create_checkout_hold(
+    load_checkoutable_event(&db, community_id, event_id).await?;
+    let prepared_checkout = create_checkout_hold(
         &db,
         community_id,
         event_id,
@@ -409,7 +409,7 @@ pub(crate) async fn start_checkout(
     .await?;
 
     // Return early when the attendee already has a purchase state that should not reopen checkout
-    if let Some(status) = get_checkout_status_response(purchase.status)? {
+    if let Some(status) = get_checkout_status_response(prepared_checkout.purchase.status)? {
         return Ok((
             StatusCode::OK,
             Json(json!({
@@ -419,9 +419,14 @@ pub(crate) async fn start_checkout(
     }
 
     // Finalize free tickets immediately and send welcome notification
-    if purchase.amount_minor == 0 {
+    if prepared_checkout.purchase.amount_minor == 0 {
         payments_manager
-            .complete_free_checkout(community_id, event_id, purchase.event_purchase_id, user.user_id)
+            .complete_free_checkout(
+                community_id,
+                event_id,
+                prepared_checkout.purchase.event_purchase_id,
+                user.user_id,
+            )
             .await?;
 
         return Ok((
@@ -434,14 +439,14 @@ pub(crate) async fn start_checkout(
 
     // Reuse an existing provider checkout when possible, otherwise create and persist a new one
     let redirect_url = payments_manager
-        .get_or_create_checkout_redirect_url(community_id, &event, &purchase, user.user_id)
+        .get_or_create_checkout_redirect_url(&prepared_checkout, user.user_id)
         .await?;
 
     // Return the payment redirect details while the ticket hold is still active
     Ok((
         StatusCode::OK,
         Json(json!({
-            "hold_expires_at": purchase.hold_expires_at,
+            "hold_expires_at": prepared_checkout.purchase.hold_expires_at,
             "redirect_url": redirect_url,
             "status": EventAttendanceStatus::PendingPayment,
         })),
@@ -542,7 +547,7 @@ async fn create_checkout_hold(
     payments_cfg: Option<&PaymentsConfig>,
     user_id: Uuid,
     input: &CheckoutInput,
-) -> Result<EventPurchaseSummary, HandlerError> {
+) -> Result<PreparedEventCheckout, HandlerError> {
     db.prepare_event_checkout_purchase(
         community_id,
         &PrepareEventCheckoutPurchaseInput {

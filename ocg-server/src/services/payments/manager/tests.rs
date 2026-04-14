@@ -4,7 +4,7 @@ use std::sync::{
 };
 
 use axum::http::{HeaderMap, HeaderValue};
-use serde_json::{from_value, to_value};
+use serde_json::to_value;
 use uuid::Uuid;
 
 use crate::{
@@ -17,13 +17,13 @@ use crate::{
         notifications::{MockNotificationsManager, NotificationKind},
         payments::{CheckoutSession, MockPaymentsProvider, PaymentsWebhookEvent, RefundPaymentResult},
     },
-    templates::notifications::{
-        EventRefundApproved, EventRefundRejected, EventRefundRequested, EventWelcome,
-    },
+    templates::notifications::EventRefundRequested,
     types::{
-        event::{EventFull, EventKind, EventSummary},
-        group::GroupFull,
-        payments::{EventPurchaseStatus, EventPurchaseSummary, GroupPaymentRecipient, PaymentProvider},
+        event::{EventKind, EventSummary},
+        payments::{
+            EventPurchaseStatus, EventPurchaseSummary, GroupPaymentRecipient, PaymentProvider,
+            PreparedEventCheckout,
+        },
         site::SiteSettings,
     },
 };
@@ -44,7 +44,6 @@ async fn approve_refund_request_approves_pending_refund_and_enqueues_notificatio
     let group_id = Uuid::new_v4();
     let review_note = "Approved by organizer".to_string();
     let site_settings = SiteSettings::default();
-    let site_settings_for_notification = site_settings.clone();
     let target_user_id = Uuid::new_v4();
     let event = sample_event_summary(event_id);
 
@@ -98,16 +97,6 @@ async fn approve_refund_request_approves_pending_refund_and_enqueues_notificatio
         .withf(move |notification| {
             matches!(notification.kind, NotificationKind::EventRefundApproved)
                 && notification.recipients == vec![target_user_id]
-                && notification.template_data.as_ref().is_some_and(|value| {
-                    from_value::<EventRefundApproved>(value.clone())
-                        .map(|template| {
-                            template.event.event_id == event_id
-                                && template.link == "/community/group/group/event/event"
-                                && template.theme.primary_color
-                                    == site_settings_for_notification.theme.primary_color
-                        })
-                        .unwrap_or(false)
-                })
         })
         .returning(|_| Box::pin(async { Ok(()) }));
 
@@ -362,7 +351,6 @@ async fn complete_free_checkout_records_purchase_and_enqueues_notification() {
     let event_id = Uuid::new_v4();
     let event_purchase_id = Uuid::new_v4();
     let site_settings = SiteSettings::default();
-    let site_settings_for_notification = site_settings.clone();
     let user_id = Uuid::new_v4();
     let event = sample_event_summary(event_id);
 
@@ -395,16 +383,6 @@ async fn complete_free_checkout_records_purchase_and_enqueues_notification() {
             notification.attachments.len() == 1
                 && matches!(notification.kind, NotificationKind::EventWelcome)
                 && notification.recipients == vec![user_id]
-                && notification.template_data.as_ref().is_some_and(|value| {
-                    from_value::<EventWelcome>(value.clone())
-                        .map(|template| {
-                            template.event.event_id == event_id
-                                && template.link == "/community/group/group/event/event"
-                                && template.theme.primary_color
-                                    == site_settings_for_notification.theme.primary_color
-                        })
-                        .unwrap_or(false)
-                })
         })
         .returning(|_| Box::pin(async { Ok(()) }));
 
@@ -421,11 +399,9 @@ async fn complete_free_checkout_records_purchase_and_enqueues_notification() {
 #[tokio::test]
 async fn get_or_create_checkout_redirect_url_creates_session_and_persists_it() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
-    let event = sample_event_summary(Uuid::new_v4());
+    let event_id = Uuid::new_v4();
     let event_purchase_id = Uuid::new_v4();
     let event_ticket_type_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
     let recipient = GroupPaymentRecipient {
         provider: PaymentProvider::Stripe,
         recipient_id: "acct_test_123".to_string(),
@@ -434,16 +410,6 @@ async fn get_or_create_checkout_redirect_url_creates_session_and_persists_it() {
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_event_full_by_slug()
-        .times(1)
-        .withf(move |cid, group_slug, event_slug| {
-            *cid == community_id && group_slug == "group" && event_slug == "event"
-        })
-        .returning(move |_, _, _| Ok(sample_event_full(event.event_id, group_id)));
-    db.expect_get_group_full()
-        .times(1)
-        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
-        .returning(move |_, _| Ok(sample_group_full(group_id, Some(recipient.clone()))));
     db.expect_attach_checkout_session_to_event_purchase()
         .times(1)
         .withf(move |purchase_id, provider, checkout_session| {
@@ -479,7 +445,7 @@ async fn get_or_create_checkout_redirect_url_creates_session_and_persists_it() {
                 && input.community_name == "community"
                 && input.currency_code == "usd"
                 && input.discount_code.as_deref() == Some("SPRING")
-                && input.event_id == event.event_id
+                && input.event_id == event_id
                 && input.event_slug == "event"
                 && input.group_slug == "group"
                 && input.purchase_id == event_purchase_id
@@ -508,13 +474,13 @@ async fn get_or_create_checkout_redirect_url_creates_session_and_persists_it() {
     let manager = sample_payments_manager(db, MockNotificationsManager::new(), Some(payments_provider));
     let redirect_url = manager
         .get_or_create_checkout_redirect_url(
-            community_id,
-            &event,
-            &sample_event_purchase_summary(
+            &sample_prepared_event_checkout(
+                event_id,
                 event_purchase_id,
                 event_ticket_type_id,
                 None,
                 Some("SPRING".to_string()),
+                recipient,
             ),
             user_id,
         )
@@ -528,11 +494,9 @@ async fn get_or_create_checkout_redirect_url_creates_session_and_persists_it() {
 #[tokio::test]
 async fn get_or_create_checkout_redirect_url_returns_canonical_url_after_racing_attach() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
-    let event = sample_event_summary(Uuid::new_v4());
+    let event_id = Uuid::new_v4();
     let event_purchase_id = Uuid::new_v4();
     let event_ticket_type_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
     let recipient = GroupPaymentRecipient {
         provider: PaymentProvider::Stripe,
         recipient_id: "acct_test_123".to_string(),
@@ -541,16 +505,6 @@ async fn get_or_create_checkout_redirect_url_returns_canonical_url_after_racing_
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_event_full_by_slug()
-        .times(1)
-        .withf(move |cid, group_slug, event_slug| {
-            *cid == community_id && group_slug == "group" && event_slug == "event"
-        })
-        .returning(move |_, _, _| Ok(sample_event_full(event.event_id, group_id)));
-    db.expect_get_group_full()
-        .times(1)
-        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
-        .returning(move |_, _| Ok(sample_group_full(group_id, Some(recipient.clone()))));
     db.expect_attach_checkout_session_to_event_purchase()
         .times(1)
         .withf(move |purchase_id, provider, checkout_session| {
@@ -597,9 +551,14 @@ async fn get_or_create_checkout_redirect_url_returns_canonical_url_after_racing_
     let manager = sample_payments_manager(db, MockNotificationsManager::new(), Some(payments_provider));
     let redirect_url = manager
         .get_or_create_checkout_redirect_url(
-            community_id,
-            &event,
-            &sample_event_purchase_summary(event_purchase_id, event_ticket_type_id, None, None),
+            &sample_prepared_event_checkout(
+                event_id,
+                event_purchase_id,
+                event_ticket_type_id,
+                None,
+                None,
+                recipient,
+            ),
             user_id,
         )
         .await
@@ -610,67 +569,95 @@ async fn get_or_create_checkout_redirect_url_returns_canonical_url_after_racing_
 }
 
 #[tokio::test]
-async fn get_or_create_checkout_redirect_url_returns_error_when_group_has_no_payment_recipient() {
+async fn get_or_create_checkout_redirect_url_returns_error_when_checkout_url_is_missing_after_creation() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
-    let event = sample_event_summary(Uuid::new_v4());
-    let group_id = Uuid::new_v4();
+    let event_purchase_id = Uuid::new_v4();
+    let event_ticket_type_id = Uuid::new_v4();
+    let recipient = GroupPaymentRecipient {
+        provider: PaymentProvider::Stripe,
+        recipient_id: "acct_test_123".to_string(),
+    };
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_event_full_by_slug()
+    db.expect_attach_checkout_session_to_event_purchase()
         .times(1)
-        .withf(move |cid, group_slug, event_slug| {
-            *cid == community_id && group_slug == "group" && event_slug == "event"
-        })
-        .returning(move |_, _, _| Ok(sample_event_full(event.event_id, group_id)));
-    db.expect_get_group_full()
+        .returning(|_, _, _| Ok(()));
+    db.expect_get_event_purchase_summary()
         .times(1)
-        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
-        .returning(move |_, _| Ok(sample_group_full(group_id, None)));
-    db.expect_attach_checkout_session_to_event_purchase().times(0);
-    db.expect_get_event_purchase_summary().times(0);
+        .withf(move |purchase_id| *purchase_id == event_purchase_id)
+        .returning(move |_| {
+            Ok(sample_event_purchase_summary(
+                event_purchase_id,
+                event_ticket_type_id,
+                None,
+                None,
+            ))
+        });
 
     // Setup payments provider mock
     let mut payments_provider = MockPaymentsProvider::new();
-    payments_provider.expect_create_checkout_session().times(0);
-    payments_provider.expect_provider().times(0);
+    payments_provider
+        .expect_create_checkout_session()
+        .times(1)
+        .returning(|_| {
+            Box::pin(async move {
+                Ok(CheckoutSession {
+                    provider_session_id: "cs_test_123".to_string(),
+                    redirect_url: "https://example.test/checkout".to_string(),
+                })
+            })
+        });
+    payments_provider
+        .expect_provider()
+        .times(2)
+        .return_const(PaymentProvider::Stripe);
 
     // Run the checkout session workflow
     let manager = sample_payments_manager(db, MockNotificationsManager::new(), Some(payments_provider));
     let err = manager
         .get_or_create_checkout_redirect_url(
-            community_id,
-            &event,
-            &sample_event_purchase_summary(Uuid::new_v4(), Uuid::new_v4(), None, None),
+            &sample_prepared_event_checkout(
+                Uuid::new_v4(),
+                event_purchase_id,
+                event_ticket_type_id,
+                None,
+                None,
+                recipient,
+            ),
             Uuid::new_v4(),
         )
         .await
-        .expect_err("checkout session creation to fail without a payment recipient");
+        .expect_err("checkout session creation to fail when the canonical URL is missing");
 
     // Check the returned error
-    assert_eq!(err.to_string(), "group payments recipient is not configured");
+    assert_eq!(
+        err.to_string(),
+        "provider checkout URL is missing after checkout creation"
+    );
 }
 
 #[tokio::test]
 async fn get_or_create_checkout_redirect_url_returns_error_when_payments_are_unconfigured() {
-    // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
-    let event = sample_event_summary(Uuid::new_v4());
-
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_event_full_by_slug().times(0);
-    db.expect_get_group_full().times(0);
     db.expect_get_event_purchase_summary().times(0);
 
     // Run the checkout session workflow without a configured payments provider
     let manager = sample_payments_manager(db, MockNotificationsManager::new(), None);
     let err = manager
         .get_or_create_checkout_redirect_url(
-            community_id,
-            &event,
-            &sample_event_purchase_summary(Uuid::new_v4(), Uuid::new_v4(), None, None),
+            &sample_prepared_event_checkout(
+                Uuid::new_v4(),
+                Uuid::new_v4(),
+                Uuid::new_v4(),
+                None,
+                None,
+                GroupPaymentRecipient {
+                    provider: PaymentProvider::Stripe,
+                    recipient_id: "acct_test_123".to_string(),
+                },
+            ),
             Uuid::new_v4(),
         )
         .await
@@ -684,26 +671,32 @@ async fn get_or_create_checkout_redirect_url_returns_error_when_payments_are_unc
 async fn get_or_create_checkout_redirect_url_returns_existing_url_without_hitting_dependencies() {
     // Setup identifiers and data structures
     let existing_url = "https://example.test/checkout".to_string();
-    let purchase = EventPurchaseSummary {
-        provider_checkout_url: Some(existing_url.clone()),
-        ..sample_event_purchase_summary(Uuid::new_v4(), Uuid::new_v4(), None, None)
+    let prepared_checkout = PreparedEventCheckout {
+        purchase: EventPurchaseSummary {
+            provider_checkout_url: Some(existing_url.clone()),
+            ..sample_event_purchase_summary(Uuid::new_v4(), Uuid::new_v4(), None, None)
+        },
+        ..sample_prepared_event_checkout(
+            Uuid::new_v4(),
+            Uuid::new_v4(),
+            Uuid::new_v4(),
+            None,
+            None,
+            GroupPaymentRecipient {
+                provider: PaymentProvider::Stripe,
+                recipient_id: "acct_test_123".to_string(),
+            },
+        )
     };
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_event_full_by_slug().times(0);
-    db.expect_get_group_full().times(0);
     db.expect_get_event_purchase_summary().times(0);
 
     // Run the checkout session workflow
     let manager = sample_payments_manager(db, MockNotificationsManager::new(), None);
     let redirect_url = manager
-        .get_or_create_checkout_redirect_url(
-            Uuid::new_v4(),
-            &sample_event_summary(Uuid::new_v4()),
-            &purchase,
-            Uuid::new_v4(),
-        )
+        .get_or_create_checkout_redirect_url(&prepared_checkout, Uuid::new_v4())
         .await
         .expect("existing checkout URL to be reused");
 
@@ -717,7 +710,6 @@ async fn handle_webhook_completes_checkout_and_enqueues_welcome_notification() {
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let site_settings = SiteSettings::default();
-    let site_settings_for_notification = site_settings.clone();
     let user_id = Uuid::new_v4();
     let event = sample_event_summary(event_id);
 
@@ -754,16 +746,6 @@ async fn handle_webhook_completes_checkout_and_enqueues_welcome_notification() {
             notification.attachments.len() == 1
                 && matches!(notification.kind, NotificationKind::EventWelcome)
                 && notification.recipients == vec![user_id]
-                && notification.template_data.as_ref().is_some_and(|value| {
-                    from_value::<EventWelcome>(value.clone())
-                        .map(|template| {
-                            template.event.event_id == event_id
-                                && template.link == "/community/group/group/event/event"
-                                && template.theme.primary_color
-                                    == site_settings_for_notification.theme.primary_color
-                        })
-                        .unwrap_or(false)
-                })
         })
         .returning(|_| Box::pin(async { Ok(()) }));
 
@@ -1224,7 +1206,6 @@ async fn reject_refund_request_persists_rejection_and_enqueues_notification() {
     let group_id = Uuid::new_v4();
     let review_note = "Not eligible".to_string();
     let site_settings = SiteSettings::default();
-    let site_settings_for_notification = site_settings.clone();
     let target_user_id = Uuid::new_v4();
     let event = sample_event_summary(event_id);
 
@@ -1262,16 +1243,6 @@ async fn reject_refund_request_persists_rejection_and_enqueues_notification() {
         .withf(move |notification| {
             matches!(notification.kind, NotificationKind::EventRefundRejected)
                 && notification.recipients == vec![target_user_id]
-                && notification.template_data.as_ref().is_some_and(|value| {
-                    from_value::<EventRefundRejected>(value.clone())
-                        .map(|template| {
-                            template.event.event_id == event_id
-                                && template.link == "/community/group/group/event/event"
-                                && template.theme.primary_color
-                                    == site_settings_for_notification.theme.primary_color
-                        })
-                        .unwrap_or(false)
-                })
         })
         .returning(|_| Box::pin(async { Ok(()) }));
 
@@ -1294,7 +1265,7 @@ async fn reject_refund_request_persists_rejection_and_enqueues_notification() {
 }
 
 #[tokio::test]
-async fn request_refund_records_the_refund_request_with_notification_payload() {
+async fn request_refund_records_the_refund_request() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
@@ -1429,21 +1400,6 @@ fn sample_event_summary(event_id: Uuid) -> EventSummary {
     }
 }
 
-/// Create a sample event full.
-fn sample_event_full(event_id: Uuid, group_id: Uuid) -> EventFull {
-    EventFull {
-        event_id,
-        group: crate::types::group::GroupSummary {
-            group_id,
-            name: "Group".to_string(),
-            slug: "group".to_string(),
-            ..crate::types::group::GroupSummary::default()
-        },
-        slug: "event".to_string(),
-        ..EventFull::default()
-    }
-}
-
 /// Create a sample purchase summary.
 fn sample_event_purchase_summary(
     event_purchase_id: Uuid,
@@ -1463,17 +1419,6 @@ fn sample_event_purchase_summary(
     }
 }
 
-/// Create a sample group full.
-fn sample_group_full(group_id: Uuid, payment_recipient: Option<GroupPaymentRecipient>) -> GroupFull {
-    GroupFull {
-        group_id,
-        name: "Group".to_string(),
-        payment_recipient,
-        slug: "group".to_string(),
-        ..GroupFull::default()
-    }
-}
-
 /// Create a payments manager with mock dependencies.
 fn sample_payments_manager(
     db: MockDB,
@@ -1490,6 +1435,30 @@ fn sample_payments_manager(
         payments_provider,
         HttpServerConfig::default(),
     )
+}
+
+/// Create a prepared checkout for the payments manager.
+fn sample_prepared_event_checkout(
+    event_id: Uuid,
+    event_purchase_id: Uuid,
+    event_ticket_type_id: Uuid,
+    provider_checkout_url: Option<String>,
+    discount_code: Option<String>,
+    recipient: GroupPaymentRecipient,
+) -> PreparedEventCheckout {
+    PreparedEventCheckout {
+        community_name: "community".to_string(),
+        event_id,
+        event_slug: "event".to_string(),
+        group_slug: "group".to_string(),
+        purchase: sample_event_purchase_summary(
+            event_purchase_id,
+            event_ticket_type_id,
+            provider_checkout_url,
+            discount_code,
+        ),
+        recipient,
+    }
 }
 
 /// Builds the webhook headers used by payments manager tests.

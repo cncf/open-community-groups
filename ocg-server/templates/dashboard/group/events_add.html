@@ -731,6 +731,9 @@
   import {
     initializePendingChangesAlert
   } from '/static/js/dashboard/group/pending-changes-alert.js';
+  import {
+    initializeTicketingWaitlistState
+  } from '/static/js/dashboard/event/ticketing.js';
 
   const addEventButton = document.getElementById('add-event-button');
   const cancelButton = document.getElementById('cancel-button');
@@ -850,79 +853,7 @@
     });
   }
 
-  const toggleWaitlistEnabled = document.getElementById('toggle_waitlist_enabled');
-  const waitlistEnabledInput = document.getElementById('waitlist_enabled');
-  const waitlistToggleLabel = document.getElementById('waitlist-toggle-label');
-  const capacityInput = document.getElementById('capacity');
-  const paymentCurrencyInput = document.getElementById('payment_currency_code');
-  const ticketTypesEditor = document.querySelector('ticket-types-editor');
-  const syncWaitlistToggleState = () => {
-    if (!toggleWaitlistEnabled || !waitlistEnabledInput || !capacityInput) {
-      return;
-    }
-
-    const hasTicketTypes = typeof ticketTypesEditor?.hasConfiguredTicketTypes === 'function' ?
-      ticketTypesEditor.hasConfiguredTicketTypes() :
-      false;
-    const configuredSeatTotal = typeof ticketTypesEditor?.getConfiguredSeatTotal === 'function' ?
-      ticketTypesEditor.getConfiguredSeatTotal() :
-      null;
-
-    if (hasTicketTypes) {
-      if (!capacityInput.disabled) {
-        capacityInput.dataset.manualValue = capacityInput.value;
-      }
-
-      capacityInput.disabled = true;
-      capacityInput.placeholder = 'Derived from ticket seats';
-      capacityInput.value = Number.isFinite(configuredSeatTotal) && configuredSeatTotal > 0 ?
-        String(configuredSeatTotal) :
-        '';
-    } else {
-      capacityInput.disabled = false;
-      capacityInput.placeholder = '100';
-
-      if (capacityInput.dataset.manualValue !== undefined) {
-        capacityInput.value = capacityInput.dataset.manualValue;
-        delete capacityInput.dataset.manualValue;
-      }
-    }
-
-    const capacityValue = Number.parseInt(capacityInput.value, 10);
-    const capacityIsValid = Number.isFinite(capacityValue) && capacityValue > 0;
-    const canEnableWaitlist = capacityIsValid && !hasTicketTypes;
-
-    toggleWaitlistEnabled.disabled = !canEnableWaitlist;
-    if (!canEnableWaitlist) {
-      toggleWaitlistEnabled.checked = false;
-      waitlistEnabledInput.value = 'false';
-    } else {
-      waitlistEnabledInput.value = String(toggleWaitlistEnabled.checked);
-    }
-
-    if (waitlistToggleLabel) {
-      waitlistToggleLabel.classList.toggle('cursor-pointer', canEnableWaitlist);
-      waitlistToggleLabel.classList.toggle('cursor-not-allowed', !canEnableWaitlist);
-      waitlistToggleLabel.classList.toggle('opacity-50', !canEnableWaitlist);
-    }
-
-    if (paymentCurrencyInput) {
-      paymentCurrencyInput.required = hasTicketTypes && !paymentCurrencyInput.disabled;
-      paymentCurrencyInput.placeholder = 'USD';
-    }
-  };
-  if (toggleWaitlistEnabled && waitlistEnabledInput) {
-    toggleWaitlistEnabled.addEventListener('change', () => {
-      waitlistEnabledInput.value = String(toggleWaitlistEnabled.checked);
-    });
-  }
-  if (capacityInput) {
-    capacityInput.addEventListener('input', syncWaitlistToggleState);
-  }
-  if (ticketTypesEditor) {
-    ticketTypesEditor.addEventListener('ticket-types-changed', syncWaitlistToggleState);
-  }
-  syncWaitlistToggleState();
+  initializeTicketingWaitlistState();
 
   const toggleEventReminderEnabled = document.getElementById('toggle_event_reminder_enabled');
   if (toggleEventReminderEnabled) {

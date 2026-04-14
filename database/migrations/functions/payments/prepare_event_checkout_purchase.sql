@@ -9,16 +9,20 @@ create or replace function prepare_event_checkout_purchase(
 )
 returns jsonb as $$
 declare
+    v_community_name text;
     v_currency_code text;
     v_discount_amount_minor bigint;
     v_event_discount_code_id uuid;
+    v_event_slug text;
     v_existing_purchase_id uuid;
     v_existing_purchase_matches_selection boolean;
     v_existing_purchase_status text;
     v_final_amount_minor bigint;
+    v_group_slug text;
     v_hold_expires_at timestamptz := current_timestamp + interval '15 minutes';
     v_normalized_discount_code text := upper(nullif(btrim(p_discount_code), ''));
     v_purchase_id uuid;
+    v_recipient jsonb;
     v_ticket_title text;
 begin
     -- Expire stale pending purchases for the event before reserving a new one
@@ -30,6 +34,23 @@ begin
         p_event_id,
         p_configured_provider
     );
+
+    -- Load the route and recipient details needed by the checkout provider
+    select
+        c.name,
+        e.slug,
+        g.slug,
+        g.payment_recipient
+    into
+        v_community_name,
+        v_event_slug,
+        v_group_slug,
+        v_recipient
+    from event e
+    join "group" g on g.group_id = e.group_id
+    join community c on c.community_id = g.community_id
+    where e.event_id = p_event_id
+    and g.community_id = p_community_id;
 
     -- Reuse an equivalent purchase or return an active completed purchase
     select
@@ -50,7 +71,14 @@ begin
     if found then
         if v_existing_purchase_status <> 'pending'
            or v_existing_purchase_matches_selection then
-            return prepare_event_checkout_get_purchase_summary(v_existing_purchase_id);
+            return prepare_event_checkout_get_purchase_summary(v_existing_purchase_id)
+                || jsonb_build_object(
+                    'community_name', v_community_name,
+                    'event_id', p_event_id,
+                    'event_slug', v_event_slug,
+                    'group_slug', v_group_slug,
+                    'recipient', v_recipient
+                );
         end if;
     end if;
 
@@ -111,6 +139,13 @@ begin
     returning event_purchase_id into v_purchase_id;
 
     -- Return the pending purchase summary used by the checkout flow
-    return prepare_event_checkout_get_purchase_summary(v_purchase_id);
+    return prepare_event_checkout_get_purchase_summary(v_purchase_id)
+        || jsonb_build_object(
+            'community_name', v_community_name,
+            'event_id', p_event_id,
+            'event_slug', v_event_slug,
+            'group_slug', v_group_slug,
+            'recipient', v_recipient
+        );
 end;
 $$ language plpgsql;

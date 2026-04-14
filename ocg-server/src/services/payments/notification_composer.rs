@@ -23,6 +23,9 @@ pub(super) struct PaymentsNotificationComposer {
     server_cfg: HttpServerConfig,
 }
 
+#[cfg(test)]
+mod tests;
+
 impl PaymentsNotificationComposer {
     /// Create a new payments notification composer.
     pub(super) fn new(

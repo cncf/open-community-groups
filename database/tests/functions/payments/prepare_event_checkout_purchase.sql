@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(8);
+select plan(9);
 
 -- ============================================================================
 -- VARIABLES
@@ -288,6 +288,30 @@ select results_eq(
     'Should persist the pending checkout purchase for the selected ticket type'
 );
 
+-- Should return the checkout route and recipient context alongside the purchase
+select results_eq(
+    $$
+        with prepared_checkout as (
+            select prepare_event_checkout_purchase(
+                '79100000-0000-0000-0000-000000000001'::uuid,
+                '79100000-0000-0000-0000-000000000003'::uuid,
+                '79100000-0000-0000-0000-000000000006'::uuid,
+                '79100000-0000-0000-0000-000000000023'::uuid,
+                null,
+                'stripe'
+            ) as checkout
+        )
+        select
+            checkout->>'community_name',
+            checkout->>'event_slug',
+            checkout->>'group_slug',
+            checkout->'recipient'->>'recipient_id'
+        from prepared_checkout
+    $$,
+    $$ values ('prepare-community'::text, 'main-event'::text, 'prepare-group'::text, 'acct_prepare'::text) $$,
+    'Should return the checkout route and recipient context alongside the purchase'
+);
+
 -- Should reuse an equivalent pending purchase
 select is(
     (
@@ -367,10 +391,15 @@ select is(
     )::jsonb,
     jsonb_build_object(
         'amount_minor', 2500,
+        'community_name', 'prepare-community',
         'currency_code', 'USD',
         'discount_amount_minor', 0,
+        'event_id', :'mainEventID'::uuid,
+        'event_slug', 'main-event',
         'event_purchase_id', :'completedPurchaseID'::uuid,
         'event_ticket_type_id', :'ticketTypeAID'::uuid,
+        'group_slug', 'prepare-group',
+        'recipient', jsonb_build_object('provider', 'stripe', 'recipient_id', 'acct_prepare'),
         'status', 'completed',
         'ticket_title', 'General admission'
     ),

@@ -9,7 +9,7 @@ use uuid::Uuid;
 use crate::{
     db::PgDB,
     services::payments::CheckoutSession,
-    types::{payments::EventPurchaseSummary, payments::PaymentProvider},
+    types::payments::{EventPurchaseSummary, PaymentProvider, PreparedEventCheckout},
 };
 
 /// Database operations for payments.
@@ -60,7 +60,7 @@ pub(crate) trait DBPayments {
         &self,
         community_id: Uuid,
         input: &PrepareEventCheckoutPurchaseInput,
-    ) -> Result<EventPurchaseSummary>;
+    ) -> Result<PreparedEventCheckout>;
 
     /// Reconciles a provider-backed purchase by checkout session id.
     async fn reconcile_event_purchase_for_checkout_session(
@@ -220,7 +220,7 @@ impl DBPayments for PgDB {
         &self,
         community_id: Uuid,
         input: &PrepareEventCheckoutPurchaseInput,
-    ) -> Result<EventPurchaseSummary> {
+    ) -> Result<PreparedEventCheckout> {
         self.fetch_json_one(
             "
             select prepare_event_checkout_purchase(

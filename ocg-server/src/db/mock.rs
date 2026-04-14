@@ -825,7 +825,7 @@ mock! {
             &self,
             community_id: Uuid,
             input: &crate::db::payments::PrepareEventCheckoutPurchaseInput,
-        ) -> Result<crate::types::payments::EventPurchaseSummary>;
+        ) -> Result<crate::types::payments::PreparedEventCheckout>;
         async fn reconcile_event_purchase_for_checkout_session(
             &self,
             provider: crate::types::payments::PaymentProvider,

@@ -255,6 +255,25 @@ pub struct GroupPaymentRecipient {
     pub recipient_id: String,
 }
 
+/// Checkout data returned after preparing an attendee purchase.
+#[skip_serializing_none]
+#[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
+pub struct PreparedEventCheckout {
+    /// Community slug used in attendee-facing routes.
+    pub community_name: String,
+    /// Event identifier.
+    pub event_id: Uuid,
+    /// Event slug used in attendee-facing routes.
+    pub event_slug: String,
+    /// Group slug used in attendee-facing routes.
+    pub group_slug: String,
+    /// Prepared purchase summary for the attendee.
+    #[serde(flatten)]
+    pub purchase: EventPurchaseSummary,
+    /// Recipient account configured for the event's group.
+    pub recipient: GroupPaymentRecipient,
+}
+
 // Helpers.
 
 /// Formats a price in minor units using a currency code.
