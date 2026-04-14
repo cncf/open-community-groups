@@ -102,7 +102,30 @@ begin
         on conflict (event_discount_code_id) do update
         set
             active = excluded.active,
-            available = coalesce(excluded.available, event_discount_code.available),
+            available = case
+                when excluded.available is not null then excluded.available
+                when excluded.total_available is not null
+                     and event_discount_code.available is not null then least(
+                    event_discount_code.available,
+                    greatest(
+                        excluded.total_available - (
+                            select count(*)::int
+                            from event_purchase ep
+                            where ep.event_id = event_discount_code.event_id
+                            and ep.event_discount_code_id = event_discount_code.event_discount_code_id
+                            and (
+                                ep.status in ('completed', 'refund-requested')
+                                or (
+                                    ep.status = 'pending'
+                                    and ep.hold_expires_at > current_timestamp
+                                )
+                            )
+                        ),
+                        0
+                    )
+                )
+                else event_discount_code.available
+            end,
             amount_minor = excluded.amount_minor,
             code = excluded.code,
             ends_at = excluded.ends_at,

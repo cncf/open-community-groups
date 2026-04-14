@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(11);
+select plan(13);
 
 -- ============================================================================
 -- VARIABLES
@@ -251,6 +251,33 @@ select is(
     (select available from event_discount_code where event_discount_code_id = :'discountCode1ID'::uuid),
     1,
     'Should keep live available after saving a payload without available'
+);
+
+-- Simulate a limited code with one active redemption before lowering the cap
+update event_discount_code
+set
+    available = 9,
+    total_available = 10
+where event_discount_code_id = :'discountCodeOtherID'::uuid;
+
+-- Should clamp live available when lowering total_available without a manual override
+select lives_ok(
+    format(
+        $$select sync_event_discount_codes(
+            '%s'::uuid,
+            '[{"event_discount_code_id": "%s", "active": true, "amount_minor": 1500, "code": "PROTECT", "kind": "fixed_amount", "title": "Protected discount", "total_available": 5}]'::jsonb
+        )$$,
+        :'eventProtectedID',
+        :'discountCodeOtherID'
+    ),
+    'Should clamp live available when lowering total_available without a manual override'
+);
+
+-- Should keep available aligned with the lowered total_available and active redemptions
+select is(
+    (select available from event_discount_code where event_discount_code_id = :'discountCodeOtherID'::uuid),
+    4,
+    'Should keep available aligned with the lowered total_available and active redemptions'
 );
 
 -- Should delete all discount codes when payload is omitted

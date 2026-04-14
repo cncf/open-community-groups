@@ -588,8 +588,8 @@ select is(
     'Should not persist a whitespace-only payment recipient id'
 );
 
--- Should reject clearing payment recipient when unpublished ticketed events exist
-select throws_ok(
+-- Should allow clearing payment recipient when only unpublished ticketed events exist
+select lives_ok(
     $$select update_group(
         null::uuid,
         '00000000-0000-0000-0000-000000000001'::uuid,
@@ -604,18 +604,14 @@ select throws_ok(
             }
         }'::jsonb
     )$$,
-    'ticketed events require a payment recipient',
-    'Should reject clearing payment recipient when unpublished ticketed events exist'
+    'Should allow clearing payment recipient when only unpublished ticketed events exist'
 );
 
--- Should keep the stored payment recipient after rejecting the unpublished clear
+-- Should clear the stored payment recipient when only unpublished ticketed events exist
 select is(
     (select get_group_full(:'communityID'::uuid, :'group5ID'::uuid)::jsonb->'payment_recipient'),
-    '{
-        "provider": "stripe",
-        "recipient_id": "acct_456"
-    }'::jsonb,
-    'Should keep the stored payment recipient after rejecting the unpublished clear'
+    null::jsonb,
+    'Should clear the stored payment recipient when only unpublished ticketed events exist'
 );
 
 -- ============================================================================

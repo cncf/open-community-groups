@@ -47,6 +47,11 @@ begin
            where e.group_id = p_group_id
            and e.canceled = false
            and e.deleted = false
+           and e.published = true
+           and (
+               coalesce(e.ends_at, e.starts_at) is null
+               or coalesce(e.ends_at, e.starts_at) > current_timestamp
+           )
        ) then
         raise exception 'ticketed events require a payment recipient';
     end if;
