@@ -44,17 +44,19 @@ The Helm chart exposes Stripe configuration in `charts/ocg/values.yaml`:
 
 ```yaml
 payments:
-  stripe:
-    enabled: true
-    mode: test
-    publishableKey: "pk_test_..."
-    secretKey: "sk_test_..."
-    webhookSecret: "whsec_..."
+  enabled: true
+  provider: stripe
+  mode: test
+  publishableKey: "pk_test_..."
+  secretKey: "sk_test_..."
+  webhookSecret: "whsec_..."
 ```
 
 Notes:
 
 - Set `enabled: true` to make payments available in OCG.
+- Set `provider: stripe` because OCG currently supports one configured payments
+  provider at a time and Stripe is the only implemented provider.
 - Use `mode: test` with Stripe test keys.
 - Use `mode: live` only with live Stripe keys.
 - `publishableKey`, `secretKey`, and `webhookSecret` are all required when
@@ -98,13 +100,13 @@ Reference:
 Register this endpoint in Stripe:
 
 ```text
-https://{YOUR_OCG_BASE_URL}/webhooks/stripe
+https://{YOUR_OCG_BASE_URL}/webhooks/payments
 ```
 
 For example:
 
 ```text
-https://ocg.example.org/webhooks/stripe
+https://ocg.example.org/webhooks/payments
 ```
 
 The endpoint must be publicly reachable over HTTPS.
@@ -136,7 +138,7 @@ References:
 After creating the Stripe webhook endpoint, reveal its signing secret and store
 it in OCG as:
 
-- Helm: `payments.stripe.webhookSecret`
+- Helm: `payments.webhookSecret`
 - Raw config: `payments.webhook_secret`
 
 Stripe signing secrets start with `whsec_...`.
@@ -173,11 +175,11 @@ during deployment.
 
 ### Webhook Route Registration
 
-OCG only mounts the Stripe webhook route when Stripe payments are enabled. The
+OCG only mounts the payments webhook route when payments are enabled. The
 route is:
 
 ```text
-/webhooks/stripe
+/webhooks/payments
 ```
 
 If Stripe payments are disabled, the route is not registered.
@@ -215,11 +217,11 @@ card payments only when OCG creates Stripe Checkout sessions.
 2. Decide whether this OCG environment uses Stripe `test` or `live` mode.
 3. Copy the matching Stripe publishable and secret keys.
 4. Create a Stripe webhook endpoint pointing to
-   `https://{YOUR_OCG_BASE_URL}/webhooks/stripe`.
+   `https://{YOUR_OCG_BASE_URL}/webhooks/payments`.
 5. Subscribe the webhook only to `checkout.session.completed` and
    `checkout.session.expired`.
 6. Copy the webhook signing secret into OCG config.
-7. Deploy OCG with `payments.stripe.enabled: true`.
+7. Deploy OCG with `payments.enabled: true`.
 8. Verify the `Payments` section appears in group settings.
 9. Create a Stripe connected account for a test group and give that group's
    administrator access to it.

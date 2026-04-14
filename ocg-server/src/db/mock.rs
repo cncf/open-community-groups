@@ -423,6 +423,7 @@ mock! {
         async fn publish_event(
             &self,
             actor_user_id: Uuid,
+            configured_provider: Option<crate::types::payments::PaymentProvider>,
             group_id: Uuid,
             event_id: Uuid,
         ) -> Result<()>;

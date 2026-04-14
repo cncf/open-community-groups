@@ -4,7 +4,8 @@ create or replace function prepare_event_checkout_purchase(
     p_event_id uuid,
     p_event_ticket_type_id uuid,
     p_user_id uuid,
-    p_discount_code text
+    p_discount_code text,
+    p_configured_provider text
 )
 returns jsonb as $$
 declare
@@ -24,7 +25,11 @@ begin
     perform prepare_event_checkout_expire_stale_holds(p_event_id);
 
     -- Lock the event and validate that checkout is still allowed
-    v_currency_code := prepare_event_checkout_validate_event(p_community_id, p_event_id);
+    v_currency_code := prepare_event_checkout_validate_event(
+        p_community_id,
+        p_event_id,
+        p_configured_provider
+    );
 
     -- Reuse an equivalent purchase or return an active completed purchase
     select

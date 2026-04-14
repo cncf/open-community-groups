@@ -96,8 +96,8 @@ pub(crate) async fn setup(
     // Check which meetings providers are configured
     let zoom_enabled = meetings_cfg.as_ref().is_some_and(|cfg| cfg.zoom.is_some());
 
-    // Check which payments providers are configured
-    let stripe_enabled = matches!(payments_cfg.as_ref(), Some(PaymentsConfig::Stripe(_)));
+    // Check whether a payments provider is configured
+    let payments_enabled = payments_cfg.is_some();
 
     // Setup router state
     let state = State {
@@ -238,9 +238,9 @@ pub(crate) async fn setup(
         router = router.route("/webhooks/zoom", post(meetings::zoom_event));
     }
 
-    // Setup Stripe webhook route if enabled in configuration
-    if stripe_enabled {
-        router = router.route("/webhooks/stripe", post(payments::stripe_event));
+    // Setup the payments webhook route if enabled in configuration
+    if payments_enabled {
+        router = router.route("/webhooks/payments", post(payments::webhook));
     }
 
     router = router

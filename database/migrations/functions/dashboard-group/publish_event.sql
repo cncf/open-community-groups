@@ -2,7 +2,8 @@
 create or replace function publish_event(
     p_actor_user_id uuid,
     p_group_id uuid,
-    p_event_id uuid
+    p_event_id uuid,
+    p_configured_provider text
 )
 returns void as $$
 declare
@@ -40,12 +41,16 @@ begin
 
     -- Require checkout-critical ticketing configuration before publishing
     if v_has_ticket_types then
+        if p_configured_provider is null then
+            raise exception 'payments are not configured on this server';
+        end if;
+
         if v_payment_recipient is null then
             raise exception 'ticketed events require a payment recipient';
         end if;
 
-        if coalesce(v_payment_recipient->>'provider', '') <> 'stripe' then
-            raise exception 'ticketed events require a Stripe payment recipient';
+        if coalesce(v_payment_recipient->>'provider', '') <> p_configured_provider then
+            raise exception 'ticketed events require a payment recipient for the server payments provider';
         end if;
 
         if v_payment_currency_code is null then

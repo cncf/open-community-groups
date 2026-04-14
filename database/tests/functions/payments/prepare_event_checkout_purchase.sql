@@ -266,7 +266,8 @@ select lives_ok(
         '79100000-0000-0000-0000-000000000003'::uuid,
         '79100000-0000-0000-0000-000000000006'::uuid,
         '79100000-0000-0000-0000-000000000023'::uuid,
-        null
+        null,
+        'stripe'
     )$$,
     'Should create a pending checkout purchase'
 );
@@ -295,7 +296,8 @@ select is(
             '79100000-0000-0000-0000-000000000003'::uuid,
             '79100000-0000-0000-0000-000000000006'::uuid,
             '79100000-0000-0000-0000-000000000023'::uuid,
-            null
+            null,
+            'stripe'
         )::jsonb->>'event_purchase_id'
     ),
     (
@@ -316,7 +318,8 @@ select lives_ok(
             '79100000-0000-0000-0000-000000000003'::uuid,
             '79100000-0000-0000-0000-000000000007'::uuid,
             '79100000-0000-0000-0000-000000000023'::uuid,
-            null
+            null,
+            'stripe'
         )
     $$,
     'Should replace a mismatched pending purchase'
@@ -359,7 +362,8 @@ select is(
         :'mainEventID'::uuid,
         :'ticketTypeBID'::uuid,
         :'completedUserID'::uuid,
-        null
+        null,
+        'stripe'
     )::jsonb,
     jsonb_build_object(
         'amount_minor', 2500,
@@ -381,7 +385,8 @@ select lives_ok(
             '79100000-0000-0000-0000-000000000003'::uuid,
             '79100000-0000-0000-0000-000000000006'::uuid,
             '79100000-0000-0000-0000-000000000028'::uuid,
-            'freepass'
+            'freepass',
+            'stripe'
         )
     $$,
     'Should apply a valid discount'

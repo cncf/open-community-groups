@@ -6,7 +6,6 @@ create or replace function leave_event(
 ) returns json as $$
 declare
     v_capacity int;
-    v_event_discount_code_id uuid;
     v_is_ticketed boolean;
     v_promoted_user_ids json := '[]'::json;
     v_purchase_amount_minor bigint;
@@ -44,11 +43,9 @@ begin
     -- Paid attendees must request a refund instead of leaving the event
     select
         ep.amount_minor,
-        ep.event_discount_code_id,
         ep.event_purchase_id
     into
         v_purchase_amount_minor,
-        v_event_discount_code_id,
         v_purchase_id
     from event_purchase ep
     where ep.event_id = p_event_id
@@ -67,18 +64,9 @@ begin
     and user_id = p_user_id;
 
     if found then
-        -- If the user had a free ticket purchase, mark it as refunded and restore discount availability
+        -- If the user had a free ticket purchase, delegate the refund transition
         if v_purchase_id is not null then
-            update event_purchase
-            set
-                refunded_at = current_timestamp,
-                status = 'refunded',
-                updated_at = current_timestamp
-            where event_purchase_id = v_purchase_id;
-
-            if v_event_discount_code_id is not null then
-                perform release_event_discount_code_availability(v_event_discount_code_id);
-            end if;
+            perform refund_free_event_purchase(v_purchase_id);
         end if;
 
         -- Promote the next waitlisted user when a confirmed attendee frees a seat

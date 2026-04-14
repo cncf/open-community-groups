@@ -3,6 +3,7 @@ use std::sync::{
     atomic::{AtomicUsize, Ordering},
 };
 
+use axum::http::{HeaderMap, HeaderValue};
 use serde_json::{from_value, to_value};
 use uuid::Uuid;
 
@@ -14,7 +15,7 @@ use crate::{
     },
     services::{
         notifications::{MockNotificationsManager, NotificationKind},
-        payments::{CheckoutSession, MockPaymentsProvider, RefundPaymentResult},
+        payments::{CheckoutSession, MockPaymentsProvider, PaymentsWebhookEvent, RefundPaymentResult},
     },
     templates::notifications::{
         EventRefundApproved, EventRefundRejected, EventRefundRequested, EventWelcome,
@@ -28,8 +29,8 @@ use crate::{
 };
 
 use super::{
-    ApproveRefundRequestInput, DynPaymentsProvider, HandleWebhookError, PaymentsWebhookEvent,
-    PgPaymentsManager, RejectRefundRequestInput, RequestRefundInput,
+    ApproveRefundRequestInput, DynPaymentsProvider, HandleWebhookError, PgPaymentsManager,
+    RejectRefundRequestInput, RequestRefundInput,
 };
 
 #[tokio::test]
@@ -129,8 +130,8 @@ async fn approve_refund_request_approves_pending_refund_and_enqueues_notificatio
         });
 
     // Run the refund approval workflow
-    let orchestrator = sample_payments_manager(db, notifications_manager, Some(payments_provider));
-    let result = orchestrator
+    let manager = sample_payments_manager(db, notifications_manager, Some(payments_provider));
+    let result = manager
         .approve_refund_request(&ApproveRefundRequestInput {
             actor_user_id,
             community_id,
@@ -185,8 +186,8 @@ async fn approve_refund_request_reverts_when_payment_reference_is_missing() {
     payments_provider.expect_refund_payment().times(0);
 
     // Run the refund approval workflow
-    let orchestrator = sample_payments_manager(db, notifications_manager, Some(payments_provider));
-    let err = orchestrator
+    let manager = sample_payments_manager(db, notifications_manager, Some(payments_provider));
+    let err = manager
         .approve_refund_request(&ApproveRefundRequestInput {
             actor_user_id,
             community_id,
@@ -217,8 +218,8 @@ async fn approve_refund_request_returns_before_state_transition_when_payments_ar
     db.expect_begin_event_refund_approval().times(0);
 
     // Run the refund approval workflow without a configured payments provider
-    let orchestrator = sample_payments_manager(db, MockNotificationsManager::new(), None);
-    let err = orchestrator
+    let manager = sample_payments_manager(db, MockNotificationsManager::new(), None);
+    let err = manager
         .approve_refund_request(&ApproveRefundRequestInput {
             actor_user_id,
             community_id,
@@ -271,8 +272,8 @@ async fn approve_refund_request_returns_error_when_request_is_not_pending() {
     payments_provider.expect_refund_payment().times(0);
 
     // Run the refund approval workflow
-    let orchestrator = sample_payments_manager(db, notifications_manager, Some(payments_provider));
-    let err = orchestrator
+    let manager = sample_payments_manager(db, notifications_manager, Some(payments_provider));
+    let err = manager
         .approve_refund_request(&ApproveRefundRequestInput {
             actor_user_id,
             community_id,
@@ -336,8 +337,8 @@ async fn approve_refund_request_reverts_when_provider_refund_fails() {
         .returning(|_| Box::pin(async move { Err(anyhow::anyhow!("provider refund failed")) }));
 
     // Run the refund approval workflow
-    let orchestrator = sample_payments_manager(db, notifications_manager, Some(payments_provider));
-    let err = orchestrator
+    let manager = sample_payments_manager(db, notifications_manager, Some(payments_provider));
+    let err = manager
         .approve_refund_request(&ApproveRefundRequestInput {
             actor_user_id,
             community_id,
@@ -408,8 +409,8 @@ async fn complete_free_checkout_records_purchase_and_enqueues_notification() {
         .returning(|_| Box::pin(async { Ok(()) }));
 
     // Run the checkout completion workflow
-    let orchestrator = sample_payments_manager(db, notifications_manager, None);
-    let result = orchestrator
+    let manager = sample_payments_manager(db, notifications_manager, None);
+    let result = manager
         .complete_free_checkout(community_id, event_id, event_purchase_id, user_id)
         .await;
 
@@ -504,8 +505,8 @@ async fn get_or_create_checkout_redirect_url_creates_session_and_persists_it() {
         .return_const(PaymentProvider::Stripe);
 
     // Run the checkout session workflow
-    let orchestrator = sample_payments_manager(db, MockNotificationsManager::new(), Some(payments_provider));
-    let redirect_url = orchestrator
+    let manager = sample_payments_manager(db, MockNotificationsManager::new(), Some(payments_provider));
+    let redirect_url = manager
         .get_or_create_checkout_redirect_url(
             community_id,
             &event,
@@ -593,8 +594,8 @@ async fn get_or_create_checkout_redirect_url_returns_canonical_url_after_racing_
         .return_const(PaymentProvider::Stripe);
 
     // Run the checkout session workflow
-    let orchestrator = sample_payments_manager(db, MockNotificationsManager::new(), Some(payments_provider));
-    let redirect_url = orchestrator
+    let manager = sample_payments_manager(db, MockNotificationsManager::new(), Some(payments_provider));
+    let redirect_url = manager
         .get_or_create_checkout_redirect_url(
             community_id,
             &event,
@@ -636,8 +637,8 @@ async fn get_or_create_checkout_redirect_url_returns_error_when_group_has_no_pay
     payments_provider.expect_provider().times(0);
 
     // Run the checkout session workflow
-    let orchestrator = sample_payments_manager(db, MockNotificationsManager::new(), Some(payments_provider));
-    let err = orchestrator
+    let manager = sample_payments_manager(db, MockNotificationsManager::new(), Some(payments_provider));
+    let err = manager
         .get_or_create_checkout_redirect_url(
             community_id,
             &event,
@@ -664,8 +665,8 @@ async fn get_or_create_checkout_redirect_url_returns_error_when_payments_are_unc
     db.expect_get_event_purchase_summary().times(0);
 
     // Run the checkout session workflow without a configured payments provider
-    let orchestrator = sample_payments_manager(db, MockNotificationsManager::new(), None);
-    let err = orchestrator
+    let manager = sample_payments_manager(db, MockNotificationsManager::new(), None);
+    let err = manager
         .get_or_create_checkout_redirect_url(
             community_id,
             &event,
@@ -695,8 +696,8 @@ async fn get_or_create_checkout_redirect_url_returns_existing_url_without_hittin
     db.expect_get_event_purchase_summary().times(0);
 
     // Run the checkout session workflow
-    let orchestrator = sample_payments_manager(db, MockNotificationsManager::new(), None);
-    let redirect_url = orchestrator
+    let manager = sample_payments_manager(db, MockNotificationsManager::new(), None);
+    let redirect_url = manager
         .get_or_create_checkout_redirect_url(
             Uuid::new_v4(),
             &sample_event_summary(Uuid::new_v4()),
@@ -775,7 +776,7 @@ async fn handle_webhook_completes_checkout_and_enqueues_welcome_notification() {
     payments_provider
         .expect_verify_and_parse_webhook()
         .times(1)
-        .withf(|signature, body| signature == "sig_test" && body == "payload")
+        .withf(|headers, body| has_test_signature_header(headers) && body == "payload")
         .returning(|_, _| {
             Ok(PaymentsWebhookEvent::CheckoutCompleted {
                 provider_payment_reference: Some("pi_test_123".to_string()),
@@ -784,8 +785,9 @@ async fn handle_webhook_completes_checkout_and_enqueues_welcome_notification() {
         });
 
     // Run the webhook workflow
-    let orchestrator = sample_payments_manager(db, notifications_manager, Some(payments_provider));
-    let result = orchestrator.handle_webhook("sig_test", "payload").await;
+    let manager = sample_payments_manager(db, notifications_manager, Some(payments_provider));
+    let headers = sample_webhook_headers();
+    let result = manager.handle_webhook(&headers, "payload").await;
 
     // Check result matches expectations
     assert!(result.is_ok());
@@ -811,7 +813,7 @@ async fn handle_webhook_expires_checkout_session() {
     payments_provider
         .expect_verify_and_parse_webhook()
         .times(1)
-        .withf(|signature, body| signature == "sig_test" && body == "payload")
+        .withf(|headers, body| has_test_signature_header(headers) && body == "payload")
         .returning(|_, _| {
             Ok(PaymentsWebhookEvent::CheckoutExpired {
                 provider_session_id: "cs_test_123".to_string(),
@@ -819,8 +821,9 @@ async fn handle_webhook_expires_checkout_session() {
         });
 
     // Run the webhook workflow
-    let orchestrator = sample_payments_manager(db, MockNotificationsManager::new(), Some(payments_provider));
-    let result = orchestrator.handle_webhook("sig_test", "payload").await;
+    let manager = sample_payments_manager(db, MockNotificationsManager::new(), Some(payments_provider));
+    let headers = sample_webhook_headers();
+    let result = manager.handle_webhook(&headers, "payload").await;
 
     // Check result matches expectations
     assert!(result.is_ok());
@@ -854,7 +857,7 @@ async fn handle_webhook_ignores_noop_checkout_completion() {
     payments_provider
         .expect_verify_and_parse_webhook()
         .times(1)
-        .withf(|signature, body| signature == "sig_test" && body == "payload")
+        .withf(|headers, body| has_test_signature_header(headers) && body == "payload")
         .returning(|_, _| {
             Ok(PaymentsWebhookEvent::CheckoutCompleted {
                 provider_payment_reference: Some("pi_test_123".to_string()),
@@ -863,8 +866,9 @@ async fn handle_webhook_ignores_noop_checkout_completion() {
         });
 
     // Run the webhook workflow
-    let orchestrator = sample_payments_manager(db, notifications_manager, Some(payments_provider));
-    let result = orchestrator.handle_webhook("sig_test", "payload").await;
+    let manager = sample_payments_manager(db, notifications_manager, Some(payments_provider));
+    let headers = sample_webhook_headers();
+    let result = manager.handle_webhook(&headers, "payload").await;
 
     // Check result matches expectations
     assert!(result.is_ok());
@@ -929,7 +933,7 @@ async fn handle_webhook_refunds_completed_checkout_that_is_no_longer_finalizable
     payments_provider
         .expect_verify_and_parse_webhook()
         .times(1)
-        .withf(|signature, body| signature == "sig_test" && body == "payload")
+        .withf(|headers, body| has_test_signature_header(headers) && body == "payload")
         .returning(|_, _| {
             Ok(PaymentsWebhookEvent::CheckoutCompleted {
                 provider_payment_reference: Some("pi_test_123".to_string()),
@@ -938,8 +942,9 @@ async fn handle_webhook_refunds_completed_checkout_that_is_no_longer_finalizable
         });
 
     // Run the webhook workflow
-    let orchestrator = sample_payments_manager(db, notifications_manager, Some(payments_provider));
-    let result = orchestrator.handle_webhook("sig_test", "payload").await;
+    let manager = sample_payments_manager(db, notifications_manager, Some(payments_provider));
+    let headers = sample_webhook_headers();
+    let result = manager.handle_webhook(&headers, "payload").await;
 
     // Check result matches expectations
     assert!(result.is_ok());
@@ -952,17 +957,18 @@ async fn handle_webhook_returns_invalid_payload_when_verification_fails() {
     payments_provider
         .expect_verify_and_parse_webhook()
         .times(1)
-        .withf(|signature, body| signature == "sig_test" && body == "payload")
+        .withf(|headers, body| has_test_signature_header(headers) && body == "payload")
         .returning(|_, _| Err(anyhow::anyhow!("invalid signature")));
 
     // Run the webhook workflow
-    let orchestrator = sample_payments_manager(
+    let manager = sample_payments_manager(
         MockDB::new(),
         MockNotificationsManager::new(),
         Some(payments_provider),
     );
-    let err = orchestrator
-        .handle_webhook("sig_test", "payload")
+    let headers = sample_webhook_headers();
+    let err = manager
+        .handle_webhook(&headers, "payload")
         .await
         .expect_err("webhook verification to fail");
 
@@ -973,9 +979,10 @@ async fn handle_webhook_returns_invalid_payload_when_verification_fails() {
 #[tokio::test]
 async fn handle_webhook_returns_not_configured_when_payments_are_unavailable() {
     // Run the webhook workflow without a configured payments provider
-    let orchestrator = sample_payments_manager(MockDB::new(), MockNotificationsManager::new(), None);
-    let err = orchestrator
-        .handle_webhook("sig_test", "payload")
+    let manager = sample_payments_manager(MockDB::new(), MockNotificationsManager::new(), None);
+    let headers = sample_webhook_headers();
+    let err = manager
+        .handle_webhook(&headers, "payload")
         .await
         .expect_err("webhook handling to fail when payments are not configured");
 
@@ -1029,9 +1036,10 @@ async fn handle_webhook_returns_unexpected_when_automatic_refund_fails() {
         });
 
     // Run the webhook workflow
-    let orchestrator = sample_payments_manager(db, notifications_manager, Some(payments_provider));
-    let err = orchestrator
-        .handle_webhook("sig_test", "payload")
+    let manager = sample_payments_manager(db, notifications_manager, Some(payments_provider));
+    let headers = sample_webhook_headers();
+    let err = manager
+        .handle_webhook(&headers, "payload")
         .await
         .expect_err("automatic refund to fail");
 
@@ -1108,12 +1116,13 @@ async fn handle_webhook_retries_automatic_refund_after_persist_failure() {
         });
 
     // Run the webhook workflow twice to simulate Stripe retrying the event
-    let orchestrator = sample_payments_manager(db, notifications_manager, Some(payments_provider));
-    let first_err = orchestrator
-        .handle_webhook("sig_test", "payload")
+    let manager = sample_payments_manager(db, notifications_manager, Some(payments_provider));
+    let headers = sample_webhook_headers();
+    let first_err = manager
+        .handle_webhook(&headers, "payload")
         .await
         .expect_err("automatic refund persistence to fail");
-    let second_result = orchestrator.handle_webhook("sig_test", "payload").await;
+    let second_result = manager.handle_webhook(&headers, "payload").await;
 
     // Check the retry behavior
     match first_err {
@@ -1188,12 +1197,13 @@ async fn handle_webhook_retries_automatic_refund_after_provider_failure() {
         });
 
     // Run the webhook workflow twice to simulate Stripe retrying the event
-    let orchestrator = sample_payments_manager(db, notifications_manager, Some(payments_provider));
-    let first_err = orchestrator
-        .handle_webhook("sig_test", "payload")
+    let manager = sample_payments_manager(db, notifications_manager, Some(payments_provider));
+    let headers = sample_webhook_headers();
+    let first_err = manager
+        .handle_webhook(&headers, "payload")
         .await
         .expect_err("automatic refund to fail");
-    let second_result = orchestrator.handle_webhook("sig_test", "payload").await;
+    let second_result = manager.handle_webhook(&headers, "payload").await;
 
     // Check the retry behavior
     match first_err {
@@ -1266,8 +1276,8 @@ async fn reject_refund_request_persists_rejection_and_enqueues_notification() {
         .returning(|_| Box::pin(async { Ok(()) }));
 
     // Run the refund rejection workflow
-    let orchestrator = sample_payments_manager(db, notifications_manager, Some(MockPaymentsProvider::new()));
-    let result = orchestrator
+    let manager = sample_payments_manager(db, notifications_manager, Some(MockPaymentsProvider::new()));
+    let result = manager
         .reject_refund_request(&RejectRefundRequestInput {
             actor_user_id,
             community_id,
@@ -1319,8 +1329,8 @@ async fn request_refund_records_the_refund_request_with_notification_payload() {
         .returning(move |_, _, _, _, _| Ok(()));
 
     // Run the refund request workflow
-    let orchestrator = sample_payments_manager(db, MockNotificationsManager::new(), None);
-    let result = orchestrator
+    let manager = sample_payments_manager(db, MockNotificationsManager::new(), None);
+    let result = manager
         .request_refund(&RequestRefundInput {
             community_id,
             event_id,
@@ -1352,8 +1362,8 @@ async fn request_refund_returns_error_when_notification_context_load_fails() {
     db.expect_request_event_refund().times(0);
 
     // Run the refund request workflow
-    let orchestrator = sample_payments_manager(db, MockNotificationsManager::new(), None);
-    let err = orchestrator
+    let manager = sample_payments_manager(db, MockNotificationsManager::new(), None);
+    let err = manager
         .request_refund(&RequestRefundInput {
             community_id,
             event_id,
@@ -1369,6 +1379,14 @@ async fn request_refund_returns_error_when_notification_context_load_fails() {
 }
 
 // Helpers.
+
+/// Returns true when the test webhook headers include the expected signature.
+fn has_test_signature_header(headers: &HeaderMap) -> bool {
+    matches!(
+        headers.get("stripe-signature").and_then(|value| value.to_str().ok()),
+        Some("sig_test")
+    )
+}
 
 /// Create a sample event summary.
 fn sample_event_summary(event_id: Uuid) -> EventSummary {
@@ -1462,6 +1480,7 @@ fn sample_payments_manager(
     notifications_manager: MockNotificationsManager,
     payments_provider: Option<MockPaymentsProvider>,
 ) -> PgPaymentsManager {
+    // Promote the mock provider into the shared trait object used by the manager
     let payments_provider =
         payments_provider.map(|payments_provider| Arc::new(payments_provider) as DynPaymentsProvider);
 
@@ -1471,4 +1490,12 @@ fn sample_payments_manager(
         payments_provider,
         HttpServerConfig::default(),
     )
+}
+
+/// Builds the webhook headers used by payments manager tests.
+fn sample_webhook_headers() -> HeaderMap {
+    // Mirror the provider-specific header shape expected by the mock verifier
+    let mut headers = HeaderMap::new();
+    headers.insert("stripe-signature", HeaderValue::from_static("sig_test"));
+    headers
 }

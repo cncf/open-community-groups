@@ -228,7 +228,8 @@ impl DBPayments for PgDB {
                 $2::uuid,
                 $3::uuid,
                 $4::uuid,
-                $5::text
+                $5::text,
+                $6::text
             )
             ",
             &[
@@ -237,6 +238,7 @@ impl DBPayments for PgDB {
                 &input.event_ticket_type_id,
                 &input.user_id,
                 &input.discount_code,
+                &input.configured_provider.map(|provider| provider.to_string()),
             ],
         )
         .await
@@ -425,14 +427,17 @@ pub(crate) struct CompletedEventPurchase {
 /// Input used to prepare an attendee checkout purchase.
 #[derive(Debug, Clone)]
 pub(crate) struct PrepareEventCheckoutPurchaseInput {
-    /// Discount code provided by the attendee.
-    pub discount_code: Option<String>,
     /// Event identifier.
     pub event_id: Uuid,
     /// Ticket type identifier.
     pub event_ticket_type_id: Uuid,
     /// User identifier.
     pub user_id: Uuid,
+
+    /// Configured payments provider for this deployment.
+    pub configured_provider: Option<PaymentProvider>,
+    /// Discount code provided by the attendee.
+    pub discount_code: Option<String>,
 }
 
 /// Data for a provider purchase that must be refunded.

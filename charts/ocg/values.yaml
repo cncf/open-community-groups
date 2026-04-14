@@ -81,15 +81,14 @@ meetings:
     maxSimultaneousMeetingsPerHost: 1
     webhookSecretToken: ""
 
-# Payments providers configuration
+# Payments provider configuration (a single provider can be enabled at a time)
 payments:
-  # Stripe provider configuration (set enabled to true to enable)
-  stripe:
-    enabled: false
-    mode: test
-    publishableKey: ""
-    secretKey: ""
-    webhookSecret: ""
+  enabled: false
+  provider: stripe
+  mode: test
+  publishableKey: ""
+  secretKey: ""
+  webhookSecret: ""
 
 # Database migrator configuration
 dbmigrator:

@@ -4,6 +4,7 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use async_trait::async_trait;
+use axum::http::HeaderMap;
 #[cfg(test)]
 use mockall::automock;
 use serde::{Deserialize, Serialize};
@@ -32,7 +33,7 @@ pub(crate) trait PaymentsProvider {
     async fn refund_payment(&self, input: &RefundPaymentInput) -> Result<RefundPaymentResult>;
 
     /// Verifies and parses a webhook payload.
-    fn verify_and_parse_webhook(&self, signature_header: &str, body: &str) -> Result<PaymentsWebhookEvent>;
+    fn verify_and_parse_webhook(&self, headers: &HeaderMap, body: &str) -> Result<PaymentsWebhookEvent>;
 }
 
 /// Shared payments provider trait object.
@@ -68,7 +69,7 @@ pub(crate) struct CreateCheckoutSessionInput {
     pub purchase_id: Uuid,
     /// Recipient account for the group.
     pub recipient: GroupPaymentRecipient,
-    /// Ticket title shown in Stripe Checkout.
+    /// Ticket title shown in the provider checkout.
     pub ticket_title: String,
     /// User identifier for the attendee.
     pub user_id: Uuid,

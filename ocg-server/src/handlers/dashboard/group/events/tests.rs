@@ -859,8 +859,10 @@ async fn test_publish_success() {
         .returning(move |_, _, _| Ok(unpublished_event.clone()));
     db.expect_publish_event()
         .times(1)
-        .withf(move |uid, gid, eid| *uid == user_id && *gid == group_id && *eid == event_id)
-        .returning(move |_, _, _| Ok(()));
+        .withf(move |uid, provider, gid, eid| {
+            *uid == user_id && provider.is_none() && *gid == group_id && *eid == event_id
+        })
+        .returning(move |_, _, _, _| Ok(()));
     db.expect_get_event_full()
         .times(1)
         .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
@@ -978,8 +980,10 @@ async fn test_publish_already_published_no_notification() {
         .returning(move |_, _, _| Ok(already_published_event.clone()));
     db.expect_publish_event()
         .times(1)
-        .withf(move |uid, gid, eid| *uid == user_id && *gid == group_id && *eid == event_id)
-        .returning(move |_, _, _| Ok(()));
+        .withf(move |uid, provider, gid, eid| {
+            *uid == user_id && provider.is_none() && *gid == group_id && *eid == event_id
+        })
+        .returning(move |_, _, _, _| Ok(()));
 
     // Setup notifications manager mock (no enqueue expected)
     let nm = MockNotificationsManager::new();
@@ -1062,8 +1066,10 @@ async fn test_publish_speakers_only() {
         .returning(move |_, _, _| Ok(unpublished_event.clone()));
     db.expect_publish_event()
         .times(1)
-        .withf(move |uid, gid, eid| *uid == user_id && *gid == group_id && *eid == event_id)
-        .returning(move |_, _, _| Ok(()));
+        .withf(move |uid, provider, gid, eid| {
+            *uid == user_id && provider.is_none() && *gid == group_id && *eid == event_id
+        })
+        .returning(move |_, _, _, _| Ok(()));
     db.expect_get_event_full()
         .times(1)
         .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)

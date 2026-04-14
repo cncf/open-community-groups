@@ -140,6 +140,7 @@
 {{ template "event/get_event_summary_by_id.sql" }}
 {{ template "event/is_event_check_in_window_open.sql" }}
 {{ template "payments/release_event_discount_code_availability.sql" }} -- Dependency for event and payments flows
+{{ template "payments/refund_free_event_purchase.sql" }} -- Dependency for leave_event
 {{ template "event/leave_event.sql" }}
 {{ template "event/list_user_session_proposals_for_cfs_event.sql" }}
 {{ template "event/update_event_views.sql" }}

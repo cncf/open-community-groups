@@ -1,7 +1,8 @@
 -- Used by prepare_event_checkout_purchase to validate event state and return currency
 create or replace function prepare_event_checkout_validate_event(
     p_community_id uuid,
-    p_event_id uuid
+    p_event_id uuid,
+    p_configured_provider text
 )
 returns text as $$
 declare
@@ -52,14 +53,19 @@ begin
         raise exception 'event not found or inactive';
     end if;
 
-    -- Require any payment recipient before validating provider-specific settings
+    -- Require any payment recipient before validating provider compatibility
     if v_payment_recipient is null then
         raise exception 'group payments recipient is not configured';
     end if;
 
-    -- Require a configured Stripe recipient and a payment currency
-    if coalesce(v_payment_recipient->>'provider', '') <> 'stripe' then
-        raise exception 'group payments recipient is not configured for Stripe';
+    -- Require the server payments provider before checking group compatibility
+    if p_configured_provider is null then
+        raise exception 'payments are not configured on this server';
+    end if;
+
+    -- Require a recipient configured for the server payments provider
+    if coalesce(v_payment_recipient->>'provider', '') <> p_configured_provider then
+        raise exception 'group payments recipient is not configured for the server payments provider';
     end if;
 
     -- Require a payment currency to price the checkout session

@@ -4,6 +4,7 @@ use std::collections::BTreeMap;
 
 use anyhow::{Context, Result, bail};
 use async_trait::async_trait;
+use axum::http::HeaderMap;
 use chrono::Utc;
 use hmac::{Hmac, Mac};
 use reqwest::Client;
@@ -317,7 +318,13 @@ impl PaymentsProvider for StripeProvider {
     }
 
     /// [`PaymentsProvider::verify_and_parse_webhook`].
-    fn verify_and_parse_webhook(&self, signature_header: &str, body: &str) -> Result<PaymentsWebhookEvent> {
+    fn verify_and_parse_webhook(&self, headers: &HeaderMap, body: &str) -> Result<PaymentsWebhookEvent> {
+        // Require Stripe's signature header before attempting webhook verification
+        let Some(signature_header) = headers.get("stripe-signature").and_then(|value| value.to_str().ok())
+        else {
+            bail!("missing Stripe webhook signature header");
+        };
+
         // Verify the webhook signature before trusting the payload contents
         let (timestamp, provided_signatures) = Self::parse_signature_header(signature_header)?;
         Self::validate_webhook_timestamp(&timestamp)?;

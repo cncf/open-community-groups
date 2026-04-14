@@ -17,7 +17,7 @@ use uuid::Uuid;
 use crate::{
     activity_tracker::{Activity, DynActivityTracker},
     auth::AuthSession,
-    config::HttpServerConfig,
+    config::{HttpServerConfig, PaymentsConfig},
     db::{DynDB, payments::PrepareEventCheckoutPurchaseInput},
     handlers::{
         extractors::{CurrentUser, ValidatedForm, ValidatedFormQs},
@@ -390,6 +390,7 @@ pub(crate) async fn request_refund(
 pub(crate) async fn start_checkout(
     CurrentUser(user): CurrentUser,
     State(db): State<DynDB>,
+    State(payments_cfg): State<Option<PaymentsConfig>>,
     State(payments_manager): State<DynPaymentsManager>,
     CommunityId(community_id): CommunityId,
     Path((_, event_id)): Path<(String, Uuid)>,
@@ -397,7 +398,15 @@ pub(crate) async fn start_checkout(
 ) -> Result<impl IntoResponse, HandlerError> {
     // Load the event and reserve a purchase hold for the attendee
     let event = load_checkoutable_event(&db, community_id, event_id).await?;
-    let purchase = create_checkout_hold(&db, community_id, event_id, user.user_id, &input).await?;
+    let purchase = create_checkout_hold(
+        &db,
+        community_id,
+        event_id,
+        payments_cfg.as_ref(),
+        user.user_id,
+        &input,
+    )
+    .await?;
 
     // Return early when the attendee already has a purchase state that should not reopen checkout
     if let Some(status) = get_checkout_status_response(purchase.status)? {
@@ -530,12 +539,14 @@ async fn create_checkout_hold(
     db: &DynDB,
     community_id: Uuid,
     event_id: Uuid,
+    payments_cfg: Option<&PaymentsConfig>,
     user_id: Uuid,
     input: &CheckoutInput,
 ) -> Result<EventPurchaseSummary, HandlerError> {
     db.prepare_event_checkout_purchase(
         community_id,
         &PrepareEventCheckoutPurchaseInput {
+            configured_provider: payments_cfg.map(PaymentsConfig::provider),
             discount_code: input.discount_code.clone(),
             event_id,
             event_ticket_type_id: input

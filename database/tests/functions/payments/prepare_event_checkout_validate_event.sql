@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(5);
+select plan(6);
 
 -- ============================================================================
 -- VARIABLES
@@ -157,7 +157,7 @@ insert into event (
 
 -- Should return the payment currency for a valid event context
 select is(
-    prepare_event_checkout_validate_event(:'communityID'::uuid, :'validEventID'::uuid),
+    prepare_event_checkout_validate_event(:'communityID'::uuid, :'validEventID'::uuid, 'stripe'),
     'USD',
     'Should return the payment currency for a valid event context'
 );
@@ -166,27 +166,41 @@ select is(
 select throws_ok(
     $$select prepare_event_checkout_validate_event(
         '79270000-0000-0000-0000-000000000001'::uuid,
-        '79270000-0000-0000-0000-000000000004'::uuid
+        '79270000-0000-0000-0000-000000000004'::uuid,
+        'stripe'
     )$$,
     'group payments recipient is not configured',
     'Should reject groups without a configured payments recipient'
 );
 
--- Should reject groups whose payments recipient is not Stripe
+-- Should reject events when payments are not configured on the server
 select throws_ok(
     $$select prepare_event_checkout_validate_event(
         '79270000-0000-0000-0000-000000000001'::uuid,
-        '79270000-0000-0000-0000-000000000005'::uuid
+        '79270000-0000-0000-0000-000000000003'::uuid,
+        null
     )$$,
-    'group payments recipient is not configured for Stripe',
-    'Should reject groups whose payments recipient is not Stripe'
+    'payments are not configured on this server',
+    'Should reject events when payments are not configured on the server'
+);
+
+-- Should reject groups whose payments recipient does not match the server provider
+select throws_ok(
+    $$select prepare_event_checkout_validate_event(
+        '79270000-0000-0000-0000-000000000001'::uuid,
+        '79270000-0000-0000-0000-000000000005'::uuid,
+        'stripe'
+    )$$,
+    'group payments recipient is not configured for the server payments provider',
+    'Should reject groups whose payments recipient does not match the server provider'
 );
 
 -- Should reject ticketed events without a payment currency
 select throws_ok(
     $$select prepare_event_checkout_validate_event(
         '79270000-0000-0000-0000-000000000001'::uuid,
-        '79270000-0000-0000-0000-000000000006'::uuid
+        '79270000-0000-0000-0000-000000000006'::uuid,
+        'stripe'
     )$$,
     'ticketed event is missing payment_currency_code',
     'Should reject ticketed events without a payment currency'
@@ -196,7 +210,8 @@ select throws_ok(
 select throws_ok(
     $$select prepare_event_checkout_validate_event(
         '79270000-0000-0000-0000-000000000001'::uuid,
-        '79270000-0000-0000-0000-000000000007'::uuid
+        '79270000-0000-0000-0000-000000000007'::uuid,
+        'stripe'
     )$$,
     'event not found or inactive',
     'Should reject inactive events'

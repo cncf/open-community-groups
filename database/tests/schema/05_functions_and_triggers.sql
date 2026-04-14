@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(208);
+select plan(209);
 
 -- ============================================================================
 -- TESTS
@@ -145,6 +145,7 @@ select has_function('prevent_audit_log_mutation');
 select has_function('publish_event');
 select has_function('reconcile_event_purchase_for_checkout_session');
 select has_function('record_automatic_refund_for_event_purchase');
+select has_function('refund_free_event_purchase');
 select has_function('reject_community_team_invitation');
 select has_function('reject_event_refund_request');
 select has_function('reject_group_team_invitation');

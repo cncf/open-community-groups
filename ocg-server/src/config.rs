@@ -21,7 +21,7 @@ use garde::rules::email::parse_email;
 use serde::{Deserialize, Serialize};
 use tracing::instrument;
 
-use crate::types::payments::PaymentMode;
+use crate::types::payments::{PaymentMode, PaymentProvider};
 
 /// Root configuration structure for the OCG server.
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -204,7 +204,7 @@ impl MeetingsZoomConfig {
     }
 }
 
-/// Payments configuration (multiple providers supported).
+/// Payments configuration for the single active provider.
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 #[serde(tag = "provider", rename_all = "snake_case")]
 pub(crate) enum PaymentsConfig {
@@ -213,6 +213,13 @@ pub(crate) enum PaymentsConfig {
 }
 
 impl PaymentsConfig {
+    /// Return the configured payments provider.
+    pub(crate) fn provider(&self) -> PaymentProvider {
+        match self {
+            Self::Stripe(_) => PaymentProvider::Stripe,
+        }
+    }
+
     /// Validate the configured payments provider.
     fn validate(&self) -> Result<()> {
         match self {
@@ -241,15 +248,15 @@ impl PaymentsStripeConfig {
     /// Validate Stripe payments configuration.
     fn validate(&self) -> Result<()> {
         if self.publishable_key.trim().is_empty() {
-            bail!("payments.stripe.publishable_key cannot be empty");
+            bail!("payments.publishable_key cannot be empty");
         }
 
         if self.secret_key.trim().is_empty() {
-            bail!("payments.stripe.secret_key cannot be empty");
+            bail!("payments.secret_key cannot be empty");
         }
 
         if self.webhook_secret.trim().is_empty() {
-            bail!("payments.stripe.webhook_secret cannot be empty");
+            bail!("payments.webhook_secret cannot be empty");
         }
 
         Ok(())

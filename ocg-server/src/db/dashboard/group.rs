@@ -33,7 +33,7 @@ use crate::{
     types::{
         event::{EventCategory, EventKindSummary as EventKind, SessionKindSummary as SessionKind},
         group::{GroupRole, GroupRoleSummary, GroupSponsor},
-        payments::GroupPaymentRecipient,
+        payments::{GroupPaymentRecipient, PaymentProvider},
     },
 };
 
@@ -190,7 +190,13 @@ pub(crate) trait DBDashboardGroup {
     ) -> Result<()>;
 
     /// Publishes an event (sets published=true and records publication metadata).
-    async fn publish_event(&self, actor_user_id: Uuid, group_id: Uuid, event_id: Uuid) -> Result<()>;
+    async fn publish_event(
+        &self,
+        actor_user_id: Uuid,
+        configured_provider: Option<PaymentProvider>,
+        group_id: Uuid,
+        event_id: Uuid,
+    ) -> Result<()>;
 
     /// Searches attendees for a group's event using filters.
     async fn search_event_attendees(
@@ -652,10 +658,21 @@ impl DBDashboardGroup for PgDB {
 
     /// [`DBDashboardGroup::publish_event`]
     #[instrument(skip(self), err)]
-    async fn publish_event(&self, actor_user_id: Uuid, group_id: Uuid, event_id: Uuid) -> Result<()> {
+    async fn publish_event(
+        &self,
+        actor_user_id: Uuid,
+        configured_provider: Option<PaymentProvider>,
+        group_id: Uuid,
+        event_id: Uuid,
+    ) -> Result<()> {
         self.execute(
-            "select publish_event($1::uuid, $2::uuid, $3::uuid)",
-            &[&actor_user_id, &group_id, &event_id],
+            "select publish_event($1::uuid, $2::uuid, $3::uuid, $4::text)",
+            &[
+                &actor_user_id,
+                &group_id,
+                &event_id,
+                &configured_provider.map(|provider| provider.to_string()),
+            ],
         )
         .await
     }

@@ -4,6 +4,7 @@ use std::sync::Arc;
 
 use anyhow::{Result, bail};
 use async_trait::async_trait;
+use axum::http::HeaderMap;
 #[cfg(test)]
 use mockall::automock;
 use tracing::warn;
@@ -11,22 +12,18 @@ use uuid::Uuid;
 
 use crate::{
     config::HttpServerConfig,
-    db::{
-        DynDB,
-        payments::{CompletedEventPurchase, ReconcileEventPurchaseResult, RefundRequiredEventPurchase},
-    },
-    services::notifications::{DynNotificationsManager, NewNotification, NotificationKind},
-    templates::notifications::{
-        EventRefundApproved, EventRefundRejected, EventRefundRequested, EventWelcome,
-    },
+    db::DynDB,
+    services::notifications::DynNotificationsManager,
     types::{
         event::EventSummary,
         payments::{EventPurchaseStatus, EventPurchaseSummary},
     },
-    util::{build_event_calendar_attachment, build_event_page_link},
 };
 
-use super::{CreateCheckoutSessionInput, DynPaymentsProvider, PaymentsWebhookEvent, RefundPaymentInput};
+use super::{
+    CreateCheckoutSessionInput, DynPaymentsProvider, RefundPaymentInput,
+    notification_composer::PaymentsNotificationComposer, webhook_reconciler::PaymentsWebhookReconciler,
+};
 
 #[cfg(test)]
 mod tests;
@@ -59,7 +56,7 @@ pub(crate) trait PaymentsManager {
     /// Verifies and processes a webhook payload.
     async fn handle_webhook(
         &self,
-        signature_header: &str,
+        headers: &HeaderMap,
         body: &str,
     ) -> std::result::Result<(), HandleWebhookError>;
 
@@ -78,8 +75,8 @@ pub(crate) type DynPaymentsManager = Arc<dyn PaymentsManager + Send + Sync>;
 pub(crate) struct PgPaymentsManager {
     /// Database handle for payment-related persistence.
     db: DynDB,
-    /// Notifications manager used for attendee notifications.
-    notifications_manager: DynNotificationsManager,
+    /// Shared notification helper used by payments flows.
+    notification_composer: PaymentsNotificationComposer,
     /// Provider adapter used for payment operations.
     payments_provider: Option<DynPaymentsProvider>,
     /// Server configuration used to build links and attachments.
@@ -94,9 +91,13 @@ impl PgPaymentsManager {
         payments_provider: Option<DynPaymentsProvider>,
         server_cfg: HttpServerConfig,
     ) -> Self {
+        // Build the shared notification helper once for reuse across payments flows
+        let notification_composer =
+            PaymentsNotificationComposer::new(db.clone(), notifications_manager, server_cfg.clone());
+
         Self {
             db,
-            notifications_manager,
+            notification_composer,
             payments_provider,
             server_cfg,
         }
@@ -161,7 +162,8 @@ impl PgPaymentsManager {
             .await?;
 
         // Notify the attendee about the approved refund
-        self.enqueue_refund_approval_notification(input.community_id, input.event_id, input.user_id)
+        self.notification_composer
+            .enqueue_refund_approval_notification(input.community_id, input.event_id, input.user_id)
             .await;
 
         Ok(())
@@ -175,8 +177,10 @@ impl PgPaymentsManager {
         event_purchase_id: Uuid,
         user_id: Uuid,
     ) -> Result<()> {
+        // Finalize the free purchase before notifying the attendee
         self.db.complete_free_event_purchase(event_purchase_id).await?;
-        self.enqueue_event_welcome_notification(community_id, event_id, user_id)
+        self.notification_composer
+            .enqueue_event_welcome_notification(community_id, event_id, user_id)
             .await;
 
         Ok(())
@@ -253,7 +257,7 @@ impl PgPaymentsManager {
     /// Verifies and processes a webhook payload.
     pub(crate) async fn handle_webhook(
         &self,
-        signature_header: &str,
+        headers: &HeaderMap,
         body: &str,
     ) -> std::result::Result<(), HandleWebhookError> {
         let payments_provider = self
@@ -263,13 +267,15 @@ impl PgPaymentsManager {
 
         // Verify the webhook payload before dispatching the normalized event
         let webhook_event = payments_provider
-            .verify_and_parse_webhook(signature_header, body)
+            .verify_and_parse_webhook(headers, body)
             .map_err(|err| {
                 warn!(error = %err, "failed to verify payments webhook");
                 HandleWebhookError::InvalidPayload
             })?;
 
-        self.handle_webhook_event(webhook_event)
+        // Reconcile the verified webhook through the focused webhook helper
+        self.webhook_reconciler(payments_provider.clone())
+            .handle_webhook_event(webhook_event)
             .await
             .map_err(HandleWebhookError::Unexpected)
     }
@@ -288,7 +294,8 @@ impl PgPaymentsManager {
             .await?;
 
         // Notify the attendee about the rejected refund
-        self.enqueue_refund_rejection_notification(input.community_id, input.event_id, input.user_id)
+        self.notification_composer
+            .enqueue_refund_rejection_notification(input.community_id, input.event_id, input.user_id)
             .await;
 
         Ok(())
@@ -296,24 +303,11 @@ impl PgPaymentsManager {
 
     /// Records an attendee refund request with notification payload data.
     pub(crate) async fn request_refund(&self, input: &RequestRefundInput) -> Result<()> {
-        // Load the data required to build the refund request notification
-        let (event, site_settings) = tokio::try_join!(
-            self.db.get_event_summary_by_id(input.community_id, input.event_id),
-            self.db.get_site_settings(),
-        )?;
-
-        // Build the organizer link and notification payload for the refund request
-        let base_url = self
-            .server_cfg
-            .base_url
-            .strip_suffix('/')
-            .unwrap_or(&self.server_cfg.base_url);
-        let link = format!("{base_url}/dashboard/group/events/{}/attendees", input.event_id);
-        let template_data = serde_json::to_value(&EventRefundRequested {
-            event,
-            link,
-            theme: site_settings.theme,
-        })?;
+        // Build the organizer notification payload before recording the refund request
+        let template_data = self
+            .notification_composer
+            .build_refund_request_template_data(input.community_id, input.event_id)
+            .await?;
 
         // Record the attendee's refund request with the notification payload
         self.db
@@ -327,233 +321,11 @@ impl PgPaymentsManager {
             .await
     }
 
-    /// Enqueues the attendee welcome notification for a completed paid checkout.
-    async fn enqueue_checkout_completed_notification(&self, completed_purchase: CompletedEventPurchase) {
-        self.enqueue_event_welcome_notification(
-            completed_purchase.community_id,
-            completed_purchase.event_id,
-            completed_purchase.user_id,
-        )
-        .await;
-    }
-
-    /// Enqueues the attendee welcome notification after a successful ticket purchase.
-    async fn enqueue_event_welcome_notification(&self, community_id: Uuid, event_id: Uuid, user_id: Uuid) {
-        // Load the data required to build the welcome notification
-        let (site_settings, event) = match tokio::try_join!(
-            self.db.get_site_settings(),
-            self.db.get_event_summary_by_id(community_id, event_id),
-        ) {
-            Ok(context) => context,
-            Err(err) => {
-                warn!(error = %err, "failed to load event welcome notification context");
-                return;
-            }
-        };
-
-        // Build the notification payload for the completed checkout
-        let base_url = self
-            .server_cfg
-            .base_url
-            .strip_suffix('/')
-            .unwrap_or(&self.server_cfg.base_url);
-        let link = build_event_page_link(base_url, &event);
-        let template_data = EventWelcome {
-            event: event.clone(),
-            link: link.clone(),
-            theme: site_settings.theme,
-        };
-        let notification = NewNotification {
-            attachments: vec![build_event_calendar_attachment(base_url, &event)],
-            kind: NotificationKind::EventWelcome,
-            recipients: vec![user_id],
-            template_data: serde_json::to_value(&template_data).ok(),
-        };
-
-        // Enqueue the welcome notification on a best-effort basis
-        if let Err(err) = self.notifications_manager.enqueue(&notification).await {
-            warn!(error = %err, "failed to enqueue event welcome notification");
-        }
-    }
-
-    /// Enqueues the attendee notification for an approved refund request.
-    async fn enqueue_refund_approval_notification(&self, community_id: Uuid, event_id: Uuid, user_id: Uuid) {
-        // Load the data required to build the refund notification
-        let (site_settings, event) = match tokio::try_join!(
-            self.db.get_site_settings(),
-            self.db.get_event_summary_by_id(community_id, event_id),
-        ) {
-            Ok(context) => context,
-            Err(err) => {
-                warn!(error = %err, "failed to load refund approval notification context");
-                return;
-            }
-        };
-
-        // Build the notification payload for the approved refund
-        let base_url = self
-            .server_cfg
-            .base_url
-            .strip_suffix('/')
-            .unwrap_or(&self.server_cfg.base_url);
-        let link = build_event_page_link(base_url, &event);
-        let template_data = EventRefundApproved {
-            event,
-            link,
-            theme: site_settings.theme,
-        };
-        let notification = NewNotification {
-            attachments: vec![],
-            kind: NotificationKind::EventRefundApproved,
-            recipients: vec![user_id],
-            template_data: serde_json::to_value(&template_data).ok(),
-        };
-
-        // Enqueue the refund notification on a best-effort basis
-        if let Err(err) = self.notifications_manager.enqueue(&notification).await {
-            warn!(error = %err, "failed to enqueue refund approval notification");
-        }
-    }
-
-    /// Enqueues the attendee notification for a rejected refund request.
-    async fn enqueue_refund_rejection_notification(&self, community_id: Uuid, event_id: Uuid, user_id: Uuid) {
-        // Load the data required to build the refund notification
-        let (site_settings, event) = match tokio::try_join!(
-            self.db.get_site_settings(),
-            self.db.get_event_summary_by_id(community_id, event_id),
-        ) {
-            Ok(context) => context,
-            Err(err) => {
-                warn!(error = %err, "failed to load refund rejection notification context");
-                return;
-            }
-        };
-
-        // Build the notification payload for the rejected refund
-        let base_url = self
-            .server_cfg
-            .base_url
-            .strip_suffix('/')
-            .unwrap_or(&self.server_cfg.base_url);
-        let link = build_event_page_link(base_url, &event);
-        let template_data = EventRefundRejected {
-            event,
-            link,
-            theme: site_settings.theme,
-        };
-        let notification = NewNotification {
-            attachments: vec![],
-            kind: NotificationKind::EventRefundRejected,
-            recipients: vec![user_id],
-            template_data: serde_json::to_value(&template_data).ok(),
-        };
-
-        // Enqueue the refund notification on a best-effort basis
-        if let Err(err) = self.notifications_manager.enqueue(&notification).await {
-            warn!(error = %err, "failed to enqueue refund rejection notification");
-        }
-    }
-
-    /// Expires a checkout session after the provider reports it as expired.
-    async fn expire_checkout_session(&self, provider_session_id: &str) -> Result<()> {
-        let payments_provider = self.payments_provider()?;
-
-        self.db
-            .expire_event_purchase_for_checkout_session(payments_provider.provider(), provider_session_id)
-            .await
-            .map_err(|err| {
-                warn!(error = %err, "failed to expire checkout session");
-                err
-            })
-    }
-
-    /// Completes or refunds a checkout session after webhook verification.
-    async fn handle_completed_checkout(
-        &self,
-        provider_payment_reference: Option<String>,
-        provider_session_id: &str,
-    ) -> Result<()> {
-        let payments_provider = self.payments_provider()?;
-
-        // Reconcile the checkout session with the local purchase state
-        match self
-            .db
-            .reconcile_event_purchase_for_checkout_session(
-                payments_provider.provider(),
-                provider_session_id,
-                provider_payment_reference,
-            )
-            .await
-        {
-            Ok(ReconcileEventPurchaseResult::Completed(completed_purchase)) => {
-                self.enqueue_checkout_completed_notification(completed_purchase).await;
-                Ok(())
-            }
-            Ok(ReconcileEventPurchaseResult::Noop) => Ok(()),
-            Ok(ReconcileEventPurchaseResult::RefundRequired(refund_purchase)) => {
-                self.refund_unfulfillable_checkout(refund_purchase).await
-            }
-            Err(err) => {
-                warn!(error = %err, "failed to reconcile purchase");
-                Err(err)
-            }
-        }
-    }
-
-    /// Handles a verified payments webhook event.
-    async fn handle_webhook_event(&self, webhook_event: PaymentsWebhookEvent) -> Result<()> {
-        match webhook_event {
-            PaymentsWebhookEvent::CheckoutCompleted {
-                provider_payment_reference,
-                provider_session_id,
-            } => {
-                self.handle_completed_checkout(provider_payment_reference, &provider_session_id)
-                    .await
-            }
-            PaymentsWebhookEvent::CheckoutExpired { provider_session_id } => {
-                self.expire_checkout_session(&provider_session_id).await
-            }
-        }
-    }
-
     /// Returns the configured payments provider when paid operations are available.
     fn payments_provider(&self) -> Result<&DynPaymentsProvider> {
         self.payments_provider
             .as_ref()
             .ok_or_else(|| anyhow::anyhow!("payments are not configured"))
-    }
-
-    /// Refunds a checkout that can no longer be fulfilled locally.
-    async fn refund_unfulfillable_checkout(
-        &self,
-        refund_purchase: RefundRequiredEventPurchase,
-    ) -> Result<()> {
-        let payments_provider = self.payments_provider()?;
-
-        // Request a refund from the payment provider
-        let refund = payments_provider
-            .refund_payment(&RefundPaymentInput {
-                amount_minor: refund_purchase.amount_minor,
-                provider_payment_reference: refund_purchase.provider_payment_reference,
-                purchase_id: refund_purchase.event_purchase_id,
-            })
-            .await
-            .map_err(|err| {
-                warn!(error = %err, "failed to refund unfulfillable purchase");
-                err
-            })?;
-
-        // Persist the automatic refund after the provider call succeeds
-        self.db
-            .record_automatic_refund_for_event_purchase(
-                refund_purchase.event_purchase_id,
-                refund.provider_refund_id,
-            )
-            .await
-            .map_err(|err| {
-                warn!(error = %err, "failed to persist automatic refund");
-                err
-            })
     }
 
     /// Reverts the temporary refund approval state after a failed provider call.
@@ -565,6 +337,15 @@ impl PgPaymentsManager {
         {
             warn!(error = %revert_err, "failed to revert refund approval state");
         }
+    }
+
+    /// Builds the webhook reconciler for the configured payments provider.
+    fn webhook_reconciler(&self, payments_provider: DynPaymentsProvider) -> PaymentsWebhookReconciler {
+        PaymentsWebhookReconciler::new(
+            self.db.clone(),
+            self.notification_composer.clone(),
+            payments_provider,
+        )
     }
 }
 
@@ -602,10 +383,10 @@ impl PaymentsManager for PgPaymentsManager {
     /// [`PaymentsManager::handle_webhook`].
     async fn handle_webhook(
         &self,
-        signature_header: &str,
+        headers: &HeaderMap,
         body: &str,
     ) -> std::result::Result<(), HandleWebhookError> {
-        PgPaymentsManager::handle_webhook(self, signature_header, body).await
+        PgPaymentsManager::handle_webhook(self, headers, body).await
     }
 
     /// [`PaymentsManager::reject_refund_request`].

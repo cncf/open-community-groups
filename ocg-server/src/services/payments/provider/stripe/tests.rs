@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 
+use axum::http::{HeaderMap, HeaderValue};
 use chrono::{TimeDelta, Utc};
 use uuid::Uuid;
 
@@ -77,7 +78,7 @@ fn verify_and_parse_webhook_accepts_recent_signature() {
 
     // Verify and parse the webhook payload
     let webhook_event = provider
-        .verify_and_parse_webhook(&signature_header, body)
+        .verify_and_parse_webhook(&sample_webhook_headers(&signature_header), body)
         .expect("recent webhook to verify");
 
     // Check the parsed event matches expectations
@@ -103,7 +104,7 @@ fn verify_and_parse_webhook_accepts_any_matching_v1_signature() {
 
     // Verify and parse the webhook payload
     let webhook_event = provider
-        .verify_and_parse_webhook(&signature_header, body)
+        .verify_and_parse_webhook(&sample_webhook_headers(&signature_header), body)
         .expect("rotated webhook to verify");
 
     // Check the parsed event matches expectations
@@ -126,7 +127,7 @@ fn verify_and_parse_webhook_maps_checkout_session_expired_events() {
 
     // Verify and parse the webhook payload
     let webhook_event = provider
-        .verify_and_parse_webhook(&signature_header, body)
+        .verify_and_parse_webhook(&sample_webhook_headers(&signature_header), body)
         .expect("expired webhook to verify");
 
     // Check the parsed event matches expectations
@@ -147,7 +148,7 @@ fn verify_and_parse_webhook_rejects_invalid_signature() {
 
     // Verify and parse the webhook payload
     let err = provider
-        .verify_and_parse_webhook(&signature_header, body)
+        .verify_and_parse_webhook(&sample_webhook_headers(&signature_header), body)
         .expect_err("invalid webhook signature to be rejected");
 
     // Check the returned error matches expectations
@@ -163,7 +164,7 @@ fn verify_and_parse_webhook_rejects_missing_object_data() {
 
     // Verify and parse the webhook payload
     let err = provider
-        .verify_and_parse_webhook(&signature_header, body)
+        .verify_and_parse_webhook(&sample_webhook_headers(&signature_header), body)
         .expect_err("webhook without object data to be rejected");
 
     // Check the returned error matches expectations
@@ -179,7 +180,7 @@ fn verify_and_parse_webhook_rejects_missing_signature() {
 
     // Verify and parse the webhook payload
     let err = provider
-        .verify_and_parse_webhook(&signature_header, body)
+        .verify_and_parse_webhook(&sample_webhook_headers(&signature_header), body)
         .expect_err("webhook without signature to be rejected");
 
     // Check the returned error matches expectations
@@ -197,7 +198,7 @@ fn verify_and_parse_webhook_rejects_missing_timestamp() {
 
     // Verify and parse the webhook payload
     let err = provider
-        .verify_and_parse_webhook(&signature_header, body)
+        .verify_and_parse_webhook(&sample_webhook_headers(&signature_header), body)
         .expect_err("webhook without timestamp to be rejected");
 
     // Check the returned error matches expectations
@@ -214,7 +215,7 @@ fn verify_and_parse_webhook_rejects_stale_signature() {
 
     // Verify and parse the webhook payload
     let err = provider
-        .verify_and_parse_webhook(&signature_header, body)
+        .verify_and_parse_webhook(&sample_webhook_headers(&signature_header), body)
         .expect_err("stale webhook to be rejected");
 
     // Check the returned error matches expectations
@@ -230,7 +231,7 @@ fn verify_and_parse_webhook_rejects_unsupported_event_types() {
 
     // Verify and parse the webhook payload
     let err = provider
-        .verify_and_parse_webhook(&signature_header, body)
+        .verify_and_parse_webhook(&sample_webhook_headers(&signature_header), body)
         .expect_err("unsupported webhook event to be rejected");
 
     // Check the returned error matches expectations
@@ -289,4 +290,14 @@ fn sample_stripe_provider() -> StripeProvider {
         secret_key: "sk_test".to_string(),
         webhook_secret: "whsec_test".to_string(),
     })
+}
+
+// Create sample webhook headers with the given signature header value.
+fn sample_webhook_headers(signature_header: &str) -> HeaderMap {
+    let mut headers = HeaderMap::new();
+    headers.insert(
+        "stripe-signature",
+        HeaderValue::from_str(signature_header).expect("Stripe signature header to be valid"),
+    );
+    headers
 }
