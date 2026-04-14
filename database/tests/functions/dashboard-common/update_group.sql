@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(16);
+select plan(18);
 
 -- ============================================================================
 -- VARIABLES
@@ -14,13 +14,16 @@ select plan(16);
 \set communityID '00000000-0000-0000-0000-000000000001'
 \set eventCategoryID '00000000-0000-0000-0000-000000000013'
 \set eventID '00000000-0000-0000-0000-000000000031'
+\set eventUnpublishedID '00000000-0000-0000-0000-000000000032'
 \set group2ID '00000000-0000-0000-0000-000000000023'
 \set group3ID '00000000-0000-0000-0000-000000000024'
 \set group4ID '00000000-0000-0000-0000-000000000025'
+\set group5ID '00000000-0000-0000-0000-000000000026'
 \set groupDeletedID '00000000-0000-0000-0000-000000000022'
 \set groupID '00000000-0000-0000-0000-000000000021'
 \set nonExistentCommunityID '00000000-0000-0000-0000-000000000099'
 \set ticketTypeID '00000000-0000-0000-0000-000000000041'
+\set ticketTypeUnpublishedID '00000000-0000-0000-0000-000000000042'
 
 -- ============================================================================
 -- SEED DATA
@@ -141,6 +144,27 @@ insert into "group" (
     '2024-01-15 10:00:00+00'
 );
 
+-- Group with an unpublished ticketed event for payment recipient guards
+insert into "group" (
+    group_id,
+    name,
+    slug,
+    community_id,
+    group_category_id,
+    description,
+    payment_recipient,
+    created_at
+) values (
+    :'group5ID'::uuid,
+    'Group With Unpublished Ticketed Event',
+    'vwx6qrs',
+    :'communityID',
+    :'category1ID',
+    'Unpublished ticketed event coverage',
+    '{"provider": "stripe", "recipient_id": "acct_456"}'::jsonb,
+    '2024-01-15 10:00:00+00'
+);
+
 -- Published ticketed event used for payment recipient guards
 insert into event (
     description,
@@ -174,6 +198,44 @@ insert into event_ticket_type (
 ) values (
     :'ticketTypeID'::uuid,
     :'eventID'::uuid,
+    1,
+    50,
+    'General admission'
+);
+
+-- Unpublished ticketed event used for payment recipient guards
+insert into event (
+    description,
+    event_id,
+    event_category_id,
+    event_kind_id,
+    group_id,
+    name,
+    published,
+    slug,
+    timezone
+) values (
+    'Unpublished ticketed event for payment recipient validation',
+    :'eventUnpublishedID'::uuid,
+    :'eventCategoryID'::uuid,
+    'virtual',
+    :'group5ID'::uuid,
+    'Draft Ticketed Group Event',
+    false,
+    'draft-ticketed-group-event',
+    'UTC'
+);
+
+-- Ticket type for the unpublished ticketed event
+insert into event_ticket_type (
+    event_ticket_type_id,
+    event_id,
+    "order",
+    seats_total,
+    title
+) values (
+    :'ticketTypeUnpublishedID'::uuid,
+    :'eventUnpublishedID'::uuid,
     1,
     50,
     'General admission'
@@ -486,7 +548,7 @@ select throws_ok(
             }
         }'::jsonb
     )$$,
-    'published ticketed events require a payment recipient',
+    'ticketed events require a payment recipient',
     'Should reject clearing payment recipient when published ticketed events exist'
 );
 
@@ -524,6 +586,36 @@ select is(
     (select get_group_full(:'communityID'::uuid, :'groupID'::uuid)::jsonb->'payment_recipient'),
     null::jsonb,
     'Should not persist a whitespace-only payment recipient id'
+);
+
+-- Should reject clearing payment recipient when unpublished ticketed events exist
+select throws_ok(
+    $$select update_group(
+        null::uuid,
+        '00000000-0000-0000-0000-000000000001'::uuid,
+        '00000000-0000-0000-0000-000000000026'::uuid,
+        '{
+            "name": "Group With Unpublished Ticketed Event",
+            "category_id": "00000000-0000-0000-0000-000000000011",
+            "description": "Unpublished ticketed event coverage",
+            "payment_recipient": {
+                "provider": "stripe",
+                "recipient_id": "   "
+            }
+        }'::jsonb
+    )$$,
+    'ticketed events require a payment recipient',
+    'Should reject clearing payment recipient when unpublished ticketed events exist'
+);
+
+-- Should keep the stored payment recipient after rejecting the unpublished clear
+select is(
+    (select get_group_full(:'communityID'::uuid, :'group5ID'::uuid)::jsonb->'payment_recipient'),
+    '{
+        "provider": "stripe",
+        "recipient_id": "acct_456"
+    }'::jsonb,
+    'Should keep the stored payment recipient after rejecting the unpublished clear'
 );
 
 -- ============================================================================

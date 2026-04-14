@@ -15,7 +15,7 @@ select plan(4);
 \set eventTicketTypeID '73000000-0000-0000-0000-000000000004'
 \set groupCategoryID '73000000-0000-0000-0000-000000000005'
 \set groupID '73000000-0000-0000-0000-000000000006'
-\set expiredPurchaseID '73000000-0000-0000-0000-000000000007'
+\set refundPendingPurchaseID '73000000-0000-0000-0000-000000000007'
 \set completedPurchaseID '73000000-0000-0000-0000-000000000008'
 \set priceWindowID '73000000-0000-0000-0000-000000000009'
 \set userID '73000000-0000-0000-0000-000000000010'
@@ -97,12 +97,12 @@ insert into event_purchase (
     ticket_title,
     user_id
 ) values (
-    :'expiredPurchaseID',
+    :'refundPendingPurchaseID',
     2500,
     'USD',
     :'eventID',
     :'eventTicketTypeID',
-    'expired',
+    'refund-pending',
     'General admission',
     :'userID'
 ), (
@@ -120,13 +120,13 @@ insert into event_purchase (
 -- TESTS
 -- ============================================================================
 
--- Should record an automatic refund for an expired purchase
+-- Should record an automatic refund for a refund-pending purchase
 select lives_ok(
     $$select record_automatic_refund_for_event_purchase(
         '73000000-0000-0000-0000-000000000007'::uuid,
         're_auto_123'
     )$$,
-    'Should record an automatic refund for an expired purchase'
+    'Should record an automatic refund for a refund-pending purchase'
 );
 
 -- Should persist the refunded purchase fields
@@ -173,14 +173,14 @@ select results_eq(
     'Should create the expected automatic refund audit row'
 );
 
--- Should reject non-expired purchases
+-- Should reject purchases that are not refund-pending
 select throws_ok(
     $$select record_automatic_refund_for_event_purchase(
         '73000000-0000-0000-0000-000000000008'::uuid,
         're_auto_456'
     )$$,
-    'expired purchase not found',
-    'Should reject non-expired purchases'
+    'refund-pending purchase not found',
+    'Should reject purchases that are not refund-pending'
 );
 
 -- ============================================================================

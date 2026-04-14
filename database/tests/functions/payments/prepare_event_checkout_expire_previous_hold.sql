@@ -159,10 +159,11 @@ select lives_ok(
 select results_eq(
     $$
         select
+            (select hold_expires_at <= current_timestamp from event_purchase where event_purchase_id = '79210000-0000-0000-0000-000000000009'::uuid),
             (select status from event_purchase where event_purchase_id = '79210000-0000-0000-0000-000000000009'::uuid),
             (select available::text from event_discount_code where event_discount_code_id = '79210000-0000-0000-0000-000000000002'::uuid)
     $$,
-    $$ values ('expired'::text, '1'::text) $$,
+    $$ values (true, 'expired'::text, '1'::text) $$,
     'Should restore the reserved discount inventory'
 );
 

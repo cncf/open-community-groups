@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(38);
+select plan(39);
 
 -- ============================================================================
 -- TESTS
@@ -40,6 +40,24 @@ select has_check('session', 'session_check');
 select has_check('session', 'session_meeting_conflict_chk');
 select has_check('session', 'session_meeting_provider_required_chk');
 select has_check('session', 'session_meeting_requested_times_chk');
+
+-- Test: event purchase statuses should match expected values
+select results_eq(
+    $$
+        select (regexp_matches(pg_get_constraintdef(oid), $re$'([^']+)'$re$, 'g'))[1]
+        from pg_constraint
+        where conname = 'event_purchase_status_check'
+    $$,
+    $$ values
+        ('completed'),
+        ('expired'),
+        ('pending'),
+        ('refund-pending'),
+        ('refund-requested'),
+        ('refunded')
+    $$,
+    'Event purchase statuses should match expected values'
+);
 
 -- Test: event kinds should match expected values
 select results_eq(

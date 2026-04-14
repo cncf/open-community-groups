@@ -1,5 +1,5 @@
 -- Used by the checkout-completed webhook flow after the provider refund
--- succeeds: converts an expired unfulfillable purchase into a refunded
+-- succeeds: converts a refund-pending unfulfillable purchase into a refunded
 -- purchase and records the automatic refund in the audit log
 create or replace function record_automatic_refund_for_event_purchase(
     p_event_purchase_id uuid,
@@ -12,7 +12,7 @@ declare
     v_group_id uuid;
     v_user_id uuid;
 begin
-    -- Lock the expired purchase before marking it as refunded
+    -- Lock the refund-pending purchase before marking it as refunded
     select
         g.community_id,
         ep.event_id,
@@ -27,11 +27,11 @@ begin
     join event e on e.event_id = ep.event_id
     join "group" g on g.group_id = e.group_id
     where ep.event_purchase_id = p_event_purchase_id
-    and ep.status = 'expired'
+    and ep.status = 'refund-pending'
     for update of ep;
 
     if not found then
-        raise exception 'expired purchase not found';
+        raise exception 'refund-pending purchase not found';
     end if;
 
     -- Persist the refunded purchase state after the provider refund succeeds

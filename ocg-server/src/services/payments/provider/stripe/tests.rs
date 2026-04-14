@@ -59,6 +59,16 @@ fn build_checkout_session_form_fields_restricts_checkout_to_card_payments() {
 }
 
 #[test]
+fn checkout_idempotency_key_is_deterministic_per_purchase() {
+    let purchase_id = Uuid::new_v4();
+
+    assert_eq!(
+        StripeProvider::checkout_idempotency_key(purchase_id),
+        format!("event-purchase-checkout-{purchase_id}")
+    );
+}
+
+#[test]
 fn verify_and_parse_webhook_accepts_recent_signature() {
     // Setup provider and webhook payload
     let provider = sample_stripe_provider();
@@ -69,6 +79,32 @@ fn verify_and_parse_webhook_accepts_recent_signature() {
     let webhook_event = provider
         .verify_and_parse_webhook(&signature_header, body)
         .expect("recent webhook to verify");
+
+    // Check the parsed event matches expectations
+    assert_eq!(
+        webhook_event,
+        PaymentsWebhookEvent::CheckoutCompleted {
+            provider_payment_reference: Some("pi_test_123".to_string()),
+            provider_session_id: "cs_test_123".to_string(),
+        }
+    );
+}
+
+#[test]
+fn verify_and_parse_webhook_accepts_any_matching_v1_signature() {
+    // Setup provider and webhook payload
+    let provider = sample_stripe_provider();
+    let body = r#"{"type":"checkout.session.completed","data":{"object":{"id":"cs_test_123","payment_intent":"pi_test_123"}}}"#;
+    let timestamp = Utc::now().timestamp();
+    let expected_signature = StripeProvider::compute_signature("whsec_test", &format!("{timestamp}.{body}"));
+    let rotated_signature =
+        StripeProvider::compute_signature("whsec_rotated", &format!("{timestamp}.{body}"));
+    let signature_header = format!("t={timestamp},v1={expected_signature},v1={rotated_signature}");
+
+    // Verify and parse the webhook payload
+    let webhook_event = provider
+        .verify_and_parse_webhook(&signature_header, body)
+        .expect("rotated webhook to verify");
 
     // Check the parsed event matches expectations
     assert_eq!(

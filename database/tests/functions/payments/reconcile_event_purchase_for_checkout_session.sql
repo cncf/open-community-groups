@@ -283,7 +283,7 @@ select is(
     'Should require refund for expired local holds'
 );
 
--- Should persist the expired purchase fields and restore discount availability
+-- Should persist the refund-pending purchase fields and restore discount availability
 select results_eq(
     $$
         select
@@ -292,15 +292,20 @@ select results_eq(
             (select status from event_purchase where event_purchase_id = '79000000-0000-0000-0000-000000000013'::uuid),
             (select available from event_discount_code where event_discount_code_id = '79000000-0000-0000-0000-000000000002'::uuid)
     $$,
-    $$ values (true, 'pi_expired'::text, 'expired'::text, 1::int) $$,
-    'Should persist the expired purchase fields and restore discount availability'
+    $$ values (true, 'pi_expired'::text, 'refund-pending'::text, 1::int) $$,
+    'Should persist the refund-pending purchase fields and restore discount availability'
 );
 
--- Should noop for already expired purchases after the refund handoff
+-- Should keep requiring refund for refund-pending purchases after the refund handoff
 select is(
     reconcile_event_purchase_for_checkout_session('stripe', 'cs_expired', null)::jsonb,
-    '{"outcome":"noop"}'::jsonb,
-    'Should noop for already expired purchases after the refund handoff'
+    jsonb_build_object(
+        'amount_minor', 2000,
+        'event_purchase_id', :'purchaseExpiredID'::uuid,
+        'outcome', 'refund_required',
+        'provider_payment_reference', 'pi_expired'
+    ),
+    'Should keep requiring refund for refund-pending purchases after the refund handoff'
 );
 
 -- Should not restore discount availability twice for already expired purchases
@@ -336,7 +341,7 @@ select results_eq(
         from event_purchase
         where event_purchase_id = '79000000-0000-0000-0000-000000000014'::uuid
     $$,
-    $$ values (true, 'pi_canceled'::text, 'expired'::text) $$,
+    $$ values (true, 'pi_canceled'::text, 'refund-pending'::text) $$,
     'Should persist the canceled purchase fields when refunding'
 );
 

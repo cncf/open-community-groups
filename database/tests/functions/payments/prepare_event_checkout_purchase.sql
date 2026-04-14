@@ -339,9 +339,16 @@ select results_eq(
                 where event_id = '79100000-0000-0000-0000-000000000003'::uuid
                 and user_id = '79100000-0000-0000-0000-000000000023'::uuid
                 and status = 'expired'
+            ),
+            (
+                select hold_expires_at <= current_timestamp
+                from event_purchase
+                where event_id = '79100000-0000-0000-0000-000000000003'::uuid
+                and user_id = '79100000-0000-0000-0000-000000000023'::uuid
+                and status = 'expired'
             )
     $$,
-    $$ values ('79100000-0000-0000-0000-000000000007'::text, 1::int) $$,
+    $$ values ('79100000-0000-0000-0000-000000000007'::text, 1::int, true) $$,
     'Should create the requested pending purchase and expire the previous one'
 );
 

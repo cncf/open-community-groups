@@ -37,7 +37,7 @@ begin
     v_payment_recipient_changed := p_group ? 'payment_recipient'
         and v_previous_payment_recipient is distinct from v_new_payment_recipient;
 
-    -- Prevent clearing the recipient from breaking checkout for published ticketed events
+    -- Prevent clearing the recipient from breaking checkout for active ticketed events
     if v_payment_recipient_changed
        and v_new_payment_recipient is null
        and exists (
@@ -45,11 +45,10 @@ begin
            from event e
            join event_ticket_type ett on ett.event_id = e.event_id
            where e.group_id = p_group_id
-           and e.published = true
            and e.canceled = false
            and e.deleted = false
        ) then
-        raise exception 'published ticketed events require a payment recipient';
+        raise exception 'ticketed events require a payment recipient';
     end if;
 
     -- Update the group fields from the payload

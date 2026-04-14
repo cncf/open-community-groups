@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(13);
+select plan(14);
 
 -- ============================================================================
 -- VARIABLES
@@ -14,10 +14,13 @@ select plan(13);
 \set eventID '00000000-0000-0000-0000-000000000031'
 \set eventNoMeetingID '00000000-0000-0000-0000-000000000032'
 \set eventNoStartDateID '00000000-0000-0000-0000-000000000033'
+\set eventTicketedNoRecipientID '00000000-0000-0000-0000-000000000034'
 \set groupCategoryID '00000000-0000-0000-0000-000000000010'
 \set groupID '00000000-0000-0000-0000-000000000021'
+\set groupNoRecipientID '00000000-0000-0000-0000-000000000022'
 \set sessionMeetingID '00000000-0000-0000-0000-000000000051'
 \set sessionNoMeetingID '00000000-0000-0000-0000-000000000052'
+\set ticketTypeNoRecipientID '00000000-0000-0000-0000-000000000061'
 \set userID '00000000-0000-0000-0000-000000000041'
 
 -- ============================================================================
@@ -50,6 +53,23 @@ insert into "group" (
     'Test Group',
     'test-group',
     'A test group',
+    :'groupCategoryID'
+);
+
+-- Group without a payment recipient
+insert into "group" (
+    group_id,
+    community_id,
+    name,
+    slug,
+    description,
+    group_category_id
+) values (
+    :'groupNoRecipientID',
+    :'communityID',
+    'No Recipient Group',
+    'no-recipient-group',
+    'A group without a payment recipient',
     :'groupCategoryID'
 );
 
@@ -146,6 +166,48 @@ insert into event (
     :'eventCategoryID',
     'in-person',
     false
+);
+
+-- Ticketed event without a payment recipient on its group
+insert into event (
+    event_id,
+    group_id,
+    name,
+    slug,
+    description,
+    timezone,
+    event_category_id,
+    event_kind_id,
+    starts_at,
+    payment_currency_code,
+    published
+) values (
+    :'eventTicketedNoRecipientID',
+    :'groupNoRecipientID',
+    'Ticketed Event No Recipient',
+    'ticketed-event-no-recipient',
+    'A ticketed event without a payment recipient',
+    'UTC',
+    :'eventCategoryID',
+    'virtual',
+    current_timestamp + interval '2 days',
+    'USD',
+    false
+);
+
+-- Ticket type for the group without a payment recipient
+insert into event_ticket_type (
+    event_ticket_type_id,
+    event_id,
+    "order",
+    seats_total,
+    title
+) values (
+    :'ticketTypeNoRecipientID',
+    :'eventTicketedNoRecipientID',
+    1,
+    50,
+    'Paid ticket'
 );
 
 -- Session with meeting_requested=true (should be marked as out of sync)
@@ -305,6 +367,13 @@ select throws_ok(
     $$select publish_event('00000000-0000-0000-0000-000000000041'::uuid, '00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000033'::uuid)$$,
     'event must have a start date to be published',
     'Should throw error when event has no start date'
+);
+
+-- Should throw error when ticketed event group has no payment recipient
+select throws_ok(
+    $$select publish_event('00000000-0000-0000-0000-000000000041'::uuid, '00000000-0000-0000-0000-000000000022'::uuid, '00000000-0000-0000-0000-000000000034'::uuid)$$,
+    'ticketed events require a payment recipient',
+    'Should throw error when ticketed event group has no payment recipient'
 );
 
 -- ============================================================================

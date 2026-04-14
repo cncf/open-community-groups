@@ -6,20 +6,51 @@ create or replace function publish_event(
 )
 returns void as $$
 declare
+    v_has_ticket_types boolean;
+    v_payment_recipient jsonb;
+    v_payment_currency_code text;
     v_starts_at timestamptz;
 begin
-    -- Check if the event is active and lock it for update
-    select starts_at
-    into v_starts_at
-    from event
+    -- Check if the event is active, load ticketing state, and lock it for update
+    select
+        exists (
+            select 1
+            from event_ticket_type ett
+            where ett.event_id = e.event_id
+        ),
+        g.payment_recipient,
+        e.payment_currency_code,
+        e.starts_at
+    into
+        v_has_ticket_types,
+        v_payment_recipient,
+        v_payment_currency_code,
+        v_starts_at
+    from event e
+    join "group" g on g.group_id = e.group_id
     where event_id = p_event_id
-    and group_id = p_group_id
-    and deleted = false
-    and canceled = false
-    for update;
+    and e.group_id = p_group_id
+    and e.deleted = false
+    and e.canceled = false
+    for update of e;
 
     if not found then
         raise exception 'event not found or inactive';
+    end if;
+
+    -- Require checkout-critical ticketing configuration before publishing
+    if v_has_ticket_types then
+        if v_payment_recipient is null then
+            raise exception 'ticketed events require a payment recipient';
+        end if;
+
+        if coalesce(v_payment_recipient->>'provider', '') <> 'stripe' then
+            raise exception 'ticketed events require a Stripe payment recipient';
+        end if;
+
+        if v_payment_currency_code is null then
+            raise exception 'ticketed events require payment_currency_code';
+        end if;
     end if;
 
     -- Check that the event has a start date

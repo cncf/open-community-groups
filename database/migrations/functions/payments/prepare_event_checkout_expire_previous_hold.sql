@@ -9,6 +9,7 @@ begin
     -- Expire the replaced pending purchase before creating the new hold
     update event_purchase
     set
+        hold_expires_at = current_timestamp,
         status = 'expired',
         updated_at = current_timestamp
     where event_purchase_id = p_event_purchase_id

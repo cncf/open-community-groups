@@ -66,6 +66,7 @@ begin
     -- Ignore purchases that are already reconciled
     if not (
         v_status = 'pending'
+        or v_status = 'refund-pending'
         or (
             v_status = 'expired'
             and v_hold_expires_at is not null
@@ -84,18 +85,33 @@ begin
             raise exception 'provider payment reference is required for refund';
         end if;
 
-        -- Persist the expired purchase state before the refund step
+        -- Persist the refund-pending state before the provider refund step
         update event_purchase
         set
             hold_expires_at = null,
             provider_payment_reference = v_provider_payment_reference,
-            status = 'expired',
+            status = 'refund-pending',
             updated_at = current_timestamp
         where event_purchase_id = v_purchase_id;
 
         -- Release the discount reservation only when expiring a pending hold
         if v_status = 'pending' and v_event_discount_code_id is not null then
             perform release_event_discount_code_availability(v_event_discount_code_id);
+        end if;
+
+        return jsonb_build_object(
+            'amount_minor', v_amount_minor,
+            'event_purchase_id', v_purchase_id,
+            'outcome', 'refund_required',
+            'provider_payment_reference', v_provider_payment_reference
+        );
+    end if;
+
+    -- Retry automatic refunds that were already handed off previously
+    if v_status = 'refund-pending' then
+        -- Require a provider payment reference before requesting a refund
+        if v_provider_payment_reference is null then
+            raise exception 'provider payment reference is required for refund';
         end if;
 
         return jsonb_build_object(
@@ -113,12 +129,12 @@ begin
             raise exception 'provider payment reference is required for refund';
         end if;
 
-        -- Persist the expired purchase state before the refund step
+        -- Persist the refund-pending state before the provider refund step
         update event_purchase
         set
             hold_expires_at = null,
             provider_payment_reference = v_provider_payment_reference,
-            status = 'expired',
+            status = 'refund-pending',
             updated_at = current_timestamp
         where event_purchase_id = v_purchase_id;
 

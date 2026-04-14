@@ -123,6 +123,11 @@ impl StripeProvider {
         form_fields
     }
 
+    /// Builds a deterministic idempotency key for Stripe checkout sessions.
+    fn checkout_idempotency_key(purchase_id: Uuid) -> String {
+        format!("event-purchase-checkout-{purchase_id}")
+    }
+
     /// Builds the signature digest used by Stripe.
     fn compute_signature(secret: &str, payload: &str) -> String {
         type HmacSha256 = Hmac<Sha256>;
@@ -148,11 +153,11 @@ impl StripeProvider {
     }
 
     /// Parses the Stripe webhook signature header.
-    fn parse_signature_header(signature_header: &str) -> Result<(String, String)> {
-        let mut signature = None;
+    fn parse_signature_header(signature_header: &str) -> Result<(String, Vec<String>)> {
+        let mut signatures = Vec::new();
         let mut timestamp = None;
 
-        // Extract the signed timestamp and v1 signature from Stripe's header
+        // Extract the signed timestamp and every v1 signature from Stripe's header
         for part in signature_header.split(',') {
             let mut pieces = part.splitn(2, '=');
             let Some(key) = pieces.next() else {
@@ -164,7 +169,7 @@ impl StripeProvider {
 
             match key.trim() {
                 "t" => timestamp = Some(value.trim().to_string()),
-                "v1" => signature = Some(value.trim().to_string()),
+                "v1" => signatures.push(value.trim().to_string()),
                 _ => {}
             }
         }
@@ -172,11 +177,11 @@ impl StripeProvider {
         let Some(timestamp) = timestamp else {
             bail!("missing Stripe webhook timestamp");
         };
-        let Some(signature) = signature else {
+        if signatures.is_empty() {
             bail!("missing Stripe webhook signature");
-        };
+        }
 
-        Ok((timestamp, signature))
+        Ok((timestamp, signatures))
     }
 
     /// Builds a deterministic idempotency key for Stripe refunds.
@@ -220,6 +225,10 @@ impl PaymentsProvider for StripeProvider {
             .post(format!("{}/checkout/sessions", Self::api_base_url()))
             .basic_auth(&self.cfg.secret_key, Some(""))
             .header("content-type", "application/x-www-form-urlencoded")
+            .header(
+                "idempotency-key",
+                Self::checkout_idempotency_key(input.purchase_id),
+            )
             .body(serde_urlencoded::to_string(&form_fields)?)
             .send()
             .await
@@ -310,12 +319,16 @@ impl PaymentsProvider for StripeProvider {
     /// [`PaymentsProvider::verify_and_parse_webhook`].
     fn verify_and_parse_webhook(&self, signature_header: &str, body: &str) -> Result<PaymentsWebhookEvent> {
         // Verify the webhook signature before trusting the payload contents
-        let (timestamp, provided_signature) = Self::parse_signature_header(signature_header)?;
+        let (timestamp, provided_signatures) = Self::parse_signature_header(signature_header)?;
         Self::validate_webhook_timestamp(&timestamp)?;
         let signed_payload = format!("{timestamp}.{body}");
         let expected_signature = Self::compute_signature(&self.cfg.webhook_secret, &signed_payload);
 
-        if !bool::from(provided_signature.as_bytes().ct_eq(expected_signature.as_bytes())) {
+        let has_matching_signature = provided_signatures.iter().any(|provided_signature| {
+            bool::from(provided_signature.as_bytes().ct_eq(expected_signature.as_bytes()))
+        });
+
+        if !has_matching_signature {
             bail!("invalid Stripe webhook signature");
         }
 

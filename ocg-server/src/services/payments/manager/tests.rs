@@ -1,4 +1,7 @@
-use std::sync::Arc;
+use std::sync::{
+    Arc,
+    atomic::{AtomicUsize, Ordering},
+};
 
 use serde_json::{from_value, to_value};
 use uuid::Uuid;
@@ -452,6 +455,17 @@ async fn get_or_create_checkout_redirect_url_creates_session_and_persists_it() {
                     }
         })
         .returning(|_, _, _| Ok(()));
+    db.expect_get_event_purchase_summary()
+        .times(1)
+        .withf(move |purchase_id| *purchase_id == event_purchase_id)
+        .returning(move |_| {
+            Ok(sample_event_purchase_summary(
+                event_purchase_id,
+                event_ticket_type_id,
+                Some("https://example.test/checkout".to_string()),
+                Some("SPRING".to_string()),
+            ))
+        });
 
     // Setup payments provider mock
     let mut payments_provider = MockPaymentsProvider::new();
@@ -511,6 +525,90 @@ async fn get_or_create_checkout_redirect_url_creates_session_and_persists_it() {
 }
 
 #[tokio::test]
+async fn get_or_create_checkout_redirect_url_returns_canonical_url_after_racing_attach() {
+    // Setup identifiers and data structures
+    let community_id = Uuid::new_v4();
+    let event = sample_event_summary(Uuid::new_v4());
+    let event_purchase_id = Uuid::new_v4();
+    let event_ticket_type_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let recipient = GroupPaymentRecipient {
+        provider: PaymentProvider::Stripe,
+        recipient_id: "acct_test_123".to_string(),
+    };
+    let user_id = Uuid::new_v4();
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_event_full_by_slug()
+        .times(1)
+        .withf(move |cid, group_slug, event_slug| {
+            *cid == community_id && group_slug == "group" && event_slug == "event"
+        })
+        .returning(move |_, _, _| Ok(sample_event_full(event.event_id, group_id)));
+    db.expect_get_group_full()
+        .times(1)
+        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
+        .returning(move |_, _| Ok(sample_group_full(group_id, Some(recipient.clone()))));
+    db.expect_attach_checkout_session_to_event_purchase()
+        .times(1)
+        .withf(move |purchase_id, provider, checkout_session| {
+            *purchase_id == event_purchase_id
+                && *provider == PaymentProvider::Stripe
+                && checkout_session
+                    == &CheckoutSession {
+                        provider_session_id: "cs_test_racing".to_string(),
+                        redirect_url: "https://example.test/checkout/racing".to_string(),
+                    }
+        })
+        .returning(|_, _, _| Ok(()));
+    db.expect_get_event_purchase_summary()
+        .times(1)
+        .withf(move |purchase_id| *purchase_id == event_purchase_id)
+        .returning(move |_| {
+            Ok(sample_event_purchase_summary(
+                event_purchase_id,
+                event_ticket_type_id,
+                Some("https://example.test/checkout/canonical".to_string()),
+                None,
+            ))
+        });
+
+    // Setup payments provider mock
+    let mut payments_provider = MockPaymentsProvider::new();
+    payments_provider
+        .expect_create_checkout_session()
+        .times(1)
+        .returning(|_| {
+            Box::pin(async move {
+                Ok(CheckoutSession {
+                    provider_session_id: "cs_test_racing".to_string(),
+                    redirect_url: "https://example.test/checkout/racing".to_string(),
+                })
+            })
+        });
+    payments_provider
+        .expect_provider()
+        .times(2)
+        .return_const(PaymentProvider::Stripe);
+
+    // Run the checkout session workflow
+    let orchestrator = sample_payments_manager(db, MockNotificationsManager::new(), Some(payments_provider));
+    let redirect_url = orchestrator
+        .get_or_create_checkout_redirect_url(
+            community_id,
+            &event,
+            &sample_event_purchase_summary(event_purchase_id, event_ticket_type_id, None, None),
+            user_id,
+        )
+        .await
+        .expect("canonical checkout URL to be returned");
+
+    // Check result matches expectations
+    assert_eq!(redirect_url, "https://example.test/checkout/canonical");
+}
+
+#[tokio::test]
 async fn get_or_create_checkout_redirect_url_returns_error_when_group_has_no_payment_recipient() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
@@ -530,6 +628,7 @@ async fn get_or_create_checkout_redirect_url_returns_error_when_group_has_no_pay
         .withf(move |cid, gid| *cid == community_id && *gid == group_id)
         .returning(move |_, _| Ok(sample_group_full(group_id, None)));
     db.expect_attach_checkout_session_to_event_purchase().times(0);
+    db.expect_get_event_purchase_summary().times(0);
 
     // Setup payments provider mock
     let mut payments_provider = MockPaymentsProvider::new();
@@ -562,6 +661,7 @@ async fn get_or_create_checkout_redirect_url_returns_error_when_payments_are_unc
     let mut db = MockDB::new();
     db.expect_get_event_full_by_slug().times(0);
     db.expect_get_group_full().times(0);
+    db.expect_get_event_purchase_summary().times(0);
 
     // Run the checkout session workflow without a configured payments provider
     let orchestrator = sample_payments_manager(db, MockNotificationsManager::new(), None);
@@ -592,6 +692,7 @@ async fn get_or_create_checkout_redirect_url_returns_existing_url_without_hittin
     let mut db = MockDB::new();
     db.expect_get_event_full_by_slug().times(0);
     db.expect_get_group_full().times(0);
+    db.expect_get_event_purchase_summary().times(0);
 
     // Run the checkout session workflow
     let orchestrator = sample_payments_manager(db, MockNotificationsManager::new(), None);
@@ -941,6 +1042,167 @@ async fn handle_webhook_returns_unexpected_when_automatic_refund_fails() {
         }
         unexpected => panic!("unexpected error: {unexpected:?}"),
     }
+}
+
+#[tokio::test]
+async fn handle_webhook_retries_automatic_refund_after_persist_failure() {
+    // Setup identifiers and attempt tracking
+    let event_purchase_id = Uuid::new_v4();
+    let persist_attempt = Arc::new(AtomicUsize::new(0));
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_event_summary_by_id().times(0);
+    db.expect_get_site_settings().times(0);
+    db.expect_reconcile_event_purchase_for_checkout_session()
+        .times(2)
+        .returning(move |_, _, _| {
+            Ok(ReconcileEventPurchaseResult::RefundRequired(
+                crate::db::payments::RefundRequiredEventPurchase {
+                    amount_minor: 2_500,
+                    event_purchase_id,
+                    provider_payment_reference: "pi_test_123".to_string(),
+                },
+            ))
+        });
+    db.expect_record_automatic_refund_for_event_purchase()
+        .times(2)
+        .withf(move |purchase_id, provider_refund_id| {
+            *purchase_id == event_purchase_id && provider_refund_id == "re_test_123"
+        })
+        .returning({
+            let persist_attempt = Arc::clone(&persist_attempt);
+            move |_, _| {
+                if persist_attempt.fetch_add(1, Ordering::SeqCst) == 0 {
+                    Err(anyhow::anyhow!("persist automatic refund failed"))
+                } else {
+                    Ok(())
+                }
+            }
+        });
+
+    // Setup notifications manager mock
+    let notifications_manager = MockNotificationsManager::new();
+
+    // Setup payments provider mock
+    let mut payments_provider = MockPaymentsProvider::new();
+    payments_provider
+        .expect_provider()
+        .times(2)
+        .return_const(PaymentProvider::Stripe);
+    payments_provider.expect_refund_payment().times(2).returning(|_| {
+        Box::pin(async move {
+            Ok(RefundPaymentResult {
+                provider_refund_id: "re_test_123".to_string(),
+            })
+        })
+    });
+    payments_provider
+        .expect_verify_and_parse_webhook()
+        .times(2)
+        .returning(|_, _| {
+            Ok(PaymentsWebhookEvent::CheckoutCompleted {
+                provider_payment_reference: Some("pi_test_123".to_string()),
+                provider_session_id: "cs_test_123".to_string(),
+            })
+        });
+
+    // Run the webhook workflow twice to simulate Stripe retrying the event
+    let orchestrator = sample_payments_manager(db, notifications_manager, Some(payments_provider));
+    let first_err = orchestrator
+        .handle_webhook("sig_test", "payload")
+        .await
+        .expect_err("automatic refund persistence to fail");
+    let second_result = orchestrator.handle_webhook("sig_test", "payload").await;
+
+    // Check the retry behavior
+    match first_err {
+        HandleWebhookError::Unexpected(err) => {
+            assert_eq!(err.to_string(), "persist automatic refund failed");
+        }
+        unexpected => panic!("unexpected error: {unexpected:?}"),
+    }
+    assert!(second_result.is_ok());
+}
+
+#[tokio::test]
+async fn handle_webhook_retries_automatic_refund_after_provider_failure() {
+    // Setup identifiers and attempt tracking
+    let event_purchase_id = Uuid::new_v4();
+    let refund_attempt = Arc::new(AtomicUsize::new(0));
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_event_summary_by_id().times(0);
+    db.expect_get_site_settings().times(0);
+    db.expect_reconcile_event_purchase_for_checkout_session()
+        .times(2)
+        .returning(move |_, _, _| {
+            Ok(ReconcileEventPurchaseResult::RefundRequired(
+                crate::db::payments::RefundRequiredEventPurchase {
+                    amount_minor: 2_500,
+                    event_purchase_id,
+                    provider_payment_reference: "pi_test_123".to_string(),
+                },
+            ))
+        });
+    db.expect_record_automatic_refund_for_event_purchase()
+        .times(1)
+        .withf(move |purchase_id, provider_refund_id| {
+            *purchase_id == event_purchase_id && provider_refund_id == "re_test_123"
+        })
+        .returning(|_, _| Ok(()));
+
+    // Setup notifications manager mock
+    let notifications_manager = MockNotificationsManager::new();
+
+    // Setup payments provider mock
+    let mut payments_provider = MockPaymentsProvider::new();
+    payments_provider
+        .expect_provider()
+        .times(2)
+        .return_const(PaymentProvider::Stripe);
+    payments_provider.expect_refund_payment().times(2).returning({
+        let refund_attempt = Arc::clone(&refund_attempt);
+        move |_| {
+            let refund_attempt = Arc::clone(&refund_attempt);
+            Box::pin(async move {
+                if refund_attempt.fetch_add(1, Ordering::SeqCst) == 0 {
+                    Err(anyhow::anyhow!("Stripe refund failed"))
+                } else {
+                    Ok(RefundPaymentResult {
+                        provider_refund_id: "re_test_123".to_string(),
+                    })
+                }
+            })
+        }
+    });
+    payments_provider
+        .expect_verify_and_parse_webhook()
+        .times(2)
+        .returning(|_, _| {
+            Ok(PaymentsWebhookEvent::CheckoutCompleted {
+                provider_payment_reference: Some("pi_test_123".to_string()),
+                provider_session_id: "cs_test_123".to_string(),
+            })
+        });
+
+    // Run the webhook workflow twice to simulate Stripe retrying the event
+    let orchestrator = sample_payments_manager(db, notifications_manager, Some(payments_provider));
+    let first_err = orchestrator
+        .handle_webhook("sig_test", "payload")
+        .await
+        .expect_err("automatic refund to fail");
+    let second_result = orchestrator.handle_webhook("sig_test", "payload").await;
+
+    // Check the retry behavior
+    match first_err {
+        HandleWebhookError::Unexpected(err) => {
+            assert_eq!(err.to_string(), "Stripe refund failed");
+        }
+        unexpected => panic!("unexpected error: {unexpected:?}"),
+    }
+    assert!(second_result.is_ok());
 }
 
 #[tokio::test]

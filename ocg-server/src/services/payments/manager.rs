@@ -213,7 +213,7 @@ impl PgPaymentsManager {
             bail!("group payments recipient is not configured for this provider");
         }
 
-        // Create the provider checkout session and store it on the pending purchase
+        // Create the provider checkout session
         let checkout_session = payments_provider
             .create_checkout_session(&CreateCheckoutSessionInput {
                 amount_minor: purchase.amount_minor,
@@ -231,8 +231,8 @@ impl PgPaymentsManager {
                 discount_code: purchase.discount_code.clone(),
             })
             .await?;
-        let redirect_url = checkout_session.redirect_url.clone();
 
+        // Persist the canonical checkout session used for webhook reconciliation
         self.db
             .attach_checkout_session_to_event_purchase(
                 purchase.event_purchase_id,
@@ -241,7 +241,13 @@ impl PgPaymentsManager {
             )
             .await?;
 
-        Ok(redirect_url)
+        // Reload the purchase so concurrent requests return the canonical
+        // checkout URL stored on the purchase
+        let purchase = self.db.get_event_purchase_summary(purchase.event_purchase_id).await?;
+
+        purchase
+            .provider_checkout_url
+            .ok_or_else(|| anyhow::anyhow!("provider checkout URL is missing after checkout creation"))
     }
 
     /// Verifies and processes a webhook payload.

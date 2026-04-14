@@ -52,6 +52,9 @@ pub(crate) trait DBPayments {
         provider_session_id: &str,
     ) -> Result<()>;
 
+    /// Loads the current attendee-facing summary for a purchase.
+    async fn get_event_purchase_summary(&self, event_purchase_id: Uuid) -> Result<EventPurchaseSummary>;
+
     /// Prepares a checkout purchase for an attendee ticket purchase.
     async fn prepare_event_checkout_purchase(
         &self,
@@ -197,6 +200,16 @@ impl DBPayments for PgDB {
         self.execute(
             "select expire_event_purchase_for_checkout_session($1::text, $2::text)",
             &[&provider.to_string(), &provider_session_id],
+        )
+        .await
+    }
+
+    /// [`DBPayments::get_event_purchase_summary`]
+    #[instrument(skip(self), err)]
+    async fn get_event_purchase_summary(&self, event_purchase_id: Uuid) -> Result<EventPurchaseSummary> {
+        self.fetch_json_one(
+            "select prepare_event_checkout_get_purchase_summary($1::uuid)",
+            &[&event_purchase_id],
         )
         .await
     }

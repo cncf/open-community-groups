@@ -816,6 +816,10 @@ mock! {
             provider: crate::types::payments::PaymentProvider,
             provider_session_id: &str,
         ) -> Result<()>;
+        async fn get_event_purchase_summary(
+            &self,
+            event_purchase_id: Uuid,
+        ) -> Result<crate::types::payments::EventPurchaseSummary>;
         async fn prepare_event_checkout_purchase(
             &self,
             community_id: Uuid,

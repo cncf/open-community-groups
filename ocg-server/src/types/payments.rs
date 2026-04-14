@@ -25,6 +25,7 @@ pub enum EventPurchaseStatus {
     Expired,
     #[default]
     Pending,
+    RefundPending,
     RefundRequested,
     Refunded,
 }
