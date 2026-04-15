@@ -671,6 +671,7 @@ input:placeholder-shown {
 .icon-star { --icon-url: url('/static/images/icons/star.svg'); }
 .icon-submission { --icon-url: url('/static/images/icons/submission.svg'); }
 .icon-team { --icon-url: url('/static/images/icons/team.svg'); }
+.icon-ticket { --icon-url: url('/static/images/icons/ticket.svg'); }
 .icon-trash { --icon-url: url('/static/images/icons/trash.svg'); }
 .icon-twitter { --icon-url: url('/static/images/icons/twitter.svg'); }
 .icon-user { --icon-url: url('/static/images/icons/user.svg'); }
