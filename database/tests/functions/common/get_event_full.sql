@@ -644,6 +644,7 @@ select is(
         "description": "Annual Kubernetes conference featuring workshops, talks, and hands-on sessions with industry experts from across the cloud native ecosystem",
         "event_id": "00000000-0000-0000-0000-000000000031",
         "event_reminder_enabled": true,
+        "has_ticket_purchases": false,
         "kind": "hybrid",
         "name": "KubeCon Seattle 2024",
         "published": true,

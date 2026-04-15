@@ -55,6 +55,12 @@ returns json as $$
             'meeting_requested', e.meeting_requested,
             'meetup_url', e.meetup_url,
             'payment_currency_code', e.payment_currency_code,
+            'has_ticket_purchases', exists (
+                select 1
+                from event_purchase ep
+                join event_ticket_type ett on ett.event_ticket_type_id = ep.event_ticket_type_id
+                where ett.event_id = e.event_id
+            ),
             'photos_urls', e.photos_urls,
             'published_at', floor(extract(epoch from e.published_at)),
             'registration_required', e.registration_required,
@@ -69,8 +75,10 @@ returns json as $$
             'venue_state', e.venue_state,
             'venue_zip_code', e.venue_zip_code,
             'waitlist_count', coalesce(ew.waitlist_count, 0),
-            'waitlist_enabled', e.waitlist_enabled,
+            'waitlist_enabled', e.waitlist_enabled
+        )
 
+        || jsonb_build_object(
             -- Include community and group summaries
             'community', get_community_summary(g.community_id),
             'group', get_group_summary(g.community_id, g.group_id),

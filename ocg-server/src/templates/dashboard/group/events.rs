@@ -51,6 +51,8 @@ pub(crate) struct AddPage {
     pub meetings_max_participants: HashMap<MeetingProvider, i32>,
     /// Whether payments are globally enabled.
     pub payments_enabled: bool,
+    /// Supported payment currency codes.
+    pub payment_currency_codes: Vec<String>,
     /// Whether this group can publish paid events.
     pub payments_ready: bool,
     /// List of available session kinds.
@@ -111,6 +113,8 @@ pub(crate) struct UpdatePage {
     pub meetings_max_participants: HashMap<MeetingProvider, i32>,
     /// Whether payments are globally enabled.
     pub payments_enabled: bool,
+    /// Supported payment currency codes.
+    pub payment_currency_codes: Vec<String>,
     /// Whether this group can publish paid events.
     pub payments_ready: bool,
     /// List of available session kinds.
@@ -119,6 +123,13 @@ pub(crate) struct UpdatePage {
     pub sponsors: Vec<GroupSponsor>,
     /// List of available timezones.
     pub timezones: Vec<String>,
+}
+
+impl UpdatePage {
+    /// Returns true when the provided currency code matches the current event currency.
+    pub(crate) fn is_selected_payment_currency_code(&self, payment_currency_code: &str) -> bool {
+        self.event.payment_currency_code.as_deref() == Some(payment_currency_code)
+    }
 }
 
 // Types.

@@ -65,7 +65,6 @@ export function initializeTicketingWaitlistState() {
 
     if (paymentCurrencyInput) {
       paymentCurrencyInput.required = hasTicketTypes && !paymentCurrencyInput.disabled;
-      paymentCurrencyInput.placeholder = "USD";
     }
   };
 

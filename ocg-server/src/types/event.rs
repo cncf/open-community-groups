@@ -148,6 +148,7 @@ impl EventSummary {
 
 /// Full event information.
 #[skip_serializing_none]
+#[allow(clippy::struct_excessive_bools)]
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct EventFull {
     /// Whether the event has been canceled.
@@ -168,6 +169,8 @@ pub struct EventFull {
     pub event_id: Uuid,
     /// Group hosting the event.
     pub group: GroupSummary,
+    /// Whether any ticket purchases already exist for this event.
+    pub has_ticket_purchases: bool,
     /// Event hosts.
     pub hosts: Vec<User>,
     /// Type of event (in-person, online, hybrid).

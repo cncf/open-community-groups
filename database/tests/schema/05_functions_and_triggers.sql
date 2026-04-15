@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(209);
+select plan(211);
 
 -- ============================================================================
 -- TESTS
@@ -117,6 +117,7 @@ select has_function('list_group_roles');
 select has_function('list_group_sponsors');
 select has_function('list_group_team_members');
 select has_function('list_group_team_members_ids');
+select has_function('list_payment_currency_codes');
 select has_function('list_redirects');
 select has_function('list_regions');
 select has_function('list_session_kinds');
@@ -195,6 +196,7 @@ select has_function('validate_event_cfs_labels_payload');
 select has_function('validate_event_discount_codes_payload');
 select has_function('validate_event_ticket_types_payload');
 select has_function('validate_event_ticketing_payload');
+select has_function('validate_payment_currency_code');
 select has_function('validate_update_event_dates');
 select has_function('verify_email');
 select has_function('withdraw_cfs_submission');

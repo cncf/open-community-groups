@@ -280,13 +280,15 @@
                 <div>
                   <label for="payment_currency_code" class="form-label">Event Currency</label>
                   <div class="mt-2">
-                    <input type="text"
-                           name="payment_currency_code"
-                           id="payment_currency_code"
-                           maxlength="{{ crate::validation::MAX_LEN_S }}"
-                           class="input-primary"
-                           placeholder="USD"
-                           {% if !payments_ready %}disabled{% endif %}>
+                    <select id="payment_currency_code"
+                            name="payment_currency_code"
+                            class="select-primary"
+                            {% if !payments_ready %}disabled{% endif %}>
+                      <option value="">Select currency</option>
+                      {% for payment_currency_code in payment_currency_codes -%}
+                        <option value="{{ payment_currency_code }}">{{ payment_currency_code }}</option>
+                      {% endfor -%}
+                    </select>
                   </div>
                   <p class="form-legend">Single currency used for all ticket prices on this event.</p>
                 </div>

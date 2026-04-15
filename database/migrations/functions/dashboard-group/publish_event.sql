@@ -56,6 +56,8 @@ begin
         if v_payment_currency_code is null then
             raise exception 'ticketed events require payment_currency_code';
         end if;
+
+        perform validate_payment_currency_code(v_payment_currency_code);
     end if;
 
     -- Check that the event has a start date

@@ -73,6 +73,8 @@ begin
         raise exception 'ticketed event is missing payment_currency_code';
     end if;
 
+    perform validate_payment_currency_code(v_currency_code);
+
     -- Return the event currency used to price the checkout session
     return v_currency_code;
 end;

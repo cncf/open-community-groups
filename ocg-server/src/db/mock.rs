@@ -414,6 +414,7 @@ mock! {
             &self,
             group_id: Uuid,
         ) -> Result<Vec<Uuid>>;
+        async fn list_payment_currency_codes(&self) -> Result<Vec<String>>;
         async fn list_session_kinds(&self)
             -> Result<Vec<crate::types::event::SessionKindSummary>>;
         async fn list_user_groups(

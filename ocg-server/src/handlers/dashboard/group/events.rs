@@ -71,21 +71,30 @@ pub(crate) async fn add_page(
     let meetings_enabled = meetings_cfg.as_ref().is_some_and(MeetingsConfig::meetings_enabled);
     let meetings_max_participants = build_meetings_max_participants(meetings_cfg.as_ref());
     let sponsor_filters: GroupSponsorsFilters = serde_qs_config().deserialize_str("")?;
-    let (can_manage_events, categories, event_kinds, payment_recipient, session_kinds, sponsors, timezones) =
-        tokio::try_join!(
-            db.user_has_group_permission(
-                &community_id,
-                &group_id,
-                &user.user_id,
-                GroupPermission::EventsWrite
-            ),
-            db.list_event_categories(community_id),
-            db.list_event_kinds(),
-            db.get_group_payment_recipient(community_id, group_id),
-            db.list_session_kinds(),
-            db.list_group_sponsors(group_id, &sponsor_filters, true),
-            db.list_timezones()
-        )?;
+    let (
+        can_manage_events,
+        categories,
+        event_kinds,
+        payment_currency_codes,
+        payment_recipient,
+        session_kinds,
+        sponsors,
+        timezones,
+    ) = tokio::try_join!(
+        db.user_has_group_permission(
+            &community_id,
+            &group_id,
+            &user.user_id,
+            GroupPermission::EventsWrite
+        ),
+        db.list_event_categories(community_id),
+        db.list_event_kinds(),
+        db.list_payment_currency_codes(),
+        db.get_group_payment_recipient(community_id, group_id),
+        db.list_session_kinds(),
+        db.list_group_sponsors(group_id, &sponsor_filters, true),
+        db.list_timezones()
+    )?;
 
     // Prepare template
     let template = events::AddPage {
@@ -95,6 +104,7 @@ pub(crate) async fn add_page(
         group_id,
         meetings_enabled,
         payments_enabled: payments_cfg.is_some(),
+        payment_currency_codes,
         payments_ready: payments_ready(payment_recipient.as_ref(), payments_cfg.as_ref()),
         meetings_max_participants,
         session_kinds,
@@ -153,6 +163,7 @@ pub(crate) async fn update_page(
         categories,
         cfs_statuses,
         event_kinds,
+        payment_currency_codes,
         payment_recipient,
         session_kinds,
         sponsors,
@@ -169,6 +180,7 @@ pub(crate) async fn update_page(
         db.list_event_categories(community_id),
         db.list_cfs_submission_statuses_for_review(),
         db.list_event_kinds(),
+        db.list_payment_currency_codes(),
         db.get_group_payment_recipient(community_id, group_id),
         db.list_session_kinds(),
         db.list_group_sponsors(group_id, &sponsor_filters, true),
@@ -185,6 +197,7 @@ pub(crate) async fn update_page(
         group_id,
         meetings_enabled,
         payments_enabled: payments_cfg.is_some(),
+        payment_currency_codes,
         payments_ready: payments_ready(payment_recipient.as_ref(), payments_cfg.as_ref()),
         meetings_max_participants,
         session_kinds,

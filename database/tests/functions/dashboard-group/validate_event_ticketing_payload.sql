@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(7);
+select plan(8);
 
 -- ============================================================================
 -- TESTS
@@ -63,6 +63,31 @@ select throws_ok(
     )$$,
     'ticketed events require payment_currency_code',
     'Should require a payment currency for ticketed events'
+);
+
+-- Should reject unsupported payment currencies for ticketed events
+select throws_ok(
+    $$select validate_event_ticketing_payload(
+        null,
+        'USDD',
+        '[
+            {
+                "event_ticket_type_id": "00000000-0000-0000-0000-000000000060",
+                "order": 1,
+                "price_windows": [
+                    {
+                        "amount_minor": 2000,
+                        "event_ticket_price_window_id": "00000000-0000-0000-0000-000000000070"
+                    }
+                ],
+                "seats_total": 50,
+                "title": "General admission"
+            }
+        ]'::jsonb,
+        false
+    )$$,
+    'payment_currency_code must be a supported currency code',
+    'Should reject unsupported payment currencies for ticketed events'
 );
 
 -- Should delegate discount code validation

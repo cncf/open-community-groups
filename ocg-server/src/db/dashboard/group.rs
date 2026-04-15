@@ -174,6 +174,9 @@ pub(crate) trait DBDashboardGroup {
     /// Lists all accepted, verified group team member user ids.
     async fn list_group_team_members_ids(&self, group_id: Uuid) -> Result<Vec<Uuid>>;
 
+    /// Lists supported payment currency codes.
+    async fn list_payment_currency_codes(&self) -> Result<Vec<String>>;
+
     /// Lists all available session kinds.
     async fn list_session_kinds(&self) -> Result<Vec<SessionKind>>;
 
@@ -610,6 +613,27 @@ impl DBDashboardGroup for PgDB {
     async fn list_group_team_members_ids(&self, group_id: Uuid) -> Result<Vec<Uuid>> {
         self.fetch_json_one("select list_group_team_members_ids($1::uuid)", &[&group_id])
             .await
+    }
+
+    /// [`DBDashboardGroup::list_payment_currency_codes`]
+    #[instrument(skip(self), err)]
+    async fn list_payment_currency_codes(&self) -> Result<Vec<String>> {
+        #[cached(
+            time = 86400,
+            key = "String",
+            convert = r#"{ String::from("payment_currency_codes") }"#,
+            sync_writes = "by_key",
+            result = true
+        )]
+        async fn inner(db: Client) -> Result<Vec<String>> {
+            let row = db.query_one("select list_payment_currency_codes()", &[]).await?;
+            let currency_codes = row.try_get::<_, Vec<String>>(0)?;
+
+            Ok(currency_codes)
+        }
+
+        let db = self.pool.get().await?;
+        inner(db).await
     }
 
     /// [`DBDashboardGroup::list_session_kinds`]

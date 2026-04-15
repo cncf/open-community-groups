@@ -24,6 +24,10 @@ begin
         raise exception 'payment_currency_code requires ticket_types';
     end if;
 
+    if p_ticket_types is not null and p_payment_currency_code is not null then
+        perform validate_payment_currency_code(p_payment_currency_code);
+    end if;
+
     perform validate_event_discount_codes_payload(p_discount_codes);
     perform validate_event_ticket_types_payload(p_ticket_types);
 end;

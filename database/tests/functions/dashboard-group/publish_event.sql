@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(14);
+select plan(15);
 
 -- ============================================================================
 -- VARIABLES
@@ -15,12 +15,14 @@ select plan(14);
 \set eventNoMeetingID '00000000-0000-0000-0000-000000000032'
 \set eventNoStartDateID '00000000-0000-0000-0000-000000000033'
 \set eventTicketedNoRecipientID '00000000-0000-0000-0000-000000000034'
+\set eventTicketedInvalidCurrencyID '00000000-0000-0000-0000-000000000035'
 \set groupCategoryID '00000000-0000-0000-0000-000000000010'
 \set groupID '00000000-0000-0000-0000-000000000021'
 \set groupNoRecipientID '00000000-0000-0000-0000-000000000022'
 \set sessionMeetingID '00000000-0000-0000-0000-000000000051'
 \set sessionNoMeetingID '00000000-0000-0000-0000-000000000052'
 \set ticketTypeNoRecipientID '00000000-0000-0000-0000-000000000061'
+\set ticketTypeInvalidCurrencyID '00000000-0000-0000-0000-000000000062'
 \set userID '00000000-0000-0000-0000-000000000041'
 
 -- ============================================================================
@@ -46,14 +48,16 @@ insert into "group" (
     name,
     slug,
     description,
-    group_category_id
+    group_category_id,
+    payment_recipient
 ) values (
     :'groupID',
     :'communityID',
     'Test Group',
     'test-group',
     'A test group',
-    :'groupCategoryID'
+    :'groupCategoryID',
+    jsonb_build_object('provider', 'stripe', 'recipient_id', 'acct_test_group')
 );
 
 -- Group without a payment recipient
@@ -195,6 +199,33 @@ insert into event (
     false
 );
 
+-- Ticketed event with an invalid currency code
+insert into event (
+    event_id,
+    group_id,
+    name,
+    slug,
+    description,
+    timezone,
+    event_category_id,
+    event_kind_id,
+    starts_at,
+    payment_currency_code,
+    published
+) values (
+    :'eventTicketedInvalidCurrencyID',
+    :'groupID',
+    'Ticketed Event Invalid Currency',
+    'ticketed-event-invalid-currency',
+    'A ticketed event with an invalid currency code',
+    'UTC',
+    :'eventCategoryID',
+    'virtual',
+    current_timestamp + interval '2 days',
+    'USDD',
+    false
+);
+
 -- Ticket type for the group without a payment recipient
 insert into event_ticket_type (
     event_ticket_type_id,
@@ -205,6 +236,21 @@ insert into event_ticket_type (
 ) values (
     :'ticketTypeNoRecipientID',
     :'eventTicketedNoRecipientID',
+    1,
+    50,
+    'Paid ticket'
+);
+
+-- Ticket type for the event with an invalid currency code
+insert into event_ticket_type (
+    event_ticket_type_id,
+    event_id,
+    "order",
+    seats_total,
+    title
+) values (
+    :'ticketTypeInvalidCurrencyID',
+    :'eventTicketedInvalidCurrencyID',
     1,
     50,
     'Paid ticket'
@@ -374,6 +420,13 @@ select throws_ok(
     $$select publish_event('00000000-0000-0000-0000-000000000041'::uuid, '00000000-0000-0000-0000-000000000022'::uuid, '00000000-0000-0000-0000-000000000034'::uuid, 'stripe')$$,
     'ticketed events require a payment recipient',
     'Should throw error when ticketed event group has no payment recipient'
+);
+
+-- Should reject ticketed events whose currency code is unsupported
+select throws_ok(
+    $$select publish_event('00000000-0000-0000-0000-000000000041'::uuid, '00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000035'::uuid, 'stripe')$$,
+    'payment_currency_code must be a supported currency code',
+    'Should reject ticketed events whose currency code is unsupported'
 );
 
 -- ============================================================================

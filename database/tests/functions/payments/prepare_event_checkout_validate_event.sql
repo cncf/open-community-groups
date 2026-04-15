@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(6);
+select plan(7);
 
 -- ============================================================================
 -- VARIABLES
@@ -20,6 +20,7 @@ select plan(6);
 \set missingRecipientGroupID '79270000-0000-0000-0000-000000000009'
 \set nonStripeGroupID '79270000-0000-0000-0000-000000000010'
 \set groupCategoryID '79270000-0000-0000-0000-000000000011'
+\set invalidCurrencyEventID '79270000-0000-0000-0000-000000000012'
 
 -- ============================================================================
 -- SEED DATA
@@ -149,6 +150,20 @@ insert into event (
     'USD',
     true,
     now()
+), (
+    false,
+    :'invalidCurrencyEventID',
+    :'eventCategoryID',
+    'in-person',
+    :'validGroupID',
+    'Invalid Currency Event',
+    'invalid-currency-event',
+    'Test event',
+    'UTC',
+    now() + interval '1 day',
+    'USDD',
+    true,
+    now()
 );
 
 -- ============================================================================
@@ -215,6 +230,17 @@ select throws_ok(
     )$$,
     'event not found or inactive',
     'Should reject inactive events'
+);
+
+-- Should reject events whose currency code is unsupported
+select throws_ok(
+    $$select prepare_event_checkout_validate_event(
+        '79270000-0000-0000-0000-000000000001'::uuid,
+        '79270000-0000-0000-0000-000000000012'::uuid,
+        'stripe'
+    )$$,
+    'payment_currency_code must be a supported currency code',
+    'Should reject events whose currency code is unsupported'
 );
 
 -- ============================================================================
