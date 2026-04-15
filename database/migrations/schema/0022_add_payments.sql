@@ -104,6 +104,7 @@ create table event_purchase (
             'completed',
             'expired',
             'pending',
+            'refund-pending',
             'refund-requested',
             'refunded'
         ]::text[])
@@ -242,6 +243,9 @@ create constraint trigger event_ticketing_consistency_on_event_ticket_type
     deferrable initially deferred
     for each row
     execute function check_event_ticketing_consistency();
+
+-- Drop the main-branch publish_event signature before loading the provider-aware one
+drop function if exists publish_event(uuid, uuid, uuid);
 
 -- Register notification kinds used by refund-request and refund-review flows
 insert into notification_kind (name) values ('event-refund-approved');
