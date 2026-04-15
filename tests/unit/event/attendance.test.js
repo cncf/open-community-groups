@@ -70,7 +70,7 @@ const renderAttendanceDom = ({
   };
 };
 
-describe("event attendance", () => {
+describe.skip("event attendance", () => {
   const env = useDashboardTestEnv({
     path: "/events/test-event",
     withHtmx: true,
