@@ -162,6 +162,9 @@ pub(crate) async fn attend_event(
     CommunityId(community_id): CommunityId,
     Path((_, event_id)): Path<(String, Uuid)>,
 ) -> Result<impl IntoResponse, HandlerError> {
+    // Validate that the event is still attendee-visible before checking ticketing
+    ensure_attendee_event_is_active(&db, community_id, event_id).await?;
+
     // Require checkout before users can RSVP to ticketed events
     let event = db.get_event_summary_by_id(community_id, event_id).await?;
     if event.is_ticketed() {
@@ -249,14 +252,22 @@ pub(crate) async fn attendance_status(
     CommunityId(community_id): CommunityId,
     Path((_, event_id)): Path<(String, Uuid)>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Load attendance status and event summary
-    let (attendance, event) = tokio::try_join!(
-        db.get_event_attendance(community_id, event_id, user.user_id),
-        db.get_event_summary_by_id(community_id, event_id),
-    )?;
+    // Load attendance status without failing when the event is stale or inactive
+    let attendance = db.get_event_attendance(community_id, event_id, user.user_id).await?;
+    let can_request_refund = if attendance.status == EventAttendanceStatus::Attendee
+        && attendance
+            .purchase_amount_minor
+            .is_some_and(|purchase_amount_minor| purchase_amount_minor > 0)
+        && attendance.refund_request_status.is_none()
+    {
+        let event = db.get_event_summary_by_id(community_id, event_id).await?;
+        attendance.can_request_refund(event.starts_at)
+    } else {
+        false
+    };
 
     Ok(Json(json!({
-        "can_request_refund": attendance.can_request_refund(event.starts_at),
+        "can_request_refund": can_request_refund,
         "is_checked_in": attendance.is_checked_in,
         "purchase_amount_minor": attendance.purchase_amount_minor,
         "refund_request_status": attendance.refund_request_status,
@@ -564,6 +575,22 @@ async fn create_checkout_hold(
     .map_err(Into::into)
 }
 
+/// Ensures attendee-facing event flows only continue for active events.
+async fn ensure_attendee_event_is_active(
+    db: &DynDB,
+    community_id: Uuid,
+    event_id: Uuid,
+) -> Result<(), HandlerError> {
+    db.ensure_event_is_active(community_id, event_id)
+        .await
+        .map_err(|err| match HandlerError::from(err) {
+            HandlerError::Other(err) if err.to_string() == "event not found or inactive" => {
+                HandlerError::Database("event not found or inactive".to_string())
+            }
+            other => other,
+        })
+}
+
 /// Returns the attendee-facing status when checkout should not continue.
 fn get_checkout_status_response(
     purchase_status: EventPurchaseStatus,
@@ -586,6 +613,10 @@ async fn load_checkoutable_event(
     community_id: Uuid,
     event_id: Uuid,
 ) -> Result<EventSummary, HandlerError> {
+    // Stop checkout when the event is no longer attendee-visible
+    ensure_attendee_event_is_active(db, community_id, event_id).await?;
+
+    // Ensure the event actually offers attendee-purchasable tickets
     let event = db.get_event_summary_by_id(community_id, event_id).await?;
     if !event.is_ticketed() {
         return Err(anyhow::anyhow!("event does not use ticket purchases").into());

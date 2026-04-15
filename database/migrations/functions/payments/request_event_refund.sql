@@ -95,16 +95,41 @@ begin
         )
     );
 
-    -- Resolve recipients and enqueue the organizer notification transactionally
-    select coalesce(array_agg(value::uuid order by value::uuid), '{}')
+    -- Resolve recipients who can review refunds and notify them transactionally
+    select coalesce(array_agg(recipient.user_id order by recipient.user_id), '{}')
     into v_recipients
-    from json_array_elements_text(list_group_team_members_ids(v_group_id));
+    from (
+        select distinct candidate.user_id
+        from (
+            select gt.user_id
+            from group_team gt
+            join "user" u using (user_id)
+            where gt.group_id = v_group_id
+            and gt.accepted = true
+            and u.email_verified = true
+
+            union
+
+            select ct.user_id
+            from community_team ct
+            join "user" u using (user_id)
+            where ct.community_id = p_community_id
+            and ct.accepted = true
+            and u.email_verified = true
+        ) candidate
+        where user_has_group_permission(
+            p_community_id,
+            v_group_id,
+            candidate.user_id,
+            'group.events.write'
+        )
+    ) recipient;
 
     if coalesce(array_length(v_recipients, 1), 0) = 0 then
         raise exception 'refund request notification has no recipients';
     end if;
 
-    -- Notify the accepted group team members who can review the request
+    -- Notify the verified users who can review the request
     perform enqueue_notification(
         'event-refund-requested',
         p_notification_template_data,

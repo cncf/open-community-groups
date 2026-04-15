@@ -135,6 +135,7 @@
 {{ template "event/add_cfs_submission.sql" }}
 {{ template "event/attend_event.sql" }}
 {{ template "event/check_in_event.sql" }}
+{{ template "event/ensure_event_is_active.sql" }}
 {{ template "event/get_event_attendance.sql" }}
 {{ template "event/get_event_full_by_slug.sql" }}
 {{ template "event/get_event_summary_by_id.sql" }}

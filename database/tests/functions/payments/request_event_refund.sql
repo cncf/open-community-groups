@@ -10,11 +10,16 @@ select plan(6);
 -- ============================================================================
 
 \set communityID '78000000-0000-0000-0000-000000000001'
+\set communityNoReviewID '78000000-0000-0000-0000-000000000019'
 \set eventCategoryID '78000000-0000-0000-0000-000000000002'
+\set eventCategoryNoReviewID '78000000-0000-0000-0000-000000000020'
 \set eventID '78000000-0000-0000-0000-000000000003'
 \set eventNoTeamID '78000000-0000-0000-0000-000000000004'
 \set eventTicketTypeID '78000000-0000-0000-0000-000000000005'
 \set groupCategoryID '78000000-0000-0000-0000-000000000006'
+\set groupCategoryNoReviewID '78000000-0000-0000-0000-000000000021'
+\set communityManagerID '78000000-0000-0000-0000-000000000017'
+\set communityViewerID '78000000-0000-0000-0000-000000000018'
 \set groupID '78000000-0000-0000-0000-000000000007'
 \set groupNoTeamID '78000000-0000-0000-0000-000000000008'
 \set priceWindowID '78000000-0000-0000-0000-000000000009'
@@ -32,18 +37,26 @@ select plan(6);
 
 -- Community
 insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'communityID', 'request-community', 'Request Community', 'Test', 'https://e/logo.png', 'https://e/banner-mobile.png', 'https://e/banner.png');
+values
+    (:'communityID', 'request-community', 'Request Community', 'Test', 'https://e/logo.png', 'https://e/banner-mobile.png', 'https://e/banner.png'),
+    (:'communityNoReviewID', 'no-review-community', 'No Review Community', 'Test', 'https://e/logo-2.png', 'https://e/banner-mobile-2.png', 'https://e/banner-2.png');
 
 -- Group category
 insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Tech');
+values
+    (:'groupCategoryID', :'communityID', 'Tech'),
+    (:'groupCategoryNoReviewID', :'communityNoReviewID', 'Tech');
 
 -- Event category
 insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'General');
+values
+    (:'eventCategoryID', :'communityID', 'General'),
+    (:'eventCategoryNoReviewID', :'communityNoReviewID', 'General');
 
 -- Users
 insert into "user" (user_id, auth_hash, email, email_verified, username) values
+    (:'communityManagerID', 'hash-4', 'manager@example.com', true, 'community-manager'),
+    (:'communityViewerID', 'hash-5', 'viewer@example.com', true, 'community-viewer'),
     (:'requesterID', 'hash-1', 'requester@example.com', true, 'requester'),
     (:'teamUser1ID', 'hash-2', 'team1@example.com', true, 'organizer-1'),
     (:'teamUser2ID', 'hash-3', 'team2@example.com', true, 'organizer-2');
@@ -51,12 +64,17 @@ insert into "user" (user_id, auth_hash, email, email_verified, username) values
 -- Groups
 insert into "group" (group_id, community_id, group_category_id, name, slug) values
     (:'groupID', :'communityID', :'groupCategoryID', 'Refund Group', 'refund-group'),
-    (:'groupNoTeamID', :'communityID', :'groupCategoryID', 'No Team Group', 'no-team-group');
+    (:'groupNoTeamID', :'communityNoReviewID', :'groupCategoryNoReviewID', 'No Team Group', 'no-team-group');
 
 -- Group team
 insert into group_team (group_id, user_id, accepted, role) values
     (:'groupID', :'teamUser1ID', true, 'admin'),
-    (:'groupID', :'teamUser2ID', true, 'admin');
+    (:'groupID', :'teamUser2ID', true, 'viewer');
+
+-- Community team
+insert into community_team (accepted, community_id, role, user_id) values
+    (true, :'communityID', 'groups-manager', :'communityManagerID'),
+    (true, :'communityID', 'viewer', :'communityViewerID');
 
 -- Events
 insert into event (
@@ -85,7 +103,7 @@ insert into event (
     now()
 ), (
     :'eventNoTeamID',
-    :'eventCategoryID',
+    :'eventCategoryNoReviewID',
     'in-person',
     :'groupNoTeamID',
     'No Team Event',
@@ -214,7 +232,7 @@ select results_eq(
     'Should create the expected audit row'
 );
 
--- Should enqueue one notification per accepted verified group team member
+-- Should only enqueue notifications for verified users who can review refunds
 select results_eq(
     $$
         select u.username, n.kind, td.data
@@ -224,10 +242,10 @@ select results_eq(
         order by u.username
     $$,
     $$ values
-        ('organizer-1'::text, 'event-refund-requested'::text, '{"event":"refund"}'::jsonb),
-        ('organizer-2'::text, 'event-refund-requested'::text, '{"event":"refund"}'::jsonb)
+        ('community-manager'::text, 'event-refund-requested'::text, '{"event":"refund"}'::jsonb),
+        ('organizer-1'::text, 'event-refund-requested'::text, '{"event":"refund"}'::jsonb)
     $$,
-    'Should enqueue one notification per accepted verified group team member'
+    'Should only enqueue notifications for verified users who can review refunds'
 );
 
 -- Should reject duplicate refund requests
@@ -246,7 +264,7 @@ select throws_ok(
 -- Should reject refund requests when no organizer recipients exist
 select throws_ok(
     $$select request_event_refund(
-        '78000000-0000-0000-0000-000000000001'::uuid,
+        '78000000-0000-0000-0000-000000000019'::uuid,
         '78000000-0000-0000-0000-000000000004'::uuid,
         '78000000-0000-0000-0000-000000000013'::uuid,
         null,

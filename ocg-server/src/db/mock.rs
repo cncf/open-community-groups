@@ -599,6 +599,11 @@ mock! {
             user_id: Uuid,
             bypass_window: bool,
         ) -> Result<()>;
+        async fn ensure_event_is_active(
+            &self,
+            community_id: Uuid,
+            event_id: Uuid,
+        ) -> Result<()>;
         async fn get_event_full_by_slug(
             &self,
             community_id: Uuid,

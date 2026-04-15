@@ -41,6 +41,9 @@ pub(crate) trait DBEvent {
         bypass_window: bool,
     ) -> Result<()>;
 
+    /// Ensures the event exists in the community and is active.
+    async fn ensure_event_is_active(&self, community_id: Uuid, event_id: Uuid) -> Result<()>;
+
     /// Returns the user's attendance details and check-in status for an event.
     async fn get_event_attendance(
         &self,
@@ -136,6 +139,16 @@ impl DBEvent for PgDB {
         self.execute(
             "select check_in_event($1::uuid, $2::uuid, $3::uuid, $4::bool)",
             &[&community_id, &event_id, &user_id, &bypass_window],
+        )
+        .await
+    }
+
+    /// [`DBEvent::ensure_event_is_active`]
+    #[instrument(skip(self), err)]
+    async fn ensure_event_is_active(&self, community_id: Uuid, event_id: Uuid) -> Result<()> {
+        self.execute(
+            "select ensure_event_is_active($1::uuid, $2::uuid)",
+            &[&community_id, &event_id],
         )
         .await
     }
