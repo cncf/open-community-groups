@@ -4,7 +4,7 @@ import {
   showInfoAlert,
   showSuccessAlert,
 } from "/static/js/common/alerts.js";
-import { isSuccessfulXHRStatus } from "/static/js/common/common.js";
+import { isSuccessfulXHRStatus, toggleModalVisibility } from "/static/js/common/common.js";
 
 const ATTENDANCE_CONTAINER_SELECTOR = "[data-attendance-container]";
 const PAYMENT_RETURN_PARAM = "payment";
@@ -38,6 +38,13 @@ const setAttendanceControlLabel = (button, label) => {
     labelNode.textContent = label;
   }
 };
+
+/**
+ * Returns true when the ticket purchase modal is currently visible.
+ * @param {HTMLElement|null} modal - Ticket modal element
+ * @returns {boolean} True when the modal is open
+ */
+const isTicketModalOpen = (modal) => modal instanceof HTMLElement && !modal.classList.contains("hidden");
 
 /**
  * Reads the payment outcome returned by the checkout provider.
@@ -225,7 +232,7 @@ const updateSigninButtonLabel = (button, meta) => {
 
   let label = meta.isSoldOut && meta.waitlistEnabled ? "Join waiting list" : "Attend event";
   if (meta.isTicketed) {
-    label = meta.ticketPurchaseAvailable ? "Choose ticket" : "Tickets unavailable";
+    label = meta.ticketPurchaseAvailable ? "Buy ticket" : "Tickets unavailable";
   }
   setAttendanceControlLabel(button, label);
   button.dataset.defaultLabel = label;
@@ -264,6 +271,204 @@ const getAttendanceMeta = (container) => {
     waitlistEnabled,
     isTicketed,
   };
+};
+
+/**
+ * Applies the default available state to the primary attend button.
+ * @param {HTMLButtonElement|null} button - Button to update
+ * @param {{isPastEvent: boolean}} meta - Attendance metadata
+ */
+const applyAvailableAttendState = (button, meta) => {
+  if (!button) {
+    return;
+  }
+
+  updateButtonStateForEventDate(button, meta);
+  if (!meta.isPastEvent) {
+    button.removeAttribute("title");
+    button.classList.remove("cursor-not-allowed", "opacity-50");
+  }
+  setAttendanceControlLabel(button, button.dataset.attendLabel || "Attend event");
+};
+
+/**
+ * Returns the selected ticket type value from the ticket modal.
+ * @param {HTMLElement} container - Attendance container element
+ * @returns {string} Selected ticket type id, or an empty string
+ */
+const getSelectedTicketTypeValue = (container) => {
+  const selectedTicketType = container.querySelector('[data-attendance-role="ticket-type-option"]:checked');
+
+  return selectedTicketType instanceof HTMLInputElement ? selectedTicketType.value : "";
+};
+
+/**
+ * Updates the enabled state for the modal checkout button.
+ * @param {HTMLElement} container - Attendance container element
+ */
+const updateCheckoutButtonState = (container) => {
+  const meta = getAttendanceMeta(container);
+  const checkoutButton = getAttendanceControl(container, "checkout-btn");
+  const checkoutSpinner = getAttendanceControl(container, "checkout-btn-spinner");
+  if (!(checkoutButton instanceof HTMLButtonElement)) {
+    return;
+  }
+
+  const selectedTicketType = getSelectedTicketTypeValue(container);
+  const shouldDisable = !meta.ticketPurchaseAvailable || meta.isPastEvent || !selectedTicketType;
+
+  checkoutButton.disabled = shouldDisable;
+  checkoutButton.classList.toggle("opacity-50", shouldDisable);
+  checkoutButton.classList.toggle("cursor-not-allowed", shouldDisable);
+
+  if (!meta.ticketPurchaseAvailable) {
+    checkoutButton.title = "Tickets are not currently available for this event.";
+  } else if (meta.isPastEvent) {
+    checkoutButton.title = "You cannot buy tickets because the event has already started.";
+  } else if (!selectedTicketType) {
+    checkoutButton.title = "Choose a ticket to continue.";
+  } else {
+    checkoutButton.removeAttribute("title");
+  }
+
+  if (checkoutSpinner instanceof HTMLElement && !checkoutSpinner.classList.contains("hidden")) {
+    checkoutButton.disabled = true;
+  }
+};
+
+/**
+ * Synchronizes the ticket modal controls for the current modal mode.
+ * @param {HTMLElement} container - Attendance container element
+ */
+const syncTicketModalState = (container) => {
+  const discountCodeInput = getAttendanceControl(container, "discount-code-input");
+  const ticketModalForm = getAttendanceControl(container, "ticket-modal-form");
+  const checkoutSpinner = getAttendanceControl(container, "checkout-btn-spinner");
+  const checkoutLabel = getAttendanceControl(container, "checkout-btn-label");
+  const meta = getAttendanceMeta(container);
+  const ticketTypeOptions = container.querySelectorAll('[data-attendance-role="ticket-type-option"]');
+
+  ticketModalForm?.classList.remove("hidden");
+  checkoutSpinner?.classList.add("hidden");
+  checkoutSpinner?.classList.remove("flex");
+  checkoutLabel?.classList.remove("invisible");
+
+  ticketTypeOptions.forEach((ticketTypeOption) => {
+    if (ticketTypeOption instanceof HTMLInputElement) {
+      ticketTypeOption.disabled =
+        !meta.ticketPurchaseAvailable || ticketTypeOption.dataset.ticketPurchasable !== "true";
+    }
+  });
+  if (discountCodeInput instanceof HTMLInputElement) {
+    discountCodeInput.disabled = !meta.ticketPurchaseAvailable;
+  }
+
+  updateCheckoutButtonState(container);
+};
+
+/**
+ * Opens the ticket purchase modal.
+ * @param {HTMLElement} container - Attendance container element
+ */
+const openTicketModal = (container) => {
+  const ticketModal = getAttendanceControl(container, "ticket-modal");
+  if (!(ticketModal instanceof HTMLElement)) {
+    return;
+  }
+
+  syncTicketModalState(container);
+
+  if (!isTicketModalOpen(ticketModal)) {
+    toggleModalVisibility(ticketModal.id);
+  }
+};
+
+/**
+ * Closes the ticket purchase modal if it is open.
+ * @param {HTMLElement} container - Attendance container element
+ */
+const closeTicketModal = (container) => {
+  const ticketModal = getAttendanceControl(container, "ticket-modal");
+  if (!(ticketModal instanceof HTMLElement) || !isTicketModalOpen(ticketModal)) {
+    return;
+  }
+
+  toggleModalVisibility(ticketModal.id);
+};
+
+/**
+ * Restores the modal checkout controls after a request completes or is canceled.
+ * @param {HTMLElement} container - Attendance container element
+ */
+const restoreCheckoutModalControls = (container) => {
+  const checkoutSpinner = getAttendanceControl(container, "checkout-btn-spinner");
+  const checkoutLabel = getAttendanceControl(container, "checkout-btn-label");
+
+  checkoutSpinner?.classList.add("hidden");
+  checkoutSpinner?.classList.remove("flex");
+  checkoutLabel?.classList.remove("invisible");
+  updateCheckoutButtonState(container);
+};
+
+/**
+ * Normalizes optional checkout parameters before HTMX submits the request.
+ * @param {Event} event - htmx:configRequest event
+ */
+const handleCheckoutConfigRequest = (event) => {
+  const target = event.target;
+  if (!(target instanceof HTMLElement) || target.dataset.attendanceRole !== "checkout-form") {
+    return;
+  }
+
+  const container = target.closest(ATTENDANCE_CONTAINER_SELECTOR);
+  const params = event.detail?.parameters;
+  if (!container || !params || typeof params !== "object") {
+    return;
+  }
+
+  const discountCodeInput = getAttendanceControl(container, "discount-code-input");
+  if (!(discountCodeInput instanceof HTMLInputElement)) {
+    return;
+  }
+
+  const normalizedDiscountCode = discountCodeInput.value.trim();
+  discountCodeInput.value = normalizedDiscountCode;
+
+  if (normalizedDiscountCode) {
+    params.discount_code = normalizedDiscountCode;
+    if (event.detail?.unfilteredParameters && typeof event.detail.unfilteredParameters === "object") {
+      event.detail.unfilteredParameters.discount_code = normalizedDiscountCode;
+    }
+    return;
+  }
+
+  delete params.discount_code;
+  if (event.detail?.unfilteredParameters && typeof event.detail.unfilteredParameters === "object") {
+    delete event.detail.unfilteredParameters.discount_code;
+  }
+};
+
+/**
+ * Registers one-time listeners for ticket modal form controls.
+ * @param {HTMLElement} container - Attendance container element
+ */
+const initializeTicketModalControls = (container) => {
+  if (container.dataset.ticketModalReady === "true") {
+    syncTicketModalState(container);
+    return;
+  }
+
+  container.dataset.ticketModalReady = "true";
+
+  container.querySelectorAll('[data-attendance-role="ticket-type-option"]').forEach((ticketTypeOption) => {
+    if (ticketTypeOption instanceof HTMLInputElement) {
+      ticketTypeOption.addEventListener("change", () => {
+        updateCheckoutButtonState(container);
+      });
+    }
+  });
+
+  syncTicketModalState(container);
 };
 
 /**
@@ -400,6 +605,9 @@ const initializeAttendanceContainer = (container) => {
   const signinButton = getAttendanceControl(container, "signin-btn");
 
   updateButtonStateForEventDate(attendButton, meta);
+  if (meta.isTicketed) {
+    applyAvailableAttendState(attendButton, meta);
+  }
   applySoldOutState(attendButton, meta);
   updateButtonStateForEventDate(leaveButton, meta);
   setAttendanceControlLabel(leaveButton, leaveButton?.dataset.attendeeLabel || "Cancel attendance");
@@ -407,6 +615,7 @@ const initializeAttendanceContainer = (container) => {
   setAttendanceControlLabel(refundButton, refundButton?.dataset.refundLabel || "Request refund");
   updateButtonStateForEventDate(signinButton, meta);
   updateSigninButtonLabel(signinButton, meta);
+  initializeTicketModalControls(container);
 
   container.dataset.attendanceReady = "true";
 };
@@ -503,7 +712,7 @@ const handleAttendanceCheckResponse = (event) => {
         } else if (meta.isSoldOut) {
           applySoldOutState(attendButton, meta);
         } else {
-          updateButtonStateForEventDate(attendButton, meta);
+          applyAvailableAttendState(attendButton, meta);
         }
         toggleMeetingDetailsVisibility(false, meta);
       }
@@ -574,6 +783,30 @@ const handleRefundBeforeRequest = (target) => {
 
   target.classList.add("hidden");
   loadingButton.classList.remove("hidden");
+};
+
+/**
+ * Handles checkout form beforeRequest state.
+ * @param {HTMLElement} target - Event target
+ */
+const handleCheckoutBeforeRequest = (target) => {
+  if (target.dataset.attendanceRole !== "checkout-form") {
+    return;
+  }
+
+  const container = target.closest(ATTENDANCE_CONTAINER_SELECTOR);
+  const checkoutButton = getAttendanceControl(container, "checkout-btn");
+  const checkoutSpinner = getAttendanceControl(container, "checkout-btn-spinner");
+  const checkoutLabel = getAttendanceControl(container, "checkout-btn-label");
+  if (!(checkoutButton instanceof HTMLButtonElement)) {
+    return;
+  }
+
+  checkoutButton.disabled = true;
+  checkoutButton.classList.add("opacity-50", "cursor-not-allowed");
+  checkoutSpinner?.classList.remove("hidden");
+  checkoutSpinner?.classList.add("flex");
+  checkoutLabel?.classList.add("invisible");
 };
 
 /**
@@ -712,6 +945,54 @@ const handleRefundAfterRequest = (event) => {
 };
 
 /**
+ * Handles checkout form afterRequest state.
+ * @param {Event} event - htmx:afterRequest event
+ */
+const handleCheckoutAfterRequest = (event) => {
+  const target = event.target;
+  if (!(target instanceof HTMLElement) || target.dataset.attendanceRole !== "checkout-form") {
+    return;
+  }
+
+  const container = target.closest(ATTENDANCE_CONTAINER_SELECTOR);
+  if (!container) {
+    return;
+  }
+
+  const xhr = event.detail?.xhr;
+  const ok = handleHtmxResponse({
+    xhr,
+    successMessage: "",
+    errorMessage: "Something went wrong starting checkout. Please try again later.",
+  });
+
+  if (ok) {
+    try {
+      const response = JSON.parse(xhr.responseText);
+      closeTicketModal(container);
+
+      if (response.redirect_url) {
+        showInfoAlert("Your checkout is ready. Redirecting you to Stripe now.");
+        window.location.assign(response.redirect_url);
+        return;
+      }
+
+      if (response.status === "pending-payment") {
+        showInfoAlert("Your checkout is ready. Redirecting you to Stripe now.");
+      } else {
+        showInfoAlert("You have successfully registered for this event.");
+      }
+    } catch {
+      closeTicketModal(container);
+      showInfoAlert("You have successfully registered for this event.");
+    }
+    document.body.dispatchEvent(new Event("attendance-changed"));
+  } else {
+    restoreCheckoutModalControls(container);
+  }
+};
+
+/**
  * Handles htmx:beforeRequest events for attendance buttons.
  * @param {Event} event - htmx:beforeRequest event
  */
@@ -728,6 +1009,7 @@ const handleBeforeRequest = (event) => {
   handleAttendBeforeRequest(target);
   handleLeaveBeforeRequest(target);
   handleRefundBeforeRequest(target);
+  handleCheckoutBeforeRequest(target);
 };
 
 /**
@@ -739,6 +1021,15 @@ const handleAfterRequest = (event) => {
   handleAttendAfterRequest(event);
   handleLeaveAfterRequest(event);
   handleRefundAfterRequest(event);
+  handleCheckoutAfterRequest(event);
+};
+
+/**
+ * Handles htmx:configRequest events for attendance components.
+ * @param {Event} event - htmx:configRequest event
+ */
+const handleConfigRequest = (event) => {
+  handleCheckoutConfigRequest(event);
 };
 
 /**
@@ -760,7 +1051,7 @@ const handleAttendanceClick = (event) => {
     const path = signinButton.dataset.path || window.location.pathname;
     const label = signinButton.querySelector("[data-attendance-label]")?.textContent || "Attend event";
     let actionText = label === "Join waiting list" ? "join the waiting list" : "attend this event";
-    if (label === "Choose ticket") {
+    if (label === "Buy ticket") {
       actionText = "buy a ticket for this event";
     }
     showInfoAlert(
@@ -775,6 +1066,15 @@ const handleAttendanceClick = (event) => {
     event.preventDefault();
     window.location.assign(attendButton.dataset.resumeUrl);
     return;
+  }
+
+  if (attendButton instanceof HTMLButtonElement) {
+    const container = attendButton.closest(ATTENDANCE_CONTAINER_SELECTOR);
+    if (container?.dataset.isTicketed === "true") {
+      event.preventDefault();
+      openTicketModal(container);
+      return;
+    }
   }
 
   const leaveButton = target.closest('[data-attendance-role="leave-btn"]');
@@ -792,6 +1092,35 @@ const handleAttendanceClick = (event) => {
   if (refundButton) {
     showConfirmAlert("Are you sure you want to request a refund for this ticket?", refundButton.id, "Yes");
   }
+
+  const closeTicketModalTrigger = target.closest(
+    '[data-attendance-role="ticket-modal-close"], [data-attendance-role="ticket-modal-cancel"], [data-attendance-role="ticket-modal-overlay"]',
+  );
+  if (closeTicketModalTrigger) {
+    const container = closeTicketModalTrigger.closest(ATTENDANCE_CONTAINER_SELECTOR);
+    if (container) {
+      restoreCheckoutModalControls(container);
+      closeTicketModal(container);
+    }
+  }
+};
+
+/**
+ * Handles keyboard shortcuts for attendance modals.
+ * @param {KeyboardEvent} event - Keyboard event
+ */
+const handleAttendanceKeydown = (event) => {
+  if (event.key !== "Escape") {
+    return;
+  }
+
+  document.querySelectorAll(ATTENDANCE_CONTAINER_SELECTOR).forEach((container) => {
+    const ticketModal = getAttendanceControl(container, "ticket-modal");
+    if (isTicketModalOpen(ticketModal)) {
+      restoreCheckoutModalControls(container);
+      closeTicketModal(container);
+    }
+  });
 };
 
 /**
@@ -806,9 +1135,11 @@ const initializeAttendance = (root = document) => {
   }
 
   document.body.dataset.attendanceListenersReady = "true";
+  document.body.addEventListener("htmx:configRequest", handleConfigRequest);
   document.body.addEventListener("htmx:beforeRequest", handleBeforeRequest);
   document.body.addEventListener("htmx:afterRequest", handleAfterRequest);
   document.body.addEventListener("click", handleAttendanceClick);
+  document.addEventListener("keydown", handleAttendanceKeydown);
   reconcilePaymentReturn();
 };
 
