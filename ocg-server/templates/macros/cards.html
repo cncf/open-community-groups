@@ -35,11 +35,18 @@
             {{ ui::icon_text(icon_name = "location", text = "No location provided", extra_styles = Some("flex-1") ) -}}
           {% endif -%}
         {% endif -%}
-        {% if event.canceled -%}
-          {{ badges::event_badge(kind = event.kind, canceled = true, extra_styles = Some("shrink-0 bg-white") ) -}}
-        {% else if event.kind == EventKind::Hybrid -%}
-          {{ badges::event_badge(kind = event.kind, extra_styles = Some("shrink-0 bg-white") ) -}}
-        {% endif -%}
+        <div class="flex items-center gap-2 shrink-0 ml-auto">
+          {% if let Some(ticket_price_badge) = event.formatted_ticket_price_badge() -%}
+            <span class="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[0.7rem] font-semibold text-emerald-700">
+              {{ ticket_price_badge }}
+            </span>
+          {% endif -%}
+          {% if event.canceled -%}
+            {{ badges::event_badge(kind = event.kind, canceled = true, extra_styles = Some("shrink-0 bg-white") ) -}}
+          {% else if event.kind == EventKind::Hybrid -%}
+            {{ badges::event_badge(kind = event.kind, extra_styles = Some("shrink-0 bg-white") ) -}}
+          {% endif -%}
+        </div>
       </div>
 
       <div class="card-meta !pt-1.5">
@@ -50,13 +57,6 @@
         {% endif -%}
       </div>
 
-      {% if let Some(ticket_price_badge) = event.formatted_ticket_price_badge() -%}
-        <div class="mt-2">
-          <span class="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[0.7rem] font-semibold text-emerald-700">
-            {{ ticket_price_badge }}
-          </span>
-        </div>
-      {% endif -%}
     </div>
   </div>
 {% endmacro event_footer -%}
