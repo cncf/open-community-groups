@@ -43,20 +43,18 @@
            role="rowgroup">
       <tr>
         <th scope="col" class="px-3 xl:px-5 py-3">Attendee</th>
-        <th scope="col" class="px-3 xl:px-5 py-3">Position</th>
+        <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3">Position</th>
         <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3 w-40">RSVP Date</th>
-        <th scope="col" class="px-3 xl:px-5 py-3 w-44">Payment</th>
+        <th scope="col" class="px-3 xl:px-5 py-3 w-72">Payment</th>
         <th scope="col" class="px-3 xl:px-5 py-3 w-30">Checked In</th>
       </tr>
     </thead>
     <tbody id="attendees-list" role="rowgroup">
       {% if attendees.is_empty() -%}
         <tr class="bg-white border-b border-stone-200">
-          {# Mobile: 3 columns (Attendee, Position, Checked In) -#}
-          <td class="xl:hidden px-8 py-12 text-center" colspan="4">
+          <td class="xl:hidden px-8 py-12 text-center" colspan="3">
             {% include "dashboard/placeholders/group_attendees_empty.html" -%}
           </td>
-          {# xl: 5 columns (adds RSVP Date) -#}
           <td class="hidden xl:table-cell px-8 py-12 text-center" colspan="5">
             {% include "dashboard/placeholders/group_attendees_empty.html" -%}
           </td>
@@ -86,7 +84,7 @@
             {# End attendee -#}
 
             {# Position -#}
-            <td class="px-3 xl:px-5 py-4">
+            <td class="hidden xl:table-cell px-3 xl:px-5 py-4">
               <div class="flex flex-col space-y-1">
                 <div class="font-medium text-stone-900 truncate">{{ attendee.company|assigned_or("-") }}</div>
                 {% if let Some(title) = &attendee.title -%}
@@ -104,61 +102,79 @@
 
             {# Payment -#}
             <td class="px-3 xl:px-5 py-4 align-top">
-              <div class="flex flex-col gap-2">
-                {% if let Some(ticket_title) = &attendee.ticket_title -%}
-                  <div class="font-medium text-stone-900">{{ ticket_title }}</div>
-                {% else -%}
-                  <div class="text-stone-500">Free RSVP</div>
-                {% endif -%}
-
-                {% if let Some(amount_label) = self::format_payment_amount(attendee.amount_minor, attendee.currency_code.as_deref()) -%}
-                  <div class="text-xs text-stone-600">{{ amount_label }}</div>
-                {% endif -%}
-
-                {% if let Some(discount_code) = &attendee.discount_code -%}
-                  <div class="text-xs text-stone-500">Code: {{ discount_code }}</div>
-                {% endif -%}
-
-                {% if attendee.refund_request_status == Some(crate::types::payments::EventRefundRequestStatus::Pending) && can_manage_events -%}
-                  <div class="flex items-center gap-2 pt-1">
-                    <button hx-put="/dashboard/group/events/{{ event.event_id }}/attendees/{{ attendee.user_id }}/refund/approve"
-                            hx-indicator="#dashboard-spinner"
-                            hx-disabled-elt="this"
-                            class="btn-tertiary p-2"
-                            title="Approve refund">
-                      <div class="svg-icon size-3 md:size-4 icon-check"></div>
-                    </button>
-                    <button id="reject-refund-{{ attendee.user_id }}"
-                            hx-put="/dashboard/group/events/{{ event.event_id }}/attendees/{{ attendee.user_id }}/refund/reject"
-                            hx-indicator="#dashboard-spinner"
-                            hx-trigger="confirmed"
-                            hx-disabled-elt="this"
-                            data-confirm-action
-                            data-confirm-message="Are you sure you want to reject this refund request?"
-                            data-confirm-text="Yes"
-                            data-error-message="Something went wrong rejecting this refund request. Please try again later."
-                            class="btn-tertiary p-2"
-                            title="Reject refund">
-                      <div class="svg-icon size-2.5 md:size-3.5 icon-cancel"></div>
-                    </button>
+              {% if attendee.ticket_title.is_some() || attendee.amount_minor.is_some() || attendee.event_purchase_id.is_some() -%}
+                <div class="flex max-w-[230px] flex-col gap-2">
+                  <div class="rounded-xl border border-stone-200 bg-white px-4 py-3">
+                    <div class="font-semibold text-stone-900">{{ attendee.ticket_title|assigned_or("Paid RSVP") }}</div>
+                    {% if let Some(amount_label) = self::format_payment_amount(attendee.amount_minor, attendee.currency_code.as_deref()) -%}
+                      <div class="mt-1">
+                        {% if let Some(currency_code) = &attendee.currency_code -%}
+                          {% if amount_label != "Free" -%}
+                            <span class="text-xs font-medium text-stone-500">{{ currency_code }}</span>
+                            <span class="text-sm font-medium text-stone-900">{{ amount_label.replace(currency_code.as_str() , "").trim() }}</span>
+                          {% else -%}
+                            <span class="text-sm font-medium text-stone-900">{{ amount_label }}</span>
+                          {% endif -%}
+                        {% else -%}
+                          <span class="text-sm font-medium text-stone-900">{{ amount_label }}</span>
+                        {% endif -%}
+                      </div>
+                    {% endif -%}
                   </div>
-                {% else if attendee.refund_request_status == Some(crate::types::payments::EventRefundRequestStatus::Approving) && can_manage_events -%}
-                  <div class="flex items-center gap-2 pt-1">
-                    <span class="text-xs font-medium text-amber-700">Refund processing</span>
-                    <button hx-put="/dashboard/group/events/{{ event.event_id }}/attendees/{{ attendee.user_id }}/refund/approve"
-                            hx-indicator="#dashboard-spinner"
-                            hx-disabled-elt="this"
-                            class="btn-tertiary p-2"
-                            title="Retry refund finalization">
-                      <div class="svg-icon size-3 md:size-4 icon-check"></div>
-                    </button>
-                  </div>
-                {% else if attendee.refund_request_status == Some(crate::types::payments::EventRefundRequestStatus::Pending) -%}
-                  <div class="text-xs font-medium text-amber-700">Refund requested</div>
-                {% else if attendee.refund_request_status == Some(crate::types::payments::EventRefundRequestStatus::Approving) -%}
-                  <div class="text-xs font-medium text-amber-700">Refund processing</div>
-                {% endif -%}
-              </div>
+
+                  {% if attendee.refund_request_status == Some(crate::types::payments::EventRefundRequestStatus::Pending)
+                    || attendee.refund_request_status == Some(crate::types::payments::EventRefundRequestStatus::Approving) -%}
+                    {% if can_manage_events -%}
+                      <button type="button"
+                              class="group inline-flex w-fit items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide transition-colors
+                                     {% if attendee.refund_request_status == Some(crate::types::payments::EventRefundRequestStatus::Approving) -%}
+                                       border-amber-800 bg-amber-100 text-amber-800 hover:bg-amber-200
+                                     {% else -%}
+                                       border-amber-800 bg-amber-100 text-amber-800 hover:bg-amber-200
+                                     {% endif -%}"
+                              title="{% if attendee.refund_request_status == Some(crate::types::payments::EventRefundRequestStatus::Approving) %}
+                                       Review refund processing
+                                     {% else %}
+                                       Review refund request
+                                     {% endif %}"
+                              data-refund-review-trigger
+                              data-refund-attendee-name="{{ attendee.name|assigned_or(attendee.username) }}"
+                              data-refund-ticket-title="{{ attendee.ticket_title|assigned_or("Paid RSVP") }}"
+                              data-refund-amount="{% if let Some(amount_label) = self::format_payment_amount(attendee.amount_minor, attendee.currency_code.as_deref()) %}
+                                                    {{ amount_label }}
+                                                  {% else %}
+                                                    -
+                                                  {% endif %}"
+                              data-refund-status="{% if attendee.refund_request_status == Some(crate::types::payments::EventRefundRequestStatus::Approving) %}
+                                                    approving
+                                                  {% else %}
+                                                    pending
+                                                  {% endif %}"
+                              data-refund-approve-url="/dashboard/group/events/{{ event.event_id }}/attendees/{{ attendee.user_id }}/refund/approve"
+                              data-refund-reject-url="/dashboard/group/events/{{ event.event_id }}/attendees/{{ attendee.user_id }}/refund/reject">
+                        <span>
+                          {% if attendee.refund_request_status == Some(crate::types::payments::EventRefundRequestStatus::Approving) -%}
+                            Refund processing
+                          {% else -%}
+                            Refund requested
+                          {% endif -%}
+                        </span>
+                        <div class="svg-icon size-3 bg-amber-800 icon-arrow-right"></div>
+                      </button>
+                    {% else -%}
+                      <span class="custom-badge w-fit shrink-0 border-amber-800 bg-amber-100 px-2.5 py-0.5 text-amber-800">
+                        {% if attendee.refund_request_status == Some(crate::types::payments::EventRefundRequestStatus::Approving) -%}
+                          Refund processing
+                        {% else -%}
+                          Refund requested
+                        {% endif -%}
+                      </span>
+                    {% endif -%}
+                  {% endif -%}
+                </div>
+              {% else -%}
+                <div class="text-stone-500">Free RSVP</div>
+              {% endif -%}
             </td>
             {# End Payment -#}
 
@@ -198,6 +214,76 @@
   {{ pagination::navigation_links(links = navigation_links, hx_target = "#attendees-content", hx_indicator = "#dashboard-spinner") }}
 {% endif -%}
 {# End pagination -#}
+
+{# Refund review modal -#}
+<div id="attendee-refund-modal"
+     role="dialog"
+     aria-modal="true"
+     aria-labelledby="attendee-refund-modal-title"
+     class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 h-full max-h-full flex z-[1000]">
+  <div id="overlay-attendee-refund-modal"
+       class="modal-overlay absolute w-full h-full bg-stone-950 opacity-[0.35]"></div>
+  <div class="modal-panel p-4 max-w-2xl">
+    <div class="modal-card rounded-lg">
+      <div class="flex items-center justify-between p-4 md:p-5 border-b border-stone-200 rounded-t">
+        <h3 id="attendee-refund-modal-title"
+            class="text-xl font-semibold text-stone-900">Handle refund request</h3>
+        <button id="close-attendee-refund-modal"
+                type="button"
+                class="group text-stone-400 bg-transparent hover:bg-stone-200 hover:text-stone-900 transition-colors rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center">
+          <div class="svg-icon w-5 h-5 bg-stone-500 group-hover:bg-stone-900 transition-colors icon-close"></div>
+          <span class="sr-only">Close modal</span>
+        </button>
+      </div>
+      <div class="modal-body p-4 md:px-6 md:py-5">
+        <div class="rounded-xl border border-stone-200 bg-stone-50 px-4 py-3">
+          <div id="attendee-refund-ticket" class="font-semibold text-stone-900"></div>
+          <div class="mt-1">
+            <span id="attendee-refund-amount"
+                  class="text-lg font-semibold text-stone-900"></span>
+          </div>
+        </div>
+        <dl class="mt-6">
+          <div class="flex items-center gap-4 py-2">
+            <dt class="min-w-20 text-stone-400">Attendee</dt>
+            <dd id="attendee-refund-name" class="font-semibold text-stone-900">
+            </dd>
+          </div>
+          <div class="flex items-center gap-4 py-2">
+            <dt class="min-w-20 text-stone-400">Status</dt>
+            <dd>
+              <span id="attendee-refund-status"
+                    class="custom-badge w-fit shrink-0 border-amber-800 bg-amber-100 px-2.5 py-0.5 text-amber-800">
+                Refund requested
+              </span>
+            </dd>
+          </div>
+        </dl>
+      </div>
+      <div class="flex flex-col-reverse gap-3 border-t border-stone-200 p-4 md:flex-row md:justify-end md:p-5">
+        <button id="attendee-refund-reject"
+                type="button"
+                hx-trigger="confirmed"
+                hx-indicator="#dashboard-spinner"
+                hx-disabled-elt="this"
+                data-confirm-action
+                data-confirm-message="Are you sure you want to reject this refund request?"
+                data-confirm-text="Yes"
+                data-error-message="Something went wrong rejecting this refund request. Please try again later."
+                class="btn-primary-outline hidden">
+          <span data-refund-action-label>Reject refund</span>
+        </button>
+        <button id="attendee-refund-approve"
+                type="button"
+                hx-indicator="#dashboard-spinner"
+                hx-disabled-elt="this"
+                class="btn-primary hidden">
+          <span data-refund-action-label>Approve refund</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
 
 {# Notification modal -#}
 <div id="attendee-notification-modal"

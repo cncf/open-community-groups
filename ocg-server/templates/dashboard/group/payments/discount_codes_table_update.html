@@ -1,0 +1,110 @@
+<div data-ticketing-role="table-wrapper" class="relative overflow-visible">
+  <table class="table-auto w-full text-xs lg:text-sm text-left text-stone-500">
+    <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
+      <tr>
+        <th scope="col" class="px-3 xl:px-5 py-3">Name</th>
+        <th scope="col" class="px-3 xl:px-5 py-3">Seats</th>
+        <th scope="col" class="px-3 xl:px-5 py-3">Status</th>
+        <th scope="col" class="px-3 xl:px-5 py-3">Availability</th>
+        <th scope="col" class="px-3 xl:px-5 py-3">Value</th>
+        <th scope="col" class="px-3 xl:px-5 py-3">Code</th>
+        <th scope="col" class="px-3 xl:px-5 py-3 text-right">Actions</th>
+      </tr>
+    </thead>
+    <tbody data-ticketing-role="empty-state"
+           class="{% if let Some(discount_codes) = &event.discount_codes %}
+                    {% if !discount_codes.is_empty() %}hidden{% endif %}
+                  {% endif %}">
+      <tr class="bg-white border-b border-stone-200">
+        <td class="px-8 py-12 text-center text-stone-500" colspan="7">
+          {% include "dashboard/placeholders/group_discount_codes_table.html" -%}
+        </td>
+      </tr>
+    </tbody>
+    <tbody data-ticketing-role="table-body">
+      {% if let Some(discount_codes) = &event.discount_codes -%}
+        {% for discount_code in discount_codes -%}
+          <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200 align-middle">
+            <td class="px-3 xl:px-5 py-4 min-w-[220px]">
+              <div class="font-medium text-stone-900">{{ discount_code.title }}</div>
+            </td>
+            <td class="px-3 xl:px-5 py-4 whitespace-nowrap text-stone-900">
+              {% if let Some(total_available) = discount_code.total_available %}
+                {{ total_available }}
+              {% else %}
+                Unlimited
+              {% endif %}
+              {% if let Some(available) = discount_code.available %}
+                <div class="mt-1 text-xs text-stone-500">{{ available }} remaining</div>
+              {% endif %}
+            </td>
+            <td class="px-3 xl:px-5 py-4 whitespace-nowrap">
+              {% if discount_code.active -%}
+                <span class="custom-badge shrink-0 border-green-800 bg-green-100 px-2.5 py-0.5 text-green-800">Active</span>
+              {% else -%}
+                <span class="custom-badge shrink-0 border-stone-500 bg-stone-100 px-2.5 py-0.5 text-stone-700">
+                  Inactive
+                </span>
+              {% endif -%}
+            </td>
+            <td class="px-3 xl:px-5 py-4 min-w-[220px]">
+              <div class="text-sm text-stone-700">
+                {% if let Some(starts_at) = &discount_code.starts_at -%}
+                  {% if let Some(ends_at) = &discount_code.ends_at -%}
+                    {{ starts_at.with_timezone(event.timezone).format("%b %-e") }} -
+                    {{ ends_at.with_timezone(event.timezone).format("%b %-e") }}
+                  {% else -%}
+                    From {{ starts_at.with_timezone(event.timezone).format("%b %-e") }}
+                  {% endif -%}
+                {% else if let Some(ends_at) = &discount_code.ends_at -%}
+                  Until {{ ends_at.with_timezone(event.timezone).format("%b %-e") }}
+                {% else -%}
+                  Always available
+                {% endif -%}
+              </div>
+            </td>
+            <td class="px-3 xl:px-5 py-4 whitespace-nowrap text-stone-900">
+              {% if discount_code.kind == crate::types::payments::EventDiscountType::Percentage -%}
+                {% if let Some(percentage) = discount_code.percentage -%}
+                  {{ percentage }}% off
+                {% else -%}
+                  Percentage discount
+                {% endif -%}
+              {% else if let Some(amount_minor) = discount_code.amount_minor -%}
+                {% if let Some(currency_code) = &event.payment_currency_code -%}
+                  {% let amount_label = crate::types::payments::format_amount_minor(**amount_minor, currency_code) -%}
+                  <span class="text-xs font-medium text-stone-500">{{ currency_code }}</span>
+                  <span class="text-sm font-medium text-stone-600">{{ amount_label.replace(currency_code.as_str() , "").trim() }}</span>
+                  <span class="text-sm font-medium text-stone-600">off</span>
+                {% else -%}
+                  <span class="text-sm font-medium text-stone-600">{{ *amount_minor }} off</span>
+                {% endif -%}
+              {% else -%}
+                Fixed amount
+              {% endif -%}
+            </td>
+            <td class="px-3 xl:px-5 py-4 whitespace-nowrap font-medium text-stone-700">{{ discount_code.code }}</td>
+            <td class="px-3 xl:px-5 py-4">
+              <div class="flex items-center justify-end gap-1">
+                <button type="button"
+                        class="rounded-full p-2 transition-colors hover:bg-stone-100"
+                        data-ticketing-action="edit-discount"
+                        data-discount-code-id="{{ discount_code.event_discount_code_id }}"
+                        title="Edit">
+                  <div class="svg-icon size-4 icon-pencil bg-stone-600"></div>
+                </button>
+                <button type="button"
+                        class="rounded-full p-2 transition-colors hover:bg-stone-100"
+                        data-ticketing-action="delete-discount"
+                        data-discount-code-id="{{ discount_code.event_discount_code_id }}"
+                        title="Delete">
+                  <div class="svg-icon size-4 icon-trash bg-stone-600"></div>
+                </button>
+              </div>
+            </td>
+          </tr>
+        {% endfor -%}
+      {% endif -%}
+    </tbody>
+  </table>
+</div>

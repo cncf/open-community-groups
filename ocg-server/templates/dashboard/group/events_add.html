@@ -30,52 +30,64 @@
       <button type="button"
               data-section="details"
               data-active="true"
-              class="px-2 xl:w-[100px] 2xl:w-[120px] xl:px-0 cursor-pointer inline-flex flex-col items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 active data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group">
+              class="px-2 xl:w-[90px] 2xl:w-[120px] xl:px-0 cursor-pointer inline-flex flex-col items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 active data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group">
         <div class="svg-icon size-4 lg:size-5 mb-2 icon-event bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
         </div>
-        <span class="text-[10px] lg:text-xs">Details</span>
+        <span class="text-[10px] lg:text-[11px]">Details</span>
       </button>
     </li>
     <li>
       <button type="button"
               data-section="date-venue"
               data-active="false"
-              class="px-2 xl:w-[100px] 2xl:w-[120px] xl:px-0 cursor-pointer inline-flex flex-col items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group">
+              class="px-2 xl:w-[90px] 2xl:w-[120px] xl:px-0 cursor-pointer inline-flex flex-col items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group">
         <div class="svg-icon size-4 lg:size-5 mb-2 icon-calendar bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
         </div>
-        <span class="text-[10px] lg:text-xs hidden xl:inline">Date & Venue</span>
-        <span class="text-[10px] lg:text-xs xl:hidden">Schedule</span>
+        <span class="text-[10px] lg:text-[11px] hidden xl:inline">Date & Venue</span>
+        <span class="text-[10px] lg:text-[11px] xl:hidden">Schedule</span>
       </button>
     </li>
     <li>
       <button type="button"
               data-section="hosts-sponsors"
               data-active="false"
-              class="px-2 xl:w-[100px] 2xl:w-[120px] xl:px-0 cursor-pointer inline-flex flex-col items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group">
+              class="px-2 xl:w-[90px] 2xl:w-[120px] xl:px-0 cursor-pointer inline-flex flex-col items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group">
         <div class="svg-icon size-4 lg:size-5 mb-2 icon-user-plus bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
         </div>
-        <span class="text-[10px] lg:text-xs hidden 2xl:inline">Hosts & Speakers</span>
-        <span class="text-[10px] lg:text-xs 2xl:hidden">Hosts</span>
+        <span class="text-[10px] lg:text-[11px] hidden 2xl:inline">Hosts & Speakers</span>
+        <span class="text-[10px] lg:text-[11px] 2xl:hidden">Hosts</span>
       </button>
     </li>
     <li>
       <button type="button"
               data-section="sessions"
               data-active="false"
-              class="px-2 xl:w-[100px] 2xl:w-[120px] xl:px-0 cursor-pointer inline-flex flex-col items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group">
+              class="px-2 xl:w-[90px] 2xl:w-[120px] xl:px-0 cursor-pointer inline-flex flex-col items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group">
         <div class="svg-icon size-4 lg:size-5 mb-2 icon-presentation bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
         </div>
-        <span class="text-[10px] lg:text-xs">Sessions</span>
+        <span class="text-[10px] lg:text-[11px]">Sessions</span>
       </button>
     </li>
+    {% if payments_enabled -%}
+      <li>
+        <button type="button"
+                data-section="payments"
+                data-active="false"
+                class="px-2 xl:w-[90px] 2xl:w-[120px] xl:px-0 cursor-pointer inline-flex flex-col items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group">
+          <div class="svg-icon size-4 lg:size-5 mb-2 icon-ticket bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
+          </div>
+          <span class="text-[10px] lg:text-[11px]">Payments</span>
+        </button>
+      </li>
+    {% endif -%}
     <li>
       <button type="button"
               data-section="cfs"
               data-active="false"
-              class="px-2 xl:w-[100px] 2xl:w-[120px] xl:px-0 cursor-pointer inline-flex flex-col items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group">
+              class="px-2 xl:w-[90px] 2xl:w-[120px] xl:px-0 cursor-pointer inline-flex flex-col items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group">
         <div class="svg-icon size-4 lg:size-5 mb-2 icon-megaphone bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
         </div>
-        <span class="text-[10px] lg:text-xs">CFS</span>
+        <span class="text-[10px] lg:text-[11px]">CFS</span>
       </button>
     </li>
   </ul>
@@ -93,7 +105,8 @@
               class="btn-primary w-24 text-nowrap ms-auto"
               hx-post="/dashboard/group/events/add"
               hx-ext="no-empty-vals"
-              hx-include="#details-form, #cfs-form, #date-venue-form, #sessions-form, #hosts-sponsors-form"
+              hx-include="#details-form, #cfs-form, #date-venue-form, #sessions-form, #hosts-sponsors-form
+                          {% if payments_enabled %}, #payments-form{% endif %}"
               hx-target="#dashboard-content"
               hx-indicator="#dashboard-spinner"
               hx-disabled-elt="#add-event-button, #cancel-button"
@@ -258,72 +271,6 @@
           </p>
         </div>
         {# End Capacity -#}
-
-        {% if payments_enabled -%}
-          {# Ticketing configuration -#}
-          <div class="col-span-full">
-            <div class="rounded-lg border border-stone-200 bg-stone-50 p-4 md:p-5">
-              <div class="text-sm font-semibold text-stone-900">Ticketing</div>
-              <p class="mt-2 text-sm text-stone-600">
-                Add ticket tiers, date-based pricing, and discount codes with the same structured
-                form controls used elsewhere in the dashboard. This section is only active when
-                the group has a Stripe recipient configured in group settings.
-              </p>
-
-              {% if !payments_ready -%}
-                <p class="mt-3 text-sm text-amber-700">
-                  Add a Stripe recipient in group settings before saving paid event data.
-                </p>
-              {% endif -%}
-
-              <div class="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2">
-                <div>
-                  <label for="payment_currency_code" class="form-label">Event Currency</label>
-                  <div class="mt-2">
-                    <select id="payment_currency_code"
-                            name="payment_currency_code"
-                            class="select-primary"
-                            {% if !payments_ready %}disabled{% endif %}>
-                      <option value="">Select currency</option>
-                      {% for payment_currency_code in payment_currency_codes -%}
-                        <option value="{{ payment_currency_code }}">{{ payment_currency_code }}</option>
-                      {% endfor -%}
-                    </select>
-                  </div>
-                  <p class="form-legend">Single currency used for all ticket prices on this event.</p>
-                </div>
-
-                <div class="md:col-span-2">
-                  <label class="form-label">Ticket Types</label>
-                  <div class="mt-3">
-                    <ticket-types-editor
-                    {% if !payments_ready %}disabled{% endif %}
-                    ></ticket-types-editor>
-                  </div>
-                  <p class="form-legend">
-                    Use one ticket type per tier, add price windows for early-bird or late pricing,
-                    and set the ticket amount to <span class="font-semibold">0</span> to make a
-                    specific tier free.
-                  </p>
-                </div>
-
-                <div class="md:col-span-2">
-                  <label class="form-label">Discount Codes</label>
-                  <div class="mt-3">
-                    <discount-codes-editor
-                    {% if !payments_ready %}disabled{% endif %}
-                    ></discount-codes-editor>
-                  </div>
-                  <p class="form-legend">
-                    Discount codes apply to the event currency and can be limited by schedule,
-                    remaining uses, or total redemptions.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-          {# End ticketing configuration -#}
-        {% endif -%}
 
         {# Registration required -#}
         <div class="col-span-full lg:col-span-3">
@@ -653,6 +600,106 @@
 </div>
 {# End Sessions Tab -#}
 
+{% if payments_enabled -%}
+  {# Payments Tab -#}
+  <div data-content="payments" class="hidden">
+    <form id="payments-form">
+      <div class="space-y-12">
+        <div>
+          <p class="mt-1 text-sm/6 text-stone-500">
+            Configure event currency, ticket tiers, and optional discount codes.
+          </p>
+
+          {% if !payments_ready -%}
+            <p class="mt-3 text-sm text-amber-700">
+              Add a Stripe recipient in group settings before saving paid event data.
+            </p>
+          {% endif -%}
+
+          <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6">
+            <div class="col-span-full lg:col-span-3">
+              <label for="payment_currency_code" class="form-label">Event Currency</label>
+              <div class="mt-2">
+                <select id="payment_currency_code"
+                        name="payment_currency_code"
+                        class="select-primary"
+                        {% if !payments_ready %}disabled{% endif %}>
+                  <option value="">Select currency</option>
+                  {% for payment_currency_code in payment_currency_codes -%}
+                    <option value="{{ payment_currency_code }}">{{ payment_currency_code }}</option>
+                  {% endfor -%}
+                </select>
+              </div>
+              <p class="form-legend">Single currency used for all ticket prices on this event.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="border-t border-stone-900/10 pt-12">
+          <div>
+            <div class="flex items-center justify-between gap-3">
+              <div class="text-xl lg:text-2xl font-medium text-stone-900">Ticket Types</div>
+              <button id="add-ticket-type-button"
+                      type="button"
+                      class="btn-primary-outline btn-mini whitespace-nowrap"
+                      aria-label="Add ticket type">Add ticket type</button>
+            </div>
+            <p class="mt-1 text-sm/6 text-stone-500">
+              Use one ticket type per tier, add price windows for early-bird or late pricing, and
+              set the ticket amount to 0 to make a specific tier free.
+            </p>
+          </div>
+          <div class="mt-10">
+            <div id="ticket-types-ui"
+                 class="space-y-4"
+                 data-ticket-types="[]"
+                 data-disabled="{% if !payments_ready %}
+                                  true
+                                {% else %}
+                                  false
+                                {% endif %}">
+              <div data-ticketing-role="hidden-fields"></div>
+              {% include "dashboard/group/payments/ticket_types_table.html" -%}
+              {% include "dashboard/group/payments/ticket_type_modal.html" -%}
+            </div>
+          </div>
+        </div>
+
+        <div class="border-t border-stone-900/10 pt-12 pb-12">
+          <div>
+            <div class="flex items-center justify-between gap-3">
+              <div class="text-xl lg:text-2xl font-medium text-stone-900">Discount Codes</div>
+              <button id="add-discount-code-button"
+                      type="button"
+                      class="btn-primary-outline btn-mini whitespace-nowrap"
+                      aria-label="Add discount code">Add discount code</button>
+            </div>
+            <p class="mt-1 text-sm/6 text-stone-500">
+              Discount codes apply to the event currency and can be limited by schedule, remaining
+              uses, or total redemptions.
+            </p>
+          </div>
+          <div class="mt-10">
+            <div id="discount-codes-ui"
+                 class="space-y-4"
+                 data-discount-codes="[]"
+                 data-disabled="{% if !payments_ready %}
+                                  true
+                                {% else %}
+                                  false
+                                {% endif %}">
+              <div data-ticketing-role="hidden-fields"></div>
+              {% include "dashboard/group/payments/discount_codes_table.html" -%}
+              {% include "dashboard/group/payments/discount_code_modal.html" -%}
+            </div>
+          </div>
+        </div>
+      </div>
+    </form>
+  </div>
+  {# End Payments Tab -#}
+{% endif -%}
+
 {# Hosts & Speakers Tab -#}
 <div data-content="hosts-sponsors" class="hidden">
   <form id="hosts-sponsors-form">
@@ -786,7 +833,7 @@
 
   // Validate multiple forms
   function validateEventForms() {
-    const formSections = ['details', 'date-venue', 'hosts-sponsors', 'sessions', 'cfs'];
+    const formSections = ['details', 'date-venue', 'hosts-sponsors', 'sessions', 'payments', 'cfs'];
     clearCfsWindowValidity({
       cfsStartsInput: cfsStartsAtInput,
       cfsEndsInput: cfsEndsAtInput,

@@ -52,3 +52,16 @@ export const toBoolean = (value, fallback = false) => {
  * @returns {string}
  */
 export const toTrimmedString = (value) => String(value || "").trim();
+
+/**
+ * Escapes a string for safe HTML interpolation.
+ * @param {*} value Raw value
+ * @returns {string}
+ */
+export const escapeHtml = (value) =>
+  String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");

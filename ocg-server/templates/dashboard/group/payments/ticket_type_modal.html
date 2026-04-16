@@ -1,0 +1,103 @@
+<div data-ticketing-role="ticket-modal"
+     class="fixed inset-0 z-[1000] hidden items-center justify-center overflow-y-auto overflow-x-hidden"
+     role="dialog"
+     aria-modal="true"
+     aria-labelledby="ticket-type-modal-title"
+     data-pending-changes-ignore>
+  <div class="absolute inset-0 bg-stone-950 opacity-35"
+       data-ticketing-action="close-modal"></div>
+  <div class="modal-panel max-w-5xl p-4">
+    <div class="modal-card rounded-2xl">
+      <div class="flex items-center justify-between border-b border-stone-200 p-5 shrink-0">
+        <h3 id="ticket-type-modal-title"
+            data-ticketing-role="modal-title"
+            class="text-xl font-semibold text-stone-900">Add ticket type</h3>
+        <button type="button"
+                data-ticketing-action="close-modal"
+                class="group inline-flex h-8 w-8 items-center justify-center rounded-lg bg-transparent text-sm text-stone-400 transition-colors hover:bg-stone-100">
+          <div class="svg-icon h-4 w-4 bg-stone-400 transition-colors group-hover:bg-stone-600 icon-close"></div>
+          <span class="sr-only">Close modal</span>
+        </button>
+      </div>
+
+      <div class="modal-body flex-1 space-y-6 p-6">
+        <div class="grid gap-4 md:grid-cols-2">
+          <div>
+            <label class="form-label" for="ticket-title-draft">Ticket name</label>
+            <div class="mt-2">
+              <input id="ticket-title-draft"
+                     data-ticket-modal-field
+                     data-ticket-field="title"
+                     type="text"
+                     class="input-primary"
+                     maxlength="120"
+                     placeholder="General admission"
+                     required>
+            </div>
+          </div>
+
+          <div>
+            <label class="form-label" for="ticket-seats-draft">Seats available</label>
+            <div class="mt-2">
+              <input id="ticket-seats-draft"
+                     data-ticket-modal-field
+                     data-ticket-field="seats_total"
+                     type="number"
+                     min="0"
+                     class="input-primary"
+                     placeholder="100"
+                     required>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <label class="form-label" for="ticket-description-draft">Description</label>
+          <div class="mt-2">
+            <textarea id="ticket-description-draft"
+                      data-ticket-field="description"
+                      rows="3"
+                      class="input-primary"
+                      maxlength="300"
+                      placeholder="Who this ticket is for, what it includes, or when it should be used."></textarea>
+          </div>
+        </div>
+
+        <div>
+          <label class="inline-flex cursor-pointer items-center">
+            <input type="checkbox" class="sr-only peer" data-ticket-field="active">
+            <div class="relative h-6 w-11 rounded-full bg-stone-200 transition peer-checked:bg-primary-500 peer-checked:after:translate-x-full after:absolute after:start-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-stone-200 after:bg-white after:transition-all after:content-['']">
+            </div>
+            <span class="ms-3 text-sm font-medium text-stone-900">Active</span>
+          </label>
+        </div>
+
+        <div class="space-y-4">
+          <div class="flex items-center justify-between gap-3">
+            <div>
+              <div class="text-sm font-semibold text-stone-900">Price windows</div>
+              <p class="mt-1 text-sm text-stone-600">
+                Add one window for a single flat price, or several windows for early-bird and late
+                pricing.
+              </p>
+            </div>
+            <button type="button"
+                    data-ticketing-action="add-price-window"
+                    class="btn-primary-outline btn-mini">Add price window</button>
+          </div>
+
+          <div data-ticketing-role="price-windows-list"></div>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-end gap-3 border-t border-stone-200 p-5 shrink-0">
+        <button type="button"
+                data-ticketing-action="close-modal"
+                class="btn-secondary">Cancel</button>
+        <button type="button" data-ticketing-action="save-ticket" class="btn-primary">
+          <span data-ticketing-role="save-label">Add ticket type</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

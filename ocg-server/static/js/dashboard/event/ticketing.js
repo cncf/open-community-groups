@@ -1,15 +1,32 @@
-import "/static/js/dashboard/event/ticketing/discount-codes-editor.js";
-import "/static/js/dashboard/event/ticketing/ticket-types-editor.js";
+import { initializeDiscountCodesController } from "/static/js/dashboard/event/ticketing/discount-codes-editor.js";
+import { initializeTicketTypesController } from "/static/js/dashboard/event/ticketing/ticket-types-editor.js";
+
+export function initializeTicketingControllers() {
+  const discountCodesController = initializeDiscountCodesController({
+    addButtonId: "add-discount-code-button",
+    rootId: "discount-codes-ui",
+  });
+  const ticketTypesController = initializeTicketTypesController({
+    addButtonId: "add-ticket-type-button",
+    rootId: "ticket-types-ui",
+  });
+
+  return {
+    discountCodesController,
+    ticketTypesController,
+  };
+}
 
 export function initializeTicketingWaitlistState() {
   const capacityInput = document.getElementById("capacity");
   const clearTicketingInput = document.getElementById("clear_ticketing");
   const paymentCurrencyInput = document.getElementById("payment_currency_code");
-  const ticketTypesEditor = document.querySelector("ticket-types-editor");
+  const ticketTypesRoot = document.getElementById("ticket-types-ui");
   const toggleClearTicketing = document.getElementById("toggle_clear_ticketing");
   const toggleWaitlistEnabled = document.getElementById("toggle_waitlist_enabled");
   const waitlistEnabledInput = document.getElementById("waitlist_enabled");
   const waitlistToggleLabel = document.getElementById("waitlist-toggle-label");
+  const { ticketTypesController } = initializeTicketingControllers();
 
   const syncWaitlistToggleState = () => {
     if (!toggleWaitlistEnabled || !waitlistEnabledInput || !capacityInput) {
@@ -18,12 +35,12 @@ export function initializeTicketingWaitlistState() {
 
     const clearingTicketing = toggleClearTicketing?.checked === true;
     const hasTicketTypes =
-      typeof ticketTypesEditor?.hasConfiguredTicketTypes === "function"
-        ? ticketTypesEditor.hasConfiguredTicketTypes() && !clearingTicketing
+      typeof ticketTypesController?.hasConfiguredTicketTypes === "function"
+        ? ticketTypesController.hasConfiguredTicketTypes() && !clearingTicketing
         : false;
     const configuredSeatTotal =
-      typeof ticketTypesEditor?.getConfiguredSeatTotal === "function"
-        ? ticketTypesEditor.getConfiguredSeatTotal()
+      typeof ticketTypesController?.getConfiguredSeatTotal === "function"
+        ? ticketTypesController.getConfiguredSeatTotal()
         : null;
 
     if (hasTicketTypes) {
@@ -78,8 +95,8 @@ export function initializeTicketingWaitlistState() {
     capacityInput.addEventListener("input", syncWaitlistToggleState);
   }
 
-  if (ticketTypesEditor) {
-    ticketTypesEditor.addEventListener("ticket-types-changed", syncWaitlistToggleState);
+  if (ticketTypesRoot) {
+    ticketTypesRoot.addEventListener("ticket-types-changed", syncWaitlistToggleState);
   }
 
   if (toggleClearTicketing && clearTicketingInput) {

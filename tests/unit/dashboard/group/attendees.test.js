@@ -53,6 +53,113 @@ describe("dashboard group attendees", () => {
     expect(modal.classList.contains("hidden")).to.equal(false);
   });
 
+  it("opens the refund review modal with attendee payment details", () => {
+    const originalHtmx = window.htmx;
+    const processCalls = [];
+    window.htmx = {
+      process: (element) => processCalls.push(element?.id),
+    };
+
+    document.body.innerHTML = `
+      <button
+        type="button"
+        data-refund-review-trigger
+        data-refund-attendee-name="Ana Lopez"
+        data-refund-ticket-title="General"
+        data-refund-amount="EUR 30.00"
+        data-refund-status="pending"
+        data-refund-approve-url="/dashboard/group/events/event-1/attendees/user-1/refund/approve"
+        data-refund-reject-url="/dashboard/group/events/event-1/attendees/user-1/refund/reject"
+      >
+        Review
+      </button>
+
+      <div id="attendee-refund-modal" class="hidden">
+        <button id="close-attendee-refund-modal" type="button">Close</button>
+        <button id="cancel-attendee-refund-modal" type="button">Cancel</button>
+        <div id="overlay-attendee-refund-modal"></div>
+        <div id="attendee-refund-name"></div>
+        <div id="attendee-refund-ticket"></div>
+        <div id="attendee-refund-amount"></div>
+        <span id="attendee-refund-status"></span>
+        <button id="attendee-refund-approve" type="button" class="hidden"></button>
+        <button id="attendee-refund-reject" type="button" class="hidden"></button>
+      </div>
+    `;
+
+    initializeAttendeesUi();
+
+    const modal = document.getElementById("attendee-refund-modal");
+    const approveButton = document.getElementById("attendee-refund-approve");
+    const rejectButton = document.getElementById("attendee-refund-reject");
+
+    document.querySelector("[data-refund-review-trigger]")?.click();
+
+    expect(modal.classList.contains("hidden")).to.equal(false);
+    expect(document.getElementById("attendee-refund-name")?.textContent).to.equal("Ana Lopez");
+    expect(document.getElementById("attendee-refund-ticket")?.textContent).to.equal("General");
+    expect(document.getElementById("attendee-refund-amount")?.textContent).to.equal("EUR 30.00");
+    expect(document.getElementById("attendee-refund-status")?.textContent).to.equal(
+      "Refund requested",
+    );
+    expect(approveButton.classList.contains("hidden")).to.equal(false);
+    expect(approveButton.getAttribute("hx-put")).to.equal(
+      "/dashboard/group/events/event-1/attendees/user-1/refund/approve",
+    );
+    expect(rejectButton.classList.contains("hidden")).to.equal(false);
+    expect(rejectButton.getAttribute("hx-put")).to.equal(
+      "/dashboard/group/events/event-1/attendees/user-1/refund/reject",
+    );
+    expect(processCalls).to.deep.equal([
+      "attendee-refund-approve",
+      "attendee-refund-reject",
+    ]);
+
+    window.htmx = originalHtmx;
+  });
+
+  it("shows only the retry action for refund processing entries", () => {
+    document.body.innerHTML = `
+      <button
+        type="button"
+        data-refund-review-trigger
+        data-refund-attendee-name="Ana Lopez"
+        data-refund-ticket-title="General"
+        data-refund-amount="EUR 30.00"
+        data-refund-status="approving"
+        data-refund-approve-url="/dashboard/group/events/event-1/attendees/user-1/refund/approve"
+      >
+        Review
+      </button>
+
+      <div id="attendee-refund-modal" class="hidden">
+        <button id="close-attendee-refund-modal" type="button">Close</button>
+        <button id="cancel-attendee-refund-modal" type="button">Cancel</button>
+        <div id="overlay-attendee-refund-modal"></div>
+        <div id="attendee-refund-name"></div>
+        <div id="attendee-refund-ticket"></div>
+        <div id="attendee-refund-amount"></div>
+        <span id="attendee-refund-status"></span>
+        <button id="attendee-refund-approve" type="button" class="hidden"></button>
+        <button id="attendee-refund-reject" type="button" class="hidden"></button>
+      </div>
+    `;
+
+    initializeAttendeesUi();
+
+    const approveButton = document.getElementById("attendee-refund-approve");
+    const rejectButton = document.getElementById("attendee-refund-reject");
+
+    document.querySelector("[data-refund-review-trigger]")?.click();
+
+    expect(document.getElementById("attendee-refund-status")?.textContent).to.equal(
+      "Refund processing",
+    );
+    expect(approveButton.classList.contains("hidden")).to.equal(false);
+    expect(approveButton.textContent).to.equal("Retry refund finalization");
+    expect(rejectButton.classList.contains("hidden")).to.equal(true);
+  });
+
   it("keeps the check-in toggle disabled after a successful check-in", async () => {
     document.body.innerHTML = `
       <label class="cursor-pointer">
