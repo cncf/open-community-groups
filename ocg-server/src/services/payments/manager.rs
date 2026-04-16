@@ -11,10 +11,8 @@ use tracing::warn;
 use uuid::Uuid;
 
 use crate::{
-    config::HttpServerConfig,
-    db::DynDB,
-    services::notifications::DynNotificationsManager,
-    types::payments::{EventPurchaseStatus, PreparedEventCheckout},
+    config::HttpServerConfig, db::DynDB, services::notifications::DynNotificationsManager,
+    types::payments::PreparedEventCheckout,
 };
 
 use super::{
@@ -107,11 +105,6 @@ impl PgPaymentsManager {
             .db
             .begin_event_refund_approval(input.group_id, input.event_id, input.user_id)
             .await?;
-
-        // Validate the refund request is still pending
-        if purchase.status != EventPurchaseStatus::RefundRequested {
-            return Err(anyhow::anyhow!("refund request is not pending"));
-        }
 
         // Extract the provider payment reference or roll back the approval state
         let provider_payment_reference = self

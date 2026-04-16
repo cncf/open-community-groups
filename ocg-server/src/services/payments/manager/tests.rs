@@ -226,60 +226,6 @@ async fn approve_refund_request_returns_before_state_transition_when_payments_ar
 }
 
 #[tokio::test]
-async fn approve_refund_request_returns_error_when_request_is_not_pending() {
-    // Setup identifiers and data structures
-    let actor_user_id = Uuid::new_v4();
-    let community_id = Uuid::new_v4();
-    let event_id = Uuid::new_v4();
-    let event_purchase_id = Uuid::new_v4();
-    let event_ticket_type_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let target_user_id = Uuid::new_v4();
-
-    // Setup database mock
-    let mut db = MockDB::new();
-    db.expect_begin_event_refund_approval()
-        .times(1)
-        .withf(move |gid, eid, uid| *gid == group_id && *eid == event_id && *uid == target_user_id)
-        .returning(move |_, _, _| {
-            Ok(EventPurchaseSummary {
-                amount_minor: 2_500,
-                event_purchase_id,
-                event_ticket_type_id,
-                provider_payment_reference: Some("pi_test_123".to_string()),
-                status: EventPurchaseStatus::Completed,
-                ticket_title: "General admission".to_string(),
-                ..EventPurchaseSummary::default()
-            })
-        });
-    db.expect_approve_event_refund_request().times(0);
-    db.expect_revert_event_refund_approval().times(0);
-
-    // Setup notifications manager and payments provider mocks
-    let notifications_manager = MockNotificationsManager::new();
-    let mut payments_provider = MockPaymentsProvider::new();
-    payments_provider.expect_refund_payment().times(0);
-
-    // Run the refund approval workflow
-    let manager = sample_payments_manager(db, notifications_manager, Some(payments_provider));
-    let err = manager
-        .approve_refund_request(&ApproveRefundRequestInput {
-            actor_user_id,
-            community_id,
-            event_id,
-            group_id,
-            user_id: target_user_id,
-
-            review_note: None,
-        })
-        .await
-        .expect_err("refund approval to fail when the request is not pending");
-
-    // Check the returned error
-    assert_eq!(err.to_string(), "refund request is not pending");
-}
-
-#[tokio::test]
 async fn approve_refund_request_reverts_when_provider_refund_fails() {
     // Setup identifiers and data structures
     let actor_user_id = Uuid::new_v4();
