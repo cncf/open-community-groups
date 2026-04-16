@@ -1,7 +1,52 @@
 import { initializeDiscountCodesController } from "/static/js/dashboard/event/ticketing/discount-codes-editor.js";
 import { initializeTicketTypesController } from "/static/js/dashboard/event/ticketing/ticket-types-editor.js";
 
+const ticketingControllerConfigs = [
+  {
+    controllerKey: "_discountCodesController",
+    rootId: "discount-codes-ui",
+  },
+  {
+    controllerKey: "_ticketTypesController",
+    rootId: "ticket-types-ui",
+  },
+];
+
+let hasBoundTicketingCleanup = false;
+
+const destroyTicketingControllersWithin = (container) => {
+  if (!(container instanceof Element)) {
+    return;
+  }
+
+  ticketingControllerConfigs.forEach(({ controllerKey, rootId }) => {
+    const root = container.id === rootId ? container : container.querySelector(`#${rootId}`);
+    const controller = root?.[controllerKey];
+
+    if (typeof controller?.destroy === "function") {
+      controller.destroy();
+    }
+
+    if (root && controllerKey in root) {
+      delete root[controllerKey];
+    }
+  });
+};
+
+const bindTicketingCleanup = () => {
+  if (hasBoundTicketingCleanup || !document.body) {
+    return;
+  }
+
+  document.body.addEventListener("htmx:beforeCleanupElement", (event) => {
+    destroyTicketingControllersWithin(event.target);
+  });
+  hasBoundTicketingCleanup = true;
+};
+
 export function initializeTicketingControllers() {
+  bindTicketingCleanup();
+
   const discountCodesController = initializeDiscountCodesController({
     addButtonId: "add-discount-code-button",
     rootId: "discount-codes-ui",

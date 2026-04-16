@@ -1,11 +1,8 @@
 import { expect } from "@open-wc/testing";
 
-import {
-  initializeDiscountCodesController,
-} from "/static/js/dashboard/event/ticketing/discount-codes-editor.js";
-import {
-  initializeTicketTypesController,
-} from "/static/js/dashboard/event/ticketing/ticket-types-editor.js";
+import { initializeDiscountCodesController } from "/static/js/dashboard/event/ticketing/discount-codes-editor.js";
+import { initializeTicketingWaitlistState } from "/static/js/dashboard/event/ticketing.js";
+import { initializeTicketTypesController } from "/static/js/dashboard/event/ticketing/ticket-types-editor.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
 
 const setInputValue = async (container, selector, value, eventName = "input") => {
@@ -129,9 +126,9 @@ describe("ticketing editors", () => {
     expect(uiRoot.textContent).to.contain("Always available");
     expect(uiRoot.querySelector('input[name="ticket_types_present"]')?.value).to.equal("true");
     expect(uiRoot.querySelector('input[name="ticket_types[0][title]"]')?.value).to.equal("General admission");
-    expect(uiRoot.querySelector('input[name="ticket_types[0][price_windows][0][amount_minor]"]')?.value).to.equal(
-      "3000",
-    );
+    expect(
+      uiRoot.querySelector('input[name="ticket_types[0][price_windows][0][amount_minor]"]')?.value,
+    ).to.equal("3000");
     expect(controller.hasConfiguredTicketTypes()).to.equal(true);
   });
 
@@ -152,9 +149,9 @@ describe("ticketing editors", () => {
     expect(uiRoot.textContent).to.contain("Early bird");
     expect(uiRoot.querySelector('input[name="ticket_types[0][title]"]')?.value).to.equal("Early bird");
     expect(uiRoot.querySelector('input[name="ticket_types[0][seats_total]"]')?.value).to.equal("40");
-    expect(uiRoot.querySelector('input[name="ticket_types[0][price_windows][0][amount_minor]"]')?.value).to.equal(
-      "1500",
-    );
+    expect(
+      uiRoot.querySelector('input[name="ticket_types[0][price_windows][0][amount_minor]"]')?.value,
+    ).to.equal("1500");
     expect(events.at(-1)).to.deep.equal({ hasTicketTypes: true });
   });
 
@@ -171,9 +168,9 @@ describe("ticketing editors", () => {
     uiRoot.querySelector('[data-ticketing-action="save-ticket"]')?.click();
 
     expect(uiRoot.textContent).to.contain("Free entry");
-    expect(uiRoot.querySelector('input[name="ticket_types[0][price_windows][0][amount_minor]"]')?.value).to.equal(
-      "0",
-    );
+    expect(
+      uiRoot.querySelector('input[name="ticket_types[0][price_windows][0][amount_minor]"]')?.value,
+    ).to.equal("0");
   });
 
   it("renders scheduled ticket windows with compact dates", () => {
@@ -241,7 +238,9 @@ describe("ticketing editors", () => {
 
     uiRoot.querySelector('[data-ticketing-action="edit-ticket"]')?.click();
 
-    expect(uiRoot.querySelector('[data-ticketing-role="modal-title"]')?.textContent).to.equal("Edit ticket type");
+    expect(uiRoot.querySelector('[data-ticketing-role="modal-title"]')?.textContent).to.equal(
+      "Edit ticket type",
+    );
   });
 
   it("renders discount code rows and updates serialization after modal edits", async () => {
@@ -287,7 +286,9 @@ describe("ticketing editors", () => {
     await setInputValue(uiRoot, "#discount-title-draft", "Sponsor invite");
     await setInputValue(uiRoot, "#discount-code-draft", "sponsor50");
     uiRoot.querySelector("#discount-kind-draft").value = "fixed_amount";
-    uiRoot.querySelector("#discount-kind-draft").dispatchEvent(new Event("change", { bubbles: true, composed: true }));
+    uiRoot
+      .querySelector("#discount-kind-draft")
+      .dispatchEvent(new Event("change", { bubbles: true, composed: true }));
     await setInputValue(uiRoot, "#discount-amount-draft", "5.00");
 
     uiRoot.querySelector('[data-ticketing-action="save-discount"]')?.click();
@@ -310,7 +311,9 @@ describe("ticketing editors", () => {
     await setInputValue(uiRoot, "#discount-title-draft", "Free comp");
     await setInputValue(uiRoot, "#discount-code-draft", "FREE0");
     uiRoot.querySelector("#discount-kind-draft").value = "fixed_amount";
-    uiRoot.querySelector("#discount-kind-draft").dispatchEvent(new Event("change", { bubbles: true, composed: true }));
+    uiRoot
+      .querySelector("#discount-kind-draft")
+      .dispatchEvent(new Event("change", { bubbles: true, composed: true }));
     await setInputValue(uiRoot, "#discount-amount-draft", "0");
 
     uiRoot.querySelector('[data-ticketing-action="save-discount"]')?.click();
@@ -357,5 +360,70 @@ describe("ticketing editors", () => {
     expect(uiRoot.querySelector('[data-ticketing-role="modal-title"]')?.textContent).to.equal(
       "Edit discount code",
     );
+  });
+
+  it("preserves persisted remaining counts after discount row rerenders", () => {
+    const uiRoot = mountDiscountCodesUi({
+      bodyRows: `
+        <tr>
+          <td>Early supporter</td>
+          <td>50<div>12 remaining</div></td>
+          <td>Active</td>
+          <td>Always available</td>
+          <td>20% off</td>
+          <td>EARLY20</td>
+          <td>
+            <button type="button" data-ticketing-action="edit-discount" data-discount-code-id="discount-1">
+              Edit
+            </button>
+          </td>
+        </tr>
+      `,
+    });
+    uiRoot.dataset.discountCodes = JSON.stringify([
+      {
+        active: true,
+        available: 12,
+        code: "EARLY20",
+        event_discount_code_id: "discount-1",
+        kind: "percentage",
+        percentage: 20,
+        title: "Early supporter",
+        total_available: 50,
+      },
+    ]);
+
+    initializeDiscountCodesController({ addButtonId: "", rootId: "discount-codes-ui" });
+
+    expect(uiRoot.textContent).to.contain("12 remaining");
+
+    const currencyField = document.getElementById("payment_currency_code");
+    currencyField.value = "USD";
+    currencyField.dispatchEvent(new Event("input", { bubbles: true, composed: true }));
+
+    expect(uiRoot.textContent).to.contain("12 remaining");
+  });
+
+  it("destroys ticketing controllers when HTMX cleans up the fragment", () => {
+    const ticketTypesUiRoot = mountTicketTypesUi();
+    const discountCodesUiRoot = mountDiscountCodesUi();
+    const fragment = document.createElement("div");
+
+    fragment.append(ticketTypesUiRoot, discountCodesUiRoot);
+    document.body.append(fragment);
+
+    initializeTicketingWaitlistState();
+
+    discountCodesUiRoot._discountCodesController._openDiscountModal();
+
+    expect(document.body.dataset.modalOpenCount).to.equal("1");
+    expect(ticketTypesUiRoot._ticketTypesController).to.exist;
+    expect(discountCodesUiRoot._discountCodesController).to.exist;
+
+    fragment.dispatchEvent(new CustomEvent("htmx:beforeCleanupElement", { bubbles: true }));
+
+    expect(document.body.dataset.modalOpenCount).to.equal("0");
+    expect(ticketTypesUiRoot._ticketTypesController).to.equal(undefined);
+    expect(discountCodesUiRoot._discountCodesController).to.equal(undefined);
   });
 });

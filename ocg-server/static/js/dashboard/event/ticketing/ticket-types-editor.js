@@ -36,6 +36,14 @@ class TicketTypesController {
   }
 
   destroy() {
+    if (this._isModalOpen) {
+      unlockBodyScroll();
+    }
+
+    this._draftRow = null;
+    this._editingRowId = null;
+    this._isModalOpen = false;
+    this._isNewRow = false;
     this._toggleExternalAddButtonListener(false);
     this.root.removeEventListener("click", this._handleRootClick);
     this.root.removeEventListener("input", this._handleRootInput);

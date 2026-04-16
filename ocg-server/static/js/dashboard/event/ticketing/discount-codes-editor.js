@@ -39,6 +39,14 @@ class DiscountCodesController {
   }
 
   destroy() {
+    if (this._isModalOpen) {
+      unlockBodyScroll();
+    }
+
+    this._draftRow = null;
+    this._editingRowId = null;
+    this._isModalOpen = false;
+    this._isNewRow = false;
     this._toggleExternalAddButtonListener(false);
     this.root.removeEventListener("click", this._handleRootClick);
     this.root.removeEventListener("input", this._handleRootInput);
@@ -363,7 +371,7 @@ class DiscountCodesController {
 
   _discountSeatsDetail(row) {
     const available = Number.parseInt(row.available, 10);
-    return row.available_dirty && Number.isFinite(available) ? `${available} remaining` : "";
+    return Number.isFinite(available) ? `${available} remaining` : "";
   }
 
   _formatScheduleDate(value) {
