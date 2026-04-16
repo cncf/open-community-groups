@@ -201,25 +201,12 @@ describe("ticketing editors", () => {
     expect(uiRoot.textContent).to.contain("from Apr 11");
   });
 
-  it("keeps server-rendered ticket rows on init and wires row actions", () => {
-    const uiRoot = mountTicketTypesUi({
-      bodyRows: `
-        <tr>
-          <td>General admission</td>
-          <td>25</td>
-          <td>Active</td>
-          <td>Always available</td>
-          <td>
-            <button type="button" data-ticketing-action="edit-ticket" data-ticket-type-id="ticket-1">Edit</button>
-          </td>
-        </tr>
-      `,
-    });
+  it("renders persisted ticket rows from the dataset and wires row actions", () => {
+    const uiRoot = mountTicketTypesUi();
     uiRoot.dataset.ticketTypes = JSON.stringify([
       {
         active: true,
         description: "Main conference ticket",
-        event_ticket_type_id: "ticket-1",
         seats_total: 25,
         title: "General admission",
         price_windows: [
@@ -234,7 +221,7 @@ describe("ticketing editors", () => {
 
     initializeTicketTypesController({ addButtonId: "", rootId: "ticket-types-ui" });
 
-    expect(uiRoot.querySelector('[data-ticket-type-id="ticket-1"]')).to.exist;
+    expect(uiRoot.textContent).to.contain("General admission");
 
     uiRoot.querySelector('[data-ticketing-action="edit-ticket"]')?.click();
 
@@ -322,28 +309,12 @@ describe("ticketing editors", () => {
     expect(uiRoot.querySelector('input[name="discount_codes[0][amount_minor]"]')?.value).to.equal("0");
   });
 
-  it("keeps server-rendered discount rows on init and wires row actions", () => {
-    const uiRoot = mountDiscountCodesUi({
-      bodyRows: `
-        <tr>
-          <td>Early supporter</td>
-          <td>20% off</td>
-          <td>EARLY20</td>
-          <td>Active</td>
-          <td>Always available</td>
-          <td>
-            <button type="button" data-ticketing-action="edit-discount" data-discount-code-id="discount-1">
-              Edit
-            </button>
-          </td>
-        </tr>
-      `,
-    });
+  it("renders persisted discount rows from the dataset and wires row actions", () => {
+    const uiRoot = mountDiscountCodesUi();
     uiRoot.dataset.discountCodes = JSON.stringify([
       {
         active: true,
         code: "EARLY20",
-        event_discount_code_id: "discount-1",
         kind: "percentage",
         percentage: 20,
         title: "Early supporter",
@@ -353,7 +324,7 @@ describe("ticketing editors", () => {
 
     initializeDiscountCodesController({ addButtonId: "", rootId: "discount-codes-ui" });
 
-    expect(uiRoot.querySelector('[data-discount-code-id="discount-1"]')).to.exist;
+    expect(uiRoot.textContent).to.contain("Early supporter");
 
     uiRoot.querySelector('[data-ticketing-action="edit-discount"]')?.click();
 
@@ -363,29 +334,12 @@ describe("ticketing editors", () => {
   });
 
   it("preserves persisted remaining counts after discount row rerenders", () => {
-    const uiRoot = mountDiscountCodesUi({
-      bodyRows: `
-        <tr>
-          <td>Early supporter</td>
-          <td>50<div>12 remaining</div></td>
-          <td>Active</td>
-          <td>Always available</td>
-          <td>20% off</td>
-          <td>EARLY20</td>
-          <td>
-            <button type="button" data-ticketing-action="edit-discount" data-discount-code-id="discount-1">
-              Edit
-            </button>
-          </td>
-        </tr>
-      `,
-    });
+    const uiRoot = mountDiscountCodesUi();
     uiRoot.dataset.discountCodes = JSON.stringify([
       {
         active: true,
         available: 12,
         code: "EARLY20",
-        event_discount_code_id: "discount-1",
         kind: "percentage",
         percentage: 20,
         title: "Early supporter",

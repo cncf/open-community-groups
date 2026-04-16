@@ -24,7 +24,6 @@ class DiscountCodesController {
     this._isModalOpen = false;
     this._isNewRow = false;
     this._nextId = 0;
-    this._shouldRenderRows = !root.querySelector('[data-ticketing-role="table-body"]')?.children.length;
 
     this._handleCurrencyFieldChange = this._handleCurrencyFieldChange.bind(this);
     this._handleExternalAddClick = this._handleExternalAddClick.bind(this);
@@ -82,7 +81,6 @@ class DiscountCodesController {
   }
 
   _handleCurrencyFieldChange() {
-    this._shouldRenderRows = true;
     this.render();
   }
 
@@ -250,7 +248,6 @@ class DiscountCodesController {
     }
 
     this._rows = this._rows.filter((row) => row._row_id !== rowId);
-    this._shouldRenderRows = true;
     this.render();
   }
 
@@ -286,23 +283,13 @@ class DiscountCodesController {
       this._rows = this._rows.map((row) => (row._row_id === this._editingRowId ? rowToSave : row));
     }
 
-    this._shouldRenderRows = true;
     this._closeDiscountModal();
     this.render();
   }
 
   _resolveRowId(target) {
     const rowId = Number.parseInt(target.dataset.rowId || "", 10);
-    if (Number.isFinite(rowId)) {
-      return rowId;
-    }
-
-    const discountCodeId = target.dataset.discountCodeId;
-    if (!discountCodeId) {
-      return Number.NaN;
-    }
-
-    return this._rows.find((row) => row.event_discount_code_id === discountCodeId)?._row_id ?? Number.NaN;
+    return Number.isFinite(rowId) ? rowId : Number.NaN;
   }
 
   _updateDraftDiscountCode(fieldName, value) {
@@ -638,9 +625,7 @@ class DiscountCodesController {
       emptyState.classList.toggle("hidden", this._rows.length > 0);
     }
 
-    if (this._shouldRenderRows) {
-      this._renderRows();
-    }
+    this._renderRows();
     this._renderHiddenFields();
     this._renderModal();
   }
