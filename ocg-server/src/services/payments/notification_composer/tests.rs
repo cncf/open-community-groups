@@ -48,7 +48,7 @@ async fn build_refund_request_template_data_returns_expected_payload() {
         template_data,
         to_value(&EventRefundRequested {
             event: sample_event_summary(event_id),
-            link: format!("/dashboard/group/events/{event_id}/attendees"),
+            link: "/dashboard/group?tab=events".to_string(),
             theme: SiteSettings::default().theme,
         })
         .unwrap()

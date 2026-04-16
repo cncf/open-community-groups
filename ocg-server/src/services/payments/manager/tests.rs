@@ -1220,7 +1220,7 @@ async fn request_refund_records_the_refund_request() {
     let user_id = Uuid::new_v4();
     let expected_template_data = to_value(&EventRefundRequested {
         event: event.clone(),
-        link: format!("/dashboard/group/events/{event_id}/attendees"),
+        link: "/dashboard/group?tab=events".to_string(),
         theme: site_settings.theme.clone(),
     })
     .unwrap();

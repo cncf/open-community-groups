@@ -52,13 +52,13 @@ impl PaymentsNotificationComposer {
             self.db.get_site_settings(),
         )?;
 
-        // Point organizers directly to the attendees dashboard for refund review
+        // Point organizers to the full group dashboard events tab
         let base_url = self
             .server_cfg
             .base_url
             .strip_suffix('/')
             .unwrap_or(&self.server_cfg.base_url);
-        let link = format!("{base_url}/dashboard/group/events/{event_id}/attendees");
+        let link = format!("{base_url}/dashboard/group?tab=events");
 
         serde_json::to_value(&EventRefundRequested {
             event,
