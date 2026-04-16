@@ -51,6 +51,17 @@ const renderAttendanceDom = ({
       >
         <span data-attendance-label>Cancel attendance</span>
       </button>
+      <button
+        id="refund-btn"
+        data-attendance-role="refund-btn"
+        class="hidden"
+        data-approving-label="Refund processing"
+        data-pending-label="Refund requested"
+        data-refund-label="Request refund"
+        data-rejected-label="Refund unavailable"
+      >
+        <span data-attendance-label>Request refund</span>
+      </button>
     </div>
     <div data-meeting-details class="hidden"></div>
     <div data-meeting-details data-has-recording="true" class="hidden"></div>
@@ -64,13 +75,14 @@ const renderAttendanceDom = ({
     signinButton: document.querySelector('[data-attendance-role="signin-btn"]'),
     attendButton: document.querySelector('[data-attendance-role="attend-btn"]'),
     leaveButton: document.querySelector('[data-attendance-role="leave-btn"]'),
+    refundButton: document.querySelector('[data-attendance-role="refund-btn"]'),
     meetingDetails: Array.from(document.querySelectorAll("[data-meeting-details]")),
     alwaysJoinLink: document.querySelector("[data-join-link-always]"),
     liveJoinLink: document.querySelector("[data-join-link]"),
   };
 };
 
-describe.skip("event attendance", () => {
+describe("event attendance", () => {
   const env = useDashboardTestEnv({
     path: "/events/test-event",
     withHtmx: true,
