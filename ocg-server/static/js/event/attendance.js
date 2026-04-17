@@ -82,14 +82,14 @@ const compactTicketPriceBadges = (root) => {
       badge.replaceChildren();
 
       const wrapper = document.createElement("span");
-      wrapper.className = "inline-flex items-baseline gap-1.5";
+      wrapper.className = "inline-flex items-baseline gap-1";
 
       const prefixNode = document.createElement("span");
       prefixNode.className = "text-xs font-medium opacity-70";
       prefixNode.textContent = "Starting";
 
       const amountNode = document.createElement("span");
-      amountNode.className = "text-sm font-semibold";
+      amountNode.className = "text-xs font-semibold";
       amountNode.textContent = "free";
 
       wrapper.append(prefixNode, amountNode);
@@ -107,7 +107,7 @@ const compactTicketPriceBadges = (root) => {
     badge.replaceChildren();
 
     const wrapper = document.createElement("span");
-    wrapper.className = "inline-flex items-baseline gap-1.5";
+    wrapper.className = "inline-flex items-baseline gap-1";
 
     if (prefixLabel) {
       const prefixNode = document.createElement("span");
@@ -121,7 +121,7 @@ const compactTicketPriceBadges = (root) => {
     currencyNode.textContent = currencyCode;
 
     const amountNode = document.createElement("span");
-    amountNode.className = "text-sm font-semibold";
+    amountNode.className = "text-xs font-semibold";
     amountNode.textContent = amountLabel;
 
     wrapper.append(currencyNode, amountNode);
@@ -245,7 +245,11 @@ const reconcilePaymentReturn = async () => {
       "Your payment is still being confirmed. If the page still shows Complete payment, wait a few seconds and refresh.",
     );
   } catch (_) {
-    // Fall back to the normal event page state if return reconciliation cannot be loaded
+    if (paymentOutcome === "success") {
+      showInfoAlert(
+        "Your payment was submitted. If the page still shows Complete payment, wait a few seconds and refresh.",
+      );
+    }
   } finally {
     clearPaymentReturnOutcome();
   }

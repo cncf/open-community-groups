@@ -229,8 +229,8 @@ describe("event attendance", () => {
     const badge = document.querySelector('[data-attendance-role="ticket-price-badge"]');
     const smallParts = Array.from(badge?.querySelectorAll(".text-xs") || []).map((node) => node.textContent);
     expect(badge?.textContent?.trim()).to.equal("FromEUR50.00");
-    expect(smallParts).to.deep.equal(["From", "EUR"]);
-    expect(badge?.querySelector(".text-sm")?.textContent).to.equal("50.00");
+    expect(smallParts).to.deep.equal(["From", "EUR", "50.00"]);
+    expect(badge?.querySelector(".text-sm")).to.equal(null);
   });
 
   it("shows Starting free when both free and paid tiers are available", async () => {
@@ -249,8 +249,8 @@ describe("event attendance", () => {
     const badge = document.querySelector('[data-attendance-role="ticket-price-badge"]');
     const smallParts = Array.from(badge?.querySelectorAll(".text-xs") || []).map((node) => node.textContent);
     expect(badge?.textContent?.trim()).to.equal("Startingfree");
-    expect(smallParts).to.deep.equal(["Starting"]);
-    expect(badge?.querySelector(".text-sm")?.textContent).to.equal("free");
+    expect(smallParts).to.deep.equal(["Starting", "free"]);
+    expect(badge?.querySelector(".text-sm")).to.equal(null);
   });
 
   it("emits a success message when leaving the waitlist and restores the button on failure", () => {
