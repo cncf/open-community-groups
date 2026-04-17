@@ -69,7 +69,34 @@ const compactTicketPriceBadges = (root) => {
       return;
     }
 
-    const priceLabel = (badge.dataset.priceLabel || badge.textContent || "").trim();
+    const rawPriceLabel = (badge.dataset.priceLabel || badge.textContent || "").trim();
+    const priceOptions = (badge.dataset.priceOptions || "")
+      .split("||")
+      .map((label) => label.trim())
+      .filter(Boolean);
+    const hasFreeTier = priceOptions.includes("Free");
+    const hasPaidTier = priceOptions.some((label) => label !== "Free");
+    const priceLabel = hasFreeTier && hasPaidTier ? "Starting free" : rawPriceLabel;
+
+    if (priceLabel === "Starting free") {
+      badge.replaceChildren();
+
+      const wrapper = document.createElement("span");
+      wrapper.className = "inline-flex items-baseline gap-1.5";
+
+      const prefixNode = document.createElement("span");
+      prefixNode.className = "text-xs font-medium opacity-70";
+      prefixNode.textContent = "Starting";
+
+      const amountNode = document.createElement("span");
+      amountNode.className = "text-sm font-semibold";
+      amountNode.textContent = "free";
+
+      wrapper.append(prefixNode, amountNode);
+      badge.append(wrapper);
+      return;
+    }
+
     const priceParts = priceLabel.match(/^(?:(From)\s+)?([A-Z]{3})\s+(.+)$/);
     if (!priceParts) {
       badge.textContent = priceLabel;

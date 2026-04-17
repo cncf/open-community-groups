@@ -39,7 +39,18 @@
           {% if let Some(ticket_price_badge) = event.formatted_ticket_price_badge() -%}
             <span data-attendance-role="ticket-price-badge"
                   data-price-label="{{ ticket_price_badge }}"
-                  class="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[0.78rem] font-semibold text-emerald-700">
+                  data-price-options="{% if let Some(currency_code) = &event.payment_currency_code %}
+                                        {% if let Some(ticket_types) = &event.ticket_types %}
+                                          {% for ticket_type in ticket_types %}
+                                            {% if ticket_type.is_sellable_now() %}
+                                              {% if let Some(price_label) = ticket_type.formatted_current_price(currency_code) %}
+                                                {{ price_label }}||
+                                              {% endif %}
+                                            {% endif %}
+                                          {% endfor %}
+                                        {% endif %}
+                                      {% endif %}"
+                  class="inline-flex items-center rounded-full border border-green-800 bg-green-100 px-2.5 py-1 text-[0.78rem] font-semibold text-green-800">
               {{ ticket_price_badge }}
             </span>
           {% endif -%}

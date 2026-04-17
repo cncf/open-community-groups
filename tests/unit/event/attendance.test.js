@@ -233,6 +233,26 @@ describe("event attendance", () => {
     expect(badge?.querySelector(".text-sm")?.textContent).to.equal("50.00");
   });
 
+  it("shows Starting free when both free and paid tiers are available", async () => {
+    document.body.innerHTML = `
+      <div
+        data-attendance-role="ticket-price-badge"
+        data-price-label="Free"
+        data-price-options="Free||USD 50.00||"
+      >
+        Free
+      </div>
+    `;
+
+    await initializeAttendanceDom();
+
+    const badge = document.querySelector('[data-attendance-role="ticket-price-badge"]');
+    const smallParts = Array.from(badge?.querySelectorAll(".text-xs") || []).map((node) => node.textContent);
+    expect(badge?.textContent?.trim()).to.equal("Startingfree");
+    expect(smallParts).to.deep.equal(["Starting"]);
+    expect(badge?.querySelector(".text-sm")?.textContent).to.equal("free");
+  });
+
   it("emits a success message when leaving the waitlist and restores the button on failure", () => {
     const { leaveButton, loadingButton } = renderAttendanceDom();
     let changedEvents = 0;
