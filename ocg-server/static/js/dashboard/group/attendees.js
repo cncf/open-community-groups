@@ -7,6 +7,22 @@ const modalId = "attendee-notification-modal";
 const formId = "attendee-notification-form";
 const dataKey = "attendeeNotificationReady";
 const refundModalId = "attendee-refund-modal";
+const refundApproveButtonId = "attendee-refund-approve";
+const refundRejectButtonId = "attendee-refund-reject";
+
+/**
+ * Resolve the current refund review modal controls from the latest DOM.
+ * @returns {Object} Refund modal controls.
+ */
+const getRefundReviewControls = () => ({
+  modal: document.getElementById(refundModalId),
+  nameField: document.getElementById("attendee-refund-name"),
+  ticketField: document.getElementById("attendee-refund-ticket"),
+  amountField: document.getElementById("attendee-refund-amount"),
+  statusField: document.getElementById("attendee-refund-status"),
+  approveButton: document.getElementById(refundApproveButtonId),
+  rejectButton: document.getElementById(refundRejectButtonId),
+});
 
 /**
  * Show the refund review modal if it is currently hidden.
@@ -57,6 +73,76 @@ const processRefundActionButton = (button) => {
   if (button && window.htmx && typeof window.htmx.process === "function") {
     window.htmx.process(button);
   }
+};
+
+/**
+ * Apply trigger data to the refund review modal.
+ * @param {HTMLElement} triggerButton Refund review trigger button.
+ * @returns {void}
+ */
+const populateRefundReviewModal = (triggerButton) => {
+  const { modal, nameField, ticketField, amountField, statusField, approveButton, rejectButton } =
+    getRefundReviewControls();
+
+  if (!modal) {
+    return;
+  }
+
+  const status = triggerButton.dataset.refundStatus || "pending";
+
+  if (nameField) {
+    nameField.textContent = triggerButton.dataset.refundAttendeeName || "-";
+  }
+
+  if (ticketField) {
+    ticketField.textContent = triggerButton.dataset.refundTicketTitle || "-";
+  }
+
+  if (amountField) {
+    amountField.textContent = triggerButton.dataset.refundAmount || "-";
+  }
+
+  if (statusField) {
+    const isApproving = status === "approving";
+    statusField.textContent = isApproving ? "Refund processing" : "Refund requested";
+    statusField.classList.toggle("border-amber-800", true);
+    statusField.classList.toggle("bg-amber-100", true);
+    statusField.classList.toggle("text-amber-800", true);
+    statusField.classList.remove("border-amber-300", "bg-amber-50", "text-amber-700");
+  }
+
+  if (approveButton) {
+    approveButton.classList.remove("hidden");
+    setRefundActionLabel(
+      approveButton,
+      status === "approving" ? "Retry refund finalization" : "Approve refund",
+    );
+    if (triggerButton.dataset.refundApproveUrl) {
+      approveButton.setAttribute("hx-put", triggerButton.dataset.refundApproveUrl);
+    } else {
+      approveButton.removeAttribute("hx-put");
+    }
+    processRefundActionButton(approveButton);
+  }
+
+  if (!rejectButton) {
+    return;
+  }
+
+  if (status === "approving") {
+    rejectButton.classList.add("hidden");
+    rejectButton.removeAttribute("hx-put");
+    processRefundActionButton(rejectButton);
+    return;
+  }
+
+  rejectButton.classList.remove("hidden");
+  if (triggerButton.dataset.refundRejectUrl) {
+    rejectButton.setAttribute("hx-put", triggerButton.dataset.refundRejectUrl);
+  } else {
+    rejectButton.removeAttribute("hx-put");
+  }
+  processRefundActionButton(rejectButton);
 };
 
 // Set up the attendee modal with its dynamic endpoint and success copy.
@@ -130,114 +216,48 @@ const initCheckInToggles = () => {
  * Initialize refund review modal controls for attendee purchases.
  */
 const initializeRefundReviewModal = () => {
-  const modal = document.getElementById(refundModalId);
-  if (!modal || modal.dataset.refundReviewReady === "true") {
+  if (!document.body || document.body.dataset.attendeeRefundReviewReady === "true") {
     return;
   }
 
-  modal.dataset.refundReviewReady = "true";
+  document.body.dataset.attendeeRefundReviewReady = "true";
 
-  const nameField = document.getElementById("attendee-refund-name");
-  const ticketField = document.getElementById("attendee-refund-ticket");
-  const amountField = document.getElementById("attendee-refund-amount");
-  const statusField = document.getElementById("attendee-refund-status");
-  const approveButton = document.getElementById("attendee-refund-approve");
-  const rejectButton = document.getElementById("attendee-refund-reject");
-  const closeButton = document.getElementById("close-attendee-refund-modal");
-  const cancelButton = document.getElementById("cancel-attendee-refund-modal");
-  const overlay = document.getElementById("overlay-attendee-refund-modal");
-
-  document.querySelectorAll("[data-refund-review-trigger]").forEach((button) => {
-    if (button.dataset.refundReviewBound === "true") {
+  document.addEventListener("click", (event) => {
+    const target = event.target instanceof Element ? event.target : null;
+    const refundTrigger = target?.closest("[data-refund-review-trigger]");
+    if (refundTrigger instanceof HTMLElement) {
+      populateRefundReviewModal(refundTrigger);
+      openRefundModal();
       return;
     }
 
-    button.dataset.refundReviewBound = "true";
-    button.addEventListener("click", () => {
-      const status = button.dataset.refundStatus || "pending";
-
-      if (nameField) {
-        nameField.textContent = button.dataset.refundAttendeeName || "-";
-      }
-
-      if (ticketField) {
-        ticketField.textContent = button.dataset.refundTicketTitle || "-";
-      }
-
-      if (amountField) {
-        amountField.textContent = button.dataset.refundAmount || "-";
-      }
-
-      if (statusField) {
-        const isApproving = status === "approving";
-        statusField.textContent = isApproving ? "Refund processing" : "Refund requested";
-        statusField.classList.toggle("border-amber-800", true);
-        statusField.classList.toggle("bg-amber-100", true);
-        statusField.classList.toggle("text-amber-800", true);
-        statusField.classList.remove("border-amber-300", "bg-amber-50", "text-amber-700");
-      }
-
-      if (approveButton) {
-        approveButton.classList.remove("hidden");
-        setRefundActionLabel(
-          approveButton,
-          status === "approving" ? "Retry refund finalization" : "Approve refund",
-        );
-        if (button.dataset.refundApproveUrl) {
-          approveButton.setAttribute("hx-put", button.dataset.refundApproveUrl);
-        } else {
-          approveButton.removeAttribute("hx-put");
-        }
-        processRefundActionButton(approveButton);
-      }
-
-      if (rejectButton) {
-        if (status === "approving") {
-          rejectButton.classList.add("hidden");
-          rejectButton.removeAttribute("hx-put");
-          processRefundActionButton(rejectButton);
-        } else {
-          rejectButton.classList.remove("hidden");
-          if (button.dataset.refundRejectUrl) {
-            rejectButton.setAttribute("hx-put", button.dataset.refundRejectUrl);
-          } else {
-            rejectButton.removeAttribute("hx-put");
-          }
-          processRefundActionButton(rejectButton);
-        }
-      }
-
-      openRefundModal();
-    });
+    if (
+      target?.closest(
+        "#close-attendee-refund-modal, #cancel-attendee-refund-modal, #overlay-attendee-refund-modal",
+      )
+    ) {
+      closeRefundModal();
+    }
   });
 
-  if (closeButton) {
-    closeButton.addEventListener("click", closeRefundModal);
-  }
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      closeRefundModal();
+    }
+  });
 
-  if (cancelButton) {
-    cancelButton.addEventListener("click", closeRefundModal);
-  }
+  document.body.addEventListener("htmx:afterRequest", (event) => {
+    const requestTarget = event.target;
+    if (
+      !(requestTarget instanceof HTMLElement) ||
+      ![refundApproveButtonId, refundRejectButtonId].includes(requestTarget.id)
+    ) {
+      return;
+    }
 
-  if (overlay) {
-    overlay.addEventListener("click", closeRefundModal);
-  }
-
-  if (document.body?.dataset.attendeeRefundEscapeReady !== "true") {
-    document.body.dataset.attendeeRefundEscapeReady = "true";
-    document.addEventListener("keydown", (event) => {
-      if (event.key === "Escape") {
-        closeRefundModal();
-      }
-    });
-  }
-
-  [approveButton, rejectButton].forEach((button) => {
-    button?.addEventListener("htmx:afterRequest", (event) => {
-      if (isSuccessfulXHRStatus(event.detail?.xhr?.status)) {
-        closeRefundModal();
-      }
-    });
+    if (isSuccessfulXHRStatus(event.detail?.xhr?.status)) {
+      closeRefundModal();
+    }
   });
 };
 

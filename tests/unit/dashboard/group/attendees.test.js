@@ -260,6 +260,87 @@ describe("dashboard group attendees", () => {
     expect(modal.classList.contains("hidden")).to.equal(false);
   });
 
+  it("opens refund review for newly swapped attendee content after HTMX load", () => {
+    document.body.innerHTML = `
+      <button
+        type="button"
+        data-refund-review-trigger
+        data-refund-attendee-name="Initial Attendee"
+        data-refund-ticket-title="Initial Ticket"
+        data-refund-amount="EUR 10.00"
+        data-refund-status="pending"
+        data-refund-approve-url="/dashboard/group/events/event-1/attendees/user-1/refund/approve"
+        data-refund-reject-url="/dashboard/group/events/event-1/attendees/user-1/refund/reject"
+      >
+        Review
+      </button>
+
+      <div id="attendee-refund-modal" class="hidden">
+        <button id="close-attendee-refund-modal" type="button">Close</button>
+        <button id="cancel-attendee-refund-modal" type="button">Cancel</button>
+        <div id="overlay-attendee-refund-modal"></div>
+        <div id="attendee-refund-name"></div>
+        <div id="attendee-refund-ticket"></div>
+        <div id="attendee-refund-amount"></div>
+        <span id="attendee-refund-status"></span>
+        <button id="attendee-refund-approve" type="button" class="hidden"></button>
+        <button id="attendee-refund-reject" type="button" class="hidden"></button>
+      </div>
+    `;
+
+    initializeAttendeesUi();
+
+    document.body.innerHTML = `
+      <button
+        type="button"
+        data-refund-review-trigger
+        data-refund-attendee-name="Swapped Attendee"
+        data-refund-ticket-title="Swapped Ticket"
+        data-refund-amount="EUR 25.00"
+        data-refund-status="pending"
+        data-refund-approve-url="/dashboard/group/events/event-2/attendees/user-2/refund/approve"
+        data-refund-reject-url="/dashboard/group/events/event-2/attendees/user-2/refund/reject"
+      >
+        Review
+      </button>
+
+      <div id="attendee-refund-modal" class="hidden">
+        <button id="close-attendee-refund-modal" type="button">Close</button>
+        <button id="cancel-attendee-refund-modal" type="button">Cancel</button>
+        <div id="overlay-attendee-refund-modal"></div>
+        <div id="attendee-refund-name"></div>
+        <div id="attendee-refund-ticket"></div>
+        <div id="attendee-refund-amount"></div>
+        <span id="attendee-refund-status"></span>
+        <button id="attendee-refund-approve" type="button" class="hidden"></button>
+        <button id="attendee-refund-reject" type="button" class="hidden"></button>
+      </div>
+    `;
+
+    initializeAttendeesUi();
+
+    const modal = document.getElementById("attendee-refund-modal");
+    const approveButton = document.getElementById("attendee-refund-approve");
+    const rejectButton = document.getElementById("attendee-refund-reject");
+
+    document.querySelector("[data-refund-review-trigger]")?.click();
+
+    expect(modal.classList.contains("hidden")).to.equal(false);
+    expect(document.getElementById("attendee-refund-name")?.textContent).to.equal(
+      "Swapped Attendee",
+    );
+    expect(document.getElementById("attendee-refund-ticket")?.textContent).to.equal(
+      "Swapped Ticket",
+    );
+    expect(document.getElementById("attendee-refund-amount")?.textContent).to.equal("EUR 25.00");
+    expect(approveButton.getAttribute("hx-put")).to.equal(
+      "/dashboard/group/events/event-2/attendees/user-2/refund/approve",
+    );
+    expect(rejectButton.getAttribute("hx-put")).to.equal(
+      "/dashboard/group/events/event-2/attendees/user-2/refund/reject",
+    );
+  });
+
   it("keeps the check-in toggle disabled after a successful check-in", async () => {
     document.body.innerHTML = `
       <label class="cursor-pointer">
