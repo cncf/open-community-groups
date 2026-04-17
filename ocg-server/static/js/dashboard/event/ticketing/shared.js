@@ -23,6 +23,29 @@ export const parseJsonAttribute = (value, fallback) => {
 };
 
 /**
+ * Safely parses a colocated JSON seed block.
+ * @param {Element} root Seed container root.
+ * @param {string} seedName Seed identifier.
+ * @param {*} fallback Fallback value.
+ * @returns {*} Parsed JSON value or fallback.
+ */
+export const parseJsonSeed = (root, seedName, fallback) => {
+  if (!(root instanceof Element) || typeof seedName !== "string" || seedName.trim().length === 0) {
+    return fallback;
+  }
+
+  const seedElement = root.querySelector(
+    `script[type="application/json"][data-ticketing-seed="${seedName}"]`,
+  );
+
+  if (!seedElement) {
+    return fallback;
+  }
+
+  return parseJsonAttribute(seedElement.textContent, fallback);
+};
+
+/**
  * Normalizes a boolean value.
  * @param {*} value Raw value
  * @param {boolean} fallback Fallback value

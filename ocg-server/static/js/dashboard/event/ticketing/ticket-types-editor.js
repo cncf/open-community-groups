@@ -6,7 +6,11 @@ import {
   resolveCurrencyInputStep,
   resolveEventCurrencyCode,
 } from "/static/js/dashboard/event/ticketing/money.js";
-import { escapeHtml, parseJsonAttribute } from "/static/js/dashboard/event/ticketing/shared.js";
+import {
+  escapeHtml,
+  parseJsonAttribute,
+  parseJsonSeed,
+} from "/static/js/dashboard/event/ticketing/shared.js";
 
 class TicketTypesController {
   constructor({ addButton = null, currencyInput = null, root, timezoneInput = null }) {
@@ -31,7 +35,9 @@ class TicketTypesController {
     this._handleRootInput = this._handleRootInput.bind(this);
     this._handleRootChange = this._handleRootChange.bind(this);
 
-    this._applyTicketTypes(parseJsonAttribute(root.dataset.ticketTypes, []));
+    this._applyTicketTypes(
+      parseJsonSeed(root, "ticket-types", parseJsonAttribute(root.dataset.ticketTypes, [])),
+    );
     this._bind();
     this.render();
   }

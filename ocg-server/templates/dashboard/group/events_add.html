@@ -652,12 +652,14 @@
           <div class="mt-10">
             <div id="ticket-types-ui"
                  class="space-y-4"
-                 data-ticket-types="[]"
                  data-disabled="{% if !payments_ready %}
                                   true
                                 {% else %}
                                   false
                                 {% endif %}">
+              <script type="application/json" data-ticketing-seed="ticket-types">
+                []
+              </script>
               <div data-ticketing-role="hidden-fields"></div>
               {% include "dashboard/group/payments/ticket_types_table.html" -%}
               {% include "dashboard/group/payments/ticket_type_modal.html" -%}
@@ -682,12 +684,14 @@
           <div class="mt-10">
             <div id="discount-codes-ui"
                  class="space-y-4"
-                 data-discount-codes="[]"
                  data-disabled="{% if !payments_ready %}
                                   true
                                 {% else %}
                                   false
                                 {% endif %}">
+              <script type="application/json" data-ticketing-seed="discount-codes">
+                []
+              </script>
               <div data-ticketing-role="hidden-fields"></div>
               {% include "dashboard/group/payments/discount_codes_table.html" -%}
               {% include "dashboard/group/payments/discount_code_modal.html" -%}

@@ -800,16 +800,20 @@
           <div class="mt-10">
             <div id="ticket-types-ui"
                  class="space-y-4"
-                 {% if let Some(ticket_types) = &event.ticket_types %}
-                   data-ticket-types="{{ ticket_types|json }}"
-                 {% else %}
-                   data-ticket-types="[]"
-                 {% endif %}
                  data-disabled="{% if !payments_ready %}
                                   true
                                 {% else %}
                                   false
                                 {% endif %}">
+              {# djlint:off #}
+              <script type="application/json" data-ticketing-seed="ticket-types">
+                {% if let Some(ticket_types) = &event.ticket_types -%}
+                  {{ ticket_types|json }}
+                {% else -%}
+                  []
+                {% endif -%}
+</script>
+              {# djlint:on #}
               <div data-ticketing-role="hidden-fields"></div>
               {% include "dashboard/group/payments/ticket_types_table.html" -%}
               {% include "dashboard/group/payments/ticket_type_modal.html" -%}
@@ -834,16 +838,20 @@
           <div class="mt-10">
             <div id="discount-codes-ui"
                  class="space-y-4"
-                 {% if let Some(discount_codes) = &event.discount_codes %}
-                   data-discount-codes="{{ discount_codes|json }}"
-                 {% else %}
-                   data-discount-codes="[]"
-                 {% endif %}
                  data-disabled="{% if !payments_ready %}
                                   true
                                 {% else %}
                                   false
                                 {% endif %}">
+              {# djlint:off #}
+              <script type="application/json" data-ticketing-seed="discount-codes">
+                {% if let Some(discount_codes) = &event.discount_codes -%}
+                  {{ discount_codes|json }}
+                {% else -%}
+                  []
+                {% endif -%}
+</script>
+              {# djlint:on #}
               <div data-ticketing-role="hidden-fields"></div>
               {% include "dashboard/group/payments/discount_codes_table.html" -%}
               {% include "dashboard/group/payments/discount_code_modal.html" -%}

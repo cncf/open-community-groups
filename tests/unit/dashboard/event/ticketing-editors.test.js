@@ -276,6 +276,27 @@ describe("ticketing editors", () => {
     );
   });
 
+  it("prefers ticket type JSON seed blocks over data attributes", () => {
+    const uiRoot = mountTicketTypesUi();
+    uiRoot.dataset.ticketTypes = JSON.stringify([
+      {
+        active: true,
+        seats_total: 10,
+        title: "Dataset ticket",
+        price_windows: [{ amount_minor: 1000, starts_at: "", ends_at: "" }],
+      },
+    ]);
+    uiRoot.insertAdjacentHTML(
+      "afterbegin",
+      '<script type="application/json" data-ticketing-seed="ticket-types">[{"active":true,"seats_total":25,"title":"Seed ticket","price_windows":[{"amount_minor":2500,"starts_at":"","ends_at":""}]}]</script>',
+    );
+
+    initializeTicketTypesController({ addButtonId: "", rootId: "ticket-types-ui" });
+
+    expect(uiRoot.textContent).to.contain("Seed ticket");
+    expect(uiRoot.textContent).to.not.contain("Dataset ticket");
+  });
+
   it("keeps hidden ticket modal fields disabled so parent form validation ignores them", () => {
     const form = document.createElement("form");
     const uiRoot = mountTicketTypesUi();
@@ -426,6 +447,28 @@ describe("ticketing editors", () => {
     expect(uiRoot.querySelector('[data-ticketing-role="modal-title"]')?.textContent).to.equal(
       "Edit discount code",
     );
+  });
+
+  it("prefers discount JSON seed blocks over data attributes", () => {
+    const uiRoot = mountDiscountCodesUi();
+    uiRoot.dataset.discountCodes = JSON.stringify([
+      {
+        active: true,
+        code: "DATA10",
+        kind: "percentage",
+        percentage: 10,
+        title: "Dataset code",
+      },
+    ]);
+    uiRoot.insertAdjacentHTML(
+      "afterbegin",
+      '<script type="application/json" data-ticketing-seed="discount-codes">[{"active":true,"code":"SEED20","kind":"percentage","percentage":20,"title":"Seed code"}]</script>',
+    );
+
+    initializeDiscountCodesController({ addButtonId: "", rootId: "discount-codes-ui" });
+
+    expect(uiRoot.textContent).to.contain("Seed code");
+    expect(uiRoot.textContent).to.not.contain("Dataset code");
   });
 
   it("keeps hidden discount modal fields disabled so parent form validation ignores them", () => {

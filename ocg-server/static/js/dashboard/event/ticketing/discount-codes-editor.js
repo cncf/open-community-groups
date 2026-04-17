@@ -9,7 +9,11 @@ import {
   resolveCurrencyInputStep,
   resolveEventCurrencyCode,
 } from "/static/js/dashboard/event/ticketing/money.js";
-import { escapeHtml, parseJsonAttribute } from "/static/js/dashboard/event/ticketing/shared.js";
+import {
+  escapeHtml,
+  parseJsonAttribute,
+  parseJsonSeed,
+} from "/static/js/dashboard/event/ticketing/shared.js";
 
 class DiscountCodesController {
   constructor({ addButton = null, currencyInput = null, root, timezoneInput = null }) {
@@ -34,7 +38,9 @@ class DiscountCodesController {
     this._handleRootInput = this._handleRootInput.bind(this);
     this._handleRootChange = this._handleRootChange.bind(this);
 
-    this._applyDiscountCodes(parseJsonAttribute(root.dataset.discountCodes, []));
+    this._applyDiscountCodes(
+      parseJsonSeed(root, "discount-codes", parseJsonAttribute(root.dataset.discountCodes, [])),
+    );
     this._bind();
     this.render();
   }
