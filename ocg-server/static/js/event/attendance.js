@@ -722,6 +722,8 @@ const handleAttendanceCheckResponse = (event) => {
     return;
   }
 
+  compactTicketPriceBadges(container);
+
   const loadingButton = getAttendanceControl(container, "loading-btn");
   const signinButton = getAttendanceControl(container, "signin-btn");
   const attendButton = getAttendanceControl(container, "attend-btn");

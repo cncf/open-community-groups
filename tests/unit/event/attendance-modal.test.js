@@ -1,8 +1,10 @@
 import { expect } from "@open-wc/testing";
 
 import "/static/js/event/attendance.js";
+import { waitForMicrotask } from "/tests/unit/test-utils/async.js";
 import { useDashboardTestEnv } from "/tests/unit/test-utils/env.js";
 import { dispatchHtmxAfterRequest, dispatchHtmxBeforeRequest } from "/tests/unit/test-utils/htmx.js";
+import { mockFetch } from "/tests/unit/test-utils/network.js";
 
 const initializeAttendanceDom = async () => {
   document.body.dataset.attendanceListenersReady = "true";
@@ -203,9 +205,12 @@ describe("event attendance paid modal", () => {
       responseText: JSON.stringify({ status: "guest" }),
     });
 
+    const smallParts = Array.from(ticketPriceBadge?.querySelectorAll(".text-xs") || []).map(
+      (node) => node.textContent,
+    );
     expect(ticketPriceBadge?.textContent?.trim()).to.equal("EUR50.00");
-    expect(ticketPriceBadge?.querySelector(".text-xs")?.textContent).to.equal("EUR");
-    expect(ticketPriceBadge?.querySelector(".text-sm")?.textContent).to.equal("50.00");
+    expect(smallParts).to.deep.equal(["EUR", "50.00"]);
+    expect(ticketPriceBadge?.querySelector(".text-sm")).to.equal(null);
   });
 
   it("omits an empty discount code from checkout params and trims a filled one", async () => {
@@ -347,5 +352,29 @@ describe("event attendance paid modal", () => {
 
     ticketModalCancel.click();
     expect(ticketModal.classList.contains("hidden")).to.equal(true);
+  });
+
+  it("shows a fallback message when the success return cannot be reconciled", async () => {
+    renderPaidAttendanceDom();
+    history.replaceState({}, "", "/events/test-event?payment=success");
+
+    const fetchMock = mockFetch({
+      impl: async () => {
+        throw new Error("network error");
+      },
+    });
+
+    try {
+      await import(`/static/js/event/attendance.js?test=${Date.now()}`);
+      await waitForMicrotask();
+
+      expect(env.current.swal.calls.at(-1)).to.include({
+        icon: "info",
+        text: "Your payment was submitted. If the page still shows Complete payment, wait a few seconds and refresh.",
+      });
+      expect(window.location.search).to.equal("");
+    } finally {
+      fetchMock.restore();
+    }
   });
 });
