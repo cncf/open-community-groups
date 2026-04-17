@@ -518,9 +518,9 @@ class TicketTypesController {
         const windows = this._ticketWindowItems(row)
           .map(
             (windowRow) => `
-              <div class="flex items-center justify-between gap-3 rounded-md bg-stone-50 px-3 py-2 text-sm">
+              <div class="flex flex-col gap-1 rounded-md bg-stone-50 px-3 py-2 text-sm sm:flex-row sm:items-center sm:justify-between sm:gap-3">
                 <span>${this._renderMoneyLabel(windowRow.priceLabel)}</span>
-                <span class="text-right text-stone-500">${escapeHtml(windowRow.timingLabel)}</span>
+                <span class="text-left text-stone-500 sm:text-right">${escapeHtml(windowRow.timingLabel)}</span>
               </div>
             `,
           )
@@ -528,17 +528,21 @@ class TicketTypesController {
 
         return `
           <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200 align-middle">
-            <td class="px-3 xl:px-5 py-4 min-w-[220px]">
+            <td class="px-3 xl:px-5 py-4 min-w-[180px] xl:min-w-[220px]">
               <div class="font-medium text-stone-900">${escapeHtml(this._ticketTitle(row))}</div>
               ${description}
+              <div class="mt-3 flex flex-wrap items-center gap-2 xl:hidden">
+                <span class="inline-flex items-center rounded-full bg-stone-100 px-2.5 py-1 text-[11px] font-medium text-stone-700">${escapeHtml(row.seats_total || "—")} seats</span>
+                ${status}
+              </div>
             </td>
-            <td class="px-3 xl:px-5 py-4 whitespace-nowrap text-stone-900">${escapeHtml(row.seats_total || "—")}</td>
-            <td class="px-3 xl:px-5 py-4 whitespace-nowrap">${status}</td>
-            <td class="px-3 xl:px-5 py-4 min-w-[280px]">
+            <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap text-stone-900">${escapeHtml(row.seats_total || "—")}</td>
+            <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap">${status}</td>
+            <td class="px-3 xl:px-5 py-4 min-w-[220px] xl:min-w-[280px]">
               <div class="space-y-2">${windows || '<div class="text-sm text-stone-500">No price windows configured.</div>'}</div>
             </td>
             <td class="px-3 xl:px-5 py-4">
-              <div class="flex items-center justify-end gap-1">
+              <div class="flex items-center justify-start gap-1 xl:justify-end">
                 <button
                   type="button"
                   class="rounded-full p-2 transition-colors ${this.disabled ? "opacity-60 cursor-not-allowed" : "hover:bg-stone-100"}"
@@ -665,8 +669,13 @@ class TicketTypesController {
       return;
     }
 
-    modal.classList.toggle("hidden", !this._isModalOpen || !this._draftRow);
-    modal.classList.toggle("flex", this._isModalOpen && !!this._draftRow);
+    const isModalVisible = this._isModalOpen && !!this._draftRow;
+
+    modal.classList.toggle("hidden", !isModalVisible);
+    modal.classList.toggle("flex", isModalVisible);
+    modal.querySelectorAll("input, textarea, select, button").forEach((field) => {
+      field.disabled = !isModalVisible;
+    });
 
     if (!this._draftRow) {
       return;

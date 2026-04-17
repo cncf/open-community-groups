@@ -121,7 +121,9 @@
                   {% endif -%}
                   <div>{{ badges::event_badge(kind = event.kind, extra_styles = Some("mt-0.5 px-2.5 py-0.5") ) -}}</div>
                   {% if let Some(ticket_price_badge) = event.formatted_ticket_price_badge() -%}
-                    <div class="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+                    <div data-attendance-role="ticket-price-badge"
+                         data-price-label="{{ ticket_price_badge }}"
+                         class="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
                       {{ ticket_price_badge }}
                     </div>
                   {% endif -%}

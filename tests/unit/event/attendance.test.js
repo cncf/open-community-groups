@@ -5,6 +5,11 @@ import { waitForMicrotask } from "/tests/unit/test-utils/async.js";
 import { useDashboardTestEnv } from "/tests/unit/test-utils/env.js";
 import { dispatchHtmxAfterRequest, dispatchHtmxBeforeRequest } from "/tests/unit/test-utils/htmx.js";
 
+const initializeAttendanceDom = async () => {
+  document.body.dataset.attendanceListenersReady = "true";
+  await import(`/static/js/event/attendance.js?test=${Date.now()}`);
+};
+
 const renderAttendanceDom = ({
   starts = "2099-05-10T10:00:00Z",
   capacity = "10",
@@ -207,6 +212,25 @@ describe("event attendance", () => {
     expect(attendButton.disabled).to.equal(true);
     expect(attendButton.title).to.equal("This event is sold out.");
     expect(signinButton.classList.contains("hidden")).to.equal(true);
+  });
+
+  it("renders compact ticket price badges outside the attendance container", async () => {
+    document.body.innerHTML = `
+      <div
+        data-attendance-role="ticket-price-badge"
+        data-price-label="From EUR 50.00"
+      >
+        From EUR 50.00
+      </div>
+    `;
+
+    await initializeAttendanceDom();
+
+    const badge = document.querySelector('[data-attendance-role="ticket-price-badge"]');
+    const smallParts = Array.from(badge?.querySelectorAll(".text-xs") || []).map((node) => node.textContent);
+    expect(badge?.textContent?.trim()).to.equal("FromEUR50.00");
+    expect(smallParts).to.deep.equal(["From", "EUR"]);
+    expect(badge?.querySelector(".text-sm")?.textContent).to.equal("50.00");
   });
 
   it("emits a success message when leaving the waitlist and restores the button on failure", () => {

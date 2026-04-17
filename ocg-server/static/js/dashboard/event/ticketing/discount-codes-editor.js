@@ -439,13 +439,24 @@ class DiscountCodesController {
         const status = row.active
           ? '<span class="custom-badge shrink-0 border-green-800 bg-green-100 px-2.5 py-0.5 text-green-800">Active</span>'
           : '<span class="custom-badge shrink-0 border-stone-500 bg-stone-100 px-2.5 py-0.5 text-stone-700">Inactive</span>';
+        const mobileValueSummary = escapeHtml(this._discountValueSummary(row));
+        const valueSummary =
+          row.kind === "fixed_amount" && Number.isFinite(Number.parseFloat(row.amount))
+            ? this._renderMoneyLabel(this._formatMoney(Number.parseFloat(row.amount)), { suffix: "off" })
+            : escapeHtml(this._discountValueSummary(row));
 
         return `
           <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200 align-middle">
-            <td class="px-3 xl:px-5 py-4 min-w-[220px]">
+            <td class="px-3 xl:px-5 py-4 min-w-[180px] xl:min-w-[220px]">
               <div class="font-medium text-stone-900">${escapeHtml(this._discountTitle(row))}</div>
+              <div class="mt-2 text-xs font-medium text-stone-600 xl:hidden">${escapeHtml(row.code?.trim() || "CODE")}</div>
+              <div class="mt-3 flex flex-wrap items-center gap-2 xl:hidden">
+                <span class="inline-flex items-center rounded-full bg-stone-100 px-2.5 py-1 text-[11px] font-medium text-stone-700">${escapeHtml(this._discountSeatsSummary(row))} seats</span>
+                <span class="inline-flex items-center rounded-full bg-stone-100 px-2.5 py-1 text-[11px] font-medium text-stone-700">${mobileValueSummary}</span>
+                ${status}
+              </div>
             </td>
-            <td class="px-3 xl:px-5 py-4 whitespace-nowrap text-stone-900">
+            <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap text-stone-900">
               ${escapeHtml(this._discountSeatsSummary(row))}
               ${
                 this._discountSeatsDetail(row)
@@ -453,18 +464,14 @@ class DiscountCodesController {
                   : ""
               }
             </td>
-            <td class="px-3 xl:px-5 py-4 whitespace-nowrap">${status}</td>
-            <td class="px-3 xl:px-5 py-4 min-w-[220px]">
+            <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap">${status}</td>
+            <td class="px-3 xl:px-5 py-4">
               <div class="text-sm text-stone-700">${escapeHtml(this._discountAvailabilitySummary(row))}</div>
             </td>
-            <td class="px-3 xl:px-5 py-4 whitespace-nowrap text-stone-900">${
-              row.kind === "fixed_amount" && Number.isFinite(Number.parseFloat(row.amount))
-                ? this._renderMoneyLabel(this._formatMoney(Number.parseFloat(row.amount)), { suffix: "off" })
-                : escapeHtml(this._discountValueSummary(row))
-            }</td>
-            <td class="px-3 xl:px-5 py-4 whitespace-nowrap font-medium text-stone-700">${escapeHtml(row.code?.trim() || "CODE")}</td>
+            <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap text-stone-900">${valueSummary}</td>
+            <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap font-medium text-stone-700">${escapeHtml(row.code?.trim() || "CODE")}</td>
             <td class="px-3 xl:px-5 py-4">
-              <div class="flex items-center justify-end gap-1">
+              <div class="flex items-center justify-start gap-1 xl:justify-end">
                 <button
                   type="button"
                   class="rounded-full p-2 transition-colors ${this.disabled ? "opacity-60 cursor-not-allowed" : "hover:bg-stone-100"}"
@@ -558,8 +565,13 @@ class DiscountCodesController {
       return;
     }
 
-    modal.classList.toggle("hidden", !this._isModalOpen || !this._draftRow);
-    modal.classList.toggle("flex", this._isModalOpen && !!this._draftRow);
+    const isModalVisible = this._isModalOpen && !!this._draftRow;
+
+    modal.classList.toggle("hidden", !isModalVisible);
+    modal.classList.toggle("flex", isModalVisible);
+    modal.querySelectorAll("input, textarea, select, button").forEach((field) => {
+      field.disabled = !isModalVisible;
+    });
 
     if (!this._draftRow) {
       return;

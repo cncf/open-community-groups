@@ -30,8 +30,8 @@ const mountTicketTypesUi = ({ bodyRows = "" } = {}) => {
     <div data-ticketing-role="ticket-modal" class="hidden">
       <div data-ticketing-action="close-modal"></div>
       <h3 data-ticketing-role="modal-title"></h3>
-      <input id="ticket-title-draft" data-ticket-modal-field data-ticket-field="title" />
-      <input id="ticket-seats-draft" data-ticket-modal-field data-ticket-field="seats_total" />
+      <input id="ticket-title-draft" data-ticket-modal-field data-ticket-field="title" required />
+      <input id="ticket-seats-draft" data-ticket-modal-field data-ticket-field="seats_total" required />
       <textarea id="ticket-description-draft" data-ticket-field="description"></textarea>
       <input type="checkbox" data-ticket-field="active" />
       <button type="button" data-ticketing-action="add-price-window"></button>
@@ -64,8 +64,8 @@ const mountDiscountCodesUi = ({ bodyRows = "" } = {}) => {
     <div data-ticketing-role="discount-modal" class="hidden">
       <div data-ticketing-action="close-modal"></div>
       <h3 data-ticketing-role="modal-title"></h3>
-      <input id="discount-title-draft" data-discount-modal-field data-discount-field="title" />
-      <input id="discount-code-draft" data-discount-modal-field data-discount-field="code" />
+      <input id="discount-title-draft" data-discount-modal-field data-discount-field="title" required />
+      <input id="discount-code-draft" data-discount-modal-field data-discount-field="code" required />
       <input type="checkbox" data-discount-field="active" />
       <select id="discount-kind-draft" data-discount-field="kind">
         <option value="percentage">Percentage</option>
@@ -230,6 +230,19 @@ describe("ticketing editors", () => {
     );
   });
 
+  it("keeps hidden ticket modal fields disabled so parent form validation ignores them", () => {
+    const form = document.createElement("form");
+    const uiRoot = mountTicketTypesUi();
+    form.append(uiRoot);
+    document.body.append(form);
+
+    initializeTicketTypesController({ addButtonId: "", rootId: "ticket-types-ui" });
+
+    expect(form.checkValidity()).to.equal(true);
+    expect(uiRoot.querySelector("#ticket-title-draft")?.disabled).to.equal(true);
+    expect(uiRoot.querySelector("#ticket-seats-draft")?.disabled).to.equal(true);
+  });
+
   it("renders discount code rows and updates serialization after modal edits", async () => {
     const uiRoot = mountDiscountCodesUi();
     uiRoot.dataset.discountCodes = JSON.stringify([
@@ -331,6 +344,19 @@ describe("ticketing editors", () => {
     expect(uiRoot.querySelector('[data-ticketing-role="modal-title"]')?.textContent).to.equal(
       "Edit discount code",
     );
+  });
+
+  it("keeps hidden discount modal fields disabled so parent form validation ignores them", () => {
+    const form = document.createElement("form");
+    const uiRoot = mountDiscountCodesUi();
+    form.append(uiRoot);
+    document.body.append(form);
+
+    initializeDiscountCodesController({ addButtonId: "", rootId: "discount-codes-ui" });
+
+    expect(form.checkValidity()).to.equal(true);
+    expect(uiRoot.querySelector("#discount-title-draft")?.disabled).to.equal(true);
+    expect(uiRoot.querySelector("#discount-code-draft")?.disabled).to.equal(true);
   });
 
   it("preserves persisted remaining counts after discount row rerenders", () => {

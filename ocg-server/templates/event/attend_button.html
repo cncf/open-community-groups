@@ -183,7 +183,9 @@
                                     </div>
                                     {% if let Some(currency_code) = &event.payment_currency_code -%}
                                       {% if let Some(price_label) = ticket_type.formatted_current_price(currency_code) -%}
-                                        <div class="rounded-full border border-stone-200 bg-stone-50 px-3 py-1.5 text-sm font-semibold text-stone-700">
+                                        <div data-attendance-role="ticket-price-badge"
+                                             data-price-label="{{ price_label }}"
+                                             class="rounded-full border border-stone-200 bg-stone-50 px-3 py-1.5 text-sm font-semibold text-stone-700">
                                           {{ price_label }}
                                         </div>
                                       {% else -%}

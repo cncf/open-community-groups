@@ -47,6 +47,62 @@ const setAttendanceControlLabel = (button, label) => {
 const isTicketModalOpen = (modal) => modal instanceof HTMLElement && !modal.classList.contains("hidden");
 
 /**
+ * Applies the compact currency treatment used in ticketing UIs.
+ * @param {Document|HTMLElement} root - Root node to search
+ */
+const compactTicketPriceBadges = (root) => {
+  if (!root) {
+    return;
+  }
+
+  const badges = new Set();
+  if (root instanceof HTMLElement && root.matches('[data-attendance-role="ticket-price-badge"]')) {
+    badges.add(root);
+  }
+
+  root.querySelectorAll?.('[data-attendance-role="ticket-price-badge"]').forEach((badge) => {
+    badges.add(badge);
+  });
+
+  badges.forEach((badge) => {
+    if (!(badge instanceof HTMLElement)) {
+      return;
+    }
+
+    const priceLabel = (badge.dataset.priceLabel || badge.textContent || "").trim();
+    const priceParts = priceLabel.match(/^(?:(From)\s+)?([A-Z]{3})\s+(.+)$/);
+    if (!priceParts) {
+      badge.textContent = priceLabel;
+      return;
+    }
+
+    const [, prefixLabel, currencyCode, amountLabel] = priceParts;
+    badge.replaceChildren();
+
+    const wrapper = document.createElement("span");
+    wrapper.className = "inline-flex items-baseline gap-1.5";
+
+    if (prefixLabel) {
+      const prefixNode = document.createElement("span");
+      prefixNode.className = "text-xs font-medium opacity-70";
+      prefixNode.textContent = prefixLabel;
+      wrapper.append(prefixNode);
+    }
+
+    const currencyNode = document.createElement("span");
+    currencyNode.className = "text-xs font-medium opacity-70";
+    currencyNode.textContent = currencyCode;
+
+    const amountNode = document.createElement("span");
+    amountNode.className = "text-sm font-semibold";
+    amountNode.textContent = amountLabel;
+
+    wrapper.append(currencyNode, amountNode);
+    badge.append(wrapper);
+  });
+};
+
+/**
  * Reads the payment outcome returned by the checkout provider.
  * @returns {"canceled"|"success"|null} Supported payment outcome
  */
@@ -1128,6 +1184,7 @@ const handleAttendanceKeydown = (event) => {
  * @param {Document|HTMLElement} root - Root node to search
  */
 const initializeAttendance = (root = document) => {
+  compactTicketPriceBadges(root);
   getAttendanceContainers(root).forEach(initializeAttendanceContainer);
 
   if (document.body?.dataset.attendanceListenersReady === "true") {

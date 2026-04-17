@@ -72,6 +72,12 @@ const renderPaidAttendanceDom = ({
               name="discount_code"
               value=""
             />
+            <div
+              data-attendance-role="ticket-price-badge"
+              data-price-label="EUR 50.00"
+            >
+              EUR 50.00
+            </div>
           </div>
           <button data-attendance-role="checkout-btn" type="submit">
             <span data-attendance-role="checkout-btn-spinner" class="absolute inset-0 hidden items-center justify-center">
@@ -113,6 +119,7 @@ const renderPaidAttendanceDom = ({
     checkoutButton: document.querySelector('[data-attendance-role="checkout-btn"]'),
     checkoutButtonSpinner: document.querySelector('[data-attendance-role="checkout-btn-spinner"]'),
     checkoutButtonLabel: document.querySelector('[data-attendance-role="checkout-btn-label"]'),
+    ticketPriceBadge: document.querySelector('[data-attendance-role="ticket-price-badge"]'),
     ticketModalOverlay: document.querySelector('[data-attendance-role="ticket-modal-overlay"]'),
     ticketModalCancel: document.querySelector('[data-attendance-role="ticket-modal-cancel"]'),
   };
@@ -186,6 +193,19 @@ describe("event attendance paid modal", () => {
     expect(ticketTypeOptions[0].disabled).to.equal(false);
     expect(ticketTypeOptions[1].disabled).to.equal(true);
     expect(checkoutButton.disabled).to.equal(true);
+  });
+
+  it("renders compact ticket price badges in the modal", async () => {
+    const { checker, ticketPriceBadge } = renderPaidAttendanceDom();
+    await initializeAttendanceDom();
+
+    dispatchHtmxAfterRequest(checker, {
+      responseText: JSON.stringify({ status: "guest" }),
+    });
+
+    expect(ticketPriceBadge?.textContent?.trim()).to.equal("EUR50.00");
+    expect(ticketPriceBadge?.querySelector(".text-xs")?.textContent).to.equal("EUR");
+    expect(ticketPriceBadge?.querySelector(".text-sm")?.textContent).to.equal("50.00");
   });
 
   it("omits an empty discount code from checkout params and trims a filled one", async () => {
