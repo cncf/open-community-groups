@@ -2,10 +2,10 @@ import { toTrimmedString } from "/static/js/dashboard/event/ticketing/shared.js"
 
 /**
  * Resolves the event timezone from the shared event form.
+ * @param {HTMLInputElement|HTMLSelectElement|HTMLTextAreaElement|null} [timezoneField]
  * @returns {string}
  */
-export const resolveEventTimezone = () => {
-  const timezoneField = document.querySelector('[name="timezone"]');
+export const resolveEventTimezone = (timezoneField = document.querySelector('[name="timezone"]')) => {
   return typeof timezoneField?.value === "string" ? timezoneField.value.trim() : "";
 };
 

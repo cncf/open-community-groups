@@ -9,9 +9,11 @@ import {
 import { escapeHtml, parseJsonAttribute } from "/static/js/dashboard/event/ticketing/shared.js";
 
 class TicketTypesController {
-  constructor({ addButtonId, root }) {
-    this.addButtonId = addButtonId;
+  constructor({ addButton = null, currencyInput = null, root, timezoneInput = null }) {
+    this.addButton = addButton;
+    this.currencyInput = currencyInput;
     this.root = root;
+    this.timezoneInput = timezoneInput;
     this.disabled = root.dataset.disabled === "true";
     this.fieldNamePrefix = "ticket_types";
     this.presenceFieldName = "ticket_types_present";
@@ -48,9 +50,7 @@ class TicketTypesController {
     this.root.removeEventListener("input", this._handleRootInput);
     this.root.removeEventListener("change", this._handleRootChange);
     document.removeEventListener("keydown", this._handleKeydown);
-    document
-      .getElementById("payment_currency_code")
-      ?.removeEventListener("input", this._handleCurrencyFieldChange);
+    this.currencyInput?.removeEventListener("input", this._handleCurrencyFieldChange);
   }
 
   hasConfiguredTicketTypes() {
@@ -74,22 +74,18 @@ class TicketTypesController {
     this.root.addEventListener("input", this._handleRootInput);
     this.root.addEventListener("change", this._handleRootChange);
     document.addEventListener("keydown", this._handleKeydown);
-    document
-      .getElementById("payment_currency_code")
-      ?.addEventListener("input", this._handleCurrencyFieldChange);
+    this.currencyInput?.addEventListener("input", this._handleCurrencyFieldChange);
   }
 
   _toggleExternalAddButtonListener(shouldAdd) {
-    if (!this.addButtonId) {
+    if (!this.addButton) {
       return;
     }
 
-    const button = document.getElementById(this.addButtonId);
-    if (!button) {
-      return;
-    }
-
-    button[shouldAdd ? "addEventListener" : "removeEventListener"]("click", this._handleExternalAddClick);
+    this.addButton[shouldAdd ? "addEventListener" : "removeEventListener"](
+      "click",
+      this._handleExternalAddClick,
+    );
   }
 
   _handleCurrencyFieldChange() {
@@ -189,7 +185,11 @@ class TicketTypesController {
   }
 
   _currencyCode() {
-    return resolveEventCurrencyCode();
+    return resolveEventCurrencyCode(this.currencyInput);
+  }
+
+  _timezone() {
+    return resolveEventTimezone(this.timezoneInput);
   }
 
   _currencyInputPlaceholder() {
@@ -215,7 +215,7 @@ class TicketTypesController {
       currencyCode: this._currencyCode(),
       nextRowId: () => this._nextRowId(),
       ticketTypes,
-      timezone: resolveEventTimezone(),
+      timezone: this._timezone(),
     });
 
     this._rows = rows.map((row) => ({
@@ -489,7 +489,7 @@ class TicketTypesController {
       currencyCode: this._currencyCode(),
       fieldNamePrefix: this.fieldNamePrefix,
       rows: this._rows,
-      timezone: resolveEventTimezone(),
+      timezone: this._timezone(),
     });
 
     const allFields = [{ name: this.presenceFieldName, value: "true" }, ...fields];
@@ -727,17 +727,37 @@ class TicketTypesController {
   }
 }
 
-export const initializeTicketTypesController = ({ addButtonId, rootId }) => {
-  const root = document.getElementById(rootId);
-  if (!root) {
+export const initializeTicketTypesController = ({
+  addButton = null,
+  addButtonId = "",
+  currencyInput = null,
+  currencyInputId = "payment_currency_code",
+  root = null,
+  rootId = "",
+  timezoneInput = null,
+  timezoneSelector = '[name="timezone"]',
+}) => {
+  const resolvedRoot = root || document.getElementById(rootId);
+  if (!resolvedRoot) {
     return null;
   }
 
-  if (root._ticketTypesController) {
-    return root._ticketTypesController;
+  const resolvedAddButton = addButton || (addButtonId ? document.getElementById(addButtonId) : null);
+  const resolvedCurrencyInput =
+    currencyInput || (currencyInputId ? document.getElementById(currencyInputId) : null);
+  const resolvedTimezoneInput =
+    timezoneInput || (timezoneSelector ? document.querySelector(timezoneSelector) : null);
+
+  if (resolvedRoot._ticketTypesController) {
+    return resolvedRoot._ticketTypesController;
   }
 
-  const controller = new TicketTypesController({ addButtonId, root });
-  root._ticketTypesController = controller;
+  const controller = new TicketTypesController({
+    addButton: resolvedAddButton,
+    currencyInput: resolvedCurrencyInput,
+    root: resolvedRoot,
+    timezoneInput: resolvedTimezoneInput,
+  });
+  resolvedRoot._ticketTypesController = controller;
   return controller;
 };

@@ -5,10 +5,12 @@ import {
 
 /**
  * Resolves the event currency from the shared event form.
+ * @param {HTMLInputElement|HTMLSelectElement|null} [currencyField]
  * @returns {string}
  */
-export const resolveEventCurrencyCode = () => {
-  const currencyField = document.getElementById("payment_currency_code");
+export const resolveEventCurrencyCode = (
+  currencyField = document.getElementById("payment_currency_code"),
+) => {
   const currencyCode = toTrimmedString(currencyField?.value).toUpperCase();
 
   return currencyCode || DEFAULT_CURRENCY_PLACEHOLDER;

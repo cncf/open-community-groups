@@ -14,6 +14,27 @@ const ticketingControllerConfigs = [
 
 let hasBoundTicketingCleanup = false;
 
+const queryControlById = (root, id) => {
+  if (typeof root.getElementById === "function") {
+    return root.getElementById(id);
+  }
+
+  return root.querySelector(`#${id}`);
+};
+
+const resolveTicketingControls = (root = document) => ({
+  capacityInput: queryControlById(root, "capacity"),
+  clearTicketingInput: queryControlById(root, "clear_ticketing"),
+  discountCodesRoot: queryControlById(root, "discount-codes-ui"),
+  paymentCurrencyInput: queryControlById(root, "payment_currency_code"),
+  ticketTypesRoot: queryControlById(root, "ticket-types-ui"),
+  timezoneInput: root.querySelector('[name="timezone"]'),
+  toggleClearTicketing: queryControlById(root, "toggle_clear_ticketing"),
+  toggleWaitlistEnabled: queryControlById(root, "toggle_waitlist_enabled"),
+  waitlistEnabledInput: queryControlById(root, "waitlist_enabled"),
+  waitlistToggleLabel: queryControlById(root, "waitlist-toggle-label"),
+});
+
 const destroyTicketingControllersWithin = (container) => {
   if (!(container instanceof Element)) {
     return;
@@ -44,16 +65,23 @@ const bindTicketingCleanup = () => {
   hasBoundTicketingCleanup = true;
 };
 
-export function initializeTicketingControllers() {
+export function initializeTicketingControllers(root = document) {
   bindTicketingCleanup();
 
+  const { discountCodesRoot, paymentCurrencyInput, ticketTypesRoot, timezoneInput } =
+    resolveTicketingControls(root);
+
   const discountCodesController = initializeDiscountCodesController({
-    addButtonId: "add-discount-code-button",
-    rootId: "discount-codes-ui",
+    addButton: queryControlById(root, "add-discount-code-button"),
+    currencyInput: paymentCurrencyInput,
+    root: discountCodesRoot,
+    timezoneInput,
   });
   const ticketTypesController = initializeTicketTypesController({
-    addButtonId: "add-ticket-type-button",
-    rootId: "ticket-types-ui",
+    addButton: queryControlById(root, "add-ticket-type-button"),
+    currencyInput: paymentCurrencyInput,
+    root: ticketTypesRoot,
+    timezoneInput,
   });
 
   return {
@@ -62,16 +90,18 @@ export function initializeTicketingControllers() {
   };
 }
 
-export function initializeTicketingWaitlistState() {
-  const capacityInput = document.getElementById("capacity");
-  const clearTicketingInput = document.getElementById("clear_ticketing");
-  const paymentCurrencyInput = document.getElementById("payment_currency_code");
-  const ticketTypesRoot = document.getElementById("ticket-types-ui");
-  const toggleClearTicketing = document.getElementById("toggle_clear_ticketing");
-  const toggleWaitlistEnabled = document.getElementById("toggle_waitlist_enabled");
-  const waitlistEnabledInput = document.getElementById("waitlist_enabled");
-  const waitlistToggleLabel = document.getElementById("waitlist-toggle-label");
-  const { ticketTypesController } = initializeTicketingControllers();
+export function initializeTicketingWaitlistState(root = document) {
+  const {
+    capacityInput,
+    clearTicketingInput,
+    paymentCurrencyInput,
+    ticketTypesRoot,
+    toggleClearTicketing,
+    toggleWaitlistEnabled,
+    waitlistEnabledInput,
+    waitlistToggleLabel,
+  } = resolveTicketingControls(root);
+  const { ticketTypesController } = initializeTicketingControllers(root);
 
   const syncWaitlistToggleState = () => {
     if (!toggleWaitlistEnabled || !waitlistEnabledInput || !capacityInput) {

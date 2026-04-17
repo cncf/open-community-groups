@@ -155,6 +155,52 @@ describe("ticketing editors", () => {
     expect(events.at(-1)).to.deep.equal({ hasTicketTypes: true });
   });
 
+  it("uses explicit ticket type controller dependencies instead of global fields", async () => {
+    document.getElementById("payment_currency_code").value = "USD";
+    document.querySelector('[name="timezone"]').value = "UTC";
+
+    const addButton = document.createElement("button");
+    document.body.append(addButton);
+
+    const currencyInput = document.createElement("input");
+    currencyInput.value = "EUR";
+    document.body.append(currencyInput);
+
+    const timezoneInput = document.createElement("input");
+    timezoneInput.value = "America/New_York";
+    document.body.append(timezoneInput);
+
+    const uiRoot = mountTicketTypesUi();
+    initializeTicketTypesController({
+      addButton,
+      currencyInput,
+      root: uiRoot,
+      timezoneInput,
+    });
+
+    addButton.click();
+
+    expect(uiRoot.textContent).to.contain("Price (EUR)");
+
+    await setInputValue(uiRoot, "#ticket-title-draft", "Custom dependency ticket");
+    await setInputValue(uiRoot, "#ticket-seats-draft", "20");
+    await setInputValue(uiRoot, "#ticket-price-1", "15.00");
+    await setInputValue(uiRoot, "#ticket-starts-1", "2026-04-10T10:00");
+
+    uiRoot.querySelector('[data-ticketing-action="save-ticket"]')?.click();
+
+    expect(uiRoot.querySelector('input[name="ticket_types[0][price_windows][0][starts_at]"]')?.value).to.equal(
+      "2026-04-10T14:00:00.000Z",
+    );
+
+    currencyInput.value = "JPY";
+    currencyInput.dispatchEvent(new Event("input", { bubbles: true, composed: true }));
+
+    uiRoot.querySelector('[data-ticketing-action="edit-ticket"]')?.click();
+
+    expect(uiRoot.textContent).to.contain("Price (JPY)");
+  });
+
   it("keeps free ticket prices as amount_minor 0 in hidden fields", async () => {
     const uiRoot = mountTicketTypesUi();
     const controller = initializeTicketTypesController({ addButtonId: "", rootId: "ticket-types-ui" });
@@ -300,6 +346,42 @@ describe("ticketing editors", () => {
 
     expect(uiRoot.textContent).to.contain("No discount codes yet.");
     expect(uiRoot.querySelector('input[name="discount_codes[0][title]"]')).to.equal(null);
+  });
+
+  it("uses explicit discount controller dependencies instead of global fields", async () => {
+    document.getElementById("payment_currency_code").value = "USD";
+
+    const addButton = document.createElement("button");
+    document.body.append(addButton);
+
+    const currencyInput = document.createElement("input");
+    currencyInput.value = "EUR";
+    document.body.append(currencyInput);
+
+    const timezoneInput = document.createElement("input");
+    timezoneInput.value = "UTC";
+    document.body.append(timezoneInput);
+
+    const uiRoot = mountDiscountCodesUi();
+    initializeDiscountCodesController({
+      addButton,
+      currencyInput,
+      root: uiRoot,
+      timezoneInput,
+    });
+
+    addButton.click();
+    uiRoot.querySelector("#discount-kind-draft").value = "fixed_amount";
+    uiRoot
+      .querySelector("#discount-kind-draft")
+      .dispatchEvent(new Event("change", { bubbles: true, composed: true }));
+
+    expect(uiRoot.textContent).to.contain("Amount (EUR)");
+
+    currencyInput.value = "GBP";
+    currencyInput.dispatchEvent(new Event("input", { bubbles: true, composed: true }));
+
+    expect(uiRoot.textContent).to.contain("Amount (GBP)");
   });
 
   it("keeps zero fixed discount amounts as amount_minor 0 in hidden fields", async () => {

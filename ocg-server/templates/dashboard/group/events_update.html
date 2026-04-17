@@ -976,6 +976,11 @@
     initializePendingChangesAlert
   } from '/static/js/dashboard/group/pending-changes-alert.js';
   import {
+    bindBooleanToggle,
+    collectExistingFormIds,
+    initializeSectionTabs
+  } from '/static/js/dashboard/group/page-form-state.js';
+  import {
     initializeTicketingWaitlistState
   } from '/static/js/dashboard/event/ticketing.js';
 
@@ -1075,46 +1080,27 @@
     });
   }
 
-  // Tab switching functionality
-  function displayActiveSection(sectionName) {
-    // Update tab buttons
-    const tabButtons = document.querySelectorAll('[data-section]');
-    tabButtons.forEach(btn => {
-      if (btn.getAttribute('data-section') === sectionName) {
-        btn.setAttribute('data-active', 'true');
-        btn.classList.add('active');
-      } else {
-        btn.setAttribute('data-active', 'false');
-        btn.classList.remove('active');
+  const {
+    displayActiveSection
+  } = initializeSectionTabs({
+    onSectionChange: (sectionName) => {
+      if (sectionName === 'date-venue') {
+        showLocationMapIfNeeded();
       }
-    });
 
-    // Update content sections
-    const contentSections = document.querySelectorAll('[data-content]');
-    contentSections.forEach(section => {
-      if (section.getAttribute('data-content') === sectionName) {
-        section.classList.remove('hidden');
-      } else {
-        section.classList.add('hidden');
+      if (sectionName === 'sessions') {
+        syncSessionsDateRange();
       }
-    });
 
-    if (sectionName === 'date-venue') {
-      showLocationMapIfNeeded();
-    }
-
-    if (sectionName === 'sessions') {
-      syncSessionsDateRange();
-    }
-
-    if (!canManageEvents && inertForm) {
-      if (sectionName === 'submissions') {
-        inertForm.removeAttribute('inert');
-      } else {
-        inertForm.setAttribute('inert', '');
+      if (!canManageEvents && inertForm) {
+        if (sectionName === 'submissions') {
+          inertForm.removeAttribute('inert');
+        } else {
+          inertForm.setAttribute('inert', '');
+        }
       }
-    }
-  }
+    },
+  });
 
   // Validate multiple forms
   function validateEventForms() {
@@ -1172,31 +1158,17 @@
     showErrorAlert(invalidInput?.validationMessage || 'Session dates must be within the event start and end dates.');
   }
 
-  // Add event listeners to tab buttons
-  const sectionsBtn = document.querySelectorAll('[data-section]');
-  sectionsBtn.forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const section = btn.getAttribute('data-section');
-      displayActiveSection(section);
-    });
+  bindBooleanToggle({
+    toggle: document.getElementById('toggle_registration_required'),
+    hiddenInput: document.getElementById('registration_required'),
   });
-
-  // Handle registration required toggle
-  const toggleRegistrationRequired = document.getElementById('toggle_registration_required');
-  if (toggleRegistrationRequired) {
-    toggleRegistrationRequired.addEventListener('change', () => {
-      document.getElementById('registration_required').value = toggleRegistrationRequired.checked;
-    });
-  }
 
   initializeTicketingWaitlistState();
 
-  const toggleEventReminderEnabled = document.getElementById('toggle_event_reminder_enabled');
-  if (toggleEventReminderEnabled) {
-    toggleEventReminderEnabled.addEventListener('change', () => {
-      document.getElementById('event_reminder_enabled').value = toggleEventReminderEnabled.checked;
-    });
-  }
+  bindBooleanToggle({
+    toggle: document.getElementById('toggle_event_reminder_enabled'),
+    hiddenInput: document.getElementById('event_reminder_enabled'),
+  });
 
   const toggleCfsEnabled = document.getElementById('toggle_cfs_enabled');
   const cfsEnabledInput = document.getElementById('cfs_enabled');
@@ -1207,9 +1179,6 @@
 
   const updateCfsFields = (enabled) => {
     const isLocked = (field) => field?.dataset?.locked === 'true';
-    if (cfsEnabledInput) {
-      cfsEnabledInput.value = enabled ? 'true' : 'false';
-    }
     if (cfsStartsAtInput) {
       const locked = isLocked(cfsStartsAtInput);
       cfsStartsAtInput.disabled = locked || !enabled;
@@ -1230,14 +1199,24 @@
     }
   };
 
-  if (toggleCfsEnabled && !toggleCfsEnabled.disabled) {
+  if (toggleCfsEnabled) {
+    if (cfsEnabledInput) {
+      cfsEnabledInput.value = String(toggleCfsEnabled.checked);
+    }
     updateCfsFields(toggleCfsEnabled.checked);
-    toggleCfsEnabled.addEventListener('change', () => {
-      clearCfsWindowValidity({
-        cfsStartsInput: cfsStartsAtInput,
-        cfsEndsInput: cfsEndsAtInput,
-      });
-      updateCfsFields(toggleCfsEnabled.checked);
+  }
+
+  if (toggleCfsEnabled && !toggleCfsEnabled.disabled) {
+    bindBooleanToggle({
+      toggle: toggleCfsEnabled,
+      hiddenInput: cfsEnabledInput,
+      onChange: (enabled) => {
+        clearCfsWindowValidity({
+          cfsStartsInput: cfsStartsAtInput,
+          cfsEndsInput: cfsEndsAtInput,
+        });
+        updateCfsFields(enabled);
+      },
     });
   }
 
@@ -1354,18 +1333,14 @@
     });
   }
 
-  const pendingChangesFormIds = [
+  const pendingChangesFormIds = collectExistingFormIds([
     'details-form',
     'date-venue-form',
     'hosts-sponsors-form',
     'sessions-form',
-  ];
-
-  if (document.getElementById('payments-form')) {
-    pendingChangesFormIds.push('payments-form');
-  }
-
-  pendingChangesFormIds.push('cfs-form');
+    'payments-form',
+    'cfs-form',
+  ]);
 
   initializePendingChangesAlert({
     alertId: 'pending-changes-alert',

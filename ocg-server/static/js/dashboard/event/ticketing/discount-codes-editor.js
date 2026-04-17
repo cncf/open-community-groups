@@ -12,9 +12,11 @@ import {
 import { escapeHtml, parseJsonAttribute } from "/static/js/dashboard/event/ticketing/shared.js";
 
 class DiscountCodesController {
-  constructor({ addButtonId, root }) {
-    this.addButtonId = addButtonId;
+  constructor({ addButton = null, currencyInput = null, root, timezoneInput = null }) {
+    this.addButton = addButton;
+    this.currencyInput = currencyInput;
     this.root = root;
+    this.timezoneInput = timezoneInput;
     this.disabled = root.dataset.disabled === "true";
     this.fieldNamePrefix = "discount_codes";
     this.presenceFieldName = "discount_codes_present";
@@ -51,9 +53,7 @@ class DiscountCodesController {
     this.root.removeEventListener("input", this._handleRootInput);
     this.root.removeEventListener("change", this._handleRootChange);
     document.removeEventListener("keydown", this._handleKeydown);
-    document
-      .getElementById("payment_currency_code")
-      ?.removeEventListener("input", this._handleCurrencyFieldChange);
+    this.currencyInput?.removeEventListener("input", this._handleCurrencyFieldChange);
   }
 
   _bind() {
@@ -62,22 +62,18 @@ class DiscountCodesController {
     this.root.addEventListener("input", this._handleRootInput);
     this.root.addEventListener("change", this._handleRootChange);
     document.addEventListener("keydown", this._handleKeydown);
-    document
-      .getElementById("payment_currency_code")
-      ?.addEventListener("input", this._handleCurrencyFieldChange);
+    this.currencyInput?.addEventListener("input", this._handleCurrencyFieldChange);
   }
 
   _toggleExternalAddButtonListener(shouldAdd) {
-    if (!this.addButtonId) {
+    if (!this.addButton) {
       return;
     }
 
-    const button = document.getElementById(this.addButtonId);
-    if (!button) {
-      return;
-    }
-
-    button[shouldAdd ? "addEventListener" : "removeEventListener"]("click", this._handleExternalAddClick);
+    this.addButton[shouldAdd ? "addEventListener" : "removeEventListener"](
+      "click",
+      this._handleExternalAddClick,
+    );
   }
 
   _handleCurrencyFieldChange() {
@@ -163,7 +159,11 @@ class DiscountCodesController {
   }
 
   _currencyCode() {
-    return resolveEventCurrencyCode();
+    return resolveEventCurrencyCode(this.currencyInput);
+  }
+
+  _timezone() {
+    return resolveEventTimezone(this.timezoneInput);
   }
 
   _currencyInputPlaceholder() {
@@ -189,7 +189,7 @@ class DiscountCodesController {
       currencyCode: this._currencyCode(),
       discountCodes,
       nextRowId: () => this._nextRowId(),
-      timezone: resolveEventTimezone(),
+      timezone: this._timezone(),
     });
   }
 
@@ -416,7 +416,7 @@ class DiscountCodesController {
       currencyCode: this._currencyCode(),
       fieldNamePrefix: this.fieldNamePrefix,
       rows: this._rows,
-      timezone: resolveEventTimezone(),
+      timezone: this._timezone(),
     });
 
     const allFields = [{ name: this.presenceFieldName, value: "true" }, ...fields];
@@ -643,17 +643,37 @@ class DiscountCodesController {
   }
 }
 
-export const initializeDiscountCodesController = ({ addButtonId, rootId }) => {
-  const root = document.getElementById(rootId);
-  if (!root) {
+export const initializeDiscountCodesController = ({
+  addButton = null,
+  addButtonId = "",
+  currencyInput = null,
+  currencyInputId = "payment_currency_code",
+  root = null,
+  rootId = "",
+  timezoneInput = null,
+  timezoneSelector = '[name="timezone"]',
+}) => {
+  const resolvedRoot = root || document.getElementById(rootId);
+  if (!resolvedRoot) {
     return null;
   }
 
-  if (root._discountCodesController) {
-    return root._discountCodesController;
+  const resolvedAddButton = addButton || (addButtonId ? document.getElementById(addButtonId) : null);
+  const resolvedCurrencyInput =
+    currencyInput || (currencyInputId ? document.getElementById(currencyInputId) : null);
+  const resolvedTimezoneInput =
+    timezoneInput || (timezoneSelector ? document.querySelector(timezoneSelector) : null);
+
+  if (resolvedRoot._discountCodesController) {
+    return resolvedRoot._discountCodesController;
   }
 
-  const controller = new DiscountCodesController({ addButtonId, root });
-  root._discountCodesController = controller;
+  const controller = new DiscountCodesController({
+    addButton: resolvedAddButton,
+    currencyInput: resolvedCurrencyInput,
+    root: resolvedRoot,
+    timezoneInput: resolvedTimezoneInput,
+  });
+  resolvedRoot._discountCodesController = controller;
   return controller;
 };
