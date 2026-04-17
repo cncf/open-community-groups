@@ -104,7 +104,7 @@
               type="button"
               class="btn-primary w-24 text-nowrap ms-auto"
               hx-post="/dashboard/group/events/add"
-              hx-ext="no-empty-vals"
+              hx-ext="no-empty-vals-keep-zero"
               hx-include="#details-form, #cfs-form, #date-venue-form, #sessions-form, #hosts-sponsors-form
                           {% if payments_enabled %}, #payments-form{% endif %}"
               hx-target="#dashboard-content"

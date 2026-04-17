@@ -137,7 +137,7 @@
                      {% endif -%}"
               hx-put="/dashboard/group/events/{{ event.event_id }}/update"
               hx-trigger="click, confirmed"
-              hx-ext="no-empty-vals"
+              hx-ext="no-empty-vals-keep-zero"
               hx-include="#details-form, #cfs-form, #date-venue-form, #sessions-form, #hosts-sponsors-form
                           {% if payments_enabled %}, #payments-form{% endif %}"
               hx-target="#dashboard-content"
