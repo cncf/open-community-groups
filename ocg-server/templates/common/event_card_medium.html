@@ -82,7 +82,9 @@
                 {{ ui::icon_text(icon_name = "date", text = starts_at.with_timezone(event.timezone).format("%A, %B %e, %G · %I:%M %p %Z")) -}}
               {% endif -%}
               {% if let Some(ticket_price_badge) = event.formatted_ticket_price_badge() -%}
-                <span class="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[0.7rem] font-semibold text-emerald-700">
+                <span data-attendance-role="ticket-price-badge"
+                      data-price-label="{{ ticket_price_badge }}"
+                      class="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[0.78rem] font-semibold text-emerald-700">
                   {{ ticket_price_badge }}
                 </span>
               {% endif -%}
@@ -118,7 +120,9 @@
       </div>
       {% if let Some(ticket_price_badge) = event.formatted_ticket_price_badge() -%}
         <div class="card-meta">
-          <span class="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[0.7rem] font-semibold text-emerald-700">
+          <span data-attendance-role="ticket-price-badge"
+                data-price-label="{{ ticket_price_badge }}"
+                class="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[0.78rem] font-semibold text-emerald-700">
             {{ ticket_price_badge }}
           </span>
         </div>

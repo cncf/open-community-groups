@@ -37,7 +37,9 @@
         {% endif -%}
         <div class="flex items-center gap-2 shrink-0 ml-auto">
           {% if let Some(ticket_price_badge) = event.formatted_ticket_price_badge() -%}
-            <span class="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[0.7rem] font-semibold text-emerald-700">
+            <span data-attendance-role="ticket-price-badge"
+                  data-price-label="{{ ticket_price_badge }}"
+                  class="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[0.78rem] font-semibold text-emerald-700">
               {{ ticket_price_badge }}
             </span>
           {% endif -%}
