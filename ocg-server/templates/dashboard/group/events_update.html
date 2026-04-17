@@ -3,72 +3,72 @@
 
 {# Events update form -#}
 <div class="space-y-12" data-event-past="{{ event.is_past() }}">
-  <ul class="flex flex-wrap space-x-1 lg:space-x-2 -mb-px font-medium text-center border-b border-stone-900/10 w-full mb-10">
-    <li>
+  <ul class="flex flex-nowrap gap-1 lg:gap-2 -mb-px font-medium text-center border-b border-stone-900/10 w-full mb-10 overflow-x-auto overflow-y-hidden">
+    <li class="shrink-0">
       <button type="button"
               data-section="details"
               data-active="true"
               class="px-2 xl:w-[90px] 2xl:w-[120px] xl:px-0 cursor-pointer inline-flex flex-col items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 active data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group">
         <div class="svg-icon size-4 lg:size-5 mb-2 icon-event bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
         </div>
-        <span class="text-[10px] lg:text-[11px]">Details</span>
+        <span class="text-[10px] 2xl:text-xs">Details</span>
       </button>
     </li>
-    <li>
+    <li class="shrink-0">
       <button type="button"
               data-section="date-venue"
               data-active="false"
               class="px-2 xl:w-[90px] 2xl:w-[120px] xl:px-0 cursor-pointer inline-flex flex-col items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group">
         <div class="svg-icon size-4 lg:size-5 mb-2 icon-calendar bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
         </div>
-        <span class="text-[10px] lg:text-[11px] hidden xl:inline">Date & Venue</span>
-        <span class="text-[10px] lg:text-[11px] xl:hidden">Schedule</span>
+        <span class="text-[10px] 2xl:text-xs hidden xl:inline">Date & Venue</span>
+        <span class="text-[10px] 2xl:text-xs xl:hidden">Schedule</span>
       </button>
     </li>
-    <li>
+    <li class="shrink-0">
       <button type="button"
               data-section="hosts-sponsors"
               data-active="false"
               class="px-2 xl:w-[90px] 2xl:w-[120px] xl:px-0 cursor-pointer inline-flex flex-col items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group">
         <div class="svg-icon size-4 lg:size-5 mb-2 icon-user-plus bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
         </div>
-        <span class="text-[10px] lg:text-[11px] hidden 2xl:inline">Hosts & Speakers</span>
-        <span class="text-[10px] lg:text-[11px] 2xl:hidden">Hosts</span>
+        <span class="text-[10px] 2xl:text-xs hidden 2xl:inline">Hosts & Speakers</span>
+        <span class="text-[10px] 2xl:text-xs 2xl:hidden">Hosts</span>
       </button>
     </li>
-    <li>
+    <li class="shrink-0">
       <button type="button"
               data-section="sessions"
               data-active="false"
               class="px-2 xl:w-[90px] 2xl:w-[120px] xl:px-0 cursor-pointer inline-flex flex-col items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group">
         <div class="svg-icon size-4 lg:size-5 mb-2 icon-presentation bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
         </div>
-        <span class="text-[10px] lg:text-[11px]">Sessions</span>
+        <span class="text-[10px] 2xl:text-xs">Sessions</span>
       </button>
     </li>
     {% if payments_enabled -%}
-      <li>
+      <li class="shrink-0">
         <button type="button"
                 data-section="payments"
                 data-active="false"
                 class="px-2 xl:w-[90px] 2xl:w-[120px] xl:px-0 cursor-pointer inline-flex flex-col items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group">
           <div class="svg-icon size-4 lg:size-5 mb-2 icon-ticket bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
           </div>
-          <span class="text-[10px] lg:text-[11px]">Payments</span>
+          <span class="text-[10px] 2xl:text-xs">Payments</span>
         </button>
       </li>
     {% endif -%}
-    <li>
+    <li class="shrink-0">
       <button type="button"
               data-section="cfs"
               data-active="false"
               class="px-2 xl:w-[90px] 2xl:w-[120px] xl:px-0 cursor-pointer inline-flex flex-col items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group">
         <div class="svg-icon size-4 lg:size-5 mb-2 icon-megaphone bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
         </div>
-        <span class="text-[10px] lg:text-[11px]">CFS</span>
+        <span class="text-[10px] 2xl:text-xs">CFS</span>
       </button>
     </li>
-    <li>
+    <li class="shrink-0">
       <button type="button"
               data-section="submissions"
               data-active="false"
@@ -80,10 +80,10 @@
               class="px-2 xl:w-[90px] 2xl:w-[120px] xl:px-0 cursor-pointer inline-flex flex-col items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group">
         <div class="svg-icon size-4 lg:size-5 mb-2 icon-submission bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
         </div>
-        <span class="text-[10px] lg:text-[11px]">Submissions</span>
+        <span class="text-[10px] 2xl:text-xs">Submissions</span>
       </button>
     </li>
-    <li>
+    <li class="shrink-0">
       <button type="button"
               data-section="attendees"
               data-active="false"
@@ -95,10 +95,10 @@
               class="px-2 xl:w-[90px] 2xl:w-[120px] xl:px-0 cursor-pointer inline-flex flex-col items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group">
         <div class="svg-icon size-4 lg:size-5 mb-2 icon-attendees bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
         </div>
-        <span class="text-[10px] lg:text-[11px]">Attendees</span>
+        <span class="text-[10px] 2xl:text-xs">Attendees</span>
       </button>
     </li>
-    <li>
+    <li class="shrink-0">
       <button type="button"
               data-section="waitlist"
               data-active="false"
@@ -110,7 +110,7 @@
               class="px-2 xl:w-[90px] 2xl:w-[120px] xl:px-0 cursor-pointer inline-flex flex-col items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group">
         <div class="svg-icon size-4 lg:size-5 mb-2 icon-waitlist bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
         </div>
-        <span class="text-[10px] lg:text-[11px]">Waitlist</span>
+        <span class="text-[10px] 2xl:text-xs">Waitlist</span>
       </button>
     </li>
   </ul>
