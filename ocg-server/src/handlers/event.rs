@@ -559,15 +559,19 @@ async fn create_checkout_hold(
     user_id: Uuid,
     input: &CheckoutInput,
 ) -> Result<PreparedEventCheckout, HandlerError> {
+    // Require an explicit ticket selection before opening checkout
+    let event_ticket_type_id = input
+        .event_ticket_type_id
+        .ok_or_else(|| HandlerError::Database("ticket type is required".to_string()))?;
+
+    // Prepare the attendee's current checkout purchase state
     db.prepare_event_checkout_purchase(
         community_id,
         &PrepareEventCheckoutPurchaseInput {
             configured_provider: payments_cfg.map(PaymentsConfig::provider),
             discount_code: input.discount_code.clone(),
             event_id,
-            event_ticket_type_id: input
-                .event_ticket_type_id
-                .ok_or_else(|| anyhow::anyhow!("ticket type is required"))?,
+            event_ticket_type_id,
             user_id,
         },
     )

@@ -33,8 +33,6 @@ begin
     and ep.amount_minor > 0
     and ep.status in ('completed', 'refund-requested')
     and e.deleted = false
-    and e.canceled = false
-    and e.published = true
     and (e.starts_at is null or e.starts_at > current_timestamp)
     order by
         ep.created_at desc,

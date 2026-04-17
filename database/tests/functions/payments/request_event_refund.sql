@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(6);
+select plan(8);
 
 -- ============================================================================
 -- VARIABLES
@@ -12,10 +12,14 @@ select plan(6);
 \set communityID '78000000-0000-0000-0000-000000000001'
 \set communityNoReviewID '78000000-0000-0000-0000-000000000019'
 \set eventCategoryID '78000000-0000-0000-0000-000000000002'
+\set eventCanceledID '78000000-0000-0000-0000-000000000022'
+\set eventCanceledTicketTypeID '78000000-0000-0000-0000-000000000023'
 \set eventCategoryNoReviewID '78000000-0000-0000-0000-000000000020'
 \set eventID '78000000-0000-0000-0000-000000000003'
 \set eventNoTeamID '78000000-0000-0000-0000-000000000004'
 \set eventTicketTypeID '78000000-0000-0000-0000-000000000005'
+\set eventUnpublishedID '78000000-0000-0000-0000-000000000024'
+\set eventUnpublishedTicketTypeID '78000000-0000-0000-0000-000000000025'
 \set groupCategoryID '78000000-0000-0000-0000-000000000006'
 \set groupCategoryNoReviewID '78000000-0000-0000-0000-000000000021'
 \set communityManagerID '78000000-0000-0000-0000-000000000017'
@@ -25,7 +29,9 @@ select plan(6);
 \set priceWindowID '78000000-0000-0000-0000-000000000009'
 \set purchaseExpiredID '78000000-0000-0000-0000-000000000016'
 \set purchaseID '78000000-0000-0000-0000-000000000010'
+\set purchaseCanceledID '78000000-0000-0000-0000-000000000026'
 \set purchaseNoTeamID '78000000-0000-0000-0000-000000000011'
+\set purchaseUnpublishedID '78000000-0000-0000-0000-000000000027'
 \set refundRequestID '78000000-0000-0000-0000-000000000012'
 \set requesterID '78000000-0000-0000-0000-000000000013'
 \set teamUser1ID '78000000-0000-0000-0000-000000000014'
@@ -102,6 +108,18 @@ insert into event (
     true,
     now()
 ), (
+    :'eventCanceledID',
+    :'eventCategoryID',
+    'in-person',
+    :'groupID',
+    'Canceled Refund Event',
+    'canceled-refund-event',
+    'Test event',
+    'UTC',
+    now() + interval '2 days',
+    true,
+    now()
+), (
     :'eventNoTeamID',
     :'eventCategoryNoReviewID',
     'in-person',
@@ -113,19 +131,37 @@ insert into event (
     now() + interval '2 days',
     true,
     now()
+), (
+    :'eventUnpublishedID',
+    :'eventCategoryID',
+    'in-person',
+    :'groupID',
+    'Unpublished Refund Event',
+    'unpublished-refund-event',
+    'Test event',
+    'UTC',
+    now() + interval '2 days',
+    true,
+    now()
 );
 
 -- Ticket type and price window
 insert into event_ticket_type (event_ticket_type_id, event_id, "order", seats_total, title)
 values
+    (:'eventCanceledTicketTypeID', :'eventCanceledID', 1, 10, 'General admission'),
     (:'eventTicketTypeID', :'eventID', 1, 10, 'General admission'),
-    ('78000000-0000-0000-0000-000000000099', :'eventNoTeamID', 1, 10, 'General admission');
+    ('78000000-0000-0000-0000-000000000099', :'eventNoTeamID', 1, 10, 'General admission'),
+    (:'eventUnpublishedTicketTypeID', :'eventUnpublishedID', 1, 10, 'General admission');
 
 insert into event_ticket_price_window (
     event_ticket_price_window_id,
     amount_minor,
     event_ticket_type_id
 ) values (
+    '78000000-0000-0000-0000-000000000096',
+    2500,
+    :'eventCanceledTicketTypeID'
+), (
     :'priceWindowID',
     2500,
     :'eventTicketTypeID'
@@ -133,6 +169,10 @@ insert into event_ticket_price_window (
     '78000000-0000-0000-0000-000000000098',
     2500,
     '78000000-0000-0000-0000-000000000099'
+), (
+    '78000000-0000-0000-0000-000000000097',
+    2500,
+    :'eventUnpublishedTicketTypeID'
 );
 
 -- Purchases
@@ -147,6 +187,16 @@ insert into event_purchase (
     ticket_title,
     user_id
 ) values (
+    :'purchaseCanceledID',
+    2500,
+    now(),
+    'USD',
+    :'eventCanceledID',
+    :'eventCanceledTicketTypeID',
+    'completed',
+    'General admission',
+    :'requesterID'
+), (
     :'purchaseExpiredID',
     2500,
     now() - interval '1 day',
@@ -173,6 +223,16 @@ insert into event_purchase (
     'USD',
     :'eventNoTeamID',
     '78000000-0000-0000-0000-000000000099'::uuid,
+    'completed',
+    'General admission',
+    :'requesterID'
+), (
+    :'purchaseUnpublishedID',
+    2500,
+    now(),
+    'USD',
+    :'eventUnpublishedID',
+    :'eventUnpublishedTicketTypeID',
     'completed',
     'General admission',
     :'requesterID'
@@ -246,6 +306,40 @@ select results_eq(
         ('organizer-1'::text, 'event-refund-requested'::text, '{"event":"refund"}'::jsonb)
     $$,
     'Should only enqueue notifications for verified users who can review refunds'
+);
+
+-- Should allow refund requests after the event is canceled
+update event
+set
+    canceled = true,
+    published = false
+where event_id = :'eventCanceledID'::uuid;
+
+select lives_ok(
+    $$select request_event_refund(
+        '78000000-0000-0000-0000-000000000001'::uuid,
+        '78000000-0000-0000-0000-000000000022'::uuid,
+        '78000000-0000-0000-0000-000000000013'::uuid,
+        null,
+        '{}'::jsonb
+    )$$,
+    'Should allow refund requests after the event is canceled'
+);
+
+-- Should allow refund requests after the event is unpublished
+update event
+set published = false
+where event_id = :'eventUnpublishedID'::uuid;
+
+select lives_ok(
+    $$select request_event_refund(
+        '78000000-0000-0000-0000-000000000001'::uuid,
+        '78000000-0000-0000-0000-000000000024'::uuid,
+        '78000000-0000-0000-0000-000000000013'::uuid,
+        null,
+        '{}'::jsonb
+    )$$,
+    'Should allow refund requests after the event is unpublished'
 );
 
 -- Should reject duplicate refund requests

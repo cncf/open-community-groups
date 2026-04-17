@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(5);
+select plan(6);
 
 -- ============================================================================
 -- VARIABLES
@@ -12,11 +12,14 @@ select plan(5);
 \set communityID '72000000-0000-0000-0000-000000000001'
 \set eventCategoryID '72000000-0000-0000-0000-000000000002'
 \set eventID '72000000-0000-0000-0000-000000000003'
+\set eventInactiveID '72000000-0000-0000-0000-000000000016'
 \set eventTicketTypeID '72000000-0000-0000-0000-000000000004'
+\set eventInactiveTicketTypeID '72000000-0000-0000-0000-000000000017'
 \set groupCategoryID '72000000-0000-0000-0000-000000000005'
 \set groupID '72000000-0000-0000-0000-000000000006'
 \set freePurchaseID '72000000-0000-0000-0000-000000000007'
 \set expiredPurchaseID '72000000-0000-0000-0000-000000000008'
+\set inactivePurchaseID '72000000-0000-0000-0000-000000000018'
 \set paidPurchaseID '72000000-0000-0000-0000-000000000009'
 \set completedPurchaseID '72000000-0000-0000-0000-000000000010'
 \set priceWindowID '72000000-0000-0000-0000-000000000011'
@@ -77,11 +80,25 @@ insert into event (
     now() + interval '1 day',
     true,
     now()
+), (
+    :'eventInactiveID',
+    :'eventCategoryID',
+    'in-person',
+    :'groupID',
+    'Inactive Free Event',
+    'inactive-free-event',
+    'Test event',
+    'UTC',
+    now() + interval '1 day',
+    true,
+    now()
 );
 
 -- Ticket type
 insert into event_ticket_type (event_ticket_type_id, event_id, "order", seats_total, title)
-values (:'eventTicketTypeID', :'eventID', 1, 10, 'General admission');
+values
+    (:'eventTicketTypeID', :'eventID', 1, 10, 'General admission'),
+    (:'eventInactiveTicketTypeID', :'eventInactiveID', 1, 10, 'General admission');
 
 -- Price window
 insert into event_ticket_price_window (
@@ -122,6 +139,16 @@ insert into event_purchase (
     :'eventID',
     :'eventTicketTypeID',
     now() - interval '10 minutes',
+    'pending',
+    'General admission',
+    :'user2ID'
+), (
+    :'inactivePurchaseID',
+    0,
+    'USD',
+    :'eventInactiveID',
+    :'eventInactiveTicketTypeID',
+    now() + interval '10 minutes',
     'pending',
     'General admission',
     :'user2ID'
@@ -197,6 +224,17 @@ select throws_ok(
     $$select complete_free_event_purchase('72000000-0000-0000-0000-000000000008'::uuid)$$,
     'purchase hold has expired',
     'Should reject expired purchase holds'
+);
+
+-- Should reject free purchases when the event becomes inactive
+update event
+set published = false
+where event_id = :'eventInactiveID'::uuid;
+
+select throws_ok(
+    $$select complete_free_event_purchase('72000000-0000-0000-0000-000000000018'::uuid)$$,
+    'event not found or inactive',
+    'Should reject free purchases when the event becomes inactive'
 );
 
 -- Should reject non-free purchases
