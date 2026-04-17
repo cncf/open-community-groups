@@ -1,7 +1,14 @@
 import { convertDateTimeLocalToISO } from "/static/js/common/common.js";
 import { handleHtmxResponse, showErrorAlert } from "/static/js/common/alerts.js";
 import { queryElementById } from "/static/js/common/dom.js";
-import { clearCfsWindowValidity, clearSessionDateBoundsValidity } from "/static/js/common/form-validation.js";
+import {
+  clearCfsWindowValidity,
+  clearSessionDateBoundsValidity,
+  parseLocalDate,
+  validateCfsWindow,
+  validateEventDates,
+  validateSessionDateBounds,
+} from "/static/js/common/form-validation.js";
 import { initializeTicketingWaitlistState } from "/static/js/dashboard/event/ticketing.js";
 import { collectExistingFormIds, bindBooleanToggle } from "/static/js/dashboard/group/page-form-state.js";
 import { initializePendingChangesAlert } from "/static/js/dashboard/group/pending-changes-alert.js";
