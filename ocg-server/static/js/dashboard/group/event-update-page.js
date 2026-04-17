@@ -1,58 +1,36 @@
-import { handleHtmxResponse, showConfirmAlert, showErrorAlert } from "/static/js/common/alerts.js";
-import { convertDateTimeLocalToISO } from "/static/js/common/common.js";
-import {
-  clearCfsWindowValidity,
-  clearSessionDateBoundsValidity,
-  parseLocalDate,
-  validateCfsWindow,
-  validateEventDates,
-  validateSessionDateBounds,
-} from "/static/js/common/form-validation.js";
-import { initializeTicketingWaitlistState } from "/static/js/dashboard/event/ticketing.js";
+import { showConfirmAlert } from "/static/js/common/alerts.js";
 import { initializeSessionsRemovalWarning } from "/static/js/dashboard/group/event-form-helpers.js";
+import {
+  attachEventSaveAfterRequest,
+  attachEventSaveBeforeRequestValidation,
+  attachEventSaveConfigRequest,
+  bindSharedEventDateFieldListeners,
+  createEventPageCfsFieldUpdater,
+  createEventPageValidationCallbacks,
+  createSessionsDateRangeSync,
+  initializeEventPageContext,
+  initializeCommonEventPageToggles,
+  initializeEventKindField,
+  initializeEventPageCancelNavigation,
+  initializeEventPagePendingChanges,
+} from "/static/js/dashboard/group/event-page-shared.js";
 import {
   clearVenueFields,
   confirmVenueDataDeletion,
   hasVenueData,
   updateSectionVisibility,
 } from "/static/js/dashboard/group/meeting-validations.js";
-import { initializePendingChangesAlert } from "/static/js/dashboard/group/pending-changes-alert.js";
-import {
-  bindBooleanToggle,
-  collectExistingFormIds,
-  initializeSectionTabs,
-} from "/static/js/dashboard/group/page-form-state.js";
-
-const queryElementById = (root, id) => {
-  if (typeof root.getElementById === "function") {
-    return root.getElementById(id);
-  }
-
-  return root.querySelector(`#${id}`);
-};
-
-const resolvePageRoot = (root) => {
-  if (root instanceof Element && root.matches('[data-event-page="update"]')) {
-    return root;
-  }
-
-  return root.querySelector?.('[data-event-page="update"]') || root;
-};
+import { initializeSectionTabs } from "/static/js/dashboard/group/page-form-state.js";
 
 const readBooleanDataAttribute = (element, attributeName) => element?.dataset?.[attributeName] === "true";
 
 export const initializeEventUpdatePage = (root = document) => {
-  const pageRoot = resolvePageRoot(root);
-  if (pageRoot instanceof HTMLElement && pageRoot.dataset.eventPageReady === "true") {
+  const pageContext = initializeEventPageContext(root, "update");
+  if (!pageContext) {
     return;
   }
 
-  if (pageRoot instanceof HTMLElement) {
-    pageRoot.dataset.eventPageReady = "true";
-  }
-
-  const queryById = (id) => queryElementById(pageRoot, id);
-  const queryOne = (selector) => pageRoot.querySelector(selector);
+  const { pageRoot, queryById, queryOne } = pageContext;
 
   const updateEventButton = queryById("update-event-button");
   const cancelButton = queryById("cancel-button");
@@ -75,16 +53,11 @@ export const initializeEventUpdatePage = (root = document) => {
   const canManageEvents = readBooleanDataAttribute(pageRoot, "canManageEvents");
   const initialWaitlistCount = Number.parseInt(updateEventButton?.dataset.waitlistCount || "0", 10);
 
-  const syncSessionsDateRange = () => {
-    const sessionsSection = queryOne("sessions-section");
-    if (!sessionsSection) {
-      return;
-    }
-
-    sessionsSection.eventStartsAt = startsAtInput?.value || "";
-    sessionsSection.eventEndsAt = endsAtInput?.value || "";
-    sessionsSection.requestUpdate?.();
-  };
+  const syncSessionsDateRange = createSessionsDateRangeSync({
+    queryOne,
+    startsAtInput,
+    endsAtInput,
+  });
 
   const showLocationMapIfNeeded = () => {
     if (locationSearchField && typeof locationSearchField.showMapPreview === "function") {
@@ -180,244 +153,57 @@ export const initializeEventUpdatePage = (root = document) => {
     },
   });
 
-  const validateEventForms = () => {
-    const formSections = ["details", "date-venue", "hosts-sponsors", "sessions", "payments", "cfs"];
-    clearCfsWindowValidity({
-      cfsStartsInput: cfsStartsAtInput,
-      cfsEndsInput: cfsEndsAtInput,
+  const { validateEventForms, validateSessionOnlineDetails, showSessionBoundsError } =
+    createEventPageValidationCallbacks({
+      queryById,
+      queryOne,
+      displayActiveSection,
+      cfsStartsAtInput,
+      cfsEndsAtInput,
     });
-    clearSessionDateBoundsValidity({
-      sessionForm: queryById("sessions-form"),
-    });
 
-    for (const formName of formSections) {
-      const formElement = queryById(`${formName}-form`);
-
-      if (formElement && !formElement.checkValidity()) {
-        displayActiveSection(formName);
-        requestAnimationFrame(() => setTimeout(() => formElement.reportValidity(), 0));
-        return false;
-      }
-    }
-
-    return true;
-  };
-
-  const validateSessionOnlineDetails = () => {
-    const sessionsSection = queryOne("sessions-section");
-    if (!sessionsSection) {
-      return true;
-    }
-
-    const sessionOnlineDetails = sessionsSection.querySelectorAll("online-event-details");
-    const displaySessionsSection = () => displayActiveSection("sessions");
-
-    for (const component of sessionOnlineDetails) {
-      if (!component.validate(displaySessionsSection)) {
-        displaySessionsSection();
-        return false;
-      }
-    }
-
-    return true;
-  };
-
-  const showSessionBoundsError = () => {
-    const sessionsForm = queryById("sessions-form");
-    const sessionDateInputs = sessionsForm?.querySelectorAll(
-      'input[name^="sessions"][name$="[starts_at]"], input[name^="sessions"][name$="[ends_at]"]',
-    );
-    const invalidInput = sessionDateInputs
-      ? Array.from(sessionDateInputs).find((input) => !!input.validationMessage)
-      : null;
-
-    showErrorAlert(
-      invalidInput?.validationMessage || "Session dates must be within the event start and end dates.",
-    );
-  };
-
-  bindBooleanToggle({
-    toggle: queryById("toggle_registration_required"),
-    hiddenInput: queryById("registration_required"),
+  const updateCfsFields = createEventPageCfsFieldUpdater({
+    cfsStartsAtInput,
+    cfsEndsAtInput,
+    cfsDescriptionInput,
+    cfsLabelsEditor,
+    isFieldLocked: (field) => field?.dataset?.locked === "true",
   });
 
-  initializeTicketingWaitlistState(pageRoot);
-
-  bindBooleanToggle({
-    toggle: queryById("toggle_event_reminder_enabled"),
-    hiddenInput: queryById("event_reminder_enabled"),
+  initializeCommonEventPageToggles({
+    pageRoot,
+    queryById,
+    toggleCfsEnabled,
+    cfsEnabledInput,
+    cfsStartsAtInput,
+    cfsEndsAtInput,
+    updateCfsFields,
   });
 
-  const updateCfsFields = (enabled) => {
-    const isLocked = (field) => field?.dataset?.locked === "true";
+  initializeEventKindField({
+    kindSelect,
+    onlineEventDetails,
+    hasVenueData,
+    confirmVenueDataDeletion,
+    clearVenueFields,
+    updateSectionVisibility,
+  });
 
-    if (cfsStartsAtInput) {
-      const locked = isLocked(cfsStartsAtInput);
-      cfsStartsAtInput.disabled = locked || !enabled;
-      cfsStartsAtInput.required = enabled && !locked;
-    }
-    if (cfsEndsAtInput) {
-      const locked = isLocked(cfsEndsAtInput);
-      cfsEndsAtInput.disabled = locked || !enabled;
-      cfsEndsAtInput.required = enabled && !locked;
-    }
-    if (cfsDescriptionInput) {
-      const locked = isLocked(cfsDescriptionInput);
-      cfsDescriptionInput.disabled = locked || !enabled;
-      cfsDescriptionInput.required = enabled && !locked;
-    }
-    if (cfsLabelsEditor) {
-      cfsLabelsEditor.disabled = !enabled;
-    }
-  };
+  bindSharedEventDateFieldListeners({
+    queryById,
+    syncSessionsDateRange,
+    startsAtInput,
+    endsAtInput,
+    cfsStartsAtInput,
+    cfsEndsAtInput,
+    onlineEventDetails,
+  });
 
-  if (toggleCfsEnabled) {
-    if (cfsEnabledInput) {
-      cfsEnabledInput.value = String(toggleCfsEnabled.checked);
-    }
-    updateCfsFields(toggleCfsEnabled.checked);
-  }
+  initializeEventPageCancelNavigation(cancelButton);
 
-  if (toggleCfsEnabled && !toggleCfsEnabled.disabled) {
-    bindBooleanToggle({
-      toggle: toggleCfsEnabled,
-      hiddenInput: cfsEnabledInput,
-      onChange: (enabled) => {
-        clearCfsWindowValidity({
-          cfsStartsInput: cfsStartsAtInput,
-          cfsEndsInput: cfsEndsAtInput,
-        });
-        updateCfsFields(enabled);
-      },
-    });
-  }
-
-  if (kindSelect) {
-    let previousKindValue = kindSelect.value;
-    updateSectionVisibility(kindSelect.value || "");
-    if (onlineEventDetails) {
-      onlineEventDetails.kind = kindSelect.value;
-    }
-
-    kindSelect.addEventListener("change", async () => {
-      const newValue = kindSelect.value;
-
-      if (newValue === "virtual" && hasVenueData()) {
-        const confirmed = await confirmVenueDataDeletion();
-        if (!confirmed) {
-          kindSelect.value = previousKindValue;
-          updateSectionVisibility(kindSelect.value || "");
-          if (onlineEventDetails) {
-            onlineEventDetails.kind = kindSelect.value;
-          }
-          return;
-        }
-        clearVenueFields();
-      }
-
-      if (onlineEventDetails) {
-        const accepted = await onlineEventDetails.trySetKind(newValue);
-        if (!accepted) {
-          kindSelect.value = previousKindValue;
-          updateSectionVisibility(kindSelect.value || "");
-          return;
-        }
-      }
-
-      previousKindValue = newValue;
-      updateSectionVisibility(newValue);
-    });
-  } else {
-    updateSectionVisibility("");
-  }
-
-  let previousStartsAt = startsAtInput?.value || "";
-  let previousEndsAt = endsAtInput?.value || "";
-
-  if (startsAtInput) {
-    startsAtInput.addEventListener("change", () => {
-      startsAtInput.setCustomValidity("");
-      clearCfsWindowValidity({
-        cfsStartsInput: cfsStartsAtInput,
-        cfsEndsInput: cfsEndsAtInput,
-      });
-      clearSessionDateBoundsValidity({
-        sessionForm: queryById("sessions-form"),
-      });
-      syncSessionsDateRange();
-    });
-  }
-
-  if (endsAtInput) {
-    endsAtInput.addEventListener("change", () => {
-      endsAtInput.setCustomValidity("");
-      clearCfsWindowValidity({
-        cfsStartsInput: cfsStartsAtInput,
-        cfsEndsInput: cfsEndsAtInput,
-      });
-      clearSessionDateBoundsValidity({
-        sessionForm: queryById("sessions-form"),
-      });
-      syncSessionsDateRange();
-    });
-  }
-
-  if (cfsStartsAtInput) {
-    cfsStartsAtInput.addEventListener("change", () => {
-      cfsStartsAtInput.setCustomValidity("");
-    });
-  }
-
-  if (cfsEndsAtInput) {
-    cfsEndsAtInput.addEventListener("change", () => {
-      cfsEndsAtInput.setCustomValidity("");
-    });
-  }
-
-  if (startsAtInput && onlineEventDetails) {
-    startsAtInput.addEventListener("change", async () => {
-      const accepted = await onlineEventDetails.trySetStartsAt(startsAtInput.value);
-      if (!accepted) {
-        startsAtInput.value = previousStartsAt;
-        return;
-      }
-      previousStartsAt = startsAtInput.value;
-    });
-  }
-
-  if (endsAtInput && onlineEventDetails) {
-    endsAtInput.addEventListener("change", async () => {
-      const accepted = await onlineEventDetails.trySetEndsAt(endsAtInput.value);
-      if (!accepted) {
-        endsAtInput.value = previousEndsAt;
-        return;
-      }
-      previousEndsAt = endsAtInput.value;
-    });
-  }
-
-  if (cancelButton) {
-    cancelButton.addEventListener("htmx:afterRequest", () => {
-      history.pushState({}, "Events list", "/dashboard/group?tab=events");
-    });
-  }
-
-  initializePendingChangesAlert({
-    alertId: "pending-changes-alert",
-    formIds: collectExistingFormIds(
-      [
-        "details-form",
-        "date-venue-form",
-        "hosts-sponsors-form",
-        "sessions-form",
-        "payments-form",
-        "cfs-form",
-      ],
-      pageRoot,
-    ),
-    cancelButtonId: "cancel-button",
+  initializeEventPagePendingChanges({
+    pageRoot,
     confirmMessage: "You have pending changes. If you continue, unsaved changes will be lost.",
-    confirmText: "Leave",
   });
 
   if (!updateEventButton) {
@@ -452,97 +238,37 @@ export const initializeEventUpdatePage = (root = document) => {
     true,
   );
 
-  updateEventButton.addEventListener("htmx:beforeRequest", (event) => {
-    if (event.detail.elt.id !== "update-event-button") {
-      return;
-    }
-
-    const isValid = validateEventForms();
-    const eventStartsAt = parseLocalDate(startsAtInput?.value);
-    const eventEndsAt = parseLocalDate(endsAtInput?.value);
-    const datesValid = validateEventDates({
-      startsInput: startsAtInput,
-      endsInput: endsAtInput,
-      allowPastDates: true,
-      latestDate: isPastEvent ? new Date() : null,
-      onDateSection: () => displayActiveSection("date-venue"),
-    });
-    const cfsValid = validateCfsWindow({
-      cfsEnabledInput,
-      cfsStartsInput: cfsStartsAtInput,
-      cfsEndsInput: cfsEndsAtInput,
-      eventStartsInput: startsAtInput,
-      onDateSection: () => displayActiveSection("date-venue"),
-      onCfsSection: () => displayActiveSection("cfs"),
-    });
-
-    if (!datesValid || !cfsValid) {
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      return false;
-    }
-
-    let onlineValid = true;
-    if (onlineEventDetails) {
-      onlineEventDetails.startsAt = startsAtInput?.value || "";
-      onlineEventDetails.endsAt = endsAtInput?.value || "";
-      onlineValid = onlineEventDetails.validate(displayActiveSection);
-    }
-
-    const sessionsOnlineValid = validateSessionOnlineDetails();
-    const sessionBoundsValid = datesValid
-      ? validateSessionDateBounds({
-          eventStartsAt,
-          eventEndsAt,
-          sessionForm: queryById("sessions-form"),
-          onSessionsSection: () => displayActiveSection("sessions"),
-        })
-      : true;
-
-    if (!sessionBoundsValid) {
-      showSessionBoundsError();
-    }
-
-    if (!isValid || !datesValid || !cfsValid || !onlineValid || !sessionsOnlineValid || !sessionBoundsValid) {
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      return false;
-    }
+  attachEventSaveBeforeRequestValidation({
+    saveButton: updateEventButton,
+    saveButtonId: "update-event-button",
+    validateEventForms,
+    validateSessionOnlineDetails,
+    showSessionBoundsError,
+    displayActiveSection,
+    queryById,
+    startsAtInput,
+    endsAtInput,
+    cfsEnabledInput,
+    cfsStartsAtInput,
+    cfsEndsAtInput,
+    onlineEventDetails,
+    allowPastDates: true,
+    latestDate: isPastEvent ? new Date() : null,
   });
 
-  updateEventButton.addEventListener("htmx:configRequest", (event) => {
-    if (event.detail.elt.id !== "update-event-button") {
-      return;
-    }
-
-    if (!validateEventForms()) {
-      event.preventDefault();
-      event.stopPropagation();
-      return;
-    }
-
-    Object.keys(event.detail.parameters).forEach((key) => {
-      const isEventDate = key.match(/^(starts_at|ends_at|cfs_starts_at|cfs_ends_at)$/);
-      const isSessionDate = key.match(/^sessions\[\d+\]\[(starts_at|ends_at)\]$/);
-      if ((isEventDate || isSessionDate) && event.detail.parameters[key]) {
-        event.detail.parameters[key] = convertDateTimeLocalToISO(event.detail.parameters[key]);
-      }
-    });
+  attachEventSaveConfigRequest({
+    saveButton: updateEventButton,
+    saveButtonId: "update-event-button",
+    validateEventForms,
   });
 
-  updateEventButton.addEventListener("htmx:afterRequest", (event) => {
-    if (event.detail.elt.id !== "update-event-button") {
-      return;
-    }
-
-    const ok = handleHtmxResponse({
-      xhr: event.detail?.xhr,
-      successMessage: "You have successfully updated the event.",
-      errorMessage: "Something went wrong updating the event. Please try again later.",
-    });
-
-    if (ok) {
+  attachEventSaveAfterRequest({
+    saveButton: updateEventButton,
+    saveButtonId: "update-event-button",
+    successMessage: "You have successfully updated the event.",
+    errorMessage: "Something went wrong updating the event. Please try again later.",
+    onSuccess: () => {
       pageRoot.dispatchEvent(new CustomEvent("refresh-event-submissions"));
-    }
+    },
   });
 };

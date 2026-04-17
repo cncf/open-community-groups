@@ -2,6 +2,7 @@ import { createNotificationModal } from "/static/js/dashboard/group/notification
 import { initializeQrCodeModal } from "/static/js/dashboard/group/qr-code-modal.js";
 import { showErrorAlert } from "/static/js/common/alerts.js";
 import { isSuccessfulXHRStatus, toggleModalVisibility } from "/static/js/common/common.js";
+import { queryElementById } from "/static/js/common/dom.js";
 
 const modalId = "attendee-notification-modal";
 const formId = "attendee-notification-form";
@@ -10,26 +11,40 @@ const refundModalId = "attendee-refund-modal";
 const refundApproveButtonId = "attendee-refund-approve";
 const refundRejectButtonId = "attendee-refund-reject";
 
+const resolveAttendeesRoot = (root = document) => {
+  if (root instanceof Element && root.id === "attendees-content") {
+    return root;
+  }
+
+  if (root instanceof Element) {
+    return root.closest("#attendees-content") || root.querySelector("#attendees-content") || root;
+  }
+
+  return root.querySelector?.("#attendees-content") || root.body || root;
+};
+
 /**
  * Resolve the current refund review modal controls from the latest DOM.
+ * @param {Document|Element} [root=document] Query root.
  * @returns {Object} Refund modal controls.
  */
-const getRefundReviewControls = () => ({
-  modal: document.getElementById(refundModalId),
-  nameField: document.getElementById("attendee-refund-name"),
-  ticketField: document.getElementById("attendee-refund-ticket"),
-  amountField: document.getElementById("attendee-refund-amount"),
-  statusField: document.getElementById("attendee-refund-status"),
-  approveButton: document.getElementById(refundApproveButtonId),
-  rejectButton: document.getElementById(refundRejectButtonId),
+const getRefundReviewControls = (root = document) => ({
+  modal: queryElementById(root, refundModalId),
+  nameField: queryElementById(root, "attendee-refund-name"),
+  ticketField: queryElementById(root, "attendee-refund-ticket"),
+  amountField: queryElementById(root, "attendee-refund-amount"),
+  statusField: queryElementById(root, "attendee-refund-status"),
+  approveButton: queryElementById(root, refundApproveButtonId),
+  rejectButton: queryElementById(root, refundRejectButtonId),
 });
 
 /**
  * Show the refund review modal if it is currently hidden.
+ * @param {Document|Element} [root=document] Query root.
  * @returns {void}
  */
-const openRefundModal = () => {
-  const modal = document.getElementById(refundModalId);
+const openRefundModal = (root = document) => {
+  const modal = queryElementById(root, refundModalId);
   if (modal?.classList.contains("hidden")) {
     toggleModalVisibility(refundModalId);
   }
@@ -37,10 +52,11 @@ const openRefundModal = () => {
 
 /**
  * Hide the refund review modal if it is currently visible.
+ * @param {Document|Element} [root=document] Query root.
  * @returns {void}
  */
-const closeRefundModal = () => {
-  const modal = document.getElementById(refundModalId);
+const closeRefundModal = (root = document) => {
+  const modal = queryElementById(root, refundModalId);
   if (modal && !modal.classList.contains("hidden")) {
     toggleModalVisibility(refundModalId);
   }
@@ -78,11 +94,12 @@ const processRefundActionButton = (button) => {
 /**
  * Apply trigger data to the refund review modal.
  * @param {HTMLElement} triggerButton Refund review trigger button.
+ * @param {Document|Element} [root=document] Query root.
  * @returns {void}
  */
-const populateRefundReviewModal = (triggerButton) => {
+const populateRefundReviewModal = (triggerButton, root = document) => {
   const { modal, nameField, ticketField, amountField, statusField, approveButton, rejectButton } =
-    getRefundReviewControls();
+    getRefundReviewControls(root);
 
   if (!modal) {
     return;
@@ -146,7 +163,7 @@ const populateRefundReviewModal = (triggerButton) => {
 };
 
 // Set up the attendee modal with its dynamic endpoint and success copy.
-const initializeAttendeeNotification = () => {
+const initializeAttendeeNotification = (root) => {
   createNotificationModal({
     modalId,
     formId,
@@ -156,6 +173,7 @@ const initializeAttendeeNotification = () => {
     cancelButtonId: "cancel-attendee-notification",
     overlayId: "overlay-attendee-notification-modal",
     successMessage: "Email sent successfully to all event attendees!",
+    root,
     // Apply the event-specific endpoint before the modal opens.
     updateEndpoint: ({ form, openButton }) => {
       if (!form) {
@@ -174,9 +192,10 @@ const initializeAttendeeNotification = () => {
 
 /**
  * Initialize check-in toggle checkboxes with optimistic UI updates.
+ * @param {Document|Element} [root=document] Query root.
  */
-const initCheckInToggles = () => {
-  document.querySelectorAll(".check-in-toggle").forEach((checkbox) => {
+const initCheckInToggles = (root = document) => {
+  root.querySelectorAll(".check-in-toggle").forEach((checkbox) => {
     if (checkbox.dataset.checkInReady === "true") {
       return;
     }
@@ -214,20 +233,22 @@ const initCheckInToggles = () => {
 
 /**
  * Initialize refund review modal controls for attendee purchases.
+ * @param {Document|Element} [root=document] Query root.
  */
-const initializeRefundReviewModal = () => {
-  if (!document.body || document.body.dataset.attendeeRefundReviewReady === "true") {
+const initializeRefundReviewModal = (root = document) => {
+  if (!(root instanceof Element) || root.dataset.attendeeRefundReviewReady === "true") {
     return;
   }
 
-  document.body.dataset.attendeeRefundReviewReady = "true";
+  root.dataset.attendeeRefundReviewReady = "true";
 
-  document.addEventListener("click", (event) => {
+  root.addEventListener("click", (event) => {
     const target = event.target instanceof Element ? event.target : null;
     const refundTrigger = target?.closest("[data-refund-review-trigger]");
-    if (refundTrigger instanceof HTMLElement) {
-      populateRefundReviewModal(refundTrigger);
-      openRefundModal();
+    if (refundTrigger instanceof HTMLElement && root.contains(refundTrigger)) {
+      event.stopPropagation();
+      populateRefundReviewModal(refundTrigger, root);
+      openRefundModal(root);
       return;
     }
 
@@ -236,17 +257,18 @@ const initializeRefundReviewModal = () => {
         "#close-attendee-refund-modal, #cancel-attendee-refund-modal, #overlay-attendee-refund-modal",
       )
     ) {
-      closeRefundModal();
+      event.stopPropagation();
+      closeRefundModal(root);
     }
   });
 
-  document.addEventListener("keydown", (event) => {
+  root.addEventListener("keydown", (event) => {
     if (event.key === "Escape") {
-      closeRefundModal();
+      closeRefundModal(root);
     }
   });
 
-  document.body.addEventListener("htmx:afterRequest", (event) => {
+  root.addEventListener("htmx:afterRequest", (event) => {
     const requestTarget = event.target;
     if (
       !(requestTarget instanceof HTMLElement) ||
@@ -256,20 +278,27 @@ const initializeRefundReviewModal = () => {
     }
 
     if (isSuccessfulXHRStatus(event.detail?.xhr?.status)) {
-      closeRefundModal();
+      closeRefundModal(root);
     }
   });
 };
 
-const initializeAttendeesFeatures = () => {
-  initializeAttendeeNotification();
-  initializeQrCodeModal();
-  initializeRefundReviewModal();
-  initCheckInToggles();
+const initializeAttendeesFeatures = (root = document) => {
+  const attendeesRoot = resolveAttendeesRoot(root);
+  if (!attendeesRoot) {
+    return;
+  }
+
+  initializeAttendeeNotification(attendeesRoot);
+  initializeQrCodeModal(attendeesRoot);
+  initializeRefundReviewModal(attendeesRoot);
+  initCheckInToggles(attendeesRoot);
 };
 
 initializeAttendeesFeatures();
 
 if (document.body) {
-  document.body.addEventListener("htmx:load", initializeAttendeesFeatures);
+  document.body.addEventListener("htmx:load", (event) => {
+    initializeAttendeesFeatures(event.target || document);
+  });
 }

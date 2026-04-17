@@ -400,4 +400,54 @@ describe("dashboard group attendees", () => {
       icon: "error",
     });
   });
+
+  it("does not duplicate refund modal handling when the same attendees root reloads", () => {
+    const originalHtmx = window.htmx;
+    const processCalls = [];
+    window.htmx = {
+      process: (element) => processCalls.push(element?.id),
+    };
+
+    document.body.innerHTML = `
+      <div id="attendees-content">
+        <button
+          type="button"
+          data-refund-review-trigger
+          data-refund-attendee-name="Ana Lopez"
+          data-refund-ticket-title="General"
+          data-refund-amount="EUR 30.00"
+          data-refund-status="pending"
+          data-refund-approve-url="/dashboard/group/events/event-1/attendees/user-1/refund/approve"
+          data-refund-reject-url="/dashboard/group/events/event-1/attendees/user-1/refund/reject"
+        >
+          Review
+        </button>
+
+        <div id="attendee-refund-modal" class="hidden">
+          <button id="close-attendee-refund-modal" type="button">Close</button>
+          <button id="cancel-attendee-refund-modal" type="button">Cancel</button>
+          <div id="overlay-attendee-refund-modal"></div>
+          <div id="attendee-refund-name"></div>
+          <div id="attendee-refund-ticket"></div>
+          <div id="attendee-refund-amount"></div>
+          <span id="attendee-refund-status"></span>
+          <button id="attendee-refund-approve" type="button" class="hidden"></button>
+          <button id="attendee-refund-reject" type="button" class="hidden"></button>
+        </div>
+      </div>
+    `;
+
+    const attendeesRoot = document.getElementById("attendees-content");
+    dispatchHtmxLoad(attendeesRoot);
+    dispatchHtmxLoad(attendeesRoot);
+
+    document.querySelector("[data-refund-review-trigger]")?.click();
+
+    expect(processCalls).to.deep.equal([
+      "attendee-refund-approve",
+      "attendee-refund-reject",
+    ]);
+
+    window.htmx = originalHtmx;
+  });
 });

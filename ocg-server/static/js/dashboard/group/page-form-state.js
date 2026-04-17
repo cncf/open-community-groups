@@ -1,10 +1,4 @@
-const queryElementById = (root, id) => {
-  if (typeof root.getElementById === "function") {
-    return root.getElementById(id);
-  }
-
-  return root.querySelector(`#${id}`);
-};
+import { queryElementById } from "/static/js/common/dom.js";
 
 /**
  * Builds a list of existing form ids for page-level wiring.
