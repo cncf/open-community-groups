@@ -1,7 +1,7 @@
 import { createNotificationModal } from "/static/js/dashboard/group/notificationModal.js";
 import { initializeQrCodeModal } from "/static/js/dashboard/group/qr-code-modal.js";
 import { showErrorAlert } from "/static/js/common/alerts.js";
-import { toggleModalVisibility } from "/static/js/common/common.js";
+import { isSuccessfulXHRStatus, toggleModalVisibility } from "/static/js/common/common.js";
 
 const modalId = "attendee-notification-modal";
 const formId = "attendee-notification-form";
@@ -234,7 +234,7 @@ const initializeRefundReviewModal = () => {
 
   [approveButton, rejectButton].forEach((button) => {
     button?.addEventListener("htmx:afterRequest", (event) => {
-      if (event.detail?.xhr?.ok) {
+      if (isSuccessfulXHRStatus(event.detail?.xhr?.status)) {
         closeRefundModal();
       }
     });

@@ -49,6 +49,34 @@ describe("pending changes alert", () => {
     expect(document.getElementById("pending-alert")?.classList.contains("hidden")).to.equal(false);
   });
 
+  it("tracks dirty state across multiple forms including payment-only changes", async () => {
+    document.body.innerHTML = `
+      <div id="pending-alert" class="hidden"></div>
+      <form id="details-form">
+        <input name="title" value="Original title" />
+      </form>
+      <form id="payments-form">
+        <input name="payment_currency_code" value="EUR" />
+      </form>
+    `;
+
+    const api = initializePendingChangesAlert({
+      alertId: "pending-alert",
+      formIds: ["details-form", "payments-form"],
+    });
+
+    await waitForAnimationFrames();
+
+    const currencyInput = document.querySelector('#payments-form input[name="payment_currency_code"]');
+    currencyInput.value = "USD";
+    currencyInput.dispatchEvent(new Event("change", { bubbles: true }));
+
+    await waitForAnimationFrames();
+
+    expect(api.hasPendingChanges()).to.equal(true);
+    expect(document.getElementById("pending-alert")?.classList.contains("hidden")).to.equal(false);
+  });
+
   it("ignores fields inside pending-changes-ignore containers", async () => {
     document.body.innerHTML = `
       <div id="pending-alert" class="hidden"></div>

@@ -1063,9 +1063,22 @@
     });
   }
 
+  const pendingChangesFormIds = [
+    'details-form',
+    'date-venue-form',
+    'hosts-sponsors-form',
+    'sessions-form',
+  ];
+
+  if (document.getElementById('payments-form')) {
+    pendingChangesFormIds.push('payments-form');
+  }
+
+  pendingChangesFormIds.push('cfs-form');
+
   initializePendingChangesAlert({
     alertId: 'pending-changes-alert',
-    formIds: ['details-form', 'date-venue-form', 'hosts-sponsors-form', 'sessions-form', 'cfs-form'],
+    formIds: pendingChangesFormIds,
     cancelButtonId: 'cancel-button',
     confirmMessage: 'You have pending changes for this new event. If you continue, this event will not be created.',
     confirmText: 'Leave',

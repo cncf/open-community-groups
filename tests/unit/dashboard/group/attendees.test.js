@@ -160,6 +160,106 @@ describe("dashboard group attendees", () => {
     expect(rejectButton.classList.contains("hidden")).to.equal(true);
   });
 
+  it("closes the refund review modal after a successful approve request", () => {
+    document.body.innerHTML = `
+      <button
+        type="button"
+        data-refund-review-trigger
+        data-refund-attendee-name="Ana Lopez"
+        data-refund-ticket-title="General"
+        data-refund-amount="EUR 30.00"
+        data-refund-status="pending"
+        data-refund-approve-url="/dashboard/group/events/event-1/attendees/user-1/refund/approve"
+        data-refund-reject-url="/dashboard/group/events/event-1/attendees/user-1/refund/reject"
+      >
+        Review
+      </button>
+
+      <div id="attendee-refund-modal" class="hidden">
+        <button id="close-attendee-refund-modal" type="button">Close</button>
+        <button id="cancel-attendee-refund-modal" type="button">Cancel</button>
+        <div id="overlay-attendee-refund-modal"></div>
+        <div id="attendee-refund-name"></div>
+        <div id="attendee-refund-ticket"></div>
+        <div id="attendee-refund-amount"></div>
+        <span id="attendee-refund-status"></span>
+        <button id="attendee-refund-approve" type="button" class="hidden"></button>
+        <button id="attendee-refund-reject" type="button" class="hidden"></button>
+      </div>
+    `;
+
+    initializeAttendeesUi();
+
+    const modal = document.getElementById("attendee-refund-modal");
+    const approveButton = document.getElementById("attendee-refund-approve");
+
+    document.querySelector("[data-refund-review-trigger]")?.click();
+    expect(modal.classList.contains("hidden")).to.equal(false);
+
+    approveButton?.dispatchEvent(
+      new CustomEvent("htmx:afterRequest", {
+        bubbles: true,
+        detail: {
+          xhr: {
+            status: 200,
+          },
+        },
+      }),
+    );
+
+    expect(modal.classList.contains("hidden")).to.equal(true);
+  });
+
+  it("keeps the refund review modal open after a failed reject request", () => {
+    document.body.innerHTML = `
+      <button
+        type="button"
+        data-refund-review-trigger
+        data-refund-attendee-name="Ana Lopez"
+        data-refund-ticket-title="General"
+        data-refund-amount="EUR 30.00"
+        data-refund-status="pending"
+        data-refund-approve-url="/dashboard/group/events/event-1/attendees/user-1/refund/approve"
+        data-refund-reject-url="/dashboard/group/events/event-1/attendees/user-1/refund/reject"
+      >
+        Review
+      </button>
+
+      <div id="attendee-refund-modal" class="hidden">
+        <button id="close-attendee-refund-modal" type="button">Close</button>
+        <button id="cancel-attendee-refund-modal" type="button">Cancel</button>
+        <div id="overlay-attendee-refund-modal"></div>
+        <div id="attendee-refund-name"></div>
+        <div id="attendee-refund-ticket"></div>
+        <div id="attendee-refund-amount"></div>
+        <span id="attendee-refund-status"></span>
+        <button id="attendee-refund-approve" type="button" class="hidden"></button>
+        <button id="attendee-refund-reject" type="button" class="hidden"></button>
+      </div>
+    `;
+
+    initializeAttendeesUi();
+
+    const modal = document.getElementById("attendee-refund-modal");
+    const rejectButton = document.getElementById("attendee-refund-reject");
+
+    document.querySelector("[data-refund-review-trigger]")?.click();
+    expect(modal.classList.contains("hidden")).to.equal(false);
+
+    rejectButton?.dispatchEvent(
+      new CustomEvent("htmx:afterRequest", {
+        bubbles: true,
+        detail: {
+          xhr: {
+            status: 500,
+          },
+        },
+      }),
+    );
+
+    expect(modal.classList.contains("hidden")).to.equal(false);
+  });
+
   it("keeps the check-in toggle disabled after a successful check-in", async () => {
     document.body.innerHTML = `
       <label class="cursor-pointer">
