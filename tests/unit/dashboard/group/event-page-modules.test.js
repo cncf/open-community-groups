@@ -68,13 +68,11 @@ describe("event page modules", () => {
 
   beforeEach(() => {
     resetDom();
-    delete document.body.dataset.approvedSubmissionsSyncBound;
     swal = mockSwal();
   });
 
   afterEach(() => {
     resetDom();
-    delete document.body.dataset.approvedSubmissionsSyncBound;
     swal.restore();
   });
 
@@ -186,5 +184,58 @@ describe("event page modules", () => {
       .dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
 
     expect(swal.calls).to.have.length(1);
+  });
+
+  it("syncs approved submissions only within the initialized update page root", () => {
+    mountUpdatePageShell({ canManageEvents: true });
+    document.body.insertAdjacentHTML(
+      "beforeend",
+      '<sessions-section id="outside-sessions" approved-submissions=\'[{"cfs_submission_id":"outside"}]\'></sessions-section>',
+    );
+
+    const pageRoot = document.querySelector('[data-event-page="update"]');
+    const scopedSessions = document.createElement("sessions-section");
+    scopedSessions.id = "scoped-sessions";
+    scopedSessions.setAttribute(
+      "approved-submissions",
+      JSON.stringify([{ cfs_submission_id: "12", title: "Old title", speaker_name: "Ada" }]),
+    );
+    scopedSessions.requestUpdate = () => {
+      scopedSessions.dataset.updated = "true";
+    };
+    pageRoot.append(scopedSessions);
+
+    initializeEventUpdatePage(pageRoot);
+
+    pageRoot.dispatchEvent(
+      new CustomEvent("event-approved-submissions-updated", {
+        bubbles: true,
+        detail: {
+          approved: true,
+          cfsSubmissionId: "12",
+          submission: {
+            cfs_submission_id: "12",
+            session_proposal_id: "99",
+            title: "Platform Engineering at Scale",
+            speaker_name: "Ada Lovelace",
+          },
+        },
+      }),
+    );
+
+    expect(scopedSessions.getAttribute("approved-submissions")).to.equal(
+      JSON.stringify([
+        {
+          cfs_submission_id: "12",
+          session_proposal_id: "99",
+          title: "Platform Engineering at Scale",
+          speaker_name: "Ada Lovelace",
+        },
+      ]),
+    );
+    expect(scopedSessions.dataset.updated).to.equal("true");
+    expect(document.getElementById("outside-sessions").getAttribute("approved-submissions")).to.equal(
+      '[{"cfs_submission_id":"outside"}]',
+    );
   });
 });

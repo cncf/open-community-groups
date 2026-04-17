@@ -123,9 +123,9 @@ export const initializeEventUpdatePage = (root = document) => {
       return leftId.localeCompare(rightId);
     });
 
-  if (document.body && document.body.dataset.approvedSubmissionsSyncBound !== "true") {
-    document.body.dataset.approvedSubmissionsSyncBound = "true";
-    document.body.addEventListener(approvedSubmissionsEvent, (event) => {
+  if (pageRoot instanceof HTMLElement && pageRoot.dataset.approvedSubmissionsSyncBound !== "true") {
+    pageRoot.dataset.approvedSubmissionsSyncBound = "true";
+    pageRoot.addEventListener(approvedSubmissionsEvent, (event) => {
       const sessionsSection = queryOne("sessions-section");
       if (!sessionsSection) {
         return;

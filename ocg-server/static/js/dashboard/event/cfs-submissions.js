@@ -263,7 +263,7 @@ export class ReviewSubmissionModal extends LitWrapper {
    * Emits approved submissions updates for sessions synchronization.
    */
   _emitApprovedSubmissionsUpdate() {
-    if (typeof document === "undefined" || !document.body) {
+    if (!this.isConnected) {
       return;
     }
 
@@ -284,8 +284,10 @@ export class ReviewSubmissionModal extends LitWrapper {
           }
         : null;
 
-    document.body.dispatchEvent(
+    this.dispatchEvent(
       new CustomEvent(APPROVED_SUBMISSIONS_EVENT, {
+        bubbles: true,
+        composed: true,
         detail: {
           approved: this._statusId === "approved",
           cfsSubmissionId: String(submission.cfs_submission_id),
