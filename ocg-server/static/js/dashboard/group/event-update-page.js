@@ -542,7 +542,7 @@ export const initializeEventUpdatePage = (root = document) => {
     });
 
     if (ok) {
-      document.body.dispatchEvent(new CustomEvent("refresh-event-submissions"));
+      pageRoot.dispatchEvent(new CustomEvent("refresh-event-submissions"));
     }
   });
 };

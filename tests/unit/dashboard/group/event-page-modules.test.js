@@ -47,7 +47,8 @@ const mountAddPageShell = () => {
 
 const mountUpdatePageShell = ({ canManageEvents = false, waitlistCount = "2" } = {}) => {
   document.body.innerHTML = `
-    <div data-event-page="update"
+    <div id="event-update-page"
+         data-event-page="update"
          data-event-past="false"
          data-can-manage-events="${String(canManageEvents)}">
       ${sharedEventFormsMarkup()}
@@ -237,5 +238,35 @@ describe("event page modules", () => {
     expect(document.getElementById("outside-sessions").getAttribute("approved-submissions")).to.equal(
       '[{"cfs_submission_id":"outside"}]',
     );
+  });
+
+  it("dispatches submissions refresh from the update page root after a successful save", () => {
+    mountUpdatePageShell({ canManageEvents: true, waitlistCount: "0" });
+
+    const pageRoot = document.getElementById("event-update-page");
+    const refreshEvents = [];
+    const bodyEvents = [];
+
+    pageRoot.addEventListener("refresh-event-submissions", () => {
+      refreshEvents.push("page");
+    });
+    document.body.addEventListener("refresh-event-submissions", () => {
+      bodyEvents.push("body");
+    });
+
+    initializeEventUpdatePage();
+
+    document.getElementById("update-event-button").dispatchEvent(
+      new CustomEvent("htmx:afterRequest", {
+        bubbles: true,
+        detail: {
+          elt: document.getElementById("update-event-button"),
+          xhr: { status: 204 },
+        },
+      }),
+    );
+
+    expect(refreshEvents).to.deep.equal(["page"]);
+    expect(bodyEvents).to.deep.equal([]);
   });
 });

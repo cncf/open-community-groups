@@ -7,7 +7,7 @@ description = "Review and manage call for speakers submissions.") -}}
 
 <div id="submissions-refresh"
      hx-get="{{ refresh_url }}"
-     hx-trigger="refresh-event-submissions from:body"
+     hx-trigger="refresh-event-submissions from:#event-update-page"
      hx-target="#submissions-content"
      hx-swap="innerHTML"></div>
 
