@@ -31,9 +31,26 @@ const queryElementById = (root, id) => {
   return root.querySelector(`#${id}`);
 };
 
+const resolvePageRoot = (root) => {
+  if (root instanceof Element && root.matches('[data-event-page="add"]')) {
+    return root;
+  }
+
+  return root.querySelector?.('[data-event-page="add"]') || root;
+};
+
 export const initializeEventAddPage = (root = document) => {
-  const queryById = (id) => queryElementById(root, id);
-  const queryOne = (selector) => root.querySelector(selector);
+  const pageRoot = resolvePageRoot(root);
+  if (pageRoot instanceof HTMLElement && pageRoot.dataset.eventPageReady === "true") {
+    return;
+  }
+
+  if (pageRoot instanceof HTMLElement) {
+    pageRoot.dataset.eventPageReady = "true";
+  }
+
+  const queryById = (id) => queryElementById(pageRoot, id);
+  const queryOne = (selector) => pageRoot.querySelector(selector);
 
   const addEventButton = queryById("add-event-button");
   const cancelButton = queryById("cancel-button");
@@ -60,7 +77,7 @@ export const initializeEventAddPage = (root = document) => {
   };
 
   const { displayActiveSection } = initializeSectionTabs({
-    root,
+    root: pageRoot,
     onSectionChange: (sectionName) => {
       if (sectionName === "sessions") {
         syncSessionsDateRange();
@@ -129,7 +146,7 @@ export const initializeEventAddPage = (root = document) => {
     hiddenInput: queryById("registration_required"),
   });
 
-  initializeTicketingWaitlistState(root);
+  initializeTicketingWaitlistState(pageRoot);
 
   bindBooleanToggle({
     toggle: queryById("toggle_event_reminder_enabled"),
@@ -293,7 +310,7 @@ export const initializeEventAddPage = (root = document) => {
         "payments-form",
         "cfs-form",
       ],
-      root,
+      pageRoot,
     ),
     cancelButtonId: "cancel-button",
     confirmMessage:

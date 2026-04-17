@@ -31,13 +31,29 @@ const queryElementById = (root, id) => {
   return root.querySelector(`#${id}`);
 };
 
+const resolvePageRoot = (root) => {
+  if (root instanceof Element && root.matches('[data-event-page="update"]')) {
+    return root;
+  }
+
+  return root.querySelector?.('[data-event-page="update"]') || root;
+};
+
 const readBooleanDataAttribute = (element, attributeName) => element?.dataset?.[attributeName] === "true";
 
 export const initializeEventUpdatePage = (root = document) => {
-  const queryById = (id) => queryElementById(root, id);
-  const queryOne = (selector) => root.querySelector(selector);
+  const pageRoot = resolvePageRoot(root);
+  if (pageRoot instanceof HTMLElement && pageRoot.dataset.eventPageReady === "true") {
+    return;
+  }
 
-  const pageRoot = queryOne("[data-event-past]");
+  if (pageRoot instanceof HTMLElement) {
+    pageRoot.dataset.eventPageReady = "true";
+  }
+
+  const queryById = (id) => queryElementById(pageRoot, id);
+  const queryOne = (selector) => pageRoot.querySelector(selector);
+
   const updateEventButton = queryById("update-event-button");
   const cancelButton = queryById("cancel-button");
   const kindSelect = queryById("kind_id");
@@ -144,7 +160,7 @@ export const initializeEventUpdatePage = (root = document) => {
   }
 
   const { displayActiveSection } = initializeSectionTabs({
-    root,
+    root: pageRoot,
     onSectionChange: (sectionName) => {
       if (sectionName === "date-venue") {
         showLocationMapIfNeeded();
@@ -225,7 +241,7 @@ export const initializeEventUpdatePage = (root = document) => {
     hiddenInput: queryById("registration_required"),
   });
 
-  initializeTicketingWaitlistState(root);
+  initializeTicketingWaitlistState(pageRoot);
 
   bindBooleanToggle({
     toggle: queryById("toggle_event_reminder_enabled"),
@@ -397,7 +413,7 @@ export const initializeEventUpdatePage = (root = document) => {
         "payments-form",
         "cfs-form",
       ],
-      root,
+      pageRoot,
     ),
     cancelButtonId: "cancel-button",
     confirmMessage: "You have pending changes. If you continue, unsaved changes will be lost.",

@@ -35,7 +35,7 @@ const mountTicketTypesUi = ({ bodyRows = "" } = {}) => {
       <textarea id="ticket-description-draft" data-ticket-field="description"></textarea>
       <input type="checkbox" data-ticket-field="active" />
       <button type="button" data-ticketing-action="add-price-window"></button>
-      <div data-ticketing-role="price-windows-list"></div>
+      <div data-ticketing-role="price-windows-list" class="space-y-4"></div>
       <button type="button" data-ticketing-action="close-modal"></button>
       <button type="button" data-ticketing-action="save-ticket">
         <span data-ticketing-role="save-label"></span>

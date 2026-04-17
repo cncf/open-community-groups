@@ -5,31 +5,61 @@ import { initializeEventUpdatePage } from "/static/js/dashboard/group/event-upda
 import { resetDom } from "/tests/unit/test-utils/dom.js";
 import { mockSwal } from "/tests/unit/test-utils/globals.js";
 
-const mountSharedEventForms = () => {
+const sharedEventFormsMarkup = () => `
+  <div id="pending-changes-alert"></div>
+  <form id="details-form"></form>
+  <form id="date-venue-form"></form>
+  <form id="hosts-sponsors-form"></form>
+  <form id="sessions-form"></form>
+  <form id="cfs-form"></form>
+  <input id="starts_at" />
+  <input id="ends_at" />
+  <input id="toggle_registration_required" type="checkbox" />
+  <input id="registration_required" type="hidden" value="false" />
+  <input id="toggle_event_reminder_enabled" type="checkbox" />
+  <input id="event_reminder_enabled" type="hidden" value="false" />
+  <input id="toggle_cfs_enabled" type="checkbox" />
+  <input id="cfs_enabled" type="hidden" value="false" />
+  <input id="cfs_starts_at" />
+  <input id="cfs_ends_at" />
+  <textarea id="cfs_description"></textarea>
+  <div id="cfs-labels-editor"></div>
+  <select id="kind_id">
+    <option value="">Select</option>
+    <option value="virtual">Virtual</option>
+  </select>
+  <input name="timezone" value="UTC" />
+`;
+
+const mountAddPageShell = () => {
   document.body.innerHTML = `
-    <div id="pending-changes-alert"></div>
-    <form id="details-form"></form>
-    <form id="date-venue-form"></form>
-    <form id="hosts-sponsors-form"></form>
-    <form id="sessions-form"></form>
-    <form id="cfs-form"></form>
-    <input id="starts_at" />
-    <input id="ends_at" />
-    <input id="toggle_registration_required" type="checkbox" />
-    <input id="registration_required" type="hidden" value="false" />
-    <input id="toggle_event_reminder_enabled" type="checkbox" />
-    <input id="event_reminder_enabled" type="hidden" value="false" />
-    <input id="toggle_cfs_enabled" type="checkbox" />
-    <input id="cfs_enabled" type="hidden" value="false" />
-    <input id="cfs_starts_at" />
-    <input id="cfs_ends_at" />
-    <textarea id="cfs_description"></textarea>
-    <div id="cfs-labels-editor"></div>
-    <select id="kind_id">
-      <option value="">Select</option>
-      <option value="virtual">Virtual</option>
-    </select>
-    <input name="timezone" value="UTC" />
+    <div data-event-page="add">
+      ${sharedEventFormsMarkup()}
+      <button id="add-event-button" type="button"></button>
+      <button id="cancel-button" type="button"></button>
+      <button data-section="details" data-active="true" class="active">Details</button>
+      <button data-section="sessions" data-active="false">Sessions</button>
+      <section data-content="details"></section>
+      <section data-content="sessions" class="hidden"></section>
+    </div>
+  `;
+};
+
+const mountUpdatePageShell = ({ canManageEvents = false, waitlistCount = "2" } = {}) => {
+  document.body.innerHTML = `
+    <div data-event-page="update"
+         data-event-past="false"
+         data-can-manage-events="${String(canManageEvents)}">
+      ${sharedEventFormsMarkup()}
+      <button data-section="details" data-active="true" class="active">Details</button>
+      <button data-section="submissions" data-active="false">Submissions</button>
+      <section data-content="details"></section>
+      <section data-content="submissions" class="hidden"></section>
+      <div class="inert-form" inert></div>
+      <input id="capacity" value="" />
+      <button id="update-event-button" type="button" data-waitlist-count="${waitlistCount}"></button>
+      <button id="cancel-button" type="button"></button>
+    </div>
   `;
 };
 
@@ -49,18 +79,7 @@ describe("event page modules", () => {
   });
 
   it("initializes the add page and syncs boolean hidden fields", () => {
-    mountSharedEventForms();
-    document.body.insertAdjacentHTML(
-      "beforeend",
-      `
-        <button id="add-event-button" type="button"></button>
-        <button id="cancel-button" type="button"></button>
-        <button data-section="details" data-active="true" class="active">Details</button>
-        <button data-section="sessions" data-active="false">Sessions</button>
-        <section data-content="details"></section>
-        <section data-content="sessions" class="hidden"></section>
-      `,
-    );
+    mountAddPageShell();
 
     initializeEventAddPage();
 
@@ -77,18 +96,7 @@ describe("event page modules", () => {
   });
 
   it("converts event and session dates during add page HTMX config requests", () => {
-    mountSharedEventForms();
-    document.body.insertAdjacentHTML(
-      "beforeend",
-      `
-        <button id="add-event-button" type="button"></button>
-        <button id="cancel-button" type="button"></button>
-        <button data-section="details" data-active="true" class="active">Details</button>
-        <button data-section="sessions" data-active="false">Sessions</button>
-        <section data-content="details"></section>
-        <section data-content="sessions" class="hidden"></section>
-      `,
-    );
+    mountAddPageShell();
 
     initializeEventAddPage();
 
@@ -115,26 +123,7 @@ describe("event page modules", () => {
   });
 
   it("initializes the update page and respects the page data contract", () => {
-    mountSharedEventForms();
-    document.body.insertAdjacentHTML(
-      "afterbegin",
-      `
-        <div data-event-past="false" data-can-manage-events="false">
-          <button data-section="details" data-active="true" class="active">Details</button>
-          <button data-section="submissions" data-active="false">Submissions</button>
-          <section data-content="details"></section>
-          <section data-content="submissions" class="hidden"></section>
-          <div class="inert-form" inert></div>
-        </div>
-      `,
-    );
-    document.body.insertAdjacentHTML(
-      "beforeend",
-      `
-        <button id="update-event-button" type="button" data-waitlist-count="2"></button>
-        <button id="cancel-button" type="button"></button>
-      `,
-    );
+    mountUpdatePageShell();
 
     initializeEventUpdatePage();
 
@@ -146,25 +135,7 @@ describe("event page modules", () => {
   });
 
   it("warns before clearing capacity with a populated waitlist on the update page", () => {
-    mountSharedEventForms();
-    document.body.insertAdjacentHTML(
-      "afterbegin",
-      `
-        <div data-event-past="false" data-can-manage-events="true">
-          <button data-section="details" data-active="true" class="active">Details</button>
-          <section data-content="details"></section>
-          <div class="inert-form"></div>
-        </div>
-      `,
-    );
-    document.body.insertAdjacentHTML(
-      "beforeend",
-      `
-        <input id="capacity" value="" />
-        <button id="update-event-button" type="button" data-waitlist-count="2"></button>
-        <button id="cancel-button" type="button"></button>
-      `,
-    );
+    mountUpdatePageShell({ canManageEvents: true });
 
     initializeEventUpdatePage();
 
@@ -174,5 +145,46 @@ describe("event page modules", () => {
 
     expect(swal.calls).to.have.length(1);
     expect(swal.calls[0].text).to.contain("currently on the waitlist");
+  });
+
+  it("scopes add page initialization to the provided root", () => {
+    document.body.innerHTML = `
+      <div id="outside">
+        <input id="toggle_registration_required" type="checkbox" checked />
+        <input id="registration_required" type="hidden" value="outside" />
+      </div>
+      <div id="page-root">
+        <div data-event-page="add">
+          ${sharedEventFormsMarkup()}
+          <button id="add-event-button" type="button"></button>
+          <button id="cancel-button" type="button"></button>
+          <button data-section="details" data-active="true" class="active">Details</button>
+          <section data-content="details"></section>
+        </div>
+      </div>
+    `;
+
+    const pageRoot = document.getElementById("page-root");
+    initializeEventAddPage(pageRoot);
+
+    const scopedToggle = pageRoot.querySelector('#toggle_registration_required');
+    scopedToggle.checked = true;
+    scopedToggle.dispatchEvent(new Event("change", { bubbles: true }));
+
+    expect(pageRoot.querySelector("#registration_required").value).to.equal("true");
+    expect(document.querySelector("#outside #registration_required").value).to.equal("outside");
+  });
+
+  it("does not bind duplicate update page handlers when initialized twice", () => {
+    mountUpdatePageShell({ canManageEvents: true });
+
+    initializeEventUpdatePage();
+    initializeEventUpdatePage();
+
+    document
+      .getElementById("update-event-button")
+      .dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+
+    expect(swal.calls).to.have.length(1);
   });
 });
