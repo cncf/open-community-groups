@@ -812,7 +812,7 @@
               {# djlint:off #}
               <script type="application/json" data-ticketing-seed="ticket-types">
                 {% if let Some(ticket_types) = &event.ticket_types -%}
-                  {{ ticket_types|json }}
+                  {{ ticket_types|json|safe }}
                 {% else -%}
                   []
                 {% endif -%}
@@ -850,7 +850,7 @@
               {# djlint:off #}
               <script type="application/json" data-ticketing-seed="discount-codes">
                 {% if let Some(discount_codes) = &event.discount_codes -%}
-                  {{ discount_codes|json }}
+                  {{ discount_codes|json|safe }}
                 {% else -%}
                   []
                 {% endif -%}
