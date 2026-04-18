@@ -131,6 +131,37 @@ test.describe("group dashboard events view", () => {
     await expect(dashboardContent.locator("tr", { hasText: eventName })).toHaveCount(0);
   });
 
+  test("organizer does not see the payments tab when group payments are unavailable", async ({
+    organizerGroupPage,
+  }) => {
+    await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
+
+    const dashboardContent = organizerGroupPage.locator("#dashboard-content");
+    await dashboardContent.getByRole("button", { name: "Add Event" }).click();
+
+    await expect(organizerGroupPage.locator('button[data-section="payments"]')).toHaveCount(0);
+    await expect(organizerGroupPage.locator('[data-content="payments"]')).toHaveCount(0);
+
+    const eventRow = dashboardContent.locator("tr", { hasText: TEST_EVENT_NAMES.alpha[0] });
+
+    await Promise.all([
+      organizerGroupPage.waitForResponse(
+        (response) =>
+          response.request().method() === "GET" &&
+          response
+            .url()
+            .includes(`/dashboard/group/events/${TEST_EVENT_IDS.alpha.one}/update`) &&
+          response.ok(),
+      ),
+      eventRow
+        .locator(`td button[hx-get="/dashboard/group/events/${TEST_EVENT_IDS.alpha.one}/update"]`)
+        .click(),
+    ]);
+
+    await expect(organizerGroupPage.locator('button[data-section="payments"]')).toHaveCount(0);
+    await expect(organizerGroupPage.locator('[data-content="payments"]')).toHaveCount(0);
+  });
+
   test("organizer can create, update, and delete an event with images and rich fields", async ({
     organizerGroupPage,
   }) => {

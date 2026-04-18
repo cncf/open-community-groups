@@ -50,7 +50,7 @@
         <span class="text-[10px] 2xl:text-xs">Sessions</span>
       </button>
     </li>
-    {% if payments_enabled -%}
+    {% if payments_ready -%}
       <li class="shrink-0">
         <button type="button"
                 data-section="payments"
@@ -139,7 +139,7 @@
               hx-trigger="click, confirmed"
               hx-ext="no-empty-vals-keep-zero"
               hx-include="#details-form, #cfs-form, #date-venue-form, #sessions-form, #hosts-sponsors-form
-                          {% if payments_enabled %}, #payments-form{% endif %}"
+                          {% if payments_ready %}, #payments-form{% endif %}"
               hx-target="#dashboard-content"
               hx-indicator="#dashboard-spinner"
               hx-disabled-elt="#update-event-button, #cancel-button"
@@ -727,7 +727,7 @@
 </div>
 {# End Sessions Tab -#}
 
-{% if payments_enabled -%}
+{% if payments_ready -%}
   {# Payments Tab -#}
   <div data-content="payments" class="hidden">
     <form id="payments-form">
@@ -736,30 +736,6 @@
           <p class="mt-1 text-sm/6 text-stone-500">
             Configure event currency, ticket tiers, and optional discount codes.
           </p>
-
-          {% if !payments_ready -%}
-            <p class="mt-3 text-sm text-amber-700">
-              Add a payment recipient in group settings before editing ticketing settings.
-            </p>
-
-            {% if event.is_ticketed() && !event.has_ticket_purchases -%}
-              <label class="mt-4 inline-flex items-start gap-3 rounded-lg border border-stone-200 bg-white px-4 py-3 text-sm text-stone-700">
-                <input id="toggle_clear_ticketing"
-                       type="checkbox"
-                       class="mt-0.5 rounded border-stone-300 text-primary-600 focus:ring-primary-500">
-                <input type="hidden"
-                       id="clear_ticketing"
-                       name="clear_ticketing"
-                       value="false">
-                <span>Remove ticketing from this event and switch back to the regular RSVP flow.</span>
-              </label>
-            {% else if event.is_ticketed() && event.has_ticket_purchases -%}
-              <p class="mt-3 text-sm text-amber-700">
-                This event already has ticket purchases, so ticketing cannot be removed while
-                payments are unavailable.
-              </p>
-            {% endif -%}
-          {% endif -%}
 
           {% if event.waitlist_count > 0 -%}
             <p class="mt-3 text-sm text-amber-700">
@@ -773,8 +749,7 @@
               <div class="mt-2">
                 <select id="payment_currency_code"
                         name="payment_currency_code"
-                        class="select-primary"
-                        {% if !payments_ready %}disabled{% endif %}>
+                        class="select-primary">
                   <option value="">Select currency</option>
                   {% for payment_currency_code in payment_currency_codes -%}
                     <option value="{{ payment_currency_code }}"
@@ -802,13 +777,7 @@
             </p>
           </div>
           <div class="mt-10">
-            <div id="ticket-types-ui"
-                 class="space-y-4"
-                 data-disabled="{% if !payments_ready %}
-                                  true
-                                {% else %}
-                                  false
-                                {% endif %}">
+            <div id="ticket-types-ui" class="space-y-4" data-disabled="false">
               {# djlint:off #}
               <script type="application/json" data-ticketing-seed="ticket-types">
                 {% if let Some(ticket_types) = &event.ticket_types -%}
@@ -840,13 +809,7 @@
             </p>
           </div>
           <div class="mt-10">
-            <div id="discount-codes-ui"
-                 class="space-y-4"
-                 data-disabled="{% if !payments_ready %}
-                                  true
-                                {% else %}
-                                  false
-                                {% endif %}">
+            <div id="discount-codes-ui" class="space-y-4" data-disabled="false">
               {# djlint:off #}
               <script type="application/json" data-ticketing-seed="discount-codes">
                 {% if let Some(discount_codes) = &event.discount_codes -%}

@@ -68,7 +68,7 @@
         <span class="text-[10px] 2xl:text-xs">Sessions</span>
       </button>
     </li>
-    {% if payments_enabled -%}
+    {% if payments_ready -%}
       <li class="shrink-0">
         <button type="button"
                 data-section="payments"
@@ -106,7 +106,7 @@
               hx-post="/dashboard/group/events/add"
               hx-ext="no-empty-vals-keep-zero"
               hx-include="#details-form, #cfs-form, #date-venue-form, #sessions-form, #hosts-sponsors-form
-                          {% if payments_enabled %}, #payments-form{% endif %}"
+                          {% if payments_ready %}, #payments-form{% endif %}"
               hx-target="#dashboard-content"
               hx-indicator="#dashboard-spinner"
               hx-disabled-elt="#add-event-button, #cancel-button"
@@ -600,7 +600,7 @@
 </div>
 {# End Sessions Tab -#}
 
-{% if payments_enabled -%}
+{% if payments_ready -%}
   {# Payments Tab -#}
   <div data-content="payments" class="hidden">
     <form id="payments-form">
@@ -610,20 +610,13 @@
             Configure event currency, ticket tiers, and optional discount codes.
           </p>
 
-          {% if !payments_ready -%}
-            <p class="mt-3 text-sm text-amber-700">
-              Add a Stripe recipient in group settings before saving paid event data.
-            </p>
-          {% endif -%}
-
           <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6">
             <div class="col-span-full lg:col-span-3">
               <label for="payment_currency_code" class="form-label">Event Currency</label>
               <div class="mt-2">
                 <select id="payment_currency_code"
                         name="payment_currency_code"
-                        class="select-primary"
-                        {% if !payments_ready %}disabled{% endif %}>
+                        class="select-primary">
                   <option value="">Select currency</option>
                   {% for payment_currency_code in payment_currency_codes -%}
                     <option value="{{ payment_currency_code }}">{{ payment_currency_code }}</option>
@@ -650,13 +643,7 @@
             </p>
           </div>
           <div class="mt-10">
-            <div id="ticket-types-ui"
-                 class="space-y-4"
-                 data-disabled="{% if !payments_ready %}
-                                  true
-                                {% else %}
-                                  false
-                                {% endif %}">
+            <div id="ticket-types-ui" class="space-y-4" data-disabled="false">
               <script type="application/json" data-ticketing-seed="ticket-types">
                 []
               </script>
@@ -682,13 +669,7 @@
             </p>
           </div>
           <div class="mt-10">
-            <div id="discount-codes-ui"
-                 class="space-y-4"
-                 data-disabled="{% if !payments_ready %}
-                                  true
-                                {% else %}
-                                  false
-                                {% endif %}">
+            <div id="discount-codes-ui" class="space-y-4" data-disabled="false">
               <script type="application/json" data-ticketing-seed="discount-codes">
                 []
               </script>
