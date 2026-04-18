@@ -92,6 +92,11 @@ describe("ticketing editors", () => {
 
     const currencyField = document.createElement("select");
     currencyField.id = "payment_currency_code";
+    currencyField.innerHTML = `
+      <option value="">Select currency</option>
+      <option value="EUR">EUR</option>
+      <option value="USD">USD</option>
+    `;
     currencyField.value = "EUR";
     document.body.append(currencyField);
 
@@ -308,6 +313,32 @@ describe("ticketing editors", () => {
     expect(form.checkValidity()).to.equal(true);
     expect(uiRoot.querySelector("#ticket-title-draft")?.disabled).to.equal(true);
     expect(uiRoot.querySelector("#ticket-seats-draft")?.disabled).to.equal(true);
+  });
+
+  it("requires an event currency when ticket types are configured", async () => {
+    const currencyField = document.getElementById("payment_currency_code");
+    currencyField.value = "";
+
+    const uiRoot = mountTicketTypesUi();
+    initializeTicketingWaitlistState();
+
+    uiRoot._ticketTypesController._openTicketModal();
+
+    await setInputValue(uiRoot, "#ticket-title-draft", "Paid ticket");
+    await setInputValue(uiRoot, "#ticket-seats-draft", "25");
+    await setInputValue(uiRoot, "#ticket-price-1", "15.00");
+
+    uiRoot.querySelector('[data-ticketing-action="save-ticket"]')?.click();
+
+    expect(currencyField.required).to.equal(true);
+    expect(currencyField.validationMessage).to.equal("Ticketed events require an event currency.");
+    expect(currencyField.checkValidity()).to.equal(false);
+
+    currencyField.value = "USD";
+    currencyField.dispatchEvent(new Event("change", { bubbles: true, composed: true }));
+
+    expect(currencyField.validationMessage).to.equal("");
+    expect(currencyField.checkValidity()).to.equal(true);
   });
 
   it("renders discount code rows and updates serialization after modal edits", async () => {

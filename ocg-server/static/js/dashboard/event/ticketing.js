@@ -102,17 +102,32 @@ export function initializeTicketingWaitlistState(root = document) {
     waitlistToggleLabel,
   } = resolveTicketingControls(root);
   const { ticketTypesController } = initializeTicketingControllers(root);
-
-  const syncWaitlistToggleState = () => {
-    if (!toggleWaitlistEnabled || !waitlistEnabledInput || !capacityInput) {
+  const syncPaymentCurrencyValidity = (hasTicketTypes) => {
+    if (!paymentCurrencyInput) {
       return;
     }
 
+    const requiresCurrency = hasTicketTypes && !paymentCurrencyInput.disabled;
+    const hasCurrency = paymentCurrencyInput.value.trim() !== "";
+
+    paymentCurrencyInput.required = requiresCurrency;
+    paymentCurrencyInput.setCustomValidity(
+      requiresCurrency && !hasCurrency ? "Ticketed events require an event currency." : "",
+    );
+  };
+
+  const syncWaitlistToggleState = () => {
     const clearingTicketing = toggleClearTicketing?.checked === true;
     const hasTicketTypes =
       typeof ticketTypesController?.hasConfiguredTicketTypes === "function"
         ? ticketTypesController.hasConfiguredTicketTypes() && !clearingTicketing
         : false;
+    syncPaymentCurrencyValidity(hasTicketTypes);
+
+    if (!toggleWaitlistEnabled || !waitlistEnabledInput || !capacityInput) {
+      return;
+    }
+
     const configuredSeatTotal =
       typeof ticketTypesController?.getConfiguredSeatTotal === "function"
         ? ticketTypesController.getConfiguredSeatTotal()
@@ -154,10 +169,6 @@ export function initializeTicketingWaitlistState(root = document) {
       waitlistToggleLabel.classList.toggle("cursor-not-allowed", !canEnableWaitlist);
       waitlistToggleLabel.classList.toggle("opacity-50", !canEnableWaitlist);
     }
-
-    if (paymentCurrencyInput) {
-      paymentCurrencyInput.required = hasTicketTypes && !paymentCurrencyInput.disabled;
-    }
   };
 
   if (toggleWaitlistEnabled && waitlistEnabledInput) {
@@ -172,6 +183,11 @@ export function initializeTicketingWaitlistState(root = document) {
 
   if (ticketTypesRoot) {
     ticketTypesRoot.addEventListener("ticket-types-changed", syncWaitlistToggleState);
+  }
+
+  if (paymentCurrencyInput) {
+    paymentCurrencyInput.addEventListener("input", syncWaitlistToggleState);
+    paymentCurrencyInput.addEventListener("change", syncWaitlistToggleState);
   }
 
   if (toggleClearTicketing && clearTicketingInput) {
