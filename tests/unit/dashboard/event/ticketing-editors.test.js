@@ -30,7 +30,13 @@ const mountTicketTypesUi = ({ bodyRows = "" } = {}) => {
     <div data-ticketing-role="ticket-modal" class="hidden">
       <div data-ticketing-action="close-modal"></div>
       <h3 data-ticketing-role="modal-title"></h3>
+      <label class="form-label" for="ticket-title-draft">
+        Ticket name <span class="asterisk">*</span>
+      </label>
       <input id="ticket-title-draft" data-ticket-modal-field data-ticket-field="title" required />
+      <label class="form-label" for="ticket-seats-draft">
+        Seats available <span class="asterisk">*</span>
+      </label>
       <input id="ticket-seats-draft" data-ticket-modal-field data-ticket-field="seats_total" required />
       <textarea id="ticket-description-draft" data-ticket-field="description"></textarea>
       <input type="checkbox" data-ticket-field="active" />
@@ -64,7 +70,13 @@ const mountDiscountCodesUi = ({ bodyRows = "" } = {}) => {
     <div data-ticketing-role="discount-modal" class="hidden">
       <div data-ticketing-action="close-modal"></div>
       <h3 data-ticketing-role="modal-title"></h3>
+      <label class="form-label" for="discount-title-draft">
+        Title <span class="asterisk">*</span>
+      </label>
       <input id="discount-title-draft" data-discount-modal-field data-discount-field="title" required />
+      <label class="form-label" for="discount-code-draft">
+        Code <span class="asterisk">*</span>
+      </label>
       <input id="discount-code-draft" data-discount-modal-field data-discount-field="code" required />
       <input type="checkbox" data-discount-field="active" />
       <select id="discount-kind-draft" data-discount-field="kind">
@@ -144,6 +156,10 @@ describe("ticketing editors", () => {
     uiRoot.addEventListener("ticket-types-changed", (event) => events.push(event.detail));
 
     controller._openTicketModal();
+
+    expect(uiRoot.querySelector('label[for="ticket-title-draft"]')?.textContent).to.contain("*");
+    expect(uiRoot.querySelector('label[for="ticket-seats-draft"]')?.textContent).to.contain("*");
+    expect(uiRoot.querySelector('label[for="ticket-price-1"]')?.textContent).to.contain("*");
 
     await setInputValue(uiRoot, "#ticket-title-draft", "Early bird");
     await setInputValue(uiRoot, "#ticket-seats-draft", "40");
@@ -428,12 +444,24 @@ describe("ticketing editors", () => {
       .querySelector("#discount-kind-draft")
       .dispatchEvent(new Event("change", { bubbles: true, composed: true }));
 
+    expect(uiRoot.querySelector('label[for="discount-title-draft"]')?.textContent).to.contain("*");
+    expect(uiRoot.querySelector('label[for="discount-code-draft"]')?.textContent).to.contain("*");
+    expect(uiRoot.querySelector('label[for="discount-amount-draft"]')?.textContent).to.contain("*");
     expect(uiRoot.textContent).to.contain("Amount (EUR)");
 
     currencyInput.value = "GBP";
     currencyInput.dispatchEvent(new Event("input", { bubbles: true, composed: true }));
 
     expect(uiRoot.textContent).to.contain("Amount (GBP)");
+
+    uiRoot.querySelector("#discount-kind-draft").value = "percentage";
+    uiRoot
+      .querySelector("#discount-kind-draft")
+      .dispatchEvent(new Event("change", { bubbles: true, composed: true }));
+
+    expect(uiRoot.querySelector('label[for="discount-percentage-draft"]')?.textContent).to.contain(
+      "*",
+    );
   });
 
   it("keeps zero fixed discount amounts as amount_minor 0 in hidden fields", async () => {

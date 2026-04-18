@@ -612,7 +612,10 @@
 
           <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6">
             <div class="col-span-full lg:col-span-3">
-              <label for="payment_currency_code" class="form-label">Event Currency</label>
+              <label for="payment_currency_code" class="form-label">
+                Event Currency
+                <span class="asterisk">* <sup class="text-xs font-normal">(required for ticketed events)</sup></span>
+              </label>
               <div class="mt-2">
                 <select id="payment_currency_code"
                         name="payment_currency_code"

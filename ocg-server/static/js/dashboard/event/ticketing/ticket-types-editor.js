@@ -616,7 +616,9 @@ class TicketTypesController {
 
             <div class="mt-4 grid gap-4 md:grid-cols-3">
               <div>
-                <label class="form-label" for="ticket-price-${windowRow._row_id}">Price ${escapeHtml(this._currencyLabelSuffix())}</label>
+                <label class="form-label" for="ticket-price-${windowRow._row_id}">
+                  Price ${escapeHtml(this._currencyLabelSuffix())} <span class="asterisk">*</span>
+                </label>
                 <div class="mt-2">
                   <input
                     id="ticket-price-${windowRow._row_id}"

@@ -520,7 +520,9 @@ class DiscountCodesController {
     if (this._draftRow.kind === "fixed_amount") {
       container.innerHTML = `
         <div>
-          <label class="form-label" for="discount-amount-draft">Amount ${escapeHtml(this._currencyLabelSuffix())}</label>
+          <label class="form-label" for="discount-amount-draft">
+            Amount ${escapeHtml(this._currencyLabelSuffix())} <span class="asterisk">*</span>
+          </label>
           <div class="mt-2">
             <input
               id="discount-amount-draft"
@@ -546,7 +548,9 @@ class DiscountCodesController {
 
     container.innerHTML = `
       <div>
-        <label class="form-label" for="discount-percentage-draft">Percentage off</label>
+        <label class="form-label" for="discount-percentage-draft">
+          Percentage off <span class="asterisk">*</span>
+        </label>
         <div class="mt-2">
           <input
             id="discount-percentage-draft"
