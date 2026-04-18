@@ -13,8 +13,10 @@ declare
     v_event_canceled boolean;
     v_event_discount_code_id uuid;
     v_event_deleted boolean;
+    v_event_ends_at timestamptz;
     v_event_id uuid;
     v_event_published boolean;
+    v_event_starts_at timestamptz;
     v_group_active boolean;
     v_hold_expires_at timestamptz;
     v_provider_payment_reference text;
@@ -29,8 +31,10 @@ begin
         e.canceled,
         ep.event_discount_code_id,
         e.deleted,
+        e.ends_at,
         ep.event_id,
         e.published,
+        e.starts_at,
         g.active,
         ep.hold_expires_at,
         coalesce(p_provider_payment_reference, ep.provider_payment_reference),
@@ -43,8 +47,10 @@ begin
         v_event_canceled,
         v_event_discount_code_id,
         v_event_deleted,
+        v_event_ends_at,
         v_event_id,
         v_event_published,
+        v_event_starts_at,
         v_group_active,
         v_hold_expires_at,
         v_provider_payment_reference,
@@ -123,7 +129,14 @@ begin
     end if;
 
     -- Refund purchases that can no longer be fulfilled locally
-    if v_event_canceled or v_event_deleted or not v_event_published or not v_group_active then
+    if v_event_canceled
+       or v_event_deleted
+       or not v_event_published
+       or not v_group_active
+       or (
+           coalesce(v_event_ends_at, v_event_starts_at) is not null
+           and coalesce(v_event_ends_at, v_event_starts_at) <= current_timestamp
+       ) then
         -- Require a provider payment reference before requesting a refund
         if v_provider_payment_reference is null then
             raise exception 'provider payment reference is required for refund';

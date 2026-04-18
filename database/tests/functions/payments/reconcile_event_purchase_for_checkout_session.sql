@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(11);
+select plan(13);
 
 -- ============================================================================
 -- VARIABLES
@@ -25,11 +25,15 @@ select plan(11);
 \set purchaseCanceledID '79000000-0000-0000-0000-000000000014'
 \set purchaseMissingRefID '79000000-0000-0000-0000-000000000015'
 \set purchaseDoneID '79000000-0000-0000-0000-000000000016'
+\set purchaseStartedID '79000000-0000-0000-0000-000000000022'
+\set startedEventID '79000000-0000-0000-0000-000000000023'
+\set startedTicketTypeID '79000000-0000-0000-0000-000000000024'
 \set user1ID '79000000-0000-0000-0000-000000000017'
 \set user2ID '79000000-0000-0000-0000-000000000018'
 \set user3ID '79000000-0000-0000-0000-000000000019'
 \set user4ID '79000000-0000-0000-0000-000000000020'
 \set user5ID '79000000-0000-0000-0000-000000000021'
+\set user6ID '79000000-0000-0000-0000-000000000025'
 
 -- ============================================================================
 -- SEED DATA
@@ -53,7 +57,8 @@ insert into "user" (user_id, auth_hash, email, email_verified, username) values
     (:'user2ID', 'hash-2', 'user2@example.com', true, 'buyer-2'),
     (:'user3ID', 'hash-3', 'user3@example.com', true, 'buyer-3'),
     (:'user4ID', 'hash-4', 'user4@example.com', true, 'buyer-4'),
-    (:'user5ID', 'hash-5', 'user5@example.com', true, 'buyer-5');
+    (:'user5ID', 'hash-5', 'user5@example.com', true, 'buyer-5'),
+    (:'user6ID', 'hash-6', 'user6@example.com', true, 'buyer-6');
 
 -- Group
 insert into "group" (group_id, community_id, group_category_id, name, slug)
@@ -87,6 +92,19 @@ insert into event (
     true,
     now()
 ), (
+    false,
+    :'startedEventID',
+    :'eventCategoryID',
+    'in-person',
+    :'groupID',
+    'Started Event',
+    'started-event',
+    'Test event',
+    'UTC',
+    now() - interval '1 hour',
+    true,
+    now()
+), (
     true,
     :'canceledEventID',
     :'eventCategoryID',
@@ -105,7 +123,8 @@ insert into event (
 insert into event_ticket_type (event_ticket_type_id, event_id, "order", seats_total, title)
 values
     (:'activeTicketTypeID', :'activeEventID', 1, 10, 'General admission'),
-    (:'canceledTicketTypeID', :'canceledEventID', 1, 10, 'General admission');
+    (:'canceledTicketTypeID', :'canceledEventID', 1, 10, 'General admission'),
+    (:'startedTicketTypeID', :'startedEventID', 1, 10, 'General admission');
 
 -- Ticket price windows
 insert into event_ticket_price_window (
@@ -216,6 +235,22 @@ insert into event_purchase (
     'pending',
     'General admission',
     :'user4ID'
+), (
+    :'purchaseStartedID',
+    2500,
+    'USD',
+    0,
+    null,
+    null,
+    :'startedEventID',
+    :'startedTicketTypeID',
+    now() + interval '15 minutes',
+    'stripe',
+    'cs_started',
+    null,
+    'pending',
+    'General admission',
+    :'user6ID'
 ), (
     :'purchaseDoneID',
     2500,
@@ -331,6 +366,18 @@ select is(
     'Should require refund when the event can no longer be fulfilled'
 );
 
+-- Should require refund when the event has already started
+select is(
+    reconcile_event_purchase_for_checkout_session('stripe', 'cs_started', 'pi_started')::jsonb,
+    jsonb_build_object(
+        'amount_minor', 2500,
+        'event_purchase_id', :'purchaseStartedID'::uuid,
+        'outcome', 'refund_required',
+        'provider_payment_reference', 'pi_started'
+    ),
+    'Should require refund when the event has already started'
+);
+
 -- Should persist the canceled purchase fields when refunding
 select results_eq(
     $$
@@ -343,6 +390,20 @@ select results_eq(
     $$,
     $$ values (true, 'pi_canceled'::text, 'refund-pending'::text) $$,
     'Should persist the canceled purchase fields when refunding'
+);
+
+-- Should persist the started purchase fields when refunding
+select results_eq(
+    $$
+        select
+            hold_expires_at is null,
+            provider_payment_reference,
+            status
+        from event_purchase
+        where event_purchase_id = '79000000-0000-0000-0000-000000000022'::uuid
+    $$,
+    $$ values (true, 'pi_started'::text, 'refund-pending'::text) $$,
+    'Should persist the started purchase fields when refunding'
 );
 
 -- Should reject refund-required paths without a provider payment reference
