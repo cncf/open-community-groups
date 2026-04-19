@@ -25,7 +25,7 @@ use crate::{
     templates::{
         PageId,
         auth::User,
-        site::explore::{self, render_event_popover, render_group_popover},
+        site::explore::{self, render_calendar_event_popover, render_event_popover, render_group_popover},
     },
     types::{
         pagination::{self, NavigationLinks},
@@ -156,9 +156,13 @@ async fn prepare_events_result_section(
     } = db.search_events(filters).await?;
 
     // Render popover HTML for map and calendar views
-    if filters.view_mode == Some(ViewMode::Map) || filters.view_mode == Some(ViewMode::Calendar) {
+    if filters.view_mode == Some(ViewMode::Map) {
         for event in &mut events {
             event.popover_html = Some(render_event_popover(event)?);
+        }
+    } else if filters.view_mode == Some(ViewMode::Calendar) {
+        for event in &mut events {
+            event.popover_html = Some(render_calendar_event_popover(event)?);
         }
     }
 
