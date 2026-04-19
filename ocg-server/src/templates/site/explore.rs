@@ -238,7 +238,10 @@ pub(crate) fn render_event_popover(event: &EventSummary) -> Result<String> {
 pub(crate) fn render_calendar_event_popover(event: &EventSummary) -> Result<String> {
     let calendar_event = CalendarEventCard { event: event.clone() };
     let cfg = MinifyCfg::new();
-    Ok(String::from_utf8(minify(calendar_event.render()?.as_bytes(), &cfg))?)
+    Ok(String::from_utf8(minify(
+        calendar_event.render()?.as_bytes(),
+        &cfg,
+    ))?)
 }
 
 /// Render popover HTML for map views for a group.
