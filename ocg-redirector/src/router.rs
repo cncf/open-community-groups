@@ -17,16 +17,19 @@ use crate::config::HttpServerConfig;
 /// Shared state for the router.
 #[derive(Clone)]
 pub(crate) struct State {
+    /// Base URL used for unmatched legacy redirects.
+    pub base_legacy_url: Arc<str>,
+    /// Base URL used for matched redirects.
+    pub base_redirect_url: Arc<str>,
     /// Redirects keyed by normalized legacy path.
     pub redirects: Arc<HashMap<String, String>>,
-    /// Base URL used for absolute redirects.
-    pub base_redirect_url: Arc<str>,
 }
 
 /// Configures and returns the application router.
 #[instrument(skip_all)]
 pub(crate) fn setup(redirects: HashMap<String, String>, server_cfg: &HttpServerConfig) -> Router {
     let state = State {
+        base_legacy_url: Arc::<str>::from(server_cfg.base_legacy_url.trim_end_matches('/')),
         base_redirect_url: Arc::<str>::from(server_cfg.base_redirect_url.trim_end_matches('/')),
         redirects: Arc::new(redirects),
     };
@@ -47,7 +50,7 @@ async fn health_check() -> impl IntoResponse {
     StatusCode::OK
 }
 
-/// Redirects the request to the canonical location or to the configured base redirect URL.
+/// Redirects the request to the canonical location or the legacy fallback URL.
 #[instrument(skip_all)]
 async fn redirect(AxumState(state): AxumState<State>, uri: Uri) -> impl IntoResponse {
     // Normalize the request path for lookups
@@ -58,10 +61,17 @@ async fn redirect(AxumState(state): AxumState<State>, uri: Uri) -> impl IntoResp
         return Redirect::permanent(&format!("{}{new_path}", state.base_redirect_url)).into_response();
     }
 
-    Redirect::permanent(&state.base_redirect_url).into_response()
+    Redirect::permanent(&legacy_redirect_target(&state.base_legacy_url, &uri)).into_response()
 }
 
 // Helpers.
+
+/// Builds the fallback redirect target from the original request.
+fn legacy_redirect_target(base_legacy_url: &str, uri: &Uri) -> String {
+    let path_and_query = uri.path_and_query().map_or("/", |value| value.as_str());
+
+    format!("{base_legacy_url}{path_and_query}")
+}
 
 /// Normalizes legacy paths for lookups.
 fn normalize_legacy_path(path: &str) -> String {
@@ -166,26 +176,58 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_redirects_to_base_redirect_url_when_match_is_missing() {
+    async fn test_redirects_to_base_legacy_url_when_match_is_missing() {
         let router = test_router(HashMap::new());
         let response = router.oneshot(test_request("/missing")).await.unwrap();
 
         assert_eq!(response.status(), StatusCode::PERMANENT_REDIRECT);
         assert_eq!(
             response.headers().get(LOCATION).unwrap(),
-            &HeaderValue::from_static("https://ocg.example")
+            &HeaderValue::from_static("https://legacy.example/missing")
         );
     }
 
     #[tokio::test]
-    async fn test_redirects_to_base_redirect_url_when_match_is_duplicated() {
+    async fn test_redirects_to_base_legacy_url_when_match_is_duplicated() {
         let router = test_router(HashMap::new());
         let response = router.oneshot(test_request("/duplicate")).await.unwrap();
 
         assert_eq!(response.status(), StatusCode::PERMANENT_REDIRECT);
         assert_eq!(
             response.headers().get(LOCATION).unwrap(),
-            &HeaderValue::from_static("https://ocg.example")
+            &HeaderValue::from_static("https://legacy.example/duplicate")
+        );
+    }
+
+    #[tokio::test]
+    async fn test_redirects_to_base_legacy_url_with_requested_path_and_query_when_match_is_missing() {
+        let router = test_router(HashMap::new());
+        let response = router
+            .oneshot(test_request("/missing/path/?utm_source=test"))
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::PERMANENT_REDIRECT);
+        assert_eq!(
+            response.headers().get(LOCATION).unwrap(),
+            &HeaderValue::from_static("https://legacy.example/missing/path/?utm_source=test")
+        );
+    }
+
+    #[tokio::test]
+    async fn test_redirects_use_trimmed_base_legacy_url() {
+        let server_cfg = HttpServerConfig {
+            addr: "127.0.0.1:9001".to_string(),
+            base_legacy_url: "https://legacy.example/".to_string(),
+            base_redirect_url: "https://ocg.example".to_string(),
+        };
+        let router = setup(HashMap::new(), &server_cfg);
+        let response = router.oneshot(test_request("/missing")).await.unwrap();
+
+        assert_eq!(response.status(), StatusCode::PERMANENT_REDIRECT);
+        assert_eq!(
+            response.headers().get(LOCATION).unwrap(),
+            &HeaderValue::from_static("https://legacy.example/missing")
         );
     }
 
@@ -193,6 +235,7 @@ mod tests {
     async fn test_redirects_use_trimmed_base_redirect_url() {
         let server_cfg = HttpServerConfig {
             addr: "127.0.0.1:9001".to_string(),
+            base_legacy_url: "https://legacy.example".to_string(),
             base_redirect_url: "https://ocg.example/".to_string(),
         };
         let router = setup(
@@ -219,6 +262,7 @@ mod tests {
     fn test_router(redirects: HashMap<String, String>) -> Router {
         let server_cfg = HttpServerConfig {
             addr: "127.0.0.1:9001".to_string(),
+            base_legacy_url: "https://legacy.example".to_string(),
             base_redirect_url: "https://ocg.example".to_string(),
         };
 

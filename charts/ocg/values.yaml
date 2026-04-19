@@ -97,7 +97,10 @@ redirector:
   # Address to listen on
   addr: 0.0.0.0:9001
 
-  # Base URL used for redirect targets and fallback redirects
+  # Base URL used for unmatched legacy request redirects
+  baseLegacyUrl: "https://{YOUR_LEGACY_HOSTNAME}"
+
+  # Base URL used for matched redirect targets
   baseRedirectUrl: "https://{YOUR_OCG_SERVER_HOSTNAME}"
 
   # Ingress configuration
