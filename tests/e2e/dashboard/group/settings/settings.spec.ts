@@ -1,7 +1,7 @@
 import { expect, test } from "../../../fixtures";
 
 import { fillMarkdownEditor } from "../../form-helpers";
-import { navigateToPath } from "../../../utils";
+import { navigateToPath, TEST_PAYMENT_GROUP_RECIPIENT } from "../../../utils";
 
 test.describe("group dashboard settings view", () => {
   test("organizer can update and restore group settings", async ({
@@ -116,5 +116,52 @@ test.describe("group dashboard settings view", () => {
     await expect(
       dashboardContent.getByRole("button", { name: "Update Group" }),
     ).toHaveAttribute("title", "Your role cannot update group settings.");
+    await expect(
+      dashboardContent.locator("#payment_recipient_recipient_id"),
+    ).toHaveValue(TEST_PAYMENT_GROUP_RECIPIENT);
+  });
+
+  test("organizer can update and restore the Stripe recipient", async ({
+    organizerGroupPage,
+  }) => {
+    const settingsPath = "/dashboard/group?tab=settings";
+    const paymentRecipientInput = organizerGroupPage.locator(
+      "#payment_recipient_recipient_id",
+    );
+    const updatedRecipient = "  acct_e2e_alpha_updated  ";
+
+    await navigateToPath(organizerGroupPage, settingsPath);
+    await expect(
+      organizerGroupPage.getByText("Payments", { exact: true }),
+    ).toBeVisible();
+    await expect(paymentRecipientInput).toHaveValue(TEST_PAYMENT_GROUP_RECIPIENT);
+
+    await paymentRecipientInput.fill(updatedRecipient);
+
+    await Promise.all([
+      organizerGroupPage.waitForResponse(
+        (response) =>
+          response.request().method() === "PUT" &&
+          response.url().includes("/dashboard/group/settings/update") &&
+          response.ok(),
+      ),
+      organizerGroupPage.getByRole("button", { name: "Update Group" }).click(),
+    ]);
+
+    await expect(paymentRecipientInput).toHaveValue("acct_e2e_alpha_updated");
+
+    await paymentRecipientInput.fill(TEST_PAYMENT_GROUP_RECIPIENT);
+
+    await Promise.all([
+      organizerGroupPage.waitForResponse(
+        (response) =>
+          response.request().method() === "PUT" &&
+          response.url().includes("/dashboard/group/settings/update") &&
+          response.ok(),
+      ),
+      organizerGroupPage.getByRole("button", { name: "Update Group" }).click(),
+    ]);
+
+    await expect(paymentRecipientInput).toHaveValue(TEST_PAYMENT_GROUP_RECIPIENT);
   });
 });

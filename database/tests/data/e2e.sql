@@ -175,6 +175,12 @@ insert into "group" (
     true
 );
 
+-- Enable payment-ready coverage on the primary group without changing the
+-- current payments-disabled e2e server profile.
+update "group"
+set payment_recipient = '{"provider":"stripe","recipient_id":"acct_e2e_alpha"}'::jsonb
+where group_id = '44444444-4444-4444-4444-444444444441';
+
 -- ============================================================================
 -- EVENTS
 -- ============================================================================
@@ -543,6 +549,43 @@ insert into event (
     1,
     true,
     true
+);
+
+-- Ticketed payment fixtures reserved for the Playwright suite.
+insert into event (
+    event_id, name, slug, description, timezone, event_category_id,
+    event_kind_id, group_id, payment_currency_code, published, starts_at, ends_at,
+    registration_required, waitlist_enabled
+) values (
+    '55555555-5555-5555-5555-555555555522',
+    'Ticketed Draft Event',
+    'alpha-payments-draft',
+    'Ticketed event used for payment editor and validation coverage.',
+    'UTC',
+    '33333333-3333-3333-3333-333333333331',
+    'virtual',
+    '44444444-4444-4444-4444-444444444441',
+    'USD',
+    true,
+    now() + interval '90 days',
+    now() + interval '90 days 3 hours',
+    true,
+    false
+), (
+    '55555555-5555-5555-5555-555555555523',
+    'Ticketed Refund Review Event',
+    'alpha-payments-refunds',
+    'Ticketed event used for organizer refund review coverage.',
+    'UTC',
+    '33333333-3333-3333-3333-333333333331',
+    'virtual',
+    '44444444-4444-4444-4444-444444444441',
+    'USD',
+    true,
+    now() + interval '95 days',
+    now() + interval '95 days 2 hours',
+    true,
+    false
 );
 
 -- ============================================================================
@@ -1039,6 +1082,308 @@ values (
 ), (
     '55555555-5555-5555-5555-555555555521',
     '77777777-7777-7777-7777-777777777703'
+), (
+    '55555555-5555-5555-5555-555555555523',
+    '77777777-7777-7777-7777-777777777705'
+), (
+    '55555555-5555-5555-5555-555555555523',
+    '77777777-7777-7777-7777-777777777706'
+), (
+    '55555555-5555-5555-5555-555555555523',
+    '77777777-7777-7777-7777-777777777707'
+), (
+    '55555555-5555-5555-5555-555555555523',
+    '77777777-7777-7777-7777-777777777708'
+);
+
+-- ============================================================================
+-- EVENT TICKETING
+-- ============================================================================
+
+insert into event_ticket_type (
+    event_ticket_type_id,
+    active,
+    event_id,
+    "order",
+    seats_total,
+    title,
+    description
+)
+values (
+    '56555555-5555-5555-5555-555555555521',
+    true,
+    '55555555-5555-5555-5555-555555555522',
+    1,
+    30,
+    'General admission',
+    'Standard paid admission used for ticket editor coverage.'
+), (
+    '56555555-5555-5555-5555-555555555522',
+    true,
+    '55555555-5555-5555-5555-555555555522',
+    2,
+    10,
+    'Community ticket',
+    'Free community allocation used for zero-price ticket coverage.'
+), (
+    '56555555-5555-5555-5555-555555555524',
+    true,
+    '55555555-5555-5555-5555-555555555522',
+    3,
+    2,
+    'Backstage pass',
+    'Future sale window used for unavailable ticket coverage.'
+), (
+    '56555555-5555-5555-5555-555555555523',
+    true,
+    '55555555-5555-5555-5555-555555555523',
+    1,
+    5,
+    'VIP pass',
+    'Paid pass used for organizer refund review coverage.'
+);
+
+insert into event_ticket_price_window (
+    event_ticket_price_window_id,
+    amount_minor,
+    event_ticket_type_id,
+    starts_at,
+    ends_at
+)
+values (
+    '57555555-5555-5555-5555-555555555521',
+    2500,
+    '56555555-5555-5555-5555-555555555521',
+    null,
+    now() + interval '45 days'
+), (
+    '57555555-5555-5555-5555-555555555522',
+    3000,
+    '56555555-5555-5555-5555-555555555521',
+    now() + interval '45 days',
+    null
+), (
+    '57555555-5555-5555-5555-555555555523',
+    0,
+    '56555555-5555-5555-5555-555555555522',
+    null,
+    null
+), (
+    '57555555-5555-5555-5555-555555555525',
+    7000,
+    '56555555-5555-5555-5555-555555555524',
+    now() + interval '5 days',
+    null
+), (
+    '57555555-5555-5555-5555-555555555524',
+    5000,
+    '56555555-5555-5555-5555-555555555523',
+    null,
+    null
+);
+
+insert into event_discount_code (
+    event_discount_code_id,
+    active,
+    code,
+    event_id,
+    kind,
+    title,
+    amount_minor,
+    percentage,
+    starts_at,
+    ends_at,
+    total_available,
+    available
+)
+values (
+    '58555555-5555-5555-5555-555555555521',
+    true,
+    'SAVE10',
+    '55555555-5555-5555-5555-555555555522',
+    'fixed_amount',
+    'Launch savings',
+    1000,
+    null,
+    null,
+    null,
+    null,
+    null
+), (
+    '58555555-5555-5555-5555-555555555522',
+    true,
+    'EARLY20',
+    '55555555-5555-5555-5555-555555555522',
+    'percentage',
+    'Early supporter',
+    null,
+    20,
+    null,
+    null,
+    null,
+    null
+), (
+    '58555555-5555-5555-5555-555555555523',
+    true,
+    'EXPIRED15',
+    '55555555-5555-5555-5555-555555555522',
+    'percentage',
+    'Expired campaign',
+    null,
+    15,
+    null,
+    now() - interval '1 day',
+    null,
+    null
+), (
+    '58555555-5555-5555-5555-555555555524',
+    true,
+    'LIMIT5',
+    '55555555-5555-5555-5555-555555555522',
+    'fixed_amount',
+    'Limited campaign',
+    500,
+    null,
+    null,
+    null,
+    1,
+    0
+), (
+    '58555555-5555-5555-5555-555555555525',
+    true,
+    'REVIEW10',
+    '55555555-5555-5555-5555-555555555523',
+    'fixed_amount',
+    'Refund review discount',
+    1000,
+    null,
+    null,
+    null,
+    1,
+    0
+);
+
+-- ============================================================================
+-- EVENT PURCHASES
+-- ============================================================================
+
+insert into event_purchase (
+    event_purchase_id,
+    amount_minor,
+    completed_at,
+    currency_code,
+    discount_amount_minor,
+    discount_code,
+    event_discount_code_id,
+    event_id,
+    event_ticket_type_id,
+    payment_provider_id,
+    provider_checkout_session_id,
+    provider_checkout_url,
+    provider_payment_reference,
+    status,
+    ticket_title,
+    user_id
+)
+values (
+    '59555555-5555-5555-5555-555555555521',
+    4000,
+    now() - interval '2 days',
+    'USD',
+    1000,
+    'REVIEW10',
+    '58555555-5555-5555-5555-555555555525',
+    '55555555-5555-5555-5555-555555555523',
+    '56555555-5555-5555-5555-555555555523',
+    'stripe',
+    'cs_e2e_refund_pending',
+    'https://checkout.stripe.test/cs_e2e_refund_pending',
+    'pi_e2e_refund_pending',
+    'refund-requested',
+    'VIP pass',
+    '77777777-7777-7777-7777-777777777705'
+), (
+    '59555555-5555-5555-5555-555555555522',
+    5000,
+    now() - interval '3 days',
+    'USD',
+    0,
+    null,
+    null,
+    '55555555-5555-5555-5555-555555555523',
+    '56555555-5555-5555-5555-555555555523',
+    'stripe',
+    'cs_e2e_refund_retry',
+    'https://checkout.stripe.test/cs_e2e_refund_retry',
+    'pi_e2e_refund_retry',
+    'refund-requested',
+    'VIP pass',
+    '77777777-7777-7777-7777-777777777706'
+), (
+    '59555555-5555-5555-5555-555555555523',
+    5000,
+    now() - interval '4 days',
+    'USD',
+    0,
+    null,
+    null,
+    '55555555-5555-5555-5555-555555555523',
+    '56555555-5555-5555-5555-555555555523',
+    'stripe',
+    'cs_e2e_refund_rejected',
+    'https://checkout.stripe.test/cs_e2e_refund_rejected',
+    'pi_e2e_refund_rejected',
+    'completed',
+    'VIP pass',
+    '77777777-7777-7777-7777-777777777707'
+), (
+    '59555555-5555-5555-5555-555555555524',
+    5000,
+    now() - interval '1 day',
+    'USD',
+    0,
+    null,
+    null,
+    '55555555-5555-5555-5555-555555555523',
+    '56555555-5555-5555-5555-555555555523',
+    'stripe',
+    'cs_e2e_refund_available',
+    'https://checkout.stripe.test/cs_e2e_refund_available',
+    'pi_e2e_refund_available',
+    'completed',
+    'VIP pass',
+    '77777777-7777-7777-7777-777777777708'
+);
+
+-- ============================================================================
+-- EVENT REFUND REQUESTS
+-- ============================================================================
+
+insert into event_refund_request (
+    event_refund_request_id,
+    event_purchase_id,
+    requested_by_user_id,
+    requested_reason,
+    status
+)
+values (
+    '60555555-5555-5555-5555-555555555521',
+    '59555555-5555-5555-5555-555555555521',
+    '77777777-7777-7777-7777-777777777705',
+    'Need to cancel',
+    'pending'
+), (
+    '60555555-5555-5555-5555-555555555522',
+    '59555555-5555-5555-5555-555555555522',
+    '77777777-7777-7777-7777-777777777706',
+    'Schedule conflict',
+    'approving'
+), (
+    '60555555-5555-5555-5555-555555555523',
+    '59555555-5555-5555-5555-555555555523',
+    '77777777-7777-7777-7777-777777777707',
+    'Need a different date',
+    'rejected'
 );
 
 -- ============================================================================

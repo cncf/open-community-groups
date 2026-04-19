@@ -92,6 +92,27 @@ export const TEST_EVENT_IDS = {
   },
 } as const;
 
+/** Payment-specific event ids used by the future Playwright payment suite. */
+export const TEST_PAYMENT_EVENT_IDS = {
+  draft: "55555555-5555-5555-5555-555555555522",
+  refunds: "55555555-5555-5555-5555-555555555523",
+} as const;
+
+/** Payment-specific event names used by the future Playwright payment suite. */
+export const TEST_PAYMENT_EVENT_NAMES = {
+  draft: "Ticketed Draft Event",
+  refunds: "Ticketed Refund Review Event",
+} as const;
+
+/** Payment-specific event slugs used by the future Playwright payment suite. */
+export const TEST_PAYMENT_EVENT_SLUGS = {
+  draft: "alpha-payments-draft",
+  refunds: "alpha-payments-refunds",
+} as const;
+
+/** Seeded Stripe recipient stored on the alpha group for payment-ready coverage. */
+export const TEST_PAYMENT_GROUP_RECIPIENT = "acct_e2e_alpha";
+
 /** Event slugs organized by group. */
 export const TEST_EVENT_SLUGS = {
   alpha: ["alpha-event-1", "alpha-event-2", "alpha-event-3"],

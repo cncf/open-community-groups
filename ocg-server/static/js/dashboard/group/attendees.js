@@ -105,7 +105,7 @@ const populateRefundReviewModal = (triggerButton, root = document) => {
     return;
   }
 
-  const status = triggerButton.dataset.refundStatus || "pending";
+  const status = (triggerButton.dataset.refundStatus || "pending").trim();
 
   if (nameField) {
     nameField.textContent = triggerButton.dataset.refundAttendeeName || "-";
