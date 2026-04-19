@@ -398,8 +398,7 @@ async fn test_attend_event_success() {
                 && notification.recipients == vec![user_id]
                 && notification.template_data.as_ref().is_some_and(|value| {
                     from_value::<EventWelcome>(value.clone())
-                        .map(|template| template.link == "/test-community/group/def5678/event/ghi9abc")
-                        .unwrap_or(false)
+                        .is_ok_and(|template| template.link == "/test-community/group/def5678/event/ghi9abc")
                 })
         })
         .returning(|_| Box::pin(async { Ok(()) }));
@@ -473,8 +472,7 @@ async fn test_attend_event_waitlist_success() {
                 && notification.recipients == vec![user_id]
                 && notification.template_data.as_ref().is_some_and(|value| {
                     from_value::<EventWaitlistJoined>(value.clone())
-                        .map(|template| template.link == "/test-community/group/def5678/event/ghi9abc")
-                        .unwrap_or(false)
+                        .is_ok_and(|template| template.link == "/test-community/group/def5678/event/ghi9abc")
                 })
         })
         .returning(|_| Box::pin(async { Ok(()) }));
@@ -928,8 +926,7 @@ async fn test_leave_waitlist_success() {
                 && notification.recipients == vec![user_id]
                 && notification.template_data.as_ref().is_some_and(|value| {
                     from_value::<EventWaitlistLeft>(value.clone())
-                        .map(|template| template.link == "/test-community/group/def5678/event/ghi9abc")
-                        .unwrap_or(false)
+                        .is_ok_and(|template| template.link == "/test-community/group/def5678/event/ghi9abc")
                 })
         })
         .returning(|_| Box::pin(async { Ok(()) }));
@@ -1008,13 +1005,11 @@ async fn test_leave_event_promotes_waitlisted_users_and_enqueues_notification() 
                 && notification.attachments.len() == 1
                 && notification.attachments[0].file_name == "event-ghi9abc.ics"
                 && notification.template_data.as_ref().is_some_and(|value| {
-                    from_value::<EventWaitlistPromoted>(value.clone())
-                        .map(|template| {
-                            template.link == "/test-community/group/def5678/event/ghi9abc"
-                                && template.theme.primary_color
-                                    == site_settings_for_notification.theme.primary_color
-                        })
-                        .unwrap_or(false)
+                    from_value::<EventWaitlistPromoted>(value.clone()).is_ok_and(|template| {
+                        template.link == "/test-community/group/def5678/event/ghi9abc"
+                            && template.theme.primary_color
+                                == site_settings_for_notification.theme.primary_color
+                    })
                 })
         })
         .returning(|_| Box::pin(async { Ok(()) }));

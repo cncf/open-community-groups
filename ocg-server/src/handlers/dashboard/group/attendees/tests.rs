@@ -766,17 +766,15 @@ async fn test_send_event_custom_notification_success() {
             matches!(notification.kind, NotificationKind::EventCustom)
                 && notification.recipients == vec![attendee_id1, attendee_id2]
                 && notification.template_data.as_ref().is_some_and(|value| {
-                    serde_json::from_value::<EventCustom>(value.clone())
-                        .map(|template| {
-                            template.title == notification_subject
-                                && template.body == notification_body
-                                && template.event.name == event_for_notifications.name
-                                && template.event.group_name == event_for_notifications.group_name
-                                && template.link == expected_link
-                                && template.theme.primary_color
-                                    == site_settings_for_notifications.theme.primary_color
-                        })
-                        .unwrap_or(false)
+                    serde_json::from_value::<EventCustom>(value.clone()).is_ok_and(|template| {
+                        template.title == notification_subject
+                            && template.body == notification_body
+                            && template.event.name == event_for_notifications.name
+                            && template.event.group_name == event_for_notifications.group_name
+                            && template.link == expected_link
+                            && template.theme.primary_color
+                                == site_settings_for_notifications.theme.primary_color
+                    })
                 })
         })
         .returning(|_| Box::pin(async { Ok(()) }));

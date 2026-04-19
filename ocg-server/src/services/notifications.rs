@@ -51,7 +51,7 @@ const PAUSE_ON_DELIVERY_NONE: Duration = Duration::from_secs(15);
 const PAUSE_ON_ENQUEUE_ERROR: Duration = Duration::from_secs(30);
 
 /// Time to wait when there are no due notifications to enqueue.
-const PAUSE_ON_ENQUEUE_NONE: Duration = Duration::from_secs(300);
+const PAUSE_ON_ENQUEUE_NONE: Duration = Duration::from_mins(5);
 
 /// Trait for a notifications manager, responsible for delivering notifications.
 #[async_trait]

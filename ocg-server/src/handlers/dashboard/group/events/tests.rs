@@ -943,13 +943,11 @@ async fn test_cancel_success() {
                 && notification.recipients.contains(&attendee_id)
                 && notification.recipients.contains(&speaker_id)
                 && notification.template_data.as_ref().is_some_and(|value| {
-                    from_value::<EventCanceled>(value.clone())
-                        .map(|template| {
-                            template.link == "/test/group/npq6789/event/abc1234"
-                                && template.theme.primary_color
-                                    == site_settings_for_notifications.theme.primary_color
-                        })
-                        .unwrap_or(false)
+                    from_value::<EventCanceled>(value.clone()).is_ok_and(|template| {
+                        template.link == "/test/group/npq6789/event/abc1234"
+                            && template.theme.primary_color
+                                == site_settings_for_notifications.theme.primary_color
+                    })
                 })
         })
         .returning(|_| Box::pin(async { Ok(()) }));
@@ -1065,12 +1063,10 @@ async fn test_publish_success() {
             matches!(notification.kind, NotificationKind::EventPublished)
                 && notification.recipients == expected_member_recipients
                 && notification.template_data.as_ref().is_some_and(|value| {
-                    from_value::<EventPublished>(value.clone())
-                        .map(|template| {
-                            template.theme.primary_color
-                                == site_settings_for_member_notification.theme.primary_color
-                        })
-                        .unwrap_or(false)
+                    from_value::<EventPublished>(value.clone()).is_ok_and(|template| {
+                        template.theme.primary_color
+                            == site_settings_for_member_notification.theme.primary_color
+                    })
                 })
         })
         .returning(|_| Box::pin(async { Ok(()) }));
@@ -1080,12 +1076,10 @@ async fn test_publish_success() {
             matches!(notification.kind, NotificationKind::SpeakerWelcome)
                 && notification.recipients == vec![speaker_id]
                 && notification.template_data.as_ref().is_some_and(|value| {
-                    from_value::<SpeakerWelcome>(value.clone())
-                        .map(|template| {
-                            template.theme.primary_color
-                                == site_settings_for_speaker_notification.theme.primary_color
-                        })
-                        .unwrap_or(false)
+                    from_value::<SpeakerWelcome>(value.clone()).is_ok_and(|template| {
+                        template.theme.primary_color
+                            == site_settings_for_speaker_notification.theme.primary_color
+                    })
                 })
         })
         .returning(|_| Box::pin(async { Ok(()) }));
@@ -1273,12 +1267,10 @@ async fn test_publish_speakers_only() {
             matches!(notification.kind, NotificationKind::SpeakerWelcome)
                 && notification.recipients == vec![speaker_id]
                 && notification.template_data.as_ref().is_some_and(|value| {
-                    from_value::<SpeakerWelcome>(value.clone())
-                        .map(|template| {
-                            template.theme.primary_color
-                                == site_settings_for_speaker_notification.theme.primary_color
-                        })
-                        .unwrap_or(false)
+                    from_value::<SpeakerWelcome>(value.clone()).is_ok_and(|template| {
+                        template.theme.primary_color
+                            == site_settings_for_speaker_notification.theme.primary_color
+                    })
                 })
         })
         .returning(|_| Box::pin(async { Ok(()) }));
@@ -1536,13 +1528,11 @@ async fn test_update_success() {
                 && notification.recipients.contains(&attendee_id)
                 && notification.recipients.contains(&speaker_id)
                 && notification.template_data.as_ref().is_some_and(|value| {
-                    from_value::<EventRescheduled>(value.clone())
-                        .map(|template| {
-                            template.link == "/test/group/npq6789/event/abc1234"
-                                && template.theme.primary_color
-                                    == site_settings_for_notifications.theme.primary_color
-                        })
-                        .unwrap_or(false)
+                    from_value::<EventRescheduled>(value.clone()).is_ok_and(|template| {
+                        template.link == "/test/group/npq6789/event/abc1234"
+                            && template.theme.primary_color
+                                == site_settings_for_notifications.theme.primary_color
+                    })
                 })
         })
         .returning(|_| Box::pin(async { Ok(()) }));
@@ -1826,13 +1816,11 @@ async fn test_update_promotes_waitlist_and_sends_reschedule_notification() {
             matches!(notification.kind, NotificationKind::EventWaitlistPromoted)
                 && notification.recipients == vec![promoted_user_id]
                 && notification.template_data.as_ref().is_some_and(|value| {
-                    from_value::<EventWaitlistPromoted>(value.clone())
-                        .map(|template| {
-                            template.link == "/test-community/group/def5678/event/ghi9abc"
-                                && template.theme.primary_color
-                                    == site_settings_for_promotion_notification.theme.primary_color
-                        })
-                        .unwrap_or(false)
+                    from_value::<EventWaitlistPromoted>(value.clone()).is_ok_and(|template| {
+                        template.link == "/test-community/group/def5678/event/ghi9abc"
+                            && template.theme.primary_color
+                                == site_settings_for_promotion_notification.theme.primary_color
+                    })
                 })
         })
         .returning(|_| Box::pin(async { Ok(()) }));
@@ -1844,13 +1832,11 @@ async fn test_update_promotes_waitlist_and_sends_reschedule_notification() {
                 && notification.recipients.contains(&attendee_id)
                 && notification.recipients.contains(&speaker_id)
                 && notification.template_data.as_ref().is_some_and(|value| {
-                    from_value::<EventRescheduled>(value.clone())
-                        .map(|template| {
-                            template.link == "/test/group/npq6789/event/abc1234"
-                                && template.theme.primary_color
-                                    == site_settings_for_reschedule_notification.theme.primary_color
-                        })
-                        .unwrap_or(false)
+                    from_value::<EventRescheduled>(value.clone()).is_ok_and(|template| {
+                        template.link == "/test/group/npq6789/event/abc1234"
+                            && template.theme.primary_color
+                                == site_settings_for_reschedule_notification.theme.primary_color
+                    })
                 })
         })
         .returning(|_| Box::pin(async { Ok(()) }));
@@ -1949,13 +1935,11 @@ async fn test_update_promotion_notification_failure_is_ignored() {
                 && notification.attachments.len() == 1
                 && notification.attachments[0].file_name == "event-ghi9abc.ics"
                 && notification.template_data.as_ref().is_some_and(|value| {
-                    from_value::<EventWaitlistPromoted>(value.clone())
-                        .map(|template| {
-                            template.link == "/test-community/group/def5678/event/ghi9abc"
-                                && template.theme.primary_color
-                                    == site_settings_for_notification.theme.primary_color
-                        })
-                        .unwrap_or(false)
+                    from_value::<EventWaitlistPromoted>(value.clone()).is_ok_and(|template| {
+                        template.link == "/test-community/group/def5678/event/ghi9abc"
+                            && template.theme.primary_color
+                                == site_settings_for_notification.theme.primary_color
+                    })
                 })
         })
         .returning(|_| Box::pin(async { Err(anyhow!("notification error")) }));

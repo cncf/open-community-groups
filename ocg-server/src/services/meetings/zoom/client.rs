@@ -23,7 +23,7 @@ pub(crate) const ZOOM_MEETING_NOT_FOUND: i32 = 3001;
 const BASE_URL: &str = "https://api.zoom.us/v2";
 
 /// Default retry delay when Zoom doesn't provide Retry-After header.
-const DEFAULT_RATE_LIMIT_RETRY: Duration = Duration::from_secs(60);
+const DEFAULT_RATE_LIMIT_RETRY: Duration = Duration::from_mins(1);
 
 /// Timeout for HTTP requests to Zoom API.
 const HTTP_TIMEOUT: Duration = Duration::from_secs(20);
@@ -35,7 +35,7 @@ const MAX_DURATION_MINUTES: i64 = 720;
 const MIN_DURATION_MINUTES: i64 = 5;
 
 /// Margin before token expiry to trigger refresh.
-const TOKEN_EXPIRY_MARGIN: Duration = Duration::from_secs(300);
+const TOKEN_EXPIRY_MARGIN: Duration = Duration::from_mins(5);
 
 /// Zoom OAuth token endpoint.
 const ZOOM_TOKEN_URL: &str = "https://zoom.us/oauth/token";

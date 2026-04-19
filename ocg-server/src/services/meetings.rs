@@ -32,7 +32,7 @@ const NUM_SYNC_WORKERS: usize = 2;
 const PAUSE_ON_AUTO_END_ERROR: Duration = Duration::from_secs(30);
 
 /// Time to wait when there are no meetings to auto-end.
-const PAUSE_ON_AUTO_END_NONE: Duration = Duration::from_secs(60);
+const PAUSE_ON_AUTO_END_NONE: Duration = Duration::from_mins(1);
 
 /// Time to wait after a sync error before retrying.
 const PAUSE_ON_SYNC_ERROR: Duration = Duration::from_secs(30);
