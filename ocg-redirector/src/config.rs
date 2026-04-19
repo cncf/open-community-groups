@@ -47,6 +47,7 @@ impl Config {
 
     /// Validates configuration consistency after loading from all sources.
     fn validate(&self) -> Result<()> {
+        validate_url(&self.server.base_legacy_url, "server.base_legacy_url")?;
         validate_url(&self.server.base_redirect_url, "server.base_redirect_url")?;
 
         Ok(())
@@ -75,7 +76,9 @@ pub(crate) enum LogFormat {
 pub(crate) struct HttpServerConfig {
     /// The address the HTTP server will listen on.
     pub addr: String,
-    /// Base URL used for redirects.
+    /// Base URL used for unmatched legacy redirects.
+    pub base_legacy_url: String,
+    /// Base URL used for matched redirects.
     pub base_redirect_url: String,
 }
 
