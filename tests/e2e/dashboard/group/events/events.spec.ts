@@ -142,7 +142,10 @@ test.describe("group dashboard events view", () => {
     await expect(organizerGroupPage.locator('button[data-section="payments"]')).toHaveCount(0);
     await expect(organizerGroupPage.locator('[data-content="payments"]')).toHaveCount(0);
 
+    await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
+
     const eventRow = dashboardContent.locator("tr", { hasText: TEST_EVENT_NAMES.alpha[0] });
+    await expect(eventRow).toBeVisible();
 
     await Promise.all([
       organizerGroupPage.waitForResponse(
