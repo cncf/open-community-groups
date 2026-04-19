@@ -378,6 +378,10 @@ input:placeholder-shown {
   border-radius: 999px;
 }
 
+.fc-daygrid-event-harness:hover {
+  z-index: 20;
+}
+
 .fc-daygrid-event-harness:hover div[data-popover] {
   opacity: 1;
   visibility: visible;
