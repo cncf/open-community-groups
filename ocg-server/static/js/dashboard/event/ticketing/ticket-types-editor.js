@@ -63,6 +63,11 @@ class TicketTypesController {
     return this._rows.length > 0;
   }
 
+  setTicketTypes(ticketTypes) {
+    this._applyTicketTypes(ticketTypes);
+    this.render();
+  }
+
   getConfiguredSeatTotal() {
     if (this._rows.length === 0) {
       return null;

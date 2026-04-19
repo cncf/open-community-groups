@@ -5,6 +5,8 @@ import {
   toTrimmedString,
 } from "/static/js/common/utils.js";
 import { confirmAction } from "/static/js/common/alerts.js";
+import { initializeDiscountCodesController } from "/static/js/dashboard/event/ticketing/discount-codes-editor.js";
+import { initializeTicketTypesController } from "/static/js/dashboard/event/ticketing/ticket-types-editor.js";
 
 /**
  * Adds the copy suffix to a given event name.
@@ -109,6 +111,57 @@ const setEventReminderEnabled = (isEnabled) => {
   if (hidden) {
     hidden.value = isEnabled ? "true" : "false";
   }
+};
+
+/**
+ * Sets event payment currency and triggers dependent ticketing UI updates.
+ * @param {*} paymentCurrencyCode Event payment currency code
+ */
+const setPaymentCurrencyCode = (paymentCurrencyCode) => {
+  const select = document.getElementById("payment_currency_code");
+  if (!select) {
+    return;
+  }
+
+  select.value = toOptionalString(paymentCurrencyCode);
+  select.dispatchEvent(new Event("input", { bubbles: true }));
+  select.dispatchEvent(new Event("change", { bubbles: true }));
+};
+
+/**
+ * Replaces ticket types in the ticketing editor.
+ * @param {*} ticketTypes Ticket types payload
+ */
+const setTicketTypes = (ticketTypes) => {
+  const root = document.getElementById("ticket-types-ui");
+  if (!root) {
+    return;
+  }
+
+  const controller =
+    root._ticketTypesController ||
+    initializeTicketTypesController({
+      root,
+    });
+  controller?.setTicketTypes(Array.isArray(ticketTypes) ? ticketTypes : []);
+};
+
+/**
+ * Replaces discount codes in the ticketing editor.
+ * @param {*} discountCodes Discount codes payload
+ */
+const setDiscountCodes = (discountCodes) => {
+  const root = document.getElementById("discount-codes-ui");
+  if (!root) {
+    return;
+  }
+
+  const controller =
+    root._discountCodesController ||
+    initializeDiscountCodesController({
+      root,
+    });
+  controller?.setDiscountCodes(Array.isArray(discountCodes) ? discountCodes : []);
 };
 
 /**
@@ -332,13 +385,16 @@ export {
   initializeSessionsRemovalWarning,
   normalizeSpeakers,
   setCategoryValue,
+  setDiscountCodes,
   setEventReminderEnabled,
   setGalleryImages,
   setHosts,
+  setPaymentCurrencyCode,
   setRegistrationRequired,
   setSessions,
   setSponsors,
   setTags,
+  setTicketTypes,
   updateMarkdownContent,
   updateTimezone,
 };

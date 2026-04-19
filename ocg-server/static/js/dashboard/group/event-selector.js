@@ -283,10 +283,13 @@ class EventSelector extends LitWrapper {
     const {
       appendCopySuffix,
       setCategoryValue,
+      setDiscountCodes,
       setEventReminderEnabled,
       setGalleryImages,
       setTags,
       setRegistrationRequired,
+      setPaymentCurrencyCode,
+      setTicketTypes,
       updateMarkdownContent,
       updateTimezone,
       setHosts,
@@ -306,6 +309,9 @@ class EventSelector extends LitWrapper {
     setTextValue("meetup_url", details.meetup_url);
     setGalleryImages(details.photos_urls);
     setTags(details.tags);
+    setPaymentCurrencyCode(details.payment_currency_code);
+    setTicketTypes(details.ticket_types);
+    setDiscountCodes(details.discount_codes);
     updateTimezone(details.timezone);
     setTextValue("venue_name", details.venue_name);
     setTextValue("venue_address", details.venue_address);

@@ -62,6 +62,11 @@ class DiscountCodesController {
     this.currencyInput?.removeEventListener("input", this._handleCurrencyFieldChange);
   }
 
+  setDiscountCodes(discountCodes) {
+    this._applyDiscountCodes(discountCodes);
+    this.render();
+  }
+
   _bind() {
     this._toggleExternalAddButtonListener(true);
     this.root.addEventListener("click", this._handleRootClick);

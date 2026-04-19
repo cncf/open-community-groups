@@ -166,12 +166,18 @@ describe("event-selector", () => {
       <input id="toggle_registration_required" type="checkbox" />
       <input id="registration_required" type="hidden" />
       <input id="meetup_url" />
+      <select id="payment_currency_code">
+        <option value="">Select currency</option>
+        <option value="EUR">EUR</option>
+      </select>
       <input id="venue_name" />
       <input id="venue_address" />
       <input id="venue_city" />
       <input id="venue_zip_code" />
       <input id="meeting_join_url" value="filled" />
       <input id="meeting_recording_url" value="filled" />
+      <div id="ticket-types-ui"></div>
+      <div id="discount-codes-ui"></div>
       <gallery-field field-name="photos_urls"></gallery-field>
       <multiple-inputs field-name="tags"></multiple-inputs>
       <user-search-selector field-name="hosts"></user-search-selector>
@@ -201,6 +207,22 @@ describe("event-selector", () => {
     const sessionsSection = document.querySelector("sessions-section");
     sessionsSection.requestUpdate = () => {};
 
+    const ticketTypesCalls = [];
+    const ticketTypesRoot = document.getElementById("ticket-types-ui");
+    ticketTypesRoot._ticketTypesController = {
+      setTicketTypes(ticketTypes) {
+        ticketTypesCalls.push(ticketTypes);
+      },
+    };
+
+    const discountCodesCalls = [];
+    const discountCodesRoot = document.getElementById("discount-codes-ui");
+    discountCodesRoot._discountCodesController = {
+      setDiscountCodes(discountCodes) {
+        discountCodesCalls.push(discountCodes);
+      },
+    };
+
     const timezoneSelector = document.querySelector("timezone-selector[name='timezone']");
     timezoneSelector.dispatchEvent = () => true;
 
@@ -226,8 +248,23 @@ describe("event-selector", () => {
       event_reminder_enabled: true,
       registration_required: true,
       meetup_url: "https://meetup.com/cloud-native-malaga",
+      payment_currency_code: "EUR",
       photos_urls: [" one.png ", "two.png"],
       tags: ["cloud", " malaga "],
+      ticket_types: [
+        {
+          title: "General admission",
+          price_windows: [{ amount_minor: 2500 }],
+        },
+      ],
+      discount_codes: [
+        {
+          code: "EARLY20",
+          kind: "percentage",
+          percentage: 20,
+          title: "Early supporter",
+        },
+      ],
       timezone: "Europe/Madrid",
       venue_name: "FYCMA",
       venue_address: "Av. de José Ortega y Gasset, 201",
@@ -248,9 +285,28 @@ describe("event-selector", () => {
     expect(document.getElementById("toggle_registration_required")?.checked).to.equal(true);
     expect(document.getElementById("registration_required")?.value).to.equal("true");
     expect(document.getElementById("meetup_url")?.value).to.equal("https://meetup.com/cloud-native-malaga");
+    expect(document.getElementById("payment_currency_code")?.value).to.equal("EUR");
     expect(document.getElementById("venue_city")?.value).to.equal("Málaga");
     expect(document.getElementById("meeting_join_url")?.value).to.equal("");
     expect(document.getElementById("meeting_recording_url")?.value).to.equal("");
+    expect(ticketTypesCalls).to.deep.equal([
+      [
+        {
+          title: "General admission",
+          price_windows: [{ amount_minor: 2500 }],
+        },
+      ],
+    ]);
+    expect(discountCodesCalls).to.deep.equal([
+      [
+        {
+          code: "EARLY20",
+          kind: "percentage",
+          percentage: 20,
+          title: "Early supporter",
+        },
+      ],
+    ]);
     expect(gallery.images).to.deep.equal(["one.png", "two.png"]);
     expect(tags.items).to.deep.equal([
       { id: 0, value: "cloud" },
