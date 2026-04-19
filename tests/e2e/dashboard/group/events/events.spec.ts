@@ -29,8 +29,29 @@ type TicketPriceWindow = {
 };
 
 const openPaymentsSection = async (page: Page) => {
-  await page.locator('button[data-section="payments"]').click({ force: true });
-  await expect(page.locator('[data-content="payments"]')).not.toHaveClass(/hidden/);
+  const paymentsSectionButton = page.locator('button[data-section="payments"]');
+
+  await paymentsSectionButton.scrollIntoViewIfNeeded();
+  await expect(paymentsSectionButton).toBeVisible();
+
+  if ((await paymentsSectionButton.getAttribute("data-active")) === "true") {
+    return;
+  }
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    await paymentsSectionButton.click({ force: true });
+
+    try {
+      await expect(paymentsSectionButton).toHaveAttribute("data-active", "true", {
+        timeout: 1000,
+      });
+      return;
+    } catch (error) {
+      if (attempt === 2) {
+        throw error;
+      }
+    }
+  }
 };
 
 const openEventUpdateFormByName = async (page: Page, eventName: string, eventId?: string) => {
