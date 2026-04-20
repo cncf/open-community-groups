@@ -284,19 +284,6 @@ pub struct EventFull {
 }
 
 impl EventFull {
-    /// Returns the selectable ticket types for the event page.
-    pub fn active_ticket_types(&self) -> Vec<&EventTicketType> {
-        self.ticket_types
-            .as_ref()
-            .map(|ticket_types| {
-                ticket_types
-                    .iter()
-                    .filter(|ticket_type| ticket_type.is_sellable_now())
-                    .collect()
-            })
-            .unwrap_or_default()
-    }
-
     /// Check if call for speakers has closed.
     pub fn cfs_is_closed(&self) -> bool {
         if self.cfs_enabled.unwrap_or(false)
@@ -389,6 +376,19 @@ impl EventFull {
         build_location(&parts, max_len)
     }
 
+    /// Returns the attendee-selectable ticket types for the event page.
+    pub fn sellable_ticket_types(&self) -> Vec<&EventTicketType> {
+        self.ticket_types
+            .as_ref()
+            .map(|ticket_types| {
+                ticket_types
+                    .iter()
+                    .filter(|ticket_type| ticket_type.is_sellable_now())
+                    .collect()
+            })
+            .unwrap_or_default()
+    }
+
     /// Collect all unique speaker user IDs (event-level + session-level).
     pub fn speakers_ids(&self) -> Vec<Uuid> {
         // Event-level speakers
@@ -406,6 +406,24 @@ impl EventFull {
         let mut ids: Vec<Uuid> = ids.into_iter().collect();
         ids.sort();
         ids
+    }
+
+    /// Returns active ticket types shown in the tickets modal, sorted by price.
+    #[allow(dead_code)]
+    pub fn visible_ticket_types(&self) -> Vec<&EventTicketType> {
+        let mut ticket_types: Vec<_> = self
+            .ticket_types
+            .as_ref()
+            .map(|ticket_types| {
+                ticket_types
+                    .iter()
+                    .filter(|ticket_type| ticket_type.active && ticket_type.current_amount_minor().is_some())
+                    .collect()
+            })
+            .unwrap_or_default();
+
+        ticket_types.sort_by_key(|ticket_type| ticket_type.current_amount_minor().unwrap_or_default());
+        ticket_types
     }
 }
 
@@ -741,27 +759,6 @@ mod tests {
     }
 
     #[test]
-    fn event_full_active_ticket_types_filters_unsellable_tiers() {
-        let event = EventFull {
-            ticket_types: Some(vec![
-                sample_ticket_type(false, Some(0), false, "Hidden free"),
-                sample_ticket_type(true, None, false, "No current price"),
-                sample_ticket_type(true, Some(1500), true, "Sold out"),
-                sample_ticket_type(true, Some(2500), false, "General"),
-            ]),
-            ..Default::default()
-        };
-
-        let ticket_titles: Vec<_> = event
-            .active_ticket_types()
-            .into_iter()
-            .map(|ticket_type| ticket_type.title.as_str())
-            .collect();
-
-        assert_eq!(ticket_titles, vec!["General"]);
-    }
-
-    #[test]
     fn event_full_cfs_is_enabled_returns_false_when_flag_missing() {
         let event = EventFull {
             cfs_enabled: None,
@@ -1062,6 +1059,49 @@ mod tests {
 
         let ids = event.speakers_ids();
         assert_eq!(ids, vec![id_b, id_a, id_c]); // Sorted by UUID value
+    }
+
+    #[test]
+    fn event_full_sellable_ticket_types_filters_unsellable_tiers() {
+        let event = EventFull {
+            ticket_types: Some(vec![
+                sample_ticket_type(false, Some(0), false, "Hidden free"),
+                sample_ticket_type(true, None, false, "No current price"),
+                sample_ticket_type(true, Some(1500), true, "Sold out"),
+                sample_ticket_type(true, Some(2500), false, "General"),
+            ]),
+            ..Default::default()
+        };
+
+        let ticket_titles: Vec<_> = event
+            .sellable_ticket_types()
+            .into_iter()
+            .map(|ticket_type| ticket_type.title.as_str())
+            .collect();
+
+        assert_eq!(ticket_titles, vec!["General"]);
+    }
+
+    #[test]
+    fn event_full_visible_ticket_types_include_sold_out_tiers_sorted_by_price() {
+        let event = EventFull {
+            ticket_types: Some(vec![
+                sample_ticket_type(false, Some(500), false, "Inactive cheap"),
+                sample_ticket_type(true, None, false, "No current price"),
+                sample_ticket_type(true, Some(3000), false, "General"),
+                sample_ticket_type(true, Some(1500), true, "Sold out"),
+                sample_ticket_type(true, Some(2000), false, "Regular"),
+            ]),
+            ..Default::default()
+        };
+
+        let ticket_titles: Vec<_> = event
+            .visible_ticket_types()
+            .into_iter()
+            .map(|ticket_type| ticket_type.title.as_str())
+            .collect();
+
+        assert_eq!(ticket_titles, vec!["Sold out", "Regular", "General"]);
     }
 
     #[test]
