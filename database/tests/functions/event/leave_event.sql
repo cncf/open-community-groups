@@ -176,7 +176,7 @@ insert into event_discount_code (
     title
 ) values (
     :'eventTicketedDiscountCodeID',
-    0,
+    1,
     0,
     'FREEPASS',
     :'eventTicketed',
