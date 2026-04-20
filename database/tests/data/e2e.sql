@@ -1194,7 +1194,8 @@ insert into event_discount_code (
     starts_at,
     ends_at,
     total_available,
-    available
+    available,
+    available_override_active
 )
 values (
     '58555555-5555-5555-5555-555555555521',
@@ -1208,7 +1209,8 @@ values (
     null,
     null,
     null,
-    null
+    null,
+    false
 ), (
     '58555555-5555-5555-5555-555555555522',
     true,
@@ -1221,7 +1223,8 @@ values (
     null,
     null,
     null,
-    null
+    null,
+    false
 ), (
     '58555555-5555-5555-5555-555555555523',
     true,
@@ -1234,7 +1237,8 @@ values (
     null,
     now() - interval '1 day',
     null,
-    null
+    null,
+    false
 ), (
     '58555555-5555-5555-5555-555555555524',
     true,
@@ -1247,7 +1251,8 @@ values (
     null,
     null,
     1,
-    0
+    0,
+    true
 ), (
     '58555555-5555-5555-5555-555555555525',
     true,
@@ -1260,7 +1265,8 @@ values (
     null,
     null,
     1,
-    0
+    0,
+    true
 );
 
 -- ============================================================================

@@ -136,6 +136,10 @@ export const normalizeDiscountCodes = ({ currencyCode, discountCodes, nextRowId,
           ? ""
           : String(discountCode.available),
       available_dirty: false,
+      available_override_active: toBoolean(
+        discountCode?.available_override_active,
+        discountCode?.available !== null && discountCode?.available !== undefined,
+      ),
       code: toTrimmedString(discountCode?.code).toUpperCase(),
       ends_at: toDateTimeLocalInTimezone(discountCode?.ends_at || "", timezone),
       event_discount_code_id: toTrimmedString(discountCode?.event_discount_code_id),
@@ -164,7 +168,7 @@ export const serializeDiscountCodes = ({ currencyCode, fieldNamePrefix, rows, ti
     const rowPrefix = `${fieldNamePrefix}[${index}]`;
     const amountMinor = parseCurrencyInputToMinorUnits(row.amount, currencyCode);
     const available = Number.parseInt(row.available, 10);
-    const availableValue = toTrimmedString(row.available);
+    const availableOverrideActive = !!row.available_override_active;
     const discountCodeId = toTrimmedString(row.event_discount_code_id);
     const endsAt = toUtcIsoInTimezone(row.ends_at, timezone);
     const percentage = Number.parseInt(row.percentage, 10);
@@ -172,17 +176,17 @@ export const serializeDiscountCodes = ({ currencyCode, fieldNamePrefix, rows, ti
     const totalAvailable = Number.parseInt(row.total_available, 10);
     const fields = [
       { name: `${rowPrefix}[active]`, value: row.active ? "true" : "false" },
+      {
+        name: `${rowPrefix}[available_override_active]`,
+        value: availableOverrideActive ? "true" : "false",
+      },
       { name: `${rowPrefix}[code]`, value: row.code.trim().toUpperCase() },
       { name: `${rowPrefix}[kind]`, value: row.kind },
       { name: `${rowPrefix}[title]`, value: row.title.trim() },
     ];
 
-    if (row.available_dirty) {
-      if (Number.isFinite(available)) {
-        fields.push({ name: `${rowPrefix}[available]`, value: String(available) });
-      } else if (!availableValue) {
-        fields.push({ name: `${rowPrefix}[available_cleared]`, value: "true" });
-      }
+    if (row.available_dirty && availableOverrideActive && Number.isFinite(available)) {
+      fields.push({ name: `${rowPrefix}[available]`, value: String(available) });
     }
 
     if (row.kind === "fixed_amount" && amountMinor !== null) {

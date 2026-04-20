@@ -9,6 +9,7 @@ returns jsonb as $$
                         'active', edc.active,
                         'amount_minor', edc.amount_minor,
                         'available', edc.available,
+                        'available_override_active', edc.available_override_active,
                         'code', edc.code,
                         'ends_at', edc.ends_at,
                         'event_discount_code_id', edc.event_discount_code_id,

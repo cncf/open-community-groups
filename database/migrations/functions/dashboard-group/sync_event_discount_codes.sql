@@ -5,6 +5,7 @@ create or replace function sync_event_discount_codes(
 )
 returns void as $$
 declare
+    v_available_override_active boolean;
     v_discount_code jsonb;
     v_discount_code_ids uuid[] := coalesce(
         array(
@@ -72,10 +73,20 @@ begin
     for v_discount_code in
         select jsonb_array_elements(coalesce(p_discount_codes, '[]'::jsonb))
     loop
+        -- Resolve whether Uses remaining should stay in manual override mode
+        v_available_override_active := case
+            when coalesce((v_discount_code->>'available_cleared')::boolean, false) then false
+            when (v_discount_code->>'available_override_active') is not null
+                then (v_discount_code->>'available_override_active')::boolean
+            when (v_discount_code->>'available') is not null then true
+            else false
+        end;
+
         insert into event_discount_code (
             event_discount_code_id,
             active,
             available,
+            available_override_active,
             amount_minor,
             code,
             ends_at,
@@ -89,6 +100,7 @@ begin
             (v_discount_code->>'event_discount_code_id')::uuid,
             coalesce((v_discount_code->>'active')::boolean, true),
             (v_discount_code->>'available')::int,
+            v_available_override_active,
             (v_discount_code->>'amount_minor')::bigint,
             v_discount_code->>'code',
             (v_discount_code->>'ends_at')::timestamptz,
@@ -103,29 +115,21 @@ begin
         set
             active = excluded.active,
             available = case
-                when coalesce((v_discount_code->>'available_cleared')::boolean, false) then null
-                when excluded.available is not null then excluded.available
-                when excluded.total_available is not null
-                     and event_discount_code.available is not null then least(
-                    event_discount_code.available,
-                    greatest(
-                        excluded.total_available - (
-                            select count(*)::int
-                            from event_purchase ep
-                            where ep.event_id = event_discount_code.event_id
-                            and ep.event_discount_code_id = event_discount_code.event_discount_code_id
-                            and (
-                                ep.status in ('completed', 'refund-requested')
-                                or (
-                                    ep.status = 'pending'
-                                    and ep.hold_expires_at > current_timestamp
-                                )
-                            )
-                        ),
-                        0
-                    )
-                )
-                else event_discount_code.available
+                when case
+                    when coalesce((v_discount_code->>'available_cleared')::boolean, false) then false
+                    when (v_discount_code->>'available_override_active') is not null
+                        then (v_discount_code->>'available_override_active')::boolean
+                    when (v_discount_code->>'available') is not null then true
+                    else event_discount_code.available_override_active
+                end then coalesce(excluded.available, event_discount_code.available)
+                else null
+            end,
+            available_override_active = case
+                when coalesce((v_discount_code->>'available_cleared')::boolean, false) then false
+                when (v_discount_code->>'available_override_active') is not null
+                    then (v_discount_code->>'available_override_active')::boolean
+                when (v_discount_code->>'available') is not null then true
+                else event_discount_code.available_override_active
             end,
             amount_minor = excluded.amount_minor,
             code = excluded.code,

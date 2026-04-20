@@ -16,6 +16,7 @@ declare
     v_amount_minor bigint;
     v_discount_active boolean;
     v_discount_available int;
+    v_discount_available_override_active boolean;
     v_discount_ends_at timestamptz;
     v_event_discount_code_id uuid;
     v_discount_kind text;
@@ -99,6 +100,7 @@ begin
         select
             edc.active,
             edc.available,
+            edc.available_override_active,
             edc.ends_at,
             edc.event_discount_code_id,
             edc.kind,
@@ -109,6 +111,7 @@ begin
         into
             v_discount_active,
             v_discount_available,
+            v_discount_available_override_active,
             v_discount_ends_at,
             v_event_discount_code_id,
             v_discount_kind,
@@ -128,7 +131,11 @@ begin
         if not v_discount_active
            or (v_discount_starts_at is not null and current_timestamp < v_discount_starts_at)
            or (v_discount_ends_at is not null and current_timestamp > v_discount_ends_at)
-           or (v_discount_available is not null and v_discount_available <= 0) then
+           or (
+                v_discount_available_override_active
+                and v_discount_available is not null
+                and v_discount_available <= 0
+           ) then
             raise exception 'discount code is not available';
         end if;
 

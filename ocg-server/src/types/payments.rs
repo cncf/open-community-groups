@@ -80,6 +80,9 @@ pub struct EventDiscountCode {
 
     /// Number of redemptions still available.
     pub available: Option<i32>,
+    /// Whether Uses remaining is currently in manual override mode.
+    #[serde(default)]
+    pub available_override_active: bool,
     /// Fixed amount discount in minor units.
     pub amount_minor: Option<i64>,
     /// Last date and time when the code can be used.

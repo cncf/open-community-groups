@@ -263,6 +263,7 @@ select columns_are('event_discount_code', array[
     'updated_at',
 
     'available',
+    'available_override_active',
     'amount_minor',
     'ends_at',
     'percentage',

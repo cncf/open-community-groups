@@ -211,6 +211,7 @@ class DiscountCodesController {
       amount: "",
       available: "",
       available_dirty: false,
+      available_override_active: false,
       code: "",
       ends_at: "",
       event_discount_code_id: "",
@@ -278,6 +279,7 @@ class DiscountCodesController {
 
     const rowToSave = {
       ...this._draftRow,
+      available: this._draftRow.available_override_active ? this._draftRow.available : "",
       code: String(this._draftRow.code || "")
         .trim()
         .toUpperCase(),
@@ -312,6 +314,7 @@ class DiscountCodesController {
     this._draftRow = {
       ...this._draftRow,
       ...(fieldName === "available" ? { available_dirty: true } : {}),
+      ...(fieldName === "available" ? { available_override_active: String(value || "").trim() !== "" } : {}),
       [fieldName]: normalizedValue,
     };
   }
@@ -369,7 +372,7 @@ class DiscountCodesController {
 
   _discountSeatsDetail(row) {
     const available = Number.parseInt(row.available, 10);
-    return Number.isFinite(available) ? `${available} remaining` : "";
+    return row.available_override_active && Number.isFinite(available) ? `${available} remaining` : "";
   }
 
   _formatScheduleDate(value) {

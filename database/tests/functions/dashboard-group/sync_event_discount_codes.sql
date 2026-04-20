@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(15);
+select plan(21);
 
 -- ============================================================================
 -- VARIABLES
@@ -220,10 +220,11 @@ select is(
 update event_discount_code
 set
     available = 1,
+    available_override_active = true,
     total_available = 5
 where event_discount_code_id = :'discountCode1ID'::uuid;
 
--- Should preserve live available when payload omits manual inventory override
+-- Should preserve a manual override when payload omits Uses remaining
 select lives_ok(
     format(
         $$select sync_event_discount_codes(
@@ -232,6 +233,7 @@ select lives_ok(
                 {
                     "event_discount_code_id": "%s",
                     "active": true,
+                    "available_override_active": true,
                     "amount_minor": 900,
                     "code": "SAVE90",
                     "kind": "fixed_amount",
@@ -243,75 +245,219 @@ select lives_ok(
         :'eventID',
         :'discountCode1ID'
     ),
-    'Should preserve live available when payload omits manual inventory override'
+    'Should preserve a manual override when payload omits Uses remaining'
 );
 
--- Should keep live available after saving a payload without available
+-- Should keep the manual override state after saving a payload without available
 select is(
-    (select available from event_discount_code where event_discount_code_id = :'discountCode1ID'::uuid),
-    1,
-    'Should keep live available after saving a payload without available'
-);
-
--- Should clear manual inventory override when payload marks available as cleared
-select lives_ok(
-    format(
-        $$select sync_event_discount_codes(
-            '%s'::uuid,
-            '[
-                {
-                    "event_discount_code_id": "%s",
-                    "active": true,
-                    "amount_minor": 900,
-                    "available_cleared": true,
-                    "code": "SAVE90",
-                    "kind": "fixed_amount",
-                    "title": "Launch discount saved later",
-                    "total_available": 5
-                }
-            ]'::jsonb
-        )$$,
-        :'eventID',
-        :'discountCode1ID'
-    ),
-    'Should clear manual inventory override when payload marks available as cleared'
-);
-
--- Should store a null available value after clearing the manual inventory override
-select ok(
     (
-        select available is null
+        select jsonb_build_object(
+            'available', available,
+            'available_override_active', available_override_active
+        )
         from event_discount_code
         where event_discount_code_id = :'discountCode1ID'::uuid
     ),
-    'Should store a null available value after clearing the manual inventory override'
+    jsonb_build_object(
+        'available', 1,
+        'available_override_active', true
+    ),
+    'Should keep the manual override state after saving a payload without available'
 );
 
--- Simulate a limited code with one active redemption before lowering the cap
-update event_discount_code
-set
-    available = 9,
-    total_available = 10
-where event_discount_code_id = :'discountCodeOtherID'::uuid;
-
--- Should clamp live available when lowering total_available without a manual override
+-- Should preserve the manual override for payloads that omit the new override flag
 select lives_ok(
     format(
         $$select sync_event_discount_codes(
             '%s'::uuid,
-            '[{"event_discount_code_id": "%s", "active": true, "amount_minor": 1500, "code": "PROTECT", "kind": "fixed_amount", "title": "Protected discount", "total_available": 5}]'::jsonb
+            '[
+                {
+                    "event_discount_code_id": "%s",
+                    "active": true,
+                    "amount_minor": 900,
+                    "code": "SAVE90",
+                    "kind": "fixed_amount",
+                    "title": "Launch discount saved later",
+                    "total_available": 5
+                }
+            ]'::jsonb
+        )$$,
+        :'eventID',
+        :'discountCode1ID'
+    ),
+    'Should preserve the manual override for payloads that omit the new override flag'
+);
+
+-- Should keep the manual override state when the new override flag is omitted
+select is(
+    (
+        select jsonb_build_object(
+            'available', available,
+            'available_override_active', available_override_active
+        )
+        from event_discount_code
+        where event_discount_code_id = :'discountCode1ID'::uuid
+    ),
+    jsonb_build_object(
+        'available', 1,
+        'available_override_active', true
+    ),
+    'Should keep the manual override state when the new override flag is omitted'
+);
+
+-- Should clear the manual override when payload disables it
+select lives_ok(
+    format(
+        $$select sync_event_discount_codes(
+            '%s'::uuid,
+            '[
+                {
+                    "event_discount_code_id": "%s",
+                    "active": true,
+                    "amount_minor": 900,
+                    "available_override_active": false,
+                    "code": "SAVE90",
+                    "kind": "fixed_amount",
+                    "title": "Launch discount saved later",
+                    "total_available": 5
+                }
+            ]'::jsonb
+        )$$,
+        :'eventID',
+        :'discountCode1ID'
+    ),
+    'Should clear the manual override when payload disables it'
+);
+
+-- Should store an auto-managed discount after clearing the manual override
+select is(
+    (
+        select jsonb_build_object(
+            'available', available,
+            'available_override_active', available_override_active
+        )
+        from event_discount_code
+        where event_discount_code_id = :'discountCode1ID'::uuid
+    ),
+    jsonb_build_object(
+        'available', null,
+        'available_override_active', false
+    ),
+    'Should store an auto-managed discount after clearing the manual override'
+);
+
+-- Simulate an auto-managed limited code before lowering the cap
+update event_discount_code
+set
+    available = null,
+    available_override_active = false,
+    total_available = 10
+where event_discount_code_id = :'discountCodeOtherID'::uuid;
+
+-- Should keep an auto-managed discount in auto mode when lowering total_available
+select lives_ok(
+    format(
+        $$select sync_event_discount_codes(
+            '%s'::uuid,
+            '[{"event_discount_code_id": "%s", "active": true, "available_override_active": false, "amount_minor": 1500, "code": "PROTECT", "kind": "fixed_amount", "title": "Protected discount", "total_available": 5}]'::jsonb
         )$$,
         :'eventProtectedID',
         :'discountCodeOtherID'
     ),
-    'Should clamp live available when lowering total_available without a manual override'
+    'Should keep an auto-managed discount in auto mode when lowering total_available'
 );
 
--- Should keep available aligned with the lowered total_available and active redemptions
+-- Should keep auto-managed discounts without a stored manual remaining count
 select is(
-    (select available from event_discount_code where event_discount_code_id = :'discountCodeOtherID'::uuid),
-    4,
-    'Should keep available aligned with the lowered total_available and active redemptions'
+    (
+        select jsonb_build_object(
+            'available', available,
+            'available_override_active', available_override_active
+        )
+        from event_discount_code
+        where event_discount_code_id = :'discountCodeOtherID'::uuid
+    ),
+    jsonb_build_object(
+        'available', null,
+        'available_override_active', false
+    ),
+    'Should keep auto-managed discounts without a stored manual remaining count'
+);
+
+-- Simulate the same auto-managed code before increasing the cap
+update event_discount_code
+set
+    available = null,
+    available_override_active = false,
+    total_available = 5
+where event_discount_code_id = :'discountCodeOtherID'::uuid;
+
+-- Should keep an auto-managed discount in auto mode when increasing total_available
+select lives_ok(
+    format(
+        $$select sync_event_discount_codes(
+            '%s'::uuid,
+            '[{"event_discount_code_id": "%s", "active": true, "available_override_active": false, "amount_minor": 1500, "code": "PROTECT", "kind": "fixed_amount", "title": "Protected discount", "total_available": 8}]'::jsonb
+        )$$,
+        :'eventProtectedID',
+        :'discountCodeOtherID'
+    ),
+    'Should keep an auto-managed discount in auto mode when increasing total_available'
+);
+
+-- Should leave auto-managed discounts without a stored manual remaining count after increasing the cap
+select is(
+    (
+        select jsonb_build_object(
+            'available', available,
+            'available_override_active', available_override_active
+        )
+        from event_discount_code
+        where event_discount_code_id = :'discountCodeOtherID'::uuid
+    ),
+    jsonb_build_object(
+        'available', null,
+        'available_override_active', false
+    ),
+    'Should leave auto-managed discounts without a stored manual remaining count after increasing the cap'
+);
+
+-- Simulate a manual override below the computed remaining uses before raising the cap
+update event_discount_code
+set
+    available = 2,
+    available_override_active = true,
+    total_available = 5
+where event_discount_code_id = :'discountCodeOtherID'::uuid;
+
+-- Should preserve a manual override when increasing total_available
+select lives_ok(
+    format(
+        $$select sync_event_discount_codes(
+            '%s'::uuid,
+            '[{"event_discount_code_id": "%s", "active": true, "available_override_active": true, "amount_minor": 1500, "code": "PROTECT", "kind": "fixed_amount", "title": "Protected discount", "total_available": 8}]'::jsonb
+        )$$,
+        :'eventProtectedID',
+        :'discountCodeOtherID'
+    ),
+    'Should preserve a manual override when increasing total_available'
+);
+
+-- Should keep the manual override state after increasing total_available
+select is(
+    (
+        select jsonb_build_object(
+            'available', available,
+            'available_override_active', available_override_active
+        )
+        from event_discount_code
+        where event_discount_code_id = :'discountCodeOtherID'::uuid
+    ),
+    jsonb_build_object(
+        'available', 2,
+        'available_override_active', true
+    ),
+    'Should keep the manual override state after increasing total_available'
 );
 
 -- Should delete all discount codes when payload is omitted

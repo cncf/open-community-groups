@@ -79,6 +79,7 @@ insert into event_discount_code (
 
 insert into event_discount_code (
     event_discount_code_id,
+    available_override_active,
     available,
     code,
     ends_at,
@@ -90,6 +91,7 @@ insert into event_discount_code (
 ) values
     (
         :'discountCodePercentageID',
+        true,
         10,
         'SAVE15',
         '2025-06-30 00:00:00+00',
@@ -111,6 +113,7 @@ select is(
         jsonb_build_object(
             'active', true,
             'available', 10,
+            'available_override_active', true,
             'code', 'SAVE15',
             'ends_at', '2025-06-30 00:00:00+00'::timestamptz,
             'event_discount_code_id', :'discountCodePercentageID'::uuid,
@@ -122,6 +125,7 @@ select is(
         jsonb_build_object(
             'active', true,
             'amount_minor', 500,
+            'available_override_active', false,
             'code', 'SAVE5',
             'event_discount_code_id', :'discountCodeFixedID'::uuid,
             'kind', 'fixed_amount',

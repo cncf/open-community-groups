@@ -1101,6 +1101,7 @@ select is(
             {
                 "active": true,
                 "amount_minor": 500,
+                "available_override_active": false,
                 "code": "SAVE20",
                 "event_discount_code_id": "00000000-0000-0000-0000-000000000095",
                 "kind": "fixed_amount",

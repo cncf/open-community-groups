@@ -9,5 +9,6 @@ returns void as $$
         available = available - 1,
         updated_at = current_timestamp
     where event_discount_code_id = p_event_discount_code_id
+    and available_override_active
     and available is not null;
 $$ language sql;

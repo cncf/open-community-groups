@@ -176,6 +176,9 @@ pub(crate) struct DiscountCode {
     /// Number of redemptions still available.
     #[garde(range(min = 0))]
     pub available: Option<i32>,
+    /// Whether Uses remaining should stay in manual override mode.
+    #[garde(skip)]
+    pub available_override_active: Option<bool>,
     /// Whether clearing Uses remaining should remove the manual override.
     #[garde(skip)]
     pub available_cleared: Option<bool>,
@@ -660,14 +663,14 @@ mod tests {
     use super::{DiscountCode, Event, TicketPriceWindow, TicketType};
 
     #[test]
-    fn discount_code_deserialization_keeps_explicit_availability_clear_signals() {
+    fn discount_code_deserialization_keeps_explicit_availability_override_signals() {
         let discount_code: DiscountCode = serde_qs::from_str(
-            "active=true&available_cleared=true&code=EARLY20&kind=percentage&percentage=20&title=Early%20supporter",
+            "active=true&available=12&available_override_active=true&code=EARLY20&kind=percentage&percentage=20&title=Early%20supporter",
         )
         .unwrap();
 
-        assert_eq!(discount_code.available, None);
-        assert_eq!(discount_code.available_cleared, Some(true));
+        assert_eq!(discount_code.available, Some(12));
+        assert_eq!(discount_code.available_override_active, Some(true));
     }
 
     #[test]
@@ -705,6 +708,7 @@ mod tests {
             title: "Early supporter".to_string(),
 
             available: None,
+            available_override_active: None,
             available_cleared: None,
             amount_minor: None,
             ends_at: None,
@@ -759,7 +763,7 @@ mod tests {
     }
 
     #[test]
-    fn to_db_payload_keeps_explicit_discount_availability_clear_signals() {
+    fn to_db_payload_keeps_explicit_discount_availability_override_state() {
         let mut event = sample_event();
         event.discount_codes = Some(vec![DiscountCode {
             active: true,
@@ -768,7 +772,8 @@ mod tests {
             title: "Early supporter".to_string(),
 
             available: None,
-            available_cleared: Some(true),
+            available_override_active: Some(true),
+            available_cleared: None,
             amount_minor: None,
             ends_at: None,
             event_discount_code_id: None,
@@ -782,8 +787,38 @@ mod tests {
 
         assert!(payload["discount_codes"][0].get("available").is_none());
         assert_eq!(
-            payload["discount_codes"][0]["available_cleared"],
+            payload["discount_codes"][0]["available_override_active"],
             Value::Bool(true)
+        );
+    }
+
+    #[test]
+    fn to_db_payload_omits_discount_availability_override_state_when_form_omits_it() {
+        let mut event = sample_event();
+        event.discount_codes = Some(vec![DiscountCode {
+            active: true,
+            code: "EARLY20".to_string(),
+            kind: EventDiscountType::Percentage,
+            title: "Early supporter".to_string(),
+
+            available: None,
+            available_override_active: None,
+            available_cleared: None,
+            amount_minor: None,
+            ends_at: None,
+            event_discount_code_id: None,
+            percentage: Some(20),
+            starts_at: None,
+            total_available: Some(50),
+        }]);
+        event.discount_codes_present = Some(true);
+
+        let payload = event.to_db_payload().unwrap();
+
+        assert!(
+            payload["discount_codes"][0]
+                .get("available_override_active")
+                .is_none()
         );
     }
 

@@ -391,12 +391,13 @@ describe("ticketing editors", () => {
     expect(uiRoot.querySelector('input[name="discount_codes[0][percentage]"]')?.value).to.equal("10");
   });
 
-  it("serializes cleared discount availability overrides explicitly", async () => {
+  it("serializes discount availability override state explicitly", async () => {
     const uiRoot = mountDiscountCodesUi();
     uiRoot.dataset.discountCodes = JSON.stringify([
       {
         active: true,
         available: 12,
+        available_override_active: true,
         code: "EARLY20",
         kind: "percentage",
         percentage: 20,
@@ -414,9 +415,9 @@ describe("ticketing editors", () => {
     uiRoot.querySelector('[data-ticketing-action="save-discount"]')?.click();
 
     expect(uiRoot.querySelector('input[name="discount_codes[0][available]"]')).to.equal(null);
-    expect(uiRoot.querySelector('input[name="discount_codes[0][available_cleared]"]')?.value).to.equal(
-      "true",
-    );
+    expect(
+      uiRoot.querySelector('input[name="discount_codes[0][available_override_active]"]')?.value,
+    ).to.equal("false");
   });
 
   it("adds and removes discount codes from the compact card list", async () => {
