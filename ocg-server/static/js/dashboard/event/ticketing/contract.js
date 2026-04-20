@@ -164,6 +164,7 @@ export const serializeDiscountCodes = ({ currencyCode, fieldNamePrefix, rows, ti
     const rowPrefix = `${fieldNamePrefix}[${index}]`;
     const amountMinor = parseCurrencyInputToMinorUnits(row.amount, currencyCode);
     const available = Number.parseInt(row.available, 10);
+    const availableValue = toTrimmedString(row.available);
     const discountCodeId = toTrimmedString(row.event_discount_code_id);
     const endsAt = toUtcIsoInTimezone(row.ends_at, timezone);
     const percentage = Number.parseInt(row.percentage, 10);
@@ -176,8 +177,12 @@ export const serializeDiscountCodes = ({ currencyCode, fieldNamePrefix, rows, ti
       { name: `${rowPrefix}[title]`, value: row.title.trim() },
     ];
 
-    if (row.available_dirty && Number.isFinite(available)) {
-      fields.push({ name: `${rowPrefix}[available]`, value: String(available) });
+    if (row.available_dirty) {
+      if (Number.isFinite(available)) {
+        fields.push({ name: `${rowPrefix}[available]`, value: String(available) });
+      } else if (!availableValue) {
+        fields.push({ name: `${rowPrefix}[available_cleared]`, value: "true" });
+      }
     }
 
     if (row.kind === "fixed_amount" && amountMinor !== null) {

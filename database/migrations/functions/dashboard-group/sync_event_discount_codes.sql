@@ -103,6 +103,7 @@ begin
         set
             active = excluded.active,
             available = case
+                when coalesce((v_discount_code->>'available_cleared')::boolean, false) then null
                 when excluded.available is not null then excluded.available
                 when excluded.total_available is not null
                      and event_discount_code.available is not null then least(

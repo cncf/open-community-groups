@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(13);
+select plan(15);
 
 -- ============================================================================
 -- VARIABLES
@@ -251,6 +251,40 @@ select is(
     (select available from event_discount_code where event_discount_code_id = :'discountCode1ID'::uuid),
     1,
     'Should keep live available after saving a payload without available'
+);
+
+-- Should clear manual inventory override when payload marks available as cleared
+select lives_ok(
+    format(
+        $$select sync_event_discount_codes(
+            '%s'::uuid,
+            '[
+                {
+                    "event_discount_code_id": "%s",
+                    "active": true,
+                    "amount_minor": 900,
+                    "available_cleared": true,
+                    "code": "SAVE90",
+                    "kind": "fixed_amount",
+                    "title": "Launch discount saved later",
+                    "total_available": 5
+                }
+            ]'::jsonb
+        )$$,
+        :'eventID',
+        :'discountCode1ID'
+    ),
+    'Should clear manual inventory override when payload marks available as cleared'
+);
+
+-- Should store a null available value after clearing the manual inventory override
+select ok(
+    (
+        select available is null
+        from event_discount_code
+        where event_discount_code_id = :'discountCode1ID'::uuid
+    ),
+    'Should store a null available value after clearing the manual inventory override'
 );
 
 -- Simulate a limited code with one active redemption before lowering the cap
