@@ -409,7 +409,6 @@ impl EventFull {
     }
 
     /// Returns active ticket types shown in the tickets modal, sorted by price.
-    #[allow(dead_code)]
     pub fn visible_ticket_types(&self) -> Vec<&EventTicketType> {
         let mut ticket_types: Vec<_> = self
             .ticket_types
