@@ -572,6 +572,30 @@ test.describe("group dashboard events view", () => {
     ).toContainText("EARLY20");
   });
 
+  test("organizer sees seats and status columns in the mobile ticket types table @mobile", async ({
+    organizerGroupPage,
+  }) => {
+    await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
+    await openEventUpdateFormByName(
+      organizerGroupPage,
+      TEST_PAYMENT_EVENT_NAMES.draft,
+      TEST_PAYMENT_EVENT_IDS.draft,
+    );
+    await openPaymentsSection(organizerGroupPage);
+
+    const ticketTypesTable = organizerGroupPage.locator("#ticket-types-ui table");
+    const generalAdmissionRow = ticketTypesTable.locator("tbody tr", {
+      hasText: "General admission",
+    });
+
+    await expect(ticketTypesTable.locator("thead th").nth(1)).toBeVisible();
+    await expect(ticketTypesTable.locator("thead th").nth(1)).toContainText("Seats");
+    await expect(ticketTypesTable.locator("thead th").nth(2)).toBeVisible();
+    await expect(ticketTypesTable.locator("thead th").nth(2)).toContainText("Status");
+    await expect(generalAdmissionRow.locator("td").nth(1)).toBeVisible();
+    await expect(generalAdmissionRow.locator("td").nth(2)).toBeVisible();
+  });
+
   test("organizer can create, update, and delete an event with images and rich fields", async ({
     organizerGroupPage,
   }) => {
