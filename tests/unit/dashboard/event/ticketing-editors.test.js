@@ -210,9 +210,9 @@ describe("ticketing editors", () => {
 
     uiRoot.querySelector('[data-ticketing-action="save-ticket"]')?.click();
 
-    expect(uiRoot.querySelector('input[name="ticket_types[0][price_windows][0][starts_at]"]')?.value).to.equal(
-      "2026-04-10T14:00:00.000Z",
-    );
+    expect(
+      uiRoot.querySelector('input[name="ticket_types[0][price_windows][0][starts_at]"]')?.value,
+    ).to.equal("2026-04-10T14:00:00.000Z");
 
     currencyInput.value = "JPY";
     currencyInput.dispatchEvent(new Event("input", { bubbles: true, composed: true }));
@@ -459,12 +459,10 @@ describe("ticketing editors", () => {
       .querySelector("#discount-kind-draft")
       .dispatchEvent(new Event("change", { bubbles: true, composed: true }));
 
-    expect(uiRoot.querySelector('label[for="discount-percentage-draft"]')?.textContent).to.contain(
-      "*",
-    );
+    expect(uiRoot.querySelector('label[for="discount-percentage-draft"]')?.textContent).to.contain("*");
   });
 
-  it("keeps zero fixed discount amounts as amount_minor 0 in hidden fields", async () => {
+  it("rejects zero fixed discount amounts in the editor", async () => {
     const uiRoot = mountDiscountCodesUi();
     const controller = initializeDiscountCodesController({ addButtonId: "", rootId: "discount-codes-ui" });
 
@@ -480,8 +478,8 @@ describe("ticketing editors", () => {
 
     uiRoot.querySelector('[data-ticketing-action="save-discount"]')?.click();
 
-    expect(uiRoot.textContent).to.contain("Free comp");
-    expect(uiRoot.querySelector('input[name="discount_codes[0][amount_minor]"]')?.value).to.equal("0");
+    expect(uiRoot.textContent).to.not.contain("Free comp");
+    expect(uiRoot.querySelector('input[name="discount_codes[0][amount_minor]"]')).to.equal(null);
   });
 
   it("renders persisted discount rows from the dataset and wires row actions", () => {

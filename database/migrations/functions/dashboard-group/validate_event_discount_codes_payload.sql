@@ -68,8 +68,8 @@ begin
                 raise exception 'fixed amount discount codes require amount_minor';
             end if;
 
-            if (v_discount_code->>'amount_minor')::bigint < 0 then
-                raise exception 'discount code amount_minor must be greater than or equal to 0';
+            if (v_discount_code->>'amount_minor')::bigint <= 0 then
+                raise exception 'discount code amount_minor must be greater than 0';
             end if;
 
             if v_discount_code->>'percentage' is not null then

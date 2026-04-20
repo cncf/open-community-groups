@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(18);
+select plan(19);
 
 -- ============================================================================
 -- TESTS
@@ -202,6 +202,23 @@ select throws_ok(
     'Should reject fixed amount discount codes without amount_minor'
 );
 
+-- Should reject fixed amount discount codes with non-positive amount_minor
+select throws_ok(
+    $$select validate_event_discount_codes_payload(
+        '[
+            {
+                "amount_minor": 0,
+                "code": "SAVE5",
+                "event_discount_code_id": "00000000-0000-0000-0000-000000000051",
+                "kind": "fixed_amount",
+                "title": "Launch discount"
+            }
+        ]'::jsonb
+    )$$,
+    'discount code amount_minor must be greater than 0',
+    'Should reject fixed amount discount codes with non-positive amount_minor'
+);
+
 -- Should reject fixed amount discount codes with negative amount_minor
 select throws_ok(
     $$select validate_event_discount_codes_payload(
@@ -215,7 +232,7 @@ select throws_ok(
             }
         ]'::jsonb
     )$$,
-    'discount code amount_minor must be greater than or equal to 0',
+    'discount code amount_minor must be greater than 0',
     'Should reject fixed amount discount codes with negative amount_minor'
 );
 

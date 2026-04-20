@@ -534,7 +534,7 @@ class DiscountCodesController {
               data-discount-modal-field
               data-discount-field="amount"
               type="number"
-              min="0"
+              min="1"
               step="${escapeHtml(this._currencyInputStep())}"
               class="input-primary"
               placeholder="${escapeHtml(this._currencyInputPlaceholder())}"
