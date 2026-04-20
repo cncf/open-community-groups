@@ -37,11 +37,7 @@ const renderPaidAttendanceDom = ({
       <button data-attendance-role="signin-btn" class="hidden" data-path="/events/test-event">
         ${includeButtonPriceBadge
           ? `
-        <span
-          data-attendance-role="ticket-price-badge"
-          data-price-label="From EUR 50.00"
-          data-price-badge-style="button"
-        >
+        <span class="ticket-price-badge">
           From EUR 50.00
         </span>`
           : ""}
@@ -56,11 +52,7 @@ const renderPaidAttendanceDom = ({
       >
         ${includeButtonPriceBadge
           ? `
-        <span
-          data-attendance-role="ticket-price-badge"
-          data-price-label="From EUR 50.00"
-          data-price-badge-style="button"
-        >
+        <span class="ticket-price-badge">
           From EUR 50.00
         </span>`
           : ""}
@@ -86,10 +78,7 @@ const renderPaidAttendanceDom = ({
                   value="ticket-2"
                 />
                 <span data-attendance-role="ticket-type-title">Community</span>
-                <div
-                  data-attendance-role="ticket-price-badge"
-                  data-price-label="Free"
-                >
+                <div class="ticket-price-badge">
                   Free
                 </div>
               </label>
@@ -102,10 +91,7 @@ const renderPaidAttendanceDom = ({
                   value="ticket-1"
                 />
                 <span data-attendance-role="ticket-type-title">General</span>
-                <div
-                  data-attendance-role="ticket-price-badge"
-                  data-price-label="EUR 50.00"
-                >
+                <div class="ticket-price-badge">
                   EUR 50.00
                 </div>
               </label>
@@ -172,7 +158,9 @@ const renderPaidAttendanceDom = ({
     checkoutButton: document.querySelector('[data-attendance-role="checkout-btn"]'),
     checkoutButtonSpinner: document.querySelector('[data-attendance-role="checkout-btn-spinner"]'),
     checkoutButtonLabel: document.querySelector('[data-attendance-role="checkout-btn-label"]'),
-    ticketPriceBadge: document.querySelector('[data-price-label="EUR 50.00"]'),
+    ticketPriceBadge: Array.from(document.querySelectorAll(".ticket-price-badge")).find(
+      (node) => node.textContent?.trim() === "EUR 50.00",
+    ),
     ticketModalOverlay: document.querySelector('[data-attendance-role="ticket-modal-overlay"]'),
     ticketModalCancel: document.querySelector('[data-attendance-role="ticket-modal-cancel"]'),
   };
@@ -218,19 +206,9 @@ describe("event attendance paid modal", () => {
 
     expect(attendButton.classList.contains("hidden")).to.equal(false);
     expect(attendButton.querySelector("[data-attendance-label]")?.textContent).to.equal("Buy ticket");
-    expect(
-      attendButton
-        .querySelector('[data-attendance-role="ticket-price-badge"]')
-        ?.textContent?.trim(),
-    ).to.equal("FromEUR50.00");
-    expect(
-      attendButton
-        .querySelector('[data-attendance-role="ticket-price-badge"] .font-semibold')
-        ?.classList.contains("text-stone-800"),
-    ).to.equal(true);
-    expect(
-      attendButton.querySelector('[data-attendance-role="ticket-price-badge"] .uppercase'),
-    ).to.equal(null);
+    expect(attendButton.querySelector(".ticket-price-badge")?.textContent?.trim()).to.equal(
+      "From EUR 50.00",
+    );
 
     attendButton.click();
 
@@ -257,7 +235,7 @@ describe("event attendance paid modal", () => {
 
     expect(attendButton.classList.contains("hidden")).to.equal(false);
     expect(attendButton.querySelector("[data-attendance-label]")?.textContent).to.equal("Buy ticket");
-    expect(attendButton.querySelector('[data-attendance-role="ticket-price-badge"]')).to.equal(null);
+    expect(attendButton.querySelector(".ticket-price-badge")).to.equal(null);
 
     attendButton.click();
 
@@ -301,7 +279,7 @@ describe("event attendance paid modal", () => {
     expect(disabledTicketCard?.textContent).to.not.include("Sold out");
   });
 
-  it("renders compact ticket price badges in the modal", async () => {
+  it("keeps ticket price badges in the modal as plain text", async () => {
     const { checker, ticketPriceBadge } = renderPaidAttendanceDom();
     await initializeAttendanceDom();
 
@@ -309,12 +287,7 @@ describe("event attendance paid modal", () => {
       responseText: JSON.stringify({ status: "guest" }),
     });
 
-    const currencyNode = ticketPriceBadge?.querySelector(".text-xs.font-medium");
-    const amountNode = ticketPriceBadge?.querySelector(".text-xs.font-semibold");
-    expect(ticketPriceBadge?.textContent?.trim()).to.equal("EUR50.00");
-    expect(currencyNode?.textContent).to.equal("EUR");
-    expect(amountNode?.textContent).to.equal("50.00");
-    expect(ticketPriceBadge?.querySelector(".text-sm")).to.equal(null);
+    expect(ticketPriceBadge?.textContent?.trim()).to.equal("EUR 50.00");
   });
 
   it("keeps modal ticket cards in visible ticket order", async () => {

@@ -11,10 +11,7 @@
           <span class="font-semibold">{{ ticket_price_badge }}</span>
         </div>
       {% else -%}
-        <span data-attendance-role="ticket-price-badge"
-              data-price-label="{{ ticket_price_badge }}"
-              data-price-badge-style="compact"
-              class="custom-badge inline-flex items-center border-green-800 bg-green-100 font-semibold text-green-800">
+        <span class="custom-badge inline-flex items-center border-green-800 bg-green-100 font-semibold text-green-800">
           {{ ticket_price_badge }}
         </span>
       {% endif -%}

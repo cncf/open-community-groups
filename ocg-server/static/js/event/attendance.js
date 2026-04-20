@@ -47,75 +47,6 @@ const setAttendanceControlLabel = (button, label) => {
 const isTicketModalOpen = (modal) => modal instanceof HTMLElement && !modal.classList.contains("hidden");
 
 /**
- * Applies the compact currency treatment used in ticketing UIs.
- * @param {Document|HTMLElement} root - Root node to search
- */
-const compactTicketPriceBadges = (root) => {
-  if (!root) {
-    return;
-  }
-
-  const badges = new Set();
-  if (root instanceof HTMLElement && root.matches('[data-attendance-role="ticket-price-badge"]')) {
-    badges.add(root);
-  }
-
-  root.querySelectorAll?.('[data-attendance-role="ticket-price-badge"]').forEach((badge) => {
-    badges.add(badge);
-  });
-
-  badges.forEach((badge) => {
-    if (!(badge instanceof HTMLElement)) {
-      return;
-    }
-
-    const priceBadgeStyle = badge.dataset.priceBadgeStyle || "";
-    const usesCompactBadgeSize = priceBadgeStyle === "compact";
-    const usesButtonBadgeSize = priceBadgeStyle === "button";
-    const usesSmallBadgeText = usesCompactBadgeSize || usesButtonBadgeSize;
-    const wrapperClassName = `inline-flex items-baseline gap-1${usesCompactBadgeSize ? " uppercase" : ""}`;
-    const smallTextClassName = usesButtonBadgeSize
-      ? "text-[11px]"
-      : usesSmallBadgeText
-        ? "text-[10px]"
-        : "text-xs";
-    const subtleTextClassName = `${smallTextClassName} font-medium opacity-70`;
-    const strongTextClassName = `${smallTextClassName} font-semibold${usesButtonBadgeSize ? " text-stone-800" : ""}`;
-    const priceLabel = (badge.dataset.priceLabel || badge.textContent || "").trim();
-
-    const priceParts = priceLabel.match(/^(?:(From)\s+)?([A-Z]{3})\s+(.+)$/);
-    if (!priceParts) {
-      badge.textContent = priceLabel;
-      return;
-    }
-
-    const [, prefixLabel, currencyCode, amountLabel] = priceParts;
-    badge.replaceChildren();
-
-    const wrapper = document.createElement("span");
-    wrapper.className = wrapperClassName;
-
-    if (prefixLabel) {
-      const prefixNode = document.createElement("span");
-      prefixNode.className = subtleTextClassName;
-      prefixNode.textContent = prefixLabel;
-      wrapper.append(prefixNode);
-    }
-
-    const currencyNode = document.createElement("span");
-    currencyNode.className = subtleTextClassName;
-    currencyNode.textContent = currencyCode;
-
-    const amountNode = document.createElement("span");
-    amountNode.className = strongTextClassName;
-    amountNode.textContent = amountLabel;
-
-    wrapper.append(currencyNode, amountNode);
-    badge.append(wrapper);
-  });
-};
-
-/**
  * Reads the payment outcome returned by the checkout provider.
  * @returns {"canceled"|"success"|null} Supported payment outcome
  */
@@ -708,8 +639,6 @@ const handleAttendanceCheckResponse = (event) => {
     return;
   }
 
-  compactTicketPriceBadges(container);
-
   const loadingButton = getAttendanceControl(container, "loading-btn");
   const signinButton = getAttendanceControl(container, "signin-btn");
   const attendButton = getAttendanceControl(container, "attend-btn");
@@ -1203,7 +1132,6 @@ const handleAttendanceKeydown = (event) => {
  * @param {Document|HTMLElement} root - Root node to search
  */
 const initializeAttendance = (root = document) => {
-  compactTicketPriceBadges(root);
   getAttendanceContainers(root).forEach(initializeAttendanceContainer);
 
   if (document.body?.dataset.attendanceListenersReady === "true") {

@@ -37,10 +37,7 @@
           class="hidden group btn-primary-outline-anchor h-10 md:h-[30px] flex items-center justify-center space-x-2 overflow-visible">
     {% if !event.is_past() -%}
       {% if let Some(ticket_price_badge) = event.formatted_ticket_price_badge() -%}
-        <span data-attendance-role="ticket-price-badge"
-              data-price-label="{{ ticket_price_badge }}"
-              data-price-badge-style="button"
-              class="pointer-events-none absolute -top-6 left-1/2 inline-flex -translate-x-1/2 items-center whitespace-nowrap text-stone-500 md:-top-5">
+        <span class="pointer-events-none absolute -top-6 left-1/2 inline-flex -translate-x-1/2 items-center whitespace-nowrap text-[11px] font-medium text-stone-500 md:-top-5">
           {{ ticket_price_badge }}
         </span>
       {% endif -%}
@@ -79,7 +76,7 @@
           class="hidden group btn-primary-outline h-10 md:h-[30px] flex items-center justify-center space-x-2 overflow-visible">
     {% if !event.is_past() -%}
       {% if let Some(ticket_price_badge) = event.formatted_ticket_price_badge() -%}
-        <span class="pointer-events-none absolute -top-6 left-1/2 inline-flex -translate-x-1/2 items-center whitespace-nowrap text-stone-500 md:-top-5">
+        <span class="pointer-events-none absolute -top-6 left-1/2 inline-flex -translate-x-1/2 items-center whitespace-nowrap text-[12px] font-medium text-stone-500 md:-top-5">
           {{ ticket_price_badge }}
         </span>
       {% endif -%}
@@ -168,9 +165,7 @@
                                 <div class="min-w-0 truncate text-left text-sm font-semibold text-stone-900">{{ ticket_type.title }}</div>
                                 {% if let Some(currency_code) = &event.payment_currency_code -%}
                                   {% if let Some(price_label) = ticket_type.formatted_current_price(currency_code) -%}
-                                    <div data-attendance-role="ticket-price-badge"
-                                         data-price-label="{{ price_label }}"
-                                         class="inline-flex w-fit shrink-0 self-center rounded-full border border-green-800 bg-green-100 px-2 py-0.5 text-[11px] font-semibold text-green-800">
+                                    <div class="inline-flex w-fit shrink-0 self-center rounded-full border border-green-800 bg-green-100 px-2 py-0.5 text-[11px] font-semibold text-green-800">
                                       {{ price_label }}
                                     </div>
                                   {% else -%}

@@ -214,48 +214,28 @@ describe("event attendance", () => {
     expect(signinButton.classList.contains("hidden")).to.equal(true);
   });
 
-  it("renders compact ticket price badges outside the attendance container", async () => {
+  it("leaves standalone ticket price badge text untouched", async () => {
     document.body.innerHTML = `
-      <div
-        data-attendance-role="ticket-price-badge"
-        data-price-label="From EUR 50.00"
-        data-price-badge-style="compact"
-      >
+      <div>
         From EUR 50.00
       </div>
     `;
 
     await initializeAttendanceDom();
 
-    const badge = document.querySelector('[data-attendance-role="ticket-price-badge"]');
-    const prefixNode = badge?.querySelector(".text-\\[10px\\].font-medium");
-    const currencyNode = badge?.querySelectorAll(".text-\\[10px\\].font-medium")?.[1] ?? null;
-    const amountNode = badge?.querySelector(".text-\\[10px\\].font-semibold");
-    expect(badge?.textContent?.trim()).to.equal("FromEUR50.00");
-    expect(prefixNode?.textContent).to.equal("From");
-    expect(currencyNode?.textContent).to.equal("EUR");
-    expect(amountNode?.textContent).to.equal("50.00");
-    expect(badge?.querySelector(".text-sm")).to.equal(null);
+    expect(document.body.textContent?.trim()).to.equal("From EUR 50.00");
   });
 
-  it('renders the helper-provided "Free" label without extra client-side price options', async () => {
+  it('leaves the helper-provided "Free" label untouched', async () => {
     document.body.innerHTML = `
-      <div
-        data-attendance-role="ticket-price-badge"
-        data-price-label="Free"
-        data-price-badge-style="compact"
-      >
+      <div>
         Free
       </div>
     `;
 
     await initializeAttendanceDom();
 
-    const badge = document.querySelector('[data-attendance-role="ticket-price-badge"]');
-    expect(badge?.textContent?.trim()).to.equal("Free");
-    expect(badge?.querySelector(".text-\\[10px\\].font-semibold")).to.equal(null);
-    expect(badge?.querySelector(".text-\\[10px\\].font-medium")).to.equal(null);
-    expect(badge?.querySelector(".text-sm")).to.equal(null);
+    expect(document.body.textContent?.trim()).to.equal("Free");
   });
 
   it("emits a success message when leaving the waitlist and restores the button on failure", () => {
