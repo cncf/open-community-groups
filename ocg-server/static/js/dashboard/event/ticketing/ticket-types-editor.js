@@ -520,9 +520,6 @@ class TicketTypesController {
 
     body.innerHTML = this._rows
       .map((row) => {
-        const description = row.description?.trim()
-          ? `<div class="mt-1 text-xs text-stone-500">${escapeHtml(row.description.trim())}</div>`
-          : "";
         const status = row.active
           ? '<span class="custom-badge shrink-0 border-green-800 bg-green-100 px-2.5 py-0.5 text-green-800">Active</span>'
           : '<span class="custom-badge shrink-0 border-stone-500 bg-stone-100 px-2.5 py-0.5 text-stone-700">Inactive</span>';
@@ -541,7 +538,6 @@ class TicketTypesController {
           <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200 align-middle">
             <td class="px-3 xl:px-5 py-4 min-w-[180px] xl:min-w-[220px]">
               <div class="font-medium text-stone-900">${escapeHtml(this._ticketTitle(row))}</div>
-              ${description}
               <div class="mt-3 flex flex-wrap items-center gap-2 xl:hidden">
                 <span class="inline-flex items-center rounded-full bg-stone-100 px-2.5 py-1 text-[11px] font-medium text-stone-700">${escapeHtml(row.seats_total || "—")} seats</span>
                 ${status}

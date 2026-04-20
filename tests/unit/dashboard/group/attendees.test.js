@@ -81,7 +81,6 @@ describe("dashboard group attendees", () => {
         <div id="attendee-refund-name"></div>
         <div id="attendee-refund-ticket"></div>
         <div id="attendee-refund-amount"></div>
-        <span id="attendee-refund-status"></span>
         <button id="attendee-refund-approve" type="button" class="hidden"></button>
         <button id="attendee-refund-reject" type="button" class="hidden"></button>
       </div>
@@ -99,9 +98,6 @@ describe("dashboard group attendees", () => {
     expect(document.getElementById("attendee-refund-name")?.textContent).to.equal("Ana Lopez");
     expect(document.getElementById("attendee-refund-ticket")?.textContent).to.equal("General");
     expect(document.getElementById("attendee-refund-amount")?.textContent).to.equal("EUR 30.00");
-    expect(document.getElementById("attendee-refund-status")?.textContent).to.equal(
-      "Refund requested",
-    );
     expect(approveButton.classList.contains("hidden")).to.equal(false);
     expect(approveButton.getAttribute("hx-put")).to.equal(
       "/dashboard/group/events/event-1/attendees/user-1/refund/approve",
@@ -139,7 +135,6 @@ describe("dashboard group attendees", () => {
         <div id="attendee-refund-name"></div>
         <div id="attendee-refund-ticket"></div>
         <div id="attendee-refund-amount"></div>
-        <span id="attendee-refund-status"></span>
         <button id="attendee-refund-approve" type="button" class="hidden"></button>
         <button id="attendee-refund-reject" type="button" class="hidden"></button>
       </div>
@@ -152,9 +147,6 @@ describe("dashboard group attendees", () => {
 
     document.querySelector("[data-refund-review-trigger]")?.click();
 
-    expect(document.getElementById("attendee-refund-status")?.textContent).to.equal(
-      "Refund processing",
-    );
     expect(approveButton.classList.contains("hidden")).to.equal(false);
     expect(approveButton.textContent).to.equal("Retry refund finalization");
     expect(rejectButton.classList.contains("hidden")).to.equal(true);
@@ -182,7 +174,6 @@ describe("dashboard group attendees", () => {
         <div id="attendee-refund-name"></div>
         <div id="attendee-refund-ticket"></div>
         <div id="attendee-refund-amount"></div>
-        <span id="attendee-refund-status"></span>
         <button id="attendee-refund-approve" type="button" class="hidden"></button>
         <button id="attendee-refund-reject" type="button" class="hidden"></button>
       </div>
@@ -232,7 +223,6 @@ describe("dashboard group attendees", () => {
         <div id="attendee-refund-name"></div>
         <div id="attendee-refund-ticket"></div>
         <div id="attendee-refund-amount"></div>
-        <span id="attendee-refund-status"></span>
         <button id="attendee-refund-approve" type="button" class="hidden"></button>
         <button id="attendee-refund-reject" type="button" class="hidden"></button>
       </div>
@@ -282,7 +272,6 @@ describe("dashboard group attendees", () => {
         <div id="attendee-refund-name"></div>
         <div id="attendee-refund-ticket"></div>
         <div id="attendee-refund-amount"></div>
-        <span id="attendee-refund-status"></span>
         <button id="attendee-refund-approve" type="button" class="hidden"></button>
         <button id="attendee-refund-reject" type="button" class="hidden"></button>
       </div>
@@ -311,7 +300,6 @@ describe("dashboard group attendees", () => {
         <div id="attendee-refund-name"></div>
         <div id="attendee-refund-ticket"></div>
         <div id="attendee-refund-amount"></div>
-        <span id="attendee-refund-status"></span>
         <button id="attendee-refund-approve" type="button" class="hidden"></button>
         <button id="attendee-refund-reject" type="button" class="hidden"></button>
       </div>
@@ -430,9 +418,8 @@ describe("dashboard group attendees", () => {
           <div id="attendee-refund-name"></div>
           <div id="attendee-refund-ticket"></div>
           <div id="attendee-refund-amount"></div>
-          <span id="attendee-refund-status"></span>
-          <button id="attendee-refund-approve" type="button" class="hidden"></button>
-          <button id="attendee-refund-reject" type="button" class="hidden"></button>
+        <button id="attendee-refund-approve" type="button" class="hidden"></button>
+        <button id="attendee-refund-reject" type="button" class="hidden"></button>
         </div>
       </div>
     `;

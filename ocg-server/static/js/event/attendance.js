@@ -69,33 +69,19 @@ const compactTicketPriceBadges = (root) => {
       return;
     }
 
-    const rawPriceLabel = (badge.dataset.priceLabel || badge.textContent || "").trim();
-    const priceOptions = (badge.dataset.priceOptions || "")
-      .split("||")
-      .map((label) => label.trim())
-      .filter(Boolean);
-    const hasFreeTier = priceOptions.includes("Free");
-    const hasPaidTier = priceOptions.some((label) => label !== "Free");
-    const priceLabel = hasFreeTier && hasPaidTier ? "Starting free" : rawPriceLabel;
-
-    if (priceLabel === "Starting free") {
-      badge.replaceChildren();
-
-      const wrapper = document.createElement("span");
-      wrapper.className = "inline-flex items-baseline gap-1";
-
-      const prefixNode = document.createElement("span");
-      prefixNode.className = "text-xs font-medium opacity-70";
-      prefixNode.textContent = "Starting";
-
-      const amountNode = document.createElement("span");
-      amountNode.className = "text-xs font-semibold";
-      amountNode.textContent = "free";
-
-      wrapper.append(prefixNode, amountNode);
-      badge.append(wrapper);
-      return;
-    }
+    const priceBadgeStyle = badge.dataset.priceBadgeStyle || "";
+    const usesCompactBadgeSize = priceBadgeStyle === "compact";
+    const usesButtonBadgeSize = priceBadgeStyle === "button";
+    const usesSmallBadgeText = usesCompactBadgeSize || usesButtonBadgeSize;
+    const wrapperClassName = `inline-flex items-baseline gap-1${usesCompactBadgeSize ? " uppercase" : ""}`;
+    const smallTextClassName = usesButtonBadgeSize
+      ? "text-[11px]"
+      : usesSmallBadgeText
+        ? "text-[10px]"
+        : "text-xs";
+    const subtleTextClassName = `${smallTextClassName} font-medium opacity-70`;
+    const strongTextClassName = `${smallTextClassName} font-semibold${usesButtonBadgeSize ? " text-stone-800" : ""}`;
+    const priceLabel = (badge.dataset.priceLabel || badge.textContent || "").trim();
 
     const priceParts = priceLabel.match(/^(?:(From)\s+)?([A-Z]{3})\s+(.+)$/);
     if (!priceParts) {
@@ -107,21 +93,21 @@ const compactTicketPriceBadges = (root) => {
     badge.replaceChildren();
 
     const wrapper = document.createElement("span");
-    wrapper.className = "inline-flex items-baseline gap-1";
+    wrapper.className = wrapperClassName;
 
     if (prefixLabel) {
       const prefixNode = document.createElement("span");
-      prefixNode.className = "text-xs font-medium opacity-70";
+      prefixNode.className = subtleTextClassName;
       prefixNode.textContent = prefixLabel;
       wrapper.append(prefixNode);
     }
 
     const currencyNode = document.createElement("span");
-    currencyNode.className = "text-xs font-medium opacity-70";
+    currencyNode.className = subtleTextClassName;
     currencyNode.textContent = currencyCode;
 
     const amountNode = document.createElement("span");
-    amountNode.className = "text-xs font-semibold";
+    amountNode.className = strongTextClassName;
     amountNode.textContent = amountLabel;
 
     wrapper.append(currencyNode, amountNode);

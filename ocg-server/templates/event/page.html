@@ -95,49 +95,45 @@
 
               <div class="mt-2 md:mt-auto flex flex-col md:flex-row md:items-end md:justify-between w-full">
                 {# Event details and date -#}
-                <div class="flex items-end gap-4 text-stone-600">
+                <div class="flex flex-wrap items-center gap-3 md:gap-4 text-stone-600">
                   {% if let Some(capacity) = &event.capacity -%}
-                    <div class="flex items-center">
-                      <div class="svg-icon size-4 mr-2 bg-stone-600 icon-people"></div>
+                    <div class="flex items-center gap-2 leading-none">
+                      <div class="svg-icon size-4 bg-stone-600 icon-people"></div>
                       {% if event.is_past() -%}
                         {% if let Some(remaining_capacity) = &event.remaining_capacity -%}
-                          <span class="text-sm">Attendees: {{ capacity - remaining_capacity }}</span>
+                          <span class="inline-flex items-center text-sm">Attendees: {{ capacity - remaining_capacity }}</span>
                         {% else -%}
-                          <span class="text-sm"><span class="md:hidden lg:inline">Capacity:</span><span class="ms-1 md:ms-0 xl:ms-1">{{ capacity }}</span></span>
+                          <span class="inline-flex items-center text-sm">
+                            <span class="md:hidden lg:inline">Capacity:</span>
+                            <span class="ms-1 md:ms-0 xl:ms-1">{{ capacity }}</span>
+                          </span>
                         {% endif -%}
                       {% else -%}
-                        <span class="text-sm"><span class="md:hidden lg:inline">Capacity:</span><span class="ms-1 md:ms-0 xl:ms-1">{{ capacity }}</span></span>
+                        <span class="inline-flex items-center text-sm">
+                          <span class="md:hidden lg:inline">Capacity:</span>
+                          <span class="ms-1 md:ms-0 xl:ms-1">{{ capacity }}</span>
+                        </span>
                         {% if let Some(remaining_capacity) = &event.remaining_capacity %}
                           {% if *remaining_capacity > 0 %}
-                            <span class="text-xs text-stone-500 ms-2 md:hidden lg:inline">(Remaining: {{ remaining_capacity }})</span>
-                            <span class="hidden md:inline lg:hidden text-xs text-stone-500 ms-1">/ {{ remaining_capacity }} left</span>
+                            <span class="inline-flex items-center text-xs text-stone-500 md:hidden lg:inline">
+                              (Remaining: {{ remaining_capacity }})
+                            </span>
+                            <span class="hidden md:inline-flex lg:hidden items-center text-xs text-stone-500">
+                              / {{ remaining_capacity }} left
+                            </span>
                           {% else if event.waitlist_count > 0 %}
-                            <span class="text-xs text-stone-500 ms-2 md:hidden lg:inline">(Waitlist: {{ event.waitlist_count }})</span>
-                            <span class="hidden md:inline lg:hidden text-xs text-stone-500 ms-1">/ {{ event.waitlist_count }} waitlist</span>
+                            <span class="inline-flex items-center text-xs text-stone-500 md:hidden lg:inline">
+                              (Waitlist: {{ event.waitlist_count }})
+                            </span>
+                            <span class="hidden md:inline-flex lg:hidden items-center text-xs text-stone-500">
+                              / {{ event.waitlist_count }} waitlist
+                            </span>
                           {% endif %}
                         {% endif %}
                       {% endif -%}
                     </div>
                   {% endif -%}
-                  <div>{{ badges::event_badge(kind = event.kind, extra_styles = Some("mt-0.5 px-2.5 py-0.5") ) -}}</div>
-                  {% if let Some(ticket_price_badge) = event.formatted_ticket_price_badge() -%}
-                    <div data-attendance-role="ticket-price-badge"
-                         data-price-label="{{ ticket_price_badge }}"
-                         data-price-options="{% if let Some(currency_code) = &event.payment_currency_code %}
-                                               {% if let Some(ticket_types) = &event.ticket_types %}
-                                                 {% for ticket_type in ticket_types %}
-                                                   {% if ticket_type.is_sellable_now() %}
-                                                     {% if let Some(price_label) = ticket_type.formatted_current_price(currency_code) %}
-                                                       {{ price_label }}||
-                                                     {% endif %}
-                                                   {% endif %}
-                                                 {% endfor %}
-                                               {% endif %}
-                                             {% endif %}"
-                         class="inline-flex items-center rounded-full border border-green-800 bg-green-100 px-3 py-1 text-xs font-semibold text-green-800">
-                      {{ ticket_price_badge }}
-                    </div>
-                  {% endif -%}
+                  <div>{{ badges::event_badge(kind = event.kind, extra_styles = Some("px-2.5 py-0.5") ) -}}</div>
                 </div>
                 {# End event details and date -#}
 

@@ -33,7 +33,6 @@ const getRefundReviewControls = (root = document) => ({
   nameField: queryElementById(root, "attendee-refund-name"),
   ticketField: queryElementById(root, "attendee-refund-ticket"),
   amountField: queryElementById(root, "attendee-refund-amount"),
-  statusField: queryElementById(root, "attendee-refund-status"),
   approveButton: queryElementById(root, refundApproveButtonId),
   rejectButton: queryElementById(root, refundRejectButtonId),
 });
@@ -98,7 +97,7 @@ const processRefundActionButton = (button) => {
  * @returns {void}
  */
 const populateRefundReviewModal = (triggerButton, root = document) => {
-  const { modal, nameField, ticketField, amountField, statusField, approveButton, rejectButton } =
+  const { modal, nameField, ticketField, amountField, approveButton, rejectButton } =
     getRefundReviewControls(root);
 
   if (!modal) {
@@ -117,15 +116,6 @@ const populateRefundReviewModal = (triggerButton, root = document) => {
 
   if (amountField) {
     amountField.textContent = triggerButton.dataset.refundAmount || "-";
-  }
-
-  if (statusField) {
-    const isApproving = status === "approving";
-    statusField.textContent = isApproving ? "Refund processing" : "Refund requested";
-    statusField.classList.toggle("border-amber-800", true);
-    statusField.classList.toggle("bg-amber-100", true);
-    statusField.classList.toggle("text-amber-800", true);
-    statusField.classList.remove("border-amber-300", "bg-amber-50", "text-amber-700");
   }
 
   if (approveButton) {

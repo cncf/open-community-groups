@@ -14,6 +14,8 @@ const initializeAttendanceDom = async () => {
 const renderPaidAttendanceDom = ({
   starts = "2099-05-10T10:00:00Z",
   ticketPurchaseAvailable = "true",
+  disabledTicketStatusLabel = "Sold out",
+  includeButtonPriceBadge = true,
 } = {}) => {
   document.body.innerHTML = `
     <div
@@ -33,6 +35,16 @@ const renderPaidAttendanceDom = ({
         <span data-attendance-label>Checking...</span>
       </button>
       <button data-attendance-role="signin-btn" class="hidden" data-path="/events/test-event">
+        ${includeButtonPriceBadge
+          ? `
+        <span
+          data-attendance-role="ticket-price-badge"
+          data-price-label="From EUR 50.00"
+          data-price-badge-style="button"
+        >
+          From EUR 50.00
+        </span>`
+          : ""}
         <span data-attendance-label>Buy ticket</span>
       </button>
       <button
@@ -42,6 +54,16 @@ const renderPaidAttendanceDom = ({
         data-complete-label="Complete payment"
         data-unavailable-label="Tickets unavailable"
       >
+        ${includeButtonPriceBadge
+          ? `
+        <span
+          data-attendance-role="ticket-price-badge"
+          data-price-label="From EUR 50.00"
+          data-price-badge-style="button"
+        >
+          From EUR 50.00
+        </span>`
+          : ""}
         <span data-attendance-label>Buy ticket</span>
       </button>
       <div
@@ -54,32 +76,57 @@ const renderPaidAttendanceDom = ({
         <button data-attendance-role="ticket-modal-cancel" type="button">Cancel</button>
         <form data-attendance-role="checkout-form">
           <div data-attendance-role="ticket-modal-form">
-            <input
-              data-attendance-role="ticket-type-option"
-              data-ticket-purchasable="true"
-              type="radio"
-              name="event_ticket_type_id"
-              value="ticket-1"
-            />
-            <input
-              data-attendance-role="ticket-type-option"
-              data-ticket-purchasable="false"
-              type="radio"
-              name="event_ticket_type_id"
-              value="ticket-2"
-              disabled
-            />
+            <div data-attendance-role="ticket-type-list">
+              <label data-attendance-role="ticket-type-card">
+                <input
+                  data-attendance-role="ticket-type-option"
+                  data-ticket-purchasable="true"
+                  type="radio"
+                  name="event_ticket_type_id"
+                  value="ticket-1"
+                />
+                <span data-attendance-role="ticket-type-title">General</span>
+                <div
+                  data-attendance-role="ticket-price-badge"
+                  data-price-label="EUR 50.00"
+                >
+                  EUR 50.00
+                </div>
+              </label>
+              <label data-attendance-role="ticket-type-card">
+                <input
+                  data-attendance-role="ticket-type-option"
+                  data-ticket-purchasable="true"
+                  type="radio"
+                  name="event_ticket_type_id"
+                  value="ticket-2"
+                />
+                <span data-attendance-role="ticket-type-title">Community</span>
+                <div
+                  data-attendance-role="ticket-price-badge"
+                  data-price-label="Free"
+                >
+                  Free
+                </div>
+              </label>
+              <label data-attendance-role="ticket-type-card">
+                <input
+                  data-attendance-role="ticket-type-option"
+                  data-ticket-purchasable="false"
+                  type="radio"
+                  name="event_ticket_type_id"
+                  value="ticket-3"
+                  disabled
+                />
+                <span data-attendance-role="ticket-type-title">Staff</span>
+                <span>${disabledTicketStatusLabel}</span>
+              </label>
+            </div>
             <input
               data-attendance-role="discount-code-input"
               name="discount_code"
               value=""
             />
-            <div
-              data-attendance-role="ticket-price-badge"
-              data-price-label="EUR 50.00"
-            >
-              EUR 50.00
-            </div>
           </div>
           <button data-attendance-role="checkout-btn" type="submit">
             <span data-attendance-role="checkout-btn-spinner" class="absolute inset-0 hidden items-center justify-center">
@@ -118,10 +165,16 @@ const renderPaidAttendanceDom = ({
     checkoutForm: document.querySelector('[data-attendance-role="checkout-form"]'),
     ticketModalForm: document.querySelector('[data-attendance-role="ticket-modal-form"]'),
     ticketTypeOptions: document.querySelectorAll('[data-attendance-role="ticket-type-option"]'),
+    ticketTypeTitles: () =>
+      Array.from(document.querySelectorAll('[data-attendance-role="ticket-type-title"]')).map(
+        (node) => node.textContent,
+      ),
     checkoutButton: document.querySelector('[data-attendance-role="checkout-btn"]'),
     checkoutButtonSpinner: document.querySelector('[data-attendance-role="checkout-btn-spinner"]'),
     checkoutButtonLabel: document.querySelector('[data-attendance-role="checkout-btn-label"]'),
-    ticketPriceBadge: document.querySelector('[data-attendance-role="ticket-price-badge"]'),
+    ticketPriceBadge: document.querySelector(
+      '[data-attendance-role="ticket-type-list"] [data-attendance-role="ticket-price-badge"]',
+    ),
     ticketModalOverlay: document.querySelector('[data-attendance-role="ticket-modal-overlay"]'),
     ticketModalCancel: document.querySelector('[data-attendance-role="ticket-modal-cancel"]'),
   };
@@ -167,6 +220,19 @@ describe("event attendance paid modal", () => {
 
     expect(attendButton.classList.contains("hidden")).to.equal(false);
     expect(attendButton.querySelector("[data-attendance-label]")?.textContent).to.equal("Buy ticket");
+    expect(
+      attendButton
+        .querySelector('[data-attendance-role="ticket-price-badge"]')
+        ?.textContent?.trim(),
+    ).to.equal("FromEUR50.00");
+    expect(
+      attendButton
+        .querySelector('[data-attendance-role="ticket-price-badge"] .font-semibold')
+        ?.classList.contains("text-stone-800"),
+    ).to.equal(true);
+    expect(
+      attendButton.querySelector('[data-attendance-role="ticket-price-badge"] .uppercase'),
+    ).to.equal(null);
 
     attendButton.click();
 
@@ -181,7 +247,26 @@ describe("event attendance paid modal", () => {
     expect(checkoutButton.hasAttribute("title")).to.equal(false);
   });
 
-  it("keeps unavailable ticket types disabled in the modal", async () => {
+  it("keeps the paid button flow working when button price badges are omitted", async () => {
+    const { checker, attendButton, ticketModal } = renderPaidAttendanceDom({
+      includeButtonPriceBadge: false,
+    });
+    await initializeAttendanceDom();
+
+    dispatchHtmxAfterRequest(checker, {
+      responseText: JSON.stringify({ status: "guest" }),
+    });
+
+    expect(attendButton.classList.contains("hidden")).to.equal(false);
+    expect(attendButton.querySelector("[data-attendance-label]")?.textContent).to.equal("Buy ticket");
+    expect(attendButton.querySelector('[data-attendance-role="ticket-price-badge"]')).to.equal(null);
+
+    attendButton.click();
+
+    expect(ticketModal.classList.contains("hidden")).to.equal(false);
+  });
+
+  it("keeps sold-out ticket types visible but disabled in the modal", async () => {
     const { checker, attendButton, ticketTypeOptions, checkoutButton } = renderPaidAttendanceDom();
     await initializeAttendanceDom();
 
@@ -191,10 +276,31 @@ describe("event attendance paid modal", () => {
 
     attendButton.click();
 
-    expect(ticketTypeOptions).to.have.length(2);
+    expect(ticketTypeOptions).to.have.length(3);
     expect(ticketTypeOptions[0].disabled).to.equal(false);
-    expect(ticketTypeOptions[1].disabled).to.equal(true);
+    expect(ticketTypeOptions[1].disabled).to.equal(false);
+    expect(ticketTypeOptions[2].disabled).to.equal(true);
     expect(checkoutButton.disabled).to.equal(true);
+  });
+
+  it("keeps active not-on-sale ticket types visible and disabled in the modal", async () => {
+    const { checker, attendButton, ticketTypeOptions } = renderPaidAttendanceDom({
+      disabledTicketStatusLabel: "Not on sale",
+    });
+    await initializeAttendanceDom();
+
+    dispatchHtmxAfterRequest(checker, {
+      responseText: JSON.stringify({ status: "guest" }),
+    });
+
+    attendButton.click();
+
+    const disabledTicketCard = ticketTypeOptions[2]?.closest('[data-attendance-role="ticket-type-card"]');
+    expect(ticketTypeOptions).to.have.length(3);
+    expect(ticketTypeOptions[2].disabled).to.equal(true);
+    expect(disabledTicketCard?.textContent).to.include("Staff");
+    expect(disabledTicketCard?.textContent).to.include("Not on sale");
+    expect(disabledTicketCard?.textContent).to.not.include("Sold out");
   });
 
   it("renders compact ticket price badges in the modal", async () => {
@@ -205,12 +311,23 @@ describe("event attendance paid modal", () => {
       responseText: JSON.stringify({ status: "guest" }),
     });
 
-    const smallParts = Array.from(ticketPriceBadge?.querySelectorAll(".text-xs") || []).map(
-      (node) => node.textContent,
-    );
+    const currencyNode = ticketPriceBadge?.querySelector(".text-xs.font-medium");
+    const amountNode = ticketPriceBadge?.querySelector(".text-xs.font-semibold");
     expect(ticketPriceBadge?.textContent?.trim()).to.equal("EUR50.00");
-    expect(smallParts).to.deep.equal(["EUR", "50.00"]);
+    expect(currencyNode?.textContent).to.equal("EUR");
+    expect(amountNode?.textContent).to.equal("50.00");
     expect(ticketPriceBadge?.querySelector(".text-sm")).to.equal(null);
+  });
+
+  it("keeps modal ticket cards in their original rendered order", async () => {
+    const { checker, ticketTypeTitles } = renderPaidAttendanceDom();
+    await initializeAttendanceDom();
+
+    dispatchHtmxAfterRequest(checker, {
+      responseText: JSON.stringify({ status: "guest" }),
+    });
+
+    expect(ticketTypeTitles()).to.deep.equal(["General", "Community", "Staff"]);
   });
 
   it("omits an empty discount code from checkout params and trims a filled one", async () => {

@@ -375,9 +375,6 @@ test.describe("group dashboard attendees tab", () => {
     await expect(refundModal.locator("#attendee-refund-ticket")).toHaveText("VIP pass");
     await expect(refundModal.locator("#attendee-refund-amount")).toHaveText("USD 40.00");
     await expect(refundModal.locator("#attendee-refund-name")).toHaveText("E2E Member One");
-    await expect(refundModal.locator("#attendee-refund-status")).toHaveText(
-      "Refund requested",
-    );
     await expect(refundModal.locator("#attendee-refund-approve")).toContainText(
       "Approve refund",
     );
@@ -407,9 +404,6 @@ test.describe("group dashboard attendees tab", () => {
     await expect(refundModal.locator("#attendee-refund-ticket")).toHaveText("VIP pass");
     await expect(refundModal.locator("#attendee-refund-amount")).toHaveText("USD 50.00");
     await expect(refundModal.locator("#attendee-refund-name")).toHaveText("E2E Member Two");
-    await expect(refundModal.locator("#attendee-refund-status")).toHaveText(
-      "Refund processing",
-    );
     await expect(refundModal.locator("#attendee-refund-approve")).toContainText(
       "Retry refund finalization",
     );

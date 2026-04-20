@@ -3,29 +3,21 @@
 
 {# Ticket price badge -#}
 {% macro ticket_price_badge(event, panel = false) -%}
-  {% if let Some(ticket_price_badge) = event.formatted_ticket_price_badge() -%}
-    {% if panel -%}
-      <div class="flex items-center justify-between gap-3 rounded-xl border border-green-800 bg-green-100/40 px-3.5 py-1.5 text-[13px]/5 text-green-800">
-        <span class="font-medium">Ticket price</span>
-        <span class="font-semibold">{{ ticket_price_badge }}</span>
-      </div>
-    {% else -%}
-      <span data-attendance-role="ticket-price-badge"
-            data-price-label="{{ ticket_price_badge }}"
-            data-price-options="{% if let Some(currency_code) = &event.payment_currency_code %}
-                                  {% if let Some(ticket_types) = &event.ticket_types %}
-                                    {% for ticket_type in ticket_types %}
-                                      {% if ticket_type.is_sellable_now() %}
-                                        {% if let Some(price_label) = ticket_type.formatted_current_price(currency_code) %}
-                                          {{ price_label }}||
-                                        {% endif %}
-                                      {% endif %}
-                                    {% endfor %}
-                                  {% endif %}
-                                {% endif %}"
-            class="inline-flex items-center rounded-full border border-green-800 bg-green-100 px-3 py-1 text-xs font-semibold text-green-800">
-        {{ ticket_price_badge }}
-      </span>
+  {% if !event.is_past() -%}
+    {% if let Some(ticket_price_badge) = event.formatted_ticket_price_badge() -%}
+      {% if panel -%}
+        <div class="flex items-center justify-between gap-3 rounded-xl border border-green-800 bg-green-100/40 px-3.5 py-1.5 text-[13px]/5 text-green-800">
+          <span class="font-medium">Ticket price</span>
+          <span class="font-semibold">{{ ticket_price_badge }}</span>
+        </div>
+      {% else -%}
+        <span data-attendance-role="ticket-price-badge"
+              data-price-label="{{ ticket_price_badge }}"
+              data-price-badge-style="compact"
+              class="custom-badge inline-flex items-center border-green-800 bg-green-100 font-semibold text-green-800">
+          {{ ticket_price_badge }}
+        </span>
+      {% endif -%}
     {% endif -%}
   {% endif -%}
 {% endmacro ticket_price_badge -%}
