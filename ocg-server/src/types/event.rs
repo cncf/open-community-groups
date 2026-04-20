@@ -700,21 +700,28 @@ pub struct Speaker {
 
 // Helpers.
 
-/// Returns the cheapest attendee-facing ticket price available right now.
+/// Returns the attendee-facing ticket price badge content.
 fn format_ticket_price_badge(
     payment_currency_code: Option<&str>,
     ticket_types: Option<&[EventTicketType]>,
 ) -> Option<String> {
-    let currency_code = payment_currency_code?;
-    let amount_minor = ticket_types?
+    let sellable_amounts: Vec<_> = ticket_types?
         .iter()
         .filter(|ticket_type| ticket_type.is_sellable_now())
         .filter_map(EventTicketType::current_amount_minor)
-        .min()?;
+        .collect();
+
+    let amount_minor = sellable_amounts.iter().min().copied()?;
 
     if amount_minor == 0 {
-        return Some("Free".to_string());
+        return if sellable_amounts.iter().any(|amount| *amount > 0) {
+            Some("Free and up".to_string())
+        } else {
+            Some("Free".to_string())
+        };
     }
+
+    let currency_code = payment_currency_code?;
 
     Some(format!(
         "From {}",
@@ -1115,6 +1122,19 @@ mod tests {
         assert_eq!(
             event.formatted_ticket_price_badge(),
             Some("From USD 25.00".to_string())
+        );
+    }
+
+    #[test]
+    fn event_summary_formatted_ticket_price_badge_returns_free_and_up_when_mixed() {
+        let event = sample_event_summary(vec![
+            sample_ticket_type(true, Some(0), false, "Free"),
+            sample_ticket_type(true, Some(2500), false, "General"),
+        ]);
+
+        assert_eq!(
+            event.formatted_ticket_price_badge(),
+            Some("Free and up".to_string())
         );
     }
 
