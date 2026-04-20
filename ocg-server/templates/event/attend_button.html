@@ -79,10 +79,7 @@
           class="hidden group btn-primary-outline h-10 md:h-[30px] flex items-center justify-center space-x-2 overflow-visible">
     {% if !event.is_past() -%}
       {% if let Some(ticket_price_badge) = event.formatted_ticket_price_badge() -%}
-        <span data-attendance-role="ticket-price-badge"
-              data-price-label="{{ ticket_price_badge }}"
-              data-price-badge-style="button"
-              class="pointer-events-none absolute -top-6 left-1/2 inline-flex -translate-x-1/2 items-center whitespace-nowrap text-stone-500 md:-top-5">
+        <span class="pointer-events-none absolute -top-6 left-1/2 inline-flex -translate-x-1/2 items-center whitespace-nowrap text-stone-500 md:-top-5">
           {{ ticket_price_badge }}
         </span>
       {% endif -%}
@@ -161,59 +158,57 @@
                                       {% else %}
                                         bg-stone-50 cursor-not-allowed opacity-60
                                       {% endif %}">
-                            <div class="grid grid-cols-[1.25rem,minmax(0,1fr),auto] items-start gap-x-2.5 gap-y-2">
-                              <span class="col-start-1 row-start-1 inline-flex h-5 w-5 shrink-0 items-center self-center">
+                            <div class="grid grid-cols-[1.25rem] items-start gap-x-2.5 gap-y-2">
+                              <span class="row-start-1 inline-flex h-5 w-5 shrink-0 items-center self-center">
                                 <span class="relative flex h-5 w-5 items-center justify-center rounded-full border border-stone-300 transition-colors group-has-[input:checked]:border-primary-500">
                                   <span class="hidden h-2.5 w-2.5 rounded-full bg-primary-500 group-has-[input:checked]:block"></span>
                                 </span>
                               </span>
-                              <div class="col-start-2 row-start-1 min-w-0 w-full justify-self-start self-center truncate text-left text-sm font-semibold text-stone-900">
-                                {{ ticket_type.title }}
-                              </div>
-                              {% if let Some(currency_code) = &event.payment_currency_code -%}
-                                {% if let Some(price_label) = ticket_type.formatted_current_price(currency_code) -%}
-                                  <div data-attendance-role="ticket-price-badge"
-                                       data-price-label="{{ price_label }}"
-                                       class="col-start-3 row-start-1 justify-self-end inline-flex w-fit shrink-0 self-center rounded-full border border-green-800 bg-green-100 px-2 py-0.5 text-[11px] font-semibold text-green-800">
-                                    {{ price_label }}
-                                  </div>
+                              <div class="row-start-1 flex w-full min-w-0 items-center justify-between gap-2.5">
+                                <div class="min-w-0 truncate text-left text-sm font-semibold text-stone-900">{{ ticket_type.title }}</div>
+                                {% if let Some(currency_code) = &event.payment_currency_code -%}
+                                  {% if let Some(price_label) = ticket_type.formatted_current_price(currency_code) -%}
+                                    <div data-attendance-role="ticket-price-badge"
+                                         data-price-label="{{ price_label }}"
+                                         class="inline-flex w-fit shrink-0 self-center rounded-full border border-green-800 bg-green-100 px-2 py-0.5 text-[11px] font-semibold text-green-800">
+                                      {{ price_label }}
+                                    </div>
+                                  {% else -%}
+                                    <div class="inline-flex w-fit shrink-0 self-center rounded-full border border-green-800 bg-green-100 px-2 py-0.5 text-[11px] font-semibold text-green-800">
+                                      Not available
+                                    </div>
+                                  {% endif -%}
                                 {% else -%}
-                                  <div class="col-start-3 row-start-1 justify-self-end inline-flex w-fit shrink-0 self-center rounded-full border border-green-800 bg-green-100 px-2 py-0.5 text-[11px] font-semibold text-green-800">
-                                    Not available
+                                  <div class="inline-flex w-fit shrink-0 self-center rounded-full border border-green-800 bg-green-100 px-2 py-0.5 text-[11px] font-semibold text-green-800">
+                                    Ticket
                                   </div>
                                 {% endif -%}
-                              {% else -%}
-                                <div class="col-start-3 row-start-1 justify-self-end inline-flex w-fit shrink-0 self-center rounded-full border border-green-800 bg-green-100 px-2 py-0.5 text-[11px] font-semibold text-green-800">
-                                  Ticket
-                                </div>
+                              </div>
+                              {% if let Some(description) = &ticket_type.description -%}
+                                <p class="col-start-2 form-legend min-w-0">{{ description }}</p>
                               {% endif -%}
-                              <div class="col-[2/-1] row-start-2 min-w-0 space-y-2">
-                                {% if let Some(description) = &ticket_type.description -%}
-                                  <p class="form-legend min-w-0">{{ description }}</p>
-                                {% endif -%}
-                                <div class="flex items-center gap-2 text-xs font-medium">
-                                  {% if ticket_type.sold_out -%}
-                                    <span class="inline-flex h-2 w-2 rounded-full bg-red-500"></span>
-                                    <span class="text-stone-500">Sold out</span>
-                                  {% else if ticket_type.is_sellable_now() -%}
-                                    <span class="inline-flex h-2 w-2 rounded-full bg-green-500"></span>
-                                    {% if let Some(current_price) = &ticket_type.current_price -%}
-                                      {% if let Some(ends_at) = &current_price.ends_at -%}
-                                        <span class="text-stone-500">
-                                          Available until
-                                          {{ ends_at.with_timezone(event.timezone).format("%b %-e at %-I:%M %p") }}
-                                        </span>
-                                      {% else -%}
-                                        <span class="text-stone-500">Available now</span>
-                                      {% endif -%}
+                              <div class="col-start-2 flex items-center gap-2 text-xs font-medium">
+                                {% if ticket_type.sold_out -%}
+                                  <span class="inline-flex h-2 w-2 rounded-full bg-red-500"></span>
+                                  <span class="text-stone-500">Sold out</span>
+                                {% else if ticket_type.is_sellable_now() -%}
+                                  <span class="inline-flex h-2 w-2 rounded-full bg-green-500"></span>
+                                  {% if let Some(current_price) = &ticket_type.current_price -%}
+                                    {% if let Some(ends_at) = &current_price.ends_at -%}
+                                      <span class="text-stone-500">
+                                        Available until
+                                        {{ ends_at.with_timezone(event.timezone).format("%b %-e at %-I:%M %p") }}
+                                      </span>
                                     {% else -%}
                                       <span class="text-stone-500">Available now</span>
                                     {% endif -%}
                                   {% else -%}
-                                    <span class="inline-flex h-2 w-2 rounded-full bg-stone-300"></span>
-                                    <span class="text-stone-500">Not on sale</span>
+                                    <span class="text-stone-500">Available now</span>
                                   {% endif -%}
-                                </div>
+                                {% else -%}
+                                  <span class="inline-flex h-2 w-2 rounded-full bg-stone-300"></span>
+                                  <span class="text-stone-500">Not on sale</span>
+                                {% endif -%}
                               </div>
                             </div>
                           </div>
