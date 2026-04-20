@@ -42,8 +42,6 @@ const renderAttendanceDom = ({
         id="attend-btn"
         data-attendance-role="attend-btn"
         class="hidden"
-        data-attend-label="Attend event"
-        data-waitlist-label="Join waiting list"
       >
         <span data-attendance-label>Attend event</span>
       </button>
@@ -51,8 +49,6 @@ const renderAttendanceDom = ({
         id="leave-btn"
         data-attendance-role="leave-btn"
         class="hidden"
-        data-attendee-label="Cancel attendance"
-        data-waitlist-label="Leave waiting list"
       >
         <span data-attendance-label>Cancel attendance</span>
       </button>
@@ -60,10 +56,6 @@ const renderAttendanceDom = ({
         id="refund-btn"
         data-attendance-role="refund-btn"
         class="hidden"
-        data-approving-label="Refund processing"
-        data-pending-label="Refund requested"
-        data-refund-label="Request refund"
-        data-rejected-label="Refund unavailable"
       >
         <span data-attendance-label>Request refund</span>
       </button>

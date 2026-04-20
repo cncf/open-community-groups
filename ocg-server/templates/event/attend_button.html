@@ -29,11 +29,6 @@
   <button id="signin-btn-{{ attendance_instance }}"
           data-attendance-role="signin-btn"
           data-path="{{ path }}"
-          data-default-label="{% if event.is_ticketed() %}
-                                Buy ticket
-                              {% else %}
-                                Attend event
-                              {% endif %}"
           class="hidden group btn-primary-outline-anchor h-10 md:h-[30px] flex items-center justify-center space-x-2 overflow-visible">
     {% if !event.is_past() -%}
       {% if let Some(ticket_price_badge) = event.formatted_ticket_price_badge() -%}
@@ -65,14 +60,6 @@
           {% endif %}
           hx-include="closest [data-attendance-container]"
           hx-swap="none"
-          data-attend-label="{% if event.is_ticketed() %}
-                               Buy ticket
-                             {% else %}
-                               Attend event
-                             {% endif %}"
-          data-complete-label="Complete payment"
-          data-unavailable-label="Tickets unavailable"
-          data-waitlist-label="Join waiting list"
           class="hidden group btn-primary-outline h-10 md:h-[30px] flex items-center justify-center space-x-2 overflow-visible">
     {% if !event.is_past() -%}
       {% if let Some(ticket_price_badge) = event.formatted_ticket_price_badge() -%}
@@ -281,8 +268,6 @@
           hx-delete="/{{ event.community.name }}/event/{{ event.event_id }}/leave"
           hx-trigger="confirmed"
           hx-swap="none"
-          data-attendee-label="Cancel attendance"
-          data-waitlist-label="Leave waiting list"
           class="hidden group btn-primary-outline h-10 md:h-[30px] flex items-center justify-center space-x-2">
     <div class="svg-icon size-3 icon-logout"></div>
     <span data-attendance-label>Cancel attendance</span>
@@ -294,10 +279,6 @@
           hx-post="/{{ event.community.name }}/event/{{ event.event_id }}/refund-request"
           hx-trigger="confirmed"
           hx-swap="none"
-          data-approving-label="Refund processing"
-          data-rejected-label="Refund unavailable"
-          data-refund-label="Request refund"
-          data-pending-label="Refund requested"
           class="hidden group btn-primary-outline h-10 md:h-[30px] flex items-center justify-center space-x-2">
     <div class="svg-icon size-3 icon-refund"></div>
     <span data-attendance-label>Request refund</span>

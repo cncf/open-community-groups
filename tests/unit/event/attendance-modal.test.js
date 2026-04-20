@@ -46,9 +46,6 @@ const renderPaidAttendanceDom = ({
       <button
         data-attendance-role="attend-btn"
         class="hidden"
-        data-attend-label="Buy ticket"
-        data-complete-label="Complete payment"
-        data-unavailable-label="Tickets unavailable"
       >
         ${includeButtonPriceBadge
           ? `
@@ -125,18 +122,12 @@ const renderPaidAttendanceDom = ({
       <button
         data-attendance-role="leave-btn"
         class="hidden"
-        data-attendee-label="Cancel attendance"
-        data-waitlist-label="Leave waiting list"
       >
         <span data-attendance-label>Cancel attendance</span>
       </button>
       <button
         data-attendance-role="refund-btn"
         class="hidden"
-        data-approving-label="Refund processing"
-        data-rejected-label="Refund unavailable"
-        data-refund-label="Request refund"
-        data-pending-label="Refund requested"
       >
         <span data-attendance-label>Request refund</span>
       </button>

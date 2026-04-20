@@ -10,6 +10,17 @@ const ATTENDANCE_CONTAINER_SELECTOR = "[data-attendance-container]";
 const PAYMENT_RETURN_PARAM = "payment";
 const PAYMENT_RETURN_POLL_ATTEMPTS = 8;
 const PAYMENT_RETURN_POLL_INTERVAL_MS = 2000;
+const ATTEND_EVENT_LABEL = "Attend event";
+const BUY_TICKET_LABEL = "Buy ticket";
+const TICKETS_UNAVAILABLE_LABEL = "Tickets unavailable";
+const JOIN_WAITLIST_LABEL = "Join waiting list";
+const COMPLETE_PAYMENT_LABEL = "Complete payment";
+const CANCEL_ATTENDANCE_LABEL = "Cancel attendance";
+const LEAVE_WAITLIST_LABEL = "Leave waiting list";
+const REQUEST_REFUND_LABEL = "Request refund";
+const REFUND_REQUESTED_LABEL = "Refund requested";
+const REFUND_PROCESSING_LABEL = "Refund processing";
+const REFUND_UNAVAILABLE_LABEL = "Refund unavailable";
 
 /**
  * Finds an attendance control inside a container.
@@ -234,12 +245,11 @@ const updateSigninButtonLabel = (button, meta) => {
     return;
   }
 
-  let label = meta.isSoldOut && meta.waitlistEnabled ? "Join waiting list" : "Attend event";
+  let label = meta.isSoldOut && meta.waitlistEnabled ? JOIN_WAITLIST_LABEL : ATTEND_EVENT_LABEL;
   if (meta.isTicketed) {
-    label = meta.ticketPurchaseAvailable ? "Buy ticket" : "Tickets unavailable";
+    label = meta.ticketPurchaseAvailable ? BUY_TICKET_LABEL : TICKETS_UNAVAILABLE_LABEL;
   }
   setAttendanceControlLabel(button, label);
-  button.dataset.defaultLabel = label;
 };
 
 /**
@@ -292,7 +302,7 @@ const applyAvailableAttendState = (button, meta) => {
     button.removeAttribute("title");
     button.classList.remove("cursor-not-allowed", "opacity-50");
   }
-  setAttendanceControlLabel(button, button.dataset.attendLabel || "Attend event");
+  setAttendanceControlLabel(button, meta.isTicketed ? BUY_TICKET_LABEL : ATTEND_EVENT_LABEL);
 };
 
 /**
@@ -487,7 +497,7 @@ const applyUnavailableTicketState = (button) => {
   button.disabled = true;
   button.title = "Tickets are not currently available for this event.";
   button.classList.add("cursor-not-allowed", "opacity-50");
-  setAttendanceControlLabel(button, button.dataset.unavailableLabel || "Tickets unavailable");
+  setAttendanceControlLabel(button, TICKETS_UNAVAILABLE_LABEL);
 };
 
 /**
@@ -530,7 +540,7 @@ const applySoldOutState = (button, meta) => {
       button.disabled = false;
       button.removeAttribute("title");
       button.classList.remove("cursor-not-allowed", "opacity-50");
-      setAttendanceControlLabel(button, button.dataset.waitlistLabel || "Join waiting list");
+      setAttendanceControlLabel(button, JOIN_WAITLIST_LABEL);
     } else {
       button.disabled = true;
       button.title = "This event is sold out.";
@@ -539,7 +549,7 @@ const applySoldOutState = (button, meta) => {
   } else if (!meta.isPastEvent) {
     button.removeAttribute("title");
     button.classList.remove("cursor-not-allowed", "opacity-50");
-    setAttendanceControlLabel(button, button.dataset.attendLabel || "Attend event");
+    setAttendanceControlLabel(button, ATTEND_EVENT_LABEL);
   }
 };
 
@@ -614,9 +624,9 @@ const initializeAttendanceContainer = (container) => {
   }
   applySoldOutState(attendButton, meta);
   updateButtonStateForEventDate(leaveButton, meta);
-  setAttendanceControlLabel(leaveButton, leaveButton?.dataset.attendeeLabel || "Cancel attendance");
+  setAttendanceControlLabel(leaveButton, CANCEL_ATTENDANCE_LABEL);
   updateButtonStateForEventDate(refundButton, meta);
-  setAttendanceControlLabel(refundButton, refundButton?.dataset.refundLabel || "Request refund");
+  setAttendanceControlLabel(refundButton, REQUEST_REFUND_LABEL);
   updateButtonStateForEventDate(signinButton, meta);
   updateSigninButtonLabel(signinButton, meta);
   initializeTicketModalControls(container);
@@ -669,44 +679,44 @@ const handleAttendanceCheckResponse = (event) => {
           refundButton.disabled = true;
           refundButton.title = "Your refund request is waiting for organizer review.";
           refundButton.classList.add("cursor-not-allowed", "opacity-50");
-          setAttendanceControlLabel(refundButton, refundButton.dataset.pendingLabel || "Refund requested");
+          setAttendanceControlLabel(refundButton, REFUND_REQUESTED_LABEL);
         } else if (response.refund_request_status === "approving") {
           refundButton.classList.remove("hidden");
           refundButton.disabled = true;
           refundButton.title = "Your refund is being processed.";
           refundButton.classList.add("cursor-not-allowed", "opacity-50");
-          setAttendanceControlLabel(refundButton, refundButton.dataset.approvingLabel || "Refund processing");
+          setAttendanceControlLabel(refundButton, REFUND_PROCESSING_LABEL);
         } else if (response.refund_request_status === "rejected") {
           refundButton.classList.remove("hidden");
           refundButton.disabled = true;
           refundButton.title = "Your refund request was rejected. Contact the organizers for help.";
           refundButton.classList.add("cursor-not-allowed", "opacity-50");
-          setAttendanceControlLabel(refundButton, refundButton.dataset.rejectedLabel || "Refund unavailable");
+          setAttendanceControlLabel(refundButton, REFUND_UNAVAILABLE_LABEL);
         } else if (response.can_request_refund) {
           refundButton.classList.remove("hidden");
-          setAttendanceControlLabel(refundButton, refundButton.dataset.refundLabel || "Request refund");
+          setAttendanceControlLabel(refundButton, REQUEST_REFUND_LABEL);
           updateButtonStateForEventDate(refundButton, meta);
         } else if ((response.purchase_amount_minor || 0) > 0) {
           refundButton.classList.remove("hidden");
           refundButton.disabled = true;
           refundButton.title = "Refunds are no longer available for this ticket.";
           refundButton.classList.add("cursor-not-allowed", "opacity-50");
-          setAttendanceControlLabel(refundButton, refundButton.dataset.rejectedLabel || "Refund unavailable");
+          setAttendanceControlLabel(refundButton, REFUND_UNAVAILABLE_LABEL);
         } else {
           leaveButton.classList.remove("hidden");
-          setAttendanceControlLabel(leaveButton, leaveButton.dataset.attendeeLabel || "Cancel attendance");
+          setAttendanceControlLabel(leaveButton, CANCEL_ATTENDANCE_LABEL);
           updateButtonStateForEventDate(leaveButton, meta);
         }
         toggleMeetingDetailsVisibility(true, meta);
       } else if (response.status === "pending-payment") {
         attendButton.classList.remove("hidden");
         attendButton.dataset.resumeUrl = response.resume_checkout_url || "";
-        setAttendanceControlLabel(attendButton, attendButton.dataset.completeLabel || "Complete payment");
+        setAttendanceControlLabel(attendButton, COMPLETE_PAYMENT_LABEL);
         updateButtonStateForEventDate(attendButton, meta);
         toggleMeetingDetailsVisibility(false, meta);
       } else if (response.status === "waitlisted") {
         leaveButton.classList.remove("hidden");
-        setAttendanceControlLabel(leaveButton, leaveButton.dataset.waitlistLabel || "Leave waiting list");
+        setAttendanceControlLabel(leaveButton, LEAVE_WAITLIST_LABEL);
         updateButtonStateForEventDate(leaveButton, meta);
         toggleMeetingDetailsVisibility(false, meta);
       } else {
