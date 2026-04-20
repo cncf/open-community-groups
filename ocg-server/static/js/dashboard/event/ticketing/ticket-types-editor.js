@@ -523,31 +523,14 @@ class TicketTypesController {
         const status = row.active
           ? '<span class="custom-badge shrink-0 border-green-800 bg-green-100 px-2.5 py-0.5 text-green-800">Active</span>'
           : '<span class="custom-badge shrink-0 border-stone-500 bg-stone-100 px-2.5 py-0.5 text-stone-700">Inactive</span>';
-        const windows = this._ticketWindowItems(row)
-          .map(
-            (windowRow) => `
-              <div class="flex flex-col gap-1 rounded-md bg-stone-50 px-3 py-2 text-sm sm:flex-row sm:items-center sm:justify-between sm:gap-3">
-                <span>${this._renderMoneyLabel(windowRow.priceLabel)}</span>
-                <span class="text-left text-stone-500 sm:text-right">${escapeHtml(windowRow.timingLabel)}</span>
-              </div>
-            `,
-          )
-          .join("");
 
         return `
           <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200 align-middle">
             <td class="px-3 xl:px-5 py-4 min-w-[180px] xl:min-w-[220px]">
               <div class="font-medium text-stone-900">${escapeHtml(this._ticketTitle(row))}</div>
-              <div class="mt-3 flex flex-wrap items-center gap-2 xl:hidden">
-                <span class="inline-flex items-center rounded-full bg-stone-100 px-2.5 py-1 text-[11px] font-medium text-stone-700">${escapeHtml(row.seats_total || "—")} seats</span>
-                ${status}
-              </div>
             </td>
-            <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap text-stone-900">${escapeHtml(row.seats_total || "—")}</td>
-            <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap">${status}</td>
-            <td class="px-3 xl:px-5 py-4 min-w-[220px] xl:min-w-[280px]">
-              <div class="space-y-2">${windows || '<div class="text-sm text-stone-500">No price windows configured.</div>'}</div>
-            </td>
+            <td class="px-3 xl:px-5 py-4 whitespace-nowrap text-stone-900">${escapeHtml(row.seats_total || "—")}</td>
+            <td class="px-3 xl:px-5 py-4 whitespace-nowrap">${status}</td>
             <td class="px-3 xl:px-5 py-4">
               <div class="flex items-center justify-start gap-1 xl:justify-end">
                 <button

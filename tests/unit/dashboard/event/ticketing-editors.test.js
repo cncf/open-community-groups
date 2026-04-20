@@ -140,13 +140,41 @@ describe("ticketing editors", () => {
 
     expect(uiRoot.textContent).to.contain("General admission");
     expect(uiRoot.textContent).to.contain("25");
-    expect(uiRoot.textContent).to.contain("Always available");
     expect(uiRoot.querySelector('input[name="ticket_types_present"]')?.value).to.equal("true");
     expect(uiRoot.querySelector('input[name="ticket_types[0][title]"]')?.value).to.equal("General admission");
     expect(
       uiRoot.querySelector('input[name="ticket_types[0][price_windows][0][amount_minor]"]')?.value,
     ).to.equal("3000");
     expect(controller.hasConfiguredTicketTypes()).to.equal(true);
+  });
+
+  it("keeps seats and status in dedicated table cells on small layouts", () => {
+    const uiRoot = mountTicketTypesUi();
+    uiRoot.dataset.ticketTypes = JSON.stringify([
+      {
+        active: true,
+        seats_total: 25,
+        title: "General admission",
+        price_windows: [
+          {
+            amount_minor: 3000,
+            starts_at: "",
+            ends_at: "",
+          },
+        ],
+      },
+    ]);
+
+    initializeTicketTypesController({ addButtonId: "", rootId: "ticket-types-ui" });
+
+    const rowCells = uiRoot.querySelectorAll('[data-ticketing-role="table-body"] tr td');
+
+    expect(rowCells).to.have.length(4);
+    expect(rowCells[1].className).to.not.contain("hidden");
+    expect(rowCells[1].textContent).to.contain("25");
+    expect(rowCells[2].className).to.not.contain("hidden");
+    expect(rowCells[2].textContent).to.contain("Active");
+    expect(rowCells[0].textContent).to.not.contain("25 seats");
   });
 
   it("adds ticket types through the modal and emits ticket-types-changed", async () => {
@@ -264,8 +292,9 @@ describe("ticketing editors", () => {
 
     initializeTicketTypesController({ addButtonId: "", rootId: "ticket-types-ui" });
 
-    expect(uiRoot.textContent).to.contain("until Apr 10");
-    expect(uiRoot.textContent).to.contain("from Apr 11");
+    expect(uiRoot.textContent).to.contain("Early bird");
+    expect(uiRoot.textContent).to.not.contain("until Apr 10");
+    expect(uiRoot.textContent).to.not.contain("from Apr 11");
   });
 
   it("renders persisted ticket rows from the dataset and wires row actions", () => {
