@@ -9,91 +9,26 @@ const setInputValue = async (container, selector, value, eventName = "input") =>
   const field = container.querySelector(selector);
   field.value = value;
   field.dispatchEvent(new Event(eventName, { bubbles: true, composed: true }));
+  if ("updateComplete" in container) {
+    await container.updateComplete;
+  }
   return field;
 };
 
-const mountTicketTypesUi = ({ bodyRows = "" } = {}) => {
-  const wrapper = document.createElement("div");
+const mountTicketTypesUi = () => {
+  const wrapper = document.createElement("ticket-types-editor");
   wrapper.id = "ticket-types-ui";
-  wrapper.dataset.ticketTypes = "[]";
+  wrapper.setAttribute("ticket-types", "[]");
   wrapper.dataset.disabled = "false";
-  wrapper.innerHTML = `
-    <div data-ticketing-role="hidden-fields"></div>
-    <div data-ticketing-role="table-wrapper">
-      <table>
-        <tbody data-ticketing-role="empty-state">
-          <tr><td>No ticket tiers yet. Configured ticket tiers will appear here.</td></tr>
-        </tbody>
-        <tbody data-ticketing-role="table-body">${bodyRows}</tbody>
-      </table>
-    </div>
-    <div data-ticketing-role="ticket-modal" class="hidden">
-      <div data-ticketing-action="close-modal"></div>
-      <h3 data-ticketing-role="modal-title"></h3>
-      <label class="form-label" for="ticket-title-draft">
-        Ticket name <span class="asterisk">*</span>
-      </label>
-      <input id="ticket-title-draft" data-ticket-modal-field data-ticket-field="title" required />
-      <label class="form-label" for="ticket-seats-draft">
-        Seats available <span class="asterisk">*</span>
-      </label>
-      <input id="ticket-seats-draft" data-ticket-modal-field data-ticket-field="seats_total" required />
-      <textarea id="ticket-description-draft" data-ticket-field="description"></textarea>
-      <input type="checkbox" data-ticket-field="active" />
-      <button type="button" data-ticketing-action="add-price-window"></button>
-      <div data-ticketing-role="price-windows-list" class="space-y-4"></div>
-      <button type="button" data-ticketing-action="close-modal"></button>
-      <button type="button" data-ticketing-action="save-ticket">
-        <span data-ticketing-role="save-label"></span>
-      </button>
-    </div>
-  `;
   document.body.append(wrapper);
   return wrapper;
 };
 
-const mountDiscountCodesUi = ({ bodyRows = "" } = {}) => {
-  const wrapper = document.createElement("div");
+const mountDiscountCodesUi = () => {
+  const wrapper = document.createElement("discount-codes-editor");
   wrapper.id = "discount-codes-ui";
-  wrapper.dataset.discountCodes = "[]";
+  wrapper.setAttribute("discount-codes", "[]");
   wrapper.dataset.disabled = "false";
-  wrapper.innerHTML = `
-    <div data-ticketing-role="hidden-fields"></div>
-    <div data-ticketing-role="table-wrapper">
-      <table>
-        <tbody data-ticketing-role="empty-state">
-          <tr><td>No discount codes yet. Configured discount codes will appear here.</td></tr>
-        </tbody>
-        <tbody data-ticketing-role="table-body">${bodyRows}</tbody>
-      </table>
-    </div>
-    <div data-ticketing-role="discount-modal" class="hidden">
-      <div data-ticketing-action="close-modal"></div>
-      <h3 data-ticketing-role="modal-title"></h3>
-      <label class="form-label" for="discount-title-draft">
-        Title <span class="asterisk">*</span>
-      </label>
-      <input id="discount-title-draft" data-discount-modal-field data-discount-field="title" required />
-      <label class="form-label" for="discount-code-draft">
-        Code <span class="asterisk">*</span>
-      </label>
-      <input id="discount-code-draft" data-discount-modal-field data-discount-field="code" required />
-      <input type="checkbox" data-discount-field="active" />
-      <select id="discount-kind-draft" data-discount-field="kind">
-        <option value="percentage">Percentage</option>
-        <option value="fixed_amount">Fixed amount</option>
-      </select>
-      <div data-ticketing-role="discount-value-field"></div>
-      <input id="discount-total-draft" data-discount-field="total_available" />
-      <input id="discount-available-draft" data-discount-field="available" />
-      <input id="discount-starts-draft" data-discount-field="starts_at" />
-      <input id="discount-ends-draft" data-discount-field="ends_at" />
-      <button type="button" data-ticketing-action="close-modal"></button>
-      <button type="button" data-ticketing-action="save-discount">
-        <span data-ticketing-role="save-label"></span>
-      </button>
-    </div>
-  `;
   document.body.append(wrapper);
   return wrapper;
 };
@@ -118,25 +53,29 @@ describe("ticketing editors", () => {
     document.body.append(timezoneField);
   });
 
-  it("renders ticket type summary rows and preserves hidden field serialization", () => {
+  it("renders ticket type summary rows and preserves hidden field serialization", async () => {
     const uiRoot = mountTicketTypesUi();
-    uiRoot.dataset.ticketTypes = JSON.stringify([
-      {
-        active: true,
-        description: "Main conference ticket",
-        seats_total: 25,
-        title: "General admission",
-        price_windows: [
-          {
-            amount_minor: 3000,
-            starts_at: "",
-            ends_at: "",
-          },
-        ],
-      },
-    ]);
+    uiRoot.setAttribute(
+      "ticket-types",
+      JSON.stringify([
+        {
+          active: true,
+          description: "Main conference ticket",
+          seats_total: 25,
+          title: "General admission",
+          price_windows: [
+            {
+              amount_minor: 3000,
+              starts_at: "",
+              ends_at: "",
+            },
+          ],
+        },
+      ]),
+    );
 
     const controller = initializeTicketTypesController({ addButtonId: "", rootId: "ticket-types-ui" });
+    await uiRoot.updateComplete;
 
     expect(uiRoot.textContent).to.contain("General admission");
     expect(uiRoot.textContent).to.contain("25");
@@ -148,24 +87,28 @@ describe("ticketing editors", () => {
     expect(controller.hasConfiguredTicketTypes()).to.equal(true);
   });
 
-  it("keeps seats and status in dedicated table cells on small layouts", () => {
+  it("keeps seats and status in dedicated table cells on small layouts", async () => {
     const uiRoot = mountTicketTypesUi();
-    uiRoot.dataset.ticketTypes = JSON.stringify([
-      {
-        active: true,
-        seats_total: 25,
-        title: "General admission",
-        price_windows: [
-          {
-            amount_minor: 3000,
-            starts_at: "",
-            ends_at: "",
-          },
-        ],
-      },
-    ]);
+    uiRoot.setAttribute(
+      "ticket-types",
+      JSON.stringify([
+        {
+          active: true,
+          seats_total: 25,
+          title: "General admission",
+          price_windows: [
+            {
+              amount_minor: 3000,
+              starts_at: "",
+              ends_at: "",
+            },
+          ],
+        },
+      ]),
+    );
 
     initializeTicketTypesController({ addButtonId: "", rootId: "ticket-types-ui" });
+    await uiRoot.updateComplete;
 
     const rowCells = uiRoot.querySelectorAll('[data-ticketing-role="table-body"] tr td');
 
@@ -180,10 +123,12 @@ describe("ticketing editors", () => {
   it("adds ticket types through the modal and emits ticket-types-changed", async () => {
     const uiRoot = mountTicketTypesUi();
     const controller = initializeTicketTypesController({ addButtonId: "", rootId: "ticket-types-ui" });
+    await uiRoot.updateComplete;
     const events = [];
     uiRoot.addEventListener("ticket-types-changed", (event) => events.push(event.detail));
 
     controller._openTicketModal();
+    await uiRoot.updateComplete;
 
     expect(uiRoot.querySelector('label[for="ticket-title-draft"]')?.textContent).to.contain("*");
     expect(uiRoot.querySelector('label[for="ticket-seats-draft"]')?.textContent).to.contain("*");
@@ -194,6 +139,7 @@ describe("ticketing editors", () => {
     await setInputValue(uiRoot, "#ticket-price-1", "15.00");
 
     uiRoot.querySelector('[data-ticketing-action="save-ticket"]')?.click();
+    await uiRoot.updateComplete;
 
     expect(uiRoot.textContent).to.contain("Early bird");
     expect(uiRoot.querySelector('input[name="ticket_types[0][title]"]')?.value).to.equal("Early bird");
@@ -226,8 +172,10 @@ describe("ticketing editors", () => {
       root: uiRoot,
       timezoneInput,
     });
+    await uiRoot.updateComplete;
 
     addButton.click();
+    await uiRoot.updateComplete;
 
     expect(uiRoot.textContent).to.contain("Price (EUR)");
 
@@ -237,6 +185,7 @@ describe("ticketing editors", () => {
     await setInputValue(uiRoot, "#ticket-starts-1", "2026-04-10T10:00");
 
     uiRoot.querySelector('[data-ticketing-action="save-ticket"]')?.click();
+    await uiRoot.updateComplete;
 
     expect(
       uiRoot.querySelector('input[name="ticket_types[0][price_windows][0][starts_at]"]')?.value,
@@ -244,8 +193,10 @@ describe("ticketing editors", () => {
 
     currencyInput.value = "JPY";
     currencyInput.dispatchEvent(new Event("input", { bubbles: true, composed: true }));
+    await uiRoot.updateComplete;
 
     uiRoot.querySelector('[data-ticketing-action="edit-ticket"]')?.click();
+    await uiRoot.updateComplete;
 
     expect(uiRoot.textContent).to.contain("Price (JPY)");
   });
@@ -253,14 +204,17 @@ describe("ticketing editors", () => {
   it("keeps free ticket prices as amount_minor 0 in hidden fields", async () => {
     const uiRoot = mountTicketTypesUi();
     const controller = initializeTicketTypesController({ addButtonId: "", rootId: "ticket-types-ui" });
+    await uiRoot.updateComplete;
 
     controller._openTicketModal();
+    await uiRoot.updateComplete;
 
     await setInputValue(uiRoot, "#ticket-title-draft", "Free entry");
     await setInputValue(uiRoot, "#ticket-seats-draft", "10");
     await setInputValue(uiRoot, "#ticket-price-1", "0");
 
     uiRoot.querySelector('[data-ticketing-action="save-ticket"]')?.click();
+    await uiRoot.updateComplete;
 
     expect(uiRoot.textContent).to.contain("Free entry");
     expect(
@@ -268,92 +222,101 @@ describe("ticketing editors", () => {
     ).to.equal("0");
   });
 
-  it("renders scheduled ticket windows with compact dates", () => {
+  it("renders scheduled ticket windows with compact dates", async () => {
     const uiRoot = mountTicketTypesUi();
-    uiRoot.dataset.ticketTypes = JSON.stringify([
-      {
-        active: true,
-        seats_total: 40,
-        title: "Early bird",
-        price_windows: [
-          {
-            amount_minor: 1500,
-            ends_at: "2026-04-10T23:59:00.000Z",
-            starts_at: "",
-          },
-          {
-            amount_minor: 2500,
-            ends_at: "",
-            starts_at: "2026-04-11T00:00:00.000Z",
-          },
-        ],
-      },
-    ]);
+    uiRoot.setAttribute(
+      "ticket-types",
+      JSON.stringify([
+        {
+          active: true,
+          seats_total: 40,
+          title: "Early bird",
+          price_windows: [
+            {
+              amount_minor: 1500,
+              ends_at: "2026-04-10T23:59:00.000Z",
+              starts_at: "",
+            },
+            {
+              amount_minor: 2500,
+              ends_at: "",
+              starts_at: "2026-04-11T00:00:00.000Z",
+            },
+          ],
+        },
+      ]),
+    );
 
     initializeTicketTypesController({ addButtonId: "", rootId: "ticket-types-ui" });
+    await uiRoot.updateComplete;
 
     expect(uiRoot.textContent).to.contain("Early bird");
     expect(uiRoot.textContent).to.not.contain("until Apr 10");
     expect(uiRoot.textContent).to.not.contain("from Apr 11");
   });
 
-  it("renders persisted ticket rows from the dataset and wires row actions", () => {
+  it("renders persisted ticket rows from the dataset and wires row actions", async () => {
     const uiRoot = mountTicketTypesUi();
-    uiRoot.dataset.ticketTypes = JSON.stringify([
-      {
-        active: true,
-        description: "Main conference ticket",
-        seats_total: 25,
-        title: "General admission",
-        price_windows: [
-          {
-            amount_minor: 3000,
-            starts_at: "",
-            ends_at: "",
-          },
-        ],
-      },
-    ]);
+    uiRoot.setAttribute(
+      "ticket-types",
+      JSON.stringify([
+        {
+          active: true,
+          description: "Main conference ticket",
+          seats_total: 25,
+          title: "General admission",
+          price_windows: [
+            {
+              amount_minor: 3000,
+              starts_at: "",
+              ends_at: "",
+            },
+          ],
+        },
+      ]),
+    );
 
     initializeTicketTypesController({ addButtonId: "", rootId: "ticket-types-ui" });
+    await uiRoot.updateComplete;
 
     expect(uiRoot.textContent).to.contain("General admission");
 
     uiRoot.querySelector('[data-ticketing-action="edit-ticket"]')?.click();
+    await uiRoot.updateComplete;
 
-    expect(uiRoot.querySelector('[data-ticketing-role="modal-title"]')?.textContent).to.equal(
+    expect(uiRoot.querySelector('[data-ticketing-role="modal-title"]')?.textContent?.trim()).to.equal(
       "Edit ticket type",
     );
   });
 
-  it("prefers ticket type JSON seed blocks over data attributes", () => {
+  it("parses ticket type JSON from the element attribute", async () => {
     const uiRoot = mountTicketTypesUi();
-    uiRoot.dataset.ticketTypes = JSON.stringify([
-      {
-        active: true,
-        seats_total: 10,
-        title: "Dataset ticket",
-        price_windows: [{ amount_minor: 1000, starts_at: "", ends_at: "" }],
-      },
-    ]);
-    uiRoot.insertAdjacentHTML(
-      "afterbegin",
-      '<script type="application/json" data-ticketing-seed="ticket-types">[{"active":true,"seats_total":25,"title":"Seed ticket","price_windows":[{"amount_minor":2500,"starts_at":"","ends_at":""}]}]</script>',
+    uiRoot.setAttribute(
+      "ticket-types",
+      JSON.stringify([
+        {
+          active: true,
+          seats_total: 25,
+          title: "Attribute ticket",
+          price_windows: [{ amount_minor: 2500, starts_at: "", ends_at: "" }],
+        },
+      ]),
     );
 
     initializeTicketTypesController({ addButtonId: "", rootId: "ticket-types-ui" });
+    await uiRoot.updateComplete;
 
-    expect(uiRoot.textContent).to.contain("Seed ticket");
-    expect(uiRoot.textContent).to.not.contain("Dataset ticket");
+    expect(uiRoot.textContent).to.contain("Attribute ticket");
   });
 
-  it("keeps hidden ticket modal fields disabled so parent form validation ignores them", () => {
+  it("keeps hidden ticket modal fields disabled so parent form validation ignores them", async () => {
     const form = document.createElement("form");
     const uiRoot = mountTicketTypesUi();
     form.append(uiRoot);
     document.body.append(form);
 
     initializeTicketTypesController({ addButtonId: "", rootId: "ticket-types-ui" });
+    await uiRoot.updateComplete;
 
     expect(form.checkValidity()).to.equal(true);
     expect(uiRoot.querySelector("#ticket-title-draft")?.disabled).to.equal(true);
@@ -366,14 +329,17 @@ describe("ticketing editors", () => {
 
     const uiRoot = mountTicketTypesUi();
     initializeTicketingWaitlistState();
+    await uiRoot.updateComplete;
 
     uiRoot._ticketTypesController._openTicketModal();
+    await uiRoot.updateComplete;
 
     await setInputValue(uiRoot, "#ticket-title-draft", "Paid ticket");
     await setInputValue(uiRoot, "#ticket-seats-draft", "25");
     await setInputValue(uiRoot, "#ticket-price-1", "15.00");
 
     uiRoot.querySelector('[data-ticketing-action="save-ticket"]')?.click();
+    await uiRoot.updateComplete;
 
     expect(currencyField.required).to.equal(true);
     expect(currencyField.validationMessage).to.equal("Ticketed events require an event currency.");
@@ -388,30 +354,36 @@ describe("ticketing editors", () => {
 
   it("renders discount code rows and updates serialization after modal edits", async () => {
     const uiRoot = mountDiscountCodesUi();
-    uiRoot.dataset.discountCodes = JSON.stringify([
-      {
-        active: true,
-        code: "EARLY20",
-        kind: "percentage",
-        percentage: 20,
-        title: "Early supporter",
-        total_available: 50,
-      },
-    ]);
+    uiRoot.setAttribute(
+      "discount-codes",
+      JSON.stringify([
+        {
+          active: true,
+          code: "EARLY20",
+          kind: "percentage",
+          percentage: 20,
+          title: "Early supporter",
+          total_available: 50,
+        },
+      ]),
+    );
 
     const controller = initializeDiscountCodesController({ addButtonId: "", rootId: "discount-codes-ui" });
+    await uiRoot.updateComplete;
 
     expect(uiRoot.textContent).to.contain("Early supporter");
     expect(uiRoot.textContent).to.contain("EARLY20");
     expect(uiRoot.querySelector('input[name="discount_codes[0][percentage]"]')?.value).to.equal("20");
 
     controller._openDiscountModal(controller._rows[0]._row_id);
+    await uiRoot.updateComplete;
 
     await setInputValue(uiRoot, "#discount-title-draft", "Member perk");
     await setInputValue(uiRoot, "#discount-code-draft", "member10");
     await setInputValue(uiRoot, "#discount-percentage-draft", "10");
 
     uiRoot.querySelector('[data-ticketing-action="save-discount"]')?.click();
+    await uiRoot.updateComplete;
 
     expect(uiRoot.textContent).to.contain("Member perk");
     expect(uiRoot.textContent).to.contain("MEMBER10");
@@ -422,26 +394,32 @@ describe("ticketing editors", () => {
 
   it("serializes discount availability override state explicitly", async () => {
     const uiRoot = mountDiscountCodesUi();
-    uiRoot.dataset.discountCodes = JSON.stringify([
-      {
-        active: true,
-        available: 12,
-        available_override_active: true,
-        code: "EARLY20",
-        kind: "percentage",
-        percentage: 20,
-        title: "Early supporter",
-        total_available: 50,
-      },
-    ]);
+    uiRoot.setAttribute(
+      "discount-codes",
+      JSON.stringify([
+        {
+          active: true,
+          available: 12,
+          available_override_active: true,
+          code: "EARLY20",
+          kind: "percentage",
+          percentage: 20,
+          title: "Early supporter",
+          total_available: 50,
+        },
+      ]),
+    );
 
     const controller = initializeDiscountCodesController({ addButtonId: "", rootId: "discount-codes-ui" });
+    await uiRoot.updateComplete;
 
     controller._openDiscountModal(controller._rows[0]._row_id);
+    await uiRoot.updateComplete;
 
     await setInputValue(uiRoot, "#discount-available-draft", "");
 
     uiRoot.querySelector('[data-ticketing-action="save-discount"]')?.click();
+    await uiRoot.updateComplete;
 
     expect(uiRoot.querySelector('input[name="discount_codes[0][available]"]')).to.equal(null);
     expect(
@@ -452,8 +430,10 @@ describe("ticketing editors", () => {
   it("adds and removes discount codes from the compact card list", async () => {
     const uiRoot = mountDiscountCodesUi();
     const controller = initializeDiscountCodesController({ addButtonId: "", rootId: "discount-codes-ui" });
+    await uiRoot.updateComplete;
 
     controller._openDiscountModal();
+    await uiRoot.updateComplete;
 
     await setInputValue(uiRoot, "#discount-title-draft", "Sponsor invite");
     await setInputValue(uiRoot, "#discount-code-draft", "sponsor50");
@@ -461,14 +441,17 @@ describe("ticketing editors", () => {
     uiRoot
       .querySelector("#discount-kind-draft")
       .dispatchEvent(new Event("change", { bubbles: true, composed: true }));
+    await uiRoot.updateComplete;
     await setInputValue(uiRoot, "#discount-amount-draft", "5.00");
 
     uiRoot.querySelector('[data-ticketing-action="save-discount"]')?.click();
+    await uiRoot.updateComplete;
 
     expect(uiRoot.textContent).to.contain("Sponsor invite");
     expect(uiRoot.querySelector('input[name="discount_codes[0][amount_minor]"]')?.value).to.equal("500");
 
     controller._removeDiscountCode(controller._rows[0]._row_id);
+    await uiRoot.updateComplete;
 
     expect(uiRoot.textContent).to.contain("No discount codes yet.");
     expect(uiRoot.querySelector('input[name="discount_codes[0][title]"]')).to.equal(null);
@@ -495,12 +478,15 @@ describe("ticketing editors", () => {
       root: uiRoot,
       timezoneInput,
     });
+    await uiRoot.updateComplete;
 
     addButton.click();
+    await uiRoot.updateComplete;
     uiRoot.querySelector("#discount-kind-draft").value = "fixed_amount";
     uiRoot
       .querySelector("#discount-kind-draft")
       .dispatchEvent(new Event("change", { bubbles: true, composed: true }));
+    await uiRoot.updateComplete;
 
     expect(uiRoot.querySelector('label[for="discount-title-draft"]')?.textContent).to.contain("*");
     expect(uiRoot.querySelector('label[for="discount-code-draft"]')?.textContent).to.contain("*");
@@ -509,6 +495,7 @@ describe("ticketing editors", () => {
 
     currencyInput.value = "GBP";
     currencyInput.dispatchEvent(new Event("input", { bubbles: true, composed: true }));
+    await uiRoot.updateComplete;
 
     expect(uiRoot.textContent).to.contain("Amount (GBP)");
 
@@ -516,6 +503,7 @@ describe("ticketing editors", () => {
     uiRoot
       .querySelector("#discount-kind-draft")
       .dispatchEvent(new Event("change", { bubbles: true, composed: true }));
+    await uiRoot.updateComplete;
 
     expect(uiRoot.querySelector('label[for="discount-percentage-draft"]')?.textContent).to.contain("*");
   });
@@ -523,8 +511,10 @@ describe("ticketing editors", () => {
   it("rejects zero fixed discount amounts in the editor", async () => {
     const uiRoot = mountDiscountCodesUi();
     const controller = initializeDiscountCodesController({ addButtonId: "", rootId: "discount-codes-ui" });
+    await uiRoot.updateComplete;
 
     controller._openDiscountModal();
+    await uiRoot.updateComplete;
 
     await setInputValue(uiRoot, "#discount-title-draft", "Free comp");
     await setInputValue(uiRoot, "#discount-code-draft", "FREE0");
@@ -532,94 +522,106 @@ describe("ticketing editors", () => {
     uiRoot
       .querySelector("#discount-kind-draft")
       .dispatchEvent(new Event("change", { bubbles: true, composed: true }));
+    await uiRoot.updateComplete;
     await setInputValue(uiRoot, "#discount-amount-draft", "0");
 
     uiRoot.querySelector('[data-ticketing-action="save-discount"]')?.click();
+    await uiRoot.updateComplete;
 
     expect(uiRoot.textContent).to.not.contain("Free comp");
     expect(uiRoot.querySelector('input[name="discount_codes[0][amount_minor]"]')).to.equal(null);
   });
 
-  it("renders persisted discount rows from the dataset and wires row actions", () => {
+  it("renders persisted discount rows from the dataset and wires row actions", async () => {
     const uiRoot = mountDiscountCodesUi();
-    uiRoot.dataset.discountCodes = JSON.stringify([
-      {
-        active: true,
-        code: "EARLY20",
-        kind: "percentage",
-        percentage: 20,
-        title: "Early supporter",
-        total_available: 50,
-      },
-    ]);
+    uiRoot.setAttribute(
+      "discount-codes",
+      JSON.stringify([
+        {
+          active: true,
+          code: "EARLY20",
+          kind: "percentage",
+          percentage: 20,
+          title: "Early supporter",
+          total_available: 50,
+        },
+      ]),
+    );
 
     initializeDiscountCodesController({ addButtonId: "", rootId: "discount-codes-ui" });
+    await uiRoot.updateComplete;
 
     expect(uiRoot.textContent).to.contain("Early supporter");
 
     uiRoot.querySelector('[data-ticketing-action="edit-discount"]')?.click();
+    await uiRoot.updateComplete;
 
-    expect(uiRoot.querySelector('[data-ticketing-role="modal-title"]')?.textContent).to.equal(
+    expect(uiRoot.querySelector('[data-ticketing-role="modal-title"]')?.textContent?.trim()).to.equal(
       "Edit discount code",
     );
   });
 
-  it("prefers discount JSON seed blocks over data attributes", () => {
+  it("parses discount code JSON from the element attribute", async () => {
     const uiRoot = mountDiscountCodesUi();
-    uiRoot.dataset.discountCodes = JSON.stringify([
-      {
-        active: true,
-        code: "DATA10",
-        kind: "percentage",
-        percentage: 10,
-        title: "Dataset code",
-      },
-    ]);
-    uiRoot.insertAdjacentHTML(
-      "afterbegin",
-      '<script type="application/json" data-ticketing-seed="discount-codes">[{"active":true,"code":"SEED20","kind":"percentage","percentage":20,"title":"Seed code"}]</script>',
+    uiRoot.setAttribute(
+      "discount-codes",
+      JSON.stringify([
+        {
+          active: true,
+          code: "ATTR20",
+          kind: "percentage",
+          percentage: 20,
+          title: "Attribute code",
+        },
+      ]),
     );
 
     initializeDiscountCodesController({ addButtonId: "", rootId: "discount-codes-ui" });
+    await uiRoot.updateComplete;
 
-    expect(uiRoot.textContent).to.contain("Seed code");
-    expect(uiRoot.textContent).to.not.contain("Dataset code");
+    expect(uiRoot.textContent).to.contain("Attribute code");
   });
 
-  it("keeps hidden discount modal fields disabled so parent form validation ignores them", () => {
+  it("keeps hidden discount modal fields disabled so parent form validation ignores them", async () => {
     const form = document.createElement("form");
     const uiRoot = mountDiscountCodesUi();
     form.append(uiRoot);
     document.body.append(form);
 
     initializeDiscountCodesController({ addButtonId: "", rootId: "discount-codes-ui" });
+    await uiRoot.updateComplete;
 
     expect(form.checkValidity()).to.equal(true);
     expect(uiRoot.querySelector("#discount-title-draft")?.disabled).to.equal(true);
     expect(uiRoot.querySelector("#discount-code-draft")?.disabled).to.equal(true);
   });
 
-  it("preserves persisted remaining counts after discount row rerenders", () => {
+  it("preserves persisted remaining counts after discount row rerenders", async () => {
     const uiRoot = mountDiscountCodesUi();
-    uiRoot.dataset.discountCodes = JSON.stringify([
-      {
-        active: true,
-        available: 12,
-        code: "EARLY20",
-        kind: "percentage",
-        percentage: 20,
-        title: "Early supporter",
-        total_available: 50,
-      },
-    ]);
+    uiRoot.setAttribute(
+      "discount-codes",
+      JSON.stringify([
+        {
+          active: true,
+          available: 12,
+          code: "EARLY20",
+          kind: "percentage",
+          percentage: 20,
+          title: "Early supporter",
+          total_available: 50,
+        },
+      ]),
+    );
 
     initializeDiscountCodesController({ addButtonId: "", rootId: "discount-codes-ui" });
+    await uiRoot.updateComplete;
 
     expect(uiRoot.textContent).to.contain("12 remaining");
 
     const currencyField = document.getElementById("payment_currency_code");
     currencyField.value = "USD";
     currencyField.dispatchEvent(new Event("input", { bubbles: true, composed: true }));
+    await uiRoot.updateComplete;
 
     expect(uiRoot.textContent).to.contain("12 remaining");
   });

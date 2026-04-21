@@ -1,4 +1,6 @@
+import { html, repeat } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { lockBodyScroll, unlockBodyScroll } from "/static/js/common/common.js";
+import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import {
   normalizeDiscountCodes,
   serializeDiscountCodes,
@@ -9,19 +11,26 @@ import {
   resolveCurrencyInputStep,
   resolveEventCurrencyCode,
 } from "/static/js/dashboard/event/ticketing/money.js";
-import {
-  escapeHtml,
-  parseJsonAttribute,
-  parseJsonSeed,
-} from "/static/js/dashboard/event/ticketing/shared.js";
+import { parseJsonAttribute } from "/static/js/dashboard/event/ticketing/shared.js";
 
-class DiscountCodesController {
-  constructor({ addButton = null, currencyInput = null, root, timezoneInput = null }) {
-    this.addButton = addButton;
-    this.currencyInput = currencyInput;
-    this.root = root;
-    this.timezoneInput = timezoneInput;
-    this.disabled = root.dataset.disabled === "true";
+/**
+ * Discount codes editor component.
+ * @extends LitWrapper
+ */
+class DiscountCodesEditor extends LitWrapper {
+  static properties = {
+    disabled: { type: Boolean },
+    discountCodes: { attribute: "discount-codes" },
+    _draftRow: { state: true },
+    _editingRowId: { state: true },
+    _isModalOpen: { state: true },
+    _isNewRow: { state: true },
+    _rows: { state: true },
+  };
+
+  constructor() {
+    super();
+    this.disabled = false;
     this.fieldNamePrefix = "discount_codes";
     this.presenceFieldName = "discount_codes_present";
     this._rows = [];
@@ -30,142 +39,119 @@ class DiscountCodesController {
     this._isModalOpen = false;
     this._isNewRow = false;
     this._nextId = 0;
+    this._hasInitializedState = false;
+    this.addButton = null;
+    this.currencyInput = null;
+    this.timezoneInput = null;
+    this.discountCodes = "[]";
 
-    this._handleCurrencyFieldChange = this._handleCurrencyFieldChange.bind(this);
-    this._handleExternalAddClick = this._handleExternalAddClick.bind(this);
-    this._handleKeydown = this._handleKeydown.bind(this);
-    this._handleRootClick = this._handleRootClick.bind(this);
-    this._handleRootInput = this._handleRootInput.bind(this);
-    this._handleRootChange = this._handleRootChange.bind(this);
-
-    this._applyDiscountCodes(
-      parseJsonSeed(root, "discount-codes", parseJsonAttribute(root.dataset.discountCodes, [])),
-    );
-    this._bind();
-    this.render();
+    this._boundHandleExternalAddClick = this._handleExternalAddClick.bind(this);
+    this._boundHandleDependencyChange = this._handleDependencyChange.bind(this);
+    this._boundHandleKeydown = this._handleKeydown.bind(this);
   }
 
-  destroy() {
+  connectedCallback() {
+    super.connectedCallback();
+    document.addEventListener("keydown", this._boundHandleKeydown);
+  }
+
+  disconnectedCallback() {
+    document.removeEventListener("keydown", this._boundHandleKeydown);
+    this._setAddButton(null);
+    this._setCurrencyInput(null);
+    this._setTimezoneInput(null);
+
     if (this._isModalOpen) {
       unlockBodyScroll();
     }
 
-    this._draftRow = null;
-    this._editingRowId = null;
-    this._isModalOpen = false;
-    this._isNewRow = false;
-    this._toggleExternalAddButtonListener(false);
-    this.root.removeEventListener("click", this._handleRootClick);
-    this.root.removeEventListener("input", this._handleRootInput);
-    this.root.removeEventListener("change", this._handleRootChange);
-    document.removeEventListener("keydown", this._handleKeydown);
-    this.currencyInput?.removeEventListener("input", this._handleCurrencyFieldChange);
+    super.disconnectedCallback?.();
+  }
+
+  destroy() {
+    document.removeEventListener("keydown", this._boundHandleKeydown);
+    this._setAddButton(null);
+    this._setCurrencyInput(null);
+    this._setTimezoneInput(null);
+
+    if (this._isModalOpen) {
+      unlockBodyScroll();
+    }
+
+    delete this._discountCodesController;
+  }
+
+  configure({ addButton = null, currencyInput = null, timezoneInput = null } = {}) {
+    this.disabled = this.dataset.disabled === "true";
+    this._setAddButton(addButton);
+    this._setCurrencyInput(currencyInput);
+    this._setTimezoneInput(timezoneInput);
+
+    if (!this._hasInitializedState) {
+      this._applyDiscountCodes(this._resolveSeedDiscountCodes());
+      this._hasInitializedState = true;
+    } else {
+      this.requestUpdate();
+    }
   }
 
   setDiscountCodes(discountCodes) {
     this._applyDiscountCodes(discountCodes);
-    this.render();
   }
 
-  _bind() {
-    this._toggleExternalAddButtonListener(true);
-    this.root.addEventListener("click", this._handleRootClick);
-    this.root.addEventListener("input", this._handleRootInput);
-    this.root.addEventListener("change", this._handleRootChange);
-    document.addEventListener("keydown", this._handleKeydown);
-    this.currencyInput?.addEventListener("input", this._handleCurrencyFieldChange);
+  _resolveSeedDiscountCodes() {
+    return parseJsonAttribute(this.discountCodes || this.getAttribute("discount-codes"), []);
   }
 
-  _toggleExternalAddButtonListener(shouldAdd) {
-    if (!this.addButton) {
+  _setAddButton(addButton) {
+    if (this.addButton === addButton) {
       return;
     }
 
-    this.addButton[shouldAdd ? "addEventListener" : "removeEventListener"](
-      "click",
-      this._handleExternalAddClick,
-    );
+    this.addButton?.removeEventListener("click", this._boundHandleExternalAddClick);
+    this.addButton = addButton;
+    this.addButton?.addEventListener("click", this._boundHandleExternalAddClick);
   }
 
-  _handleCurrencyFieldChange() {
-    this.render();
+  _setCurrencyInput(currencyInput) {
+    if (this.currencyInput === currencyInput) {
+      return;
+    }
+
+    this.currencyInput?.removeEventListener("input", this._boundHandleDependencyChange);
+    this.currencyInput?.removeEventListener("change", this._boundHandleDependencyChange);
+    this.currencyInput = currencyInput;
+    this.currencyInput?.addEventListener("input", this._boundHandleDependencyChange);
+    this.currencyInput?.addEventListener("change", this._boundHandleDependencyChange);
+  }
+
+  _setTimezoneInput(timezoneInput) {
+    if (this.timezoneInput === timezoneInput) {
+      return;
+    }
+
+    this.timezoneInput?.removeEventListener("input", this._boundHandleDependencyChange);
+    this.timezoneInput?.removeEventListener("change", this._boundHandleDependencyChange);
+    this.timezoneInput = timezoneInput;
+    this.timezoneInput?.addEventListener("input", this._boundHandleDependencyChange);
+    this.timezoneInput?.addEventListener("change", this._boundHandleDependencyChange);
   }
 
   _handleExternalAddClick() {
     this._openDiscountModal();
   }
 
+  _handleDependencyChange() {
+    if (!this.isConnected) {
+      return;
+    }
+
+    this.requestUpdate();
+  }
+
   _handleKeydown(event) {
     if (event.key === "Escape" && this._isModalOpen) {
       this._closeDiscountModal();
-    }
-  }
-
-  _handleRootClick(event) {
-    const target = event.target instanceof Element ? event.target.closest("[data-ticketing-action]") : null;
-    const action = target?.dataset.ticketingAction;
-    if (!action) {
-      return;
-    }
-
-    if (action === "close-modal") {
-      this._closeDiscountModal();
-      return;
-    }
-
-    if (this.disabled) {
-      return;
-    }
-
-    switch (action) {
-      case "edit-discount":
-        this._openDiscountModal(this._resolveRowId(target));
-        break;
-      case "delete-discount":
-        this._removeDiscountCode(this._resolveRowId(target));
-        break;
-      case "save-discount":
-        this._saveDiscountCode();
-        break;
-      default:
-        break;
-    }
-  }
-
-  _handleRootInput(event) {
-    const target = event.target;
-    if (!(target instanceof HTMLElement) || !this._draftRow) {
-      return;
-    }
-
-    if (!target.dataset.discountField) {
-      return;
-    }
-
-    this._updateDraftDiscountCode(target.dataset.discountField, target.value);
-    if (target.dataset.discountField === "kind") {
-      this.render();
-    }
-  }
-
-  _handleRootChange(event) {
-    const target = event.target;
-    if (!(target instanceof HTMLElement) || !this._draftRow) {
-      return;
-    }
-
-    if (!target.dataset.discountField) {
-      return;
-    }
-
-    if (target instanceof HTMLInputElement && target.type === "checkbox") {
-      this._updateDraftDiscountCode(target.dataset.discountField, target.checked);
-      return;
-    }
-
-    this._updateDraftDiscountCode(target.dataset.discountField, target.value);
-    if (target.dataset.discountField === "kind") {
-      this.render();
     }
   }
 
@@ -238,7 +224,6 @@ class DiscountCodesController {
     this._draftRow = existingRow ? this._cloneDiscountCode(existingRow) : this._createEmptyDiscountCode();
     this._isModalOpen = true;
     lockBodyScroll();
-    this.render();
   }
 
   _closeDiscountModal() {
@@ -251,7 +236,6 @@ class DiscountCodesController {
     this._isModalOpen = false;
     this._isNewRow = false;
     unlockBodyScroll();
-    this.render();
   }
 
   _removeDiscountCode(rowId) {
@@ -260,7 +244,6 @@ class DiscountCodesController {
     }
 
     this._rows = this._rows.filter((row) => row._row_id !== rowId);
-    this.render();
   }
 
   _saveDiscountCode() {
@@ -268,7 +251,7 @@ class DiscountCodesController {
       return;
     }
 
-    const invalidField = Array.from(this.root.querySelectorAll("[data-discount-modal-field]")).find(
+    const invalidField = Array.from(this.querySelectorAll("[data-discount-modal-field]")).find(
       (field) => typeof field.checkValidity === "function" && !field.checkValidity(),
     );
 
@@ -297,12 +280,6 @@ class DiscountCodesController {
     }
 
     this._closeDiscountModal();
-    this.render();
-  }
-
-  _resolveRowId(target) {
-    const rowId = Number.parseInt(target.dataset.rowId || "", 10);
-    return Number.isFinite(rowId) ? rowId : Number.NaN;
   }
 
   _updateDraftDiscountCode(fieldName, value) {
@@ -340,14 +317,14 @@ class DiscountCodesController {
 
     const currencyPrefix = `${currencyCode} `;
     if (!trimmedAmountLabel.startsWith(currencyPrefix)) {
-      return `<span class="text-sm font-medium ${strongColorClass}">${escapeHtml(trimmedAmountLabel)}</span>${suffix ? ` <span class="text-sm font-medium ${strongColorClass}">${escapeHtml(suffix)}</span>` : ""}`;
+      return `${trimmedAmountLabel}${suffix ? ` ${suffix}` : ""}`;
     }
 
     const numericLabel = trimmedAmountLabel.slice(currencyPrefix.length).trim();
-    return `
-      <span class="text-xs font-medium text-stone-500">${escapeHtml(currencyCode)}</span>
-      <span class="text-sm font-medium ${strongColorClass}">${escapeHtml(numericLabel)}</span>
-      ${suffix ? `<span class="text-sm font-medium ${strongColorClass}">${escapeHtml(suffix)}</span>` : ""}
+    return html`
+      <span class="text-xs font-medium text-stone-500">${currencyCode}</span>
+      <span class="text-sm font-medium ${strongColorClass}">${numericLabel}</span>
+      ${suffix ? html`<span class="text-sm font-medium ${strongColorClass}">${suffix}</span>` : null}
     `;
   }
 
@@ -415,17 +392,7 @@ class DiscountCodesController {
     return "Always available";
   }
 
-  _renderHiddenFields() {
-    const container = this.root.querySelector('[data-ticketing-role="hidden-fields"]');
-    if (!container) {
-      return;
-    }
-
-    if (this.disabled) {
-      container.innerHTML = "";
-      return;
-    }
-
+  _serializedFields() {
     const fields = serializeDiscountCodes({
       currencyCode: this._currencyCode(),
       fieldNamePrefix: this.fieldNamePrefix,
@@ -433,76 +400,103 @@ class DiscountCodesController {
       timezone: this._timezone(),
     });
 
-    const allFields = [{ name: this.presenceFieldName, value: "true" }, ...fields];
-    container.innerHTML = allFields
-      .map(
-        (field) =>
-          `<input type="hidden" name="${escapeHtml(field.name)}" value="${escapeHtml(field.value)}">`,
-      )
-      .join("");
+    return [{ name: this.presenceFieldName, value: "true" }, ...fields];
   }
 
   _renderRows() {
-    const body = this.root.querySelector('[data-ticketing-role="table-body"]');
-    if (!body) {
-      return;
-    }
-
-    body.innerHTML = this._rows
-      .map((row) => {
-        const status = row.active
-          ? '<span class="custom-badge shrink-0 border-green-800 bg-green-100 px-2.5 py-0.5 text-green-800">Active</span>'
-          : '<span class="custom-badge shrink-0 border-stone-500 bg-stone-100 px-2.5 py-0.5 text-stone-700">Inactive</span>';
-        const mobileValueSummary = escapeHtml(this._discountValueSummary(row));
+    return repeat(
+      this._rows,
+      (row) => row._row_id,
+      (row) => {
         const valueSummary =
           row.kind === "fixed_amount" && Number.isFinite(Number.parseFloat(row.amount))
             ? this._renderMoneyLabel(this._formatMoney(Number.parseFloat(row.amount)), { suffix: "off" })
-            : escapeHtml(this._discountValueSummary(row));
+            : this._discountValueSummary(row);
 
-        return `
+        return html`
           <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200 align-middle">
             <td class="px-3 xl:px-5 py-4 min-w-[180px] xl:min-w-[220px]">
-              <div class="font-medium text-stone-900">${escapeHtml(this._discountTitle(row))}</div>
-              <div class="mt-2 text-xs font-medium text-stone-600 xl:hidden">${escapeHtml(row.code?.trim() || "CODE")}</div>
+              <div class="font-medium text-stone-900">${this._discountTitle(row)}</div>
+              <div class="mt-2 text-xs font-medium text-stone-600 xl:hidden">
+                ${row.code?.trim() || "CODE"}
+              </div>
               <div class="mt-3 flex flex-wrap items-center gap-2 xl:hidden">
-                <span class="inline-flex items-center rounded-full bg-stone-100 px-2.5 py-1 text-[11px] font-medium text-stone-700">${escapeHtml(this._discountSeatsSummary(row))} seats</span>
-                <span class="inline-flex items-center rounded-full bg-stone-100 px-2.5 py-1 text-[11px] font-medium text-stone-700">${mobileValueSummary}</span>
-                ${status}
+                <span
+                  class="inline-flex items-center rounded-full bg-stone-100 px-2.5 py-1 text-[11px] font-medium text-stone-700"
+                >
+                  ${this._discountSeatsSummary(row)} seats
+                </span>
+                <span
+                  class="inline-flex items-center rounded-full bg-stone-100 px-2.5 py-1 text-[11px] font-medium text-stone-700"
+                >
+                  ${this._discountValueSummary(row)}
+                </span>
+                ${row.active
+                  ? html`<span
+                      class="custom-badge shrink-0 border-green-800 bg-green-100 px-2.5 py-0.5 text-green-800"
+                    >
+                      Active
+                    </span>`
+                  : html`<span
+                      class="custom-badge shrink-0 border-stone-500 bg-stone-100 px-2.5 py-0.5 text-stone-700"
+                    >
+                      Inactive
+                    </span>`}
               </div>
             </td>
             <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap text-stone-900">
-              ${escapeHtml(this._discountSeatsSummary(row))}
-              ${
-                this._discountSeatsDetail(row)
-                  ? `<div class="mt-1 text-xs text-stone-500">${escapeHtml(this._discountSeatsDetail(row))}</div>`
-                  : ""
-              }
+              ${this._discountSeatsSummary(row)}
+              ${this._discountSeatsDetail(row)
+                ? html`<div class="mt-1 text-xs text-stone-500">${this._discountSeatsDetail(row)}</div>`
+                : null}
             </td>
-            <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap">${status}</td>
+            <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap">
+              ${row.active
+                ? html`<span
+                    class="custom-badge shrink-0 border-green-800 bg-green-100 px-2.5 py-0.5 text-green-800"
+                  >
+                    Active
+                  </span>`
+                : html`<span
+                    class="custom-badge shrink-0 border-stone-500 bg-stone-100 px-2.5 py-0.5 text-stone-700"
+                  >
+                    Inactive
+                  </span>`}
+            </td>
             <td class="px-3 xl:px-5 py-4">
-              <div class="text-sm text-stone-700">${escapeHtml(this._discountAvailabilitySummary(row))}</div>
+              <div class="text-sm text-stone-700">${this._discountAvailabilitySummary(row)}</div>
             </td>
-            <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap text-stone-900">${valueSummary}</td>
-            <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap font-medium text-stone-700">${escapeHtml(row.code?.trim() || "CODE")}</td>
+            <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap text-stone-900">
+              ${valueSummary}
+            </td>
+            <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap font-medium text-stone-700">
+              ${row.code?.trim() || "CODE"}
+            </td>
             <td class="px-3 xl:px-5 py-4">
               <div class="flex items-center justify-start gap-1 xl:justify-end">
                 <button
                   type="button"
-                  class="rounded-full p-2 transition-colors ${this.disabled ? "opacity-60 cursor-not-allowed" : "hover:bg-stone-100"}"
+                  class="rounded-full p-2 transition-colors ${this.disabled
+                    ? "opacity-60 cursor-not-allowed"
+                    : "hover:bg-stone-100"}"
                   data-ticketing-action="edit-discount"
-                  data-row-id="${row._row_id}"
+                  data-row-id=${String(row._row_id)}
                   title="Edit"
-                  ${this.disabled ? "disabled" : ""}
+                  ?disabled=${this.disabled}
+                  @click=${() => this._openDiscountModal(row._row_id)}
                 >
                   <div class="svg-icon size-4 icon-pencil bg-stone-600"></div>
                 </button>
                 <button
                   type="button"
-                  class="rounded-full p-2 transition-colors ${this.disabled ? "opacity-60 cursor-not-allowed" : "hover:bg-stone-100"}"
+                  class="rounded-full p-2 transition-colors ${this.disabled
+                    ? "opacity-60 cursor-not-allowed"
+                    : "hover:bg-stone-100"}"
                   data-ticketing-action="delete-discount"
-                  data-row-id="${row._row_id}"
+                  data-row-id=${String(row._row_id)}
                   title="Delete"
-                  ${this.disabled ? "disabled" : ""}
+                  ?disabled=${this.disabled}
+                  @click=${() => this._removeDiscountCode(row._row_id)}
                 >
                   <div class="svg-icon size-4 icon-trash bg-stone-600"></div>
                 </button>
@@ -510,26 +504,32 @@ class DiscountCodesController {
             </td>
           </tr>
         `;
-      })
-      .join("");
+      },
+    );
+  }
+
+  _renderHiddenFields() {
+    if (this.disabled) {
+      return null;
+    }
+
+    return repeat(
+      this._serializedFields(),
+      (field) => `${field.name}:${field.value}`,
+      (field) => html`<input type="hidden" name=${field.name} value=${field.value} />`,
+    );
   }
 
   _renderDraftValueField() {
-    const container = this.root.querySelector('[data-ticketing-role="discount-value-field"]');
-    if (!container) {
-      return;
-    }
-
     if (!this._draftRow) {
-      container.innerHTML = "";
-      return;
+      return null;
     }
 
     if (this._draftRow.kind === "fixed_amount") {
-      container.innerHTML = `
+      return html`
         <div>
           <label class="form-label" for="discount-amount-draft">
-            Amount ${escapeHtml(this._currencyLabelSuffix())} <span class="asterisk">*</span>
+            Amount ${this._currencyLabelSuffix()} <span class="asterisk">*</span>
           </label>
           <div class="mt-2">
             <input
@@ -538,23 +538,24 @@ class DiscountCodesController {
               data-discount-field="amount"
               type="number"
               min="1"
-              step="${escapeHtml(this._currencyInputStep())}"
+              step=${this._currencyInputStep()}
               class="input-primary"
-              placeholder="${escapeHtml(this._currencyInputPlaceholder())}"
-              value="${escapeHtml(this._draftRow.amount)}"
+              placeholder=${this._currencyInputPlaceholder()}
+              .value=${this._draftRow.amount}
+              ?disabled=${!this._isModalOpen}
               required
-            >
+              @input=${(event) => this._updateDraftDiscountCode("amount", event.target.value)}
+            />
           </div>
           <p class="form-legend">
             Use the same currency as the event, for example
-            <span class="font-semibold">${escapeHtml(this._currencyInputPlaceholder())}</span>.
+            <span class="font-semibold">${this._currencyInputPlaceholder()}</span>.
           </p>
         </div>
       `;
-      return;
     }
 
-    container.innerHTML = `
+    return html`
       <div>
         <label class="form-label" for="discount-percentage-draft">
           Percentage off <span class="asterisk">*</span>
@@ -569,96 +570,265 @@ class DiscountCodesController {
             max="100"
             class="input-primary"
             placeholder="20"
-            value="${escapeHtml(this._draftRow.percentage)}"
+            .value=${this._draftRow.percentage}
+            ?disabled=${!this._isModalOpen}
             required
-          >
+            @input=${(event) => this._updateDraftDiscountCode("percentage", event.target.value)}
+          />
         </div>
       </div>
     `;
   }
 
-  _renderModal() {
-    const modal = this.root.querySelector('[data-ticketing-role="discount-modal"]');
-    if (!modal) {
-      return;
-    }
-
-    const isModalVisible = this._isModalOpen && !!this._draftRow;
-
-    modal.classList.toggle("hidden", !isModalVisible);
-    modal.classList.toggle("flex", isModalVisible);
-    modal.querySelectorAll("input, textarea, select, button").forEach((field) => {
-      field.disabled = !isModalVisible;
-    });
-
-    if (!this._draftRow) {
-      return;
-    }
-
-    const modalTitle = this.root.querySelector('[data-ticketing-role="modal-title"]');
-    const saveLabel = this.root.querySelector('[data-ticketing-role="save-label"]');
-    const titleField = this.root.querySelector("#discount-title-draft");
-    const codeField = this.root.querySelector("#discount-code-draft");
-    const activeField = this.root.querySelector('[data-discount-field="active"]');
-    const kindField = this.root.querySelector("#discount-kind-draft");
-    const totalField = this.root.querySelector("#discount-total-draft");
-    const availableField = this.root.querySelector("#discount-available-draft");
-    const startsField = this.root.querySelector("#discount-starts-draft");
-    const endsField = this.root.querySelector("#discount-ends-draft");
-
-    if (modalTitle) {
-      modalTitle.textContent = this._isNewRow ? "Add discount code" : "Edit discount code";
-    }
-
-    if (saveLabel) {
-      saveLabel.textContent = this._isNewRow ? "Add discount code" : "Save changes";
-    }
-
-    if (titleField) {
-      titleField.value = this._draftRow.title;
-    }
-
-    if (codeField) {
-      codeField.value = this._draftRow.code;
-    }
-
-    if (activeField) {
-      activeField.checked = this._draftRow.active;
-    }
-
-    if (kindField) {
-      kindField.value = this._draftRow.kind;
-    }
-
-    if (totalField) {
-      totalField.value = this._draftRow.total_available;
-    }
-
-    if (availableField) {
-      availableField.value = this._draftRow.available;
-    }
-
-    if (startsField) {
-      startsField.value = this._draftRow.starts_at;
-    }
-
-    if (endsField) {
-      endsField.value = this._draftRow.ends_at;
-    }
-
-    this._renderDraftValueField();
-  }
-
   render() {
-    const emptyState = this.root.querySelector('[data-ticketing-role="empty-state"]');
-    if (emptyState) {
-      emptyState.classList.toggle("hidden", this._rows.length > 0);
-    }
+    return html`
+      ${this._renderHiddenFields()}
 
-    this._renderRows();
-    this._renderHiddenFields();
-    this._renderModal();
+      <div data-ticketing-role="table-wrapper" class="relative overflow-x-auto xl:overflow-visible">
+        <table class="table-auto w-full text-xs lg:text-sm text-left text-stone-500">
+          <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
+            <tr>
+              <th scope="col" class="px-3 xl:px-5 py-3">Name</th>
+              <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3">Seats</th>
+              <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3">Status</th>
+              <th scope="col" class="px-3 xl:px-5 py-3">Availability</th>
+              <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3">Value</th>
+              <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3">Code</th>
+              <th scope="col" class="px-3 xl:px-5 py-3 text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody data-ticketing-role="empty-state" class=${this._rows.length > 0 ? "hidden" : ""}>
+            <tr class="bg-white border-b border-stone-200">
+              <td class="px-8 py-12 text-center text-stone-500" colspan="7">
+                No discount codes yet. Configured discount codes will appear here.
+              </td>
+            </tr>
+          </tbody>
+          <tbody data-ticketing-role="table-body">
+            ${this._renderRows()}
+          </tbody>
+        </table>
+      </div>
+
+      <div
+        data-ticketing-role="discount-modal"
+        class="fixed inset-0 z-[1000] ${this._isModalOpen
+          ? "flex"
+          : "hidden"} items-center justify-center overflow-y-auto overflow-x-hidden"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="discount-code-modal-title"
+        data-pending-changes-ignore
+      >
+        <div
+          class="absolute inset-0 bg-stone-950 opacity-35"
+          data-ticketing-action="close-modal"
+          @click=${() => this._closeDiscountModal()}
+        ></div>
+        <div class="modal-panel max-w-4xl p-4">
+          <div class="modal-card rounded-2xl">
+            <div class="flex items-center justify-between border-b border-stone-200 p-5 shrink-0">
+              <h3
+                id="discount-code-modal-title"
+                data-ticketing-role="modal-title"
+                class="text-xl font-semibold text-stone-900"
+              >
+                ${this._isNewRow ? "Add discount code" : "Edit discount code"}
+              </h3>
+              <button
+                type="button"
+                data-ticketing-action="close-modal"
+                class="group inline-flex h-8 w-8 items-center justify-center rounded-lg bg-transparent text-sm text-stone-400 transition-colors hover:bg-stone-100"
+                ?disabled=${!this._isModalOpen}
+                @click=${() => this._closeDiscountModal()}
+              >
+                <div
+                  class="svg-icon h-4 w-4 bg-stone-400 transition-colors group-hover:bg-stone-600 icon-close"
+                ></div>
+                <span class="sr-only">Close modal</span>
+              </button>
+            </div>
+
+            <div class="modal-body flex-1 space-y-6 p-6">
+              <div class="grid gap-4 md:grid-cols-2">
+                <div>
+                  <label class="form-label" for="discount-title-draft">
+                    Title <span class="asterisk">*</span>
+                  </label>
+                  <div class="mt-2">
+                    <input
+                      id="discount-title-draft"
+                      data-discount-modal-field
+                      data-discount-field="title"
+                      type="text"
+                      class="input-primary"
+                      maxlength="120"
+                      placeholder="Early supporter"
+                      .value=${this._draftRow?.title || ""}
+                      ?disabled=${!this._isModalOpen}
+                      required
+                      @input=${(event) => this._updateDraftDiscountCode("title", event.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label class="form-label" for="discount-code-draft">
+                    Code <span class="asterisk">*</span>
+                  </label>
+                  <div class="mt-2">
+                    <input
+                      id="discount-code-draft"
+                      data-discount-modal-field
+                      data-discount-field="code"
+                      type="text"
+                      class="input-primary uppercase"
+                      maxlength="40"
+                      placeholder="EARLY20"
+                      .value=${this._draftRow?.code || ""}
+                      ?disabled=${!this._isModalOpen}
+                      required
+                      @input=${(event) => this._updateDraftDiscountCode("code", event.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label class="inline-flex cursor-pointer items-center">
+                  <input
+                    type="checkbox"
+                    class="sr-only peer"
+                    data-discount-field="active"
+                    .checked=${this._draftRow?.active ?? true}
+                    ?disabled=${!this._isModalOpen}
+                    @change=${(event) => this._updateDraftDiscountCode("active", event.target.checked)}
+                  />
+                  <div
+                    class="relative h-6 w-11 rounded-full bg-stone-200 transition peer-checked:bg-primary-500 peer-checked:after:translate-x-full after:absolute after:start-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-stone-200 after:bg-white after:transition-all after:content-['']"
+                  ></div>
+                  <span class="ms-3 text-sm font-medium text-stone-900">Active</span>
+                </label>
+              </div>
+
+              <div class="grid gap-4 md:grid-cols-2">
+                <div>
+                  <label class="form-label" for="discount-kind-draft">Discount type</label>
+                  <div class="mt-2">
+                    <select
+                      id="discount-kind-draft"
+                      data-discount-field="kind"
+                      class="input-primary"
+                      .value=${this._draftRow?.kind || "percentage"}
+                      ?disabled=${!this._isModalOpen}
+                      @change=${(event) => this._updateDraftDiscountCode("kind", event.target.value)}
+                    >
+                      <option value="percentage">Percentage</option>
+                      <option value="fixed_amount">Fixed amount</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div data-ticketing-role="discount-value-field">${this._renderDraftValueField()}</div>
+
+                <div>
+                  <label class="form-label" for="discount-total-draft">Maximum redemptions</label>
+                  <div class="mt-2">
+                    <input
+                      id="discount-total-draft"
+                      data-discount-field="total_available"
+                      type="number"
+                      min="0"
+                      class="input-primary"
+                      placeholder="50"
+                      .value=${this._draftRow?.total_available || ""}
+                      ?disabled=${!this._isModalOpen}
+                      @input=${(event) =>
+                        this._updateDraftDiscountCode("total_available", event.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label class="form-label" for="discount-available-draft">Uses remaining</label>
+                  <div class="mt-2">
+                    <input
+                      id="discount-available-draft"
+                      data-discount-field="available"
+                      type="number"
+                      min="0"
+                      class="input-primary"
+                      placeholder="Leave blank unless you need a manual override"
+                      .value=${this._draftRow?.available || ""}
+                      ?disabled=${!this._isModalOpen}
+                      @input=${(event) => this._updateDraftDiscountCode("available", event.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label class="form-label" for="discount-starts-draft">Starts at</label>
+                  <div class="mt-2">
+                    <input
+                      id="discount-starts-draft"
+                      data-discount-field="starts_at"
+                      type="datetime-local"
+                      class="input-primary"
+                      .value=${this._draftRow?.starts_at || ""}
+                      ?disabled=${!this._isModalOpen}
+                      @input=${(event) => this._updateDraftDiscountCode("starts_at", event.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label class="form-label" for="discount-ends-draft">Ends at</label>
+                  <div class="mt-2">
+                    <input
+                      id="discount-ends-draft"
+                      data-discount-field="ends_at"
+                      type="datetime-local"
+                      class="input-primary"
+                      .value=${this._draftRow?.ends_at || ""}
+                      ?disabled=${!this._isModalOpen}
+                      @input=${(event) => this._updateDraftDiscountCode("ends_at", event.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="flex items-center justify-end gap-3 border-t border-stone-200 p-5 shrink-0">
+              <button
+                type="button"
+                data-ticketing-action="close-modal"
+                class="btn-secondary"
+                ?disabled=${!this._isModalOpen}
+                @click=${() => this._closeDiscountModal()}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                data-ticketing-action="save-discount"
+                class="btn-primary"
+                ?disabled=${!this._isModalOpen}
+                @click=${() => this._saveDiscountCode()}
+              >
+                <span data-ticketing-role="save-label">
+                  ${this._isNewRow ? "Add discount code" : "Save changes"}
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
   }
+}
+
+if (!customElements.get("discount-codes-editor")) {
+  customElements.define("discount-codes-editor", DiscountCodesEditor);
 }
 
 export const initializeDiscountCodesController = ({
@@ -676,22 +846,25 @@ export const initializeDiscountCodesController = ({
     return null;
   }
 
+  if (resolvedRoot._discountCodesController) {
+    return resolvedRoot._discountCodesController;
+  }
+
+  if (!(resolvedRoot instanceof DiscountCodesEditor)) {
+    return null;
+  }
+
   const resolvedAddButton = addButton || (addButtonId ? document.getElementById(addButtonId) : null);
   const resolvedCurrencyInput =
     currencyInput || (currencyInputId ? document.getElementById(currencyInputId) : null);
   const resolvedTimezoneInput =
     timezoneInput || (timezoneSelector ? document.querySelector(timezoneSelector) : null);
 
-  if (resolvedRoot._discountCodesController) {
-    return resolvedRoot._discountCodesController;
-  }
-
-  const controller = new DiscountCodesController({
+  resolvedRoot._discountCodesController = resolvedRoot;
+  resolvedRoot.configure({
     addButton: resolvedAddButton,
     currencyInput: resolvedCurrencyInput,
-    root: resolvedRoot,
     timezoneInput: resolvedTimezoneInput,
   });
-  resolvedRoot._discountCodesController = controller;
-  return controller;
+  return resolvedRoot;
 };

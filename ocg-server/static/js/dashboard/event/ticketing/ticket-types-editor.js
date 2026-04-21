@@ -1,4 +1,6 @@
+import { html, repeat } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { lockBodyScroll, unlockBodyScroll } from "/static/js/common/common.js";
+import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { normalizeTicketTypes, serializeTicketTypes } from "/static/js/dashboard/event/ticketing/contract.js";
 import { resolveEventTimezone } from "/static/js/dashboard/event/ticketing/datetime.js";
 import {
@@ -6,19 +8,26 @@ import {
   resolveCurrencyInputStep,
   resolveEventCurrencyCode,
 } from "/static/js/dashboard/event/ticketing/money.js";
-import {
-  escapeHtml,
-  parseJsonAttribute,
-  parseJsonSeed,
-} from "/static/js/dashboard/event/ticketing/shared.js";
+import { parseJsonAttribute } from "/static/js/dashboard/event/ticketing/shared.js";
 
-class TicketTypesController {
-  constructor({ addButton = null, currencyInput = null, root, timezoneInput = null }) {
-    this.addButton = addButton;
-    this.currencyInput = currencyInput;
-    this.root = root;
-    this.timezoneInput = timezoneInput;
-    this.disabled = root.dataset.disabled === "true";
+/**
+ * Ticket types editor component.
+ * @extends LitWrapper
+ */
+class TicketTypesEditor extends LitWrapper {
+  static properties = {
+    disabled: { type: Boolean },
+    ticketTypes: { attribute: "ticket-types" },
+    _draftRow: { state: true },
+    _editingRowId: { state: true },
+    _isModalOpen: { state: true },
+    _isNewRow: { state: true },
+    _rows: { state: true },
+  };
+
+  constructor() {
+    super();
+    this.disabled = false;
     this.fieldNamePrefix = "ticket_types";
     this.presenceFieldName = "ticket_types_present";
     this._rows = [];
@@ -27,36 +36,60 @@ class TicketTypesController {
     this._isModalOpen = false;
     this._isNewRow = false;
     this._nextId = 0;
+    this._hasInitializedState = false;
+    this.addButton = null;
+    this.currencyInput = null;
+    this.timezoneInput = null;
+    this.ticketTypes = "[]";
 
-    this._handleCurrencyFieldChange = this._handleCurrencyFieldChange.bind(this);
-    this._handleExternalAddClick = this._handleExternalAddClick.bind(this);
-    this._handleKeydown = this._handleKeydown.bind(this);
-    this._handleRootClick = this._handleRootClick.bind(this);
-    this._handleRootInput = this._handleRootInput.bind(this);
-    this._handleRootChange = this._handleRootChange.bind(this);
-
-    this._applyTicketTypes(
-      parseJsonSeed(root, "ticket-types", parseJsonAttribute(root.dataset.ticketTypes, [])),
-    );
-    this._bind();
-    this.render();
+    this._boundHandleExternalAddClick = this._handleExternalAddClick.bind(this);
+    this._boundHandleDependencyChange = this._handleDependencyChange.bind(this);
+    this._boundHandleKeydown = this._handleKeydown.bind(this);
   }
 
-  destroy() {
+  connectedCallback() {
+    super.connectedCallback();
+    document.addEventListener("keydown", this._boundHandleKeydown);
+  }
+
+  disconnectedCallback() {
+    document.removeEventListener("keydown", this._boundHandleKeydown);
+    this._setAddButton(null);
+    this._setCurrencyInput(null);
+    this._setTimezoneInput(null);
+
     if (this._isModalOpen) {
       unlockBodyScroll();
     }
 
-    this._draftRow = null;
-    this._editingRowId = null;
-    this._isModalOpen = false;
-    this._isNewRow = false;
-    this._toggleExternalAddButtonListener(false);
-    this.root.removeEventListener("click", this._handleRootClick);
-    this.root.removeEventListener("input", this._handleRootInput);
-    this.root.removeEventListener("change", this._handleRootChange);
-    document.removeEventListener("keydown", this._handleKeydown);
-    this.currencyInput?.removeEventListener("input", this._handleCurrencyFieldChange);
+    super.disconnectedCallback?.();
+  }
+
+  destroy() {
+    document.removeEventListener("keydown", this._boundHandleKeydown);
+    this._setAddButton(null);
+    this._setCurrencyInput(null);
+    this._setTimezoneInput(null);
+
+    if (this._isModalOpen) {
+      unlockBodyScroll();
+    }
+
+    delete this._ticketTypesController;
+  }
+
+  configure({ addButton = null, currencyInput = null, timezoneInput = null } = {}) {
+    this.disabled = this.dataset.disabled === "true";
+    this._setAddButton(addButton);
+    this._setCurrencyInput(currencyInput);
+    this._setTimezoneInput(timezoneInput);
+
+    if (!this._hasInitializedState) {
+      this._applyTicketTypes(this._resolveSeedTicketTypes());
+      this._hasInitializedState = true;
+    } else {
+      this.requestUpdate();
+    }
   }
 
   hasConfiguredTicketTypes() {
@@ -65,7 +98,6 @@ class TicketTypesController {
 
   setTicketTypes(ticketTypes) {
     this._applyTicketTypes(ticketTypes);
-    this.render();
   }
 
   getConfiguredSeatTotal() {
@@ -79,32 +111,54 @@ class TicketTypesController {
     }, 0);
   }
 
-  _bind() {
-    this._toggleExternalAddButtonListener(true);
-    this.root.addEventListener("click", this._handleRootClick);
-    this.root.addEventListener("input", this._handleRootInput);
-    this.root.addEventListener("change", this._handleRootChange);
-    document.addEventListener("keydown", this._handleKeydown);
-    this.currencyInput?.addEventListener("input", this._handleCurrencyFieldChange);
+  _resolveSeedTicketTypes() {
+    return parseJsonAttribute(this.ticketTypes || this.getAttribute("ticket-types"), []);
   }
 
-  _toggleExternalAddButtonListener(shouldAdd) {
-    if (!this.addButton) {
+  _setAddButton(addButton) {
+    if (this.addButton === addButton) {
       return;
     }
 
-    this.addButton[shouldAdd ? "addEventListener" : "removeEventListener"](
-      "click",
-      this._handleExternalAddClick,
-    );
+    this.addButton?.removeEventListener("click", this._boundHandleExternalAddClick);
+    this.addButton = addButton;
+    this.addButton?.addEventListener("click", this._boundHandleExternalAddClick);
   }
 
-  _handleCurrencyFieldChange() {
-    this.render();
+  _setCurrencyInput(currencyInput) {
+    if (this.currencyInput === currencyInput) {
+      return;
+    }
+
+    this.currencyInput?.removeEventListener("input", this._boundHandleDependencyChange);
+    this.currencyInput?.removeEventListener("change", this._boundHandleDependencyChange);
+    this.currencyInput = currencyInput;
+    this.currencyInput?.addEventListener("input", this._boundHandleDependencyChange);
+    this.currencyInput?.addEventListener("change", this._boundHandleDependencyChange);
+  }
+
+  _setTimezoneInput(timezoneInput) {
+    if (this.timezoneInput === timezoneInput) {
+      return;
+    }
+
+    this.timezoneInput?.removeEventListener("input", this._boundHandleDependencyChange);
+    this.timezoneInput?.removeEventListener("change", this._boundHandleDependencyChange);
+    this.timezoneInput = timezoneInput;
+    this.timezoneInput?.addEventListener("input", this._boundHandleDependencyChange);
+    this.timezoneInput?.addEventListener("change", this._boundHandleDependencyChange);
   }
 
   _handleExternalAddClick() {
     this._openTicketModal();
+  }
+
+  _handleDependencyChange() {
+    if (!this.isConnected) {
+      return;
+    }
+
+    this.requestUpdate();
   }
 
   _handleKeydown(event) {
@@ -113,76 +167,8 @@ class TicketTypesController {
     }
   }
 
-  _handleRootClick(event) {
-    const target = event.target instanceof Element ? event.target.closest("[data-ticketing-action]") : null;
-    const action = target?.dataset.ticketingAction;
-    if (!action) {
-      return;
-    }
-
-    if (action === "close-modal") {
-      this._closeTicketModal();
-      return;
-    }
-
-    if (this.disabled) {
-      return;
-    }
-
-    switch (action) {
-      case "edit-ticket":
-        this._openTicketModal(this._resolveRowId(target));
-        break;
-      case "delete-ticket":
-        this._removeTicketType(this._resolveRowId(target));
-        break;
-      case "add-price-window":
-        this._addDraftPriceWindow();
-        break;
-      case "remove-price-window":
-        this._removeDraftPriceWindow(Number.parseInt(target.dataset.windowRowId || "", 10));
-        break;
-      case "save-ticket":
-        this._saveTicketType();
-        break;
-      default:
-        break;
-    }
-  }
-
-  _handleRootInput(event) {
-    const target = event.target;
-    if (!(target instanceof HTMLElement) || !this._draftRow) {
-      return;
-    }
-
-    if (target.dataset.ticketField) {
-      this._updateDraftTicketType(target.dataset.ticketField, target.value);
-      return;
-    }
-
-    if (target.dataset.ticketWindowField) {
-      this._updateDraftPriceWindow(
-        Number.parseInt(target.dataset.windowRowId || "", 10),
-        target.dataset.ticketWindowField,
-        target.value,
-      );
-    }
-  }
-
-  _handleRootChange(event) {
-    const target = event.target;
-    if (!(target instanceof HTMLElement) || !this._draftRow) {
-      return;
-    }
-
-    if (target.dataset.ticketField && target instanceof HTMLInputElement && target.type === "checkbox") {
-      this._updateDraftTicketType(target.dataset.ticketField, target.checked);
-    }
-  }
-
   _emitChange(detail) {
-    this.root.dispatchEvent(
+    this.dispatchEvent(
       new CustomEvent("ticket-types-changed", {
         bubbles: true,
         composed: true,
@@ -276,7 +262,6 @@ class TicketTypesController {
     this._draftRow = existingRow ? this._cloneTicketType(existingRow) : this._createEmptyTicketType();
     this._isModalOpen = true;
     lockBodyScroll();
-    this.render();
   }
 
   _closeTicketModal() {
@@ -289,7 +274,6 @@ class TicketTypesController {
     this._isModalOpen = false;
     this._isNewRow = false;
     unlockBodyScroll();
-    this.render();
   }
 
   _addDraftPriceWindow() {
@@ -301,7 +285,6 @@ class TicketTypesController {
       ...this._draftRow,
       price_windows: [...this._draftRow.price_windows, this._createEmptyPriceWindow()],
     };
-    this.render();
   }
 
   _removeDraftPriceWindow(windowRowId) {
@@ -316,7 +299,6 @@ class TicketTypesController {
       ...this._draftRow,
       price_windows: remainingWindows.length > 0 ? remainingWindows : [this._createEmptyPriceWindow()],
     };
-    this.render();
   }
 
   _removeTicketType(rowId) {
@@ -326,7 +308,6 @@ class TicketTypesController {
 
     this._rows = this._rows.filter((row) => row._row_id !== rowId);
     this._notifyTicketTypesChanged();
-    this.render();
   }
 
   _saveTicketType() {
@@ -334,7 +315,7 @@ class TicketTypesController {
       return;
     }
 
-    const invalidField = Array.from(this.root.querySelectorAll("[data-ticket-modal-field]")).find(
+    const invalidField = Array.from(this.querySelectorAll("[data-ticket-modal-field]")).find(
       (field) => typeof field.checkValidity === "function" && !field.checkValidity(),
     );
 
@@ -362,12 +343,6 @@ class TicketTypesController {
 
     this._notifyTicketTypesChanged();
     this._closeTicketModal();
-    this.render();
-  }
-
-  _resolveRowId(target) {
-    const rowId = Number.parseInt(target.dataset.rowId || "", 10);
-    return Number.isFinite(rowId) ? rowId : Number.NaN;
   }
 
   _updateDraftTicketType(fieldName, value) {
@@ -399,103 +374,11 @@ class TicketTypesController {
     };
   }
 
-  _formatMoney(amount) {
-    if (amount === 0) {
-      return "Free";
-    }
-
-    try {
-      return new Intl.NumberFormat(undefined, {
-        style: "currency",
-        currency: this._currencyCode(),
-      }).format(amount);
-    } catch (_) {
-      return `${this._currencyCode()} ${amount}`;
-    }
-  }
-
-  _renderMoneyLabel(amountLabel, { strongColorClass = "text-stone-700" } = {}) {
-    const trimmedAmountLabel = String(amountLabel || "").trim();
-    const currencyCode = this._currencyCode();
-
-    if (!trimmedAmountLabel || trimmedAmountLabel === "Free") {
-      return `<span class="text-sm font-medium ${strongColorClass}">${escapeHtml(trimmedAmountLabel || "Free")}</span>`;
-    }
-
-    const currencyPrefix = `${currencyCode} `;
-    if (!trimmedAmountLabel.startsWith(currencyPrefix)) {
-      return `<span class="text-sm font-medium ${strongColorClass}">${escapeHtml(trimmedAmountLabel)}</span>`;
-    }
-
-    const numericLabel = trimmedAmountLabel.slice(currencyPrefix.length).trim();
-    return `
-      <span class="text-xs font-medium text-stone-500">${escapeHtml(currencyCode)}</span>
-      <span class="text-sm font-medium ${strongColorClass}">${escapeHtml(numericLabel)}</span>
-    `;
-  }
-
   _ticketTitle(row) {
     return row.title?.trim() || "Untitled ticket";
   }
 
-  _formatTicketWindowDate(value) {
-    if (!value) {
-      return "";
-    }
-
-    const datePart = String(value).slice(0, 10);
-    if (!datePart) {
-      return "";
-    }
-
-    const date = new Date(`${datePart}T12:00:00`);
-    if (Number.isNaN(date.getTime())) {
-      return datePart;
-    }
-
-    return new Intl.DateTimeFormat("en", {
-      day: "numeric",
-      month: "short",
-    }).format(date);
-  }
-
-  _ticketWindowItems(row) {
-    return row.price_windows
-      .map((windowRow) => {
-        const amount = Number.parseFloat(windowRow.amount);
-        const priceLabel = Number.isFinite(amount) ? this._formatMoney(amount) : "Price TBD";
-        const startsAt = this._formatTicketWindowDate(windowRow.starts_at);
-        const endsAt = this._formatTicketWindowDate(windowRow.ends_at);
-        let timingLabel = "Always available";
-
-        if (startsAt && endsAt) {
-          timingLabel = `${startsAt} - ${endsAt}`;
-        } else if (startsAt) {
-          timingLabel = `from ${startsAt}`;
-        } else if (endsAt) {
-          timingLabel = `until ${endsAt}`;
-        }
-
-        return {
-          rowId: windowRow._row_id,
-          priceLabel,
-          timingLabel,
-        };
-      })
-      .filter((windowRow) => windowRow.priceLabel || windowRow.timingLabel);
-  }
-
-  _renderHiddenFields() {
-    const container = this.root.querySelector('[data-ticketing-role="hidden-fields"]');
-    if (!container) {
-      return;
-    }
-
-    if (this.disabled) {
-      container.innerHTML = "";
-      return;
-    }
-
+  _serializedFields() {
     const fields = serializeTicketTypes({
       currencyCode: this._currencyCode(),
       fieldNamePrefix: this.fieldNamePrefix,
@@ -503,80 +386,78 @@ class TicketTypesController {
       timezone: this._timezone(),
     });
 
-    const allFields = [{ name: this.presenceFieldName, value: "true" }, ...fields];
-    container.innerHTML = allFields
-      .map(
-        (field) =>
-          `<input type="hidden" name="${escapeHtml(field.name)}" value="${escapeHtml(field.value)}">`,
-      )
-      .join("");
+    return [{ name: this.presenceFieldName, value: "true" }, ...fields];
   }
 
   _renderRows() {
-    const body = this.root.querySelector('[data-ticketing-role="table-body"]');
-    if (!body) {
-      return;
-    }
-
-    body.innerHTML = this._rows
-      .map((row) => {
-        const status = row.active
-          ? '<span class="custom-badge shrink-0 border-green-800 bg-green-100 px-2.5 py-0.5 text-green-800">Active</span>'
-          : '<span class="custom-badge shrink-0 border-stone-500 bg-stone-100 px-2.5 py-0.5 text-stone-700">Inactive</span>';
-
-        return `
-          <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200 align-middle">
-            <td class="px-3 xl:px-5 py-4 min-w-[180px] xl:min-w-[220px]">
-              <div class="font-medium text-stone-900">${escapeHtml(this._ticketTitle(row))}</div>
-            </td>
-            <td class="px-3 xl:px-5 py-4 whitespace-nowrap text-stone-900">${escapeHtml(row.seats_total || "—")}</td>
-            <td class="px-3 xl:px-5 py-4 whitespace-nowrap">${status}</td>
-            <td class="px-3 xl:px-5 py-4">
-              <div class="flex items-center justify-start gap-1 xl:justify-end">
-                <button
-                  type="button"
-                  class="rounded-full p-2 transition-colors ${this.disabled ? "opacity-60 cursor-not-allowed" : "hover:bg-stone-100"}"
-                  data-ticketing-action="edit-ticket"
-                  data-row-id="${row._row_id}"
-                  title="Edit"
-                  ${this.disabled ? "disabled" : ""}
+    return repeat(
+      this._rows,
+      (row) => row._row_id,
+      (row) => html`
+        <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200 align-middle">
+          <td class="px-3 xl:px-5 py-4 min-w-[180px] xl:min-w-[220px]">
+            <div class="font-medium text-stone-900">${this._ticketTitle(row)}</div>
+          </td>
+          <td class="px-3 xl:px-5 py-4 whitespace-nowrap text-stone-900">${row.seats_total || "—"}</td>
+          <td class="px-3 xl:px-5 py-4 whitespace-nowrap">
+            ${row.active
+              ? html`<span
+                  class="custom-badge shrink-0 border-green-800 bg-green-100 px-2.5 py-0.5 text-green-800"
                 >
-                  <div class="svg-icon size-4 icon-pencil bg-stone-600"></div>
-                </button>
-                <button
-                  type="button"
-                  class="rounded-full p-2 transition-colors ${this.disabled ? "opacity-60 cursor-not-allowed" : "hover:bg-stone-100"}"
-                  data-ticketing-action="delete-ticket"
-                  data-row-id="${row._row_id}"
-                  title="Delete"
-                  ${this.disabled ? "disabled" : ""}
+                  Active
+                </span>`
+              : html`<span
+                  class="custom-badge shrink-0 border-stone-500 bg-stone-100 px-2.5 py-0.5 text-stone-700"
                 >
-                  <div class="svg-icon size-4 icon-trash bg-stone-600"></div>
-                </button>
-              </div>
-            </td>
-          </tr>
-        `;
-      })
-      .join("");
+                  Inactive
+                </span>`}
+          </td>
+          <td class="px-3 xl:px-5 py-4">
+            <div class="flex items-center justify-start gap-1 xl:justify-end">
+              <button
+                type="button"
+                class="rounded-full p-2 transition-colors ${this.disabled
+                  ? "opacity-60 cursor-not-allowed"
+                  : "hover:bg-stone-100"}"
+                data-ticketing-action="edit-ticket"
+                data-row-id=${String(row._row_id)}
+                title="Edit"
+                ?disabled=${this.disabled}
+                @click=${() => this._openTicketModal(row._row_id)}
+              >
+                <div class="svg-icon size-4 icon-pencil bg-stone-600"></div>
+              </button>
+              <button
+                type="button"
+                class="rounded-full p-2 transition-colors ${this.disabled
+                  ? "opacity-60 cursor-not-allowed"
+                  : "hover:bg-stone-100"}"
+                data-ticketing-action="delete-ticket"
+                data-row-id=${String(row._row_id)}
+                title="Delete"
+                ?disabled=${this.disabled}
+                @click=${() => this._removeTicketType(row._row_id)}
+              >
+                <div class="svg-icon size-4 icon-trash bg-stone-600"></div>
+              </button>
+            </div>
+          </td>
+        </tr>
+      `,
+    );
   }
 
   _renderDraftPriceWindows() {
-    const list = this.root.querySelector('[data-ticketing-role="price-windows-list"]');
-    if (!list) {
-      return;
-    }
-
     if (!this._draftRow) {
-      list.innerHTML = "";
-      return;
+      return null;
     }
 
-    list.innerHTML = this._draftRow.price_windows
-      .map((windowRow) => {
+    return repeat(
+      this._draftRow.price_windows,
+      (windowRow) => windowRow._row_id,
+      (windowRow) => {
         const isOnlyWindow = this._draftRow.price_windows.length === 1;
-
-        return `
+        return html`
           <div class="rounded-xl border border-stone-200 bg-white p-4">
             <div class="flex items-start justify-between gap-3">
               <div>
@@ -587,12 +468,16 @@ class TicketTypesController {
               </div>
               <button
                 type="button"
-                class="inline-flex size-9 items-center justify-center rounded-full border border-stone-200 ${this.disabled || isOnlyWindow ? "" : "hover:bg-stone-100"}"
+                class="inline-flex size-9 items-center justify-center rounded-full border border-stone-200 ${this
+                  .disabled || isOnlyWindow
+                  ? ""
+                  : "hover:bg-stone-100"}"
                 title="Remove price window"
                 aria-label="Remove price window"
                 data-ticketing-action="remove-price-window"
-                data-window-row-id="${windowRow._row_id}"
-                ${this.disabled || isOnlyWindow ? "disabled" : ""}
+                data-window-row-id=${String(windowRow._row_id)}
+                ?disabled=${this.disabled || isOnlyWindow}
+                @click=${() => this._removeDraftPriceWindow(windowRow._row_id)}
               >
                 <div class="svg-icon size-4 icon-trash bg-stone-600"></div>
               </button>
@@ -600,123 +485,284 @@ class TicketTypesController {
 
             <div class="mt-4 grid gap-4 md:grid-cols-3">
               <div>
-                <label class="form-label" for="ticket-price-${windowRow._row_id}">
-                  Price ${escapeHtml(this._currencyLabelSuffix())} <span class="asterisk">*</span>
+                <label class="form-label" for=${`ticket-price-${windowRow._row_id}`}>
+                  Price ${this._currencyLabelSuffix()} <span class="asterisk">*</span>
                 </label>
                 <div class="mt-2">
                   <input
-                    id="ticket-price-${windowRow._row_id}"
+                    id=${`ticket-price-${windowRow._row_id}`}
                     data-ticket-modal-field
                     data-ticket-window-field="amount"
-                    data-window-row-id="${windowRow._row_id}"
+                    data-window-row-id=${String(windowRow._row_id)}
                     type="number"
                     min="0"
-                    step="${escapeHtml(this._currencyInputStep())}"
+                    step=${this._currencyInputStep()}
                     class="input-primary"
-                    placeholder="${escapeHtml(this._currencyInputPlaceholder())}"
-                    value="${escapeHtml(windowRow.amount)}"
+                    placeholder=${this._currencyInputPlaceholder()}
+                    .value=${windowRow.amount}
+                    ?disabled=${!this._isModalOpen}
                     required
-                  >
+                    @input=${(event) =>
+                      this._updateDraftPriceWindow(windowRow._row_id, "amount", event.target.value)}
+                  />
                 </div>
                 <p class="form-legend">Use <span class="font-semibold">0</span> for free tickets.</p>
               </div>
 
               <div>
-                <label class="form-label" for="ticket-starts-${windowRow._row_id}">Starts at</label>
+                <label class="form-label" for=${`ticket-starts-${windowRow._row_id}`}>Starts at</label>
                 <div class="mt-2">
                   <input
-                    id="ticket-starts-${windowRow._row_id}"
+                    id=${`ticket-starts-${windowRow._row_id}`}
                     data-ticket-window-field="starts_at"
-                    data-window-row-id="${windowRow._row_id}"
+                    data-window-row-id=${String(windowRow._row_id)}
                     type="datetime-local"
                     class="input-primary"
-                    value="${escapeHtml(windowRow.starts_at)}"
-                  >
+                    .value=${windowRow.starts_at}
+                    ?disabled=${!this._isModalOpen}
+                    @input=${(event) =>
+                      this._updateDraftPriceWindow(windowRow._row_id, "starts_at", event.target.value)}
+                  />
                 </div>
               </div>
 
               <div>
-                <label class="form-label" for="ticket-ends-${windowRow._row_id}">Ends at</label>
+                <label class="form-label" for=${`ticket-ends-${windowRow._row_id}`}>Ends at</label>
                 <div class="mt-2">
                   <input
-                    id="ticket-ends-${windowRow._row_id}"
+                    id=${`ticket-ends-${windowRow._row_id}`}
                     data-ticket-window-field="ends_at"
-                    data-window-row-id="${windowRow._row_id}"
+                    data-window-row-id=${String(windowRow._row_id)}
                     type="datetime-local"
                     class="input-primary"
-                    value="${escapeHtml(windowRow.ends_at)}"
-                  >
+                    .value=${windowRow.ends_at}
+                    ?disabled=${!this._isModalOpen}
+                    @input=${(event) =>
+                      this._updateDraftPriceWindow(windowRow._row_id, "ends_at", event.target.value)}
+                  />
                 </div>
               </div>
             </div>
           </div>
         `;
-      })
-      .join("");
+      },
+    );
   }
 
-  _renderModal() {
-    const modal = this.root.querySelector('[data-ticketing-role="ticket-modal"]');
-    if (!modal) {
-      return;
+  _renderHiddenFields() {
+    if (this.disabled) {
+      return null;
     }
 
-    const isModalVisible = this._isModalOpen && !!this._draftRow;
-
-    modal.classList.toggle("hidden", !isModalVisible);
-    modal.classList.toggle("flex", isModalVisible);
-    modal.querySelectorAll("input, textarea, select, button").forEach((field) => {
-      field.disabled = !isModalVisible;
-    });
-
-    if (!this._draftRow) {
-      return;
-    }
-
-    const modalTitle = this.root.querySelector('[data-ticketing-role="modal-title"]');
-    const saveLabel = this.root.querySelector('[data-ticketing-role="save-label"]');
-    const titleField = this.root.querySelector("#ticket-title-draft");
-    const seatsField = this.root.querySelector("#ticket-seats-draft");
-    const descriptionField = this.root.querySelector("#ticket-description-draft");
-    const activeField = this.root.querySelector('[data-ticket-field="active"]');
-
-    if (modalTitle) {
-      modalTitle.textContent = this._isNewRow ? "Add ticket type" : "Edit ticket type";
-    }
-
-    if (saveLabel) {
-      saveLabel.textContent = this._isNewRow ? "Add ticket type" : "Save changes";
-    }
-
-    if (titleField) {
-      titleField.value = this._draftRow.title;
-    }
-
-    if (seatsField) {
-      seatsField.value = this._draftRow.seats_total;
-    }
-
-    if (descriptionField) {
-      descriptionField.value = this._draftRow.description;
-    }
-
-    if (activeField) {
-      activeField.checked = this._draftRow.active;
-    }
-
-    this._renderDraftPriceWindows();
+    return repeat(
+      this._serializedFields(),
+      (field) => `${field.name}:${field.value}`,
+      (field) => html`<input type="hidden" name=${field.name} value=${field.value} />`,
+    );
   }
 
   render() {
-    const emptyState = this.root.querySelector('[data-ticketing-role="empty-state"]');
-    if (emptyState) {
-      emptyState.classList.toggle("hidden", this._rows.length > 0);
-    }
+    return html`
+      ${this._renderHiddenFields()}
 
-    this._renderRows();
-    this._renderHiddenFields();
-    this._renderModal();
+      <div data-ticketing-role="table-wrapper" class="relative overflow-x-auto xl:overflow-visible">
+        <table class="table-auto w-full text-xs lg:text-sm text-left text-stone-500">
+          <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
+            <tr>
+              <th scope="col" class="px-3 xl:px-5 py-3">Name</th>
+              <th scope="col" class="px-3 xl:px-5 py-3">Seats</th>
+              <th scope="col" class="px-3 xl:px-5 py-3">Status</th>
+              <th scope="col" class="px-3 xl:px-5 py-3 text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody data-ticketing-role="empty-state" class=${this._rows.length > 0 ? "hidden" : ""}>
+            <tr class="bg-white border-b border-stone-200">
+              <td class="px-8 py-12 text-center text-stone-500" colspan="4">
+                No ticket tiers yet. Configured ticket tiers will appear here.
+              </td>
+            </tr>
+          </tbody>
+          <tbody data-ticketing-role="table-body">
+            ${this._renderRows()}
+          </tbody>
+        </table>
+      </div>
+
+      <div
+        data-ticketing-role="ticket-modal"
+        class="fixed inset-0 z-[1000] ${this._isModalOpen
+          ? "flex"
+          : "hidden"} items-center justify-center overflow-y-auto overflow-x-hidden"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="ticket-type-modal-title"
+        data-pending-changes-ignore
+      >
+        <div
+          class="absolute inset-0 bg-stone-950 opacity-35"
+          data-ticketing-action="close-modal"
+          @click=${() => this._closeTicketModal()}
+        ></div>
+        <div class="modal-panel max-w-5xl p-4">
+          <div class="modal-card rounded-2xl">
+            <div class="flex items-center justify-between border-b border-stone-200 p-5 shrink-0">
+              <h3
+                id="ticket-type-modal-title"
+                data-ticketing-role="modal-title"
+                class="text-xl font-semibold text-stone-900"
+              >
+                ${this._isNewRow ? "Add ticket type" : "Edit ticket type"}
+              </h3>
+              <button
+                type="button"
+                data-ticketing-action="close-modal"
+                class="group inline-flex h-8 w-8 items-center justify-center rounded-lg bg-transparent text-sm text-stone-400 transition-colors hover:bg-stone-100"
+                ?disabled=${!this._isModalOpen}
+                @click=${() => this._closeTicketModal()}
+              >
+                <div
+                  class="svg-icon h-4 w-4 bg-stone-400 transition-colors group-hover:bg-stone-600 icon-close"
+                ></div>
+                <span class="sr-only">Close modal</span>
+              </button>
+            </div>
+
+            <div class="modal-body flex-1 space-y-6 p-6">
+              <div class="grid gap-4 md:grid-cols-2">
+                <div>
+                  <label class="form-label" for="ticket-title-draft">
+                    Ticket name <span class="asterisk">*</span>
+                  </label>
+                  <div class="mt-2">
+                    <input
+                      id="ticket-title-draft"
+                      data-ticket-modal-field
+                      data-ticket-field="title"
+                      type="text"
+                      class="input-primary"
+                      maxlength="120"
+                      placeholder="General admission"
+                      .value=${this._draftRow?.title || ""}
+                      ?disabled=${!this._isModalOpen}
+                      required
+                      @input=${(event) => this._updateDraftTicketType("title", event.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label class="form-label" for="ticket-seats-draft">
+                    Seats available <span class="asterisk">*</span>
+                  </label>
+                  <div class="mt-2">
+                    <input
+                      id="ticket-seats-draft"
+                      data-ticket-modal-field
+                      data-ticket-field="seats_total"
+                      type="number"
+                      min="0"
+                      class="input-primary"
+                      placeholder="100"
+                      .value=${this._draftRow?.seats_total || ""}
+                      ?disabled=${!this._isModalOpen}
+                      required
+                      @input=${(event) => this._updateDraftTicketType("seats_total", event.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label class="form-label" for="ticket-description-draft">Description</label>
+                <div class="mt-2">
+                  <textarea
+                    id="ticket-description-draft"
+                    data-ticket-field="description"
+                    rows="3"
+                    class="input-primary"
+                    maxlength="300"
+                    placeholder="Who this ticket is for, what it includes, or when it should be used."
+                    .value=${this._draftRow?.description || ""}
+                    ?disabled=${!this._isModalOpen}
+                    @input=${(event) => this._updateDraftTicketType("description", event.target.value)}
+                  ></textarea>
+                </div>
+              </div>
+
+              <div>
+                <label class="inline-flex cursor-pointer items-center">
+                  <input
+                    type="checkbox"
+                    class="sr-only peer"
+                    data-ticket-field="active"
+                    .checked=${this._draftRow?.active ?? true}
+                    ?disabled=${!this._isModalOpen}
+                    @change=${(event) => this._updateDraftTicketType("active", event.target.checked)}
+                  />
+                  <div
+                    class="relative h-6 w-11 rounded-full bg-stone-200 transition peer-checked:bg-primary-500 peer-checked:after:translate-x-full after:absolute after:start-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-stone-200 after:bg-white after:transition-all after:content-['']"
+                  ></div>
+                  <span class="ms-3 text-sm font-medium text-stone-900">Active</span>
+                </label>
+              </div>
+
+              <div class="space-y-4">
+                <div class="flex items-center justify-between gap-3">
+                  <div>
+                    <div class="text-sm font-semibold text-stone-900">Price windows</div>
+                    <p class="mt-1 text-sm text-stone-600">
+                      Add one window for a single flat price, or several windows for early-bird and late
+                      pricing.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    data-ticketing-action="add-price-window"
+                    class="btn-primary-outline btn-mini"
+                    ?disabled=${!this._isModalOpen}
+                    @click=${() => this._addDraftPriceWindow()}
+                  >
+                    Add price window
+                  </button>
+                </div>
+
+                <div data-ticketing-role="price-windows-list" class="space-y-4">
+                  ${this._renderDraftPriceWindows()}
+                </div>
+              </div>
+            </div>
+
+            <div class="flex items-center justify-end gap-3 border-t border-stone-200 p-5 shrink-0">
+              <button
+                type="button"
+                data-ticketing-action="close-modal"
+                class="btn-secondary"
+                ?disabled=${!this._isModalOpen}
+                @click=${() => this._closeTicketModal()}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                data-ticketing-action="save-ticket"
+                class="btn-primary"
+                ?disabled=${!this._isModalOpen}
+                @click=${() => this._saveTicketType()}
+              >
+                <span data-ticketing-role="save-label">
+                  ${this._isNewRow ? "Add ticket type" : "Save changes"}
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
   }
+}
+
+if (!customElements.get("ticket-types-editor")) {
+  customElements.define("ticket-types-editor", TicketTypesEditor);
 }
 
 export const initializeTicketTypesController = ({
@@ -734,22 +780,25 @@ export const initializeTicketTypesController = ({
     return null;
   }
 
+  if (resolvedRoot._ticketTypesController) {
+    return resolvedRoot._ticketTypesController;
+  }
+
+  if (!(resolvedRoot instanceof TicketTypesEditor)) {
+    return null;
+  }
+
   const resolvedAddButton = addButton || (addButtonId ? document.getElementById(addButtonId) : null);
   const resolvedCurrencyInput =
     currencyInput || (currencyInputId ? document.getElementById(currencyInputId) : null);
   const resolvedTimezoneInput =
     timezoneInput || (timezoneSelector ? document.querySelector(timezoneSelector) : null);
 
-  if (resolvedRoot._ticketTypesController) {
-    return resolvedRoot._ticketTypesController;
-  }
-
-  const controller = new TicketTypesController({
+  resolvedRoot._ticketTypesController = resolvedRoot;
+  resolvedRoot.configure({
     addButton: resolvedAddButton,
     currencyInput: resolvedCurrencyInput,
-    root: resolvedRoot,
     timezoneInput: resolvedTimezoneInput,
   });
-  resolvedRoot._ticketTypesController = controller;
-  return controller;
+  return resolvedRoot;
 };

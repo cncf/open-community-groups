@@ -780,20 +780,9 @@
             </p>
           </div>
           <div class="mt-10">
-            <div id="ticket-types-ui" class="space-y-4" data-disabled="false">
-              {# djlint:off #}
-              <script type="application/json" data-ticketing-seed="ticket-types">
-                {% if let Some(ticket_types) = &event.ticket_types -%}
-                  {{ ticket_types|json|safe }}
-                {% else -%}
-                  []
-                {% endif -%}
-</script>
-              {# djlint:on #}
-              <div data-ticketing-role="hidden-fields"></div>
-              {% include "dashboard/group/payments/ticket_types_table.html" -%}
-              {% include "dashboard/group/payments/ticket_type_modal.html" -%}
-            </div>
+            {# djlint:off #}
+            <ticket-types-editor id="ticket-types-ui" class="block space-y-4" data-disabled="false" ticket-types="{% if let Some(ticket_types) = &event.ticket_types -%}{{ ticket_types|json }}{%- else -%}[]{%- endif -%}"></ticket-types-editor>
+            {# djlint:on #}
           </div>
         </div>
 
@@ -812,20 +801,9 @@
             </p>
           </div>
           <div class="mt-10">
-            <div id="discount-codes-ui" class="space-y-4" data-disabled="false">
-              {# djlint:off #}
-              <script type="application/json" data-ticketing-seed="discount-codes">
-                {% if let Some(discount_codes) = &event.discount_codes -%}
-                  {{ discount_codes|json|safe }}
-                {% else -%}
-                  []
-                {% endif -%}
-</script>
-              {# djlint:on #}
-              <div data-ticketing-role="hidden-fields"></div>
-              {% include "dashboard/group/payments/discount_codes_table.html" -%}
-              {% include "dashboard/group/payments/discount_code_modal.html" -%}
-            </div>
+            {# djlint:off #}
+            <discount-codes-editor id="discount-codes-ui" class="block space-y-4" data-disabled="false" discount-codes="{% if let Some(discount_codes) = &event.discount_codes -%}{{ discount_codes|json }}{%- else -%}[]{%- endif -%}"></discount-codes-editor>
+            {# djlint:on #}
           </div>
         </div>
       </div>

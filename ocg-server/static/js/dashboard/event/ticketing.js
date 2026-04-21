@@ -14,6 +14,12 @@ const ticketingControllerConfigs = [
 
 let hasBoundTicketingCleanup = false;
 
+/**
+ * Resolves a control by id from either a document or an element subtree.
+ * @param {Document|Element} root Root container
+ * @param {string} id Control id
+ * @returns {HTMLElement|null}
+ */
 const queryControlById = (root, id) => {
   if (typeof root.getElementById === "function") {
     return root.getElementById(id);
@@ -22,6 +28,22 @@ const queryControlById = (root, id) => {
   return root.querySelector(`#${id}`);
 };
 
+/**
+ * Collects the shared ticketing controls used across the form.
+ * @param {Document|Element} [root=document] Root container
+ * @returns {{
+ *   capacityInput: HTMLElement|null,
+ *   clearTicketingInput: HTMLElement|null,
+ *   discountCodesRoot: HTMLElement|null,
+ *   paymentCurrencyInput: HTMLElement|null,
+ *   ticketTypesRoot: HTMLElement|null,
+ *   timezoneInput: HTMLElement|null,
+ *   toggleClearTicketing: HTMLElement|null,
+ *   toggleWaitlistEnabled: HTMLElement|null,
+ *   waitlistEnabledInput: HTMLElement|null,
+ *   waitlistToggleLabel: HTMLElement|null
+ * }}
+ */
 const resolveTicketingControls = (root = document) => ({
   capacityInput: queryControlById(root, "capacity"),
   clearTicketingInput: queryControlById(root, "clear_ticketing"),
@@ -35,6 +57,11 @@ const resolveTicketingControls = (root = document) => ({
   waitlistToggleLabel: queryControlById(root, "waitlist-toggle-label"),
 });
 
+/**
+ * Destroys ticketing editor controllers inside a fragment before HTMX removes it.
+ * @param {Element|EventTarget|null} container Fragment root
+ * @returns {void}
+ */
 const destroyTicketingControllersWithin = (container) => {
   if (!(container instanceof Element)) {
     return;
@@ -54,6 +81,10 @@ const destroyTicketingControllersWithin = (container) => {
   });
 };
 
+/**
+ * Binds a single HTMX cleanup listener for ticketing editor fragments.
+ * @returns {void}
+ */
 const bindTicketingCleanup = () => {
   if (hasBoundTicketingCleanup || !document.body) {
     return;
@@ -65,6 +96,14 @@ const bindTicketingCleanup = () => {
   hasBoundTicketingCleanup = true;
 };
 
+/**
+ * Initializes the ticket type and discount code editors for a form fragment.
+ * @param {Document|Element} [root=document] Root container
+ * @returns {{
+ *   discountCodesController: *,
+ *   ticketTypesController: *
+ * }}
+ */
 export function initializeTicketingControllers(root = document) {
   bindTicketingCleanup();
 
@@ -90,6 +129,11 @@ export function initializeTicketingControllers(root = document) {
   };
 }
 
+/**
+ * Synchronizes capacity, waitlist, and currency validation with ticket types.
+ * @param {Document|Element} [root=document] Root container
+ * @returns {void}
+ */
 export function initializeTicketingWaitlistState(root = document) {
   const {
     capacityInput,
@@ -102,6 +146,7 @@ export function initializeTicketingWaitlistState(root = document) {
     waitlistToggleLabel,
   } = resolveTicketingControls(root);
   const { ticketTypesController } = initializeTicketingControllers(root);
+
   const syncPaymentCurrencyValidity = (hasTicketTypes) => {
     if (!paymentCurrencyInput) {
       return;
