@@ -403,6 +403,30 @@ export const initializeCommonEventPageToggles = ({
 };
 
 /**
+ * Configures ticketing editors with root-scoped dependencies.
+ * @param {Object} config Ticketing editor configuration.
+ * @param {(id: string) => HTMLElement|null} config.queryById Root-scoped id lookup.
+ * @param {(selector: string) => Element|null} config.queryOne Root-scoped selector lookup.
+ * @returns {void}
+ */
+export const configureScopedTicketingEditors = ({ queryById, queryOne }) => {
+  const currencyInput = queryById("payment_currency_code");
+  const timezoneInput = queryOne('[name="timezone"]');
+
+  queryById("ticket-types-ui")?.configure?.({
+    addButton: queryById("add-ticket-type-button"),
+    currencyInput,
+    timezoneInput,
+  });
+
+  queryById("discount-codes-ui")?.configure?.({
+    addButton: queryById("add-discount-code-button"),
+    currencyInput,
+    timezoneInput,
+  });
+};
+
+/**
  * Initializes the shared event kind change workflow.
  * @param {Object} config Kind change configuration.
  * @param {HTMLSelectElement|null} config.kindSelect Event kind select.

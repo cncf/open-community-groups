@@ -489,6 +489,33 @@ describe("ticketing editors", () => {
     ).to.equal("false");
   });
 
+  it("preserves preloaded discount availability overrides marked dirty", async () => {
+    const uiRoot = mountDiscountCodesUi();
+    uiRoot.setAttribute(
+      "discount-codes",
+      JSON.stringify([
+        {
+          active: true,
+          available: 12,
+          available_dirty: true,
+          available_override_active: true,
+          code: "EARLY20",
+          kind: "percentage",
+          percentage: 20,
+          title: "Early supporter",
+          total_available: 50,
+        },
+      ]),
+    );
+
+    await uiRoot.updateComplete;
+
+    expect(uiRoot.querySelector('input[name="discount_codes[0][available]"]')?.value).to.equal("12");
+    expect(
+      uiRoot.querySelector('input[name="discount_codes[0][available_override_active]"]')?.value,
+    ).to.equal("true");
+  });
+
   it("adds and removes discount codes from the compact card list", async () => {
     const uiRoot = mountDiscountCodesUi();
     await uiRoot.updateComplete;

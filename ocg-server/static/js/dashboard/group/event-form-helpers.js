@@ -162,6 +162,9 @@ const clearCopiedDiscountCodeDates = (discountCodes) => {
 
   return discountCodes.map((discountCode) => ({
     ...discountCode,
+    available_dirty:
+      String(discountCode?.available_override_active) === "true" &&
+      Number.isFinite(Number.parseInt(discountCode?.available, 10)),
     event_discount_code_id: "",
     starts_at: "",
     ends_at: "",

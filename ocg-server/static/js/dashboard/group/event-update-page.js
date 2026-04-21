@@ -5,6 +5,7 @@ import {
   attachEventSaveBeforeRequestValidation,
   attachEventSaveConfigRequest,
   bindSharedEventDateFieldListeners,
+  configureScopedTicketingEditors,
   createEventPageCfsFieldUpdater,
   createEventPageValidationCallbacks,
   createSessionsDateRangeSync,
@@ -139,7 +140,7 @@ export const initializeEventUpdatePage = (root = document) => {
 
   if (clearLocationButton) {
     clearLocationButton.addEventListener("click", () => {
-      clearVenueFields();
+      clearVenueFields(pageRoot);
     });
   }
 
@@ -181,6 +182,11 @@ export const initializeEventUpdatePage = (root = document) => {
     isFieldLocked: (field) => field?.dataset?.locked === "true",
   });
 
+  configureScopedTicketingEditors({
+    queryById,
+    queryOne,
+  });
+
   initializeCommonEventPageToggles({
     pageRoot,
     queryById,
@@ -194,10 +200,10 @@ export const initializeEventUpdatePage = (root = document) => {
   initializeEventKindField({
     kindSelect,
     onlineEventDetails,
-    hasVenueData,
+    hasVenueData: () => hasVenueData(pageRoot),
     confirmVenueDataDeletion,
-    clearVenueFields,
-    updateSectionVisibility,
+    clearVenueFields: () => clearVenueFields(pageRoot),
+    updateSectionVisibility: (kind) => updateSectionVisibility(kind, pageRoot),
   });
 
   bindSharedEventDateFieldListeners({

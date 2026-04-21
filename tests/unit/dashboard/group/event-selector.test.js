@@ -256,6 +256,8 @@ describe("event-selector", () => {
       ],
       discount_codes: [
         {
+          available: 12,
+          available_override_active: true,
           code: "EARLY20",
           event_discount_code_id: "discount-1",
           ends_at: "2026-04-06T10:00:00Z",
@@ -308,6 +310,12 @@ describe("event-selector", () => {
     expect(discountCodesEditor.querySelector('input[name="discount_codes[0][code]"]')?.value).to.equal(
       "EARLY20",
     );
+    expect(discountCodesEditor.querySelector('input[name="discount_codes[0][available]"]')?.value).to.equal(
+      "12",
+    );
+    expect(
+      discountCodesEditor.querySelector('input[name="discount_codes[0][available_override_active]"]')?.value,
+    ).to.equal("true");
     expect(discountCodesEditor.querySelector('input[name="discount_codes[0][starts_at]"]')).to.equal(null);
     expect(discountCodesEditor.querySelector('input[name="discount_codes[0][ends_at]"]')).to.equal(null);
     expect(discountCodesEditor.querySelector('input[name="discount_codes[0][event_discount_code_id]"]')).to.equal(

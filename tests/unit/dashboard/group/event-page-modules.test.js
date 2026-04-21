@@ -1,10 +1,12 @@
 import { expect } from "@open-wc/testing";
 
+import "/static/js/dashboard/event/ticketing/discount-codes-editor.js";
+import "/static/js/dashboard/event/ticketing/ticket-types-editor.js";
 import { initializeEventAddPage } from "/static/js/dashboard/group/event-add-page.js";
 import { initializeEventUpdatePage } from "/static/js/dashboard/group/event-update-page.js";
 import { waitForMicrotask } from "/tests/unit/test-utils/async.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
-import { mockSwal } from "/tests/unit/test-utils/globals.js";
+import { mockHtmx, mockSwal } from "/tests/unit/test-utils/globals.js";
 
 const sharedEventFormsMarkup = () => `
   <div id="pending-changes-alert"></div>
@@ -66,15 +68,20 @@ const mountUpdatePageShell = ({ canManageEvents = false, waitlistCount = "2" } =
 };
 
 describe("event page modules", () => {
+  let htmx;
   let swal;
 
   beforeEach(() => {
     resetDom();
+    htmx = mockHtmx();
     swal = mockSwal();
   });
 
-  afterEach(() => {
+  afterEach(async () => {
+    await waitForMicrotask();
+    await waitForMicrotask();
     resetDom();
+    htmx.restore();
     swal.restore();
   });
 
@@ -194,7 +201,7 @@ describe("event page modules", () => {
     expect(document.querySelector(".inert-form").hasAttribute("inert")).to.equal(false);
   });
 
-  it("warns before clearing capacity with a populated waitlist on the update page", () => {
+  it("warns before clearing capacity with a populated waitlist on the update page", async () => {
     mountUpdatePageShell({ canManageEvents: true });
 
     initializeEventUpdatePage();
@@ -202,9 +209,12 @@ describe("event page modules", () => {
     document
       .getElementById("update-event-button")
       .dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+    await waitForMicrotask();
+    await waitForMicrotask();
 
     expect(swal.calls).to.have.length(1);
     expect(swal.calls[0].text).to.contain("currently on the waitlist");
+    expect(htmx.triggerCalls).to.deep.equal([["#update-event-button", "confirmed"]]);
   });
 
   it("scopes add page initialization to the provided root", () => {
@@ -233,6 +243,115 @@ describe("event page modules", () => {
 
     expect(pageRoot.querySelector("#registration_required").value).to.equal("true");
     expect(document.querySelector("#outside #registration_required").value).to.equal("outside");
+  });
+
+  it("reconfigures ticketing editors to use scoped page dependencies", async () => {
+    document.body.innerHTML = `
+      <div id="outside-root">
+        <button id="add-ticket-type-button" type="button">Outside ticket</button>
+        <button id="add-discount-code-button" type="button">Outside discount</button>
+        <select id="payment_currency_code">
+          <option value="USD" selected>USD</option>
+        </select>
+        <input name="timezone" value="UTC" />
+      </div>
+      <div id="page-root">
+        <div data-event-page="add">
+          ${sharedEventFormsMarkup()}
+          <button id="add-event-button" type="button"></button>
+          <button id="cancel-button" type="button"></button>
+          <button id="add-ticket-type-button" type="button">Scoped ticket</button>
+          <button id="add-discount-code-button" type="button">Scoped discount</button>
+          <select id="payment_currency_code">
+            <option value="EUR" selected>EUR</option>
+          </select>
+          <ticket-types-editor
+            id="ticket-types-ui"
+            ticket-types="[]"
+            data-disabled="false"></ticket-types-editor>
+          <discount-codes-editor
+            id="discount-codes-ui"
+            discount-codes="[]"
+            data-disabled="false"></discount-codes-editor>
+          <button data-section="details" data-active="true" class="active">Details</button>
+          <section data-content="details"></section>
+        </div>
+      </div>
+    `;
+
+    const pageRoot = document.getElementById("page-root");
+    initializeEventAddPage(pageRoot);
+
+    const ticketTypesEditor = pageRoot.querySelector("#ticket-types-ui");
+    const discountCodesEditor = pageRoot.querySelector("#discount-codes-ui");
+    const scopedTicketButton = pageRoot.querySelector("#add-ticket-type-button");
+    const scopedDiscountButton = pageRoot.querySelector("#add-discount-code-button");
+    const scopedCurrency = pageRoot.querySelector("#payment_currency_code");
+    const scopedTimezone = pageRoot.querySelector('[name="timezone"]');
+
+    expect(ticketTypesEditor.addButton).to.equal(scopedTicketButton);
+    expect(ticketTypesEditor.currencyInput).to.equal(scopedCurrency);
+    expect(ticketTypesEditor.timezoneInput).to.equal(scopedTimezone);
+    expect(discountCodesEditor.addButton).to.equal(scopedDiscountButton);
+    expect(discountCodesEditor.currencyInput).to.equal(scopedCurrency);
+    expect(discountCodesEditor.timezoneInput).to.equal(scopedTimezone);
+
+    scopedTicketButton.click();
+    scopedDiscountButton.click();
+    await ticketTypesEditor.updateComplete;
+    await discountCodesEditor.updateComplete;
+
+    expect(ticketTypesEditor.textContent).to.contain("Price (EUR)");
+    expect(ticketTypesEditor.querySelector('[data-ticketing-role="ticket-modal"]')?.classList.contains("hidden")).to
+      .equal(false);
+    expect(
+      discountCodesEditor.querySelector('[data-ticketing-role="discount-modal"]')?.classList.contains("hidden"),
+    ).to.equal(false);
+  });
+
+  it("keeps venue changes scoped when switching the event kind", async () => {
+    document.body.innerHTML = `
+      <div id="outside-root">
+        <section id="venue-information-section" class="hidden"></section>
+        <section id="online-event-details-section" class="hidden"></section>
+        <input id="venue_name" value="Outside hall" />
+        <input id="venue_address" value="Outside street" />
+      </div>
+      <div id="page-root">
+        <div data-event-page="add">
+          ${sharedEventFormsMarkup()}
+          <section id="venue-information-section"></section>
+          <section id="online-event-details-section" class="hidden"></section>
+          <input id="venue_name" value="Main hall" />
+          <input id="venue_address" value="123 Street" />
+          <button id="add-event-button" type="button"></button>
+          <button id="cancel-button" type="button"></button>
+          <button data-section="details" data-active="true" class="active">Details</button>
+          <section data-content="details"></section>
+        </div>
+      </div>
+    `;
+
+    const pageRoot = document.getElementById("page-root");
+    const kindSelect = pageRoot.querySelector("#kind_id");
+    swal.setNextResult({ isConfirmed: true });
+
+    initializeEventAddPage(pageRoot);
+
+    kindSelect.value = "virtual";
+    kindSelect.dispatchEvent(new Event("change", { bubbles: true }));
+    await waitForMicrotask();
+
+    expect(pageRoot.querySelector("#venue_name")?.value).to.equal("");
+    expect(pageRoot.querySelector("#venue_address")?.value).to.equal("");
+    expect(pageRoot.querySelector("#venue-information-section")?.classList.contains("hidden")).to.equal(true);
+    expect(pageRoot.querySelector("#online-event-details-section")?.classList.contains("hidden")).to.equal(false);
+
+    expect(document.querySelector("#outside-root #venue_name")?.value).to.equal("Outside hall");
+    expect(document.querySelector("#outside-root #venue_address")?.value).to.equal("Outside street");
+    expect(
+      document.querySelector("#outside-root #venue-information-section")?.classList.contains("hidden"),
+    ).to.equal(true);
   });
 
   it("does not bind duplicate update page handlers when initialized twice", () => {

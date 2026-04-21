@@ -4,6 +4,7 @@ import {
   attachEventSaveBeforeRequestValidation,
   attachEventSaveConfigRequest,
   bindSharedEventDateFieldListeners,
+  configureScopedTicketingEditors,
   createEventPageCfsFieldUpdater,
   createEventPageValidationCallbacks,
   createSessionsDateRangeSync,
@@ -78,6 +79,11 @@ export const initializeEventAddPage = (root = document) => {
     cfsLabelsEditor,
   });
 
+  configureScopedTicketingEditors({
+    queryById,
+    queryOne,
+  });
+
   initializeCommonEventPageToggles({
     pageRoot,
     queryById,
@@ -92,10 +98,10 @@ export const initializeEventAddPage = (root = document) => {
   initializeEventKindField({
     kindSelect,
     onlineEventDetails,
-    hasVenueData,
+    hasVenueData: () => hasVenueData(pageRoot),
     confirmVenueDataDeletion,
-    clearVenueFields,
-    updateSectionVisibility,
+    clearVenueFields: () => clearVenueFields(pageRoot),
+    updateSectionVisibility: (kind) => updateSectionVisibility(kind, pageRoot),
   });
 
   bindSharedEventDateFieldListeners({

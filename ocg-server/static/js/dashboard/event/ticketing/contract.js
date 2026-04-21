@@ -135,7 +135,7 @@ export const normalizeDiscountCodes = ({ currencyCode, discountCodes, nextRowId,
         discountCode?.available === null || discountCode?.available === undefined
           ? ""
           : String(discountCode.available),
-      available_dirty: false,
+      available_dirty: toBoolean(discountCode?.available_dirty, false),
       available_override_active: toBoolean(
         discountCode?.available_override_active,
         discountCode?.available !== null && discountCode?.available !== undefined,
