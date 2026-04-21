@@ -44,14 +44,27 @@ class TicketTypesEditor extends TicketingEditorBase {
     return "add-ticket-type-button";
   }
 
+  /**
+   * Returns whether the editor currently has any configured ticket rows.
+   * @returns {boolean}
+   */
   hasConfiguredTicketTypes() {
     return this._rows.length > 0;
   }
 
+  /**
+   * Replaces serialized ticket rows before normalization runs.
+   * @param {Array<object>} ticketTypes Serialized ticket rows
+   * @returns {void}
+   */
   setTicketTypes(ticketTypes) {
     this.ticketTypes = Array.isArray(ticketTypes) ? ticketTypes : [];
   }
 
+  /**
+   * Sums configured seats across all normalized ticket rows.
+   * @returns {number|null}
+   */
   getConfiguredSeatTotal() {
     if (this._rows.length === 0) {
       return null;
@@ -72,6 +85,11 @@ class TicketTypesEditor extends TicketingEditorBase {
     this._applyTicketTypes(ticketTypes);
   }
 
+  /**
+   * Broadcasts editor state changes to parent page listeners.
+   * @param {object} detail Event payload
+   * @returns {void}
+   */
   _emitChange(detail) {
     this.dispatchEvent(
       new CustomEvent("ticket-types-changed", {
@@ -82,10 +100,19 @@ class TicketTypesEditor extends TicketingEditorBase {
     );
   }
 
+  /**
+   * Emits whether the editor currently contains ticket rows.
+   * @returns {void}
+   */
   _notifyTicketTypesChanged() {
     this._emitChange({ hasTicketTypes: this.hasConfiguredTicketTypes() });
   }
 
+  /**
+   * Normalizes serialized rows and guarantees at least one draft price window.
+   * @param {Array<object>} ticketTypes Serialized ticket rows
+   * @returns {void}
+   */
   _applyTicketTypes(ticketTypes) {
     const rows = normalizeTicketTypes({
       currencyCode: this._currencyCode(),
@@ -101,6 +128,10 @@ class TicketTypesEditor extends TicketingEditorBase {
     this._notifyTicketTypesChanged();
   }
 
+  /**
+   * Builds an empty draft price window row.
+   * @returns {object}
+   */
   _createEmptyPriceWindow() {
     return {
       _row_id: this._nextRowId(),
@@ -111,6 +142,10 @@ class TicketTypesEditor extends TicketingEditorBase {
     };
   }
 
+  /**
+   * Builds an empty draft ticket type with one price window.
+   * @returns {object}
+   */
   _createEmptyTicketType() {
     return {
       _row_id: this._nextRowId(),
@@ -123,6 +158,11 @@ class TicketTypesEditor extends TicketingEditorBase {
     };
   }
 
+  /**
+   * Clones a ticket row so modal edits do not mutate the table state directly.
+   * @param {object} row Ticket row to clone
+   * @returns {object}
+   */
   _cloneTicketType(row) {
     return {
       ...row,
@@ -130,14 +170,27 @@ class TicketTypesEditor extends TicketingEditorBase {
     };
   }
 
+  /**
+   * Opens the shared editor modal flow.
+   * @returns {void}
+   */
   _openEditorModal() {
     this._openTicketModal();
   }
 
+  /**
+   * Closes the shared editor modal flow.
+   * @returns {void}
+   */
   _closeEditorModal() {
     this._closeTicketModal();
   }
 
+  /**
+   * Opens the modal for a new or existing ticket type.
+   * @param {number|null} [rowId=null] Existing row id to edit
+   * @returns {void}
+   */
   _openTicketModal(rowId = null) {
     if (this.disabled) {
       return;
@@ -151,6 +204,10 @@ class TicketTypesEditor extends TicketingEditorBase {
     lockBodyScroll();
   }
 
+  /**
+   * Resets modal draft state and restores body scrolling.
+   * @returns {void}
+   */
   _closeTicketModal() {
     if (!this._isModalOpen) {
       return;
@@ -163,6 +220,10 @@ class TicketTypesEditor extends TicketingEditorBase {
     unlockBodyScroll();
   }
 
+  /**
+   * Appends a new empty price window to the draft ticket.
+   * @returns {void}
+   */
   _addDraftPriceWindow() {
     if (this.disabled || !this._draftRow) {
       return;
@@ -174,6 +235,11 @@ class TicketTypesEditor extends TicketingEditorBase {
     };
   }
 
+  /**
+   * Removes a draft price window while keeping one row available.
+   * @param {number} windowRowId Draft window row id
+   * @returns {void}
+   */
   _removeDraftPriceWindow(windowRowId) {
     if (this.disabled || !this._draftRow) {
       return;
@@ -188,6 +254,11 @@ class TicketTypesEditor extends TicketingEditorBase {
     };
   }
 
+  /**
+   * Removes a persisted ticket row from the editor table.
+   * @param {number} rowId Ticket row id
+   * @returns {void}
+   */
   _removeTicketType(rowId) {
     if (this.disabled) {
       return;
@@ -197,6 +268,10 @@ class TicketTypesEditor extends TicketingEditorBase {
     this._notifyTicketTypesChanged();
   }
 
+  /**
+   * Validates and persists the current modal draft into the editor rows.
+   * @returns {void}
+   */
   _saveTicketType() {
     if (!this._draftRow) {
       return;
@@ -232,6 +307,12 @@ class TicketTypesEditor extends TicketingEditorBase {
     this._closeTicketModal();
   }
 
+  /**
+   * Updates a top-level field on the draft ticket row.
+   * @param {string} fieldName Draft field name
+   * @param {*} value Next field value
+   * @returns {void}
+   */
   _updateDraftTicketType(fieldName, value) {
     if (this.disabled || !this._draftRow) {
       return;
@@ -243,6 +324,13 @@ class TicketTypesEditor extends TicketingEditorBase {
     };
   }
 
+  /**
+   * Updates a nested draft price window field by row id.
+   * @param {number} windowRowId Draft window row id
+   * @param {string} fieldName Draft field name
+   * @param {*} value Next field value
+   * @returns {void}
+   */
   _updateDraftPriceWindow(windowRowId, fieldName, value) {
     if (this.disabled || !this._draftRow) {
       return;
@@ -261,10 +349,19 @@ class TicketTypesEditor extends TicketingEditorBase {
     };
   }
 
+  /**
+   * Returns the display title for a ticket row.
+   * @param {object} row Ticket row
+   * @returns {string}
+   */
   _ticketTitle(row) {
     return row.title?.trim() || "Untitled ticket";
   }
 
+  /**
+   * Serializes normalized rows into hidden form fields.
+   * @returns {Array<{name: string, value: string}>}
+   */
   _serializedFields() {
     const fields = serializeTicketTypes({
       currencyCode: this._currencyCode(),
@@ -276,6 +373,10 @@ class TicketTypesEditor extends TicketingEditorBase {
     return [{ name: this.presenceFieldName, value: "true" }, ...fields];
   }
 
+  /**
+   * Renders the ticket type table body rows.
+   * @returns {*}
+   */
   _renderRows() {
     return repeat(
       this._rows,
@@ -334,6 +435,10 @@ class TicketTypesEditor extends TicketingEditorBase {
     );
   }
 
+  /**
+   * Renders the draft price window editor rows inside the modal.
+   * @returns {*}
+   */
   _renderDraftPriceWindows() {
     if (!this._draftRow) {
       return null;
@@ -436,6 +541,10 @@ class TicketTypesEditor extends TicketingEditorBase {
     );
   }
 
+  /**
+   * Renders hidden fields that keep the outer form payload in sync.
+   * @returns {*}
+   */
   _renderHiddenFields() {
     if (this.disabled) {
       return null;

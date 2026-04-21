@@ -47,6 +47,11 @@ class DiscountCodesEditor extends TicketingEditorBase {
     return "add-discount-code-button";
   }
 
+  /**
+   * Replaces serialized discount rows before normalization runs.
+   * @param {Array<object>} discountCodes Serialized discount rows
+   * @returns {void}
+   */
   setDiscountCodes(discountCodes) {
     this.discountCodes = Array.isArray(discountCodes) ? discountCodes : [];
   }
@@ -60,6 +65,11 @@ class DiscountCodesEditor extends TicketingEditorBase {
     this._applyDiscountCodes(discountCodes);
   }
 
+  /**
+   * Normalizes serialized rows into the reactive editor collection.
+   * @param {Array<object>} discountCodes Serialized discount rows
+   * @returns {void}
+   */
   _applyDiscountCodes(discountCodes) {
     this._rows = normalizeDiscountCodes({
       currencyCode: this._currencyCode(),
@@ -69,6 +79,10 @@ class DiscountCodesEditor extends TicketingEditorBase {
     });
   }
 
+  /**
+   * Builds an empty discount code draft row.
+   * @returns {object}
+   */
   _createEmptyDiscountCode() {
     return {
       _row_id: this._nextRowId(),
@@ -88,18 +102,36 @@ class DiscountCodesEditor extends TicketingEditorBase {
     };
   }
 
+  /**
+   * Clones a discount row so modal edits stay isolated.
+   * @param {object} row Discount row to clone
+   * @returns {object}
+   */
   _cloneDiscountCode(row) {
     return { ...row };
   }
 
+  /**
+   * Opens the shared editor modal flow.
+   * @returns {void}
+   */
   _openEditorModal() {
     this._openDiscountModal();
   }
 
+  /**
+   * Closes the shared editor modal flow.
+   * @returns {void}
+   */
   _closeEditorModal() {
     this._closeDiscountModal();
   }
 
+  /**
+   * Opens the modal for a new or existing discount code.
+   * @param {number|null} [rowId=null] Existing row id to edit
+   * @returns {void}
+   */
   _openDiscountModal(rowId = null) {
     if (this.disabled) {
       return;
@@ -113,6 +145,10 @@ class DiscountCodesEditor extends TicketingEditorBase {
     lockBodyScroll();
   }
 
+  /**
+   * Resets modal draft state and restores body scrolling.
+   * @returns {void}
+   */
   _closeDiscountModal() {
     if (!this._isModalOpen) {
       return;
@@ -125,6 +161,11 @@ class DiscountCodesEditor extends TicketingEditorBase {
     unlockBodyScroll();
   }
 
+  /**
+   * Removes a persisted discount row from the editor table.
+   * @param {number} rowId Discount row id
+   * @returns {void}
+   */
   _removeDiscountCode(rowId) {
     if (this.disabled) {
       return;
@@ -133,6 +174,10 @@ class DiscountCodesEditor extends TicketingEditorBase {
     this._rows = this._rows.filter((row) => row._row_id !== rowId);
   }
 
+  /**
+   * Validates and persists the current modal draft into the editor rows.
+   * @returns {void}
+   */
   _saveDiscountCode() {
     if (!this._draftRow) {
       return;
@@ -169,6 +214,12 @@ class DiscountCodesEditor extends TicketingEditorBase {
     this._closeDiscountModal();
   }
 
+  /**
+   * Updates a top-level field on the draft discount row.
+   * @param {string} fieldName Draft field name
+   * @param {*} value Next field value
+   * @returns {void}
+   */
   _updateDraftDiscountCode(fieldName, value) {
     if (this.disabled || !this._draftRow) {
       return;
@@ -183,6 +234,11 @@ class DiscountCodesEditor extends TicketingEditorBase {
     };
   }
 
+  /**
+   * Formats a numeric amount using the active event currency.
+   * @param {number} amount Numeric amount
+   * @returns {string}
+   */
   _formatMoney(amount) {
     try {
       return new Intl.NumberFormat(undefined, {
@@ -194,6 +250,13 @@ class DiscountCodesEditor extends TicketingEditorBase {
     }
   }
 
+  /**
+   * Renders split currency and value labels for compact table display.
+   * @param {string} amountLabel Preformatted amount label
+   * @param {{suffix?: string, strongColorClass?: string}} [options={}]
+   * Render options
+   * @returns {string|*}
+   */
   _renderMoneyLabel(amountLabel, { suffix = "", strongColorClass = "text-stone-600" } = {}) {
     const trimmedAmountLabel = String(amountLabel || "").trim();
     const currencyCode = this._currencyCode();
@@ -215,10 +278,20 @@ class DiscountCodesEditor extends TicketingEditorBase {
     `;
   }
 
+  /**
+   * Returns the display title for a discount row.
+   * @param {object} row Discount row
+   * @returns {string}
+   */
   _discountTitle(row) {
     return row.title?.trim() || "Untitled discount";
   }
 
+  /**
+   * Returns the display value summary for a discount row.
+   * @param {object} row Discount row
+   * @returns {string}
+   */
   _discountValueSummary(row) {
     if (row.kind === "fixed_amount") {
       const amount = Number.parseFloat(row.amount);
@@ -229,16 +302,31 @@ class DiscountCodesEditor extends TicketingEditorBase {
     return Number.isFinite(percentage) ? `${percentage}% off` : "Percentage discount";
   }
 
+  /**
+   * Returns the display redemption limit summary for a discount row.
+   * @param {object} row Discount row
+   * @returns {string}
+   */
   _discountSeatsSummary(row) {
     const totalAvailable = Number.parseInt(row.total_available, 10);
     return Number.isFinite(totalAvailable) ? String(totalAvailable) : "Unlimited";
   }
 
+  /**
+   * Returns the optional remaining-uses label for a discount row.
+   * @param {object} row Discount row
+   * @returns {string}
+   */
   _discountSeatsDetail(row) {
     const available = Number.parseInt(row.available, 10);
     return row.available_override_active && Number.isFinite(available) ? `${available} remaining` : "";
   }
 
+  /**
+   * Formats a schedule boundary for compact availability labels.
+   * @param {string} value Datetime-local string
+   * @returns {string}
+   */
   _formatScheduleDate(value) {
     if (!value) {
       return "";
@@ -260,6 +348,11 @@ class DiscountCodesEditor extends TicketingEditorBase {
     }).format(date);
   }
 
+  /**
+   * Returns the display availability summary for a discount row.
+   * @param {object} row Discount row
+   * @returns {string}
+   */
   _discountAvailabilitySummary(row) {
     const startsAt = this._formatScheduleDate(row.starts_at);
     const endsAt = this._formatScheduleDate(row.ends_at);
@@ -279,6 +372,10 @@ class DiscountCodesEditor extends TicketingEditorBase {
     return "Always available";
   }
 
+  /**
+   * Serializes normalized rows into hidden form fields.
+   * @returns {Array<{name: string, value: string}>}
+   */
   _serializedFields() {
     const fields = serializeDiscountCodes({
       currencyCode: this._currencyCode(),
@@ -290,6 +387,10 @@ class DiscountCodesEditor extends TicketingEditorBase {
     return [{ name: this.presenceFieldName, value: "true" }, ...fields];
   }
 
+  /**
+   * Renders the discount code table body rows.
+   * @returns {*}
+   */
   _renderRows() {
     return repeat(
       this._rows,
@@ -395,6 +496,10 @@ class DiscountCodesEditor extends TicketingEditorBase {
     );
   }
 
+  /**
+   * Renders hidden fields that keep the outer form payload in sync.
+   * @returns {*}
+   */
   _renderHiddenFields() {
     if (this.disabled) {
       return null;
@@ -407,6 +512,10 @@ class DiscountCodesEditor extends TicketingEditorBase {
     );
   }
 
+  /**
+   * Renders the value editor that matches the selected discount kind.
+   * @returns {*}
+   */
   _renderDraftValueField() {
     if (!this._draftRow) {
       return null;
