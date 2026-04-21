@@ -353,6 +353,27 @@ describe("ticketing editors", () => {
     expect(uiRoot.textContent).to.contain("Attribute ticket");
   });
 
+  it("rehydrates ticket rows when the attribute changes after mount", async () => {
+    const uiRoot = mountTicketTypesUi();
+    await uiRoot.updateComplete;
+
+    uiRoot.setAttribute(
+      "ticket-types",
+      JSON.stringify([
+        {
+          active: true,
+          seats_total: 25,
+          title: "Late release ticket",
+          price_windows: [{ amount_minor: 2500, starts_at: "", ends_at: "" }],
+        },
+      ]),
+    );
+    await uiRoot.updateComplete;
+
+    expect(uiRoot.textContent).to.contain("Late release ticket");
+    expect(uiRoot.hasConfiguredTicketTypes()).to.equal(true);
+  });
+
   it("keeps hidden ticket modal fields disabled so parent form validation ignores them", async () => {
     const form = document.createElement("form");
     const uiRoot = mountTicketTypesUi();
@@ -751,5 +772,25 @@ describe("ticketing editors", () => {
     expect(
       discountCodesUiRoot.querySelector('[data-ticketing-role="modal-title"]')?.textContent?.trim(),
     ).to.equal("Add discount code");
+  });
+
+  it("restores body scroll when a ticket editor disconnects with the modal open", async () => {
+    const ticketButton = document.createElement("button");
+    ticketButton.id = "add-ticket-type-button";
+    document.body.append(ticketButton);
+
+    const uiRoot = mountTicketTypesUi();
+    await uiRoot.updateComplete;
+
+    ticketButton.click();
+    await uiRoot.updateComplete;
+
+    expect(document.body.dataset.modalOpenCount).to.equal("1");
+    expect(document.body.style.overflow).to.equal("hidden");
+
+    uiRoot.remove();
+
+    expect(document.body.dataset.modalOpenCount).to.equal("0");
+    expect(document.body.style.overflow).to.equal("");
   });
 });
