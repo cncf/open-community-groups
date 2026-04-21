@@ -53,6 +53,15 @@ class DiscountCodesEditor extends LitWrapper {
   connectedCallback() {
     super.connectedCallback();
     document.addEventListener("keydown", this._boundHandleKeydown);
+    this.configure();
+  }
+
+  willUpdate(changedProperties) {
+    super.willUpdate?.(changedProperties);
+
+    if (changedProperties.has("discountCodes") && this._hasInitializedState) {
+      this._applyDiscountCodes(this._resolveSeedDiscountCodes());
+    }
   }
 
   disconnectedCallback() {
@@ -83,9 +92,9 @@ class DiscountCodesEditor extends LitWrapper {
 
   configure({ addButton = null, currencyInput = null, timezoneInput = null } = {}) {
     this.disabled = this.dataset.disabled === "true";
-    this._setAddButton(addButton);
-    this._setCurrencyInput(currencyInput);
-    this._setTimezoneInput(timezoneInput);
+    this._setAddButton(addButton || this._resolveAddButton());
+    this._setCurrencyInput(currencyInput || this._resolveCurrencyInput());
+    this._setTimezoneInput(timezoneInput || this._resolveTimezoneInput());
 
     if (!this._hasInitializedState) {
       this._applyDiscountCodes(this._resolveSeedDiscountCodes());
@@ -101,6 +110,22 @@ class DiscountCodesEditor extends LitWrapper {
 
   _resolveSeedDiscountCodes() {
     return parseJsonAttribute(this.discountCodes || this.getAttribute("discount-codes"), []);
+  }
+
+  _resolveDocument() {
+    return this.ownerDocument || document;
+  }
+
+  _resolveAddButton() {
+    return this._resolveDocument().getElementById("add-discount-code-button");
+  }
+
+  _resolveCurrencyInput() {
+    return this._resolveDocument().getElementById("payment_currency_code");
+  }
+
+  _resolveTimezoneInput() {
+    return this._resolveDocument().querySelector('[name="timezone"]');
   }
 
   _setAddButton(addButton) {
@@ -846,11 +871,13 @@ export const initializeDiscountCodesController = ({
     return null;
   }
 
-  if (resolvedRoot._discountCodesController) {
-    return resolvedRoot._discountCodesController;
-  }
-
-  if (!(resolvedRoot instanceof DiscountCodesEditor)) {
+  const resolvedEditor =
+    resolvedRoot instanceof DiscountCodesEditor
+      ? resolvedRoot
+      : resolvedRoot instanceof Element
+        ? resolvedRoot.querySelector("discount-codes-editor")
+        : null;
+  if (!(resolvedEditor instanceof DiscountCodesEditor)) {
     return null;
   }
 
@@ -860,11 +887,10 @@ export const initializeDiscountCodesController = ({
   const resolvedTimezoneInput =
     timezoneInput || (timezoneSelector ? document.querySelector(timezoneSelector) : null);
 
-  resolvedRoot._discountCodesController = resolvedRoot;
-  resolvedRoot.configure({
+  resolvedEditor.configure({
     addButton: resolvedAddButton,
     currencyInput: resolvedCurrencyInput,
     timezoneInput: resolvedTimezoneInput,
   });
-  return resolvedRoot;
+  return resolvedEditor;
 };

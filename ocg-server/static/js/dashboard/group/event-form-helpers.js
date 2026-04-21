@@ -5,8 +5,6 @@ import {
   toTrimmedString,
 } from "/static/js/common/utils.js";
 import { confirmAction } from "/static/js/common/alerts.js";
-import { initializeDiscountCodesController } from "/static/js/dashboard/event/ticketing/discount-codes-editor.js";
-import { initializeTicketTypesController } from "/static/js/dashboard/event/ticketing/ticket-types-editor.js";
 
 /**
  * Adds the copy suffix to a given event name.
@@ -177,12 +175,7 @@ const setTicketTypes = (ticketTypes) => {
     return;
   }
 
-  const controller =
-    root._ticketTypesController ||
-    initializeTicketTypesController({
-      root,
-    });
-  controller?.setTicketTypes(clearCopiedTicketTypeDates(ticketTypes));
+  root.setTicketTypes?.(clearCopiedTicketTypeDates(ticketTypes));
 };
 
 /**
@@ -195,12 +188,7 @@ const setDiscountCodes = (discountCodes) => {
     return;
   }
 
-  const controller =
-    root._discountCodesController ||
-    initializeDiscountCodesController({
-      root,
-    });
-  controller?.setDiscountCodes(clearCopiedDiscountCodeDates(discountCodes));
+  root.setDiscountCodes?.(clearCopiedDiscountCodeDates(discountCodes));
 };
 
 /**

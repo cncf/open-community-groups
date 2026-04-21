@@ -50,6 +50,15 @@ class TicketTypesEditor extends LitWrapper {
   connectedCallback() {
     super.connectedCallback();
     document.addEventListener("keydown", this._boundHandleKeydown);
+    this.configure();
+  }
+
+  willUpdate(changedProperties) {
+    super.willUpdate?.(changedProperties);
+
+    if (changedProperties.has("ticketTypes") && this._hasInitializedState) {
+      this._applyTicketTypes(this._resolveSeedTicketTypes());
+    }
   }
 
   disconnectedCallback() {
@@ -80,9 +89,9 @@ class TicketTypesEditor extends LitWrapper {
 
   configure({ addButton = null, currencyInput = null, timezoneInput = null } = {}) {
     this.disabled = this.dataset.disabled === "true";
-    this._setAddButton(addButton);
-    this._setCurrencyInput(currencyInput);
-    this._setTimezoneInput(timezoneInput);
+    this._setAddButton(addButton || this._resolveAddButton());
+    this._setCurrencyInput(currencyInput || this._resolveCurrencyInput());
+    this._setTimezoneInput(timezoneInput || this._resolveTimezoneInput());
 
     if (!this._hasInitializedState) {
       this._applyTicketTypes(this._resolveSeedTicketTypes());
@@ -113,6 +122,22 @@ class TicketTypesEditor extends LitWrapper {
 
   _resolveSeedTicketTypes() {
     return parseJsonAttribute(this.ticketTypes || this.getAttribute("ticket-types"), []);
+  }
+
+  _resolveDocument() {
+    return this.ownerDocument || document;
+  }
+
+  _resolveAddButton() {
+    return this._resolveDocument().getElementById("add-ticket-type-button");
+  }
+
+  _resolveCurrencyInput() {
+    return this._resolveDocument().getElementById("payment_currency_code");
+  }
+
+  _resolveTimezoneInput() {
+    return this._resolveDocument().querySelector('[name="timezone"]');
   }
 
   _setAddButton(addButton) {
@@ -765,6 +790,19 @@ if (!customElements.get("ticket-types-editor")) {
   customElements.define("ticket-types-editor", TicketTypesEditor);
 }
 
+const resolveTicketTypesEditor = (root) => {
+  if (root instanceof TicketTypesEditor) {
+    return root;
+  }
+
+  if (!(root instanceof Element)) {
+    return null;
+  }
+
+  const editor = root.querySelector("ticket-types-editor");
+  return editor instanceof TicketTypesEditor ? editor : null;
+};
+
 export const initializeTicketTypesController = ({
   addButton = null,
   addButtonId = "",
@@ -780,11 +818,8 @@ export const initializeTicketTypesController = ({
     return null;
   }
 
-  if (resolvedRoot._ticketTypesController) {
-    return resolvedRoot._ticketTypesController;
-  }
-
-  if (!(resolvedRoot instanceof TicketTypesEditor)) {
+  const resolvedEditor = resolveTicketTypesEditor(resolvedRoot);
+  if (!resolvedEditor) {
     return null;
   }
 
@@ -794,11 +829,10 @@ export const initializeTicketTypesController = ({
   const resolvedTimezoneInput =
     timezoneInput || (timezoneSelector ? document.querySelector(timezoneSelector) : null);
 
-  resolvedRoot._ticketTypesController = resolvedRoot;
-  resolvedRoot.configure({
+  resolvedEditor.configure({
     addButton: resolvedAddButton,
     currencyInput: resolvedCurrencyInput,
     timezoneInput: resolvedTimezoneInput,
   });
-  return resolvedRoot;
+  return resolvedEditor;
 };

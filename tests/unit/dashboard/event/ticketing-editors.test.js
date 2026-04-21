@@ -33,6 +33,34 @@ const mountDiscountCodesUi = () => {
   return wrapper;
 };
 
+const mountTicketTypesContainer = () => {
+  const root = document.createElement("div");
+  root.id = "ticket-types-ui";
+
+  const editor = document.createElement("ticket-types-editor");
+  editor.setAttribute("ticket-types", "[]");
+  editor.dataset.disabled = "false";
+
+  root.append(editor);
+  document.body.append(root);
+
+  return { editor, root };
+};
+
+const mountDiscountCodesContainer = () => {
+  const root = document.createElement("div");
+  root.id = "discount-codes-ui";
+
+  const editor = document.createElement("discount-codes-editor");
+  editor.setAttribute("discount-codes", "[]");
+  editor.dataset.disabled = "false";
+
+  root.append(editor);
+  document.body.append(root);
+
+  return { editor, root };
+};
+
 describe("ticketing editors", () => {
   beforeEach(() => {
     resetDom();
@@ -74,7 +102,6 @@ describe("ticketing editors", () => {
       ]),
     );
 
-    const controller = initializeTicketTypesController({ addButtonId: "", rootId: "ticket-types-ui" });
     await uiRoot.updateComplete;
 
     expect(uiRoot.textContent).to.contain("General admission");
@@ -84,7 +111,7 @@ describe("ticketing editors", () => {
     expect(
       uiRoot.querySelector('input[name="ticket_types[0][price_windows][0][amount_minor]"]')?.value,
     ).to.equal("3000");
-    expect(controller.hasConfiguredTicketTypes()).to.equal(true);
+    expect(uiRoot.hasConfiguredTicketTypes()).to.equal(true);
   });
 
   it("keeps seats and status in dedicated table cells on small layouts", async () => {
@@ -107,7 +134,6 @@ describe("ticketing editors", () => {
       ]),
     );
 
-    initializeTicketTypesController({ addButtonId: "", rootId: "ticket-types-ui" });
     await uiRoot.updateComplete;
 
     const rowCells = uiRoot.querySelectorAll('[data-ticketing-role="table-body"] tr td');
@@ -122,12 +148,11 @@ describe("ticketing editors", () => {
 
   it("adds ticket types through the modal and emits ticket-types-changed", async () => {
     const uiRoot = mountTicketTypesUi();
-    const controller = initializeTicketTypesController({ addButtonId: "", rootId: "ticket-types-ui" });
     await uiRoot.updateComplete;
     const events = [];
     uiRoot.addEventListener("ticket-types-changed", (event) => events.push(event.detail));
 
-    controller._openTicketModal();
+    uiRoot._openTicketModal();
     await uiRoot.updateComplete;
 
     expect(uiRoot.querySelector('label[for="ticket-title-draft"]')?.textContent).to.contain("*");
@@ -166,12 +191,7 @@ describe("ticketing editors", () => {
     document.body.append(timezoneInput);
 
     const uiRoot = mountTicketTypesUi();
-    initializeTicketTypesController({
-      addButton,
-      currencyInput,
-      root: uiRoot,
-      timezoneInput,
-    });
+    uiRoot.configure({ addButton, currencyInput, timezoneInput });
     await uiRoot.updateComplete;
 
     addButton.click();
@@ -201,12 +221,94 @@ describe("ticketing editors", () => {
     expect(uiRoot.textContent).to.contain("Price (JPY)");
   });
 
-  it("keeps free ticket prices as amount_minor 0 in hidden fields", async () => {
-    const uiRoot = mountTicketTypesUi();
+  it("initializes ticket types from a generic container root", async () => {
+    const { editor, root } = mountTicketTypesContainer();
+    editor.setAttribute(
+      "ticket-types",
+      JSON.stringify([
+        {
+          active: true,
+          seats_total: 25,
+          title: "Container ticket",
+          price_windows: [{ amount_minor: 2500, starts_at: "", ends_at: "" }],
+        },
+      ]),
+    );
+
     const controller = initializeTicketTypesController({ addButtonId: "", rootId: "ticket-types-ui" });
+    await editor.updateComplete;
+
+    expect(controller).to.equal(editor);
+    expect(editor.textContent).to.contain("Container ticket");
+  });
+
+  it("reconfigures ticket type dependencies on repeated initialization", async () => {
+    const initialAddButton = document.createElement("button");
+    document.body.append(initialAddButton);
+
+    const reconfiguredAddButton = document.createElement("button");
+    document.body.append(reconfiguredAddButton);
+
+    const currencyInput = document.createElement("input");
+    currencyInput.value = "EUR";
+    document.body.append(currencyInput);
+
+    const timezoneInput = document.createElement("input");
+    timezoneInput.value = "America/New_York";
+    document.body.append(timezoneInput);
+
+    const uiRoot = mountTicketTypesUi();
+    const controller = initializeTicketTypesController({
+      addButton: initialAddButton,
+      root: uiRoot,
+    });
     await uiRoot.updateComplete;
 
-    controller._openTicketModal();
+    const repeatedController = initializeTicketTypesController({
+      addButton: reconfiguredAddButton,
+      currencyInput,
+      root: uiRoot,
+      timezoneInput,
+    });
+    await uiRoot.updateComplete;
+
+    expect(repeatedController).to.equal(controller);
+
+    initialAddButton.click();
+    await uiRoot.updateComplete;
+    expect(uiRoot.querySelector('[data-ticketing-role="ticket-modal"]')?.className).to.contain("hidden");
+
+    reconfiguredAddButton.click();
+    await uiRoot.updateComplete;
+    expect(uiRoot.textContent).to.contain("Price (EUR)");
+
+    await setInputValue(uiRoot, "#ticket-title-draft", "Reconfigured ticket");
+    await setInputValue(uiRoot, "#ticket-seats-draft", "20");
+    await setInputValue(uiRoot, "#ticket-price-1", "15.00");
+    await setInputValue(uiRoot, "#ticket-starts-1", "2026-04-10T10:00");
+
+    uiRoot.querySelector('[data-ticketing-action="save-ticket"]')?.click();
+    await uiRoot.updateComplete;
+
+    expect(
+      uiRoot.querySelector('input[name="ticket_types[0][price_windows][0][starts_at]"]')?.value,
+    ).to.equal("2026-04-10T14:00:00.000Z");
+
+    currencyInput.value = "JPY";
+    currencyInput.dispatchEvent(new Event("input", { bubbles: true, composed: true }));
+    await uiRoot.updateComplete;
+
+    uiRoot.querySelector('[data-ticketing-action="edit-ticket"]')?.click();
+    await uiRoot.updateComplete;
+
+    expect(uiRoot.textContent).to.contain("Price (JPY)");
+  });
+
+  it("keeps free ticket prices as amount_minor 0 in hidden fields", async () => {
+    const uiRoot = mountTicketTypesUi();
+    await uiRoot.updateComplete;
+
+    uiRoot._openTicketModal();
     await uiRoot.updateComplete;
 
     await setInputValue(uiRoot, "#ticket-title-draft", "Free entry");
@@ -247,7 +349,6 @@ describe("ticketing editors", () => {
       ]),
     );
 
-    initializeTicketTypesController({ addButtonId: "", rootId: "ticket-types-ui" });
     await uiRoot.updateComplete;
 
     expect(uiRoot.textContent).to.contain("Early bird");
@@ -276,7 +377,6 @@ describe("ticketing editors", () => {
       ]),
     );
 
-    initializeTicketTypesController({ addButtonId: "", rootId: "ticket-types-ui" });
     await uiRoot.updateComplete;
 
     expect(uiRoot.textContent).to.contain("General admission");
@@ -303,7 +403,6 @@ describe("ticketing editors", () => {
       ]),
     );
 
-    initializeTicketTypesController({ addButtonId: "", rootId: "ticket-types-ui" });
     await uiRoot.updateComplete;
 
     expect(uiRoot.textContent).to.contain("Attribute ticket");
@@ -315,7 +414,6 @@ describe("ticketing editors", () => {
     form.append(uiRoot);
     document.body.append(form);
 
-    initializeTicketTypesController({ addButtonId: "", rootId: "ticket-types-ui" });
     await uiRoot.updateComplete;
 
     expect(form.checkValidity()).to.equal(true);
@@ -331,7 +429,7 @@ describe("ticketing editors", () => {
     initializeTicketingWaitlistState();
     await uiRoot.updateComplete;
 
-    uiRoot._ticketTypesController._openTicketModal();
+    uiRoot._openTicketModal();
     await uiRoot.updateComplete;
 
     await setInputValue(uiRoot, "#ticket-title-draft", "Paid ticket");
@@ -368,14 +466,13 @@ describe("ticketing editors", () => {
       ]),
     );
 
-    const controller = initializeDiscountCodesController({ addButtonId: "", rootId: "discount-codes-ui" });
     await uiRoot.updateComplete;
 
     expect(uiRoot.textContent).to.contain("Early supporter");
     expect(uiRoot.textContent).to.contain("EARLY20");
     expect(uiRoot.querySelector('input[name="discount_codes[0][percentage]"]')?.value).to.equal("20");
 
-    controller._openDiscountModal(controller._rows[0]._row_id);
+    uiRoot._openDiscountModal(uiRoot._rows[0]._row_id);
     await uiRoot.updateComplete;
 
     await setInputValue(uiRoot, "#discount-title-draft", "Member perk");
@@ -410,10 +507,9 @@ describe("ticketing editors", () => {
       ]),
     );
 
-    const controller = initializeDiscountCodesController({ addButtonId: "", rootId: "discount-codes-ui" });
     await uiRoot.updateComplete;
 
-    controller._openDiscountModal(controller._rows[0]._row_id);
+    uiRoot._openDiscountModal(uiRoot._rows[0]._row_id);
     await uiRoot.updateComplete;
 
     await setInputValue(uiRoot, "#discount-available-draft", "");
@@ -429,10 +525,9 @@ describe("ticketing editors", () => {
 
   it("adds and removes discount codes from the compact card list", async () => {
     const uiRoot = mountDiscountCodesUi();
-    const controller = initializeDiscountCodesController({ addButtonId: "", rootId: "discount-codes-ui" });
     await uiRoot.updateComplete;
 
-    controller._openDiscountModal();
+    uiRoot._openDiscountModal();
     await uiRoot.updateComplete;
 
     await setInputValue(uiRoot, "#discount-title-draft", "Sponsor invite");
@@ -450,7 +545,7 @@ describe("ticketing editors", () => {
     expect(uiRoot.textContent).to.contain("Sponsor invite");
     expect(uiRoot.querySelector('input[name="discount_codes[0][amount_minor]"]')?.value).to.equal("500");
 
-    controller._removeDiscountCode(controller._rows[0]._row_id);
+    uiRoot._removeDiscountCode(uiRoot._rows[0]._row_id);
     await uiRoot.updateComplete;
 
     expect(uiRoot.textContent).to.contain("No discount codes yet.");
@@ -472,12 +567,7 @@ describe("ticketing editors", () => {
     document.body.append(timezoneInput);
 
     const uiRoot = mountDiscountCodesUi();
-    initializeDiscountCodesController({
-      addButton,
-      currencyInput,
-      root: uiRoot,
-      timezoneInput,
-    });
+    uiRoot.configure({ addButton, currencyInput, timezoneInput });
     await uiRoot.updateComplete;
 
     addButton.click();
@@ -508,12 +598,89 @@ describe("ticketing editors", () => {
     expect(uiRoot.querySelector('label[for="discount-percentage-draft"]')?.textContent).to.contain("*");
   });
 
-  it("rejects zero fixed discount amounts in the editor", async () => {
+  it("initializes discount codes from a generic container root", async () => {
+    const { editor, root } = mountDiscountCodesContainer();
+    editor.setAttribute(
+      "discount-codes",
+      JSON.stringify([
+        {
+          active: true,
+          code: "CONTAINER20",
+          kind: "percentage",
+          percentage: 20,
+          title: "Container code",
+        },
+      ]),
+    );
+
+    const controller = initializeDiscountCodesController({
+      addButtonId: "",
+      rootId: "discount-codes-ui",
+    });
+    await editor.updateComplete;
+
+    expect(controller).to.equal(editor);
+    expect(editor.textContent).to.contain("Container code");
+  });
+
+  it("reconfigures discount dependencies on repeated initialization", async () => {
+    const initialAddButton = document.createElement("button");
+    document.body.append(initialAddButton);
+
+    const reconfiguredAddButton = document.createElement("button");
+    document.body.append(reconfiguredAddButton);
+
+    const currencyInput = document.createElement("input");
+    currencyInput.value = "EUR";
+    document.body.append(currencyInput);
+
+    const timezoneInput = document.createElement("input");
+    timezoneInput.value = "UTC";
+    document.body.append(timezoneInput);
+
     const uiRoot = mountDiscountCodesUi();
-    const controller = initializeDiscountCodesController({ addButtonId: "", rootId: "discount-codes-ui" });
+    const controller = initializeDiscountCodesController({
+      addButton: initialAddButton,
+      root: uiRoot,
+    });
     await uiRoot.updateComplete;
 
-    controller._openDiscountModal();
+    const repeatedController = initializeDiscountCodesController({
+      addButton: reconfiguredAddButton,
+      currencyInput,
+      root: uiRoot,
+      timezoneInput,
+    });
+    await uiRoot.updateComplete;
+
+    expect(repeatedController).to.equal(controller);
+
+    initialAddButton.click();
+    await uiRoot.updateComplete;
+    expect(uiRoot.querySelector('[data-ticketing-role="discount-modal"]')?.className).to.contain("hidden");
+
+    reconfiguredAddButton.click();
+    await uiRoot.updateComplete;
+    uiRoot.querySelector("#discount-kind-draft").value = "fixed_amount";
+    uiRoot
+      .querySelector("#discount-kind-draft")
+      .dispatchEvent(new Event("change", { bubbles: true, composed: true }));
+    await uiRoot.updateComplete;
+
+    expect(uiRoot.textContent).to.contain("Amount (EUR)");
+
+    currencyInput.value = "GBP";
+    currencyInput.dispatchEvent(new Event("input", { bubbles: true, composed: true }));
+    await uiRoot.updateComplete;
+
+    expect(uiRoot.textContent).to.contain("Amount (GBP)");
+  });
+
+  it("rejects zero fixed discount amounts in the editor", async () => {
+    const uiRoot = mountDiscountCodesUi();
+    await uiRoot.updateComplete;
+
+    uiRoot._openDiscountModal();
     await uiRoot.updateComplete;
 
     await setInputValue(uiRoot, "#discount-title-draft", "Free comp");
@@ -548,7 +715,6 @@ describe("ticketing editors", () => {
       ]),
     );
 
-    initializeDiscountCodesController({ addButtonId: "", rootId: "discount-codes-ui" });
     await uiRoot.updateComplete;
 
     expect(uiRoot.textContent).to.contain("Early supporter");
@@ -576,7 +742,6 @@ describe("ticketing editors", () => {
       ]),
     );
 
-    initializeDiscountCodesController({ addButtonId: "", rootId: "discount-codes-ui" });
     await uiRoot.updateComplete;
 
     expect(uiRoot.textContent).to.contain("Attribute code");
@@ -588,7 +753,6 @@ describe("ticketing editors", () => {
     form.append(uiRoot);
     document.body.append(form);
 
-    initializeDiscountCodesController({ addButtonId: "", rootId: "discount-codes-ui" });
     await uiRoot.updateComplete;
 
     expect(form.checkValidity()).to.equal(true);
@@ -613,7 +777,6 @@ describe("ticketing editors", () => {
       ]),
     );
 
-    initializeDiscountCodesController({ addButtonId: "", rootId: "discount-codes-ui" });
     await uiRoot.updateComplete;
 
     expect(uiRoot.textContent).to.contain("12 remaining");
@@ -626,26 +789,53 @@ describe("ticketing editors", () => {
     expect(uiRoot.textContent).to.contain("12 remaining");
   });
 
-  it("destroys ticketing controllers when HTMX cleans up the fragment", () => {
+  it("self-bootstraps ticketing editors from page controls after reconnecting", async () => {
+    const ticketButton = document.createElement("button");
+    ticketButton.id = "add-ticket-type-button";
+    document.body.append(ticketButton);
+
+    const discountButton = document.createElement("button");
+    discountButton.id = "add-discount-code-button";
+    document.body.append(discountButton);
+
     const ticketTypesUiRoot = mountTicketTypesUi();
     const discountCodesUiRoot = mountDiscountCodesUi();
-    const fragment = document.createElement("div");
+    await ticketTypesUiRoot.updateComplete;
+    await discountCodesUiRoot.updateComplete;
 
+    ticketButton.click();
+    discountButton.click();
+    await ticketTypesUiRoot.updateComplete;
+    await discountCodesUiRoot.updateComplete;
+
+    expect(ticketTypesUiRoot.querySelector('[data-ticketing-role="modal-title"]')?.textContent?.trim()).to.equal(
+      "Add ticket type",
+    );
+    expect(
+      discountCodesUiRoot.querySelector('[data-ticketing-role="modal-title"]')?.textContent?.trim(),
+    ).to.equal("Add discount code");
+
+    ticketTypesUiRoot._closeTicketModal();
+    discountCodesUiRoot._closeDiscountModal();
+    await ticketTypesUiRoot.updateComplete;
+    await discountCodesUiRoot.updateComplete;
+
+    const fragment = document.createElement("div");
     fragment.append(ticketTypesUiRoot, discountCodesUiRoot);
     document.body.append(fragment);
+    await ticketTypesUiRoot.updateComplete;
+    await discountCodesUiRoot.updateComplete;
 
-    initializeTicketingWaitlistState();
+    ticketButton.click();
+    discountButton.click();
+    await ticketTypesUiRoot.updateComplete;
+    await discountCodesUiRoot.updateComplete;
 
-    discountCodesUiRoot._discountCodesController._openDiscountModal();
-
-    expect(document.body.dataset.modalOpenCount).to.equal("1");
-    expect(ticketTypesUiRoot._ticketTypesController).to.exist;
-    expect(discountCodesUiRoot._discountCodesController).to.exist;
-
-    fragment.dispatchEvent(new CustomEvent("htmx:beforeCleanupElement", { bubbles: true }));
-
-    expect(document.body.dataset.modalOpenCount).to.equal("0");
-    expect(ticketTypesUiRoot._ticketTypesController).to.equal(undefined);
-    expect(discountCodesUiRoot._discountCodesController).to.equal(undefined);
+    expect(ticketTypesUiRoot.querySelector('[data-ticketing-role="modal-title"]')?.textContent?.trim()).to.equal(
+      "Add ticket type",
+    );
+    expect(
+      discountCodesUiRoot.querySelector('[data-ticketing-role="modal-title"]')?.textContent?.trim(),
+    ).to.equal("Add discount code");
   });
 });

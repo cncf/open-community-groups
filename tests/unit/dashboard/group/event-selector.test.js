@@ -1,5 +1,7 @@
 import { expect } from "@open-wc/testing";
 
+import "/static/js/dashboard/event/ticketing/ticket-types-editor.js";
+import "/static/js/dashboard/event/ticketing/discount-codes-editor.js";
 import "/static/js/dashboard/group/event-selector.js";
 import { resetDom, mockScrollTo } from "/tests/unit/test-utils/dom.js";
 import { mountLitComponent, useMountedElementsCleanup } from "/tests/unit/test-utils/lit.js";
@@ -176,8 +178,8 @@ describe("event-selector", () => {
       <input id="venue_zip_code" />
       <input id="meeting_join_url" value="filled" />
       <input id="meeting_recording_url" value="filled" />
-      <div id="ticket-types-ui"></div>
-      <div id="discount-codes-ui"></div>
+      <ticket-types-editor id="ticket-types-ui" ticket-types="[]" data-disabled="false"></ticket-types-editor>
+      <discount-codes-editor id="discount-codes-ui" discount-codes="[]" data-disabled="false"></discount-codes-editor>
       <gallery-field field-name="photos_urls"></gallery-field>
       <multiple-inputs field-name="tags"></multiple-inputs>
       <user-search-selector field-name="hosts"></user-search-selector>
@@ -207,21 +209,8 @@ describe("event-selector", () => {
     const sessionsSection = document.querySelector("sessions-section");
     sessionsSection.requestUpdate = () => {};
 
-    const ticketTypesCalls = [];
-    const ticketTypesRoot = document.getElementById("ticket-types-ui");
-    ticketTypesRoot._ticketTypesController = {
-      setTicketTypes(ticketTypes) {
-        ticketTypesCalls.push(ticketTypes);
-      },
-    };
-
-    const discountCodesCalls = [];
-    const discountCodesRoot = document.getElementById("discount-codes-ui");
-    discountCodesRoot._discountCodesController = {
-      setDiscountCodes(discountCodes) {
-        discountCodesCalls.push(discountCodes);
-      },
-    };
+    const ticketTypesEditor = document.getElementById("ticket-types-ui");
+    const discountCodesEditor = document.getElementById("discount-codes-ui");
 
     const timezoneSelector = document.querySelector("timezone-selector[name='timezone']");
     timezoneSelector.dispatchEvent = () => true;
@@ -282,6 +271,9 @@ describe("event-selector", () => {
       sponsors: [{ name: "ACME", level: 2 }],
     });
 
+    await ticketTypesEditor.updateComplete;
+    await discountCodesEditor.updateComplete;
+
     expect(document.getElementById("name")?.value).to.equal("Cloud Native Málaga (copy)");
     expect(document.getElementById("category_id")?.value).to.equal("10");
     expect(document.getElementById("kind_id")?.value).to.equal("workshop");
@@ -297,32 +289,20 @@ describe("event-selector", () => {
     expect(document.getElementById("venue_city")?.value).to.equal("Málaga");
     expect(document.getElementById("meeting_join_url")?.value).to.equal("");
     expect(document.getElementById("meeting_recording_url")?.value).to.equal("");
-    expect(ticketTypesCalls).to.deep.equal([
-      [
-        {
-          title: "General admission",
-          price_windows: [
-            {
-              amount_minor: 2500,
-              starts_at: "",
-              ends_at: "",
-            },
-          ],
-        },
-      ],
-    ]);
-    expect(discountCodesCalls).to.deep.equal([
-      [
-        {
-          code: "EARLY20",
-          ends_at: "",
-          kind: "percentage",
-          percentage: 20,
-          starts_at: "",
-          title: "Early supporter",
-        },
-      ],
-    ]);
+    expect(ticketTypesEditor.querySelector('input[name="ticket_types[0][title]"]')?.value).to.equal(
+      "General admission",
+    );
+    expect(ticketTypesEditor.querySelector('input[name="ticket_types[0][price_windows][0][starts_at]"]')).to.equal(
+      null,
+    );
+    expect(ticketTypesEditor.querySelector('input[name="ticket_types[0][price_windows][0][ends_at]"]')).to.equal(
+      null,
+    );
+    expect(discountCodesEditor.querySelector('input[name="discount_codes[0][code]"]')?.value).to.equal(
+      "EARLY20",
+    );
+    expect(discountCodesEditor.querySelector('input[name="discount_codes[0][starts_at]"]')).to.equal(null);
+    expect(discountCodesEditor.querySelector('input[name="discount_codes[0][ends_at]"]')).to.equal(null);
     expect(gallery.images).to.deep.equal(["one.png", "two.png"]);
     expect(tags.items).to.deep.equal([
       { id: 0, value: "cloud" },

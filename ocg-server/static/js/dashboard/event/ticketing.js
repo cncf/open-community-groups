@@ -1,19 +1,3 @@
-import { initializeDiscountCodesController } from "/static/js/dashboard/event/ticketing/discount-codes-editor.js";
-import { initializeTicketTypesController } from "/static/js/dashboard/event/ticketing/ticket-types-editor.js";
-
-const ticketingControllerConfigs = [
-  {
-    controllerKey: "_discountCodesController",
-    rootId: "discount-codes-ui",
-  },
-  {
-    controllerKey: "_ticketTypesController",
-    rootId: "ticket-types-ui",
-  },
-];
-
-let hasBoundTicketingCleanup = false;
-
 /**
  * Resolves a control by id from either a document or an element subtree.
  * @param {Document|Element} root Root container
@@ -58,78 +42,6 @@ const resolveTicketingControls = (root = document) => ({
 });
 
 /**
- * Destroys ticketing editor controllers inside a fragment before HTMX removes it.
- * @param {Element|EventTarget|null} container Fragment root
- * @returns {void}
- */
-const destroyTicketingControllersWithin = (container) => {
-  if (!(container instanceof Element)) {
-    return;
-  }
-
-  ticketingControllerConfigs.forEach(({ controllerKey, rootId }) => {
-    const root = container.id === rootId ? container : container.querySelector(`#${rootId}`);
-    const controller = root?.[controllerKey];
-
-    if (typeof controller?.destroy === "function") {
-      controller.destroy();
-    }
-
-    if (root && controllerKey in root) {
-      delete root[controllerKey];
-    }
-  });
-};
-
-/**
- * Binds a single HTMX cleanup listener for ticketing editor fragments.
- * @returns {void}
- */
-const bindTicketingCleanup = () => {
-  if (hasBoundTicketingCleanup || !document.body) {
-    return;
-  }
-
-  document.body.addEventListener("htmx:beforeCleanupElement", (event) => {
-    destroyTicketingControllersWithin(event.target);
-  });
-  hasBoundTicketingCleanup = true;
-};
-
-/**
- * Initializes the ticket type and discount code editors for a form fragment.
- * @param {Document|Element} [root=document] Root container
- * @returns {{
- *   discountCodesController: *,
- *   ticketTypesController: *
- * }}
- */
-export function initializeTicketingControllers(root = document) {
-  bindTicketingCleanup();
-
-  const { discountCodesRoot, paymentCurrencyInput, ticketTypesRoot, timezoneInput } =
-    resolveTicketingControls(root);
-
-  const discountCodesController = initializeDiscountCodesController({
-    addButton: queryControlById(root, "add-discount-code-button"),
-    currencyInput: paymentCurrencyInput,
-    root: discountCodesRoot,
-    timezoneInput,
-  });
-  const ticketTypesController = initializeTicketTypesController({
-    addButton: queryControlById(root, "add-ticket-type-button"),
-    currencyInput: paymentCurrencyInput,
-    root: ticketTypesRoot,
-    timezoneInput,
-  });
-
-  return {
-    discountCodesController,
-    ticketTypesController,
-  };
-}
-
-/**
  * Synchronizes capacity, waitlist, and currency validation with ticket types.
  * @param {Document|Element} [root=document] Root container
  * @returns {void}
@@ -145,7 +57,7 @@ export function initializeTicketingWaitlistState(root = document) {
     waitlistEnabledInput,
     waitlistToggleLabel,
   } = resolveTicketingControls(root);
-  const { ticketTypesController } = initializeTicketingControllers(root);
+  const ticketTypesEditor = ticketTypesRoot;
 
   const syncPaymentCurrencyValidity = (hasTicketTypes) => {
     if (!paymentCurrencyInput) {
@@ -164,8 +76,8 @@ export function initializeTicketingWaitlistState(root = document) {
   const syncWaitlistToggleState = () => {
     const clearingTicketing = toggleClearTicketing?.checked === true;
     const hasTicketTypes =
-      typeof ticketTypesController?.hasConfiguredTicketTypes === "function"
-        ? ticketTypesController.hasConfiguredTicketTypes() && !clearingTicketing
+      typeof ticketTypesEditor?.hasConfiguredTicketTypes === "function"
+        ? ticketTypesEditor.hasConfiguredTicketTypes() && !clearingTicketing
         : false;
     syncPaymentCurrencyValidity(hasTicketTypes);
 
@@ -174,8 +86,8 @@ export function initializeTicketingWaitlistState(root = document) {
     }
 
     const configuredSeatTotal =
-      typeof ticketTypesController?.getConfiguredSeatTotal === "function"
-        ? ticketTypesController.getConfiguredSeatTotal()
+      typeof ticketTypesEditor?.getConfiguredSeatTotal === "function"
+        ? ticketTypesEditor.getConfiguredSeatTotal()
         : null;
 
     if (hasTicketTypes) {
