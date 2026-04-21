@@ -21,6 +21,11 @@ import {
 } from "/static/js/dashboard/group/meeting-validations.js";
 import { initializeSectionTabs } from "/static/js/dashboard/group/page-form-state.js";
 
+/**
+ * Initializes the event add page behavior for the active form fragment.
+ * @param {Document|Element} [root=document] Root page container
+ * @returns {void}
+ */
 export const initializeEventAddPage = (root = document) => {
   const pageContext = initializeEventPageContext(root, "add");
   if (!pageContext) {

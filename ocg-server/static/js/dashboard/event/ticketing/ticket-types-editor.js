@@ -47,12 +47,20 @@ class TicketTypesEditor extends LitWrapper {
     this._boundHandleKeydown = this._handleKeydown.bind(this);
   }
 
+  /**
+   * Binds keyboard handling and shared form dependencies on connect.
+   */
   connectedCallback() {
     super.connectedCallback();
     document.addEventListener("keydown", this._boundHandleKeydown);
     this.configure();
   }
 
+  /**
+   * Rehydrates rows when the serialized ticket type attribute changes after mount.
+   * @param {Map<string, *>} changedProperties Changed reactive properties
+   * @returns {void}
+   */
   willUpdate(changedProperties) {
     super.willUpdate?.(changedProperties);
 
@@ -61,6 +69,9 @@ class TicketTypesEditor extends LitWrapper {
     }
   }
 
+  /**
+   * Removes shared listeners and restores body scrolling when detached.
+   */
   disconnectedCallback() {
     document.removeEventListener("keydown", this._boundHandleKeydown);
     this._setAddButton(null);
@@ -87,6 +98,15 @@ class TicketTypesEditor extends LitWrapper {
     delete this._ticketTypesController;
   }
 
+  /**
+   * Resolves shared controls and synchronizes the editor with current form state.
+   * @param {{
+   *   addButton?: HTMLElement|null,
+   *   currencyInput?: HTMLInputElement|HTMLSelectElement|null,
+   *   timezoneInput?: HTMLInputElement|HTMLElement|null
+   * }} [options={}] Explicit dependency overrides
+   * @returns {void}
+   */
   configure({ addButton = null, currencyInput = null, timezoneInput = null } = {}) {
     this.disabled = this.dataset.disabled === "true";
     this._setAddButton(addButton || this._resolveAddButton());
@@ -124,18 +144,34 @@ class TicketTypesEditor extends LitWrapper {
     return parseJsonAttribute(this.ticketTypes || this.getAttribute("ticket-types"), []);
   }
 
+  /**
+   * Resolves the document that owns the editor.
+   * @returns {Document}
+   */
   _resolveDocument() {
     return this.ownerDocument || document;
   }
 
+  /**
+   * Finds the shared add-ticket button for the current page.
+   * @returns {HTMLElement|null}
+   */
   _resolveAddButton() {
     return this._resolveDocument().getElementById("add-ticket-type-button");
   }
 
+  /**
+   * Finds the event currency input for the current page.
+   * @returns {HTMLInputElement|HTMLSelectElement|null}
+   */
   _resolveCurrencyInput() {
     return this._resolveDocument().getElementById("payment_currency_code");
   }
 
+  /**
+   * Finds the event timezone input for the current page.
+   * @returns {HTMLInputElement|HTMLElement|null}
+   */
   _resolveTimezoneInput() {
     return this._resolveDocument().querySelector('[name="timezone"]');
   }
@@ -790,6 +826,11 @@ if (!customElements.get("ticket-types-editor")) {
   customElements.define("ticket-types-editor", TicketTypesEditor);
 }
 
+/**
+ * Resolves a ticket type editor from either the editor itself or a container.
+ * @param {Element|TicketTypesEditor|null} root Candidate root element
+ * @returns {TicketTypesEditor|null}
+ */
 const resolveTicketTypesEditor = (root) => {
   if (root instanceof TicketTypesEditor) {
     return root;
@@ -803,6 +844,20 @@ const resolveTicketTypesEditor = (root) => {
   return editor instanceof TicketTypesEditor ? editor : null;
 };
 
+/**
+ * Backward-compatible wrapper that resolves and configures the ticket editor.
+ * @param {{
+ *   addButton?: HTMLElement|null,
+ *   addButtonId?: string,
+ *   currencyInput?: HTMLInputElement|HTMLSelectElement|null,
+ *   currencyInputId?: string,
+ *   root?: Element|TicketTypesEditor|null,
+ *   rootId?: string,
+ *   timezoneInput?: HTMLInputElement|HTMLElement|null,
+ *   timezoneSelector?: string
+ * }} options Initialization options
+ * @returns {TicketTypesEditor|null}
+ */
 export const initializeTicketTypesController = ({
   addButton = null,
   addButtonId = "",

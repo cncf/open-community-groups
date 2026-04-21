@@ -22,8 +22,19 @@ import {
 } from "/static/js/dashboard/group/meeting-validations.js";
 import { initializeSectionTabs } from "/static/js/dashboard/group/page-form-state.js";
 
+/**
+ * Reads a boolean data attribute from the given element.
+ * @param {HTMLElement|null} element Source element
+ * @param {string} attributeName Data attribute name without the `data-` prefix
+ * @returns {boolean}
+ */
 const readBooleanDataAttribute = (element, attributeName) => element?.dataset?.[attributeName] === "true";
 
+/**
+ * Initializes the event update page behavior for the active form fragment.
+ * @param {Document|Element} [root=document] Root page container
+ * @returns {void}
+ */
 export const initializeEventUpdatePage = (root = document) => {
   const pageContext = initializeEventPageContext(root, "update");
   if (!pageContext) {

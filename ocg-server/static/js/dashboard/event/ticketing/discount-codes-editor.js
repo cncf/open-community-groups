@@ -50,12 +50,20 @@ class DiscountCodesEditor extends LitWrapper {
     this._boundHandleKeydown = this._handleKeydown.bind(this);
   }
 
+  /**
+   * Binds keyboard handling and shared form dependencies on connect.
+   */
   connectedCallback() {
     super.connectedCallback();
     document.addEventListener("keydown", this._boundHandleKeydown);
     this.configure();
   }
 
+  /**
+   * Rehydrates rows when the serialized discount code attribute changes.
+   * @param {Map<string, *>} changedProperties Changed reactive properties
+   * @returns {void}
+   */
   willUpdate(changedProperties) {
     super.willUpdate?.(changedProperties);
 
@@ -64,6 +72,9 @@ class DiscountCodesEditor extends LitWrapper {
     }
   }
 
+  /**
+   * Removes shared listeners and restores body scrolling when detached.
+   */
   disconnectedCallback() {
     document.removeEventListener("keydown", this._boundHandleKeydown);
     this._setAddButton(null);
@@ -90,6 +101,15 @@ class DiscountCodesEditor extends LitWrapper {
     delete this._discountCodesController;
   }
 
+  /**
+   * Resolves shared controls and synchronizes the editor with current form state.
+   * @param {{
+   *   addButton?: HTMLElement|null,
+   *   currencyInput?: HTMLInputElement|HTMLSelectElement|null,
+   *   timezoneInput?: HTMLInputElement|HTMLElement|null
+   * }} [options={}] Explicit dependency overrides
+   * @returns {void}
+   */
   configure({ addButton = null, currencyInput = null, timezoneInput = null } = {}) {
     this.disabled = this.dataset.disabled === "true";
     this._setAddButton(addButton || this._resolveAddButton());
@@ -112,18 +132,34 @@ class DiscountCodesEditor extends LitWrapper {
     return parseJsonAttribute(this.discountCodes || this.getAttribute("discount-codes"), []);
   }
 
+  /**
+   * Resolves the document that owns the editor.
+   * @returns {Document}
+   */
   _resolveDocument() {
     return this.ownerDocument || document;
   }
 
+  /**
+   * Finds the shared add-discount button for the current page.
+   * @returns {HTMLElement|null}
+   */
   _resolveAddButton() {
     return this._resolveDocument().getElementById("add-discount-code-button");
   }
 
+  /**
+   * Finds the event currency input for the current page.
+   * @returns {HTMLInputElement|HTMLSelectElement|null}
+   */
   _resolveCurrencyInput() {
     return this._resolveDocument().getElementById("payment_currency_code");
   }
 
+  /**
+   * Finds the event timezone input for the current page.
+   * @returns {HTMLInputElement|HTMLElement|null}
+   */
   _resolveTimezoneInput() {
     return this._resolveDocument().querySelector('[name="timezone"]');
   }
@@ -856,6 +892,20 @@ if (!customElements.get("discount-codes-editor")) {
   customElements.define("discount-codes-editor", DiscountCodesEditor);
 }
 
+/**
+ * Backward-compatible wrapper that resolves and configures the discount editor.
+ * @param {{
+ *   addButton?: HTMLElement|null,
+ *   addButtonId?: string,
+ *   currencyInput?: HTMLInputElement|HTMLSelectElement|null,
+ *   currencyInputId?: string,
+ *   root?: Element|DiscountCodesEditor|null,
+ *   rootId?: string,
+ *   timezoneInput?: HTMLInputElement|HTMLElement|null,
+ *   timezoneSelector?: string
+ * }} options Initialization options
+ * @returns {DiscountCodesEditor|null}
+ */
 export const initializeDiscountCodesController = ({
   addButton = null,
   addButtonId = "",
