@@ -2,10 +2,17 @@ import { expect, test } from "@playwright/test";
 
 import {
   expectPageScreenshot,
+  getSectionByHeading,
   navigateToCommunityHome,
   TEST_COMMUNITY_DESCRIPTION,
   TEST_COMMUNITY_NAME,
 } from "../../utils";
+
+const getDynamicCommunitySectionMasks = (page: Parameters<typeof expectPageScreenshot>[0]) => [
+  getSectionByHeading(page, "Upcoming In-Person Events"),
+  getSectionByHeading(page, "Upcoming Virtual Events"),
+  getSectionByHeading(page, "Latest groups added"),
+];
 
 test.describe("community home page visual regression @visual", () => {
   test("matches desktop snapshot", async ({ page }) => {
@@ -16,7 +23,9 @@ test.describe("community home page visual regression @visual", () => {
       page.getByText(TEST_COMMUNITY_DESCRIPTION, { exact: true }),
     ).toBeVisible();
 
-    await expectPageScreenshot(page, "community-home-desktop.png");
+    await expectPageScreenshot(page, "community-home-desktop.png", {
+      mask: getDynamicCommunitySectionMasks(page),
+    });
   });
 
   test("matches mobile snapshot @mobile", async ({ page }) => {
@@ -28,17 +37,7 @@ test.describe("community home page visual regression @visual", () => {
     ).toBeVisible();
 
     await expectPageScreenshot(page, "community-home-mobile.png", {
-      mask: [
-        page
-          .getByText("Upcoming In-Person Events", { exact: true })
-          .locator("xpath=ancestor::div[2]"),
-        page
-          .getByText("Upcoming Virtual Events", { exact: true })
-          .locator("xpath=ancestor::div[2]"),
-        page
-          .getByText("Latest groups added", { exact: true })
-          .locator("xpath=ancestor::div[2]"),
-      ],
+      mask: getDynamicCommunitySectionMasks(page),
       maxDiffPixelRatio: 0.012,
     });
   });

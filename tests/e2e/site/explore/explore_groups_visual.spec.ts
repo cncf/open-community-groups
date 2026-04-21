@@ -7,6 +7,10 @@ import {
   TEST_GROUP_NAMES,
 } from "../../utils";
 
+const getDynamicExploreGroupMasks = (page: Parameters<typeof expectPageScreenshot>[0]) => [
+  page.locator("main article"),
+];
+
 test.describe("site explore groups page visual regression @visual", () => {
   test("matches desktop snapshot", async ({ page }) => {
     await navigateToPath(
@@ -18,7 +22,9 @@ test.describe("site explore groups page visual regression @visual", () => {
     await expect(page.getByText(TEST_GROUP_NAMES.alpha, { exact: true })).toBeVisible();
     await expect(page.getByText(TEST_GROUP_NAMES.gamma, { exact: true })).toBeVisible();
 
-    await expectPageScreenshot(page, "explore-groups-desktop.png");
+    await expectPageScreenshot(page, "explore-groups-desktop.png", {
+      mask: getDynamicExploreGroupMasks(page),
+    });
   });
 
   test("matches mobile snapshot @mobile", async ({ page }) => {
@@ -31,6 +37,8 @@ test.describe("site explore groups page visual regression @visual", () => {
     await expect(page.getByText(TEST_GROUP_NAMES.alpha, { exact: true })).toBeVisible();
     await expect(page.getByText(TEST_GROUP_NAMES.gamma, { exact: true })).toBeVisible();
 
-    await expectPageScreenshot(page, "explore-groups-mobile.png");
+    await expectPageScreenshot(page, "explore-groups-mobile.png", {
+      mask: getDynamicExploreGroupMasks(page),
+    });
   });
 });

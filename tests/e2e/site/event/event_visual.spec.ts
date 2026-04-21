@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 
 import {
   expectPageScreenshot,
+  getEventInfoSection,
   navigateToEvent,
   TEST_COMMUNITY_NAME,
   TEST_EVENT_NAMES,
@@ -23,7 +24,9 @@ test.describe("event page visual regression @visual", () => {
     ).toBeVisible();
     await expect(page.getByText("About this event", { exact: true })).toBeVisible();
 
-    await expectPageScreenshot(page, "event-page-desktop.png");
+    await expectPageScreenshot(page, "event-page-desktop.png", {
+      mask: [getEventInfoSection(page, "Event date")],
+    });
   });
 
   test("matches mobile snapshot @mobile", async ({ page }) => {
@@ -39,6 +42,8 @@ test.describe("event page visual regression @visual", () => {
     ).toBeVisible();
     await expect(page.getByText("About this event", { exact: true })).toBeVisible();
 
-    await expectPageScreenshot(page, "event-page-mobile.png");
+    await expectPageScreenshot(page, "event-page-mobile.png", {
+      mask: [getEventInfoSection(page, "Event date")],
+    });
   });
 });
