@@ -32,6 +32,48 @@ const REFUND_CLOSED_TITLE = "Refunds are no longer available for this ticket.";
 const PAST_CHECKOUT_TITLE = "You cannot buy tickets because the event has already started.";
 
 /**
+ * Returns the attendee refund-control state for the current response.
+ * @param {{isPastEvent: boolean}} meta - Attendance metadata
+ * @param {{can_request_refund?: boolean, purchase_amount_minor?: number, refund_request_status?: string}} response - Attendance response
+ * @returns {{disabled?: boolean, label?: string|null, title?: string|null}} Render state
+ */
+const getRefundState = (meta, response) => {
+  if (response.refund_request_status === "pending") {
+    return {
+      disabled: true,
+      label: REFUND_REQUESTED_LABEL,
+      title: REFUND_PENDING_TITLE,
+    };
+  }
+
+  if (response.refund_request_status === "approving") {
+    return {
+      disabled: true,
+      label: REFUND_PROCESSING_LABEL,
+      title: REFUND_PROCESSING_TITLE,
+    };
+  }
+
+  if (response.refund_request_status === "rejected") {
+    return {
+      disabled: true,
+      label: REFUND_UNAVAILABLE_LABEL,
+      title: REFUND_REJECTED_TITLE,
+    };
+  }
+
+  if (response.can_request_refund) {
+    return withEventDateState(meta, { label: REQUEST_REFUND_LABEL });
+  }
+
+  return {
+    disabled: true,
+    label: REFUND_UNAVAILABLE_LABEL,
+    title: REFUND_CLOSED_TITLE,
+  };
+};
+
+/**
  * Updates the disabled styling for a control.
  * @param {HTMLElement|null} control - Control to update
  * @param {boolean} disabled - Whether the control is disabled
@@ -282,32 +324,12 @@ export const showAttendeeState = (container, meta, response) => {
 
   resetPrimaryControls(container);
 
-  if (response.refund_request_status === "pending") {
-    renderControl(refundButton, {
-      disabled: true,
-      label: REFUND_REQUESTED_LABEL,
-      title: REFUND_PENDING_TITLE,
-    });
-  } else if (response.refund_request_status === "approving") {
-    renderControl(refundButton, {
-      disabled: true,
-      label: REFUND_PROCESSING_LABEL,
-      title: REFUND_PROCESSING_TITLE,
-    });
-  } else if (response.refund_request_status === "rejected") {
-    renderControl(refundButton, {
-      disabled: true,
-      label: REFUND_UNAVAILABLE_LABEL,
-      title: REFUND_REJECTED_TITLE,
-    });
-  } else if (response.can_request_refund) {
-    renderControl(refundButton, withEventDateState(meta, { label: REQUEST_REFUND_LABEL }));
-  } else if ((response.purchase_amount_minor || 0) > 0) {
-    renderControl(refundButton, {
-      disabled: true,
-      label: REFUND_UNAVAILABLE_LABEL,
-      title: REFUND_CLOSED_TITLE,
-    });
+  if (
+    response.refund_request_status ||
+    response.can_request_refund ||
+    (response.purchase_amount_minor || 0) > 0
+  ) {
+    renderControl(refundButton, getRefundState(meta, response));
   } else {
     renderControl(leaveButton, withEventDateState(meta, { label: CANCEL_ATTENDANCE_LABEL }));
   }
@@ -349,21 +371,31 @@ export const updateCheckoutButtonState = (container) => {
 };
 
 /**
+ * Toggles the checkout button loading affordance.
+ * @param {HTMLElement} container - Attendance container element
+ * @param {boolean} isLoading - Whether checkout is loading
+ */
+const setCheckoutLoadingState = (container, isLoading) => {
+  const checkoutSpinner = getAttendanceControl(container, "checkout-btn-spinner");
+  const checkoutLabel = getAttendanceControl(container, "checkout-btn-label");
+
+  checkoutSpinner?.classList.toggle("hidden", !isLoading);
+  checkoutSpinner?.classList.toggle("flex", isLoading);
+  checkoutLabel?.classList.toggle("invisible", isLoading);
+};
+
+/**
  * Synchronizes the ticket modal controls for the current modal mode.
  * @param {HTMLElement} container - Attendance container element
  */
 const syncTicketModalState = (container) => {
   const discountCodeInput = getAttendanceControl(container, "discount-code-input");
   const ticketModalForm = getAttendanceControl(container, "ticket-modal-form");
-  const checkoutSpinner = getAttendanceControl(container, "checkout-btn-spinner");
-  const checkoutLabel = getAttendanceControl(container, "checkout-btn-label");
   const meta = getAttendanceMeta(container);
   const ticketTypeOptions = container.querySelectorAll('[data-attendance-role="ticket-type-option"]');
 
   ticketModalForm?.classList.remove("hidden");
-  checkoutSpinner?.classList.add("hidden");
-  checkoutSpinner?.classList.remove("flex");
-  checkoutLabel?.classList.remove("invisible");
+  setCheckoutLoadingState(container, false);
 
   ticketTypeOptions.forEach((ticketTypeOption) => {
     if (ticketTypeOption instanceof HTMLInputElement) {
@@ -384,13 +416,23 @@ const syncTicketModalState = (container) => {
  * @param {HTMLElement} container - Attendance container element
  */
 export const restoreCheckoutModalControls = (container) => {
-  const checkoutSpinner = getAttendanceControl(container, "checkout-btn-spinner");
-  const checkoutLabel = getAttendanceControl(container, "checkout-btn-label");
-
-  checkoutSpinner?.classList.add("hidden");
-  checkoutSpinner?.classList.remove("flex");
-  checkoutLabel?.classList.remove("invisible");
+  setCheckoutLoadingState(container, false);
   updateCheckoutButtonState(container);
+};
+
+/**
+ * Shows the modal checkout loading state before the checkout request starts.
+ * @param {HTMLElement} container - Attendance container element
+ */
+export const showCheckoutLoadingState = (container) => {
+  const checkoutButton = getAttendanceControl(container, "checkout-btn");
+  if (!(checkoutButton instanceof HTMLButtonElement)) {
+    return;
+  }
+
+  checkoutButton.disabled = true;
+  setDisabledStyles(checkoutButton, true);
+  setCheckoutLoadingState(container, true);
 };
 
 /**

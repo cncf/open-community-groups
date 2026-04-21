@@ -27,6 +27,7 @@ import {
   renderMeetingDetails,
   restoreCheckoutModalControls,
   restorePrimaryRequestControl,
+  showCheckoutLoadingState,
   showAttendeeState,
   showGuestAttendanceState,
   showPendingPaymentState,
@@ -39,6 +40,73 @@ const PAYMENT_RETURN_PARAM = "payment";
 const PAYMENT_RETURN_POLL_ATTEMPTS = 8;
 const PAYMENT_RETURN_POLL_INTERVAL_MS = 2000;
 const PRIMARY_REQUEST_ROLES = new Set(["attend-btn", "leave-btn", "refund-btn"]);
+const PRIMARY_ACTION_CONFIG = {
+  "attend-btn": {
+    errorMessage: "Something went wrong registering for this event. Please try again later.",
+    onSuccess: (response) => {
+      if (response?.redirect_url) {
+        window.location.assign(response.redirect_url);
+        return false;
+      }
+
+      if (response?.status === "waitlisted") {
+        showInfoAlert("You have joined the waiting list for this event.");
+      } else if (response?.status === "pending-payment") {
+        showInfoAlert("Your checkout is ready. Redirecting you to Stripe now.");
+      } else {
+        showInfoAlert("You have successfully registered for this event.");
+      }
+
+      return true;
+    },
+  },
+  "leave-btn": {
+    errorMessage: "Something went wrong canceling your attendance. Please try again later.",
+    onSuccess: (response) => {
+      if (response?.left_status === "waitlisted") {
+        showInfoAlert("You have left the waiting list for this event.");
+      } else {
+        showInfoAlert("You have successfully canceled your attendance.");
+      }
+
+      return true;
+    },
+  },
+  "refund-btn": {
+    errorMessage: "Something went wrong requesting your refund. Please try again later.",
+    onSuccess: () => {
+      showInfoAlert("Your refund request has been sent to the organizers.");
+      return true;
+    },
+  },
+};
+
+/**
+ * Applies the signed-out fallback UI for a container.
+ * @param {HTMLElement} container - Attendance container element
+ * @param {ReturnType<typeof getAttendanceMeta>} meta - Attendance metadata
+ */
+const showSignedOutFallback = (container, meta) => {
+  showSignedOutAttendanceState(container, meta);
+  renderMeetingDetails(false, meta);
+};
+
+/**
+ * Returns the sign-in alert action text for a control label.
+ * @param {string} label - Visible control label
+ * @returns {string} Human-readable action text
+ */
+const getSigninActionText = (label) => {
+  if (label === JOIN_WAITLIST_LABEL) {
+    return "join the waiting list";
+  }
+
+  if (label === BUY_TICKET_LABEL) {
+    return "buy a ticket for this event";
+  }
+
+  return "attend this event";
+};
 
 /**
  * Reads the payment outcome returned by the checkout provider.
@@ -193,15 +261,13 @@ const renderAttendanceCheckResponse = (container, event) => {
   const xhr = event.detail?.xhr;
 
   if (!isSuccessfulXHRStatus(xhr?.status)) {
-    showSignedOutAttendanceState(container, meta);
-    renderMeetingDetails(false, meta);
+    showSignedOutFallback(container, meta);
     return;
   }
 
   const response = parseJsonResponse(xhr);
   if (!response) {
-    showSignedOutAttendanceState(container, meta);
-    renderMeetingDetails(false, meta);
+    showSignedOutFallback(container, meta);
     return;
   }
 
@@ -281,47 +347,7 @@ const handlePrimaryActionAfterRequest = (event) => {
     return;
   }
 
-  const config = {
-    "attend-btn": {
-      errorMessage: "Something went wrong registering for this event. Please try again later.",
-      onSuccess: (response) => {
-        if (response?.redirect_url) {
-          window.location.assign(response.redirect_url);
-          return false;
-        }
-
-        if (response?.status === "waitlisted") {
-          showInfoAlert("You have joined the waiting list for this event.");
-        } else if (response?.status === "pending-payment") {
-          showInfoAlert("Your checkout is ready. Redirecting you to Stripe now.");
-        } else {
-          showInfoAlert("You have successfully registered for this event.");
-        }
-
-        return true;
-      },
-    },
-    "leave-btn": {
-      errorMessage: "Something went wrong canceling your attendance. Please try again later.",
-      onSuccess: (response) => {
-        if (response?.left_status === "waitlisted") {
-          showInfoAlert("You have left the waiting list for this event.");
-        } else {
-          showInfoAlert("You have successfully canceled your attendance.");
-        }
-
-        return true;
-      },
-    },
-    "refund-btn": {
-      errorMessage: "Something went wrong requesting your refund. Please try again later.",
-      onSuccess: () => {
-        showInfoAlert("Your refund request has been sent to the organizers.");
-        return true;
-      },
-    },
-  }[role];
-
+  const config = PRIMARY_ACTION_CONFIG[role];
   if (!config) {
     return;
   }
@@ -354,18 +380,11 @@ const handleCheckoutBeforeRequest = (target) => {
   }
 
   const container = getAttendanceContainer(target);
-  const checkoutButton = getAttendanceControl(container, "checkout-btn");
-  const checkoutSpinner = getAttendanceControl(container, "checkout-btn-spinner");
-  const checkoutLabel = getAttendanceControl(container, "checkout-btn-label");
-  if (!(checkoutButton instanceof HTMLButtonElement)) {
+  if (!container) {
     return;
   }
 
-  checkoutButton.disabled = true;
-  checkoutButton.classList.add("opacity-50", "cursor-not-allowed");
-  checkoutSpinner?.classList.remove("hidden");
-  checkoutSpinner?.classList.add("flex");
-  checkoutLabel?.classList.add("invisible");
+  showCheckoutLoadingState(container);
 };
 
 /**
@@ -489,10 +508,7 @@ const handleAttendanceClick = (event) => {
   if (signinButton instanceof HTMLElement) {
     const path = signinButton.dataset.path || window.location.pathname;
     const label = getAttendanceControlLabel(signinButton) || ATTEND_EVENT_LABEL;
-    let actionText = label === JOIN_WAITLIST_LABEL ? "join the waiting list" : "attend this event";
-    if (label === BUY_TICKET_LABEL) {
-      actionText = "buy a ticket for this event";
-    }
+    const actionText = getSigninActionText(label);
 
     showInfoAlert(
       `You need to be <a href='/log-in?next_url=${path}' class='underline font-medium' hx-boost='true'>logged in</a> to ${actionText}.`,
