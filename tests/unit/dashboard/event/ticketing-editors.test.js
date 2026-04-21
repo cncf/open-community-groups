@@ -1,8 +1,8 @@
 import { expect } from "@open-wc/testing";
 
-import { initializeDiscountCodesController } from "/static/js/dashboard/event/ticketing/discount-codes-editor.js";
+import "/static/js/dashboard/event/ticketing/discount-codes-editor.js";
 import { initializeTicketingWaitlistState } from "/static/js/dashboard/event/ticketing.js";
-import { initializeTicketTypesController } from "/static/js/dashboard/event/ticketing/ticket-types-editor.js";
+import "/static/js/dashboard/event/ticketing/ticket-types-editor.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
 
 const setInputValue = async (container, selector, value, eventName = "input") => {
@@ -31,34 +31,6 @@ const mountDiscountCodesUi = () => {
   wrapper.dataset.disabled = "false";
   document.body.append(wrapper);
   return wrapper;
-};
-
-const mountTicketTypesContainer = () => {
-  const root = document.createElement("div");
-  root.id = "ticket-types-ui";
-
-  const editor = document.createElement("ticket-types-editor");
-  editor.setAttribute("ticket-types", "[]");
-  editor.dataset.disabled = "false";
-
-  root.append(editor);
-  document.body.append(root);
-
-  return { editor, root };
-};
-
-const mountDiscountCodesContainer = () => {
-  const root = document.createElement("div");
-  root.id = "discount-codes-ui";
-
-  const editor = document.createElement("discount-codes-editor");
-  editor.setAttribute("discount-codes", "[]");
-  editor.dataset.disabled = "false";
-
-  root.append(editor);
-  document.body.append(root);
-
-  return { editor, root };
 };
 
 describe("ticketing editors", () => {
@@ -221,28 +193,7 @@ describe("ticketing editors", () => {
     expect(uiRoot.textContent).to.contain("Price (JPY)");
   });
 
-  it("initializes ticket types from a generic container root", async () => {
-    const { editor, root } = mountTicketTypesContainer();
-    editor.setAttribute(
-      "ticket-types",
-      JSON.stringify([
-        {
-          active: true,
-          seats_total: 25,
-          title: "Container ticket",
-          price_windows: [{ amount_minor: 2500, starts_at: "", ends_at: "" }],
-        },
-      ]),
-    );
-
-    const controller = initializeTicketTypesController({ addButtonId: "", rootId: "ticket-types-ui" });
-    await editor.updateComplete;
-
-    expect(controller).to.equal(editor);
-    expect(editor.textContent).to.contain("Container ticket");
-  });
-
-  it("reconfigures ticket type dependencies on repeated initialization", async () => {
+  it("reconfigures ticket type dependencies on repeated configure calls", async () => {
     const initialAddButton = document.createElement("button");
     document.body.append(initialAddButton);
 
@@ -258,21 +209,15 @@ describe("ticketing editors", () => {
     document.body.append(timezoneInput);
 
     const uiRoot = mountTicketTypesUi();
-    const controller = initializeTicketTypesController({
-      addButton: initialAddButton,
-      root: uiRoot,
-    });
+    uiRoot.configure({ addButton: initialAddButton });
     await uiRoot.updateComplete;
 
-    const repeatedController = initializeTicketTypesController({
+    uiRoot.configure({
       addButton: reconfiguredAddButton,
       currencyInput,
-      root: uiRoot,
       timezoneInput,
     });
     await uiRoot.updateComplete;
-
-    expect(repeatedController).to.equal(controller);
 
     initialAddButton.click();
     await uiRoot.updateComplete;
@@ -598,32 +543,7 @@ describe("ticketing editors", () => {
     expect(uiRoot.querySelector('label[for="discount-percentage-draft"]')?.textContent).to.contain("*");
   });
 
-  it("initializes discount codes from a generic container root", async () => {
-    const { editor, root } = mountDiscountCodesContainer();
-    editor.setAttribute(
-      "discount-codes",
-      JSON.stringify([
-        {
-          active: true,
-          code: "CONTAINER20",
-          kind: "percentage",
-          percentage: 20,
-          title: "Container code",
-        },
-      ]),
-    );
-
-    const controller = initializeDiscountCodesController({
-      addButtonId: "",
-      rootId: "discount-codes-ui",
-    });
-    await editor.updateComplete;
-
-    expect(controller).to.equal(editor);
-    expect(editor.textContent).to.contain("Container code");
-  });
-
-  it("reconfigures discount dependencies on repeated initialization", async () => {
+  it("reconfigures discount dependencies on repeated configure calls", async () => {
     const initialAddButton = document.createElement("button");
     document.body.append(initialAddButton);
 
@@ -639,21 +559,15 @@ describe("ticketing editors", () => {
     document.body.append(timezoneInput);
 
     const uiRoot = mountDiscountCodesUi();
-    const controller = initializeDiscountCodesController({
-      addButton: initialAddButton,
-      root: uiRoot,
-    });
+    uiRoot.configure({ addButton: initialAddButton });
     await uiRoot.updateComplete;
 
-    const repeatedController = initializeDiscountCodesController({
+    uiRoot.configure({
       addButton: reconfiguredAddButton,
       currencyInput,
-      root: uiRoot,
       timezoneInput,
     });
     await uiRoot.updateComplete;
-
-    expect(repeatedController).to.equal(controller);
 
     initialAddButton.click();
     await uiRoot.updateComplete;

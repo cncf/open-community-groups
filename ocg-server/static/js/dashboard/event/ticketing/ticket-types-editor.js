@@ -17,7 +17,15 @@ import { parseJsonAttribute } from "/static/js/dashboard/event/ticketing/shared.
 class TicketTypesEditor extends LitWrapper {
   static properties = {
     disabled: { type: Boolean },
-    ticketTypes: { attribute: "ticket-types" },
+    ticketTypes: {
+      type: Array,
+      attribute: "ticket-types",
+      converter: {
+        fromAttribute(value) {
+          return parseJsonAttribute(value, []);
+        },
+      },
+    },
     _draftRow: { state: true },
     _editingRowId: { state: true },
     _isModalOpen: { state: true },
@@ -40,7 +48,7 @@ class TicketTypesEditor extends LitWrapper {
     this.addButton = null;
     this.currencyInput = null;
     this.timezoneInput = null;
-    this.ticketTypes = "[]";
+    this.ticketTypes = [];
 
     this._boundHandleExternalAddClick = this._handleExternalAddClick.bind(this);
     this._boundHandleDependencyChange = this._handleDependencyChange.bind(this);
@@ -65,7 +73,7 @@ class TicketTypesEditor extends LitWrapper {
     super.willUpdate?.(changedProperties);
 
     if (changedProperties.has("ticketTypes") && this._hasInitializedState) {
-      this._applyTicketTypes(this._resolveSeedTicketTypes());
+      this._applyTicketTypes(this.ticketTypes);
     }
   }
 
@@ -85,19 +93,6 @@ class TicketTypesEditor extends LitWrapper {
     super.disconnectedCallback?.();
   }
 
-  destroy() {
-    document.removeEventListener("keydown", this._boundHandleKeydown);
-    this._setAddButton(null);
-    this._setCurrencyInput(null);
-    this._setTimezoneInput(null);
-
-    if (this._isModalOpen) {
-      unlockBodyScroll();
-    }
-
-    delete this._ticketTypesController;
-  }
-
   /**
    * Resolves shared controls and synchronizes the editor with current form state.
    * @param {{
@@ -114,7 +109,7 @@ class TicketTypesEditor extends LitWrapper {
     this._setTimezoneInput(timezoneInput || this._resolveTimezoneInput());
 
     if (!this._hasInitializedState) {
-      this._applyTicketTypes(this._resolveSeedTicketTypes());
+      this._applyTicketTypes(this.ticketTypes);
       this._hasInitializedState = true;
     } else {
       this.requestUpdate();
@@ -126,7 +121,7 @@ class TicketTypesEditor extends LitWrapper {
   }
 
   setTicketTypes(ticketTypes) {
-    this._applyTicketTypes(ticketTypes);
+    this.ticketTypes = Array.isArray(ticketTypes) ? ticketTypes : [];
   }
 
   getConfiguredSeatTotal() {
@@ -138,10 +133,6 @@ class TicketTypesEditor extends LitWrapper {
       const seatsTotal = Number.parseInt(row.seats_total, 10);
       return total + (Number.isFinite(seatsTotal) && seatsTotal > 0 ? seatsTotal : 0);
     }, 0);
-  }
-
-  _resolveSeedTicketTypes() {
-    return parseJsonAttribute(this.ticketTypes || this.getAttribute("ticket-types"), []);
   }
 
   /**
@@ -825,69 +816,3 @@ class TicketTypesEditor extends LitWrapper {
 if (!customElements.get("ticket-types-editor")) {
   customElements.define("ticket-types-editor", TicketTypesEditor);
 }
-
-/**
- * Resolves a ticket type editor from either the editor itself or a container.
- * @param {Element|TicketTypesEditor|null} root Candidate root element
- * @returns {TicketTypesEditor|null}
- */
-const resolveTicketTypesEditor = (root) => {
-  if (root instanceof TicketTypesEditor) {
-    return root;
-  }
-
-  if (!(root instanceof Element)) {
-    return null;
-  }
-
-  const editor = root.querySelector("ticket-types-editor");
-  return editor instanceof TicketTypesEditor ? editor : null;
-};
-
-/**
- * Backward-compatible wrapper that resolves and configures the ticket editor.
- * @param {{
- *   addButton?: HTMLElement|null,
- *   addButtonId?: string,
- *   currencyInput?: HTMLInputElement|HTMLSelectElement|null,
- *   currencyInputId?: string,
- *   root?: Element|TicketTypesEditor|null,
- *   rootId?: string,
- *   timezoneInput?: HTMLInputElement|HTMLElement|null,
- *   timezoneSelector?: string
- * }} options Initialization options
- * @returns {TicketTypesEditor|null}
- */
-export const initializeTicketTypesController = ({
-  addButton = null,
-  addButtonId = "",
-  currencyInput = null,
-  currencyInputId = "payment_currency_code",
-  root = null,
-  rootId = "",
-  timezoneInput = null,
-  timezoneSelector = '[name="timezone"]',
-}) => {
-  const resolvedRoot = root || document.getElementById(rootId);
-  if (!resolvedRoot) {
-    return null;
-  }
-
-  const resolvedEditor = resolveTicketTypesEditor(resolvedRoot);
-  if (!resolvedEditor) {
-    return null;
-  }
-
-  const resolvedAddButton = addButton || (addButtonId ? document.getElementById(addButtonId) : null);
-  const resolvedCurrencyInput =
-    currencyInput || (currencyInputId ? document.getElementById(currencyInputId) : null);
-  const resolvedTimezoneInput =
-    timezoneInput || (timezoneSelector ? document.querySelector(timezoneSelector) : null);
-
-  resolvedEditor.configure({
-    addButton: resolvedAddButton,
-    currencyInput: resolvedCurrencyInput,
-    timezoneInput: resolvedTimezoneInput,
-  });
-  return resolvedEditor;
-};

@@ -20,7 +20,15 @@ import { parseJsonAttribute } from "/static/js/dashboard/event/ticketing/shared.
 class DiscountCodesEditor extends LitWrapper {
   static properties = {
     disabled: { type: Boolean },
-    discountCodes: { attribute: "discount-codes" },
+    discountCodes: {
+      type: Array,
+      attribute: "discount-codes",
+      converter: {
+        fromAttribute(value) {
+          return parseJsonAttribute(value, []);
+        },
+      },
+    },
     _draftRow: { state: true },
     _editingRowId: { state: true },
     _isModalOpen: { state: true },
@@ -43,7 +51,7 @@ class DiscountCodesEditor extends LitWrapper {
     this.addButton = null;
     this.currencyInput = null;
     this.timezoneInput = null;
-    this.discountCodes = "[]";
+    this.discountCodes = [];
 
     this._boundHandleExternalAddClick = this._handleExternalAddClick.bind(this);
     this._boundHandleDependencyChange = this._handleDependencyChange.bind(this);
@@ -68,7 +76,7 @@ class DiscountCodesEditor extends LitWrapper {
     super.willUpdate?.(changedProperties);
 
     if (changedProperties.has("discountCodes") && this._hasInitializedState) {
-      this._applyDiscountCodes(this._resolveSeedDiscountCodes());
+      this._applyDiscountCodes(this.discountCodes);
     }
   }
 
@@ -88,19 +96,6 @@ class DiscountCodesEditor extends LitWrapper {
     super.disconnectedCallback?.();
   }
 
-  destroy() {
-    document.removeEventListener("keydown", this._boundHandleKeydown);
-    this._setAddButton(null);
-    this._setCurrencyInput(null);
-    this._setTimezoneInput(null);
-
-    if (this._isModalOpen) {
-      unlockBodyScroll();
-    }
-
-    delete this._discountCodesController;
-  }
-
   /**
    * Resolves shared controls and synchronizes the editor with current form state.
    * @param {{
@@ -117,7 +112,7 @@ class DiscountCodesEditor extends LitWrapper {
     this._setTimezoneInput(timezoneInput || this._resolveTimezoneInput());
 
     if (!this._hasInitializedState) {
-      this._applyDiscountCodes(this._resolveSeedDiscountCodes());
+      this._applyDiscountCodes(this.discountCodes);
       this._hasInitializedState = true;
     } else {
       this.requestUpdate();
@@ -125,11 +120,7 @@ class DiscountCodesEditor extends LitWrapper {
   }
 
   setDiscountCodes(discountCodes) {
-    this._applyDiscountCodes(discountCodes);
-  }
-
-  _resolveSeedDiscountCodes() {
-    return parseJsonAttribute(this.discountCodes || this.getAttribute("discount-codes"), []);
+    this.discountCodes = Array.isArray(discountCodes) ? discountCodes : [];
   }
 
   /**
@@ -891,56 +882,3 @@ class DiscountCodesEditor extends LitWrapper {
 if (!customElements.get("discount-codes-editor")) {
   customElements.define("discount-codes-editor", DiscountCodesEditor);
 }
-
-/**
- * Backward-compatible wrapper that resolves and configures the discount editor.
- * @param {{
- *   addButton?: HTMLElement|null,
- *   addButtonId?: string,
- *   currencyInput?: HTMLInputElement|HTMLSelectElement|null,
- *   currencyInputId?: string,
- *   root?: Element|DiscountCodesEditor|null,
- *   rootId?: string,
- *   timezoneInput?: HTMLInputElement|HTMLElement|null,
- *   timezoneSelector?: string
- * }} options Initialization options
- * @returns {DiscountCodesEditor|null}
- */
-export const initializeDiscountCodesController = ({
-  addButton = null,
-  addButtonId = "",
-  currencyInput = null,
-  currencyInputId = "payment_currency_code",
-  root = null,
-  rootId = "",
-  timezoneInput = null,
-  timezoneSelector = '[name="timezone"]',
-}) => {
-  const resolvedRoot = root || document.getElementById(rootId);
-  if (!resolvedRoot) {
-    return null;
-  }
-
-  const resolvedEditor =
-    resolvedRoot instanceof DiscountCodesEditor
-      ? resolvedRoot
-      : resolvedRoot instanceof Element
-        ? resolvedRoot.querySelector("discount-codes-editor")
-        : null;
-  if (!(resolvedEditor instanceof DiscountCodesEditor)) {
-    return null;
-  }
-
-  const resolvedAddButton = addButton || (addButtonId ? document.getElementById(addButtonId) : null);
-  const resolvedCurrencyInput =
-    currencyInput || (currencyInputId ? document.getElementById(currencyInputId) : null);
-  const resolvedTimezoneInput =
-    timezoneInput || (timezoneSelector ? document.querySelector(timezoneSelector) : null);
-
-  resolvedEditor.configure({
-    addButton: resolvedAddButton,
-    currencyInput: resolvedCurrencyInput,
-    timezoneInput: resolvedTimezoneInput,
-  });
-  return resolvedEditor;
-};
