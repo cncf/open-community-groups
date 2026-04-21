@@ -129,6 +129,45 @@ const setPaymentCurrencyCode = (paymentCurrencyCode) => {
 };
 
 /**
+ * Removes copied ticket price window dates from ticketing payload.
+ * @param {*} ticketTypes Ticket types payload
+ * @returns {Array<object>} Ticket types without copied price window dates
+ */
+const clearCopiedTicketTypeDates = (ticketTypes) => {
+  if (!Array.isArray(ticketTypes)) {
+    return [];
+  }
+
+  return ticketTypes.map((ticketType) => ({
+    ...ticketType,
+    price_windows: Array.isArray(ticketType?.price_windows)
+      ? ticketType.price_windows.map((priceWindow) => ({
+          ...priceWindow,
+          starts_at: "",
+          ends_at: "",
+        }))
+      : [],
+  }));
+};
+
+/**
+ * Removes copied discount availability dates from discount payload.
+ * @param {*} discountCodes Discount codes payload
+ * @returns {Array<object>} Discount codes without copied dates
+ */
+const clearCopiedDiscountCodeDates = (discountCodes) => {
+  if (!Array.isArray(discountCodes)) {
+    return [];
+  }
+
+  return discountCodes.map((discountCode) => ({
+    ...discountCode,
+    starts_at: "",
+    ends_at: "",
+  }));
+};
+
+/**
  * Replaces ticket types in the ticketing editor.
  * @param {*} ticketTypes Ticket types payload
  */
@@ -143,7 +182,7 @@ const setTicketTypes = (ticketTypes) => {
     initializeTicketTypesController({
       root,
     });
-  controller?.setTicketTypes(Array.isArray(ticketTypes) ? ticketTypes : []);
+  controller?.setTicketTypes(clearCopiedTicketTypeDates(ticketTypes));
 };
 
 /**
@@ -161,7 +200,7 @@ const setDiscountCodes = (discountCodes) => {
     initializeDiscountCodesController({
       root,
     });
-  controller?.setDiscountCodes(Array.isArray(discountCodes) ? discountCodes : []);
+  controller?.setDiscountCodes(clearCopiedDiscountCodeDates(discountCodes));
 };
 
 /**

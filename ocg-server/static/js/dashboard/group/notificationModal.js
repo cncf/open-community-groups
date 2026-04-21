@@ -1,5 +1,5 @@
 import { toggleModalVisibility } from "/static/js/common/common.js";
-import { showSuccessAlert, showErrorAlert, handleHtmxResponse } from "/static/js/common/alerts.js";
+import { handleHtmxResponse } from "/static/js/common/alerts.js";
 import { queryElementById } from "/static/js/common/dom.js";
 
 const DEFAULT_ERROR_MESSAGE = "Something went wrong while trying to send the email. Please try again later.";

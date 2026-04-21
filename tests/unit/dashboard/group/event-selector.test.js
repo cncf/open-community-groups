@@ -254,14 +254,22 @@ describe("event-selector", () => {
       ticket_types: [
         {
           title: "General admission",
-          price_windows: [{ amount_minor: 2500 }],
+          price_windows: [
+            {
+              amount_minor: 2500,
+              starts_at: "2026-04-01T10:00:00Z",
+              ends_at: "2026-04-05T10:00:00Z",
+            },
+          ],
         },
       ],
       discount_codes: [
         {
           code: "EARLY20",
+          ends_at: "2026-04-06T10:00:00Z",
           kind: "percentage",
           percentage: 20,
+          starts_at: "2026-04-02T10:00:00Z",
           title: "Early supporter",
         },
       ],
@@ -293,7 +301,13 @@ describe("event-selector", () => {
       [
         {
           title: "General admission",
-          price_windows: [{ amount_minor: 2500 }],
+          price_windows: [
+            {
+              amount_minor: 2500,
+              starts_at: "",
+              ends_at: "",
+            },
+          ],
         },
       ],
     ]);
@@ -301,8 +315,10 @@ describe("event-selector", () => {
       [
         {
           code: "EARLY20",
+          ends_at: "",
           kind: "percentage",
           percentage: 20,
+          starts_at: "",
           title: "Early supporter",
         },
       ],
