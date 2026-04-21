@@ -107,7 +107,7 @@ test.describe("event attendance", () => {
     await expect(getSignInButton(page)).toContainText("Buy ticket");
   });
 
-  test("member sees checkout validation and unavailable tickets in the ticket modal", async ({
+  test("member sees checkout validation and only sellable tickets in the ticket modal", async ({
     member1Page,
   }) => {
     await navigateToEvent(
@@ -129,11 +129,7 @@ test.describe("event attendance", () => {
       "title",
       "Choose a ticket to continue.",
     );
-    await expect(
-      ticketModal
-        .locator("label", { hasText: "Backstage pass" })
-        .locator('[data-attendance-role="ticket-type-option"]'),
-    ).toBeDisabled();
+    await expect(ticketModal).not.toContainText("Backstage pass");
 
     await ticketModal.locator('[data-attendance-role="ticket-modal-cancel"]').click();
 

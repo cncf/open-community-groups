@@ -55,10 +55,8 @@ const openPaymentsSection = async (page: Page) => {
 };
 
 const openEventUpdateFormByName = async (page: Page, eventName: string, eventId?: string) => {
-  const eventRow = page.locator("#dashboard-content").locator("tr", {
-    hasText: eventName,
-  });
-  await expect(eventRow).toBeVisible();
+  const editButton = page.locator(`td button[aria-label="Edit event: ${eventName}"]:visible`);
+  await expect(editButton).toBeVisible();
 
   await Promise.all([
     page.waitForResponse(
@@ -69,7 +67,7 @@ const openEventUpdateFormByName = async (page: Page, eventName: string, eventId?
         (eventId ? response.url().includes(eventId) : true) &&
         response.ok(),
     ),
-    eventRow.locator('td button[aria-label^="Edit event:"]').click(),
+    editButton.click(),
   ]);
 };
 
@@ -572,7 +570,7 @@ test.describe("group dashboard events view", () => {
     ).toContainText("EARLY20");
   });
 
-  test("organizer sees seats and status columns in the mobile ticket types table @mobile", async ({
+  test("organizer sees seats and status columns in the ticket types table", async ({
     organizerGroupPage,
   }) => {
     await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
