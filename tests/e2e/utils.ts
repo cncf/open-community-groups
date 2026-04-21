@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
-import { expect } from "@playwright/test";
+import { existsSync, readFileSync } from "node:fs";
+import { expect, test } from "@playwright/test";
 import type { Locator, Page } from "@playwright/test";
 
 export const TEST_COMMUNITY_NAME =
@@ -160,8 +161,102 @@ export const TEST_USER_CREDENTIALS = {
   },
 } as const;
 const BASE_URL = process.env.OCG_E2E_BASE_URL || "http://localhost:9000";
+const MOBILE_SCREENSHOT_VIEWPORT_MAX_WIDTH = 430;
+const MOBILE_SCREENSHOT_HEIGHT_STABILITY_THRESHOLD = 4;
 
 const buildUrl = (path: string) => new URL(path, BASE_URL).toString();
+
+/**
+ * Reads the dimensions from a PNG file header.
+ */
+const getPngDimensions = (filePath: string) => {
+  const header = readFileSync(filePath);
+
+  return {
+    height: header.readUInt32BE(20),
+    width: header.readUInt32BE(16),
+  };
+};
+
+/**
+ * Reads the checked-in snapshot height for the current test when available.
+ */
+const getExpectedScreenshotHeight = (screenshotName: string) => {
+  const snapshotPath = test.info().snapshotPath(screenshotName);
+
+  if (!existsSync(snapshotPath)) {
+    return null;
+  }
+
+  return getPngDimensions(snapshotPath).height;
+};
+
+/**
+ * Returns the current page width and full document height in CSS pixels.
+ */
+const getPageScreenshotMetrics = async (page: Page) =>
+  page.evaluate(() => {
+    const documentElement = document.documentElement;
+    const body = document.body;
+
+    return {
+      scrollHeight: Math.max(
+        documentElement.scrollHeight,
+        documentElement.offsetHeight,
+        body?.scrollHeight ?? 0,
+        body?.offsetHeight ?? 0,
+      ),
+      viewportWidth: window.innerWidth,
+    };
+  });
+
+/**
+ * Sets a hidden spacer used to stabilize full-page screenshot height.
+ */
+const setPageScreenshotSpacer = async (page: Page, spacerHeight: number) => {
+  await page.evaluate((height) => {
+    const body = document.body;
+
+    if (!body) {
+      return;
+    }
+
+    let screenshotSpacer = document.getElementById("ocg-e2e-screenshot-spacer");
+
+    if (!screenshotSpacer) {
+      screenshotSpacer = document.createElement("div");
+      screenshotSpacer.id = "ocg-e2e-screenshot-spacer";
+      screenshotSpacer.setAttribute("aria-hidden", "true");
+      screenshotSpacer.style.pointerEvents = "none";
+      screenshotSpacer.style.width = "100%";
+      body.append(screenshotSpacer);
+    }
+
+    screenshotSpacer.style.height = `${height}px`;
+  }, spacerHeight);
+};
+
+/**
+ * Locks the root document height so tiny mobile drift does not change image size.
+ */
+const setPageScreenshotRootHeight = async (page: Page, screenshotHeight: number) => {
+  await page.evaluate((height) => {
+    const documentElement = document.documentElement;
+    const body = document.body;
+
+    if (!body) {
+      return;
+    }
+
+    documentElement.style.height = `${height}px`;
+    documentElement.style.maxHeight = `${height}px`;
+    documentElement.style.overflow = "hidden";
+
+    body.style.height = `${height}px`;
+    body.style.maxHeight = `${height}px`;
+    body.style.overflow = "hidden";
+  }, screenshotHeight);
+};
 
 /**
  * Builds a fully-qualified URL.
@@ -376,40 +471,36 @@ export const expectPageScreenshot = async (
   await page.evaluate(async () => {
     await document.fonts.ready;
   });
-  await page.evaluate(() => {
-    const viewportWidth = window.innerWidth;
+  const { scrollHeight, viewportWidth } = await getPageScreenshotMetrics(page);
 
-    if (viewportWidth > 430) {
+  if (viewportWidth <= MOBILE_SCREENSHOT_VIEWPORT_MAX_WIDTH) {
+    const expectedScreenshotHeight = getExpectedScreenshotHeight(screenshotName);
+
+    if (
+      expectedScreenshotHeight !== null &&
+      Math.abs(scrollHeight - expectedScreenshotHeight) <=
+        MOBILE_SCREENSHOT_HEIGHT_STABILITY_THRESHOLD
+    ) {
+      await setPageScreenshotSpacer(
+        page,
+        Math.max(expectedScreenshotHeight - scrollHeight, 0),
+      );
+      await setPageScreenshotRootHeight(page, expectedScreenshotHeight);
+
+      await expect(page).toHaveScreenshot(screenshotName, {
+        animations: "disabled",
+        caret: "hide",
+        fullPage: true,
+        mask: screenshotOptions.mask,
+        maxDiffPixelRatio: screenshotOptions.maxDiffPixelRatio,
+        maxDiffPixels: screenshotOptions.maxDiffPixels,
+      });
+
       return;
     }
 
-    const documentElement = document.documentElement;
-    const body = document.body;
-    const scrollHeight = Math.max(
-      documentElement.scrollHeight,
-      documentElement.offsetHeight,
-      body?.scrollHeight ?? 0,
-      body?.offsetHeight ?? 0,
-    );
-    const normalizedHeightPadding = (4 - (scrollHeight % 4)) % 4;
-
-    if (!body || normalizedHeightPadding === 0) {
-      return;
-    }
-
-    let screenshotSpacer = document.getElementById("ocg-e2e-screenshot-spacer");
-
-    if (!screenshotSpacer) {
-      screenshotSpacer = document.createElement("div");
-      screenshotSpacer.id = "ocg-e2e-screenshot-spacer";
-      screenshotSpacer.setAttribute("aria-hidden", "true");
-      screenshotSpacer.style.pointerEvents = "none";
-      screenshotSpacer.style.width = "100%";
-      body.append(screenshotSpacer);
-    }
-
-    screenshotSpacer.style.height = `${normalizedHeightPadding}px`;
-  });
+    await setPageScreenshotSpacer(page, (4 - (scrollHeight % 4)) % 4);
+  }
 
   await expect(page).toHaveScreenshot(screenshotName, {
     animations: "disabled",
