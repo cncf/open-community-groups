@@ -310,6 +310,7 @@ export const bindSharedEventDateFieldListeners = ({
       const accepted = await onlineEventDetails.trySetStartsAt(startsAtInput.value);
       if (!accepted) {
         startsAtInput.value = previousStartsAt;
+        syncSessionsDateRange();
         return;
       }
       previousStartsAt = startsAtInput.value;
@@ -321,6 +322,7 @@ export const bindSharedEventDateFieldListeners = ({
       const accepted = await onlineEventDetails.trySetEndsAt(endsAtInput.value);
       if (!accepted) {
         endsAtInput.value = previousEndsAt;
+        syncSessionsDateRange();
         return;
       }
       previousEndsAt = endsAtInput.value;

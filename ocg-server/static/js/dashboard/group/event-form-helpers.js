@@ -138,9 +138,11 @@ const clearCopiedTicketTypeDates = (ticketTypes) => {
 
   return ticketTypes.map((ticketType) => ({
     ...ticketType,
+    event_ticket_type_id: "",
     price_windows: Array.isArray(ticketType?.price_windows)
       ? ticketType.price_windows.map((priceWindow) => ({
           ...priceWindow,
+          event_ticket_price_window_id: "",
           starts_at: "",
           ends_at: "",
         }))
@@ -160,6 +162,7 @@ const clearCopiedDiscountCodeDates = (discountCodes) => {
 
   return discountCodes.map((discountCode) => ({
     ...discountCode,
+    event_discount_code_id: "",
     starts_at: "",
     ends_at: "",
   }));

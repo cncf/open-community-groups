@@ -2,6 +2,7 @@ import { expect } from "@open-wc/testing";
 
 import { initializeEventAddPage } from "/static/js/dashboard/group/event-add-page.js";
 import { initializeEventUpdatePage } from "/static/js/dashboard/group/event-update-page.js";
+import { waitForMicrotask } from "/tests/unit/test-utils/async.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
 import { mockSwal } from "/tests/unit/test-utils/globals.js";
 
@@ -119,6 +120,66 @@ describe("event page modules", () => {
     expect(requestEvent.detail.parameters["sessions[0][starts_at]"]).to.equal(
       "2026-05-10T10:00:00",
     );
+  });
+
+  it("re-syncs session bounds after rejecting an add page start date change", async () => {
+    mountAddPageShell();
+    document
+      .querySelector('[data-event-page="add"]')
+      .insertAdjacentHTML(
+        "beforeend",
+        '<sessions-section></sessions-section><online-event-details id="online-event-details"></online-event-details>',
+      );
+
+    const sessionsSection = document.querySelector("sessions-section");
+    const onlineEventDetails = document.querySelector("online-event-details");
+    const startsAtInput = document.getElementById("starts_at");
+    const endsAtInput = document.getElementById("ends_at");
+
+    startsAtInput.value = "2026-05-10T09:00";
+    endsAtInput.value = "2026-05-10T11:00";
+    onlineEventDetails.trySetStartsAt = async () => false;
+
+    initializeEventAddPage();
+
+    startsAtInput.value = "2026-05-11T09:00";
+    startsAtInput.dispatchEvent(new Event("change", { bubbles: true }));
+
+    await waitForMicrotask();
+
+    expect(startsAtInput.value).to.equal("2026-05-10T09:00");
+    expect(sessionsSection.eventStartsAt).to.equal("2026-05-10T09:00");
+    expect(sessionsSection.eventEndsAt).to.equal("2026-05-10T11:00");
+  });
+
+  it("re-syncs session bounds after rejecting an update page end date change", async () => {
+    mountUpdatePageShell();
+    document
+      .querySelector('[data-event-page="update"]')
+      .insertAdjacentHTML(
+        "beforeend",
+        '<sessions-section></sessions-section><online-event-details id="online-event-details"></online-event-details>',
+      );
+
+    const sessionsSection = document.querySelector("sessions-section");
+    const onlineEventDetails = document.querySelector("online-event-details");
+    const startsAtInput = document.getElementById("starts_at");
+    const endsAtInput = document.getElementById("ends_at");
+
+    startsAtInput.value = "2026-05-10T09:00";
+    endsAtInput.value = "2026-05-10T11:00";
+    onlineEventDetails.trySetEndsAt = async () => false;
+
+    initializeEventUpdatePage();
+
+    endsAtInput.value = "2026-05-10T12:30";
+    endsAtInput.dispatchEvent(new Event("change", { bubbles: true }));
+
+    await waitForMicrotask();
+
+    expect(endsAtInput.value).to.equal("2026-05-10T11:00");
+    expect(sessionsSection.eventStartsAt).to.equal("2026-05-10T09:00");
+    expect(sessionsSection.eventEndsAt).to.equal("2026-05-10T11:00");
   });
 
   it("initializes the update page and respects the page data contract", () => {
