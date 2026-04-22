@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(96);
+select plan(98);
 
 -- ============================================================================
 -- VARIABLES
@@ -43,6 +43,7 @@ select plan(96);
 \set meeting3ID '00000000-0000-0000-0000-000000000303'
 \set session1ID '00000000-0000-0000-0000-000000000101'
 \set session2ID '00000000-0000-0000-0000-000000000102'
+\set session3ID '00000000-0000-0000-0000-000000000103'
 \set sponsorNewID '00000000-0000-0000-0000-000000000062'
 \set sponsorOrigID '00000000-0000-0000-0000-000000000061'
 \set user1ID '00000000-0000-0000-0000-000000000020'
@@ -602,6 +603,27 @@ insert into event (
     'in-person',
     current_timestamp - interval '1 hour',
     current_timestamp + interval '2 hours'
+);
+
+-- Session already completed while the live event is still ongoing
+insert into session (
+    session_id,
+    event_id,
+    name,
+    starts_at,
+    ends_at,
+    session_kind_id,
+    meeting_provider_id,
+    meeting_requested
+) values (
+    :'session3ID',
+    :'event9ID',
+    'Completed Live Event Session',
+    current_timestamp - interval '45 minutes',
+    current_timestamp - interval '15 minutes',
+    'virtual',
+    'zoom',
+    true
 );
 
 -- Event Attendees (for capacity validation and waitlist promotion tests)
@@ -2584,6 +2606,89 @@ select lives_ok(
         :'group1ID', :'event9ID', :'category1ID', :'event9ID', :'event9ID'
     ),
     'Should succeed updating live event when starts_at is moved later (but still in past)'
+);
+
+-- Recreate a completed session after the prior live-event updates removed it
+insert into session (
+    session_id,
+    event_id,
+    name,
+    starts_at,
+    ends_at,
+    session_kind_id,
+    meeting_provider_id,
+    meeting_requested
+) values (
+    :'session3ID',
+    :'event9ID',
+    'Completed Live Event Session',
+    (select starts_at from event where event_id = :'event9ID'),
+    current_timestamp - interval '5 minutes',
+    'virtual',
+    'zoom',
+    true
+);
+
+-- Should update session recording override when the live event has a completed session
+select lives_ok(
+    format(
+        $$select update_event(
+            null::uuid,
+            '%s'::uuid,
+            '%s'::uuid,
+            jsonb_build_object(
+                'name', 'Live Event Updated With Session Override',
+                'description', 'Updated description with completed session override',
+                'timezone', 'UTC',
+                'category_id', '%s',
+                'kind_id', 'in-person',
+                'starts_at', to_char(
+                    (select starts_at from event where event_id = '%s'::uuid)
+                    at time zone 'UTC',
+                    'YYYY-MM-DD"T"HH24:MI:SS'
+                ),
+                'ends_at', to_char(
+                    (select ends_at from event where event_id = '%s'::uuid)
+                    at time zone 'UTC',
+                    'YYYY-MM-DD"T"HH24:MI:SS'
+                ),
+                'sessions', jsonb_build_array(
+                    jsonb_build_object(
+                        'session_id', '%s',
+                        'name', 'Completed Live Event Session',
+                        'starts_at', to_char(
+                            (select starts_at from session where session_id = '%s'::uuid)
+                            at time zone 'UTC',
+                            'YYYY-MM-DD"T"HH24:MI:SS'
+                        ),
+                        'ends_at', to_char(
+                            (select ends_at from session where session_id = '%s'::uuid)
+                            at time zone 'UTC',
+                            'YYYY-MM-DD"T"HH24:MI:SS'
+                        ),
+                        'kind', 'virtual',
+                        'meeting_provider_id', 'zoom',
+                        'meeting_recording_url', 'https://youtube.com/watch?v=live-session-override',
+                        'meeting_requested', true
+                    )
+                )
+            )
+        )$$,
+        :'group1ID',
+        :'event9ID',
+        :'category1ID',
+        :'event9ID',
+        :'event9ID',
+        :'session3ID',
+        :'session3ID',
+        :'session3ID'
+    ),
+    'Should update session recording override when the live event has a completed session'
+);
+select is(
+    (select meeting_recording_url from session where session_id = :'session3ID'::uuid),
+    'https://youtube.com/watch?v=live-session-override',
+    'Should persist the completed session recording override on a live event update'
 );
 
 -- Should throw error when capacity is reduced below attendee count
