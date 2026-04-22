@@ -2,7 +2,8 @@ import { expect, test } from "@playwright/test";
 
 import {
   expectRegionScreenshot,
-  getExploreChromeRow,
+  getExploreControlsRow,
+  getExploreSearchRow,
   navigateToPath,
   TEST_COMMUNITY_NAME,
   TEST_EVENT_NAMES,
@@ -19,10 +20,14 @@ test.describe("site explore events page visual regression @visual", () => {
     await expect(page.getByText(TEST_EVENT_NAMES.alpha[0], { exact: true })).toBeVisible();
     await expect(page.getByText(TEST_EVENT_NAMES.alpha[1], { exact: true })).toBeVisible();
 
-    await expectRegionScreenshot(page, getExploreChromeRow(page, 0), "explore-events-desktop.png");
     await expectRegionScreenshot(
       page,
-      getExploreChromeRow(page, 1),
+      getExploreSearchRow(page, "Search events"),
+      "explore-events-desktop.png",
+    );
+    await expectRegionScreenshot(
+      page,
+      getExploreControlsRow(page),
       "explore-events-desktop-controls.png",
     );
   });
@@ -37,10 +42,14 @@ test.describe("site explore events page visual regression @visual", () => {
     await expect(page.getByText(TEST_EVENT_NAMES.alpha[0], { exact: true })).toBeVisible();
     await expect(page.getByText(TEST_EVENT_NAMES.alpha[1], { exact: true })).toBeVisible();
 
-    await expectRegionScreenshot(page, getExploreChromeRow(page, 0), "explore-events-mobile.png");
     await expectRegionScreenshot(
       page,
-      getExploreChromeRow(page, 1),
+      getExploreSearchRow(page, "Search events"),
+      "explore-events-mobile.png",
+    );
+    await expectRegionScreenshot(
+      page,
+      getExploreControlsRow(page),
       "explore-events-mobile-controls.png",
     );
   });

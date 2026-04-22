@@ -295,16 +295,38 @@ export const getEventLogo = (page: Page) =>
  */
 export const getIntroSection = (page: Page) =>
   page
-    .locator("div.flex.gap-y-6.sm\\:gap-y-8.lg\\:gap-y-12.flex-col")
-    .first()
-    .locator(":scope > div")
-    .first();
+    .getByRole("heading", { level: 1 })
+    .locator("xpath=ancestor::div[parent::div[contains(@class,'gap-y-6')]][1]");
 
 /**
- * Selects one of the stable explore chrome rows above the results list.
+ * Selects the community about block without including the following sections.
  */
-export const getExploreChromeRow = (page: Page, rowIndex: 0 | 1) =>
-  page.locator("#explore-cards > div > div").nth(rowIndex);
+export const getCommunityAboutSection = (page: Page) =>
+  page.locator(".community-description").locator("..");
+
+/**
+ * Selects the stable home jumbotron content without outer container padding.
+ */
+export const getHomeJumbotronContent = (page: Page) =>
+  page
+    .getByRole("heading", { level: 1 })
+    .locator("xpath=ancestor::div[contains(@class,'text-center')][1]");
+
+/**
+ * Selects the explore search row above the results list.
+ */
+export const getExploreSearchRow = (page: Page, searchPlaceholder: string) =>
+  page
+    .getByPlaceholder(searchPlaceholder)
+    .locator("xpath=ancestor::div[contains(@class,'items-center')][1]");
+
+/**
+ * Selects the explore controls row above the results list.
+ */
+export const getExploreControlsRow = (page: Page) =>
+  page
+    .locator("#results")
+    .locator("xpath=ancestor::div[contains(@class,'justify-between')][1]");
 
 export type AuthUser = {
   name: string;

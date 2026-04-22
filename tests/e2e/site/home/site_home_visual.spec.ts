@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 
 import {
   expectRegionScreenshot,
+  getHomeJumbotronContent,
   navigateToSiteHome,
   TEST_SITE_TITLE,
 } from "../../utils";
@@ -16,7 +17,7 @@ test.describe("site home page visual regression @visual", () => {
 
     await expectRegionScreenshot(
       page,
-      page.locator("div.relative.container").first(),
+      getHomeJumbotronContent(page),
       "site-home-desktop.png",
     );
   });
@@ -30,7 +31,7 @@ test.describe("site home page visual regression @visual", () => {
 
     await expectRegionScreenshot(
       page,
-      page.locator("div.relative.container").first(),
+      getHomeJumbotronContent(page),
       "site-home-mobile.png",
     );
   });
