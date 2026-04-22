@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(7);
+select plan(8);
 
 -- ============================================================================
 -- VARIABLES
@@ -17,6 +17,7 @@ select plan(7);
 \set eventGroupLogoFallbackID '00000000-0000-0000-0000-000000000035'
 \set eventInactiveGroupID '00000000-0000-0000-0000-000000000033'
 \set eventPaidID '00000000-0000-0000-0000-000000000036'
+\set eventRecordingOverrideID '00000000-0000-0000-0000-000000000037'
 \set eventUnpublishedID '00000000-0000-0000-0000-000000000032'
 \set groupCategoryID '00000000-0000-0000-0000-000000000011'
 \set groupID '00000000-0000-0000-0000-000000000021'
@@ -31,6 +32,7 @@ select plan(7);
 \set session1ID '00000000-0000-0000-0000-000000000051'
 \set session2ID '00000000-0000-0000-0000-000000000052'
 \set session3ID '00000000-0000-0000-0000-000000000053'
+\set sessionOverrideID '00000000-0000-0000-0000-000000000054'
 \set sessionProposalID '00000000-0000-0000-0000-000000000081'
 \set sponsor1ID '00000000-0000-0000-0000-000000000061'
 \set sponsor2ID '00000000-0000-0000-0000-000000000062'
@@ -225,6 +227,43 @@ values
     (:'label1ID', :'eventID', 'track / ai + ml', '#DBEAFE'),
     (:'label2ID', :'eventID', 'track / web', '#FEE2E2');
 
+-- Event with automatic recording overrides
+insert into event (
+    event_id,
+    name,
+    slug,
+    description,
+    timezone,
+    event_category_id,
+    event_kind_id,
+    group_id,
+    published,
+    starts_at,
+    ends_at,
+    capacity,
+    meeting_in_sync,
+    meeting_provider_id,
+    meeting_recording_url,
+    meeting_requested
+) values (
+    :'eventRecordingOverrideID',
+    'KubeCon Seattle 2024 Recording Override',
+    'kubecon-seattle-2024-recording-override',
+    'An event used to verify organizer recording overrides take priority',
+    'America/New_York',
+    :'eventCategoryID',
+    'virtual',
+    :'groupID',
+    true,
+    '2024-06-18 09:00:00+00',
+    '2024-06-18 11:00:00+00',
+    100,
+    true,
+    'zoom',
+    'https://youtube.com/watch?v=event-override',
+    true
+);
+
 -- Session proposal linked to a session
 insert into session_proposal (
     session_proposal_id,
@@ -364,6 +403,33 @@ insert into session (
     false
 );
 
+-- Session with automatic recording override
+insert into session (
+    session_id,
+    event_id,
+    name,
+    description,
+    session_kind_id,
+    starts_at,
+    ends_at,
+    meeting_in_sync,
+    meeting_provider_id,
+    meeting_recording_url,
+    meeting_requested
+) values (
+    :'sessionOverrideID',
+    :'eventRecordingOverrideID',
+    'Recording Override Session',
+    'A session used to verify organizer recording overrides take priority',
+    'virtual',
+    '2024-06-18 10:00:00+00',
+    '2024-06-18 11:00:00+00',
+    true,
+    'zoom',
+    'https://youtube.com/watch?v=session2-override',
+    true
+);
+
 -- Link meeting to event
 insert into meeting (event_id, join_url, meeting_provider_id, password, provider_meeting_id, recording_url)
 values (
@@ -384,6 +450,28 @@ values (
     'meeting-session2-001',
     'https://meeting.example.com/session2-recording',
     :'session2ID'
+);
+
+-- Link meeting to event with automatic recording override
+insert into meeting (event_id, join_url, meeting_provider_id, password, provider_meeting_id, recording_url)
+values (
+    :'eventRecordingOverrideID',
+    'https://meeting.example.com/event-override',
+    'zoom',
+    'event-override-secret',
+    'meeting-event-override-001',
+    'https://meeting.example.com/event-override-recording'
+);
+
+-- Link meeting to session with automatic recording override
+insert into meeting (join_url, meeting_provider_id, password, provider_meeting_id, recording_url, session_id)
+values (
+    'https://meeting.example.com/session-override',
+    'zoom',
+    'session-override-secret',
+    'meeting-session-override-001',
+    'https://meeting.example.com/session-override-recording',
+    :'sessionOverrideID'
 );
 
 -- Session Speakers
@@ -1099,6 +1187,36 @@ select ok(
         :'eventID'::uuid
     ) is null,
     'Should return null when community does not match event'
+);
+
+-- Should prefer organizer recording overrides over synced meeting recordings
+select is(
+    (
+        with payload as (
+            select get_event_full(
+                :'communityID'::uuid,
+                :'groupID'::uuid,
+                :'eventRecordingOverrideID'::uuid
+            )::jsonb as event_json
+        )
+        select jsonb_build_object(
+            'event_meeting_recording_url',
+            event_json->>'meeting_recording_url',
+            'session_meeting_recording_url',
+            (
+                select session_json->>'meeting_recording_url'
+                from jsonb_each(event_json->'sessions') as day(day, sessions)
+                cross join lateral jsonb_array_elements(sessions) as session_json
+                where session_json->>'session_id' = :'sessionOverrideID'
+            )
+        )
+        from payload
+    ),
+    '{
+        "event_meeting_recording_url": "https://youtube.com/watch?v=event-override",
+        "session_meeting_recording_url": "https://youtube.com/watch?v=session2-override"
+    }'::jsonb,
+    'Should prefer organizer recording overrides over synced meeting recordings'
 );
 
 -- ============================================================================

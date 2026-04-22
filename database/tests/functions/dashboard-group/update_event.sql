@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(88);
+select plan(96);
 
 -- ============================================================================
 -- VARIABLES
@@ -39,6 +39,8 @@ select plan(88);
 \set label3ID '00000000-0000-0000-0000-000000000403'
 \set label4ID '00000000-0000-0000-0000-000000000404'
 \set meeting1ID '00000000-0000-0000-0000-000000000301'
+\set meeting2ID '00000000-0000-0000-0000-000000000302'
+\set meeting3ID '00000000-0000-0000-0000-000000000303'
 \set session1ID '00000000-0000-0000-0000-000000000101'
 \set session2ID '00000000-0000-0000-0000-000000000102'
 \set sponsorNewID '00000000-0000-0000-0000-000000000062'
@@ -158,6 +160,23 @@ insert into event (
     true,
     '2030-03-01 10:00:00-05',
     '2030-03-01 12:00:00-05'
+);
+
+-- Event meeting for meeting_in_sync=false preservation
+insert into meeting (
+    event_id,
+    join_url,
+    meeting_id,
+    meeting_provider_id,
+    provider_meeting_id,
+    recording_url
+) values (
+    :'event5ID',
+    'https://zoom.us/j/event-pending-sync',
+    :'meeting2ID',
+    'zoom',
+    'event-pending-sync',
+    'https://zoom.example/event-pending-recording'
 );
 
 -- Published dateless event for waitlist promotion checks
@@ -427,6 +446,23 @@ insert into session (
     'zoom',
     true,
     false
+);
+
+-- Session meeting for meeting_in_sync=false preservation
+insert into meeting (
+    join_url,
+    meeting_id,
+    meeting_provider_id,
+    provider_meeting_id,
+    recording_url,
+    session_id
+) values (
+    'https://zoom.us/j/session-pending-sync',
+    :'meeting3ID',
+    'zoom',
+    'session-pending-sync',
+    'https://zoom.example/session-pending-recording',
+    :'session1ID'
 );
 
 -- Event with session that has a meeting (for orphan test)
@@ -1859,6 +1895,68 @@ select is(
     'Should keep event meeting_in_sync=false when meeting_requested changes to false'
 );
 
+-- Should persist event recording override for automatic meetings
+select lives_ok(
+    $$select update_event(
+        null::uuid,
+        '00000000-0000-0000-0000-000000000002'::uuid,
+        '00000000-0000-0000-0000-000000000005'::uuid,
+        '{
+            "name": "Event With Pending Sync",
+            "description": "Updated description with recording override",
+            "timezone": "America/New_York",
+            "category_id": "00000000-0000-0000-0000-000000000011",
+            "capacity": 100,
+            "kind_id": "virtual",
+            "meeting_provider_id": "zoom",
+            "meeting_recording_url": "https://youtube.com/watch?v=event-override",
+            "meeting_requested": true,
+            "starts_at": "2030-03-01T10:00:00",
+            "ends_at": "2030-03-01T12:00:00"
+        }'::jsonb
+    )$$,
+    'Should execute update when automatic event meeting recording override is provided'
+);
+select is(
+    (select meeting_recording_url from event where event_id = :'event5ID'::uuid),
+    'https://youtube.com/watch?v=event-override',
+    'Should persist event recording override for automatic meetings'
+);
+
+-- Should clear event recording override and fall back to synced meeting recording
+select lives_ok(
+    $$select update_event(
+        null::uuid,
+        '00000000-0000-0000-0000-000000000002'::uuid,
+        '00000000-0000-0000-0000-000000000005'::uuid,
+        '{
+            "name": "Event With Pending Sync",
+            "description": "Updated description with cleared recording override",
+            "timezone": "America/New_York",
+            "category_id": "00000000-0000-0000-0000-000000000011",
+            "capacity": 100,
+            "kind_id": "virtual",
+            "meeting_provider_id": "zoom",
+            "meeting_recording_url": "",
+            "meeting_requested": true,
+            "starts_at": "2030-03-01T10:00:00",
+            "ends_at": "2030-03-01T12:00:00"
+        }'::jsonb
+    )$$,
+    'Should execute update when automatic event meeting recording override is cleared'
+);
+select is(
+    (
+        select get_event_full(
+            :'community1ID'::uuid,
+            :'group1ID'::uuid,
+            :'event5ID'::uuid
+        )::jsonb->>'meeting_recording_url'
+    ),
+    'https://zoom.example/event-pending-recording',
+    'Should fall back to synced event meeting recording after clearing override'
+);
+
 -- Should preserve session meeting_in_sync=false when updating unrelated fields
 select lives_ok(
     $$select update_event(
@@ -1928,6 +2026,93 @@ select is(
     (select meeting_in_sync from session where session_id = :'session1ID'::uuid),
     false,
     'Should keep session meeting_in_sync=false when meeting_requested changes to false'
+);
+
+-- Should persist session recording override for automatic meetings
+select lives_ok(
+    $$select update_event(
+        null::uuid,
+        '00000000-0000-0000-0000-000000000002'::uuid,
+        '00000000-0000-0000-0000-000000000006'::uuid,
+        '{
+            "name": "Event With Session Pending Sync",
+            "description": "Updated event description with session recording override",
+            "timezone": "America/New_York",
+            "category_id": "00000000-0000-0000-0000-000000000011",
+            "kind_id": "virtual",
+            "starts_at": "2030-04-01T09:00:00",
+            "ends_at": "2030-04-01T17:00:00",
+            "sessions": [
+                {
+                    "session_id": "00000000-0000-0000-0000-000000000101",
+                    "name": "Session With Pending Sync",
+                    "description": "Updated session description with recording override",
+                    "starts_at": "2030-04-01T10:00:00",
+                    "ends_at": "2030-04-01T11:00:00",
+                    "kind": "virtual",
+                    "meeting_provider_id": "zoom",
+                    "meeting_recording_url": "https://youtube.com/watch?v=session-override",
+                    "meeting_requested": true
+                }
+            ]
+        }'::jsonb
+    )$$,
+    'Should execute update when automatic session meeting recording override is provided'
+);
+select is(
+    (select meeting_recording_url from session where session_id = :'session1ID'::uuid),
+    'https://youtube.com/watch?v=session-override',
+    'Should persist session recording override for automatic meetings'
+);
+
+-- Should clear session recording override and fall back to synced meeting recording
+select lives_ok(
+    $$select update_event(
+        null::uuid,
+        '00000000-0000-0000-0000-000000000002'::uuid,
+        '00000000-0000-0000-0000-000000000006'::uuid,
+        '{
+            "name": "Event With Session Pending Sync",
+            "description": "Updated event description with cleared session recording override",
+            "timezone": "America/New_York",
+            "category_id": "00000000-0000-0000-0000-000000000011",
+            "kind_id": "virtual",
+            "starts_at": "2030-04-01T09:00:00",
+            "ends_at": "2030-04-01T17:00:00",
+            "sessions": [
+                {
+                    "session_id": "00000000-0000-0000-0000-000000000101",
+                    "name": "Session With Pending Sync",
+                    "description": "Updated session description with cleared recording override",
+                    "starts_at": "2030-04-01T10:00:00",
+                    "ends_at": "2030-04-01T11:00:00",
+                    "kind": "virtual",
+                    "meeting_provider_id": "zoom",
+                    "meeting_recording_url": "",
+                    "meeting_requested": true
+                }
+            ]
+        }'::jsonb
+    )$$,
+    'Should execute update when automatic session meeting recording override is cleared'
+);
+select is(
+    (
+        with payload as (
+            select get_event_full(
+                :'community1ID'::uuid,
+                :'group1ID'::uuid,
+                :'event6ID'::uuid
+            )::jsonb as event_json
+        )
+        select session_json->>'meeting_recording_url'
+        from payload
+        cross join lateral jsonb_each(event_json->'sessions') as day(day, sessions)
+        cross join lateral jsonb_array_elements(sessions) as session_json
+        where session_json->>'session_id' = :'session1ID'
+    ),
+    'https://zoom.example/session-pending-recording',
+    'Should fall back to synced session meeting recording after clearing override'
 );
 
 -- Should throw error when updating cancelled event

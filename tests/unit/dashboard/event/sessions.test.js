@@ -97,10 +97,10 @@ describe("sessions-section", () => {
     });
 
     element.sessions = [
-        { id: 4, name: "Day two afternoon", starts_at: "2025-02-01T15:00", ends_at: "2025-02-01T16:00" },
-        { id: 2, name: "Day one opening", starts_at: "2025-01-31T09:00", ends_at: "2025-01-31T10:00" },
-        { id: 3, name: "Day two morning", starts_at: "2025-02-01T09:00", ends_at: "2025-02-01T10:00" },
-        { id: 5, name: "Outside range", starts_at: "2025-02-03T09:00", ends_at: "2025-02-03T10:00" },
+      { id: 4, name: "Day two afternoon", starts_at: "2025-02-01T15:00", ends_at: "2025-02-01T16:00" },
+      { id: 2, name: "Day one opening", starts_at: "2025-01-31T09:00", ends_at: "2025-01-31T10:00" },
+      { id: 3, name: "Day two morning", starts_at: "2025-02-01T09:00", ends_at: "2025-02-01T10:00" },
+      { id: 5, name: "Outside range", starts_at: "2025-02-03T09:00", ends_at: "2025-02-03T10:00" },
     ];
 
     const days = element._computeEventDays();
@@ -159,7 +159,9 @@ describe("sessions-section", () => {
 
     expect(element.querySelector('input[name="sessions[0][description]"]')?.value).to.equal("");
     expect(element.querySelector('input[name="sessions[0][meeting_join_url]"]')?.value).to.equal("");
-    expect(element.querySelector('input[name="sessions[0][meeting_recording_url]"]')?.value).to.equal("");
+    expect(element.querySelector('input[name="sessions[0][meeting_recording_url]"]')?.value).to.equal(
+      "https://recording.example",
+    );
     expect(element.querySelector('input[name="sessions[0][meeting_provider_id]"]')?.value).to.equal("zoom");
     expect(element.querySelector('input[name="sessions[0][speakers][0][user_id]"]')).to.equal(null);
 
@@ -170,9 +172,7 @@ describe("sessions-section", () => {
     expect(element.querySelector('input[name="sessions[1][speakers][0][user_id]"]')?.value).to.equal(
       "speaker-2",
     );
-    expect(element.querySelector('input[name="sessions[1][speakers][0][featured]"]')?.value).to.equal(
-      "true",
-    );
+    expect(element.querySelector('input[name="sessions[1][speakers][0][featured]"]')?.value).to.equal("true");
   });
 
   it("adds new sessions with the next numeric id and updates existing ones in place", async () => {
