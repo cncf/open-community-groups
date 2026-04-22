@@ -508,6 +508,7 @@ select columns_are('group_site_layout', array[
 select columns_are('group_sponsor', array[
     'group_sponsor_id',
     'created_at',
+    'featured',
     'group_id',
     'logo_url',
     'name',

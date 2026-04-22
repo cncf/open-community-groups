@@ -39,6 +39,7 @@
     <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200"
            role="rowgroup">
       <tr>
+        <th scope="col" class="hidden md:table-cell px-3 xl:px-5 py-3">Featured</th>
         <th scope="col" class="px-3 xl:px-5 py-3">Sponsor</th>
         <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3">Website</th>
         <th scope="col" class="px-3 xl:px-5 py-3 w-[112px]">
@@ -53,14 +54,28 @@
           <td class="xl:hidden px-8 py-12 text-center" colspan="2">
             {% include "dashboard/placeholders/group_sponsors_table.html" -%}
           </td>
-          {# xl: 3 columns (adds Website) -#}
-          <td class="hidden xl:table-cell px-8 py-12 text-center" colspan="3">
+          {# md: 4 columns (adds Featured), xl: 5 columns (adds Website) -#}
+          <td class="hidden xl:table-cell px-8 py-12 text-center" colspan="4">
             {% include "dashboard/placeholders/group_sponsors_table.html" -%}
           </td>
+          <td class="hidden md:table-cell xl:hidden px-8 py-12 text-center"
+              colspan="3">{% include "dashboard/placeholders/group_sponsors_table.html" -%}</td>
         </tr>
       {% else -%}
         {% for sponsor in sponsors -%}
           <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
+            {# Featured -#}
+            <td class="hidden md:table-cell px-3 xl:px-5 py-4">
+              {% if sponsor.featured -%}
+                <span class="inline-flex items-center rounded-full bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700">
+                  Featured
+                </span>
+              {% else -%}
+                <span class="text-stone-400">-</span>
+              {% endif -%}
+            </td>
+            {# End featured -#}
+
             {# Sponsor -#}
             <td class="px-3 xl:px-5 py-4">
               <div class="flex items-center space-x-4">

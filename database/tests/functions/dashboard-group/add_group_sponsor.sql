@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(2);
+select plan(3);
 
 -- ============================================================================
 -- VARIABLES
@@ -52,6 +52,7 @@ select is(
     (
         select (get_group_sponsor(
             add_group_sponsor(null::uuid, :'groupID'::uuid, '{
+                "featured": true,
                 "name":"Epsilon",
                 "logo_url":"https://ex.com/epsilon.png",
                 "website_url":"https://epsi.io"
@@ -61,6 +62,7 @@ select is(
         )::jsonb - 'group_sponsor_id')
     ),
     '{
+        "featured": true,
         "logo_url":"https://ex.com/epsilon.png",
         "name":"Epsilon",
         "website_url":"https://epsi.io"
@@ -94,6 +96,26 @@ select results_eq(
         where name = 'Epsilon'
     $$,
     'Should create the expected audit row'
+);
+
+-- Should default featured to true when omitted
+select is(
+    (
+        select (get_group_sponsor(
+            add_group_sponsor(null::uuid, :'groupID'::uuid, '{
+                "name":"Zeta",
+                "logo_url":"https://ex.com/zeta.png"
+            }'::jsonb
+            ),
+            :'groupID'::uuid
+        )::jsonb - 'group_sponsor_id')
+    ),
+    '{
+        "featured": true,
+        "logo_url":"https://ex.com/zeta.png",
+        "name":"Zeta"
+    }'::jsonb,
+    'Should default featured to true when omitted'
 );
 
 -- ============================================================================

@@ -683,6 +683,7 @@ pub(crate) fn sample_group_role_summary() -> GroupRoleSummary {
 /// Sample group sponsor entry.
 pub(crate) fn sample_group_sponsor() -> GroupSponsor {
     GroupSponsor {
+        featured: true,
         group_sponsor_id: Uuid::new_v4(),
         logo_url: "https://example.test/logo.png".to_string(),
         name: "Sponsor".to_string(),
@@ -921,6 +922,7 @@ pub(crate) fn sample_site_stats() -> crate::templates::site::stats::SiteStats {
 /// Sample sponsor form payload used by dashboard group sponsors tests.
 pub(crate) fn sample_sponsor_form() -> Sponsor {
     Sponsor {
+        featured: true,
         logo_url: "https://example.test/logo.png".to_string(),
         name: "Example".to_string(),
 

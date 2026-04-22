@@ -270,12 +270,14 @@ select is(
         ],
         "sponsors": [
             {
+                "featured": true,
                 "group_sponsor_id": "00000000-0000-0000-0000-000000000041",
                 "logo_url": "https://example.com/logos/devops-tools.png",
                 "name": "DevOps Tools Inc",
                 "website_url": "https://devopstools.example.com"
             },
             {
+                "featured": true,
                 "group_sponsor_id": "00000000-0000-0000-0000-000000000042",
                 "logo_url": "https://example.com/logos/kube-corp.png",
                 "name": "Kube Corp"

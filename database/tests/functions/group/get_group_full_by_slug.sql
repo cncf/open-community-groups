@@ -100,6 +100,32 @@ values
     (:'groupID', :'organizer1ID', 'admin', true, 1, '2024-01-01 00:00:00'),
     (:'groupID', :'organizer2ID', 'admin', true, 2, '2024-01-01 00:00:00');
 
+-- Group Sponsors
+insert into group_sponsor (
+    group_sponsor_id,
+    featured,
+    group_id,
+    logo_url,
+    name,
+    website_url
+) values
+    (
+        '00000000-0000-0000-0000-000000000061',
+        true,
+        :'groupID',
+        'https://example.com/featured-sponsor.png',
+        'Featured Sponsor',
+        'https://featured-sponsor.example.com'
+    ),
+    (
+        '00000000-0000-0000-0000-000000000062',
+        false,
+        :'groupID',
+        'https://example.com/hidden-sponsor.png',
+        'Hidden Sponsor',
+        'https://hidden-sponsor.example.com'
+    );
+
 -- ============================================================================
 -- TESTS
 -- ============================================================================
@@ -117,7 +143,22 @@ select is(
         "group_id": "00000000-0000-0000-0000-000000000031",
         "latitude": 40.7128,
         "logo_url": "https://example.com/k8s-logo.png",
-        "sponsors": [],
+        "sponsors": [
+            {
+                "featured": true,
+                "group_sponsor_id": "00000000-0000-0000-0000-000000000061",
+                "logo_url": "https://example.com/featured-sponsor.png",
+                "name": "Featured Sponsor",
+                "website_url": "https://featured-sponsor.example.com"
+            },
+            {
+                "featured": false,
+                "group_sponsor_id": "00000000-0000-0000-0000-000000000062",
+                "logo_url": "https://example.com/hidden-sponsor.png",
+                "name": "Hidden Sponsor",
+                "website_url": "https://hidden-sponsor.example.com"
+            }
+        ],
         "longitude": -74.006,
         "banner_url": "https://example.com/k8s-banner.png",
         "community": {

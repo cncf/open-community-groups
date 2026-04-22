@@ -30,8 +30,8 @@ insert into "group" (group_id, community_id, name, slug, group_category_id)
 values (:'groupID', :'communityID', 'Group Paris', 'group-paris', '30000000-0000-0000-0000-000000000010');
 
 -- Sponsor
-insert into group_sponsor (group_sponsor_id, group_id, name, logo_url, website_url)
-values (:'sponsorID', :'groupID', 'Iota', 'https://ex.com/iota.png', null);
+insert into group_sponsor (group_sponsor_id, group_id, name, logo_url, website_url, featured)
+values (:'sponsorID', :'groupID', 'Iota', 'https://ex.com/iota.png', null, false);
 
 -- ============================================================================
 -- TESTS
@@ -40,6 +40,7 @@ values (:'sponsorID', :'groupID', 'Iota', 'https://ex.com/iota.png', null);
 -- Should update provided fields
 select lives_ok(
     $$select update_group_sponsor(null::uuid, '30000000-0000-0000-0000-000000000002'::uuid, '30000000-0000-0000-0000-000000000003'::uuid, '{
+        "featured": true,
         "name":"Iota Updated",
         "level":"Gold",
         "logo_url":"https://ex.com/iota2.png",
@@ -49,8 +50,8 @@ select lives_ok(
 );
 
 select results_eq(
-    $$select name, logo_url, website_url from group_sponsor where group_sponsor_id = '30000000-0000-0000-0000-000000000003'::uuid$$,
-    $$values ('Iota Updated'::text, 'https://ex.com/iota2.png'::text, 'https://iota.io'::text)$$,
+    $$select featured, name, logo_url, website_url from group_sponsor where group_sponsor_id = '30000000-0000-0000-0000-000000000003'::uuid$$,
+    $$values (true, 'Iota Updated'::text, 'https://ex.com/iota2.png'::text, 'https://iota.io'::text)$$,
     'Should update fields'
 );
 
@@ -88,6 +89,7 @@ select lives_ok(
         '30000000-0000-0000-0000-000000000002'::uuid,
         '30000000-0000-0000-0000-000000000003'::uuid,
         '{
+            "featured": false,
             "name": "Iota Final",
             "logo_url": "https://ex.com/iota3.png"
         }'::jsonb
@@ -97,8 +99,8 @@ select lives_ok(
 
 -- Should set website_url to null when ommitted from payload
 select results_eq(
-    $$select name, logo_url, website_url from group_sponsor where group_sponsor_id = '30000000-0000-0000-0000-000000000003'::uuid$$,
-    $$values ('Iota Final'::text, 'https://ex.com/iota3.png'::text, null::text)$$,
+    $$select featured, name, logo_url, website_url from group_sponsor where group_sponsor_id = '30000000-0000-0000-0000-000000000003'::uuid$$,
+    $$values (false, 'Iota Final'::text, 'https://ex.com/iota3.png'::text, null::text)$$,
     'Should set website_url to null when omitted from payload'
 );
 

@@ -36,11 +36,11 @@ values
     (:'group2ID', :'communityID', 'G2', 'g2', :'categoryID');
 
 -- Group Sponsors
-insert into group_sponsor (group_sponsor_id, group_id, name, logo_url, website_url)
+insert into group_sponsor (group_sponsor_id, group_id, name, logo_url, website_url, featured)
 values
-    (:'sponsor1ID', :'groupID', 'Alpha', 'https://e/s1.png', null),
-    (:'sponsor2ID', :'groupID', 'Beta',  'https://e/s2.png',  'https://e/s2'),
-    (:'sponsor3ID', :'group2ID', 'Gamma', 'https://e/s3.png', null);
+    (:'sponsor1ID', :'groupID', 'Alpha', 'https://e/s1.png', null, true),
+    (:'sponsor2ID', :'groupID', 'Beta',  'https://e/s2.png',  'https://e/s2', false),
+    (:'sponsor3ID', :'group2ID', 'Gamma', 'https://e/s3.png', null, false);
 
 -- ============================================================================
 -- TESTS
@@ -55,8 +55,8 @@ select is(
     )::jsonb,
     jsonb_build_object(
         'sponsors', '[
-            {"group_sponsor_id": "00000000-0000-0000-0000-000000000061", "logo_url": "https://e/s1.png", "name": "Alpha"},
-            {"group_sponsor_id": "00000000-0000-0000-0000-000000000062", "logo_url": "https://e/s2.png", "name": "Beta", "website_url": "https://e/s2"}
+            {"featured": true, "group_sponsor_id": "00000000-0000-0000-0000-000000000061", "logo_url": "https://e/s1.png", "name": "Alpha"},
+            {"featured": false, "group_sponsor_id": "00000000-0000-0000-0000-000000000062", "logo_url": "https://e/s2.png", "name": "Beta", "website_url": "https://e/s2"}
         ]'::jsonb,
         'total', 2
     ),
@@ -72,7 +72,7 @@ select is(
     )::jsonb,
     jsonb_build_object(
         'sponsors', '[
-            {"group_sponsor_id": "00000000-0000-0000-0000-000000000062", "logo_url": "https://e/s2.png", "name": "Beta", "website_url": "https://e/s2"}
+            {"featured": false, "group_sponsor_id": "00000000-0000-0000-0000-000000000062", "logo_url": "https://e/s2.png", "name": "Beta", "website_url": "https://e/s2"}
         ]'::jsonb,
         'total', 2
     ),
@@ -88,8 +88,8 @@ select is(
     )::jsonb,
     jsonb_build_object(
         'sponsors', '[
-            {"group_sponsor_id": "00000000-0000-0000-0000-000000000061", "logo_url": "https://e/s1.png", "name": "Alpha"},
-            {"group_sponsor_id": "00000000-0000-0000-0000-000000000062", "logo_url": "https://e/s2.png", "name": "Beta", "website_url": "https://e/s2"}
+            {"featured": true, "group_sponsor_id": "00000000-0000-0000-0000-000000000061", "logo_url": "https://e/s1.png", "name": "Alpha"},
+            {"featured": false, "group_sponsor_id": "00000000-0000-0000-0000-000000000062", "logo_url": "https://e/s2.png", "name": "Beta", "website_url": "https://e/s2"}
         ]'::jsonb,
         'total', 2
     ),

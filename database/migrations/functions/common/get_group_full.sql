@@ -89,6 +89,7 @@ returns json as $$
             select coalesce(
                 json_agg(
                     json_strip_nulls(json_build_object(
+                        'featured', gs.featured,
                         'group_sponsor_id', gs.group_sponsor_id,
                         'logo_url', gs.logo_url,
                         'name', gs.name,

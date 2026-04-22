@@ -46,6 +46,7 @@ test.describe("group page", () => {
     await expect(page.getByText("E2E Organizer One", { exact: true })).toBeVisible();
 
     await expect(page.getByText("Sponsors", { exact: true })).toBeVisible();
+    await expect(page.getByText("Hidden Sponsor", { exact: true })).toHaveCount(0);
     await expect(page.getByText("Tech Corp", { exact: true })).toBeVisible();
     await expect(page.getByRole("link", { name: "Tech Corp" })).toHaveAttribute(
       "href",

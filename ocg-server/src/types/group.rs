@@ -244,6 +244,9 @@ pub struct GroupRoleSummary {
 #[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GroupSponsor {
+    /// Whether the sponsor is highlighted on the group page.
+    #[serde(default)]
+    pub featured: bool,
     /// Group sponsor identifier.
     pub group_sponsor_id: Uuid,
     /// URL to sponsor logo.

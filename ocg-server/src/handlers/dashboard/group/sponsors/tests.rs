@@ -84,6 +84,8 @@ async fn test_add_page_success() {
         &HeaderValue::from_static(CACHE_CONTROL_NO_CACHE),
     );
     assert!(!bytes.is_empty());
+    assert!(String::from_utf8_lossy(&bytes).contains("name=\"featured\""));
+    assert!(String::from_utf8_lossy(&bytes).contains("checked"));
 }
 
 #[tokio::test]
@@ -370,6 +372,7 @@ async fn test_add_success() {
         .withf(move |actor_user_id, id, sponsor| {
             *actor_user_id == user_id
                 && *id == group_id
+                && sponsor.featured == form.featured
                 && sponsor.name == form.name
                 && sponsor.logo_url == form.logo_url
         })
@@ -511,6 +514,7 @@ async fn test_update_success() {
             *actor_user_id == user_id
                 && *id == group_id
                 && *sponsor_id == group_sponsor_id
+                && sponsor.featured == form.featured
                 && sponsor.name == form.name
         })
         .returning(move |_, _, _, _| Ok(()));

@@ -10,12 +10,14 @@ declare
 begin
     -- Insert the sponsor for the group
     insert into group_sponsor (
+        featured,
         group_id,
         logo_url,
         name,
 
         website_url
     ) values (
+        coalesce((p_sponsor->>'featured')::boolean, true),
         p_group_id,
         p_sponsor->>'logo_url',
         p_sponsor->>'name',

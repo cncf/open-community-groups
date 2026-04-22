@@ -9,6 +9,7 @@ returns void as $$
 begin
     -- Update the sponsor for the group
     update group_sponsor set
+        featured = coalesce((p_sponsor->>'featured')::boolean, false),
         logo_url = p_sponsor->>'logo_url',
         name = p_sponsor->>'name',
         website_url = nullif(p_sponsor->>'website_url', '')

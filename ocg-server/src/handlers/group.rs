@@ -42,7 +42,7 @@ pub(crate) async fn page(
     Path((_, group_slug)): Path<(String, String)>,
     uri: Uri,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Prepare template
+    // Fetch the group page data
     let event_kinds = vec![EventKind::InPerson, EventKind::Virtual, EventKind::Hybrid];
     let (mut group, past_events, site_settings, upcoming_events) = tokio::try_join!(
         db.get_group_full_by_slug(community_id, &group_slug),
@@ -50,7 +50,14 @@ pub(crate) async fn page(
         db.get_site_settings(),
         db.get_group_upcoming_events(community_id, &group_slug, event_kinds, 9)
     )?;
+
+    // Trim gallery media
     trim_public_gallery_images(&mut group.photos_urls);
+
+    // Only display featured sponsors on the group page
+    group.sponsors.retain(|sponsor| sponsor.featured);
+
+    // Prepare the page template
     let template = Page {
         group,
         page_id: PageId::Group,
