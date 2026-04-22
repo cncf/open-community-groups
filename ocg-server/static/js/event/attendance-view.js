@@ -228,20 +228,22 @@ export const resetPrimaryControls = (container) => {
  */
 export const renderMeetingDetails = (isAttendee, meta) => {
   const sections = document.querySelectorAll("[data-meeting-details]");
+  const showAttendeeMeetingAccess = isAttendee && meta.attendeeMeetingAccessOpen;
 
   sections.forEach((section) => {
     const sectionHasRecording = section.dataset?.hasRecording === "true";
-    section.classList.toggle("hidden", !(sectionHasRecording || isAttendee));
+    section.classList.toggle("hidden", !(sectionHasRecording || showAttendeeMeetingAccess));
   });
 
   const joinLinksAlways = document.querySelectorAll("[data-join-link-always]");
   joinLinksAlways.forEach((link) => {
-    link.classList.toggle("hidden", !isAttendee);
+    link.classList.toggle("hidden", !showAttendeeMeetingAccess);
   });
 
   const joinLinksLive = document.querySelectorAll("[data-join-link]");
   joinLinksLive.forEach((link) => {
-    link.classList.toggle("hidden", !(isAttendee && meta.eventIsLive));
+    link.classList.toggle("hidden", !showAttendeeMeetingAccess);
+    link.classList.toggle("xl:flex", showAttendeeMeetingAccess);
   });
 };
 
