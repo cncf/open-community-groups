@@ -44,7 +44,7 @@ describe("online-event-details", () => {
     expect(element._capacityWarning).to.include("Capacity (150) exceeds");
   });
 
-  it("clears manual urls when switching from manual to automatic mode", async () => {
+  it("preserves recording overrides when switching from manual to automatic mode", async () => {
     const capacity = document.createElement("input");
     capacity.id = "capacity";
     capacity.value = "150";
@@ -65,10 +65,10 @@ describe("online-event-details", () => {
 
     expect(element._mode).to.equal("automatic");
     expect(element._joinUrl).to.equal("");
-    expect(element._recordingUrl).to.equal("");
+    expect(element._recordingUrl).to.equal(" https://youtube.com/watch?v=processed ");
     expect(element.getMeetingData()).to.deep.equal({
       meeting_join_url: "",
-      meeting_recording_url: "",
+      meeting_recording_url: "https://youtube.com/watch?v=processed",
       meeting_requested: true,
       meeting_provider_id: "zoom",
     });

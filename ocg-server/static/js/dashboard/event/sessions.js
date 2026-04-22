@@ -1319,7 +1319,7 @@ class SessionItem extends LitWrapper {
     const sessionNameMaxLength = Number(this.sessionNameMaxLength) || -1;
     const locationMaxLength = Number(this.locationMaxLength) || -1;
 
-    return html` <div class="grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6 w-full">
+    return html` <div class="grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6 w-full h-full">
       <div class="col-span-full">
         <label class="form-label"> Session Title <span class="asterisk">*</span> </label>
         <div class="mt-2">
@@ -1606,7 +1606,7 @@ class SessionItem extends LitWrapper {
         ? html`
             <div class="col-span-full">
               <label class="form-label"> Session meeting details </label>
-              <div class="mt-2">
+              <div class="mt-2 mb-5">
                 ${this.meetingsEnabled
                   ? html`
                       <online-event-details

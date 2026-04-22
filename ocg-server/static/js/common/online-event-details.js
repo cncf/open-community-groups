@@ -421,7 +421,7 @@ export class OnlineEventDetails extends LitWrapper {
     const isDisabled = this.disabled || option.disabled;
 
     return html`
-      <label class="block h-full">
+      <label class="block">
         <input
           type="radio"
           class="sr-only"
@@ -431,7 +431,7 @@ export class OnlineEventDetails extends LitWrapper {
           @change="${this._handleModeChange}"
         />
         <div
-          class="h-full rounded-xl border transition bg-white p-4 md:p-5 flex ${isSelected
+          class="rounded-xl border transition bg-white p-4 md:p-5 flex ${isSelected
             ? "border-primary-400 ring-2 ring-primary-200"
             : "border-stone-200"} ${isDisabled
             ? "opacity-60 cursor-not-allowed"
@@ -517,7 +517,6 @@ export class OnlineEventDetails extends LitWrapper {
       }
       this._mode = "automatic";
       this._joinUrl = "";
-      this._recordingUrl = "";
       this._createMeeting = true;
     } else {
       this._mode = newMode;
@@ -849,7 +848,7 @@ export class OnlineEventDetails extends LitWrapper {
             <li>
               Meeting duration must be between ${MIN_MEETING_MINUTES} and ${MAX_MEETING_MINUTES} minutes.
             </li>
-            <li>Manual links cannot be set while automatic creation is on.</li>
+            <li>Manual join links cannot be set while automatic creation is on.</li>
             <li>You can replace the synced recording link later with a processed upload.</li>
             <li>The meeting is not going to be created until you publish the event.</li>
           </ul>
