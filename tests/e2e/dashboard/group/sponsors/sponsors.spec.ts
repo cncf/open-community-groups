@@ -43,7 +43,7 @@ test.describe("group dashboard sponsors view", () => {
     await expect(sponsorRow).toBeVisible();
     await expect(featuredToggle).toBeChecked();
 
-    await featuredToggle.uncheck({ force: true });
+    await featuredToggle.click({ force: true });
     await expect(organizerGroupPage.locator(".swal2-popup")).toContainText(
       "This sponsor will no longer be visible on the public group page.",
     );
@@ -71,7 +71,7 @@ test.describe("group dashboard sponsors view", () => {
     await expect(sponsorRow).toBeVisible();
     await expect(featuredToggle).toBeChecked();
 
-    await featuredToggle.uncheck({ force: true });
+    await featuredToggle.click({ force: true });
     await expect(organizerGroupPage.locator(".swal2-popup")).toContainText(
       "This sponsor will no longer be visible on the public group page.",
     );
@@ -126,17 +126,15 @@ test.describe("group dashboard sponsors view", () => {
     await expect(
       organizerGroupPage.getByText("Visible on group page", { exact: true }),
     ).toBeVisible();
-    await expect(
-      organizerGroupPage.getByText(
-        "Only featured sponsors appear in the public group page sponsors section.",
-        { exact: true },
-      ),
-    ).toBeVisible();
-    await expect(
-      organizerGroupPage.getByText("All sponsors remain available for events.", {
-        exact: true,
-      }),
-    ).toBeVisible();
+    const sponsorVisibilityLegend = organizerGroupPage
+      .locator("#sponsor-form .form-legend")
+      .filter({ hasText: "Only featured sponsors appear in the public group page" });
+    await expect(sponsorVisibilityLegend).toContainText(
+      "Only featured sponsors appear in the public group page sponsors section.",
+    );
+    await expect(sponsorVisibilityLegend).toContainText(
+      "All sponsors remain available for events.",
+    );
 
     await organizerGroupPage.getByLabel("Name").fill(sponsorName);
     await organizerGroupPage.getByLabel("Website").fill(sponsorWebsite);
