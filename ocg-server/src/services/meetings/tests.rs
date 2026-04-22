@@ -44,7 +44,7 @@ fn test_meeting_provider_error_is_retryable_no_slots_available() {
 #[test]
 fn test_meeting_provider_error_is_retryable_rate_limit() {
     let err = MeetingProviderError::RateLimit {
-        retry_after: Duration::from_secs(60),
+        retry_after: Duration::from_mins(1),
     };
     assert!(err.is_retryable());
 }
@@ -64,11 +64,11 @@ fn test_meeting_provider_error_is_retryable_token() {
 #[test]
 fn test_meeting_provider_error_retry_after_rate_limit() {
     let err = MeetingProviderError::RateLimit {
-        retry_after: Duration::from_secs(120),
+        retry_after: Duration::from_mins(2),
     };
 
     // Check retry_after returns the duration
-    assert_eq!(err.retry_after(), Some(Duration::from_secs(120)));
+    assert_eq!(err.retry_after(), Some(Duration::from_mins(2)));
 }
 
 #[test]
@@ -448,7 +448,7 @@ async fn test_worker_sync_meeting_creates_new_meeting() {
     let meeting_id = Uuid::new_v4();
     let starts_at = chrono::DateTime::from_timestamp(1_900_000_000, 0).unwrap();
     let meeting = Meeting {
-        duration: Some(Duration::from_secs(1800)),
+        duration: Some(Duration::from_mins(30)),
         meeting_id: Some(meeting_id),
         provider_meeting_id: None,
         starts_at: Some(starts_at),
@@ -704,7 +704,7 @@ async fn test_worker_sync_meeting_retryable_error_rollback() {
     let client_id = Uuid::new_v4();
     let starts_at = chrono::DateTime::from_timestamp(1_900_010_000, 0).unwrap();
     let meeting = Meeting {
-        duration: Some(Duration::from_secs(1800)),
+        duration: Some(Duration::from_mins(30)),
         meeting_id: Some(Uuid::new_v4()),
         provider_meeting_id: None,
         starts_at: Some(starts_at),
@@ -759,7 +759,7 @@ async fn test_worker_sync_meeting_non_retryable_error_records_error() {
     let meeting_id = Uuid::new_v4();
     let starts_at = chrono::DateTime::from_timestamp(1_900_020_000, 0).unwrap();
     let meeting = Meeting {
-        duration: Some(Duration::from_secs(1800)),
+        duration: Some(Duration::from_mins(30)),
         meeting_id: Some(meeting_id),
         provider_meeting_id: None,
         starts_at: Some(starts_at),
@@ -817,7 +817,7 @@ async fn test_worker_sync_meeting_no_slots_available_records_error() {
     let meeting_id = Uuid::new_v4();
     let starts_at = chrono::DateTime::from_timestamp(1_900_030_000, 0).unwrap();
     let meeting = Meeting {
-        duration: Some(Duration::from_secs(1800)),
+        duration: Some(Duration::from_mins(30)),
         meeting_id: Some(meeting_id),
         provider_meeting_id: None,
         starts_at: Some(starts_at),

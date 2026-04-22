@@ -42,6 +42,7 @@ returns json as $$
         'linkedin_url', g.linkedin_url,
         'logo_url', coalesce(g.logo_url, c.logo_url),
         'longitude', st_x(g.location::geometry),
+        'payment_recipient', g.payment_recipient,
         'photos_urls', g.photos_urls,
         'region', case when r.region_id is not null then
             json_build_object(

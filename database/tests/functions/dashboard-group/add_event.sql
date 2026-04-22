@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(26);
+select plan(30);
 
 -- ============================================================================
 -- VARIABLES
@@ -102,6 +102,7 @@ select ok(
         "category_name": "Conference",
         "description": "Learn the basics of Kubernetes deployment and management",
         "event_reminder_enabled": true,
+        "has_ticket_purchases": false,
         "hosts": [],
         "speakers": [],
         "kind": "in-person",
@@ -243,6 +244,7 @@ select ok(
         "remaining_capacity": 100,
         "description_short": "Short description",
         "event_reminder_enabled": true,
+        "has_ticket_purchases": false,
         "starts_at": 1893520800,
         "ends_at": 1893528000,
         "logo_url": "https://example.com/logo.png",
@@ -514,6 +516,122 @@ select ok(
         null
     ) is not null),
     'Should succeed when cfg_max_participants is null'
+);
+
+-- Should reject ticket-derived capacity above the meeting provider limit
+select throws_ok(
+    $$select add_event(
+        null::uuid,
+        '00000000-0000-0000-0000-000000000002'::uuid,
+        '{
+            "name": "Ticketed Capacity Exceed Event",
+            "description": "Test",
+            "timezone": "UTC",
+            "category_id": "00000000-0000-0000-0000-000000000011",
+            "kind_id": "virtual",
+            "capacity": 10,
+            "meeting_requested": true,
+            "meeting_provider_id": "zoom",
+            "payment_currency_code": "USD",
+            "starts_at": "2030-03-01T10:00:00",
+            "ends_at": "2030-03-01T11:00:00",
+            "ticket_types": [
+                {
+                    "active": true,
+                    "event_ticket_type_id": "00000000-0000-0000-0000-000000000092",
+                    "order": 1,
+                    "price_windows": [
+                        {
+                            "amount_minor": 2500,
+                            "event_ticket_price_window_id": "00000000-0000-0000-0000-000000000093"
+                        }
+                    ],
+                    "seats_total": 150,
+                    "title": "General"
+                }
+            ]
+        }'::jsonb,
+        '{"zoom": 100}'::jsonb
+    )$$,
+    'event capacity (150) exceeds maximum participants allowed (100)',
+    'Should reject ticket-derived capacity above the meeting provider limit'
+);
+
+-- Should throw error when discount codes are provided without ticket types
+select throws_ok(
+    $$select add_event(
+        null::uuid,
+        '00000000-0000-0000-0000-000000000002'::uuid,
+        '{
+            "name": "Discounts Without Tickets",
+            "description": "Test",
+            "timezone": "UTC",
+            "category_id": "00000000-0000-0000-0000-000000000011",
+            "kind_id": "in-person",
+            "discount_codes": [
+                {
+                    "active": true,
+                    "amount_minor": 500,
+                    "code": "SAVE20",
+                    "event_discount_code_id": "00000000-0000-0000-0000-000000000091",
+                    "kind": "fixed_amount",
+                    "title": "Launch"
+                }
+            ]
+        }'::jsonb
+    )$$,
+    'discount_codes require ticket_types',
+    'Should throw error when discount codes are provided without ticket types'
+);
+
+-- Should throw error when payment currency is provided without ticket types
+select throws_ok(
+    $$select add_event(
+        null::uuid,
+        '00000000-0000-0000-0000-000000000002'::uuid,
+        '{
+            "name": "Currency Without Tickets",
+            "description": "Test",
+            "timezone": "UTC",
+            "category_id": "00000000-0000-0000-0000-000000000011",
+            "kind_id": "in-person",
+            "payment_currency_code": "USD"
+        }'::jsonb
+    )$$,
+    'payment_currency_code requires ticket_types',
+    'Should throw error when payment currency is provided without ticket types'
+);
+
+-- Should throw error when ticket types are missing stable identifiers
+select throws_ok(
+    $$select add_event(
+        null::uuid,
+        '00000000-0000-0000-0000-000000000002'::uuid,
+        '{
+            "name": "Ticket Type Without Identifier",
+            "description": "Test",
+            "timezone": "UTC",
+            "category_id": "00000000-0000-0000-0000-000000000011",
+            "kind_id": "in-person",
+            "payment_currency_code": "USD",
+            "ticket_types": [
+                {
+                    "active": true,
+                    "order": 1,
+                    "price_windows": [
+                        {
+                            "amount_minor": 2500,
+                            "event_ticket_price_window_id": "00000000-0000-0000-0000-000000000094"
+                        }
+                    ],
+                    "seats_total": 25,
+                    "title": "General"
+                }
+            ]
+        }'::jsonb
+    )$$,
+    'ticket types require event_ticket_type_id',
+    'Should throw error when ticket types omit stable identifiers'
 );
 
 -- Should throw error when event starts_at is in the past

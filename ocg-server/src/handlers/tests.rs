@@ -16,7 +16,7 @@ use uuid::Uuid;
 use crate::{
     activity_tracker::DynActivityTracker,
     auth::User as AuthUser,
-    config::{HttpServerConfig, MeetingsConfig, MeetingsZoomConfig},
+    config::{HttpServerConfig, MeetingsConfig, MeetingsZoomConfig, PaymentsConfig},
     db::{
         BBox, DynDB,
         common::{SearchEventsOutput, SearchGroupsOutput},
@@ -28,6 +28,7 @@ use crate::{
     services::{
         images::{DynImageStorage, MockImageStorage},
         notifications::{DynNotificationsManager, MockNotificationsManager},
+        payments::{DynPaymentsManager, MockPaymentsManager},
     },
     templates::{
         dashboard::{
@@ -78,6 +79,7 @@ use crate::{
             GroupCategory, GroupFull, GroupMinimal, GroupRegion, GroupRole, GroupRoleSummary, GroupSponsor,
             GroupSummary,
         },
+        payments::{EventPurchaseStatus, EventPurchaseSummary},
         site::{SiteSettings, Theme},
         user::{User as TemplateUser, UserSummary},
     },
@@ -99,8 +101,12 @@ pub(crate) fn message_matches(record: &session::Record, expected_message: &str) 
 /// Sample attendee used in dashboard group home tests.
 pub(crate) fn sample_attendee() -> Attendee {
     Attendee {
+        amount_minor: None,
         checked_in: true,
         created_at: Utc.with_ymd_and_hms(2024, 1, 1, 12, 0, 0).unwrap(),
+        currency_code: None,
+        discount_code: None,
+        event_purchase_id: None,
         user_id: Uuid::new_v4(),
         username: "attendee".to_string(),
 
@@ -108,6 +114,8 @@ pub(crate) fn sample_attendee() -> Attendee {
         company: Some("Example".to_string()),
         name: Some("Event Attendee".to_string()),
         photo_url: Some("https://example.test/avatar.png".to_string()),
+        refund_request_status: None,
+        ticket_title: None,
         title: Some("Engineer".to_string()),
     }
 }
@@ -456,9 +464,11 @@ pub(crate) fn sample_event_summary(event_id: Uuid, _group_id: Uuid) -> EventSumm
         meeting_join_url: Some("https://example.test/meeting".to_string()),
         meeting_password: None,
         meeting_provider: None,
+        payment_currency_code: None,
         popover_html: None,
         remaining_capacity: None,
         starts_at: Some(starts_at),
+        ticket_types: None,
         venue_address: Some("456 Sample Rd".to_string()),
         venue_city: Some("Boston".to_string()),
         venue_country_code: Some("US".to_string()),
@@ -758,6 +768,27 @@ pub(crate) fn sample_pending_co_speaker_invitation(session_proposal_id: Uuid) ->
     }
 }
 
+/// Sample purchase summary used in event handler tests.
+pub(crate) fn sample_purchase_summary(status: EventPurchaseStatus) -> EventPurchaseSummary {
+    EventPurchaseSummary {
+        amount_minor: 2_500,
+        currency_code: "USD".to_string(),
+        discount_amount_minor: 0,
+        event_purchase_id: Uuid::new_v4(),
+        event_ticket_type_id: Uuid::new_v4(),
+        status,
+        ticket_title: "General admission".to_string(),
+
+        completed_at: None,
+        discount_code: None,
+        hold_expires_at: None,
+        provider_checkout_url: None,
+        provider_payment_reference: None,
+        provider_session_id: None,
+        refunded_at: None,
+    }
+}
+
 /// Sample search output for events.
 pub(crate) fn sample_search_events_output(event_id: Uuid) -> SearchEventsOutput {
     SearchEventsOutput {
@@ -934,6 +965,25 @@ pub(crate) fn sample_template_user_with_id(user_id: Uuid) -> TemplateUser {
     }
 }
 
+/// Sample ticketed event payload for dashboard group event form tests.
+pub(crate) fn sample_ticketed_event_body() -> String {
+    let event_form = sample_event_form();
+
+    format!(
+        concat!(
+            "{}",
+            "&payment_currency_code=USD",
+            "&ticket_types_present=true",
+            "&ticket_types[0][active]=true",
+            "&ticket_types[0][order]=1",
+            "&ticket_types[0][price_windows][0][amount_minor]=1500",
+            "&ticket_types[0][seats_total]=25",
+            "&ticket_types[0][title]=General%20admission"
+        ),
+        serde_qs::to_string(&event_form).unwrap(),
+    )
+}
+
 /// Sample server configuration for testing `track_view` handlers.
 pub(crate) fn sample_tracking_server_cfg() -> HttpServerConfig {
     HttpServerConfig {
@@ -1089,6 +1139,8 @@ pub(crate) fn test_state_with_server_cfg(
         image_storage,
         meetings_cfg: None,
         notifications_manager,
+        payments_cfg: None,
+        payments_manager: Arc::new(MockPaymentsManager::new()),
         serde_qs_de: router::serde_qs_config(),
         server_cfg: server_cfg.clone(),
     }
@@ -1101,6 +1153,8 @@ pub(crate) struct TestRouterBuilder {
     image_storage: Option<MockImageStorage>,
     meetings_cfg: Option<crate::config::MeetingsConfig>,
     nm: MockNotificationsManager,
+    payments_cfg: Option<PaymentsConfig>,
+    payments_manager: Option<MockPaymentsManager>,
     server_cfg: Option<HttpServerConfig>,
 }
 
@@ -1113,6 +1167,8 @@ impl TestRouterBuilder {
             image_storage: None,
             meetings_cfg: None,
             nm,
+            payments_cfg: None,
+            payments_manager: None,
             server_cfg: None,
         }
     }
@@ -1124,10 +1180,21 @@ impl TestRouterBuilder {
         let is: DynImageStorage = Arc::new(self.image_storage.unwrap_or_default());
         let nm: DynNotificationsManager = Arc::new(self.nm);
         let server_cfg = self.server_cfg.unwrap_or_default();
+        let payments_manager = self.payments_manager.unwrap_or_default();
+        let payments_manager = Arc::new(payments_manager) as DynPaymentsManager;
 
-        router::setup(activity_tracker, db, is, self.meetings_cfg, nm, &server_cfg)
-            .await
-            .expect("router setup should succeed")
+        router::setup(
+            activity_tracker,
+            db,
+            is,
+            self.meetings_cfg,
+            self.payments_cfg,
+            payments_manager,
+            nm,
+            &server_cfg,
+        )
+        .await
+        .expect("router setup should succeed")
     }
 
     /// Sets a custom activity tracker.
@@ -1148,6 +1215,18 @@ impl TestRouterBuilder {
     /// Sets a custom meetings configuration.
     pub(crate) fn with_meetings_cfg(mut self, cfg: crate::config::MeetingsConfig) -> Self {
         self.meetings_cfg = Some(cfg);
+        self
+    }
+
+    /// Sets a custom payments configuration.
+    pub(crate) fn with_payments_cfg(mut self, cfg: PaymentsConfig) -> Self {
+        self.payments_cfg = Some(cfg);
+        self
+    }
+
+    /// Sets a custom payments manager.
+    pub(crate) fn with_payments_manager(mut self, payments_manager: MockPaymentsManager) -> Self {
+        self.payments_manager = Some(payments_manager);
         self
     }
 

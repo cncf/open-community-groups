@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(2);
+select plan(3);
 
 -- ============================================================================
 -- VARIABLES
@@ -13,9 +13,12 @@ select plan(2);
 \set communityID '00000000-0000-0000-0000-000000000001'
 \set eventCategoryID '00000000-0000-0000-0000-000000000021'
 \set eventID '00000000-0000-0000-0000-000000000041'
+\set eventPaidID '00000000-0000-0000-0000-000000000042'
 \set groupID '00000000-0000-0000-0000-000000000031'
 \set sponsor1ID '00000000-0000-0000-0000-000000000061'
 \set sponsor2ID '00000000-0000-0000-0000-000000000062'
+\set ticketPriceWindowID '00000000-0000-0000-0000-000000000064'
+\set ticketTypeID '00000000-0000-0000-0000-000000000063'
 \set user1ID '00000000-0000-0000-0000-000000000051'
 \set user2ID '00000000-0000-0000-0000-000000000052'
 \set user3ID '00000000-0000-0000-0000-000000000053'
@@ -108,6 +111,60 @@ insert into event (
     'https://meetup.com/event123'
 );
 
+insert into event (
+    event_id,
+    name,
+    slug,
+    description,
+    description_short,
+    timezone,
+    event_category_id,
+    event_kind_id,
+    group_id,
+    payment_currency_code,
+    published,
+    starts_at
+) values (
+    :'eventPaidID',
+    'Paid Tech Conference 2024',
+    'paid-tech-conference-2024',
+    'Paid event for ticketed get_event_full_by_slug coverage',
+    'Paid tech conference',
+    'America/New_York',
+    :'eventCategoryID',
+    'virtual',
+    :'groupID',
+    'USD',
+    true,
+    '2024-06-16 09:00:00+00'
+);
+
+-- Event ticket type
+insert into event_ticket_type (
+    event_ticket_type_id,
+    event_id,
+    "order",
+    seats_total,
+    title
+) values (
+    :'ticketTypeID',
+    :'eventPaidID',
+    1,
+    40,
+    'General admission'
+);
+
+-- Event ticket price window
+insert into event_ticket_price_window (
+    event_ticket_price_window_id,
+    amount_minor,
+    event_ticket_type_id
+) values (
+    :'ticketPriceWindowID',
+    2500,
+    :'ticketTypeID'
+);
+
 -- Event Host
 insert into event_host (event_id, user_id, created_at)
 values
@@ -149,166 +206,28 @@ values
 -- TESTS
 -- ============================================================================
 
--- Should return correct event data as JSON
+-- Should return the same payload as get_event_full
 select is(
-    get_event_full_by_slug(:'communityID'::uuid, 'abc1234', 'def5678')::jsonb - '{created_at}'::text[],
-    '{
-        "kind": "hybrid",
-        "name": "Tech Conference 2024",
-        "slug": "def5678",
-        "tags": ["technology", "conference", "workshops"],
-        "community": {
-            "banner_mobile_url": "https://example.com/banner_mobile.png",
-            "banner_url": "https://example.com/banner.png",
-            "community_id": "00000000-0000-0000-0000-000000000001",
-            "display_name": "Cloud Native Seattle",
-            "logo_url": "https://example.com/logo.png",
-            "name": "cloud-native-seattle"
-        },
-        "group": {
-            "active": true,
-            "name": "Test Group",
-            "slug": "abc1234",
-            "category": {
-                "group_category_id": "00000000-0000-0000-0000-000000000011",
-                "name": "Technology",
-                "normalized_name": "technology"
-            },
-            "community_display_name": "Cloud Native Seattle",
-            "community_name": "cloud-native-seattle",
-            "created_at": 1739268000,
-            "group_id": "00000000-0000-0000-0000-000000000031",
-            "logo_url": "https://example.com/group-logo.png"
-        },
-        "hosts": [
-            {
-                "title": "Lead Dev",
-                "company": "Dev Inc",
-                "user_id": "00000000-0000-0000-0000-000000000052",
-                "username": "host2",
-                "bio": "Community host and emcee",
-                "name": "Jane Smith",
-                "photo_url": "https://example.com/jane.png"
-            },
-            {
-                "title": "CTO",
-                "company": "Tech Corp",
-                "user_id": "00000000-0000-0000-0000-000000000051",
-                "username": "host1",
-                "bio": "Conference opening speaker",
-                "name": "John Doe",
-                "photo_url": "https://example.com/john.png"
-            }
-        ],
-        "speakers": [
-            {
-                "title": "Lead Dev",
-                "company": "Dev Inc",
-                "user_id": "00000000-0000-0000-0000-000000000052",
-                "username": "host2",
-                "bio": "Community host and emcee",
-                "name": "Jane Smith",
-                "featured": true,
-                "photo_url": "https://example.com/jane.png"
-            },
-            {
-                "title": "Manager",
-                "company": "Cloud Co",
-                "user_id": "00000000-0000-0000-0000-000000000053",
-                "username": "organizer1",
-                "bio": "Community programs lead",
-                "name": "Alice Johnson",
-                "featured": false,
-                "photo_url": "https://example.com/alice.png"
-            },
-            {
-                "title": "CTO",
-                "company": "Tech Corp",
-                "user_id": "00000000-0000-0000-0000-000000000051",
-                "username": "host1",
-                "bio": "Conference opening speaker",
-                "name": "John Doe",
-                "featured": false,
-                "photo_url": "https://example.com/john.png"
-            }
-        ],
-        "legacy_hosts": [],
-        "legacy_speakers": [],
-        "ends_at": 1718470800,
-        "canceled": false,
-        "capacity": 500,
-        "remaining_capacity": 498,
-        "event_id": "00000000-0000-0000-0000-000000000041",
-        "logo_url": "https://example.com/event-logo.png",
-        "meeting_in_sync": true,
-        "sessions": {},
-        "timezone": "America/New_York",
-        "published": true,
-        "sponsors": [
-            {
-                "group_sponsor_id": "00000000-0000-0000-0000-000000000061",
-                "level": "Silver",
-                "logo_url": "https://example.com/cloudinc.png",
-                "name": "CloudInc"
-            },
-            {
-                "group_sponsor_id": "00000000-0000-0000-0000-000000000062",
-                "level": "Gold",
-                "logo_url": "https://example.com/techcorp.png",
-                "name": "TechCorp",
-                "website_url": "https://techcorp.com"
-            }
-        ],
-        "starts_at": 1718442000,
-        "banner_url": "https://example.com/event-banner.png",
-        "cfs_labels": [],
-        "meetup_url": "https://meetup.com/event123",
-        "organizers": [
-            {
-                "title": "Manager",
-                "company": "Cloud Co",
-                "user_id": "00000000-0000-0000-0000-000000000053",
-                "username": "organizer1",
-                "bio": "Community programs lead",
-                "name": "Alice Johnson",
-                "photo_url": "https://example.com/alice.png"
-            },
-            {
-                "title": "Engineer",
-                "company": "StartUp",
-                "user_id": "00000000-0000-0000-0000-000000000054",
-                "username": "organizer2",
-                "bio": "Operations and logistics manager",
-                "name": "Bob Wilson",
-                "photo_url": "https://example.com/bob.png"
-            }
-        ],
-        "venue_city": "New York",
-        "venue_name": "Convention Center",
-        "description": "Annual technology conference with workshops and talks",
-        "category_name": "Tech Talks",
-        "meeting_join_url": "https://stream.example.com/live",
-        "meeting_recording_url": "https://youtube.com/watch?v=123",
-        "meeting_requested": false,
-        "photos_urls": [
-            "https://example.com/photo1.jpg",
-            "https://example.com/photo2.jpg"
-        ],
-        "venue_address": "123 Main St",
-        "venue_zip_code": "10001",
-        "description_short": "Annual tech conference",
-        "registration_required": true,
-        "event_reminder_enabled": true,
-        "waitlist_count": 0,
-        "waitlist_enabled": false
-    }'::jsonb,
-    'Should return correct event data as JSON'
+    get_event_full_by_slug(:'communityID'::uuid, 'abc1234', 'def5678')::jsonb,
+    get_event_full(:'communityID'::uuid, :'groupID'::uuid, :'eventID'::uuid)::jsonb,
+    'Should return the same payload as get_event_full'
 );
 
 -- Should return null with non-existing event slug
 select ok(
     get_event_full_by_slug(:'communityID'::uuid, 'abc1234', 'non-existing-event') is null,
     'Should return null with non-existing event slug'
+);
+
+-- Should return the same paid-event payload as get_event_full
+select is(
+    get_event_full_by_slug(
+        :'communityID'::uuid,
+        'abc1234',
+        'paid-tech-conference-2024'
+    )::jsonb,
+    get_event_full(:'communityID'::uuid, :'groupID'::uuid, :'eventPaidID'::uuid)::jsonb,
+    'Should return the same paid-event payload as get_event_full'
 );
 
 -- ============================================================================

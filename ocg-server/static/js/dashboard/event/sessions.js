@@ -850,14 +850,14 @@ class SessionCard extends LitWrapper {
             </button>
             <button
               type="button"
-              class="p-2 rounded-full hover:bg-red-50 transition-colors ${this.disabled
+              class="p-2 rounded-full hover:bg-stone-100 transition-colors ${this.disabled
                 ? "opacity-60 cursor-not-allowed"
                 : ""}"
               title="Delete"
               @click=${this._onDelete}
               ?disabled=${this.disabled}
             >
-              <div class="svg-icon size-4 icon-trash bg-stone-600 hover:bg-red-600"></div>
+              <div class="svg-icon size-4 icon-trash bg-stone-600"></div>
             </button>
           </div>
         </div>

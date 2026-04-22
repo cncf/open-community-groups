@@ -20,6 +20,7 @@ type E2eFixtures = {
   adminCommunityPage: Page;
   communityViewerPage: Page;
   organizerGroupPage: Page;
+  organizerGroupWithoutPaymentsPage: Page;
   eventsManagerGroupPage: Page;
   groupViewerPage: Page;
   member1Page: Page;
@@ -120,6 +121,15 @@ export const test = base.extend<E2eFixtures>({
       TEST_COMMUNITY_IDS.community1,
       TEST_GROUP_IDS.community1.alpha,
     ),
+  ),
+  organizerGroupWithoutPaymentsPage: authenticatedPageFixture(
+    TEST_USER_CREDENTIALS.organizer2,
+    (page) =>
+      selectGroupContext(
+        page,
+        TEST_COMMUNITY_IDS.community2,
+        TEST_GROUP_IDS.community2.delta,
+      ),
   ),
   eventsManagerGroupPage: authenticatedPageFixture(
     TEST_USER_CREDENTIALS.eventsManager1,

@@ -1,3 +1,5 @@
+import { queryElementById } from "/static/js/common/dom.js";
+
 /**
  * Zoom API limits meeting duration to 5 to 720 minutes.
  */
@@ -6,16 +8,17 @@ export const MAX_MEETING_MINUTES = 720;
 export const DEFAULT_MEETING_PROVIDER = "zoom";
 const VENUE_FIELDS = ["venue_name", "venue_address", "venue_city", "venue_zip_code"];
 
-const findVenueField = (fieldId) =>
-  document.getElementById(fieldId) || document.querySelector(`[name="${fieldId}"]`);
+const findVenueField = (root, fieldId) =>
+  queryElementById(root, fieldId) || root?.querySelector?.(`[name="${fieldId}"]`);
 
 /**
  * Updates visibility of venue and online event sections based on event kind.
  * @param {string} kind The event kind value (virtual, in-person, hybrid)
+ * @param {Document|Element} [root=document] Root container
  */
-export const updateSectionVisibility = (kind) => {
-  const venueSection = document.getElementById("venue-information-section");
-  const onlineSection = document.getElementById("online-event-details-section");
+export const updateSectionVisibility = (kind, root = document) => {
+  const venueSection = queryElementById(root, "venue-information-section");
+  const onlineSection = queryElementById(root, "online-event-details-section");
 
   if (venueSection) {
     venueSection.classList.toggle("hidden", kind === "virtual");
@@ -127,28 +130,30 @@ export const validateMeetingRequest = ({
 
 /**
  * Checks whether any venue input field contains non-empty text.
+ * @param {Document|Element} [root=document] Root container
  * @returns {boolean} True when at least one venue field has data
  */
-export const hasVenueData = () =>
+export const hasVenueData = (root = document) =>
   VENUE_FIELDS.some((fieldId) => {
-    const field = findVenueField(fieldId);
+    const field = findVenueField(root, fieldId);
     return field && field.value.trim() !== "";
   });
 
 /**
  * Clears all venue input field values if the elements exist in the DOM.
+ * @param {Document|Element} [root=document] Root container
  * @returns {void}
  */
-export const clearVenueFields = () => {
+export const clearVenueFields = (root = document) => {
   VENUE_FIELDS.forEach((fieldId) => {
-    const field = findVenueField(fieldId);
+    const field = findVenueField(root, fieldId);
     if (field) {
       field.value = "";
       field.dispatchEvent(new Event("input", { bubbles: true }));
     }
   });
 
-  const locationSearchField = document.querySelector("location-search-field");
+  const locationSearchField = root?.querySelector?.("location-search-field");
   if (locationSearchField && typeof locationSearchField.clearLocationFields === "function") {
     locationSearchField.clearLocationFields();
   }

@@ -14,6 +14,12 @@ select plan(5);
 \set event1ID '00000000-0000-0000-0000-000000000041'
 \set event2ID '00000000-0000-0000-0000-000000000042'
 \set eventCategoryID '00000000-0000-0000-0000-000000000012'
+\set eventDiscountCode1ID '00000000-0000-0000-0000-000000000061'
+\set eventPurchase1ID '00000000-0000-0000-0000-000000000071'
+\set eventPurchase2ID '00000000-0000-0000-0000-000000000072'
+\set eventRefundRequest2ID '00000000-0000-0000-0000-000000000081'
+\set eventTicketType1ID '00000000-0000-0000-0000-000000000051'
+\set eventTicketType2ID '00000000-0000-0000-0000-000000000052'
 \set groupID '00000000-0000-0000-0000-000000000021'
 \set user1ID '00000000-0000-0000-0000-000000000031'
 \set user2ID '00000000-0000-0000-0000-000000000032'
@@ -45,10 +51,53 @@ values
     (gen_random_bytes(32), 'bob@example.com', :'user2ID', 'bob', null, null, 'https://e/u2.png', null);
 
 -- Events
-insert into event (event_id, name, slug, description, timezone, event_category_id, event_kind_id, group_id, published, canceled, deleted)
+insert into event (
+    event_id,
+    name,
+    slug,
+    description,
+    timezone,
+    event_category_id,
+    event_kind_id,
+    group_id,
+    payment_currency_code,
+    published,
+    canceled,
+    deleted
+)
 values
-    (:'event1ID', 'E1', 'e1', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', true, false, false),
-    (:'event2ID', 'E2', 'e2', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', true, false, false);
+    (:'event1ID', 'E1', 'e1', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', 'USD', true, false, false),
+    (:'event2ID', 'E2', 'e2', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', 'USD', true, false, false);
+
+-- Ticket types
+insert into event_ticket_type (
+    event_ticket_type_id,
+    event_id,
+    "order",
+    seats_total,
+    title
+)
+values
+    (:'eventTicketType1ID', :'event1ID', 1, 100, 'General admission'),
+    (:'eventTicketType2ID', :'event2ID', 1, 100, 'VIP');
+
+-- Discount codes
+insert into event_discount_code (
+    event_discount_code_id,
+    amount_minor,
+    code,
+    event_id,
+    kind,
+    title
+)
+values (
+    :'eventDiscountCode1ID',
+    500,
+    'SAVE5',
+    :'event1ID',
+    'fixed_amount',
+    'Launch discount'
+);
 
 -- Attendees
 insert into event_attendee (event_id, user_id, checked_in, created_at, checked_in_at)
@@ -56,6 +105,62 @@ values
     (:'event1ID', :'user1ID', true,  '2024-01-01 00:00:00+00', '2024-01-01 10:00:00+00'),
     (:'event1ID', :'user2ID', false, '2024-01-02 00:00:00+00', null),
     (:'event2ID', :'user2ID', true,  '2024-01-03 00:00:00+00', '2024-01-03 15:00:00+00');
+
+-- Purchases
+insert into event_purchase (
+    event_purchase_id,
+    amount_minor,
+    currency_code,
+    discount_amount_minor,
+    discount_code,
+    event_discount_code_id,
+    event_id,
+    event_ticket_type_id,
+    status,
+    ticket_title,
+    user_id
+)
+values
+    (
+        :'eventPurchase1ID',
+        2500,
+        'USD',
+        500,
+        'SAVE5',
+        :'eventDiscountCode1ID',
+        :'event1ID',
+        :'eventTicketType1ID',
+        'completed',
+        'General admission',
+        :'user1ID'
+    ),
+    (
+        :'eventPurchase2ID',
+        4000,
+        'USD',
+        0,
+        null,
+        null,
+        :'event2ID',
+        :'eventTicketType2ID',
+        'refund-requested',
+        'VIP',
+        :'user2ID'
+    );
+
+-- Refund requests
+insert into event_refund_request (
+    event_refund_request_id,
+    event_purchase_id,
+    requested_by_user_id,
+    status
+)
+values (
+    :'eventRefundRequest2ID',
+    :'eventPurchase2ID',
+    :'user2ID',
+    'pending'
+);
 
 -- ============================================================================
 -- TESTS
@@ -69,8 +174,8 @@ select is(
     )::jsonb,
     jsonb_build_object(
         'attendees', '[
-            {"checked_in": true,  "created_at": 1704067200, "user_id": "00000000-0000-0000-0000-000000000031", "username": "alice", "checked_in_at": 1704103200, "company": "Cloud Corp", "name": "Alice", "photo_url": "https://e/u1.png", "title": "Principal Engineer"},
-            {"checked_in": false, "created_at": 1704153600, "user_id": "00000000-0000-0000-0000-000000000032", "username": "bob",   "checked_in_at": null,       "company": null,        "name": null,    "photo_url": "https://e/u2.png", "title": null}
+            {"checked_in": true,  "created_at": 1704067200, "user_id": "00000000-0000-0000-0000-000000000031", "username": "alice", "checked_in_at": 1704103200, "amount_minor": 2500, "company": "Cloud Corp", "currency_code": "USD", "discount_code": "SAVE5", "event_purchase_id": "00000000-0000-0000-0000-000000000071", "name": "Alice", "photo_url": "https://e/u1.png", "refund_request_status": null, "ticket_title": "General admission", "title": "Principal Engineer"},
+            {"checked_in": false, "created_at": 1704153600, "user_id": "00000000-0000-0000-0000-000000000032", "username": "bob",   "checked_in_at": null,       "amount_minor": null, "company": null,        "currency_code": null, "discount_code": null, "event_purchase_id": null, "name": null,    "photo_url": "https://e/u2.png", "refund_request_status": null, "ticket_title": null, "title": null}
         ]'::jsonb,
         'total', 2
     ),
@@ -85,7 +190,7 @@ select is(
     )::jsonb,
     jsonb_build_object(
         'attendees', '[
-            {"checked_in": false, "created_at": 1704153600, "user_id": "00000000-0000-0000-0000-000000000032", "username": "bob", "checked_in_at": null, "company": null, "name": null, "photo_url": "https://e/u2.png", "title": null}
+            {"checked_in": false, "created_at": 1704153600, "user_id": "00000000-0000-0000-0000-000000000032", "username": "bob", "checked_in_at": null, "amount_minor": null, "company": null, "currency_code": null, "discount_code": null, "event_purchase_id": null, "name": null, "photo_url": "https://e/u2.png", "refund_request_status": null, "ticket_title": null, "title": null}
         ]'::jsonb,
         'total', 2
     ),
@@ -100,7 +205,7 @@ select is(
     )::jsonb,
     jsonb_build_object(
         'attendees', '[
-            {"checked_in": true, "created_at": 1704240000, "user_id": "00000000-0000-0000-0000-000000000032", "username": "bob", "checked_in_at": 1704294000, "company": null, "name": null, "photo_url": "https://e/u2.png", "title": null}
+            {"checked_in": true, "created_at": 1704240000, "user_id": "00000000-0000-0000-0000-000000000032", "username": "bob", "checked_in_at": 1704294000, "amount_minor": 4000, "company": null, "currency_code": "USD", "discount_code": null, "event_purchase_id": "00000000-0000-0000-0000-000000000072", "name": null, "photo_url": "https://e/u2.png", "refund_request_status": "pending", "ticket_title": "VIP", "title": null}
         ]'::jsonb,
         'total', 1
     ),

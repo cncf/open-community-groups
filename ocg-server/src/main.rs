@@ -20,12 +20,13 @@ use tracing::{error, info};
 use tracing_subscriber::EnvFilter;
 
 use crate::{
-    config::{Config, HttpServerConfig, ImageStorageConfig, LogFormat, MeetingsConfig},
+    config::{Config, HttpServerConfig, ImageStorageConfig, LogFormat, MeetingsConfig, PaymentsConfig},
     db::PgDB,
     services::{
         images::{DbImageStorage, DynImageStorage, S3ImageStorage},
         meetings::{DynMeetingsProvider, MeetingProvider, MeetingsManager, zoom::ZoomMeetingsProvider},
         notifications::{DynEmailSender, LettreEmailSender, PgNotificationsManager},
+        payments::{DynPaymentsManager, DynPaymentsProvider, PgPaymentsManager, build_payments_provider},
     },
 };
 
@@ -98,8 +99,14 @@ async fn main() -> Result<()> {
 
     // Configure background services that depend on the database
     start_meetings_workers(&cfg, db.clone(), &background_tasks);
-    let notifications_manager = setup_notifications_manager(&cfg, db.clone(), &background_tasks)?;
     let activity_tracker = setup_activity_tracker(db.clone(), &background_tasks);
+    let notifications_manager = setup_notifications_manager(&cfg, db.clone(), &background_tasks)?;
+    let payments_manager = setup_payments_manager(
+        db.clone(),
+        notifications_manager.clone(),
+        build_payments_provider(cfg.payments.as_ref()),
+        &cfg.server,
+    );
 
     // Serve HTTP requests until a shutdown signal is received
     run_server(
@@ -107,6 +114,8 @@ async fn main() -> Result<()> {
         db,
         image_storage,
         cfg.meetings.clone(),
+        cfg.payments.clone(),
+        payments_manager,
         notifications_manager,
         &cfg.server,
     )
@@ -220,6 +229,21 @@ fn setup_notifications_manager(
     )))
 }
 
+/// Configure the payments manager.
+fn setup_payments_manager(
+    db: Arc<PgDB>,
+    notifications_manager: Arc<PgNotificationsManager>,
+    payments_provider: Option<DynPaymentsProvider>,
+    server_cfg: &HttpServerConfig,
+) -> DynPaymentsManager {
+    Arc::new(PgPaymentsManager::new(
+        db,
+        notifications_manager,
+        payments_provider,
+        server_cfg.clone(),
+    ))
+}
+
 /// Configure the activity tracker and start its workers.
 fn setup_activity_tracker(db: Arc<PgDB>, background_tasks: &BackgroundTasks) -> Arc<ActivityTrackerDB> {
     Arc::new(ActivityTrackerDB::new(
@@ -230,11 +254,14 @@ fn setup_activity_tracker(db: Arc<PgDB>, background_tasks: &BackgroundTasks) -> 
 }
 
 /// Build the router and serve HTTP requests until shutdown.
+#[allow(clippy::too_many_arguments)]
 async fn run_server(
     activity_tracker: Arc<ActivityTrackerDB>,
     db: Arc<PgDB>,
     image_storage: DynImageStorage,
     meetings_cfg: Option<MeetingsConfig>,
+    payments_cfg: Option<PaymentsConfig>,
+    payments_manager: DynPaymentsManager,
     notifications_manager: Arc<PgNotificationsManager>,
     server_cfg: &HttpServerConfig,
 ) -> Result<()> {
@@ -244,6 +271,8 @@ async fn run_server(
         db,
         image_storage,
         meetings_cfg,
+        payments_cfg,
+        payments_manager,
         notifications_manager,
         server_cfg,
     )

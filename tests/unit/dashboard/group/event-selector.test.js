@@ -1,5 +1,7 @@
 import { expect } from "@open-wc/testing";
 
+import "/static/js/dashboard/event/ticketing/ticket-types-editor.js";
+import "/static/js/dashboard/event/ticketing/discount-codes-editor.js";
 import "/static/js/dashboard/group/event-selector.js";
 import { resetDom, mockScrollTo } from "/tests/unit/test-utils/dom.js";
 import { mountLitComponent, useMountedElementsCleanup } from "/tests/unit/test-utils/lit.js";
@@ -166,12 +168,18 @@ describe("event-selector", () => {
       <input id="toggle_registration_required" type="checkbox" />
       <input id="registration_required" type="hidden" />
       <input id="meetup_url" />
+      <select id="payment_currency_code">
+        <option value="">Select currency</option>
+        <option value="EUR">EUR</option>
+      </select>
       <input id="venue_name" />
       <input id="venue_address" />
       <input id="venue_city" />
       <input id="venue_zip_code" />
       <input id="meeting_join_url" value="filled" />
       <input id="meeting_recording_url" value="filled" />
+      <ticket-types-editor id="ticket-types-ui" ticket-types="[]" data-disabled="false"></ticket-types-editor>
+      <discount-codes-editor id="discount-codes-ui" discount-codes="[]" data-disabled="false"></discount-codes-editor>
       <gallery-field field-name="photos_urls"></gallery-field>
       <multiple-inputs field-name="tags"></multiple-inputs>
       <user-search-selector field-name="hosts"></user-search-selector>
@@ -201,6 +209,9 @@ describe("event-selector", () => {
     const sessionsSection = document.querySelector("sessions-section");
     sessionsSection.requestUpdate = () => {};
 
+    const ticketTypesEditor = document.getElementById("ticket-types-ui");
+    const discountCodesEditor = document.getElementById("discount-codes-ui");
+
     const timezoneSelector = document.querySelector("timezone-selector[name='timezone']");
     timezoneSelector.dispatchEvent = () => true;
 
@@ -226,8 +237,36 @@ describe("event-selector", () => {
       event_reminder_enabled: true,
       registration_required: true,
       meetup_url: "https://meetup.com/cloud-native-malaga",
+      payment_currency_code: "EUR",
       photos_urls: [" one.png ", "two.png"],
       tags: ["cloud", " malaga "],
+      ticket_types: [
+        {
+          event_ticket_type_id: "ticket-type-1",
+          title: "General admission",
+          price_windows: [
+            {
+              amount_minor: 2500,
+              event_ticket_price_window_id: "price-window-1",
+              starts_at: "2026-04-01T10:00:00Z",
+              ends_at: "2026-04-05T10:00:00Z",
+            },
+          ],
+        },
+      ],
+      discount_codes: [
+        {
+          available: 12,
+          available_override_active: true,
+          code: "EARLY20",
+          event_discount_code_id: "discount-1",
+          ends_at: "2026-04-06T10:00:00Z",
+          kind: "percentage",
+          percentage: 20,
+          starts_at: "2026-04-02T10:00:00Z",
+          title: "Early supporter",
+        },
+      ],
       timezone: "Europe/Madrid",
       venue_name: "FYCMA",
       venue_address: "Av. de José Ortega y Gasset, 201",
@@ -236,6 +275,9 @@ describe("event-selector", () => {
       hosts: [{ user: { user_id: "1", username: "alice" } }],
       sponsors: [{ name: "ACME", level: 2 }],
     });
+
+    await ticketTypesEditor.updateComplete;
+    await discountCodesEditor.updateComplete;
 
     expect(document.getElementById("name")?.value).to.equal("Cloud Native Málaga (copy)");
     expect(document.getElementById("category_id")?.value).to.equal("10");
@@ -248,9 +290,37 @@ describe("event-selector", () => {
     expect(document.getElementById("toggle_registration_required")?.checked).to.equal(true);
     expect(document.getElementById("registration_required")?.value).to.equal("true");
     expect(document.getElementById("meetup_url")?.value).to.equal("https://meetup.com/cloud-native-malaga");
+    expect(document.getElementById("payment_currency_code")?.value).to.equal("EUR");
     expect(document.getElementById("venue_city")?.value).to.equal("Málaga");
     expect(document.getElementById("meeting_join_url")?.value).to.equal("");
     expect(document.getElementById("meeting_recording_url")?.value).to.equal("");
+    expect(ticketTypesEditor.querySelector('input[name="ticket_types[0][title]"]')?.value).to.equal(
+      "General admission",
+    );
+    expect(ticketTypesEditor.querySelector('input[name="ticket_types[0][price_windows][0][starts_at]"]')).to.equal(
+      null,
+    );
+    expect(ticketTypesEditor.querySelector('input[name="ticket_types[0][price_windows][0][ends_at]"]')).to.equal(
+      null,
+    );
+    expect(ticketTypesEditor.querySelector('input[name="ticket_types[0][event_ticket_type_id]"]')).to.equal(null);
+    expect(
+      ticketTypesEditor.querySelector('input[name="ticket_types[0][price_windows][0][event_ticket_price_window_id]"]'),
+    ).to.equal(null);
+    expect(discountCodesEditor.querySelector('input[name="discount_codes[0][code]"]')?.value).to.equal(
+      "EARLY20",
+    );
+    expect(discountCodesEditor.querySelector('input[name="discount_codes[0][available]"]')?.value).to.equal(
+      "12",
+    );
+    expect(
+      discountCodesEditor.querySelector('input[name="discount_codes[0][available_override_active]"]')?.value,
+    ).to.equal("true");
+    expect(discountCodesEditor.querySelector('input[name="discount_codes[0][starts_at]"]')).to.equal(null);
+    expect(discountCodesEditor.querySelector('input[name="discount_codes[0][ends_at]"]')).to.equal(null);
+    expect(discountCodesEditor.querySelector('input[name="discount_codes[0][event_discount_code_id]"]')).to.equal(
+      null,
+    );
     expect(gallery.images).to.deep.equal(["one.png", "two.png"]);
     expect(tags.items).to.deep.equal([
       { id: 0, value: "cloud" },

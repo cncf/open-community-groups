@@ -8,21 +8,29 @@ create or replace function update_event(
 )
 returns json as $$
 declare
+    v_discount_codes jsonb;
+    v_effective_capacity int;
     v_event_before jsonb;
     v_event_capacity_before int;
     v_event_location geography;
     v_event_meeting_hosts text[];
     v_event_photos_urls text[];
-    v_event_reminder_enabled boolean;
+    v_event_reminder_enabled boolean := coalesce((p_event->>'event_reminder_enabled')::boolean, true);
     v_event_tags text[];
-    v_event_waitlist_enabled boolean;
+    v_event_waitlist_enabled boolean := coalesce((p_event->>'waitlist_enabled')::boolean, false);
+    v_has_existing_attendees boolean;
     v_has_new_waitlist_capacity boolean;
+    v_has_waitlist_entries boolean;
     v_is_promotable_event boolean;
     v_new_capacity int := (p_event->>'capacity')::int;
     v_new_ends_at timestamptz;
     v_new_starts_at timestamptz;
+    v_payment_currency_code text;
     v_promoted_user_ids json := '[]'::json;
+    v_ticket_capacity int;
+    v_ticket_types jsonb;
     v_timezone text := p_event->>'timezone';
+    v_was_ticketed boolean;
 begin
     -- Load the locked event state used by the update flow
     select
@@ -41,11 +49,18 @@ begin
         raise exception 'event not found or inactive';
     end if;
 
-    -- Precompute derived values used across the update flow
+    -- Parse payload values used across the update flow
     v_event_capacity_before := (v_event_before->>'capacity')::int;
     v_event_location := case
-        when (p_event->>'latitude') is not null and (p_event->>'longitude') is not null
-        then ST_SetSRID(ST_MakePoint((p_event->>'longitude')::float, (p_event->>'latitude')::float), 4326)::geography
+        when (p_event->>'latitude') is not null
+             and (p_event->>'longitude') is not null
+        then ST_SetSRID(
+            ST_MakePoint(
+                (p_event->>'longitude')::float,
+                (p_event->>'latitude')::float
+            ),
+            4326
+        )::geography
         else null
     end;
     v_event_meeting_hosts := case
@@ -58,13 +73,60 @@ begin
         then array(select jsonb_array_elements_text(p_event->'photos_urls'))
         else null
     end;
-    v_event_reminder_enabled := coalesce((p_event->>'event_reminder_enabled')::boolean, true);
     v_event_tags := case
         when p_event->'tags' is not null
         then array(select jsonb_array_elements_text(p_event->'tags'))
         else null
     end;
-    v_event_waitlist_enabled := coalesce((p_event->>'waitlist_enabled')::boolean, false);
+
+    -- Resolve ticketing values and the effective event capacity
+    v_discount_codes := case
+        when p_event ? 'discount_codes'
+        then nullif(p_event->'discount_codes', 'null'::jsonb)
+        else v_event_before->'discount_codes'
+    end;
+    v_ticket_types := case
+        when p_event ? 'ticket_types'
+        then nullif(p_event->'ticket_types', 'null'::jsonb)
+        else v_event_before->'ticket_types'
+    end;
+    v_ticket_capacity := get_event_ticket_capacity(v_ticket_types);
+    v_effective_capacity := coalesce(v_ticket_capacity, v_new_capacity);
+    v_payment_currency_code := case
+        when p_event ? 'payment_currency_code'
+        then nullif(p_event->>'payment_currency_code', '')
+        else nullif(v_event_before->>'payment_currency_code', '')
+    end;
+
+    -- Load current event state required by ticketing guards
+    v_has_existing_attendees := exists(
+        select 1
+        from event_attendee
+        where event_id = p_event_id
+    );
+    v_has_waitlist_entries := exists(
+        select 1
+        from event_waitlist
+        where event_id = p_event_id
+    );
+    v_was_ticketed := jsonb_array_length(coalesce(v_event_before->'ticket_types', '[]'::jsonb)) > 0;
+
+    -- Enforce ticketing transition rules
+    if v_ticket_types is not null and not v_was_ticketed and v_has_existing_attendees then
+        raise exception 'ticketed events require an empty attendee list';
+    end if;
+
+    if v_ticket_types is not null and v_has_waitlist_entries then
+        raise exception 'ticketed events require an empty waitlist';
+    end if;
+
+    -- Validate ticketing payload rules
+    perform validate_event_ticketing_payload(
+        v_discount_codes,
+        v_payment_currency_code,
+        v_ticket_types,
+        v_event_waitlist_enabled
+    );
 
     -- Parse event timestamps once for validation and row updates
     if p_event->>'ends_at' is not null then
@@ -85,9 +147,13 @@ begin
         -- Increasing a bounded capacity opens additional attendee seats
         or (
             v_new_capacity is not null
-            and (v_event_capacity_before is null or v_new_capacity > v_event_capacity_before)
+            and (
+                v_event_capacity_before is null
+                or v_new_capacity > v_event_capacity_before
+            )
         )
     );
+
     -- Only published events that are still upcoming or dateless can promote the waitlist
     v_is_promotable_event := (v_event_before->>'published')::boolean = true
         and (
@@ -102,7 +168,8 @@ begin
     perform validate_event_capacity(
         p_event,
         p_cfg_max_participants,
-        p_existing_event_id => p_event_id
+        p_existing_event_id => p_event_id,
+        p_effective_capacity => v_effective_capacity
     );
 
     -- Validate CFS labels rules
@@ -118,7 +185,7 @@ begin
 
         banner_mobile_url = nullif(p_event->>'banner_mobile_url', ''),
         banner_url = nullif(p_event->>'banner_url', ''),
-        capacity = (p_event->>'capacity')::int,
+        capacity = v_effective_capacity,
         cfs_description = nullif(p_event->>'cfs_description', ''),
         cfs_enabled = (p_event->>'cfs_enabled')::boolean,
         cfs_ends_at = (p_event->>'cfs_ends_at')::timestamp at time zone v_timezone,
@@ -156,6 +223,7 @@ begin
         meeting_recording_url = nullif(p_event->>'meeting_recording_url', ''),
         meeting_requested = (p_event->>'meeting_requested')::boolean,
         meetup_url = nullif(p_event->>'meetup_url', ''),
+        payment_currency_code = v_payment_currency_code,
         photos_urls = v_event_photos_urls,
         registration_required = (p_event->>'registration_required')::boolean,
         starts_at = v_new_starts_at,
@@ -167,17 +235,24 @@ begin
         venue_name = nullif(p_event->>'venue_name', ''),
         venue_state = nullif(p_event->>'venue_state', ''),
         venue_zip_code = nullif(p_event->>'venue_zip_code', ''),
-        waitlist_enabled = v_event_waitlist_enabled
+        waitlist_enabled = case
+            when v_ticket_types is not null then false
+            else v_event_waitlist_enabled
+        end
     where event_id = p_event_id
     and group_id = p_group_id
     and deleted = false
     and canceled = false;
 
     -- Promote waitlisted users when the update creates new attendee capacity
-    if v_has_new_waitlist_capacity and v_is_promotable_event then
+    if v_ticket_types is null and v_has_new_waitlist_capacity and v_is_promotable_event then
         select promote_event_waitlist(p_event_id)
         into v_promoted_user_ids;
     end if;
+
+    -- Synchronize normalized ticketing data after updating the event row
+    perform sync_event_discount_codes(p_event_id, v_discount_codes);
+    perform sync_event_ticket_types(p_event_id, v_ticket_types);
 
     -- Synchronize event CFS labels
     perform sync_event_cfs_labels(p_event_id, p_event->'cfs_labels');

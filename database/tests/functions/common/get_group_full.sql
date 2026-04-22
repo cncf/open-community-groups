@@ -92,6 +92,7 @@ insert into "group" (
     wechat_url,
     photos_urls,
     extra_links,
+    payment_recipient,
     created_at
 ) values (
     :'groupID',
@@ -124,6 +125,7 @@ insert into "group" (
     'https://wechat.com/seattlek8s',
     array['https://example.com/photo1.jpg', 'https://example.com/photo2.jpg'],
     jsonb '[{"name": "Discord", "url": "https://discord.gg/seattlek8s"}, {"name": "Forum", "url": "https://forum.seattlek8s.com"}]',
+    jsonb_build_object('provider', 'stripe', 'recipient_id', 'acct_test_group'),
     '2024-01-15 10:00:00+00'
 );
 
@@ -209,6 +211,10 @@ select is(
         "linkedin_url": "https://linkedin.com/company/seattlek8s",
         "logo_url": "https://example.com/group-logo.png",
         "longitude": -74.006,
+        "payment_recipient": {
+            "provider": "stripe",
+            "recipient_id": "acct_test_group"
+        },
         "photos_urls": ["https://example.com/photo1.jpg", "https://example.com/photo2.jpg"],
         "region": {
             "region_id": "00000000-0000-0000-0000-000000000012",

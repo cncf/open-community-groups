@@ -95,31 +95,45 @@
 
               <div class="mt-2 md:mt-auto flex flex-col md:flex-row md:items-end md:justify-between w-full">
                 {# Event details and date -#}
-                <div class="flex items-end gap-4 text-stone-600">
+                <div class="flex flex-wrap items-center gap-3 md:gap-4 text-stone-600">
                   {% if let Some(capacity) = &event.capacity -%}
-                    <div class="flex items-center">
-                      <div class="svg-icon size-4 mr-2 bg-stone-600 icon-people"></div>
+                    <div class="flex items-center gap-2 leading-none">
+                      <div class="svg-icon size-4 bg-stone-600 icon-people"></div>
                       {% if event.is_past() -%}
                         {% if let Some(remaining_capacity) = &event.remaining_capacity -%}
-                          <span class="text-sm">Attendees: {{ capacity - remaining_capacity }}</span>
+                          <span class="inline-flex items-center text-sm">Attendees: {{ capacity - remaining_capacity }}</span>
                         {% else -%}
-                          <span class="text-sm"><span class="md:hidden lg:inline">Capacity:</span><span class="ms-1 md:ms-0 xl:ms-1">{{ capacity }}</span></span>
+                          <span class="inline-flex items-center text-sm">
+                            <span class="md:hidden lg:inline">Capacity:</span>
+                            <span class="ms-1 md:ms-0 xl:ms-1">{{ capacity }}</span>
+                          </span>
                         {% endif -%}
                       {% else -%}
-                        <span class="text-sm"><span class="md:hidden lg:inline">Capacity:</span><span class="ms-1 md:ms-0 xl:ms-1">{{ capacity }}</span></span>
+                        <span class="inline-flex items-center text-sm">
+                          <span class="md:hidden lg:inline">Capacity:</span>
+                          <span class="ms-1 md:ms-0 xl:ms-1">{{ capacity }}</span>
+                        </span>
                         {% if let Some(remaining_capacity) = &event.remaining_capacity %}
                           {% if *remaining_capacity > 0 %}
-                            <span class="text-xs text-stone-500 ms-2 md:hidden lg:inline">(Remaining: {{ remaining_capacity }})</span>
-                            <span class="hidden md:inline lg:hidden text-xs text-stone-500 ms-1">/ {{ remaining_capacity }} left</span>
+                            <span class="inline-flex items-center text-xs text-stone-500 md:hidden lg:inline">
+                              (Remaining: {{ remaining_capacity }})
+                            </span>
+                            <span class="hidden md:inline-flex lg:hidden items-center text-xs text-stone-500">
+                              / {{ remaining_capacity }} left
+                            </span>
                           {% else if event.waitlist_count > 0 %}
-                            <span class="text-xs text-stone-500 ms-2 md:hidden lg:inline">(Waitlist: {{ event.waitlist_count }})</span>
-                            <span class="hidden md:inline lg:hidden text-xs text-stone-500 ms-1">/ {{ event.waitlist_count }} waitlist</span>
+                            <span class="inline-flex items-center text-xs text-stone-500 md:hidden lg:inline">
+                              (Waitlist: {{ event.waitlist_count }})
+                            </span>
+                            <span class="hidden md:inline-flex lg:hidden items-center text-xs text-stone-500">
+                              / {{ event.waitlist_count }} waitlist
+                            </span>
                           {% endif %}
                         {% endif %}
                       {% endif -%}
                     </div>
                   {% endif -%}
-                  <div>{{ badges::event_badge(kind = event.kind, extra_styles = Some("mt-0.5 px-2.5 py-0.5") ) -}}</div>
+                  <div>{{ badges::event_badge(kind = event.kind, extra_styles = Some("px-2.5 py-0.5") ) -}}</div>
                 </div>
                 {# End event details and date -#}
 
@@ -246,12 +260,12 @@
                       <div class="absolute inset-0 bg-[url('/static/images/map.png')] bg-cover bg-center bg-no-repeat opacity-30">
                       </div>
                       {% if let Some(text) = &location_text %}
-                        <div class="absolute bottom-2 left-2 bg-white/80 text-stone-700 text-xs rounded-full px-1.5 md:px-3 py-1 z-[1000] pointer-events-none hidden sm:block md:hidden xl:block">
+                        <div class="absolute bottom-2 left-2 bg-white/80 text-stone-700 text-xs rounded-full px-1.5 md:px-3 py-1 z-10 pointer-events-none hidden sm:block md:hidden xl:block">
                           {{ text }}
                         </div>
                       {% endif %}
                       {% if let Some(text) = &location_text_small %}
-                        <div class="absolute bottom-2 left-2 bg-white/80 text-stone-700 text-xs rounded-full px-1.5 md:px-3 py-1 z-[1000] pointer-events-none block sm:hidden md:block xl:hidden">
+                        <div class="absolute bottom-2 left-2 bg-white/80 text-stone-700 text-xs rounded-full px-1.5 md:px-3 py-1 z-10 pointer-events-none block sm:hidden md:block xl:hidden">
                           {{ text }}
                         </div>
                       {% endif %}

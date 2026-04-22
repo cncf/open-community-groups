@@ -39,6 +39,21 @@ If organizers enabled a waitlist, you can join it from the event page and may be
 automatically if someone leaves, capacity increases, or organizers remove the
 capacity limit later.
 
+## How Do Refunds Work For Paid Events?
+
+Paid attendees use `Request refund` from the public event page.
+
+Organizers review the request from
+[Group Dashboard -> Event -> Attendees](/dashboard/group?tab=events ':ignore').
+
+Current behavior:
+
+- Refunds are full refunds only.
+- Refund requests are available only before the event starts.
+- Organizers can still approve or reject a request later if it was submitted before the start
+  time.
+- Free ticket attendees can still leave the event normally.
+
 ## Can I Use Automatic Meeting Creation on In-Person Events?
 
 No. Automatic meeting requests are allowed only for `virtual` and `hybrid` events.

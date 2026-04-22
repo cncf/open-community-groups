@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(56);
+select plan(62);
 
 -- ============================================================================
 -- TESTS
@@ -215,6 +215,7 @@ select columns_are('event', array[
     'meeting_recording_url',
     'meeting_requested',
     'meetup_url',
+    'payment_currency_code',
     'photos_urls',
     'published_at',
     'published_by',
@@ -250,6 +251,26 @@ select columns_are('event_category', array[
     'slug'
 ]);
 
+-- Test: event_discount_code columns should match expected
+select columns_are('event_discount_code', array[
+    'event_discount_code_id',
+    'active',
+    'code',
+    'created_at',
+    'event_id',
+    'kind',
+    'title',
+    'updated_at',
+
+    'available',
+    'available_override_active',
+    'amount_minor',
+    'ends_at',
+    'percentage',
+    'starts_at',
+    'total_available'
+]);
+
 -- Test: event_host columns should match expected
 select columns_are('event_host', array[
     'event_id',
@@ -261,6 +282,72 @@ select columns_are('event_host', array[
 select columns_are('event_kind', array[
     'event_kind_id',
     'display_name'
+]);
+
+-- Test: event_purchase columns should match expected
+select columns_are('event_purchase', array[
+    'event_purchase_id',
+    'amount_minor',
+    'created_at',
+    'currency_code',
+    'discount_amount_minor',
+    'event_id',
+    'event_ticket_type_id',
+    'status',
+    'ticket_title',
+    'updated_at',
+    'user_id',
+
+    'completed_at',
+    'discount_code',
+    'hold_expires_at',
+    'payment_provider_id',
+    'provider_checkout_session_id',
+    'provider_checkout_url',
+    'provider_payment_reference',
+    'refunded_at',
+    'event_discount_code_id'
+]);
+
+-- Test: event_refund_request columns should match expected
+select columns_are('event_refund_request', array[
+    'event_refund_request_id',
+    'created_at',
+    'event_purchase_id',
+    'requested_by_user_id',
+    'status',
+    'updated_at',
+
+    'requested_reason',
+    'review_note',
+    'reviewed_at',
+    'reviewed_by_user_id'
+]);
+
+-- Test: event_ticket_price_window columns should match expected
+select columns_are('event_ticket_price_window', array[
+    'event_ticket_price_window_id',
+    'amount_minor',
+    'created_at',
+    'event_ticket_type_id',
+    'updated_at',
+
+    'ends_at',
+    'starts_at'
+]);
+
+-- Test: event_ticket_type columns should match expected
+select columns_are('event_ticket_type', array[
+    'event_ticket_type_id',
+    'active',
+    'created_at',
+    'event_id',
+    'order',
+    'seats_total',
+    'title',
+    'updated_at',
+
+    'description'
 ]);
 
 -- Test: event_cfs_label columns should match expected
@@ -364,6 +451,7 @@ select columns_are('group', array[
     'linkedin_url',
     'location',
     'logo_url',
+    'payment_recipient',
     'photos_urls',
     'region_id',
     'slack_url',
@@ -571,6 +659,12 @@ select columns_are('notification_template_data', array[
     'created_at',
     'data',
     'hash'
+]);
+
+-- Test: payment_provider columns should match expected
+select columns_are('payment_provider', array[
+    'payment_provider_id',
+    'display_name'
 ]);
 
 -- Test: region columns should match expected

@@ -13,6 +13,7 @@ use tower::ServiceExt;
 use uuid::Uuid;
 
 use crate::{
+    config::{PaymentsConfig, PaymentsStripeConfig},
     db::mock::MockDB,
     handlers::tests::*,
     router::CACHE_CONTROL_NO_CACHE,
@@ -26,11 +27,15 @@ use crate::{
             EventCanceled, EventPublished, EventRescheduled, EventWaitlistPromoted, SpeakerWelcome,
         },
     },
-    types::event::{EventFull, EventSummary, Speaker},
-    types::permissions::GroupPermission,
+    types::{
+        event::{EventFull, EventSummary, Speaker},
+        payments::{EventTicketType, PaymentMode},
+        permissions::GroupPermission,
+    },
 };
 
 #[tokio::test]
+#[allow(clippy::too_many_lines)]
 async fn test_add_page_success() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
@@ -47,10 +52,10 @@ async fn test_add_page_success() {
     );
     let category = sample_event_category();
     let kind = sample_event_kind_summary();
+    let payment_currency_codes = vec!["EUR".to_string(), "USD".to_string()];
     let session_kind = sample_session_kind_summary();
     let sponsor = sample_group_sponsor();
     let timezones = vec!["UTC".to_string()];
-
     // Setup database mock
     let mut db = MockDB::new();
     db.expect_get_session()
@@ -83,6 +88,9 @@ async fn test_add_page_success() {
     db.expect_list_event_kinds()
         .times(1)
         .returning(move || Ok(vec![kind.clone()]));
+    db.expect_list_payment_currency_codes()
+        .times(1)
+        .returning(move || Ok(payment_currency_codes.clone()));
     db.expect_list_session_kinds()
         .times(1)
         .returning(move || Ok(vec![session_kind.clone()]));
@@ -105,12 +113,24 @@ async fn test_add_page_success() {
     db.expect_list_timezones()
         .times(1)
         .returning(move || Ok(timezones.clone()));
+    db.expect_get_group_payment_recipient()
+        .times(1)
+        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
+        .returning(move |_, _| Ok(None));
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
 
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
+    let router = TestRouterBuilder::new(db, nm)
+        .with_payments_cfg(PaymentsConfig::Stripe(PaymentsStripeConfig {
+            mode: PaymentMode::Test,
+            publishable_key: "pk_test_123".to_string(),
+            secret_key: "sk_test_123".to_string(),
+            webhook_secret: "whsec_test_123".to_string(),
+        }))
+        .build()
+        .await;
     let request = Request::builder()
         .method("GET")
         .uri("/dashboard/group/events/add")
@@ -193,7 +213,15 @@ async fn test_list_page_success() {
     let nm = MockNotificationsManager::new();
 
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
+    let router = TestRouterBuilder::new(db, nm)
+        .with_payments_cfg(PaymentsConfig::Stripe(PaymentsStripeConfig {
+            mode: PaymentMode::Test,
+            publishable_key: "pk_test_123".to_string(),
+            secret_key: "sk_test_123".to_string(),
+            webhook_secret: "whsec_test_123".to_string(),
+        }))
+        .build()
+        .await;
     let request = Request::builder()
         .method("GET")
         .uri("/dashboard/group/events")
@@ -219,7 +247,7 @@ async fn test_list_page_success() {
 
 #[tokio::test]
 #[allow(clippy::too_many_lines)]
-async fn test_update_page_success() {
+async fn test_update_page_hides_clear_ticketing_when_event_has_ticket_purchases() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
@@ -234,13 +262,23 @@ async fn test_update_page_success() {
         Some(community_id),
         Some(group_id),
     );
-    let event_full = sample_event_full(community_id, event_id, group_id);
-    let event_full_db = event_full.clone();
     let category = sample_event_category();
     let kind = sample_event_kind_summary();
+    let payment_currency_codes = vec!["EUR".to_string(), "USD".to_string()];
     let session_kind = sample_session_kind_summary();
     let sponsor = sample_group_sponsor();
     let timezones = vec!["UTC".to_string()];
+    let event_full = EventFull {
+        has_ticket_purchases: true,
+        ticket_types: Some(vec![EventTicketType {
+            event_ticket_type_id: Uuid::new_v4(),
+            order: 1,
+            title: "General admission".to_string(),
+            ..Default::default()
+        }]),
+        ..sample_event_full(community_id, event_id, group_id)
+    };
+    let event_full_db = event_full.clone();
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -278,6 +316,9 @@ async fn test_update_page_success() {
     db.expect_list_event_kinds()
         .times(1)
         .returning(move || Ok(vec![kind.clone()]));
+    db.expect_list_payment_currency_codes()
+        .times(1)
+        .returning(move || Ok(payment_currency_codes.clone()));
     db.expect_list_session_kinds()
         .times(1)
         .returning(move || Ok(vec![session_kind.clone()]));
@@ -300,6 +341,10 @@ async fn test_update_page_success() {
     db.expect_list_timezones()
         .times(1)
         .returning(move || Ok(timezones.clone()));
+    db.expect_get_group_payment_recipient()
+        .times(1)
+        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
+        .returning(move |_, _| Ok(None));
     db.expect_list_event_approved_cfs_submissions()
         .times(1)
         .withf(move |eid| *eid == event_id)
@@ -312,7 +357,150 @@ async fn test_update_page_success() {
     let nm = MockNotificationsManager::new();
 
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
+    let router = TestRouterBuilder::new(db, nm)
+        .with_payments_cfg(PaymentsConfig::Stripe(PaymentsStripeConfig {
+            mode: PaymentMode::Test,
+            publishable_key: "pk_test_123".to_string(),
+            secret_key: "sk_test_123".to_string(),
+            webhook_secret: "whsec_test_123".to_string(),
+        }))
+        .build()
+        .await;
+    let request = Request::builder()
+        .method("GET")
+        .uri(format!("/dashboard/group/events/{event_id}/update"))
+        .header(COOKIE, format!("id={session_id}"))
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_eq!(parts.status, StatusCode::OK);
+    assert_eq!(
+        parts.headers.get(CONTENT_TYPE).unwrap(),
+        &HeaderValue::from_static("text/html; charset=utf-8"),
+    );
+    assert_eq!(
+        parts.headers.get(CACHE_CONTROL).unwrap(),
+        &HeaderValue::from_static(CACHE_CONTROL_NO_CACHE),
+    );
+    assert!(!bytes.is_empty());
+}
+
+#[tokio::test]
+#[allow(clippy::too_many_lines)]
+async fn test_update_page_success() {
+    // Setup identifiers and data structures
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(
+        session_id,
+        user_id,
+        &auth_hash,
+        Some(community_id),
+        Some(group_id),
+    );
+    let mut event_full = sample_event_full(community_id, event_id, group_id);
+    event_full.payment_currency_code = Some("USD".to_string());
+    let event_full_db = event_full.clone();
+    let category = sample_event_category();
+    let kind = sample_event_kind_summary();
+    let payment_currency_codes = vec!["EUR".to_string(), "USD".to_string()];
+    let session_kind = sample_session_kind_summary();
+    let sponsor = sample_group_sponsor();
+    let timezones = vec!["UTC".to_string()];
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id && *gid == group_id && *uid == user_id && permission == GroupPermission::Read
+        })
+        .returning(|_, _, _, _| Ok(true));
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::EventsWrite
+        })
+        .returning(|_, _, _, _| Ok(true));
+    db.expect_get_event_full()
+        .times(1)
+        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
+        .returning(move |_, _, _| Ok(event_full_db.clone()));
+    db.expect_list_event_categories()
+        .times(1)
+        .withf(move |cid| *cid == community_id)
+        .returning(move |_| Ok(vec![category.clone()]));
+    db.expect_list_event_kinds()
+        .times(1)
+        .returning(move || Ok(vec![kind.clone()]));
+    db.expect_list_payment_currency_codes()
+        .times(1)
+        .returning(move || Ok(payment_currency_codes.clone()));
+    db.expect_list_session_kinds()
+        .times(1)
+        .returning(move || Ok(vec![session_kind.clone()]));
+    db.expect_list_group_sponsors()
+        .times(1)
+        .withf(move |id, filters, full_list| {
+            *id == group_id
+                && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
+                && filters.offset == Some(0)
+                && *full_list
+        })
+        .returning(move |_, _, _| {
+            Ok(
+                crate::templates::dashboard::group::sponsors::GroupSponsorsOutput {
+                    sponsors: vec![sponsor.clone()],
+                    total: 1,
+                },
+            )
+        });
+    db.expect_list_timezones()
+        .times(1)
+        .returning(move || Ok(timezones.clone()));
+    db.expect_get_group_payment_recipient()
+        .times(1)
+        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
+        .returning(move |_, _| Ok(None));
+    db.expect_list_event_approved_cfs_submissions()
+        .times(1)
+        .withf(move |eid| *eid == event_id)
+        .returning(|_| Ok(vec![]));
+    db.expect_list_cfs_submission_statuses_for_review()
+        .times(1)
+        .returning(|| Ok(vec![]));
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm)
+        .with_payments_cfg(PaymentsConfig::Stripe(PaymentsStripeConfig {
+            mode: PaymentMode::Test,
+            publishable_key: "pk_test_123".to_string(),
+            secret_key: "sk_test_123".to_string(),
+            webhook_secret: "whsec_test_123".to_string(),
+        }))
+        .build()
+        .await;
     let request = Request::builder()
         .method("GET")
         .uri(format!("/dashboard/group/events/{event_id}/update"))
@@ -441,9 +629,13 @@ async fn test_add_success() {
     db.expect_add_event()
         .times(1)
         .withf(move |uid, id, event, cfg_max_participants| {
+            let event_name = event
+                .get("name")
+                .and_then(serde_json::Value::as_str)
+                .unwrap_or_default();
             *uid == user_id
                 && *id == group_id
-                && event.name == event_form.name
+                && event_name == event_form.name
                 && cfg_max_participants.get(&MeetingProvider::Zoom) == Some(&100)
         })
         .returning(move |_, _, _, _| Ok(Uuid::new_v4()));
@@ -536,6 +728,138 @@ async fn test_add_invalid_body() {
     assert!(!bytes.is_empty());
 }
 
+#[tokio::test]
+async fn test_add_invalid_ticketing_fields_returns_unprocessable_entity() {
+    // Setup identifiers and data structures
+    let community_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(
+        session_id,
+        user_id,
+        &auth_hash,
+        Some(community_id),
+        Some(group_id),
+    );
+    let event_form = sample_event_form();
+    let body = format!(
+        concat!(
+            "{}",
+            "&ticket_types_present=true",
+            "&ticket_types[0][active]=true",
+            "&ticket_types[0][order]=1",
+            "&ticket_types[0][title]=General%20admission",
+            "&ticket_types[0][price_windows][0][amount_minor]=invalid",
+        ),
+        serde_qs::to_string(&event_form).unwrap(),
+    );
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::EventsWrite
+        })
+        .returning(|_, _, _, _| Ok(true));
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("POST")
+        .uri("/dashboard/group/events/add")
+        .header(COOKIE, format!("id={session_id}"))
+        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+        .body(Body::from(body))
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert!(!bytes.is_empty());
+}
+
+#[tokio::test]
+async fn test_add_ticketed_event_without_payments_returns_unprocessable_entity() {
+    // Setup identifiers and data structures
+    let community_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(
+        session_id,
+        user_id,
+        &auth_hash,
+        Some(community_id),
+        Some(group_id),
+    );
+    let body = sample_ticketed_event_body();
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::EventsWrite
+        })
+        .returning(|_, _, _, _| Ok(true));
+    db.expect_get_group_payment_recipient().times(0);
+    db.expect_add_event().times(0);
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("POST")
+        .uri("/dashboard/group/events/add")
+        .header(COOKIE, format!("id={session_id}"))
+        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+        .body(Body::from(body))
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(
+        String::from_utf8(bytes.to_vec()).unwrap(),
+        "payments are not configured on this server",
+    );
+}
+
 #[allow(clippy::too_many_lines)]
 #[tokio::test]
 async fn test_cancel_success() {
@@ -619,13 +943,11 @@ async fn test_cancel_success() {
                 && notification.recipients.contains(&attendee_id)
                 && notification.recipients.contains(&speaker_id)
                 && notification.template_data.as_ref().is_some_and(|value| {
-                    from_value::<EventCanceled>(value.clone())
-                        .map(|template| {
-                            template.link == "/test/group/npq6789/event/abc1234"
-                                && template.theme.primary_color
-                                    == site_settings_for_notifications.theme.primary_color
-                        })
-                        .unwrap_or(false)
+                    from_value::<EventCanceled>(value.clone()).is_ok_and(|template| {
+                        template.link == "/test/group/npq6789/event/abc1234"
+                            && template.theme.primary_color
+                                == site_settings_for_notifications.theme.primary_color
+                    })
                 })
         })
         .returning(|_| Box::pin(async { Ok(()) }));
@@ -713,8 +1035,10 @@ async fn test_publish_success() {
         .returning(move |_, _, _| Ok(unpublished_event.clone()));
     db.expect_publish_event()
         .times(1)
-        .withf(move |uid, gid, eid| *uid == user_id && *gid == group_id && *eid == event_id)
-        .returning(move |_, _, _| Ok(()));
+        .withf(move |uid, provider, gid, eid| {
+            *uid == user_id && provider.is_none() && *gid == group_id && *eid == event_id
+        })
+        .returning(move |_, _, _, _| Ok(()));
     db.expect_get_event_full()
         .times(1)
         .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
@@ -739,12 +1063,10 @@ async fn test_publish_success() {
             matches!(notification.kind, NotificationKind::EventPublished)
                 && notification.recipients == expected_member_recipients
                 && notification.template_data.as_ref().is_some_and(|value| {
-                    from_value::<EventPublished>(value.clone())
-                        .map(|template| {
-                            template.theme.primary_color
-                                == site_settings_for_member_notification.theme.primary_color
-                        })
-                        .unwrap_or(false)
+                    from_value::<EventPublished>(value.clone()).is_ok_and(|template| {
+                        template.theme.primary_color
+                            == site_settings_for_member_notification.theme.primary_color
+                    })
                 })
         })
         .returning(|_| Box::pin(async { Ok(()) }));
@@ -754,12 +1076,10 @@ async fn test_publish_success() {
             matches!(notification.kind, NotificationKind::SpeakerWelcome)
                 && notification.recipients == vec![speaker_id]
                 && notification.template_data.as_ref().is_some_and(|value| {
-                    from_value::<SpeakerWelcome>(value.clone())
-                        .map(|template| {
-                            template.theme.primary_color
-                                == site_settings_for_speaker_notification.theme.primary_color
-                        })
-                        .unwrap_or(false)
+                    from_value::<SpeakerWelcome>(value.clone()).is_ok_and(|template| {
+                        template.theme.primary_color
+                            == site_settings_for_speaker_notification.theme.primary_color
+                    })
                 })
         })
         .returning(|_| Box::pin(async { Ok(()) }));
@@ -832,8 +1152,10 @@ async fn test_publish_already_published_no_notification() {
         .returning(move |_, _, _| Ok(already_published_event.clone()));
     db.expect_publish_event()
         .times(1)
-        .withf(move |uid, gid, eid| *uid == user_id && *gid == group_id && *eid == event_id)
-        .returning(move |_, _, _| Ok(()));
+        .withf(move |uid, provider, gid, eid| {
+            *uid == user_id && provider.is_none() && *gid == group_id && *eid == event_id
+        })
+        .returning(move |_, _, _, _| Ok(()));
 
     // Setup notifications manager mock (no enqueue expected)
     let nm = MockNotificationsManager::new();
@@ -916,8 +1238,10 @@ async fn test_publish_speakers_only() {
         .returning(move |_, _, _| Ok(unpublished_event.clone()));
     db.expect_publish_event()
         .times(1)
-        .withf(move |uid, gid, eid| *uid == user_id && *gid == group_id && *eid == event_id)
-        .returning(move |_, _, _| Ok(()));
+        .withf(move |uid, provider, gid, eid| {
+            *uid == user_id && provider.is_none() && *gid == group_id && *eid == event_id
+        })
+        .returning(move |_, _, _, _| Ok(()));
     db.expect_get_event_full()
         .times(1)
         .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
@@ -943,12 +1267,10 @@ async fn test_publish_speakers_only() {
             matches!(notification.kind, NotificationKind::SpeakerWelcome)
                 && notification.recipients == vec![speaker_id]
                 && notification.template_data.as_ref().is_some_and(|value| {
-                    from_value::<SpeakerWelcome>(value.clone())
-                        .map(|template| {
-                            template.theme.primary_color
-                                == site_settings_for_speaker_notification.theme.primary_color
-                        })
-                        .unwrap_or(false)
+                    from_value::<SpeakerWelcome>(value.clone()).is_ok_and(|template| {
+                        template.theme.primary_color
+                            == site_settings_for_speaker_notification.theme.primary_color
+                    })
                 })
         })
         .returning(|_| Box::pin(async { Ok(()) }));
@@ -1206,13 +1528,11 @@ async fn test_update_success() {
                 && notification.recipients.contains(&attendee_id)
                 && notification.recipients.contains(&speaker_id)
                 && notification.template_data.as_ref().is_some_and(|value| {
-                    from_value::<EventRescheduled>(value.clone())
-                        .map(|template| {
-                            template.link == "/test/group/npq6789/event/abc1234"
-                                && template.theme.primary_color
-                                    == site_settings_for_notifications.theme.primary_color
-                        })
-                        .unwrap_or(false)
+                    from_value::<EventRescheduled>(value.clone()).is_ok_and(|template| {
+                        template.link == "/test/group/npq6789/event/abc1234"
+                            && template.theme.primary_color
+                                == site_settings_for_notifications.theme.primary_color
+                    })
                 })
         })
         .returning(|_| Box::pin(async { Ok(()) }));
@@ -1237,6 +1557,162 @@ async fn test_update_success() {
         &HeaderValue::from_static("refresh-group-dashboard-table"),
     );
     assert!(bytes.is_empty());
+}
+
+#[tokio::test]
+async fn test_update_invalid_ticketing_fields_returns_unprocessable_entity() {
+    // Setup identifiers and data structures
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(
+        session_id,
+        user_id,
+        &auth_hash,
+        Some(community_id),
+        Some(group_id),
+    );
+    let before = sample_event_summary(event_id, group_id);
+    let event_form = sample_event_form();
+    let body = format!(
+        concat!(
+            "{}",
+            "&discount_codes_present=true",
+            "&discount_codes[0][active]=true",
+            "&discount_codes[0][code]=EARLY20",
+            "&discount_codes[0][kind]=percentage",
+            "&discount_codes[0][title]=Early%20supporter",
+            "&discount_codes[0][percentage]=invalid",
+        ),
+        serde_qs::to_string(&event_form).unwrap(),
+    );
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::EventsWrite
+        })
+        .returning(|_, _, _, _| Ok(true));
+    db.expect_get_event_summary()
+        .times(1)
+        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
+        .returning(move |_, _, _| Ok(before.clone()));
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("PUT")
+        .uri(format!("/dashboard/group/events/{event_id}/update"))
+        .header(COOKIE, format!("id={session_id}"))
+        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+        .body(Body::from(body))
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert!(!bytes.is_empty());
+}
+
+#[tokio::test]
+async fn test_update_ticketed_event_without_payment_recipient_returns_unprocessable_entity() {
+    // Setup identifiers and data structures
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(
+        session_id,
+        user_id,
+        &auth_hash,
+        Some(community_id),
+        Some(group_id),
+    );
+    let before = sample_event_summary(event_id, group_id);
+    let body = sample_ticketed_event_body();
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::EventsWrite
+        })
+        .returning(|_, _, _, _| Ok(true));
+    db.expect_get_event_summary()
+        .times(1)
+        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
+        .returning(move |_, _, _| Ok(before.clone()));
+    db.expect_get_group_payment_recipient()
+        .times(1)
+        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
+        .returning(|_, _| Ok(None));
+    db.expect_update_event().times(0);
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm)
+        .with_payments_cfg(PaymentsConfig::Stripe(PaymentsStripeConfig {
+            mode: PaymentMode::Test,
+            publishable_key: "pk_test".to_string(),
+            secret_key: "sk_test".to_string(),
+            webhook_secret: "whsec_test".to_string(),
+        }))
+        .build()
+        .await;
+    let request = Request::builder()
+        .method("PUT")
+        .uri(format!("/dashboard/group/events/{event_id}/update"))
+        .header(COOKIE, format!("id={session_id}"))
+        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+        .body(Body::from(body))
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(
+        String::from_utf8(bytes.to_vec()).unwrap(),
+        "configure a payments recipient in group settings first",
+    );
 }
 
 #[tokio::test]
@@ -1340,13 +1816,11 @@ async fn test_update_promotes_waitlist_and_sends_reschedule_notification() {
             matches!(notification.kind, NotificationKind::EventWaitlistPromoted)
                 && notification.recipients == vec![promoted_user_id]
                 && notification.template_data.as_ref().is_some_and(|value| {
-                    from_value::<EventWaitlistPromoted>(value.clone())
-                        .map(|template| {
-                            template.link == "/test-community/group/def5678/event/ghi9abc"
-                                && template.theme.primary_color
-                                    == site_settings_for_promotion_notification.theme.primary_color
-                        })
-                        .unwrap_or(false)
+                    from_value::<EventWaitlistPromoted>(value.clone()).is_ok_and(|template| {
+                        template.link == "/test-community/group/def5678/event/ghi9abc"
+                            && template.theme.primary_color
+                                == site_settings_for_promotion_notification.theme.primary_color
+                    })
                 })
         })
         .returning(|_| Box::pin(async { Ok(()) }));
@@ -1358,13 +1832,11 @@ async fn test_update_promotes_waitlist_and_sends_reschedule_notification() {
                 && notification.recipients.contains(&attendee_id)
                 && notification.recipients.contains(&speaker_id)
                 && notification.template_data.as_ref().is_some_and(|value| {
-                    from_value::<EventRescheduled>(value.clone())
-                        .map(|template| {
-                            template.link == "/test/group/npq6789/event/abc1234"
-                                && template.theme.primary_color
-                                    == site_settings_for_reschedule_notification.theme.primary_color
-                        })
-                        .unwrap_or(false)
+                    from_value::<EventRescheduled>(value.clone()).is_ok_and(|template| {
+                        template.link == "/test/group/npq6789/event/abc1234"
+                            && template.theme.primary_color
+                                == site_settings_for_reschedule_notification.theme.primary_color
+                    })
                 })
         })
         .returning(|_| Box::pin(async { Ok(()) }));
@@ -1463,13 +1935,11 @@ async fn test_update_promotion_notification_failure_is_ignored() {
                 && notification.attachments.len() == 1
                 && notification.attachments[0].file_name == "event-ghi9abc.ics"
                 && notification.template_data.as_ref().is_some_and(|value| {
-                    from_value::<EventWaitlistPromoted>(value.clone())
-                        .map(|template| {
-                            template.link == "/test-community/group/def5678/event/ghi9abc"
-                                && template.theme.primary_color
-                                    == site_settings_for_notification.theme.primary_color
-                        })
-                        .unwrap_or(false)
+                    from_value::<EventWaitlistPromoted>(value.clone()).is_ok_and(|template| {
+                        template.link == "/test-community/group/def5678/event/ghi9abc"
+                            && template.theme.primary_color
+                                == site_settings_for_notification.theme.primary_color
+                    })
                 })
         })
         .returning(|_| Box::pin(async { Err(anyhow!("notification error")) }));

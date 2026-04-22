@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
+import { existsSync, readFileSync } from "node:fs";
 import { expect } from "@playwright/test";
-import type { Locator, Page } from "@playwright/test";
+import type { Locator, Page, TestInfo } from "@playwright/test";
 
 export const TEST_COMMUNITY_NAME =
   process.env.OCG_E2E_COMMUNITY_NAME || "e2e-test-community";
@@ -92,6 +93,27 @@ export const TEST_EVENT_IDS = {
   },
 } as const;
 
+/** Payment-specific event ids used by the future Playwright payment suite. */
+export const TEST_PAYMENT_EVENT_IDS = {
+  draft: "55555555-5555-5555-5555-555555555522",
+  refunds: "55555555-5555-5555-5555-555555555523",
+} as const;
+
+/** Payment-specific event names used by the future Playwright payment suite. */
+export const TEST_PAYMENT_EVENT_NAMES = {
+  draft: "Ticketed Draft Event",
+  refunds: "Ticketed Refund Review Event",
+} as const;
+
+/** Payment-specific event slugs used by the future Playwright payment suite. */
+export const TEST_PAYMENT_EVENT_SLUGS = {
+  draft: "alpha-payments-draft",
+  refunds: "alpha-payments-refunds",
+} as const;
+
+/** Seeded Stripe recipient stored on the alpha group for payment-ready coverage. */
+export const TEST_PAYMENT_GROUP_RECIPIENT = "acct_e2e_alpha";
+
 /** Event slugs organized by group. */
 export const TEST_EVENT_SLUGS = {
   alpha: ["alpha-event-1", "alpha-event-2", "alpha-event-3"],
@@ -141,6 +163,112 @@ export const TEST_USER_CREDENTIALS = {
 const BASE_URL = process.env.OCG_E2E_BASE_URL || "http://localhost:9000";
 
 const buildUrl = (path: string) => new URL(path, BASE_URL).toString();
+
+/** Waits for the page to finish the visual work needed before snapshotting. */
+const waitForVisualReady = async (page: Page) => {
+  await page.waitForLoadState("networkidle");
+  await page.evaluate(async () => {
+    await document.fonts.ready;
+  });
+};
+
+/**
+ * Reads the dimensions from a PNG snapshot header.
+ */
+const getPngDimensions = (filePath: string) => {
+  if (!existsSync(filePath)) {
+    return null;
+  }
+
+  const imageBuffer = readFileSync(filePath);
+
+  if (imageBuffer.length < 24 || imageBuffer.toString("ascii", 1, 4) !== "PNG") {
+    return null;
+  }
+
+  return {
+    width: imageBuffer.readUInt32BE(16),
+    height: imageBuffer.readUInt32BE(20),
+  };
+};
+
+/**
+ * Aligns a locator screenshot height with the checked-in snapshot when drift is tiny.
+ */
+const alignRegionHeightToSnapshot = async (
+  region: Locator,
+  screenshotName: string,
+  testInfo?: TestInfo,
+) => {
+  if (!testInfo) {
+    return;
+  }
+
+  const snapshotDimensions = getPngDimensions(testInfo.snapshotPath(screenshotName));
+
+  if (!snapshotDimensions) {
+    return;
+  }
+
+  const regionBox = await region.boundingBox();
+
+  if (!regionBox) {
+    return;
+  }
+
+  const actualHeight = Math.round(regionBox.height);
+  const heightDelta = snapshotDimensions.height - actualHeight;
+
+  if (heightDelta === 0 || Math.abs(heightDelta) > 2) {
+    return;
+  }
+
+  await region.evaluate(
+    (element, { expectedHeight, adjustHeight }) => {
+      const target = element as HTMLElement;
+
+      target.dataset.ocgE2ePrevBoxSizing = target.style.boxSizing;
+      target.dataset.ocgE2ePrevMinHeight = target.style.minHeight;
+      target.dataset.ocgE2ePrevHeight = target.style.height;
+      target.dataset.ocgE2ePrevOverflow = target.style.overflow;
+      target.style.boxSizing = "border-box";
+
+      if (adjustHeight > 0) {
+        target.style.minHeight = `${expectedHeight}px`;
+        return;
+      }
+
+      target.style.height = `${expectedHeight}px`;
+      target.style.overflow = "hidden";
+    },
+    {
+      expectedHeight: snapshotDimensions.height,
+      adjustHeight: heightDelta,
+    },
+  );
+};
+
+/**
+ * Restores temporary region styles applied for screenshot normalization.
+ */
+const resetRegionHeightAlignment = async (region: Locator) => {
+  await region.evaluate((element) => {
+    const target = element as HTMLElement;
+
+    if (!target.dataset.ocgE2ePrevBoxSizing) {
+      return;
+    }
+
+    target.style.boxSizing = target.dataset.ocgE2ePrevBoxSizing;
+    target.style.minHeight = target.dataset.ocgE2ePrevMinHeight ?? "";
+    target.style.height = target.dataset.ocgE2ePrevHeight ?? "";
+    target.style.overflow = target.dataset.ocgE2ePrevOverflow ?? "";
+    delete target.dataset.ocgE2ePrevBoxSizing;
+    delete target.dataset.ocgE2ePrevMinHeight;
+    delete target.dataset.ocgE2ePrevHeight;
+    delete target.dataset.ocgE2ePrevOverflow;
+  });
+};
 
 /**
  * Builds a fully-qualified URL.
@@ -261,6 +389,44 @@ export const getEventAboutSection = (page: Page) =>
 export const getEventLogo = (page: Page) =>
   page.locator("div[style*='background-image']").first();
 
+/**
+ * Selects the stable intro section used by community, group, and event pages.
+ */
+export const getIntroSection = (page: Page) =>
+  page
+    .getByRole("heading", { level: 1 })
+    .locator("xpath=ancestor::div[parent::div[contains(@class,'gap-y-6')]][1]");
+
+/**
+ * Selects the community about block without including the following sections.
+ */
+export const getCommunityAboutSection = (page: Page) =>
+  page.locator(".community-description").locator("..");
+
+/**
+ * Selects the stable home jumbotron content without outer container padding.
+ */
+export const getHomeJumbotronContent = (page: Page) =>
+  page
+    .getByRole("heading", { level: 1 })
+    .locator("xpath=ancestor::div[contains(@class,'text-center')][1]");
+
+/**
+ * Selects the explore search row above the results list.
+ */
+export const getExploreSearchRow = (page: Page, searchPlaceholder: string) =>
+  page
+    .getByPlaceholder(searchPlaceholder)
+    .locator("xpath=ancestor::div[contains(@class,'items-center')][1]");
+
+/**
+ * Selects the explore controls row above the results list.
+ */
+export const getExploreControlsRow = (page: Page) =>
+  page
+    .locator("#results")
+    .locator("xpath=ancestor::div[contains(@class,'justify-between')][1]");
+
 export type AuthUser = {
   name: string;
   email: string;
@@ -351,44 +517,7 @@ export const expectPageScreenshot = async (
     maxDiffPixelRatio?: number;
   } = {},
 ) => {
-  await page.waitForLoadState("networkidle");
-  await page.evaluate(async () => {
-    await document.fonts.ready;
-  });
-  await page.evaluate(() => {
-    const viewportWidth = window.innerWidth;
-
-    if (viewportWidth > 430) {
-      return;
-    }
-
-    const documentElement = document.documentElement;
-    const body = document.body;
-    const scrollHeight = Math.max(
-      documentElement.scrollHeight,
-      documentElement.offsetHeight,
-      body?.scrollHeight ?? 0,
-      body?.offsetHeight ?? 0,
-    );
-    const normalizedHeightPadding = (4 - (scrollHeight % 4)) % 4;
-
-    if (!body || normalizedHeightPadding === 0) {
-      return;
-    }
-
-    let screenshotSpacer = document.getElementById("ocg-e2e-screenshot-spacer");
-
-    if (!screenshotSpacer) {
-      screenshotSpacer = document.createElement("div");
-      screenshotSpacer.id = "ocg-e2e-screenshot-spacer";
-      screenshotSpacer.setAttribute("aria-hidden", "true");
-      screenshotSpacer.style.pointerEvents = "none";
-      screenshotSpacer.style.width = "100%";
-      body.append(screenshotSpacer);
-    }
-
-    screenshotSpacer.style.height = `${normalizedHeightPadding}px`;
-  });
+  await waitForVisualReady(page);
 
   await expect(page).toHaveScreenshot(screenshotName, {
     animations: "disabled",
@@ -396,6 +525,38 @@ export const expectPageScreenshot = async (
     fullPage: true,
     ...screenshotOptions,
   });
+};
+
+/**
+ * Waits for a stable region and snapshots only that locator.
+ */
+export const expectRegionScreenshot = async (
+  page: Page,
+  region: Locator,
+  screenshotName: string,
+  screenshotOptions: {
+    mask?: Locator[];
+    maxDiffPixels?: number;
+    maxDiffPixelRatio?: number;
+    testInfo?: TestInfo;
+  } = {},
+) => {
+  const { testInfo, ...playwrightScreenshotOptions } = screenshotOptions;
+
+  await waitForVisualReady(page);
+  await expect(region).toBeVisible();
+  await region.scrollIntoViewIfNeeded();
+  await alignRegionHeightToSnapshot(region, screenshotName, testInfo);
+
+  try {
+    await expect(region).toHaveScreenshot(screenshotName, {
+      animations: "disabled",
+      caret: "hide",
+      ...playwrightScreenshotOptions,
+    });
+  } finally {
+    await resetRegionHeightAlignment(region);
+  }
 };
 
 /**

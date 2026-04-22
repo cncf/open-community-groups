@@ -1,7 +1,8 @@
 import { expect, test } from "@playwright/test";
 
 import {
-  expectPageScreenshot,
+  expectRegionScreenshot,
+  getIntroSection,
   navigateToEvent,
   TEST_COMMUNITY_NAME,
   TEST_EVENT_NAMES,
@@ -10,7 +11,7 @@ import {
 } from "../../utils";
 
 test.describe("event page visual regression @visual", () => {
-  test("matches desktop snapshot", async ({ page }) => {
+  test("matches desktop snapshot", async ({ page }, testInfo) => {
     await navigateToEvent(
       page,
       TEST_COMMUNITY_NAME,
@@ -23,10 +24,15 @@ test.describe("event page visual regression @visual", () => {
     ).toBeVisible();
     await expect(page.getByText("About this event", { exact: true })).toBeVisible();
 
-    await expectPageScreenshot(page, "event-page-desktop.png");
+    await expectRegionScreenshot(
+      page,
+      getIntroSection(page),
+      "event-page-desktop.png",
+      { testInfo },
+    );
   });
 
-  test("matches mobile snapshot @mobile", async ({ page }) => {
+  test("matches mobile snapshot @mobile", async ({ page }, testInfo) => {
     await navigateToEvent(
       page,
       TEST_COMMUNITY_NAME,
@@ -39,6 +45,11 @@ test.describe("event page visual regression @visual", () => {
     ).toBeVisible();
     await expect(page.getByText("About this event", { exact: true })).toBeVisible();
 
-    await expectPageScreenshot(page, "event-page-mobile.png");
+    await expectRegionScreenshot(
+      page,
+      getIntroSection(page),
+      "event-page-mobile.png",
+      { testInfo },
+    );
   });
 });

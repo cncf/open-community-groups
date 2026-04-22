@@ -1,8 +1,27 @@
 {% import "macros/ui.html" as ui -%}
 {% import "macros/badges.html" as badges -%}
 
+{# Ticket price badge -#}
+{% macro ticket_price_badge(event, panel = false) -%}
+  {% if !event.is_past() -%}
+    {% if let Some(ticket_price_badge) = event.formatted_ticket_price_badge() -%}
+      {% if panel -%}
+        <div class="flex items-center justify-between gap-3 rounded-xl border border-green-800 bg-green-100/40 px-3.5 py-1.5 text-[13px]/5 text-green-800">
+          <span class="font-medium">Ticket price</span>
+          <span class="font-semibold">{{ ticket_price_badge }}</span>
+        </div>
+      {% else -%}
+        <span class="custom-badge inline-flex items-center border-green-800 bg-green-100 font-semibold text-green-800">
+          {{ ticket_price_badge }}
+        </span>
+      {% endif -%}
+    {% endif -%}
+  {% endif -%}
+{% endmacro ticket_price_badge -%}
+{# End ticket price badge -#}
+
 {# Event footer -#}
-{% macro event_footer(event, left_width_classes = "w-[60px] min-w-[60px]") -%}
+{% macro event_footer(event, left_width_classes = "w-[60px] min-w-[60px]", show_ticket_price = true) -%}
   <div class="flex items-center gap-3 md:gap-4">
     <div class="{{ left_width_classes }} shrink-0 text-center">
       {% if let Some(starts_at) = &event.starts_at -%}
@@ -35,11 +54,16 @@
             {{ ui::icon_text(icon_name = "location", text = "No location provided", extra_styles = Some("flex-1") ) -}}
           {% endif -%}
         {% endif -%}
-        {% if event.canceled -%}
-          {{ badges::event_badge(kind = event.kind, canceled = true, extra_styles = Some("shrink-0 bg-white") ) -}}
-        {% else if event.kind == EventKind::Hybrid -%}
-          {{ badges::event_badge(kind = event.kind, extra_styles = Some("shrink-0 bg-white") ) -}}
-        {% endif -%}
+        <div class="flex items-center gap-2 shrink-0 ml-auto">
+          {% if show_ticket_price -%}
+            {{ ticket_price_badge(event) -}}
+          {% endif -%}
+          {% if event.canceled -%}
+            {{ badges::event_badge(kind = event.kind, canceled = true, extra_styles = Some("shrink-0 bg-white") ) -}}
+          {% else if event.kind == EventKind::Hybrid -%}
+            {{ badges::event_badge(kind = event.kind, extra_styles = Some("shrink-0 bg-white") ) -}}
+          {% endif -%}
+        </div>
       </div>
 
       <div class="card-meta !pt-1.5">
@@ -49,6 +73,7 @@
           {{ ui::icon_text(icon_name = "date", text = "Date to be announced", extra_styles = Some("flex-1") , icon_extra_styles = Some("-top-px") ) -}}
         {% endif -%}
       </div>
+
     </div>
   </div>
 {% endmacro event_footer -%}

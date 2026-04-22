@@ -30,13 +30,15 @@ use tracing::instrument;
 use crate::{
     activity_tracker::DynActivityTracker,
     auth::AuthnBackend,
-    config::{HttpServerConfig, MeetingsConfig},
+    config::{HttpServerConfig, MeetingsConfig, PaymentsConfig},
     db::DynDB,
     handlers::{
         auth::{self, LOG_IN_URL},
-        community, event, group, images, meetings, site,
+        community, event, group, images, meetings, payments, site,
     },
-    services::{images::DynImageStorage, notifications::DynNotificationsManager},
+    services::{
+        images::DynImageStorage, notifications::DynNotificationsManager, payments::DynPaymentsManager,
+    },
 };
 
 /// Cache-Control header value instructing clients not to cache responses.
@@ -64,6 +66,10 @@ pub(crate) struct State {
     pub meetings_cfg: Option<MeetingsConfig>,
     /// Notifications manager handle.
     pub notifications_manager: DynNotificationsManager,
+    /// Payments configuration.
+    pub payments_cfg: Option<PaymentsConfig>,
+    /// Payments manager handle.
+    pub payments_manager: DynPaymentsManager,
     /// `serde_qs` config for query string parsing.
     pub serde_qs_de: serde_qs::Config,
     /// HTTP server configuration.
@@ -75,17 +81,23 @@ pub(crate) struct State {
 /// Sets up all routes, middleware layers, and shared state. Optionally adds basic
 /// authentication if configured.
 #[allow(clippy::too_many_lines)]
+#[allow(clippy::too_many_arguments)]
 #[instrument(skip_all)]
 pub(crate) async fn setup(
     activity_tracker: DynActivityTracker,
     db: DynDB,
     image_storage: DynImageStorage,
     meetings_cfg: Option<MeetingsConfig>,
+    payments_cfg: Option<PaymentsConfig>,
+    payments_manager: DynPaymentsManager,
     notifications_manager: DynNotificationsManager,
     server_cfg: &HttpServerConfig,
 ) -> Result<Router> {
     // Check which meetings providers are configured
     let zoom_enabled = meetings_cfg.as_ref().is_some_and(|cfg| cfg.zoom.is_some());
+
+    // Check whether a payments provider is configured
+    let payments_enabled = payments_cfg.is_some();
 
     // Setup router state
     let state = State {
@@ -94,6 +106,8 @@ pub(crate) async fn setup(
         image_storage,
         meetings_cfg,
         notifications_manager,
+        payments_cfg,
+        payments_manager,
         serde_qs_de: serde_qs_config(),
         server_cfg: server_cfg.clone(),
     };
@@ -116,10 +130,18 @@ pub(crate) async fn setup(
         )
         .route("/{community}/event/{event_id}/attend", post(event::attend_event))
         .route(
+            "/{community}/event/{event_id}/checkout",
+            post(event::start_checkout),
+        )
+        .route(
             "/{community}/event/{event_id}/attendance",
             get(event::attendance_status),
         )
         .route("/{community}/event/{event_id}/leave", delete(event::leave_event))
+        .route(
+            "/{community}/event/{event_id}/refund-request",
+            post(event::request_refund),
+        )
         .route(
             "/{community}/event/{event_id}/cfs-submissions",
             post(event::submit_cfs_submission),
@@ -214,6 +236,11 @@ pub(crate) async fn setup(
     // Setup Zoom webhook route if enabled in configuration
     if zoom_enabled {
         router = router.route("/webhooks/zoom", post(meetings::zoom_event));
+    }
+
+    // Setup the payments webhook route if enabled in configuration
+    if payments_enabled {
+        router = router.route("/webhooks/payments", post(payments::webhook));
     }
 
     router = router

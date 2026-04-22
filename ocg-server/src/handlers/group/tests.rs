@@ -178,14 +178,12 @@ async fn test_join_group_success() {
             matches!(notification.kind, NotificationKind::GroupWelcome)
                 && notification.recipients == vec![user_id]
                 && notification.template_data.as_ref().is_some_and(|data| {
-                    serde_json::from_value::<GroupWelcome>(data.clone())
-                        .map(|welcome| {
-                            welcome.group.group_id == group_id
-                                && welcome.link == "/test-community/group/npq6789"
-                                && welcome.theme.primary_color
-                                    == site_settings_for_notifications.theme.primary_color
-                        })
-                        .unwrap_or(false)
+                    serde_json::from_value::<GroupWelcome>(data.clone()).is_ok_and(|welcome| {
+                        welcome.group.group_id == group_id
+                            && welcome.link == "/test-community/group/npq6789"
+                            && welcome.theme.primary_color
+                                == site_settings_for_notifications.theme.primary_color
+                    })
                 })
         })
         .returning(|_| Box::pin(async { Ok(()) }));

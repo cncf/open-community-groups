@@ -15,6 +15,7 @@ use super::{events, logs, members, sponsors, team};
 
 use crate::{
     auth::AuthSession,
+    config::PaymentsConfig,
     db::DynDB,
     handlers::{
         error::HandlerError,
@@ -41,12 +42,14 @@ mod tests;
 /// and preparing the content for each dashboard section.
 #[instrument(skip_all, err)]
 #[allow(clippy::too_many_lines)]
+#[allow(clippy::too_many_arguments)]
 pub(crate) async fn page(
     auth_session: AuthSession,
     messages: Messages,
     SelectedCommunityId(community_id): SelectedCommunityId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
+    State(payments_cfg): State<Option<PaymentsConfig>>,
     Query(query): Query<HashMap<String, String>>,
     RawQuery(raw_query): RawQuery,
 ) -> Result<impl IntoResponse, HandlerError> {
@@ -111,6 +114,7 @@ pub(crate) async fn page(
                 can_manage_settings,
                 categories,
                 group,
+                payments_enabled: payments_cfg.is_some(),
                 regions,
             }))
         }

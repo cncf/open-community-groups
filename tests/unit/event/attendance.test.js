@@ -5,6 +5,11 @@ import { waitForMicrotask } from "/tests/unit/test-utils/async.js";
 import { useDashboardTestEnv } from "/tests/unit/test-utils/env.js";
 import { dispatchHtmxAfterRequest, dispatchHtmxBeforeRequest } from "/tests/unit/test-utils/htmx.js";
 
+const initializeAttendanceDom = async () => {
+  document.body.dataset.attendanceListenersReady = "true";
+  await import(`/static/js/event/attendance.js?test=${Date.now()}`);
+};
+
 const renderAttendanceDom = ({
   starts = "2099-05-10T10:00:00Z",
   capacity = "10",
@@ -37,8 +42,6 @@ const renderAttendanceDom = ({
         id="attend-btn"
         data-attendance-role="attend-btn"
         class="hidden"
-        data-attend-label="Attend event"
-        data-waitlist-label="Join waiting list"
       >
         <span data-attendance-label>Attend event</span>
       </button>
@@ -46,10 +49,15 @@ const renderAttendanceDom = ({
         id="leave-btn"
         data-attendance-role="leave-btn"
         class="hidden"
-        data-attendee-label="Cancel attendance"
-        data-waitlist-label="Leave waiting list"
       >
         <span data-attendance-label>Cancel attendance</span>
+      </button>
+      <button
+        id="refund-btn"
+        data-attendance-role="refund-btn"
+        class="hidden"
+      >
+        <span data-attendance-label>Request refund</span>
       </button>
     </div>
     <div data-meeting-details class="hidden"></div>
@@ -64,6 +72,7 @@ const renderAttendanceDom = ({
     signinButton: document.querySelector('[data-attendance-role="signin-btn"]'),
     attendButton: document.querySelector('[data-attendance-role="attend-btn"]'),
     leaveButton: document.querySelector('[data-attendance-role="leave-btn"]'),
+    refundButton: document.querySelector('[data-attendance-role="refund-btn"]'),
     meetingDetails: Array.from(document.querySelectorAll("[data-meeting-details]")),
     alwaysJoinLink: document.querySelector("[data-join-link-always]"),
     liveJoinLink: document.querySelector("[data-join-link]"),
@@ -195,6 +204,30 @@ describe("event attendance", () => {
     expect(attendButton.disabled).to.equal(true);
     expect(attendButton.title).to.equal("This event is sold out.");
     expect(signinButton.classList.contains("hidden")).to.equal(true);
+  });
+
+  it("leaves standalone ticket price badge text untouched", async () => {
+    document.body.innerHTML = `
+      <div>
+        From EUR 50.00
+      </div>
+    `;
+
+    await initializeAttendanceDom();
+
+    expect(document.body.textContent?.trim()).to.equal("From EUR 50.00");
+  });
+
+  it('leaves the helper-provided "Free" label untouched', async () => {
+    document.body.innerHTML = `
+      <div>
+        Free
+      </div>
+    `;
+
+    await initializeAttendanceDom();
+
+    expect(document.body.textContent?.trim()).to.equal("Free");
   });
 
   it("emits a success message when leaving the waitlist and restores the button on failure", () => {

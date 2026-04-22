@@ -264,14 +264,12 @@ async fn test_add_success() {
             matches!(notification.kind, NotificationKind::GroupTeamInvitation)
                 && notification.recipients == vec![new_member_id]
                 && notification.template_data.as_ref().is_some_and(|value| {
-                    from_value::<GroupTeamInvitation>(value.clone())
-                        .map(|template| {
-                            template.group.group_id == group_summary.group_id
-                                && template.link == "/dashboard/user?tab=invitations"
-                                && template.theme.primary_color
-                                    == site_settings_for_notifications.theme.primary_color
-                        })
-                        .unwrap_or(false)
+                    from_value::<GroupTeamInvitation>(value.clone()).is_ok_and(|template| {
+                        template.group.group_id == group_summary.group_id
+                            && template.link == "/dashboard/user?tab=invitations"
+                            && template.theme.primary_color
+                                == site_settings_for_notifications.theme.primary_color
+                    })
                 })
         })
         .returning(|_| Box::pin(async { Ok(()) }));

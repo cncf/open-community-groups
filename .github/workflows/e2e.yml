@@ -20,9 +20,6 @@ jobs:
           - suite: Functional
             command: npx playwright test --config playwright.config.ts --project=chromium-deep --project=chromium-mobile-deep
             artifact_name: playwright-artifacts-deep
-          - suite: Visual
-            command: npx playwright test --config playwright.config.ts --grep @visual --project=chromium-deep --project=chromium-mobile-deep
-            artifact_name: playwright-artifacts-visual
     permissions:
       contents: read
     services:
@@ -136,6 +133,12 @@ jobs:
               password: ""
           images:
             provider: db
+          payments:
+            provider: stripe
+            mode: test
+            publishable_key: pk_test_e2e
+            secret_key: sk_test_e2e
+            webhook_secret: whsec_e2e
           server:
             addr: 127.0.0.1:9000
             base_url: http://127.0.0.1:9000

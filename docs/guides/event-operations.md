@@ -18,6 +18,7 @@ For scope boundaries and non-event responsibilities, pair this with
 - [Event Editor Tabs](#event-editor-tabs)
 - [CFS Workflow (End to End)](#cfs-workflow-end-to-end)
 - [Automatic Meeting Creation](#automatic-meeting-creation)
+- [Paid Events, Tickets, Discounts, Refunds](#paid-events-tickets-discounts-refunds)
 - [Attendance and Waitlist Operations](#attendance-and-waitlist-operations)
 - [Publish, Unpublish, Cancel, Delete](#publish-unpublish-cancel-delete)
 - [Public Event Result](#public-event-result)
@@ -118,6 +119,28 @@ Publish readiness checks in this tab:
 - Branding is consistent with group/community standards.
 - Capacity and registration policy match expected demand.
 
+Ticketing also starts in `Details`:
+
+- `Event Currency` sets a single currency for the event.
+- `Ticket Types` lets you add attendee-facing tiers, seat counts, and date-based price windows.
+- `Discount Codes` lets you add event-level promotions, availability windows, and usage limits.
+
+Ticketing rules:
+
+- Free tickets are allowed by setting a ticket price window amount to `0`.
+- Multiple ticket types can exist on the same event.
+- Early-bird pricing is modeled as multiple price windows on the same ticket type.
+- Ticketed events automatically derive total capacity from ticket seat counts.
+- Ticketed events always disable waitlist. The editor shows this in the waitlist field helper text.
+- Ticketed events can only be created when the deployment has payments enabled and the group has
+  a payment recipient configured, even if some tiers are free.
+- Converting an existing RSVP event into a ticketed event requires an empty attendee list and an
+  empty waitlist. If attendees already exist, keep the event as RSVP or create a new ticketed
+  event instead of converting in place.
+
+If your group is not payment-ready yet, complete
+[Payments Setup](payments-setup.md) before building ticketed events.
+
 Waitlist control also lives here:
 
 - `Waitlist enabled` is an explicit toggle, separate from `capacity`.
@@ -200,6 +223,47 @@ that label.
 
 ![Event CFS](../screenshots/dashboard-group-event-cfs.png)
 
+## Paid Events, Tickets, Discounts, Refunds
+
+Ticket purchases are attendee-self-service from the public event page.
+
+Public purchase flow:
+
+1. Attendee selects a ticket type.
+2. Optional discount code is entered on the event page.
+3. OCG creates a short seat hold.
+4. Free tickets are completed immediately.
+5. Paid tickets redirect to the hosted payment checkout.
+6. Attendance is created immediately for free tickets, or after the payment provider confirms
+   payment for paid tickets.
+
+Ticket and discount data model:
+
+- Ticket types are event-level and can be mixed free/paid.
+- Each ticket type can have one or more date-range price windows.
+- Discount codes are event-level and support fixed-amount or percentage discounts.
+- Discount codes can be limited by time window, remaining uses, or total available uses.
+- Remaining uses are consumed by active holds and active purchases, then restored when a hold
+  expires, a free ticket is released, or a refund is finalized.
+
+Refunds:
+
+- Paid attendees do not use `Leave event`.
+- Paid attendees use `Request refund` from the public event page.
+- Organizers review refund requests in `Event -> Attendees`.
+- Organizers can approve or reject the request.
+- Refund requests must be submitted before the event starts.
+- Organizers can still approve or reject a request later if it was submitted before the start
+  time.
+- Approved refunds are full refunds only.
+- Rejecting a request leaves the attendee and ticket unchanged.
+
+Audit and notifications:
+
+- Refund requests, approvals, rejections, and completed refunds are written to audit logs.
+- Organizers are notified when attendees request refunds.
+- Attendees are notified when organizers approve or reject the request.
+
 ### Attendance and Waitlist Operations
 
 The dashboard now separates confirmed attendees from people still waiting for a seat.
@@ -229,6 +293,14 @@ Member-facing behavior:
 - Joining the waitlist sends a waitlist confirmation notification.
 - Leaving the waitlist sends a waitlist removal notification.
 - Promotion sends a confirmation notification with calendar attachment.
+
+Paid-attendance behavior:
+
+- Paid tickets require payment before attendance is created.
+- If checkout is interrupted, the public event page shows a `Complete payment` state while the
+  hold is still active.
+- Free ticket attendees can still leave the event themselves.
+- Paid attendees request refunds instead of leaving directly.
 
 ### Submissions
 

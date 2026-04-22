@@ -51,6 +51,59 @@ describe("meeting validations", () => {
     expect(document.getElementById("online-event-details-section")?.classList.contains("hidden")).to.equal(true);
   });
 
+  it("scopes venue helpers to the provided root", () => {
+    document.body.innerHTML = `
+      <div id="outside-root">
+        <section id="venue-information-section" class="outside-venue hidden"></section>
+        <section id="online-event-details-section" class="outside-online hidden"></section>
+        <input id="venue_name" value="Outside hall" />
+        <input id="venue_address" value="Outside street" />
+        <location-search-field id="outside-location"></location-search-field>
+      </div>
+      <div id="page-root">
+        <section id="venue-information-section" class="hidden"></section>
+        <section id="online-event-details-section" class="hidden"></section>
+        <input id="venue_name" value="Main hall" />
+        <input id="venue_address" value="123 Street" />
+        <location-search-field id="inside-location"></location-search-field>
+      </div>
+    `;
+
+    const pageRoot = document.getElementById("page-root");
+    const insideLocation = document.getElementById("inside-location");
+    const outsideLocation = document.getElementById("outside-location");
+    let insideCleared = 0;
+    let outsideCleared = 0;
+
+    insideLocation.clearLocationFields = () => {
+      insideCleared += 1;
+    };
+    outsideLocation.clearLocationFields = () => {
+      outsideCleared += 1;
+    };
+
+    expect(hasVenueData(pageRoot)).to.equal(true);
+
+    clearVenueFields(pageRoot);
+    updateSectionVisibility("virtual", pageRoot);
+
+    expect(pageRoot.querySelector("#venue_name")?.value).to.equal("");
+    expect(pageRoot.querySelector("#venue_address")?.value).to.equal("");
+    expect(pageRoot.querySelector("#venue-information-section")?.classList.contains("hidden")).to.equal(true);
+    expect(pageRoot.querySelector("#online-event-details-section")?.classList.contains("hidden")).to.equal(false);
+    expect(insideCleared).to.equal(1);
+
+    expect(document.querySelector("#outside-root #venue_name")?.value).to.equal("Outside hall");
+    expect(document.querySelector("#outside-root #venue_address")?.value).to.equal("Outside street");
+    expect(
+      document.querySelector("#outside-root #venue-information-section")?.classList.contains("hidden"),
+    ).to.equal(true);
+    expect(
+      document.querySelector("#outside-root #online-event-details-section")?.classList.contains("hidden"),
+    ).to.equal(true);
+    expect(outsideCleared).to.equal(0);
+  });
+
   it("validates happy-path meeting requests", () => {
     const errors = [];
 

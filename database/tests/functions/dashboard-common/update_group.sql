@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(9);
+select plan(18);
 
 -- ============================================================================
 -- VARIABLES
@@ -12,11 +12,18 @@ select plan(9);
 \set category1ID '00000000-0000-0000-0000-000000000011'
 \set category2ID '00000000-0000-0000-0000-000000000012'
 \set communityID '00000000-0000-0000-0000-000000000001'
+\set eventCategoryID '00000000-0000-0000-0000-000000000013'
+\set eventID '00000000-0000-0000-0000-000000000031'
+\set eventUnpublishedID '00000000-0000-0000-0000-000000000032'
 \set group2ID '00000000-0000-0000-0000-000000000023'
 \set group3ID '00000000-0000-0000-0000-000000000024'
+\set group4ID '00000000-0000-0000-0000-000000000025'
+\set group5ID '00000000-0000-0000-0000-000000000026'
 \set groupDeletedID '00000000-0000-0000-0000-000000000022'
 \set groupID '00000000-0000-0000-0000-000000000021'
 \set nonExistentCommunityID '00000000-0000-0000-0000-000000000099'
+\set ticketTypeID '00000000-0000-0000-0000-000000000041'
+\set ticketTypeUnpublishedID '00000000-0000-0000-0000-000000000042'
 
 -- ============================================================================
 -- SEED DATA
@@ -46,6 +53,10 @@ insert into group_category (group_category_id, name, community_id)
 values
     (:'category1ID', 'Technology', :'communityID'),
     (:'category2ID', 'Business', :'communityID');
+
+-- Event category
+insert into event_category (event_category_id, community_id, name)
+values (:'eventCategoryID', :'communityID', 'Meetup');
 
 -- Group
 insert into "group" (
@@ -112,6 +123,122 @@ insert into "group" (
     array['original', 'tags'],
     array['https://example.com/photo1.jpg', 'https://example.com/photo2.jpg'],
     '2024-01-15 10:00:00+00'
+);
+
+-- Group for payment recipient audit coverage
+insert into "group" (
+    group_id,
+    name,
+    slug,
+    community_id,
+    group_category_id,
+    description,
+    created_at
+) values (
+    :'group4ID'::uuid,
+    'Group With Payment Recipient',
+    'stu5nop',
+    :'communityID',
+    :'category1ID',
+    'Payment recipient audit coverage',
+    '2024-01-15 10:00:00+00'
+);
+
+-- Group with an unpublished ticketed event for payment recipient guards
+insert into "group" (
+    group_id,
+    name,
+    slug,
+    community_id,
+    group_category_id,
+    description,
+    payment_recipient,
+    created_at
+) values (
+    :'group5ID'::uuid,
+    'Group With Unpublished Ticketed Event',
+    'vwx6qrs',
+    :'communityID',
+    :'category1ID',
+    'Unpublished ticketed event coverage',
+    '{"provider": "stripe", "recipient_id": "acct_456"}'::jsonb,
+    '2024-01-15 10:00:00+00'
+);
+
+-- Published ticketed event used for payment recipient guards
+insert into event (
+    description,
+    event_id,
+    event_category_id,
+    event_kind_id,
+    group_id,
+    name,
+    published,
+    slug,
+    timezone
+) values (
+    'Published ticketed event for payment recipient validation',
+    :'eventID'::uuid,
+    :'eventCategoryID'::uuid,
+    'virtual',
+    :'group4ID'::uuid,
+    'Ticketed Group Event',
+    true,
+    'ticketed-group-event',
+    'UTC'
+);
+
+-- Ticket type for the published ticketed event
+insert into event_ticket_type (
+    event_ticket_type_id,
+    event_id,
+    "order",
+    seats_total,
+    title
+) values (
+    :'ticketTypeID'::uuid,
+    :'eventID'::uuid,
+    1,
+    50,
+    'General admission'
+);
+
+-- Unpublished ticketed event used for payment recipient guards
+insert into event (
+    description,
+    event_id,
+    event_category_id,
+    event_kind_id,
+    group_id,
+    name,
+    published,
+    slug,
+    timezone
+) values (
+    'Unpublished ticketed event for payment recipient validation',
+    :'eventUnpublishedID'::uuid,
+    :'eventCategoryID'::uuid,
+    'virtual',
+    :'group5ID'::uuid,
+    'Draft Ticketed Group Event',
+    false,
+    'draft-ticketed-group-event',
+    'UTC'
+);
+
+-- Ticket type for the unpublished ticketed event
+insert into event_ticket_type (
+    event_ticket_type_id,
+    event_id,
+    "order",
+    seats_total,
+    title
+) values (
+    :'ticketTypeUnpublishedID'::uuid,
+    :'eventUnpublishedID'::uuid,
+    1,
+    50,
+    'General admission'
 );
 
 -- ============================================================================
@@ -335,6 +462,156 @@ select is(
         "logo_url": "https://example.com/logo.png"
     }'::jsonb,
     'Should handle explicit null values for array fields (tags, photos_urls)'
+);
+
+-- Should create the payment recipient audit row when the recipient changes
+select lives_ok(
+    $$select update_group(
+        null::uuid,
+        '00000000-0000-0000-0000-000000000001'::uuid,
+        '00000000-0000-0000-0000-000000000025'::uuid,
+        '{
+            "name": "Group With Payment Recipient",
+            "category_id": "00000000-0000-0000-0000-000000000011",
+            "description": "Payment recipient audit coverage",
+            "payment_recipient": {
+                "provider": "stripe",
+                "recipient_id": " acct_123 "
+            }
+        }'::jsonb
+    )$$,
+    'Should create the payment recipient audit row when the recipient changes'
+);
+
+-- Should create both audit rows when the payment recipient changes
+select results_eq(
+    $$
+        select
+            action,
+            actor_user_id,
+            actor_username,
+            community_id,
+            group_id,
+            resource_type,
+            resource_id
+        from audit_log
+        where group_id = '00000000-0000-0000-0000-000000000025'::uuid
+        order by action asc
+    $$,
+    $$
+        values
+            (
+                'group_payment_recipient_updated',
+                null::uuid,
+                null::text,
+                '00000000-0000-0000-0000-000000000001'::uuid,
+                '00000000-0000-0000-0000-000000000025'::uuid,
+                'group',
+                '00000000-0000-0000-0000-000000000025'::uuid
+            ),
+            (
+                'group_updated',
+                null::uuid,
+                null::text,
+                '00000000-0000-0000-0000-000000000001'::uuid,
+                '00000000-0000-0000-0000-000000000025'::uuid,
+                'group',
+                '00000000-0000-0000-0000-000000000025'::uuid
+            )
+    $$,
+    'Should create both audit rows when the payment recipient changes'
+);
+
+-- Should persist the normalized payment recipient after the update
+select is(
+    (select get_group_full(:'communityID'::uuid, :'group4ID'::uuid)::jsonb->'payment_recipient'),
+    '{
+        "provider": "stripe",
+        "recipient_id": "acct_123"
+    }'::jsonb,
+    'Should persist the normalized payment recipient after the update'
+);
+
+-- Should reject clearing payment recipient when published ticketed events exist
+select throws_ok(
+    $$select update_group(
+        null::uuid,
+        '00000000-0000-0000-0000-000000000001'::uuid,
+        '00000000-0000-0000-0000-000000000025'::uuid,
+        '{
+            "name": "Group With Payment Recipient",
+            "category_id": "00000000-0000-0000-0000-000000000011",
+            "description": "Payment recipient audit coverage",
+            "payment_recipient": {
+                "provider": "stripe",
+                "recipient_id": "   "
+            }
+        }'::jsonb
+    )$$,
+    'ticketed events require a payment recipient',
+    'Should reject clearing payment recipient when published ticketed events exist'
+);
+
+-- Should keep the stored payment recipient after rejecting the clear
+select is(
+    (select get_group_full(:'communityID'::uuid, :'group4ID'::uuid)::jsonb->'payment_recipient'),
+    '{
+        "provider": "stripe",
+        "recipient_id": "acct_123"
+    }'::jsonb,
+    'Should keep the stored payment recipient after rejecting the clear'
+);
+
+-- Should normalize whitespace-only payment recipient ids to null
+select lives_ok(
+    $$select update_group(
+        null::uuid,
+        '00000000-0000-0000-0000-000000000001'::uuid,
+        '00000000-0000-0000-0000-000000000021'::uuid,
+        '{
+            "name": "Updated Group",
+            "category_id": "00000000-0000-0000-0000-000000000011",
+            "description": "Updated description",
+            "payment_recipient": {
+                "provider": "stripe",
+                "recipient_id": "   "
+            }
+        }'::jsonb
+    )$$,
+    'Should normalize whitespace-only payment recipient ids to null'
+);
+
+-- Should not persist a whitespace-only payment recipient id
+select is(
+    (select get_group_full(:'communityID'::uuid, :'groupID'::uuid)::jsonb->'payment_recipient'),
+    null::jsonb,
+    'Should not persist a whitespace-only payment recipient id'
+);
+
+-- Should allow clearing payment recipient when only unpublished ticketed events exist
+select lives_ok(
+    $$select update_group(
+        null::uuid,
+        '00000000-0000-0000-0000-000000000001'::uuid,
+        '00000000-0000-0000-0000-000000000026'::uuid,
+        '{
+            "name": "Group With Unpublished Ticketed Event",
+            "category_id": "00000000-0000-0000-0000-000000000011",
+            "description": "Unpublished ticketed event coverage",
+            "payment_recipient": {
+                "provider": "stripe",
+                "recipient_id": "   "
+            }
+        }'::jsonb
+    )$$,
+    'Should allow clearing payment recipient when only unpublished ticketed events exist'
+);
+
+-- Should clear the stored payment recipient when only unpublished ticketed events exist
+select is(
+    (select get_group_full(:'communityID'::uuid, :'group5ID'::uuid)::jsonb->'payment_recipient'),
+    null::jsonb,
+    'Should clear the stored payment recipient when only unpublished ticketed events exist'
 );
 
 -- ============================================================================

@@ -1,7 +1,7 @@
 {% import "macros/dashboard.html" as dashboard -%}
 
 {# Events form -#}
-<div class="space-y-12">
+<div class="space-y-12" data-event-page="add">
   <div class="space-y-3 w-full">
     <div class="flex flex-wrap items-center justify-between gap-3">
       <label for="copy-event-selector" class="form-label m-0">
@@ -25,57 +25,69 @@
     </p>
   </div>
 
-  <ul class="flex flex-wrap space-x-1 lg:space-x-2 -mb-px font-medium text-center border-b border-stone-900/10 w-full mb-10">
-    <li>
+  <ul class="flex flex-nowrap gap-1 lg:gap-2 -mb-px font-medium text-center border-b border-stone-900/10 w-full mb-10 overflow-x-auto overflow-y-hidden">
+    <li class="shrink-0">
       <button type="button"
               data-section="details"
               data-active="true"
-              class="px-2 xl:w-[100px] 2xl:w-[120px] xl:px-0 cursor-pointer inline-flex flex-col items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 active data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group">
+              class="px-2 xl:w-[90px] 2xl:w-[120px] xl:px-0 cursor-pointer inline-flex flex-col items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 active data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group">
         <div class="svg-icon size-4 lg:size-5 mb-2 icon-event bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
         </div>
-        <span class="text-[10px] lg:text-xs">Details</span>
+        <span class="text-[10px] 2xl:text-xs">Details</span>
       </button>
     </li>
-    <li>
+    <li class="shrink-0">
       <button type="button"
               data-section="date-venue"
               data-active="false"
-              class="px-2 xl:w-[100px] 2xl:w-[120px] xl:px-0 cursor-pointer inline-flex flex-col items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group">
+              class="px-2 xl:w-[90px] 2xl:w-[120px] xl:px-0 cursor-pointer inline-flex flex-col items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group">
         <div class="svg-icon size-4 lg:size-5 mb-2 icon-calendar bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
         </div>
-        <span class="text-[10px] lg:text-xs hidden xl:inline">Date & Venue</span>
-        <span class="text-[10px] lg:text-xs xl:hidden">Schedule</span>
+        <span class="text-[10px] 2xl:text-xs hidden xl:inline">Date & Venue</span>
+        <span class="text-[10px] 2xl:text-xs xl:hidden">Schedule</span>
       </button>
     </li>
-    <li>
+    <li class="shrink-0">
       <button type="button"
               data-section="hosts-sponsors"
               data-active="false"
-              class="px-2 xl:w-[100px] 2xl:w-[120px] xl:px-0 cursor-pointer inline-flex flex-col items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group">
+              class="px-2 xl:w-[90px] 2xl:w-[120px] xl:px-0 cursor-pointer inline-flex flex-col items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group">
         <div class="svg-icon size-4 lg:size-5 mb-2 icon-user-plus bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
         </div>
-        <span class="text-[10px] lg:text-xs hidden 2xl:inline">Hosts & Speakers</span>
-        <span class="text-[10px] lg:text-xs 2xl:hidden">Hosts</span>
+        <span class="text-[10px] 2xl:text-xs hidden 2xl:inline">Hosts & Speakers</span>
+        <span class="text-[10px] 2xl:text-xs 2xl:hidden">Hosts</span>
       </button>
     </li>
-    <li>
+    <li class="shrink-0">
       <button type="button"
               data-section="sessions"
               data-active="false"
-              class="px-2 xl:w-[100px] 2xl:w-[120px] xl:px-0 cursor-pointer inline-flex flex-col items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group">
+              class="px-2 xl:w-[90px] 2xl:w-[120px] xl:px-0 cursor-pointer inline-flex flex-col items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group">
         <div class="svg-icon size-4 lg:size-5 mb-2 icon-presentation bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
         </div>
-        <span class="text-[10px] lg:text-xs">Sessions</span>
+        <span class="text-[10px] 2xl:text-xs">Sessions</span>
       </button>
     </li>
-    <li>
+    {% if payments_ready -%}
+      <li class="shrink-0">
+        <button type="button"
+                data-section="payments"
+                data-active="false"
+                class="px-2 xl:w-[90px] 2xl:w-[120px] xl:px-0 cursor-pointer inline-flex flex-col items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group">
+          <div class="svg-icon size-4 lg:size-5 mb-2 icon-ticket bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
+          </div>
+          <span class="text-[10px] 2xl:text-xs">Payments</span>
+        </button>
+      </li>
+    {% endif -%}
+    <li class="shrink-0">
       <button type="button"
               data-section="cfs"
               data-active="false"
-              class="px-2 xl:w-[100px] 2xl:w-[120px] xl:px-0 cursor-pointer inline-flex flex-col items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group">
+              class="px-2 xl:w-[90px] 2xl:w-[120px] xl:px-0 cursor-pointer inline-flex flex-col items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group">
         <div class="svg-icon size-4 lg:size-5 mb-2 icon-megaphone bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
         </div>
-        <span class="text-[10px] lg:text-xs">CFS</span>
+        <span class="text-[10px] 2xl:text-xs">CFS</span>
       </button>
     </li>
   </ul>
@@ -92,8 +104,9 @@
               type="button"
               class="btn-primary w-24 text-nowrap ms-auto"
               hx-post="/dashboard/group/events/add"
-              hx-ext="no-empty-vals"
-              hx-include="#details-form, #cfs-form, #date-venue-form, #sessions-form, #hosts-sponsors-form"
+              hx-ext="no-empty-vals-keep-zero"
+              hx-include="#details-form, #cfs-form, #date-venue-form, #sessions-form, #hosts-sponsors-form
+                          {% if payments_ready %}, #payments-form{% endif %}"
               hx-target="#dashboard-content"
               hx-indicator="#dashboard-spinner"
               hx-disabled-elt="#add-event-button, #cancel-button"
@@ -247,6 +260,9 @@
           </div>
           <p class="form-legend">
             Maximum number of attendees.
+            <br />
+            When ticketing is configured, total capacity is derived from ticket seat counts and
+            this field is filled automatically and disabled.
             {%- if meetings_enabled %}
               <br />
               Note: Meeting providers have participant limits. If capacity exceeds your provider
@@ -296,6 +312,9 @@
           <p class="form-legend">
             Allow full events to add people to a waiting list instead of rejecting them.
             Set a capacity first to enable waitlist safely.
+            {% if payments_enabled -%}
+              Paid events disable waitlist automatically.
+            {% endif -%}
           </p>
         </div>
         {# End Waitlist enabled -#}
@@ -581,6 +600,80 @@
 </div>
 {# End Sessions Tab -#}
 
+{% if payments_ready -%}
+  {# Payments Tab -#}
+  <div data-content="payments" class="hidden">
+    <form id="payments-form">
+      <div class="space-y-12">
+        <div>
+          <p class="mt-1 text-sm/6 text-stone-500">
+            Configure event currency, ticket tiers, and optional discount codes.
+          </p>
+
+          <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6">
+            <div class="col-span-full lg:col-span-3">
+              <label for="payment_currency_code" class="form-label">
+                Event Currency
+                <span class="asterisk">* <sup class="text-xs font-normal">(required for ticketed events)</sup></span>
+              </label>
+              <div class="mt-2">
+                <select id="payment_currency_code"
+                        name="payment_currency_code"
+                        class="select-primary">
+                  <option value="">Select currency</option>
+                  {% for payment_currency_code in payment_currency_codes -%}
+                    <option value="{{ payment_currency_code }}">{{ payment_currency_code }}</option>
+                  {% endfor -%}
+                </select>
+              </div>
+              <p class="form-legend">Single currency used for all ticket prices on this event.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="border-t border-stone-900/10 pt-12">
+          <div>
+            <div class="flex items-center justify-between gap-3">
+              <div class="text-xl lg:text-2xl font-medium text-stone-900">Ticket Types</div>
+              <button id="add-ticket-type-button"
+                      type="button"
+                      class="btn-primary-outline btn-mini whitespace-nowrap"
+                      aria-label="Add ticket type">Add ticket type</button>
+            </div>
+            <p class="mt-1 text-sm/6 text-stone-500">
+              Use one ticket type per tier, add price windows for early-bird or late pricing, and
+              set the ticket amount to 0 to make a specific tier free.
+            </p>
+          </div>
+          <div class="mt-10">
+            <ticket-types-editor id="ticket-types-ui" class="block space-y-4" data-disabled="false" ticket-types="[]"></ticket-types-editor>
+          </div>
+        </div>
+
+        <div class="border-t border-stone-900/10 pt-12 pb-12">
+          <div>
+            <div class="flex items-center justify-between gap-3">
+              <div class="text-xl lg:text-2xl font-medium text-stone-900">Discount Codes</div>
+              <button id="add-discount-code-button"
+                      type="button"
+                      class="btn-primary-outline btn-mini whitespace-nowrap"
+                      aria-label="Add discount code">Add discount code</button>
+            </div>
+            <p class="mt-1 text-sm/6 text-stone-500">
+              Discount codes apply to the event currency and can be limited by schedule, remaining
+              uses, or total redemptions.
+            </p>
+          </div>
+          <div class="mt-10">
+            <discount-codes-editor id="discount-codes-ui" class="block space-y-4" data-disabled="false" discount-codes="[]"></discount-codes-editor>
+          </div>
+        </div>
+      </div>
+    </form>
+  </div>
+  {# End Payments Tab -#}
+{% endif -%}
+
 {# Hosts & Speakers Tab -#}
 <div data-content="hosts-sponsors" class="hidden">
   <form id="hosts-sponsors-form">
@@ -634,457 +727,9 @@
 
 <script type="module">
   import {
-    convertDateTimeLocalToISO
-  } from '/static/js/common/common.js';
-  import {
-    handleHtmxResponse,
-    showErrorAlert
-  } from '/static/js/common/alerts.js';
-  import {
-    validateMeetingRequest,
-    hasVenueData,
-    clearVenueFields,
-    confirmVenueDataDeletion,
-    updateSectionVisibility
-  } from '/static/js/dashboard/group/meeting-validations.js';
-  import {
-    clearCfsWindowValidity,
-    clearSessionDateBoundsValidity,
-    parseLocalDate,
-    validateCfsWindow,
-    validateEventDates,
-    validateSessionDateBounds
-  } from '/static/js/common/form-validation.js';
-  import {
-    initializeSessionsRemovalWarning
-  } from '/static/js/dashboard/group/event-form-helpers.js';
-  import {
-    initializePendingChangesAlert
-  } from '/static/js/dashboard/group/pending-changes-alert.js';
+    initializeEventAddPage
+  } from '/static/js/dashboard/group/event-add-page.js';
 
-  const addEventButton = document.getElementById('add-event-button');
-  const cancelButton = document.getElementById('cancel-button');
-  const kindSelect = document.getElementById('kind_id');
-  const onlineEventDetails = document.getElementById('online-event-details');
-
-  const syncSessionsDateRange = () => {
-    const sessionsSection = document.querySelector('sessions-section');
-    if (!sessionsSection) {
-      return;
-    }
-
-    const startsAtValue = document.getElementById('starts_at')?.value || '';
-    const endsAtValue = document.getElementById('ends_at')?.value || '';
-    sessionsSection.eventStartsAt = startsAtValue;
-    sessionsSection.eventEndsAt = endsAtValue;
-    sessionsSection.requestUpdate?.();
-  };
-
-  // Tab switching functionality
-  function displayActiveSection(sectionName) {
-    // Update tab buttons
-    const tabButtons = document.querySelectorAll('[data-section]');
-    tabButtons.forEach(btn => {
-      if (btn.getAttribute('data-section') === sectionName) {
-        btn.setAttribute('data-active', 'true');
-        btn.classList.add('active');
-      } else {
-        btn.setAttribute('data-active', 'false');
-        btn.classList.remove('active');
-      }
-    });
-
-    // Update content sections
-    const contentSections = document.querySelectorAll('[data-content]');
-    contentSections.forEach(section => {
-      if (section.getAttribute('data-content') === sectionName) {
-        section.classList.remove('hidden');
-      } else {
-        section.classList.add('hidden');
-      }
-    });
-
-    if (sectionName === 'sessions') {
-      syncSessionsDateRange();
-    }
-  }
-
-  // Validate multiple forms
-  function validateEventForms() {
-    const formSections = ['details', 'date-venue', 'hosts-sponsors', 'sessions', 'cfs'];
-    clearCfsWindowValidity({
-      cfsStartsInput: cfsStartsAtInput,
-      cfsEndsInput: cfsEndsAtInput,
-    });
-    clearSessionDateBoundsValidity({
-      sessionForm: document.getElementById('sessions-form'),
-    });
-
-    for (const formName of formSections) {
-      const formElement = document.getElementById(`${formName}-form`);
-
-      if (formElement && !formElement.checkValidity()) {
-        displayActiveSection(formName);
-        requestAnimationFrame(() => setTimeout(() => formElement.reportValidity(), 0));
-        return false;
-      }
-    }
-
-    return true;
-  }
-
-  function validateSessionOnlineDetails() {
-    const sessionsSection = document.querySelector('sessions-section');
-    if (!sessionsSection) {
-      return true;
-    }
-
-    const sessionOnlineDetails = sessionsSection.querySelectorAll('online-event-details');
-    const displaySessionsSection = () => displayActiveSection('sessions');
-
-    for (const component of sessionOnlineDetails) {
-      if (!component.validate(displaySessionsSection)) {
-        displaySessionsSection();
-        return false;
-      }
-    }
-
-    return true;
-  }
-
-  function showSessionBoundsError() {
-    const sessionsForm = document.getElementById('sessions-form');
-    const sessionDateInputs = sessionsForm?.querySelectorAll(
-      'input[name^="sessions"][name$="[starts_at]"], input[name^="sessions"][name$="[ends_at]"]',
-    );
-    const invalidInput = sessionDateInputs ?
-      Array.from(sessionDateInputs).find((input) => !!input.validationMessage) :
-      null;
-    showErrorAlert(invalidInput?.validationMessage || 'Session dates must be within the event start and end dates.');
-  }
-
-  // Add event listeners to tab buttons
-  const sectionsBtn = document.querySelectorAll('[data-section]');
-  sectionsBtn.forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const section = btn.getAttribute('data-section');
-      displayActiveSection(section);
-    });
-  });
-
-  // Handle registration required toggle
-  const toggleRegistrationRequired = document.getElementById('toggle_registration_required');
-  if (toggleRegistrationRequired) {
-    toggleRegistrationRequired.addEventListener('change', () => {
-      document.getElementById('registration_required').value = toggleRegistrationRequired.checked;
-    });
-  }
-
-  const toggleWaitlistEnabled = document.getElementById('toggle_waitlist_enabled');
-  const waitlistEnabledInput = document.getElementById('waitlist_enabled');
-  const waitlistToggleLabel = document.getElementById('waitlist-toggle-label');
-  const capacityInput = document.getElementById('capacity');
-  const syncWaitlistToggleState = () => {
-    if (!toggleWaitlistEnabled || !waitlistEnabledInput || !capacityInput) {
-      return;
-    }
-
-    const capacityValue = Number.parseInt(capacityInput.value, 10);
-    const capacityIsValid = Number.isFinite(capacityValue) && capacityValue > 0;
-
-    toggleWaitlistEnabled.disabled = !capacityIsValid;
-    if (!capacityIsValid) {
-      toggleWaitlistEnabled.checked = false;
-      waitlistEnabledInput.value = 'false';
-    } else {
-      waitlistEnabledInput.value = String(toggleWaitlistEnabled.checked);
-    }
-
-    if (waitlistToggleLabel) {
-      waitlistToggleLabel.classList.toggle('cursor-pointer', capacityIsValid);
-      waitlistToggleLabel.classList.toggle('cursor-not-allowed', !capacityIsValid);
-      waitlistToggleLabel.classList.toggle('opacity-50', !capacityIsValid);
-    }
-  };
-  if (toggleWaitlistEnabled && waitlistEnabledInput) {
-    toggleWaitlistEnabled.addEventListener('change', () => {
-      waitlistEnabledInput.value = String(toggleWaitlistEnabled.checked);
-    });
-  }
-  if (capacityInput) {
-    capacityInput.addEventListener('input', syncWaitlistToggleState);
-  }
-  syncWaitlistToggleState();
-
-  const toggleEventReminderEnabled = document.getElementById('toggle_event_reminder_enabled');
-  if (toggleEventReminderEnabled) {
-    toggleEventReminderEnabled.addEventListener('change', () => {
-      document.getElementById('event_reminder_enabled').value = toggleEventReminderEnabled.checked;
-    });
-  }
-
-  const toggleCfsEnabled = document.getElementById('toggle_cfs_enabled');
-  const cfsEnabledInput = document.getElementById('cfs_enabled');
-  const cfsStartsAtInput = document.getElementById('cfs_starts_at');
-  const cfsEndsAtInput = document.getElementById('cfs_ends_at');
-  const cfsDescriptionInput = document.getElementById('cfs_description');
-  const cfsLabelsEditor = document.getElementById('cfs-labels-editor');
-
-  const updateCfsFields = (enabled) => {
-    if (cfsEnabledInput) {
-      cfsEnabledInput.value = enabled ? 'true' : 'false';
-    }
-    if (cfsStartsAtInput) {
-      cfsStartsAtInput.disabled = !enabled;
-      cfsStartsAtInput.required = enabled;
-    }
-    if (cfsEndsAtInput) {
-      cfsEndsAtInput.disabled = !enabled;
-      cfsEndsAtInput.required = enabled;
-    }
-    if (cfsDescriptionInput) {
-      cfsDescriptionInput.disabled = !enabled;
-      cfsDescriptionInput.required = enabled;
-    }
-    if (cfsLabelsEditor) {
-      cfsLabelsEditor.disabled = !enabled;
-    }
-  };
-
-  if (toggleCfsEnabled) {
-    updateCfsFields(toggleCfsEnabled.checked);
-    toggleCfsEnabled.addEventListener('change', () => {
-      clearCfsWindowValidity({
-        cfsStartsInput: cfsStartsAtInput,
-        cfsEndsInput: cfsEndsAtInput,
-      });
-      updateCfsFields(toggleCfsEnabled.checked);
-    });
-  }
-
-  // Update component kind when event kind changes
-  if (kindSelect) {
-    let previousKindValue = kindSelect.value;
-    updateSectionVisibility(kindSelect.value || '');
-    if (onlineEventDetails) {
-      onlineEventDetails.kind = kindSelect.value;
-    }
-
-    kindSelect.addEventListener('change', async () => {
-      const newValue = kindSelect.value;
-
-      if (newValue === 'virtual' && hasVenueData()) {
-        const confirmed = await confirmVenueDataDeletion();
-        if (!confirmed) {
-          kindSelect.value = previousKindValue;
-          updateSectionVisibility(kindSelect.value || '');
-          if (onlineEventDetails) {
-            onlineEventDetails.kind = kindSelect.value;
-          }
-          return;
-        }
-        clearVenueFields();
-      }
-
-      // Check if change would disable automatic meetings
-      if (onlineEventDetails) {
-        const accepted = await onlineEventDetails.trySetKind(newValue);
-        if (!accepted) {
-          kindSelect.value = previousKindValue;
-          updateSectionVisibility(kindSelect.value || '');
-          return;
-        }
-      }
-
-      previousKindValue = newValue;
-      updateSectionVisibility(newValue);
-    });
-  } else {
-    updateSectionVisibility('');
-  }
-
-  // Update component starts/ends times when they change for validation
-  const startsAtInput = document.getElementById('starts_at');
-  const endsAtInput = document.getElementById('ends_at');
-  let previousStartsAt = startsAtInput?.value || '';
-  let previousEndsAt = endsAtInput?.value || '';
-
-  if (startsAtInput) {
-    startsAtInput.addEventListener('change', () => {
-      startsAtInput.setCustomValidity('');
-      clearCfsWindowValidity({
-        cfsStartsInput: cfsStartsAtInput,
-        cfsEndsInput: cfsEndsAtInput,
-      });
-      clearSessionDateBoundsValidity({
-        sessionForm: document.getElementById('sessions-form'),
-      });
-      syncSessionsDateRange();
-    });
-  }
-  if (endsAtInput) {
-    endsAtInput.addEventListener('change', () => {
-      endsAtInput.setCustomValidity('');
-      clearCfsWindowValidity({
-        cfsStartsInput: cfsStartsAtInput,
-        cfsEndsInput: cfsEndsAtInput,
-      });
-      clearSessionDateBoundsValidity({
-        sessionForm: document.getElementById('sessions-form'),
-      });
-      syncSessionsDateRange();
-    });
-  }
-
-  if (cfsStartsAtInput) {
-    cfsStartsAtInput.addEventListener('change', () => {
-      cfsStartsAtInput.setCustomValidity('');
-    });
-  }
-
-  if (cfsEndsAtInput) {
-    cfsEndsAtInput.addEventListener('change', () => {
-      cfsEndsAtInput.setCustomValidity('');
-    });
-  }
-
-  if (startsAtInput && onlineEventDetails) {
-    startsAtInput.addEventListener('change', async () => {
-      const accepted = await onlineEventDetails.trySetStartsAt(startsAtInput.value);
-      if (!accepted) {
-        startsAtInput.value = previousStartsAt;
-        return;
-      }
-      previousStartsAt = startsAtInput.value;
-    });
-  }
-  if (endsAtInput && onlineEventDetails) {
-    endsAtInput.addEventListener('change', async () => {
-      const accepted = await onlineEventDetails.trySetEndsAt(endsAtInput.value);
-      if (!accepted) {
-        endsAtInput.value = previousEndsAt;
-        return;
-      }
-      previousEndsAt = endsAtInput.value;
-    });
-  }
-
-  if (cancelButton) {
-    cancelButton.addEventListener('htmx:afterRequest', () => {
-      history.pushState({}, "Events list", '/dashboard/group?tab=events');
-    });
-  }
-
-  initializePendingChangesAlert({
-    alertId: 'pending-changes-alert',
-    formIds: ['details-form', 'date-venue-form', 'hosts-sponsors-form', 'sessions-form', 'cfs-form'],
-    cancelButtonId: 'cancel-button',
-    confirmMessage: 'You have pending changes for this new event. If you continue, this event will not be created.',
-    confirmText: 'Leave',
-  });
-
-  if (addEventButton) {
-    initializeSessionsRemovalWarning({
-      saveButton: addEventButton
-    });
-
-    // Validation before form submission
-    addEventButton.addEventListener('htmx:beforeRequest', (e) => {
-      if (e.detail.elt.id === 'add-event-button') {
-        // Use multiple form validation
-        const isValid = validateEventForms();
-        const eventStartsAt = parseLocalDate(startsAtInput?.value);
-        const eventEndsAt = parseLocalDate(endsAtInput?.value);
-        const datesValid = validateEventDates({
-          startsInput: startsAtInput,
-          endsInput: endsAtInput,
-          allowPastDates: false,
-          onDateSection: () => displayActiveSection('date-venue'),
-        });
-        const cfsValid = validateCfsWindow({
-          cfsEnabledInput,
-          cfsStartsInput: cfsStartsAtInput,
-          cfsEndsInput: cfsEndsAtInput,
-          eventStartsInput: startsAtInput,
-          onDateSection: () => displayActiveSection('date-venue'),
-          onCfsSection: () => displayActiveSection('cfs'),
-        });
-
-        if (!datesValid || !cfsValid) {
-          e.preventDefault();
-          e.stopImmediatePropagation();
-          return false;
-        }
-
-        // Validate online event details component
-        let onlineValid = true;
-        if (onlineEventDetails) {
-          onlineEventDetails.startsAt = startsAtInput?.value || '';
-          onlineEventDetails.endsAt = endsAtInput?.value || '';
-          onlineValid = onlineEventDetails.validate(displayActiveSection);
-        }
-
-        const sessionsOnlineValid = validateSessionOnlineDetails();
-        const sessionBoundsValid = datesValid ?
-          validateSessionDateBounds({
-            eventStartsAt,
-            eventEndsAt,
-            sessionForm: document.getElementById('sessions-form'),
-            onSessionsSection: () => displayActiveSection('sessions'),
-          }) :
-          true;
-
-        if (!sessionBoundsValid) {
-          showSessionBoundsError();
-        }
-
-        if (
-          !isValid ||
-          !datesValid ||
-          !cfsValid ||
-          !onlineValid ||
-          !sessionsOnlineValid ||
-          !sessionBoundsValid
-        ) {
-          // Prevent form submission
-          e.preventDefault();
-          e.stopImmediatePropagation();
-          return false;
-        }
-      }
-    });
-
-    // Convert datetime-local values to proper ISO format for PostgreSQL
-    addEventButton.addEventListener('htmx:configRequest', (e) => {
-      if (e.detail.elt.id === 'add-event-button') {
-        const isValid = validateEventForms();
-        if (!isValid) {
-          e.preventDefault();
-          e.stopPropagation();
-          return;
-        }
-        Object.keys(e.detail.parameters).forEach((key) => {
-          const isEventDate = key.match(/^(starts_at|ends_at|cfs_starts_at|cfs_ends_at)$/);
-          const isSessionDate = key.match(/^sessions\[\d+\]\[(starts_at|ends_at)\]$/);
-          if (isEventDate || isSessionDate) {
-            if (e.detail.parameters[key]) {
-              e.detail.parameters[key] = convertDateTimeLocalToISO(e.detail.parameters[key]);
-            }
-          }
-        });
-      }
-    });
-
-    addEventButton.addEventListener('htmx:afterRequest', (e) => {
-      if (e.detail.elt.id === 'add-event-button') {
-        const xhr = e.detail?.xhr;
-        handleHtmxResponse({
-          xhr,
-          successMessage: 'You have successfully created the event.',
-          errorMessage: 'Something went wrong creating the event. Please try again later.',
-        });
-      }
-    });
-  }
+  initializeEventAddPage();
 </script>
 {# End Events form -#}

@@ -1,14 +1,15 @@
 import { expect, test } from "@playwright/test";
 
 import {
-  expectPageScreenshot,
+  getCommunityAboutSection,
+  expectRegionScreenshot,
   navigateToCommunityHome,
   TEST_COMMUNITY_DESCRIPTION,
   TEST_COMMUNITY_NAME,
 } from "../../utils";
 
 test.describe("community home page visual regression @visual", () => {
-  test("matches desktop snapshot", async ({ page }) => {
+  test("matches desktop snapshot", async ({ page }, testInfo) => {
     await navigateToCommunityHome(page, TEST_COMMUNITY_NAME);
 
     await expect(page.getByText("About this community")).toBeVisible();
@@ -16,10 +17,15 @@ test.describe("community home page visual regression @visual", () => {
       page.getByText(TEST_COMMUNITY_DESCRIPTION, { exact: true }),
     ).toBeVisible();
 
-    await expectPageScreenshot(page, "community-home-desktop.png");
+    await expectRegionScreenshot(
+      page,
+      getCommunityAboutSection(page),
+      "community-home-desktop.png",
+      { testInfo },
+    );
   });
 
-  test("matches mobile snapshot @mobile", async ({ page }) => {
+  test("matches mobile snapshot @mobile", async ({ page }, testInfo) => {
     await navigateToCommunityHome(page, TEST_COMMUNITY_NAME);
 
     await expect(page.getByText("About this community")).toBeVisible();
@@ -27,19 +33,11 @@ test.describe("community home page visual regression @visual", () => {
       page.getByText(TEST_COMMUNITY_DESCRIPTION, { exact: true }),
     ).toBeVisible();
 
-    await expectPageScreenshot(page, "community-home-mobile.png", {
-      mask: [
-        page
-          .getByText("Upcoming In-Person Events", { exact: true })
-          .locator("xpath=ancestor::div[2]"),
-        page
-          .getByText("Upcoming Virtual Events", { exact: true })
-          .locator("xpath=ancestor::div[2]"),
-        page
-          .getByText("Latest groups added", { exact: true })
-          .locator("xpath=ancestor::div[2]"),
-      ],
-      maxDiffPixelRatio: 0.012,
-    });
+    await expectRegionScreenshot(
+      page,
+      getCommunityAboutSection(page),
+      "community-home-mobile.png",
+      { maxDiffPixelRatio: 0.012, testInfo },
+    );
   });
 });

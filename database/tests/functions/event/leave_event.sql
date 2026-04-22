@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(15);
+select plan(20);
 
 -- ============================================================================
 -- VARIABLES
@@ -19,7 +19,14 @@ select plan(15);
 \set eventInactiveGroup '00000000-0000-0000-0000-000000000045'
 \set eventOK '00000000-0000-0000-0000-000000000041'
 \set eventPast '00000000-0000-0000-0000-000000000047'
+\set eventPaidTicketTypeID '00000000-0000-0000-0000-000000000065'
+\set eventPaidTicketed '00000000-0000-0000-0000-000000000055'
+\set eventPaidTicketedPurchaseID '00000000-0000-0000-0000-000000000064'
 \set eventStartedNoEnd '00000000-0000-0000-0000-000000000053'
+\set eventTicketed '00000000-0000-0000-0000-000000000054'
+\set eventTicketedDiscountCodeID '00000000-0000-0000-0000-000000000063'
+\set eventTicketedPurchaseID '00000000-0000-0000-0000-000000000062'
+\set eventTicketTypeID '00000000-0000-0000-0000-000000000061'
 \set eventUnlimited '00000000-0000-0000-0000-000000000049'
 \set eventUnpublished '00000000-0000-0000-0000-000000000046'
 \set eventWaitlist '00000000-0000-0000-0000-000000000051'
@@ -83,22 +90,113 @@ values
     (:'eventDeleted', 'Deleted', 'deleted', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', false, false, true, null, null, null, false),
     (:'eventInactiveGroup', 'Inactive Group', 'inactive-group', 'd', 'UTC', :'eventCategoryID', 'in-person', :'inactiveGroupID', true, false, false, null, null, null, false),
     (:'eventUnpublished', 'Unpublished', 'unpublished', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', false, false, false, null, null, null, false),
-    (:'eventPast', 'Past', 'past', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', true, false, false, current_timestamp - interval '2 hours', current_timestamp - interval '1 hour', null, false),
-    (:'eventStartedNoEnd', 'Started No End', 'started-no-end', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', true, false, false, current_timestamp - interval '1 hour', null, null, false),
-    (:'eventDisabledWaitlist', 'Disabled Waitlist', 'disabled-waitlist', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', true, false, false, null, null, 2, false),
-    (:'eventFull', 'Full', 'full', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', true, false, false, null, null, 1, true),
-    (:'eventUnlimited', 'Unlimited', 'unlimited', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', true, false, false, null, null, null, false),
-    (:'eventWaitlist', 'Waitlist', 'waitlist', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', true, false, false, null, null, 1, true);
+	    (:'eventPast', 'Past', 'past', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', true, false, false, current_timestamp - interval '2 hours', current_timestamp - interval '1 hour', null, false),
+	    (:'eventStartedNoEnd', 'Started No End', 'started-no-end', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', true, false, false, current_timestamp - interval '1 hour', null, null, false),
+	    (:'eventDisabledWaitlist', 'Disabled Waitlist', 'disabled-waitlist', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', true, false, false, null, null, 2, false),
+	    (:'eventFull', 'Full', 'full', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', true, false, false, null, null, 1, true),
+	    (:'eventPaidTicketed', 'Paid Ticketed', 'paid-ticketed', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', true, false, false, null, null, 1, false),
+	    (:'eventUnlimited', 'Unlimited', 'unlimited', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', true, false, false, null, null, null, false),
+	    (:'eventWaitlist', 'Waitlist', 'waitlist', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', true, false, false, null, null, 1, true);
+
+-- Event
+insert into event (
+    event_id,
+    name,
+    slug,
+    description,
+    timezone,
+    event_category_id,
+    event_kind_id,
+    group_id,
+    payment_currency_code,
+    published,
+    canceled,
+    deleted,
+    starts_at,
+    ends_at,
+    capacity,
+    waitlist_enabled
+) values (
+    :'eventTicketed',
+    'Ticketed',
+    'ticketed',
+    'd',
+    'UTC',
+    :'eventCategoryID',
+    'in-person',
+    :'groupID',
+    'USD',
+    true,
+    false,
+    false,
+    null,
+    null,
+    1,
+    false
+);
+
+-- Event Ticket Type
+insert into event_ticket_type (
+    event_ticket_type_id,
+    event_id,
+    "order",
+    seats_total,
+    title
+) values (
+    :'eventTicketTypeID',
+    :'eventTicketed',
+    1,
+    1,
+    'General admission'
+);
+
+-- Event Ticket Type
+insert into event_ticket_type (
+    event_ticket_type_id,
+    event_id,
+    "order",
+    seats_total,
+    title
+) values (
+    :'eventPaidTicketTypeID',
+    :'eventPaidTicketed',
+    1,
+    1,
+    'Paid admission'
+);
+
+-- Event Discount Code
+insert into event_discount_code (
+    event_discount_code_id,
+    amount_minor,
+    available,
+    available_override_active,
+    code,
+    event_id,
+    kind,
+    title
+) values (
+    :'eventTicketedDiscountCodeID',
+    1,
+    0,
+    true,
+    'FREEPASS',
+    :'eventTicketed',
+    'fixed_amount',
+    'Free pass'
+);
 
 -- Event Attendees
 insert into event_attendee (event_id, user_id) values
-    (:'eventOK', :'user1ID'),
-    (:'eventDisabledWaitlist', :'user1ID'),
-    (:'eventDisabledWaitlist', :'user2ID'),
-    (:'eventPast', :'user1ID'),
-    (:'eventStartedNoEnd', :'user1ID'),
-    (:'eventFull', :'user1ID'),
-    (:'eventUnlimited', :'user1ID');
+	    (:'eventOK', :'user1ID'),
+	    (:'eventDisabledWaitlist', :'user1ID'),
+	    (:'eventDisabledWaitlist', :'user2ID'),
+	    (:'eventPast', :'user1ID'),
+	    (:'eventPaidTicketed', :'user3ID'),
+	    (:'eventStartedNoEnd', :'user1ID'),
+	    (:'eventFull', :'user1ID'),
+	    (:'eventUnlimited', :'user1ID'),
+	    (:'eventTicketed', :'user1ID');
 
 -- Event Waitlists
 insert into event_waitlist (event_id, user_id, created_at) values
@@ -106,9 +204,56 @@ insert into event_waitlist (event_id, user_id, created_at) values
     (:'eventDisabledWaitlist', :'user3ID', current_timestamp),
     (:'eventFull', :'user2ID', current_timestamp),
     (:'eventFull', :'user3ID', current_timestamp + interval '1 minute'),
+    (:'eventTicketed', :'user2ID', current_timestamp + interval '30 seconds'),
     (:'eventUnlimited', :'user2ID', current_timestamp),
     (:'eventUnlimited', :'user4ID', current_timestamp + interval '1 minute'),
     (:'eventWaitlist', :'user2ID', current_timestamp);
+
+-- Event Purchase
+insert into event_purchase (
+    event_purchase_id,
+    amount_minor,
+    currency_code,
+    discount_code,
+    event_discount_code_id,
+    event_id,
+    event_ticket_type_id,
+    status,
+    ticket_title,
+    user_id
+) values (
+    :'eventTicketedPurchaseID',
+    0,
+    'USD',
+    'FREEPASS',
+    :'eventTicketedDiscountCodeID',
+    :'eventTicketed',
+    :'eventTicketTypeID',
+    'completed',
+    'General admission',
+    :'user1ID'
+);
+
+-- Event Purchase
+insert into event_purchase (
+    event_purchase_id,
+    amount_minor,
+    currency_code,
+    event_id,
+    event_ticket_type_id,
+    status,
+    ticket_title,
+    user_id
+) values (
+    :'eventPaidTicketedPurchaseID',
+    1500,
+    'USD',
+    :'eventPaidTicketed',
+    :'eventPaidTicketTypeID',
+    'completed',
+    'Paid admission',
+    :'user3ID'
+);
 
 -- ============================================================================
 -- TESTS
@@ -155,6 +300,37 @@ select is(
     'Promotes the oldest waitlisted user when capacity opens'
 );
 
+-- Should reject paid attendees trying to leave a ticketed event
+select throws_ok(
+    format(
+        'select leave_event(%L::uuid,%L::uuid,%L::uuid)',
+        :'communityID', :'eventPaidTicketed', :'user3ID'
+    ),
+    'paid attendees must request a refund instead of leaving the event',
+    'Should reject paid attendees trying to leave a ticketed event'
+);
+
+-- Should keep paid attendees and purchases unchanged after rejection
+select is(
+    (
+        select jsonb_build_object(
+            'attending', exists(
+                select 1
+                from event_attendee
+                where event_id = :'eventPaidTicketed'::uuid
+                and user_id = :'user3ID'::uuid
+            ),
+            'purchase_status', (
+                select status
+                from event_purchase
+                where event_purchase_id = :'eventPaidTicketedPurchaseID'::uuid
+            )
+        )
+    ),
+    '{"attending": true, "purchase_status": "completed"}'::jsonb,
+    'Should keep paid attendees and purchases unchanged after rejection'
+);
+
 -- Should move the promoted user into attendees and remove them from the waitlist
 select is(
     (
@@ -191,6 +367,47 @@ select is(
         :'user4ID'
     )::jsonb,
     'Promotes all waitlisted users when the event capacity is unlimited'
+);
+
+-- Should not promote waitlisted users when leaving a ticketed event
+select is(
+    leave_event(:'communityID'::uuid, :'eventTicketed'::uuid, :'user1ID'::uuid)::jsonb,
+    '{"left_status":"attendee","promoted_user_ids":[]}'::jsonb,
+    'Should not promote waitlisted users when a ticketed attendee leaves'
+);
+
+-- Should keep queued ticketed users waitlisted after an attendee leaves
+select is(
+    (
+        select jsonb_build_object(
+            'purchase_status', (
+                select status
+                from event_purchase
+                where event_purchase_id = :'eventTicketedPurchaseID'::uuid
+            ),
+            'waitlist', (
+                select jsonb_agg(user_id order by user_id)
+                from event_waitlist
+                where event_id = :'eventTicketed'::uuid
+            )
+        )
+    ),
+    format(
+        '{"purchase_status":"refunded","waitlist":["%s"]}',
+        :'user2ID'
+    )::jsonb,
+    'Should keep queued ticketed users waitlisted after an attendee leaves'
+);
+
+-- Should restore the discount code remaining uses when a free ticketed attendee leaves
+select is(
+    (
+        select available
+        from event_discount_code
+        where event_discount_code_id = :'eventTicketedDiscountCodeID'::uuid
+    ),
+    1,
+    'Should restore the discount code remaining uses when a free ticketed attendee leaves'
 );
 
 -- Should move all waitlisted users into attendees for unlimited-capacity events

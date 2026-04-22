@@ -16,7 +16,7 @@ use tracing::{instrument, warn};
 use uuid::Uuid;
 
 use crate::{
-    config::{HttpServerConfig, MeetingsConfig},
+    config::{HttpServerConfig, MeetingsConfig, PaymentsConfig},
     db::DynDB,
     handlers::{
         error::HandlerError,
@@ -39,6 +39,7 @@ use crate::{
     types::{
         event::EventSummary,
         pagination::{self, NavigationLinks},
+        payments::GroupPaymentRecipient,
         permissions::GroupPermission,
     },
     util::{build_event_calendar_attachment, build_event_page_link},
@@ -64,12 +65,22 @@ pub(crate) async fn add_page(
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     State(meetings_cfg): State<Option<MeetingsConfig>>,
+    State(payments_cfg): State<Option<PaymentsConfig>>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Fetch template data concurrently
     let meetings_enabled = meetings_cfg.as_ref().is_some_and(MeetingsConfig::meetings_enabled);
     let meetings_max_participants = build_meetings_max_participants(meetings_cfg.as_ref());
     let sponsor_filters: GroupSponsorsFilters = serde_qs_config().deserialize_str("")?;
-    let (can_manage_events, categories, event_kinds, session_kinds, sponsors, timezones) = tokio::try_join!(
+    let (
+        can_manage_events,
+        categories,
+        event_kinds,
+        payment_currency_codes,
+        payment_recipient,
+        session_kinds,
+        sponsors,
+        timezones,
+    ) = tokio::try_join!(
         db.user_has_group_permission(
             &community_id,
             &group_id,
@@ -78,6 +89,8 @@ pub(crate) async fn add_page(
         ),
         db.list_event_categories(community_id),
         db.list_event_kinds(),
+        db.list_payment_currency_codes(),
+        db.get_group_payment_recipient(community_id, group_id),
         db.list_session_kinds(),
         db.list_group_sponsors(group_id, &sponsor_filters, true),
         db.list_timezones()
@@ -90,6 +103,9 @@ pub(crate) async fn add_page(
         event_kinds,
         group_id,
         meetings_enabled,
+        payments_enabled: payments_cfg.is_some(),
+        payment_currency_codes,
+        payments_ready: payments_ready(payment_recipient.as_ref(), payments_cfg.as_ref()),
         meetings_max_participants,
         session_kinds,
         sponsors: sponsors.sponsors,
@@ -133,6 +149,7 @@ pub(crate) async fn update_page(
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     State(meetings_cfg): State<Option<MeetingsConfig>>,
+    State(payments_cfg): State<Option<PaymentsConfig>>,
     Path(event_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
@@ -146,6 +163,8 @@ pub(crate) async fn update_page(
         categories,
         cfs_statuses,
         event_kinds,
+        payment_currency_codes,
+        payment_recipient,
         session_kinds,
         sponsors,
         timezones,
@@ -161,6 +180,8 @@ pub(crate) async fn update_page(
         db.list_event_categories(community_id),
         db.list_cfs_submission_statuses_for_review(),
         db.list_event_kinds(),
+        db.list_payment_currency_codes(),
+        db.get_group_payment_recipient(community_id, group_id),
         db.list_session_kinds(),
         db.list_group_sponsors(group_id, &sponsor_filters, true),
         db.list_timezones(),
@@ -175,6 +196,9 @@ pub(crate) async fn update_page(
         event_kinds,
         group_id,
         meetings_enabled,
+        payments_enabled: payments_cfg.is_some(),
+        payment_currency_codes,
+        payments_ready: payments_ready(payment_recipient.as_ref(), payments_cfg.as_ref()),
         meetings_max_participants,
         session_kinds,
         sponsors: sponsors.sponsors,
@@ -205,14 +229,20 @@ pub(crate) async fn details(
 #[instrument(skip_all, err)]
 pub(crate) async fn add(
     CurrentUser(user): CurrentUser,
+    SelectedCommunityId(community_id): SelectedCommunityId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     State(meetings_cfg): State<Option<MeetingsConfig>>,
+    State(payments_cfg): State<Option<crate::config::PaymentsConfig>>,
     ValidatedFormQs(event): ValidatedFormQs<Event>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Add event to database
+    // Prepare and validate event payload, then insert into database
     let cfg_max_participants = build_meetings_max_participants(meetings_cfg.as_ref());
-    db.add_event(user.user_id, group_id, &event, &cfg_max_participants)
+    let event_payload = build_event_payload(&event)?;
+    if event_payload_uses_ticketing(&event_payload) {
+        ensure_ticketing_ready(&db, community_id, group_id, payments_cfg.as_ref()).await?;
+    }
+    db.add_event(user.user_id, group_id, &event_payload, &cfg_max_participants)
         .await?;
 
     Ok((
@@ -293,6 +323,7 @@ pub(crate) async fn cancel(
 }
 
 /// Publishes an event (sets published=true and records publication metadata).
+#[allow(clippy::too_many_arguments)]
 #[instrument(skip_all, err)]
 pub(crate) async fn publish(
     CurrentUser(user): CurrentUser,
@@ -300,6 +331,7 @@ pub(crate) async fn publish(
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     State(notifications_manager): State<DynNotificationsManager>,
+    State(payments_cfg): State<Option<PaymentsConfig>>,
     State(server_cfg): State<HttpServerConfig>,
     Path(event_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
@@ -307,7 +339,13 @@ pub(crate) async fn publish(
     let event = db.get_event_summary(community_id, group_id, event_id).await?;
 
     // Mark event as published in database
-    db.publish_event(user.user_id, group_id, event_id).await?;
+    db.publish_event(
+        user.user_id,
+        payments_cfg.as_ref().map(PaymentsConfig::provider),
+        group_id,
+        event_id,
+    )
+    .await?;
 
     // Notify group members and speakers about published event
     let should_notify = matches!(
@@ -430,6 +468,7 @@ pub(crate) async fn update(
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     State(meetings_cfg): State<Option<MeetingsConfig>>,
+    State(payments_cfg): State<Option<crate::config::PaymentsConfig>>,
     State(notifications_manager): State<DynNotificationsManager>,
     State(serde_qs_de): State<serde_qs::Config>,
     State(server_cfg): State<HttpServerConfig>,
@@ -447,7 +486,10 @@ pub(crate) async fn update(
 
     // Update event in database
     let cfg_max_participants = build_meetings_max_participants(meetings_cfg.as_ref());
-    let event_json = serde_json::to_value(&event)?;
+    let event_json = build_event_payload(&event)?;
+    if event_payload_uses_ticketing(&event_json) {
+        ensure_ticketing_ready(&db, community_id, group_id, payments_cfg.as_ref()).await?;
+    }
     let promoted_user_ids = db
         .update_event(
             user.user_id,
@@ -549,6 +591,13 @@ pub(crate) async fn update(
 
 // Helpers.
 
+/// Builds the database payload for an event form.
+fn build_event_payload(event: &Event) -> Result<serde_json::Value, HandlerError> {
+    event
+        .to_db_payload()
+        .map_err(|err| HandlerError::Deserialization(err.to_string()))
+}
+
 /// Builds a `HashMap` of meeting provider to max participants from config.
 fn build_meetings_max_participants(meetings_cfg: Option<&MeetingsConfig>) -> HashMap<MeetingProvider, i32> {
     let mut map = HashMap::new();
@@ -558,6 +607,57 @@ fn build_meetings_max_participants(meetings_cfg: Option<&MeetingsConfig>) -> Has
         map.insert(MeetingProvider::Zoom, zoom.max_participants);
     }
     map
+}
+
+/// Ensures that ticketing can be used for the event by checking payments configuration and group setup.
+async fn ensure_ticketing_ready(
+    db: &DynDB,
+    community_id: Uuid,
+    group_id: Uuid,
+    payments_cfg: Option<&PaymentsConfig>,
+) -> Result<(), HandlerError> {
+    // Require a configured server payments provider before enabling ticketing
+    let Some(payments_cfg) = payments_cfg else {
+        return Err(HandlerError::Database(
+            "payments are not configured on this server".to_string(),
+        ));
+    };
+
+    // Require a group recipient that matches the configured payments provider
+    let payment_recipient = db.get_group_payment_recipient(community_id, group_id).await?;
+    if payment_recipient.is_none() {
+        return Err(HandlerError::Database(
+            "configure a payments recipient in group settings first".to_string(),
+        ));
+    }
+
+    if !payments_ready(payment_recipient.as_ref(), Some(payments_cfg)) {
+        return Err(HandlerError::Database(
+            "configure a payments recipient for this server's payments provider first".to_string(),
+        ));
+    }
+
+    Ok(())
+}
+
+/// Checks if the event payload includes ticket types, indicating that ticketing is used.
+fn event_payload_uses_ticketing(event_payload: &serde_json::Value) -> bool {
+    event_payload
+        .get("ticket_types")
+        .and_then(serde_json::Value::as_array)
+        .is_some_and(|ticket_types| !ticket_types.is_empty())
+}
+
+/// Returns true when the group recipient matches the configured payments provider.
+fn payments_ready(
+    payment_recipient: Option<&GroupPaymentRecipient>,
+    payments_cfg: Option<&PaymentsConfig>,
+) -> bool {
+    matches!(
+        (payment_recipient, payments_cfg),
+        (Some(payment_recipient), Some(payments_cfg))
+            if payment_recipient.provider == payments_cfg.provider()
+    )
 }
 
 /// Prepares the events list page and filters for the group dashboard.

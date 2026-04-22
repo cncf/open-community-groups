@@ -96,6 +96,14 @@ impl EventsResultsSection {
     }
 }
 
+/// Event card template for calendar popover display.
+#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[template(path = "site/explore/events/calendar_event_card.html")]
+pub(crate) struct CalendarEventCard {
+    /// Event data
+    pub event: EventSummary,
+}
+
 /// Event card template for explore page display.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "site/explore/events/event_card.html")]
@@ -216,6 +224,17 @@ pub(crate) struct FilterOption {
 }
 
 // Helpers for rendering popovers.
+
+/// Render popover HTML for calendar view for an event.
+#[instrument(skip_all, err)]
+pub(crate) fn render_calendar_event_popover(event: &EventSummary) -> Result<String> {
+    let calendar_event = CalendarEventCard { event: event.clone() };
+    let cfg = MinifyCfg::new();
+    Ok(String::from_utf8(minify(
+        calendar_event.render()?.as_bytes(),
+        &cfg,
+    ))?)
+}
 
 /// Render popover HTML for map and calendar views for an event.
 #[instrument(skip_all, err)]

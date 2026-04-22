@@ -39,6 +39,7 @@ returns json as $$
             ),
             'cfs_starts_at', floor(extract(epoch from e.cfs_starts_at)),
             'description_short', e.description_short,
+            'discount_codes', list_event_discount_codes(e.event_id),
             'ends_at', floor(extract(epoch from e.ends_at)),
             'event_reminder_enabled', e.event_reminder_enabled,
             'latitude', st_y(e.location::geometry),
@@ -53,11 +54,19 @@ returns json as $$
             'meeting_recording_url', coalesce(m_event.recording_url, e.meeting_recording_url),
             'meeting_requested', e.meeting_requested,
             'meetup_url', e.meetup_url,
+            'payment_currency_code', e.payment_currency_code,
+            'has_ticket_purchases', exists (
+                select 1
+                from event_purchase ep
+                join event_ticket_type ett on ett.event_ticket_type_id = ep.event_ticket_type_id
+                where ett.event_id = e.event_id
+            ),
             'photos_urls', e.photos_urls,
             'published_at', floor(extract(epoch from e.published_at)),
             'registration_required', e.registration_required,
             'starts_at', floor(extract(epoch from e.starts_at)),
             'tags', e.tags,
+            'ticket_types', list_event_ticket_types(e.event_id),
             'venue_address', e.venue_address,
             'venue_city', e.venue_city,
             'venue_country_code', e.venue_country_code,
@@ -66,8 +75,10 @@ returns json as $$
             'venue_state', e.venue_state,
             'venue_zip_code', e.venue_zip_code,
             'waitlist_count', coalesce(ew.waitlist_count, 0),
-            'waitlist_enabled', e.waitlist_enabled,
+            'waitlist_enabled', e.waitlist_enabled
+        )
 
+        || jsonb_build_object(
             -- Include community and group summaries
             'community', get_community_summary(g.community_id),
             'group', get_group_summary(g.community_id, g.group_id),

@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(5);
+select plan(6);
 
 -- ============================================================================
 -- VARIABLES
@@ -107,6 +107,18 @@ select lives_ok(
         '{"zoom": 100}'::jsonb
     )$$,
     'Should ignore provider limits when no meeting is requested'
+);
+
+-- Should validate provider limits against the effective capacity override
+select throws_ok(
+    $$select validate_event_capacity(
+        '{"capacity": 10, "meeting_requested": true, "meeting_provider_id": "zoom"}'::jsonb,
+        '{"zoom": 100}'::jsonb,
+        null,
+        200
+    )$$,
+    'event capacity (200) exceeds maximum participants allowed (100)',
+    'Should validate provider limits against the effective capacity override'
 );
 
 -- Should reject update capacity below the current attendee count

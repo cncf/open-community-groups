@@ -312,14 +312,14 @@ async fn test_add_success() {
             matches!(notification.kind, NotificationKind::CommunityTeamInvitation)
                 && notification.recipients == vec![new_member_id]
                 && notification.template_data.as_ref().is_some_and(|data| {
-                    serde_json::from_value::<CommunityTeamInvitationTemplate>(data.clone())
-                        .map(|template| {
+                    serde_json::from_value::<CommunityTeamInvitationTemplate>(data.clone()).is_ok_and(
+                        |template| {
                             template.community_name == community.display_name
                                 && template.link == "/dashboard/user?tab=invitations"
                                 && template.theme.primary_color
                                     == site_settings_for_assertions.theme.primary_color
-                        })
-                        .unwrap_or(false)
+                        },
+                    )
                 })
         })
         .returning(|_| Box::pin(async { Ok(()) }));

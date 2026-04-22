@@ -1,5 +1,6 @@
 import { toggleModalVisibility } from "/static/js/common/common.js";
-import { showSuccessAlert, showErrorAlert, handleHtmxResponse } from "/static/js/common/alerts.js";
+import { handleHtmxResponse } from "/static/js/common/alerts.js";
+import { queryElementById } from "/static/js/common/dom.js";
 
 const DEFAULT_ERROR_MESSAGE = "Something went wrong while trying to send the email. Please try again later.";
 
@@ -14,20 +15,21 @@ export const createNotificationModal = ({
   overlayId,
   successMessage,
   updateEndpoint,
+  root = document,
 }) => {
   // Locate the modal once and mark it ready so we only bind listeners once.
-  const modal = document.getElementById(modalId);
+  const modal = queryElementById(root, modalId);
   if (!modal || modal.dataset[dataKey] === "true") {
     return;
   }
 
   modal.dataset[dataKey] = "true";
 
-  const openButton = openButtonId ? document.getElementById(openButtonId) : null;
-  const closeButton = closeButtonId ? document.getElementById(closeButtonId) : null;
-  const cancelButton = cancelButtonId ? document.getElementById(cancelButtonId) : null;
-  const overlay = overlayId ? document.getElementById(overlayId) : null;
-  const form = formId ? document.getElementById(formId) : null;
+  const openButton = openButtonId ? queryElementById(root, openButtonId) : null;
+  const closeButton = closeButtonId ? queryElementById(root, closeButtonId) : null;
+  const cancelButton = cancelButtonId ? queryElementById(root, cancelButtonId) : null;
+  const overlay = overlayId ? queryElementById(root, overlayId) : null;
+  const form = formId ? queryElementById(root, formId) : null;
   const toggleModal = () => toggleModalVisibility(modalId);
 
   // Allow callers to adjust the form action before the modal opens.

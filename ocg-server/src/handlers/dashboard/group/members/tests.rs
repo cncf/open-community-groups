@@ -344,16 +344,14 @@ async fn test_send_group_custom_notification_success() {
             matches!(notification.kind, NotificationKind::GroupCustom)
                 && notification.recipients == expected_recipients
                 && notification.template_data.as_ref().is_some_and(|value| {
-                    serde_json::from_value::<GroupCustom>(value.clone())
-                        .map(|template| {
-                            template.title == notification_subject
-                                && template.body == notification_body
-                                && template.group.name == group_for_notifications.name
-                                && template.link == expected_link
-                                && template.theme.primary_color
-                                    == site_settings_for_notifications.theme.primary_color
-                        })
-                        .unwrap_or(false)
+                    serde_json::from_value::<GroupCustom>(value.clone()).is_ok_and(|template| {
+                        template.title == notification_subject
+                            && template.body == notification_body
+                            && template.group.name == group_for_notifications.name
+                            && template.link == expected_link
+                            && template.theme.primary_color
+                                == site_settings_for_notifications.theme.primary_color
+                    })
                 })
         })
         .returning(|_| Box::pin(async { Ok(()) }));

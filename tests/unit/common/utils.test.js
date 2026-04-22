@@ -3,10 +3,12 @@ import { expect } from "@open-wc/testing";
 import {
   isString,
   normalizeUsers,
+  parseJsonAttribute,
   sanitizeStringArray,
   setImageFieldValue,
   setSelectValue,
   setTextValue,
+  toBoolean,
   toOptionalString,
   toTrimmedString,
 } from "/static/js/common/utils.js";
@@ -30,8 +32,25 @@ describe("common utils", () => {
     expect(toOptionalString(undefined)).to.equal("");
   });
 
+  it("parses JSON attributes safely and normalizes booleans", () => {
+    expect(parseJsonAttribute("[1,2,3]", [])).to.deep.equal([1, 2, 3]);
+    expect(parseJsonAttribute([{ id: 1 }], [])).to.deep.equal([{ id: 1 }]);
+    expect(parseJsonAttribute("not-json", ["fallback"])).to.deep.equal([
+      "fallback",
+    ]);
+    expect(parseJsonAttribute("", ["fallback"])).to.deep.equal(["fallback"]);
+
+    expect(toBoolean(true)).to.equal(true);
+    expect(toBoolean(" TRUE ")).to.equal(true);
+    expect(toBoolean("false")).to.equal(false);
+    expect(toBoolean("maybe", true)).to.equal(true);
+  });
+
   it("sanitizes string arrays and normalizes users", () => {
-    expect(sanitizeStringArray([" alpha ", "", " beta ", null])).to.deep.equal(["alpha", "beta"]);
+    expect(sanitizeStringArray([" alpha ", "", " beta ", null])).to.deep.equal([
+      "alpha",
+      "beta",
+    ]);
 
     expect(
       normalizeUsers([

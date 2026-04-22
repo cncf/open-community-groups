@@ -1,4 +1,25 @@
 [advisories]
-# openidconnect pulls rsa transitively, but we only use it for OIDC token
-# exchange and ID token verification, not for application-side RSA decryption.
-ignore = ["RUSTSEC-2023-0071"]
+ignore = [
+    # `minify-html` currently pulls `bincode 2.0.1` through the `oxc` toolchain.
+    # This is an unmaintained warning, not an active vulnerability, and there is
+    # no semver-compatible lockfile-only update available from this workspace.
+    "RUSTSEC-2025-0141",
+
+    # `openidconnect` currently depends on `rsa 0.9.10`, and RustSec does not
+    # list a fixed release for this Marvin timing-sidechannel advisory yet.
+    # Keep this ignored until the upstream OIDC stack can move off this branch.
+    "RUSTSEC-2023-0071",
+
+    # `rand 0.8.5` remains pinned by upstream dependencies including `oauth2`,
+    # `openidconnect`, `tower-sessions`, and `minify-html` support crates.
+    # We updated the patchable `rand 0.9.x` and `0.10.x` lines already, but this
+    # older branch cannot be cleared from the lockfile without broader upgrades.
+    "RUSTSEC-2026-0097",
+
+    # The AWS S3 client path still resolves through `aws-smithy-http-client`
+    # with `rustls 0.21.x`, which requires `rustls-webpki 0.101.7`.
+    # We updated the patchable `rustls-webpki 0.103.x` line already, but these
+    # advisories remain until the AWS dependency chain moves to a newer rustls.
+    "RUSTSEC-2026-0098",
+    "RUSTSEC-2026-0099",
+]

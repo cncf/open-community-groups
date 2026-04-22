@@ -17,22 +17,30 @@ use uuid::Uuid;
 use crate::{
     activity_tracker::{Activity, DynActivityTracker},
     auth::AuthSession,
-    config::HttpServerConfig,
-    db::DynDB,
+    config::{HttpServerConfig, PaymentsConfig},
+    db::{DynDB, payments::PrepareEventCheckoutPurchaseInput},
     handlers::{
-        extractors::{CurrentUser, ValidatedFormQs},
+        extractors::{CurrentUser, ValidatedForm, ValidatedFormQs},
         prepare_headers, request_matches_site, trim_public_gallery_images,
     },
-    services::notifications::{DynNotificationsManager, NewNotification, NotificationKind},
+    services::{
+        notifications::{DynNotificationsManager, NewNotification, NotificationKind},
+        payments::{DynPaymentsManager, RequestRefundInput},
+    },
     templates::{
         PageId,
         auth::User,
         event::{CfsModal, CheckInPage, Page},
         notifications::{EventWaitlistJoined, EventWaitlistLeft, EventWaitlistPromoted, EventWelcome},
     },
-    types::event::EventAttendanceStatus,
+    types::{
+        event::{EventAttendanceStatus, EventSummary},
+        payments::{EventPurchaseStatus, PreparedEventCheckout},
+    },
     util::{build_event_calendar_attachment, build_event_page_link},
-    validation::MAX_LEN_EVENT_LABELS_PER_SUBMISSION,
+    validation::{
+        MAX_LEN_DESCRIPTION_SHORT, MAX_LEN_EVENT_LABELS_PER_SUBMISSION, MAX_LEN_S, trimmed_non_empty_opt,
+    },
 };
 
 use super::{error::HandlerError, extractors::CommunityId};
@@ -154,6 +162,15 @@ pub(crate) async fn attend_event(
     CommunityId(community_id): CommunityId,
     Path((_, event_id)): Path<(String, Uuid)>,
 ) -> Result<impl IntoResponse, HandlerError> {
+    // Validate that the event is still attendee-visible before checking ticketing
+    ensure_attendee_event_is_active(&db, community_id, event_id).await?;
+
+    // Require checkout before users can RSVP to ticketed events
+    let event = db.get_event_summary_by_id(community_id, event_id).await?;
+    if event.is_ticketed() {
+        return Err(anyhow::anyhow!("ticketed events must be purchased before attending").into());
+    }
+
     // Attend event
     let attend_result = db.attend_event(community_id, event_id, user.user_id).await?;
     let response = (
@@ -214,6 +231,7 @@ pub(crate) async fn attend_event(
             };
             notifications_manager.enqueue(&notification).await
         }
+        EventAttendanceStatus::PendingPayment => Ok(()),
         EventAttendanceStatus::None => {
             unreachable!("attend_event cannot return an unattached attendance status")
         }
@@ -234,11 +252,26 @@ pub(crate) async fn attendance_status(
     CommunityId(community_id): CommunityId,
     Path((_, event_id)): Path<(String, Uuid)>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Check attendance and check-in status
+    // Load attendance status without failing when the event is stale or inactive
     let attendance = db.get_event_attendance(community_id, event_id, user.user_id).await?;
+    let can_request_refund = if attendance.status == EventAttendanceStatus::Attendee
+        && attendance
+            .purchase_amount_minor
+            .is_some_and(|purchase_amount_minor| purchase_amount_minor > 0)
+        && attendance.refund_request_status.is_none()
+    {
+        let event = db.get_event_summary_by_id(community_id, event_id).await?;
+        attendance.can_request_refund(event.starts_at)
+    } else {
+        false
+    };
 
     Ok(Json(json!({
+        "can_request_refund": can_request_refund,
         "is_checked_in": attendance.is_checked_in,
+        "purchase_amount_minor": attendance.purchase_amount_minor,
+        "refund_request_status": attendance.refund_request_status,
+        "resume_checkout_url": attendance.resume_checkout_url,
         "status": attendance.status
     })))
 }
@@ -334,6 +367,103 @@ pub(crate) async fn leave_event(
     Ok(response)
 }
 
+/// Handler for requesting a refund.
+#[instrument(skip_all, err)]
+pub(crate) async fn request_refund(
+    CurrentUser(user): CurrentUser,
+    State(payments_manager): State<DynPaymentsManager>,
+    CommunityId(community_id): CommunityId,
+    Path((_, event_id)): Path<(String, Uuid)>,
+    ValidatedForm(input): ValidatedForm<RefundRequestInput>,
+) -> Result<impl IntoResponse, HandlerError> {
+    payments_manager
+        .request_refund(&RequestRefundInput {
+            community_id,
+            event_id,
+            user_id: user.user_id,
+
+            requested_reason: input.requested_reason.clone(),
+        })
+        .await?;
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "status": "refund-requested",
+        })),
+    ))
+}
+
+/// Handler for starting or resuming a checkout for a ticketed event.
+#[instrument(skip_all)]
+#[allow(clippy::too_many_arguments)]
+#[allow(clippy::too_many_lines)]
+pub(crate) async fn start_checkout(
+    CurrentUser(user): CurrentUser,
+    State(db): State<DynDB>,
+    State(payments_cfg): State<Option<PaymentsConfig>>,
+    State(payments_manager): State<DynPaymentsManager>,
+    CommunityId(community_id): CommunityId,
+    Path((_, event_id)): Path<(String, Uuid)>,
+    ValidatedForm(input): ValidatedForm<CheckoutInput>,
+) -> Result<impl IntoResponse, HandlerError> {
+    // Load the event and reserve a purchase hold for the attendee
+    load_checkoutable_event(&db, community_id, event_id).await?;
+    let prepared_checkout = create_checkout_hold(
+        &db,
+        community_id,
+        event_id,
+        payments_cfg.as_ref(),
+        user.user_id,
+        &input,
+    )
+    .await?;
+
+    // Return early when the attendee already has a purchase state that should not reopen checkout
+    if let Some(status) = get_checkout_status_response(prepared_checkout.purchase.status)? {
+        return Ok((
+            StatusCode::OK,
+            Json(json!({
+                "status": status,
+            })),
+        ));
+    }
+
+    // Finalize free tickets immediately and send welcome notification
+    if prepared_checkout.purchase.amount_minor == 0 {
+        payments_manager
+            .complete_free_checkout(
+                community_id,
+                event_id,
+                prepared_checkout.purchase.event_purchase_id,
+                user.user_id,
+            )
+            .await?;
+
+        return Ok((
+            StatusCode::OK,
+            Json(json!({
+                "status": EventAttendanceStatus::Attendee,
+            })),
+        ));
+    }
+
+    // Reuse an existing provider checkout when possible, otherwise create and persist a new one
+    let redirect_url = payments_manager
+        .get_or_create_checkout_redirect_url(&prepared_checkout, user.user_id)
+        .await?;
+
+    // Return the payment redirect details while the ticket hold is still active
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "hold_expires_at": prepared_checkout.purchase.hold_expires_at,
+            "redirect_url": redirect_url,
+            "status": EventAttendanceStatus::PendingPayment,
+        })),
+    ))
+}
+
 /// Handler for submitting a CFS proposal to an event.
 #[instrument(skip_all, err)]
 pub(crate) async fn submit_cfs_submission(
@@ -402,4 +532,104 @@ pub(crate) struct CfsSubmissionInput {
     label_ids: Vec<Uuid>,
     #[garde(skip)]
     session_proposal_id: Uuid,
+}
+
+#[derive(Debug, Deserialize, Validate)]
+pub(crate) struct CheckoutInput {
+    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_S))]
+    discount_code: Option<String>,
+    #[garde(skip)]
+    event_ticket_type_id: Option<Uuid>,
+}
+
+#[derive(Debug, Deserialize, Validate)]
+pub(crate) struct RefundRequestInput {
+    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_DESCRIPTION_SHORT))]
+    requested_reason: Option<String>,
+}
+
+// Helpers.
+
+/// Creates or reuses a pending checkout hold for the attendee.
+async fn create_checkout_hold(
+    db: &DynDB,
+    community_id: Uuid,
+    event_id: Uuid,
+    payments_cfg: Option<&PaymentsConfig>,
+    user_id: Uuid,
+    input: &CheckoutInput,
+) -> Result<PreparedEventCheckout, HandlerError> {
+    // Require an explicit ticket selection before opening checkout
+    let event_ticket_type_id = input
+        .event_ticket_type_id
+        .ok_or_else(|| HandlerError::Database("ticket type is required".to_string()))?;
+
+    // Prepare the attendee's current checkout purchase state
+    db.prepare_event_checkout_purchase(
+        community_id,
+        &PrepareEventCheckoutPurchaseInput {
+            configured_provider: payments_cfg.map(PaymentsConfig::provider),
+            discount_code: input.discount_code.clone(),
+            event_id,
+            event_ticket_type_id,
+            user_id,
+        },
+    )
+    .await
+    .map_err(Into::into)
+}
+
+/// Ensures attendee-facing event flows only continue for active events.
+async fn ensure_attendee_event_is_active(
+    db: &DynDB,
+    community_id: Uuid,
+    event_id: Uuid,
+) -> Result<(), HandlerError> {
+    db.ensure_event_is_active(community_id, event_id)
+        .await
+        .map_err(|err| match HandlerError::from(err) {
+            HandlerError::Other(err) if err.to_string() == "event not found or inactive" => {
+                HandlerError::Database("event not found or inactive".to_string())
+            }
+            other => other,
+        })
+}
+
+/// Returns the attendee-facing status when checkout should not continue.
+fn get_checkout_status_response(
+    purchase_status: EventPurchaseStatus,
+) -> Result<Option<EventAttendanceStatus>, HandlerError> {
+    match purchase_status {
+        EventPurchaseStatus::Completed => Ok(Some(EventAttendanceStatus::Attendee)),
+        EventPurchaseStatus::Pending => Ok(None),
+        EventPurchaseStatus::RefundRequested => Err(HandlerError::Database(
+            "checkout is unavailable while a refund is in progress".to_string(),
+        )),
+        _ => Err(HandlerError::Database(
+            "checkout is unavailable for this purchase".to_string(),
+        )),
+    }
+}
+
+/// Loads an event and ensures it currently supports attendee checkout.
+async fn load_checkoutable_event(
+    db: &DynDB,
+    community_id: Uuid,
+    event_id: Uuid,
+) -> Result<EventSummary, HandlerError> {
+    // Stop checkout when the event is no longer attendee-visible
+    ensure_attendee_event_is_active(db, community_id, event_id).await?;
+
+    // Ensure the event actually offers attendee-purchasable tickets
+    let event = db.get_event_summary_by_id(community_id, event_id).await?;
+    if !event.is_ticketed() {
+        return Err(anyhow::anyhow!("event does not use ticket purchases").into());
+    }
+    if !event.has_sellable_ticket_types() {
+        return Err(HandlerError::Database(
+            "tickets are currently unavailable for this event".to_string(),
+        ));
+    }
+
+    Ok(event)
 }

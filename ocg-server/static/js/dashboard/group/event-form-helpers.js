@@ -112,6 +112,92 @@ const setEventReminderEnabled = (isEnabled) => {
 };
 
 /**
+ * Sets event payment currency and triggers dependent ticketing UI updates.
+ * @param {*} paymentCurrencyCode Event payment currency code
+ */
+const setPaymentCurrencyCode = (paymentCurrencyCode) => {
+  const select = document.getElementById("payment_currency_code");
+  if (!select) {
+    return;
+  }
+
+  select.value = toOptionalString(paymentCurrencyCode);
+  select.dispatchEvent(new Event("input", { bubbles: true }));
+  select.dispatchEvent(new Event("change", { bubbles: true }));
+};
+
+/**
+ * Removes copied ticket price window dates from ticketing payload.
+ * @param {*} ticketTypes Ticket types payload
+ * @returns {Array<object>} Ticket types without copied price window dates
+ */
+const clearCopiedTicketTypeDates = (ticketTypes) => {
+  if (!Array.isArray(ticketTypes)) {
+    return [];
+  }
+
+  return ticketTypes.map((ticketType) => ({
+    ...ticketType,
+    event_ticket_type_id: "",
+    price_windows: Array.isArray(ticketType?.price_windows)
+      ? ticketType.price_windows.map((priceWindow) => ({
+          ...priceWindow,
+          event_ticket_price_window_id: "",
+          starts_at: "",
+          ends_at: "",
+        }))
+      : [],
+  }));
+};
+
+/**
+ * Removes copied discount availability dates from discount payload.
+ * @param {*} discountCodes Discount codes payload
+ * @returns {Array<object>} Discount codes without copied dates
+ */
+const clearCopiedDiscountCodeDates = (discountCodes) => {
+  if (!Array.isArray(discountCodes)) {
+    return [];
+  }
+
+  return discountCodes.map((discountCode) => ({
+    ...discountCode,
+    available_dirty:
+      String(discountCode?.available_override_active) === "true" &&
+      Number.isFinite(Number.parseInt(discountCode?.available, 10)),
+    event_discount_code_id: "",
+    starts_at: "",
+    ends_at: "",
+  }));
+};
+
+/**
+ * Replaces ticket types in the ticketing editor.
+ * @param {*} ticketTypes Ticket types payload
+ */
+const setTicketTypes = (ticketTypes) => {
+  const root = document.getElementById("ticket-types-ui");
+  if (!root) {
+    return;
+  }
+
+  root.setTicketTypes?.(clearCopiedTicketTypeDates(ticketTypes));
+};
+
+/**
+ * Replaces discount codes in the ticketing editor.
+ * @param {*} discountCodes Discount codes payload
+ */
+const setDiscountCodes = (discountCodes) => {
+  const root = document.getElementById("discount-codes-ui");
+  if (!root) {
+    return;
+  }
+
+  root.setDiscountCodes?.(clearCopiedDiscountCodeDates(discountCodes));
+};
+
+/**
  * Sets selected hosts on the hosts selector component.
  * @param {*} hosts Hosts payload
  */
@@ -332,13 +418,16 @@ export {
   initializeSessionsRemovalWarning,
   normalizeSpeakers,
   setCategoryValue,
+  setDiscountCodes,
   setEventReminderEnabled,
   setGalleryImages,
   setHosts,
+  setPaymentCurrencyCode,
   setRegistrationRequired,
   setSessions,
   setSponsors,
   setTags,
+  setTicketTypes,
   updateMarkdownContent,
   updateTimezone,
 };

@@ -371,15 +371,13 @@ async fn test_update_success() {
             matches!(notification.kind, NotificationKind::CfsSubmissionUpdated)
                 && notification.recipients == vec![notification_user_id]
                 && notification.template_data.as_ref().is_some_and(|value| {
-                    from_value::<CfsSubmissionUpdated>(value.clone())
-                        .map(|template| {
-                            template.action_required_message.as_deref() == Some("Please update your slides.")
-                                && template.event.event_id == event_id
-                                && template.link == expected_link
-                                && template.status_name == "Approved"
-                                && template.theme.primary_color == theme_primary_color
-                        })
-                        .unwrap_or(false)
+                    from_value::<CfsSubmissionUpdated>(value.clone()).is_ok_and(|template| {
+                        template.action_required_message.as_deref() == Some("Please update your slides.")
+                            && template.event.event_id == event_id
+                            && template.link == expected_link
+                            && template.status_name == "Approved"
+                            && template.theme.primary_color == theme_primary_color
+                    })
                 })
         })
         .returning(|_| Box::pin(async { Ok(()) }));

@@ -10,6 +10,7 @@ use uuid::Uuid;
 use crate::types::{
     community::CommunitySummary,
     location::{LocationParts, build_location},
+    payments::GroupPaymentRecipient,
     user::User,
 };
 
@@ -149,6 +150,8 @@ pub struct GroupFull {
     pub linkedin_url: Option<String>,
     /// Longitude for map display.
     pub longitude: Option<f64>,
+    /// Payments recipient configuration for the group.
+    pub payment_recipient: Option<GroupPaymentRecipient>,
     /// Gallery of photo URLs.
     pub photos_urls: Option<Vec<String>>,
     /// Geographic region this group belongs to.

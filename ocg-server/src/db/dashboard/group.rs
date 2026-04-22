@@ -18,7 +18,7 @@ use crate::{
         group::{
             analytics::GroupDashboardStats,
             attendees::{AttendeesFilters, AttendeesOutput},
-            events::{ApprovedSubmissionSummary, CfsSubmissionStatus, Event, EventsListFilters, GroupEvents},
+            events::{ApprovedSubmissionSummary, CfsSubmissionStatus, EventsListFilters, GroupEvents},
             home::UserGroupsByCommunity,
             members::{GroupMembersFilters, GroupMembersOutput},
             sponsors::{GroupSponsorsFilters, GroupSponsorsOutput, Sponsor},
@@ -33,6 +33,7 @@ use crate::{
     types::{
         event::{EventCategory, EventKindSummary as EventKind, SessionKindSummary as SessionKind},
         group::{GroupRole, GroupRoleSummary, GroupSponsor},
+        payments::{GroupPaymentRecipient, PaymentProvider},
     },
 };
 
@@ -44,7 +45,7 @@ pub(crate) trait DBDashboardGroup {
         &self,
         actor_user_id: Uuid,
         group_id: Uuid,
-        event: &Event,
+        event: &serde_json::Value,
         cfg_max_participants: &HashMap<MeetingProvider, i32>,
     ) -> Result<Uuid>;
 
@@ -89,6 +90,13 @@ pub(crate) trait DBDashboardGroup {
         event_id: Uuid,
         cfs_submission_id: Uuid,
     ) -> Result<CfsSubmissionNotificationData>;
+
+    /// Gets the configured payment recipient for a group.
+    async fn get_group_payment_recipient(
+        &self,
+        community_id: Uuid,
+        group_id: Uuid,
+    ) -> Result<Option<GroupPaymentRecipient>>;
 
     /// Gets a single sponsor from the database.
     async fn get_group_sponsor(&self, group_id: Uuid, group_sponsor_id: Uuid) -> Result<GroupSponsor>;
@@ -166,6 +174,9 @@ pub(crate) trait DBDashboardGroup {
     /// Lists all accepted, verified group team member user ids.
     async fn list_group_team_members_ids(&self, group_id: Uuid) -> Result<Vec<Uuid>>;
 
+    /// Lists supported payment currency codes.
+    async fn list_payment_currency_codes(&self) -> Result<Vec<String>>;
+
     /// Lists all available session kinds.
     async fn list_session_kinds(&self) -> Result<Vec<SessionKind>>;
 
@@ -182,7 +193,13 @@ pub(crate) trait DBDashboardGroup {
     ) -> Result<()>;
 
     /// Publishes an event (sets published=true and records publication metadata).
-    async fn publish_event(&self, actor_user_id: Uuid, group_id: Uuid, event_id: Uuid) -> Result<()>;
+    async fn publish_event(
+        &self,
+        actor_user_id: Uuid,
+        configured_provider: Option<PaymentProvider>,
+        group_id: Uuid,
+        event_id: Uuid,
+    ) -> Result<()>;
 
     /// Searches attendees for a group's event using filters.
     async fn search_event_attendees(
@@ -247,7 +264,7 @@ impl DBDashboardGroup for PgDB {
         &self,
         actor_user_id: Uuid,
         group_id: Uuid,
-        event: &Event,
+        event: &serde_json::Value,
         cfg_max_participants: &HashMap<MeetingProvider, i32>,
     ) -> Result<Uuid> {
         self.fetch_scalar_one(
@@ -353,6 +370,27 @@ impl DBDashboardGroup for PgDB {
         self.fetch_json_one(
             "select get_cfs_submission_notification_data($1::uuid, $2::uuid)",
             &[&event_id, &cfs_submission_id],
+        )
+        .await
+    }
+
+    /// [`DBDashboardGroup::get_group_payment_recipient`]
+    #[instrument(skip(self), err)]
+    async fn get_group_payment_recipient(
+        &self,
+        community_id: Uuid,
+        group_id: Uuid,
+    ) -> Result<Option<GroupPaymentRecipient>> {
+        self.fetch_json_opt(
+            "
+            select (
+                select payment_recipient
+                from \"group\"
+                where community_id = $1::uuid
+                and group_id = $2::uuid
+            )
+            ",
+            &[&community_id, &group_id],
         )
         .await
     }
@@ -577,6 +615,27 @@ impl DBDashboardGroup for PgDB {
             .await
     }
 
+    /// [`DBDashboardGroup::list_payment_currency_codes`]
+    #[instrument(skip(self), err)]
+    async fn list_payment_currency_codes(&self) -> Result<Vec<String>> {
+        #[cached(
+            time = 86400,
+            key = "String",
+            convert = r#"{ String::from("payment_currency_codes") }"#,
+            sync_writes = "by_key",
+            result = true
+        )]
+        async fn inner(db: Client) -> Result<Vec<String>> {
+            let row = db.query_one("select list_payment_currency_codes()", &[]).await?;
+            let currency_codes = row.try_get::<_, Vec<String>>(0)?;
+
+            Ok(currency_codes)
+        }
+
+        let db = self.pool.get().await?;
+        inner(db).await
+    }
+
     /// [`DBDashboardGroup::list_session_kinds`]
     #[instrument(skip(self), err)]
     async fn list_session_kinds(&self) -> Result<Vec<SessionKind>> {
@@ -623,10 +682,21 @@ impl DBDashboardGroup for PgDB {
 
     /// [`DBDashboardGroup::publish_event`]
     #[instrument(skip(self), err)]
-    async fn publish_event(&self, actor_user_id: Uuid, group_id: Uuid, event_id: Uuid) -> Result<()> {
+    async fn publish_event(
+        &self,
+        actor_user_id: Uuid,
+        configured_provider: Option<PaymentProvider>,
+        group_id: Uuid,
+        event_id: Uuid,
+    ) -> Result<()> {
         self.execute(
-            "select publish_event($1::uuid, $2::uuid, $3::uuid)",
-            &[&actor_user_id, &group_id, &event_id],
+            "select publish_event($1::uuid, $2::uuid, $3::uuid, $4::text)",
+            &[
+                &actor_user_id,
+                &group_id,
+                &event_id,
+                &configured_provider.map(|provider| provider.to_string()),
+            ],
         )
         .await
     }

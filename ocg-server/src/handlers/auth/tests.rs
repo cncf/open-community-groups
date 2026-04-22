@@ -1427,14 +1427,11 @@ async fn test_sign_up_success() {
             matches!(&notification.kind, NotificationKind::EmailVerification)
                 && notification.recipients == vec![user_for_notifications.user_id]
                 && notification.template_data.as_ref().is_some_and(|value| {
-                    serde_json::from_value::<EmailVerificationTemplate>(value.clone())
-                        .map(|template| {
-                            template.link
-                                == format!("https://app.example/verify-email/{email_verification_code}")
-                                && template.theme.primary_color
-                                    == site_settings_for_notifications.theme.primary_color
-                        })
-                        .unwrap_or(false)
+                    serde_json::from_value::<EmailVerificationTemplate>(value.clone()).is_ok_and(|template| {
+                        template.link == format!("https://app.example/verify-email/{email_verification_code}")
+                            && template.theme.primary_color
+                                == site_settings_for_notifications.theme.primary_color
+                    })
                 })
         })
         .returning(|_| Box::pin(async { Ok(()) }));

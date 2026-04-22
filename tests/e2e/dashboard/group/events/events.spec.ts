@@ -1,4 +1,4 @@
-import type { Locator } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 
 import { expect, test } from "../../../fixtures";
 
@@ -7,6 +7,8 @@ import {
   TEST_EVENT_IDS,
   TEST_EVENT_NAMES,
   TEST_EVENT_SLUGS,
+  TEST_PAYMENT_EVENT_IDS,
+  TEST_PAYMENT_EVENT_NAMES,
   TEST_GROUP_SLUGS,
   navigateToPath,
   selectTimezone,
@@ -19,6 +21,189 @@ import {
   uploadGalleryImages,
   uploadImageField,
 } from "../../form-helpers";
+
+type TicketPriceWindow = {
+  amount: string;
+  endsAt?: string;
+  startsAt?: string;
+};
+
+const openPaymentsSection = async (page: Page) => {
+  const paymentsSectionButton = page.locator('button[data-section="payments"]');
+
+  await paymentsSectionButton.scrollIntoViewIfNeeded();
+  await expect(paymentsSectionButton).toBeVisible();
+
+  if ((await paymentsSectionButton.getAttribute("data-active")) === "true") {
+    return;
+  }
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    await paymentsSectionButton.click({ force: true });
+
+    try {
+      await expect(paymentsSectionButton).toHaveAttribute("data-active", "true", {
+        timeout: 1000,
+      });
+      return;
+    } catch (error) {
+      if (attempt === 2) {
+        throw error;
+      }
+    }
+  }
+};
+
+const openEventUpdateFormByName = async (page: Page, eventName: string, eventId?: string) => {
+  const editButton = page.locator(`td button[aria-label="Edit event: ${eventName}"]:visible`);
+  await expect(editButton).toBeVisible();
+
+  await Promise.all([
+    page.waitForResponse(
+      (response) =>
+        response.request().method() === "GET" &&
+        response.url().includes("/dashboard/group/events/") &&
+        response.url().includes("/update") &&
+        (eventId ? response.url().includes(eventId) : true) &&
+        response.ok(),
+    ),
+    editButton.click(),
+  ]);
+};
+
+const addTicketType = async (
+  page: Page,
+  values: {
+    description: string;
+    priceWindows: TicketPriceWindow[];
+    seatsTotal: string;
+    title: string;
+  },
+) => {
+  await page.locator("#add-ticket-type-button").click();
+
+  const modal = page.locator('[data-ticketing-role="ticket-modal"]');
+  await expect(modal).toBeVisible();
+  await modal.locator("#ticket-title-draft").fill(values.title);
+  await modal.locator("#ticket-seats-draft").fill(values.seatsTotal);
+  await modal.locator("#ticket-description-draft").fill(values.description);
+
+  const activeCheckbox = modal.locator('[data-ticket-field="active"]');
+  if (!(await activeCheckbox.isChecked())) {
+    await activeCheckbox.check({ force: true });
+  }
+
+  for (let index = 0; index < values.priceWindows.length; index += 1) {
+    const priceWindow = values.priceWindows[index];
+
+    if (index > 0) {
+      await modal.locator('[data-ticketing-action="add-price-window"]').click();
+    }
+
+    const amountField = modal
+      .locator('[data-ticket-window-field="amount"]')
+      .nth(index);
+    await amountField.fill(priceWindow.amount);
+
+    if (priceWindow.startsAt) {
+      await modal
+        .locator('[data-ticket-window-field="starts_at"]')
+        .nth(index)
+        .fill(priceWindow.startsAt);
+    }
+
+    if (priceWindow.endsAt) {
+      await modal
+        .locator('[data-ticket-window-field="ends_at"]')
+        .nth(index)
+        .fill(priceWindow.endsAt);
+    }
+  }
+
+  await modal.locator('[data-ticketing-action="save-ticket"]').click();
+  await expect(modal).toBeHidden();
+};
+
+const addDiscountCode = async (
+  page: Page,
+  values: {
+    amount?: string;
+    available?: string;
+    code: string;
+    endsAt?: string;
+    kind: "fixed_amount" | "percentage";
+    percentage?: string;
+    startsAt?: string;
+    title: string;
+    totalAvailable?: string;
+  },
+) => {
+  await page.locator("#add-discount-code-button").click();
+
+  const modal = page.locator('[data-ticketing-role="discount-modal"]');
+  await expect(modal).toBeVisible();
+  await modal.locator("#discount-title-draft").fill(values.title);
+  await modal.locator("#discount-code-draft").fill(values.code);
+
+  const activeCheckbox = modal.locator('[data-discount-field="active"]');
+  if (!(await activeCheckbox.isChecked())) {
+    await activeCheckbox.check({ force: true });
+  }
+
+  await modal.locator("#discount-kind-draft").selectOption(values.kind);
+
+  if (values.kind === "fixed_amount" && values.amount) {
+    await modal.locator("#discount-amount-draft").fill(values.amount);
+  }
+
+  if (values.kind === "percentage" && values.percentage) {
+    await modal.locator("#discount-percentage-draft").fill(values.percentage);
+  }
+
+  if (values.totalAvailable) {
+    await modal.locator("#discount-total-draft").fill(values.totalAvailable);
+  }
+
+  if (values.available) {
+    await modal.locator("#discount-available-draft").fill(values.available);
+  }
+
+  if (values.startsAt) {
+    await modal.locator("#discount-starts-draft").fill(values.startsAt);
+  }
+
+  if (values.endsAt) {
+    await modal.locator("#discount-ends-draft").fill(values.endsAt);
+  }
+
+  await modal.locator('[data-ticketing-action="save-discount"]').click();
+  await expect(modal).toBeHidden();
+};
+
+const setCfsLabels = async (page: Page, labels: string[]) => {
+  const editor = page.locator("cfs-labels-editor");
+
+  await editor.evaluate(async (element, nextLabels) => {
+    const cfsLabelsEditor = element as HTMLElement & {
+      setLabels?: (
+        labels: Array<{ color: string; event_cfs_label_id?: string; name: string }>,
+      ) => void;
+      updateComplete?: Promise<unknown>;
+    };
+
+    cfsLabelsEditor.setLabels?.(
+      nextLabels.map((name) => ({
+        color: "",
+        name,
+      })),
+    );
+    await cfsLabelsEditor.updateComplete;
+  }, labels);
+
+  await expect(editor.locator('input[name^="cfs_labels"][name$="[name]"]')).toHaveCount(
+    labels.length,
+  );
+};
 
 test.describe("group dashboard events view", () => {
   test("organizer can switch between upcoming and past events tabs", async ({
@@ -129,6 +314,284 @@ test.describe("group dashboard events view", () => {
     ]);
 
     await expect(dashboardContent.locator("tr", { hasText: eventName })).toHaveCount(0);
+  });
+
+  test("organizer does not see the payments tab when group payments are unavailable", async ({
+    organizerGroupWithoutPaymentsPage,
+  }) => {
+    await navigateToPath(
+      organizerGroupWithoutPaymentsPage,
+      "/dashboard/group?tab=events",
+    );
+
+    const dashboardContent = organizerGroupWithoutPaymentsPage.locator(
+      "#dashboard-content",
+    );
+    await dashboardContent.getByRole("button", { name: "Add Event" }).click();
+
+    await expect(
+      organizerGroupWithoutPaymentsPage.locator('button[data-section="payments"]'),
+    ).toHaveCount(0);
+    await expect(
+      organizerGroupWithoutPaymentsPage.locator('[data-content="payments"]'),
+    ).toHaveCount(0);
+
+    await navigateToPath(
+      organizerGroupWithoutPaymentsPage,
+      "/dashboard/group?tab=events",
+    );
+
+    const eventRow = dashboardContent.locator("tr", { hasText: "Delta Event Two" });
+    await expect(eventRow).toBeVisible();
+
+    await Promise.all([
+      organizerGroupWithoutPaymentsPage.waitForResponse(
+        (response) =>
+          response.request().method() === "GET" &&
+          response.url().includes("/dashboard/group/events/") &&
+          response.url().includes("/update") &&
+          response.ok(),
+      ),
+      eventRow.locator('td button[aria-label^="Edit event:"]').click(),
+    ]);
+
+    await expect(
+      organizerGroupWithoutPaymentsPage.locator('button[data-section="payments"]'),
+    ).toHaveCount(0);
+    await expect(
+      organizerGroupWithoutPaymentsPage.locator('[data-content="payments"]'),
+    ).toHaveCount(0);
+  });
+
+  test("organizer sees the payments tab when group payments are ready", async ({
+    organizerGroupPage,
+  }) => {
+    await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
+
+    const dashboardContent = organizerGroupPage.locator("#dashboard-content");
+    await dashboardContent.getByRole("button", { name: "Add Event" }).click();
+
+    await expect(
+      organizerGroupPage.locator('button[data-section="payments"]'),
+    ).toBeVisible();
+    await openPaymentsSection(organizerGroupPage);
+    await expect(organizerGroupPage.locator("#payment_currency_code")).toBeVisible();
+    await expect(organizerGroupPage.locator("#add-ticket-type-button")).toBeVisible();
+    await expect(organizerGroupPage.locator("#add-discount-code-button")).toBeVisible();
+
+    await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
+    await openEventUpdateFormByName(
+      organizerGroupPage,
+      TEST_PAYMENT_EVENT_NAMES.draft,
+      TEST_PAYMENT_EVENT_IDS.draft,
+    );
+
+    await expect(
+      organizerGroupPage.locator('button[data-section="payments"]'),
+    ).toBeVisible();
+    await openPaymentsSection(organizerGroupPage);
+    await expect(organizerGroupPage.locator("#payment_currency_code")).toHaveValue("USD");
+  });
+
+  test("organizer can create a ticketed event with ticket tiers and discount codes", async ({
+    organizerGroupPage,
+  }) => {
+    const eventName = `E2E Ticketed Event ${Date.now()}`;
+
+    await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
+
+    const dashboardContent = organizerGroupPage.locator("#dashboard-content");
+    await dashboardContent.getByRole("button", { name: "Add Event" }).click();
+
+    await organizerGroupPage.locator("#name").fill(eventName);
+    await organizerGroupPage.locator("#kind_id").selectOption("virtual");
+    await organizerGroupPage
+      .locator("#category_id")
+      .selectOption("33333333-3333-3333-3333-333333333331");
+    await organizerGroupPage.locator("#description_short").fill(
+      "Ticketed dashboard event for payment coverage.",
+    );
+    await fillMarkdownEditor(
+      organizerGroupPage,
+      "description",
+      "Ticketed dashboard event used to cover ticket tiers and discount codes.",
+    );
+    await organizerGroupPage.locator("#capacity").fill("25");
+    await organizerGroupPage
+      .locator("#toggle_waitlist_enabled")
+      .check({ force: true });
+
+    await organizerGroupPage.locator('button[data-section="date-venue"]').click();
+    await selectTimezone(organizerGroupPage, "UTC");
+    await organizerGroupPage.locator("#starts_at").fill("2030-11-12T18:00");
+    await organizerGroupPage.locator("#ends_at").fill("2030-11-12T20:00");
+    await organizerGroupPage.locator("#meeting_join_url").fill(
+      "https://meet.example.com/e2e-ticketed-event",
+    );
+
+    await openPaymentsSection(organizerGroupPage);
+
+    await addTicketType(organizerGroupPage, {
+      title: "Free community pass",
+      description: "Free tier used for zero-price coverage.",
+      seatsTotal: "12",
+      priceWindows: [{ amount: "0" }],
+    });
+
+    const paymentCurrencyInput = organizerGroupPage.locator("#payment_currency_code");
+    await expect(paymentCurrencyInput).toHaveJSProperty("required", true);
+    const validationMessage = await paymentCurrencyInput.evaluate(
+      (element) => (element as HTMLSelectElement).validationMessage,
+    );
+    expect(validationMessage).toBe("Ticketed events require an event currency.");
+
+    await expect(organizerGroupPage.locator("#toggle_waitlist_enabled")).toBeDisabled();
+    await expect(organizerGroupPage.locator("#waitlist_enabled")).toHaveValue("false");
+    await expect(organizerGroupPage.locator("#capacity")).toBeDisabled();
+    await expect(organizerGroupPage.locator("#capacity")).toHaveValue("12");
+
+    await paymentCurrencyInput.selectOption("USD");
+
+    await addTicketType(organizerGroupPage, {
+      title: "General admission",
+      description: "Paid tier with early-bird pricing.",
+      seatsTotal: "30",
+      priceWindows: [
+        { amount: "2500", endsAt: "2030-10-01T23:59" },
+        { amount: "3000", startsAt: "2030-10-02T00:00" },
+      ],
+    });
+
+    await expect(organizerGroupPage.locator("#capacity")).toHaveValue("42");
+
+    await addDiscountCode(organizerGroupPage, {
+      title: "Launch savings",
+      code: "SAVE10",
+      kind: "fixed_amount",
+      amount: "1000",
+    });
+    await addDiscountCode(organizerGroupPage, {
+      title: "Early supporter",
+      code: "EARLY20",
+      kind: "percentage",
+      percentage: "20",
+      totalAvailable: "50",
+    });
+
+    const visibleAddEventButton = organizerGroupPage.locator(
+      "#pending-changes-alert:not(.hidden) #add-event-button",
+    );
+    await expect(visibleAddEventButton).toBeVisible();
+
+    await Promise.all([
+      organizerGroupPage.waitForResponse(
+        (response) =>
+          response.request().method() === "POST" &&
+          response.url().includes("/dashboard/group/events/add") &&
+          response.status() === 201,
+      ),
+      visibleAddEventButton.click(),
+    ]);
+
+    const eventRow = dashboardContent.locator("tr", { hasText: eventName });
+    await expect(eventRow).toBeVisible();
+
+    await openEventUpdateFormByName(organizerGroupPage, eventName);
+    await openPaymentsSection(organizerGroupPage);
+
+    await expect(organizerGroupPage.locator("#payment_currency_code")).toHaveValue("USD");
+    await expect(
+      organizerGroupPage.locator('#ticket-types-ui [data-ticketing-role="table-body"]'),
+    ).toContainText("Free community pass");
+    await expect(
+      organizerGroupPage.locator('#ticket-types-ui [data-ticketing-role="table-body"]'),
+    ).toContainText("General admission");
+    await expect(
+      organizerGroupPage.locator("#discount-codes-ui [data-ticketing-role=\"table-body\"]"),
+    ).toContainText("SAVE10");
+    await expect(
+      organizerGroupPage.locator("#discount-codes-ui [data-ticketing-role=\"table-body\"]"),
+    ).toContainText("EARLY20");
+
+    await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
+    await eventRow.locator(".btn-actions").click();
+
+    const deleteButton = eventRow.locator('button[id^="delete-event-"]');
+    await expect(deleteButton).toBeVisible();
+    await deleteButton.click();
+    await expect(organizerGroupPage.locator(".swal2-popup")).toContainText(
+      "Are you sure you wish to delete this event?",
+    );
+
+    await Promise.all([
+      organizerGroupPage.waitForResponse(
+        (response) =>
+          response.request().method() === "DELETE" &&
+          response.url().includes("/dashboard/group/events/") &&
+          response.url().includes("/delete") &&
+          response.ok(),
+      ),
+      organizerGroupPage.getByRole("button", { name: "Yes" }).click(),
+    ]);
+
+    await expect(dashboardContent.locator("tr", { hasText: eventName })).toHaveCount(0);
+  });
+
+  test("organizer sees seeded ticketing values on a payment-ready event", async ({
+    organizerGroupPage,
+  }) => {
+    await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
+    await openEventUpdateFormByName(
+      organizerGroupPage,
+      TEST_PAYMENT_EVENT_NAMES.draft,
+      TEST_PAYMENT_EVENT_IDS.draft,
+    );
+    await openPaymentsSection(organizerGroupPage);
+
+    await expect(organizerGroupPage.locator("#payment_currency_code")).toHaveValue("USD");
+    await expect(organizerGroupPage.locator("#capacity")).toBeDisabled();
+    await expect(organizerGroupPage.locator("#capacity")).toHaveValue("42");
+    await expect(organizerGroupPage.locator("#toggle_waitlist_enabled")).toBeDisabled();
+    await expect(organizerGroupPage.locator("#waitlist_enabled")).toHaveValue("false");
+    await expect(
+      organizerGroupPage.locator('#ticket-types-ui [data-ticketing-role="table-body"]'),
+    ).toContainText("General admission");
+    await expect(
+      organizerGroupPage.locator('#ticket-types-ui [data-ticketing-role="table-body"]'),
+    ).toContainText("Community ticket");
+    await expect(
+      organizerGroupPage.locator('#ticket-types-ui [data-ticketing-role="table-body"]'),
+    ).toContainText("Backstage pass");
+    await expect(
+      organizerGroupPage.locator('#discount-codes-ui [data-ticketing-role="table-body"]'),
+    ).toContainText("SAVE10");
+    await expect(
+      organizerGroupPage.locator('#discount-codes-ui [data-ticketing-role="table-body"]'),
+    ).toContainText("EARLY20");
+  });
+
+  test("organizer sees seats and status columns in the ticket types table", async ({
+    organizerGroupPage,
+  }) => {
+    await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
+    await openEventUpdateFormByName(
+      organizerGroupPage,
+      TEST_PAYMENT_EVENT_NAMES.draft,
+      TEST_PAYMENT_EVENT_IDS.draft,
+    );
+    await openPaymentsSection(organizerGroupPage);
+
+    const ticketTypesTable = organizerGroupPage.locator("#ticket-types-ui table");
+    const generalAdmissionRow = ticketTypesTable.locator("tbody tr", {
+      hasText: "General admission",
+    });
+
+    await expect(ticketTypesTable.locator("thead th").nth(1)).toBeVisible();
+    await expect(ticketTypesTable.locator("thead th").nth(1)).toContainText("Seats");
+    await expect(ticketTypesTable.locator("thead th").nth(2)).toBeVisible();
+    await expect(ticketTypesTable.locator("thead th").nth(2)).toContainText("Status");
+    await expect(generalAdmissionRow.locator("td").nth(1)).toBeVisible();
+    await expect(generalAdmissionRow.locator("td").nth(2)).toBeVisible();
   });
 
   test("organizer can create, update, and delete an event with images and rich fields", async ({
@@ -266,20 +729,22 @@ test.describe("group dashboard events view", () => {
         .locator("#meeting_recording_url")
         .fill(values.meetingRecordingUrl);
 
-      await organizerGroupPage.locator('button[data-section="cfs"]').click({ force: true });
+      const cfsSectionButton = organizerGroupPage.locator('button[data-section="cfs"]');
+      await cfsSectionButton.scrollIntoViewIfNeeded();
+      await cfsSectionButton.click({ force: true });
       await organizerGroupPage.locator("#toggle_cfs_enabled").check({ force: true });
-      await organizerGroupPage.locator("#cfs_starts_at").fill(values.cfsStartsAt);
-      await organizerGroupPage.locator("#cfs_ends_at").fill(values.cfsEndsAt);
+      await organizerGroupPage.locator("#cfs_starts_at").fill(values.cfsStartsAt, {
+        force: true,
+      });
+      await organizerGroupPage.locator("#cfs_ends_at").fill(values.cfsEndsAt, {
+        force: true,
+      });
       await fillMarkdownEditor(
         organizerGroupPage,
         "cfs_description",
         values.cfsDescription,
       );
-      await fillMultipleInputs(
-        organizerGroupPage.locator("cfs-labels-editor"),
-        values.cfsLabels,
-        "label",
-      );
+      await setCfsLabels(organizerGroupPage, values.cfsLabels);
     };
 
     const openEventUpdateForm = async (eventRow: Locator) => {

@@ -29,7 +29,7 @@ static DATE_FORMAT: LazyLock<Vec<FormatItem<'static>>> =
 
 /// How often activities will be written to the database.
 #[cfg(not(test))]
-const FLUSH_FREQUENCY: Duration = Duration::from_secs(300);
+const FLUSH_FREQUENCY: Duration = Duration::from_mins(5);
 #[cfg(test)]
 const FLUSH_FREQUENCY: Duration = Duration::from_millis(100);
 

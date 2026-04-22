@@ -378,6 +378,10 @@ input:placeholder-shown {
   border-radius: 999px;
 }
 
+.fc-daygrid-event-harness:hover {
+  z-index: 20;
+}
+
 .fc-daygrid-event-harness:hover div[data-popover] {
   opacity: 1;
   visibility: visible;
@@ -665,12 +669,14 @@ input:placeholder-shown {
 .icon-recording { --icon-url: url('/static/images/icons/recording.svg'); }
 .icon-reddit { --icon-url: url('/static/images/icons/reddit.svg'); }
 .icon-refresh { --icon-url: url('/static/images/icons/refresh.svg'); }
+.icon-refund { --icon-url: url('/static/images/icons/refund.svg'); }
 .icon-search { --icon-url: url('/static/images/icons/search.svg'); }
 .icon-share { --icon-url: url('/static/images/icons/share.svg'); }
 .icon-slack { --icon-url: url('/static/images/icons/slack.svg'); }
 .icon-star { --icon-url: url('/static/images/icons/star.svg'); }
 .icon-submission { --icon-url: url('/static/images/icons/submission.svg'); }
 .icon-team { --icon-url: url('/static/images/icons/team.svg'); }
+.icon-ticket { --icon-url: url('/static/images/icons/ticket.svg'); }
 .icon-trash { --icon-url: url('/static/images/icons/trash.svg'); }
 .icon-twitter { --icon-url: url('/static/images/icons/twitter.svg'); }
 .icon-user { --icon-url: url('/static/images/icons/user.svg'); }

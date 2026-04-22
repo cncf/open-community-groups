@@ -1,5 +1,6 @@
 {% import "macros/ui.html" as ui -%}
 {% import "macros/badges.html" as badges -%}
+{% import "macros/cards.html" as cards -%}
 
 {# Event card -#}
 <a href="/{{ event.community_name }}/group/{{ event.group_slug }}/event/{{ event.slug }}"
@@ -81,6 +82,7 @@
               {% if let Some(starts_at) = &event.starts_at -%}
                 {{ ui::icon_text(icon_name = "date", text = starts_at.with_timezone(event.timezone).format("%A, %B %e, %G · %I:%M %p %Z")) -}}
               {% endif -%}
+              {{ cards::ticket_price_badge(event) -}}
               {% if event.canceled -%}
                 {{ badges::event_badge(kind = event.kind, canceled = true, extra_styles = Some("ms-3") ) -}}
               {% endif -%}
@@ -111,6 +113,7 @@
           {{ ui::icon_text(icon_name = "date", text = starts_at.with_timezone(event.timezone).format("%b %e · %l:%M %p %Z"), icon_extra_styles = Some("-top-px")) -}}
         {% endif -%}
       </div>
+      <div class="card-meta">{{ cards::ticket_price_badge(event) -}}</div>
     </div>
     {# End event location and date footer - Mobile -#}
   </article>

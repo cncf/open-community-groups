@@ -79,6 +79,25 @@ Check event editor completeness:
 3. Meeting constraints are satisfied when automatic meeting is requested.
 4. CFS rules are valid if CFS is enabled.
 
+For ticketed events also verify:
+
+1. The event has at least one ticket type configured.
+2. The event currency is filled in when ticketing is enabled.
+3. Each ticket type has at least one complete price window.
+4. Any configured discount codes are complete. Discount codes are optional.
+
+## Paid Ticket Purchase Is Unavailable or Fails
+
+If the public event page shows ticket purchase controls but buying a ticket is unavailable or does
+not complete, check:
+
+1. The selected ticket type is active and not sold out.
+2. The ticket type has a price window that is currently in effect.
+3. The discount code is active, still has remaining uses, and has not reached any total-use
+   limit. Remaining uses are reserved by active holds and active purchases, then released again if
+   the hold expires or the ticket is refunded.
+4. The event has not been canceled.
+
 ## Check-In Is Unavailable
 
 Check:

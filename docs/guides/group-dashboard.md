@@ -17,6 +17,7 @@ Path: [/dashboard/group](/dashboard/group ':ignore')
   - [Access and Context](#access-and-context)
   - [Roles and Permissions](#roles-and-permissions)
   - [Settings: Group Identity](#settings-group-identity)
+  - [Payments: Group Recipient Setup](#payments-group-recipient-setup)
   - [Team: Organizer Capacity](#team-organizer-capacity)
   - [Analytics: Delivery Health](#analytics-delivery-health)
   - [Members: Communication](#members-communication)
@@ -98,6 +99,38 @@ Brand inheritance model in this scope:
 Field requirements and limits are shown inline in the settings form while editing.
 
 ![Group settings area](../screenshots/dashboard-group-settings.png)
+
+## Payments: Group Recipient Setup
+
+Ticketed events are available only when two prerequisites are both true:
+
+1. Your OCG deployment has payments enabled.
+2. The group has a payment recipient configured in `Settings`.
+
+Group-level setup:
+
+- Open [Settings](/dashboard/group?tab=settings ':ignore').
+- Enter the group's Stripe connected account ID in the payments section.
+- Save the group settings.
+
+OCG expects a Stripe connected account identifier in the `acct_...` format.
+The dashboard does not create or onboard the Stripe account for you.
+
+For the full Stripe-side setup, including connected-account onboarding and
+payout details, follow [Payments Setup](payments-setup.md).
+
+If the group leaves the payment recipient blank, organizers can still run free
+RSVP events, but ticketed events stay unavailable for that group, including
+zero-price tiers.
+
+If you do not see payment controls in the event editor at all, your deployment may not have
+payments enabled yet. That setup is managed outside the public dashboard documentation.
+
+Organizer permissions:
+
+- Configuring the group payment recipient requires `group.settings.write`.
+- Creating paid events and approving/rejecting refund requests require `group.events.write`.
+- Organizers with read access can still view attendee refund status in `Event -> Attendees`.
 
 ## Team: Organizer Capacity
 
