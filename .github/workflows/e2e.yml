@@ -41,6 +41,7 @@ jobs:
       OCG_DB_NAME_E2E: ocg_tests_e2e
       OCG_DB_PASSWORD: postgres
       OCG_E2E_BASE_URL: http://127.0.0.1:9000
+      OCG_E2E_PAYMENTS_ENABLED: "true"
       OCG_PG_BIN: /usr/bin
       PGPASSWORD: postgres
 
