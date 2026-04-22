@@ -337,24 +337,30 @@ test.describe("group dashboard events view", () => {
       .fill(eventRecordingUrl);
 
     await organizerGroupPage.locator('button[data-section="sessions"]').click();
-    await organizerGroupPage.getByRole("button", { name: "Add session" }).click();
+    const sessionsSection = organizerGroupPage.locator("sessions-section");
+    const addSessionButton = sessionsSection.getByRole("button", { name: "Add session" });
+    await expect(addSessionButton).toBeVisible();
+    await addSessionButton.click();
 
     const sessionModal = organizerGroupPage.locator("session-form-modal");
-    await expect(sessionModal).toBeVisible();
+    const sessionDialog = sessionModal.locator('[role="dialog"]');
+    await expect(sessionDialog).toBeVisible();
     await sessionModal.locator('input[data-name="name"]').fill(sessionName);
-    await sessionModal.locator('select[data-name="kind"]').selectOption({ index: 1 });
+    await sessionModal.locator('select[data-name="kind"]').selectOption("virtual");
     await sessionModal.locator('input[type="time"]').nth(0).fill("10:30");
     await sessionModal.locator('input[type="time"]').nth(1).fill("11:30");
 
     const sessionOnlineDetails = sessionModal.locator("online-event-details");
-    await sessionOnlineDetails.locator('input[type="radio"][value="automatic"]').check({
-      force: true,
-    });
+    await expect(sessionOnlineDetails).toHaveAttribute("kind", "virtual");
+    await expect(sessionOnlineDetails).toHaveAttribute("starts-at", "2030-06-10T10:30");
+    await expect(sessionOnlineDetails).toHaveAttribute("ends-at", "2030-06-10T11:30");
+    await sessionOnlineDetails.getByText("Create meeting automatically", { exact: true }).click();
+    await expect(sessionOnlineDetails.getByText("Meeting provider", { exact: true })).toBeVisible();
     await sessionOnlineDetails
       .locator('input[type="url"][placeholder="https://youtube.com/watch?v=..."]')
       .fill(sessionRecordingUrl);
     await sessionModal.getByRole("button", { name: "Add session" }).click();
-    await expect(sessionModal).toBeHidden();
+    await expect(sessionDialog).toBeHidden();
 
     const visibleAddEventButton = organizerGroupPage.locator(
       "#pending-changes-alert:not(.hidden) #add-event-button",
@@ -385,14 +391,14 @@ test.describe("group dashboard events view", () => {
     await expect(sessionCard).toBeVisible();
     await sessionCard.locator('button[title="Edit"]').click();
 
-    await expect(sessionModal).toBeVisible();
+    await expect(sessionDialog).toBeVisible();
     await expect(
       sessionModal
         .locator("online-event-details")
-        .locator('input[type="url"][placeholder="https://youtube.com/watch?v=..."]'),
+      .locator('input[type="url"][placeholder="https://youtube.com/watch?v=..."]'),
     ).toHaveValue(sessionRecordingUrl);
     await sessionModal.getByRole("button", { name: "Cancel" }).click();
-    await expect(sessionModal).toBeHidden();
+    await expect(sessionDialog).toBeHidden();
   });
 
   test("organizer does not see the payments tab when group payments are unavailable", async ({

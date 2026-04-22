@@ -139,6 +139,17 @@ jobs:
             publishable_key: pk_test_e2e
             secret_key: sk_test_e2e
             webhook_secret: whsec_e2e
+          meetings:
+            zoom:
+              account_id: account-id
+              client_id: client-id
+              client_secret: client-secret
+              enabled: true
+              host_pool_users:
+                - host@example.com
+              max_participants: 100
+              max_simultaneous_meetings_per_host: 1
+              webhook_secret_token: whsec_zoom_e2e
           server:
             addr: 127.0.0.1:9000
             base_url: http://127.0.0.1:9000
