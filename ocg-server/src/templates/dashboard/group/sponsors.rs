@@ -89,6 +89,10 @@ pub(crate) struct GroupSponsorsOutput {
 #[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize, Validate)]
 pub(crate) struct Sponsor {
+    /// Whether the sponsor is highlighted on the public group page.
+    #[serde(default)]
+    #[garde(skip)]
+    pub featured: bool,
     /// URL to sponsor logo.
     #[garde(custom(image_url))]
     pub logo_url: String,

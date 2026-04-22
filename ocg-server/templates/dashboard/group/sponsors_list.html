@@ -21,14 +21,6 @@
                      opacity-50 cursor-not-allowed
                    {% endif -%}">Add Sponsor</button>
   </div>
-  <script type="module">
-    const addSponsorButton = document.getElementById('add-sponsor-button');
-    if (addSponsorButton) {
-      addSponsorButton.addEventListener('htmx:afterRequest', () => {
-        history.pushState({}, 'Sponsors list', '/dashboard/group?tab=sponsors');
-      });
-    }
-  </script>
 </div>
 
 {# Sponsors table -#}
@@ -41,6 +33,7 @@
       <tr>
         <th scope="col" class="px-3 xl:px-5 py-3">Sponsor</th>
         <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3">Website</th>
+        <th scope="col" class="px-3 xl:px-5 py-3">Featured</th>
         <th scope="col" class="px-3 xl:px-5 py-3 w-[112px]">
           <span class="sr-only">Actions</span>
         </th>
@@ -49,12 +42,12 @@
     <tbody id="sponsors-list" role="rowgroup">
       {% if sponsors.is_empty() -%}
         <tr class="bg-white border-b border-stone-200">
-          {# Mobile: 2 columns (Sponsor, Actions) -#}
-          <td class="xl:hidden px-8 py-12 text-center" colspan="2">
+          {# Below xl: 3 columns (Sponsor, Featured, Actions) -#}
+          <td class="xl:hidden px-8 py-12 text-center" colspan="3">
             {% include "dashboard/placeholders/group_sponsors_table.html" -%}
           </td>
-          {# xl: 3 columns (adds Website) -#}
-          <td class="hidden xl:table-cell px-8 py-12 text-center" colspan="3">
+          {# xl: 4 columns (adds Website) -#}
+          <td class="hidden xl:table-cell px-8 py-12 text-center" colspan="4">
             {% include "dashboard/placeholders/group_sponsors_table.html" -%}
           </td>
         </tr>
@@ -62,8 +55,8 @@
         {% for sponsor in sponsors -%}
           <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
             {# Sponsor -#}
-            <td class="px-3 xl:px-5 py-4">
-              <div class="flex items-center space-x-4">
+            <td class="px-3 xl:px-5 py-4 min-w-[140px] max-w-[220px] xl:max-w-[320px] 2xl:max-w-[420px]">
+              <div class="flex items-center space-x-4 min-w-0">
                 <div class="h-10 w-10 min-w-10 rounded-lg overflow-hidden outline outline-1 outline-stone-300 border border-stone-200 border-[5px] border-white bg-white">
                   <img src="{{ sponsor.logo_url }}"
                        alt="{{ sponsor.name }} logo"
@@ -72,7 +65,7 @@
                        width="auto" />
                 </div>
                 <div class="min-w-0">
-                  <div class="font-medium text-stone-900 truncate">{{ sponsor.name }}</div>
+                  <div class="font-medium text-stone-900 max-w-full truncate">{{ sponsor.name }}</div>
                 </div>
               </div>
             </td>
@@ -90,6 +83,28 @@
               {% endif -%}
             </td>
             {# End website -#}
+
+            {# Featured -#}
+            <td class="px-3 xl:px-5 py-4 w-30">
+              <label class="inline-flex items-center
+                            {% if !can_manage_sponsors %}
+                              cursor-not-allowed
+                            {% else %}
+                              cursor-pointer
+                            {% endif %}">
+                <input type="checkbox"
+                       class="sr-only peer sponsor-featured-toggle"
+                       aria-label="Visible on group page for {{ sponsor.name }}"
+                       data-url="/dashboard/group/sponsors/{{ sponsor.group_sponsor_id }}/featured"
+                       {% if sponsor.featured %}checked{% endif %}
+                       {% if !can_manage_sponsors -%}
+                         disabled title="Your role cannot update sponsors."
+                       {% endif -%}>
+                <div class="relative w-11 h-6 bg-stone-200 rounded-full peer peer-checked:bg-primary-500 peer-disabled:opacity-70 after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-stone-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white">
+                </div>
+              </label>
+            </td>
+            {# End featured -#}
 
             {# Actions -#}
             <td class="px-3 xl:px-5 py-4 w-[112px]">

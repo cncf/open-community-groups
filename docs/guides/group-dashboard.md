@@ -191,12 +191,14 @@ Analytics values can lag briefly due to caching.
 ## Sponsors: Reusable Profiles
 
 Sponsors are managed once and reused across events, reducing repetitive event setup.
+They can also be individually featured on the public group page.
 
 Typical flow:
 
 1. Create sponsor records in [Sponsors](/dashboard/group?tab=sponsors ':ignore').
-2. Attach sponsors in event editing (`Hosts & Speakers` section).
-3. Update sponsor details once to keep future events consistent.
+2. Mark the sponsors you want highlighted on the public group page.
+3. Attach sponsors in event editing (`Hosts & Speakers` section).
+4. Update sponsor details once to keep future events consistent.
 
 ![Group sponsors area](../screenshots/dashboard-group-sponsors.png)
 

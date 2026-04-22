@@ -1,3 +1,4 @@
+import type { Request as PlaywrightRequest } from "@playwright/test";
 import { expect, test } from "../../../fixtures";
 
 import {
@@ -16,6 +17,99 @@ const ORIGINAL_SPONSOR_LOGO_URL = "/static/images/e2e/sponsor-logo.svg";
 const UPDATED_SPONSOR_LOGO_URL = "/static/images/e2e/community-secondary-logo.svg";
 
 test.describe("group dashboard sponsors view", () => {
+  test("canceling sponsor visibility confirmation keeps the toggle on and skips the request", async ({
+    organizerGroupPage,
+  }) => {
+    await navigateToPath(organizerGroupPage, "/dashboard/group?tab=sponsors");
+
+    const dashboardContent = organizerGroupPage.locator("#dashboard-content");
+    const sponsorRow = dashboardContent.locator("tr", { hasText: ORIGINAL_SPONSOR_NAME });
+    const featuredToggle = sponsorRow.getByRole("checkbox", {
+      name: `Visible on group page for ${ORIGINAL_SPONSOR_NAME}`,
+    });
+    let featuredUpdateRequests = 0;
+
+    const requestListener = (request: PlaywrightRequest) => {
+      if (
+        request.method() === "PUT" &&
+        request.url().includes(`/dashboard/group/sponsors/${TECH_CORP_SPONSOR_ID}/featured`)
+      ) {
+        featuredUpdateRequests += 1;
+      }
+    };
+
+    organizerGroupPage.on("request", requestListener);
+
+    await expect(sponsorRow).toBeVisible();
+    await expect(featuredToggle).toBeChecked();
+
+    await featuredToggle.click({ force: true });
+    await expect(organizerGroupPage.locator(".swal2-popup")).toContainText(
+      "This sponsor will no longer be visible on the public group page.",
+    );
+
+    await organizerGroupPage.getByRole("button", { name: "No" }).click();
+
+    await expect(featuredToggle).toBeChecked();
+    await expect(organizerGroupPage.locator(".swal2-popup")).toHaveCount(0);
+    expect(featuredUpdateRequests).toBe(0);
+
+    organizerGroupPage.off("request", requestListener);
+  });
+
+  test("organizer can update sponsor visibility from the table and restore it", async ({
+    organizerGroupPage,
+  }) => {
+    await navigateToPath(organizerGroupPage, "/dashboard/group?tab=sponsors");
+
+    const dashboardContent = organizerGroupPage.locator("#dashboard-content");
+    const sponsorRow = dashboardContent.locator("tr", { hasText: ORIGINAL_SPONSOR_NAME });
+    const featuredToggle = sponsorRow.getByRole("checkbox", {
+      name: `Visible on group page for ${ORIGINAL_SPONSOR_NAME}`,
+    });
+
+    await expect(sponsorRow).toBeVisible();
+    await expect(featuredToggle).toBeChecked();
+
+    await featuredToggle.click({ force: true });
+    await expect(organizerGroupPage.locator(".swal2-popup")).toContainText(
+      "This sponsor will no longer be visible on the public group page.",
+    );
+
+    await Promise.all([
+      organizerGroupPage.waitForResponse(
+        (response) =>
+          response.request().method() === "PUT" &&
+          response.url().includes(`/dashboard/group/sponsors/${TECH_CORP_SPONSOR_ID}/featured`) &&
+          response.ok(),
+      ),
+      organizerGroupPage.getByRole("button", { name: "Continue" }).click(),
+    ]);
+
+    const refreshedToggle = dashboardContent
+      .locator("tr", { hasText: ORIGINAL_SPONSOR_NAME })
+      .getByRole("checkbox", {
+        name: `Visible on group page for ${ORIGINAL_SPONSOR_NAME}`,
+      });
+    await expect(refreshedToggle).not.toBeChecked();
+
+    await Promise.all([
+      organizerGroupPage.waitForResponse(
+        (response) =>
+          response.request().method() === "PUT" &&
+          response.url().includes(`/dashboard/group/sponsors/${TECH_CORP_SPONSOR_ID}/featured`) &&
+          response.ok(),
+      ),
+      refreshedToggle.check({ force: true }),
+    ]);
+
+    await expect(
+      dashboardContent.locator("tr", { hasText: ORIGINAL_SPONSOR_NAME }).getByRole("checkbox", {
+        name: `Visible on group page for ${ORIGINAL_SPONSOR_NAME}`,
+      }),
+    ).toBeChecked();
+  });
+
   test("organizer can add and delete a sponsor", async ({
     organizerGroupPage,
   }) => {
@@ -29,6 +123,18 @@ test.describe("group dashboard sponsors view", () => {
 
     await organizerGroupPage.getByRole("button", { name: "Add Sponsor" }).click();
     await expect(dashboardContent.getByText("Sponsor Details", { exact: true })).toBeVisible();
+    await expect(
+      organizerGroupPage.getByText("Visible on group page", { exact: true }),
+    ).toBeVisible();
+    const sponsorVisibilityLegend = organizerGroupPage
+      .locator("#sponsor-form .form-legend")
+      .filter({ hasText: "Only featured sponsors appear in the public group page" });
+    await expect(sponsorVisibilityLegend).toContainText(
+      "Only featured sponsors appear in the public group page sponsors section.",
+    );
+    await expect(sponsorVisibilityLegend).toContainText(
+      "All sponsors remain available for events.",
+    );
 
     await organizerGroupPage.getByLabel("Name").fill(sponsorName);
     await organizerGroupPage.getByLabel("Website").fill(sponsorWebsite);
@@ -82,6 +188,9 @@ test.describe("group dashboard sponsors view", () => {
     await originalRow.getByRole("button", { name: `Edit sponsor: ${ORIGINAL_SPONSOR_NAME}` }).click();
 
     await expect(dashboardContent.getByText("Sponsor Details", { exact: true })).toBeVisible();
+    await expect(
+      organizerGroupPage.getByText("Visible on group page", { exact: true }),
+    ).toBeVisible();
     await organizerGroupPage.getByLabel("Name").fill(UPDATED_SPONSOR_NAME);
     await organizerGroupPage.getByLabel("Website").fill(UPDATED_SPONSOR_WEBSITE);
     await setImageFieldValue(organizerGroupPage, "logo_url", UPDATED_SPONSOR_LOGO_URL);
@@ -138,6 +247,9 @@ test.describe("group dashboard sponsors view", () => {
 
     const sponsorRow = sponsorsContent.locator("tr", { hasText: "Tech Corp" });
     await expect(sponsorRow).toBeVisible();
+    await expect(
+      sponsorRow.getByRole("checkbox", { name: "Visible on group page for Tech Corp" }),
+    ).toBeDisabled();
     await expect(
       sponsorRow.getByRole("button", { name: "Delete sponsor: Tech Corp" }),
     ).toBeDisabled();

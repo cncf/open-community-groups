@@ -5,6 +5,7 @@ create or replace function get_group_sponsor(
 )
 returns json as $$
     select json_strip_nulls(json_build_object(
+        'featured', gs.featured,
         'group_sponsor_id', gs.group_sponsor_id,
         'logo_url', gs.logo_url,
         'name', gs.name,

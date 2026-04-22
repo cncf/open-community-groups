@@ -11,6 +11,7 @@ returns json as $$
         -- Select sponsors with optional full-list mode
         sponsors as (
             select
+                gs.featured,
                 gs.group_sponsor_id,
                 gs.logo_url,
                 gs.name,

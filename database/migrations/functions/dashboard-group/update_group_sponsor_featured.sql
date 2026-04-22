@@ -1,20 +1,17 @@
--- Updates an existing sponsor in the group.
-create or replace function update_group_sponsor(
+-- Updates the featured flag for an existing sponsor in the group.
+create or replace function update_group_sponsor_featured(
     p_actor_user_id uuid,
     p_group_id uuid,
     p_group_sponsor_id uuid,
-    p_sponsor jsonb
+    p_featured bool
 )
 returns void as $$
 begin
-    -- Update the sponsor for the group
+    -- Update the sponsor featured flag for the group
     update group_sponsor set
-        featured = coalesce((p_sponsor->>'featured')::boolean, false),
-        logo_url = p_sponsor->>'logo_url',
-        name = p_sponsor->>'name',
-        website_url = nullif(p_sponsor->>'website_url', '')
-    where group_sponsor_id = p_group_sponsor_id
-    and group_id = p_group_id;
+        featured = p_featured
+    where group_id = p_group_id
+    and group_sponsor_id = p_group_sponsor_id;
 
     if found then
         -- Track the sponsor update

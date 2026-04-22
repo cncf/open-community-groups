@@ -27,6 +27,14 @@ async fn test_page_success() {
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
+    let mut group = sample_group_full(community_id, group_id);
+    let mut hidden_sponsor = sample_group_sponsor();
+    hidden_sponsor.featured = false;
+    hidden_sponsor.name = "Hidden Sponsor".to_string();
+    let mut featured_sponsor = sample_group_sponsor();
+    featured_sponsor.featured = true;
+    featured_sponsor.name = "Featured Sponsor".to_string();
+    group.sponsors = vec![featured_sponsor, hidden_sponsor];
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -37,7 +45,7 @@ async fn test_page_success() {
     db.expect_get_group_full_by_slug()
         .times(1)
         .withf(move |id, slug| *id == community_id && slug == "test-group")
-        .returning(move |_, _| Ok(sample_group_full(community_id, group_id)));
+        .returning(move |_, _| Ok(group.clone()));
     db.expect_get_group_upcoming_events()
         .times(1)
         .withf(move |id, slug, kinds, limit| {

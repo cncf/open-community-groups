@@ -462,6 +462,13 @@ mock! {
             group_sponsor_id: Uuid,
             sponsor: &crate::templates::dashboard::group::sponsors::Sponsor,
         ) -> Result<()>;
+        async fn update_group_sponsor_featured(
+            &self,
+            actor_user_id: Uuid,
+            group_id: Uuid,
+            group_sponsor_id: Uuid,
+            featured: bool,
+        ) -> Result<()>;
         async fn update_group_team_member_role(
             &self,
             actor_user_id: Uuid,

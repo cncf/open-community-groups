@@ -7,6 +7,8 @@ use axum::{
     http::{HeaderName, StatusCode},
     response::{Html, IntoResponse},
 };
+use garde::Validate;
+use serde::{Deserialize, Serialize};
 use tracing::instrument;
 use uuid::Uuid;
 
@@ -167,6 +169,36 @@ pub(crate) async fn update(
         StatusCode::NO_CONTENT,
         [("HX-Trigger", "refresh-group-dashboard-table")],
     ))
+}
+
+/// Updates the featured flag for an existing sponsor in the database.
+#[instrument(skip_all, err)]
+pub(crate) async fn update_featured(
+    CurrentUser(user): CurrentUser,
+    SelectedGroupId(group_id): SelectedGroupId,
+    State(db): State<DynDB>,
+    Path(group_sponsor_id): Path<Uuid>,
+    ValidatedForm(input): ValidatedForm<SponsorFeatured>,
+) -> Result<impl IntoResponse, HandlerError> {
+    // Update sponsor featured flag in database
+    db.update_group_sponsor_featured(user.user_id, group_id, group_sponsor_id, input.featured)
+        .await?;
+
+    Ok((
+        StatusCode::NO_CONTENT,
+        [("HX-Trigger", "refresh-group-dashboard-table")],
+    ))
+}
+
+// Types.
+
+/// Sponsor featured flag input for list toggle operations.
+#[derive(Debug, Clone, Serialize, Deserialize, Validate)]
+pub(crate) struct SponsorFeatured {
+    /// Whether the sponsor is highlighted on the public group page.
+    #[serde(default)]
+    #[garde(skip)]
+    featured: bool,
 }
 
 // Helpers.

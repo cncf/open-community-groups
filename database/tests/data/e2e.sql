@@ -1032,14 +1032,24 @@ values (
 -- GROUP SPONSORS
 -- ============================================================================
 
-insert into group_sponsor (group_sponsor_id, group_id, name, logo_url, website_url)
-values (
-    '66666666-6666-6666-6666-666666666601',
-    '44444444-4444-4444-4444-444444444441',
-    'Tech Corp',
-    '/static/images/e2e/sponsor-logo.svg',
-    'https://techcorp.example.com'
-);
+insert into group_sponsor (group_sponsor_id, group_id, name, logo_url, website_url, featured)
+values
+    (
+        '66666666-6666-6666-6666-666666666601',
+        '44444444-4444-4444-4444-444444444441',
+        'Tech Corp',
+        '/static/images/e2e/sponsor-logo.svg',
+        'https://techcorp.example.com',
+        true
+    ),
+    (
+        '66666666-6666-6666-6666-666666666602',
+        '44444444-4444-4444-4444-444444444441',
+        'Hidden Sponsor',
+        '/static/images/e2e/sponsor-logo.svg',
+        'https://hidden-sponsor.example.com',
+        false
+    );
 
 -- ============================================================================
 -- EVENT SPONSORS

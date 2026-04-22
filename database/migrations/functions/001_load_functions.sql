@@ -111,6 +111,7 @@
 {{ template "dashboard-group/update_cfs_submission.sql" }}
 {{ template "dashboard-group/validate_update_event_dates.sql" }} -- Dependency for update_event
 {{ template "dashboard-group/update_group_sponsor.sql" }}
+{{ template "dashboard-group/update_group_sponsor_featured.sql" }}
 {{ template "dashboard-group/update_group_team_member_role.sql" }}
 {{ template "dashboard-group/update_event.sql" }}
 

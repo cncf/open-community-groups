@@ -11,8 +11,11 @@ use tower::ServiceExt;
 use uuid::Uuid;
 
 use crate::{
-    db::mock::MockDB, handlers::tests::*, router::CACHE_CONTROL_NO_CACHE,
-    services::notifications::MockNotificationsManager, templates::dashboard::DASHBOARD_PAGINATION_LIMIT,
+    db::mock::MockDB,
+    handlers::{dashboard::group::sponsors::SponsorFeatured, tests::*},
+    router::CACHE_CONTROL_NO_CACHE,
+    services::notifications::MockNotificationsManager,
+    templates::dashboard::DASHBOARD_PAGINATION_LIMIT,
     types::permissions::GroupPermission,
 };
 
@@ -84,6 +87,8 @@ async fn test_add_page_success() {
         &HeaderValue::from_static(CACHE_CONTROL_NO_CACHE),
     );
     assert!(!bytes.is_empty());
+    assert!(String::from_utf8_lossy(&bytes).contains("name=\"featured\""));
+    assert!(String::from_utf8_lossy(&bytes).contains("checked"));
 }
 
 #[tokio::test]
@@ -370,6 +375,7 @@ async fn test_add_success() {
         .withf(move |actor_user_id, id, sponsor| {
             *actor_user_id == user_id
                 && *id == group_id
+                && sponsor.featured == form.featured
                 && sponsor.name == form.name
                 && sponsor.logo_url == form.logo_url
         })
@@ -511,6 +517,7 @@ async fn test_update_success() {
             *actor_user_id == user_id
                 && *id == group_id
                 && *sponsor_id == group_sponsor_id
+                && sponsor.featured == form.featured
                 && sponsor.name == form.name
         })
         .returning(move |_, _, _, _| Ok(()));
@@ -523,6 +530,76 @@ async fn test_update_success() {
     let request = Request::builder()
         .method("PUT")
         .uri(format!("/dashboard/group/sponsors/{group_sponsor_id}/update"))
+        .header(COOKIE, format!("id={session_id}"))
+        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+        .body(Body::from(body))
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_eq!(parts.status, StatusCode::NO_CONTENT);
+    assert_eq!(
+        parts.headers.get("HX-Trigger").unwrap(),
+        &HeaderValue::from_static("refresh-group-dashboard-table"),
+    );
+    assert!(bytes.is_empty());
+}
+
+#[tokio::test]
+async fn test_update_featured_success() {
+    // Setup identifiers and data structures
+    let community_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let group_sponsor_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(
+        session_id,
+        user_id,
+        &auth_hash,
+        Some(community_id),
+        Some(group_id),
+    );
+    let form = SponsorFeatured { featured: false };
+    let body = to_string(&form).unwrap();
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::SponsorsWrite
+        })
+        .returning(|_, _, _, _| Ok(true));
+    db.expect_update_group_sponsor_featured()
+        .times(1)
+        .withf(move |actor_user_id, id, sponsor_id, featured| {
+            *actor_user_id == user_id && *id == group_id && *sponsor_id == group_sponsor_id && !*featured
+        })
+        .returning(move |_, _, _, _| Ok(()));
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("PUT")
+        .uri(format!("/dashboard/group/sponsors/{group_sponsor_id}/featured"))
         .header(COOKIE, format!("id={session_id}"))
         .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
         .body(Body::from(body))
