@@ -1,7 +1,6 @@
-import {
-  DEFAULT_CURRENCY_PLACEHOLDER,
-  toTrimmedString,
-} from "/static/js/dashboard/event/ticketing/shared.js";
+import { toTrimmedString } from "/static/js/common/utils.js";
+
+const DEFAULT_CURRENCY_PLACEHOLDER = "USD";
 
 /**
  * Resolves the event currency from the shared event form.
@@ -21,7 +20,7 @@ export const resolveEventCurrencyCode = (
  * @param {string} currencyCode ISO currency code
  * @returns {number}
  */
-export const resolveCurrencyFractionDigits = (currencyCode) => {
+const resolveCurrencyFractionDigits = (currencyCode) => {
   try {
     return new Intl.NumberFormat("en", {
       currency: currencyCode,

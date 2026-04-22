@@ -1,16 +1,4 @@
-/**
- * Resolves a control by id from either a document or an element subtree.
- * @param {Document|Element} root Root container
- * @param {string} id Control id
- * @returns {HTMLElement|null}
- */
-const queryControlById = (root, id) => {
-  if (typeof root.getElementById === "function") {
-    return root.getElementById(id);
-  }
-
-  return root.querySelector(`#${id}`);
-};
+import { queryElementById } from "/static/js/common/dom.js";
 
 /**
  * Collects the shared ticketing controls used across the form.
@@ -29,16 +17,16 @@ const queryControlById = (root, id) => {
  * }}
  */
 const resolveTicketingControls = (root = document) => ({
-  capacityInput: queryControlById(root, "capacity"),
-  clearTicketingInput: queryControlById(root, "clear_ticketing"),
-  discountCodesRoot: queryControlById(root, "discount-codes-ui"),
-  paymentCurrencyInput: queryControlById(root, "payment_currency_code"),
-  ticketTypesRoot: queryControlById(root, "ticket-types-ui"),
+  capacityInput: queryElementById(root, "capacity"),
+  clearTicketingInput: queryElementById(root, "clear_ticketing"),
+  discountCodesRoot: queryElementById(root, "discount-codes-ui"),
+  paymentCurrencyInput: queryElementById(root, "payment_currency_code"),
+  ticketTypesRoot: queryElementById(root, "ticket-types-ui"),
   timezoneInput: root.querySelector('[name="timezone"]'),
-  toggleClearTicketing: queryControlById(root, "toggle_clear_ticketing"),
-  toggleWaitlistEnabled: queryControlById(root, "toggle_waitlist_enabled"),
-  waitlistEnabledInput: queryControlById(root, "waitlist_enabled"),
-  waitlistToggleLabel: queryControlById(root, "waitlist-toggle-label"),
+  toggleClearTicketing: queryElementById(root, "toggle_clear_ticketing"),
+  toggleWaitlistEnabled: queryElementById(root, "toggle_waitlist_enabled"),
+  waitlistEnabledInput: queryElementById(root, "waitlist_enabled"),
+  waitlistToggleLabel: queryElementById(root, "waitlist-toggle-label"),
 });
 
 /**

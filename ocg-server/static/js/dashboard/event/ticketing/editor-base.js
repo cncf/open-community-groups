@@ -1,11 +1,10 @@
-import { unlockBodyScroll } from "/static/js/common/common.js";
+import { resolveEventTimezone, unlockBodyScroll } from "/static/js/common/common.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import {
   resolveCurrencyInputPlaceholder,
   resolveCurrencyInputStep,
   resolveEventCurrencyCode,
-} from "/static/js/dashboard/event/ticketing/money.js";
-import { resolveEventTimezone } from "/static/js/dashboard/event/ticketing/datetime.js";
+} from "/static/js/dashboard/event/ticketing/currency.js";
 
 /**
  * Shared base class for ticketing editors with external form dependencies.

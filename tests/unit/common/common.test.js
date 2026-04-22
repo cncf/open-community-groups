@@ -3,18 +3,26 @@ import { expect } from "@open-wc/testing";
 import {
   computeUserInitials,
   convertDateTimeLocalToISO,
+  convertDateToDateTimeLocalInTz,
   convertTimestampToDateTimeLocal,
   convertTimestampToDateTimeLocalInTz,
   hideLoadingSpinner,
   isDashboardPath,
   isObjectEmpty,
   lockBodyScroll,
+  resolveEventTimezone,
   scrollToDashboardTop,
   showLoadingSpinner,
+  toDateTimeLocalInTimezone,
+  toUtcIsoInTimezone,
   toggleModalVisibility,
   unlockBodyScroll,
 } from "/static/js/common/common.js";
-import { resetDom, setLocationPath, mockScrollTo } from "/tests/unit/test-utils/dom.js";
+import {
+  resetDom,
+  setLocationPath,
+  mockScrollTo,
+} from "/tests/unit/test-utils/dom.js";
 
 describe("common utilities", () => {
   const originalPath = window.location.pathname;
@@ -94,18 +102,70 @@ describe("common utilities", () => {
     expect(computeUserInitials("Single", "ocg", 1)).to.equal("S");
     expect(computeUserInitials("", "ocg")).to.equal("O");
 
-    expect(convertDateTimeLocalToISO("2025-08-23T15:00")).to.equal("2025-08-23T15:00:00");
+    expect(convertDateTimeLocalToISO("2025-08-23T15:00")).to.equal(
+      "2025-08-23T15:00:00",
+    );
     expect(convertDateTimeLocalToISO("")).to.equal(null);
 
-    expect(convertTimestampToDateTimeLocal(1735689600)).to.equal("2025-01-01T00:00");
+    expect(convertTimestampToDateTimeLocal(1735689600)).to.equal(
+      "2025-01-01T00:00",
+    );
     expect(convertTimestampToDateTimeLocal("1735689600")).to.equal("");
 
-    expect(convertTimestampToDateTimeLocalInTz(1735689600, "America/New_York")).to.equal(
-      "2024-12-31T19:00",
-    );
+    expect(
+      convertTimestampToDateTimeLocalInTz(1735689600, "America/New_York"),
+    ).to.equal("2024-12-31T19:00");
     expect(convertTimestampToDateTimeLocalInTz(1735689600, "")).to.equal("");
 
-    expect(isObjectEmpty({ id: 10, title: "", tags: [], published: false })).to.equal(true);
+    expect(
+      isObjectEmpty({ id: 10, title: "", tags: [], published: false }),
+    ).to.equal(true);
     expect(isObjectEmpty({ id: 10, title: "OCG" })).to.equal(false);
+  });
+
+  it("resolves event timezones from explicit fields and the document fallback", () => {
+    const timezoneField = document.createElement("input");
+    timezoneField.name = "timezone";
+    timezoneField.value = "  Europe/Madrid  ";
+    document.body.append(timezoneField);
+
+    expect(resolveEventTimezone(timezoneField)).to.equal("Europe/Madrid");
+    expect(resolveEventTimezone()).to.equal("Europe/Madrid");
+    expect(resolveEventTimezone(null)).to.equal("");
+  });
+
+  it("formats datetime-local values in a timezone-aware way", () => {
+    expect(
+      convertDateToDateTimeLocalInTz(
+        new Date("2025-01-01T00:00:00.000Z"),
+        "America/New_York",
+      ),
+    ).to.equal("2024-12-31T19:00");
+    expect(
+      convertDateToDateTimeLocalInTz(new Date("invalid"), "America/New_York"),
+    ).to.equal("");
+
+    expect(
+      toDateTimeLocalInTimezone("2025-01-01T00:00:00.000Z", "America/New_York"),
+    ).to.equal("2024-12-31T19:00");
+    expect(toDateTimeLocalInTimezone("2025-01-01T00:00:00.000Z", "")).to.equal(
+      "2025-01-01T00:00",
+    );
+    expect(
+      toDateTimeLocalInTimezone("not-a-date", "America/New_York"),
+    ).to.equal("");
+  });
+
+  it("converts datetime-local values back to UTC ISO strings", () => {
+    expect(toUtcIsoInTimezone("2026-04-10T10:00", "America/New_York")).to.equal(
+      "2026-04-10T14:00:00.000Z",
+    );
+    expect(toUtcIsoInTimezone(" 2026-04-10T10:00 ", "")).to.equal(
+      "2026-04-10T10:00",
+    );
+    expect(toUtcIsoInTimezone("invalid", "America/New_York")).to.equal(
+      "invalid",
+    );
+    expect(toUtcIsoInTimezone("", "America/New_York")).to.equal(null);
   });
 });

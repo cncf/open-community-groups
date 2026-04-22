@@ -1,11 +1,122 @@
 import { html, repeat } from "/static/vendor/js/lit-all.v3.3.1.min.js";
-import { lockBodyScroll, unlockBodyScroll } from "/static/js/common/common.js";
 import {
-  normalizeDiscountCodes,
-  serializeDiscountCodes,
-} from "/static/js/dashboard/event/ticketing/contract.js";
+  lockBodyScroll,
+  toDateTimeLocalInTimezone,
+  toUtcIsoInTimezone,
+  unlockBodyScroll,
+} from "/static/js/common/common.js";
+import { parseJsonAttribute, toBoolean, toTrimmedString } from "/static/js/common/utils.js";
+import {
+  formatMinorUnitsForInput,
+  parseCurrencyInputToMinorUnits,
+} from "/static/js/dashboard/event/ticketing/currency.js";
 import { TicketingEditorBase } from "/static/js/dashboard/event/ticketing/editor-base.js";
-import { parseJsonAttribute } from "/static/js/dashboard/event/ticketing/shared.js";
+
+/**
+ * Normalizes incoming discount codes into editor rows.
+ * @param {object} config Normalization config
+ * @returns {Array<object>}
+ */
+const normalizeDiscountCodes = ({ currencyCode, discountCodes, nextRowId, timezone }) => {
+  if (!Array.isArray(discountCodes) || discountCodes.length === 0) {
+    return [];
+  }
+
+  return discountCodes
+    .map((discountCode) => ({
+      _row_id: nextRowId(),
+      active: toBoolean(discountCode?.active, true),
+      amount:
+        discountCode?.amount_minor === null || discountCode?.amount_minor === undefined
+          ? ""
+          : formatMinorUnitsForInput(discountCode.amount_minor, currencyCode),
+      available:
+        discountCode?.available === null || discountCode?.available === undefined
+          ? ""
+          : String(discountCode.available),
+      available_dirty: toBoolean(discountCode?.available_dirty, false),
+      available_override_active: toBoolean(
+        discountCode?.available_override_active,
+        discountCode?.available !== null && discountCode?.available !== undefined,
+      ),
+      code: toTrimmedString(discountCode?.code).toUpperCase(),
+      ends_at: toDateTimeLocalInTimezone(discountCode?.ends_at || "", timezone),
+      event_discount_code_id: toTrimmedString(discountCode?.event_discount_code_id),
+      kind: toTrimmedString(discountCode?.kind) || "percentage",
+      percentage:
+        discountCode?.percentage === null || discountCode?.percentage === undefined
+          ? ""
+          : String(discountCode.percentage),
+      starts_at: toDateTimeLocalInTimezone(discountCode?.starts_at || "", timezone),
+      title: String(discountCode?.title || ""),
+      total_available:
+        discountCode?.total_available === null || discountCode?.total_available === undefined
+          ? ""
+          : String(discountCode.total_available),
+    }))
+    .sort((left, right) => left.title.trim().toLowerCase().localeCompare(right.title.trim().toLowerCase()));
+};
+
+/**
+ * Builds hidden input entries for discount codes.
+ * @param {object} config Serialization config
+ * @returns {Array<{name: string, value: string}>}
+ */
+const serializeDiscountCodes = ({ currencyCode, fieldNamePrefix, rows, timezone }) =>
+  rows.flatMap((row, index) => {
+    const rowPrefix = `${fieldNamePrefix}[${index}]`;
+    const amountMinor = parseCurrencyInputToMinorUnits(row.amount, currencyCode);
+    const available = Number.parseInt(row.available, 10);
+    const availableOverrideActive = !!row.available_override_active;
+    const discountCodeId = toTrimmedString(row.event_discount_code_id);
+    const endsAt = toUtcIsoInTimezone(row.ends_at, timezone);
+    const percentage = Number.parseInt(row.percentage, 10);
+    const startsAt = toUtcIsoInTimezone(row.starts_at, timezone);
+    const totalAvailable = Number.parseInt(row.total_available, 10);
+    const fields = [
+      { name: `${rowPrefix}[active]`, value: row.active ? "true" : "false" },
+      {
+        name: `${rowPrefix}[available_override_active]`,
+        value: availableOverrideActive ? "true" : "false",
+      },
+      { name: `${rowPrefix}[code]`, value: row.code.trim().toUpperCase() },
+      { name: `${rowPrefix}[kind]`, value: row.kind },
+      { name: `${rowPrefix}[title]`, value: row.title.trim() },
+    ];
+
+    if (row.available_dirty && availableOverrideActive && Number.isFinite(available)) {
+      fields.push({ name: `${rowPrefix}[available]`, value: String(available) });
+    }
+
+    if (row.kind === "fixed_amount" && amountMinor !== null) {
+      fields.push({ name: `${rowPrefix}[amount_minor]`, value: String(amountMinor) });
+    }
+
+    if (endsAt) {
+      fields.push({ name: `${rowPrefix}[ends_at]`, value: endsAt });
+    }
+
+    if (discountCodeId) {
+      fields.push({ name: `${rowPrefix}[event_discount_code_id]`, value: discountCodeId });
+    }
+
+    if (row.kind === "percentage" && Number.isFinite(percentage)) {
+      fields.push({ name: `${rowPrefix}[percentage]`, value: String(percentage) });
+    }
+
+    if (startsAt) {
+      fields.push({ name: `${rowPrefix}[starts_at]`, value: startsAt });
+    }
+
+    if (Number.isFinite(totalAvailable)) {
+      fields.push({
+        name: `${rowPrefix}[total_available]`,
+        value: String(totalAvailable),
+      });
+    }
+
+    return fields;
+  });
 
 /**
  * Discount codes editor component.

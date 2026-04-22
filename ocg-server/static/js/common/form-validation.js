@@ -5,7 +5,7 @@
  */
 
 import {
-  convertTimestampToDateTimeLocalInTz,
+  convertDateToDateTimeLocalInTz,
   isDashboardPath,
   isElementInView,
 } from "/static/js/common/common.js";
@@ -365,7 +365,7 @@ const toDateTimeLocalInTimezone = (dateValue, timezone) => {
   }
 
   try {
-    return convertTimestampToDateTimeLocalInTz(dateValue.getTime() / 1000, timezone);
+    return convertDateToDateTimeLocalInTz(dateValue, timezone);
   } catch (_) {
     return "";
   }
