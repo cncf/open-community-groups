@@ -10,7 +10,7 @@ import {
 } from "../../utils";
 
 test.describe("group page visual regression @visual", () => {
-  test("matches desktop snapshot", async ({ page }) => {
+  test("matches desktop snapshot", async ({ page }, testInfo) => {
     await navigateToGroup(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUGS.community1.alpha);
 
     await expect(
@@ -23,10 +23,11 @@ test.describe("group page visual regression @visual", () => {
       page,
       getIntroSection(page),
       "group-page-desktop.png",
+      { testInfo },
     );
   });
 
-  test("matches mobile snapshot @mobile", async ({ page }) => {
+  test("matches mobile snapshot @mobile", async ({ page }, testInfo) => {
     await navigateToGroup(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUGS.community1.alpha);
 
     await expect(
@@ -39,6 +40,7 @@ test.describe("group page visual regression @visual", () => {
       page,
       getIntroSection(page),
       "group-page-mobile.png",
+      { testInfo },
     );
   });
 });

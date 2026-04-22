@@ -8,7 +8,7 @@ import {
 } from "../../utils";
 
 test.describe("site home page visual regression @visual", () => {
-  test("matches desktop snapshot", async ({ page }) => {
+  test("matches desktop snapshot", async ({ page }, testInfo) => {
     await navigateToSiteHome(page);
 
     await expect(
@@ -19,10 +19,11 @@ test.describe("site home page visual regression @visual", () => {
       page,
       getHomeJumbotronContent(page),
       "site-home-desktop.png",
+      { testInfo },
     );
   });
 
-  test("matches mobile snapshot @mobile", async ({ page }) => {
+  test("matches mobile snapshot @mobile", async ({ page }, testInfo) => {
     await navigateToSiteHome(page);
 
     await expect(
@@ -33,6 +34,7 @@ test.describe("site home page visual regression @visual", () => {
       page,
       getHomeJumbotronContent(page),
       "site-home-mobile.png",
+      { testInfo },
     );
   });
 });

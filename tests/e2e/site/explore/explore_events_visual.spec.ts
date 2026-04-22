@@ -10,7 +10,7 @@ import {
 } from "../../utils";
 
 test.describe("site explore events page visual regression @visual", () => {
-  test("matches desktop snapshot", async ({ page }) => {
+  test("matches desktop snapshot", async ({ page }, testInfo) => {
     await navigateToPath(
       page,
       `/explore?entity=events&community[0]=${TEST_COMMUNITY_NAME}`,
@@ -24,15 +24,17 @@ test.describe("site explore events page visual regression @visual", () => {
       page,
       getExploreSearchRow(page, "Search events"),
       "explore-events-desktop.png",
+      { testInfo },
     );
     await expectRegionScreenshot(
       page,
       getExploreControlsRow(page),
       "explore-events-desktop-controls.png",
+      { testInfo },
     );
   });
 
-  test("matches mobile snapshot @mobile", async ({ page }) => {
+  test("matches mobile snapshot @mobile", async ({ page }, testInfo) => {
     await navigateToPath(
       page,
       `/explore?entity=events&community[0]=${TEST_COMMUNITY_NAME}`,
@@ -46,11 +48,13 @@ test.describe("site explore events page visual regression @visual", () => {
       page,
       getExploreSearchRow(page, "Search events"),
       "explore-events-mobile.png",
+      { testInfo },
     );
     await expectRegionScreenshot(
       page,
       getExploreControlsRow(page),
       "explore-events-mobile-controls.png",
+      { testInfo },
     );
   });
 });

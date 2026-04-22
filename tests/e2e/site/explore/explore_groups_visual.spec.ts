@@ -10,7 +10,7 @@ import {
 } from "../../utils";
 
 test.describe("site explore groups page visual regression @visual", () => {
-  test("matches desktop snapshot", async ({ page }) => {
+  test("matches desktop snapshot", async ({ page }, testInfo) => {
     await navigateToPath(
       page,
       `/explore?entity=groups&community[0]=${TEST_COMMUNITY_NAME}`,
@@ -24,15 +24,17 @@ test.describe("site explore groups page visual regression @visual", () => {
       page,
       getExploreSearchRow(page, "Search groups"),
       "explore-groups-desktop.png",
+      { testInfo },
     );
     await expectRegionScreenshot(
       page,
       getExploreControlsRow(page),
       "explore-groups-desktop-controls.png",
+      { testInfo },
     );
   });
 
-  test("matches mobile snapshot @mobile", async ({ page }) => {
+  test("matches mobile snapshot @mobile", async ({ page }, testInfo) => {
     await navigateToPath(
       page,
       `/explore?entity=groups&community[0]=${TEST_COMMUNITY_NAME}`,
@@ -46,11 +48,13 @@ test.describe("site explore groups page visual regression @visual", () => {
       page,
       getExploreSearchRow(page, "Search groups"),
       "explore-groups-mobile.png",
+      { testInfo },
     );
     await expectRegionScreenshot(
       page,
       getExploreControlsRow(page),
       "explore-groups-mobile-controls.png",
+      { testInfo },
     );
   });
 });
