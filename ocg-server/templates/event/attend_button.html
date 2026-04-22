@@ -12,6 +12,7 @@
      {% endif %}
      data-waitlist-enabled="{{ event.waitlist_enabled }}"
      data-is-live="{{ event.is_live() }}"
+     data-attendee-meeting-access-open="{{ !event.is_past() || event.is_live() }}"
      class="flex flex-row flex-wrap gap-2
             {% if !event.is_past() && event.formatted_ticket_price_badge().is_some() %}mt-3 md:mt-0{% endif %}">
 
@@ -272,7 +273,7 @@
        data-join-link
        target="_blank"
        rel="noopener noreferrer"
-       class="hidden max-xl:hidden group btn-primary-outline-anchor h-10 md:h-[30px] xl:flex items-center justify-center space-x-2">
+       class="hidden max-xl:hidden group btn-primary-outline-anchor h-10 md:h-[30px] items-center justify-center space-x-2">
       <div class="svg-icon size-3 icon-meeting"></div>
       <span>Join meeting</span>
     </a>

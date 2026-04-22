@@ -122,13 +122,14 @@ const parseRemainingCapacity = (container) => {
 /**
  * Computes attendance metadata for the current event.
  * @param {HTMLElement} container - Attendance container element
- * @returns {{eventIsLive: boolean, isPastEvent: boolean, isSoldOut: boolean, isTicketed: boolean, ticketPurchaseAvailable: boolean, waitlistEnabled: boolean}}
+ * @returns {{attendeeMeetingAccessOpen: boolean, eventIsLive: boolean, isPastEvent: boolean, isSoldOut: boolean, isTicketed: boolean, ticketPurchaseAvailable: boolean, waitlistEnabled: boolean}}
  */
 export const getAttendanceMeta = (container) => {
   const startsAtValue = container?.dataset?.starts ?? null;
   const capacity = parseCapacity(container);
   const remainingCapacity = parseRemainingCapacity(container);
   const isSoldOut = capacity !== null && remainingCapacity !== null && remainingCapacity <= 0;
+  const attendeeMeetingAccessOpen = container?.dataset?.attendeeMeetingAccessOpen === "true";
   const eventIsLive = container?.dataset?.isLive === "true";
   const isTicketed = container?.dataset?.isTicketed === "true";
   const ticketPurchaseAvailable = container?.dataset?.ticketPurchaseAvailable === "true";
@@ -147,6 +148,7 @@ export const getAttendanceMeta = (container) => {
   })();
 
   return {
+    attendeeMeetingAccessOpen,
     isSoldOut,
     isPastEvent,
     eventIsLive,

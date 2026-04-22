@@ -16,6 +16,7 @@ const renderAttendanceDom = ({
   remainingCapacity = "5",
   waitlistEnabled = "false",
   isLive = "false",
+  attendeeMeetingAccessOpen = "false",
 } = {}) => {
   document.body.innerHTML = `
     <div
@@ -25,6 +26,7 @@ const renderAttendanceDom = ({
       data-remaining-capacity="${remainingCapacity}"
       data-waitlist-enabled="${waitlistEnabled}"
       data-is-live="${isLive}"
+      data-attendee-meeting-access-open="${attendeeMeetingAccessOpen}"
     >
       <button data-attendance-role="attendance-checker"></button>
       <button data-attendance-role="loading-btn" class="hidden">
@@ -91,6 +93,7 @@ describe("event attendance", () => {
   it("shows attendee controls and meeting details after a successful attendance check", () => {
     const { checker, leaveButton, alwaysJoinLink, liveJoinLink, meetingDetails } = renderAttendanceDom({
       isLive: "true",
+      attendeeMeetingAccessOpen: "true",
     });
 
     dispatchHtmxAfterRequest(checker, {
@@ -103,8 +106,41 @@ describe("event attendance", () => {
     );
     expect(alwaysJoinLink.classList.contains("hidden")).to.equal(false);
     expect(liveJoinLink.classList.contains("hidden")).to.equal(false);
+    expect(liveJoinLink.classList.contains("xl:flex")).to.equal(true);
     expect(meetingDetails[0].classList.contains("hidden")).to.equal(false);
     expect(meetingDetails[1].classList.contains("hidden")).to.equal(false);
+  });
+
+  it("shows the join meeting link when attendee meeting access is open", () => {
+    const { checker, alwaysJoinLink, liveJoinLink, meetingDetails } = renderAttendanceDom({
+      isLive: "false",
+      attendeeMeetingAccessOpen: "true",
+    });
+
+    dispatchHtmxAfterRequest(checker, {
+      responseText: JSON.stringify({ status: "attendee" }),
+    });
+
+    expect(alwaysJoinLink.classList.contains("hidden")).to.equal(false);
+    expect(liveJoinLink.classList.contains("hidden")).to.equal(false);
+    expect(liveJoinLink.classList.contains("xl:flex")).to.equal(true);
+    expect(meetingDetails[0].classList.contains("hidden")).to.equal(false);
+  });
+
+  it("keeps the join meeting link hidden when attendee meeting access is closed", () => {
+    const { checker, alwaysJoinLink, liveJoinLink, meetingDetails } = renderAttendanceDom({
+      isLive: "false",
+      attendeeMeetingAccessOpen: "false",
+    });
+
+    dispatchHtmxAfterRequest(checker, {
+      responseText: JSON.stringify({ status: "attendee" }),
+    });
+
+    expect(alwaysJoinLink.classList.contains("hidden")).to.equal(true);
+    expect(liveJoinLink.classList.contains("hidden")).to.equal(true);
+    expect(liveJoinLink.classList.contains("xl:flex")).to.equal(false);
+    expect(meetingDetails[0].classList.contains("hidden")).to.equal(true);
   });
 
   it("falls back to the waitlist sign-in state when the check response cannot be parsed", () => {
