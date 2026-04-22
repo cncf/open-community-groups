@@ -1,18 +1,12 @@
 import { expect, test } from "@playwright/test";
 
 import {
-  expectPageScreenshot,
+  expectRegionScreenshot,
   getSectionByHeading,
   navigateToCommunityHome,
   TEST_COMMUNITY_DESCRIPTION,
   TEST_COMMUNITY_NAME,
 } from "../../utils";
-
-const getDynamicCommunitySectionMasks = (page: Parameters<typeof expectPageScreenshot>[0]) => [
-  getSectionByHeading(page, "Upcoming In-Person Events"),
-  getSectionByHeading(page, "Upcoming Virtual Events"),
-  getSectionByHeading(page, "Latest groups added"),
-];
 
 test.describe("community home page visual regression @visual", () => {
   test("matches desktop snapshot", async ({ page }) => {
@@ -23,9 +17,11 @@ test.describe("community home page visual regression @visual", () => {
       page.getByText(TEST_COMMUNITY_DESCRIPTION, { exact: true }),
     ).toBeVisible();
 
-    await expectPageScreenshot(page, "community-home-desktop.png", {
-      mask: getDynamicCommunitySectionMasks(page),
-    });
+    await expectRegionScreenshot(
+      page,
+      getSectionByHeading(page, "About this community"),
+      "community-home-desktop.png",
+    );
   });
 
   test("matches mobile snapshot @mobile", async ({ page }) => {
@@ -36,9 +32,11 @@ test.describe("community home page visual regression @visual", () => {
       page.getByText(TEST_COMMUNITY_DESCRIPTION, { exact: true }),
     ).toBeVisible();
 
-    await expectPageScreenshot(page, "community-home-mobile.png", {
-      mask: getDynamicCommunitySectionMasks(page),
-      maxDiffPixelRatio: 0.012,
-    });
+    await expectRegionScreenshot(
+      page,
+      getSectionByHeading(page, "About this community"),
+      "community-home-mobile.png",
+      { maxDiffPixelRatio: 0.012 },
+    );
   });
 });

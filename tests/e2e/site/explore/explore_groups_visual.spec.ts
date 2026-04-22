@@ -1,15 +1,12 @@
 import { expect, test } from "@playwright/test";
 
 import {
-  expectPageScreenshot,
+  expectRegionScreenshot,
+  getExploreChromeRow,
   navigateToPath,
   TEST_COMMUNITY_NAME,
   TEST_GROUP_NAMES,
 } from "../../utils";
-
-const getDynamicExploreGroupMasks = (page: Parameters<typeof expectPageScreenshot>[0]) => [
-  page.locator("main article"),
-];
 
 test.describe("site explore groups page visual regression @visual", () => {
   test("matches desktop snapshot", async ({ page }) => {
@@ -22,9 +19,12 @@ test.describe("site explore groups page visual regression @visual", () => {
     await expect(page.getByText(TEST_GROUP_NAMES.alpha, { exact: true })).toBeVisible();
     await expect(page.getByText(TEST_GROUP_NAMES.gamma, { exact: true })).toBeVisible();
 
-    await expectPageScreenshot(page, "explore-groups-desktop.png", {
-      mask: getDynamicExploreGroupMasks(page),
-    });
+    await expectRegionScreenshot(page, getExploreChromeRow(page, 0), "explore-groups-desktop.png");
+    await expectRegionScreenshot(
+      page,
+      getExploreChromeRow(page, 1),
+      "explore-groups-desktop-controls.png",
+    );
   });
 
   test("matches mobile snapshot @mobile", async ({ page }) => {
@@ -37,8 +37,11 @@ test.describe("site explore groups page visual regression @visual", () => {
     await expect(page.getByText(TEST_GROUP_NAMES.alpha, { exact: true })).toBeVisible();
     await expect(page.getByText(TEST_GROUP_NAMES.gamma, { exact: true })).toBeVisible();
 
-    await expectPageScreenshot(page, "explore-groups-mobile.png", {
-      mask: getDynamicExploreGroupMasks(page),
-    });
+    await expectRegionScreenshot(page, getExploreChromeRow(page, 0), "explore-groups-mobile.png");
+    await expectRegionScreenshot(
+      page,
+      getExploreChromeRow(page, 1),
+      "explore-groups-mobile-controls.png",
+    );
   });
 });

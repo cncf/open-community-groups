@@ -163,30 +163,12 @@ const BASE_URL = process.env.OCG_E2E_BASE_URL || "http://localhost:9000";
 
 const buildUrl = (path: string) => new URL(path, BASE_URL).toString();
 
-/**
- * Sets a hidden spacer used to stabilize full-page screenshot height.
- */
-const setPageScreenshotSpacer = async (page: Page, spacerHeight: number) => {
-  await page.evaluate((height) => {
-    const body = document.body;
-
-    if (!body) {
-      return;
-    }
-
-    let screenshotSpacer = document.getElementById("ocg-e2e-screenshot-spacer");
-
-    if (!screenshotSpacer) {
-      screenshotSpacer = document.createElement("div");
-      screenshotSpacer.id = "ocg-e2e-screenshot-spacer";
-      screenshotSpacer.setAttribute("aria-hidden", "true");
-      screenshotSpacer.style.pointerEvents = "none";
-      screenshotSpacer.style.width = "100%";
-      body.append(screenshotSpacer);
-    }
-
-    screenshotSpacer.style.height = `${height}px`;
-  }, spacerHeight);
+/** Waits for the page to finish the visual work needed before snapshotting. */
+const waitForVisualReady = async (page: Page) => {
+  await page.waitForLoadState("networkidle");
+  await page.evaluate(async () => {
+    await document.fonts.ready;
+  });
 };
 
 /**
@@ -308,6 +290,22 @@ export const getEventAboutSection = (page: Page) =>
 export const getEventLogo = (page: Page) =>
   page.locator("div[style*='background-image']").first();
 
+/**
+ * Selects the stable intro section used by community, group, and event pages.
+ */
+export const getIntroSection = (page: Page) =>
+  page
+    .locator("div.flex.gap-y-6.sm\\:gap-y-8.lg\\:gap-y-12.flex-col")
+    .first()
+    .locator(":scope > div")
+    .first();
+
+/**
+ * Selects one of the stable explore chrome rows above the results list.
+ */
+export const getExploreChromeRow = (page: Page, rowIndex: 0 | 1) =>
+  page.locator("#explore-cards > div > div").nth(rowIndex);
+
 export type AuthUser = {
   name: string;
   email: string;
@@ -398,49 +396,36 @@ export const expectPageScreenshot = async (
     maxDiffPixelRatio?: number;
   } = {},
 ) => {
-  await page.waitForLoadState("networkidle");
-  await page.evaluate(async () => {
-    await document.fonts.ready;
-  });
-  await page.evaluate(() => {
-    const viewportWidth = window.innerWidth;
-
-    if (viewportWidth > 430) {
-      return;
-    }
-
-    const documentElement = document.documentElement;
-    const body = document.body;
-    const scrollHeight = Math.max(
-      documentElement.scrollHeight,
-      documentElement.offsetHeight,
-      body?.scrollHeight ?? 0,
-      body?.offsetHeight ?? 0,
-    );
-    const normalizedHeightPadding = (4 - (scrollHeight % 4)) % 4;
-
-    if (!body || normalizedHeightPadding === 0) {
-      return;
-    }
-
-    let screenshotSpacer = document.getElementById("ocg-e2e-screenshot-spacer");
-
-    if (!screenshotSpacer) {
-      screenshotSpacer = document.createElement("div");
-      screenshotSpacer.id = "ocg-e2e-screenshot-spacer";
-      screenshotSpacer.setAttribute("aria-hidden", "true");
-      screenshotSpacer.style.pointerEvents = "none";
-      screenshotSpacer.style.width = "100%";
-      body.append(screenshotSpacer);
-    }
-
-    screenshotSpacer.style.height = `${normalizedHeightPadding}px`;
-  });
+  await waitForVisualReady(page);
 
   await expect(page).toHaveScreenshot(screenshotName, {
     animations: "disabled",
     caret: "hide",
     fullPage: true,
+    ...screenshotOptions,
+  });
+};
+
+/**
+ * Waits for a stable region and snapshots only that locator.
+ */
+export const expectRegionScreenshot = async (
+  page: Page,
+  region: Locator,
+  screenshotName: string,
+  screenshotOptions: {
+    mask?: Locator[];
+    maxDiffPixels?: number;
+    maxDiffPixelRatio?: number;
+  } = {},
+) => {
+  await waitForVisualReady(page);
+  await expect(region).toBeVisible();
+  await region.scrollIntoViewIfNeeded();
+
+  await expect(region).toHaveScreenshot(screenshotName, {
+    animations: "disabled",
+    caret: "hide",
     ...screenshotOptions,
   });
 };
