@@ -246,6 +246,15 @@ pub(crate) trait DBDashboardGroup {
         sponsor: &Sponsor,
     ) -> Result<()>;
 
+    /// Updates the featured flag for an existing sponsor.
+    async fn update_group_sponsor_featured(
+        &self,
+        actor_user_id: Uuid,
+        group_id: Uuid,
+        group_sponsor_id: Uuid,
+        featured: bool,
+    ) -> Result<()>;
+
     /// Updates a group team member role.
     async fn update_group_team_member_role(
         &self,
@@ -790,6 +799,22 @@ impl DBDashboardGroup for PgDB {
         self.execute(
             "select update_group_sponsor($1::uuid, $2::uuid, $3::uuid, $4::jsonb)",
             &[&actor_user_id, &group_id, &group_sponsor_id, &Json(sponsor)],
+        )
+        .await
+    }
+
+    /// [`DBDashboardGroup::update_group_sponsor_featured`]
+    #[instrument(skip(self), err)]
+    async fn update_group_sponsor_featured(
+        &self,
+        actor_user_id: Uuid,
+        group_id: Uuid,
+        group_sponsor_id: Uuid,
+        featured: bool,
+    ) -> Result<()> {
+        self.execute(
+            "select update_group_sponsor_featured($1::uuid, $2::uuid, $3::uuid, $4::bool)",
+            &[&actor_user_id, &group_id, &group_sponsor_id, &featured],
         )
         .await
     }

@@ -306,6 +306,10 @@ pub(super) fn setup_group_dashboard_router(state: &State) -> Router<State> {
             delete(dashboard::group::sponsors::delete),
         )
         .route(
+            "/sponsors/{group_sponsor_id}/featured",
+            put(dashboard::group::sponsors::update_featured),
+        )
+        .route(
             "/sponsors/{group_sponsor_id}/update",
             put(dashboard::group::sponsors::update),
         )

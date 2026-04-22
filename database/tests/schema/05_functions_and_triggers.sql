@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(211);
+select plan(212);
 
 -- ============================================================================
 -- TESTS
@@ -179,6 +179,7 @@ select has_function('update_event_views');
 select has_function('update_group');
 select has_function('update_group_category');
 select has_function('update_group_sponsor');
+select has_function('update_group_sponsor_featured');
 select has_function('update_group_team_member_role');
 select has_function('update_group_views');
 select has_function('update_meeting');
