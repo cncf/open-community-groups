@@ -366,8 +366,6 @@ test.describe("group dashboard attendees tab", () => {
       hasText: "E2E Member One",
     });
 
-    await expect(attendeeRow).toContainText("Refund requested");
-
     await attendeeRow.locator("[data-refund-review-trigger]").click();
 
     const refundModal = organizerGroupPage.locator("#attendee-refund-modal");
@@ -395,8 +393,6 @@ test.describe("group dashboard attendees tab", () => {
       hasText: "E2E Member Two",
     });
 
-    await expect(attendeeRow).toContainText("Refund processing");
-
     await attendeeRow.locator("[data-refund-review-trigger]").click();
 
     const refundModal = organizerGroupPage.locator("#attendee-refund-modal");
@@ -419,8 +415,6 @@ test.describe("group dashboard attendees tab", () => {
       TEST_PAYMENT_EVENT_IDS.refunds,
     );
 
-    await expect(attendeesContent).toContainText("Refund requested");
-    await expect(attendeesContent).toContainText("Refund processing");
     await expect(attendeesContent.locator("[data-refund-review-trigger]")).toHaveCount(0);
     await expect(groupViewerPage.locator("#attendee-refund-modal")).toBeHidden();
   });

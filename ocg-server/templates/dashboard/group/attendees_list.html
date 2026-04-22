@@ -109,43 +109,33 @@
                     {% if let Some(amount_label) = self::format_payment_amount(attendee.amount_minor, attendee.currency_code.as_deref()) -%}
                       <div class="text-sm font-medium text-stone-600">({{ amount_label }})</div>
                     {% endif -%}
+                    {% if can_manage_events
+                      && (attendee.refund_request_status == Some(crate::types::payments::EventRefundRequestStatus::Pending)
+                      || attendee.refund_request_status == Some(crate::types::payments::EventRefundRequestStatus::Approving)) -%}
+                      <button type="button"
+                              class="group inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-amber-800 bg-amber-100 text-amber-800 transition-colors hover:bg-amber-200"
+                              title="{% if attendee.refund_request_status == Some(crate::types::payments::EventRefundRequestStatus::Approving) -%}
+                                       Review refund processing {%- else -%} Review refund request {%- endif %}"
+                              data-refund-review-trigger
+                              data-refund-attendee-name="{{ attendee.name|assigned_or(attendee.username) }}"
+                              data-refund-ticket-title="{{ attendee.ticket_title|assigned_or("Paid RSVP") }}"
+                              data-refund-amount="{% if let Some(amount_label) = self::format_payment_amount(attendee.amount_minor, attendee.currency_code.as_deref()) -%}
+                                                    {{ amount_label }} {%- else -%} - {%- endif %}"
+                              data-refund-status="{% if attendee.refund_request_status == Some(crate::types::payments::EventRefundRequestStatus::Approving) -%}
+                                                    approving {%- else -%} pending {%- endif %}"
+                              data-refund-approve-url="/dashboard/group/events/{{ event.event_id }}/attendees/{{ attendee.user_id }}/refund/approve"
+                              data-refund-reject-url="/dashboard/group/events/{{ event.event_id }}/attendees/{{ attendee.user_id }}/refund/reject">
+                        <div class="svg-icon size-3.5 bg-current icon-refund"></div>
+                        <span class="sr-only">
+                          {% if attendee.refund_request_status == Some(crate::types::payments::EventRefundRequestStatus::Approving) -%}
+                            Review refund processing
+                          {%- else -%}
+                            Review refund request
+                          {%- endif %}
+                        </span>
+                      </button>
+                    {% endif -%}
                   </div>
-                  {% if attendee.refund_request_status == Some(crate::types::payments::EventRefundRequestStatus::Pending)
-                    || attendee.refund_request_status == Some(crate::types::payments::EventRefundRequestStatus::Approving) -%}
-                    <div class="flex flex-wrap items-center gap-2">
-                      <span class="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-medium text-amber-800">
-                        {% if attendee.refund_request_status == Some(crate::types::payments::EventRefundRequestStatus::Approving) -%}
-                          Refund processing
-                        {% else -%}
-                          Refund requested
-                        {% endif -%}
-                      </span>
-                      {% if can_manage_events -%}
-                        <button type="button"
-                                class="group ms-1 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-amber-800 bg-amber-100 text-amber-800 transition-colors hover:bg-amber-200"
-                                title="{% if attendee.refund_request_status == Some(crate::types::payments::EventRefundRequestStatus::Approving) -%}
-                                         Review refund processing {%- else -%} Review refund request {%- endif %}"
-                                data-refund-review-trigger
-                                data-refund-attendee-name="{{ attendee.name|assigned_or(attendee.username) }}"
-                                data-refund-ticket-title="{{ attendee.ticket_title|assigned_or("Paid RSVP") }}"
-                                data-refund-amount="{% if let Some(amount_label) = self::format_payment_amount(attendee.amount_minor, attendee.currency_code.as_deref()) -%}
-                                                      {{ amount_label }} {%- else -%} - {%- endif %}"
-                                data-refund-status="{% if attendee.refund_request_status == Some(crate::types::payments::EventRefundRequestStatus::Approving) -%}
-                                                      approving {%- else -%} pending {%- endif %}"
-                                data-refund-approve-url="/dashboard/group/events/{{ event.event_id }}/attendees/{{ attendee.user_id }}/refund/approve"
-                                data-refund-reject-url="/dashboard/group/events/{{ event.event_id }}/attendees/{{ attendee.user_id }}/refund/reject">
-                          <div class="svg-icon size-3.5 bg-current icon-refund"></div>
-                          <span class="sr-only">
-                            {% if attendee.refund_request_status == Some(crate::types::payments::EventRefundRequestStatus::Approving) -%}
-                              Review refund processing
-                            {%- else -%}
-                              Review refund request
-                            {%- endif %}
-                          </span>
-                        </button>
-                      {% endif -%}
-                    </div>
-                  {% endif -%}
                 </div>
               {% else -%}
                 <div class="mx-auto w-fit text-stone-500">Free RSVP</div>
