@@ -183,6 +183,14 @@ export class OnlineEventDetails extends LitWrapper {
     return "By default, hosts and event speakers are included in this host email list. Add extra emails when needed (optional). These emails are saved for coordination and are not assigned as Zoom hosts automatically.";
   }
 
+  _getRecordingLegend() {
+    if (this._mode === "automatic") {
+      return "We will sync the provider recording here when it is ready. You can replace it later with a processed upload.";
+    }
+
+    return "Add a recording link now or replace it later with a processed upload.";
+  }
+
   /**
    * Shows confirmation dialog when switching from automatic to manual mode.
    * @returns {Promise<boolean>} True if user confirms, false if cancelled
@@ -413,7 +421,7 @@ export class OnlineEventDetails extends LitWrapper {
     const isDisabled = this.disabled || option.disabled;
 
     return html`
-      <label class="block h-full">
+      <label class="block">
         <input
           type="radio"
           class="sr-only"
@@ -423,7 +431,7 @@ export class OnlineEventDetails extends LitWrapper {
           @change="${this._handleModeChange}"
         />
         <div
-          class="h-full rounded-xl border transition bg-white p-4 md:p-5 flex ${isSelected
+          class="rounded-xl border transition bg-white p-4 md:p-5 flex ${isSelected
             ? "border-primary-400 ring-2 ring-primary-200"
             : "border-stone-200"} ${isDisabled
             ? "opacity-60 cursor-not-allowed"
@@ -509,7 +517,6 @@ export class OnlineEventDetails extends LitWrapper {
       }
       this._mode = "automatic";
       this._joinUrl = "";
-      this._recordingUrl = "";
       this._createMeeting = true;
     } else {
       this._mode = newMode;
@@ -532,7 +539,7 @@ export class OnlineEventDetails extends LitWrapper {
    * @param {Event} e - Input event
    */
   _handleRecordingUrlChange(e) {
-    if (this._isSession()) return;
+    if (this.disabled) return;
     this._recordingUrl = e.target.value;
   }
 
@@ -609,7 +616,7 @@ export class OnlineEventDetails extends LitWrapper {
     const isAutomatic = this._mode === "automatic" && this._createMeeting;
     return {
       meeting_join_url: isAutomatic ? "" : (this._joinUrl || "").trim(),
-      meeting_recording_url: isAutomatic ? "" : (this._recordingUrl || "").trim(),
+      meeting_recording_url: (this._recordingUrl || "").trim(),
       meeting_requested: isAutomatic,
       meeting_provider_id: isAutomatic ? (this._providerId || DEFAULT_MEETING_PROVIDER).trim() : "",
     };
@@ -789,7 +796,6 @@ export class OnlineEventDetails extends LitWrapper {
    */
   _renderManualFields() {
     const disabledClasses = this.disabled ? "bg-stone-100 text-stone-500 cursor-not-allowed" : "";
-    const recordingDisabled = this._isSession() && this.disabled;
     return html`
       <div class="space-y-2">
         <label for="${this._getFieldName("meeting_join_url")}" class="form-label">Meeting URL</label>
@@ -815,18 +821,14 @@ export class OnlineEventDetails extends LitWrapper {
           <input
             type="url"
             id="${this._getFieldName("meeting_recording_url")}"
-            class="input-primary ${recordingDisabled ? "bg-stone-100 text-stone-500 cursor-not-allowed" : ""}"
+            class="input-primary ${disabledClasses}"
             placeholder="https://youtube.com/watch?v=..."
             .value="${this._recordingUrl}"
             @input="${this._handleRecordingUrlChange}"
-            ?disabled=${recordingDisabled}
+            ?disabled=${this.disabled}
           />
         </div>
-        <p class="form-legend">
-          ${this._isSession()
-            ? "Session recordings are managed at the event level."
-            : "Add a recording link now or after the event."}
-        </p>
+        <p class="form-legend">${this._getRecordingLegend()}</p>
       </div>
     `;
   }
@@ -846,7 +848,8 @@ export class OnlineEventDetails extends LitWrapper {
             <li>
               Meeting duration must be between ${MIN_MEETING_MINUTES} and ${MAX_MEETING_MINUTES} minutes.
             </li>
-            <li>Manual links cannot be set while automatic creation is on.</li>
+            <li>Manual join links cannot be set while automatic creation is on.</li>
+            <li>You can replace the synced recording link later with a processed upload.</li>
             <li>The meeting is not going to be created until you publish the event.</li>
           </ul>
         </div>
@@ -888,6 +891,24 @@ export class OnlineEventDetails extends LitWrapper {
               </div>
             `
           : ""}
+
+        <div class="space-y-2">
+          <label for="${this._getFieldName("meeting_recording_url")}" class="form-label"
+            >Recording URL (optional)</label
+          >
+          <div class="mt-2 lg:w-1/2">
+            <input
+              type="url"
+              id="${this._getFieldName("meeting_recording_url")}"
+              class="input-primary ${this.disabled ? "bg-stone-100 text-stone-500 cursor-not-allowed" : ""}"
+              placeholder="https://youtube.com/watch?v=..."
+              .value="${this._recordingUrl}"
+              @input="${this._handleRecordingUrlChange}"
+              ?disabled=${this.disabled}
+            />
+          </div>
+          <p class="form-legend">${this._getRecordingLegend()}</p>
+        </div>
       </div>
     `;
   }

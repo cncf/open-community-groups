@@ -135,14 +135,14 @@ begin
                 (p_event->>'category_id')::uuid,
                 p_event->>'kind_id',
 
-                p_event->>'banner_mobile_url',
-                p_event->>'banner_url',
+                nullif(p_event->>'banner_mobile_url', ''),
+                nullif(p_event->>'banner_url', ''),
                 v_effective_capacity,
                 nullif(p_event->>'cfs_description', ''),
                 (p_event->>'cfs_enabled')::boolean,
                 (p_event->>'cfs_ends_at')::timestamp at time zone (p_event->>'timezone'),
                 (p_event->>'cfs_starts_at')::timestamp at time zone (p_event->>'timezone'),
-                p_event->>'description_short',
+                nullif(p_event->>'description_short', ''),
                 (p_event->>'ends_at')::timestamp at time zone (p_event->>'timezone'),
                 coalesce((p_event->>'event_reminder_enabled')::boolean, true),
                 case
@@ -150,29 +150,29 @@ begin
                     then ST_SetSRID(ST_MakePoint((p_event->>'longitude')::float, (p_event->>'latitude')::float), 4326)::geography
                     else null
                 end,
-                p_event->>'logo_url',
+                nullif(p_event->>'logo_url', ''),
                 case when p_event->'meeting_hosts' is not null then array(select jsonb_array_elements_text(p_event->'meeting_hosts')) else null end,
                 case
                     when (p_event->>'meeting_requested')::boolean = true then false
                     else null
                 end,
-                p_event->>'meeting_join_url',
-                p_event->>'meeting_provider_id',
-                p_event->>'meeting_recording_url',
+                nullif(p_event->>'meeting_join_url', ''),
+                nullif(p_event->>'meeting_provider_id', ''),
+                nullif(p_event->>'meeting_recording_url', ''),
                 (p_event->>'meeting_requested')::boolean,
-                p_event->>'meetup_url',
+                nullif(p_event->>'meetup_url', ''),
                 v_payment_currency_code,
                 case when p_event->'photos_urls' is not null then array(select jsonb_array_elements_text(p_event->'photos_urls')) else null end,
                 (p_event->>'registration_required')::boolean,
                 (p_event->>'starts_at')::timestamp at time zone (p_event->>'timezone'),
                 case when p_event->'tags' is not null then array(select jsonb_array_elements_text(p_event->'tags')) else null end,
-                p_event->>'venue_address',
-                p_event->>'venue_city',
-                p_event->>'venue_country_code',
-                p_event->>'venue_country_name',
-                p_event->>'venue_name',
-                p_event->>'venue_state',
-                p_event->>'venue_zip_code',
+                nullif(p_event->>'venue_address', ''),
+                nullif(p_event->>'venue_city', ''),
+                nullif(p_event->>'venue_country_code', ''),
+                nullif(p_event->>'venue_country_name', ''),
+                nullif(p_event->>'venue_name', ''),
+                nullif(p_event->>'venue_state', ''),
+                nullif(p_event->>'venue_zip_code', ''),
                 case
                     when v_ticket_types is not null then false
                     else coalesce((p_event->>'waitlist_enabled')::boolean, false)
@@ -264,20 +264,20 @@ begin
             ) values (
                 v_event_id,
                 v_session->>'name',
-                v_session->>'description',
+                nullif(v_session->>'description', ''),
                 (v_session->>'starts_at')::timestamp at time zone (p_event->>'timezone'),
                 (v_session->>'ends_at')::timestamp at time zone (p_event->>'timezone'),
                 nullif(v_session->>'cfs_submission_id', '')::uuid,
                 v_session->>'kind',
-                v_session->>'location',
+                nullif(v_session->>'location', ''),
                 case when v_session->'meeting_hosts' is not null then array(select jsonb_array_elements_text(v_session->'meeting_hosts')) else null end,
                 case
                     when (v_session->>'meeting_requested')::boolean = true then false
                     else null
                 end,
-                v_session->>'meeting_join_url',
-                v_session->>'meeting_provider_id',
-                v_session->>'meeting_recording_url',
+                nullif(v_session->>'meeting_join_url', ''),
+                nullif(v_session->>'meeting_provider_id', ''),
+                nullif(v_session->>'meeting_recording_url', ''),
                 (v_session->>'meeting_requested')::boolean
             )
             returning session_id into v_session_id;

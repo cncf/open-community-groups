@@ -43,4 +43,55 @@ describe("online-event-details", () => {
 
     expect(element._capacityWarning).to.include("Capacity (150) exceeds");
   });
+
+  it("preserves recording overrides when switching from manual to automatic mode", async () => {
+    const capacity = document.createElement("input");
+    capacity.id = "capacity";
+    capacity.value = "150";
+    document.body.append(capacity);
+
+    const element = await mountLitComponent("online-event-details", {
+      endsAt: "2030-05-10T12:00",
+      kind: "virtual",
+      meetingJoinUrl: " https://example.com/join ",
+      meetingRecordingUrl: " https://youtube.com/watch?v=processed ",
+      startsAt: "2030-05-10T10:00",
+    });
+
+    await element._handleModeChange({
+      preventDefault() {},
+      target: { value: "automatic" },
+    });
+
+    expect(element._mode).to.equal("automatic");
+    expect(element._joinUrl).to.equal("");
+    expect(element._recordingUrl).to.equal(" https://youtube.com/watch?v=processed ");
+    expect(element.getMeetingData()).to.deep.equal({
+      meeting_join_url: "",
+      meeting_recording_url: "https://youtube.com/watch?v=processed",
+      meeting_requested: true,
+      meeting_provider_id: "zoom",
+    });
+  });
+
+  it("returns automatic recording overrides for session meeting data", async () => {
+    const element = await mountLitComponent("online-event-details", {
+      fieldNamePrefix: "sessions[0]",
+      meetingRecordingUrl: "https://example.com/original",
+    });
+
+    element._mode = "automatic";
+    element._createMeeting = true;
+    element._providerId = "zoom";
+    element._handleRecordingUrlChange({
+      target: { value: " https://youtube.com/watch?v=session-processed " },
+    });
+
+    expect(element.getMeetingData()).to.deep.equal({
+      meeting_join_url: "",
+      meeting_recording_url: "https://youtube.com/watch?v=session-processed",
+      meeting_requested: true,
+      meeting_provider_id: "zoom",
+    });
+  });
 });

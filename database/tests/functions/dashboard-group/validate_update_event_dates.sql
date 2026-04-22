@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(6);
+select plan(7);
 
 -- ============================================================================
 -- TESTS
@@ -91,6 +91,43 @@ select throws_ok(
     )$$,
     'session starts_at cannot be in the past',
     'Should reject a future session that moves into the past'
+);
+
+-- Should accept a live event update when a session keeps its current past dates
+select lives_ok(
+    $$select validate_update_event_dates(
+        jsonb_build_object(
+            'timezone', 'UTC',
+            'sessions', jsonb_build_array(
+                jsonb_build_object(
+                    'session_id', '00000000-0000-0000-0000-000000000103',
+                    'starts_at', to_char(
+                        current_timestamp at time zone 'UTC' - interval '45 minutes',
+                        'YYYY-MM-DD"T"HH24:MI:SS'
+                    ),
+                    'ends_at', to_char(
+                        current_timestamp at time zone 'UTC' - interval '15 minutes',
+                        'YYYY-MM-DD"T"HH24:MI:SS'
+                    )
+                )
+            )
+        ),
+        jsonb_build_object(
+            'starts_at', floor(extract(epoch from current_timestamp - interval '1 hour'))::bigint,
+            'ends_at', floor(extract(epoch from current_timestamp + interval '2 hours'))::bigint,
+            'sessions', jsonb_build_object(
+                to_char(current_timestamp at time zone 'UTC', 'YYYY-MM-DD'),
+                jsonb_build_array(
+                    jsonb_build_object(
+                        'session_id', '00000000-0000-0000-0000-000000000103',
+                        'starts_at', floor(extract(epoch from current_timestamp - interval '45 minutes'))::bigint,
+                        'ends_at', floor(extract(epoch from current_timestamp - interval '15 minutes'))::bigint
+                    )
+                )
+            )
+        )
+    )$$,
+    'Should accept a live event update when a session keeps its current past dates'
 );
 
 -- Should reject a non-UTC future event that moves into the past

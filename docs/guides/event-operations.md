@@ -428,6 +428,8 @@ Constraint violations can disable automatic mode until fixed.
   automatically created Zoom meetings.
 - Switching automatic to manual can remove auto-created meeting details.
 - Switching manual to automatic can replace existing manual links.
+- Event and session recording links for automatic meetings can be replaced later
+  with processed uploads hosted elsewhere.
 - Schedule or type changes can disable automatic mode if constraints are no longer met.
 - If sync fails, meeting errors surface in the editor until resolved.
 - In deployments without automatic-meeting support, only manual meeting URL fields are available.

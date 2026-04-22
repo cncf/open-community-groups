@@ -11,6 +11,9 @@ declare
     v_new_ends_at timestamptz;
     v_new_starts_at timestamptz;
     v_session jsonb;
+    v_session_before jsonb;
+    v_session_before_ends_at timestamptz;
+    v_session_before_starts_at timestamptz;
     v_session_ends_at timestamptz;
     v_session_starts_at timestamptz;
     v_timezone text := p_event->>'timezone';
@@ -75,15 +78,46 @@ begin
         if p_event->'sessions' is not null then
             for v_session in select jsonb_array_elements(p_event->'sessions')
             loop
+                v_session_before := null;
+                v_session_before_ends_at := null;
+                v_session_before_starts_at := null;
                 v_session_starts_at := (v_session->>'starts_at')::timestamp at time zone v_timezone;
+
+                if v_session->>'session_id' is not null then
+                    select sess
+                    into v_session_before
+                    from jsonb_each(p_event_before->'sessions') as day(day, sessions)
+                    cross join lateral jsonb_array_elements(sessions) as sess
+                    where sess->>'session_id' = v_session->>'session_id'
+                    limit 1;
+
+                    if v_session_before->>'ends_at' is not null then
+                        v_session_before_ends_at := to_timestamp((v_session_before->>'ends_at')::bigint);
+                    end if;
+
+                    if v_session_before->>'starts_at' is not null then
+                        v_session_before_starts_at := to_timestamp((v_session_before->>'starts_at')::bigint);
+                    end if;
+                end if;
+
                 if v_session_starts_at < current_timestamp then
-                    raise exception 'session starts_at cannot be in the past';
+                    if v_session_before_starts_at is null
+                       or v_session_before_starts_at >= current_timestamp then
+                        raise exception 'session starts_at cannot be in the past';
+                    elsif v_session_starts_at < v_session_before_starts_at then
+                        raise exception 'session starts_at cannot be earlier than current value';
+                    end if;
                 end if;
 
                 if v_session->>'ends_at' is not null then
                     v_session_ends_at := (v_session->>'ends_at')::timestamp at time zone v_timezone;
                     if v_session_ends_at < current_timestamp then
-                        raise exception 'session ends_at cannot be in the past';
+                        if v_session_before_ends_at is null
+                           or v_session_before_ends_at >= current_timestamp then
+                            raise exception 'session ends_at cannot be in the past';
+                        elsif v_session_ends_at < v_session_before_ends_at then
+                            raise exception 'session ends_at cannot be earlier than current value';
+                        end if;
                     end if;
                 end if;
             end loop;

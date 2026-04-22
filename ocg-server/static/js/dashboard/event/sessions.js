@@ -592,7 +592,7 @@ export class SessionsSection extends LitWrapper {
           session.meeting_requested === true || session.meeting_requested === "true";
         const isCfsLinkedSession = Boolean(session.cfs_submission_id);
         const meetingJoinUrl = automaticMeetingRequested ? "" : session.meeting_join_url || "";
-        const meetingRecordingUrl = automaticMeetingRequested ? "" : session.meeting_recording_url || "";
+        const meetingRecordingUrl = session.meeting_recording_url || "";
         const meetingProviderId =
           session.meeting_provider_id ||
           session.meeting_provider ||
@@ -1319,7 +1319,7 @@ class SessionItem extends LitWrapper {
     const sessionNameMaxLength = Number(this.sessionNameMaxLength) || -1;
     const locationMaxLength = Number(this.locationMaxLength) || -1;
 
-    return html` <div class="grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6 w-full">
+    return html` <div class="grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6 w-full h-full">
       <div class="col-span-full">
         <label class="form-label"> Session Title <span class="asterisk">*</span> </label>
         <div class="mt-2">
@@ -1606,7 +1606,7 @@ class SessionItem extends LitWrapper {
         ? html`
             <div class="col-span-full">
               <label class="form-label"> Session meeting details </label>
-              <div class="mt-2">
+              <div class="mt-2 mb-5">
                 ${this.meetingsEnabled
                   ? html`
                       <online-event-details
@@ -1663,10 +1663,12 @@ class SessionItem extends LitWrapper {
                                 placeholder="https://youtube.com/watch?v=..."
                                 @input=${(e) => this._onInputChange(e)}
                                 data-name="meeting_recording_url"
-                                ?disabled=${true}
+                                ?disabled=${this.disabled}
                               />
                             </div>
-                            <p class="form-legend">Add a recording link now or after the event.</p>
+                            <p class="form-legend">
+                              Add a recording link now or replace it later with a processed upload.
+                            </p>
                           </div>
                         </div>
                       </div>

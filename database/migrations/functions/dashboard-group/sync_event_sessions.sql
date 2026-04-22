@@ -43,9 +43,9 @@ begin
 
                 update session set
                     cfs_submission_id = nullif(v_session->>'cfs_submission_id', '')::uuid,
-                    description = v_session->>'description',
+                    description = nullif(v_session->>'description', ''),
                     ends_at = v_session_ends_at,
-                    location = v_session->>'location',
+                    location = nullif(v_session->>'location', ''),
                     meeting_hosts = v_session_meeting_hosts,
                     meeting_in_sync = case
                         when (v_session_before->>'meeting_in_sync')::boolean = false
@@ -53,9 +53,9 @@ begin
                         then false
                         else is_session_meeting_in_sync(v_session_before, v_session, p_event_before, p_event)
                     end,
-                    meeting_join_url = v_session->>'meeting_join_url',
-                    meeting_provider_id = v_session->>'meeting_provider_id',
-                    meeting_recording_url = v_session->>'meeting_recording_url',
+                    meeting_join_url = nullif(v_session->>'meeting_join_url', ''),
+                    meeting_provider_id = nullif(v_session->>'meeting_provider_id', ''),
+                    meeting_recording_url = nullif(v_session->>'meeting_recording_url', ''),
                     meeting_requested = (v_session->>'meeting_requested')::boolean,
                     name = v_session->>'name',
                     session_kind_id = v_session->>'kind',
@@ -87,20 +87,20 @@ begin
                 ) values (
                     p_event_id,
                     v_session->>'name',
-                    v_session->>'description',
+                    nullif(v_session->>'description', ''),
                     v_session_starts_at,
                     v_session_ends_at,
                     nullif(v_session->>'cfs_submission_id', '')::uuid,
                     v_session->>'kind',
-                    v_session->>'location',
+                    nullif(v_session->>'location', ''),
                     v_session_meeting_hosts,
                     case
                         when (v_session->>'meeting_requested')::boolean = true then false
                         else null
                     end,
-                    v_session->>'meeting_join_url',
-                    v_session->>'meeting_provider_id',
-                    v_session->>'meeting_recording_url',
+                    nullif(v_session->>'meeting_join_url', ''),
+                    nullif(v_session->>'meeting_provider_id', ''),
+                    nullif(v_session->>'meeting_recording_url', ''),
                     (v_session->>'meeting_requested')::boolean
                 )
                 returning session_id into v_session_id;
