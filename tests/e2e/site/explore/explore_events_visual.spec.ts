@@ -46,7 +46,7 @@ test.describe("site explore events page visual regression @visual", () => {
 
     await expectRegionScreenshot(
       page,
-      page.getByPlaceholder("Search events"),
+      getExploreSearchRow(page, "Search events"),
       "explore-events-mobile.png",
       { testInfo, useClippedPageScreenshot: true },
     );

@@ -35,7 +35,7 @@ test.describe("community home page visual regression @visual", () => {
 
     await expectRegionScreenshot(
       page,
-      page.locator(".community-description"),
+      getCommunityAboutSection(page),
       "community-home-mobile.png",
       { testInfo, useClippedPageScreenshot: true },
     );

@@ -46,7 +46,7 @@ test.describe("site explore groups page visual regression @visual", () => {
 
     await expectRegionScreenshot(
       page,
-      page.getByPlaceholder("Search groups"),
+      getExploreSearchRow(page, "Search groups"),
       "explore-groups-mobile.png",
       { testInfo, useClippedPageScreenshot: true },
     );

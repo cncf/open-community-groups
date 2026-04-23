@@ -262,7 +262,7 @@ const alignRegionHeightToSnapshot = async (
   }
 
   await region.evaluate(
-    (element, { expectedHeight }) => {
+    (element, { expectedHeight, adjustHeight }) => {
       const target = element as HTMLElement;
 
       target.dataset.ocgE2ePrevBoxSizing = target.style.boxSizing;
@@ -271,13 +271,19 @@ const alignRegionHeightToSnapshot = async (
       target.dataset.ocgE2ePrevHeight = target.style.height;
       target.dataset.ocgE2ePrevOverflow = target.style.overflow;
       target.style.boxSizing = "border-box";
-      target.style.minHeight = `${expectedHeight}px`;
+
+      if (adjustHeight > 0) {
+        target.style.minHeight = `${expectedHeight}px`;
+        return;
+      }
+
       target.style.maxHeight = `${expectedHeight}px`;
       target.style.height = `${expectedHeight}px`;
       target.style.overflow = "hidden";
     },
     {
       expectedHeight: snapshotDimensions.height,
+      adjustHeight: heightDelta,
     },
   );
 };

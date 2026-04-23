@@ -38,7 +38,7 @@ test.describe("group page visual regression @visual", () => {
 
     await expectRegionScreenshot(
       page,
-      page.getByRole("heading", { level: 1, name: TEST_GROUP_NAMES.alpha }).locator(".."),
+      getIntroSection(page),
       "group-page-mobile.png",
       { testInfo, useClippedPageScreenshot: true },
     );
