@@ -3,7 +3,7 @@ name: CI / E2E
 on:
   push:
     branches:
-      - "**"
+      - cynthia-sg/improve-e2e-tests
   pull_request:
     branches:
       - main
