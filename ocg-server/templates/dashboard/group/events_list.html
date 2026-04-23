@@ -249,6 +249,8 @@
                           <li>
                             <button id="unpublish-event-{{ event.event_id }}"
                                     hx-put="/dashboard/group/events/{{ event.event_id }}/unpublish"
+                                    data-action-url="/dashboard/group/events/{{ event.event_id }}/unpublish"
+                                    data-has-related-events="{{ event.has_related_events }}"
                                     hx-target="#dashboard-content"
                                     hx-indicator="#dashboard-spinner"
                                     hx-trigger="confirmed"
@@ -266,31 +268,58 @@
                             </button>
                             <script type="module">
                               import {
-                                showConfirmAlert,
+                                confirmAction,
+                                confirmSeriesAction,
                                 handleHtmxResponse,
                               } from '/static/js/common/alerts.js';
 
-                              const unpublishEventButton = document.getElementById('unpublish-event-{{ event.event_id }}');
-                              if (unpublishEventButton) {
-                                unpublishEventButton.addEventListener('click', () => {
-                                  showConfirmAlert("Are you sure you wish to unpublish this event?", "unpublish-event-{{ event.event_id }}", "Yes");
-                                });
+                              (() => {
+                                const unpublishEventButton = document.getElementById('unpublish-event-{{ event.event_id }}');
+                                if (unpublishEventButton) {
+                                  unpublishEventButton.addEventListener('click', async () => {
+                                    let scope = "this";
+                                    if (unpublishEventButton.dataset.hasRelatedEvents === "true") {
+                                      scope = await confirmSeriesAction({
+                                        message: "This event is part of a recurring series. What would you like to unpublish?",
+                                        confirmText: "Only this event",
+                                        denyText: "All in series",
+                                      });
+                                      if (!scope) {
+                                        return;
+                                      }
+                                    } else {
+                                      const confirmed = await confirmAction({
+                                        message: "Are you sure you wish to unpublish this event?",
+                                        confirmText: "Yes",
+                                      });
+                                      if (!confirmed) {
+                                        return;
+                                      }
+                                    }
 
-                                unpublishEventButton.addEventListener("htmx:afterRequest", (e) => {
-                                  const xhr = e.detail?.xhr;
-                                  handleHtmxResponse({
-                                    xhr,
-                                    successMessage: "You have successfully unpublished the event.",
-                                    errorMessage: "An error occurred unpublishing this event. Please try again later."
+                                    const url = unpublishEventButton.dataset.actionUrl;
+                                    unpublishEventButton.setAttribute("hx-put", scope === "series" ? `${url}?scope=series` : url);
+                                    htmx.trigger(unpublishEventButton, "confirmed");
                                   });
-                                });
-                              }
+
+                                  unpublishEventButton.addEventListener("htmx:afterRequest", (e) => {
+                                    const xhr = e.detail?.xhr;
+                                    handleHtmxResponse({
+                                      xhr,
+                                      successMessage: "You have successfully unpublished the event.",
+                                      errorMessage: "An error occurred unpublishing this event. Please try again later."
+                                    });
+                                  });
+                                }
+                              })();
                             </script>
                           </li>
                         {% elif !event.canceled -%}
                           <li>
                             <button id="publish-event-{{ event.event_id }}"
                                     hx-put="/dashboard/group/events/{{ event.event_id }}/publish"
+                                    data-action-url="/dashboard/group/events/{{ event.event_id }}/publish"
+                                    data-has-related-events="{{ event.has_related_events }}"
                                     hx-target="#dashboard-content"
                                     hx-indicator="#dashboard-spinner"
                                     hx-trigger="confirmed"
@@ -308,25 +337,50 @@
                             </button>
                             <script type="module">
                               import {
-                                showConfirmAlert,
+                                confirmAction,
+                                confirmSeriesAction,
                                 handleHtmxResponse,
                               } from '/static/js/common/alerts.js';
 
-                              const publishEventButton = document.getElementById('publish-event-{{ event.event_id }}');
-                              if (publishEventButton) {
-                                publishEventButton.addEventListener('click', () => {
-                                  showConfirmAlert("Are you sure you wish to publish this event?", "publish-event-{{ event.event_id }}", "Yes");
-                                });
+                              (() => {
+                                const publishEventButton = document.getElementById('publish-event-{{ event.event_id }}');
+                                if (publishEventButton) {
+                                  publishEventButton.addEventListener('click', async () => {
+                                    let scope = "this";
+                                    if (publishEventButton.dataset.hasRelatedEvents === "true") {
+                                      scope = await confirmSeriesAction({
+                                        message: "This event is part of a recurring series. What would you like to publish?",
+                                        confirmText: "Only this event",
+                                        denyText: "All in series",
+                                      });
+                                      if (!scope) {
+                                        return;
+                                      }
+                                    } else {
+                                      const confirmed = await confirmAction({
+                                        message: "Are you sure you wish to publish this event?",
+                                        confirmText: "Yes",
+                                      });
+                                      if (!confirmed) {
+                                        return;
+                                      }
+                                    }
 
-                                publishEventButton.addEventListener("htmx:afterRequest", (e) => {
-                                  const xhr = e.detail?.xhr;
-                                  handleHtmxResponse({
-                                    xhr,
-                                    successMessage: "You have successfully published the event.",
-                                    errorMessage: "An error occurred publishing this event. Please try again later."
+                                    const url = publishEventButton.dataset.actionUrl;
+                                    publishEventButton.setAttribute("hx-put", scope === "series" ? `${url}?scope=series` : url);
+                                    htmx.trigger(publishEventButton, "confirmed");
                                   });
-                                });
-                              }
+
+                                  publishEventButton.addEventListener("htmx:afterRequest", (e) => {
+                                    const xhr = e.detail?.xhr;
+                                    handleHtmxResponse({
+                                      xhr,
+                                      successMessage: "You have successfully published the event.",
+                                      errorMessage: "An error occurred publishing this event. Please try again later."
+                                    });
+                                  });
+                                }
+                              })();
                             </script>
                           </li>
                         {% endif -%}
@@ -336,6 +390,8 @@
                           <li>
                             <button id="cancel-event-{{ event.event_id }}"
                                     hx-put="/dashboard/group/events/{{ event.event_id }}/cancel"
+                                    data-action-url="/dashboard/group/events/{{ event.event_id }}/cancel"
+                                    data-has-related-events="{{ event.has_related_events }}"
                                     hx-target="#dashboard-content"
                                     hx-indicator="#dashboard-spinner"
                                     hx-trigger="confirmed"
@@ -353,14 +409,37 @@
                             </button>
                             <script type="module">
                               import {
-                                showConfirmAlert,
+                                confirmAction,
+                                confirmSeriesAction,
                                 handleHtmxResponse,
                               } from '/static/js/common/alerts.js';
 
                               const cancelEventButton = document.getElementById('cancel-event-{{ event.event_id }}');
                               if (cancelEventButton) {
-                                cancelEventButton.addEventListener('click', (event) => {
-                                  showConfirmAlert("Are you sure you wish to cancel this event? This action is not reversible.", "cancel-event-{{ event.event_id }}", "Yes");
+                                cancelEventButton.addEventListener('click', async () => {
+                                  let scope = "this";
+                                  if (cancelEventButton.dataset.hasRelatedEvents === "true") {
+                                    scope = await confirmSeriesAction({
+                                      message: "This event is part of a recurring series. What would you like to cancel?",
+                                      confirmText: "Only this event",
+                                      denyText: "All in series",
+                                    });
+                                    if (!scope) {
+                                      return;
+                                    }
+                                  } else {
+                                    const confirmed = await confirmAction({
+                                      message: "Are you sure you wish to cancel this event? This action is not reversible.",
+                                      confirmText: "Yes",
+                                    });
+                                    if (!confirmed) {
+                                      return;
+                                    }
+                                  }
+
+                                  const url = cancelEventButton.dataset.actionUrl;
+                                  cancelEventButton.setAttribute("hx-put", scope === "series" ? `${url}?scope=series` : url);
+                                  htmx.trigger(cancelEventButton, "confirmed");
                                 });
 
                                 cancelEventButton.addEventListener("htmx:afterRequest", (e) => {
@@ -380,6 +459,8 @@
                         <li>
                           <button id="delete-event-{{ event.event_id }}"
                                   hx-delete="/dashboard/group/events/{{ event.event_id }}/delete"
+                                  data-action-url="/dashboard/group/events/{{ event.event_id }}/delete"
+                                  data-has-related-events="{{ event.has_related_events }}"
                                   hx-target="#dashboard-content"
                                   hx-indicator="#dashboard-spinner"
                                   hx-trigger="confirmed"
@@ -397,19 +478,38 @@
                           </button>
                           <script type="module">
                             import {
-                              showConfirmAlert,
+                              confirmAction,
+                              confirmSeriesAction,
                               handleHtmxResponse,
                             } from '/static/js/common/alerts.js';
 
                             (() => {
                               const deleteEventButton = document.getElementById('delete-event-{{ event.event_id }}');
                               if (deleteEventButton) {
-                                deleteEventButton.addEventListener('click', () => {
-                                  showConfirmAlert(
-                                    "Are you sure you wish to delete this event?",
-                                    "delete-event-{{ event.event_id }}",
-                                    "Yes"
-                                  );
+                                deleteEventButton.addEventListener('click', async () => {
+                                  let scope = "this";
+                                  if (deleteEventButton.dataset.hasRelatedEvents === "true") {
+                                    scope = await confirmSeriesAction({
+                                      message: "This event is part of a recurring series. What would you like to delete?",
+                                      confirmText: "Only this event",
+                                      denyText: "All in series",
+                                    });
+                                    if (!scope) {
+                                      return;
+                                    }
+                                  } else {
+                                    const confirmed = await confirmAction({
+                                      message: "Are you sure you wish to delete this event?",
+                                      confirmText: "Yes",
+                                    });
+                                    if (!confirmed) {
+                                      return;
+                                    }
+                                  }
+
+                                  const url = deleteEventButton.dataset.actionUrl;
+                                  deleteEventButton.setAttribute("hx-delete", scope === "series" ? `${url}?scope=series` : url);
+                                  htmx.trigger(deleteEventButton, "confirmed");
                                 });
 
                                 deleteEventButton.addEventListener("htmx:afterRequest", (e) => {
@@ -630,6 +730,8 @@
                         <li>
                           <button id="delete-event-{{ event.event_id }}"
                                   hx-delete="/dashboard/group/events/{{ event.event_id }}/delete"
+                                  data-action-url="/dashboard/group/events/{{ event.event_id }}/delete"
+                                  data-has-related-events="{{ event.has_related_events }}"
                                   hx-target="#dashboard-content"
                                   hx-indicator="#dashboard-spinner"
                                   hx-trigger="confirmed"
@@ -647,19 +749,38 @@
                           </button>
                           <script type="module">
                             import {
-                              showConfirmAlert,
+                              confirmAction,
+                              confirmSeriesAction,
                               handleHtmxResponse,
                             } from '/static/js/common/alerts.js';
 
                             (() => {
                               const deleteEventButton = document.getElementById('delete-event-{{ event.event_id }}');
                               if (deleteEventButton) {
-                                deleteEventButton.addEventListener('click', () => {
-                                  showConfirmAlert(
-                                    "Are you sure you wish to delete this event?",
-                                    "delete-event-{{ event.event_id }}",
-                                    "Yes"
-                                  );
+                                deleteEventButton.addEventListener('click', async () => {
+                                  let scope = "this";
+                                  if (deleteEventButton.dataset.hasRelatedEvents === "true") {
+                                    scope = await confirmSeriesAction({
+                                      message: "This event is part of a recurring series. What would you like to delete?",
+                                      confirmText: "Only this event",
+                                      denyText: "All in series",
+                                    });
+                                    if (!scope) {
+                                      return;
+                                    }
+                                  } else {
+                                    const confirmed = await confirmAction({
+                                      message: "Are you sure you wish to delete this event?",
+                                      confirmText: "Yes",
+                                    });
+                                    if (!confirmed) {
+                                      return;
+                                    }
+                                  }
+
+                                  const url = deleteEventButton.dataset.actionUrl;
+                                  deleteEventButton.setAttribute("hx-delete", scope === "series" ? `${url}?scope=series` : url);
+                                  htmx.trigger(deleteEventButton, "confirmed");
                                 });
 
                                 deleteEventButton.addEventListener("htmx:afterRequest", (e) => {

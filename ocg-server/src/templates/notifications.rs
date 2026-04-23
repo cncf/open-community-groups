@@ -86,6 +86,15 @@ pub(crate) struct EventPublished {
     pub theme: Theme,
 }
 
+/// Template event item for aggregate event series notifications.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct EventSeriesNotificationItem {
+    /// Event summary data.
+    pub event: EventSummary,
+    /// Link to the event page.
+    pub link: String,
+}
+
 /// Template for attendee refund approval notification.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "notifications/event_refund_approved.html")]
@@ -142,6 +151,34 @@ pub(crate) struct EventRescheduled {
     pub event: EventSummary,
     /// Link to the event page.
     pub link: String,
+    /// Theme configuration for the community.
+    pub theme: Theme,
+}
+
+/// Template for aggregate event series canceled notification.
+#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[template(path = "notifications/event_series_canceled.html")]
+pub(crate) struct EventSeriesCanceled {
+    /// Number of events included in the notification.
+    pub event_count: usize,
+    /// Events included in the notification.
+    pub events: Vec<EventSeriesNotificationItem>,
+    /// Name of the group hosting the events.
+    pub group_name: String,
+    /// Theme configuration for the community.
+    pub theme: Theme,
+}
+
+/// Template for aggregate event series published notification.
+#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[template(path = "notifications/event_series_published.html")]
+pub(crate) struct EventSeriesPublished {
+    /// Number of events included in the notification.
+    pub event_count: usize,
+    /// Events included in the notification.
+    pub events: Vec<EventSeriesNotificationItem>,
+    /// Name of the group hosting the events.
+    pub group_name: String,
     /// Theme configuration for the community.
     pub theme: Theme,
 }
@@ -256,6 +293,20 @@ pub(crate) struct SpeakerWelcome {
     pub event: EventSummary,
     /// Link to the event page.
     pub link: String,
+    /// Theme configuration for the community.
+    pub theme: Theme,
+}
+
+/// Template for aggregate speaker welcome notification.
+#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[template(path = "notifications/speaker_series_welcome.html")]
+pub(crate) struct SpeakerSeriesWelcome {
+    /// Number of events included in the notification.
+    pub event_count: usize,
+    /// Events included in the notification.
+    pub events: Vec<EventSeriesNotificationItem>,
+    /// Name of the group hosting the events.
+    pub group_name: String,
     /// Theme configuration for the community.
     pub theme: Theme,
 }

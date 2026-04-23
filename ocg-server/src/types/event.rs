@@ -25,6 +25,7 @@ use crate::{
 
 /// Summary event information.
 #[skip_serializing_none]
+#[allow(clippy::struct_excessive_bools)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EventSummary {
     /// Whether the event has been canceled.
@@ -41,6 +42,9 @@ pub struct EventSummary {
     pub group_name: String,
     /// URL-friendly identifier for the group hosting this event.
     pub group_slug: String,
+    /// Whether this event has active related events in the same series.
+    #[serde(default)]
+    pub has_related_events: bool,
     /// Type of event (in-person or virtual).
     pub kind: EventKind,
     /// URL to the event or group's logo image.
@@ -67,6 +71,8 @@ pub struct EventSummary {
     /// Event end time in UTC.
     #[serde(default, with = "chrono::serde::ts_seconds_option")]
     pub ends_at: Option<DateTime<Utc>>,
+    /// Linked event series identifier, when the event was created as recurring.
+    pub event_series_id: Option<Uuid>,
     /// Latitude of the event's location.
     pub latitude: Option<f64>,
     /// Longitude of the event's location.
@@ -169,6 +175,9 @@ pub struct EventFull {
     pub event_id: Uuid,
     /// Group hosting the event.
     pub group: GroupSummary,
+    /// Whether this event has active related events in the same series.
+    #[serde(default)]
+    pub has_related_events: bool,
     /// Whether any ticket purchases already exist for this event.
     pub has_ticket_purchases: bool,
     /// Event hosts.
@@ -223,6 +232,8 @@ pub struct EventFull {
     pub ends_at: Option<DateTime<Utc>>,
     /// Whether event reminder notifications are enabled.
     pub event_reminder_enabled: Option<bool>,
+    /// Linked event series identifier, when the event was created as recurring.
+    pub event_series_id: Option<Uuid>,
     /// Latitude of the event's location.
     pub latitude: Option<f64>,
     /// Legacy event hosts.
@@ -436,6 +447,7 @@ impl From<&EventFull> for EventSummary {
             group_category_name: event.group.category.name.clone(),
             group_name: event.group.name.clone(),
             group_slug: event.group.slug.clone(),
+            has_related_events: event.has_related_events,
             kind: event.kind.clone(),
             logo_url: event.logo_url.clone(),
             name: event.name.clone(),
@@ -448,6 +460,7 @@ impl From<&EventFull> for EventSummary {
             capacity: event.capacity,
             description_short: event.description_short.clone(),
             ends_at: event.ends_at,
+            event_series_id: event.event_series_id,
             latitude: event.latitude,
             longitude: event.longitude,
             meeting_join_url: event.meeting_join_url.clone(),
@@ -742,7 +755,7 @@ fn has_sellable_ticket_types(ticket_types: Option<&[EventTicketType]>) -> bool {
 mod tests {
     use std::collections::BTreeMap;
 
-    use chrono::{Duration, Utc};
+    use chrono::{Duration, TimeZone, Utc};
 
     use crate::types::payments::{EventTicketCurrentPrice, EventTicketType};
 
@@ -762,6 +775,79 @@ mod tests {
         assert!(attendance.can_request_refund(Some(Utc::now() + Duration::hours(1))));
         assert!(attendance.can_request_refund(None));
         assert!(!attendance.can_request_refund(Some(Utc::now() - Duration::hours(1))));
+    }
+
+    #[test]
+    fn event_full_to_summary_maps_event_fields() {
+        let community_id = Uuid::new_v4();
+        let event_id = Uuid::new_v4();
+        let event_series_id = Uuid::new_v4();
+        let group_id = Uuid::new_v4();
+        let starts_at = Utc.with_ymd_and_hms(2030, 1, 2, 3, 4, 5).unwrap();
+        let ends_at = starts_at + Duration::hours(2);
+        let event = EventFull {
+            canceled: true,
+            community: CommunitySummary {
+                community_id,
+                display_name: "Community Display".to_string(),
+                name: "community".to_string(),
+                ..Default::default()
+            },
+            description_short: Some("Short description".to_string()),
+            ends_at: Some(ends_at),
+            event_id,
+            event_series_id: Some(event_series_id),
+            group: GroupSummary {
+                category: crate::types::group::GroupCategory {
+                    name: "Technology".to_string(),
+                    ..Default::default()
+                },
+                group_id,
+                name: "Group Name".to_string(),
+                slug: "group-slug".to_string(),
+                ..Default::default()
+            },
+            has_related_events: true,
+            kind: EventKind::Hybrid,
+            logo_url: "https://example.com/logo.png".to_string(),
+            name: "Event Name".to_string(),
+            payment_currency_code: Some("USD".to_string()),
+            published: true,
+            remaining_capacity: Some(7),
+            slug: "event-slug".to_string(),
+            starts_at: Some(starts_at),
+            timezone: chrono_tz::Europe::Madrid,
+            venue_city: Some("Madrid".to_string()),
+            waitlist_count: 3,
+            waitlist_enabled: true,
+            ..Default::default()
+        };
+        let summary = EventSummary::from(&event);
+
+        assert!(summary.canceled);
+        assert_eq!(summary.community_display_name, "Community Display");
+        assert_eq!(summary.community_name, "community");
+        assert_eq!(summary.description_short.as_deref(), Some("Short description"));
+        assert_eq!(summary.ends_at, Some(ends_at));
+        assert_eq!(summary.event_id, event_id);
+        assert_eq!(summary.event_series_id, Some(event_series_id));
+        assert_eq!(summary.group_category_name, "Technology");
+        assert_eq!(summary.group_name, "Group Name");
+        assert_eq!(summary.group_slug, "group-slug");
+        assert!(summary.has_related_events);
+        assert_eq!(summary.kind, EventKind::Hybrid);
+        assert_eq!(summary.logo_url, "https://example.com/logo.png");
+        assert_eq!(summary.name, "Event Name");
+        assert_eq!(summary.payment_currency_code.as_deref(), Some("USD"));
+        assert_eq!(summary.popover_html, None);
+        assert!(summary.published);
+        assert_eq!(summary.remaining_capacity, Some(7));
+        assert_eq!(summary.slug, "event-slug");
+        assert_eq!(summary.starts_at, Some(starts_at));
+        assert_eq!(summary.timezone, chrono_tz::Europe::Madrid);
+        assert_eq!(summary.venue_city.as_deref(), Some("Madrid"));
+        assert_eq!(summary.waitlist_count, 3);
+        assert!(summary.waitlist_enabled);
     }
 
     #[test]
@@ -1225,6 +1311,7 @@ mod tests {
             group_category_name: "Technology".to_string(),
             group_name: "Group".to_string(),
             group_slug: "group".to_string(),
+            has_related_events: false,
             kind: EventKind::InPerson,
             logo_url: "https://example.com/logo.png".to_string(),
             name: "Event".to_string(),
@@ -1239,6 +1326,7 @@ mod tests {
             capacity: None,
             description_short: None,
             ends_at: None,
+            event_series_id: None,
             latitude: None,
             longitude: None,
             meeting_join_url: None,

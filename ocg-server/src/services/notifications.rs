@@ -27,8 +27,9 @@ use crate::{
     templates::notifications::{
         CfsSubmissionUpdated, CommunityTeamInvitation, EmailVerification, EventCanceled, EventCustom,
         EventPublished, EventRefundApproved, EventRefundRejected, EventRefundRequested, EventReminder,
-        EventRescheduled, EventWaitlistJoined, EventWaitlistLeft, EventWaitlistPromoted, EventWelcome,
-        GroupCustom, GroupTeamInvitation, GroupWelcome, SessionProposalCoSpeakerInvitation, SpeakerWelcome,
+        EventRescheduled, EventSeriesCanceled, EventSeriesPublished, EventWaitlistJoined, EventWaitlistLeft,
+        EventWaitlistPromoted, EventWelcome, GroupCustom, GroupTeamInvitation, GroupWelcome,
+        SessionProposalCoSpeakerInvitation, SpeakerSeriesWelcome, SpeakerWelcome,
     },
 };
 
@@ -329,6 +330,18 @@ impl DeliveryWorker {
                 let body = template.render()?;
                 (subject, body)
             }
+            NotificationKind::EventSeriesCanceled => {
+                let subject = "Events canceled".to_string();
+                let template: EventSeriesCanceled = serde_json::from_value(template_data)?;
+                let body = template.render()?;
+                (subject, body)
+            }
+            NotificationKind::EventSeriesPublished => {
+                let subject = "New events published".to_string();
+                let template: EventSeriesPublished = serde_json::from_value(template_data)?;
+                let body = template.render()?;
+                (subject, body)
+            }
             NotificationKind::EventWaitlistJoined => {
                 let subject = "You joined the waiting list".to_string();
                 let template: EventWaitlistJoined = serde_json::from_value(template_data)?;
@@ -374,6 +387,12 @@ impl DeliveryWorker {
             NotificationKind::SessionProposalCoSpeakerInvitation => {
                 let subject = "Session proposal co-speaker invitation".to_string();
                 let template: SessionProposalCoSpeakerInvitation = serde_json::from_value(template_data)?;
+                let body = template.render()?;
+                (subject, body)
+            }
+            NotificationKind::SpeakerSeriesWelcome => {
+                let subject = "You're speaking at upcoming events".to_string();
+                let template: SpeakerSeriesWelcome = serde_json::from_value(template_data)?;
                 let body = template.render()?;
                 (subject, body)
             }
@@ -540,6 +559,10 @@ pub(crate) enum NotificationKind {
     EventReminder,
     /// Notification for an event rescheduled.
     EventRescheduled,
+    /// Notification for multiple canceled events in a linked series.
+    EventSeriesCanceled,
+    /// Notification for multiple published events in a linked series.
+    EventSeriesPublished,
     /// Notification for joining an event waiting list.
     EventWaitlistJoined,
     /// Notification for leaving an event waiting list.
@@ -556,6 +579,8 @@ pub(crate) enum NotificationKind {
     GroupWelcome,
     /// Notification inviting a co-speaker to respond to a session proposal invitation.
     SessionProposalCoSpeakerInvitation,
+    /// Notification welcoming a speaker to multiple events in a linked series.
+    SpeakerSeriesWelcome,
     /// Notification welcoming a speaker to an event.
     SpeakerWelcome,
 }

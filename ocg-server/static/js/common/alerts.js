@@ -203,6 +203,49 @@ export const confirmAction = async ({ message, confirmText, cancelText = "No", w
 };
 
 /**
+ * Displays an awaitable confirmation dialog with single-event and series options.
+ * @param {Object} options - Dialog options
+ * @param {string} options.message - The confirmation message to display
+ * @param {string} options.confirmText - Text for the single-event button
+ * @param {string} options.denyText - Text for the series button
+ * @param {string} [options.cancelText] - Text for the cancel button
+ * @param {boolean} [options.withHtml] - Whether to display HTML content
+ * @returns {Promise<"this"|"series"|null>} Selected action scope
+ */
+export const confirmSeriesAction = async ({
+  message,
+  confirmText,
+  denyText,
+  cancelText = "Cancel",
+  withHtml = false,
+}) => {
+  const alertOptions = {
+    text: message,
+    icon: "warning",
+    showCancelButton: true,
+    showDenyButton: true,
+    confirmButtonText: confirmText,
+    denyButtonText: denyText,
+    cancelButtonText: cancelText,
+    ...getCommonAlertOptions(),
+    position: "center",
+    backdrop: true,
+  };
+  if (withHtml) {
+    alertOptions.html = message;
+  }
+
+  const result = await Swal.fire(alertOptions);
+  if (result.isConfirmed) {
+    return "this";
+  }
+  if (result.isDenied) {
+    return "series";
+  }
+  return null;
+};
+
+/**
  * Displays a confirmation dialog with Yes/No options.
  * Triggers an HTMX 'confirmed' event on the specified button if confirmed.
  * @param {string} message - The confirmation message to display

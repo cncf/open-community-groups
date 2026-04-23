@@ -1,0 +1,57 @@
+{% extends "notifications/base.html" -%}
+
+{% block subject -%}
+  You're speaking at upcoming events
+{% endblock subject -%}
+
+{% block preheader -%}
+  You are speaking at {{ event_count }} events with {{ group_name }}.
+{% endblock preheader -%}
+
+{% block content -%}
+  <p class="default mb-30">
+    Thanks for speaking at {{ event_count }} events with
+    <strong>{{ group_name }}</strong> on <strong>Open Community Groups</strong>.
+    <br />
+    <br />
+    You're all set and we'll keep you posted if anything changes.
+  </p>
+
+  {% for item in events -%}
+    <p class="default mb-15">
+      <strong>
+        <a href="{{ item.link }}" target="_blank" rel="noopener noreferrer">{{ item.event.name }}</a>
+      </strong>
+      <br />
+      {% if let Some(starts_at) = &item.event.starts_at -%}
+        {{ starts_at.with_timezone(item.event.timezone).format("%A, %B %e, %G · %I:%M %p %Z") }}
+        <br />
+      {% endif -%}
+      {% if let Some(location) = &item.event.location(90) -%}
+        {{ location }}
+        <br />
+      {% endif -%}
+      {% if let Some(meeting_join_url) = &item.event.meeting_join_url -%}
+        Meeting link:
+        <a href="{{ meeting_join_url }}"
+           target="_blank"
+           rel="noopener noreferrer">{{ meeting_join_url }}</a>
+        <br />
+        {% if let Some(meeting_password) = &item.event.meeting_password -%}
+          Meeting password:
+          <code class="ml-2 px-2 py-0.5 bg-stone-100 rounded text-stone-800">
+            {{ meeting_password }}
+          </code>
+          <br />
+        {% endif -%}
+      {% endif -%}
+    </p>
+  {% endfor -%}
+
+  <p class="default mt-30 mb-15">Thanks for speaking!</p>
+{% endblock content -%}
+
+{% block footer -%}
+  You are receiving this because you're listed as a speaker for events from {{ group_name }}.
+  If this wasn't you, feel free to ignore this message.
+{% endblock footer -%}

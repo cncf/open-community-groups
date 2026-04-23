@@ -446,6 +446,69 @@ fn test_delivery_worker_prepare_content_event_reminder_legacy_template_data() {
 }
 
 #[test]
+fn test_delivery_worker_prepare_content_event_series_canceled() {
+    // Setup notification
+    let notification = Notification {
+        attachments: vec![],
+        email: "user@example.test".to_string(),
+        kind: NotificationKind::EventSeriesCanceled,
+        notification_id: Uuid::new_v4(),
+        template_data: Some(sample_event_series_template_data()),
+    };
+
+    // Prepare content
+    let (subject, body) = DeliveryWorker::prepare_content(&notification).unwrap();
+
+    // Check content matches expectations
+    assert_eq!(subject, "Events canceled");
+    assert!(body.contains("2 events from"));
+    assert!(body.contains("Series Event One"));
+    assert!(body.contains("Series Event Two"));
+}
+
+#[test]
+fn test_delivery_worker_prepare_content_event_series_published() {
+    // Setup notification
+    let notification = Notification {
+        attachments: vec![],
+        email: "user@example.test".to_string(),
+        kind: NotificationKind::EventSeriesPublished,
+        notification_id: Uuid::new_v4(),
+        template_data: Some(sample_event_series_template_data()),
+    };
+
+    // Prepare content
+    let (subject, body) = DeliveryWorker::prepare_content(&notification).unwrap();
+
+    // Check content matches expectations
+    assert_eq!(subject, "New events published");
+    assert!(body.contains("2 new events"));
+    assert!(body.contains("Series Event One"));
+    assert!(body.contains("Series Event Two"));
+}
+
+#[test]
+fn test_delivery_worker_prepare_content_speaker_series_welcome() {
+    // Setup notification
+    let notification = Notification {
+        attachments: vec![],
+        email: "user@example.test".to_string(),
+        kind: NotificationKind::SpeakerSeriesWelcome,
+        notification_id: Uuid::new_v4(),
+        template_data: Some(sample_event_series_template_data()),
+    };
+
+    // Prepare content
+    let (subject, body) = DeliveryWorker::prepare_content(&notification).unwrap();
+
+    // Check content matches expectations
+    assert_eq!(subject, "You're speaking at upcoming events");
+    assert!(body.contains("2 events with"));
+    assert!(body.contains("Series Event One"));
+    assert!(body.contains("Series Event Two"));
+}
+
+#[test]
 fn test_delivery_worker_prepare_content_event_waitlist_joined() {
     // Setup notification
     let notification = Notification {
@@ -712,6 +775,63 @@ fn sample_event_reminder_template_data() -> serde_json::Value {
             "waitlist_enabled": false
         },
         "link": "https://example.test/test-community/group/notification-group/event/reminder-event",
+        "theme": {
+            "primary_color": "#000000"
+        }
+    })
+}
+
+/// Sample template payload for aggregate event series notifications.
+fn sample_event_series_template_data() -> serde_json::Value {
+    json!({
+        "event_count": 2,
+        "events": [
+            {
+                "event": {
+                    "canceled": false,
+                    "community_display_name": "Test Community",
+                    "community_name": "test-community",
+                    "event_id": "11111111-1111-1111-1111-111111111111",
+                    "group_category_name": "Community",
+                    "group_name": "Notification Group",
+                    "group_slug": "notification-group",
+                    "kind": "hybrid",
+                    "logo_url": "https://example.com/logo.png",
+                    "name": "Series Event One",
+                    "published": true,
+                    "slug": "series-event-one",
+                    "starts_at": 1_914_724_800,
+                    "timezone": "UTC",
+                    "venue_name": "Conference Hall",
+                    "waitlist_count": 0,
+                    "waitlist_enabled": false
+                },
+                "link": "https://example.test/test-community/group/notification-group/event/series-event-one"
+            },
+            {
+                "event": {
+                    "canceled": false,
+                    "community_display_name": "Test Community",
+                    "community_name": "test-community",
+                    "event_id": "22222222-2222-2222-2222-222222222222",
+                    "group_category_name": "Community",
+                    "group_name": "Notification Group",
+                    "group_slug": "notification-group",
+                    "kind": "hybrid",
+                    "logo_url": "https://example.com/logo.png",
+                    "name": "Series Event Two",
+                    "published": true,
+                    "slug": "series-event-two",
+                    "starts_at": 1_915_329_600,
+                    "timezone": "UTC",
+                    "venue_name": "Conference Hall",
+                    "waitlist_count": 0,
+                    "waitlist_enabled": false
+                },
+                "link": "https://example.test/test-community/group/notification-group/event/series-event-two"
+            }
+        ],
+        "group_name": "Notification Group",
         "theme": {
             "primary_color": "#000000"
         }

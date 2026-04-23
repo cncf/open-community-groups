@@ -22,9 +22,10 @@ use crate::{
         notifications::{MockNotificationsManager, NotificationKind},
     },
     templates::{
-        dashboard::DASHBOARD_PAGINATION_LIMIT,
+        dashboard::{DASHBOARD_PAGINATION_LIMIT, group::events::EventRecurrencePattern},
         notifications::{
-            EventCanceled, EventPublished, EventRescheduled, EventWaitlistPromoted, SpeakerWelcome,
+            EventCanceled, EventPublished, EventRescheduled, EventSeriesCanceled, EventSeriesPublished,
+            EventWaitlistPromoted, SpeakerWelcome,
         },
     },
     types::{
@@ -672,6 +673,100 @@ async fn test_add_success() {
 }
 
 #[tokio::test]
+async fn test_add_recurring_success() {
+    // Setup identifiers and data structures
+    let community_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(
+        session_id,
+        user_id,
+        &auth_hash,
+        Some(community_id),
+        Some(group_id),
+    );
+    let mut event_form = sample_event_form();
+    event_form.ends_at = Some((Utc::now() + chrono::Duration::days(8)).naive_utc());
+    event_form.recurrence_additional_occurrences = Some(2);
+    event_form.recurrence_pattern = Some(EventRecurrencePattern::Weekly);
+    event_form.starts_at = Some((Utc::now() + chrono::Duration::days(7)).naive_utc());
+    let event_name = event_form.name.clone();
+    let body = serde_qs::to_string(&event_form).unwrap();
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::EventsWrite
+        })
+        .returning(|_, _, _, _| Ok(true));
+    db.expect_add_event().times(0);
+    db.expect_add_event_series()
+        .times(1)
+        .withf(move |uid, id, events, recurrence, cfg_max_participants| {
+            let names_match = events.iter().all(|event| {
+                event
+                    .get("name")
+                    .and_then(serde_json::Value::as_str)
+                    .is_some_and(|name| name == event_name)
+            });
+
+            *uid == user_id
+                && *id == group_id
+                && events.len() == 3
+                && names_match
+                && recurrence
+                    .get("additional_occurrences")
+                    .and_then(serde_json::Value::as_i64)
+                    == Some(2)
+                && recurrence.get("pattern").and_then(serde_json::Value::as_str) == Some("weekly")
+                && cfg_max_participants.get(&MeetingProvider::Zoom) == Some(&100)
+        })
+        .returning(move |_, _, _, _, _| Ok(vec![Uuid::new_v4(), Uuid::new_v4(), Uuid::new_v4()]));
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
+
+    // Setup router with meetings config and send request
+    let router = TestRouterBuilder::new(db, nm)
+        .with_meetings_cfg(sample_zoom_meetings_cfg("test-token"))
+        .build()
+        .await;
+    let request = Request::builder()
+        .method("POST")
+        .uri("/dashboard/group/events/add")
+        .header(COOKIE, format!("id={session_id}"))
+        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+        .body(Body::from(body))
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_eq!(parts.status, StatusCode::CREATED);
+    assert_eq!(
+        parts.headers.get("HX-Trigger").unwrap(),
+        &HeaderValue::from_static("refresh-group-dashboard-table"),
+    );
+    assert!(bytes.is_empty());
+}
+
+#[tokio::test]
 async fn test_add_invalid_body() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
@@ -975,6 +1070,237 @@ async fn test_cancel_success() {
 
 #[allow(clippy::too_many_lines)]
 #[tokio::test]
+async fn test_cancel_series_success() {
+    // Setup identifiers and data structures
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let related_event_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(
+        session_id,
+        user_id,
+        &auth_hash,
+        Some(community_id),
+        Some(group_id),
+    );
+    let event_summary = EventSummary {
+        published: false,
+        ..sample_event_summary(event_id, group_id)
+    };
+    let related_event_summary = EventSummary {
+        event_id: related_event_id,
+        published: false,
+        ..sample_event_summary(related_event_id, group_id)
+    };
+    let series_event_ids = vec![event_id, related_event_id];
+    let expected_series_event_ids = series_event_ids.clone();
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::EventsWrite
+        })
+        .returning(|_, _, _, _| Ok(true));
+    db.expect_list_event_series_event_ids()
+        .times(1)
+        .withf(move |gid, eid| *gid == group_id && *eid == event_id)
+        .returning(move |_, _| Ok(series_event_ids.clone()));
+    db.expect_get_event_summary()
+        .times(1)
+        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
+        .returning(move |_, _, _| Ok(event_summary.clone()));
+    db.expect_get_event_summary()
+        .times(1)
+        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == related_event_id)
+        .returning(move |_, _, _| Ok(related_event_summary.clone()));
+    db.expect_cancel_event().times(0);
+    db.expect_cancel_event_series_events()
+        .times(1)
+        .withf(move |uid, gid, event_ids| {
+            *uid == user_id && *gid == group_id && event_ids == expected_series_event_ids.as_slice()
+        })
+        .returning(move |_, _, _| Ok(()));
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("PUT")
+        .uri(format!("/dashboard/group/events/{event_id}/cancel?scope=series"))
+        .header(COOKIE, format!("id={session_id}"))
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_eq!(parts.status, StatusCode::NO_CONTENT);
+    assert_eq!(
+        parts.headers.get("HX-Location").unwrap(),
+        &HeaderValue::from_static(r#"{"path":"/dashboard/group?tab=events", "target":"body"}"#,),
+    );
+    assert!(bytes.is_empty());
+}
+
+#[allow(clippy::too_many_lines)]
+#[tokio::test]
+async fn test_cancel_series_sends_aggregate_notification() {
+    // Setup identifiers and data structures
+    let attendee_id = Uuid::new_v4();
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let related_event_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(
+        session_id,
+        user_id,
+        &auth_hash,
+        Some(community_id),
+        Some(group_id),
+    );
+    let event_summary = EventSummary {
+        published: true,
+        ..sample_event_summary(event_id, group_id)
+    };
+    let related_event_summary = EventSummary {
+        event_id: related_event_id,
+        published: true,
+        ..sample_event_summary(related_event_id, group_id)
+    };
+    let event_full = EventFull {
+        event_id,
+        name: "First Series Event".to_string(),
+        speakers: vec![],
+        ..sample_event_full(community_id, event_id, group_id)
+    };
+    let related_event_full = EventFull {
+        event_id: related_event_id,
+        name: "Second Series Event".to_string(),
+        speakers: vec![],
+        ..sample_event_full(community_id, related_event_id, group_id)
+    };
+    let series_event_ids = vec![event_id, related_event_id];
+    let expected_series_event_ids = series_event_ids.clone();
+    let site_settings = sample_site_settings();
+    let site_settings_for_notification = site_settings.clone();
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::EventsWrite
+        })
+        .returning(|_, _, _, _| Ok(true));
+    db.expect_list_event_series_event_ids()
+        .times(1)
+        .withf(move |gid, eid| *gid == group_id && *eid == event_id)
+        .returning(move |_, _| Ok(series_event_ids.clone()));
+    db.expect_get_event_summary()
+        .times(1)
+        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
+        .returning(move |_, _, _| Ok(event_summary.clone()));
+    db.expect_get_event_summary()
+        .times(1)
+        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == related_event_id)
+        .returning(move |_, _, _| Ok(related_event_summary.clone()));
+    db.expect_cancel_event_series_events()
+        .times(1)
+        .withf(move |uid, gid, event_ids| {
+            *uid == user_id && *gid == group_id && event_ids == expected_series_event_ids.as_slice()
+        })
+        .returning(move |_, _, _| Ok(()));
+    db.expect_get_event_full()
+        .times(1)
+        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
+        .returning(move |_, _, _| Ok(event_full.clone()));
+    db.expect_get_event_full()
+        .times(1)
+        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == related_event_id)
+        .returning(move |_, _, _| Ok(related_event_full.clone()));
+    db.expect_list_event_attendees_ids()
+        .times(2)
+        .withf(move |gid, eid| *gid == group_id && (*eid == event_id || *eid == related_event_id))
+        .returning(move |_, _| Ok(vec![attendee_id]));
+    db.expect_list_event_waitlist_ids()
+        .times(2)
+        .withf(move |gid, eid| *gid == group_id && (*eid == event_id || *eid == related_event_id))
+        .returning(move |_, _| Ok(vec![]));
+    db.expect_get_site_settings()
+        .times(1)
+        .returning(move || Ok(site_settings.clone()));
+
+    // Setup notifications manager mock
+    let mut nm = MockNotificationsManager::new();
+    nm.expect_enqueue()
+        .times(1)
+        .withf(move |notification| {
+            matches!(notification.kind, NotificationKind::EventSeriesCanceled)
+                && notification.attachments.is_empty()
+                && notification.recipients == vec![attendee_id]
+                && notification.template_data.as_ref().is_some_and(|value| {
+                    from_value::<EventSeriesCanceled>(value.clone()).is_ok_and(|template| {
+                        template.event_count == 2
+                            && template.events.len() == 2
+                            && template.theme.primary_color
+                                == site_settings_for_notification.theme.primary_color
+                    })
+                })
+        })
+        .returning(|_| Box::pin(async { Ok(()) }));
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("PUT")
+        .uri(format!("/dashboard/group/events/{event_id}/cancel?scope=series"))
+        .header(COOKIE, format!("id={session_id}"))
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_eq!(parts.status, StatusCode::NO_CONTENT);
+    assert!(bytes.is_empty());
+}
+
+#[allow(clippy::too_many_lines)]
+#[tokio::test]
 async fn test_publish_success() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
@@ -1102,6 +1428,242 @@ async fn test_publish_success() {
         parts.headers.get("HX-Trigger").unwrap(),
         &HeaderValue::from_static("refresh-group-dashboard-table"),
     );
+    assert!(bytes.is_empty());
+}
+
+#[tokio::test]
+async fn test_publish_series_success() {
+    // Setup identifiers and data structures
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let related_event_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(
+        session_id,
+        user_id,
+        &auth_hash,
+        Some(community_id),
+        Some(group_id),
+    );
+    let event_summary = EventSummary {
+        published: true,
+        ..sample_event_summary(event_id, group_id)
+    };
+    let related_event_summary = EventSummary {
+        event_id: related_event_id,
+        published: true,
+        ..sample_event_summary(related_event_id, group_id)
+    };
+    let series_event_ids = vec![event_id, related_event_id];
+    let expected_series_event_ids = series_event_ids.clone();
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::EventsWrite
+        })
+        .returning(|_, _, _, _| Ok(true));
+    db.expect_list_event_series_publishable_event_ids()
+        .times(1)
+        .withf(move |gid, eid| *gid == group_id && *eid == event_id)
+        .returning(move |_, _| Ok(series_event_ids.clone()));
+    db.expect_get_event_summary()
+        .times(1)
+        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
+        .returning(move |_, _, _| Ok(event_summary.clone()));
+    db.expect_get_event_summary()
+        .times(1)
+        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == related_event_id)
+        .returning(move |_, _, _| Ok(related_event_summary.clone()));
+    db.expect_publish_event().times(0);
+    db.expect_publish_event_series_events()
+        .times(1)
+        .withf(move |uid, provider, gid, event_ids| {
+            *uid == user_id
+                && provider.is_none()
+                && *gid == group_id
+                && event_ids == expected_series_event_ids.as_slice()
+        })
+        .returning(move |_, _, _, _| Ok(()));
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("PUT")
+        .uri(format!("/dashboard/group/events/{event_id}/publish?scope=series"))
+        .header(COOKIE, format!("id={session_id}"))
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_eq!(parts.status, StatusCode::NO_CONTENT);
+    assert_eq!(
+        parts.headers.get("HX-Trigger").unwrap(),
+        &HeaderValue::from_static("refresh-group-dashboard-table"),
+    );
+    assert!(bytes.is_empty());
+}
+
+#[allow(clippy::too_many_lines)]
+#[tokio::test]
+async fn test_publish_series_sends_aggregate_notification() {
+    // Setup identifiers and data structures
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let member_id = Uuid::new_v4();
+    let related_event_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(
+        session_id,
+        user_id,
+        &auth_hash,
+        Some(community_id),
+        Some(group_id),
+    );
+    let event_summary = EventSummary {
+        published: false,
+        ..sample_event_summary(event_id, group_id)
+    };
+    let related_event_summary = EventSummary {
+        event_id: related_event_id,
+        published: false,
+        ..sample_event_summary(related_event_id, group_id)
+    };
+    let event_full = EventFull {
+        event_id,
+        name: "First Series Event".to_string(),
+        speakers: vec![],
+        ..sample_event_full(community_id, event_id, group_id)
+    };
+    let related_event_full = EventFull {
+        event_id: related_event_id,
+        name: "Second Series Event".to_string(),
+        speakers: vec![],
+        ..sample_event_full(community_id, related_event_id, group_id)
+    };
+    let series_event_ids = vec![event_id, related_event_id];
+    let expected_series_event_ids = series_event_ids.clone();
+    let site_settings = sample_site_settings();
+    let site_settings_for_notification = site_settings.clone();
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::EventsWrite
+        })
+        .returning(|_, _, _, _| Ok(true));
+    db.expect_list_event_series_publishable_event_ids()
+        .times(1)
+        .withf(move |gid, eid| *gid == group_id && *eid == event_id)
+        .returning(move |_, _| Ok(series_event_ids.clone()));
+    db.expect_get_event_summary()
+        .times(1)
+        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
+        .returning(move |_, _, _| Ok(event_summary.clone()));
+    db.expect_get_event_summary()
+        .times(1)
+        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == related_event_id)
+        .returning(move |_, _, _| Ok(related_event_summary.clone()));
+    db.expect_publish_event_series_events()
+        .times(1)
+        .withf(move |uid, provider, gid, event_ids| {
+            *uid == user_id
+                && provider.is_none()
+                && *gid == group_id
+                && event_ids == expected_series_event_ids.as_slice()
+        })
+        .returning(move |_, _, _, _| Ok(()));
+    db.expect_list_group_members_ids()
+        .times(1)
+        .withf(move |gid| *gid == group_id)
+        .returning(move |_| Ok(vec![member_id]));
+    db.expect_list_group_team_members_ids()
+        .times(1)
+        .withf(move |gid| *gid == group_id)
+        .returning(move |_| Ok(vec![]));
+    db.expect_get_event_full()
+        .times(1)
+        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
+        .returning(move |_, _, _| Ok(event_full.clone()));
+    db.expect_get_event_full()
+        .times(1)
+        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == related_event_id)
+        .returning(move |_, _, _| Ok(related_event_full.clone()));
+    db.expect_get_site_settings()
+        .times(1)
+        .returning(move || Ok(site_settings.clone()));
+
+    // Setup notifications manager mock
+    let mut nm = MockNotificationsManager::new();
+    nm.expect_enqueue()
+        .times(1)
+        .withf(move |notification| {
+            matches!(notification.kind, NotificationKind::EventSeriesPublished)
+                && notification.attachments.is_empty()
+                && notification.recipients == vec![member_id]
+                && notification.template_data.as_ref().is_some_and(|value| {
+                    from_value::<EventSeriesPublished>(value.clone()).is_ok_and(|template| {
+                        template.event_count == 2
+                            && template.events.len() == 2
+                            && template.theme.primary_color
+                                == site_settings_for_notification.theme.primary_color
+                    })
+                })
+        })
+        .returning(|_| Box::pin(async { Ok(()) }));
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("PUT")
+        .uri(format!("/dashboard/group/events/{event_id}/publish?scope=series"))
+        .header(COOKIE, format!("id={session_id}"))
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_eq!(parts.status, StatusCode::NO_CONTENT);
     assert!(bytes.is_empty());
 }
 
@@ -1362,6 +1924,81 @@ async fn test_delete_success() {
 }
 
 #[tokio::test]
+async fn test_delete_series_success() {
+    // Setup identifiers and data structures
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let related_event_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(
+        session_id,
+        user_id,
+        &auth_hash,
+        Some(community_id),
+        Some(group_id),
+    );
+    let series_event_ids = vec![event_id, related_event_id];
+    let expected_series_event_ids = series_event_ids.clone();
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::EventsWrite
+        })
+        .returning(|_, _, _, _| Ok(true));
+    db.expect_list_event_series_event_ids()
+        .times(1)
+        .withf(move |gid, eid| *gid == group_id && *eid == event_id)
+        .returning(move |_, _| Ok(series_event_ids.clone()));
+    db.expect_delete_event().times(0);
+    db.expect_delete_event_series_events()
+        .times(1)
+        .withf(move |uid, gid, event_ids| {
+            *uid == user_id && *gid == group_id && event_ids == expected_series_event_ids.as_slice()
+        })
+        .returning(move |_, _, _| Ok(()));
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("DELETE")
+        .uri(format!("/dashboard/group/events/{event_id}/delete?scope=series"))
+        .header(COOKIE, format!("id={session_id}"))
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_eq!(parts.status, StatusCode::NO_CONTENT);
+    assert_eq!(
+        parts.headers.get("HX-Trigger").unwrap(),
+        &HeaderValue::from_static("refresh-group-dashboard-table"),
+    );
+    assert!(bytes.is_empty());
+}
+
+#[tokio::test]
 async fn test_unpublish_success() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
@@ -1410,6 +2047,83 @@ async fn test_unpublish_success() {
     let request = Request::builder()
         .method("PUT")
         .uri(format!("/dashboard/group/events/{event_id}/unpublish"))
+        .header(COOKIE, format!("id={session_id}"))
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_eq!(parts.status, StatusCode::NO_CONTENT);
+    assert_eq!(
+        parts.headers.get("HX-Trigger").unwrap(),
+        &HeaderValue::from_static("refresh-group-dashboard-table"),
+    );
+    assert!(bytes.is_empty());
+}
+
+#[tokio::test]
+async fn test_unpublish_series_success() {
+    // Setup identifiers and data structures
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let related_event_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(
+        session_id,
+        user_id,
+        &auth_hash,
+        Some(community_id),
+        Some(group_id),
+    );
+    let series_event_ids = vec![event_id, related_event_id];
+    let expected_series_event_ids = series_event_ids.clone();
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::EventsWrite
+        })
+        .returning(|_, _, _, _| Ok(true));
+    db.expect_list_event_series_event_ids()
+        .times(1)
+        .withf(move |gid, eid| *gid == group_id && *eid == event_id)
+        .returning(move |_, _| Ok(series_event_ids.clone()));
+    db.expect_unpublish_event().times(0);
+    db.expect_unpublish_event_series_events()
+        .times(1)
+        .withf(move |uid, gid, event_ids| {
+            *uid == user_id && *gid == group_id && event_ids == expected_series_event_ids.as_slice()
+        })
+        .returning(move |_, _, _| Ok(()));
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("PUT")
+        .uri(format!(
+            "/dashboard/group/events/{event_id}/unpublish?scope=series"
+        ))
         .header(COOKIE, format!("id={session_id}"))
         .body(Body::empty())
         .unwrap();

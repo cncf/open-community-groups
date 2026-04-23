@@ -66,6 +66,7 @@
 {{ template "dashboard-group/validate_event_capacity.sql" }} -- Dependency for add/update_event
 {{ template "dashboard-group/validate_event_cfs_labels_payload.sql" }} -- Dependency for add/update_event
 {{ template "dashboard-group/validate_event_discount_codes_payload.sql" }} -- Dependency for validate_event_ticketing_payload
+{{ template "dashboard-group/validate_event_series_action_event_ids.sql" }} -- Dependency for series actions
 {{ template "dashboard-group/validate_event_ticket_types_payload.sql" }} -- Dependency for validate_event_ticketing_payload
 {{ template "dashboard-group/validate_event_ticketing_payload.sql" }} -- Dependency for add/update_event
 {{ template "dashboard-group/validate_payment_currency_code.sql" }} -- Dependency for publish_event and checkout validation
@@ -73,10 +74,13 @@
 {{ template "dashboard-group/sync_event_discount_codes.sql" }} -- Dependency for add/update_event
 {{ template "dashboard-group/sync_event_ticket_types.sql" }} -- Dependency for add/update_event
 {{ template "dashboard-group/add_event.sql" }}
+{{ template "dashboard-group/add_event_series.sql" }}
 {{ template "dashboard-group/add_group_sponsor.sql" }}
 {{ template "dashboard-group/add_group_team_member.sql" }}
 {{ template "dashboard-group/cancel_event.sql" }}
+{{ template "dashboard-group/cancel_event_series_events.sql" }}
 {{ template "dashboard-group/delete_event.sql" }}
+{{ template "dashboard-group/delete_event_series_events.sql" }}
 {{ template "dashboard-group/delete_group_sponsor.sql" }}
 {{ template "dashboard-group/delete_group_team_member.sql" }}
 {{ template "dashboard-group/get_cfs_submission_notification_data.sql" }}
@@ -90,6 +94,8 @@
 {{ template "dashboard-group/list_event_categories.sql" }}
 {{ template "dashboard-group/list_event_cfs_submissions.sql" }}
 {{ template "dashboard-group/list_event_kinds.sql" }}
+{{ template "dashboard-group/list_event_series_event_ids.sql" }}
+{{ template "dashboard-group/list_event_series_publishable_event_ids.sql" }}
 {{ template "dashboard-group/list_event_waitlist_ids.sql" }}
 {{ template "dashboard-group/list_group_audit_logs.sql" }}
 {{ template "dashboard-group/list_group_events.sql" }}
@@ -103,11 +109,13 @@
 {{ template "dashboard-group/list_user_groups.sql" }}
 {{ template "dashboard-group/manual_check_in_event.sql" }}
 {{ template "dashboard-group/publish_event.sql" }}
+{{ template "dashboard-group/publish_event_series_events.sql" }}
 {{ template "dashboard-group/search_event_attendees.sql" }}
 {{ template "dashboard-group/search_event_waitlist.sql" }}
 {{ template "dashboard-group/sync_event_cfs_labels.sql" }} -- Dependency for update_event
 {{ template "dashboard-group/sync_event_sessions.sql" }} -- Dependency for update_event
 {{ template "dashboard-group/unpublish_event.sql" }}
+{{ template "dashboard-group/unpublish_event_series_events.sql" }}
 {{ template "dashboard-group/update_cfs_submission.sql" }}
 {{ template "dashboard-group/validate_update_event_dates.sql" }} -- Dependency for update_event
 {{ template "dashboard-group/update_group_sponsor.sql" }}

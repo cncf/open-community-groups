@@ -1,0 +1,42 @@
+{% extends "notifications/base.html" -%}
+
+{% block subject -%}
+  New events from {{ group_name }}
+{% endblock subject -%}
+
+{% block preheader -%}
+  {{ event_count }} new events from {{ group_name }} are live.
+{% endblock preheader -%}
+
+{% block content -%}
+  <p class="default mb-30">
+    <strong>{{ group_name }}</strong> published {{ event_count }} new events on
+    <strong>Open Community Groups</strong>.
+  </p>
+
+  {% for item in events -%}
+    <p class="default mb-15">
+      <strong>
+        <a href="{{ item.link }}" target="_blank" rel="noopener noreferrer">{{ item.event.name }}</a>
+      </strong>
+      <br />
+      {% if let Some(starts_at) = &item.event.starts_at -%}
+        {{ starts_at.with_timezone(item.event.timezone).format("%A, %B %e, %G · %I:%M %p %Z") }}
+        <br />
+      {% endif -%}
+      {% if let Some(location) = &item.event.location(90) -%}
+        {{ location }}
+        <br />
+      {% endif -%}
+    </p>
+  {% endfor -%}
+
+  <p class="default mt-30 mb-15">
+    You can open any event above to view details and register if you're interested.
+  </p>
+{% endblock content -%}
+
+{% block footer -%}
+  You are receiving this because you follow {{ group_name }} or opted in to
+  event updates. If this does not apply to you, you can ignore this message.
+{% endblock footer -%}

@@ -25,8 +25,9 @@ use crate::{
     validation::{
         MAX_LEN_COUNTRY_CODE, MAX_LEN_DESCRIPTION, MAX_LEN_DESCRIPTION_SHORT, MAX_LEN_ENTITY_NAME,
         MAX_LEN_EVENT_LABELS_PER_EVENT, MAX_LEN_L, MAX_LEN_S, MAX_LEN_TIMEZONE, MAX_PAGINATION_LIMIT,
-        email_vec, image_url_opt, trimmed_non_empty, trimmed_non_empty_opt, trimmed_non_empty_tag_vec,
-        trimmed_non_empty_vec, valid_latitude, valid_longitude,
+        MAX_RECURRING_ADDITIONAL_OCCURRENCES, email_vec, image_url_opt, trimmed_non_empty,
+        trimmed_non_empty_opt, trimmed_non_empty_tag_vec, trimmed_non_empty_vec, valid_latitude,
+        valid_longitude,
     },
 };
 
@@ -304,6 +305,12 @@ pub(crate) struct Event {
     /// Gallery of photo URLs.
     #[garde(custom(trimmed_non_empty_vec))]
     pub photos_urls: Option<Vec<String>>,
+    /// Number of additional occurrences to create for recurring events.
+    #[garde(range(min = 1, max = MAX_RECURRING_ADDITIONAL_OCCURRENCES))]
+    pub recurrence_additional_occurrences: Option<i32>,
+    /// Recurrence pattern selected for new event creation.
+    #[garde(skip)]
+    pub recurrence_pattern: Option<EventRecurrencePattern>,
     /// Whether registration is required.
     #[garde(skip)]
     pub registration_required: Option<bool>,
@@ -379,6 +386,8 @@ impl Event {
         payload.remove("clear_ticketing");
         payload.remove("discount_codes");
         payload.remove("discount_codes_present");
+        payload.remove("recurrence_additional_occurrences");
+        payload.remove("recurrence_pattern");
         payload.remove("ticket_types");
         payload.remove("ticket_types_present");
 
@@ -499,6 +508,21 @@ impl Pagination for EventsListFilters {
 }
 
 crate::impl_to_raw_query!(EventsListFilters);
+
+/// Recurrence options supported by the add event flow.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub(crate) enum EventRecurrencePattern {
+    /// Create only the event currently described by the form.
+    #[default]
+    JustOnce,
+    /// Create weekly on the same weekday.
+    Weekly,
+    /// Create every two weeks on the same weekday.
+    Biweekly,
+    /// Create monthly on the same ordinal weekday.
+    Monthly,
+}
 
 /// Event sponsor information.
 #[skip_serializing_none]

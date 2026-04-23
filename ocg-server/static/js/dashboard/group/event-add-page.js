@@ -47,6 +47,9 @@ export const initializeEventAddPage = (root = document) => {
   const cfsLabelsEditor = queryById("cfs-labels-editor");
   const startsAtInput = queryById("starts_at");
   const endsAtInput = queryById("ends_at");
+  const recurrenceAdditionalOccurrencesContainer = queryById("recurrence-additional-occurrences-container");
+  const recurrenceAdditionalOccurrencesInput = queryById("recurrence_additional_occurrences");
+  const recurrencePatternSelect = queryById("recurrence_pattern");
 
   const syncSessionsDateRange = createSessionsDateRangeSync({
     queryOne,
@@ -114,6 +117,13 @@ export const initializeEventAddPage = (root = document) => {
     onlineEventDetails,
   });
 
+  initializeRecurrenceFields({
+    recurrenceAdditionalOccurrencesContainer,
+    recurrenceAdditionalOccurrencesInput,
+    recurrencePatternSelect,
+    startsAtInput,
+  });
+
   initializeEventPageCancelNavigation(cancelButton);
 
   initializeEventPagePendingChanges({
@@ -159,4 +169,116 @@ export const initializeEventAddPage = (root = document) => {
     successMessage: "You have successfully created the event.",
     errorMessage: "Something went wrong creating the event. Please try again later.",
   });
+};
+
+/**
+ * Initializes recurrence labels and conditional additional-occurrence validation.
+ * @param {Object} config Recurrence control configuration
+ * @param {HTMLElement|null} config.recurrenceAdditionalOccurrencesContainer Wrapper element
+ * @param {HTMLInputElement|null} config.recurrenceAdditionalOccurrencesInput Additional count input
+ * @param {HTMLSelectElement|null} config.recurrencePatternSelect Recurrence select
+ * @param {HTMLInputElement|null} config.startsAtInput Event start input
+ * @returns {void}
+ */
+const initializeRecurrenceFields = ({
+  recurrenceAdditionalOccurrencesContainer,
+  recurrenceAdditionalOccurrencesInput,
+  recurrencePatternSelect,
+  startsAtInput,
+}) => {
+  if (!recurrencePatternSelect) {
+    return;
+  }
+
+  const update = () => {
+    updateRecurrenceLabels(recurrencePatternSelect, startsAtInput);
+    updateRecurrenceAdditionalOccurrencesState({
+      recurrenceAdditionalOccurrencesContainer,
+      recurrenceAdditionalOccurrencesInput,
+      recurrencePatternSelect,
+    });
+  };
+
+  recurrencePatternSelect.addEventListener("change", update);
+  startsAtInput?.addEventListener("change", update);
+  update();
+};
+
+/**
+ * Returns a local Date from a datetime-local input value.
+ * @param {string} value Input value
+ * @returns {Date|null} Parsed date
+ */
+const parseDateTimeLocal = (value) => {
+  if (!value) {
+    return null;
+  }
+
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+/**
+ * Updates the visible recurrence labels based on the selected start date.
+ * @param {HTMLSelectElement} recurrencePatternSelect Recurrence select
+ * @param {HTMLInputElement|null} startsAtInput Event start input
+ * @returns {void}
+ */
+const updateRecurrenceLabels = (recurrencePatternSelect, startsAtInput) => {
+  const startsAt = parseDateTimeLocal(startsAtInput?.value || "");
+  const weekday = startsAt?.toLocaleDateString(undefined, { weekday: "long" });
+  const ordinal = startsAt ? ordinalWeekdayInMonth(startsAt) : null;
+
+  for (const option of recurrencePatternSelect.options) {
+    switch (option.dataset.recurrenceLabel) {
+      case "weekly":
+        option.textContent = weekday ? `Weekly on ${weekday}` : "Weekly";
+        break;
+      case "biweekly":
+        option.textContent = weekday ? `Every two weeks on ${weekday}` : "Every two weeks";
+        break;
+      case "monthly":
+        option.textContent = weekday && ordinal ? `Monthly on the ${ordinal} ${weekday}` : "Monthly";
+        break;
+      default:
+        break;
+    }
+  }
+};
+
+/**
+ * Returns the ordinal word for the weekday occurrence within the month.
+ * @param {Date} date Local date
+ * @returns {string} Ordinal word
+ */
+const ordinalWeekdayInMonth = (date) => {
+  const ordinal = Math.floor((date.getDate() - 1) / 7);
+  return ["first", "second", "third", "fourth", "fifth"][ordinal] || "last";
+};
+
+/**
+ * Toggles the additional-occurrences input when recurring creation is selected.
+ * @param {Object} config Additional-occurrences configuration
+ * @param {HTMLElement|null} config.recurrenceAdditionalOccurrencesContainer Wrapper element
+ * @param {HTMLInputElement|null} config.recurrenceAdditionalOccurrencesInput Additional count input
+ * @param {HTMLSelectElement} config.recurrencePatternSelect Recurrence select
+ * @returns {void}
+ */
+const updateRecurrenceAdditionalOccurrencesState = ({
+  recurrenceAdditionalOccurrencesContainer,
+  recurrenceAdditionalOccurrencesInput,
+  recurrencePatternSelect,
+}) => {
+  const recurring = recurrencePatternSelect.value !== "just-once";
+  recurrenceAdditionalOccurrencesContainer?.classList.toggle("hidden", !recurring);
+
+  if (!recurrenceAdditionalOccurrencesInput) {
+    return;
+  }
+
+  recurrenceAdditionalOccurrencesInput.disabled = !recurring;
+  recurrenceAdditionalOccurrencesInput.required = recurring;
+  if (!recurring) {
+    recurrenceAdditionalOccurrencesInput.value = "";
+  }
 };

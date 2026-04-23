@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(64);
+select plan(65);
 
 -- ============================================================================
 -- TESTS
@@ -42,6 +42,7 @@ select has_table('event_refund_request');
 select has_table('event_ticket_price_window');
 select has_table('event_ticket_type');
 select has_table('event_cfs_label');
+select has_table('event_series');
 select has_table('event_speaker');
 select has_table('event_sponsor');
 select has_table('event_views');

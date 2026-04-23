@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(212);
+select plan(219);
 
 -- ============================================================================
 -- TESTS
@@ -18,6 +18,7 @@ select has_function('add_cfs_submission');
 select has_function('add_community_team_member');
 select has_function('add_event');
 select has_function('add_event_category');
+select has_function('add_event_series');
 select has_function('add_group');
 select has_function('add_group_category');
 select has_function('add_group_sponsor');
@@ -30,12 +31,14 @@ select has_function('attach_checkout_session_to_event_purchase');
 select has_function('attend_event');
 select has_function('begin_event_refund_approval');
 select has_function('cancel_event');
+select has_function('cancel_event_series_events');
 select has_function('check_in_event');
 select has_function('complete_free_event_purchase');
 select has_function('deactivate_group');
 select has_function('delete_community_team_member');
 select has_function('delete_event');
 select has_function('delete_event_category');
+select has_function('delete_event_series_events');
 select has_function('delete_group');
 select has_function('delete_group_category');
 select has_function('delete_group_sponsor');
@@ -106,6 +109,7 @@ select has_function('list_event_cfs_submissions');
 select has_function('list_event_cfs_labels');
 select has_function('list_event_discount_codes');
 select has_function('list_event_kinds');
+select has_function('list_event_series_event_ids');
 select has_function('list_event_ticket_types');
 select has_function('list_event_waitlist_ids');
 select has_function('list_group_categories');
@@ -144,6 +148,7 @@ select has_function('prepare_event_checkout_validate_event');
 select has_function('prepare_event_checkout_purchase');
 select has_function('prevent_audit_log_mutation');
 select has_function('publish_event');
+select has_function('publish_event_series_events');
 select has_function('reconcile_event_purchase_for_checkout_session');
 select has_function('record_automatic_refund_for_event_purchase');
 select has_function('refund_free_event_purchase');
@@ -169,6 +174,7 @@ select has_function('sync_event_sessions');
 select has_function('sync_event_ticket_types');
 select has_function('track_custom_notification');
 select has_function('unpublish_event');
+select has_function('unpublish_event_series_events');
 select has_function('update_cfs_submission');
 select has_function('update_community');
 select has_function('update_community_team_member_role');
@@ -195,6 +201,7 @@ select has_function('user_has_group_permission');
 select has_function('validate_event_capacity');
 select has_function('validate_event_cfs_labels_payload');
 select has_function('validate_event_discount_codes_payload');
+select has_function('validate_event_series_action_event_ids');
 select has_function('validate_event_ticket_types_payload');
 select has_function('validate_event_ticketing_payload');
 select has_function('validate_payment_currency_code');

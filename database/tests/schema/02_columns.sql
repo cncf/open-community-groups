@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(62);
+select plan(63);
 
 -- ============================================================================
 -- TESTS
@@ -203,6 +203,7 @@ select columns_are('event', array[
     'ends_at',
     'event_reminder_evaluated_for_starts_at',
     'event_reminder_sent_at',
+    'event_series_id',
     'legacy_id',
     'legacy_url',
     'location',
@@ -249,6 +250,19 @@ select columns_are('event_category', array[
     'name',
     'order',
     'slug'
+]);
+
+-- Test: event_series columns should match expected
+select columns_are('event_series', array[
+    'event_series_id',
+    'created_at',
+    'group_id',
+    'recurrence_additional_occurrences',
+    'recurrence_anchor_starts_at',
+    'recurrence_pattern',
+    'timezone',
+
+    'created_by'
 ]);
 
 -- Test: event_discount_code columns should match expected

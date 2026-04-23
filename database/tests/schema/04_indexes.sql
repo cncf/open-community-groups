@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(62);
+select plan(63);
 
 -- ============================================================================
 -- TESTS
@@ -128,6 +128,7 @@ select indexes_are('event', array[
     'event_slug_group_id_key',
     'event_event_category_id_idx',
     'event_event_kind_id_idx',
+    'event_event_series_id_idx',
     'event_group_id_idx',
     'event_location_idx',
     'event_meeting_sync_idx',
@@ -136,6 +137,12 @@ select indexes_are('event', array[
     'event_starts_at_idx',
     'event_tsdoc_idx',
     'event_group_not_deleted_starts_at_idx'
+]);
+
+-- Test: event_series indexes should match expected
+select indexes_are('event_series', array[
+    'event_series_pkey',
+    'event_series_group_id_idx'
 ]);
 
 -- Test: event_attendee indexes should match expected

@@ -128,6 +128,8 @@ select results_eq(
         ('event-refund-requested'),
         ('event-reminder'),
         ('event-rescheduled'),
+        ('event-series-canceled'),
+        ('event-series-published'),
         ('event-waitlist-joined'),
         ('event-waitlist-left'),
         ('event-waitlist-promoted'),
@@ -136,6 +138,7 @@ select results_eq(
         ('group-team-invitation'),
         ('group-welcome'),
         ('session-proposal-co-speaker-invitation'),
+        ('speaker-series-welcome'),
         ('speaker-welcome')
     $$,
     'Notification kinds should exist'

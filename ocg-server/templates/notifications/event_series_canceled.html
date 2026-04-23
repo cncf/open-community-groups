@@ -1,0 +1,40 @@
+{% extends "notifications/base.html" -%}
+
+{% block subject -%}
+  Events canceled by {{ group_name }}
+{% endblock subject -%}
+
+{% block preheader -%}
+  {{ event_count }} events from {{ group_name }} have been canceled.
+{% endblock preheader -%}
+
+{% block content -%}
+  <p class="default mb-30">
+    We are sorry to inform you that {{ event_count }} events from
+    <strong>{{ group_name }}</strong> have been <strong>canceled</strong>.
+  </p>
+
+  {% for item in events -%}
+    <p class="default mb-15">
+      <strong>
+        <a href="{{ item.link }}" target="_blank" rel="noopener noreferrer">{{ item.event.name }}</a>
+      </strong>
+      <br />
+      {% if let Some(starts_at) = &item.event.starts_at -%}
+        {{ starts_at.with_timezone(item.event.timezone).format("%A, %B %e, %G · %I:%M %p %Z") }}
+        <br />
+      {% endif -%}
+      {% if let Some(location) = &item.event.location(90) -%}
+        {{ location }}
+        <br />
+      {% endif -%}
+    </p>
+  {% endfor -%}
+
+  <p class="default mt-30 mb-15">Thanks for your understanding.</p>
+{% endblock content -%}
+
+{% block footer -%}
+  You are receiving this because you follow {{ group_name }} or opted in to
+  event updates. If this does not apply to you, you can ignore this message.
+{% endblock footer -%}
