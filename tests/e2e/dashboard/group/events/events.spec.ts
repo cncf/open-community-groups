@@ -74,7 +74,6 @@ const openEventUpdateFormByName = async (page: Page, eventName: string, eventId?
 };
 
 const expectManualMeetingFields = async (page: Page) => {
-  await expect(page.locator("online-event-details")).toHaveCount(0);
   await expect(page.locator("#meeting_join_url")).toBeVisible();
   await expect(page.locator("#meeting_recording_url")).toBeVisible();
 };

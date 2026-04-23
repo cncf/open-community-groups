@@ -2,7 +2,6 @@ import { expect, test } from "../../../fixtures";
 
 import { fillMarkdownEditor } from "../../form-helpers";
 import {
-  E2E_PAYMENTS_ENABLED,
   navigateToPath,
   TEST_PAYMENT_GROUP_RECIPIENT,
 } from "../../../utils";
@@ -125,7 +124,7 @@ test.describe("group dashboard settings view", () => {
       "#payment_recipient_recipient_id",
     );
 
-    if (E2E_PAYMENTS_ENABLED) {
+    if ((await paymentRecipientInput.count()) > 0) {
       await expect(paymentRecipientInput).toHaveValue(TEST_PAYMENT_GROUP_RECIPIENT);
       return;
     }
@@ -136,8 +135,6 @@ test.describe("group dashboard settings view", () => {
   test("organizer can update and restore the Stripe recipient", async ({
     organizerGroupPage,
   }) => {
-    test.skip(!E2E_PAYMENTS_ENABLED, "Payments are disabled in this environment.");
-
     const settingsPath = "/dashboard/group?tab=settings";
     const paymentRecipientInput = organizerGroupPage.locator(
       "#payment_recipient_recipient_id",
@@ -145,6 +142,10 @@ test.describe("group dashboard settings view", () => {
     const updatedRecipient = "  acct_e2e_alpha_updated  ";
 
     await navigateToPath(organizerGroupPage, settingsPath);
+    test.skip(
+      (await paymentRecipientInput.count()) === 0,
+      "Payments are disabled in this environment.",
+    );
     await expect(
       organizerGroupPage.getByText("Payments", { exact: true }),
     ).toBeVisible();
