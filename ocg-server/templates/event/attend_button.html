@@ -13,7 +13,7 @@
      data-waitlist-enabled="{{ event.waitlist_enabled }}"
      data-is-live="{{ event.is_live() }}"
      data-attendee-meeting-access-open="{{ !event.is_past() || event.is_live() }}"
-     class="flex flex-row flex-wrap gap-2
+     class="flex flex-row flex-wrap gap-4
             {% if !event.is_past() && event.formatted_ticket_price_badge().is_some() %}mt-3 md:mt-0{% endif %}">
 
   <!-- Loading spinner (shown initially) -->
