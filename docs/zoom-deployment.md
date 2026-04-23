@@ -63,7 +63,9 @@ Notes:
   Server-to-Server OAuth app.
 - `hostPoolUsers` must be a non-empty list of unique email addresses.
 - `maxParticipants` should match the real limit of your Zoom plan.
-- `maxSimultaneousMeetingsPerHost` must be at least `1`.
+- `maxSimultaneousMeetingsPerHost` must be at least `1`; set a higher value
+  only if your Zoom plan and any purchased add-ons allow more concurrent
+  meetings per host.
 - `webhookSecretToken` is required to verify Zoom webhook signatures.
 
 ### Raw Server Config
@@ -91,6 +93,7 @@ The current server validates that:
 - Every `host_pool_users` value is a valid email address.
 - `host_pool_users` does not contain duplicates.
 - `max_simultaneous_meetings_per_host` is at least `1`.
+  Higher values depend on your Zoom plan and any purchased add-ons.
 
 ## Zoom App Setup
 
@@ -129,8 +132,8 @@ Choose host users that:
 - Can safely be used by automation.
 
 If you expect overlapping meetings, increase the size of the host pool or raise
-`maxSimultaneousMeetingsPerHost` to match what your Zoom setup actually
-supports.
+`maxSimultaneousMeetingsPerHost` to match the concurrency your Zoom plan and
+any purchased add-ons actually support.
 
 ## Zoom Account Settings
 
