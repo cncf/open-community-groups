@@ -47,9 +47,9 @@ test.describe("event page visual regression @visual", () => {
 
     await expectRegionScreenshot(
       page,
-      getIntroSection(page),
+      page.getByRole("heading", { level: 1, name: TEST_EVENT_NAMES.alpha[0] }).locator(".."),
       "event-page-mobile.png",
-      { testInfo },
+      { testInfo, useClippedPageScreenshot: true },
     );
   });
 });

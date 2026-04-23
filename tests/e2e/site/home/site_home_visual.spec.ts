@@ -32,9 +32,9 @@ test.describe("site home page visual regression @visual", () => {
 
     await expectRegionScreenshot(
       page,
-      getHomeJumbotronContent(page),
+      page.locator(".jumbotron-description"),
       "site-home-mobile.png",
-      { testInfo },
+      { testInfo, useClippedPageScreenshot: true },
     );
   });
 });

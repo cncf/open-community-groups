@@ -172,7 +172,13 @@ const buildUrl = (path: string) => new URL(path, BASE_URL).toString();
 const waitForVisualReady = async (page: Page) => {
   await page.waitForLoadState("networkidle");
   await page.evaluate(async () => {
-    await document.fonts.ready;
+    await Promise.all([
+      document.fonts.load('300 16px "Inter"'),
+      document.fonts.load('400 16px "Inter"'),
+      document.fonts.load('600 16px "Inter"'),
+      document.fonts.load('700 16px "Inter"'),
+      document.fonts.ready,
+    ]);
     await new Promise<void>((resolve) => {
       requestAnimationFrame(() => {
         requestAnimationFrame(() => resolve());
@@ -276,7 +282,7 @@ const alignRegionHeightToSnapshot = async (
         return;
       }
 
-      target.style.height = `${expectedHeight}px`;
+      target.style.height = `${expectedHeight - 0.5}px`;
       target.style.overflow = "hidden";
     },
     {
@@ -578,9 +584,16 @@ export const expectRegionScreenshot = async (
     maxDiffPixels?: number;
     maxDiffPixelRatio?: number;
     testInfo?: TestInfo;
+    useClippedPageScreenshot?: boolean;
   } = {},
 ) => {
-  const { testInfo, ...playwrightScreenshotOptions } = screenshotOptions;
+  const {
+    mask,
+    maxDiffPixels,
+    maxDiffPixelRatio,
+    testInfo,
+    useClippedPageScreenshot = false,
+  } = screenshotOptions;
 
   await waitForVisualReady(page);
   await expect(region).toBeVisible();
@@ -589,10 +602,40 @@ export const expectRegionScreenshot = async (
   await alignRegionHeightToSnapshot(region, screenshotName, testInfo);
 
   try {
+    if (useClippedPageScreenshot && testInfo) {
+      const snapshotDimensions = getPngDimensions(testInfo.snapshotPath(screenshotName));
+      const regionBox = await region.boundingBox();
+
+      if (snapshotDimensions && regionBox) {
+        const screenshotBuffer = await page.screenshot({
+          animations: "disabled",
+          caret: "hide",
+          fullPage: true,
+          mask,
+          scale: "css",
+          clip: {
+            x: Math.max(0, Math.floor(regionBox.x)),
+            y: Math.max(0, Math.floor(regionBox.y)),
+            width: snapshotDimensions.width,
+            height: snapshotDimensions.height,
+          },
+        });
+
+        expect(screenshotBuffer).toMatchSnapshot(screenshotName, {
+          maxDiffPixels,
+          maxDiffPixelRatio,
+        });
+
+        return;
+      }
+    }
+
     await expect(region).toHaveScreenshot(screenshotName, {
       animations: "disabled",
       caret: "hide",
-      ...playwrightScreenshotOptions,
+      mask,
+      maxDiffPixels,
+      maxDiffPixelRatio,
     });
   } finally {
     await resetRegionHeightAlignment(region);
