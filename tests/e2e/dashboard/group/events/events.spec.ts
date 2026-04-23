@@ -290,7 +290,13 @@ test.describe("group dashboard events view", () => {
     await expect(organizerGroupPage.locator("#starts_at")).toBeVisible();
     await organizerGroupPage.locator("#starts_at").fill("2030-05-10T10:00");
     await organizerGroupPage.locator("#ends_at").fill("2030-05-10T12:00");
-    await organizerGroupPage.locator("#meeting_join_url").fill("https://meet.example.com/e2e-created-event");
+    if (E2E_MEETINGS_ENABLED) {
+      await enableAutomaticMeetingCreation(organizerGroupPage);
+    } else {
+      await organizerGroupPage.locator("#meeting_join_url").fill(
+        "https://meet.example.com/e2e-created-event",
+      );
+    }
     const visibleAddEventButton = organizerGroupPage.locator(
       "#pending-changes-alert:not(.hidden) #add-event-button",
     );

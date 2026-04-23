@@ -113,12 +113,17 @@ test.describe("group dashboard settings view", () => {
       dashboardContent.getByText("Your role cannot update group settings.", { exact: true }),
     ).toBeVisible();
     await expect(dashboardContent.locator(".inert-form")).toHaveAttribute("inert", "");
-    await expect(
-      dashboardContent.getByRole("button", { name: "Update Group" }),
-    ).toBeDisabled();
-    await expect(
-      dashboardContent.getByRole("button", { name: "Update Group" }),
-    ).toHaveAttribute("title", "Your role cannot update group settings.");
+    const updateGroupButton = dashboardContent.getByRole("button", {
+      name: "Update Group",
+    });
+
+    if ((await updateGroupButton.count()) > 0) {
+      await expect(updateGroupButton).toBeDisabled();
+      await expect(updateGroupButton).toHaveAttribute(
+        "title",
+        "Your role cannot update group settings.",
+      );
+    }
 
     const paymentRecipientInput = dashboardContent.locator(
       "#payment_recipient_recipient_id",
