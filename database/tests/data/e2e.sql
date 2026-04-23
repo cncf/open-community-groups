@@ -588,6 +588,13 @@ insert into event (
     false
 );
 
+update event
+set payment_currency_code = 'USD'
+where event_id in (
+    '55555555-5555-5555-5555-555555555505',
+    '55555555-5555-5555-5555-555555555507'
+);
+
 -- ============================================================================
 -- USERS
 -- Password: Password123!
@@ -1151,6 +1158,22 @@ values (
     5,
     'VIP pass',
     'Paid pass used for organizer refund review coverage.'
+), (
+    '56555555-5555-5555-5555-555555555525',
+    true,
+    '55555555-5555-5555-5555-555555555505',
+    1,
+    20,
+    'Virtual access pass',
+    'Sellable tier used to show a price badge on the homepage virtual events list.'
+), (
+    '56555555-5555-5555-5555-555555555526',
+    true,
+    '55555555-5555-5555-5555-555555555507',
+    1,
+    30,
+    'Observability summit pass',
+    'Sellable tier used to show a price badge on the homepage in-person events list.'
 );
 
 insert into event_ticket_price_window (
@@ -1188,6 +1211,18 @@ values (
     '57555555-5555-5555-5555-555555555524',
     5000,
     '56555555-5555-5555-5555-555555555523',
+    null,
+    null
+), (
+    '57555555-5555-5555-5555-555555555526',
+    1500,
+    '56555555-5555-5555-5555-555555555525',
+    null,
+    null
+), (
+    '57555555-5555-5555-5555-555555555527',
+    2000,
+    '56555555-5555-5555-5555-555555555526',
     null,
     null
 );

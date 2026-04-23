@@ -101,6 +101,20 @@ test.describe("community home page", () => {
       await expect(page.getByText(TEST_EVENT_NAMES.gamma[1], { exact: true })).toBeVisible();
     });
 
+    test("ticketed seeded event cards show price badges", async ({ page }) => {
+      const inPersonCard = page
+        .getByRole("link")
+        .filter({ hasText: TEST_EVENT_NAMES.gamma[0] })
+        .first();
+      const virtualCard = page
+        .getByRole("link")
+        .filter({ hasText: TEST_EVENT_NAMES.beta[1] })
+        .first();
+
+      await expect(inPersonCard).toContainText("From USD 20.00");
+      await expect(virtualCard).toContainText("From USD 15.00");
+    });
+
     test("latest groups section renders heading and explore link", async ({
       page,
     }) => {
