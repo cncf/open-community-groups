@@ -493,6 +493,8 @@ test.describe("group dashboard events view", () => {
   test("organizer sees the payments tab when group payments are ready", async ({
     organizerGroupPage,
   }) => {
+    test.skip(!E2E_PAYMENTS_ENABLED, "Payments are disabled in this environment.");
+
     await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
 
     const dashboardContent = organizerGroupPage.locator("#dashboard-content");
@@ -523,6 +525,8 @@ test.describe("group dashboard events view", () => {
   test("organizer can create a ticketed event with ticket tiers and discount codes", async ({
     organizerGroupPage,
   }) => {
+    test.skip(!E2E_PAYMENTS_ENABLED, "Payments are disabled in this environment.");
+
     const eventName = `E2E Ticketed Event ${Date.now()}`;
 
     await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
@@ -682,6 +686,8 @@ test.describe("group dashboard events view", () => {
   test("organizer sees seeded ticketing values on a payment-ready event", async ({
     organizerGroupPage,
   }) => {
+    test.skip(!E2E_PAYMENTS_ENABLED, "Payments are disabled in this environment.");
+
     await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
     await openEventUpdateFormByName(
       organizerGroupPage,
@@ -715,6 +721,8 @@ test.describe("group dashboard events view", () => {
   test("organizer sees seats and status columns in the ticket types table", async ({
     organizerGroupPage,
   }) => {
+    test.skip(!E2E_PAYMENTS_ENABLED, "Payments are disabled in this environment.");
+
     await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
     await openEventUpdateFormByName(
       organizerGroupPage,
