@@ -80,9 +80,15 @@ const expectManualMeetingFields = async (page: Page) => {
 
 const expectAutomaticMeetingControls = async (page: Page) => {
   const onlineEventDetails = page.locator("online-event-details");
+  const automaticModeCard = onlineEventDetails.locator(
+    'input[type="radio"][value="automatic"] + div',
+  );
 
   await expect(onlineEventDetails).toBeVisible();
-  await expect(onlineEventDetails.getByText("Create meeting automatically")).toBeVisible();
+  await expect(automaticModeCard).toBeVisible();
+  await expect(
+    automaticModeCard.getByText("Create meeting automatically", { exact: true }),
+  ).toBeVisible();
 };
 
 const enableAutomaticMeetingCreation = async (page: Page) => {
