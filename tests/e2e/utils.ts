@@ -173,6 +173,40 @@ const waitForVisualReady = async (page: Page) => {
   await page.waitForLoadState("networkidle");
   await page.evaluate(async () => {
     await document.fonts.ready;
+    await new Promise<void>((resolve) => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => resolve());
+      });
+    });
+  });
+};
+
+/**
+ * Waits for image elements inside the snapshot target to settle.
+ */
+const waitForVisualImages = async (region: Locator) => {
+  await region.locator("img").evaluateAll(async (elements) => {
+    await Promise.all(
+      elements.map(async (element) => {
+        const imageElement = element as HTMLImageElement;
+        const settlePromise =
+          typeof imageElement.decode === "function"
+            ? imageElement.decode().catch(() => undefined)
+            : imageElement.complete
+              ? Promise.resolve()
+              : new Promise<void>((resolve) => {
+                  imageElement.addEventListener("load", () => resolve(), { once: true });
+                  imageElement.addEventListener("error", () => resolve(), { once: true });
+                });
+
+        await Promise.race([
+          settlePromise,
+          new Promise<void>((resolve) => {
+            window.setTimeout(resolve, 1500);
+          }),
+        ]);
+      }),
+    );
   });
 };
 
@@ -522,6 +556,7 @@ export const expectPageScreenshot = async (
   } = {},
 ) => {
   await waitForVisualReady(page);
+  await waitForVisualImages(page.locator("body"));
 
   await expect(page).toHaveScreenshot(screenshotName, {
     animations: "disabled",
@@ -550,6 +585,7 @@ export const expectRegionScreenshot = async (
   await waitForVisualReady(page);
   await expect(region).toBeVisible();
   await region.scrollIntoViewIfNeeded();
+  await waitForVisualImages(region);
   await alignRegionHeightToSnapshot(region, screenshotName, testInfo);
 
   try {

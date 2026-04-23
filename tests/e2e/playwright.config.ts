@@ -32,6 +32,15 @@ const visualSpecPattern = /(^|\/)[^/]+_visual\.spec\.ts$/u;
 const isVisualOnlyRun = process.argv.some(
   (arg) => visualSpecPattern.test(arg) || arg.includes("@visual"),
 );
+/** Visual runs need a deterministic browser environment for stable snapshots. */
+const visualUseOverrides = isVisualOnlyRun
+  ? {
+      colorScheme: "light" as const,
+      locale: "en-US",
+      reducedMotion: "reduce" as const,
+      timezoneId: "UTC",
+    }
+  : {};
 /** Matches tests that should only execute in the mobile project. */
 const mobileTestPattern = /@mobile/;
 
@@ -89,7 +98,7 @@ export default defineConfig({
         ? smokeSpecPaths
         : [...smokeSpecPaths, visualSpecPattern],
       grepInvert: mobileTestPattern,
-      use: { ...devices["Desktop Chrome"] },
+      use: { ...devices["Desktop Chrome"], ...visualUseOverrides },
     },
     {
       name: "chromium-mobile-deep",
@@ -97,7 +106,7 @@ export default defineConfig({
         ? smokeSpecPaths
         : [...smokeSpecPaths, visualSpecPattern],
       grep: mobileTestPattern,
-      use: { ...devices["iPhone 12"] },
+      use: { ...devices["iPhone 12"], ...visualUseOverrides },
     },
   ],
   webServer,

@@ -74,11 +74,11 @@ Most runs only need:
 - `OCG_E2E_BASE_URL`
   Base URL used by Playwright. Default: `http://localhost:9000`
 - `OCG_E2E_MEETINGS_ENABLED`
-  Enables automatic meeting coverage and assertions. Default: disabled locally
-  unless the variable is set to `true`. Use `false` to disable it.
+  Enables automatic meeting coverage and assertions. `just e2e-tests` sets this
+  to `true` by default. Use `false` to disable it for a custom run.
 - `OCG_E2E_PAYMENTS_ENABLED`
-  Enables payment-specific coverage and assertions. Default: disabled locally
-  unless the variable is set to `true`. Use `false` to disable it.
+  Enables payment-specific coverage and assertions. `just e2e-tests` sets this
+  to `true` by default. Use `false` to disable it for a custom run.
 
 Useful test data overrides:
 
@@ -104,7 +104,8 @@ back to the `db` section in `server.yml`.
 
 - The committed e2e Node manifest lives at
   [`tests/e2e/package.json`](/Users/cintiasanchezgarcia/projects/open-community-groups/tests/e2e/package.json).
-- `npm install` may write `tests/e2e/package-lock.json`, which is ignored by git.
+- Keep [`tests/e2e/package-lock.json`](/Users/cintiasanchezgarcia/projects/open-community-groups/tests/e2e/package-lock.json)
+  committed so Playwright and its browser stack stay pinned for visual snapshots.
 - Local e2e runs use the main app database and main server config, like `gitjobs`.
 - Seeded e2e users use the password `Password123!` after `just db-load-e2e-data`.
 - Firefox and WebKit only run the smoke suite.
