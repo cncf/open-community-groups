@@ -282,9 +282,11 @@ test.describe("group dashboard events view", () => {
       "description",
       "A dashboard event created and removed by the e2e suite.",
     );
+    
     if (E2E_MEETINGS_ENABLED) {
       await organizerGroupPage.locator("#capacity").fill("50");
     }
+    
     await organizerGroupPage.locator('button[data-section="date-venue"]').click();
     await selectTimezone(organizerGroupPage, "UTC");
     await expect(organizerGroupPage.locator("#starts_at")).toBeVisible();
