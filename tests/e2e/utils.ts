@@ -605,20 +605,19 @@ export const expectRegionScreenshot = async (
       const regionBox = await region.boundingBox();
 
       if (snapshotDimensions && regionBox) {
-        const screenshotBuffer = await page.screenshot({
+        await expect(page).toHaveScreenshot(screenshotName, {
           animations: "disabled",
           caret: "hide",
           mask,
-          scale: "css",
           clip: {
-            x: Math.max(0, Math.floor(regionBox.x)),
-            y: Math.max(0, Math.floor(regionBox.y)),
+            x: Math.max(0, regionBox.x),
+            y: Math.max(0, regionBox.y),
             width: snapshotDimensions.width,
             height: snapshotDimensions.height,
           },
+          scale: "css",
+          ...snapshotDiffOptions,
         });
-
-        expect(screenshotBuffer).toMatchSnapshot(screenshotName, snapshotDiffOptions);
 
         return;
       }
