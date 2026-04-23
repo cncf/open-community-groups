@@ -172,13 +172,7 @@ const buildUrl = (path: string) => new URL(path, BASE_URL).toString();
 const waitForVisualReady = async (page: Page) => {
   await page.waitForLoadState("networkidle");
   await page.evaluate(async () => {
-    await Promise.all([
-      document.fonts.load('300 16px "Inter"'),
-      document.fonts.load('400 16px "Inter"'),
-      document.fonts.load('600 16px "Inter"'),
-      document.fonts.load('700 16px "Inter"'),
-      document.fonts.ready,
-    ]);
+    await document.fonts.ready;
     await new Promise<void>((resolve) => {
       requestAnimationFrame(() => {
         requestAnimationFrame(() => resolve());
@@ -594,6 +588,10 @@ export const expectRegionScreenshot = async (
     testInfo,
     useClippedPageScreenshot = false,
   } = screenshotOptions;
+  const snapshotDiffOptions = {
+    ...(maxDiffPixels === undefined ? {} : { maxDiffPixels }),
+    ...(maxDiffPixelRatio === undefined ? {} : { maxDiffPixelRatio }),
+  };
 
   await waitForVisualReady(page);
   await expect(region).toBeVisible();
@@ -610,7 +608,6 @@ export const expectRegionScreenshot = async (
         const screenshotBuffer = await page.screenshot({
           animations: "disabled",
           caret: "hide",
-          fullPage: true,
           mask,
           scale: "css",
           clip: {
@@ -621,10 +618,7 @@ export const expectRegionScreenshot = async (
           },
         });
 
-        expect(screenshotBuffer).toMatchSnapshot(screenshotName, {
-          maxDiffPixels,
-          maxDiffPixelRatio,
-        });
+        expect(screenshotBuffer).toMatchSnapshot(screenshotName, snapshotDiffOptions);
 
         return;
       }
@@ -634,8 +628,7 @@ export const expectRegionScreenshot = async (
       animations: "disabled",
       caret: "hide",
       mask,
-      maxDiffPixels,
-      maxDiffPixelRatio,
+      ...snapshotDiffOptions,
     });
   } finally {
     await resetRegionHeightAlignment(region);
