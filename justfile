@@ -160,7 +160,7 @@ e2e-install:
 
 # Run the Playwright e2e test suite.
 e2e-tests:
-    cd tests/e2e && npx playwright test --config playwright.config.ts
+    cd tests/e2e && OCG_E2E_MEETINGS_ENABLED=true OCG_E2E_PAYMENTS_ENABLED=true npx playwright test --config playwright.config.ts
 
 # Update Playwright visual snapshots for the e2e suite.
 e2e-update-snapshots:
