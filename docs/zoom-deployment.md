@@ -35,6 +35,16 @@ You need:
 - One or more Zoom host users that can be used for scheduled meetings.
 - A decision about the participant limit your Zoom plan supports.
 
+Useful Zoom references:
+
+- [Internal apps (Server-to-server)](https://developers.zoom.us/docs/internal-apps/)
+- [Meetings APIs](https://developers.zoom.us/docs/api/meetings/)
+- [Webhook URL validation enforcement and verification changes](https://developers.zoom.us/changelog/platform/verification-changes-webhook/)
+- [Enabling cloud recording](https://support.zoom.com/hc/en/article?id=zm_kb&sysparm_article=KB0063923)
+- [Managing cloud recording settings](https://support.zoom.com/hc/en/article?id=zm_kb&sysparm_article=KB0065362)
+- [Managing and sharing cloud recordings](https://support.zoom.com/hc/en/article?id=zm_kb&sysparm_article=KB0067567)
+- [Hosting multiple meetings simultaneously](https://support.zoom.com/hc/en/article?id=zm_kb&sysparm_article=KB0068522)
+
 ## OCG Configuration
 
 ### Helm Values
@@ -117,6 +127,8 @@ Store them in OCG as:
 - Raw config: `meetings.zoom.account_id`, `meetings.zoom.client_id`,
   `meetings.zoom.client_secret`
 
+Reference: [Internal apps (Server-to-server)](https://developers.zoom.us/docs/internal-apps/).
+
 ### Step 2: Choose the Host Pool Users
 
 OCG does not turn event organizers or speaker emails into Zoom hosts
@@ -135,6 +147,8 @@ If you expect overlapping meetings, increase the size of the host pool or raise
 `maxSimultaneousMeetingsPerHost` to match the concurrency your Zoom plan and
 any purchased add-ons actually support.
 
+Reference: [Hosting multiple meetings simultaneously](https://support.zoom.com/hc/en/article?id=zm_kb&sysparm_article=KB0068522).
+
 ## Zoom Account Settings
 
 Use these Zoom account settings for OCG-created meetings and recordings.
@@ -148,11 +162,16 @@ Configure these settings in Zoom:
 - `Allow participants to join before host`: enabled
 - `Participants can join`: `15 minutes before start time`
 
+When Zoom shows multiple `join before host` choices, select the option that
+lets participants join `15 minutes before start time`.
+
 These defaults align with the way OCG currently creates Zoom meetings:
 
 - OCG requests a generated default password for new meetings.
 - OCG enables `join_before_host`.
 - OCG sets join-before-host time to `15` minutes.
+
+Reference: [Meetings APIs](https://developers.zoom.us/docs/api/meetings/).
 
 ### Recording Defaults
 
@@ -167,6 +186,11 @@ These defaults align with current OCG behavior because OCG requests cloud
 recording for created meetings and expects Zoom to send a
 `recording.completed` webhook when the recording is ready.
 
+References:
+
+- [Enabling cloud recording](https://support.zoom.com/hc/en/article?id=zm_kb&sysparm_article=KB0063923)
+- [Managing cloud recording settings](https://support.zoom.com/hc/en/article?id=zm_kb&sysparm_article=KB0065362)
+
 ### Recording Sharing Defaults
 
 Configure these settings in Zoom:
@@ -180,6 +204,11 @@ URL for OCG to store when the `recording.completed` webhook arrives.
 
 If recording sharing is disabled, or if Zoom does not generate a shareable URL,
 OCG cannot populate the recording link from the webhook payload.
+
+References:
+
+- [Managing cloud recording settings](https://support.zoom.com/hc/en/article?id=zm_kb&sysparm_article=KB0065362)
+- [Managing and sharing cloud recordings](https://support.zoom.com/hc/en/article?id=zm_kb&sysparm_article=KB0067567)
 
 ## Zoom Webhook Setup
 
@@ -202,6 +231,8 @@ Configure a Zoom webhook secret token and store it in OCG as:
 
 OCG uses that token to verify the `x-zm-signature` header on incoming Zoom
 webhooks.
+
+Reference: [Webhook URL validation enforcement and verification changes](https://developers.zoom.us/changelog/platform/verification-changes-webhook/).
 
 ### Step 3: Subscribe the Webhook to the Events OCG Uses
 
