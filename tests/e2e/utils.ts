@@ -113,9 +113,10 @@ export const TEST_PAYMENT_EVENT_SLUGS = {
 
 /** Seeded Stripe recipient stored on the alpha group for payment-ready coverage. */
 export const TEST_PAYMENT_GROUP_RECIPIENT = "acct_e2e_alpha";
-export const E2E_PAYMENTS_ENABLED = /^(1|true|yes)$/i.test(
-  process.env.OCG_E2E_PAYMENTS_ENABLED || "",
-);
+export const E2E_PAYMENTS_ENABLED =
+  (process.env.OCG_E2E_PAYMENTS_ENABLED || "").trim().toLowerCase() === "true";
+export const E2E_MEETINGS_ENABLED =
+  (process.env.OCG_E2E_MEETINGS_ENABLED || "").trim().toLowerCase() === "true";
 
 /** Event slugs organized by group. */
 export const TEST_EVENT_SLUGS = {

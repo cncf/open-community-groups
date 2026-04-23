@@ -73,6 +73,12 @@ Most runs only need:
 
 - `OCG_E2E_BASE_URL`
   Base URL used by Playwright. Default: `http://localhost:9000`
+- `OCG_E2E_MEETINGS_ENABLED`
+  Enables automatic meeting coverage and assertions. Default: disabled locally
+  unless the variable is set to `true`. Use `false` to disable it.
+- `OCG_E2E_PAYMENTS_ENABLED`
+  Enables payment-specific coverage and assertions. Default: disabled locally
+  unless the variable is set to `true`. Use `false` to disable it.
 
 Useful test data overrides:
 

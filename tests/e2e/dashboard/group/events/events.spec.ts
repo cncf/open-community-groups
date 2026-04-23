@@ -3,6 +3,7 @@ import type { Locator, Page } from "@playwright/test";
 import { expect, test } from "../../../fixtures";
 
 import {
+  E2E_MEETINGS_ENABLED,
   E2E_PAYMENTS_ENABLED,
   TEST_COMMUNITY_NAME,
   TEST_EVENT_IDS,
@@ -70,6 +71,33 @@ const openEventUpdateFormByName = async (page: Page, eventName: string, eventId?
     ),
     editButton.click(),
   ]);
+};
+
+const expectManualMeetingFields = async (page: Page) => {
+  await expect(page.locator("online-event-details")).toHaveCount(0);
+  await expect(page.locator("#meeting_join_url")).toBeVisible();
+  await expect(page.locator("#meeting_recording_url")).toBeVisible();
+};
+
+const expectAutomaticMeetingControls = async (page: Page) => {
+  const onlineEventDetails = page.locator("online-event-details");
+
+  await expect(onlineEventDetails).toBeVisible();
+  await expect(onlineEventDetails.getByText("Create meeting automatically")).toBeVisible();
+};
+
+const enableAutomaticMeetingCreation = async (page: Page) => {
+  const onlineEventDetails = page.locator("online-event-details");
+  const automaticModeInput = onlineEventDetails.locator('input[type="radio"][value="automatic"]');
+
+  await expectAutomaticMeetingControls(page);
+  await expect(automaticModeInput).toBeEnabled();
+
+  await automaticModeInput.check({ force: true });
+
+  await expect(
+    onlineEventDetails.locator('input[type="hidden"][name="meeting_requested"]'),
+  ).toHaveValue("true");
 };
 
 const addTicketType = async (
@@ -249,6 +277,9 @@ test.describe("group dashboard events view", () => {
       "description",
       "A dashboard event created and removed by the e2e suite.",
     );
+    if (E2E_MEETINGS_ENABLED) {
+      await organizerGroupPage.locator("#capacity").fill("50");
+    }
     await organizerGroupPage.locator('button[data-section="date-venue"]').click();
     await selectTimezone(organizerGroupPage, "UTC");
     await expect(organizerGroupPage.locator("#starts_at")).toBeVisible();
@@ -274,6 +305,21 @@ test.describe("group dashboard events view", () => {
     const eventRow = dashboardContent.locator("tr", { hasText: eventName });
     await expect(eventRow).toBeVisible();
 
+    await openEventUpdateFormByName(organizerGroupPage, eventName);
+    await organizerGroupPage.locator('button[data-section="date-venue"]').click();
+
+    if (E2E_MEETINGS_ENABLED) {
+      await expectAutomaticMeetingControls(organizerGroupPage);
+      await expect(
+        organizerGroupPage.locator('online-event-details input[name="meeting_requested"]'),
+      ).toHaveValue("true");
+    } else {
+      await expect(organizerGroupPage.locator("#meeting_join_url")).toHaveValue(
+        "https://meet.example.com/e2e-created-event",
+      );
+    }
+
+    await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
     await eventRow.locator(".btn-actions").click();
 
     const deleteButton = eventRow.locator('button[id^="delete-event-"]');
@@ -523,9 +569,13 @@ test.describe("group dashboard events view", () => {
       await selectTimezone(organizerGroupPage, "UTC");
       await organizerGroupPage.locator("#starts_at").fill("2030-11-12T18:00");
       await organizerGroupPage.locator("#ends_at").fill("2030-11-12T20:00");
-      await organizerGroupPage.locator("#meeting_join_url").fill(
-        "https://meet.example.com/e2e-ticketed-event",
-      );
+      if (E2E_MEETINGS_ENABLED) {
+        await enableAutomaticMeetingCreation(organizerGroupPage);
+      } else {
+        await organizerGroupPage.locator("#meeting_join_url").fill(
+          "https://meet.example.com/e2e-ticketed-event",
+        );
+      }
 
       await openPaymentsSection(organizerGroupPage);
 
@@ -595,6 +645,19 @@ test.describe("group dashboard events view", () => {
       await expect(eventRow).toBeVisible();
 
       await openEventUpdateFormByName(organizerGroupPage, eventName);
+      await organizerGroupPage.locator('button[data-section="date-venue"]').click();
+
+      if (E2E_MEETINGS_ENABLED) {
+        await expectAutomaticMeetingControls(organizerGroupPage);
+        await expect(
+          organizerGroupPage.locator('online-event-details input[name="meeting_requested"]'),
+        ).toHaveValue("true");
+      } else {
+        await expect(organizerGroupPage.locator("#meeting_join_url")).toHaveValue(
+          "https://meet.example.com/e2e-ticketed-event",
+        );
+      }
+
       await openPaymentsSection(organizerGroupPage);
 
       await expect(organizerGroupPage.locator("#payment_currency_code")).toHaveValue("USD");
