@@ -155,7 +155,7 @@ frontend-unit-tests:
 
 # Install e2e dependencies and Playwright browsers.
 e2e-install:
-    cd tests/e2e && npm install
+    cd tests/e2e && npm ci
     cd tests/e2e && npx playwright install --with-deps
 
 # Run the Playwright e2e test suite.

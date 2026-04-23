@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import {
+  E2E_PAYMENTS_ENABLED,
   TEST_COMMUNITY_BANNER_MOBILE_URL,
   TEST_COMMUNITY_BANNER_URL,
   TEST_COMMUNITY_DESCRIPTION,
@@ -102,6 +103,8 @@ test.describe("community home page", () => {
     });
 
     test("ticketed seeded event cards show price badges", async ({ page }) => {
+      test.skip(!E2E_PAYMENTS_ENABLED, "Payments are disabled in this environment.");
+
       const inPersonCard = page
         .getByRole("link")
         .filter({ hasText: TEST_EVENT_NAMES.gamma[0] })

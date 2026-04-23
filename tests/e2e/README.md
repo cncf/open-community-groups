@@ -105,7 +105,8 @@ back to the `db` section in `server.yml`.
 - The committed e2e Node manifest lives at
   [`tests/e2e/package.json`](/Users/cintiasanchezgarcia/projects/open-community-groups/tests/e2e/package.json).
 - Keep [`tests/e2e/package-lock.json`](/Users/cintiasanchezgarcia/projects/open-community-groups/tests/e2e/package-lock.json)
-  committed so Playwright and its browser stack stay pinned for visual snapshots.
+  committed and use `npm ci` so Playwright and its browser stack stay pinned for
+  visual snapshots.
 - Local e2e runs use the main app database and main server config, like `gitjobs`.
 - Seeded e2e users use the password `Password123!` after `just db-load-e2e-data`.
 - Firefox and WebKit only run the smoke suite.

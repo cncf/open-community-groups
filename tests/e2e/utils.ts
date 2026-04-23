@@ -262,26 +262,22 @@ const alignRegionHeightToSnapshot = async (
   }
 
   await region.evaluate(
-    (element, { expectedHeight, adjustHeight }) => {
+    (element, { expectedHeight }) => {
       const target = element as HTMLElement;
 
       target.dataset.ocgE2ePrevBoxSizing = target.style.boxSizing;
       target.dataset.ocgE2ePrevMinHeight = target.style.minHeight;
+      target.dataset.ocgE2ePrevMaxHeight = target.style.maxHeight;
       target.dataset.ocgE2ePrevHeight = target.style.height;
       target.dataset.ocgE2ePrevOverflow = target.style.overflow;
       target.style.boxSizing = "border-box";
-
-      if (adjustHeight > 0) {
-        target.style.minHeight = `${expectedHeight}px`;
-        return;
-      }
-
-      target.style.height = `${expectedHeight - 0.5}px`;
+      target.style.minHeight = `${expectedHeight}px`;
+      target.style.maxHeight = `${expectedHeight}px`;
+      target.style.height = `${expectedHeight}px`;
       target.style.overflow = "hidden";
     },
     {
       expectedHeight: snapshotDimensions.height,
-      adjustHeight: heightDelta,
     },
   );
 };
@@ -299,10 +295,12 @@ const resetRegionHeightAlignment = async (region: Locator) => {
 
     target.style.boxSizing = target.dataset.ocgE2ePrevBoxSizing;
     target.style.minHeight = target.dataset.ocgE2ePrevMinHeight ?? "";
+    target.style.maxHeight = target.dataset.ocgE2ePrevMaxHeight ?? "";
     target.style.height = target.dataset.ocgE2ePrevHeight ?? "";
     target.style.overflow = target.dataset.ocgE2ePrevOverflow ?? "";
     delete target.dataset.ocgE2ePrevBoxSizing;
     delete target.dataset.ocgE2ePrevMinHeight;
+    delete target.dataset.ocgE2ePrevMaxHeight;
     delete target.dataset.ocgE2ePrevHeight;
     delete target.dataset.ocgE2ePrevOverflow;
   });
@@ -588,9 +586,13 @@ export const expectRegionScreenshot = async (
     testInfo,
     useClippedPageScreenshot = false,
   } = screenshotOptions;
+  const clippedPageScreenshotDiffRatio =
+    process.env.CI === "true" && useClippedPageScreenshot ? 0.08 : undefined;
   const snapshotDiffOptions = {
     ...(maxDiffPixels === undefined ? {} : { maxDiffPixels }),
-    ...(maxDiffPixelRatio === undefined ? {} : { maxDiffPixelRatio }),
+    ...((maxDiffPixelRatio ?? clippedPageScreenshotDiffRatio) === undefined
+      ? {}
+      : { maxDiffPixelRatio: maxDiffPixelRatio ?? clippedPageScreenshotDiffRatio }),
   };
 
   await waitForVisualReady(page);

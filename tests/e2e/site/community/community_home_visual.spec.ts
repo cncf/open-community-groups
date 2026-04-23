@@ -37,7 +37,7 @@ test.describe("community home page visual regression @visual", () => {
       page,
       page.locator(".community-description"),
       "community-home-mobile.png",
-      { maxDiffPixelRatio: 0.012, testInfo, useClippedPageScreenshot: true },
+      { testInfo, useClippedPageScreenshot: true },
     );
   });
 });

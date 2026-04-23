@@ -79,7 +79,7 @@ jobs:
 
       - name: Install Node.js dependencies
         working-directory: tests/e2e
-        run: npm install
+        run: npm ci
 
       - name: Install Playwright browsers
         working-directory: tests/e2e
