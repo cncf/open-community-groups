@@ -256,6 +256,8 @@
                                                     series_message = "This event is part of a recurring series. What would you like to unpublish?",
                                                     single_message = "Are you sure you wish to unpublish this event?",
                                                     success_message = "You have successfully unpublished the event.",
+                                                    series_success_message = "You have successfully unpublished the events.",
+                                                    series_error_message = "An error occurred unpublishing these events. Please try again later.",
                                                     error_message = "An error occurred unpublishing this event. Please try again later.") -}}
                         {% elif !event.canceled -%}
                           {{ event_scoped_action(event = event,
@@ -268,6 +270,8 @@
                                                     series_message = "This event is part of a recurring series. What would you like to publish?",
                                                     single_message = "Are you sure you wish to publish this event?",
                                                     success_message = "You have successfully published the event.",
+                                                    series_success_message = "You have successfully published the events.",
+                                                    series_error_message = "An error occurred publishing these events. Please try again later.",
                                                     error_message = "An error occurred publishing this event. Please try again later.") -}}
                         {% endif -%}
                         {# End publish/unpublish button -#}
@@ -283,6 +287,8 @@
                                                     series_message = "This event is part of a recurring series. What would you like to cancel?",
                                                     single_message = "Are you sure you wish to cancel this event? This action is not reversible.",
                                                     success_message = "You have successfully canceled the event.",
+                                                    series_success_message = "You have successfully canceled the events.",
+                                                    series_error_message = "Something went wrong canceling these events. Please try again later.",
                                                     error_message = "Something went wrong canceling this event. Please try again later.") -}}
                         {% endif -%}
                         {# End cancel button -#}
@@ -296,6 +302,8 @@
                                                 series_message = "This event is part of a recurring series. What would you like to delete?",
                                                 single_message = "Are you sure you wish to delete this event?",
                                                 success_message = "You have successfully deleted the event.",
+                                                series_success_message = "You have successfully deleted the events.",
+                                                series_error_message = "Something went wrong deleting these events. Please try again later.",
                                                 error_message = "Something went wrong deleting this event. Please try again later.") -}}
                       </ul>
                     </div>
@@ -508,6 +516,8 @@
                                                 series_message = "This event is part of a recurring series. What would you like to delete?",
                                                 single_message = "Are you sure you wish to delete this event?",
                                                 success_message = "You have successfully deleted the event.",
+                                                series_success_message = "You have successfully deleted the events.",
+                                                series_error_message = "Something went wrong deleting these events. Please try again later.",
                                                 error_message = "Something went wrong deleting this event. Please try again later.") -}}
                       </ul>
                     </div>
@@ -587,6 +597,7 @@
 
       const url = scopedActionButton.dataset.actionUrl;
       scopedActionButton.dataset.requestPath = scope === "series" ? `${url}?scope=series` : url;
+      scopedActionButton.dataset.requestScope = scope;
       htmx.trigger(scopedActionButton, "confirmed");
     });
 
@@ -598,11 +609,15 @@
     });
 
     scopedActionButton.addEventListener("htmx:afterRequest", (event) => {
+      const isSeriesRequest = scopedActionButton.dataset.requestScope === "series";
       delete scopedActionButton.dataset.requestPath;
+      delete scopedActionButton.dataset.requestScope;
       handleHtmxResponse({
         xhr: event.detail?.xhr,
-        successMessage: scopedActionButton.dataset.successMessage,
-        errorMessage: scopedActionButton.dataset.errorMessage,
+        successMessage: isSeriesRequest ?
+          scopedActionButton.dataset.seriesSuccessMessage : scopedActionButton.dataset.successMessage,
+        errorMessage: isSeriesRequest ?
+          scopedActionButton.dataset.seriesErrorMessage : scopedActionButton.dataset.errorMessage,
       });
     });
   });
@@ -620,6 +635,8 @@
   series_message,
   single_message,
   success_message,
+  series_success_message,
+  series_error_message,
   error_message
   ) -%}
   <li>
@@ -639,6 +656,8 @@
             data-series-message="{{ series_message }}"
             data-single-message="{{ single_message }}"
             data-success-message="{{ success_message }}"
+            data-series-success-message="{{ series_success_message }}"
+            data-series-error-message="{{ series_error_message }}"
             data-error-message="{{ error_message }}"
             hx-target="#dashboard-content"
             hx-indicator="#dashboard-spinner"
