@@ -2,6 +2,8 @@ import { expect } from "@open-wc/testing";
 
 import {
   confirmAction,
+  confirmSeriesAction,
+  getCommonAlertOptions,
   handleHtmxResponse,
   showConfirmAlert,
   showErrorAlert,
@@ -118,6 +120,30 @@ describe("alerts", () => {
     expect(env.current.swal.calls[1].html).to.equal("<strong>Delete entry?</strong>");
     expect(env.current.swal.calls[1].confirmButtonText).to.equal("Delete");
     expect(env.current.swal.calls[1].cancelButtonText).to.equal("Cancel");
+  });
+
+  it("uses shared stylesheet classes for alert layout", () => {
+    const options = getCommonAlertOptions();
+
+    expect(options.customClass.popup).to.equal("ocg-swal-popup");
+    expect(options.customClass.actions).to.equal("ocg-swal-actions");
+    expect(options.customClass.confirmButton).to.equal("btn-primary ocg-swal-button");
+    expect(options.customClass.denyButton).to.equal("btn-primary-outline ocg-swal-button");
+    expect(options.customClass.cancelButton).to.equal("btn-primary-outline ocg-swal-button");
+  });
+
+  it("uses shared alert layout for recurring series confirmations", async () => {
+    env.current.swal.setNextResult({ isConfirmed: false, isDenied: true });
+
+    const result = await confirmSeriesAction({
+      message: "Publish this series?",
+      confirmText: "Only this event",
+      denyText: "All in series",
+    });
+
+    expect(result).to.equal("series");
+    expect(env.current.swal.calls[0].customClass.popup).to.equal("ocg-swal-popup");
+    expect(env.current.swal.calls[0].customClass.actions).to.equal("ocg-swal-actions");
   });
 
   it("triggers htmx confirmed events after confirmation", async () => {

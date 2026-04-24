@@ -5,20 +5,21 @@ import { scrollToDashboardTop } from "/static/js/common/common.js";
  * Includes positioning, styling, and custom CSS classes.
  * @returns {Object} Alert configuration options for SweetAlert2
  */
-const getCommonAlertOptions = () => {
+export const getCommonAlertOptions = () => {
   return {
     position: "top-end",
     buttonsStyling: false,
     iconColor: "var(--color-primary-500)",
     backdrop: false,
     customClass: {
-      popup: "pb-10! pt-5! px-0! rounded-lg! max-w-[100%] md:max-w-[400px]! shadow-lg!",
+      popup: "ocg-swal-popup",
       title: "text-md",
       htmlContainer: "text-base/6!",
       icon: "text-[0.4rem]! md:text-[0.5rem]!",
-      confirmButton: "btn-primary",
-      denyButton: "btn-primary-outline ms-5",
-      cancelButton: "btn-primary-outline ms-5",
+      actions: "ocg-swal-actions",
+      confirmButton: "btn-primary ocg-swal-button",
+      denyButton: "btn-primary-outline ocg-swal-button",
+      cancelButton: "btn-primary-outline ocg-swal-button",
     },
   };
 };

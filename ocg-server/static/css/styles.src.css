@@ -76,6 +76,18 @@
     @apply py-1 px-3 text-xs;
   }
 
+  .ocg-swal-popup {
+    @apply pb-10! pt-5! px-6! rounded-lg! max-w-[calc(100%-2rem)]! md:max-w-[560px]! shadow-lg!;
+  }
+
+  .ocg-swal-actions {
+    @apply w-full! px-0! gap-4! flex-wrap! justify-center!;
+  }
+
+  .ocg-swal-button {
+    @apply min-w-28! m-0!;
+  }
+
   .icon-text {
     @apply flex flex-row items-center leading-4;
   }
