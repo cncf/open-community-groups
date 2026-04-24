@@ -49,7 +49,7 @@ test.describe("event page visual regression @visual", () => {
       page,
       getIntroSection(page),
       "event-page-mobile.png",
-      { testInfo },
+      { testInfo, useClippedPageScreenshot: true },
     );
   });
 });

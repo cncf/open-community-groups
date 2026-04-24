@@ -3,6 +3,8 @@ import type { Locator, Page } from "@playwright/test";
 import { expect, test } from "../../../fixtures";
 
 import {
+  E2E_MEETINGS_ENABLED,
+  E2E_PAYMENTS_ENABLED,
   TEST_COMMUNITY_NAME,
   TEST_EVENT_IDS,
   TEST_EVENT_NAMES,
@@ -69,6 +71,38 @@ const openEventUpdateFormByName = async (page: Page, eventName: string, eventId?
     ),
     editButton.click(),
   ]);
+};
+
+const expectManualMeetingFields = async (page: Page) => {
+  await expect(page.locator("#meeting_join_url")).toBeVisible();
+  await expect(page.locator("#meeting_recording_url")).toBeVisible();
+};
+
+const expectAutomaticMeetingControls = async (page: Page) => {
+  const onlineEventDetails = page.locator("online-event-details");
+  const automaticModeCard = onlineEventDetails.locator(
+    'input[type="radio"][value="automatic"] + div',
+  );
+
+  await expect(onlineEventDetails).toBeVisible();
+  await expect(automaticModeCard).toBeVisible();
+  await expect(
+    automaticModeCard.getByText("Create meeting automatically", { exact: true }),
+  ).toBeVisible();
+};
+
+const enableAutomaticMeetingCreation = async (page: Page) => {
+  const onlineEventDetails = page.locator("online-event-details");
+  const automaticModeInput = onlineEventDetails.locator('input[type="radio"][value="automatic"]');
+
+  await expectAutomaticMeetingControls(page);
+  await expect(automaticModeInput).toBeEnabled();
+
+  await automaticModeInput.check({ force: true });
+
+  await expect(
+    onlineEventDetails.locator('input[type="hidden"][name="meeting_requested"]'),
+  ).toHaveValue("true");
 };
 
 const addTicketType = async (
@@ -248,12 +282,23 @@ test.describe("group dashboard events view", () => {
       "description",
       "A dashboard event created and removed by the e2e suite.",
     );
+    
+    if (E2E_MEETINGS_ENABLED) {
+      await organizerGroupPage.locator("#capacity").fill("50");
+    }
+    
     await organizerGroupPage.locator('button[data-section="date-venue"]').click();
     await selectTimezone(organizerGroupPage, "UTC");
     await expect(organizerGroupPage.locator("#starts_at")).toBeVisible();
     await organizerGroupPage.locator("#starts_at").fill("2030-05-10T10:00");
     await organizerGroupPage.locator("#ends_at").fill("2030-05-10T12:00");
-    await organizerGroupPage.locator("#meeting_join_url").fill("https://meet.example.com/e2e-created-event");
+    if (E2E_MEETINGS_ENABLED) {
+      await enableAutomaticMeetingCreation(organizerGroupPage);
+    } else {
+      await organizerGroupPage.locator("#meeting_join_url").fill(
+        "https://meet.example.com/e2e-created-event",
+      );
+    }
     const visibleAddEventButton = organizerGroupPage.locator(
       "#pending-changes-alert:not(.hidden) #add-event-button",
     );
@@ -273,6 +318,21 @@ test.describe("group dashboard events view", () => {
     const eventRow = dashboardContent.locator("tr", { hasText: eventName });
     await expect(eventRow).toBeVisible();
 
+    await openEventUpdateFormByName(organizerGroupPage, eventName);
+    await organizerGroupPage.locator('button[data-section="date-venue"]').click();
+
+    if (E2E_MEETINGS_ENABLED) {
+      await expectAutomaticMeetingControls(organizerGroupPage);
+      await expect(
+        organizerGroupPage.locator('online-event-details input[name="meeting_requested"]'),
+      ).toHaveValue("true");
+    } else {
+      await expect(organizerGroupPage.locator("#meeting_join_url")).toHaveValue(
+        "https://meet.example.com/e2e-created-event",
+      );
+    }
+
+    await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
     await eventRow.locator(".btn-actions").click();
 
     const deleteButton = eventRow.locator('button[id^="delete-event-"]');
@@ -432,13 +492,19 @@ test.describe("group dashboard events view", () => {
     await expect(organizerGroupWithoutPaymentsPage.locator('[data-content="payments"]')).toHaveCount(0);
   });
 
-  test("organizer sees the payments tab when group payments are ready", async ({ organizerGroupPage }) => {
+  test("organizer sees the payments tab when group payments are ready", async ({
+    organizerGroupPage,
+  }) => {
+    test.skip(!E2E_PAYMENTS_ENABLED, "Payments are disabled in this environment.");
+
     await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
 
     const dashboardContent = organizerGroupPage.locator("#dashboard-content");
     await dashboardContent.getByRole("button", { name: "Add Event" }).click();
 
-    await expect(organizerGroupPage.locator('button[data-section="payments"]')).toBeVisible();
+    await expect(
+      organizerGroupPage.locator('button[data-section="payments"]'),
+    ).toBeVisible();
     await openPaymentsSection(organizerGroupPage);
     await expect(organizerGroupPage.locator("#payment_currency_code")).toBeVisible();
     await expect(organizerGroupPage.locator("#add-ticket-type-button")).toBeVisible();
@@ -451,7 +517,9 @@ test.describe("group dashboard events view", () => {
       TEST_PAYMENT_EVENT_IDS.draft,
     );
 
-    await expect(organizerGroupPage.locator('button[data-section="payments"]')).toBeVisible();
+    await expect(
+      organizerGroupPage.locator('button[data-section="payments"]'),
+    ).toBeVisible();
     await openPaymentsSection(organizerGroupPage);
     await expect(organizerGroupPage.locator("#payment_currency_code")).toHaveValue("USD");
   });
@@ -459,6 +527,8 @@ test.describe("group dashboard events view", () => {
   test("organizer can create a ticketed event with ticket tiers and discount codes", async ({
     organizerGroupPage,
   }) => {
+    test.skip(!E2E_PAYMENTS_ENABLED, "Payments are disabled in this environment.");
+
     const eventName = `E2E Ticketed Event ${Date.now()}`;
 
     await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
@@ -468,10 +538,12 @@ test.describe("group dashboard events view", () => {
 
     await organizerGroupPage.locator("#name").fill(eventName);
     await organizerGroupPage.locator("#kind_id").selectOption("virtual");
-    await organizerGroupPage.locator("#category_id").selectOption("33333333-3333-3333-3333-333333333331");
     await organizerGroupPage
-      .locator("#description_short")
-      .fill("Ticketed dashboard event for payment coverage.");
+      .locator("#category_id")
+      .selectOption("33333333-3333-3333-3333-333333333331");
+    await organizerGroupPage.locator("#description_short").fill(
+      "Ticketed dashboard event for payment coverage.",
+    );
     await fillMarkdownEditor(
       organizerGroupPage,
       "description",
@@ -484,7 +556,13 @@ test.describe("group dashboard events view", () => {
     await selectTimezone(organizerGroupPage, "UTC");
     await organizerGroupPage.locator("#starts_at").fill("2030-11-12T18:00");
     await organizerGroupPage.locator("#ends_at").fill("2030-11-12T20:00");
-    await organizerGroupPage.locator("#meeting_join_url").fill("https://meet.example.com/e2e-ticketed-event");
+    if (E2E_MEETINGS_ENABLED) {
+      await enableAutomaticMeetingCreation(organizerGroupPage);
+    } else {
+      await organizerGroupPage.locator("#meeting_join_url").fill(
+        "https://meet.example.com/e2e-ticketed-event",
+      );
+    }
 
     await openPaymentsSection(organizerGroupPage);
 
@@ -554,6 +632,19 @@ test.describe("group dashboard events view", () => {
     await expect(eventRow).toBeVisible();
 
     await openEventUpdateFormByName(organizerGroupPage, eventName);
+    await organizerGroupPage.locator('button[data-section="date-venue"]').click();
+
+    if (E2E_MEETINGS_ENABLED) {
+      await expectAutomaticMeetingControls(organizerGroupPage);
+      await expect(
+        organizerGroupPage.locator('online-event-details input[name="meeting_requested"]'),
+      ).toHaveValue("true");
+    } else {
+      await expect(organizerGroupPage.locator("#meeting_join_url")).toHaveValue(
+        "https://meet.example.com/e2e-ticketed-event",
+      );
+    }
+
     await openPaymentsSection(organizerGroupPage);
 
     await expect(organizerGroupPage.locator("#payment_currency_code")).toHaveValue("USD");
@@ -594,7 +685,11 @@ test.describe("group dashboard events view", () => {
     await expect(dashboardContent.locator("tr", { hasText: eventName })).toHaveCount(0);
   });
 
-  test("organizer sees seeded ticketing values on a payment-ready event", async ({ organizerGroupPage }) => {
+  test("organizer sees seeded ticketing values on a payment-ready event", async ({
+    organizerGroupPage,
+  }) => {
+    test.skip(!E2E_PAYMENTS_ENABLED, "Payments are disabled in this environment.");
+
     await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
     await openEventUpdateFormByName(
       organizerGroupPage,
@@ -628,6 +723,8 @@ test.describe("group dashboard events view", () => {
   test("organizer sees seats and status columns in the ticket types table", async ({
     organizerGroupPage,
   }) => {
+    test.skip(!E2E_PAYMENTS_ENABLED, "Payments are disabled in this environment.");
+
     await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
     await openEventUpdateFormByName(
       organizerGroupPage,

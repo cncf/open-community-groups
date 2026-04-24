@@ -20,6 +20,9 @@ jobs:
           - suite: Functional
             command: npx playwright test --config playwright.config.ts --project=chromium-deep --project=chromium-mobile-deep
             artifact_name: playwright-artifacts-deep
+          - suite: Visual
+            command: npx playwright test --config playwright.config.ts --grep @visual --project=chromium-deep --project=chromium-mobile-deep
+            artifact_name: playwright-artifacts-visual
     permissions:
       contents: read
     services:
@@ -41,6 +44,8 @@ jobs:
       OCG_DB_NAME_E2E: ocg_tests_e2e
       OCG_DB_PASSWORD: postgres
       OCG_E2E_BASE_URL: http://127.0.0.1:9000
+      OCG_E2E_MEETINGS_ENABLED: "true"
+      OCG_E2E_PAYMENTS_ENABLED: "true"
       OCG_PG_BIN: /usr/bin
       PGPASSWORD: postgres
 
@@ -71,7 +76,7 @@ jobs:
 
       - name: Install Node.js dependencies
         working-directory: tests/e2e
-        run: npm install
+        run: npm ci
 
       - name: Install Playwright browsers
         working-directory: tests/e2e

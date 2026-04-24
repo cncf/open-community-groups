@@ -4,6 +4,7 @@ import { expect, test } from "../../../fixtures";
 
 import {
   buildE2eUrl,
+  E2E_PAYMENTS_ENABLED,
   TEST_COMMUNITY_NAME,
   TEST_EVENT_IDS,
   TEST_PAYMENT_EVENT_IDS,
@@ -354,69 +355,73 @@ test.describe("group dashboard attendees tab", () => {
     ).toHaveAttribute("title", "No attendees to send emails to.");
   });
 
-  test("organizer can review a pending refund request from the attendees tab", async ({
-    organizerGroupPage,
-  }) => {
-    const attendeesContent = await openAttendeesTab(
+  test.describe("payment-enabled attendee refund flows", () => {
+    test.skip(!E2E_PAYMENTS_ENABLED, "Payments are disabled in this environment.");
+
+    test("organizer can review a pending refund request from the attendees tab", async ({
       organizerGroupPage,
-      TEST_PAYMENT_EVENT_NAMES.refunds,
-      TEST_PAYMENT_EVENT_IDS.refunds,
-    );
-    const attendeeRow = attendeesContent.locator("tr", {
-      hasText: "E2E Member One",
+    }) => {
+      const attendeesContent = await openAttendeesTab(
+        organizerGroupPage,
+        TEST_PAYMENT_EVENT_NAMES.refunds,
+        TEST_PAYMENT_EVENT_IDS.refunds,
+      );
+      const attendeeRow = attendeesContent.locator("tr", {
+        hasText: "E2E Member One",
+      });
+
+      await attendeeRow.locator("[data-refund-review-trigger]").click();
+
+      const refundModal = organizerGroupPage.locator("#attendee-refund-modal");
+      await expect(refundModal).toBeVisible();
+      await expect(refundModal.locator("#attendee-refund-ticket")).toHaveText("VIP pass");
+      await expect(refundModal.locator("#attendee-refund-amount")).toHaveText("USD 40.00");
+      await expect(refundModal.locator("#attendee-refund-name")).toHaveText("E2E Member One");
+      await expect(refundModal.locator("#attendee-refund-approve")).toContainText(
+        "Approve refund",
+      );
+      await expect(refundModal.locator("#attendee-refund-reject")).toContainText(
+        "Reject refund",
+      );
     });
 
-    await attendeeRow.locator("[data-refund-review-trigger]").click();
-
-    const refundModal = organizerGroupPage.locator("#attendee-refund-modal");
-    await expect(refundModal).toBeVisible();
-    await expect(refundModal.locator("#attendee-refund-ticket")).toHaveText("VIP pass");
-    await expect(refundModal.locator("#attendee-refund-amount")).toHaveText("USD 40.00");
-    await expect(refundModal.locator("#attendee-refund-name")).toHaveText("E2E Member One");
-    await expect(refundModal.locator("#attendee-refund-approve")).toContainText(
-      "Approve refund",
-    );
-    await expect(refundModal.locator("#attendee-refund-reject")).toContainText(
-      "Reject refund",
-    );
-  });
-
-  test("organizer sees retry refund finalization for processing refunds", async ({
-    organizerGroupPage,
-  }) => {
-    const attendeesContent = await openAttendeesTab(
+    test("organizer sees retry refund finalization for processing refunds", async ({
       organizerGroupPage,
-      TEST_PAYMENT_EVENT_NAMES.refunds,
-      TEST_PAYMENT_EVENT_IDS.refunds,
-    );
-    const attendeeRow = attendeesContent.locator("tr", {
-      hasText: "E2E Member Two",
+    }) => {
+      const attendeesContent = await openAttendeesTab(
+        organizerGroupPage,
+        TEST_PAYMENT_EVENT_NAMES.refunds,
+        TEST_PAYMENT_EVENT_IDS.refunds,
+      );
+      const attendeeRow = attendeesContent.locator("tr", {
+        hasText: "E2E Member Two",
+      });
+
+      await attendeeRow.locator("[data-refund-review-trigger]").click();
+
+      const refundModal = organizerGroupPage.locator("#attendee-refund-modal");
+      await expect(refundModal).toBeVisible();
+      await expect(refundModal.locator("#attendee-refund-ticket")).toHaveText("VIP pass");
+      await expect(refundModal.locator("#attendee-refund-amount")).toHaveText("USD 50.00");
+      await expect(refundModal.locator("#attendee-refund-name")).toHaveText("E2E Member Two");
+      await expect(refundModal.locator("#attendee-refund-approve")).toContainText(
+        "Retry refund finalization",
+      );
+      await expect(refundModal.locator("#attendee-refund-reject")).toBeHidden();
     });
 
-    await attendeeRow.locator("[data-refund-review-trigger]").click();
-
-    const refundModal = organizerGroupPage.locator("#attendee-refund-modal");
-    await expect(refundModal).toBeVisible();
-    await expect(refundModal.locator("#attendee-refund-ticket")).toHaveText("VIP pass");
-    await expect(refundModal.locator("#attendee-refund-amount")).toHaveText("USD 50.00");
-    await expect(refundModal.locator("#attendee-refund-name")).toHaveText("E2E Member Two");
-    await expect(refundModal.locator("#attendee-refund-approve")).toContainText(
-      "Retry refund finalization",
-    );
-    await expect(refundModal.locator("#attendee-refund-reject")).toBeHidden();
-  });
-
-  test("viewer cannot review or approve attendee refunds", async ({
-    groupViewerPage,
-  }) => {
-    const attendeesContent = await openAttendeesTab(
+    test("viewer cannot review or approve attendee refunds", async ({
       groupViewerPage,
-      TEST_PAYMENT_EVENT_NAMES.refunds,
-      TEST_PAYMENT_EVENT_IDS.refunds,
-    );
+    }) => {
+      const attendeesContent = await openAttendeesTab(
+        groupViewerPage,
+        TEST_PAYMENT_EVENT_NAMES.refunds,
+        TEST_PAYMENT_EVENT_IDS.refunds,
+      );
 
-    await expect(attendeesContent.locator("[data-refund-review-trigger]")).toHaveCount(0);
-    await expect(groupViewerPage.locator("#attendee-refund-modal")).toBeHidden();
+      await expect(attendeesContent.locator("[data-refund-review-trigger]")).toHaveCount(0);
+      await expect(groupViewerPage.locator("#attendee-refund-modal")).toBeHidden();
+    });
   });
 
   test("organizer can open and close the attendee email modal from the attendees tab", async ({

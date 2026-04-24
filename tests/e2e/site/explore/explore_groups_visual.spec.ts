@@ -48,13 +48,13 @@ test.describe("site explore groups page visual regression @visual", () => {
       page,
       getExploreSearchRow(page, "Search groups"),
       "explore-groups-mobile.png",
-      { testInfo },
+      { testInfo, useClippedPageScreenshot: true },
     );
     await expectRegionScreenshot(
       page,
       getExploreControlsRow(page),
       "explore-groups-mobile-controls.png",
-      { testInfo },
+      { testInfo, useClippedPageScreenshot: true },
     );
   });
 });

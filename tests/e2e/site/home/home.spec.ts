@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import {
+  E2E_PAYMENTS_ENABLED,
   TEST_COMMUNITY_NAME,
   TEST_COMMUNITY_NAME_2,
   TEST_COMMUNITY_TITLE,
@@ -91,6 +92,22 @@ test.describe("site home page", () => {
 
     test("upcoming virtual events shows seeded event cards", async ({ page }) => {
       await expect(page.getByText(TEST_EVENT_NAMES.alpha[1], { exact: true })).toBeVisible();
+    });
+
+    test("ticketed seeded event cards show price badges", async ({ page }) => {
+      test.skip(!E2E_PAYMENTS_ENABLED, "Payments are disabled in this environment.");
+
+      const inPersonCard = page
+        .getByRole("link")
+        .filter({ hasText: TEST_EVENT_NAMES.gamma[0] })
+        .first();
+      const virtualCard = page
+        .getByRole("link")
+        .filter({ hasText: TEST_EVENT_NAMES.beta[1] })
+        .first();
+
+      await expect(inPersonCard).toContainText("From USD 20.00");
+      await expect(virtualCard).toContainText("From USD 15.00");
     });
 
     test("latest groups section renders heading and explore link", async ({

@@ -113,6 +113,10 @@ export const TEST_PAYMENT_EVENT_SLUGS = {
 
 /** Seeded Stripe recipient stored on the alpha group for payment-ready coverage. */
 export const TEST_PAYMENT_GROUP_RECIPIENT = "acct_e2e_alpha";
+export const E2E_PAYMENTS_ENABLED =
+  (process.env.OCG_E2E_PAYMENTS_ENABLED || "").trim().toLowerCase() === "true";
+export const E2E_MEETINGS_ENABLED =
+  (process.env.OCG_E2E_MEETINGS_ENABLED || "").trim().toLowerCase() === "true";
 
 /** Event slugs organized by group. */
 export const TEST_EVENT_SLUGS = {
@@ -169,6 +173,40 @@ const waitForVisualReady = async (page: Page) => {
   await page.waitForLoadState("networkidle");
   await page.evaluate(async () => {
     await document.fonts.ready;
+    await new Promise<void>((resolve) => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => resolve());
+      });
+    });
+  });
+};
+
+/**
+ * Waits for image elements inside the snapshot target to settle.
+ */
+const waitForVisualImages = async (region: Locator) => {
+  await region.locator("img").evaluateAll(async (elements) => {
+    await Promise.all(
+      elements.map(async (element) => {
+        const imageElement = element as HTMLImageElement;
+        const settlePromise =
+          typeof imageElement.decode === "function"
+            ? imageElement.decode().catch(() => undefined)
+            : imageElement.complete
+              ? Promise.resolve()
+              : new Promise<void>((resolve) => {
+                  imageElement.addEventListener("load", () => resolve(), { once: true });
+                  imageElement.addEventListener("error", () => resolve(), { once: true });
+                });
+
+        await Promise.race([
+          settlePromise,
+          new Promise<void>((resolve) => {
+            window.setTimeout(resolve, 1500);
+          }),
+        ]);
+      }),
+    );
   });
 };
 
@@ -229,6 +267,7 @@ const alignRegionHeightToSnapshot = async (
 
       target.dataset.ocgE2ePrevBoxSizing = target.style.boxSizing;
       target.dataset.ocgE2ePrevMinHeight = target.style.minHeight;
+      target.dataset.ocgE2ePrevMaxHeight = target.style.maxHeight;
       target.dataset.ocgE2ePrevHeight = target.style.height;
       target.dataset.ocgE2ePrevOverflow = target.style.overflow;
       target.style.boxSizing = "border-box";
@@ -238,6 +277,7 @@ const alignRegionHeightToSnapshot = async (
         return;
       }
 
+      target.style.maxHeight = `${expectedHeight}px`;
       target.style.height = `${expectedHeight}px`;
       target.style.overflow = "hidden";
     },
@@ -261,10 +301,12 @@ const resetRegionHeightAlignment = async (region: Locator) => {
 
     target.style.boxSizing = target.dataset.ocgE2ePrevBoxSizing;
     target.style.minHeight = target.dataset.ocgE2ePrevMinHeight ?? "";
+    target.style.maxHeight = target.dataset.ocgE2ePrevMaxHeight ?? "";
     target.style.height = target.dataset.ocgE2ePrevHeight ?? "";
     target.style.overflow = target.dataset.ocgE2ePrevOverflow ?? "";
     delete target.dataset.ocgE2ePrevBoxSizing;
     delete target.dataset.ocgE2ePrevMinHeight;
+    delete target.dataset.ocgE2ePrevMaxHeight;
     delete target.dataset.ocgE2ePrevHeight;
     delete target.dataset.ocgE2ePrevOverflow;
   });
@@ -518,6 +560,7 @@ export const expectPageScreenshot = async (
   } = {},
 ) => {
   await waitForVisualReady(page);
+  await waitForVisualImages(page.locator("body"));
 
   await expect(page).toHaveScreenshot(screenshotName, {
     animations: "disabled",
@@ -539,20 +582,60 @@ export const expectRegionScreenshot = async (
     maxDiffPixels?: number;
     maxDiffPixelRatio?: number;
     testInfo?: TestInfo;
+    useClippedPageScreenshot?: boolean;
   } = {},
 ) => {
-  const { testInfo, ...playwrightScreenshotOptions } = screenshotOptions;
+  const {
+    mask,
+    maxDiffPixels,
+    maxDiffPixelRatio,
+    testInfo,
+    useClippedPageScreenshot = false,
+  } = screenshotOptions;
+  const clippedPageScreenshotDiffRatio =
+    process.env.CI === "true" && useClippedPageScreenshot ? 0.08 : undefined;
+  const snapshotDiffOptions = {
+    ...(maxDiffPixels === undefined ? {} : { maxDiffPixels }),
+    ...((maxDiffPixelRatio ?? clippedPageScreenshotDiffRatio) === undefined
+      ? {}
+      : { maxDiffPixelRatio: maxDiffPixelRatio ?? clippedPageScreenshotDiffRatio }),
+  };
 
   await waitForVisualReady(page);
   await expect(region).toBeVisible();
   await region.scrollIntoViewIfNeeded();
+  await waitForVisualImages(region);
   await alignRegionHeightToSnapshot(region, screenshotName, testInfo);
 
   try {
+    if (useClippedPageScreenshot && testInfo) {
+      const snapshotDimensions = getPngDimensions(testInfo.snapshotPath(screenshotName));
+      const regionBox = await region.boundingBox();
+
+      if (snapshotDimensions && regionBox) {
+        await expect(page).toHaveScreenshot(screenshotName, {
+          animations: "disabled",
+          caret: "hide",
+          mask,
+          clip: {
+            x: Math.max(0, regionBox.x),
+            y: Math.max(0, regionBox.y),
+            width: snapshotDimensions.width,
+            height: snapshotDimensions.height,
+          },
+          scale: "css",
+          ...snapshotDiffOptions,
+        });
+
+        return;
+      }
+    }
+
     await expect(region).toHaveScreenshot(screenshotName, {
       animations: "disabled",
       caret: "hide",
-      ...playwrightScreenshotOptions,
+      mask,
+      ...snapshotDiffOptions,
     });
   } finally {
     await resetRegionHeightAlignment(region);

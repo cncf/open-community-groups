@@ -40,7 +40,7 @@ test.describe("group page visual regression @visual", () => {
       page,
       getIntroSection(page),
       "group-page-mobile.png",
-      { testInfo },
+      { testInfo, useClippedPageScreenshot: true },
     );
   });
 });

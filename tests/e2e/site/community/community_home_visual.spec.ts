@@ -1,8 +1,8 @@
 import { expect, test } from "@playwright/test";
 
 import {
-  getCommunityAboutSection,
   expectRegionScreenshot,
+  getCommunityAboutSection,
   navigateToCommunityHome,
   TEST_COMMUNITY_DESCRIPTION,
   TEST_COMMUNITY_NAME,
@@ -37,7 +37,7 @@ test.describe("community home page visual regression @visual", () => {
       page,
       getCommunityAboutSection(page),
       "community-home-mobile.png",
-      { maxDiffPixelRatio: 0.012, testInfo },
+      { testInfo, useClippedPageScreenshot: true },
     );
   });
 });

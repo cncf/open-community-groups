@@ -155,12 +155,12 @@ frontend-unit-tests:
 
 # Install e2e dependencies and Playwright browsers.
 e2e-install:
-    cd tests/e2e && npm install
+    cd tests/e2e && npm ci
     cd tests/e2e && npx playwright install --with-deps
 
 # Run the Playwright e2e test suite.
 e2e-tests:
-    cd tests/e2e && npx playwright test --config playwright.config.ts
+    cd tests/e2e && OCG_E2E_MEETINGS_ENABLED=true OCG_E2E_PAYMENTS_ENABLED=true npx playwright test --config playwright.config.ts
 
 # Update Playwright visual snapshots for the e2e suite.
 e2e-update-snapshots:
