@@ -714,6 +714,8 @@ test.describe("group dashboard events view", () => {
 
     const eventRow = dashboardContent.locator("tr", { hasText: eventName });
     await expect(eventRow).toBeVisible();
+    await organizerGroupPage.getByRole("button", { name: "OK" }).click();
+    await expect(organizerGroupPage.locator(".swal2-popup")).toHaveCount(0);
 
     await openEventUpdateFormByName(organizerGroupPage, eventName);
     await organizerGroupPage.locator('button[data-section="date-venue"]').click();

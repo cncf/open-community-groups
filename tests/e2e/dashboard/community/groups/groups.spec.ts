@@ -428,13 +428,25 @@ test.describe("community dashboard groups view", () => {
     ).toHaveCount(0);
 
     await searchInput.fill("");
-    await searchInput.fill("No matching group");
-    await searchInput.press("Enter");
+    await searchInput.fill("zz-no-groups-match");
+
+    await Promise.all([
+      adminCommunityPage.waitForResponse(
+        (response) =>
+          response.request().method() === "GET" &&
+          response
+            .url()
+            .includes("/dashboard/community/groups?ts_query=zz-no-groups-match") &&
+          response.ok(),
+      ),
+      searchInput.press("Enter"),
+    ]);
 
     await expect(
       dashboardContent
         .locator('div.text-xl.lg\\:text-2xl.mb-4:visible')
-        .filter({ hasText: "No groups found matching your search." }),
+        .filter({ hasText: "No groups found matching your search." })
+        .first(),
     ).toBeVisible();
 
     const clearFilterButton = dashboardContent.locator(

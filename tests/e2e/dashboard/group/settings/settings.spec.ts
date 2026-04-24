@@ -102,7 +102,7 @@ test.describe("group dashboard settings view", () => {
     );
   });
 
-  test("viewer sees read-only controls on group settings", async ({
+test("viewer sees read-only controls on group settings", async ({
     groupViewerPage,
   }) => {
     await navigateToPath(groupViewerPage, "/dashboard/group?tab=settings");
