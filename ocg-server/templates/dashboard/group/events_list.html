@@ -543,84 +543,10 @@
 
 <script type="module">
   import {
-    confirmAction,
-    confirmSeriesAction,
-    handleHtmxResponse,
-  } from '/static/js/common/alerts.js';
+    initializeEventsListPage
+  } from '/static/js/dashboard/group/events-list-page.js';
 
-  const btnActions = document.querySelectorAll('.btn-actions');
-  btnActions.forEach((btnAction) => {
-    btnAction.addEventListener('click', () => {
-      const eventId = btnAction.dataset.eventId;
-
-      const dropdownActions = document.getElementById(`dropdown-actions-${eventId}`);
-      if (dropdownActions) {
-        const isOpen = dropdownActions.classList.contains('hidden');
-        dropdownActions.classList.toggle('hidden');
-        if (isOpen) {
-          // Close dropdown actions when clicking outside
-          document.addEventListener('click', (event) => {
-            if (!dropdownActions.contains(event.target) && !btnAction.contains(event.target)) {
-              dropdownActions.classList.add('hidden');
-            }
-          });
-        } else {
-          // Remove event listener when dropdown is closed
-          document.removeEventListener('click', () => {});
-        }
-      }
-    });
-  });
-
-  const scopedActionButtons = document.querySelectorAll('[data-event-scoped-action]');
-  scopedActionButtons.forEach((scopedActionButton) => {
-    scopedActionButton.addEventListener('click', async () => {
-      let scope = "this";
-      if (scopedActionButton.dataset.hasRelatedEvents === "true") {
-        scope = await confirmSeriesAction({
-          message: scopedActionButton.dataset.seriesMessage,
-          confirmText: scopedActionButton.dataset.currentScopeText,
-          denyText: scopedActionButton.dataset.seriesScopeText,
-        });
-        if (!scope) {
-          return;
-        }
-      } else {
-        const confirmed = await confirmAction({
-          message: scopedActionButton.dataset.singleMessage,
-          confirmText: scopedActionButton.dataset.confirmText,
-        });
-        if (!confirmed) {
-          return;
-        }
-      }
-
-      const url = scopedActionButton.dataset.actionUrl;
-      scopedActionButton.dataset.requestPath = scope === "series" ? `${url}?scope=series` : url;
-      scopedActionButton.dataset.requestScope = scope;
-      htmx.trigger(scopedActionButton, "confirmed");
-    });
-
-    scopedActionButton.addEventListener("htmx:configRequest", (event) => {
-      const requestPath = scopedActionButton.dataset.requestPath;
-      if (requestPath) {
-        event.detail.path = requestPath;
-      }
-    });
-
-    scopedActionButton.addEventListener("htmx:afterRequest", (event) => {
-      const isSeriesRequest = scopedActionButton.dataset.requestScope === "series";
-      delete scopedActionButton.dataset.requestPath;
-      delete scopedActionButton.dataset.requestScope;
-      handleHtmxResponse({
-        xhr: event.detail?.xhr,
-        successMessage: isSeriesRequest ?
-          scopedActionButton.dataset.seriesSuccessMessage : scopedActionButton.dataset.successMessage,
-        errorMessage: isSeriesRequest ?
-          scopedActionButton.dataset.seriesErrorMessage : scopedActionButton.dataset.errorMessage,
-      });
-    });
-  });
+  initializeEventsListPage();
 </script>
 
 {# Event dropdown action with optional series scope. #}
