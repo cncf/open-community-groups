@@ -586,12 +586,19 @@
       }
 
       const url = scopedActionButton.dataset.actionUrl;
-      const htmxMethod = scopedActionButton.dataset.htmxMethod;
-      scopedActionButton.setAttribute(`hx-${htmxMethod}`, scope === "series" ? `${url}?scope=series` : url);
+      scopedActionButton.dataset.requestPath = scope === "series" ? `${url}?scope=series` : url;
       htmx.trigger(scopedActionButton, "confirmed");
     });
 
+    scopedActionButton.addEventListener("htmx:configRequest", (event) => {
+      const requestPath = scopedActionButton.dataset.requestPath;
+      if (requestPath) {
+        event.detail.path = requestPath;
+      }
+    });
+
     scopedActionButton.addEventListener("htmx:afterRequest", (event) => {
+      delete scopedActionButton.dataset.requestPath;
       handleHtmxResponse({
         xhr: event.detail?.xhr,
         successMessage: scopedActionButton.dataset.successMessage,
