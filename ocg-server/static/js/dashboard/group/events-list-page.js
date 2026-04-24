@@ -1,6 +1,7 @@
 import { confirmAction, confirmSeriesAction, handleHtmxResponse } from "/static/js/common/alerts.js";
 
 const initializedRoots = new WeakSet();
+const EVENT_ACTION_DROPDOWN_SELECTOR = "[data-event-actions-dropdown]";
 
 const closestWithinRoot = (target, selector, root) => {
   const element = target instanceof Element ? target.closest(selector) : null;
@@ -11,7 +12,7 @@ const closestWithinRoot = (target, selector, root) => {
 };
 
 const closeDropdowns = (root, exceptDropdown = null) => {
-  root.querySelectorAll?.(".dropdown:not(.hidden)").forEach((dropdown) => {
+  root.querySelectorAll?.(`${EVENT_ACTION_DROPDOWN_SELECTOR}:not(.hidden)`).forEach((dropdown) => {
     if (dropdown !== exceptDropdown) {
       dropdown.classList.add("hidden");
     }
@@ -98,7 +99,7 @@ export const initializeEventsListPage = (root = document) => {
       return;
     }
 
-    if (!closestWithinRoot(event.target, ".dropdown", root)) {
+    if (!closestWithinRoot(event.target, EVENT_ACTION_DROPDOWN_SELECTOR, root)) {
       closeDropdowns(root);
     }
   });

@@ -27,7 +27,7 @@ const mountEventsList = ({ hasRelatedEvents = false } = {}) => {
   document.body.innerHTML = `
     <div id="events-list-root">
       <button class="btn-actions" data-event-id="123">Actions</button>
-      <div id="dropdown-actions-123" class="dropdown hidden">
+      <div id="dropdown-actions-123" data-event-actions-dropdown class="dropdown hidden">
         ${scopedActionMarkup({ hasRelatedEvents })}
       </div>
     </div>
@@ -108,5 +108,21 @@ describe("events list page", () => {
     expect(button.dataset.requestPath).to.equal(undefined);
     expect(button.dataset.requestScope).to.equal(undefined);
     expect(env.current.swal.calls[1].text).to.equal("Published events");
+  });
+
+  it("does not close unrelated dropdowns when initialized on the document", () => {
+    const root = mountEventsList();
+    document.body.insertAdjacentHTML("beforeend", '<div id="user-dropdown" class="dropdown"></div>');
+    initializeEventsListPage(document);
+
+    const actionsButton = root.querySelector(".btn-actions");
+    const eventDropdown = root.querySelector("[data-event-actions-dropdown]");
+    const userDropdown = document.getElementById("user-dropdown");
+
+    actionsButton.click();
+    document.body.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+
+    expect(eventDropdown.classList.contains("hidden")).to.equal(true);
+    expect(userDropdown.classList.contains("hidden")).to.equal(false);
   });
 });
