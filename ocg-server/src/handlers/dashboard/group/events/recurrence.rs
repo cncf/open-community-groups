@@ -81,10 +81,8 @@ fn build_occurrence_payload(
 ) -> Result<Value> {
     let mut payload = base_payload.clone();
 
-    // Calculate local and UTC deltas for fields stored in different time bases
+    // Calculate the local recurrence delta applied to event and nested fields
     let local_delta = occurrence_starts_at - base_starts_at;
-    let utc_delta =
-        utc_delta_for_occurrence(timezone, base_starts_at, occurrence_starts_at).unwrap_or(local_delta);
 
     let Some(payload_obj) = payload.as_object_mut() else {
         bail!("event payload must be an object");
@@ -102,11 +100,11 @@ fn build_occurrence_payload(
         shift_session_dates(value, local_delta)?;
     }
     if let Some(value) = payload_obj.get_mut("discount_codes") {
-        shift_discount_dates(value, utc_delta)?;
+        shift_discount_dates(value, timezone, local_delta)?;
         refresh_discount_code_ids(value);
     }
     if let Some(value) = payload_obj.get_mut("ticket_types") {
-        shift_ticket_dates(value, utc_delta)?;
+        shift_ticket_dates(value, timezone, local_delta)?;
         refresh_ticketing_ids(value);
     }
 
@@ -252,8 +250,8 @@ fn recurrence_pattern_db_value(pattern: EventRecurrencePattern) -> &'static str 
     }
 }
 
-/// Shifts discount code UTC datetime fields by the occurrence delta.
-fn shift_discount_dates(value: &mut Value, delta: TimeDelta) -> Result<()> {
+/// Shifts discount code UTC datetime fields by the local recurrence delta.
+fn shift_discount_dates(value: &mut Value, timezone: Tz, delta: TimeDelta) -> Result<()> {
     let Value::Array(discount_codes) = value else {
         return Ok(());
     };
@@ -262,10 +260,10 @@ fn shift_discount_dates(value: &mut Value, delta: TimeDelta) -> Result<()> {
     for discount_code in discount_codes {
         if let Some(discount_code_obj) = discount_code.as_object_mut() {
             if let Some(value) = discount_code_obj.get_mut("ends_at") {
-                shift_utc_field(value, delta)?;
+                shift_utc_field(value, timezone, delta)?;
             }
             if let Some(value) = discount_code_obj.get_mut("starts_at") {
-                shift_utc_field(value, delta)?;
+                shift_utc_field(value, timezone, delta)?;
             }
         }
     }
@@ -308,8 +306,8 @@ fn shift_session_dates(value: &mut Value, delta: TimeDelta) -> Result<()> {
     Ok(())
 }
 
-/// Shifts ticket price window UTC datetime fields by the occurrence delta.
-fn shift_ticket_dates(value: &mut Value, delta: TimeDelta) -> Result<()> {
+/// Shifts ticket price window UTC datetime fields by the local recurrence delta.
+fn shift_ticket_dates(value: &mut Value, timezone: Tz, delta: TimeDelta) -> Result<()> {
     let Value::Array(ticket_types) = value else {
         return Ok(());
     };
@@ -326,10 +324,10 @@ fn shift_ticket_dates(value: &mut Value, delta: TimeDelta) -> Result<()> {
         for price_window in price_windows {
             if let Some(price_window_obj) = price_window.as_object_mut() {
                 if let Some(value) = price_window_obj.get_mut("ends_at") {
-                    shift_utc_field(value, delta)?;
+                    shift_utc_field(value, timezone, delta)?;
                 }
                 if let Some(value) = price_window_obj.get_mut("starts_at") {
-                    shift_utc_field(value, delta)?;
+                    shift_utc_field(value, timezone, delta)?;
                 }
             }
         }
@@ -338,8 +336,8 @@ fn shift_ticket_dates(value: &mut Value, delta: TimeDelta) -> Result<()> {
     Ok(())
 }
 
-/// Shifts a UTC datetime field by the occurrence delta.
-fn shift_utc_field(value: &mut Value, delta: TimeDelta) -> Result<()> {
+/// Shifts a UTC datetime field by preserving its local wall-clock time.
+fn shift_utc_field(value: &mut Value, timezone: Tz, delta: TimeDelta) -> Result<()> {
     let Value::String(raw_value) = value else {
         return Ok(());
     };
@@ -347,10 +345,11 @@ fn shift_utc_field(value: &mut Value, delta: TimeDelta) -> Result<()> {
         return Ok(());
     }
 
-    let shifted = DateTime::parse_from_rfc3339(raw_value)
+    let base_utc = DateTime::parse_from_rfc3339(raw_value)
         .with_context(|| format!("invalid UTC datetime: {raw_value}"))?
-        .with_timezone(&Utc)
-        + delta;
+        .with_timezone(&Utc);
+    let shifted_local = base_utc.with_timezone(&timezone).naive_local() + delta;
+    let shifted = to_utc(timezone, shifted_local).unwrap_or(base_utc + delta);
     *raw_value = shifted.to_rfc3339_opts(SecondsFormat::Secs, true);
     Ok(())
 }
@@ -362,15 +361,6 @@ fn to_utc(timezone: Tz, value: NaiveDateTime) -> Option<DateTime<Utc>> {
         LocalResult::Ambiguous(earlier, _) => Some(earlier.with_timezone(&Utc)),
         LocalResult::None => None,
     }
-}
-
-/// Calculates the UTC delta between the base event and one occurrence.
-fn utc_delta_for_occurrence(
-    timezone: Tz,
-    base_starts_at: NaiveDateTime,
-    occurrence_starts_at: NaiveDateTime,
-) -> Option<TimeDelta> {
-    Some(to_utc(timezone, occurrence_starts_at)? - to_utc(timezone, base_starts_at)?)
 }
 
 #[cfg(test)]
@@ -674,26 +664,8 @@ mod tests {
     }
 
     #[test]
-    fn utc_delta_for_occurrence_returns_none_for_missing_local_times() {
-        // Setup recurrence crossing a spring-forward DST gap
-        let timezone: Tz = "Europe/Madrid".parse().unwrap();
-        let base_starts_at = NaiveDate::from_ymd_opt(2026, 3, 22)
-            .unwrap()
-            .and_time(NaiveTime::from_hms_opt(2, 30, 0).unwrap());
-        let occurrence_starts_at = NaiveDate::from_ymd_opt(2026, 3, 29)
-            .unwrap()
-            .and_time(NaiveTime::from_hms_opt(2, 30, 0).unwrap());
-
-        // Check missing local occurrence start cannot produce a UTC delta
-        assert_eq!(
-            utc_delta_for_occurrence(timezone, base_starts_at, occurrence_starts_at),
-            None
-        );
-    }
-
-    #[test]
-    fn utc_fields_fall_back_to_local_delta_for_missing_occurrence_time() {
-        // Setup event recurrence crossing a spring-forward DST gap
+    fn utc_fields_fall_back_to_absolute_delta_for_missing_shifted_local_time() {
+        // Setup event recurrence with a UTC field shifted into a spring-forward gap
         let base_starts_at = NaiveDate::from_ymd_opt(2026, 3, 22)
             .unwrap()
             .and_time(NaiveTime::from_hms_opt(2, 30, 0).unwrap());
@@ -703,7 +675,7 @@ mod tests {
         let timezone: Tz = "Europe/Madrid".parse().unwrap();
         let base_payload = json!({
             "discount_codes": [{
-                "starts_at": "2026-03-21T01:30:00Z"
+                "starts_at": "2026-03-22T01:30:00Z"
             }],
             "starts_at": "2026-03-22T02:30:00"
         });
@@ -712,11 +684,49 @@ mod tests {
         let payload =
             build_occurrence_payload(&base_payload, base_starts_at, occurrence_starts_at, timezone).unwrap();
 
-        // Check UTC fields use the local one-week delta, not a next-day DST fallback
+        // Check missing shifted local UTC fields use the absolute one-week delta
         assert_eq!(string_at(&payload, "/starts_at"), "2026-03-29T02:30:00");
         assert_eq!(
             string_at(&payload, "/discount_codes/0/starts_at"),
-            "2026-03-28T01:30:00Z"
+            "2026-03-29T01:30:00Z"
+        );
+    }
+
+    #[test]
+    fn utc_fields_preserve_local_wall_clock_across_different_dst_boundaries() {
+        // Setup event recurrence crossing DST with ticket windows before the transition
+        let base_starts_at = NaiveDate::from_ymd_opt(2026, 3, 22)
+            .unwrap()
+            .and_time(NaiveTime::from_hms_opt(10, 0, 0).unwrap());
+        let occurrence_starts_at = NaiveDate::from_ymd_opt(2026, 3, 29)
+            .unwrap()
+            .and_time(NaiveTime::from_hms_opt(10, 0, 0).unwrap());
+        let timezone: Tz = "Europe/Madrid".parse().unwrap();
+        let base_payload = json!({
+            "discount_codes": [{
+                "starts_at": "2026-03-10T09:00:00Z"
+            }],
+            "starts_at": "2026-03-22T10:00:00",
+            "ticket_types": [{
+                "price_windows": [{
+                    "starts_at": "2026-03-10T09:00:00Z"
+                }]
+            }]
+        });
+
+        // Build shifted occurrence payload
+        let payload =
+            build_occurrence_payload(&base_payload, base_starts_at, occurrence_starts_at, timezone).unwrap();
+
+        // Check UTC fields preserve 10:00 Europe/Madrid instead of using event-start UTC delta
+        assert_eq!(string_at(&payload, "/starts_at"), "2026-03-29T10:00:00");
+        assert_eq!(
+            string_at(&payload, "/discount_codes/0/starts_at"),
+            "2026-03-17T09:00:00Z"
+        );
+        assert_eq!(
+            string_at(&payload, "/ticket_types/0/price_windows/0/starts_at"),
+            "2026-03-17T09:00:00Z"
         );
     }
 
