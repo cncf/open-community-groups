@@ -1,4 +1,5 @@
 import { queryElementById } from "/static/js/common/dom.js";
+import { getCommonAlertOptions } from "/static/js/common/alerts.js";
 
 /**
  * Zoom API limits meeting duration to 5 to 720 minutes.
@@ -170,15 +171,9 @@ export const confirmVenueDataDeletion = async () => {
     showCancelButton: true,
     confirmButtonText: "Yes, delete venue info",
     cancelButtonText: "No, keep it",
+    ...getCommonAlertOptions(),
     position: "center",
     backdrop: true,
-    buttonsStyling: false,
-    iconColor: "var(--color-primary-500)",
-    customClass: {
-      popup: "pb-10! pt-5! px-0! rounded-lg! max-w-[100%] md:max-w-[400px]! shadow-lg!",
-      confirmButton: "btn-primary",
-      cancelButton: "btn-primary-outline ms-5",
-    },
   });
   return result.isConfirmed;
 };

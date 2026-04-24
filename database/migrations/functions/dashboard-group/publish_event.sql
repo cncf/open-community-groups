@@ -8,25 +8,28 @@ create or replace function publish_event(
 returns void as $$
 declare
     v_has_ticket_types boolean;
-    v_payment_recipient jsonb;
     v_payment_currency_code text;
+    v_payment_recipient jsonb;
+    v_published boolean;
     v_starts_at timestamptz;
 begin
     -- Check if the event is active, load ticketing state, and lock it for update
     select
+        e.published,
+        e.payment_currency_code,
+        g.payment_recipient,
+        e.starts_at,
         exists (
             select 1
             from event_ticket_type ett
             where ett.event_id = e.event_id
-        ),
-        g.payment_recipient,
-        e.payment_currency_code,
-        e.starts_at
+        )
     into
-        v_has_ticket_types,
-        v_payment_recipient,
+        v_published,
         v_payment_currency_code,
-        v_starts_at
+        v_payment_recipient,
+        v_starts_at,
+        v_has_ticket_types
     from event e
     join "group" g on g.group_id = e.group_id
     where event_id = p_event_id
@@ -37,6 +40,11 @@ begin
 
     if not found then
         raise exception 'event not found or inactive';
+    end if;
+
+    -- Return early when the event is already published
+    if v_published then
+        return;
     end if;
 
     -- Require checkout-critical ticketing configuration before publishing

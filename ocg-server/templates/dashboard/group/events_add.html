@@ -498,6 +498,42 @@
           </div>
           {# End End date/time -#}
 
+          {# Recurrence -#}
+          <div class="col-span-full lg:col-span-3">
+            <label for="recurrence_pattern" class="form-label">Recurrence</label>
+            <div class="mt-2">
+              <select id="recurrence_pattern"
+                      name="recurrence_pattern"
+                      class="input-primary">
+                <option value="just-once">Just once</option>
+                <option value="weekly" data-recurrence-label="weekly">Weekly</option>
+                <option value="biweekly" data-recurrence-label="biweekly">Every two weeks</option>
+                <option value="monthly" data-recurrence-label="monthly">Monthly</option>
+              </select>
+            </div>
+            <p class="form-legend">Create linked events from this event's dates and schedule.</p>
+          </div>
+
+          <div id="recurrence-additional-occurrences-container"
+               class="hidden col-span-full lg:col-span-3">
+            <label for="recurrence_additional_occurrences" class="form-label">
+              Additional Events <span class="asterisk">*</span>
+            </label>
+            <div class="mt-2">
+              <input type="number"
+                     name="recurrence_additional_occurrences"
+                     id="recurrence_additional_occurrences"
+                     min="1"
+                     max="{{ crate::validation::MAX_RECURRING_ADDITIONAL_OCCURRENCES }}"
+                     class="input-primary"
+                     inputmode="numeric">
+            </div>
+            <p class="form-legend">
+              How many extra linked events to create, up to {{ crate::validation::MAX_RECURRING_ADDITIONAL_OCCURRENCES }}.
+            </p>
+          </div>
+          {# End Recurrence -#}
+
           {# Event reminder toggle -#}
           <div class="col-span-full lg:col-span-6">
             <label class="inline-flex items-center cursor-pointer">

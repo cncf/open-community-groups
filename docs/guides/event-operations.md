@@ -166,6 +166,7 @@ Brand inheritance model in event details:
 This tab controls delivery constraints:
 
 - Timezone, start, and end.
+- Recurrence for creating linked copies of a new event.
 - Venue data for in-person/hybrid events.
 - Online event details for virtual/hybrid events.
 - 24-hour reminder toggle.
@@ -177,6 +178,23 @@ CFS windows aligned with the intended audience clock.
 
 When `Send Event Reminder` is enabled, OCG sends reminder messages about 24 hours before start
 time.
+
+When adding a new event, recurrence can create multiple linked events at once:
+
+- `Just once` creates one event.
+- `Weekly` creates additional events on the same weekday as the selected start date.
+- `Every two weeks` creates additional events on the same weekday every other week.
+- `Monthly` creates additional events on the same ordinal weekday, such as the third Monday.
+
+For recurring events, set `Additional Events` to the number of extra linked events to create.
+The maximum is `12`. OCG creates each occurrence as a separate individual event, sharing one
+series identifier, and shifts event dates, CFS windows, sessions, ticket windows, and discount
+windows by the same schedule offset. Monthly recurrence skips months that do not contain the same
+ordinal weekday.
+
+After creation, each occurrence has its own event page, editor, attendees, submissions, sessions,
+tickets, and operational state. `Publish`, `Unpublish`, `Cancel`, and `Delete` can target the
+whole linked series, but editing event content is intentionally one event at a time.
 
 ![Event date and venue](../screenshots/dashboard-group-event-date.png)
 
@@ -453,6 +471,9 @@ Message behavior:
 - `Publish` on a future unpublished event can notify group members/team members and listed
   speakers.
 - `Cancel` on a future published event notifies attendees, speakers, and waitlisted users.
+- Series `Publish` and `Cancel` actions aggregate affected events into grouped notifications
+  instead of sending one email per event. Aggregate notifications include links to the affected
+  events, but do not attach individual calendar files.
 - Rescheduling a future published event can notify attendees and speakers when the start or end
   time changes by at least 15 minutes. Waitlisted users are not included in reschedule notices.
 - `Unpublish` and `Delete` do not send broad attendee updates in this flow.
@@ -461,6 +482,15 @@ Automatic-meeting lifecycle in these actions:
 
 - `Publish` triggers creation/sync for configured automatic meetings (event and session meetings).
 - `Unpublish`, `Cancel`, and `Delete` trigger removal/sync for configured automatic meetings.
+
+If an event belongs to a recurring series, `Publish`, `Unpublish`, `Cancel`, and `Delete` ask
+whether to apply the action to only the selected event or all active events in that series. Series
+actions are applied atomically: either every selected event is updated, or none are.
+
+Other event edits remain individual-event operations. Updating details, dates, venue, online
+meeting configuration, hosts, speakers, sponsors, sessions, CFS settings, tickets, discounts, or
+attendee settings changes only the event you are editing, even when it belongs to a recurring
+series.
 
 Use the least destructive action that matches your operational goal.
 

@@ -12,6 +12,7 @@ use axum::{
 };
 use chrono::{TimeDelta, Utc};
 use garde::Validate;
+use serde::Deserialize;
 use tracing::{instrument, warn};
 use uuid::Uuid;
 
@@ -33,11 +34,13 @@ use crate::{
             sponsors::GroupSponsorsFilters,
         },
         notifications::{
-            EventCanceled, EventPublished, EventRescheduled, EventWaitlistPromoted, SpeakerWelcome,
+            EventCanceled, EventPublished, EventRescheduled, EventSeriesCanceled,
+            EventSeriesNotificationItem, EventSeriesPublished, EventWaitlistPromoted, SpeakerSeriesWelcome,
+            SpeakerWelcome,
         },
     },
     types::{
-        event::EventSummary,
+        event::{EventFull, EventSummary},
         pagination::{self, NavigationLinks},
         payments::GroupPaymentRecipient,
         permissions::GroupPermission,
@@ -45,8 +48,12 @@ use crate::{
     util::{build_event_calendar_attachment, build_event_page_link},
 };
 
+mod recurrence;
+
 #[cfg(test)]
 mod tests;
+
+use recurrence::RecurringEventPayloads;
 
 // URLs used by the dashboard page and tab partial
 const DASHBOARD_URL: &str = "/dashboard/group?tab=events";
@@ -236,14 +243,29 @@ pub(crate) async fn add(
     State(payments_cfg): State<Option<crate::config::PaymentsConfig>>,
     ValidatedFormQs(event): ValidatedFormQs<Event>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Prepare and validate event payload, then insert into database
+    // Prepare and validate the event payload
     let cfg_max_participants = build_meetings_max_participants(meetings_cfg.as_ref());
     let event_payload = build_event_payload(&event)?;
     if event_payload_uses_ticketing(&event_payload) {
         ensure_ticketing_ready(&db, community_id, group_id, payments_cfg.as_ref()).await?;
     }
-    db.add_event(user.user_id, group_id, &event_payload, &cfg_max_participants)
+
+    // Create either a single event or a linked recurring event series
+    if let Some(recurring_event_payloads) = RecurringEventPayloads::from_event(&event, &event_payload)
+        .map_err(|err| HandlerError::Deserialization(err.to_string()))?
+    {
+        db.add_event_series(
+            user.user_id,
+            group_id,
+            &recurring_event_payloads.events,
+            &recurring_event_payloads.recurrence,
+            &cfg_max_participants,
+        )
         .await?;
+    } else {
+        db.add_event(user.user_id, group_id, &event_payload, &cfg_max_participants)
+            .await?;
+    }
 
     Ok((
         StatusCode::CREATED,
@@ -253,6 +275,7 @@ pub(crate) async fn add(
 }
 
 /// Cancels an event (sets canceled=true).
+#[allow(clippy::too_many_arguments)]
 #[instrument(skip_all, err)]
 pub(crate) async fn cancel(
     CurrentUser(user): CurrentUser,
@@ -262,55 +285,64 @@ pub(crate) async fn cancel(
     State(notifications_manager): State<DynNotificationsManager>,
     State(server_cfg): State<HttpServerConfig>,
     Path(event_id): Path<Uuid>,
+    RawQuery(raw_query): RawQuery,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Load event summary before canceling
-    let event = db.get_event_summary(community_id, group_id, event_id).await?;
+    // Resolve action scope
+    let query = parse_event_action_query(raw_query.as_deref())?;
 
-    // Mark event as canceled in database
-    db.cancel_event(user.user_id, group_id, event_id).await?;
+    // Load summaries before canceling so notification eligibility uses prior state
+    let event_ids = event_action_ids(&db, group_id, event_id, query.scope).await?;
+    let mut events = Vec::with_capacity(event_ids.len());
+    for event_id in &event_ids {
+        events.push(db.get_event_summary(community_id, group_id, *event_id).await?);
+    }
 
-    // Notify attendees and speakers about canceled event
-    let should_notify = matches!(
-        (event.published, event.canceled, event.starts_at),
-        (true, false, Some(starts_at)) if starts_at > Utc::now()
-    );
-    if should_notify {
-        // Fetch event full and attendee IDs concurrently
-        let (event_full, attendee_ids, waitlist_ids) = tokio::try_join!(
-            db.get_event_full(community_id, group_id, event_id),
-            db.list_event_attendees_ids(group_id, event_id),
-            db.list_event_waitlist_ids(group_id, event_id)
-        )?;
-
-        // Combine attendee and speaker IDs (deduplicated)
-        let speaker_ids = event_full.speakers_ids();
-        let recipients: Vec<Uuid> = attendee_ids
-            .into_iter()
-            .chain(waitlist_ids)
-            .chain(speaker_ids)
-            .collect::<HashSet<_>>()
-            .into_iter()
-            .collect();
-
-        if !recipients.is_empty() {
-            let site_settings = db.get_site_settings().await?;
-            let base_url = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
-            let event_summary = EventSummary::from(&event_full);
-            let link = build_event_page_link(base_url, &event_summary);
-            let calendar_ics = build_event_calendar_attachment(base_url, &event_summary);
-            let template_data = EventCanceled {
-                event: event_summary,
-                link,
-                theme: site_settings.theme,
-            };
-            let notification = NewNotification {
-                attachments: vec![calendar_ics],
-                kind: NotificationKind::EventCanceled,
-                recipients,
-                template_data: Some(serde_json::to_value(&template_data)?),
-            };
-            notifications_manager.enqueue(&notification).await?;
+    // Mark the selected event or the whole linked series as canceled
+    match query.scope {
+        EventActionScope::Series => {
+            db.cancel_event_series_events(user.user_id, group_id, &event_ids)
+                .await?;
         }
+        EventActionScope::This => db.cancel_event(user.user_id, group_id, event_id).await?,
+    }
+
+    // Notify related users about canceled events that were future published
+    let events_to_notify: Vec<EventSummary> = events
+        .into_iter()
+        .filter(|event| {
+            matches!(
+                (event.published, event.canceled, event.starts_at),
+                (true, false, Some(starts_at)) if starts_at > Utc::now()
+            )
+        })
+        .collect();
+    match (query.scope, events_to_notify.as_slice()) {
+        // Multiple notifiable events
+        (EventActionScope::Series, [_, _, ..]) => {
+            let event_ids: Vec<Uuid> = events_to_notify.iter().map(|event| event.event_id).collect();
+            notify_events_canceled(
+                &db,
+                &notifications_manager,
+                &server_cfg,
+                community_id,
+                group_id,
+                &event_ids,
+            )
+            .await?;
+        }
+        // Single notifiable event
+        (_, [event]) => {
+            notify_event_canceled(
+                &db,
+                &notifications_manager,
+                &server_cfg,
+                community_id,
+                group_id,
+                event.event_id,
+            )
+            .await?;
+        }
+        _ => {}
     }
 
     Ok((
@@ -319,6 +351,34 @@ pub(crate) async fn cancel(
             "HX-Location",
             r#"{"path":"/dashboard/group?tab=events", "target":"body"}"#,
         )],
+    ))
+}
+
+/// Deletes an event from the database (soft delete).
+#[instrument(skip_all, err)]
+pub(crate) async fn delete(
+    CurrentUser(user): CurrentUser,
+    SelectedGroupId(group_id): SelectedGroupId,
+    State(db): State<DynDB>,
+    Path(event_id): Path<Uuid>,
+    RawQuery(raw_query): RawQuery,
+) -> Result<impl IntoResponse, HandlerError> {
+    // Resolve action scope
+    let query = parse_event_action_query(raw_query.as_deref())?;
+
+    // Delete the selected event or the whole linked series
+    match query.scope {
+        EventActionScope::Series => {
+            let event_ids = event_action_ids(&db, group_id, event_id, query.scope).await?;
+            db.delete_event_series_events(user.user_id, group_id, &event_ids)
+                .await?;
+        }
+        EventActionScope::This => db.delete_event(user.user_id, group_id, event_id).await?,
+    }
+
+    Ok((
+        StatusCode::NO_CONTENT,
+        [("HX-Trigger", "refresh-group-dashboard-table")],
     ))
 }
 
@@ -334,107 +394,72 @@ pub(crate) async fn publish(
     State(payments_cfg): State<Option<PaymentsConfig>>,
     State(server_cfg): State<HttpServerConfig>,
     Path(event_id): Path<Uuid>,
+    RawQuery(raw_query): RawQuery,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Load event summary before publishing
-    let event = db.get_event_summary(community_id, group_id, event_id).await?;
+    // Resolve action scope and target event ids
+    let query = parse_event_action_query(raw_query.as_deref())?;
+    let event_ids = match query.scope {
+        EventActionScope::Series => db.list_event_series_publishable_event_ids(group_id, event_id).await?,
+        EventActionScope::This => vec![event_id],
+    };
+    let configured_provider = payments_cfg.as_ref().map(PaymentsConfig::provider);
 
-    // Mark event as published in database
-    db.publish_event(
-        user.user_id,
-        payments_cfg.as_ref().map(PaymentsConfig::provider),
-        group_id,
-        event_id,
-    )
-    .await?;
+    // Load event summaries before publishing so notification decisions match prior state
+    let mut events = Vec::with_capacity(event_ids.len());
+    for event_id in &event_ids {
+        events.push(db.get_event_summary(community_id, group_id, *event_id).await?);
+    }
 
-    // Notify group members and speakers about published event
-    let should_notify = matches!(
-        (event.published, event.starts_at),
-        (false, Some(starts_at)) if starts_at > Utc::now()
-    );
-    if should_notify {
-        // Fetch event full and group member IDs concurrently
-        let (event_full, group_member_ids, team_member_ids) = tokio::try_join!(
-            db.get_event_full(community_id, group_id, event_id),
-            db.list_group_members_ids(group_id),
-            db.list_group_team_members_ids(group_id)
-        )?;
-
-        // Combine group members and team members
-        let mut recipients = group_member_ids;
-        recipients.extend(team_member_ids);
-        recipients.sort();
-        recipients.dedup();
-
-        // Extract speaker IDs
-        let speaker_ids = event_full.speakers_ids();
-        let has_speakers = !speaker_ids.is_empty();
-
-        // Filter out speakers from member IDs (they get a separate notification)
-        let recipients: Vec<Uuid> = recipients
-            .into_iter()
-            .filter(|id| !speaker_ids.contains(id))
-            .collect();
-        let has_members = !recipients.is_empty();
-
-        if has_members || has_speakers {
-            // Prepare common data for notifications
-            let site_settings = db.get_site_settings().await?;
-            let base_url = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
-            let event_summary = EventSummary::from(&event_full);
-            let link = build_event_page_link(base_url, &event_summary);
-            let calendar_ics = build_event_calendar_attachment(base_url, &event_summary);
-
-            // Notify group members about published event
-            if has_members {
-                let template_data = EventPublished {
-                    event: event_summary.clone(),
-                    link: link.clone(),
-                    theme: site_settings.theme.clone(),
-                };
-                let notification = NewNotification {
-                    attachments: vec![calendar_ics.clone()],
-                    kind: NotificationKind::EventPublished,
-                    recipients,
-                    template_data: Some(serde_json::to_value(&template_data)?),
-                };
-                notifications_manager.enqueue(&notification).await?;
-            }
-
-            // Notify speakers about being added to the event
-            if has_speakers {
-                let template_data = SpeakerWelcome {
-                    event: event_summary,
-                    link,
-                    theme: site_settings.theme,
-                };
-                let notification = NewNotification {
-                    attachments: vec![calendar_ics],
-                    kind: NotificationKind::SpeakerWelcome,
-                    recipients: speaker_ids,
-                    template_data: Some(serde_json::to_value(&template_data)?),
-                };
-                notifications_manager.enqueue(&notification).await?;
-            }
+    // Publish the selected event or the whole linked series
+    match query.scope {
+        EventActionScope::Series => {
+            db.publish_event_series_events(user.user_id, configured_provider, group_id, &event_ids)
+                .await?;
+        }
+        EventActionScope::This => {
+            db.publish_event(user.user_id, configured_provider, group_id, event_id)
+                .await?;
         }
     }
 
-    Ok((
-        StatusCode::NO_CONTENT,
-        [("HX-Trigger", "refresh-group-dashboard-table")],
-    ))
-}
-
-/// Deletes an event from the database (soft delete).
-#[instrument(skip_all, err)]
-pub(crate) async fn delete(
-    CurrentUser(user): CurrentUser,
-    SelectedGroupId(group_id): SelectedGroupId,
-    State(db): State<DynDB>,
-    Path(event_id): Path<Uuid>,
-) -> Result<impl IntoResponse, HandlerError> {
-    // Delete event from database (soft delete)
-    db.delete_event(user.user_id, group_id, event_id).await?;
+    // Notify related users about published events that were future drafts
+    let events_to_notify: Vec<EventSummary> = events
+        .into_iter()
+        .filter(|event| {
+            matches!(
+                (event.published, event.starts_at),
+                (false, Some(starts_at)) if starts_at > Utc::now()
+            )
+        })
+        .collect();
+    match (query.scope, events_to_notify.as_slice()) {
+        // Multiple notifiable events
+        (EventActionScope::Series, [_, _, ..]) => {
+            let event_ids: Vec<Uuid> = events_to_notify.iter().map(|event| event.event_id).collect();
+            notify_events_published(
+                &db,
+                &notifications_manager,
+                &server_cfg,
+                community_id,
+                group_id,
+                &event_ids,
+            )
+            .await?;
+        }
+        // Single notifiable event
+        (_, [event]) => {
+            notify_event_published(
+                &db,
+                &notifications_manager,
+                &server_cfg,
+                community_id,
+                group_id,
+                event.event_id,
+            )
+            .await?;
+        }
+        _ => {}
+    }
 
     Ok((
         StatusCode::NO_CONTENT,
@@ -449,9 +474,20 @@ pub(crate) async fn unpublish(
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     Path(event_id): Path<Uuid>,
+    RawQuery(raw_query): RawQuery,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Mark event as unpublished in database
-    db.unpublish_event(user.user_id, group_id, event_id).await?;
+    // Resolve action scope
+    let query = parse_event_action_query(raw_query.as_deref())?;
+
+    // Unpublish the selected event or the whole linked series
+    match query.scope {
+        EventActionScope::Series => {
+            let event_ids = event_action_ids(&db, group_id, event_id, query.scope).await?;
+            db.unpublish_event_series_events(user.user_id, group_id, &event_ids)
+                .await?;
+        }
+        EventActionScope::This => db.unpublish_event(user.user_id, group_id, event_id).await?,
+    }
 
     Ok((
         StatusCode::NO_CONTENT,
@@ -589,6 +625,35 @@ pub(crate) async fn update(
         .into_response())
 }
 
+// Types.
+
+/// Query parameters accepted by cancel/delete actions.
+#[derive(Debug, Default, Deserialize)]
+struct EventActionQuery {
+    /// Selected action scope.
+    #[serde(default)]
+    scope: EventActionScope,
+}
+
+/// Event management action scope requested by the dashboard.
+#[derive(Debug, Clone, Copy, Default, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+enum EventActionScope {
+    /// Apply the action to the linked event series.
+    Series,
+    /// Apply the action only to the selected event.
+    #[default]
+    This,
+}
+
+/// Recipient group sharing the same event list for one aggregate notification.
+struct EventSeriesNotificationGroup {
+    /// Events included in the notification.
+    events: Vec<EventSeriesNotificationItem>,
+    /// Recipients that should receive the notification.
+    recipients: Vec<Uuid>,
+}
+
 // Helpers.
 
 /// Builds the database payload for an event form.
@@ -640,6 +705,25 @@ async fn ensure_ticketing_ready(
     Ok(())
 }
 
+/// Resolves the event identifiers affected by a dashboard event action.
+async fn event_action_ids(
+    db: &DynDB,
+    group_id: Uuid,
+    event_id: Uuid,
+    scope: EventActionScope,
+) -> Result<Vec<Uuid>, HandlerError> {
+    if scope == EventActionScope::This {
+        return Ok(vec![event_id]);
+    }
+
+    let event_ids = db.list_event_series_event_ids(group_id, event_id).await?;
+    if event_ids.is_empty() {
+        Ok(vec![event_id])
+    } else {
+        Ok(event_ids)
+    }
+}
+
 /// Checks if the event payload includes ticket types, indicating that ticketing is used.
 fn event_payload_uses_ticketing(event_payload: &serde_json::Value) -> bool {
     event_payload
@@ -648,7 +732,12 @@ fn event_payload_uses_ticketing(event_payload: &serde_json::Value) -> bool {
         .is_some_and(|ticket_types| !ticket_types.is_empty())
 }
 
-/// Returns true when the group recipient matches the configured payments provider.
+/// Parses dashboard event action query parameters.
+fn parse_event_action_query(raw_query: Option<&str>) -> Result<EventActionQuery, HandlerError> {
+    Ok(serde_qs_config().deserialize_str(raw_query.unwrap_or_default())?)
+}
+
+/// Checks whether group payments are ready for ticketed events.
 fn payments_ready(
     payment_recipient: Option<&GroupPaymentRecipient>,
     payments_cfg: Option<&PaymentsConfig>,
@@ -674,12 +763,12 @@ pub(crate) async fn prepare_list_page(
         db.user_has_group_permission(&community_id, &group_id, &user_id, GroupPermission::EventsWrite),
         db.list_group_events(group_id, &filters)
     )?;
+
+    // Prepare pagination links for each events tab
     let mut past_filters = filters.clone();
     past_filters.events_tab = Some(EventsTab::Past);
     let mut upcoming_filters = filters.clone();
     upcoming_filters.events_tab = Some(EventsTab::Upcoming);
-
-    // Prepare template
     let past_navigation_links =
         NavigationLinks::from_filters(&past_filters, events.past.total, DASHBOARD_URL, PARTIAL_URL)?;
     let upcoming_navigation_links = NavigationLinks::from_filters(
@@ -688,6 +777,8 @@ pub(crate) async fn prepare_list_page(
         DASHBOARD_URL,
         PARTIAL_URL,
     )?;
+
+    // Prepare template
     let template = events::ListPage {
         can_manage_events,
         events,
@@ -700,4 +791,331 @@ pub(crate) async fn prepare_list_page(
     };
 
     Ok((filters, template))
+}
+
+// Notifications helpers.
+
+/// Builds one aggregate notification item from full event data.
+fn event_series_notification_item(base_url: &str, event_full: &EventFull) -> EventSeriesNotificationItem {
+    let event = EventSummary::from(event_full);
+    let link = build_event_page_link(base_url, &event);
+
+    EventSeriesNotificationItem { event, link }
+}
+
+/// Groups recipients by the exact event list relevant to them.
+fn group_recipients_by_events(
+    recipient_events: HashMap<Uuid, Vec<EventSeriesNotificationItem>>,
+) -> Vec<EventSeriesNotificationGroup> {
+    let mut groups: HashMap<Vec<Uuid>, EventSeriesNotificationGroup> = HashMap::new();
+
+    // Build groups keyed by each recipient's relevant event ids
+    for (recipient, events) in recipient_events {
+        let key = events.iter().map(|event| event.event.event_id).collect::<Vec<_>>();
+        let group = groups.entry(key).or_insert_with(|| EventSeriesNotificationGroup {
+            events,
+            recipients: Vec::new(),
+        });
+        group.recipients.push(recipient);
+    }
+
+    // Normalize recipient and group ordering for deterministic notifications
+    let mut groups = groups.into_values().collect::<Vec<_>>();
+    for group in &mut groups {
+        group.recipients.sort();
+        group.recipients.dedup();
+    }
+    groups.sort_by(|left, right| {
+        left.events
+            .first()
+            .map(|event| event.event.event_id)
+            .cmp(&right.events.first().map(|event| event.event.event_id))
+    });
+    groups
+}
+
+/// Sends the event-canceled notification to attendees, waitlist users, and speakers.
+async fn notify_event_canceled(
+    db: &DynDB,
+    notifications_manager: &DynNotificationsManager,
+    server_cfg: &HttpServerConfig,
+    community_id: Uuid,
+    group_id: Uuid,
+    event_id: Uuid,
+) -> Result<(), HandlerError> {
+    // Fetch event full and attendee IDs concurrently
+    let (event_full, attendee_ids, waitlist_ids) = tokio::try_join!(
+        db.get_event_full(community_id, group_id, event_id),
+        db.list_event_attendees_ids(group_id, event_id),
+        db.list_event_waitlist_ids(group_id, event_id)
+    )?;
+
+    // Combine attendee, waitlist, and speaker IDs
+    let speaker_ids = event_full.speakers_ids();
+    let recipients: Vec<Uuid> = attendee_ids
+        .into_iter()
+        .chain(waitlist_ids)
+        .chain(speaker_ids)
+        .collect::<HashSet<_>>()
+        .into_iter()
+        .collect();
+
+    if recipients.is_empty() {
+        return Ok(());
+    }
+
+    // Build and enqueue the cancellation notification
+    let site_settings = db.get_site_settings().await?;
+    let base_url = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
+    let event_summary = EventSummary::from(&event_full);
+    let link = build_event_page_link(base_url, &event_summary);
+    let calendar_ics = build_event_calendar_attachment(base_url, &event_summary);
+    let template_data = EventCanceled {
+        event: event_summary,
+        link,
+        theme: site_settings.theme,
+    };
+    let notification = NewNotification {
+        attachments: vec![calendar_ics],
+        kind: NotificationKind::EventCanceled,
+        recipients,
+        template_data: Some(serde_json::to_value(&template_data)?),
+    };
+    notifications_manager.enqueue(&notification).await?;
+
+    Ok(())
+}
+
+/// Sends event-published notifications to group members, team members, and speakers.
+async fn notify_event_published(
+    db: &DynDB,
+    notifications_manager: &DynNotificationsManager,
+    server_cfg: &HttpServerConfig,
+    community_id: Uuid,
+    group_id: Uuid,
+    event_id: Uuid,
+) -> Result<(), HandlerError> {
+    // Fetch event full and group member IDs concurrently
+    let (event_full, group_member_ids, team_member_ids) = tokio::try_join!(
+        db.get_event_full(community_id, group_id, event_id),
+        db.list_group_members_ids(group_id),
+        db.list_group_team_members_ids(group_id)
+    )?;
+
+    // Combine group members and team members
+    let mut recipients = group_member_ids;
+    recipients.extend(team_member_ids);
+    recipients.sort();
+    recipients.dedup();
+
+    // Extract speaker IDs
+    let speaker_ids = event_full.speakers_ids();
+    let has_speakers = !speaker_ids.is_empty();
+
+    // Filter out speakers because they get a separate notification
+    let recipients: Vec<Uuid> = recipients
+        .into_iter()
+        .filter(|id| !speaker_ids.contains(id))
+        .collect();
+    let has_members = !recipients.is_empty();
+
+    if !has_members && !has_speakers {
+        return Ok(());
+    }
+
+    // Prepare common notification data
+    let site_settings = db.get_site_settings().await?;
+    let base_url = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
+    let event_summary = EventSummary::from(&event_full);
+    let link = build_event_page_link(base_url, &event_summary);
+    let calendar_ics = build_event_calendar_attachment(base_url, &event_summary);
+
+    // Notify group members about the published event
+    if has_members {
+        let template_data = EventPublished {
+            event: event_summary.clone(),
+            link: link.clone(),
+            theme: site_settings.theme.clone(),
+        };
+        let notification = NewNotification {
+            attachments: vec![calendar_ics.clone()],
+            kind: NotificationKind::EventPublished,
+            recipients,
+            template_data: Some(serde_json::to_value(&template_data)?),
+        };
+        notifications_manager.enqueue(&notification).await?;
+    }
+
+    // Notify speakers about being added to the event
+    if has_speakers {
+        let template_data = SpeakerWelcome {
+            event: event_summary,
+            link,
+            theme: site_settings.theme,
+        };
+        let notification = NewNotification {
+            attachments: vec![calendar_ics],
+            kind: NotificationKind::SpeakerWelcome,
+            recipients: speaker_ids,
+            template_data: Some(serde_json::to_value(&template_data)?),
+        };
+        notifications_manager.enqueue(&notification).await?;
+    }
+
+    Ok(())
+}
+
+/// Sends one aggregate cancellation notification per recipient event set.
+async fn notify_events_canceled(
+    db: &DynDB,
+    notifications_manager: &DynNotificationsManager,
+    server_cfg: &HttpServerConfig,
+    community_id: Uuid,
+    group_id: Uuid,
+    event_ids: &[Uuid],
+) -> Result<(), HandlerError> {
+    let base_url = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
+    let mut recipient_events: HashMap<Uuid, Vec<EventSeriesNotificationItem>> = HashMap::new();
+
+    // Build recipient event lists for each canceled occurrence
+    for event_id in event_ids {
+        // Fetch event full and affected user IDs for this canceled occurrence
+        let (event_full, attendee_ids, waitlist_ids) = tokio::try_join!(
+            db.get_event_full(community_id, group_id, *event_id),
+            db.list_event_attendees_ids(group_id, *event_id),
+            db.list_event_waitlist_ids(group_id, *event_id)
+        )?;
+
+        // Map each recipient to the canceled occurrence relevant to them
+        let event = event_series_notification_item(base_url, &event_full);
+        let speaker_ids = event_full.speakers_ids();
+        let recipients = attendee_ids
+            .into_iter()
+            .chain(waitlist_ids)
+            .chain(speaker_ids)
+            .collect::<HashSet<_>>();
+
+        for recipient in recipients {
+            recipient_events.entry(recipient).or_default().push(event.clone());
+        }
+    }
+
+    // If there are no recipients to notify, we are done
+    if recipient_events.is_empty() {
+        return Ok(());
+    }
+
+    // Build and enqueue grouped cancellation notifications
+    let site_settings = db.get_site_settings().await?;
+    for group in group_recipients_by_events(recipient_events) {
+        let Some(group_name) = group.events.first().map(|event| event.event.group_name.clone()) else {
+            continue;
+        };
+        let template_data = EventSeriesCanceled {
+            event_count: group.events.len(),
+            events: group.events,
+            group_name,
+            theme: site_settings.theme.clone(),
+        };
+        let notification = NewNotification {
+            attachments: vec![],
+            kind: NotificationKind::EventSeriesCanceled,
+            recipients: group.recipients,
+            template_data: Some(serde_json::to_value(&template_data)?),
+        };
+        notifications_manager.enqueue(&notification).await?;
+    }
+
+    Ok(())
+}
+
+/// Sends aggregate publish notifications to members/team and speakers.
+async fn notify_events_published(
+    db: &DynDB,
+    notifications_manager: &DynNotificationsManager,
+    server_cfg: &HttpServerConfig,
+    community_id: Uuid,
+    group_id: Uuid,
+    event_ids: &[Uuid],
+) -> Result<(), HandlerError> {
+    let base_url = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
+
+    // Fetch member recipients shared by all published occurrences
+    let (group_member_ids, team_member_ids) = tokio::try_join!(
+        db.list_group_members_ids(group_id),
+        db.list_group_team_members_ids(group_id)
+    )?;
+    let mut member_ids = group_member_ids;
+    member_ids.extend(team_member_ids);
+    member_ids.sort();
+    member_ids.dedup();
+
+    // Build recipient event lists for each published occurrence
+    let mut member_events: HashMap<Uuid, Vec<EventSeriesNotificationItem>> = HashMap::new();
+    let mut speaker_events: HashMap<Uuid, Vec<EventSeriesNotificationItem>> = HashMap::new();
+    for event_id in event_ids {
+        // Map members and speakers to the published occurrence relevant to them
+        let event_full = db.get_event_full(community_id, group_id, *event_id).await?;
+        let event = event_series_notification_item(base_url, &event_full);
+        let speaker_ids = event_full.speakers_ids();
+        let speaker_set: HashSet<Uuid> = speaker_ids.iter().copied().collect();
+
+        for speaker_id in speaker_ids {
+            speaker_events.entry(speaker_id).or_default().push(event.clone());
+        }
+
+        for member_id in &member_ids {
+            if !speaker_set.contains(member_id) {
+                member_events.entry(*member_id).or_default().push(event.clone());
+            }
+        }
+    }
+
+    // If there are no recipients to notify, we are done
+    if member_events.is_empty() && speaker_events.is_empty() {
+        return Ok(());
+    }
+
+    // Notify group members about the published event series
+    let site_settings = db.get_site_settings().await?;
+    for group in group_recipients_by_events(member_events) {
+        let Some(group_name) = group.events.first().map(|event| event.event.group_name.clone()) else {
+            continue;
+        };
+        let template_data = EventSeriesPublished {
+            event_count: group.events.len(),
+            events: group.events,
+            group_name,
+            theme: site_settings.theme.clone(),
+        };
+        let notification = NewNotification {
+            attachments: vec![],
+            kind: NotificationKind::EventSeriesPublished,
+            recipients: group.recipients,
+            template_data: Some(serde_json::to_value(&template_data)?),
+        };
+        notifications_manager.enqueue(&notification).await?;
+    }
+
+    // Notify speakers about being added to the event series
+    for group in group_recipients_by_events(speaker_events) {
+        let Some(group_name) = group.events.first().map(|event| event.event.group_name.clone()) else {
+            continue;
+        };
+        let template_data = SpeakerSeriesWelcome {
+            event_count: group.events.len(),
+            events: group.events,
+            group_name,
+            theme: site_settings.theme.clone(),
+        };
+        let notification = NewNotification {
+            attachments: vec![],
+            kind: NotificationKind::SpeakerSeriesWelcome,
+            recipients: group.recipients,
+            template_data: Some(serde_json::to_value(&template_data)?),
+        };
+        notifications_manager.enqueue(&notification).await?;
+    }
+
+    Ok(())
 }

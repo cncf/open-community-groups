@@ -49,6 +49,16 @@ pub(crate) trait DBDashboardGroup {
         cfg_max_participants: &HashMap<MeetingProvider, i32>,
     ) -> Result<Uuid>;
 
+    /// Adds a linked recurring event series to the database.
+    async fn add_event_series(
+        &self,
+        actor_user_id: Uuid,
+        group_id: Uuid,
+        events: &[serde_json::Value],
+        recurrence: &serde_json::Value,
+        cfg_max_participants: &HashMap<MeetingProvider, i32>,
+    ) -> Result<Vec<Uuid>>;
+
     /// Adds a new sponsor to the database.
     async fn add_group_sponsor(&self, actor_user_id: Uuid, group_id: Uuid, sponsor: &Sponsor)
     -> Result<Uuid>;
@@ -65,8 +75,24 @@ pub(crate) trait DBDashboardGroup {
     /// Cancels an event (sets canceled=true).
     async fn cancel_event(&self, actor_user_id: Uuid, group_id: Uuid, event_id: Uuid) -> Result<()>;
 
+    /// Cancels event series events atomically.
+    async fn cancel_event_series_events(
+        &self,
+        actor_user_id: Uuid,
+        group_id: Uuid,
+        event_ids: &[Uuid],
+    ) -> Result<()>;
+
     /// Deletes an event (soft delete by setting deleted=true and `deleted_at`).
     async fn delete_event(&self, actor_user_id: Uuid, group_id: Uuid, event_id: Uuid) -> Result<()>;
+
+    /// Deletes event series events atomically.
+    async fn delete_event_series_events(
+        &self,
+        actor_user_id: Uuid,
+        group_id: Uuid,
+        event_ids: &[Uuid],
+    ) -> Result<()>;
 
     /// Deletes a sponsor from the database.
     async fn delete_group_sponsor(
@@ -136,6 +162,16 @@ pub(crate) trait DBDashboardGroup {
     /// Lists all available event kinds.
     async fn list_event_kinds(&self) -> Result<Vec<EventKind>>;
 
+    /// Lists active event identifiers from the same event series.
+    async fn list_event_series_event_ids(&self, group_id: Uuid, event_id: Uuid) -> Result<Vec<Uuid>>;
+
+    /// Lists publishable event identifiers from the same event series.
+    async fn list_event_series_publishable_event_ids(
+        &self,
+        group_id: Uuid,
+        event_id: Uuid,
+    ) -> Result<Vec<Uuid>>;
+
     /// Lists all verified waitlisted user ids for an event.
     async fn list_event_waitlist_ids(&self, group_id: Uuid, event_id: Uuid) -> Result<Vec<Uuid>>;
 
@@ -201,6 +237,15 @@ pub(crate) trait DBDashboardGroup {
         event_id: Uuid,
     ) -> Result<()>;
 
+    /// Publishes event series events atomically.
+    async fn publish_event_series_events(
+        &self,
+        actor_user_id: Uuid,
+        configured_provider: Option<PaymentProvider>,
+        group_id: Uuid,
+        event_ids: &[Uuid],
+    ) -> Result<()>;
+
     /// Searches attendees for a group's event using filters.
     async fn search_event_attendees(
         &self,
@@ -217,6 +262,14 @@ pub(crate) trait DBDashboardGroup {
 
     /// Unpublishes an event (sets published=false and clears publication metadata).
     async fn unpublish_event(&self, actor_user_id: Uuid, group_id: Uuid, event_id: Uuid) -> Result<()>;
+
+    /// Unpublishes event series events atomically.
+    async fn unpublish_event_series_events(
+        &self,
+        actor_user_id: Uuid,
+        group_id: Uuid,
+        event_ids: &[Uuid],
+    ) -> Result<()>;
 
     /// Updates a CFS submission for an event.
     async fn update_cfs_submission(
@@ -288,6 +341,29 @@ impl DBDashboardGroup for PgDB {
         .await
     }
 
+    /// [`DBDashboardGroup::add_event_series`]
+    #[instrument(skip(self, events, recurrence, cfg_max_participants), err)]
+    async fn add_event_series(
+        &self,
+        actor_user_id: Uuid,
+        group_id: Uuid,
+        events: &[serde_json::Value],
+        recurrence: &serde_json::Value,
+        cfg_max_participants: &HashMap<MeetingProvider, i32>,
+    ) -> Result<Vec<Uuid>> {
+        self.fetch_scalar_one(
+            "select add_event_series($1::uuid, $2::uuid, $3::jsonb, $4::jsonb, $5::jsonb)::uuid[]",
+            &[
+                &actor_user_id,
+                &group_id,
+                &Json(events),
+                &Json(recurrence),
+                &Json(cfg_max_participants),
+            ],
+        )
+        .await
+    }
+
     /// [`DBDashboardGroup::add_group_sponsor`]
     #[instrument(skip(self, sponsor), err)]
     async fn add_group_sponsor(
@@ -329,12 +405,42 @@ impl DBDashboardGroup for PgDB {
         .await
     }
 
+    /// [`DBDashboardGroup::cancel_event_series_events`]
+    #[instrument(skip(self), err)]
+    async fn cancel_event_series_events(
+        &self,
+        actor_user_id: Uuid,
+        group_id: Uuid,
+        event_ids: &[Uuid],
+    ) -> Result<()> {
+        self.execute(
+            "select cancel_event_series_events($1::uuid, $2::uuid, $3::uuid[])",
+            &[&actor_user_id, &group_id, &event_ids],
+        )
+        .await
+    }
+
     /// [`DBDashboardGroup::delete_event`]
     #[instrument(skip(self), err)]
     async fn delete_event(&self, actor_user_id: Uuid, group_id: Uuid, event_id: Uuid) -> Result<()> {
         self.execute(
             "select delete_event($1::uuid, $2::uuid, $3::uuid)",
             &[&actor_user_id, &group_id, &event_id],
+        )
+        .await
+    }
+
+    /// [`DBDashboardGroup::delete_event_series_events`]
+    #[instrument(skip(self), err)]
+    async fn delete_event_series_events(
+        &self,
+        actor_user_id: Uuid,
+        group_id: Uuid,
+        event_ids: &[Uuid],
+    ) -> Result<()> {
+        self.execute(
+            "select delete_event_series_events($1::uuid, $2::uuid, $3::uuid[])",
+            &[&actor_user_id, &group_id, &event_ids],
         )
         .await
     }
@@ -526,6 +632,30 @@ impl DBDashboardGroup for PgDB {
         inner(db).await
     }
 
+    /// [`DBDashboardGroup::list_event_series_event_ids`]
+    #[instrument(skip(self), err)]
+    async fn list_event_series_event_ids(&self, group_id: Uuid, event_id: Uuid) -> Result<Vec<Uuid>> {
+        self.fetch_scalar_one(
+            "select list_event_series_event_ids($1::uuid, $2::uuid)",
+            &[&group_id, &event_id],
+        )
+        .await
+    }
+
+    /// [`DBDashboardGroup::list_event_series_publishable_event_ids`]
+    #[instrument(skip(self), err)]
+    async fn list_event_series_publishable_event_ids(
+        &self,
+        group_id: Uuid,
+        event_id: Uuid,
+    ) -> Result<Vec<Uuid>> {
+        self.fetch_scalar_one(
+            "select list_event_series_publishable_event_ids($1::uuid, $2::uuid)",
+            &[&group_id, &event_id],
+        )
+        .await
+    }
+
     /// [`DBDashboardGroup::list_event_waitlist_ids`]
     #[instrument(skip(self), err)]
     async fn list_event_waitlist_ids(&self, group_id: Uuid, event_id: Uuid) -> Result<Vec<Uuid>> {
@@ -710,6 +840,27 @@ impl DBDashboardGroup for PgDB {
         .await
     }
 
+    /// [`DBDashboardGroup::publish_event_series_events`]
+    #[instrument(skip(self, event_ids), err)]
+    async fn publish_event_series_events(
+        &self,
+        actor_user_id: Uuid,
+        configured_provider: Option<PaymentProvider>,
+        group_id: Uuid,
+        event_ids: &[Uuid],
+    ) -> Result<()> {
+        self.execute(
+            "select publish_event_series_events($1::uuid, $2::uuid, $3::uuid[], $4::text)",
+            &[
+                &actor_user_id,
+                &group_id,
+                &event_ids,
+                &configured_provider.map(|provider| provider.to_string()),
+            ],
+        )
+        .await
+    }
+
     /// [`DBDashboardGroup::search_event_attendees`]
     #[instrument(skip(self, filters), err)]
     async fn search_event_attendees(
@@ -744,6 +895,21 @@ impl DBDashboardGroup for PgDB {
         self.execute(
             "select unpublish_event($1::uuid, $2::uuid, $3::uuid)",
             &[&actor_user_id, &group_id, &event_id],
+        )
+        .await
+    }
+
+    /// [`DBDashboardGroup::unpublish_event_series_events`]
+    #[instrument(skip(self, event_ids), err)]
+    async fn unpublish_event_series_events(
+        &self,
+        actor_user_id: Uuid,
+        group_id: Uuid,
+        event_ids: &[Uuid],
+    ) -> Result<()> {
+        self.execute(
+            "select unpublish_event_series_events($1::uuid, $2::uuid, $3::uuid[])",
+            &[&actor_user_id, &group_id, &event_ids],
         )
         .await
     }

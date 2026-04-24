@@ -18,6 +18,8 @@ select plan(8);
 \set eventInactiveGroupID '00000000-0000-0000-0000-000000000033'
 \set eventPaidID '00000000-0000-0000-0000-000000000036'
 \set eventRecordingOverrideID '00000000-0000-0000-0000-000000000037'
+\set eventRelatedID '00000000-0000-0000-0000-000000000039'
+\set eventSeriesID '00000000-0000-0000-0000-000000000038'
 \set eventUnpublishedID '00000000-0000-0000-0000-000000000032'
 \set groupCategoryID '00000000-0000-0000-0000-000000000011'
 \set groupID '00000000-0000-0000-0000-000000000021'
@@ -148,6 +150,27 @@ values
     (:'user2ID', 'organizer@seattle.cloudnative.org', 'mike-organizer', false, 'test_hash', 'Event organizer and speaker', 'https://bsky.app/profile/mikerod', 'Mike Rodriguez', 'https://example.com/mike.png', jsonb_build_object('github', jsonb_build_object('username', 'mike-gh')), 'AWS', 'Solutions Architect', 'https://facebook.com/mikerod', 'https://linkedin.com/in/mikerod', 'https://twitter.com/mikerod', 'https://mikerodriguez.io'),
     (:'user3ID', 'speaker@seattle.cloudnative.org', 'alex-speaker', false, 'test_hash', 'Kubernetes expert and speaker', 'https://bsky.app/profile/alexthompson', 'Alex Thompson', 'https://example.com/alex.png', null, 'Google', 'Staff Engineer', null, 'https://linkedin.com/in/alexthompson', null, null);
 
+-- Event Series
+insert into event_series (
+    event_series_id,
+    group_id,
+    recurrence_additional_occurrences,
+    recurrence_anchor_starts_at,
+    recurrence_pattern,
+    timezone,
+
+    created_by
+) values (
+    :'eventSeriesID',
+    :'groupID',
+    1,
+    '2024-06-15 08:00:00+00',
+    'weekly',
+    'America/New_York',
+
+    :'user2ID'
+);
+
 -- Event
 insert into event (
     event_id,
@@ -183,7 +206,9 @@ insert into event (
     meeting_requested,
     meetup_url,
     photos_urls,
-    created_at
+    created_at,
+
+    event_series_id
 ) values (
     :'eventID',
     'KubeCon Seattle 2024',
@@ -218,7 +243,32 @@ insert into event (
     false,
     'https://meetup.com/event123',
     array['https://example.com/photo1.jpg', 'https://example.com/photo2.jpg'],
-    '2024-04-01 10:00:00+00'
+    '2024-04-01 10:00:00+00',
+
+    :'eventSeriesID'
+);
+
+-- Related event in the same series
+insert into event (
+    event_id,
+    event_series_id,
+    event_category_id,
+    event_kind_id,
+    group_id,
+    name,
+    slug,
+    description,
+    timezone
+) values (
+    :'eventRelatedID',
+    :'eventSeriesID',
+    :'eventCategoryID',
+    'hybrid',
+    :'groupID',
+    'KubeCon Seattle 2024 Follow-up',
+    'kubecon-seattle-2024-follow-up',
+    'A related event in the same series',
+    'America/New_York'
 );
 
 -- Event CFS labels
@@ -732,6 +782,7 @@ select is(
         "description": "Annual Kubernetes conference featuring workshops, talks, and hands-on sessions with industry experts from across the cloud native ecosystem",
         "event_id": "00000000-0000-0000-0000-000000000031",
         "event_reminder_enabled": true,
+        "has_related_events": true,
         "has_ticket_purchases": false,
         "kind": "hybrid",
         "name": "KubeCon Seattle 2024",
@@ -754,6 +805,7 @@ select is(
         ],
         "description_short": "Annual Kubernetes conference",
         "ends_at": 1718557200,
+        "event_series_id": "00000000-0000-0000-0000-000000000038",
         "latitude": 47.6062,
         "logo_url": "https://example.com/event-logo.png",
         "longitude": -122.3321,

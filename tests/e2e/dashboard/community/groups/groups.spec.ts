@@ -427,14 +427,31 @@ test.describe("community dashboard groups view", () => {
       dashboardContent.locator("tr", { hasText: "Platform Ops Meetup" }),
     ).toHaveCount(0);
 
+    const searchForm = dashboardContent.locator("#groups-search-form");
     await searchInput.fill("");
-    await searchInput.fill("No matching group");
-    await searchInput.press("Enter");
+    await searchInput.fill("zzzzzzzzzzzz");
+
+    await Promise.all([
+      adminCommunityPage.waitForResponse(
+        (response) =>
+          response.request().method() === "GET" &&
+          response
+            .url()
+            .includes("/dashboard/community/groups?ts_query=zzzzzzzzzzzz") &&
+          response.ok(),
+      ),
+      searchForm.evaluate((form) => {
+        if (form instanceof HTMLFormElement) {
+          form.requestSubmit();
+        }
+      }),
+    ]);
 
     await expect(
       dashboardContent
         .locator('div.text-xl.lg\\:text-2xl.mb-4:visible')
-        .filter({ hasText: "No groups found matching your search." }),
+        .filter({ hasText: "No groups found matching your search." })
+        .first(),
     ).toBeVisible();
 
     const clearFilterButton = dashboardContent.locator(

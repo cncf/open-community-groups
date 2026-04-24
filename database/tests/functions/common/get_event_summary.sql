@@ -18,6 +18,7 @@ select plan(7);
 \set eventGroupLogoFallbackID '00000000-0000-0000-0000-000000000032'
 \set eventID '00000000-0000-0000-0000-000000000031'
 \set eventPaidID '00000000-0000-0000-0000-000000000034'
+\set eventSeriesID '00000000-0000-0000-0000-000000000035'
 \set groupID '00000000-0000-0000-0000-000000000021'
 \set groupNoLogoID '00000000-0000-0000-0000-000000000022'
 \set ticketPriceWindowID '00000000-0000-0000-0000-000000000045'
@@ -122,6 +123,27 @@ insert into "user" (
     '2024-01-01 00:00:00+00'
 );
 
+-- Event Series
+insert into event_series (
+    event_series_id,
+    group_id,
+    recurrence_additional_occurrences,
+    recurrence_anchor_starts_at,
+    recurrence_pattern,
+    timezone,
+
+    created_by
+) values (
+    :'eventSeriesID',
+    :'groupID',
+    1,
+    '2024-06-15 09:00:00+00',
+    'weekly',
+    'America/New_York',
+
+    :'attendee1ID'
+);
+
 -- Event
 insert into event (
     event_id,
@@ -148,7 +170,9 @@ insert into event (
     payment_currency_code,
     waitlist_enabled,
     location,
-    logo_url
+    logo_url,
+
+    event_series_id
 ) values (
     :'eventID',
     'KubeCon Seattle 2024',
@@ -174,7 +198,9 @@ insert into event (
     null,
     true,
     ST_SetSRID(ST_MakePoint(-122.3321, 47.6062), 4326),  -- Seattle coordinates (different from group)
-    'https://example.com/event-logo.png'
+    'https://example.com/event-logo.png',
+
+    :'eventSeriesID'
 ), (
     :'eventGroupLogoFallbackID',
     'KubeCon Seattle 2024 Group Logo',
@@ -200,6 +226,8 @@ insert into event (
     null,
     true,
     ST_SetSRID(ST_MakePoint(-122.3321, 47.6062), 4326),
+    null,
+
     null
 ), (
     :'eventCommunityLogoFallbackID',
@@ -226,6 +254,8 @@ insert into event (
     null,
     true,
     ST_SetSRID(ST_MakePoint(-122.3321, 47.6062), 4326),
+    null,
+
     null
 ), (
     :'eventPaidID',
@@ -252,6 +282,8 @@ insert into event (
     'USD',
     false,
     ST_SetSRID(ST_MakePoint(-122.3321, 47.6062), 4326),
+    null,
+
     null
 );
 
@@ -320,6 +352,7 @@ select is(
         "group_category_name": "Technology",
         "group_name": "Seattle Kubernetes Meetup",
         "group_slug": "abc1234",
+        "has_related_events": false,
         "kind": "in-person",
         "name": "KubeCon Seattle 2024",
         "published": true,
@@ -328,6 +361,7 @@ select is(
         "capacity": 5,
         "description_short": "Annual Kubernetes conference short summary",
         "ends_at": 1718470800,
+        "event_series_id": "00000000-0000-0000-0000-000000000035",
         "latitude": 47.6062,
         "logo_url": "https://example.com/event-logo.png",
         "longitude": -122.3321,

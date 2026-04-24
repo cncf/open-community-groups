@@ -129,6 +129,69 @@ describe("event page modules", () => {
     );
   });
 
+  it("updates add page recurrence labels and additional-occurrence controls", () => {
+    mountAddPageShell();
+    document.querySelector('[data-event-page="add"]').insertAdjacentHTML(
+      "beforeend",
+      `
+        <select id="recurrence_pattern">
+          <option value="just-once">Just once</option>
+          <option value="weekly" data-recurrence-label="weekly">Weekly</option>
+          <option value="biweekly" data-recurrence-label="biweekly">Every two weeks</option>
+          <option value="monthly" data-recurrence-label="monthly">Monthly</option>
+        </select>
+        <div id="recurrence-additional-occurrences-container" class="hidden">
+          <input id="recurrence_additional_occurrences" value="3" />
+        </div>
+      `,
+    );
+
+    const startsAtInput = document.getElementById("starts_at");
+    const recurrencePatternSelect = document.getElementById("recurrence_pattern");
+    const additionalOccurrencesContainer = document.getElementById(
+      "recurrence-additional-occurrences-container",
+    );
+    const additionalOccurrencesInput = document.getElementById(
+      "recurrence_additional_occurrences",
+    );
+    const optionText = (value) =>
+      recurrencePatternSelect.querySelector(`option[value="${value}"]`).textContent;
+
+    startsAtInput.value = "2026-05-13T09:30";
+
+    initializeEventAddPage();
+
+    expect(optionText("weekly")).to.equal("Weekly on Wednesday");
+    expect(optionText("biweekly")).to.equal("Every two weeks on Wednesday");
+    expect(optionText("monthly")).to.equal("Monthly on the second Wednesday");
+    expect(additionalOccurrencesContainer.classList.contains("hidden")).to.equal(true);
+    expect(additionalOccurrencesInput.disabled).to.equal(true);
+    expect(additionalOccurrencesInput.required).to.equal(false);
+    expect(additionalOccurrencesInput.value).to.equal("");
+
+    additionalOccurrencesInput.value = "2";
+    recurrencePatternSelect.value = "weekly";
+    recurrencePatternSelect.dispatchEvent(new Event("change", { bubbles: true }));
+
+    expect(additionalOccurrencesContainer.classList.contains("hidden")).to.equal(false);
+    expect(additionalOccurrencesInput.disabled).to.equal(false);
+    expect(additionalOccurrencesInput.required).to.equal(true);
+    expect(additionalOccurrencesInput.value).to.equal("2");
+
+    startsAtInput.value = "2026-05-20T09:30";
+    startsAtInput.dispatchEvent(new Event("change", { bubbles: true }));
+
+    expect(optionText("monthly")).to.equal("Monthly on the third Wednesday");
+
+    recurrencePatternSelect.value = "just-once";
+    recurrencePatternSelect.dispatchEvent(new Event("change", { bubbles: true }));
+
+    expect(additionalOccurrencesContainer.classList.contains("hidden")).to.equal(true);
+    expect(additionalOccurrencesInput.disabled).to.equal(true);
+    expect(additionalOccurrencesInput.required).to.equal(false);
+    expect(additionalOccurrencesInput.value).to.equal("");
+  });
+
   it("re-syncs session bounds after rejecting an add page start date change", async () => {
     mountAddPageShell();
     document

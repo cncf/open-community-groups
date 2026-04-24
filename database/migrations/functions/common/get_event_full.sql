@@ -42,6 +42,14 @@ returns json as $$
             'discount_codes', list_event_discount_codes(e.event_id),
             'ends_at', floor(extract(epoch from e.ends_at)),
             'event_reminder_enabled', e.event_reminder_enabled,
+            'event_series_id', e.event_series_id,
+            'has_related_events', exists (
+                select 1
+                from event related_event
+                where related_event.event_series_id = e.event_series_id
+                and related_event.event_id <> e.event_id
+                and related_event.deleted = false
+            ),
             'latitude', st_y(e.location::geometry),
             'logo_url', coalesce(e.logo_url, g.logo_url, c.logo_url),
             'longitude', st_x(e.location::geometry),

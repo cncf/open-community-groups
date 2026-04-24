@@ -86,6 +86,9 @@ pub const MAX_LEN_TIMEZONE: usize = 64;
 /// Maximum pagination limit for results per page.
 pub const MAX_PAGINATION_LIMIT: usize = 100;
 
+/// Maximum number of additional occurrences created for a recurring event.
+pub const MAX_RECURRING_ADDITIONAL_OCCURRENCES: i32 = 12;
+
 /// Maximum duration for session proposals (minutes).
 pub const MAX_SESSION_PROPOSAL_DURATION_MINUTES: i32 = 480;
 

@@ -296,6 +296,14 @@ mock! {
             event: &serde_json::Value,
             cfg_max_participants: &HashMap<crate::services::meetings::MeetingProvider, i32>,
         ) -> Result<Uuid>;
+        async fn add_event_series(
+            &self,
+            actor_user_id: Uuid,
+            group_id: Uuid,
+            events: &[serde_json::Value],
+            recurrence: &serde_json::Value,
+            cfg_max_participants: &HashMap<crate::services::meetings::MeetingProvider, i32>,
+        ) -> Result<Vec<Uuid>>;
         async fn add_group_sponsor(
             &self,
             actor_user_id: Uuid,
@@ -310,7 +318,19 @@ mock! {
             role: &crate::types::group::GroupRole,
         ) -> Result<()>;
         async fn cancel_event(&self, actor_user_id: Uuid, group_id: Uuid, event_id: Uuid) -> Result<()>;
+        async fn cancel_event_series_events(
+            &self,
+            actor_user_id: Uuid,
+            group_id: Uuid,
+            event_ids: &[Uuid],
+        ) -> Result<()>;
         async fn delete_event(&self, actor_user_id: Uuid, group_id: Uuid, event_id: Uuid) -> Result<()>;
+        async fn delete_event_series_events(
+            &self,
+            actor_user_id: Uuid,
+            group_id: Uuid,
+            event_ids: &[Uuid],
+        ) -> Result<()>;
         async fn delete_group_sponsor(
             &self,
             actor_user_id: Uuid,
@@ -378,6 +398,16 @@ mock! {
         ) -> Result<crate::templates::dashboard::group::submissions::CfsSubmissionsOutput>;
         async fn list_event_kinds(&self)
             -> Result<Vec<crate::types::event::EventKindSummary>>;
+        async fn list_event_series_event_ids(
+            &self,
+            group_id: Uuid,
+            event_id: Uuid,
+        ) -> Result<Vec<Uuid>>;
+        async fn list_event_series_publishable_event_ids(
+            &self,
+            group_id: Uuid,
+            event_id: Uuid,
+        ) -> Result<Vec<Uuid>>;
         async fn list_event_waitlist_ids(
             &self,
             group_id: Uuid,
@@ -428,6 +458,13 @@ mock! {
             group_id: Uuid,
             event_id: Uuid,
         ) -> Result<()>;
+        async fn publish_event_series_events(
+            &self,
+            actor_user_id: Uuid,
+            configured_provider: Option<crate::types::payments::PaymentProvider>,
+            group_id: Uuid,
+            event_ids: &[Uuid],
+        ) -> Result<()>;
         async fn search_event_attendees(
             &self,
             group_id: Uuid,
@@ -439,6 +476,8 @@ mock! {
             filters: &crate::templates::dashboard::group::waitlist::WaitlistFilters,
         ) -> Result<crate::templates::dashboard::group::waitlist::WaitlistOutput>;
         async fn unpublish_event(&self, actor_user_id: Uuid, group_id: Uuid, event_id: Uuid)
+            -> Result<()>;
+        async fn unpublish_event_series_events(&self, actor_user_id: Uuid, group_id: Uuid, event_ids: &[Uuid])
             -> Result<()>;
         async fn update_event(
             &self,

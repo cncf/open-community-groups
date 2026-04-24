@@ -5,20 +5,21 @@ import { scrollToDashboardTop } from "/static/js/common/common.js";
  * Includes positioning, styling, and custom CSS classes.
  * @returns {Object} Alert configuration options for SweetAlert2
  */
-const getCommonAlertOptions = () => {
+export const getCommonAlertOptions = () => {
   return {
     position: "top-end",
     buttonsStyling: false,
     iconColor: "var(--color-primary-500)",
     backdrop: false,
     customClass: {
-      popup: "pb-10! pt-5! px-0! rounded-lg! max-w-[100%] md:max-w-[400px]! shadow-lg!",
+      popup: "ocg-swal-popup",
       title: "text-md",
       htmlContainer: "text-base/6!",
       icon: "text-[0.4rem]! md:text-[0.5rem]!",
-      confirmButton: "btn-primary",
-      denyButton: "btn-primary-outline ms-5",
-      cancelButton: "btn-primary-outline ms-5",
+      actions: "ocg-swal-actions",
+      confirmButton: "btn-primary ocg-swal-button",
+      denyButton: "btn-primary-outline ocg-swal-button",
+      cancelButton: "btn-primary-outline ocg-swal-button",
     },
   };
 };
@@ -200,6 +201,49 @@ export const confirmAction = async ({ message, confirmText, cancelText = "No", w
 
   const result = await Swal.fire(alertOptions);
   return result.isConfirmed;
+};
+
+/**
+ * Displays an awaitable confirmation dialog with single-event and series options.
+ * @param {Object} options - Dialog options
+ * @param {string} options.message - The confirmation message to display
+ * @param {string} options.confirmText - Text for the single-event button
+ * @param {string} options.denyText - Text for the series button
+ * @param {string} [options.cancelText] - Text for the cancel button
+ * @param {boolean} [options.withHtml] - Whether to display HTML content
+ * @returns {Promise<"this"|"series"|null>} Selected action scope
+ */
+export const confirmSeriesAction = async ({
+  message,
+  confirmText,
+  denyText,
+  cancelText = "Cancel",
+  withHtml = false,
+}) => {
+  const alertOptions = {
+    text: message,
+    icon: "warning",
+    showCancelButton: true,
+    showDenyButton: true,
+    confirmButtonText: confirmText,
+    denyButtonText: denyText,
+    cancelButtonText: cancelText,
+    ...getCommonAlertOptions(),
+    position: "center",
+    backdrop: true,
+  };
+  if (withHtml) {
+    alertOptions.html = message;
+  }
+
+  const result = await Swal.fire(alertOptions);
+  if (result.isConfirmed) {
+    return "this";
+  }
+  if (result.isDenied) {
+    return "series";
+  }
+  return null;
 };
 
 /**

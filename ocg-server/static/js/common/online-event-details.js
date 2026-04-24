@@ -6,7 +6,7 @@ import {
   MAX_MEETING_MINUTES,
   DEFAULT_MEETING_PROVIDER,
 } from "/static/js/dashboard/group/meeting-validations.js";
-import { showErrorAlert, showInfoAlert } from "/static/js/common/alerts.js";
+import { getCommonAlertOptions, showErrorAlert, showInfoAlert } from "/static/js/common/alerts.js";
 import "/static/js/common/multiple-inputs.js";
 
 /**
@@ -202,15 +202,9 @@ export class OnlineEventDetails extends LitWrapper {
       showCancelButton: true,
       confirmButtonText: "Yes, switch to manual",
       cancelButtonText: "No, keep automatic",
+      ...getCommonAlertOptions(),
       position: "center",
       backdrop: true,
-      buttonsStyling: false,
-      iconColor: "var(--color-primary-500)",
-      customClass: {
-        popup: "pb-10! pt-5! px-0! rounded-lg! max-w-[100%] md:max-w-[400px]! shadow-lg!",
-        confirmButton: "btn-primary",
-        cancelButton: "btn-primary-outline ms-5",
-      },
     });
     return result.isConfirmed;
   }
@@ -226,15 +220,9 @@ export class OnlineEventDetails extends LitWrapper {
       showCancelButton: true,
       confirmButtonText: "Yes, switch to automatic",
       cancelButtonText: "No, keep manual",
+      ...getCommonAlertOptions(),
       position: "center",
       backdrop: true,
-      buttonsStyling: false,
-      iconColor: "var(--color-primary-500)",
-      customClass: {
-        popup: "pb-10! pt-5! px-0! rounded-lg! max-w-[100%] md:max-w-[400px]! shadow-lg!",
-        confirmButton: "btn-primary",
-        cancelButton: "btn-primary-outline ms-5",
-      },
     });
     return result.isConfirmed;
   }
@@ -250,15 +238,9 @@ export class OnlineEventDetails extends LitWrapper {
       showCancelButton: true,
       confirmButtonText: "Yes, disable automatic",
       cancelButtonText: "No, keep settings",
+      ...getCommonAlertOptions(),
       position: "center",
       backdrop: true,
-      buttonsStyling: false,
-      iconColor: "var(--color-primary-500)",
-      customClass: {
-        popup: "pb-10! pt-5! px-0! rounded-lg! max-w-[100%] md:max-w-[400px]! shadow-lg!",
-        confirmButton: "btn-primary",
-        cancelButton: "btn-primary-outline ms-5",
-      },
     });
     return result.isConfirmed;
   }

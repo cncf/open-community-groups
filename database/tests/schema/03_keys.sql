@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(143);
+select plan(147);
 
 -- ============================================================================
 -- TESTS
@@ -36,6 +36,7 @@ select has_pk('event_purchase');
 select has_pk('event_refund_request');
 select has_pk('event_ticket_price_window');
 select has_pk('event_ticket_type');
+select has_pk('event_series');
 select has_pk('event_speaker');
 select has_pk('event_sponsor');
 select hasnt_pk('event_views');
@@ -92,6 +93,7 @@ select col_is_fk('cfs_submission_rating', 'reviewer_id', 'user');
 select col_is_fk('email_verification_code', 'user_id', 'user');
 select col_is_fk('event', 'event_category_id', 'event_category');
 select col_is_fk('event', 'event_kind_id', 'event_kind');
+select col_is_fk('event', 'event_series_id', 'event_series');
 select col_is_fk('event', 'group_id', 'group');
 select col_is_fk('event', 'meeting_provider_id', 'meeting_provider');
 select col_is_fk('event', 'published_by', 'user');
@@ -111,6 +113,8 @@ select col_is_fk('event_refund_request', 'requested_by_user_id', 'user');
 select col_is_fk('event_refund_request', 'reviewed_by_user_id', 'user');
 select col_is_fk('event_ticket_price_window', 'event_ticket_type_id', 'event_ticket_type');
 select col_is_fk('event_ticket_type', 'event_id', 'event');
+select col_is_fk('event_series', 'created_by', 'user');
+select col_is_fk('event_series', 'group_id', 'group');
 select col_is_fk('event_speaker', 'event_id', 'event');
 select col_is_fk('event_speaker', 'user_id', 'user');
 select col_is_fk('event_sponsor', 'event_id', 'event');
