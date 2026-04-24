@@ -427,8 +427,9 @@ test.describe("community dashboard groups view", () => {
       dashboardContent.locator("tr", { hasText: "Platform Ops Meetup" }),
     ).toHaveCount(0);
 
+    const searchForm = dashboardContent.locator("#groups-search-form");
     await searchInput.fill("");
-    await searchInput.fill("zz-no-groups-match");
+    await searchInput.fill("zzzzzzzzzzzz");
 
     await Promise.all([
       adminCommunityPage.waitForResponse(
@@ -436,10 +437,14 @@ test.describe("community dashboard groups view", () => {
           response.request().method() === "GET" &&
           response
             .url()
-            .includes("/dashboard/community/groups?ts_query=zz-no-groups-match") &&
+            .includes("/dashboard/community/groups?ts_query=zzzzzzzzzzzz") &&
           response.ok(),
       ),
-      searchInput.press("Enter"),
+      searchForm.evaluate((form) => {
+        if (form instanceof HTMLFormElement) {
+          form.requestSubmit();
+        }
+      }),
     ]);
 
     await expect(
