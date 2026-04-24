@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(3);
+select plan(4);
 
 -- ============================================================================
 -- VARIABLES
@@ -15,6 +15,7 @@ select plan(3);
 \set deletedEventID '00000000-0000-0000-0000-000000000035'
 \set event1ID '00000000-0000-0000-0000-000000000031'
 \set event2ID '00000000-0000-0000-0000-000000000032'
+\set event3ID '00000000-0000-0000-0000-000000000036'
 \set eventSeriesID '00000000-0000-0000-0000-000000000040'
 \set groupCategoryID '00000000-0000-0000-0000-000000000010'
 \set groupID '00000000-0000-0000-0000-000000000002'
@@ -109,7 +110,8 @@ insert into event (
 
     canceled,
     deleted,
-    event_series_id
+    event_series_id,
+    published
 ) values
     (
         :'event1ID',
@@ -125,7 +127,8 @@ insert into event (
 
         false,
         false,
-        :'eventSeriesID'
+        :'eventSeriesID',
+        false
     ),
     (
         :'event2ID',
@@ -141,7 +144,25 @@ insert into event (
 
         false,
         false,
-        :'eventSeriesID'
+        :'eventSeriesID',
+        true
+    ),
+    (
+        :'event3ID',
+        :'groupID',
+        'Third Series Event',
+        'third-series-event',
+        'Third event',
+        'UTC',
+        :'categoryID',
+        'virtual',
+        '2030-01-21 10:00:00+00',
+        '2030-01-21 11:00:00+00',
+
+        false,
+        false,
+        :'eventSeriesID',
+        false
     ),
     (
         :'standaloneEventID',
@@ -157,7 +178,8 @@ insert into event (
 
         false,
         false,
-        null
+        null,
+        false
     ),
     (
         :'canceledEventID',
@@ -173,7 +195,8 @@ insert into event (
 
         true,
         false,
-        :'eventSeriesID'
+        :'eventSeriesID',
+        false
     ),
     (
         :'deletedEventID',
@@ -189,7 +212,8 @@ insert into event (
 
         false,
         true,
-        :'eventSeriesID'
+        :'eventSeriesID',
+        false
     );
 
 -- ============================================================================
@@ -209,9 +233,19 @@ select results_eq(
     $$
         values
             ('00000000-0000-0000-0000-000000000031'::uuid),
-            ('00000000-0000-0000-0000-000000000032'::uuid)
+            ('00000000-0000-0000-0000-000000000036'::uuid)
     $$,
     'Should list only publishable events from the selected event series'
+);
+
+-- Should return an empty array when the selected event is already published
+select is(
+    cardinality(list_event_series_publishable_event_ids(
+        :'groupID'::uuid,
+        :'event2ID'::uuid
+    )),
+    0,
+    'Should return an empty array when the selected event is already published'
 );
 
 -- Should return the selected standalone event when it is publishable

@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(15);
+select plan(18);
 
 -- ============================================================================
 -- VARIABLES
@@ -14,13 +14,16 @@ select plan(15);
 \set eventID '00000000-0000-0000-0000-000000000031'
 \set eventNoMeetingID '00000000-0000-0000-0000-000000000032'
 \set eventNoStartDateID '00000000-0000-0000-0000-000000000033'
+\set eventPublishedID '00000000-0000-0000-0000-000000000036'
 \set eventTicketedNoRecipientID '00000000-0000-0000-0000-000000000034'
 \set eventTicketedInvalidCurrencyID '00000000-0000-0000-0000-000000000035'
 \set groupCategoryID '00000000-0000-0000-0000-000000000010'
 \set groupID '00000000-0000-0000-0000-000000000021'
 \set groupNoRecipientID '00000000-0000-0000-0000-000000000022'
+\set previousPublisherID '00000000-0000-0000-0000-000000000042'
 \set sessionMeetingID '00000000-0000-0000-0000-000000000051'
 \set sessionNoMeetingID '00000000-0000-0000-0000-000000000052'
+\set sessionPublishedMeetingID '00000000-0000-0000-0000-000000000053'
 \set ticketTypeNoRecipientID '00000000-0000-0000-0000-000000000061'
 \set ticketTypeInvalidCurrencyID '00000000-0000-0000-0000-000000000062'
 \set userID '00000000-0000-0000-0000-000000000041'
@@ -80,6 +83,10 @@ insert into "group" (
 -- User (publisher)
 insert into "user" (user_id, auth_hash, email, username)
 values (:'userID', 'x', 'user@test.local', 'user');
+
+-- User (previous publisher)
+insert into "user" (user_id, auth_hash, email, username)
+values (:'previousPublisherID', 'x', 'publisher@test.local', 'publisher');
 
 -- Event (unpublished, with meeting_in_sync=true to verify it gets set to false)
 insert into event (
@@ -147,6 +154,47 @@ insert into event (
     null,
     false,
     false
+);
+
+-- Event already published (to verify publishing is idempotent)
+insert into event (
+    event_id,
+    group_id,
+    name,
+    slug,
+    description,
+    timezone,
+    event_category_id,
+    event_kind_id,
+    starts_at,
+    ends_at,
+
+    capacity,
+    meeting_in_sync,
+    meeting_provider_id,
+    meeting_requested,
+    published,
+    published_at,
+    published_by
+) values (
+    :'eventPublishedID',
+    :'groupID',
+    'Already Published Event',
+    'already-published-event',
+    'An already published event',
+    'UTC',
+    :'eventCategoryID',
+    'virtual',
+    '2025-07-01 10:00:00+00',
+    '2025-07-01 11:00:00+00',
+
+    100,
+    true,
+    'zoom',
+    true,
+    true,
+    '2025-01-01 10:00:00+00',
+    :'previousPublisherID'
 );
 
 -- Event without start date (to verify it cannot be published)
@@ -279,6 +327,29 @@ insert into session (
     true
 );
 
+-- Session for the already published event (should not be marked out of sync)
+insert into session (
+    session_id,
+    event_id,
+    name,
+    starts_at,
+    ends_at,
+    session_kind_id,
+    meeting_in_sync,
+    meeting_provider_id,
+    meeting_requested
+) values (
+    :'sessionPublishedMeetingID',
+    :'eventPublishedID',
+    'Already Published Session',
+    '2025-07-01 10:00:00+00',
+    '2025-07-01 10:30:00+00',
+    'virtual',
+    true,
+    'zoom',
+    true
+);
+
 -- Session with meeting_requested=false (should NOT be marked as out of sync)
 insert into session (
     session_id,
@@ -379,6 +450,42 @@ select is(
     (select meeting_in_sync from session where session_id = :'sessionNoMeetingID'),
     null,
     'Should not change session meeting_in_sync when meeting_requested=false'
+);
+
+-- Should leave an already published event unchanged
+select lives_ok(
+    $$select publish_event('00000000-0000-0000-0000-000000000041'::uuid, '00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000036'::uuid, null)$$,
+    'Should leave an already published event unchanged'
+);
+
+-- Should preserve already published event metadata and meeting sync
+select results_eq(
+    $$
+        select
+            e.meeting_in_sync,
+            e.published_at,
+            e.published_by,
+            s.meeting_in_sync
+        from event e
+        join session s on s.event_id = e.event_id
+        where e.event_id = '00000000-0000-0000-0000-000000000036'::uuid
+    $$,
+    $$
+        values (
+            true,
+            '2025-01-01 10:00:00+00'::timestamptz,
+            '00000000-0000-0000-0000-000000000042'::uuid,
+            true
+        )
+    $$,
+    'Should preserve already published event metadata and meeting sync'
+);
+
+-- Should not create an audit row when publishing is a no-op
+select is(
+    (select count(*)::int from audit_log where action = 'event_published'),
+    1,
+    'Should not create an audit row when publishing is a no-op'
 );
 
 -- Should publish event when meeting_requested=false

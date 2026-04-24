@@ -15,6 +15,7 @@ returns uuid[] as $$
         and group_id = p_group_id
         and deleted = false
         and canceled = false
+        and published = false
     ),
     publishable_events as (
         select
@@ -27,6 +28,7 @@ returns uuid[] as $$
         and e.group_id = p_group_id
         and e.deleted = false
         and e.canceled = false
+        and e.published = false
 
         union all
 
