@@ -78,7 +78,6 @@ meetings:
     clientSecret: ""
     hostPoolUsers: []
     maxParticipants: 100
-    # Minimum is 1. Higher values depend on the Zoom plan and any add-ons.
     maxSimultaneousMeetingsPerHost: 1
     webhookSecretToken: ""
 
