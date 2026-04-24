@@ -246,285 +246,57 @@
                           aria-labelledby="dropdownDefaultButton">
                         {# Publish/Unpublish button depending on status -#}
                         {% if event.published && !event.canceled -%}
-                          <li>
-                            <button id="unpublish-event-{{ event.event_id }}"
-                                    hx-put="/dashboard/group/events/{{ event.event_id }}/unpublish"
-                                    data-action-url="/dashboard/group/events/{{ event.event_id }}/unpublish"
-                                    data-has-related-events="{{ event.has_related_events }}"
-                                    hx-target="#dashboard-content"
-                                    hx-indicator="#dashboard-spinner"
-                                    hx-trigger="confirmed"
-                                    class="cursor-pointer w-full text-start px-4 py-2 hover:bg-stone-100
-                                           {% if !can_manage_events -%}
-                                             opacity-50 cursor-not-allowed
-                                           {% endif -%}"
-                                    {% if !can_manage_events -%}
-                                      disabled title="Your role cannot unpublish events."
-                                    {% endif -%}>
-                              <div class="flex items-center">
-                                <div class="svg-icon size-4 icon-power bg-stone-600"></div>
-                                <div class="ms-2">Unpublish</div>
-                              </div>
-                            </button>
-                            <script type="module">
-                              import {
-                                confirmAction,
-                                confirmSeriesAction,
-                                handleHtmxResponse,
-                              } from '/static/js/common/alerts.js';
-
-                              (() => {
-                                const unpublishEventButton = document.getElementById('unpublish-event-{{ event.event_id }}');
-                                if (unpublishEventButton) {
-                                  unpublishEventButton.addEventListener('click', async () => {
-                                    let scope = "this";
-                                    if (unpublishEventButton.dataset.hasRelatedEvents === "true") {
-                                      scope = await confirmSeriesAction({
-                                        message: "This event is part of a recurring series. What would you like to unpublish?",
-                                        confirmText: "Only this event",
-                                        denyText: "All in series",
-                                      });
-                                      if (!scope) {
-                                        return;
-                                      }
-                                    } else {
-                                      const confirmed = await confirmAction({
-                                        message: "Are you sure you wish to unpublish this event?",
-                                        confirmText: "Yes",
-                                      });
-                                      if (!confirmed) {
-                                        return;
-                                      }
-                                    }
-
-                                    const url = unpublishEventButton.dataset.actionUrl;
-                                    unpublishEventButton.setAttribute("hx-put", scope === "series" ? `${url}?scope=series` : url);
-                                    htmx.trigger(unpublishEventButton, "confirmed");
-                                  });
-
-                                  unpublishEventButton.addEventListener("htmx:afterRequest", (e) => {
-                                    const xhr = e.detail?.xhr;
-                                    handleHtmxResponse({
-                                      xhr,
-                                      successMessage: "You have successfully unpublished the event.",
-                                      errorMessage: "An error occurred unpublishing this event. Please try again later."
-                                    });
-                                  });
-                                }
-                              })();
-                            </script>
-                          </li>
+                          {{ event_scoped_action(event = event,
+                                                    can_manage_events = can_manage_events,
+                                                    action = "unpublish",
+                                                    htmx_method = "put",
+                                                    icon = "power",
+                                                    label = "Unpublish",
+                                                    disabled_title = "Your role cannot unpublish events.",
+                                                    series_message = "This event is part of a recurring series. What would you like to unpublish?",
+                                                    single_message = "Are you sure you wish to unpublish this event?",
+                                                    success_message = "You have successfully unpublished the event.",
+                                                    error_message = "An error occurred unpublishing this event. Please try again later.") -}}
                         {% elif !event.canceled -%}
-                          <li>
-                            <button id="publish-event-{{ event.event_id }}"
-                                    hx-put="/dashboard/group/events/{{ event.event_id }}/publish"
-                                    data-action-url="/dashboard/group/events/{{ event.event_id }}/publish"
-                                    data-has-related-events="{{ event.has_related_events }}"
-                                    hx-target="#dashboard-content"
-                                    hx-indicator="#dashboard-spinner"
-                                    hx-trigger="confirmed"
-                                    class="cursor-pointer w-full text-start px-4 py-2 hover:bg-stone-100
-                                           {% if !can_manage_events -%}
-                                             opacity-50 cursor-not-allowed
-                                           {% endif -%}"
-                                    {% if !can_manage_events -%}
-                                      disabled title="Your role cannot publish events."
-                                    {% endif -%}>
-                              <div class="flex items-center">
-                                <div class="svg-icon size-4 icon-check bg-stone-600"></div>
-                                <div class="ms-2">Publish</div>
-                              </div>
-                            </button>
-                            <script type="module">
-                              import {
-                                confirmAction,
-                                confirmSeriesAction,
-                                handleHtmxResponse,
-                              } from '/static/js/common/alerts.js';
-
-                              (() => {
-                                const publishEventButton = document.getElementById('publish-event-{{ event.event_id }}');
-                                if (publishEventButton) {
-                                  publishEventButton.addEventListener('click', async () => {
-                                    let scope = "this";
-                                    if (publishEventButton.dataset.hasRelatedEvents === "true") {
-                                      scope = await confirmSeriesAction({
-                                        message: "This event is part of a recurring series. What would you like to publish?",
-                                        confirmText: "Only this event",
-                                        denyText: "All in series",
-                                      });
-                                      if (!scope) {
-                                        return;
-                                      }
-                                    } else {
-                                      const confirmed = await confirmAction({
-                                        message: "Are you sure you wish to publish this event?",
-                                        confirmText: "Yes",
-                                      });
-                                      if (!confirmed) {
-                                        return;
-                                      }
-                                    }
-
-                                    const url = publishEventButton.dataset.actionUrl;
-                                    publishEventButton.setAttribute("hx-put", scope === "series" ? `${url}?scope=series` : url);
-                                    htmx.trigger(publishEventButton, "confirmed");
-                                  });
-
-                                  publishEventButton.addEventListener("htmx:afterRequest", (e) => {
-                                    const xhr = e.detail?.xhr;
-                                    handleHtmxResponse({
-                                      xhr,
-                                      successMessage: "You have successfully published the event.",
-                                      errorMessage: "An error occurred publishing this event. Please try again later."
-                                    });
-                                  });
-                                }
-                              })();
-                            </script>
-                          </li>
+                          {{ event_scoped_action(event = event,
+                                                    can_manage_events = can_manage_events,
+                                                    action = "publish",
+                                                    htmx_method = "put",
+                                                    icon = "check",
+                                                    label = "Publish",
+                                                    disabled_title = "Your role cannot publish events.",
+                                                    series_message = "This event is part of a recurring series. What would you like to publish?",
+                                                    single_message = "Are you sure you wish to publish this event?",
+                                                    success_message = "You have successfully published the event.",
+                                                    error_message = "An error occurred publishing this event. Please try again later.") -}}
                         {% endif -%}
                         {# End publish/unpublish button -#}
                         {# Cancel button -#}
                         {% if !event.canceled -%}
-                          <li>
-                            <button id="cancel-event-{{ event.event_id }}"
-                                    hx-put="/dashboard/group/events/{{ event.event_id }}/cancel"
-                                    data-action-url="/dashboard/group/events/{{ event.event_id }}/cancel"
-                                    data-has-related-events="{{ event.has_related_events }}"
-                                    hx-target="#dashboard-content"
-                                    hx-indicator="#dashboard-spinner"
-                                    hx-trigger="confirmed"
-                                    class="cursor-pointer w-full text-start px-4 py-2 hover:bg-stone-100
-                                           {% if !can_manage_events -%}
-                                             opacity-50 cursor-not-allowed
-                                           {% endif -%}"
-                                    {% if !can_manage_events -%}
-                                      disabled title="Your role cannot cancel events."
-                                    {% endif -%}>
-                              <div class="flex items-center">
-                                <div class="svg-icon size-4 icon-cancel bg-stone-600"></div>
-                                <div class="ms-2">Cancel</div>
-                              </div>
-                            </button>
-                            <script type="module">
-                              import {
-                                confirmAction,
-                                confirmSeriesAction,
-                                handleHtmxResponse,
-                              } from '/static/js/common/alerts.js';
-
-                              const cancelEventButton = document.getElementById('cancel-event-{{ event.event_id }}');
-                              if (cancelEventButton) {
-                                cancelEventButton.addEventListener('click', async () => {
-                                  let scope = "this";
-                                  if (cancelEventButton.dataset.hasRelatedEvents === "true") {
-                                    scope = await confirmSeriesAction({
-                                      message: "This event is part of a recurring series. What would you like to cancel?",
-                                      confirmText: "Only this event",
-                                      denyText: "All in series",
-                                    });
-                                    if (!scope) {
-                                      return;
-                                    }
-                                  } else {
-                                    const confirmed = await confirmAction({
-                                      message: "Are you sure you wish to cancel this event? This action is not reversible.",
-                                      confirmText: "Yes",
-                                    });
-                                    if (!confirmed) {
-                                      return;
-                                    }
-                                  }
-
-                                  const url = cancelEventButton.dataset.actionUrl;
-                                  cancelEventButton.setAttribute("hx-put", scope === "series" ? `${url}?scope=series` : url);
-                                  htmx.trigger(cancelEventButton, "confirmed");
-                                });
-
-                                cancelEventButton.addEventListener("htmx:afterRequest", (e) => {
-                                  const xhr = e.detail?.xhr;
-                                  handleHtmxResponse({
-                                    xhr,
-                                    successMessage: "You have successfully canceled the event.",
-                                    errorMessage: "Something went wrong canceling this event. Please try again later."
-                                  });
-                                });
-                              }
-                            </script>
-                          </li>
+                          {{ event_scoped_action(event = event,
+                                                    can_manage_events = can_manage_events,
+                                                    action = "cancel",
+                                                    htmx_method = "put",
+                                                    icon = "cancel",
+                                                    label = "Cancel",
+                                                    disabled_title = "Your role cannot cancel events.",
+                                                    series_message = "This event is part of a recurring series. What would you like to cancel?",
+                                                    single_message = "Are you sure you wish to cancel this event? This action is not reversible.",
+                                                    success_message = "You have successfully canceled the event.",
+                                                    error_message = "Something went wrong canceling this event. Please try again later.") -}}
                         {% endif -%}
                         {# End cancel button -#}
-                        {# Delete button -#}
-                        <li>
-                          <button id="delete-event-{{ event.event_id }}"
-                                  hx-delete="/dashboard/group/events/{{ event.event_id }}/delete"
-                                  data-action-url="/dashboard/group/events/{{ event.event_id }}/delete"
-                                  data-has-related-events="{{ event.has_related_events }}"
-                                  hx-target="#dashboard-content"
-                                  hx-indicator="#dashboard-spinner"
-                                  hx-trigger="confirmed"
-                                  class="cursor-pointer w-full text-start px-4 py-2 hover:bg-stone-100
-                                         {% if !can_manage_events -%}
-                                           opacity-50 cursor-not-allowed
-                                         {% endif -%}"
-                                  {% if !can_manage_events -%}
-                                    disabled title="Your role cannot delete events."
-                                  {% endif -%}>
-                            <div class="flex items-center">
-                              <div class="svg-icon size-4 icon-trash bg-stone-600"></div>
-                              <div class="ms-2">Delete</div>
-                            </div>
-                          </button>
-                          <script type="module">
-                            import {
-                              confirmAction,
-                              confirmSeriesAction,
-                              handleHtmxResponse,
-                            } from '/static/js/common/alerts.js';
-
-                            (() => {
-                              const deleteEventButton = document.getElementById('delete-event-{{ event.event_id }}');
-                              if (deleteEventButton) {
-                                deleteEventButton.addEventListener('click', async () => {
-                                  let scope = "this";
-                                  if (deleteEventButton.dataset.hasRelatedEvents === "true") {
-                                    scope = await confirmSeriesAction({
-                                      message: "This event is part of a recurring series. What would you like to delete?",
-                                      confirmText: "Only this event",
-                                      denyText: "All in series",
-                                    });
-                                    if (!scope) {
-                                      return;
-                                    }
-                                  } else {
-                                    const confirmed = await confirmAction({
-                                      message: "Are you sure you wish to delete this event?",
-                                      confirmText: "Yes",
-                                    });
-                                    if (!confirmed) {
-                                      return;
-                                    }
-                                  }
-
-                                  const url = deleteEventButton.dataset.actionUrl;
-                                  deleteEventButton.setAttribute("hx-delete", scope === "series" ? `${url}?scope=series` : url);
-                                  htmx.trigger(deleteEventButton, "confirmed");
-                                });
-
-                                deleteEventButton.addEventListener("htmx:afterRequest", (e) => {
-                                  const xhr = e.detail?.xhr;
-                                  handleHtmxResponse({
-                                    xhr,
-                                    successMessage: "You have successfully deleted the event.",
-                                    errorMessage: "Something went wrong deleting this event. Please try again later."
-                                  });
-                                });
-                              }
-                            })();
-                          </script>
-                        </li>
-                        {# End delete button -#}
+                        {{ event_scoped_action(event = event,
+                                                can_manage_events = can_manage_events,
+                                                action = "delete",
+                                                htmx_method = "delete",
+                                                icon = "trash",
+                                                label = "Delete",
+                                                disabled_title = "Your role cannot delete events.",
+                                                series_message = "This event is part of a recurring series. What would you like to delete?",
+                                                single_message = "Are you sure you wish to delete this event?",
+                                                success_message = "You have successfully deleted the event.",
+                                                error_message = "Something went wrong deleting this event. Please try again later.") -}}
                       </ul>
                     </div>
                     {# End dropdown actions -#}
@@ -726,76 +498,17 @@
                          class="dropdown absolute hidden z-10 end-0 top-8 w-[200px] bg-white divide-y divide-stone-100 rounded-lg shadow border border-stone-200">
                       <ul class="py-2 text-sm text-stone-700"
                           aria-labelledby="dropdownDefaultButton">
-                        {# Delete button -#}
-                        <li>
-                          <button id="delete-event-{{ event.event_id }}"
-                                  hx-delete="/dashboard/group/events/{{ event.event_id }}/delete"
-                                  data-action-url="/dashboard/group/events/{{ event.event_id }}/delete"
-                                  data-has-related-events="{{ event.has_related_events }}"
-                                  hx-target="#dashboard-content"
-                                  hx-indicator="#dashboard-spinner"
-                                  hx-trigger="confirmed"
-                                  class="cursor-pointer w-full text-start px-4 py-2 hover:bg-stone-100
-                                         {% if !can_manage_events -%}
-                                           opacity-50 cursor-not-allowed
-                                         {% endif -%}"
-                                  {% if !can_manage_events -%}
-                                    disabled title="Your role cannot delete events."
-                                  {% endif -%}>
-                            <div class="flex items-center">
-                              <div class="svg-icon size-4 icon-trash bg-stone-600"></div>
-                              <div class="ms-2">Delete</div>
-                            </div>
-                          </button>
-                          <script type="module">
-                            import {
-                              confirmAction,
-                              confirmSeriesAction,
-                              handleHtmxResponse,
-                            } from '/static/js/common/alerts.js';
-
-                            (() => {
-                              const deleteEventButton = document.getElementById('delete-event-{{ event.event_id }}');
-                              if (deleteEventButton) {
-                                deleteEventButton.addEventListener('click', async () => {
-                                  let scope = "this";
-                                  if (deleteEventButton.dataset.hasRelatedEvents === "true") {
-                                    scope = await confirmSeriesAction({
-                                      message: "This event is part of a recurring series. What would you like to delete?",
-                                      confirmText: "Only this event",
-                                      denyText: "All in series",
-                                    });
-                                    if (!scope) {
-                                      return;
-                                    }
-                                  } else {
-                                    const confirmed = await confirmAction({
-                                      message: "Are you sure you wish to delete this event?",
-                                      confirmText: "Yes",
-                                    });
-                                    if (!confirmed) {
-                                      return;
-                                    }
-                                  }
-
-                                  const url = deleteEventButton.dataset.actionUrl;
-                                  deleteEventButton.setAttribute("hx-delete", scope === "series" ? `${url}?scope=series` : url);
-                                  htmx.trigger(deleteEventButton, "confirmed");
-                                });
-
-                                deleteEventButton.addEventListener("htmx:afterRequest", (e) => {
-                                  const xhr = e.detail?.xhr;
-                                  handleHtmxResponse({
-                                    xhr,
-                                    successMessage: "You have successfully deleted the event.",
-                                    errorMessage: "Something went wrong deleting this event. Please try again later."
-                                  });
-                                });
-                              }
-                            })();
-                          </script>
-                        </li>
-                        {# End delete button -#}
+                        {{ event_scoped_action(event = event,
+                                                can_manage_events = can_manage_events,
+                                                action = "delete",
+                                                htmx_method = "delete",
+                                                icon = "trash",
+                                                label = "Delete",
+                                                disabled_title = "Your role cannot delete events.",
+                                                series_message = "This event is part of a recurring series. What would you like to delete?",
+                                                single_message = "Are you sure you wish to delete this event?",
+                                                success_message = "You have successfully deleted the event.",
+                                                error_message = "Something went wrong deleting this event. Please try again later.") -}}
                       </ul>
                     </div>
                     {# End dropdown actions -#}
@@ -819,6 +532,12 @@
 {# End Past Events Section -#}
 
 <script type="module">
+  import {
+    confirmAction,
+    confirmSeriesAction,
+    handleHtmxResponse,
+  } from '/static/js/common/alerts.js';
+
   const btnActions = document.querySelectorAll('.btn-actions');
   btnActions.forEach((btnAction) => {
     btnAction.addEventListener('click', () => {
@@ -842,4 +561,93 @@
       }
     });
   });
+
+  const scopedActionButtons = document.querySelectorAll('[data-event-scoped-action]');
+  scopedActionButtons.forEach((scopedActionButton) => {
+    scopedActionButton.addEventListener('click', async () => {
+      let scope = "this";
+      if (scopedActionButton.dataset.hasRelatedEvents === "true") {
+        scope = await confirmSeriesAction({
+          message: scopedActionButton.dataset.seriesMessage,
+          confirmText: scopedActionButton.dataset.currentScopeText,
+          denyText: scopedActionButton.dataset.seriesScopeText,
+        });
+        if (!scope) {
+          return;
+        }
+      } else {
+        const confirmed = await confirmAction({
+          message: scopedActionButton.dataset.singleMessage,
+          confirmText: scopedActionButton.dataset.confirmText,
+        });
+        if (!confirmed) {
+          return;
+        }
+      }
+
+      const url = scopedActionButton.dataset.actionUrl;
+      const htmxMethod = scopedActionButton.dataset.htmxMethod;
+      scopedActionButton.setAttribute(`hx-${htmxMethod}`, scope === "series" ? `${url}?scope=series` : url);
+      htmx.trigger(scopedActionButton, "confirmed");
+    });
+
+    scopedActionButton.addEventListener("htmx:afterRequest", (event) => {
+      handleHtmxResponse({
+        xhr: event.detail?.xhr,
+        successMessage: scopedActionButton.dataset.successMessage,
+        errorMessage: scopedActionButton.dataset.errorMessage,
+      });
+    });
+  });
 </script>
+
+{# Event dropdown action with optional series scope. #}
+{% macro event_scoped_action(
+  event,
+  can_manage_events,
+  action,
+  htmx_method,
+  icon,
+  label,
+  disabled_title,
+  series_message,
+  single_message,
+  success_message,
+  error_message
+  ) -%}
+  <li>
+    <button id="{{ action }}-event-{{ event.event_id }}"
+            {% if htmx_method == "delete" -%}
+              hx-delete="/dashboard/group/events/{{ event.event_id }}/{{ action }}"
+            {% else -%}
+              hx-put="/dashboard/group/events/{{ event.event_id }}/{{ action }}"
+            {% endif -%}
+            data-event-scoped-action
+            data-action-url="/dashboard/group/events/{{ event.event_id }}/{{ action }}"
+            data-htmx-method="{{ htmx_method }}"
+            data-has-related-events="{{ event.has_related_events }}"
+            data-current-scope-text="Only this event"
+            data-series-scope-text="All in series"
+            data-confirm-text="Yes"
+            data-series-message="{{ series_message }}"
+            data-single-message="{{ single_message }}"
+            data-success-message="{{ success_message }}"
+            data-error-message="{{ error_message }}"
+            hx-target="#dashboard-content"
+            hx-indicator="#dashboard-spinner"
+            hx-trigger="confirmed"
+            class="cursor-pointer w-full text-start px-4 py-2 hover:bg-stone-100
+                   {% if !can_manage_events -%}
+                     opacity-50 cursor-not-allowed
+                   {% endif -%}"
+            {% if !can_manage_events -%}
+              disabled title="{{ disabled_title }}"
+            {% endif -%}>
+      <div class="flex items-center">
+        <div class="svg-icon size-4 icon-{{ icon }} bg-stone-600"></div>
+        <div class="ms-2">{{ label }}</div>
+      </div>
+    </button>
+  </li>
+{% endmacro event_scoped_action -%}
+{# End event dropdown action with optional series scope. #}
