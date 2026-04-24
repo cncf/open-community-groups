@@ -1,17 +1,30 @@
 {% extends "notifications/base.html" -%}
 
 {% block subject -%}
-  You're speaking at upcoming events
+  {% if event_count == 1 -%}
+    You're speaking at an upcoming event
+  {% else -%}
+    You're speaking at upcoming events
+  {% endif -%}
 {% endblock subject -%}
 
 {% block preheader -%}
-  You are speaking at {{ event_count }} events with {{ group_name }}.
+  {% if event_count == 1 -%}
+    You are speaking at {{ event_count }} event with {{ group_name }}.
+  {% else -%}
+    You are speaking at {{ event_count }} events with {{ group_name }}.
+  {% endif -%}
 {% endblock preheader -%}
 
 {% block content -%}
   <p class="default mb-30">
-    Thanks for speaking at {{ event_count }} events with
-    <strong>{{ group_name }}</strong> on <strong>Open Community Groups</strong>.
+    {% if event_count == 1 -%}
+      Thanks for speaking at {{ event_count }} event with
+      <strong>{{ group_name }}</strong> on <strong>Open Community Groups</strong>.
+    {% else -%}
+      Thanks for speaking at {{ event_count }} events with
+      <strong>{{ group_name }}</strong> on <strong>Open Community Groups</strong>.
+    {% endif -%}
     <br />
     <br />
     You're all set and we'll keep you posted if anything changes.
@@ -52,6 +65,12 @@
 {% endblock content -%}
 
 {% block footer -%}
-  You are receiving this because you're listed as a speaker for events from {{ group_name }}.
+  {% if event_count == 1 -%}
+    You are receiving this because you're listed as a speaker for an event from
+    {{ group_name }}.
+  {% else -%}
+    You are receiving this because you're listed as a speaker for events from
+    {{ group_name }}.
+  {% endif -%}
   If this wasn't you, feel free to ignore this message.
 {% endblock footer -%}

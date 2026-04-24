@@ -1,17 +1,30 @@
 {% extends "notifications/base.html" -%}
 
 {% block subject -%}
-  New events from {{ group_name }}
+  {% if event_count == 1 -%}
+    New event from {{ group_name }}
+  {% else -%}
+    New events from {{ group_name }}
+  {% endif -%}
 {% endblock subject -%}
 
 {% block preheader -%}
-  {{ event_count }} new events from {{ group_name }} are live.
+  {% if event_count == 1 -%}
+    {{ event_count }} new event from {{ group_name }} is live.
+  {% else -%}
+    {{ event_count }} new events from {{ group_name }} are live.
+  {% endif -%}
 {% endblock preheader -%}
 
 {% block content -%}
   <p class="default mb-30">
-    <strong>{{ group_name }}</strong> published {{ event_count }} new events on
-    <strong>Open Community Groups</strong>.
+    {% if event_count == 1 -%}
+      <strong>{{ group_name }}</strong> published {{ event_count }} new event on
+      <strong>Open Community Groups</strong>.
+    {% else -%}
+      <strong>{{ group_name }}</strong> published {{ event_count }} new events on
+      <strong>Open Community Groups</strong>.
+    {% endif -%}
   </p>
 
   {% for item in events -%}

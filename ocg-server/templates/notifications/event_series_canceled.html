@@ -1,17 +1,30 @@
 {% extends "notifications/base.html" -%}
 
 {% block subject -%}
-  Events canceled by {{ group_name }}
+  {% if event_count == 1 -%}
+    Event canceled by {{ group_name }}
+  {% else -%}
+    Events canceled by {{ group_name }}
+  {% endif -%}
 {% endblock subject -%}
 
 {% block preheader -%}
-  {{ event_count }} events from {{ group_name }} have been canceled.
+  {% if event_count == 1 -%}
+    {{ event_count }} event from {{ group_name }} has been canceled.
+  {% else -%}
+    {{ event_count }} events from {{ group_name }} have been canceled.
+  {% endif -%}
 {% endblock preheader -%}
 
 {% block content -%}
   <p class="default mb-30">
-    We are sorry to inform you that {{ event_count }} events from
-    <strong>{{ group_name }}</strong> have been <strong>canceled</strong>.
+    {% if event_count == 1 -%}
+      We are sorry to inform you that {{ event_count }} event from
+      <strong>{{ group_name }}</strong> has been <strong>canceled</strong>.
+    {% else -%}
+      We are sorry to inform you that {{ event_count }} events from
+      <strong>{{ group_name }}</strong> have been <strong>canceled</strong>.
+    {% endif -%}
   </p>
 
   {% for item in events -%}
