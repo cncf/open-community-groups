@@ -50,10 +50,10 @@ export const bindBooleanToggle = ({ toggle, hiddenInput, onChange = () => {}, sy
  * @returns {{displayActiveSection: (sectionName: string) => void}} Section API.
  */
 export const initializeSectionTabs = ({ root = document, onSectionChange = () => {} } = {}) => {
-  const tabButtons = Array.from(root.querySelectorAll("[data-section]"));
-  const contentSections = Array.from(root.querySelectorAll("[data-content]"));
-
   const displayActiveSection = (sectionName) => {
+    const tabButtons = Array.from(root.querySelectorAll("[data-section]"));
+    const contentSections = Array.from(root.querySelectorAll("[data-content]"));
+
     tabButtons.forEach((button) => {
       const isActive = button.getAttribute("data-section") === sectionName;
       button.setAttribute("data-active", isActive ? "true" : "false");
@@ -68,10 +68,13 @@ export const initializeSectionTabs = ({ root = document, onSectionChange = () =>
     onSectionChange(sectionName);
   };
 
-  tabButtons.forEach((button) => {
-    button.addEventListener("click", () => {
-      displayActiveSection(button.getAttribute("data-section") || "");
-    });
+  root.addEventListener("click", (event) => {
+    const button = event.target?.closest?.("[data-section]");
+    if (!button || !root.contains(button)) {
+      return;
+    }
+
+    displayActiveSection(button.getAttribute("data-section") || "");
   });
 
   return { displayActiveSection };

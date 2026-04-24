@@ -45,6 +45,42 @@ describe("page form state helpers", () => {
     expect(visitedSections).to.deep.equal(["sessions"]);
   });
 
+  it("handles section buttons added after initialization", () => {
+    document.body.innerHTML = `
+      <div id="page-root">
+        <button data-section="details" data-active="true" class="active">Details</button>
+        <section data-content="details">Details content</section>
+      </div>
+    `;
+
+    const pageRoot = document.getElementById("page-root");
+    initializeSectionTabs({ root: pageRoot });
+    pageRoot.insertAdjacentHTML(
+      "beforeend",
+      `
+        <button data-section="date-venue" data-active="false">
+          <span>Date & Venue</span>
+        </button>
+        <section data-content="date-venue" class="hidden">Date content</section>
+      `,
+    );
+
+    pageRoot.querySelector('[data-section="date-venue"] span').click();
+
+    expect(pageRoot.querySelector('[data-section="details"]').getAttribute("data-active")).to.equal(
+      "false",
+    );
+    expect(pageRoot.querySelector('[data-section="date-venue"]').getAttribute("data-active")).to.equal(
+      "true",
+    );
+    expect(pageRoot.querySelector('[data-content="details"]').classList.contains("hidden")).to.equal(
+      true,
+    );
+    expect(pageRoot.querySelector('[data-content="date-venue"]').classList.contains("hidden")).to.equal(
+      false,
+    );
+  });
+
   it("syncs checkbox toggles into hidden boolean inputs", () => {
     document.body.innerHTML = `
       <input id="toggle_registration_required" type="checkbox" />
