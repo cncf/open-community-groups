@@ -53,7 +53,7 @@ mod recurrence;
 #[cfg(test)]
 mod tests;
 
-use recurrence::build_recurring_event_payloads;
+use recurrence::RecurringEventPayloads;
 
 // URLs used by the dashboard page and tab partial
 const DASHBOARD_URL: &str = "/dashboard/group?tab=events";
@@ -251,7 +251,7 @@ pub(crate) async fn add(
     }
 
     // Create either a single event or a linked recurring event series
-    if let Some(recurring_event_payloads) = build_recurring_event_payloads(&event, &event_payload)
+    if let Some(recurring_event_payloads) = RecurringEventPayloads::from_event(&event, &event_payload)
         .map_err(|err| HandlerError::Deserialization(err.to_string()))?
     {
         db.add_event_series(

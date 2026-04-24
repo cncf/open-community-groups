@@ -524,6 +524,18 @@ pub(crate) enum EventRecurrencePattern {
     Monthly,
 }
 
+impl EventRecurrencePattern {
+    /// Returns the database value for patterns that create an event series.
+    pub(crate) fn recurrence_db_value(self) -> Option<&'static str> {
+        match self {
+            Self::JustOnce => None,
+            Self::Biweekly => Some("biweekly"),
+            Self::Monthly => Some("monthly"),
+            Self::Weekly => Some("weekly"),
+        }
+    }
+}
+
 /// Event sponsor information.
 #[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize, Validate)]
