@@ -118,7 +118,14 @@ pub(crate) async fn accept_invitation_request(
         Ok(context) => context,
         Err(err) => {
             warn!(error = %err, "failed to load event invitation acceptance notification context");
-            return Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-body")]).into_response());
+            return Ok((
+                StatusCode::NO_CONTENT,
+                [(
+                    "HX-Trigger",
+                    "refresh-event-attendees, refresh-event-invitation-requests",
+                )],
+            )
+                .into_response());
         }
     };
 
@@ -141,7 +148,14 @@ pub(crate) async fn accept_invitation_request(
         warn!(error = %err, "failed to enqueue event invitation acceptance notification");
     }
 
-    Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-body")]).into_response())
+    Ok((
+        StatusCode::NO_CONTENT,
+        [(
+            "HX-Trigger",
+            "refresh-event-attendees, refresh-event-invitation-requests",
+        )],
+    )
+        .into_response())
 }
 
 /// Approves an attendee refund request.
@@ -241,7 +255,11 @@ pub(crate) async fn reject_invitation_request(
     db.reject_event_invitation_request(user.user_id, group_id, event_id, user_id)
         .await?;
 
-    Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-body")]).into_response())
+    Ok((
+        StatusCode::NO_CONTENT,
+        [("HX-Trigger", "refresh-event-invitation-requests")],
+    )
+        .into_response())
 }
 
 /// Rejects an attendee refund request.

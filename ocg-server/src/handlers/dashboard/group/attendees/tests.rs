@@ -105,9 +105,18 @@ async fn test_accept_invitation_request_returns_no_content_and_sends_welcome() {
         .body(Body::empty())
         .unwrap();
     let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(response.status(), StatusCode::NO_CONTENT);
+    assert_eq!(parts.status, StatusCode::NO_CONTENT);
+    assert_eq!(
+        parts.headers.get("HX-Trigger"),
+        Some(&HeaderValue::from_static(
+            "refresh-event-attendees, refresh-event-invitation-requests"
+        ))
+    );
+    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
@@ -732,9 +741,16 @@ async fn test_reject_invitation_request_returns_no_content() {
         .body(Body::empty())
         .unwrap();
     let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(response.status(), StatusCode::NO_CONTENT);
+    assert_eq!(parts.status, StatusCode::NO_CONTENT);
+    assert_eq!(
+        parts.headers.get("HX-Trigger"),
+        Some(&HeaderValue::from_static("refresh-event-invitation-requests"))
+    );
+    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
