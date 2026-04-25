@@ -6,6 +6,7 @@ import {
   getPrimaryControls,
   getSelectedTicketTypeValue,
   isTicketModalOpen,
+  setAttendanceControlIcon,
   setAttendanceControlLabel,
 } from "/static/js/event/attendance-dom.js";
 
@@ -25,6 +26,8 @@ export const REFUND_REQUESTED_LABEL = "Refund requested";
 export const REFUND_PROCESSING_LABEL = "Refund processing";
 export const REFUND_UNAVAILABLE_LABEL = "Refund unavailable";
 
+const ATTEND_EVENT_ICON = "icon-user-plus";
+const REQUEST_INVITATION_ICON = "icon-request-invitation";
 const PAST_EVENT_TITLE = "You cannot change attendance because the event has already started.";
 const TICKETS_UNAVAILABLE_TITLE = "Tickets are not currently available for this event.";
 const SOLD_OUT_TITLE = "This event is sold out.";
@@ -100,17 +103,27 @@ const hideControl = (control) => {
 /**
  * Applies a rendered state to a control.
  * @param {HTMLElement|null} control - Control to update
- * @param {{disabled?: boolean, label?: string|null, resumeUrl?: string|null, title?: string|null, visible?: boolean}} state - Render state
+ * @param {object} state - Render state
  */
 const renderControl = (control, state = {}) => {
   if (!(control instanceof HTMLElement)) {
     return;
   }
 
-  const { disabled = false, label = null, resumeUrl = null, title = null, visible = true } = state;
+  const {
+    disabled = false,
+    icon = null,
+    label = null,
+    resumeUrl = null,
+    title = null,
+    visible = true,
+  } = state;
 
   if (visible) {
     control.classList.remove("hidden");
+  }
+  if (icon !== null) {
+    setAttendanceControlIcon(control, icon);
   }
   if (label !== null) {
     setAttendanceControlLabel(control, label);
@@ -140,8 +153,8 @@ const renderControl = (control, state = {}) => {
 /**
  * Applies the past-event restriction when needed.
  * @param {{isPastEvent: boolean}} meta - Attendance metadata
- * @param {{disabled?: boolean, label?: string|null, resumeUrl?: string|null, title?: string|null}} state - Base render state
- * @returns {{disabled?: boolean, label?: string|null, resumeUrl?: string|null, title?: string|null}} Render state
+ * @param {object} state - Base render state
+ * @returns {object} Render state
  */
 const withEventDateState = (meta, state) => {
   if (!meta.isPastEvent) {
@@ -172,6 +185,18 @@ const getSigninLabel = (meta) => {
   return meta.isSoldOut && meta.waitlistEnabled ? JOIN_WAITLIST_LABEL : ATTEND_EVENT_LABEL;
 };
 
+const getSigninState = (meta) => {
+  const state = withEventDateState(meta, { label: getSigninLabel(meta) });
+  if (meta.isTicketed) {
+    return state;
+  }
+
+  return {
+    ...state,
+    icon: meta.attendeeApprovalRequired ? REQUEST_INVITATION_ICON : ATTEND_EVENT_ICON,
+  };
+};
+
 /**
  * Returns the default attend label for a container.
  * @param {{attendeeApprovalRequired: boolean, isTicketed: boolean}} meta - Attendance metadata
@@ -188,7 +213,7 @@ const getDefaultAttendLabel = (meta) => {
 /**
  * Computes the primary attend-button state for the current meta.
  * @param {{attendeeApprovalRequired: boolean, isPastEvent: boolean, isSoldOut: boolean, isTicketed: boolean, ticketPurchaseAvailable: boolean, waitlistEnabled: boolean}} meta - Attendance metadata
- * @returns {{disabled?: boolean, label?: string|null, resumeUrl?: string|null, title?: string|null}} Render state
+ * @returns {object} Render state
  */
 const getAttendState = (meta) => {
   if (meta.isTicketed && !meta.ticketPurchaseAvailable && !meta.isPastEvent) {
@@ -201,6 +226,7 @@ const getAttendState = (meta) => {
 
   if (meta.attendeeApprovalRequired) {
     return withEventDateState(meta, {
+      icon: REQUEST_INVITATION_ICON,
       label: REQUEST_INVITATION_LABEL,
     });
   }
@@ -220,6 +246,7 @@ const getAttendState = (meta) => {
   }
 
   return withEventDateState(meta, {
+    icon: ATTEND_EVENT_ICON,
     label: getDefaultAttendLabel(meta),
   });
 };
@@ -288,7 +315,7 @@ export const showSignedOutAttendanceState = (container, meta) => {
     return;
   }
 
-  renderControl(signinButton, withEventDateState(meta, { label: getSigninLabel(meta) }));
+  renderControl(signinButton, getSigninState(meta));
 };
 
 /**

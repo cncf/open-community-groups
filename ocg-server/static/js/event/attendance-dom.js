@@ -74,6 +74,25 @@ export const setAttendanceControlLabel = (button, label) => {
 };
 
 /**
+ * Sets the visible icon for an attendance control.
+ * @param {HTMLElement|null} button - Attendance control button
+ * @param {string} iconClass - Icon class to apply
+ */
+export const setAttendanceControlIcon = (button, iconClass) => {
+  const iconNode = button?.querySelector("[data-attendance-icon]");
+  if (!iconNode) {
+    return;
+  }
+
+  [...iconNode.classList].forEach((className) => {
+    if (className.startsWith("icon-")) {
+      iconNode.classList.remove(className);
+    }
+  });
+  iconNode.classList.add(iconClass);
+};
+
+/**
  * Returns the visible label for an attendance control.
  * @param {HTMLElement|null} button - Attendance control button
  * @returns {string} Current label text
