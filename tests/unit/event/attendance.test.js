@@ -278,6 +278,26 @@ describe("event attendance", () => {
     ).to.equal(false);
   });
 
+  it("disables approved invitation rejoin when the event is sold out", () => {
+    const { checker, attendButton } = renderAttendanceDom({
+      attendeeApprovalRequired: "true",
+      capacity: "10",
+      remainingCapacity: "0",
+    });
+
+    dispatchHtmxAfterRequest(checker, {
+      responseText: JSON.stringify({ status: "invitation-approved" }),
+    });
+
+    expect(attendButton.classList.contains("hidden")).to.equal(false);
+    expect(attendButton.disabled).to.equal(true);
+    expect(attendButton.title).to.equal("This event is sold out.");
+    expect(attendButton.querySelector("[data-attendance-label]")?.textContent).to.equal("Attend event");
+    expect(attendButton.querySelector("[data-attendance-icon]")?.classList.contains("icon-user-plus")).to.equal(
+      true,
+    );
+  });
+
   it("shows a sold-out attend button when no waitlist is available", () => {
     const { checker, attendButton, signinButton } = renderAttendanceDom({
       capacity: "10",

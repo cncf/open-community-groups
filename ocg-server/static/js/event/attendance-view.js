@@ -349,11 +349,24 @@ export const showGuestAttendanceState = (container, meta) => {
  * @param {{isPastEvent: boolean}} meta - Attendance metadata
  */
 export const showInvitationApprovedAttendanceState = (container, meta) => {
+  if (!meta.isPastEvent && meta.isSoldOut) {
+    showPrimaryAttendanceState(container, meta, "attendButton", {
+      disabled: true,
+      icon: ATTEND_EVENT_ICON,
+      label: ATTEND_EVENT_LABEL,
+      title: SOLD_OUT_TITLE,
+    });
+    return;
+  }
+
   showPrimaryAttendanceState(
     container,
     meta,
     "attendButton",
-    withEventDateState(meta, { label: ATTEND_EVENT_LABEL }),
+    withEventDateState(meta, {
+      icon: ATTEND_EVENT_ICON,
+      label: ATTEND_EVENT_LABEL,
+    }),
   );
 };
 
