@@ -22,8 +22,15 @@ begin
     join "group" g on g.group_id = e.group_id
     where e.event_id = p_event_id
     and e.group_id = p_group_id
+    and g.active = true
+    and e.attendee_approval_required = true
     and e.deleted = false
+    and e.published = true
     and e.canceled = false
+    and (
+        coalesce(e.ends_at, e.starts_at) is null
+        or coalesce(e.ends_at, e.starts_at) >= current_timestamp
+    )
     for update of e;
 
     if not found then
