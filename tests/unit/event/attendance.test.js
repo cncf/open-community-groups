@@ -207,6 +207,21 @@ describe("event attendance", () => {
     expect(env.current.htmx.triggerCalls).to.deep.equal([["#leave-btn", "confirmed"]]);
   });
 
+  it("confirms canceling a pending invitation request with request-specific copy", async () => {
+    const { leaveButton } = renderAttendanceDom();
+
+    leaveButton.querySelector("[data-attendance-label]").textContent = "Cancel request";
+    env.current.swal.setNextResult({ isConfirmed: true });
+    leaveButton.click();
+    await waitForMicrotask();
+
+    expect(env.current.swal.calls[0]).to.include({
+      text: "Are you sure you want to cancel your invitation request?",
+      icon: "warning",
+    });
+    expect(env.current.htmx.triggerCalls).to.deep.equal([["#leave-btn", "confirmed"]]);
+  });
+
   it("disables attendance changes for past events", () => {
     const { checker, attendButton } = renderAttendanceDom({
       starts: "2000-05-10T10:00:00Z",
