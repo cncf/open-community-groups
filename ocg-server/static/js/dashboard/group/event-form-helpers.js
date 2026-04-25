@@ -97,6 +97,42 @@ const setRegistrationRequired = (isRequired) => {
 };
 
 /**
+ * Sets attendee approval toggle and hidden input.
+ * @param {boolean} isRequired Whether attendee approval is required
+ */
+const setAttendeeApprovalRequired = (isRequired) => {
+  const toggle = document.getElementById("toggle_attendee_approval_required");
+  const hidden = document.getElementById("attendee_approval_required");
+  if (toggle) {
+    toggle.checked = !!isRequired;
+  }
+  if (hidden) {
+    hidden.value = isRequired ? "true" : "false";
+  }
+  if (toggle) {
+    toggle.dispatchEvent(new Event("change", { bubbles: true }));
+  }
+};
+
+/**
+ * Sets waitlist toggle and hidden input.
+ * @param {boolean} isEnabled Whether waitlist is enabled
+ */
+const setWaitlistEnabled = (isEnabled) => {
+  const toggle = document.getElementById("toggle_waitlist_enabled");
+  const hidden = document.getElementById("waitlist_enabled");
+  if (toggle) {
+    toggle.checked = !!isEnabled;
+  }
+  if (hidden) {
+    hidden.value = isEnabled ? "true" : "false";
+  }
+  if (toggle) {
+    toggle.dispatchEvent(new Event("change", { bubbles: true }));
+  }
+};
+
+/**
  * Sets event reminder toggle and hidden input.
  * @param {boolean} isEnabled Whether event reminders are enabled
  */
@@ -178,10 +214,11 @@ const clearCopiedDiscountCodeDates = (discountCodes) => {
 const setTicketTypes = (ticketTypes) => {
   const root = document.getElementById("ticket-types-ui");
   if (!root) {
-    return;
+    return Promise.resolve();
   }
 
   root.setTicketTypes?.(clearCopiedTicketTypeDates(ticketTypes));
+  return root.updateComplete || Promise.resolve();
 };
 
 /**
@@ -417,6 +454,7 @@ export {
   buildSessionEntries,
   initializeSessionsRemovalWarning,
   normalizeSpeakers,
+  setAttendeeApprovalRequired,
   setCategoryValue,
   setDiscountCodes,
   setEventReminderEnabled,
@@ -428,6 +466,7 @@ export {
   setSponsors,
   setTags,
   setTicketTypes,
+  setWaitlistEnabled,
   updateMarkdownContent,
   updateTimezone,
 };

@@ -280,6 +280,7 @@ mod tests {
 
     fn sample_event(canceled: bool) -> EventSummary {
         EventSummary {
+            attendee_approval_required: false,
             canceled,
             community_display_name: "Test Community".to_string(),
             community_name: "test-community".to_string(),

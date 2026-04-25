@@ -358,6 +358,7 @@ select is(
         "published": true,
         "slug": "def5678",
         "timezone": "America/New_York",
+        "attendee_approval_required": false,
         "capacity": 5,
         "description_short": "Annual Kubernetes conference short summary",
         "ends_at": 1718470800,

@@ -216,6 +216,9 @@ pub(crate) async fn attend_event(
             };
             notifications_manager.enqueue(&notification).await
         }
+        EventAttendanceStatus::PendingApproval
+        | EventAttendanceStatus::PendingPayment
+        | EventAttendanceStatus::Rejected => Ok(()),
         EventAttendanceStatus::Waitlisted => {
             // Let the user know they were added to the waitlist
             let template_data = EventWaitlistJoined {
@@ -231,7 +234,6 @@ pub(crate) async fn attend_event(
             };
             notifications_manager.enqueue(&notification).await
         }
-        EventAttendanceStatus::PendingPayment => Ok(()),
         EventAttendanceStatus::None => {
             unreachable!("attend_event cannot return an unattached attendance status")
         }

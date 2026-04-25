@@ -21,6 +21,7 @@ import {
   CANCEL_ATTENDANCE_LABEL,
   JOIN_WAITLIST_LABEL,
   LEAVE_WAITLIST_LABEL,
+  REQUEST_INVITATION_LABEL,
   closeTicketModal,
   initializeAttendanceContainer,
   openTicketModal,
@@ -30,8 +31,10 @@ import {
   showCheckoutLoadingState,
   showAttendeeState,
   showGuestAttendanceState,
+  showPendingApprovalAttendanceState,
   showPendingPaymentState,
   showPrimaryRequestLoading,
+  showRejectedInvitationState,
   showSignedOutAttendanceState,
   showWaitlistedAttendanceState,
 } from "/static/js/event/attendance-view.js";
@@ -51,6 +54,8 @@ const PRIMARY_ACTION_CONFIG = {
 
       if (response?.status === "waitlisted") {
         showInfoAlert("You have joined the waiting list for this event.");
+      } else if (response?.status === "pending-approval") {
+        showInfoAlert("Your invitation request has been sent to the organizers.");
       } else if (response?.status === "pending-payment") {
         showInfoAlert("Your checkout is ready. Redirecting you to Stripe now.");
       } else {
@@ -65,6 +70,8 @@ const PRIMARY_ACTION_CONFIG = {
     onSuccess: (response) => {
       if (response?.left_status === "waitlisted") {
         showInfoAlert("You have left the waiting list for this event.");
+      } else if (response?.left_status === "pending-approval") {
+        showInfoAlert("Your invitation request has been canceled.");
       } else {
         showInfoAlert("You have successfully canceled your attendance.");
       }
@@ -99,6 +106,10 @@ const showSignedOutFallback = (container, meta) => {
 const getSigninActionText = (label) => {
   if (label === JOIN_WAITLIST_LABEL) {
     return "join the waiting list";
+  }
+
+  if (label === REQUEST_INVITATION_LABEL) {
+    return "request an invitation";
   }
 
   if (label === BUY_TICKET_LABEL) {
@@ -278,6 +289,16 @@ const renderAttendanceCheckResponse = (container, event) => {
 
   if (response.status === "pending-payment") {
     showPendingPaymentState(container, meta, response);
+    return;
+  }
+
+  if (response.status === "pending-approval") {
+    showPendingApprovalAttendanceState(container, meta);
+    return;
+  }
+
+  if (response.status === "rejected") {
+    showRejectedInvitationState(container, meta);
     return;
   }
 

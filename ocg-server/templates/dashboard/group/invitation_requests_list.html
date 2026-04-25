@@ -1,0 +1,132 @@
+{% import "macros/pagination.html" as pagination -%}
+
+<div class="flex flex-col lg:flex-row lg:items-center justify-between my-5">
+  <div class="text-sm text-stone-600 mb-4 lg:mb-0">
+    {{ pagination::range_display(offset = offset.unwrap_or(0) , count = invitation_requests.len(), total = total, label = "invitation request") }}
+  </div>
+</div>
+
+{# Invitation requests table -#}
+<div class="relative overflow-visible pb-12">
+  <table class="table-auto w-full text-xs lg:text-sm text-left text-stone-500 mb-8"
+         role="table"
+         aria-label="Invitation requests">
+    <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200"
+           role="rowgroup">
+      <tr>
+        <th scope="col" class="px-3 xl:px-5 py-3">Requester</th>
+        <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3">Position</th>
+        <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3 w-40">Requested</th>
+        <th scope="col" class="px-3 xl:px-5 py-3 w-48">Status</th>
+        <th scope="col" class="px-3 xl:px-5 py-3 w-40">Reviewed</th>
+      </tr>
+    </thead>
+    <tbody id="invitation-requests-list" role="rowgroup">
+      {% if invitation_requests.is_empty() -%}
+        <tr class="bg-white border-b border-stone-200">
+          <td class="xl:hidden px-8 py-12 text-center text-stone-500" colspan="3">No invitation requests found.</td>
+          <td class="hidden xl:table-cell px-8 py-12 text-center text-stone-500"
+              colspan="5">No invitation requests found.</td>
+        </tr>
+      {% else -%}
+        {% for request in invitation_requests -%}
+          <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
+            {# Requester -#}
+            <td class="px-3 xl:px-5 py-4">
+              <div class="flex items-center space-x-5">
+                <logo-image
+                {% if let Some(photo_url) = &request.photo_url -%}
+                  image-url="{{ photo_url }}"
+                {% endif -%}
+                size="size-10" placeholder="{{ self::user_initials(request.name.as_deref() , request.username.as_str()) }}">
+                </logo-image>
+                <div class="min-w-0">
+                  <div class="font-medium text-stone-900 truncate mb-1">{{ request.name|assigned_or(request.username) }}</div>
+                  {% if request.name.is_some() -%}
+                    <div class="text-xs text-stone-600 truncate">{{ request.username }}</div>
+                  {% endif -%}
+                </div>
+              </div>
+            </td>
+            {# End requester -#}
+
+            {# Position -#}
+            <td class="hidden xl:table-cell px-3 xl:px-5 py-4">
+              <div class="flex flex-col space-y-1">
+                <div class="font-medium text-stone-900 truncate">{{ request.company|assigned_or("-") }}</div>
+                {% if let Some(title) = &request.title -%}
+                  <div class="text-xs text-stone-600 truncate">{{ title }}</div>
+                {% endif -%}
+              </div>
+            </td>
+            {# End position -#}
+
+            {# Requested -#}
+            <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap w-40">
+              {{ request.created_at.format("%b %d, %Y") }}
+            </td>
+            {# End requested -#}
+
+            {# Status -#}
+            <td class="px-3 xl:px-5 py-4 align-middle">
+              {% if request.invitation_request_status == crate::types::event::EventInvitationRequestStatus::Pending -%}
+                <div class="flex flex-col gap-2">
+                  <span class="inline-flex w-fit rounded-full border border-amber-800 bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">
+                    Pending
+                  </span>
+                  {% if can_manage_events -%}
+                    <div class="flex flex-wrap gap-2">
+                      <button type="button"
+                              class="btn-primary h-8 px-3 text-xs"
+                              hx-put="/dashboard/group/events/{{ event.event_id }}/attendees/{{ request.user_id }}/invitation/accept"
+                              hx-indicator="#dashboard-spinner"
+                              hx-disabled-elt="this">Accept</button>
+                      <button type="button"
+                              class="btn-primary-outline h-8 px-3 text-xs"
+                              hx-put="/dashboard/group/events/{{ event.event_id }}/attendees/{{ request.user_id }}/invitation/reject"
+                              hx-indicator="#dashboard-spinner"
+                              hx-disabled-elt="this"
+                              hx-trigger="confirmed"
+                              data-confirm-action
+                              data-confirm-message="Are you sure you want to reject this invitation request?"
+                              data-confirm-text="Yes"
+                              data-error-message="Something went wrong rejecting this invitation request. Please try again later.">
+                        Reject
+                      </button>
+                    </div>
+                  {% endif -%}
+                </div>
+              {% else if request.invitation_request_status == crate::types::event::EventInvitationRequestStatus::Rejected -%}
+                <span class="inline-flex w-fit rounded-full border border-red-800 bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-800">
+                  Rejected
+                </span>
+              {% else -%}
+                <span class="inline-flex w-fit rounded-full border border-green-800 bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-800">
+                  Accepted
+                </span>
+              {% endif -%}
+            </td>
+            {# End status -#}
+
+            {# Reviewed -#}
+            <td class="px-3 xl:px-5 py-4 whitespace-nowrap w-40">
+              {% if let Some(reviewed_at) = &request.reviewed_at -%}
+                {{ reviewed_at.format("%b %d, %Y") }}
+              {% else -%}
+                -
+              {% endif -%}
+            </td>
+            {# End reviewed -#}
+          </tr>
+        {% endfor -%}
+      {% endif -%}
+    </tbody>
+  </table>
+</div>
+{# End invitation requests table -#}
+
+{# Pagination -#}
+{% if total > invitation_requests.len() -%}
+  {{ pagination::navigation_links(links = navigation_links, hx_target = "#invitation-requests-content", hx_indicator = "#dashboard-spinner") }}
+{% endif -%}
+{# End pagination -#}

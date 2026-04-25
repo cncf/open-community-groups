@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(98);
+select plan(100);
 
 -- ============================================================================
 -- VARIABLES
@@ -32,6 +32,7 @@ select plan(98);
 \set event21ID '00000000-0000-0000-0000-000000000028'
 \set event22ID '00000000-0000-0000-0000-000000000029'
 \set event23ID '00000000-0000-0000-0000-000000000030'
+\set event24ID '00000000-0000-0000-0000-000000000031'
 \set group1ID '00000000-0000-0000-0000-000000000002'
 \set invalidUserID '99999999-9999-9999-9999-999999999999'
 \set label1ID '00000000-0000-0000-0000-000000000401'
@@ -400,6 +401,29 @@ insert into event (
     true
 );
 
+-- Approval-required event used for invitation request transition checks
+insert into event (
+    event_id,
+    group_id,
+    name,
+    slug,
+    description,
+    timezone,
+    event_category_id,
+    event_kind_id,
+    attendee_approval_required
+) values (
+    :'event24ID',
+    :'group1ID',
+    'Approval Request Event',
+    'approval-request',
+    'Approval-required event used for invitation request checks',
+    'UTC',
+    :'category1ID',
+    'virtual',
+    true
+);
+
 -- Event with session having meeting_in_sync=false
 insert into event (
     event_id,
@@ -650,6 +674,10 @@ insert into event_waitlist (event_id, user_id, created_at) values
     (:'event17ID', :'user5ID', current_timestamp + interval '4 minutes'),
     (:'event20ID', :'user4ID', current_timestamp + interval '5 minutes'),
     (:'event23ID', :'user5ID', current_timestamp + interval '6 minutes');
+
+-- Event invitation requests (for attendee approval transition tests)
+insert into event_invitation_request (event_id, user_id)
+values (:'event24ID', :'user5ID');
 
 -- Published event used for reminder evaluation checks
 insert into event (
@@ -1082,6 +1110,7 @@ select is(
         "sponsors": [],
         "timezone": "America/Los_Angeles",
 
+        "attendee_approval_required": false,
         "capacity": 100,
         "remaining_capacity": 100,
         "ends_at": 1896220800,
@@ -1448,6 +1477,48 @@ select throws_ok(
     'Should reject ticketed events when waitlist_enabled stays true'
 );
 
+-- Should reject disabling attendee approval while invitation requests are pending
+select throws_ok(
+    $$select update_event(
+        null::uuid,
+        '00000000-0000-0000-0000-000000000002'::uuid,
+        '00000000-0000-0000-0000-000000000031'::uuid,
+        '{
+            "name": "Approval Request Event",
+            "description": "Approval-required event used for invitation request checks",
+            "timezone": "UTC",
+            "category_id": "00000000-0000-0000-0000-000000000011",
+            "kind_id": "virtual",
+            "attendee_approval_required": false
+        }'::jsonb
+    )$$,
+    'approval-required events with pending invitation requests cannot disable approval',
+    'Should reject disabling attendee approval while invitation requests are pending'
+);
+
+-- Should reject enabling attendee approval while waitlist entries exist
+select throws_ok(
+    $$select update_event(
+        null::uuid,
+        '00000000-0000-0000-0000-000000000002'::uuid,
+        '00000000-0000-0000-0000-000000000030'::uuid,
+        '{
+            "name": "Ticketing Waitlist Event",
+            "description": "Published event used for ticketing conversion waitlist checks",
+            "timezone": "UTC",
+            "category_id": "00000000-0000-0000-0000-000000000011",
+            "kind_id": "in-person",
+            "attendee_approval_required": true,
+            "capacity": 1,
+            "ends_at": "2030-05-01T12:00:00",
+            "starts_at": "2030-05-01T10:00:00",
+            "waitlist_enabled": false
+        }'::jsonb
+    )$$,
+    'approval-required events cannot have existing waitlist entries',
+    'Should reject enabling attendee approval while queued users already exist'
+);
+
 -- Should throw error when ticket seats are reduced below purchased inventory
 select throws_ok(
     $$select update_event(
@@ -1653,6 +1724,7 @@ select is(
         "published": false,
         "slug": "def5678",
         "timezone": "Asia/Tokyo",
+        "attendee_approval_required": false,
         "banner_url": "https://example.com/new-banner.jpg",
         "capacity": 200,
         "remaining_capacity": 200,
@@ -2877,7 +2949,7 @@ select throws_ok(
             ]
         }'::jsonb
     )$$,
-    'ticketed events require an empty waitlist',
+    'ticketed events cannot have existing waitlist entries',
     'Should reject ticketing conversion when queued users already exist'
 );
 

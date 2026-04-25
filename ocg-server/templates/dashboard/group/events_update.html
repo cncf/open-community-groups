@@ -102,6 +102,23 @@
         <span class="text-[10px] 2xl:text-xs">Attendees</span>
       </button>
     </li>
+    {% if event.attendee_approval_required -%}
+      <li class="shrink-0">
+        <button type="button"
+                data-section="invitation-requests"
+                data-active="false"
+                hx-get="/dashboard/group/events/{{ event.event_id }}/invitation-requests"
+                hx-trigger="click once"
+                hx-target="#invitation-requests-content"
+                hx-swap="innerHTML"
+                hx-indicator="#invitation-requests-loading"
+                class="px-2 xl:w-[90px] 2xl:w-[120px] xl:px-0 cursor-pointer inline-flex flex-col items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group">
+          <div class="svg-icon size-4 lg:size-5 mb-2 icon-user-plus bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
+          </div>
+          <span class="text-[10px] 2xl:text-xs">Requests</span>
+        </button>
+      </li>
+    {% endif -%}
     <li class="shrink-0">
       <button type="button"
               data-section="waitlist"
@@ -147,7 +164,7 @@
               {% if !can_manage_events -%}
                 disabled title="Your role cannot update events."
               {% endif -%}
-              hx-exclude="[name=toggle_registration_required], [name=toggle_waitlist_enabled], [name=toggle_meeting_requested], [name=toggle_cfs_enabled], [name=toggle_event_reminder_enabled]">
+              hx-exclude="[name=toggle_registration_required], [name=toggle_attendee_approval_required], [name=toggle_waitlist_enabled], [name=toggle_meeting_requested], [name=toggle_cfs_enabled], [name=toggle_event_reminder_enabled]">
         Save
       </button>
     </div>
@@ -338,6 +355,31 @@
           <p class="form-legend">Whether attendees must register in advance.</p>
         </div>
         {# End Registration required -#}
+
+        {# Attendee approval required -#}
+        <div class="col-span-full lg:col-span-3">
+          <label id="attendee-approval-toggle-label"
+                 class="inline-flex items-center cursor-pointer transition-opacity">
+            <input id="toggle_attendee_approval_required"
+                   name="toggle_attendee_approval_required"
+                   value="required"
+                   type="checkbox"
+                   class="sr-only peer"
+                   {% if event.attendee_approval_required %}checked{% endif %}>
+            <input type="hidden"
+                   id="attendee_approval_required"
+                   name="attendee_approval_required"
+                   value="{{ event.attendee_approval_required }}">
+            <div class="relative w-11 h-6 bg-stone-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white peer-disabled:opacity-70 after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-stone-300 after:border after:border-stone-200 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500">
+            </div>
+            <span class="ms-3 text-sm font-medium text-stone-900">Require Invitation Approval</span>
+          </label>
+          <p class="form-legend">
+            Let people request an invitation for organizer review. This cannot be combined with
+            waitlist or paid tickets.
+          </p>
+        </div>
+        {# End Attendee approval required -#}
 
         {# Waitlist enabled -#}
         <div class="col-span-full lg:col-span-3">
@@ -739,7 +781,7 @@
 
           {% if event.waitlist_count > 0 -%}
             <p class="mt-3 text-sm text-amber-700">
-              Clear the current waitlist before switching this event to ticketing.
+              This event cannot switch to ticketing while people are on the waitlist.
             </p>
           {% endif -%}
 
@@ -873,6 +915,22 @@
   </div>
 </div>
 {# End Attendees Tab -#}
+
+{% if event.attendee_approval_required -%}
+  {# Invitation Requests Tab -#}
+  <div data-content="invitation-requests" class="hidden">
+    <div id="invitation-requests-content">
+      <div id="invitation-requests-loading"
+           class="flex items-center justify-center py-12">
+        <div class="flex flex-col items-center space-y-4">
+          {{ ui::spinner(size = "size-10") -}}
+          <div class="text-sm text-stone-500">Loading invitation requests...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {# End Invitation Requests Tab -#}
+{% endif -%}
 
 {# Waitlist Tab -#}
 <div data-content="waitlist" class="hidden">

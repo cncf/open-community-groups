@@ -182,9 +182,39 @@ const AUDIT_ACTION_DEFINITIONS: &[AuditActionDefinition] = &[
         value: "event_deleted",
     },
     AuditActionDefinition {
+        label: "Event invitation request accepted",
+        scopes: GROUP_SCOPES,
+        value: "event_invitation_request_accepted",
+    },
+    AuditActionDefinition {
+        label: "Event invitation request rejected",
+        scopes: GROUP_SCOPES,
+        value: "event_invitation_request_rejected",
+    },
+    AuditActionDefinition {
         label: "Event published",
         scopes: GROUP_SCOPES,
         value: "event_published",
+    },
+    AuditActionDefinition {
+        label: "Event refund approved",
+        scopes: GROUP_SCOPES,
+        value: "event_refund_approved",
+    },
+    AuditActionDefinition {
+        label: "Event refund rejected",
+        scopes: GROUP_SCOPES,
+        value: "event_refund_rejected",
+    },
+    AuditActionDefinition {
+        label: "Event refund requested",
+        scopes: GROUP_SCOPES,
+        value: "event_refund_requested",
+    },
+    AuditActionDefinition {
+        label: "Event refunded",
+        scopes: GROUP_SCOPES,
+        value: "event_refunded",
     },
     AuditActionDefinition {
         label: "Event unpublished",
@@ -235,6 +265,11 @@ const AUDIT_ACTION_DEFINITIONS: &[AuditActionDefinition] = &[
         label: "Group deleted",
         scopes: COMMUNITY_SCOPES,
         value: "group_deleted",
+    },
+    AuditActionDefinition {
+        label: "Group payment recipient updated",
+        scopes: COMMUNITY_GROUP_SCOPES,
+        value: "group_payment_recipient_updated",
     },
     AuditActionDefinition {
         label: "Group sponsor added",

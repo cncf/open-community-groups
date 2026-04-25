@@ -11,7 +11,7 @@ use chrono::Duration;
 use garde::Validate;
 use qrcode::render::svg;
 use serde::{Deserialize, Serialize};
-use tracing::instrument;
+use tracing::{instrument, warn};
 use uuid::Uuid;
 
 use crate::{
@@ -29,9 +29,10 @@ use crate::{
     },
     templates::{
         dashboard::group::attendees::{self, AttendeesFilters, AttendeesPaginationFilters},
-        notifications::EventCustom,
+        notifications::{EventCustom, EventWelcome},
     },
     types::{pagination::NavigationLinks, permissions::GroupPermission},
+    util::{build_event_calendar_attachment, build_event_page_link},
     validation::{
         MAX_LEN_DESCRIPTION_SHORT, MAX_LEN_M, MAX_LEN_NOTIFICATION_BODY, trimmed_non_empty,
         trimmed_non_empty_opt,
@@ -93,6 +94,55 @@ pub(crate) async fn list_page(
 }
 
 // Actions handlers.
+
+/// Accepts an event invitation request.
+#[instrument(skip_all, err)]
+#[allow(clippy::too_many_arguments)]
+pub(crate) async fn accept_invitation_request(
+    CurrentUser(user): CurrentUser,
+    SelectedCommunityId(community_id): SelectedCommunityId,
+    SelectedGroupId(group_id): SelectedGroupId,
+    State(db): State<DynDB>,
+    State(notifications_manager): State<DynNotificationsManager>,
+    State(server_cfg): State<HttpServerConfig>,
+    Path((event_id, user_id)): Path<(Uuid, Uuid)>,
+) -> Result<impl IntoResponse, HandlerError> {
+    db.accept_event_invitation_request(user.user_id, group_id, event_id, user_id)
+        .await?;
+
+    // Load attendee welcome notification context after approval succeeds
+    let (site_settings, event) = match tokio::try_join!(
+        db.get_site_settings(),
+        db.get_event_summary_by_id(community_id, event_id)
+    ) {
+        Ok(context) => context,
+        Err(err) => {
+            warn!(error = %err, "failed to load event invitation acceptance notification context");
+            return Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-body")]).into_response());
+        }
+    };
+
+    // Send the attendee welcome notification
+    let base_url = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
+    let link = build_event_page_link(base_url, &event);
+    let calendar_ics = build_event_calendar_attachment(base_url, &event);
+    let template_data = EventWelcome {
+        event,
+        link,
+        theme: site_settings.theme,
+    };
+    let notification = NewNotification {
+        attachments: vec![calendar_ics],
+        kind: NotificationKind::EventWelcome,
+        recipients: vec![user_id],
+        template_data: Some(serde_json::to_value(&template_data)?),
+    };
+    if let Err(err) = notifications_manager.enqueue(&notification).await {
+        warn!(error = %err, "failed to enqueue event invitation acceptance notification");
+    }
+
+    Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-body")]).into_response())
+}
 
 /// Approves an attendee refund request.
 #[instrument(skip_all, err)]
@@ -178,6 +228,20 @@ pub(crate) async fn manual_check_in(
         .await?;
 
     Ok(StatusCode::NO_CONTENT)
+}
+
+/// Rejects an event invitation request.
+#[instrument(skip_all, err)]
+pub(crate) async fn reject_invitation_request(
+    CurrentUser(user): CurrentUser,
+    SelectedGroupId(group_id): SelectedGroupId,
+    State(db): State<DynDB>,
+    Path((event_id, user_id)): Path<(Uuid, Uuid)>,
+) -> Result<impl IntoResponse, HandlerError> {
+    db.reject_event_invitation_request(user.user_id, group_id, event_id, user_id)
+        .await?;
+
+    Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-body")]).into_response())
 }
 
 /// Rejects an attendee refund request.

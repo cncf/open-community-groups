@@ -19,7 +19,7 @@ For scope boundaries and non-event responsibilities, pair this with
 - [CFS Workflow (End to End)](#cfs-workflow-end-to-end)
 - [Automatic Meeting Creation](#automatic-meeting-creation)
 - [Paid Events, Tickets, Discounts, Refunds](#paid-events-tickets-discounts-refunds)
-- [Attendance and Waitlist Operations](#attendance-and-waitlist-operations)
+- [Attendance, Invitation, and Waitlist Operations](#attendance-invitation-and-waitlist-operations)
 - [Publish, Unpublish, Cancel, Delete](#publish-unpublish-cancel-delete)
 - [Public Event Result](#public-event-result)
 - [Event-Day Checklist](#event-day-checklist)
@@ -147,11 +147,22 @@ Waitlist control also lives here:
 - Enabling the waitlist requires a numeric capacity value.
 - Leaving `Capacity` blank makes the event unlimited-capacity, and unlimited-capacity events cannot
   enable waitlist.
+- Waitlist cannot be combined with invitation review.
 - If capacity is full and waitlist is off, the public page shows the event as sold out.
 - If capacity is full and waitlist is on, people can join the waitlist instead of RSVP'ing.
 
 !> If you want a waitlist, set capacity first.
 Unlimited-capacity events always keep waitlist disabled.
+
+Invitation review also lives here:
+
+- `Require Invitation Approval` changes the public action to `Request invitation`.
+- Invitation-review events cannot use waitlist or paid tickets.
+- Pending requests do not reserve seats; acceptance checks the current confirmed attendee count
+  against capacity.
+- If capacity is full, acceptance fails until capacity increases or an attendee leaves.
+- Disabling invitation review is blocked while pending requests exist.
+- Accepted requests become regular attendees and receive the standard registration confirmation.
 
 Brand inheritance model in event details:
 
@@ -282,15 +293,18 @@ Audit and notifications:
 - Organizers are notified when attendees request refunds.
 - Attendees are notified when organizers approve or reject the request.
 
-### Attendance and Waitlist Operations
+### Attendance, Invitation, and Waitlist Operations
 
-The dashboard now separates confirmed attendees from people still waiting for a seat.
+The dashboard separates confirmed attendees from people waiting for a seat or organizer approval.
 
 Organizer behavior:
 
-- `Attendees` shows only confirmed attendees.
+- `Attendees` shows confirmed attendees who can be checked in.
+- `Requests` appears for invitation-review events and shows accepted, pending, and rejected
+  invitation requests. Pending requests can be accepted or rejected from this tab.
 - `Waitlist` shows people in FIFO order based on when they joined.
 - Canceling an event notifies attendees, speakers, and waitlisted users.
+- Accepting or rejecting an invitation request is written to the audit log.
 
 Capacity behavior:
 
@@ -308,6 +322,7 @@ Capacity behavior:
 
 Member-facing behavior:
 
+- Accepting an invitation sends a confirmation notification with calendar attachment.
 - Joining the waitlist sends a waitlist confirmation notification.
 - Leaving the waitlist sends a waitlist removal notification.
 - Promotion sends a confirmation notification with calendar attachment.

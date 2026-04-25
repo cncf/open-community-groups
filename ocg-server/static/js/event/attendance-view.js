@@ -13,8 +13,12 @@ export const ATTEND_EVENT_LABEL = "Attend event";
 export const BUY_TICKET_LABEL = "Buy ticket";
 export const TICKETS_UNAVAILABLE_LABEL = "Tickets unavailable";
 export const JOIN_WAITLIST_LABEL = "Join waiting list";
+export const REQUEST_INVITATION_LABEL = "Request invitation";
 export const COMPLETE_PAYMENT_LABEL = "Complete payment";
 export const CANCEL_ATTENDANCE_LABEL = "Cancel attendance";
+export const CANCEL_INVITATION_REQUEST_LABEL = "Cancel request";
+export const INVITATION_REQUESTED_LABEL = "Invitation requested";
+export const REQUEST_REJECTED_LABEL = "Request rejected";
 export const LEAVE_WAITLIST_LABEL = "Leave waiting list";
 export const REQUEST_REFUND_LABEL = "Request refund";
 export const REFUND_REQUESTED_LABEL = "Refund requested";
@@ -30,6 +34,8 @@ const REFUND_PROCESSING_TITLE = "Your refund is being processed.";
 const REFUND_REJECTED_TITLE = "Your refund request was rejected. Contact the organizers for help.";
 const REFUND_CLOSED_TITLE = "Refunds are no longer available for this ticket.";
 const PAST_CHECKOUT_TITLE = "You cannot buy tickets because the event has already started.";
+const INVITATION_PENDING_TITLE = "Your invitation request is waiting for organizer review.";
+const INVITATION_REJECTED_TITLE = "Your invitation request was rejected.";
 
 /**
  * Returns the attendee refund-control state for the current response.
@@ -151,7 +157,7 @@ const withEventDateState = (meta, state) => {
 
 /**
  * Returns the default sign-in label for a container.
- * @param {{isSoldOut: boolean, isTicketed: boolean, ticketPurchaseAvailable: boolean, waitlistEnabled: boolean}} meta - Attendance metadata
+ * @param {{attendeeApprovalRequired: boolean, isSoldOut: boolean, isTicketed: boolean, ticketPurchaseAvailable: boolean, waitlistEnabled: boolean}} meta - Attendance metadata
  * @returns {string} Label text
  */
 const getSigninLabel = (meta) => {
@@ -159,19 +165,29 @@ const getSigninLabel = (meta) => {
     return meta.ticketPurchaseAvailable ? BUY_TICKET_LABEL : TICKETS_UNAVAILABLE_LABEL;
   }
 
+  if (meta.attendeeApprovalRequired) {
+    return REQUEST_INVITATION_LABEL;
+  }
+
   return meta.isSoldOut && meta.waitlistEnabled ? JOIN_WAITLIST_LABEL : ATTEND_EVENT_LABEL;
 };
 
 /**
  * Returns the default attend label for a container.
- * @param {{isTicketed: boolean}} meta - Attendance metadata
+ * @param {{attendeeApprovalRequired: boolean, isTicketed: boolean}} meta - Attendance metadata
  * @returns {string} Label text
  */
-const getDefaultAttendLabel = (meta) => (meta.isTicketed ? BUY_TICKET_LABEL : ATTEND_EVENT_LABEL);
+const getDefaultAttendLabel = (meta) => {
+  if (meta.isTicketed) {
+    return BUY_TICKET_LABEL;
+  }
+
+  return meta.attendeeApprovalRequired ? REQUEST_INVITATION_LABEL : ATTEND_EVENT_LABEL;
+};
 
 /**
  * Computes the primary attend-button state for the current meta.
- * @param {{isPastEvent: boolean, isSoldOut: boolean, isTicketed: boolean, ticketPurchaseAvailable: boolean, waitlistEnabled: boolean}} meta - Attendance metadata
+ * @param {{attendeeApprovalRequired: boolean, isPastEvent: boolean, isSoldOut: boolean, isTicketed: boolean, ticketPurchaseAvailable: boolean, waitlistEnabled: boolean}} meta - Attendance metadata
  * @returns {{disabled?: boolean, label?: string|null, resumeUrl?: string|null, title?: string|null}} Render state
  */
 const getAttendState = (meta) => {
@@ -181,6 +197,12 @@ const getAttendState = (meta) => {
       label: TICKETS_UNAVAILABLE_LABEL,
       title: TICKETS_UNAVAILABLE_TITLE,
     };
+  }
+
+  if (meta.attendeeApprovalRequired) {
+    return withEventDateState(meta, {
+      label: REQUEST_INVITATION_LABEL,
+    });
   }
 
   if (!meta.isTicketed && meta.isSoldOut && !meta.isPastEvent) {
@@ -250,7 +272,7 @@ export const renderMeetingDetails = (isAttendee, meta) => {
 /**
  * Shows the signed-out state for a container.
  * @param {HTMLElement} container - Attendance container element
- * @param {{isPastEvent: boolean, isSoldOut: boolean, isTicketed: boolean, ticketPurchaseAvailable: boolean, waitlistEnabled: boolean}} meta - Attendance metadata
+ * @param {{attendeeApprovalRequired: boolean, isPastEvent: boolean, isSoldOut: boolean, isTicketed: boolean, ticketPurchaseAvailable: boolean, waitlistEnabled: boolean}} meta - Attendance metadata
  */
 export const showSignedOutAttendanceState = (container, meta) => {
   const { attendButton, signinButton } = getPrimaryControls(container);
@@ -261,7 +283,7 @@ export const showSignedOutAttendanceState = (container, meta) => {
     return;
   }
 
-  if (meta.isSoldOut && !meta.waitlistEnabled) {
+  if (meta.isSoldOut && !meta.waitlistEnabled && !meta.attendeeApprovalRequired) {
     renderControl(attendButton, getAttendState(meta));
     return;
   }
@@ -272,7 +294,7 @@ export const showSignedOutAttendanceState = (container, meta) => {
 /**
  * Shows the guest state for an authenticated non-attendee.
  * @param {HTMLElement} container - Attendance container element
- * @param {{isPastEvent: boolean, isSoldOut: boolean, isTicketed: boolean, ticketPurchaseAvailable: boolean, waitlistEnabled: boolean}} meta - Attendance metadata
+ * @param {{attendeeApprovalRequired: boolean, isPastEvent: boolean, isSoldOut: boolean, isTicketed: boolean, ticketPurchaseAvailable: boolean, waitlistEnabled: boolean}} meta - Attendance metadata
  */
 export const showGuestAttendanceState = (container, meta) => {
   const { attendButton } = getPrimaryControls(container);
@@ -292,6 +314,41 @@ export const showWaitlistedAttendanceState = (container, meta) => {
 
   resetPrimaryControls(container);
   renderControl(leaveButton, withEventDateState(meta, { label: LEAVE_WAITLIST_LABEL }));
+  renderMeetingDetails(false, meta);
+};
+
+/**
+ * Shows the pending invitation request state for an attendee.
+ * @param {HTMLElement} container - Attendance container element
+ * @param {{isPastEvent: boolean}} meta - Attendance metadata
+ */
+export const showPendingApprovalAttendanceState = (container, meta) => {
+  const { leaveButton } = getPrimaryControls(container);
+
+  resetPrimaryControls(container);
+  renderControl(
+    leaveButton,
+    withEventDateState(meta, {
+      label: CANCEL_INVITATION_REQUEST_LABEL,
+      title: INVITATION_PENDING_TITLE,
+    }),
+  );
+  renderMeetingDetails(false, meta);
+};
+
+/**
+ * Shows the rejected invitation request state for an attendee.
+ * @param {HTMLElement} container - Attendance container element
+ */
+export const showRejectedInvitationState = (container, meta) => {
+  const { attendButton } = getPrimaryControls(container);
+
+  resetPrimaryControls(container);
+  renderControl(attendButton, {
+    disabled: true,
+    label: REQUEST_REJECTED_LABEL,
+    title: INVITATION_REJECTED_TITLE,
+  });
   renderMeetingDetails(false, meta);
 };
 

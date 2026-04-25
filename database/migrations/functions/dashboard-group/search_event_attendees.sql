@@ -9,7 +9,7 @@ returns json as $$
                 (p_filters->>'limit')::int as limit_value,
                 (p_filters->>'offset')::int as offset_value
         ),
-        -- Select the paginated attendee list
+        -- Select confirmed attendee rows
         attendees as (
             select
                 ea.checked_in,

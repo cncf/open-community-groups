@@ -66,6 +66,7 @@
 {{ template "dashboard-group/validate_event_capacity.sql" }} -- Dependency for add/update_event
 {{ template "dashboard-group/validate_event_cfs_labels_payload.sql" }} -- Dependency for add/update_event
 {{ template "dashboard-group/validate_event_discount_codes_payload.sql" }} -- Dependency for validate_event_ticketing_payload
+{{ template "dashboard-group/validate_event_enrollment_payload.sql" }} -- Dependency for add/update_event
 {{ template "dashboard-group/validate_event_series_action_event_ids.sql" }} -- Dependency for series actions
 {{ template "dashboard-group/validate_event_ticket_types_payload.sql" }} -- Dependency for validate_event_ticketing_payload
 {{ template "dashboard-group/validate_event_ticketing_payload.sql" }} -- Dependency for add/update_event
@@ -73,6 +74,7 @@
 {{ template "event/promote_event_waitlist.sql" }} -- Dependency for update_event and leave_event
 {{ template "dashboard-group/sync_event_discount_codes.sql" }} -- Dependency for add/update_event
 {{ template "dashboard-group/sync_event_ticket_types.sql" }} -- Dependency for add/update_event
+{{ template "dashboard-group/accept_event_invitation_request.sql" }}
 {{ template "dashboard-group/add_event.sql" }}
 {{ template "dashboard-group/add_event_series.sql" }}
 {{ template "dashboard-group/add_group_sponsor.sql" }}
@@ -110,7 +112,9 @@
 {{ template "dashboard-group/manual_check_in_event.sql" }}
 {{ template "dashboard-group/publish_event.sql" }}
 {{ template "dashboard-group/publish_event_series_events.sql" }}
+{{ template "dashboard-group/reject_event_invitation_request.sql" }}
 {{ template "dashboard-group/search_event_attendees.sql" }}
+{{ template "dashboard-group/search_event_invitation_requests.sql" }}
 {{ template "dashboard-group/search_event_waitlist.sql" }}
 {{ template "dashboard-group/sync_event_cfs_labels.sql" }} -- Dependency for update_event
 {{ template "dashboard-group/sync_event_sessions.sql" }} -- Dependency for update_event
