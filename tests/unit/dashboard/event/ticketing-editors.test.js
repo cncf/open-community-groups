@@ -1,7 +1,7 @@
 import { expect } from "@open-wc/testing";
 
 import "/static/js/dashboard/event/ticketing/discount-codes-editor.js";
-import { initializeTicketingWaitlistState } from "/static/js/dashboard/event/ticketing.js";
+import { initializeEventEnrollmentState } from "/static/js/dashboard/event/ticketing.js";
 import "/static/js/dashboard/event/ticketing/ticket-types-editor.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
 
@@ -392,7 +392,7 @@ describe("ticketing editors", () => {
     currencyField.value = "";
 
     const uiRoot = mountTicketTypesUi();
-    initializeTicketingWaitlistState();
+    initializeEventEnrollmentState();
     await uiRoot.updateComplete;
 
     uiRoot._openTicketModal();

@@ -1,10 +1,18 @@
 {% import "macros/ui.html" as ui -%}
 {% import "macros/dashboard.html" as dashboard -%}
 {% import "macros/pagination.html" as pagination -%}
+{% let refresh_limit = limit.unwrap_or(crate::templates::dashboard::DASHBOARD_PAGINATION_LIMIT) -%}
+{% let refresh_offset = offset.unwrap_or(0) -%}
+
+<div id="attendees-refresh"
+     hx-get="/dashboard/group/events/{{ event.event_id }}/attendees?limit={{ refresh_limit }}&offset={{ refresh_offset }}"
+     hx-trigger="refresh-event-attendees from:body"
+     hx-target="#attendees-content"
+     hx-swap="innerHTML"></div>
 
 <div class="flex flex-col lg:flex-row lg:items-center justify-between my-5">
   <div class="text-sm text-stone-600 mb-4 lg:mb-0">
-    {{ pagination::range_display(offset = offset.unwrap_or(0) , count = attendees.len(), total = total, label = "attendee") }}
+    {{ pagination::range_display(offset = refresh_offset , count = attendees.len() , total = total, label = "attendee") }}
   </div>
   <div class="shrink-0 w-auto mb-1.5 flex gap-3 flex-row">
     <button id="open-event-qr-code-modal"

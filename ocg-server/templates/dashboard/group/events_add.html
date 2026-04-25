@@ -110,7 +110,7 @@
               hx-target="#dashboard-content"
               hx-indicator="#dashboard-spinner"
               hx-disabled-elt="#add-event-button, #cancel-button"
-              hx-exclude="[name=toggle_registration_required], [name=toggle_waitlist_enabled], [name=toggle_meeting_requested], [name=toggle_cfs_enabled], [name=toggle_event_reminder_enabled]">
+              hx-exclude="[name=toggle_registration_required], [name=toggle_attendee_approval_required], [name=toggle_waitlist_enabled], [name=toggle_meeting_requested], [name=toggle_cfs_enabled], [name=toggle_event_reminder_enabled]">
         Save
       </button>
     </div>
@@ -291,6 +291,30 @@
           <p class="form-legend">Whether attendees must register in advance.</p>
         </div>
         {# End Registration required -#}
+
+        {# Attendee approval required -#}
+        <div class="col-span-full lg:col-span-3">
+          <label id="attendee-approval-toggle-label"
+                 class="inline-flex items-center cursor-pointer transition-opacity">
+            <input id="toggle_attendee_approval_required"
+                   name="toggle_attendee_approval_required"
+                   value="required"
+                   type="checkbox"
+                   class="sr-only peer">
+            <input type="hidden"
+                   id="attendee_approval_required"
+                   name="attendee_approval_required"
+                   value="false">
+            <div class="relative w-11 h-6 bg-stone-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white peer-disabled:opacity-70 after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-stone-300 after:border after:border-stone-200 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500">
+            </div>
+            <span class="ms-3 text-sm font-medium text-stone-900">Require Invitation Approval</span>
+          </label>
+          <p class="form-legend">
+            Let people request an invitation for organizer review. This cannot be combined with
+            waitlist or paid tickets.
+          </p>
+        </div>
+        {# End Attendee approval required -#}
 
         {# Waitlist enabled -#}
         <div class="col-span-full lg:col-span-3">

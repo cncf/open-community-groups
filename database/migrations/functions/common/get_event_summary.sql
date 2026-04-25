@@ -29,6 +29,7 @@ returns json as $$
         'timezone', e.timezone,
 
         -- Include optional event details
+        'attendee_approval_required', e.attendee_approval_required,
         'capacity', e.capacity,
         'description_short', e.description_short,
         'ends_at', floor(extract(epoch from e.ends_at)),

@@ -10,6 +10,7 @@ returns json as $$
 declare
     v_discount_codes jsonb;
     v_effective_capacity int;
+    v_event_attendee_approval_required boolean := coalesce((p_event->>'attendee_approval_required')::boolean, false);
     v_event_before jsonb;
     v_event_capacity_before int;
     v_event_location geography;
@@ -20,6 +21,7 @@ declare
     v_event_waitlist_enabled boolean := coalesce((p_event->>'waitlist_enabled')::boolean, false);
     v_has_existing_attendees boolean;
     v_has_new_waitlist_capacity boolean;
+    v_has_pending_invitation_requests boolean;
     v_has_waitlist_entries boolean;
     v_is_promotable_event boolean;
     v_new_capacity int := (p_event->>'capacity')::int;
@@ -98,11 +100,17 @@ begin
         else nullif(v_event_before->>'payment_currency_code', '')
     end;
 
-    -- Load current event state required by ticketing guards
+    -- Load current event state required by registration and ticketing guards
     v_has_existing_attendees := exists(
         select 1
         from event_attendee
         where event_id = p_event_id
+    );
+    v_has_pending_invitation_requests := exists(
+        select 1
+        from event_invitation_request
+        where event_id = p_event_id
+        and status = 'pending'
     );
     v_has_waitlist_entries := exists(
         select 1
@@ -111,16 +119,32 @@ begin
     );
     v_was_ticketed := jsonb_array_length(coalesce(v_event_before->'ticket_types', '[]'::jsonb)) > 0;
 
+    -- Enforce attendee approval transition rules
+    if v_event_attendee_approval_required = false and v_has_pending_invitation_requests then
+        raise exception 'approval-required events with pending invitation requests cannot disable approval';
+    end if;
+
+    -- Block approval-required attendance while queued users exist
+    if v_event_attendee_approval_required = true and v_has_waitlist_entries then
+        raise exception 'approval-required events cannot have existing waitlist entries';
+    end if;
+
     -- Enforce ticketing transition rules
     if v_ticket_types is not null and not v_was_ticketed and v_has_existing_attendees then
         raise exception 'ticketed events require an empty attendee list';
     end if;
 
     if v_ticket_types is not null and v_has_waitlist_entries then
-        raise exception 'ticketed events require an empty waitlist';
+        raise exception 'ticketed events cannot have existing waitlist entries';
     end if;
 
-    -- Validate ticketing payload rules
+    -- Validate enrollment and ticketing payload rules
+    perform validate_event_enrollment_payload(
+        v_event_attendee_approval_required,
+        v_ticket_types,
+        v_event_waitlist_enabled
+    );
+
     perform validate_event_ticketing_payload(
         v_discount_codes,
         v_payment_currency_code,
@@ -183,6 +207,7 @@ begin
         event_category_id = (p_event->>'category_id')::uuid,
         event_kind_id = p_event->>'kind_id',
 
+        attendee_approval_required = v_event_attendee_approval_required,
         banner_mobile_url = nullif(p_event->>'banner_mobile_url', ''),
         banner_url = nullif(p_event->>'banner_url', ''),
         capacity = v_effective_capacity,

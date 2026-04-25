@@ -20,6 +20,7 @@ use crate::{
             attendees::{AttendeesFilters, AttendeesOutput},
             events::{ApprovedSubmissionSummary, CfsSubmissionStatus, EventsListFilters, GroupEvents},
             home::UserGroupsByCommunity,
+            invitation_requests::{InvitationRequestsFilters, InvitationRequestsOutput},
             members::{GroupMembersFilters, GroupMembersOutput},
             sponsors::{GroupSponsorsFilters, GroupSponsorsOutput, Sponsor},
             submissions::{
@@ -40,6 +41,15 @@ use crate::{
 /// Database trait for group dashboard operations.
 #[async_trait]
 pub(crate) trait DBDashboardGroup {
+    /// Accepts a pending event invitation request.
+    async fn accept_event_invitation_request(
+        &self,
+        actor_user_id: Uuid,
+        group_id: Uuid,
+        event_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<()>;
+
     /// Adds a new event to the database.
     async fn add_event(
         &self,
@@ -246,12 +256,28 @@ pub(crate) trait DBDashboardGroup {
         event_ids: &[Uuid],
     ) -> Result<()>;
 
+    /// Rejects a pending event invitation request.
+    async fn reject_event_invitation_request(
+        &self,
+        actor_user_id: Uuid,
+        group_id: Uuid,
+        event_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<()>;
+
     /// Searches attendees for a group's event using filters.
     async fn search_event_attendees(
         &self,
         group_id: Uuid,
         filters: &AttendeesFilters,
     ) -> Result<AttendeesOutput>;
+
+    /// Searches invitation requests for a group's event using filters.
+    async fn search_event_invitation_requests(
+        &self,
+        group_id: Uuid,
+        filters: &InvitationRequestsFilters,
+    ) -> Result<InvitationRequestsOutput>;
 
     /// Searches waitlist entries for a group's event using filters.
     async fn search_event_waitlist(
@@ -320,6 +346,22 @@ pub(crate) trait DBDashboardGroup {
 
 #[async_trait]
 impl DBDashboardGroup for PgDB {
+    /// [`DBDashboardGroup::accept_event_invitation_request`]
+    #[instrument(skip(self), err)]
+    async fn accept_event_invitation_request(
+        &self,
+        actor_user_id: Uuid,
+        group_id: Uuid,
+        event_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<()> {
+        self.execute(
+            "select accept_event_invitation_request($1::uuid, $2::uuid, $3::uuid, $4::uuid)",
+            &[&actor_user_id, &group_id, &event_id, &user_id],
+        )
+        .await
+    }
+
     /// [`DBDashboardGroup::add_event`]
     #[instrument(skip(self, event, cfg_max_participants), err)]
     async fn add_event(
@@ -861,6 +903,22 @@ impl DBDashboardGroup for PgDB {
         .await
     }
 
+    /// [`DBDashboardGroup::reject_event_invitation_request`]
+    #[instrument(skip(self), err)]
+    async fn reject_event_invitation_request(
+        &self,
+        actor_user_id: Uuid,
+        group_id: Uuid,
+        event_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<()> {
+        self.execute(
+            "select reject_event_invitation_request($1::uuid, $2::uuid, $3::uuid, $4::uuid)",
+            &[&actor_user_id, &group_id, &event_id, &user_id],
+        )
+        .await
+    }
+
     /// [`DBDashboardGroup::search_event_attendees`]
     #[instrument(skip(self, filters), err)]
     async fn search_event_attendees(
@@ -870,6 +928,20 @@ impl DBDashboardGroup for PgDB {
     ) -> Result<AttendeesOutput> {
         self.fetch_json_one(
             "select search_event_attendees($1::uuid, $2::jsonb)",
+            &[&group_id, &Json(filters)],
+        )
+        .await
+    }
+
+    /// [`DBDashboardGroup::search_event_invitation_requests`]
+    #[instrument(skip(self, filters), err)]
+    async fn search_event_invitation_requests(
+        &self,
+        group_id: Uuid,
+        filters: &InvitationRequestsFilters,
+    ) -> Result<InvitationRequestsOutput> {
+        self.fetch_json_one(
+            "select search_event_invitation_requests($1::uuid, $2::jsonb)",
             &[&group_id, &Json(filters)],
         )
         .await

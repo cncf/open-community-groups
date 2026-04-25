@@ -289,6 +289,13 @@ mock! {
 
     #[async_trait]
     impl crate::db::dashboard::group::DBDashboardGroup for DB {
+        async fn accept_event_invitation_request(
+            &self,
+            actor_user_id: Uuid,
+            group_id: Uuid,
+            event_id: Uuid,
+            user_id: Uuid,
+        ) -> Result<()>;
         async fn add_event(
             &self,
             actor_user_id: Uuid,
@@ -465,11 +472,23 @@ mock! {
             group_id: Uuid,
             event_ids: &[Uuid],
         ) -> Result<()>;
+        async fn reject_event_invitation_request(
+            &self,
+            actor_user_id: Uuid,
+            group_id: Uuid,
+            event_id: Uuid,
+            user_id: Uuid,
+        ) -> Result<()>;
         async fn search_event_attendees(
             &self,
             group_id: Uuid,
             filters: &crate::templates::dashboard::group::attendees::AttendeesFilters,
         ) -> Result<crate::templates::dashboard::group::attendees::AttendeesOutput>;
+        async fn search_event_invitation_requests(
+            &self,
+            group_id: Uuid,
+            filters: &crate::templates::dashboard::group::invitation_requests::InvitationRequestsFilters,
+        ) -> Result<crate::templates::dashboard::group::invitation_requests::InvitationRequestsOutput>;
         async fn search_event_waitlist(
             &self,
             group_id: Uuid,

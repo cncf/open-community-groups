@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(65);
+select plan(66);
 
 -- ============================================================================
 -- TESTS
@@ -36,6 +36,7 @@ select has_table('event_attendee');
 select has_table('event_category');
 select has_table('event_discount_code');
 select has_table('event_host');
+select has_table('event_invitation_request');
 select has_table('event_kind');
 select has_table('event_purchase');
 select has_table('event_refund_request');

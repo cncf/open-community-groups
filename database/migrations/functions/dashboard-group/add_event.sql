@@ -10,6 +10,7 @@ declare
     v_cfs_label jsonb;
     v_discount_codes jsonb := nullif(p_event->'discount_codes', 'null'::jsonb);
     v_effective_capacity int;
+    v_event_attendee_approval_required boolean := coalesce((p_event->>'attendee_approval_required')::boolean, false);
     v_ends_at timestamptz;
     v_event_id uuid;
     v_event_speaker jsonb;
@@ -35,7 +36,13 @@ begin
     -- Determine effective capacity based on ticket types or event capacity
     v_effective_capacity := coalesce(v_ticket_capacity, (p_event->>'capacity')::int);
 
-    -- Validate ticketing payload rules
+    -- Validate enrollment and ticketing payload rules
+    perform validate_event_enrollment_payload(
+        v_event_attendee_approval_required,
+        v_ticket_types,
+        coalesce((p_event->>'waitlist_enabled')::boolean, false)
+    );
+
     perform validate_event_ticketing_payload(
         v_discount_codes,
         v_payment_currency_code,
@@ -94,6 +101,7 @@ begin
                 event_category_id,
                 event_kind_id,
 
+                attendee_approval_required,
                 banner_mobile_url,
                 banner_url,
                 capacity,
@@ -135,6 +143,7 @@ begin
                 (p_event->>'category_id')::uuid,
                 p_event->>'kind_id',
 
+                v_event_attendee_approval_required,
                 nullif(p_event->>'banner_mobile_url', ''),
                 nullif(p_event->>'banner_url', ''),
                 v_effective_capacity,

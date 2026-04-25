@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(30);
+select plan(31);
 
 -- ============================================================================
 -- VARIABLES
@@ -113,6 +113,7 @@ select ok(
         "sponsors": [],
         "sessions": {},
         "timezone": "America/New_York",
+        "attendee_approval_required": false,
         "waitlist_count": 0,
         "waitlist_enabled": false
     }'::jsonb,
@@ -240,6 +241,7 @@ select ok(
         "name": "CloudNativeCon Seattle 2025",
         "published": false,
         "timezone": "America/Los_Angeles",
+        "attendee_approval_required": false,
         "banner_url": "https://example.com/banner.jpg",
         "capacity": 100,
         "remaining_capacity": 100,
@@ -557,6 +559,26 @@ select throws_ok(
     )$$,
     'event capacity (150) exceeds maximum participants allowed (100)',
     'Should reject ticket-derived capacity above the meeting provider limit'
+);
+
+-- Should reject approval-required events when waitlist is enabled
+select throws_ok(
+    $$select add_event(
+        null::uuid,
+        '00000000-0000-0000-0000-000000000002'::uuid,
+        '{
+            "name": "Approval Waitlist Event",
+            "description": "Test",
+            "timezone": "UTC",
+            "category_id": "00000000-0000-0000-0000-000000000011",
+            "kind_id": "in-person",
+            "attendee_approval_required": true,
+            "capacity": 100,
+            "waitlist_enabled": true
+        }'::jsonb
+    )$$,
+    'approval-required events cannot enable waitlist',
+    'Should reject approval-required events when waitlist is enabled'
 );
 
 -- Should throw error when discount codes are provided without ticket types

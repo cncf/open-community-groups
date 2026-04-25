@@ -195,6 +195,7 @@ async fn enqueue_refund_rejection_notification_enqueues_expected_payload() {
 /// Create a sample event summary.
 fn sample_event_summary(event_id: Uuid) -> EventSummary {
     EventSummary {
+        attendee_approval_required: false,
         canceled: false,
         community_display_name: "Community".to_string(),
         community_name: "community".to_string(),

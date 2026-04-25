@@ -28,6 +28,9 @@ use crate::{
 #[allow(clippy::struct_excessive_bools)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EventSummary {
+    /// Whether attendance requests require organizer approval.
+    #[serde(default)]
+    pub attendee_approval_required: bool,
     /// Whether the event has been canceled.
     pub canceled: bool,
     /// Human-readable display name of the community this event belongs to.
@@ -157,6 +160,9 @@ impl EventSummary {
 #[allow(clippy::struct_excessive_bools)]
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct EventFull {
+    /// Whether attendance requests require organizer approval.
+    #[serde(default)]
+    pub attendee_approval_required: bool,
     /// Whether the event has been canceled.
     pub canceled: bool,
     /// Event category information.
@@ -440,6 +446,7 @@ impl EventFull {
 impl From<&EventFull> for EventSummary {
     fn from(event: &EventFull) -> Self {
         EventSummary {
+            attendee_approval_required: event.attendee_approval_required,
             canceled: event.canceled,
             community_display_name: event.community.display_name.clone(),
             community_name: event.community.name.clone(),
@@ -493,8 +500,14 @@ pub enum EventAttendanceStatus {
     None,
     /// The user became a confirmed attendee.
     Attendee,
+    /// The user's invitation request was approved and can be used to attend.
+    InvitationApproved,
+    /// The user requested an invitation and is waiting for review.
+    PendingApproval,
     /// The user started checkout but has not completed payment yet.
     PendingPayment,
+    /// The user's invitation request was rejected.
+    Rejected,
     /// The user joined the waiting list.
     Waitlisted,
 }
@@ -556,6 +569,16 @@ pub struct EventCfsLabel {
     #[serde(default)]
     #[garde(skip)]
     pub event_cfs_label_id: Option<Uuid>,
+}
+
+/// Status of an event invitation request.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, strum::Display)]
+#[serde(rename_all = "kebab-case")]
+#[strum(serialize_all = "kebab-case")]
+pub enum EventInvitationRequestStatus {
+    Accepted,
+    Pending,
+    Rejected,
 }
 
 /// Categorization of event attendance modes.
@@ -1304,6 +1327,7 @@ mod tests {
     /// Build a sample event summary with specified ticket types for testing.
     fn sample_event_summary(ticket_types: Vec<EventTicketType>) -> EventSummary {
         EventSummary {
+            attendee_approval_required: false,
             canceled: false,
             community_display_name: "Community".to_string(),
             community_name: "community".to_string(),

@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(9);
+select plan(13);
 
 -- ============================================================================
 -- VARIABLES
@@ -12,6 +12,7 @@ select plan(9);
 \set categoryID '00000000-0000-0000-0000-000000000011'
 \set community2ID '00000000-0000-0000-0000-000000000002'
 \set communityID '00000000-0000-0000-0000-000000000001'
+\set eventApprovalID '00000000-0000-0000-0000-000000000044'
 \set eventCanceledID '00000000-0000-0000-0000-000000000042'
 \set eventCategoryID '00000000-0000-0000-0000-000000000012'
 \set eventID '00000000-0000-0000-0000-000000000041'
@@ -25,6 +26,9 @@ select plan(9);
 \set user1ID '00000000-0000-0000-0000-000000000051'
 \set user2ID '00000000-0000-0000-0000-000000000052'
 \set user4ID '00000000-0000-0000-0000-000000000054'
+\set user5ID '00000000-0000-0000-0000-000000000055'
+\set user6ID '00000000-0000-0000-0000-000000000056'
+\set user7ID '00000000-0000-0000-0000-000000000057'
 
 -- ============================================================================
 -- SEED DATA
@@ -53,11 +57,15 @@ values
     (:'user1ID', 'h1', 'att1@example.com', 'att1', 'Att One'),
     (:'user2ID', 'h2', 'att2@example.com', 'att2', 'Att Two'),
     ('00000000-0000-0000-0000-000000000053', 'h3', 'att3@example.com', 'att3', 'Att Three'),
-    (:'user4ID', 'h4', 'att4@example.com', 'att4', 'Att Four');
+    (:'user4ID', 'h4', 'att4@example.com', 'att4', 'Att Four'),
+    (:'user5ID', 'h5', 'att5@example.com', 'att5', 'Att Five'),
+    (:'user6ID', 'h6', 'att6@example.com', 'att6', 'Att Six'),
+    (:'user7ID', 'h7', 'att7@example.com', 'att7', 'Att Seven');
 
 -- Event
 insert into event (
     event_id,
+    attendee_approval_required,
     name,
     slug,
     description,
@@ -71,6 +79,7 @@ insert into event (
     starts_at
 ) values (
     :'eventID',
+    false,
     'Event',
     'event',
     'desc',
@@ -83,7 +92,22 @@ insert into event (
     false,
     null
 ), (
+    :'eventApprovalID',
+    true,
+    'Approval Event',
+    'approval-event',
+    'desc',
+    'UTC',
+    :'eventCategoryID',
+    'in-person',
+    :'groupID',
+    null,
+    true,
+    false,
+    null
+), (
     :'eventCanceledID',
+    false,
     'Canceled Event',
     'canceled-event',
     'desc',
@@ -97,6 +121,7 @@ insert into event (
     null
 ), (
     :'eventStartedNoEndID',
+    false,
     'Started Event Without End',
     'started-event-without-end',
     'desc',
@@ -137,6 +162,14 @@ insert into event_waitlist (event_id, user_id)
 values
     (:'eventID', '00000000-0000-0000-0000-000000000053'),
     (:'eventCanceledID', '00000000-0000-0000-0000-000000000053');
+
+-- Event invitation requests
+insert into event_invitation_request (event_id, user_id, status, reviewed_at, reviewed_by)
+values
+    (:'eventApprovalID', :'user5ID', 'pending', null, null),
+    (:'eventApprovalID', :'user6ID', 'rejected', current_timestamp, :'user1ID'),
+    (:'eventApprovalID', :'user7ID', 'accepted', current_timestamp, :'user1ID'),
+    (:'eventID', :'user6ID', 'rejected', current_timestamp, :'user1ID');
 
 -- Event purchase
 insert into event_purchase (
@@ -306,6 +339,58 @@ select is(
     'Should return waitlisted status for a waitlisted user'
 );
 
+-- Should return pending approval status for pending invitation request
+select is(
+    get_event_attendance(:'communityID'::uuid, :'eventApprovalID'::uuid, :'user5ID'::uuid)::jsonb,
+    '{
+        "is_checked_in": false,
+        "purchase_amount_minor": null,
+        "refund_request_status": null,
+        "resume_checkout_url": null,
+        "status": "pending-approval"
+    }'::jsonb,
+    'Should return pending approval status for pending invitation request'
+);
+
+-- Should return invitation approved status for accepted invitation request
+select is(
+    get_event_attendance(:'communityID'::uuid, :'eventApprovalID'::uuid, :'user7ID'::uuid)::jsonb,
+    '{
+        "is_checked_in": false,
+        "purchase_amount_minor": null,
+        "refund_request_status": null,
+        "resume_checkout_url": null,
+        "status": "invitation-approved"
+    }'::jsonb,
+    'Should return invitation approved status for accepted invitation request'
+);
+
+-- Should return rejected status for rejected invitation request
+select is(
+    get_event_attendance(:'communityID'::uuid, :'eventApprovalID'::uuid, :'user6ID'::uuid)::jsonb,
+    '{
+        "is_checked_in": false,
+        "purchase_amount_minor": null,
+        "refund_request_status": null,
+        "resume_checkout_url": null,
+        "status": "rejected"
+    }'::jsonb,
+    'Should return rejected status for rejected invitation request'
+);
+
+-- Should ignore rejected invitation requests when approval is disabled
+select is(
+    get_event_attendance(:'communityID'::uuid, :'eventID'::uuid, :'user6ID'::uuid)::jsonb,
+    '{
+        "is_checked_in": false,
+        "purchase_amount_minor": null,
+        "refund_request_status": null,
+        "resume_checkout_url": null,
+        "status": "none"
+    }'::jsonb,
+    'Should ignore rejected invitation requests when approval is disabled'
+);
+
 -- Should return none for waitlisted users on canceled events
 select is(
     get_event_attendance(
@@ -328,7 +413,7 @@ select is(
     get_event_attendance(
         :'communityID'::uuid,
         :'eventID'::uuid,
-        '00000000-0000-0000-0000-000000000055'::uuid
+        '00000000-0000-0000-0000-000000000058'::uuid
     )::jsonb,
     '{
         "is_checked_in": false,

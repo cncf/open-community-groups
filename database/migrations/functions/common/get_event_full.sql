@@ -22,6 +22,7 @@ returns json as $$
         )
         -- Include optional fields and nested related collections
         || jsonb_build_object(
+            'attendee_approval_required', e.attendee_approval_required,
             'banner_mobile_url', e.banner_mobile_url,
             'banner_url', e.banner_url,
             'capacity', e.capacity,

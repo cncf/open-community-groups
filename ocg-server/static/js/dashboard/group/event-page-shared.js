@@ -9,7 +9,7 @@ import {
   validateEventDates,
   validateSessionDateBounds,
 } from "/static/js/common/form-validation.js";
-import { initializeTicketingWaitlistState } from "/static/js/dashboard/event/ticketing.js";
+import { initializeEventEnrollmentState } from "/static/js/dashboard/event/ticketing.js";
 import { collectExistingFormIds, bindBooleanToggle } from "/static/js/dashboard/group/page-form-state.js";
 import { initializePendingChangesAlert } from "/static/js/dashboard/group/pending-changes-alert.js";
 
@@ -346,7 +346,7 @@ export const convertSharedEventDateParameters = (parameters) => {
 };
 
 /**
- * Initializes the shared boolean toggles and ticketing state used by event pages.
+ * Initializes the shared boolean toggles and enrollment state used by event pages.
  * @param {Object} config Toggle initialization configuration.
  * @param {Document|Element} config.pageRoot Page root.
  * @param {(id: string) => HTMLElement|null} config.queryById Root-scoped id lookup.
@@ -373,7 +373,7 @@ export const initializeCommonEventPageToggles = ({
     hiddenInput: queryById("registration_required"),
   });
 
-  initializeTicketingWaitlistState(pageRoot);
+  initializeEventEnrollmentState(pageRoot);
 
   bindBooleanToggle({
     toggle: queryById("toggle_event_reminder_enabled"),

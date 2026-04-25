@@ -218,6 +218,10 @@ pub(super) fn setup_group_dashboard_router(state: &State) -> Router<State> {
             get(dashboard::group::attendees::list_page),
         )
         .route(
+            "/events/{event_id}/invitation-requests",
+            get(dashboard::group::invitation_requests::list_page),
+        )
+        .route(
             "/events/{event_id}/details",
             get(dashboard::group::events::details),
         )
@@ -251,6 +255,14 @@ pub(super) fn setup_group_dashboard_router(state: &State) -> Router<State> {
         .route(
             "/events/{event_id}/attendees/{user_id}/check-in",
             post(dashboard::group::attendees::manual_check_in),
+        )
+        .route(
+            "/events/{event_id}/attendees/{user_id}/invitation/accept",
+            put(dashboard::group::attendees::accept_invitation_request),
+        )
+        .route(
+            "/events/{event_id}/attendees/{user_id}/invitation/reject",
+            put(dashboard::group::attendees::reject_invitation_request),
         )
         .route(
             "/events/{event_id}/attendees/{user_id}/refund/approve",

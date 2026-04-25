@@ -74,6 +74,25 @@ export const setAttendanceControlLabel = (button, label) => {
 };
 
 /**
+ * Sets the visible icon for an attendance control.
+ * @param {HTMLElement|null} button - Attendance control button
+ * @param {string} iconClass - Icon class to apply
+ */
+export const setAttendanceControlIcon = (button, iconClass) => {
+  const iconNode = button?.querySelector("[data-attendance-icon]");
+  if (!iconNode) {
+    return;
+  }
+
+  [...iconNode.classList].forEach((className) => {
+    if (className.startsWith("icon-")) {
+      iconNode.classList.remove(className);
+    }
+  });
+  iconNode.classList.add(iconClass);
+};
+
+/**
  * Returns the visible label for an attendance control.
  * @param {HTMLElement|null} button - Attendance control button
  * @returns {string} Current label text
@@ -122,13 +141,14 @@ const parseRemainingCapacity = (container) => {
 /**
  * Computes attendance metadata for the current event.
  * @param {HTMLElement} container - Attendance container element
- * @returns {{attendeeMeetingAccessOpen: boolean, eventIsLive: boolean, isPastEvent: boolean, isSoldOut: boolean, isTicketed: boolean, ticketPurchaseAvailable: boolean, waitlistEnabled: boolean}}
+ * @returns {{attendeeApprovalRequired: boolean, attendeeMeetingAccessOpen: boolean, eventIsLive: boolean, isPastEvent: boolean, isSoldOut: boolean, isTicketed: boolean, ticketPurchaseAvailable: boolean, waitlistEnabled: boolean}}
  */
 export const getAttendanceMeta = (container) => {
   const startsAtValue = container?.dataset?.starts ?? null;
   const capacity = parseCapacity(container);
   const remainingCapacity = parseRemainingCapacity(container);
   const isSoldOut = capacity !== null && remainingCapacity !== null && remainingCapacity <= 0;
+  const attendeeApprovalRequired = container?.dataset?.attendeeApprovalRequired === "true";
   const attendeeMeetingAccessOpen = container?.dataset?.attendeeMeetingAccessOpen === "true";
   const eventIsLive = container?.dataset?.isLive === "true";
   const isTicketed = container?.dataset?.isTicketed === "true";
@@ -148,6 +168,7 @@ export const getAttendanceMeta = (container) => {
   })();
 
   return {
+    attendeeApprovalRequired,
     attendeeMeetingAccessOpen,
     isSoldOut,
     isPastEvent,
