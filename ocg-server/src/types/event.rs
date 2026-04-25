@@ -500,6 +500,8 @@ pub enum EventAttendanceStatus {
     None,
     /// The user became a confirmed attendee.
     Attendee,
+    /// The user's invitation request was approved and can be used to attend.
+    InvitationApproved,
     /// The user requested an invitation and is waiting for review.
     PendingApproval,
     /// The user started checkout but has not completed payment yet.

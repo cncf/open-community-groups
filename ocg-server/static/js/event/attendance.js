@@ -32,6 +32,7 @@ import {
   showCheckoutLoadingState,
   showAttendeeState,
   showGuestAttendanceState,
+  showInvitationApprovedAttendanceState,
   showPendingApprovalAttendanceState,
   showPendingPaymentState,
   showPrimaryRequestLoading,
@@ -295,6 +296,11 @@ const renderAttendanceCheckResponse = (container, event) => {
 
   if (response.status === "pending-approval") {
     showPendingApprovalAttendanceState(container, meta);
+    return;
+  }
+
+  if (response.status === "invitation-approved") {
+    showInvitationApprovedAttendanceState(container, meta);
     return;
   }
 

@@ -317,6 +317,20 @@ export const showGuestAttendanceState = (container, meta) => {
 };
 
 /**
+ * Shows the approved invitation state for an attendee.
+ * @param {HTMLElement} container - Attendance container element
+ * @param {{isPastEvent: boolean}} meta - Attendance metadata
+ */
+export const showInvitationApprovedAttendanceState = (container, meta) => {
+  showPrimaryAttendanceState(
+    container,
+    meta,
+    "attendButton",
+    withEventDateState(meta, { label: ATTEND_EVENT_LABEL }),
+  );
+};
+
+/**
  * Shows the waitlist state for an attendee.
  * @param {HTMLElement} container - Attendance container element
  * @param {{isPastEvent: boolean}} meta - Attendance metadata

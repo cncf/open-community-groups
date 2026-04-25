@@ -216,7 +216,8 @@ pub(crate) async fn attend_event(
             };
             notifications_manager.enqueue(&notification).await
         }
-        EventAttendanceStatus::PendingApproval
+        EventAttendanceStatus::InvitationApproved
+        | EventAttendanceStatus::PendingApproval
         | EventAttendanceStatus::PendingPayment
         | EventAttendanceStatus::Rejected => Ok(()),
         EventAttendanceStatus::Waitlisted => {

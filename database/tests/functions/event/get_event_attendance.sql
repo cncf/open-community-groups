@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(12);
+select plan(13);
 
 -- ============================================================================
 -- VARIABLES
@@ -28,6 +28,7 @@ select plan(12);
 \set user4ID '00000000-0000-0000-0000-000000000054'
 \set user5ID '00000000-0000-0000-0000-000000000055'
 \set user6ID '00000000-0000-0000-0000-000000000056'
+\set user7ID '00000000-0000-0000-0000-000000000057'
 
 -- ============================================================================
 -- SEED DATA
@@ -58,7 +59,8 @@ values
     ('00000000-0000-0000-0000-000000000053', 'h3', 'att3@example.com', 'att3', 'Att Three'),
     (:'user4ID', 'h4', 'att4@example.com', 'att4', 'Att Four'),
     (:'user5ID', 'h5', 'att5@example.com', 'att5', 'Att Five'),
-    (:'user6ID', 'h6', 'att6@example.com', 'att6', 'Att Six');
+    (:'user6ID', 'h6', 'att6@example.com', 'att6', 'Att Six'),
+    (:'user7ID', 'h7', 'att7@example.com', 'att7', 'Att Seven');
 
 -- Event
 insert into event (
@@ -166,6 +168,7 @@ insert into event_invitation_request (event_id, user_id, status, reviewed_at, re
 values
     (:'eventApprovalID', :'user5ID', 'pending', null, null),
     (:'eventApprovalID', :'user6ID', 'rejected', current_timestamp, :'user1ID'),
+    (:'eventApprovalID', :'user7ID', 'accepted', current_timestamp, :'user1ID'),
     (:'eventID', :'user6ID', 'rejected', current_timestamp, :'user1ID');
 
 -- Event purchase
@@ -349,6 +352,19 @@ select is(
     'Should return pending approval status for pending invitation request'
 );
 
+-- Should return invitation approved status for accepted invitation request
+select is(
+    get_event_attendance(:'communityID'::uuid, :'eventApprovalID'::uuid, :'user7ID'::uuid)::jsonb,
+    '{
+        "is_checked_in": false,
+        "purchase_amount_minor": null,
+        "refund_request_status": null,
+        "resume_checkout_url": null,
+        "status": "invitation-approved"
+    }'::jsonb,
+    'Should return invitation approved status for accepted invitation request'
+);
+
 -- Should return rejected status for rejected invitation request
 select is(
     get_event_attendance(:'communityID'::uuid, :'eventApprovalID'::uuid, :'user6ID'::uuid)::jsonb,
@@ -397,7 +413,7 @@ select is(
     get_event_attendance(
         :'communityID'::uuid,
         :'eventID'::uuid,
-        '00000000-0000-0000-0000-000000000057'::uuid
+        '00000000-0000-0000-0000-000000000058'::uuid
     )::jsonb,
     '{
         "is_checked_in": false,

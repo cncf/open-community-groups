@@ -69,6 +69,18 @@ create or replace function get_event_attendance(
                     from event_invitation_request eir
                     where eir.event_id = p_event_id
                     and eir.user_id = p_user_id
+                    and eir.status = 'accepted'
+                    and exists (
+                        select 1
+                        from scoped_event se
+                        where se.attendee_approval_required = true
+                    )
+                ) then 'invitation-approved'
+                when exists (
+                    select 1
+                    from event_invitation_request eir
+                    where eir.event_id = p_event_id
+                    and eir.user_id = p_user_id
                     and eir.status = 'rejected'
                     and exists (
                         select 1
