@@ -1,7 +1,7 @@
 import { queryElementById } from "/static/js/common/dom.js";
 
 /**
- * Collects the shared ticketing controls used across the form.
+ * Collects the shared event enrollment controls used across the form.
  * @param {Document|Element} [root=document] Root container
  * @returns {{
  *   attendeeApprovalRequiredInput: HTMLElement|null,
@@ -19,7 +19,7 @@ import { queryElementById } from "/static/js/common/dom.js";
  *   waitlistToggleLabel: HTMLElement|null
  * }}
  */
-const resolveTicketingControls = (root = document) => ({
+const resolveEventEnrollmentControls = (root = document) => ({
   attendeeApprovalRequiredInput: queryElementById(root, "attendee_approval_required"),
   attendeeApprovalToggleLabel: queryElementById(root, "attendee-approval-toggle-label"),
   capacityInput: queryElementById(root, "capacity"),
@@ -36,11 +36,11 @@ const resolveTicketingControls = (root = document) => ({
 });
 
 /**
- * Synchronizes capacity, waitlist, and currency validation with ticket types.
+ * Synchronizes event enrollment controls and derived form state.
  * @param {Document|Element} [root=document] Root container
  * @returns {void}
  */
-export function initializeTicketingWaitlistState(root = document) {
+export function initializeEventEnrollmentState(root = document) {
   const {
     attendeeApprovalRequiredInput,
     attendeeApprovalToggleLabel,
@@ -53,7 +53,7 @@ export function initializeTicketingWaitlistState(root = document) {
     toggleWaitlistEnabled,
     waitlistEnabledInput,
     waitlistToggleLabel,
-  } = resolveTicketingControls(root);
+  } = resolveEventEnrollmentControls(root);
   const ticketTypesEditor = ticketTypesRoot;
 
   const syncPaymentCurrencyValidity = (hasTicketTypes) => {
@@ -70,7 +70,7 @@ export function initializeTicketingWaitlistState(root = document) {
     );
   };
 
-  const syncWaitlistToggleState = () => {
+  const syncEventEnrollmentState = () => {
     const clearingTicketing = toggleClearTicketing?.checked === true;
     const hasTicketTypes =
       typeof ticketTypesEditor?.hasConfiguredTicketTypes === "function"
@@ -146,36 +146,36 @@ export function initializeTicketingWaitlistState(root = document) {
   if (toggleAttendeeApprovalRequired && attendeeApprovalRequiredInput) {
     toggleAttendeeApprovalRequired.addEventListener("change", () => {
       attendeeApprovalRequiredInput.value = String(toggleAttendeeApprovalRequired.checked);
-      syncWaitlistToggleState();
+      syncEventEnrollmentState();
     });
   }
 
   if (toggleWaitlistEnabled && waitlistEnabledInput) {
     toggleWaitlistEnabled.addEventListener("change", () => {
       waitlistEnabledInput.value = String(toggleWaitlistEnabled.checked);
-      syncWaitlistToggleState();
+      syncEventEnrollmentState();
     });
   }
 
   if (capacityInput) {
-    capacityInput.addEventListener("input", syncWaitlistToggleState);
+    capacityInput.addEventListener("input", syncEventEnrollmentState);
   }
 
   if (ticketTypesRoot) {
-    ticketTypesRoot.addEventListener("ticket-types-changed", syncWaitlistToggleState);
+    ticketTypesRoot.addEventListener("ticket-types-changed", syncEventEnrollmentState);
   }
 
   if (paymentCurrencyInput) {
-    paymentCurrencyInput.addEventListener("input", syncWaitlistToggleState);
-    paymentCurrencyInput.addEventListener("change", syncWaitlistToggleState);
+    paymentCurrencyInput.addEventListener("input", syncEventEnrollmentState);
+    paymentCurrencyInput.addEventListener("change", syncEventEnrollmentState);
   }
 
   if (toggleClearTicketing && clearTicketingInput) {
     toggleClearTicketing.addEventListener("change", () => {
       clearTicketingInput.value = String(toggleClearTicketing.checked);
-      syncWaitlistToggleState();
+      syncEventEnrollmentState();
     });
   }
 
-  syncWaitlistToggleState();
+  syncEventEnrollmentState();
 }

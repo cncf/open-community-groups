@@ -292,16 +292,28 @@ export const showSignedOutAttendanceState = (container, meta) => {
 };
 
 /**
+ * Shows a single primary attendance control and updates meeting details.
+ * @param {HTMLElement} container - Attendance container element
+ * @param {object} meta - Attendance metadata
+ * @param {"attendButton"|"leaveButton"|"refundButton"} controlName - Primary control key
+ * @param {object} state - Render state
+ * @param {boolean} [isAttendee=false] Whether meeting access should be attendee-scoped
+ */
+const showPrimaryAttendanceState = (container, meta, controlName, state, isAttendee = false) => {
+  const controls = getPrimaryControls(container);
+
+  resetPrimaryControls(container);
+  renderControl(controls[controlName], state);
+  renderMeetingDetails(isAttendee, meta);
+};
+
+/**
  * Shows the guest state for an authenticated non-attendee.
  * @param {HTMLElement} container - Attendance container element
  * @param {{attendeeApprovalRequired: boolean, isPastEvent: boolean, isSoldOut: boolean, isTicketed: boolean, ticketPurchaseAvailable: boolean, waitlistEnabled: boolean}} meta - Attendance metadata
  */
 export const showGuestAttendanceState = (container, meta) => {
-  const { attendButton } = getPrimaryControls(container);
-
-  resetPrimaryControls(container);
-  renderControl(attendButton, getAttendState(meta));
-  renderMeetingDetails(false, meta);
+  showPrimaryAttendanceState(container, meta, "attendButton", getAttendState(meta));
 };
 
 /**
@@ -310,11 +322,12 @@ export const showGuestAttendanceState = (container, meta) => {
  * @param {{isPastEvent: boolean}} meta - Attendance metadata
  */
 export const showWaitlistedAttendanceState = (container, meta) => {
-  const { leaveButton } = getPrimaryControls(container);
-
-  resetPrimaryControls(container);
-  renderControl(leaveButton, withEventDateState(meta, { label: LEAVE_WAITLIST_LABEL }));
-  renderMeetingDetails(false, meta);
+  showPrimaryAttendanceState(
+    container,
+    meta,
+    "leaveButton",
+    withEventDateState(meta, { label: LEAVE_WAITLIST_LABEL }),
+  );
 };
 
 /**
@@ -323,17 +336,15 @@ export const showWaitlistedAttendanceState = (container, meta) => {
  * @param {{isPastEvent: boolean}} meta - Attendance metadata
  */
 export const showPendingApprovalAttendanceState = (container, meta) => {
-  const { leaveButton } = getPrimaryControls(container);
-
-  resetPrimaryControls(container);
-  renderControl(
-    leaveButton,
+  showPrimaryAttendanceState(
+    container,
+    meta,
+    "leaveButton",
     withEventDateState(meta, {
       label: CANCEL_INVITATION_REQUEST_LABEL,
       title: INVITATION_PENDING_TITLE,
     }),
   );
-  renderMeetingDetails(false, meta);
 };
 
 /**
@@ -341,15 +352,11 @@ export const showPendingApprovalAttendanceState = (container, meta) => {
  * @param {HTMLElement} container - Attendance container element
  */
 export const showRejectedInvitationState = (container, meta) => {
-  const { attendButton } = getPrimaryControls(container);
-
-  resetPrimaryControls(container);
-  renderControl(attendButton, {
+  showPrimaryAttendanceState(container, meta, "attendButton", {
     disabled: true,
     label: REQUEST_REJECTED_LABEL,
     title: INVITATION_REJECTED_TITLE,
   });
-  renderMeetingDetails(false, meta);
 };
 
 /**
@@ -359,17 +366,15 @@ export const showRejectedInvitationState = (container, meta) => {
  * @param {{resume_checkout_url?: string}} response - Attendance response
  */
 export const showPendingPaymentState = (container, meta, response) => {
-  const { attendButton } = getPrimaryControls(container);
-
-  resetPrimaryControls(container);
-  renderControl(
-    attendButton,
+  showPrimaryAttendanceState(
+    container,
+    meta,
+    "attendButton",
     withEventDateState(meta, {
       label: COMPLETE_PAYMENT_LABEL,
       resumeUrl: response.resume_checkout_url || "",
     }),
   );
-  renderMeetingDetails(false, meta);
 };
 
 /**
