@@ -1,4 +1,12 @@
 <div class="flex flex-col items-center justify-center min-h-[125px]">
-  <div class="text-xl lg:text-2xl mb-6">No audit log entries found.</div>
-  <p class="text-sm lg:text-md text-stone-700">Try adjusting the current filters or date range.</p>
+  {% if selected_action.is_some()
+    || actor_value.is_some()
+    || date_from_value.is_some()
+    || date_to_value.is_some() -%}
+    <div class="text-xl lg:text-2xl mb-6">No logs match these filters.</div>
+    <p class="text-sm lg:text-md text-stone-700">Try adjusting the current filters or date range.</p>
+  {% else -%}
+    <div class="text-xl lg:text-2xl mb-6">No audit logs yet.</div>
+    <p class="text-sm lg:text-md text-stone-700">Activity will appear here once it is recorded.</p>
+  {% endif -%}
 </div>

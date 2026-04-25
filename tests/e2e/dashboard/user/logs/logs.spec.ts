@@ -65,4 +65,26 @@ test.describe("user dashboard logs view", () => {
       }),
     ).toHaveCount(1);
   });
+
+  test("member sees an empty state when filters match no logs", async ({
+    member1Page,
+  }) => {
+    await navigateToPath(member1Page, USER_LOGS_PATH);
+
+    await member1Page.getByRole("button", { name: "Filters" }).click();
+
+    const filtersModal = member1Page.locator("#audit-log-filters-modal");
+    await expect(filtersModal).toBeVisible();
+    await filtersModal.locator("#audit-date-from").fill("2099-01-01");
+    await filtersModal.getByRole("button", { name: "Apply" }).click();
+
+    const dashboardContent = member1Page.locator("#dashboard-content");
+    await expect(member1Page).toHaveURL(
+      /\/dashboard\/user\?tab=logs&date_from=2099-01-01/,
+    );
+    await expect(dashboardContent.getByText("Logs", { exact: true })).toBeVisible();
+    await expect(dashboardContent).toContainText("0 logs");
+    await expect(dashboardContent).toContainText("No logs match these filters.");
+    await expect(dashboardContent.locator("tr.audit-log-row")).toHaveCount(0);
+  });
 });
