@@ -789,6 +789,7 @@ select is(
         "published": true,
         "slug": "def5678",
         "timezone": "America/New_York",
+        "attendee_approval_required": false,
         "banner_url": "https://example.com/event-banner.png",
         "capacity": 500,
         "cfs_labels": [

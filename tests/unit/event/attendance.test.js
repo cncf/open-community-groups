@@ -17,6 +17,7 @@ const renderAttendanceDom = ({
   waitlistEnabled = "false",
   isLive = "false",
   attendeeMeetingAccessOpen = "false",
+  attendeeApprovalRequired = "false",
 } = {}) => {
   document.body.innerHTML = `
     <div
@@ -27,6 +28,7 @@ const renderAttendanceDom = ({
       data-waitlist-enabled="${waitlistEnabled}"
       data-is-live="${isLive}"
       data-attendee-meeting-access-open="${attendeeMeetingAccessOpen}"
+      data-attendee-approval-required="${attendeeApprovalRequired}"
     >
       <button data-attendance-role="attendance-checker"></button>
       <button data-attendance-role="loading-btn" class="hidden">
@@ -38,6 +40,7 @@ const renderAttendanceDom = ({
         class="hidden"
         data-path="/events/test-event"
       >
+        <div class="svg-icon icon-user-plus" data-attendance-icon></div>
         <span data-attendance-label>Attend event</span>
       </button>
       <button
@@ -45,6 +48,7 @@ const renderAttendanceDom = ({
         data-attendance-role="attend-btn"
         class="hidden"
       >
+        <div class="svg-icon icon-user-plus" data-attendance-icon></div>
         <span data-attendance-label>Attend event</span>
       </button>
       <button
@@ -52,6 +56,7 @@ const renderAttendanceDom = ({
         data-attendance-role="leave-btn"
         class="hidden"
       >
+        <div class="svg-icon icon-logout" data-attendance-icon></div>
         <span data-attendance-label>Cancel attendance</span>
       </button>
       <button
@@ -59,6 +64,7 @@ const renderAttendanceDom = ({
         data-attendance-role="refund-btn"
         class="hidden"
       >
+        <div class="svg-icon icon-refund" data-attendance-icon></div>
         <span data-attendance-label>Request refund</span>
       </button>
     </div>
@@ -101,9 +107,7 @@ describe("event attendance", () => {
     });
 
     expect(leaveButton.classList.contains("hidden")).to.equal(false);
-    expect(leaveButton.querySelector("[data-attendance-label]")?.textContent).to.equal(
-      "Cancel attendance",
-    );
+    expect(leaveButton.querySelector("[data-attendance-label]")?.textContent).to.equal("Cancel attendance");
     expect(alwaysJoinLink.classList.contains("hidden")).to.equal(false);
     expect(liveJoinLink.classList.contains("hidden")).to.equal(false);
     expect(liveJoinLink.classList.contains("xl:flex")).to.equal(true);
@@ -155,11 +159,27 @@ describe("event attendance", () => {
     });
 
     expect(signinButton.classList.contains("hidden")).to.equal(false);
-    expect(signinButton.querySelector("[data-attendance-label]")?.textContent).to.equal(
-      "Join waiting list",
-    );
+    expect(signinButton.querySelector("[data-attendance-label]")?.textContent).to.equal("Join waiting list");
     expect(attendButton.classList.contains("hidden")).to.equal(true);
     expect(leaveButton.classList.contains("hidden")).to.equal(true);
+  });
+
+  it("uses the request invitation icon for approval-required sign-in state", () => {
+    const { checker, signinButton } = renderAttendanceDom({
+      attendeeApprovalRequired: "true",
+    });
+
+    dispatchHtmxAfterRequest(checker, {
+      responseText: "{invalid json}",
+    });
+
+    expect(signinButton.querySelector("[data-attendance-label]")?.textContent).to.equal("Request invitation");
+    expect(
+      signinButton.querySelector("[data-attendance-icon]")?.classList.contains("icon-request-invitation"),
+    ).to.equal(true);
+    expect(
+      signinButton.querySelector("[data-attendance-icon]")?.classList.contains("icon-user-plus"),
+    ).to.equal(false);
   });
 
   it("shows loading state before attending and emits a waitlist success message", () => {
@@ -207,6 +227,21 @@ describe("event attendance", () => {
     expect(env.current.htmx.triggerCalls).to.deep.equal([["#leave-btn", "confirmed"]]);
   });
 
+  it("confirms canceling a pending invitation request with request-specific copy", async () => {
+    const { leaveButton } = renderAttendanceDom();
+
+    leaveButton.querySelector("[data-attendance-label]").textContent = "Cancel request";
+    env.current.swal.setNextResult({ isConfirmed: true });
+    leaveButton.click();
+    await waitForMicrotask();
+
+    expect(env.current.swal.calls[0]).to.include({
+      text: "Are you sure you want to cancel your invitation request?",
+      icon: "warning",
+    });
+    expect(env.current.htmx.triggerCalls).to.deep.equal([["#leave-btn", "confirmed"]]);
+  });
+
   it("disables attendance changes for past events", () => {
     const { checker, attendButton } = renderAttendanceDom({
       starts: "2000-05-10T10:00:00Z",
@@ -222,6 +257,44 @@ describe("event attendance", () => {
     expect(attendButton.disabled).to.equal(true);
     expect(attendButton.title).to.equal(
       "You cannot change attendance because the event has already started.",
+    );
+  });
+
+  it("uses the request invitation icon for approval-required guest state", () => {
+    const { checker, attendButton } = renderAttendanceDom({
+      attendeeApprovalRequired: "true",
+    });
+
+    dispatchHtmxAfterRequest(checker, {
+      responseText: JSON.stringify({ status: "guest" }),
+    });
+
+    expect(attendButton.querySelector("[data-attendance-label]")?.textContent).to.equal("Request invitation");
+    expect(
+      attendButton.querySelector("[data-attendance-icon]")?.classList.contains("icon-request-invitation"),
+    ).to.equal(true);
+    expect(
+      attendButton.querySelector("[data-attendance-icon]")?.classList.contains("icon-user-plus"),
+    ).to.equal(false);
+  });
+
+  it("disables approved invitation rejoin when the event is sold out", () => {
+    const { checker, attendButton } = renderAttendanceDom({
+      attendeeApprovalRequired: "true",
+      capacity: "10",
+      remainingCapacity: "0",
+    });
+
+    dispatchHtmxAfterRequest(checker, {
+      responseText: JSON.stringify({ status: "invitation-approved" }),
+    });
+
+    expect(attendButton.classList.contains("hidden")).to.equal(false);
+    expect(attendButton.disabled).to.equal(true);
+    expect(attendButton.title).to.equal("This event is sold out.");
+    expect(attendButton.querySelector("[data-attendance-label]")?.textContent).to.equal("Attend event");
+    expect(attendButton.querySelector("[data-attendance-icon]")?.classList.contains("icon-user-plus")).to.equal(
+      true,
     );
   });
 

@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(219);
+select plan(223);
 
 -- ============================================================================
 -- TESTS
@@ -11,6 +11,7 @@ select plan(219);
 
 -- Test: check expected functions exist
 select has_function('accept_community_team_invitation');
+select has_function('accept_event_invitation_request');
 select has_function('accept_group_team_invitation');
 select has_function('accept_session_proposal_co_speaker_invitation');
 select has_function('activate_group');
@@ -153,6 +154,7 @@ select has_function('reconcile_event_purchase_for_checkout_session');
 select has_function('record_automatic_refund_for_event_purchase');
 select has_function('refund_free_event_purchase');
 select has_function('reject_community_team_invitation');
+select has_function('reject_event_invitation_request');
 select has_function('reject_event_refund_request');
 select has_function('reject_group_team_invitation');
 select has_function('reject_session_proposal_co_speaker_invitation');
@@ -161,6 +163,7 @@ select has_function('request_event_refund');
 select has_function('resubmit_cfs_submission');
 select has_function('revert_event_refund_approval');
 select has_function('search_event_attendees');
+select has_function('search_event_invitation_requests');
 select has_function('search_event_waitlist');
 select has_function('search_events');
 select has_function('search_groups');
@@ -201,6 +204,7 @@ select has_function('user_has_group_permission');
 select has_function('validate_event_capacity');
 select has_function('validate_event_cfs_labels_payload');
 select has_function('validate_event_discount_codes_payload');
+select has_function('validate_event_enrollment_payload');
 select has_function('validate_event_series_action_event_ids');
 select has_function('validate_event_ticket_types_payload');
 select has_function('validate_event_ticketing_payload');

@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(20);
+select plan(22);
 
 -- ============================================================================
 -- VARIABLES
@@ -11,6 +11,7 @@ select plan(20);
 
 \set categoryID '00000000-0000-0000-0000-000000000011'
 \set communityID '00000000-0000-0000-0000-000000000001'
+\set eventApprovalPending '00000000-0000-0000-0000-000000000056'
 \set eventCanceled '00000000-0000-0000-0000-000000000050'
 \set eventCategoryID '00000000-0000-0000-0000-000000000012'
 \set eventDeleted '00000000-0000-0000-0000-000000000044'
@@ -67,6 +68,7 @@ values
     (:'groupID', :'communityID', :'categoryID', 'Active Group', 'active-group', true, false),
     (:'inactiveGroupID', :'communityID', :'categoryID', 'Inactive Group', 'inactive-group', false, false);
 
+-- Events
 insert into event (
     event_id,
     name,
@@ -76,6 +78,7 @@ insert into event (
     event_category_id,
     event_kind_id,
     group_id,
+    attendee_approval_required,
     published,
     canceled,
     deleted,
@@ -85,18 +88,19 @@ insert into event (
     waitlist_enabled
 )
 values
-    (:'eventOK', 'OK', 'ok', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', true, false, false, null, null, null, false),
-    (:'eventCanceled', 'Canceled', 'canceled', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', false, true, false, null, null, 1, true),
-    (:'eventDeleted', 'Deleted', 'deleted', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', false, false, true, null, null, null, false),
-    (:'eventInactiveGroup', 'Inactive Group', 'inactive-group', 'd', 'UTC', :'eventCategoryID', 'in-person', :'inactiveGroupID', true, false, false, null, null, null, false),
-    (:'eventUnpublished', 'Unpublished', 'unpublished', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', false, false, false, null, null, null, false),
-	    (:'eventPast', 'Past', 'past', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', true, false, false, current_timestamp - interval '2 hours', current_timestamp - interval '1 hour', null, false),
-	    (:'eventStartedNoEnd', 'Started No End', 'started-no-end', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', true, false, false, current_timestamp - interval '1 hour', null, null, false),
-	    (:'eventDisabledWaitlist', 'Disabled Waitlist', 'disabled-waitlist', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', true, false, false, null, null, 2, false),
-	    (:'eventFull', 'Full', 'full', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', true, false, false, null, null, 1, true),
-	    (:'eventPaidTicketed', 'Paid Ticketed', 'paid-ticketed', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', true, false, false, null, null, 1, false),
-	    (:'eventUnlimited', 'Unlimited', 'unlimited', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', true, false, false, null, null, null, false),
-	    (:'eventWaitlist', 'Waitlist', 'waitlist', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', true, false, false, null, null, 1, true);
+    (:'eventOK', 'OK', 'ok', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', false, true, false, false, null, null, null, false),
+    (:'eventApprovalPending', 'Approval Pending', 'approval-pending', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', true, true, false, false, null, null, null, false),
+    (:'eventCanceled', 'Canceled', 'canceled', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', false, false, true, false, null, null, 1, true),
+    (:'eventDeleted', 'Deleted', 'deleted', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', false, false, false, true, null, null, null, false),
+    (:'eventInactiveGroup', 'Inactive Group', 'inactive-group', 'd', 'UTC', :'eventCategoryID', 'in-person', :'inactiveGroupID', false, true, false, false, null, null, null, false),
+    (:'eventUnpublished', 'Unpublished', 'unpublished', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', false, false, false, false, null, null, null, false),
+	    (:'eventPast', 'Past', 'past', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', false, true, false, false, current_timestamp - interval '2 hours', current_timestamp - interval '1 hour', null, false),
+	    (:'eventStartedNoEnd', 'Started No End', 'started-no-end', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', false, true, false, false, current_timestamp - interval '1 hour', null, null, false),
+	    (:'eventDisabledWaitlist', 'Disabled Waitlist', 'disabled-waitlist', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', false, true, false, false, null, null, 2, false),
+	    (:'eventFull', 'Full', 'full', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', false, true, false, false, null, null, 1, true),
+	    (:'eventPaidTicketed', 'Paid Ticketed', 'paid-ticketed', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', false, true, false, false, null, null, 1, false),
+	    (:'eventUnlimited', 'Unlimited', 'unlimited', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', false, true, false, false, null, null, null, false),
+	    (:'eventWaitlist', 'Waitlist', 'waitlist', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', false, true, false, false, null, null, 1, true);
 
 -- Event
 insert into event (
@@ -209,6 +213,10 @@ insert into event_waitlist (event_id, user_id, created_at) values
     (:'eventUnlimited', :'user4ID', current_timestamp + interval '1 minute'),
     (:'eventWaitlist', :'user2ID', current_timestamp);
 
+-- Event Invitation Requests
+insert into event_invitation_request (event_id, user_id, status)
+values (:'eventApprovalPending', :'user4ID', 'pending');
+
 -- Event Purchase
 insert into event_purchase (
     event_purchase_id,
@@ -291,6 +299,23 @@ select ok(
         where event_id = :'eventWaitlist'::uuid and user_id = :'user2ID'::uuid
     ),
     'Deletes waitlist row after leaving the waitlist'
+);
+
+-- Should allow a user to leave a pending invitation request
+select is(
+    leave_event(:'communityID'::uuid, :'eventApprovalPending'::uuid, :'user4ID'::uuid)::jsonb,
+    '{"left_status":"pending-approval","promoted_user_ids":[]}'::jsonb,
+    'Removes pending invitation request and returns pending-approval leave payload'
+);
+
+-- Should remove pending invitation request row after leaving
+select ok(
+    not exists(
+        select 1
+        from event_invitation_request
+        where event_id = :'eventApprovalPending'::uuid and user_id = :'user4ID'::uuid
+    ),
+    'Deletes pending invitation request row after leaving'
 );
 
 -- Should promote the next waitlisted user when a confirmed attendee leaves a full event

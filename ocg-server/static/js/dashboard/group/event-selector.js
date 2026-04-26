@@ -221,7 +221,7 @@ class EventSelector extends LitWrapper {
     this._setCopyLoading(true);
     try {
       const details = await this._fetchEventDetails(eventId);
-      this._applyEventDetails(details);
+      await this._applyEventDetails(details);
       this._updateSelectorAfterCopy(details);
       this._closeDropdown();
       this._scrollToTop();
@@ -274,14 +274,16 @@ class EventSelector extends LitWrapper {
   /**
    * Applies copied event details into the form.
    * @param {object} details Event details payload
+   * @returns {Promise<void>}
    */
-  _applyEventDetails(details) {
+  async _applyEventDetails(details) {
     if (!details || typeof details !== "object") {
       return;
     }
     this._resetMeetingFields();
     const {
       appendCopySuffix,
+      setAttendeeApprovalRequired,
       setCategoryValue,
       setDiscountCodes,
       setEventReminderEnabled,
@@ -290,6 +292,7 @@ class EventSelector extends LitWrapper {
       setRegistrationRequired,
       setPaymentCurrencyCode,
       setTicketTypes,
+      setWaitlistEnabled,
       updateMarkdownContent,
       updateTimezone,
       setHosts,
@@ -306,12 +309,17 @@ class EventSelector extends LitWrapper {
     setTextValue("capacity", details.capacity);
     setEventReminderEnabled(details.event_reminder_enabled !== false);
     setRegistrationRequired(details.registration_required === true);
+    // Clear mutually exclusive enrollment state before dependent sync runs
+    setAttendeeApprovalRequired(false);
+    setWaitlistEnabled(false);
     setTextValue("meetup_url", details.meetup_url);
     setGalleryImages(details.photos_urls);
     setTags(details.tags);
     setPaymentCurrencyCode(details.payment_currency_code);
-    setTicketTypes(details.ticket_types);
+    await setTicketTypes(details.ticket_types);
     setDiscountCodes(details.discount_codes);
+    setWaitlistEnabled(details.waitlist_enabled === true);
+    setAttendeeApprovalRequired(details.attendee_approval_required === true);
     updateTimezone(details.timezone);
     setTextValue("venue_name", details.venue_name);
     setTextValue("venue_address", details.venue_address);

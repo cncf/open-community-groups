@@ -10,9 +10,10 @@ declare
     v_attendee_count int;
     v_capacity int := coalesce(p_effective_capacity, (p_event->>'capacity')::int);
     v_provider_max_participants int;
+    v_waitlist_enabled boolean := coalesce((p_event->>'waitlist_enabled')::boolean, false);
 begin
     -- Validate waitlist configuration against capacity requirements
-    if coalesce((p_event->>'waitlist_enabled')::boolean, false) = true and v_capacity is null then
+    if v_waitlist_enabled = true and v_capacity is null then
         raise exception 'waitlist enabled events must define a capacity';
     end if;
 

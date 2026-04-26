@@ -50,6 +50,7 @@ use crate::{
                 attendees::Attendee,
                 events::{CfsSubmissionStatus, Event as GroupEventForm, GroupEvents},
                 home::UserGroupsByCommunity,
+                invitation_requests::InvitationRequest,
                 members::GroupMember,
                 settings::GroupUpdate,
                 sponsors::Sponsor,
@@ -442,6 +443,7 @@ pub(crate) fn sample_event_kind_summary() -> EventKindSummary {
 pub(crate) fn sample_event_summary(event_id: Uuid, _group_id: Uuid) -> EventSummary {
     let starts_at = Utc::now() + chrono::Duration::hours(1);
     EventSummary {
+        attendee_approval_required: false,
         canceled: false,
         community_display_name: "Test Community".to_string(),
         community_name: "test-community".to_string(),
@@ -1086,6 +1088,22 @@ pub(crate) fn sample_waitlist_entry() -> WaitlistEntry {
         company: Some("Example".to_string()),
         name: Some("Waitlisted User".to_string()),
         photo_url: Some("https://example.test/avatar.png".to_string()),
+        title: Some("Engineer".to_string()),
+    }
+}
+
+/// Sample invitation request used in dashboard group invitation request tests.
+pub(crate) fn sample_invitation_request() -> InvitationRequest {
+    InvitationRequest {
+        created_at: Utc.with_ymd_and_hms(2024, 1, 1, 12, 0, 0).unwrap(),
+        invitation_request_status: crate::types::event::EventInvitationRequestStatus::Pending,
+        user_id: Uuid::new_v4(),
+        username: "requesting-user".to_string(),
+
+        company: Some("Example".to_string()),
+        name: Some("Requesting User".to_string()),
+        photo_url: Some("https://example.test/avatar.png".to_string()),
+        reviewed_at: None,
         title: Some("Engineer".to_string()),
     }
 }

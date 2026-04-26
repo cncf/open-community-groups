@@ -222,10 +222,19 @@ Waitlist-aware event operations also include:
 
 - A `Waitlist enabled` toggle in event details.
 - Waitlist requires a numeric event capacity; unlimited-capacity events cannot enable it.
-- Separate `Attendees` and `Waitlist` tabs inside the event editor.
+- Separate `Attendees`, `Requests`, and `Waitlist` tabs inside the event editor, depending on
+  event enrollment settings.
 - Automatic promotion from the waitlist when attendees leave, capacity increases, or capacity is
   removed.
 - Waitlist recipients included in event cancellation notifications.
+
+Invitation-review event operations include:
+
+- A `Require Invitation Approval` toggle in event details.
+- Invitation review cannot be combined with waitlist or paid tickets.
+- Invitation requests appear in a separate `Requests` tab for organizer review.
+- Accepting a request creates a confirmed attendee if capacity allows.
+- Rejecting a request records the decision without creating an attendee.
 
 ![Add event flow](../screenshots/dashboard-group-add-event.png)
 

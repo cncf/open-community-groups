@@ -110,6 +110,32 @@ describe("events list page", () => {
     expect(env.current.swal.calls[1].text).to.equal("Published events");
   });
 
+  it("shows an error alert for failed invitation request actions", () => {
+    const root = mountEventsList();
+    root.insertAdjacentHTML(
+      "beforeend",
+      `
+        <button
+          data-invitation-request-action
+          data-error-message="Accept failed."
+        >
+          Accept
+        </button>
+      `,
+    );
+    initializeEventsListPage(root);
+
+    root.querySelector("[data-invitation-request-action]").dispatchEvent(
+      new CustomEvent("htmx:afterRequest", {
+        bubbles: true,
+        detail: { xhr: { status: 500 } },
+      }),
+    );
+
+    expect(env.current.swal.calls).to.have.length(1);
+    expect(env.current.swal.calls[0]).to.include({ text: "Accept failed.", icon: "error" });
+  });
+
   it("does not close unrelated dropdowns when initialized on the document", () => {
     const root = mountEventsList();
     document.body.insertAdjacentHTML("beforeend", '<div id="user-dropdown" class="dropdown"></div>');

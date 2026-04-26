@@ -2,6 +2,7 @@ import { confirmAction, confirmSeriesAction, handleHtmxResponse } from "/static/
 
 const initializedRoots = new WeakSet();
 const EVENT_ACTION_DROPDOWN_SELECTOR = "[data-event-actions-dropdown]";
+const INVITATION_REQUEST_ACTION_SELECTOR = "[data-invitation-request-action]";
 
 const closestWithinRoot = (target, selector, root) => {
   const element = target instanceof Element ? target.closest(selector) : null;
@@ -79,6 +80,14 @@ const handleScopedActionAfterRequest = (button, event) => {
   });
 };
 
+const handleInvitationRequestAfterRequest = (button, event) => {
+  handleHtmxResponse({
+    xhr: event.detail?.xhr,
+    successMessage: button.dataset.successMessage || "",
+    errorMessage: button.dataset.errorMessage || "Something went wrong. Please try again later.",
+  });
+};
+
 export const initializeEventsListPage = (root = document) => {
   if (!root || initializedRoots.has(root)) {
     return;
@@ -115,6 +124,12 @@ export const initializeEventsListPage = (root = document) => {
     const scopedActionButton = closestWithinRoot(event.target, "[data-event-scoped-action]", root);
     if (scopedActionButton) {
       handleScopedActionAfterRequest(scopedActionButton, event);
+      return;
+    }
+
+    const invitationRequestButton = closestWithinRoot(event.target, INVITATION_REQUEST_ACTION_SELECTOR, root);
+    if (invitationRequestButton) {
+      handleInvitationRequestAfterRequest(invitationRequestButton, event);
     }
   });
 };

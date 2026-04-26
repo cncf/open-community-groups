@@ -5,7 +5,9 @@ create or replace function get_event_attendance(
     p_user_id uuid
 ) returns json as $$
     with scoped_event as (
-        select e.event_id
+        select
+            e.attendee_approval_required,
+            e.event_id
         from event e
         join "group" g on g.group_id = e.group_id
         where e.event_id = p_event_id
@@ -50,6 +52,42 @@ create or replace function get_event_attendance(
                     and ep.hold_expires_at > current_timestamp
                     and exists (select 1 from scoped_event)
                 ) then 'pending-payment'
+                when exists (
+                    select 1
+                    from event_invitation_request eir
+                    where eir.event_id = p_event_id
+                    and eir.user_id = p_user_id
+                    and eir.status = 'pending'
+                    and exists (
+                        select 1
+                        from scoped_event se
+                        where se.attendee_approval_required = true
+                    )
+                ) then 'pending-approval'
+                when exists (
+                    select 1
+                    from event_invitation_request eir
+                    where eir.event_id = p_event_id
+                    and eir.user_id = p_user_id
+                    and eir.status = 'accepted'
+                    and exists (
+                        select 1
+                        from scoped_event se
+                        where se.attendee_approval_required = true
+                    )
+                ) then 'invitation-approved'
+                when exists (
+                    select 1
+                    from event_invitation_request eir
+                    where eir.event_id = p_event_id
+                    and eir.user_id = p_user_id
+                    and eir.status = 'rejected'
+                    and exists (
+                        select 1
+                        from scoped_event se
+                        where se.attendee_approval_required = true
+                    )
+                ) then 'rejected'
                 when exists (
                     select 1
                     from event_waitlist ew

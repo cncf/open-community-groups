@@ -19,8 +19,10 @@ import {
   ATTEND_EVENT_LABEL,
   BUY_TICKET_LABEL,
   CANCEL_ATTENDANCE_LABEL,
+  CANCEL_INVITATION_REQUEST_LABEL,
   JOIN_WAITLIST_LABEL,
   LEAVE_WAITLIST_LABEL,
+  REQUEST_INVITATION_LABEL,
   closeTicketModal,
   initializeAttendanceContainer,
   openTicketModal,
@@ -30,8 +32,11 @@ import {
   showCheckoutLoadingState,
   showAttendeeState,
   showGuestAttendanceState,
+  showInvitationApprovedAttendanceState,
+  showPendingApprovalAttendanceState,
   showPendingPaymentState,
   showPrimaryRequestLoading,
+  showRejectedInvitationState,
   showSignedOutAttendanceState,
   showWaitlistedAttendanceState,
 } from "/static/js/event/attendance-view.js";
@@ -51,6 +56,8 @@ const PRIMARY_ACTION_CONFIG = {
 
       if (response?.status === "waitlisted") {
         showInfoAlert("You have joined the waiting list for this event.");
+      } else if (response?.status === "pending-approval") {
+        showInfoAlert("Your invitation request has been sent to the organizers.");
       } else if (response?.status === "pending-payment") {
         showInfoAlert("Your checkout is ready. Redirecting you to Stripe now.");
       } else {
@@ -65,6 +72,8 @@ const PRIMARY_ACTION_CONFIG = {
     onSuccess: (response) => {
       if (response?.left_status === "waitlisted") {
         showInfoAlert("You have left the waiting list for this event.");
+      } else if (response?.left_status === "pending-approval") {
+        showInfoAlert("Your invitation request has been canceled.");
       } else {
         showInfoAlert("You have successfully canceled your attendance.");
       }
@@ -99,6 +108,10 @@ const showSignedOutFallback = (container, meta) => {
 const getSigninActionText = (label) => {
   if (label === JOIN_WAITLIST_LABEL) {
     return "join the waiting list";
+  }
+
+  if (label === REQUEST_INVITATION_LABEL) {
+    return "request an invitation";
   }
 
   if (label === BUY_TICKET_LABEL) {
@@ -278,6 +291,21 @@ const renderAttendanceCheckResponse = (container, event) => {
 
   if (response.status === "pending-payment") {
     showPendingPaymentState(container, meta, response);
+    return;
+  }
+
+  if (response.status === "pending-approval") {
+    showPendingApprovalAttendanceState(container, meta);
+    return;
+  }
+
+  if (response.status === "invitation-approved") {
+    showInvitationApprovedAttendanceState(container, meta);
+    return;
+  }
+
+  if (response.status === "rejected") {
+    showRejectedInvitationState(container, meta);
     return;
   }
 
@@ -533,10 +561,12 @@ const handleAttendanceClick = (event) => {
   const leaveButton = target.closest('[data-attendance-role="leave-btn"]');
   if (leaveButton instanceof HTMLElement) {
     const label = getAttendanceControlLabel(leaveButton) || CANCEL_ATTENDANCE_LABEL;
-    const message =
-      label === LEAVE_WAITLIST_LABEL
-        ? "Are you sure you want to leave the waiting list?"
-        : "Are you sure you want to cancel your attendance?";
+    let message = "Are you sure you want to cancel your attendance?";
+    if (label === LEAVE_WAITLIST_LABEL) {
+      message = "Are you sure you want to leave the waiting list?";
+    } else if (label === CANCEL_INVITATION_REQUEST_LABEL) {
+      message = "Are you sure you want to cancel your invitation request?";
+    }
     showConfirmAlert(message, leaveButton.id, "Yes");
     return;
   }

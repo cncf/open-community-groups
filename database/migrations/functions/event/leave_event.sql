@@ -96,6 +96,19 @@ begin
         );
     end if;
 
+    -- Otherwise remove a pending invitation request
+    delete from event_invitation_request
+    where event_id = p_event_id
+    and user_id = p_user_id
+    and status = 'pending';
+
+    if found then
+        return json_build_object(
+            'left_status', 'pending-approval',
+            'promoted_user_ids', '[]'::json
+        );
+    end if;
+
     raise exception 'user is not attending or waitlisted for this event';
 end;
 $$ language plpgsql;

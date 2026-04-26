@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(39);
+select plan(41);
 
 -- ============================================================================
 -- TESTS
@@ -18,12 +18,16 @@ select has_check('event', 'event_check1');
 select has_check('event', 'event_check2');
 select has_check('event', 'event_cfs_fields_chk');
 select has_check('event', 'event_cfs_window_chk');
+select has_check('event', 'event_attendee_approval_waitlist_exclusive_chk');
 select has_check('event', 'event_meeting_capacity_required_chk');
 select has_check('event', 'event_meeting_conflict_chk');
 select has_check('event', 'event_meeting_kind_chk');
 select has_check('event', 'event_meeting_provider_required_chk');
 select has_check('event', 'event_meeting_requested_times_chk');
 select has_check('event', 'event_waitlist_capacity_required_chk');
+
+-- Test: event invitation request table expected constraints exist
+select has_check('event_invitation_request');
 
 -- Test: event discount code table expected constraints exist
 select has_check('event_discount_code', 'event_discount_code_kind_value_chk');

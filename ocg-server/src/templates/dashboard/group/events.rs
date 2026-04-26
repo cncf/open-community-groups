@@ -229,6 +229,9 @@ pub(crate) struct Event {
     #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_TIMEZONE))]
     pub timezone: String,
 
+    /// Whether attendee requests require organizer approval.
+    #[garde(skip)]
+    pub attendee_approval_required: Option<bool>,
     /// URL to the event banner image optimized for mobile devices.
     #[garde(custom(image_url_opt))]
     pub banner_mobile_url: Option<String>,

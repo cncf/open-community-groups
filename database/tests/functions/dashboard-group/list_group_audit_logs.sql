@@ -15,6 +15,8 @@ select plan(4);
 \set audit2ID '00000000-0000-0000-0000-000000000102'
 \set audit3ID '00000000-0000-0000-0000-000000000103'
 \set audit4ID '00000000-0000-0000-0000-000000000104'
+\set audit5ID '00000000-0000-0000-0000-000000000106'
+\set audit6ID '00000000-0000-0000-0000-000000000107'
 \set communityID '00000000-0000-0000-0000-000000000001'
 \set groupCategoryID '00000000-0000-0000-0000-000000000021'
 \set groupID '00000000-0000-0000-0000-000000000031'
@@ -102,6 +104,30 @@ insert into audit_log (
         'user'
     ),
     (
+        :'audit5ID',
+        'event_invitation_request_accepted',
+        :'actor2ID',
+        'bob',
+        :'communityID',
+        '2024-03-02 11:00:00+00',
+        '{"event_id": "00000000-0000-0000-0000-000000000051"}',
+        :'groupID',
+        :'targetUserID',
+        'user'
+    ),
+    (
+        :'audit6ID',
+        'event_invitation_request_rejected',
+        :'actor1ID',
+        'alice',
+        :'communityID',
+        '2024-03-02 12:00:00+00',
+        '{"event_id": "00000000-0000-0000-0000-000000000052"}',
+        :'groupID',
+        :'targetUserID',
+        'user'
+    ),
+    (
         :'audit3ID',
         'event_added',
         :'actor1ID',
@@ -162,6 +188,26 @@ select is(
                 "resource_type": "group"
             },
             {
+                "action": "event_invitation_request_rejected",
+                "actor_username": "alice",
+                "audit_log_id": "00000000-0000-0000-0000-000000000107",
+                "created_at": 1709380800,
+                "details": {"event_id": "00000000-0000-0000-0000-000000000052"},
+                "resource_id": "00000000-0000-0000-0000-000000000041",
+                "resource_name": "Sara",
+                "resource_type": "user"
+            },
+            {
+                "action": "event_invitation_request_accepted",
+                "actor_username": "bob",
+                "audit_log_id": "00000000-0000-0000-0000-000000000106",
+                "created_at": 1709377200,
+                "details": {"event_id": "00000000-0000-0000-0000-000000000051"},
+                "resource_id": "00000000-0000-0000-0000-000000000041",
+                "resource_name": "Sara",
+                "resource_type": "user"
+            },
+            {
                 "action": "group_team_member_added",
                 "actor_username": "bob",
                 "audit_log_id": "00000000-0000-0000-0000-000000000102",
@@ -183,7 +229,7 @@ select is(
             }
         ]'::jsonb,
         'total',
-        3
+        5
     ),
     'Should return only group dashboard actions for the selected group'
 );
@@ -192,17 +238,17 @@ select is(
 select is(
     list_group_audit_logs(
         :'groupID'::uuid,
-        '{"action": "group_team_member_added", "actor": "bo", "limit": 50, "offset": 0, "sort": "created-desc"}'::jsonb
+        '{"action": "event_invitation_request_accepted", "actor": "bo", "limit": 50, "offset": 0, "sort": "created-desc"}'::jsonb
     )::jsonb,
     jsonb_build_object(
         'logs',
         '[
             {
-                "action": "group_team_member_added",
+                "action": "event_invitation_request_accepted",
                 "actor_username": "bob",
-                "audit_log_id": "00000000-0000-0000-0000-000000000102",
-                "created_at": 1709373600,
-                "details": {"role": "admin"},
+                "audit_log_id": "00000000-0000-0000-0000-000000000106",
+                "created_at": 1709377200,
+                "details": {"event_id": "00000000-0000-0000-0000-000000000051"},
                 "resource_id": "00000000-0000-0000-0000-000000000041",
                 "resource_name": "Sara",
                 "resource_type": "user"
@@ -235,7 +281,7 @@ select is(
             }
         ]'::jsonb,
         'total',
-        2
+        4
     ),
     'Should return group audit logs in ascending order with pagination'
 );

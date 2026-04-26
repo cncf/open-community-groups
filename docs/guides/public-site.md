@@ -94,6 +94,9 @@ Helpful details:
 - RSVP actions are available only before the event start time.
 - Canceling RSVP is immediate through `Cancel attendance`.
 - After RSVP, OCG sends a confirmation message with a calendar file attached.
+- Some events use invitation review. In that case, `Attend event` becomes
+  `Request invitation`, and meeting access/check-in are available only after an
+  organizer accepts the request.
 
 ![Event page and attendance actions](../screenshots/event-page.png)
 
@@ -108,6 +111,15 @@ When an event has a capacity limit, the button behavior depends on organizer set
 - If a seat opens because someone leaves, capacity increases, or organizers remove the capacity
   limit, OCG can promote you automatically and send a promotion notification.
 - If organizers remove the capacity limit entirely, everyone still on the waitlist is promoted.
+
+For invitation-review events:
+
+- Pending requests do not reserve seats.
+- Organizers accept requests while capacity remains available.
+- `Invitation requested` means the request is waiting for review.
+- `Request rejected` means organizers declined the request; resubmitting is not available.
+- Accepted requests become regular attendance and send the usual event confirmation email with
+  calendar attachment.
 
 ![Event page and waitlist actions](../screenshots/event-page-waitlist.png)
 

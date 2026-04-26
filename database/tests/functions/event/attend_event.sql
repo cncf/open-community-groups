@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(13);
+select plan(20);
 
 -- ============================================================================
 -- VARIABLES
@@ -13,6 +13,7 @@ select plan(13);
 \set communityID '00000000-0000-0000-0000-000000000001'
 \set eventCanceled '00000000-0000-0000-0000-000000000043'
 \set eventCategoryID '00000000-0000-0000-0000-000000000012'
+\set eventInviteOnly '00000000-0000-0000-0000-000000000049'
 \set eventDeleted '00000000-0000-0000-0000-000000000044'
 \set eventFullNoWaitlist '00000000-0000-0000-0000-000000000047'
 \set eventFullWaitlist '00000000-0000-0000-0000-000000000048'
@@ -25,6 +26,7 @@ select plan(13);
 \set user1ID '00000000-0000-0000-0000-000000000031'
 \set user2ID '00000000-0000-0000-0000-000000000032'
 \set user3ID '00000000-0000-0000-0000-000000000033'
+\set user4ID '00000000-0000-0000-0000-000000000034'
 
 -- ============================================================================
 -- SEED DATA
@@ -47,7 +49,8 @@ insert into "user" (user_id, auth_hash, email, username)
 values
     (:'user1ID', 'h', 'u1@test.com', 'u1'),
     (:'user2ID', 'h', 'u2@test.com', 'u2'),
-    (:'user3ID', 'h', 'u3@test.com', 'u3');
+    (:'user3ID', 'h', 'u3@test.com', 'u3'),
+    (:'user4ID', 'h', 'u4@test.com', 'u4');
 
 -- Groups
 insert into "group" (group_id, community_id, group_category_id, name, slug, active, deleted)
@@ -71,23 +74,31 @@ insert into event (
     starts_at,
     ends_at,
     capacity,
-    waitlist_enabled
+    waitlist_enabled,
+    attendee_approval_required
 )
 values
-    (:'eventOK', 'OK', 'ok', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', true, false, false, null, null, null, false),
-    (:'eventUnpublished', 'Unpub', 'unpub', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', false, false, false, null, null, null, false),
-    (:'eventCanceled', 'Canceled', 'canceled', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', false, true, false, null, null, null, false),
-    (:'eventDeleted', 'Deleted', 'deleted', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', false, false, true, null, null, null, false),
-    (:'eventInactiveGroup', 'Inactive Group', 'inactive-group', 'd', 'UTC', :'eventCategoryID', 'in-person', :'inactiveGroupID', true, false, false, null, null, null, false),
-    (:'eventPast', 'Past', 'past', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', true, false, false, current_timestamp - interval '2 hours', current_timestamp - interval '1 hour', null, false),
-    (:'eventFullNoWaitlist', 'Full No Waitlist', 'full-no-waitlist', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', true, false, false, null, null, 2, false),
-    (:'eventFullWaitlist', 'Full Waitlist', 'full-waitlist', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', true, false, false, null, null, 1, true);
+    (:'eventOK', 'OK', 'ok', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', true, false, false, null, null, null, false, false),
+    (:'eventUnpublished', 'Unpub', 'unpub', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', false, false, false, null, null, null, false, false),
+    (:'eventCanceled', 'Canceled', 'canceled', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', false, true, false, null, null, null, false, false),
+    (:'eventDeleted', 'Deleted', 'deleted', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', false, false, true, null, null, null, false, false),
+    (:'eventInactiveGroup', 'Inactive Group', 'inactive-group', 'd', 'UTC', :'eventCategoryID', 'in-person', :'inactiveGroupID', true, false, false, null, null, null, false, false),
+    (:'eventPast', 'Past', 'past', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', true, false, false, current_timestamp - interval '2 hours', current_timestamp - interval '1 hour', null, false, false),
+    (:'eventFullNoWaitlist', 'Full No Waitlist', 'full-no-waitlist', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', true, false, false, null, null, 2, false, false),
+    (:'eventFullWaitlist', 'Full Waitlist', 'full-waitlist', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', true, false, false, null, null, 1, true, false),
+    (:'eventInviteOnly', 'Invite Only', 'invite-only', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', true, false, false, null, null, 1, false, true);
 
 -- Event attendees
 insert into event_attendee (event_id, user_id)
 values
     (:'eventFullNoWaitlist', :'user1ID'),
     (:'eventFullWaitlist', :'user1ID');
+
+-- Event invitation requests
+insert into event_invitation_request (event_id, user_id, created_at, status, reviewed_at, reviewed_by)
+values
+    (:'eventInviteOnly', :'user3ID', '2024-01-01 00:00:00+00', 'accepted', '2024-01-01 01:00:00+00', :'user1ID'),
+    (:'eventInviteOnly', :'user4ID', '2024-01-02 00:00:00+00', 'rejected', '2024-01-02 01:00:00+00', :'user1ID');
 
 -- ============================================================================
 -- TESTS
@@ -152,6 +163,72 @@ select ok(
         where event_id = :'eventFullWaitlist'::uuid and user_id = :'user2ID'::uuid
     ),
     'Creates event_waitlist row after joining the waitlist'
+);
+
+-- Should recreate attendance when an accepted request no longer has an attendee row
+select is(
+    attend_event(:'communityID'::uuid, :'eventInviteOnly'::uuid, :'user3ID'::uuid),
+    'attendee',
+    'Returns attendee when an accepted requester rejoins'
+);
+
+-- Should create an attendee row for an accepted requester who rejoins
+select ok(
+    exists(
+        select 1
+        from event_attendee
+        where event_id = :'eventInviteOnly'::uuid and user_id = :'user3ID'::uuid
+    ),
+    'Creates attendee row when an accepted requester rejoins'
+);
+
+-- Should create a pending invitation request when approval is required
+select is(
+    attend_event(:'communityID'::uuid, :'eventInviteOnly'::uuid, :'user2ID'::uuid),
+    'pending-approval',
+    'Returns pending approval when the event requires invitation review'
+);
+
+-- Should not create an attendee row before approval
+select ok(
+    not exists(
+        select 1
+        from event_attendee
+        where event_id = :'eventInviteOnly'::uuid and user_id = :'user2ID'::uuid
+    ),
+    'Does not create event_attendee row before invitation approval'
+);
+
+-- Should create a pending invitation request row
+select ok(
+    exists(
+        select 1
+        from event_invitation_request
+        where event_id = :'eventInviteOnly'::uuid
+        and user_id = :'user2ID'::uuid
+        and status = 'pending'
+    ),
+    'Creates pending invitation request row'
+);
+
+-- Should reject duplicate invitation requests
+select throws_ok(
+    format(
+        'select attend_event(%L::uuid,%L::uuid,%L::uuid)',
+        :'communityID', :'eventInviteOnly', :'user2ID'
+    ),
+    'user has already requested an invitation for this event',
+    'Rejects duplicate invitation requests'
+);
+
+-- Should reject users whose invitation request was rejected
+select throws_ok(
+    format(
+        'select attend_event(%L::uuid,%L::uuid,%L::uuid)',
+        :'communityID', :'eventInviteOnly', :'user4ID'
+    ),
+    'invitation request was rejected for this event',
+    'Rejects users whose invitation request was rejected'
 );
 
 -- Should reject duplicate waitlist joins

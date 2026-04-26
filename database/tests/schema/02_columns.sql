@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(63);
+select plan(64);
 
 -- ============================================================================
 -- TESTS
@@ -191,6 +191,7 @@ select columns_are('event', array[
     'timezone',
     'tsdoc',
 
+    'attendee_approval_required',
     'banner_mobile_url',
     'banner_url',
     'capacity',
@@ -231,6 +232,17 @@ select columns_are('event', array[
     'venue_state',
     'venue_zip_code',
     'waitlist_enabled'
+]);
+
+-- Test: event_invitation_request columns should match expected
+select columns_are('event_invitation_request', array[
+    'event_id',
+    'user_id',
+    'created_at',
+    'status',
+
+    'reviewed_at',
+    'reviewed_by'
 ]);
 
 -- Test: event_attendee columns should match expected

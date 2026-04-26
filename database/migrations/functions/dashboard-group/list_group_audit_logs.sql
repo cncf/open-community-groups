@@ -26,6 +26,8 @@ returns json as $$
                 'event_canceled',
                 'event_custom_notification_sent',
                 'event_deleted',
+                'event_invitation_request_accepted',
+                'event_invitation_request_rejected',
                 'event_published',
                 'event_refund_approved',
                 'event_refund_rejected',
