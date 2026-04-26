@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(15);
+select plan(16);
 
 -- ============================================================================
 -- VARIABLES
@@ -371,6 +371,24 @@ select is(
     )::jsonb->'bbox'),
     '{"ne_lat": 37.7749, "ne_lon": -122.4194, "sw_lat": 37.7749, "sw_lon": -122.4194}'::jsonb,
     'Should return bbox covering all event locations (or group locations if event location is not set)'
+);
+
+-- Should include events that start later on date_to
+select is(
+    (select search_events(
+        jsonb_build_object(
+            'community', jsonb_build_array('test-community'),
+            'date_from', to_char(current_date + interval '4 days', 'YYYY-MM-DD'),
+            'date_to', to_char(current_date + interval '4 days', 'YYYY-MM-DD'),
+            'limit', 10,
+            'offset', 0,
+            'ts_query', 'Innovation'
+        )
+    )::jsonb->'events'),
+    jsonb_build_array(
+        get_event_summary(:'community1ID'::uuid, :'group2ID'::uuid, :'event5ID'::uuid)::jsonb
+    ),
+    'Should include events that start later on date_to'
 );
 
 -- ============================================================================

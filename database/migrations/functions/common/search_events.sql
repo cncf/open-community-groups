@@ -126,7 +126,7 @@ begin
             e.starts_at >= v_date_from else true end
         and
             case when v_date_to is not null then
-            e.starts_at <= v_date_to else true end
+            e.starts_at < (v_date_to + interval '1 day') else true end
         and
             case when v_max_distance is not null and v_user_location is not null then
             st_dwithin(v_user_location, coalesce(e.location, g.location), v_max_distance) else true end
