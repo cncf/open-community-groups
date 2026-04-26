@@ -134,6 +134,8 @@
                                     hx-put="/dashboard/group/events/{{ event.event_id }}/attendees/{{ request.user_id }}/invitation/accept"
                                     hx-indicator="#dashboard-spinner"
                                     hx-disabled-elt="this"
+                                    data-invitation-request-action
+                                    data-error-message="Something went wrong accepting this invitation request. Please check the event capacity and try again later."
                                     role="menuitem">
                               <div class="flex items-center">
                                 <div class="svg-icon size-4 icon-check bg-stone-600"></div>
