@@ -190,7 +190,8 @@
                                  value="{{ ticket_type.event_ticket_type_id }}"
                                  class="sr-only"
                                  {% if !ticket_type.is_sellable_now() %}disabled{% endif %}>
-                          <div class="rounded-xl border border-stone-200 p-4 transition group-has-[input:checked]:border-primary-400 group-has-[input:checked]:ring-2 group-has-[input:checked]:ring-primary-200
+                          <div data-attendance-role="ticket-type-card-body"
+                               class="rounded-xl border border-stone-200 p-4 transition group-has-[input:checked]:border-primary-400 group-has-[input:checked]:ring-2 group-has-[input:checked]:ring-primary-200
                                       {% if ticket_type.is_sellable_now() %}
                                         bg-white cursor-pointer hover:border-primary-300
                                       {% else %}

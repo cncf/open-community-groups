@@ -76,9 +76,11 @@ const renderPaidAttendanceDom = ({
                   name="event_ticket_type_id"
                   value="ticket-2"
                 />
-                <span data-attendance-role="ticket-type-title">Community</span>
-                <div class="ticket-price-badge">
-                  Free
+                <div data-attendance-role="ticket-type-card-body" class="bg-white cursor-pointer">
+                  <span data-attendance-role="ticket-type-title">Community</span>
+                  <div class="ticket-price-badge">
+                    Free
+                  </div>
                 </div>
               </label>
               <label data-attendance-role="ticket-type-card">
@@ -89,9 +91,11 @@ const renderPaidAttendanceDom = ({
                   name="event_ticket_type_id"
                   value="ticket-1"
                 />
-                <span data-attendance-role="ticket-type-title">General</span>
-                <div class="ticket-price-badge">
-                  EUR 50.00
+                <div data-attendance-role="ticket-type-card-body" class="bg-white cursor-pointer">
+                  <span data-attendance-role="ticket-type-title">General</span>
+                  <div class="ticket-price-badge">
+                    EUR 50.00
+                  </div>
                 </div>
               </label>
               <label data-attendance-role="ticket-type-card">
@@ -103,9 +107,14 @@ const renderPaidAttendanceDom = ({
                   value="ticket-3"
                   disabled
                 />
-                <span data-attendance-role="ticket-type-title">Staff</span>
-                <span data-attendance-role="ticket-type-status-dot"></span>
-                <span data-attendance-role="ticket-type-status-label">${disabledTicketStatusLabel}</span>
+                <div
+                  data-attendance-role="ticket-type-card-body"
+                  class="bg-stone-50 cursor-not-allowed opacity-60"
+                >
+                  <span data-attendance-role="ticket-type-title">Staff</span>
+                  <span data-attendance-role="ticket-type-status-dot"></span>
+                  <span data-attendance-role="ticket-type-status-label">${disabledTicketStatusLabel}</span>
+                </div>
               </label>
             </div>
             <input
@@ -153,6 +162,7 @@ const renderPaidAttendanceDom = ({
       Array.from(document.querySelectorAll('[data-attendance-role="ticket-type-status-label"]')).map(
         (node) => node.textContent,
       ),
+    ticketCardBodies: document.querySelectorAll('[data-attendance-role="ticket-type-card-body"]'),
     checkoutButton: document.querySelector('[data-attendance-role="checkout-btn"]'),
     checkoutButtonSpinner: document.querySelector('[data-attendance-role="checkout-btn-spinner"]'),
     checkoutButtonLabel: document.querySelector('[data-attendance-role="checkout-btn-label"]'),
@@ -278,7 +288,7 @@ describe("event attendance paid modal", () => {
   });
 
   it("updates a not-on-sale ticket label when availability makes it sellable", async () => {
-    const { ticketTypeOptions, ticketStatusLabels } = renderPaidAttendanceDom({
+    const { ticketCardBodies, ticketTypeOptions, ticketStatusLabels } = renderPaidAttendanceDom({
       availabilityUrl: "/events/test-event/availability",
       disabledTicketStatusLabel: "Not on sale",
     });
@@ -306,6 +316,11 @@ describe("event attendance paid modal", () => {
       await waitForMicrotask();
 
       expect(ticketTypeOptions[2].disabled).to.equal(false);
+      expect(ticketCardBodies[2].classList.contains("bg-white")).to.equal(true);
+      expect(ticketCardBodies[2].classList.contains("cursor-pointer")).to.equal(true);
+      expect(ticketCardBodies[2].classList.contains("bg-stone-50")).to.equal(false);
+      expect(ticketCardBodies[2].classList.contains("cursor-not-allowed")).to.equal(false);
+      expect(ticketCardBodies[2].classList.contains("opacity-60")).to.equal(false);
       expect(ticketStatusLabels()).to.deep.equal(["Available now"]);
     } finally {
       fetchMock.restore();

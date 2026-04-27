@@ -185,7 +185,7 @@ const updateAvailabilityMeta = (container, availability) => {
 const renderTicketAvailability = (option, ticket) => {
   const isSellableNow = ticket.is_sellable_now === true;
   const card = option.closest('[data-attendance-role="ticket-type-card"]');
-  const cardBody = card?.firstElementChild;
+  const cardBody = card?.querySelector('[data-attendance-role="ticket-type-card-body"]');
   const statusDot = card?.querySelector('[data-attendance-role="ticket-type-status-dot"]');
   const statusLabel = card?.querySelector('[data-attendance-role="ticket-type-status-label"]');
 
