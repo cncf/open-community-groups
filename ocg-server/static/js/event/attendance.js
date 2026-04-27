@@ -301,6 +301,9 @@ const renderTicketAvailability = (option, ticket) => {
       statusLabel.textContent = "Not on sale";
     }
   }
+
+  // Keep the radio state aligned with the rendered ticket card state.
+  return isSellableNow;
 };
 
 /**
@@ -319,8 +322,8 @@ const renderTicketAvailabilities = (container, ticketTypes = []) => {
 
     const ticket = ticketsById.get(option.value);
     if (ticket) {
-      renderTicketAvailability(option, ticket);
-      option.disabled = meta.canceled || !meta.ticketPurchaseAvailable || ticket.is_sellable_now !== true;
+      const isSellableNow = renderTicketAvailability(option, ticket);
+      option.disabled = meta.canceled || !meta.ticketPurchaseAvailable || !isSellableNow;
     }
   });
 

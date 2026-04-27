@@ -111,7 +111,9 @@ const renderPaidAttendanceDom = ({
                   data-attendance-role="ticket-type-card-body"
                   class="bg-stone-50 cursor-not-allowed opacity-60"
                 >
-                  <span data-attendance-role="ticket-type-title">Staff</span>
+                  <div data-attendance-role="ticket-type-summary">
+                    <span data-attendance-role="ticket-type-title">Staff</span>
+                  </div>
                   <span data-attendance-role="ticket-type-status-dot"></span>
                   <span data-attendance-role="ticket-type-status-label">${disabledTicketStatusLabel}</span>
                 </div>
@@ -311,7 +313,12 @@ describe("event attendance paid modal", () => {
           is_ticketed: true,
           remaining_capacity: 5,
           ticket_types: [
-            { event_ticket_type_id: "ticket-3", is_sellable_now: true, sold_out: false },
+            {
+              current_price_label: "EUR 25.00",
+              event_ticket_type_id: "ticket-3",
+              is_sellable_now: true,
+              sold_out: false,
+            },
           ],
           waitlist_enabled: false,
         }),
