@@ -45,16 +45,16 @@
         <div>
           {# Main flex container for logo, name/group,
              and social networks -#}
-          <div class="flex flex-1 flex-row flex-wrap items-stretch gap-6 lg:flex-nowrap">
+          <div class="grid gap-x-6 gap-y-4 md:grid-cols-[auto_minmax(0,1fr)] lg:grid-cols-[auto_minmax(0,1fr)_auto]">
             {# Event logo -#}
-            <div class="relative hidden md:block">
+            <div class="relative hidden md:row-span-2 md:block">
               {{ ui::logo(logo_url = event.logo_url, classes = "size-24 md:size-28", size = 112) -}}
             </div>
             {# End event logo -#}
 
-            <div class="flex-1 min-w-0 flex flex-col justify-between">
-              <div class="flex-1 min-w-0 flex justify-between">
-                <div class="flex flex-col">
+            <div class="min-w-0 md:col-start-2 lg:col-span-2">
+              <div class="min-w-0 flex justify-between">
+                <div class="min-w-0 flex flex-col">
                   {# Group/Category legend -#}
                   <a href="/{{ event.community.name }}/group/{{ event.group.slug }}"
                      class="text-sm font-semibold tracking-wide uppercase text-stone-400 hover:underline lg:-mt-1 md:mb-0.5"
@@ -94,58 +94,57 @@
                 {# End social networks and canceled
                    badge (desktop) -#}
               </div>
+            </div>
 
-              <div class="mt-2 lg:mt-auto flex flex-col w-full">
-                {# Event details and date -#}
-                <div class="flex flex-wrap items-center gap-3 md:gap-4 text-stone-600">
-                  {% if let Some(capacity) = &event.capacity -%}
-                    <div class="flex items-center gap-2 leading-none">
-                      <div class="svg-icon size-4 bg-stone-600 icon-people"></div>
-                      {% if event.is_past() -%}
-                        {% if let Some(remaining_capacity) = &event.remaining_capacity -%}
-                          <span class="inline-flex items-center text-sm">Attendees: {{ capacity - remaining_capacity }}</span>
-                        {% else -%}
-                          <span class="inline-flex items-center text-sm">
-                            <span>Capacity:</span>
-                            <span class="ms-1">{{ capacity }}</span>
-                          </span>
-                        {% endif -%}
+            <div class="md:col-start-2 md:self-end lg:col-start-2 lg:row-start-2">
+              {# Event details and date -#}
+              <div class="flex flex-wrap items-center gap-3 md:gap-4 text-stone-600">
+                {% if let Some(capacity) = &event.capacity -%}
+                  <div class="flex items-center gap-2 leading-none">
+                    <div class="svg-icon size-4 bg-stone-600 icon-people"></div>
+                    {% if event.is_past() -%}
+                      {% if let Some(remaining_capacity) = &event.remaining_capacity -%}
+                        <span class="inline-flex items-center text-sm">Attendees: {{ capacity - remaining_capacity }}</span>
                       {% else -%}
                         <span class="inline-flex items-center text-sm">
                           <span>Capacity:</span>
                           <span class="ms-1">{{ capacity }}</span>
                         </span>
-                        <span data-availability-caption="remaining"
-                              class="hidden text-xs text-stone-500">
-                          (Remaining: <span data-availability-remaining></span>)
-                        </span>
-                        <span data-availability-caption="waitlist"
-                              class="hidden text-xs text-stone-500">
-                          (Waitlist: <span data-availability-waitlist></span>)
-                        </span>
                       {% endif -%}
-                    </div>
-                  {% endif -%}
-                  {{ badges::event_badge(kind = event.kind, extra_styles = Some("px-2.5 py-0.5") ) -}}
-                </div>
-                {# End event details and date -#}
-
-                {# Social networks (mobile only) -#}
-                {% if has_social_links -%}
-                  <div class="md:hidden mt-4 md:mb-0">
-                    <div class="flex flex-wrap gap-2">
-                      {% if let Some(meetup_url) = &event.meetup_url -%}
-                        {{ social::social_link(url = meetup_url, icon_name = "meetup", platform_name = "Meetup") -}}
-                      {% endif -%}
-                    </div>
+                    {% else -%}
+                      <span class="inline-flex items-center text-sm">
+                        <span>Capacity:</span>
+                        <span class="ms-1">{{ capacity }}</span>
+                      </span>
+                      <span data-availability-caption="remaining"
+                            class="hidden text-xs text-stone-500">
+                        (Remaining: <span data-availability-remaining></span>)
+                      </span>
+                      <span data-availability-caption="waitlist"
+                            class="hidden text-xs text-stone-500">
+                        (Waitlist: <span data-availability-waitlist></span>)
+                      </span>
+                    {% endif -%}
                   </div>
                 {% endif -%}
-                {# End social networks (mobile) -#}
-
+                {{ badges::event_badge(kind = event.kind, extra_styles = Some("px-2.5 py-0.5") ) -}}
               </div>
+              {# End event details and date -#}
+
+              {# Social networks (mobile only) -#}
+              {% if has_social_links -%}
+                <div class="md:hidden mt-4 md:mb-0">
+                  <div class="flex flex-wrap gap-2">
+                    {% if let Some(meetup_url) = &event.meetup_url -%}
+                      {{ social::social_link(url = meetup_url, icon_name = "meetup", platform_name = "Meetup") -}}
+                    {% endif -%}
+                  </div>
+                </div>
+              {% endif -%}
+              {# End social networks (mobile) -#}
             </div>
 
-            <div class="basis-full flex flex-row flex-wrap gap-4 items-end lg:basis-auto lg:self-end lg:ml-auto">
+            <div class="flex flex-row flex-wrap gap-4 items-end md:col-span-2 md:col-start-1 md:mt-4 lg:col-span-1 lg:col-start-3 lg:row-start-2 lg:mt-0 lg:self-end lg:justify-end">
               {# Share button -#}
               <share-modal title="{{ event.group.name }} · {{ event.name }}" url="/{{ event.community.name }}/group/{{ event.group.slug }}/event/{{ event.slug }}">
               </share-modal>

@@ -39,7 +39,7 @@
           {{ attendance::control_content_with_badge(label = "Buy ticket",
                     icon_class = "icon-ticket",
                     badge_label = ticket_price_badge,
-                    badge_classes = "pointer-events-none absolute -top-6 left-1/2 inline-flex -translate-x-1/2 items-center whitespace-nowrap text-[11px] font-medium text-stone-500 md:-top-5") -}}
+                    badge_classes = "pointer-events-none absolute -top-5 left-1/2 inline-flex -translate-x-1/2 items-center whitespace-nowrap text-[11px] font-medium text-stone-500") -}}
         {% else -%}
           {{ attendance::control_content(label = "Buy ticket", icon_class = "icon-ticket") -}}
         {% endif -%}
@@ -58,12 +58,12 @@
             {{ attendance::control_content_with_badge(label = "Request invitation",
                         icon_class = "icon-request-invitation",
                         badge_label = ticket_price_badge,
-                        badge_classes = "pointer-events-none absolute -top-6 left-1/2 inline-flex -translate-x-1/2 items-center whitespace-nowrap text-[11px] font-medium text-stone-500 md:-top-5") -}}
+                        badge_classes = "pointer-events-none absolute -top-5 left-1/2 inline-flex -translate-x-1/2 items-center whitespace-nowrap text-[11px] font-medium text-stone-500") -}}
           {% else -%}
             {{ attendance::control_content_with_badge(label = "Attend event",
                         icon_class = "icon-user-plus",
                         badge_label = ticket_price_badge,
-                        badge_classes = "pointer-events-none absolute -top-6 left-1/2 inline-flex -translate-x-1/2 items-center whitespace-nowrap text-[11px] font-medium text-stone-500 md:-top-5") -}}
+                        badge_classes = "pointer-events-none absolute -top-5 left-1/2 inline-flex -translate-x-1/2 items-center whitespace-nowrap text-[11px] font-medium text-stone-500") -}}
           {% endif -%}
         {% else -%}
           {% if event.attendee_approval_required -%}
@@ -94,7 +94,7 @@
           {{ attendance::control_content_with_badge(label = "Buy ticket",
                     icon_class = "icon-ticket",
                     badge_label = ticket_price_badge,
-                    badge_classes = "pointer-events-none absolute -top-6 left-1/2 inline-flex -translate-x-1/2 items-center whitespace-nowrap text-[12px] font-medium text-stone-500 md:-top-5") -}}
+                    badge_classes = "pointer-events-none absolute -top-5 left-1/2 inline-flex -translate-x-1/2 items-center whitespace-nowrap text-[12px] font-medium text-stone-500") -}}
         {% else -%}
           {{ attendance::control_content(label = "Buy ticket", icon_class = "icon-ticket") -}}
         {% endif -%}
@@ -115,12 +115,12 @@
             {{ attendance::control_content_with_badge(label = "Request invitation",
                         icon_class = "icon-request-invitation",
                         badge_label = ticket_price_badge,
-                        badge_classes = "pointer-events-none absolute -top-6 left-1/2 inline-flex -translate-x-1/2 items-center whitespace-nowrap text-[12px] font-medium text-stone-500 md:-top-5") -}}
+                        badge_classes = "pointer-events-none absolute -top-5 left-1/2 inline-flex -translate-x-1/2 items-center whitespace-nowrap text-[12px] font-medium text-stone-500") -}}
           {% else -%}
             {{ attendance::control_content_with_badge(label = "Attend event",
                         icon_class = "icon-user-plus",
                         badge_label = ticket_price_badge,
-                        badge_classes = "pointer-events-none absolute -top-6 left-1/2 inline-flex -translate-x-1/2 items-center whitespace-nowrap text-[12px] font-medium text-stone-500 md:-top-5") -}}
+                        badge_classes = "pointer-events-none absolute -top-5 left-1/2 inline-flex -translate-x-1/2 items-center whitespace-nowrap text-[12px] font-medium text-stone-500") -}}
           {% endif -%}
         {% else -%}
           {% if event.attendee_approval_required -%}
