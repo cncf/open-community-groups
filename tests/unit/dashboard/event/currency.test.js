@@ -6,6 +6,11 @@ import {
   resolveCurrencyInputPlaceholder,
   resolveCurrencyInputStep,
   resolveEventCurrencyCode,
+  resolveStripeMaximumChargeInput,
+  resolveStripeMaximumChargeMinor,
+  resolveStripeMinimumChargeInput,
+  resolveStripeMinimumChargeMinor,
+  validateStripePaymentAmountMinor,
 } from "/static/js/dashboard/event/ticketing/currency.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
 
@@ -35,6 +40,17 @@ describe("ticketing currency helpers", () => {
     expect(resolveCurrencyInputStep("JPY")).to.equal("1");
   });
 
+  it("resolves Stripe charge limits for supported currencies", () => {
+    expect(resolveStripeMaximumChargeInput("USD")).to.equal("999999.99");
+    expect(resolveStripeMaximumChargeInput("JPY")).to.equal("9999999999999");
+    expect(resolveStripeMaximumChargeMinor("INR")).to.equal(999999999);
+
+    expect(resolveStripeMinimumChargeInput("USD")).to.equal("0.50");
+    expect(resolveStripeMinimumChargeInput("JPY")).to.equal("50");
+    expect(resolveStripeMinimumChargeMinor("GBP")).to.equal(30);
+    expect(resolveStripeMinimumChargeMinor("VND")).to.equal(null);
+  });
+
   it("formats and parses minor units for different currencies", () => {
     expect(formatMinorUnitsForInput(1234, "USD")).to.equal("12.34");
     expect(formatMinorUnitsForInput(-1234, "USD")).to.equal("-12.34");
@@ -47,5 +63,14 @@ describe("ticketing currency helpers", () => {
     expect(parseCurrencyInputToMinorUnits("12.345", "USD")).to.equal(null);
     expect(parseCurrencyInputToMinorUnits("abc", "USD")).to.equal(null);
     expect(parseCurrencyInputToMinorUnits("", "USD")).to.equal(null);
+  });
+
+  it("validates Stripe charge limits", () => {
+    expect(validateStripePaymentAmountMinor(0, "USD")).to.equal("");
+    expect(validateStripePaymentAmountMinor(50, "USD")).to.equal("");
+    expect(validateStripePaymentAmountMinor(49, "USD")).to.equal(
+      "Use 0 for free tickets, or at least 0.50 USD.",
+    );
+    expect(validateStripePaymentAmountMinor(100000000, "USD")).to.equal("Stripe allows up to 999999.99 USD.");
   });
 });

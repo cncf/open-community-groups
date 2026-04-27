@@ -100,6 +100,9 @@ begin
         v_normalized_discount_code
     );
 
+    -- Validate the final discounted amount before creating a checkout hold
+    perform validate_payment_amount(v_currency_code, v_final_amount_minor);
+
     -- Release any replaced pending selection before creating the new hold
     if v_existing_purchase_id is not null and v_existing_purchase_status = 'pending' then
         perform prepare_event_checkout_expire_previous_hold(v_existing_purchase_id);

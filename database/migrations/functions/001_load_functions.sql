@@ -63,6 +63,8 @@
 
 {{ template "dashboard-group/get_event_ticket_capacity.sql" }} -- Dependency for add/update_event
 {{ template "dashboard-group/list_payment_currency_codes.sql" }} -- Dependency for payment currency validation and dashboard forms
+{{ template "dashboard-group/validate_payment_currency_code.sql" }} -- Dependency for payment amount validation
+{{ template "dashboard-group/validate_payment_amount.sql" }} -- Dependency for event ticketing and checkout validation
 {{ template "dashboard-group/validate_event_capacity.sql" }} -- Dependency for add/update_event
 {{ template "dashboard-group/validate_event_cfs_labels_payload.sql" }} -- Dependency for add/update_event
 {{ template "dashboard-group/validate_event_discount_codes_payload.sql" }} -- Dependency for validate_event_ticketing_payload
@@ -70,7 +72,6 @@
 {{ template "dashboard-group/validate_event_series_action_event_ids.sql" }} -- Dependency for series actions
 {{ template "dashboard-group/validate_event_ticket_types_payload.sql" }} -- Dependency for validate_event_ticketing_payload
 {{ template "dashboard-group/validate_event_ticketing_payload.sql" }} -- Dependency for add/update_event
-{{ template "dashboard-group/validate_payment_currency_code.sql" }} -- Dependency for publish_event and checkout validation
 {{ template "event/promote_event_waitlist.sql" }} -- Dependency for update_event and leave_event
 {{ template "dashboard-group/sync_event_discount_codes.sql" }} -- Dependency for add/update_event
 {{ template "dashboard-group/sync_event_ticket_types.sql" }} -- Dependency for add/update_event
