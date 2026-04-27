@@ -164,7 +164,7 @@ export const TEST_USER_CREDENTIALS = {
     password: "Password123!",
   },
 } as const;
-const BASE_URL = process.env.OCG_E2E_BASE_URL || "http://localhost:9000";
+const BASE_URL = process.env.OCG_E2E_BASE_URL || "http://localhost:9001";
 
 const buildUrl = (path: string) => new URL(path, BASE_URL).toString();
 

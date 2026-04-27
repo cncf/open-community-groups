@@ -47,7 +47,7 @@ const parseYamlScalar = (value: string) => {
 /** Reads DB settings from the local server config when env vars are unset. */
 const readServerDbConfig = (): Partial<DbConfig> => {
   const configDir = process.env.OCG_CONFIG || path.join(process.env.HOME || "", ".config/ocg");
-  const serverConfigPath = path.join(configDir, "server.yml");
+  const serverConfigPath = path.join(configDir, "server-tests-e2e.yml");
 
   if (!existsSync(serverConfigPath)) {
     return {};
@@ -119,10 +119,10 @@ const getDbConfig = (): DbConfig => {
     user: process.env.OCG_DB_USER ?? serverDbConfig.user ?? "postgres",
     password: process.env.OCG_DB_PASSWORD ?? serverDbConfig.password ?? "",
     database:
-      process.env.OCG_DB_NAME_E2E ??
-      process.env.OCG_DB_NAME ??
+      process.env.OCG_DB_NAME_TESTS_E2E ??
       serverDbConfig.database ??
-      "ocg",
+      process.env.OCG_DB_NAME ??
+      "ocg_tests_e2e",
   };
 };
 

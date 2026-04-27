@@ -2,7 +2,7 @@ import * as path from "node:path";
 import { defineConfig, devices } from "@playwright/test";
 
 /** Base URL used by browser contexts and the optional web server health check. */
-const baseURL = process.env.OCG_E2E_BASE_URL || "http://localhost:9000";
+const baseURL = process.env.OCG_E2E_BASE_URL || "http://localhost:9001";
 /** Enables CI-specific retries and screenshot tolerance when running in CI. */
 const isCI = process.env.CI === "true";
 /** Starts the application server as part of the Playwright run when requested. */

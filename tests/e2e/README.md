@@ -11,45 +11,45 @@ End-to-end tests for Open Community Groups using Playwright.
 - `tern` on `PATH`
 - `just`
 
-`just` installs Playwright and browsers, but it does not install `tailwindcss`
-or `tern`.
+`just e2e-install` installs Playwright and browsers, but it does not install
+`tailwindcss` or `tern`.
 
 ## Quick Start
 
-```bash
+```sh
 # Install e2e dependencies from tests/e2e/package.json
 just e2e-install
 
-# Recreate and migrate the main database
-just db-recreate
+# Recreate and migrate the e2e test database
+just db-recreate-tests-e2e
 
-# Load the e2e seed data into the main database
-just db-load-e2e-data
+# Load the e2e seed data into the e2e test database
+just db-load-tests-e2e-data
 
-# Start the server in another terminal
-just server
+# Start the e2e server in another terminal
+just e2e-server
 
 # Run the Playwright suite
 just e2e-tests
 ```
 
-Locally this now follows the same shape as `gitjobs`: use the main database and
-load the e2e seed data into it. CI still keeps its isolated e2e database flow
-in [`.github/workflows/e2e.yml`](/Users/cintiasanchezgarcia/projects/open-community-groups/.github/workflows/e2e.yml).
-`just db-load-e2e-data` also normalizes the seeded `e2e-*` user passwords to
-the credentials expected by the Playwright suite.
+`just db-load-tests-e2e-data` also normalizes the seeded `e2e-*` user
+passwords to the credentials expected by the Playwright suite.
 
 ## Common Commands
 
-```bash
-# Recreate and migrate the main database
-just db-recreate
+```sh
+# Recreate and migrate the e2e test database
+just db-recreate-tests-e2e
 
-# Load the e2e seed data into the main database
-just db-load-e2e-data
+# Load the e2e seed data into the e2e test database
+just db-load-tests-e2e-data
 
-# Start the main server config
-just server
+# Start the e2e server
+just e2e-server
+
+# Start the e2e server with auto-reload
+just e2e-server-watch
 
 # Run the full Playwright suite
 just e2e-tests
@@ -58,13 +58,13 @@ just e2e-tests
 just e2e-update-snapshots
 
 # Run a specific Playwright project
-cd tests/e2e && npx playwright test --config playwright.config.ts --project=chromium-smoke
+cd tests/e2e; npx playwright test --config playwright.config.ts --project=chromium-smoke
 
 # Open the Playwright UI
-cd tests/e2e && npx playwright test --config playwright.config.ts --ui
+cd tests/e2e; npx playwright test --config playwright.config.ts --ui
 
 # Run with a visible browser
-cd tests/e2e && npx playwright test --config playwright.config.ts --headed
+cd tests/e2e; npx playwright test --config playwright.config.ts --headed
 ```
 
 ## Configuration
@@ -72,7 +72,7 @@ cd tests/e2e && npx playwright test --config playwright.config.ts --headed
 Most runs only need:
 
 - `OCG_E2E_BASE_URL`
-  Base URL used by Playwright. Default: `http://localhost:9000`
+  Base URL used by Playwright. Default: `http://localhost:9001`.
 - `OCG_E2E_MEETINGS_ENABLED`
   Enables automatic meeting coverage and assertions. `just e2e-tests` sets this
   to `true` by default. Use `false` to disable it for a custom run.
@@ -94,28 +94,35 @@ Playwright server management:
 - `OCG_E2E_REUSE_SERVER`
   Opt in to attaching to an already running app when `OCG_E2E_START_SERVER=true`
 
-Database settings come from the usual `OCG_DB_*` variables. The default E2E
-tests run against the main local database configured by `OCG_DB_NAME`.
+Database settings come from the usual `OCG_DB_*` variables and the e2e server
+config. The default e2e test database name is configured by
+`OCG_DB_NAME_TESTS_E2E`.
 
-When `OCG_DB_*` variables are not set, the email verification test also falls
-back to the `db` section in `server.yml`.
+The e2e server uses `server-tests-e2e.yml` from `OCG_CONFIG` by default. This
+config should point at the e2e database and listen on a different port from the
+main local server, for example `127.0.0.1:9001` with base URL
+`http://localhost:9001`.
+
+When `OCG_DB_*` variables are not set, the email verification test reads DB
+settings from `server-tests-e2e.yml`.
 
 ## Notes
 
 - The committed e2e Node manifest lives at
-  [`tests/e2e/package.json`](/Users/cintiasanchezgarcia/projects/open-community-groups/tests/e2e/package.json).
-- Keep [`tests/e2e/package-lock.json`](/Users/cintiasanchezgarcia/projects/open-community-groups/tests/e2e/package-lock.json)
+  [`tests/e2e/package.json`](package.json).
+- Keep [`tests/e2e/package-lock.json`](package-lock.json)
   committed and use `npm ci` so Playwright and its browser stack stay pinned for
   visual snapshots.
-- Local e2e runs use the main app database and main server config, like `gitjobs`.
-- Seeded e2e users use the password `Password123!` after `just db-load-e2e-data`.
+- Seeded e2e users use the password `Password123!` after
+  `just db-load-tests-e2e-data`.
 - Firefox and WebKit only run the smoke suite.
 
 ## Troubleshooting
 
 - If navigation fails, verify the server is reachable at
   `<OCG_E2E_BASE_URL>/health-check`.
-- If the database is missing seed data, follow the recreate/migrate/load steps
-  from [`.github/workflows/e2e.yml`](/Users/cintiasanchezgarcia/projects/open-community-groups/.github/workflows/e2e.yml).
-- If port `9000` is busy, run with
-  `OCG_E2E_BASE_URL=http://localhost:9001 just e2e-tests`.
+- If the database is missing seed data, rerun `just db-recreate-tests-e2e` and
+  `just db-load-tests-e2e-data`.
+- If port `9001` is busy, update `server-tests-e2e.yml` and run with a matching
+  `OCG_E2E_BASE_URL`, for example
+  `OCG_E2E_BASE_URL=http://localhost:9002 just e2e-tests`.
