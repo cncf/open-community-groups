@@ -316,9 +316,9 @@ describe("event attendance", () => {
     expect(attendButton.disabled).to.equal(true);
     expect(attendButton.title).to.equal("This event is sold out.");
     expect(attendButton.querySelector("[data-attendance-label]")?.textContent).to.equal("Attend event");
-    expect(attendButton.querySelector("[data-attendance-icon]")?.classList.contains("icon-user-plus")).to.equal(
-      true,
-    );
+    expect(
+      attendButton.querySelector("[data-attendance-icon]")?.classList.contains("icon-user-plus"),
+    ).to.equal(true);
   });
 
   it("shows a sold-out attend button when no waitlist is available", () => {
@@ -365,9 +365,56 @@ describe("event attendance", () => {
       expect(availabilityCaptions.remaining.classList.contains("hidden")).to.equal(false);
       expect(availabilityCaptions.remaining.classList.contains("inline")).to.equal(true);
       expect(availabilityCaptions.remaining.textContent).to.include("1");
+      expect(availabilityCaptions.remainingCompact.classList.contains("hidden")).to.equal(false);
+      expect(availabilityCaptions.remainingCompact.classList.contains("max-md:hidden")).to.equal(true);
+      expect(availabilityCaptions.remainingCompact.classList.contains("md:inline")).to.equal(true);
+      expect(availabilityCaptions.remainingCompact.classList.contains("lg:hidden")).to.equal(true);
       expect(availabilityCaptions.waitlist.classList.contains("hidden")).to.equal(true);
       expect(availabilityCaptions.waitlist.classList.contains("inline")).to.equal(false);
+      expect(availabilityCaptions.waitlistCompact.classList.contains("hidden")).to.equal(true);
+      expect(availabilityCaptions.waitlistCompact.classList.contains("max-md:hidden")).to.equal(false);
       expect(availabilityCaptions.waitlist.textContent).to.not.include("1");
+    } finally {
+      fetchMock.restore();
+    }
+  });
+
+  it("keeps compact waitlist captions hidden on mobile after refreshing availability", async () => {
+    const { availabilityCaptions } = renderAttendanceDom({
+      availabilityUrl: "/events/test-event/availability",
+    });
+    const fetchMock = mockFetch({
+      response: {
+        ok: true,
+        json: async () => ({
+          attendee_approval_required: false,
+          capacity: 2,
+          has_sellable_ticket_types: false,
+          is_ticketed: false,
+          remaining_capacity: 0,
+          ticket_types: [],
+          waitlist_count: 3,
+          waitlist_enabled: true,
+        }),
+      },
+    });
+
+    try {
+      await initializeAttendanceDom();
+      await waitForMicrotask();
+
+      expect(availabilityCaptions.waitlist.classList.contains("hidden")).to.equal(false);
+      expect(availabilityCaptions.waitlist.classList.contains("inline")).to.equal(true);
+      expect(availabilityCaptions.waitlist.textContent).to.include("3");
+      expect(availabilityCaptions.waitlistCompact.classList.contains("hidden")).to.equal(false);
+      expect(availabilityCaptions.waitlistCompact.classList.contains("max-md:hidden")).to.equal(true);
+      expect(availabilityCaptions.waitlistCompact.classList.contains("md:inline")).to.equal(true);
+      expect(availabilityCaptions.waitlistCompact.classList.contains("lg:hidden")).to.equal(true);
+      expect(availabilityCaptions.remaining.classList.contains("hidden")).to.equal(true);
+      expect(availabilityCaptions.remaining.classList.contains("inline")).to.equal(false);
+      expect(availabilityCaptions.remainingCompact.classList.contains("hidden")).to.equal(true);
+      expect(availabilityCaptions.remainingCompact.classList.contains("max-md:hidden")).to.equal(false);
+      expect(availabilityCaptions.remaining.textContent).to.not.include("3");
     } finally {
       fetchMock.restore();
     }
