@@ -332,6 +332,8 @@ Paid-attendance behavior:
 - Paid tickets require payment before attendance is created.
 - If checkout is interrupted, the public event page shows a `Complete payment` state while the
   hold is still active.
+- Attendees can use `Cancel checkout` before payment completes to release the hold and choose a
+  different ticket or discount code.
 - Free ticket attendees can still leave the event themselves.
 - Paid attendees request refunds instead of leaving directly.
 

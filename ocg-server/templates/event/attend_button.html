@@ -326,6 +326,16 @@
     {{ attendance::control_content(label = "Cancel attendance", icon_class = "icon-logout") -}}
   </button>
 
+  <!-- Checkout cancel button (hidden initially) -->
+  <button id="checkout-cancel-btn-{{ attendance_instance }}"
+          data-attendance-role="checkout-cancel-btn"
+          hx-delete="/{{ event.community.name }}/event/{{ event.event_id }}/checkout"
+          hx-trigger="confirmed"
+          hx-swap="none"
+          class="hidden group btn-primary-outline h-10 md:h-[30px] flex items-center justify-center space-x-2">
+    {{ attendance::control_content(label = "Cancel checkout", icon_class = "icon-cancel") -}}
+  </button>
+
   <!-- Refund request button (hidden initially) -->
   <button id="refund-btn-{{ attendance_instance }}"
           data-attendance-role="refund-btn"

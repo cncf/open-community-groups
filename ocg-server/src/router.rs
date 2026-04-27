@@ -134,7 +134,7 @@ pub(crate) async fn setup(
         .route("/{community}/event/{event_id}/attend", post(event::attend_event))
         .route(
             "/{community}/event/{event_id}/checkout",
-            post(event::start_checkout),
+            delete(event::cancel_checkout).post(event::start_checkout),
         )
         .route(
             "/{community}/event/{event_id}/attendance",

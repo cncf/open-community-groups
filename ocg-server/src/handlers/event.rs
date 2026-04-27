@@ -301,6 +301,24 @@ pub(crate) async fn attendance_status(
     })))
 }
 
+/// Handler for canceling an active checkout hold.
+#[instrument(skip_all)]
+pub(crate) async fn cancel_checkout(
+    CurrentUser(user): CurrentUser,
+    State(db): State<DynDB>,
+    CommunityId(community_id): CommunityId,
+    Path((_, event_id)): Path<(String, Uuid)>,
+) -> Result<impl IntoResponse, HandlerError> {
+    db.cancel_event_checkout(community_id, event_id, user.user_id).await?;
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "status": EventAttendanceStatus::None,
+        })),
+    ))
+}
+
 /// Handler that marks the authenticated attendee as checked in.
 #[instrument(skip_all)]
 pub(crate) async fn check_in(

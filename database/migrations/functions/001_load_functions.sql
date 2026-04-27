@@ -188,6 +188,7 @@
 {{ template "payments/approve_event_refund_request.sql" }}
 {{ template "payments/attach_checkout_session_to_event_purchase.sql" }}
 {{ template "payments/begin_event_refund_approval.sql" }}
+{{ template "payments/cancel_event_checkout.sql" }}
 {{ template "payments/complete_free_event_purchase.sql" }}
 {{ template "payments/expire_event_purchase_for_checkout_session.sql" }}
 {{ template "payments/prepare_event_checkout_expire_previous_hold.sql" }} -- Dependency for prepare_event_checkout_purchase

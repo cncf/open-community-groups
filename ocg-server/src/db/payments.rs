@@ -42,6 +42,9 @@ pub(crate) trait DBPayments {
         user_id: Uuid,
     ) -> Result<EventPurchaseSummary>;
 
+    /// Cancels an attendee's active pending checkout.
+    async fn cancel_event_checkout(&self, community_id: Uuid, event_id: Uuid, user_id: Uuid) -> Result<()>;
+
     /// Completes a free purchase locally without a provider checkout.
     async fn complete_free_event_purchase(&self, event_purchase_id: Uuid) -> Result<CompletedEventPurchase>;
 
@@ -176,6 +179,16 @@ impl DBPayments for PgDB {
         self.fetch_json_one(
             "select begin_event_refund_approval($1::uuid, $2::uuid, $3::uuid)",
             &[&group_id, &event_id, &user_id],
+        )
+        .await
+    }
+
+    /// [`DBPayments::cancel_event_checkout`]
+    #[instrument(skip(self), err)]
+    async fn cancel_event_checkout(&self, community_id: Uuid, event_id: Uuid, user_id: Uuid) -> Result<()> {
+        self.execute(
+            "select cancel_event_checkout($1::uuid, $2::uuid, $3::uuid)",
+            &[&community_id, &event_id, &user_id],
         )
         .await
     }

@@ -17,6 +17,7 @@ export const JOIN_WAITLIST_LABEL = "Join waiting list";
 export const REQUEST_INVITATION_LABEL = "Request invitation";
 export const COMPLETE_PAYMENT_LABEL = "Complete payment";
 export const CANCEL_ATTENDANCE_LABEL = "Cancel attendance";
+export const CANCEL_CHECKOUT_LABEL = "Cancel checkout";
 export const CANCEL_INVITATION_REQUEST_LABEL = "Cancel request";
 export const INVITATION_REQUESTED_LABEL = "Invitation requested";
 export const REQUEST_REJECTED_LABEL = "Request rejected";
@@ -39,6 +40,7 @@ const REFUND_CLOSED_TITLE = "Refunds are no longer available for this ticket.";
 const PAST_CHECKOUT_TITLE = "You cannot buy tickets because the event has already started.";
 const INVITATION_PENDING_TITLE = "Your invitation request is waiting for organizer review.";
 const INVITATION_REJECTED_TITLE = "Your invitation request was rejected.";
+const CANCEL_CHECKOUT_TITLE = "Release this ticket hold and choose again.";
 
 /**
  * Returns the attendee refund-control state for the current response.
@@ -256,12 +258,13 @@ const getAttendState = (meta) => {
  * @param {HTMLElement} container - Attendance container element
  */
 export const resetPrimaryControls = (container) => {
-  const { loadingButton, signinButton, attendButton, leaveButton, refundButton } =
+  const { loadingButton, signinButton, attendButton, checkoutCancelButton, leaveButton, refundButton } =
     getPrimaryControls(container);
 
   hideControl(loadingButton);
   hideControl(signinButton);
   hideControl(attendButton);
+  hideControl(checkoutCancelButton);
   hideControl(leaveButton);
   hideControl(refundButton);
 
@@ -322,7 +325,7 @@ export const showSignedOutAttendanceState = (container, meta) => {
  * Shows a single primary attendance control and updates meeting details.
  * @param {HTMLElement} container - Attendance container element
  * @param {object} meta - Attendance metadata
- * @param {"attendButton"|"leaveButton"|"refundButton"} controlName - Primary control key
+ * @param {"attendButton"|"checkoutCancelButton"|"leaveButton"|"refundButton"} controlName - Primary control key
  * @param {object} state - Render state
  * @param {boolean} [isAttendee=false] Whether meeting access should be attendee-scoped
  */
@@ -420,15 +423,22 @@ export const showRejectedInvitationState = (container, meta) => {
  * @param {{resume_checkout_url?: string}} response - Attendance response
  */
 export const showPendingPaymentState = (container, meta, response) => {
-  showPrimaryAttendanceState(
-    container,
-    meta,
-    "attendButton",
+  const { attendButton, checkoutCancelButton } = getPrimaryControls(container);
+
+  resetPrimaryControls(container);
+  renderControl(
+    attendButton,
     withEventDateState(meta, {
       label: COMPLETE_PAYMENT_LABEL,
       resumeUrl: response.resume_checkout_url || "",
     }),
   );
+  renderControl(checkoutCancelButton, {
+    icon: "icon-cancel",
+    label: CANCEL_CHECKOUT_LABEL,
+    title: CANCEL_CHECKOUT_TITLE,
+  });
+  renderMeetingDetails(false, meta);
 };
 
 /**
@@ -617,6 +627,9 @@ export const showPrimaryRequestLoading = (container, role) => {
     return;
   }
 
+  if (role === "checkout-cancel-btn") {
+    getAttendanceControl(container, "attend-btn")?.classList.add("hidden");
+  }
   targetControl.classList.add("hidden");
   loadingButton.classList.remove("hidden");
 };
@@ -634,6 +647,9 @@ export const restorePrimaryRequestControl = (container, role) => {
   }
 
   loadingButton.classList.add("hidden");
+  if (role === "checkout-cancel-btn") {
+    getAttendanceControl(container, "attend-btn")?.classList.remove("hidden");
+  }
   targetControl.classList.remove("hidden");
 };
 

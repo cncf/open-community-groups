@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(223);
+select plan(224);
 
 -- ============================================================================
 -- TESTS
@@ -32,6 +32,7 @@ select has_function('attach_checkout_session_to_event_purchase');
 select has_function('attend_event');
 select has_function('begin_event_refund_approval');
 select has_function('cancel_event');
+select has_function('cancel_event_checkout');
 select has_function('cancel_event_series_events');
 select has_function('check_in_event');
 select has_function('complete_free_event_purchase');

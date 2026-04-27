@@ -44,7 +44,7 @@ import {
 const PAYMENT_RETURN_PARAM = "payment";
 const PAYMENT_RETURN_POLL_ATTEMPTS = 8;
 const PAYMENT_RETURN_POLL_INTERVAL_MS = 2000;
-const PRIMARY_REQUEST_ROLES = new Set(["attend-btn", "leave-btn", "refund-btn"]);
+const PRIMARY_REQUEST_ROLES = new Set(["attend-btn", "checkout-cancel-btn", "leave-btn", "refund-btn"]);
 const TICKET_STATUS_CLASSES = ["bg-green-500", "bg-red-500", "bg-stone-300"];
 const PRIMARY_ACTION_CONFIG = {
   "attend-btn": {
@@ -79,6 +79,13 @@ const PRIMARY_ACTION_CONFIG = {
         showInfoAlert("You have successfully canceled your attendance.");
       }
 
+      return true;
+    },
+  },
+  "checkout-cancel-btn": {
+    errorMessage: "Something went wrong canceling your checkout. Please try again later.",
+    onSuccess: () => {
+      showInfoAlert("Your checkout has been canceled. You can choose a different ticket.");
       return true;
     },
   },
@@ -764,6 +771,16 @@ const handleAttendanceClick = (event) => {
       message = "Are you sure you want to cancel your invitation request?";
     }
     showConfirmAlert(message, leaveButton.id, "Yes");
+    return;
+  }
+
+  const checkoutCancelButton = target.closest('[data-attendance-role="checkout-cancel-btn"]');
+  if (checkoutCancelButton instanceof HTMLElement) {
+    showConfirmAlert(
+      "Are you sure you want to cancel this checkout? Your ticket hold will be released.",
+      checkoutCancelButton.id,
+      "Yes",
+    );
     return;
   }
 
