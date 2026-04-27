@@ -4,6 +4,7 @@ import "/static/js/event/attendance.js";
 import { waitForMicrotask } from "/tests/unit/test-utils/async.js";
 import { useDashboardTestEnv } from "/tests/unit/test-utils/env.js";
 import { dispatchHtmxAfterRequest, dispatchHtmxBeforeRequest } from "/tests/unit/test-utils/htmx.js";
+import { mockFetch } from "/tests/unit/test-utils/network.js";
 
 const initializeAttendanceDom = async () => {
   document.body.dataset.attendanceListenersReady = "true";
@@ -17,6 +18,7 @@ const renderAttendanceDom = ({
   waitlistEnabled = "false",
   isLive = "false",
   canceled = "false",
+  availabilityUrl = "",
   attendeeMeetingAccessOpen = "false",
   attendeeApprovalRequired = "false",
 } = {}) => {
@@ -28,6 +30,7 @@ const renderAttendanceDom = ({
       data-remaining-capacity="${remainingCapacity}"
       data-waitlist-enabled="${waitlistEnabled}"
       data-canceled="${canceled}"
+      ${availabilityUrl ? `data-availability-url="${availabilityUrl}"` : ""}
       data-is-live="${isLive}"
       data-attendee-meeting-access-open="${attendeeMeetingAccessOpen}"
       data-attendee-approval-required="${attendeeApprovalRequired}"
@@ -74,6 +77,18 @@ const renderAttendanceDom = ({
     <div data-meeting-details data-has-recording="true" class="hidden"></div>
     <a data-join-link-always class="hidden"></a>
     <a data-join-link class="hidden"></a>
+    <span data-availability-caption="remaining" class="hidden">
+      (Remaining: <span data-availability-remaining></span>)
+    </span>
+    <span data-availability-caption="remaining-compact" class="hidden">
+      / <span data-availability-remaining></span> left
+    </span>
+    <span data-availability-caption="waitlist" class="hidden">
+      (Waitlist: <span data-availability-waitlist></span>)
+    </span>
+    <span data-availability-caption="waitlist-compact" class="hidden">
+      / <span data-availability-waitlist></span> waitlist
+    </span>
   `;
 
   return {
@@ -86,6 +101,12 @@ const renderAttendanceDom = ({
     meetingDetails: Array.from(document.querySelectorAll("[data-meeting-details]")),
     alwaysJoinLink: document.querySelector("[data-join-link-always]"),
     liveJoinLink: document.querySelector("[data-join-link]"),
+    availabilityCaptions: {
+      remaining: document.querySelector('[data-availability-caption="remaining"]'),
+      remainingCompact: document.querySelector('[data-availability-caption="remaining-compact"]'),
+      waitlist: document.querySelector('[data-availability-caption="waitlist"]'),
+      waitlistCompact: document.querySelector('[data-availability-caption="waitlist-compact"]'),
+    },
   };
 };
 
@@ -315,6 +336,41 @@ describe("event attendance", () => {
     expect(attendButton.disabled).to.equal(true);
     expect(attendButton.title).to.equal("This event is sold out.");
     expect(signinButton.classList.contains("hidden")).to.equal(true);
+  });
+
+  it("shows remaining seats instead of waitlist while capacity is still available", async () => {
+    const { availabilityCaptions } = renderAttendanceDom({
+      availabilityUrl: "/events/test-event/availability",
+    });
+    const fetchMock = mockFetch({
+      response: {
+        ok: true,
+        json: async () => ({
+          attendee_approval_required: false,
+          capacity: 2,
+          has_sellable_ticket_types: false,
+          is_ticketed: false,
+          remaining_capacity: 1,
+          ticket_types: [],
+          waitlist_count: 1,
+          waitlist_enabled: true,
+        }),
+      },
+    });
+
+    try {
+      await initializeAttendanceDom();
+      await waitForMicrotask();
+
+      expect(availabilityCaptions.remaining.classList.contains("hidden")).to.equal(false);
+      expect(availabilityCaptions.remaining.classList.contains("inline-flex")).to.equal(true);
+      expect(availabilityCaptions.remaining.textContent).to.include("1");
+      expect(availabilityCaptions.waitlist.classList.contains("hidden")).to.equal(true);
+      expect(availabilityCaptions.waitlist.classList.contains("inline-flex")).to.equal(false);
+      expect(availabilityCaptions.waitlist.textContent).to.not.include("1");
+    } finally {
+      fetchMock.restore();
+    }
   });
 
   it("disables attendance controls when cached event data is canceled", () => {

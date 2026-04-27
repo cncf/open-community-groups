@@ -107,6 +107,21 @@ const isFiniteNumberValue = (value) =>
   value !== null && value !== undefined && Number.isFinite(Number(value));
 
 /**
+ * Toggles an availability caption's responsive display classes.
+ * @param {string} caption - Availability caption key
+ * @param {boolean} visible - Whether the caption should be visible
+ * @param {string[]} displayClasses - Classes used when visible
+ */
+const renderAvailabilityCaption = (caption, visible, displayClasses) => {
+  document.querySelectorAll(`[data-availability-caption="${caption}"]`).forEach((node) => {
+    node.classList.toggle("hidden", !visible);
+    displayClasses.forEach((className) => {
+      node.classList.toggle(className, visible);
+    });
+  });
+};
+
+/**
  * Updates the public capacity and waitlist counters from fresh availability.
  * @param {Object} availability - Public availability payload
  */
@@ -126,12 +141,14 @@ const renderAvailabilityCaptions = (availability) => {
   document.querySelectorAll("[data-availability-waitlist]").forEach((node) => {
     node.textContent = hasWaitlistCount ? String(waitlistCount) : "";
   });
-  document.querySelectorAll('[data-availability-caption^="remaining"]').forEach((node) => {
-    node.classList.toggle("hidden", !hasRemainingCapacity);
-  });
-  document.querySelectorAll('[data-availability-caption^="waitlist"]').forEach((node) => {
-    node.classList.toggle("hidden", !hasWaitlistCount);
-  });
+  renderAvailabilityCaption("remaining", hasRemainingCapacity, [
+    "inline-flex",
+    "md:hidden",
+    "lg:inline-flex",
+  ]);
+  renderAvailabilityCaption("remaining-compact", hasRemainingCapacity, ["md:inline-flex", "lg:hidden"]);
+  renderAvailabilityCaption("waitlist", hasWaitlistCount, ["inline-flex", "md:hidden", "lg:inline-flex"]);
+  renderAvailabilityCaption("waitlist-compact", hasWaitlistCount, ["md:inline-flex", "lg:hidden"]);
 };
 
 /**
