@@ -205,6 +205,10 @@ pub(crate) async fn setup(
         .route("/{community}/group/{group_slug}", get(group::page))
         .route("/{community}/event/{event_id}/cfs-modal", get(event::cfs_modal))
         .route(
+            "/{community}/group/{group_slug}/event/{event_slug}/availability",
+            get(event::availability),
+        )
+        .route(
             "/{community}/group/{group_slug}/event/{event_slug}",
             get(event::page),
         )

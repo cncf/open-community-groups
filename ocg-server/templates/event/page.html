@@ -34,8 +34,13 @@
 
   <div class="relative container mx-auto max-w-7xl p-4 sm:p-6 lg:p-8 pb-8 md:pb-10 lg:pb-16 flex grow h-full">
     <div class="bg-white border border-stone-200 rounded-lg flex flex-col w-full relative overflow-hidden">
-      {# Sold out badge -#}
-      {{ badges::sold_out_corner_ribbon(remaining_capacity = event.remaining_capacity, capacity = event.capacity) -}}
+      {# Sold out badge hydrated from fresh availability -#}
+      <div data-availability-sold-out-ribbon
+           class="pointer-events-none absolute right-0 top-0 z-10 hidden overflow-hidden rounded-tr-lg h-20 w-20 md:h-24 md:w-24">
+        <span class="absolute block rotate-45 bg-red-500 px-0.5 py-0.5 text-center text-[0.52rem]/4 md:text-[0.6rem]/5 font-bold uppercase tracking-[0.2em] text-white shadow-md right-[-30px] top-[18px] w-28 md:right-[-35px] md:top-[23px] md:w-36">
+          Sold out
+        </span>
+      </div>
       {# End sold out badge -#}
 
       <div class="flex gap-y-6 sm:gap-y-8 lg:gap-y-12 flex-col px-4 sm:px-6 lg:px-10 py-4 sm:py-6 lg:py-10">
@@ -113,23 +118,22 @@
                           <span class="md:hidden lg:inline">Capacity:</span>
                           <span class="ms-1 md:ms-0 xl:ms-1">{{ capacity }}</span>
                         </span>
-                        {% if let Some(remaining_capacity) = &event.remaining_capacity %}
-                          {% if *remaining_capacity > 0 %}
-                            <span class="inline-flex items-center text-xs text-stone-500 md:hidden lg:inline">
-                              (Remaining: {{ remaining_capacity }})
-                            </span>
-                            <span class="hidden md:inline-flex lg:hidden items-center text-xs text-stone-500">
-                              / {{ remaining_capacity }} left
-                            </span>
-                          {% else if event.waitlist_count > 0 %}
-                            <span class="inline-flex items-center text-xs text-stone-500 md:hidden lg:inline">
-                              (Waitlist: {{ event.waitlist_count }})
-                            </span>
-                            <span class="hidden md:inline-flex lg:hidden items-center text-xs text-stone-500">
-                              / {{ event.waitlist_count }} waitlist
-                            </span>
-                          {% endif %}
-                        {% endif %}
+                        <span data-availability-caption="remaining"
+                              class="hidden inline-flex items-center text-xs text-stone-500 md:hidden lg:inline-flex">
+                          (Remaining: <span data-availability-remaining></span>)
+                        </span>
+                        <span data-availability-caption="remaining-compact"
+                              class="hidden md:inline-flex lg:hidden items-center text-xs text-stone-500">
+                          / <span data-availability-remaining></span> left
+                        </span>
+                        <span data-availability-caption="waitlist"
+                              class="hidden inline-flex items-center text-xs text-stone-500 md:hidden lg:inline-flex">
+                          (Waitlist: <span data-availability-waitlist></span>)
+                        </span>
+                        <span data-availability-caption="waitlist-compact"
+                              class="hidden md:inline-flex lg:hidden items-center text-xs text-stone-500">
+                          / <span data-availability-waitlist></span> waitlist
+                        </span>
                       {% endif -%}
                     </div>
                   {% endif -%}

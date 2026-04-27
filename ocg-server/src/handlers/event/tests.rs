@@ -28,6 +28,77 @@ use crate::{
 };
 
 #[tokio::test]
+async fn test_availability_success() {
+    // Setup identifiers and data structures
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let event_ticket_type_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let mut event = sample_event_full(community_id, event_id, group_id);
+    event.remaining_capacity = Some(7);
+    event.ticket_types = Some(vec![EventTicketType {
+        active: true,
+        event_ticket_type_id,
+        order: 1,
+        title: "General admission".to_string(),
+
+        current_price: Some(EventTicketCurrentPrice {
+            amount_minor: 0,
+
+            ends_at: None,
+            starts_at: None,
+        }),
+        remaining_seats: Some(7),
+        seats_total: Some(10),
+        sold_out: false,
+        ..Default::default()
+    }]);
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_community_id_by_name()
+        .times(1)
+        .withf(|name| name == "test-community")
+        .returning(move |_| Ok(Some(community_id)));
+    db.expect_get_event_full_by_slug()
+        .times(1)
+        .withf(move |id, group_slug, event_slug| {
+            *id == community_id && group_slug == "test-group" && event_slug == "test-event"
+        })
+        .returning(move |_, _, _| Ok(event.clone()));
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .build()
+        .await;
+    let request = Request::builder()
+        .method("GET")
+        .uri("/test-community/group/test-group/event/test-event/availability")
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let payload: serde_json::Value = from_slice(&bytes).unwrap();
+
+    // Check response matches expectations
+    assert_eq!(parts.status, StatusCode::OK);
+    assert_eq!(
+        parts.headers.get(CACHE_CONTROL).unwrap(),
+        &HeaderValue::from_static(CACHE_CONTROL_NO_CACHE)
+    );
+    assert_eq!(payload["capacity"], json!(100));
+    assert_eq!(payload["has_sellable_ticket_types"], json!(true));
+    assert_eq!(payload["remaining_capacity"], json!(7));
+    assert_eq!(
+        payload["ticket_types"][0]["event_ticket_type_id"],
+        json!(event_ticket_type_id)
+    );
+    assert_eq!(payload["ticket_types"][0]["is_sellable_now"], json!(true));
+    assert_eq!(payload["ticket_types"][0]["remaining_seats"], json!(7));
+}
+
+#[tokio::test]
 async fn test_page_success() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();

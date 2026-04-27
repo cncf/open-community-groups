@@ -45,6 +45,7 @@ const PAYMENT_RETURN_PARAM = "payment";
 const PAYMENT_RETURN_POLL_ATTEMPTS = 8;
 const PAYMENT_RETURN_POLL_INTERVAL_MS = 2000;
 const PRIMARY_REQUEST_ROLES = new Set(["attend-btn", "leave-btn", "refund-btn"]);
+const TICKET_STATUS_CLASSES = ["bg-green-500", "bg-red-500", "bg-stone-300"];
 const PRIMARY_ACTION_CONFIG = {
   "attend-btn": {
     errorMessage: "Something went wrong registering for this event. Please try again later.",
@@ -88,6 +89,199 @@ const PRIMARY_ACTION_CONFIG = {
       return true;
     },
   },
+};
+
+/**
+ * Returns true when a payload value is a finite number.
+ * @param {unknown} value - Payload value
+ * @returns {boolean} Whether the value is numeric
+ */
+const isFiniteNumberValue = (value) =>
+  value !== null && value !== undefined && Number.isFinite(Number(value));
+
+/**
+ * Updates the public capacity and waitlist counters from fresh availability.
+ * @param {Object} availability - Public availability payload
+ */
+const renderAvailabilityCaptions = (availability) => {
+  const remainingCapacity = Number(availability?.remaining_capacity);
+  const waitlistCount = Number(availability?.waitlist_count);
+  const hasRemainingCapacity = isFiniteNumberValue(availability?.remaining_capacity) && remainingCapacity > 0;
+  const hasWaitlistCount =
+    isFiniteNumberValue(availability?.remaining_capacity) &&
+    remainingCapacity <= 0 &&
+    isFiniteNumberValue(availability?.waitlist_count) &&
+    waitlistCount > 0;
+
+  document.querySelectorAll("[data-availability-remaining]").forEach((node) => {
+    node.textContent = hasRemainingCapacity ? String(remainingCapacity) : "";
+  });
+  document.querySelectorAll("[data-availability-waitlist]").forEach((node) => {
+    node.textContent = hasWaitlistCount ? String(waitlistCount) : "";
+  });
+  document.querySelectorAll('[data-availability-caption^="remaining"]').forEach((node) => {
+    node.classList.toggle("hidden", !hasRemainingCapacity);
+  });
+  document.querySelectorAll('[data-availability-caption^="waitlist"]').forEach((node) => {
+    node.classList.toggle("hidden", !hasWaitlistCount);
+  });
+};
+
+/**
+ * Updates the public sold-out ribbon from fresh availability.
+ * @param {Object} availability - Public availability payload
+ */
+const renderAvailabilityRibbon = (availability) => {
+  const capacity = Number(availability?.capacity);
+  const remainingCapacity = Number(availability?.remaining_capacity);
+  const isSoldOut =
+    isFiniteNumberValue(availability?.capacity) &&
+    capacity > 0 &&
+    isFiniteNumberValue(availability?.remaining_capacity) &&
+    remainingCapacity <= 0;
+
+  document.querySelectorAll("[data-availability-sold-out-ribbon]").forEach((node) => {
+    node.classList.toggle("hidden", !isSoldOut);
+  });
+};
+
+/**
+ * Updates an attendance container's metadata from fresh availability.
+ * @param {HTMLElement} container - Attendance container element
+ * @param {Object} availability - Public availability payload
+ */
+const updateAvailabilityMeta = (container, availability) => {
+  container.dataset.attendeeApprovalRequired = String(availability.attendee_approval_required === true);
+  container.dataset.isTicketed = String(availability.is_ticketed === true);
+  container.dataset.ticketPurchaseAvailable = String(availability.has_sellable_ticket_types === true);
+  container.dataset.waitlistEnabled = String(availability.waitlist_enabled === true);
+
+  if (isFiniteNumberValue(availability.capacity)) {
+    container.dataset.capacity = String(availability.capacity);
+  } else {
+    delete container.dataset.capacity;
+  }
+
+  if (isFiniteNumberValue(availability.remaining_capacity)) {
+    container.dataset.remainingCapacity = String(availability.remaining_capacity);
+  } else {
+    delete container.dataset.remainingCapacity;
+  }
+};
+
+/**
+ * Updates a ticket status label and marker from fresh availability.
+ * @param {HTMLInputElement} option - Ticket radio input
+ * @param {Object} ticket - Public ticket availability payload
+ */
+const renderTicketAvailability = (option, ticket) => {
+  const isSellableNow = ticket.is_sellable_now === true;
+  const card = option.closest('[data-attendance-role="ticket-type-card"]');
+  const cardBody = card?.firstElementChild;
+  const statusDot = card?.querySelector('[data-attendance-role="ticket-type-status-dot"]');
+  const statusLabel = card?.querySelector('[data-attendance-role="ticket-type-status-label"]');
+
+  option.dataset.ticketPurchasable = String(isSellableNow);
+  if (!isSellableNow && option.checked) {
+    option.checked = false;
+  }
+
+  if (cardBody instanceof HTMLElement) {
+    cardBody.classList.toggle("bg-white", isSellableNow);
+    cardBody.classList.toggle("cursor-pointer", isSellableNow);
+    cardBody.classList.toggle("hover:border-primary-300", isSellableNow);
+    cardBody.classList.toggle("bg-stone-50", !isSellableNow);
+    cardBody.classList.toggle("cursor-not-allowed", !isSellableNow);
+    cardBody.classList.toggle("opacity-60", !isSellableNow);
+  }
+
+  if (statusDot instanceof HTMLElement) {
+    statusDot.classList.remove(...TICKET_STATUS_CLASSES);
+    if (ticket.sold_out === true) {
+      statusDot.classList.add("bg-red-500");
+    } else if (isSellableNow) {
+      statusDot.classList.add("bg-green-500");
+    } else {
+      statusDot.classList.add("bg-stone-300");
+    }
+  }
+
+  if (statusLabel instanceof HTMLElement) {
+    if (ticket.sold_out === true) {
+      statusLabel.textContent = "Sold out";
+    } else if (isSellableNow && statusLabel.textContent.trim() === "Sold out") {
+      statusLabel.textContent = "Available now";
+    } else if (!isSellableNow) {
+      statusLabel.textContent = "Not on sale";
+    }
+  }
+};
+
+/**
+ * Updates ticket controls from fresh availability.
+ * @param {HTMLElement} container - Attendance container element
+ * @param {Object[]} ticketTypes - Public ticket availability payloads
+ */
+const renderTicketAvailabilities = (container, ticketTypes = []) => {
+  const meta = getAttendanceMeta(container);
+  const ticketsById = new Map(ticketTypes.map((ticket) => [String(ticket.event_ticket_type_id), ticket]));
+
+  container.querySelectorAll('[data-attendance-role="ticket-type-option"]').forEach((option) => {
+    if (!(option instanceof HTMLInputElement)) {
+      return;
+    }
+
+    const ticket = ticketsById.get(option.value);
+    if (ticket) {
+      renderTicketAvailability(option, ticket);
+      option.disabled = !meta.ticketPurchaseAvailable || ticket.is_sellable_now !== true;
+    }
+  });
+
+  restoreCheckoutModalControls(container);
+};
+
+/**
+ * Applies a fresh public availability payload to the event page.
+ * @param {HTMLElement} container - Attendance container element
+ * @param {Object} availability - Public availability payload
+ * @param {{rerenderAttendance?: boolean}} options - Render options
+ */
+const applyAvailability = (container, availability, options = {}) => {
+  updateAvailabilityMeta(container, availability);
+  renderAvailabilityCaptions(availability);
+  renderAvailabilityRibbon(availability);
+  renderTicketAvailabilities(container, availability.ticket_types || []);
+
+  if (options.rerenderAttendance) {
+    document.body.dispatchEvent(new Event("attendance-changed"));
+  }
+};
+
+/**
+ * Loads fresh public availability for the event page.
+ * @param {HTMLElement} container - Attendance container element
+ * @param {{rerenderAttendance?: boolean}} options - Render options
+ * @returns {Promise<void>}
+ */
+const refreshAvailability = async (container, options = {}) => {
+  const availabilityUrl = container?.dataset?.availabilityUrl;
+  if (!availabilityUrl) {
+    return;
+  }
+
+  const response = await fetch(availabilityUrl, {
+    cache: "no-store",
+    credentials: "same-origin",
+    headers: {
+      Accept: "application/json",
+    },
+  });
+  if (!response.ok) {
+    throw new Error("failed to load availability");
+  }
+
+  applyAvailability(container, await response.json(), options);
 };
 
 /**
@@ -395,6 +589,7 @@ const handlePrimaryActionAfterRequest = (event) => {
   const response = parseJsonResponse(xhr);
   if (config.onSuccess(response) !== false) {
     document.body.dispatchEvent(new Event("attendance-changed"));
+    refreshAvailability(container).catch(() => {});
   }
 };
 
@@ -458,6 +653,7 @@ const handleCheckoutAfterRequest = (event) => {
   }
 
   document.body.dispatchEvent(new Event("attendance-changed"));
+  refreshAvailability(container).catch(() => {});
 };
 
 /**
@@ -612,7 +808,14 @@ const handleAttendanceKeydown = (event) => {
  * @param {Document|HTMLElement} root - Root node to search
  */
 const initializeAttendance = (root = document) => {
-  getAttendanceContainers(root).forEach(initializeAttendanceContainer);
+  getAttendanceContainers(root).forEach((container) => {
+    initializeAttendanceContainer(container);
+
+    if (container.dataset.availabilityReady !== "true") {
+      container.dataset.availabilityReady = "true";
+      refreshAvailability(container, { rerenderAttendance: true }).catch(() => {});
+    }
+  });
 
   if (document.body?.dataset.attendanceListenersReady === "true") {
     return;
