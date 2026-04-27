@@ -116,25 +116,25 @@
                           <span class="ms-1 md:ms-0 xl:ms-1">{{ capacity }}</span>
                         </span>
                         <span data-availability-caption="remaining"
-                              class="hidden items-center text-xs text-stone-500">
+                              class="hidden text-xs text-stone-500">
                           (Remaining: <span data-availability-remaining></span>)
                         </span>
                         <span data-availability-caption="remaining-compact"
-                              class="hidden items-center text-xs text-stone-500">
+                              class="hidden text-xs text-stone-500">
                           / <span data-availability-remaining></span> left
                         </span>
                         <span data-availability-caption="waitlist"
-                              class="hidden items-center text-xs text-stone-500">
+                              class="hidden text-xs text-stone-500">
                           (Waitlist: <span data-availability-waitlist></span>)
                         </span>
                         <span data-availability-caption="waitlist-compact"
-                              class="hidden items-center text-xs text-stone-500">
+                              class="hidden text-xs text-stone-500">
                           / <span data-availability-waitlist></span> waitlist
                         </span>
                       {% endif -%}
                     </div>
                   {% endif -%}
-                  <div>{{ badges::event_badge(kind = event.kind, extra_styles = Some("px-2.5 py-0.5") ) -}}</div>
+                  {{ badges::event_badge(kind = event.kind, extra_styles = Some("px-2.5 py-0.5") ) -}}
                 </div>
                 {# End event details and date -#}
 

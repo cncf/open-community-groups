@@ -363,10 +363,10 @@ describe("event attendance", () => {
       await waitForMicrotask();
 
       expect(availabilityCaptions.remaining.classList.contains("hidden")).to.equal(false);
-      expect(availabilityCaptions.remaining.classList.contains("inline-flex")).to.equal(true);
+      expect(availabilityCaptions.remaining.classList.contains("inline")).to.equal(true);
       expect(availabilityCaptions.remaining.textContent).to.include("1");
       expect(availabilityCaptions.waitlist.classList.contains("hidden")).to.equal(true);
-      expect(availabilityCaptions.waitlist.classList.contains("inline-flex")).to.equal(false);
+      expect(availabilityCaptions.waitlist.classList.contains("inline")).to.equal(false);
       expect(availabilityCaptions.waitlist.textContent).to.not.include("1");
     } finally {
       fetchMock.restore();
