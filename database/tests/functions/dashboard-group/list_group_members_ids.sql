@@ -49,15 +49,15 @@ values
 
 -- Should return members user ids ordered by user id
 select is(
-    list_group_members_ids(:'groupID'::uuid)::jsonb,
-    json_build_array(:'user1ID'::uuid, :'user2ID'::uuid)::jsonb,
+    list_group_members_ids(:'groupID'::uuid),
+    array[:'user1ID'::uuid, :'user2ID'::uuid],
     'Should return members user ids ordered by user id'
 );
 
 -- Should return empty list for non-existing group
 select is(
-    list_group_members_ids('00000000-0000-0000-0000-000000000099'::uuid)::text,
-    '[]',
+    list_group_members_ids('00000000-0000-0000-0000-000000000099'::uuid),
+    array[]::uuid[],
     'Should return empty list for non-existing group'
 );
 

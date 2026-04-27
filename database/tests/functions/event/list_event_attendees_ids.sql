@@ -71,8 +71,8 @@ values (:'eventID', :'user1ID'), (:'eventID', :'user2ID');
 
 -- Should return only verified users
 select is(
-    list_event_attendees_ids(:'groupID'::uuid, :'eventID'::uuid)::jsonb,
-    json_build_array(:'user1ID'::uuid)::jsonb,
+    list_event_attendees_ids(:'groupID'::uuid, :'eventID'::uuid),
+    array[:'user1ID'::uuid],
     'Returns verified attendees only'
 );
 
@@ -82,15 +82,15 @@ insert into "user" (user_id, auth_hash, email, username, email_verified)
 values (:'user0ID', gen_random_bytes(32), 'u0@example.com', 'u0', true);
 insert into event_attendee (event_id, user_id) values (:'eventID', :'user0ID');
 select is(
-    list_event_attendees_ids(:'groupID'::uuid, :'eventID'::uuid)::jsonb,
-    json_build_array(:'user0ID'::uuid, :'user1ID'::uuid)::jsonb,
+    list_event_attendees_ids(:'groupID'::uuid, :'eventID'::uuid),
+    array[:'user0ID'::uuid, :'user1ID'::uuid],
     'Returns attendees ordered by user id asc'
 );
 
 -- Should return empty list for event without attendees
 select is(
-    list_event_attendees_ids('00000000-0000-0000-0000-000000000030'::uuid, '00000000-0000-0000-0000-000000000099'::uuid)::text,
-    '[]',
+    list_event_attendees_ids('00000000-0000-0000-0000-000000000030'::uuid, '00000000-0000-0000-0000-000000000099'::uuid),
+    array[]::uuid[],
     'Returns empty list for event without attendees'
 );
 
@@ -100,8 +100,8 @@ insert into "group" (group_id, community_id, group_category_id, name, slug)
 values (:'anotherGroupID', :'communityID', :'categoryID', 'G2', 'g2');
 
 select is(
-    list_event_attendees_ids(:'anotherGroupID'::uuid, :'eventID'::uuid)::text,
-    '[]',
+    list_event_attendees_ids(:'anotherGroupID'::uuid, :'eventID'::uuid),
+    array[]::uuid[],
     'Returns empty list when wrong group_id is provided'
 );
 

@@ -3,7 +3,7 @@ create or replace function promote_event_waitlist(
     p_event_id uuid,
     p_slots int default null
 )
-returns json as $$
+returns uuid[] as $$
 declare
     v_attendee_count int;
     v_available_slots int;
@@ -14,7 +14,7 @@ declare
 begin
     -- Ignore invalid capped promotion requests
     if p_slots is not null and p_slots <= 0 then
-        return '[]'::json;
+        return array[]::uuid[];
     end if;
 
     -- Lock event row and load capacity configuration
@@ -25,7 +25,7 @@ begin
     for update of e;
 
     if not found then
-        return '[]'::json;
+        return array[]::uuid[];
     end if;
 
     -- Compute how many seats can be filled from the waitlist
@@ -48,7 +48,7 @@ begin
     end if;
 
     if v_available_slots <= 0 then
-        return '[]'::json;
+        return array[]::uuid[];
     end if;
 
     -- Promote the oldest waitlisted users first
@@ -83,6 +83,6 @@ begin
         end if;
     end loop;
 
-    return to_json(coalesce(v_promoted_user_ids, '{}'::uuid[]));
+    return coalesce(v_promoted_user_ids, array[]::uuid[]);
 end;
 $$ language plpgsql;

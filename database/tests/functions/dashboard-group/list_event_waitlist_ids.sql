@@ -81,29 +81,29 @@ values
 
 -- Should return verified waitlist users only
 select is(
-    list_event_waitlist_ids(:'groupID'::uuid, :'eventID'::uuid)::jsonb,
-    json_build_array(:'user0ID'::uuid, :'user1ID'::uuid)::jsonb,
+    list_event_waitlist_ids(:'groupID'::uuid, :'eventID'::uuid),
+    array[:'user0ID'::uuid, :'user1ID'::uuid],
     'Returns verified waitlist users only'
 );
 
 -- Should return waitlist users ordered by user id asc
 select is(
-    list_event_waitlist_ids(:'groupID'::uuid, :'eventID'::uuid)::jsonb,
-    json_build_array(:'user0ID'::uuid, :'user1ID'::uuid)::jsonb,
+    list_event_waitlist_ids(:'groupID'::uuid, :'eventID'::uuid),
+    array[:'user0ID'::uuid, :'user1ID'::uuid],
     'Returns waitlist users ordered by user id asc'
 );
 
 -- Should return empty list for event without waitlist entries
 select is(
-    list_event_waitlist_ids('00000000-0000-0000-0000-000000000030'::uuid, '00000000-0000-0000-0000-000000000099'::uuid)::text,
-    '[]',
+    list_event_waitlist_ids('00000000-0000-0000-0000-000000000030'::uuid, '00000000-0000-0000-0000-000000000099'::uuid),
+    array[]::uuid[],
     'Returns empty list for event without waitlist entries'
 );
 
 -- Should return empty list when wrong group_id is provided
 select is(
-    list_event_waitlist_ids(:'anotherGroupID'::uuid, :'eventID'::uuid)::text,
-    '[]',
+    list_event_waitlist_ids(:'anotherGroupID'::uuid, :'eventID'::uuid),
+    array[]::uuid[],
     'Returns empty list when wrong group_id is provided'
 );
 

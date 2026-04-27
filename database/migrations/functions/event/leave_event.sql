@@ -7,7 +7,7 @@ create or replace function leave_event(
 declare
     v_capacity int;
     v_is_ticketed boolean;
-    v_promoted_user_ids json := '[]'::json;
+    v_promoted_user_ids uuid[] := array[]::uuid[];
     v_purchase_amount_minor bigint;
     v_purchase_id uuid;
 begin
@@ -92,7 +92,7 @@ begin
     if found then
         return json_build_object(
             'left_status', 'waitlisted',
-            'promoted_user_ids', '[]'::json
+            'promoted_user_ids', array[]::uuid[]
         );
     end if;
 
@@ -105,7 +105,7 @@ begin
     if found then
         return json_build_object(
             'left_status', 'pending-approval',
-            'promoted_user_ids', '[]'::json
+            'promoted_user_ids', array[]::uuid[]
         );
     end if;
 
