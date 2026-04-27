@@ -444,6 +444,8 @@ export const showRejectedInvitationState = (container, meta) => {
  * @param {{resume_checkout_url?: string}} response - Attendance response
  */
 export const showPendingPaymentState = (container, meta, response) => {
+  const { checkoutCancelButton } = getPrimaryControls(container);
+
   showPrimaryAttendanceState(
     container,
     meta,

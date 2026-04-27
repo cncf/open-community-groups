@@ -138,6 +138,12 @@ const renderPaidAttendanceDom = ({
         <span data-attendance-label>Cancel attendance</span>
       </button>
       <button
+        data-attendance-role="checkout-cancel-btn"
+        class="hidden"
+      >
+        <span data-attendance-label>Cancel checkout</span>
+      </button>
+      <button
         data-attendance-role="refund-btn"
         class="hidden"
       >
@@ -150,6 +156,7 @@ const renderPaidAttendanceDom = ({
     checker: document.querySelector('[data-attendance-role="attendance-checker"]'),
     signinButton: document.querySelector('[data-attendance-role="signin-btn"]'),
     attendButton: document.querySelector('[data-attendance-role="attend-btn"]'),
+    checkoutCancelButton: document.querySelector('[data-attendance-role="checkout-cancel-btn"]'),
     ticketModal: document.querySelector('[data-attendance-role="ticket-modal"]'),
     checkoutForm: document.querySelector('[data-attendance-role="checkout-form"]'),
     ticketModalForm: document.querySelector('[data-attendance-role="ticket-modal-form"]'),
@@ -406,7 +413,7 @@ describe("event attendance paid modal", () => {
   });
 
   it("keeps pending-payment on the main button instead of opening the ticket modal", async () => {
-    const { checker, attendButton, ticketModal } = renderPaidAttendanceDom();
+    const { checker, attendButton, checkoutCancelButton, ticketModal } = renderPaidAttendanceDom();
     await initializeAttendanceDom();
 
     dispatchHtmxAfterRequest(checker, {
@@ -419,6 +426,7 @@ describe("event attendance paid modal", () => {
     expect(attendButton.querySelector("[data-attendance-label]")?.textContent).to.equal(
       "Complete payment",
     );
+    expect(checkoutCancelButton.classList.contains("hidden")).to.equal(false);
     expect(ticketModal.classList.contains("hidden")).to.equal(true);
   });
 
