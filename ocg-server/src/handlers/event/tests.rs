@@ -35,6 +35,7 @@ async fn test_availability_success() {
     let event_ticket_type_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let mut event = sample_event_full(community_id, event_id, group_id);
+    event.payment_currency_code = Some("usd".to_string());
     event.remaining_capacity = Some(7);
     event.ticket_types = Some(vec![EventTicketType {
         active: true,
@@ -43,7 +44,7 @@ async fn test_availability_success() {
         title: "General admission".to_string(),
 
         current_price: Some(EventTicketCurrentPrice {
-            amount_minor: 0,
+            amount_minor: 1_500,
 
             ends_at: None,
             starts_at: None,
@@ -93,6 +94,10 @@ async fn test_availability_success() {
     assert_eq!(
         payload["ticket_types"][0]["event_ticket_type_id"],
         json!(event_ticket_type_id)
+    );
+    assert_eq!(
+        payload["ticket_types"][0]["current_price_label"],
+        json!("USD 15.00")
     );
     assert_eq!(payload["ticket_types"][0]["is_sellable_now"], json!(true));
     assert_eq!(payload["ticket_types"][0]["remaining_seats"], json!(7));

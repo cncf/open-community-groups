@@ -45,6 +45,21 @@ const PAYMENT_RETURN_PARAM = "payment";
 const PAYMENT_RETURN_POLL_ATTEMPTS = 8;
 const PAYMENT_RETURN_POLL_INTERVAL_MS = 2000;
 const PRIMARY_REQUEST_ROLES = new Set(["attend-btn", "checkout-cancel-btn", "leave-btn", "refund-btn"]);
+const TICKET_PRICE_BADGE_CLASSES = [
+  "inline-flex",
+  "w-fit",
+  "shrink-0",
+  "self-center",
+  "rounded-full",
+  "border",
+  "border-green-800",
+  "bg-green-100",
+  "px-2",
+  "py-0.5",
+  "text-[11px]",
+  "font-semibold",
+  "text-green-800",
+];
 const TICKET_STATUS_CLASSES = ["bg-green-500", "bg-red-500", "bg-stone-300"];
 const PRIMARY_ACTION_CONFIG = {
   "attend-btn": {
@@ -97,6 +112,13 @@ const PRIMARY_ACTION_CONFIG = {
     },
   },
 };
+
+/**
+ * Returns a trimmed string value from an availability payload field.
+ * @param {unknown} value - Availability payload field
+ * @returns {string} Trimmed field value, or an empty string
+ */
+const getAvailabilityStringValue = (value) => (typeof value === "string" ? value.trim() : "");
 
 /**
  * Returns true when a payload value is a finite number.
@@ -191,16 +213,50 @@ const updateAvailabilityMeta = (container, availability) => {
 };
 
 /**
+ * Updates a ticket price badge from fresh availability.
+ * @param {HTMLElement|null|undefined} card - Ticket card element
+ * @param {Object} ticket - Public ticket availability payload
+ * @returns {boolean} True when the card displays a current price badge
+ */
+const renderTicketPriceBadge = (card, ticket) => {
+  const priceLabel = getAvailabilityStringValue(ticket.current_price_label);
+  const priceBadge = card?.querySelector('[data-attendance-role="ticket-type-price-badge"]');
+  const summary = card?.querySelector('[data-attendance-role="ticket-type-summary"]');
+
+  if (!priceLabel) {
+    priceBadge?.remove();
+    return false;
+  }
+
+  if (priceBadge instanceof HTMLElement) {
+    priceBadge.textContent = priceLabel;
+    return true;
+  }
+
+  if (!(summary instanceof HTMLElement)) {
+    return false;
+  }
+
+  const nextPriceBadge = document.createElement("div");
+  nextPriceBadge.dataset.attendanceRole = "ticket-type-price-badge";
+  nextPriceBadge.classList.add(...TICKET_PRICE_BADGE_CLASSES);
+  nextPriceBadge.textContent = priceLabel;
+  summary.append(nextPriceBadge);
+  return true;
+};
+
+/**
  * Updates a ticket status label and marker from fresh availability.
  * @param {HTMLInputElement} option - Ticket radio input
  * @param {Object} ticket - Public ticket availability payload
  */
 const renderTicketAvailability = (option, ticket) => {
-  const isSellableNow = ticket.is_sellable_now === true;
   const card = option.closest('[data-attendance-role="ticket-type-card"]');
   const cardBody = card?.querySelector('[data-attendance-role="ticket-type-card-body"]');
   const statusDot = card?.querySelector('[data-attendance-role="ticket-type-status-dot"]');
   const statusLabel = card?.querySelector('[data-attendance-role="ticket-type-status-label"]');
+  const hasCurrentPriceBadge = renderTicketPriceBadge(card, ticket);
+  const isSellableNow = ticket.is_sellable_now === true && hasCurrentPriceBadge;
 
   option.dataset.ticketPurchasable = String(isSellableNow);
   if (!isSellableNow && option.checked) {
@@ -230,7 +286,7 @@ const renderTicketAvailability = (option, ticket) => {
   if (statusLabel instanceof HTMLElement) {
     if (ticket.sold_out === true) {
       statusLabel.textContent = "Sold out";
-    } else if (isSellableNow && ["Sold out", "Not on sale"].includes(statusLabel.textContent.trim())) {
+    } else if (isSellableNow) {
       statusLabel.textContent = "Available now";
     } else if (!isSellableNow) {
       statusLabel.textContent = "Not on sale";

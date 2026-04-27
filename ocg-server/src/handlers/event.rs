@@ -632,7 +632,12 @@ impl EventAvailability {
                 .as_deref()
                 .unwrap_or_default()
                 .iter()
-                .map(EventTicketAvailability::from_ticket_type)
+                .map(|ticket_type| {
+                    EventTicketAvailability::from_ticket_type(
+                        ticket_type,
+                        event.payment_currency_code.as_deref(),
+                    )
+                })
                 .collect(),
             waitlist_count: event.waitlist_count,
             waitlist_enabled: event.waitlist_enabled,
@@ -655,19 +660,23 @@ struct EventTicketAvailability {
     /// Whether all seats for this ticket type are currently reserved.
     sold_out: bool,
 
+    /// Current attendee-facing price label for this ticket type.
+    current_price_label: Option<String>,
     /// Number of seats still available for this ticket type.
     remaining_seats: Option<i32>,
 }
 
 impl EventTicketAvailability {
     /// Builds a public availability payload for one ticket type.
-    fn from_ticket_type(ticket_type: &EventTicketType) -> Self {
+    fn from_ticket_type(ticket_type: &EventTicketType, payment_currency_code: Option<&str>) -> Self {
         Self {
             active: ticket_type.active,
             event_ticket_type_id: ticket_type.event_ticket_type_id,
             is_sellable_now: ticket_type.is_sellable_now(),
             sold_out: ticket_type.sold_out,
 
+            current_price_label: payment_currency_code
+                .and_then(|currency_code| ticket_type.formatted_current_price(currency_code)),
             remaining_seats: ticket_type.remaining_seats,
         }
     }

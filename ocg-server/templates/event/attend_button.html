@@ -203,16 +203,19 @@
                                   <span class="hidden h-2.5 w-2.5 rounded-full bg-primary-500 group-has-[input:checked]:block"></span>
                                 </span>
                               </span>
-                              <div class="row-start-1 flex w-full min-w-0 items-center justify-between gap-2.5">
+                              <div data-attendance-role="ticket-type-summary"
+                                   class="row-start-1 flex w-full min-w-0 items-center justify-between gap-2.5">
                                 <div class="min-w-0 truncate text-left text-sm font-semibold text-stone-900">{{ ticket_type.title }}</div>
                                 {% if let Some(currency_code) = &event.payment_currency_code -%}
                                   {% if let Some(price_label) = ticket_type.formatted_current_price(currency_code) -%}
-                                    <div class="inline-flex w-fit shrink-0 self-center rounded-full border border-green-800 bg-green-100 px-2 py-0.5 text-[11px] font-semibold text-green-800">
+                                    <div data-attendance-role="ticket-type-price-badge"
+                                         class="inline-flex w-fit shrink-0 self-center rounded-full border border-green-800 bg-green-100 px-2 py-0.5 text-[11px] font-semibold text-green-800">
                                       {{ price_label }}
                                     </div>
                                   {% endif -%}
                                 {% else -%}
-                                  <div class="inline-flex w-fit shrink-0 self-center rounded-full border border-green-800 bg-green-100 px-2 py-0.5 text-[11px] font-semibold text-green-800">
+                                  <div data-attendance-role="ticket-type-price-badge"
+                                       class="inline-flex w-fit shrink-0 self-center rounded-full border border-green-800 bg-green-100 px-2 py-0.5 text-[11px] font-semibold text-green-800">
                                     Ticket
                                   </div>
                                 {% endif -%}
