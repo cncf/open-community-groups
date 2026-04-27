@@ -61,6 +61,7 @@ export const initializeEventUpdatePage = (root = document) => {
   const endsAtInput = queryById("ends_at");
   const capacityInput = queryById("capacity");
   const approvedSubmissionsEvent = "event-approved-submissions-updated";
+  const isCanceledEvent = readBooleanDataAttribute(pageRoot, "eventCanceled");
   const isPastEvent = readBooleanDataAttribute(pageRoot, "eventPast");
   const canManageEvents = readBooleanDataAttribute(pageRoot, "canManageEvents");
   const initialWaitlistCount = Number.parseInt(updateEventButton?.dataset.waitlistCount || "0", 10);
@@ -155,7 +156,7 @@ export const initializeEventUpdatePage = (root = document) => {
         syncSessionsDateRange();
       }
 
-      if (!canManageEvents && inertForm) {
+      if (!canManageEvents && !isCanceledEvent && inertForm) {
         if (sectionName === "submissions") {
           inertForm.removeAttribute("inert");
         } else {

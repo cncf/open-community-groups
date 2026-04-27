@@ -114,17 +114,13 @@
                 <div class="flex items-center">
                   <div class="min-w-0">
                     {# Event name -#}
-                    {% if !event.canceled -%}
-                      <button hx-get="/dashboard/group/events/{{ event.event_id }}/update"
-                              hx-target="#dashboard-content"
-                              hx-indicator="#dashboard-spinner"
-                              hx-swap="innerHTML show:body:top"
-                              hx-disabled-elt="this"
-                              class="block max-w-full truncate hover:underline text-left cursor-pointer bg-transparent border-0 p-0 font-medium text-stone-900"
-                              aria-label="Edit event: {{ event.name }}">{{ event.name }}</button>
-                    {% else -%}
-                      <div class="block max-w-full truncate">{{ event.name }}</div>
-                    {% endif -%}
+                    <button hx-get="/dashboard/group/events/{{ event.event_id }}/update"
+                            hx-target="#dashboard-content"
+                            hx-indicator="#dashboard-spinner"
+                            hx-swap="innerHTML show:body:top"
+                            hx-disabled-elt="this"
+                            class="block max-w-full truncate hover:underline text-left cursor-pointer bg-transparent border-0 p-0 font-medium text-stone-900"
+                            aria-label="Open event details: {{ event.name }}">{{ event.name }}</button>
                     {# End event name -#}
 
                     {# Mobile type and date -#}
@@ -197,11 +193,14 @@
                             hx-indicator="#dashboard-spinner"
                             hx-swap="innerHTML show:body:top"
                             hx-disabled-elt="this"
-                            class="btn-tertiary p-2
-                                   {% if event.canceled %}opacity-50 cursor-not-allowed{% endif %}"
-                            {% if event.canceled %}disabled title="Event is canceled"{% endif %}
-                            aria-label="Edit event: {{ event.name }}">
-                      <div class="svg-icon size-4 icon-pencil"></div>
+                            class="btn-tertiary p-2"
+                            {% if event.canceled %}title="View canceled event"{% endif %}
+                            aria-label="Open event details: {{ event.name }}">
+                      {% if event.canceled -%}
+                        <div class="svg-icon size-4 icon-eye"></div>
+                      {% else -%}
+                        <div class="svg-icon size-4 icon-pencil"></div>
+                      {% endif -%}
                     </button>
                   </div>
                   {# End update event button -#}
@@ -377,17 +376,13 @@
                 <div class="flex items-center">
                   <div class="min-w-0">
                     {# Event name -#}
-                    {% if !event.canceled -%}
-                      <button hx-get="/dashboard/group/events/{{ event.event_id }}/update"
-                              hx-target="#dashboard-content"
-                              hx-indicator="#dashboard-spinner"
-                              hx-swap="innerHTML show:body:top"
-                              hx-disabled-elt="this"
-                              class="block max-w-full truncate hover:underline text-left cursor-pointer bg-transparent border-0 p-0 font-medium text-stone-900"
-                              aria-label="Edit event: {{ event.name }}">{{ event.name }}</button>
-                    {% else -%}
-                      <div class="block max-w-full truncate">{{ event.name }}</div>
-                    {% endif -%}
+                    <button hx-get="/dashboard/group/events/{{ event.event_id }}/update"
+                            hx-target="#dashboard-content"
+                            hx-indicator="#dashboard-spinner"
+                            hx-swap="innerHTML show:body:top"
+                            hx-disabled-elt="this"
+                            class="block max-w-full truncate hover:underline text-left cursor-pointer bg-transparent border-0 p-0 font-medium text-stone-900"
+                            aria-label="Open event details: {{ event.name }}">{{ event.name }}</button>
                     {# End event name -#}
 
                     {# Mobile type and date -#}
@@ -460,11 +455,14 @@
                             hx-indicator="#dashboard-spinner"
                             hx-swap="innerHTML show:body:top"
                             hx-disabled-elt="this"
-                            class="btn-tertiary p-2
-                                   {% if event.canceled %}opacity-50 cursor-not-allowed{% endif %}"
-                            {% if event.canceled %}disabled title="Event is canceled"{% endif %}
-                            aria-label="Edit event: {{ event.name }}">
-                      <div class="svg-icon size-4 icon-pencil"></div>
+                            class="btn-tertiary p-2"
+                            {% if event.canceled %}title="View canceled event"{% endif %}
+                            aria-label="Open event details: {{ event.name }}">
+                      {% if event.canceled -%}
+                        <div class="svg-icon size-4 icon-eye"></div>
+                      {% else -%}
+                        <div class="svg-icon size-4 icon-pencil"></div>
+                      {% endif -%}
                     </button>
                   </div>
                   {# End update event button -#}
