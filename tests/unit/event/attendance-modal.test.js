@@ -16,6 +16,7 @@ const renderPaidAttendanceDom = ({
   ticketPurchaseAvailable = "true",
   disabledTicketStatusLabel = "Sold out",
   includeButtonPriceBadge = true,
+  markButtonPriceBadge = true,
   availabilityUrl = "",
 } = {}) => {
   document.body.innerHTML = `
@@ -39,7 +40,7 @@ const renderPaidAttendanceDom = ({
       <button data-attendance-role="signin-btn" class="hidden" data-path="/events/test-event">
         ${includeButtonPriceBadge
           ? `
-        <span class="ticket-price-badge">
+        <span class="ticket-price-badge absolute left-1/2"${markButtonPriceBadge ? ' data-attendance-role="control-price-badge"' : ""}>
           From EUR 50.00
         </span>`
           : ""}
@@ -51,7 +52,7 @@ const renderPaidAttendanceDom = ({
       >
         ${includeButtonPriceBadge
           ? `
-        <span class="ticket-price-badge">
+        <span class="ticket-price-badge absolute left-1/2"${markButtonPriceBadge ? ' data-attendance-role="control-price-badge"' : ""}>
           From EUR 50.00
         </span>`
           : ""}
@@ -226,6 +227,8 @@ describe("event attendance paid modal", () => {
     expect(attendButton.querySelector(".ticket-price-badge")?.textContent?.trim()).to.equal(
       "From EUR 50.00",
     );
+    expect(attendButton.querySelector(".ticket-price-badge")?.hidden).to.equal(false);
+    expect(attendButton.querySelector(".ticket-price-badge")?.style.display).to.equal("");
 
     attendButton.click();
 
@@ -257,6 +260,23 @@ describe("event attendance paid modal", () => {
     attendButton.click();
 
     expect(ticketModal.classList.contains("hidden")).to.equal(false);
+  });
+
+  it("hides the button price badge when tickets are unavailable", async () => {
+    const { checker, attendButton } = renderPaidAttendanceDom({
+      ticketPurchaseAvailable: "false",
+    });
+    await initializeAttendanceDom();
+
+    dispatchHtmxAfterRequest(checker, {
+      responseText: JSON.stringify({ status: "guest" }),
+    });
+
+    expect(attendButton.querySelector("[data-attendance-label]")?.textContent).to.equal(
+      "Tickets unavailable",
+    );
+    expect(attendButton.querySelector(".ticket-price-badge")?.hidden).to.equal(true);
+    expect(attendButton.querySelector(".ticket-price-badge")?.style.display).to.equal("none");
   });
 
   it("keeps sold-out ticket types visible but disabled in the modal", async () => {
@@ -420,7 +440,9 @@ describe("event attendance paid modal", () => {
   });
 
   it("keeps pending-payment on the main button instead of opening the ticket modal", async () => {
-    const { checker, attendButton, checkoutCancelButton, ticketModal } = renderPaidAttendanceDom();
+    const { checker, signinButton, attendButton, checkoutCancelButton, ticketModal } = renderPaidAttendanceDom({
+      markButtonPriceBadge: false,
+    });
     await initializeAttendanceDom();
 
     dispatchHtmxAfterRequest(checker, {
@@ -433,6 +455,10 @@ describe("event attendance paid modal", () => {
     expect(attendButton.querySelector("[data-attendance-label]")?.textContent).to.equal(
       "Complete payment",
     );
+    expect(attendButton.querySelector(".ticket-price-badge")?.hidden).to.equal(true);
+    expect(attendButton.querySelector(".ticket-price-badge")?.classList.contains("hidden")).to.equal(true);
+    expect(attendButton.querySelector(".ticket-price-badge")?.style.display).to.equal("none");
+    expect(signinButton.querySelector(".ticket-price-badge")?.hidden).to.equal(true);
     expect(checkoutCancelButton.classList.contains("hidden")).to.equal(false);
     expect(ticketModal.classList.contains("hidden")).to.equal(true);
   });

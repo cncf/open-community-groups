@@ -104,6 +104,41 @@ const hideControl = (control) => {
 };
 
 /**
+ * Returns event price badges rendered inside a primary attendance control.
+ * @param {HTMLElement} control - Attendance control to inspect
+ * @returns {HTMLElement[]} Matching price badges
+ */
+const getControlPriceBadges = (control) =>
+  Array.from(control.children).filter(
+    (child) =>
+      child instanceof HTMLElement &&
+      child.tagName === "SPAN" &&
+      !child.hasAttribute("data-attendance-label") &&
+      (child.dataset.attendanceRole === "control-price-badge" ||
+        (child.classList.contains("absolute") && child.classList.contains("left-1/2"))),
+  );
+
+/**
+ * Toggles event price badges rendered inside primary attendance controls.
+ * @param {HTMLElement} container - Attendance container element
+ * @param {boolean} hidden - Whether the badges should be hidden
+ */
+const setControlPriceBadgesHidden = (container, hidden) => {
+  const { signinButton, attendButton } = getPrimaryControls(container);
+  [signinButton, attendButton].forEach((control) => {
+    if (!(control instanceof HTMLElement)) {
+      return;
+    }
+
+    getControlPriceBadges(control).forEach((priceBadge) => {
+      priceBadge.hidden = hidden;
+      priceBadge.classList.toggle("hidden", hidden);
+      priceBadge.style.display = hidden ? "none" : "";
+    });
+  });
+};
+
+/**
  * Applies a rendered state to a control.
  * @param {HTMLElement|null} control - Control to update
  * @param {object} state - Render state
@@ -115,6 +150,7 @@ const renderControl = (control, state = {}) => {
 
   const {
     disabled = false,
+    hidePriceBadge = false,
     icon = null,
     label = null,
     resumeUrl = null,
@@ -131,6 +167,14 @@ const renderControl = (control, state = {}) => {
   if (label !== null) {
     setAttendanceControlLabel(control, label);
   }
+
+  // Price badges describe fresh ticket purchase options, not user-specific states.
+  const shouldHidePriceBadge = hidePriceBadge || (label !== null && label !== BUY_TICKET_LABEL);
+  getControlPriceBadges(control).forEach((priceBadge) => {
+    priceBadge.hidden = shouldHidePriceBadge;
+    priceBadge.classList.toggle("hidden", shouldHidePriceBadge);
+    priceBadge.style.display = shouldHidePriceBadge ? "none" : "";
+  });
 
   if (control instanceof HTMLButtonElement) {
     control.disabled = disabled;
@@ -283,6 +327,7 @@ export const resetPrimaryControls = (container) => {
   hideControl(checkoutCancelButton);
   hideControl(leaveButton);
   hideControl(refundButton);
+  setControlPriceBadgesHidden(container, false);
 
   if (attendButton instanceof HTMLButtonElement) {
     delete attendButton.dataset.resumeUrl;
@@ -451,10 +496,12 @@ export const showPendingPaymentState = (container, meta, response) => {
     meta,
     "attendButton",
     withEventActionState(meta, {
+      hidePriceBadge: true,
       label: COMPLETE_PAYMENT_LABEL,
       resumeUrl: response.resume_checkout_url || "",
     }),
   );
+  setControlPriceBadgesHidden(container, true);
   renderControl(checkoutCancelButton, {
     icon: "icon-cancel",
     label: CANCEL_CHECKOUT_LABEL,
