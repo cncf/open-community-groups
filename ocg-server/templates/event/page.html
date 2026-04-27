@@ -34,13 +34,10 @@
 
   <div class="relative container mx-auto max-w-7xl p-4 sm:p-6 lg:p-8 pb-8 md:pb-10 lg:pb-16 flex grow h-full">
     <div class="bg-white border border-stone-200 rounded-lg flex flex-col w-full relative overflow-hidden">
-      {# Sold out badge hydrated from fresh availability -#}
-      <div data-availability-sold-out-ribbon
-           class="pointer-events-none absolute right-0 top-0 z-10 hidden overflow-hidden rounded-tr-lg h-20 w-20 md:h-24 md:w-24">
-        <span class="absolute block rotate-45 bg-red-500 px-0.5 py-0.5 text-center text-[0.52rem]/4 md:text-[0.6rem]/5 font-bold uppercase tracking-[0.2em] text-white shadow-md right-[-30px] top-[18px] w-28 md:right-[-35px] md:top-[23px] md:w-36">
-          Sold out
-        </span>
-      </div>
+      {{ badges::sold_out_corner_ribbon(remaining_capacity = event.remaining_capacity,
+            capacity = event.capacity,
+            data_attrs = "data-availability-sold-out-ribbon",
+            always_render = true) -}}
       {# End sold out badge -#}
 
       <div class="flex gap-y-6 sm:gap-y-8 lg:gap-y-12 flex-col px-4 sm:px-6 lg:px-10 py-4 sm:py-6 lg:py-10">

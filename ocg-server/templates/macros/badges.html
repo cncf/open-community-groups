@@ -175,22 +175,20 @@
 {# End sold out corner badge -#}
 
 {# Sold out corner ribbon -#}
-{% macro sold_out_corner_ribbon(remaining_capacity, capacity = None, label = "Sold out", container_classes = None, ribbon_classes = None) -%}
+{% macro sold_out_corner_ribbon(remaining_capacity, capacity = None, label = "Sold out", container_classes = None, ribbon_classes = None, data_attrs = "", always_render = false) -%}
   {% let container_classes_ = container_classes.unwrap_or("h-20 w-20 md:h-24 md:w-24") -%}
   {% let ribbon_classes_ = ribbon_classes.unwrap_or("right-[-30px] top-[18px] w-28 md:right-[-35px] md:top-[23px] md:w-36") -%}
+  {% let is_sold_out = capacity.is_some() && capacity.unwrap() > 0 && remaining_capacity.is_some() && remaining_capacity.unwrap() == 0 -%}
 
-  {% if let Some(capacity_) = &capacity -%}
-    {% if *capacity_ > 0 -%}
-      {% if let Some(remaining_capacity_) = &remaining_capacity -%}
-        {% if *remaining_capacity_ == 0 -%}
-          <div class="pointer-events-none absolute right-0 top-0 z-10 overflow-hidden rounded-tr-lg {{ container_classes_ }}">
-            <span class="absolute block rotate-45 bg-red-500 px-0.5 py-0.5 text-center text-[0.52rem]/4 md:text-[0.6rem]/5 font-bold uppercase tracking-[0.2em] text-white shadow-md {{ ribbon_classes_ }}">
-              {{ label }}
-            </span>
-          </div>
-        {% endif -%}
-      {% endif -%}
-    {% endif -%}
+  {% if is_sold_out || always_render -%}
+    <div {{ data_attrs|safe }}
+         class="pointer-events-none absolute right-0 top-0 z-10 overflow-hidden rounded-tr-lg
+                {% if !is_sold_out %}hidden{% endif %}
+                {{ container_classes_ }}">
+      <span class="absolute block rotate-45 bg-red-500 px-0.5 py-0.5 text-center text-[0.52rem]/4 md:text-[0.6rem]/5 font-bold uppercase tracking-[0.2em] text-white shadow-md {{ ribbon_classes_ }}">
+        {{ label }}
+      </span>
+    </div>
   {% endif -%}
 {% endmacro sold_out_corner_ribbon -%}
 {# End sold out corner ribbon -#}
