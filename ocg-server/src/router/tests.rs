@@ -109,6 +109,30 @@ async fn test_health_check_returns_ok() {
 }
 
 #[tokio::test]
+async fn test_payments_webhook_route_is_not_mounted_without_payments_config() {
+    // Setup database mock
+    let db = MockDB::new();
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("POST")
+        .uri("/webhooks/payments")
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_eq!(parts.status, StatusCode::NOT_FOUND);
+    assert!(bytes.is_empty());
+}
+
+#[tokio::test]
 async fn test_redirect_old_hosts_redirects_matching_host() {
     let server_cfg = HttpServerConfig {
         base_url: "https://example.com".to_string(),
@@ -164,4 +188,37 @@ async fn test_static_handler_missing_asset_returns_not_found() {
 
     assert_eq!(parts.status, StatusCode::NOT_FOUND);
     assert!(to_bytes(body, usize::MAX).await.unwrap().is_empty());
+}
+
+#[tokio::test]
+async fn test_zoom_webhook_route_is_not_mounted_when_zoom_is_disabled() {
+    // Setup database mock
+    let db = MockDB::new();
+
+    // Setup disabled Zoom configuration
+    let mut meetings_cfg = sample_zoom_meetings_cfg("zoom-secret");
+    if let Some(zoom_cfg) = meetings_cfg.zoom.as_mut() {
+        zoom_cfg.enabled = false;
+    }
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm)
+        .with_meetings_cfg(meetings_cfg)
+        .build()
+        .await;
+    let request = Request::builder()
+        .method("POST")
+        .uri("/webhooks/zoom")
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_eq!(parts.status, StatusCode::NOT_FOUND);
+    assert!(bytes.is_empty());
 }

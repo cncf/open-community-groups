@@ -189,6 +189,7 @@ fn start_meetings_workers(cfg: &Config, db: Arc<PgDB>, background_tasks: &Backgr
 
     if let Some(ref meetings_cfg) = cfg.meetings
         && let Some(ref zoom_cfg) = meetings_cfg.zoom
+        && zoom_cfg.enabled
     {
         meetings_providers.insert(
             MeetingProvider::Zoom,
