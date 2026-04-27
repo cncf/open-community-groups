@@ -67,11 +67,11 @@ db-init data_dir:
 
 # Run migrations on main database.
 db-migrate:
-    cd "{{ source_dir }}/database/migrations" && TERN_CONF="{{ config_dir }}/tern.conf" ./migrate.sh
+    @output=$(cd "{{ source_dir }}/database/migrations" && TERN_CONF="{{ config_dir }}/tern.conf" ./migrate.sh 2>&1); status=$?; if [ $status -ne 0 ]; then printf '%s\n' "$output"; fi; exit $status
 
 # Run migrations on test database.
 db-migrate-tests:
-    cd "{{ source_dir }}/database/migrations" && TERN_CONF="{{ config_dir }}/tern-tests.conf" ./migrate.sh
+    @output=$(cd "{{ source_dir }}/database/migrations" && TERN_CONF="{{ config_dir }}/tern-tests.conf" ./migrate.sh 2>&1); status=$?; if [ $status -ne 0 ]; then printf '%s\n' "$output"; fi; exit $status
 
 # Drop, create, and migrate main database.
 db-recreate: db-drop db-create db-migrate
@@ -90,11 +90,11 @@ db-server data_dir:
 
 # Run database tests (recreates test db and runs pgTAP tests).
 db-tests: db-recreate-tests
-    pg_prove -h {{ db_host }} -p {{ db_port }} -d {{ db_name_tests }} -U {{ db_user }} --psql-bin {{ pg_bin }}/psql -v $(find "{{ source_dir }}/database/tests/schema" "{{ source_dir }}/database/tests/functions" -type f -name '*.sql' | sort)
+    @pg_prove -h {{ db_host }} -p {{ db_port }} -d {{ db_name_tests }} -U {{ db_user }} --psql-bin {{ pg_bin }}/psql -Q -f $(find "{{ source_dir }}/database/tests/schema" "{{ source_dir }}/database/tests/functions" -type f -name '*.sql' | sort)
 
 # Run database tests on a specific file.
 db-tests-file file: db-migrate-tests
-    pg_prove -h {{ db_host }} -p {{ db_port }} -d {{ db_name_tests }} -U {{ db_user }} --psql-bin {{ pg_bin }}/psql -v {{ file }}
+    @pg_prove -h {{ db_host }} -p {{ db_port }} -d {{ db_name_tests }} -U {{ db_user }} --psql-bin {{ pg_bin }}/psql -Q -f {{ file }}
 
 # Redirector
 

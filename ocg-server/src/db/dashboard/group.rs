@@ -625,7 +625,7 @@ impl DBDashboardGroup for PgDB {
     /// [`DBDashboardGroup::list_event_attendees_ids`]
     #[instrument(skip(self), err)]
     async fn list_event_attendees_ids(&self, group_id: Uuid, event_id: Uuid) -> Result<Vec<Uuid>> {
-        self.fetch_json_one(
+        self.fetch_scalar_one(
             "select list_event_attendees_ids($1::uuid, $2::uuid)",
             &[&group_id, &event_id],
         )
@@ -701,7 +701,7 @@ impl DBDashboardGroup for PgDB {
     /// [`DBDashboardGroup::list_event_waitlist_ids`]
     #[instrument(skip(self), err)]
     async fn list_event_waitlist_ids(&self, group_id: Uuid, event_id: Uuid) -> Result<Vec<Uuid>> {
-        self.fetch_json_one(
+        self.fetch_scalar_one(
             "select list_event_waitlist_ids($1::uuid, $2::uuid)",
             &[&group_id, &event_id],
         )
@@ -735,7 +735,7 @@ impl DBDashboardGroup for PgDB {
     /// [`DBDashboardGroup::list_group_members_ids`]
     #[instrument(skip(self), err)]
     async fn list_group_members_ids(&self, group_id: Uuid) -> Result<Vec<Uuid>> {
-        self.fetch_json_one("select list_group_members_ids($1::uuid)", &[&group_id])
+        self.fetch_scalar_one("select list_group_members_ids($1::uuid)", &[&group_id])
             .await
     }
 
@@ -792,7 +792,7 @@ impl DBDashboardGroup for PgDB {
     /// [`DBDashboardGroup::list_group_team_members_ids`]
     #[instrument(skip(self), err)]
     async fn list_group_team_members_ids(&self, group_id: Uuid) -> Result<Vec<Uuid>> {
-        self.fetch_json_one("select list_group_team_members_ids($1::uuid)", &[&group_id])
+        self.fetch_scalar_one("select list_group_team_members_ids($1::uuid)", &[&group_id])
             .await
     }
 

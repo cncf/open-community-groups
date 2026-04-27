@@ -105,8 +105,8 @@ values
 
 -- Should ignore non-positive slot requests
 select is(
-    promote_event_waitlist(:'eventLimitedID'::uuid, 0)::jsonb,
-    '[]'::jsonb,
+    promote_event_waitlist(:'eventLimitedID'::uuid, 0),
+    array[]::uuid[],
     'Returns an empty list when the requested slots are not positive'
 );
 
@@ -138,22 +138,22 @@ select is(
 
 -- Should return an empty list for an unknown event
 select is(
-    promote_event_waitlist('00000000-0000-0000-0000-999999999999'::uuid)::jsonb,
-    '[]'::jsonb,
+    promote_event_waitlist('00000000-0000-0000-0000-999999999999'::uuid),
+    array[]::uuid[],
     'Returns an empty list for an unknown event'
 );
 
 -- Should return an empty list when no seats are available
 select is(
-    promote_event_waitlist(:'eventFullID'::uuid)::jsonb,
-    '[]'::jsonb,
+    promote_event_waitlist(:'eventFullID'::uuid),
+    array[]::uuid[],
     'Returns an empty list when the event has no available seats'
 );
 
 -- Should promote the oldest waitlist entries up to the available capacity
 select is(
-    promote_event_waitlist(:'eventLimitedID'::uuid)::jsonb,
-    jsonb_build_array(:'user2ID'::uuid, :'user3ID'::uuid),
+    promote_event_waitlist(:'eventLimitedID'::uuid),
+    array[:'user2ID'::uuid, :'user3ID'::uuid],
     'Promotes the oldest waitlist entries first when seats are available'
 );
 
@@ -185,15 +185,15 @@ select is(
 
 -- Should respect an explicit slots cap even when more seats are available
 select is(
-    promote_event_waitlist(:'eventCappedID'::uuid, 1)::jsonb,
-    jsonb_build_array(:'user5ID'::uuid),
+    promote_event_waitlist(:'eventCappedID'::uuid, 1),
+    array[:'user5ID'::uuid],
     'Promotes only the requested number of waitlist entries when slots are capped'
 );
 
 -- Should promote all waitlist users for an unlimited-capacity event
 select is(
-    promote_event_waitlist(:'eventUnlimitedID'::uuid)::jsonb,
-    jsonb_build_array(:'user7ID'::uuid, :'user8ID'::uuid),
+    promote_event_waitlist(:'eventUnlimitedID'::uuid),
+    array[:'user7ID'::uuid, :'user8ID'::uuid],
     'Promotes the full waitlist when the event has unlimited capacity'
 );
 
@@ -223,8 +223,8 @@ select is(
 
 -- Should keep working when trigger-based exclusivity is enabled
 select is(
-    promote_event_waitlist(:'eventCappedID'::uuid)::jsonb,
-    jsonb_build_array(:'user6ID'::uuid, :'user7ID'::uuid),
+    promote_event_waitlist(:'eventCappedID'::uuid),
+    array[:'user6ID'::uuid, :'user7ID'::uuid],
     'Promotes waitlist users successfully with attendee and waitlist exclusivity triggers enabled'
 );
 

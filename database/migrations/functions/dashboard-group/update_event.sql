@@ -28,7 +28,7 @@ declare
     v_new_ends_at timestamptz;
     v_new_starts_at timestamptz;
     v_payment_currency_code text;
-    v_promoted_user_ids json := '[]'::json;
+    v_promoted_user_ids uuid[] := array[]::uuid[];
     v_ticket_capacity int;
     v_ticket_types jsonb;
     v_timezone text := p_event->>'timezone';
@@ -327,6 +327,6 @@ begin
         p_event_id
     );
 
-    return v_promoted_user_ids;
+    return to_json(v_promoted_user_ids);
 end;
 $$ language plpgsql;
