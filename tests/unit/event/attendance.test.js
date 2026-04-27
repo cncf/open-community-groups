@@ -16,6 +16,7 @@ const renderAttendanceDom = ({
   remainingCapacity = "5",
   waitlistEnabled = "false",
   isLive = "false",
+  canceled = "false",
   attendeeMeetingAccessOpen = "false",
   attendeeApprovalRequired = "false",
 } = {}) => {
@@ -26,6 +27,7 @@ const renderAttendanceDom = ({
       data-capacity="${capacity}"
       data-remaining-capacity="${remainingCapacity}"
       data-waitlist-enabled="${waitlistEnabled}"
+      data-canceled="${canceled}"
       data-is-live="${isLive}"
       data-attendee-meeting-access-open="${attendeeMeetingAccessOpen}"
       data-attendee-approval-required="${attendeeApprovalRequired}"
@@ -312,6 +314,21 @@ describe("event attendance", () => {
     expect(attendButton.classList.contains("hidden")).to.equal(false);
     expect(attendButton.disabled).to.equal(true);
     expect(attendButton.title).to.equal("This event is sold out.");
+    expect(signinButton.classList.contains("hidden")).to.equal(true);
+  });
+
+  it("disables attendance controls when cached event data is canceled", () => {
+    const { checker, attendButton, signinButton } = renderAttendanceDom({
+      canceled: "true",
+    });
+
+    dispatchHtmxAfterRequest(checker, {
+      responseText: JSON.stringify({ status: "guest" }),
+    });
+
+    expect(attendButton.classList.contains("hidden")).to.equal(false);
+    expect(attendButton.disabled).to.equal(true);
+    expect(attendButton.title).to.equal("This event has been canceled.");
     expect(signinButton.classList.contains("hidden")).to.equal(true);
   });
 

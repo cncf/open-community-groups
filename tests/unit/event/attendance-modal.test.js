@@ -16,6 +16,7 @@ const renderPaidAttendanceDom = ({
   ticketPurchaseAvailable = "true",
   disabledTicketStatusLabel = "Sold out",
   includeButtonPriceBadge = true,
+  availabilityUrl = "",
 } = {}) => {
   document.body.innerHTML = `
     <div
@@ -23,6 +24,7 @@ const renderPaidAttendanceDom = ({
       data-starts="${starts}"
       data-is-ticketed="true"
       data-ticket-purchase-available="${ticketPurchaseAvailable}"
+      ${availabilityUrl ? `data-availability-url="${availabilityUrl}"` : ""}
       data-path="/events/test-event"
       data-is-live="false"
       data-waitlist-enabled="false"
@@ -102,7 +104,8 @@ const renderPaidAttendanceDom = ({
                   disabled
                 />
                 <span data-attendance-role="ticket-type-title">Staff</span>
-                <span>${disabledTicketStatusLabel}</span>
+                <span data-attendance-role="ticket-type-status-dot"></span>
+                <span data-attendance-role="ticket-type-status-label">${disabledTicketStatusLabel}</span>
               </label>
             </div>
             <input
@@ -144,6 +147,10 @@ const renderPaidAttendanceDom = ({
     ticketTypeOptions: document.querySelectorAll('[data-attendance-role="ticket-type-option"]'),
     ticketTypeTitles: () =>
       Array.from(document.querySelectorAll('[data-attendance-role="ticket-type-title"]')).map(
+        (node) => node.textContent,
+      ),
+    ticketStatusLabels: () =>
+      Array.from(document.querySelectorAll('[data-attendance-role="ticket-type-status-label"]')).map(
         (node) => node.textContent,
       ),
     checkoutButton: document.querySelector('[data-attendance-role="checkout-btn"]'),
@@ -268,6 +275,41 @@ describe("event attendance paid modal", () => {
     expect(disabledTicketCard?.textContent).to.include("Staff");
     expect(disabledTicketCard?.textContent).to.include("Not on sale");
     expect(disabledTicketCard?.textContent).to.not.include("Sold out");
+  });
+
+  it("updates a not-on-sale ticket label when availability makes it sellable", async () => {
+    const { ticketTypeOptions, ticketStatusLabels } = renderPaidAttendanceDom({
+      availabilityUrl: "/events/test-event/availability",
+      disabledTicketStatusLabel: "Not on sale",
+    });
+    const fetchMock = mockFetch({
+      response: {
+        ok: true,
+        json: async () => ({
+          attendee_approval_required: false,
+          canceled: false,
+          capacity: 10,
+          has_sellable_ticket_types: true,
+          is_past: false,
+          is_ticketed: true,
+          remaining_capacity: 5,
+          ticket_types: [
+            { event_ticket_type_id: "ticket-3", is_sellable_now: true, sold_out: false },
+          ],
+          waitlist_enabled: false,
+        }),
+      },
+    });
+
+    try {
+      await initializeAttendanceDom();
+      await waitForMicrotask();
+
+      expect(ticketTypeOptions[2].disabled).to.equal(false);
+      expect(ticketStatusLabels()).to.deep.equal(["Available now"]);
+    } finally {
+      fetchMock.restore();
+    }
   });
 
   it("keeps ticket price badges in the modal as plain text", async () => {

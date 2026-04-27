@@ -159,6 +159,7 @@ const renderAvailabilityRibbon = (availability) => {
  */
 const updateAvailabilityMeta = (container, availability) => {
   container.dataset.attendeeApprovalRequired = String(availability.attendee_approval_required === true);
+  container.dataset.canceled = String(availability.canceled === true);
   container.dataset.isTicketed = String(availability.is_ticketed === true);
   container.dataset.ticketPurchaseAvailable = String(availability.has_sellable_ticket_types === true);
   container.dataset.waitlistEnabled = String(availability.waitlist_enabled === true);
@@ -216,7 +217,7 @@ const renderTicketAvailability = (option, ticket) => {
   if (statusLabel instanceof HTMLElement) {
     if (ticket.sold_out === true) {
       statusLabel.textContent = "Sold out";
-    } else if (isSellableNow && statusLabel.textContent.trim() === "Sold out") {
+    } else if (isSellableNow && ["Sold out", "Not on sale"].includes(statusLabel.textContent.trim())) {
       statusLabel.textContent = "Available now";
     } else if (!isSellableNow) {
       statusLabel.textContent = "Not on sale";
@@ -241,7 +242,7 @@ const renderTicketAvailabilities = (container, ticketTypes = []) => {
     const ticket = ticketsById.get(option.value);
     if (ticket) {
       renderTicketAvailability(option, ticket);
-      option.disabled = !meta.ticketPurchaseAvailable || ticket.is_sellable_now !== true;
+      option.disabled = meta.canceled || !meta.ticketPurchaseAvailable || ticket.is_sellable_now !== true;
     }
   });
 

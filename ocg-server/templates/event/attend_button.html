@@ -3,12 +3,16 @@
 {# Attend button section -#}
 <div id="attendance-container-{{ attendance_instance }}"
      data-attendance-container
+     data-canceled="{{ event.canceled }}"
      data-is-ticketed="{{ event.is_ticketed() }}"
      data-ticket-purchase-available="{{ event.has_sellable_ticket_types() }}"
      data-availability-url="/{{ event.community.name }}/group/{{ event.group.slug }}/event/{{ event.slug }}/availability"
      data-attendee-approval-required="{{ event.attendee_approval_required }}"
      {% if let Some(starts_at) = &event.starts_at %}data-starts="{{ starts_at.to_rfc3339() }}"{% endif %}
      {% if let Some(capacity) = &event.capacity %}data-capacity="{{ capacity }}"{% endif %}
+     {% if let Some(remaining_capacity) = &event.remaining_capacity %}
+       data-remaining-capacity="{{ remaining_capacity }}"
+     {% endif %}
      data-waitlist-enabled="{{ event.waitlist_enabled }}"
      data-is-live="{{ event.is_live() }}"
      data-attendee-meeting-access-open="{{ !event.is_past() || event.is_live() }}"
