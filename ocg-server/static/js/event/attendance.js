@@ -163,18 +163,8 @@ const renderAvailabilityCaptions = (availability) => {
   document.querySelectorAll("[data-availability-waitlist]").forEach((node) => {
     node.textContent = hasWaitlistCount ? String(waitlistCount) : "";
   });
-  renderAvailabilityCaption("remaining", hasRemainingCapacity, ["inline", "md:hidden", "lg:inline"]);
-  renderAvailabilityCaption("remaining-compact", hasRemainingCapacity, [
-    "max-md:hidden",
-    "md:inline",
-    "lg:hidden",
-  ]);
-  renderAvailabilityCaption("waitlist", hasWaitlistCount, ["inline", "md:hidden", "lg:inline"]);
-  renderAvailabilityCaption("waitlist-compact", hasWaitlistCount, [
-    "max-md:hidden",
-    "md:inline",
-    "lg:hidden",
-  ]);
+  renderAvailabilityCaption("remaining", hasRemainingCapacity, ["inline"]);
+  renderAvailabilityCaption("waitlist", hasWaitlistCount, ["inline"]);
 };
 
 /**

@@ -45,7 +45,7 @@
         <div>
           {# Main flex container for logo, name/group,
              and social networks -#}
-          <div class="flex flex-1 flex-row items-stretch gap-6">
+          <div class="flex flex-1 flex-row flex-wrap items-stretch gap-6 lg:flex-nowrap">
             {# Event logo -#}
             <div class="relative hidden md:block">
               {{ ui::logo(logo_url = event.logo_url, classes = "size-24 md:size-28", size = 112) -}}
@@ -95,7 +95,7 @@
                    badge (desktop) -#}
               </div>
 
-              <div class="mt-2 md:mt-auto flex flex-col md:flex-row md:items-end md:justify-between w-full">
+              <div class="mt-2 lg:mt-auto flex flex-col w-full">
                 {# Event details and date -#}
                 <div class="flex flex-wrap items-center gap-3 md:gap-4 text-stone-600">
                   {% if let Some(capacity) = &event.capacity -%}
@@ -106,30 +106,22 @@
                           <span class="inline-flex items-center text-sm">Attendees: {{ capacity - remaining_capacity }}</span>
                         {% else -%}
                           <span class="inline-flex items-center text-sm">
-                            <span class="md:hidden lg:inline">Capacity:</span>
-                            <span class="ms-1 md:ms-0 xl:ms-1">{{ capacity }}</span>
+                            <span>Capacity:</span>
+                            <span class="ms-1">{{ capacity }}</span>
                           </span>
                         {% endif -%}
                       {% else -%}
                         <span class="inline-flex items-center text-sm">
-                          <span class="md:hidden lg:inline">Capacity:</span>
-                          <span class="ms-1 md:ms-0 xl:ms-1">{{ capacity }}</span>
+                          <span>Capacity:</span>
+                          <span class="ms-1">{{ capacity }}</span>
                         </span>
                         <span data-availability-caption="remaining"
                               class="hidden text-xs text-stone-500">
                           (Remaining: <span data-availability-remaining></span>)
                         </span>
-                        <span data-availability-caption="remaining-compact"
-                              class="hidden text-xs text-stone-500">
-                          / <span data-availability-remaining></span> left
-                        </span>
                         <span data-availability-caption="waitlist"
                               class="hidden text-xs text-stone-500">
                           (Waitlist: <span data-availability-waitlist></span>)
-                        </span>
-                        <span data-availability-caption="waitlist-compact"
-                              class="hidden text-xs text-stone-500">
-                          / <span data-availability-waitlist></span> waitlist
                         </span>
                       {% endif -%}
                     </div>
@@ -150,21 +142,21 @@
                 {% endif -%}
                 {# End social networks (mobile) -#}
 
-                <div class="mt-4 md:mt-0 flex flex-row flex-wrap gap-4 items-end md:ml-auto">
-                  {# Share button -#}
-                  <share-modal title="{{ event.group.name }} · {{ event.name }}" url="/{{ event.community.name }}/group/{{ event.group.slug }}/event/{{ event.slug }}">
-                  </share-modal>
-                  {# End share button -#}
-
-                  {% if !event.canceled -%}
-                    {# Attend button section -#}
-                    {% let attendance_instance = "main" -%}
-                    {% include "event/attend_button.html" %}
-                    {# End attend button section -#}
-                  {% endif -%}
-                </div>
-
               </div>
+            </div>
+
+            <div class="basis-full flex flex-row flex-wrap gap-4 items-end lg:basis-auto lg:self-end lg:ml-auto">
+              {# Share button -#}
+              <share-modal title="{{ event.group.name }} · {{ event.name }}" url="/{{ event.community.name }}/group/{{ event.group.slug }}/event/{{ event.slug }}">
+              </share-modal>
+              {# End share button -#}
+
+              {% if !event.canceled -%}
+                {# Attend button section -#}
+                {% let attendance_instance = "main" -%}
+                {% include "event/attend_button.html" %}
+                {# End attend button section -#}
+              {% endif -%}
             </div>
 
           </div>

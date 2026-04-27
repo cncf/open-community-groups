@@ -33,7 +33,7 @@
     <button id="signin-btn-{{ attendance_instance }}"
             data-attendance-role="signin-btn"
             data-path="{{ path }}"
-            class="hidden group btn-primary-outline-anchor h-10 md:h-[30px] flex items-center justify-center space-x-2 overflow-visible">
+            class="hidden group btn-primary-outline-anchor h-10 md:h-[30px] flex items-center justify-center md:space-x-2 overflow-visible">
       {% if !event.is_past() -%}
         {% if let Some(ticket_price_badge) = event.formatted_ticket_price_badge() -%}
           {{ attendance::control_content_with_badge(label = "Buy ticket",
@@ -51,7 +51,7 @@
     <button id="signin-btn-{{ attendance_instance }}"
             data-attendance-role="signin-btn"
             data-path="{{ path }}"
-            class="hidden group btn-primary-outline-anchor h-10 md:h-[30px] flex items-center justify-center space-x-2 overflow-visible">
+            class="hidden group btn-primary-outline-anchor h-10 md:h-[30px] flex items-center justify-center md:space-x-2 overflow-visible">
       {% if !event.is_past() -%}
         {% if let Some(ticket_price_badge) = event.formatted_ticket_price_badge() -%}
           {% if event.attendee_approval_required -%}
@@ -88,7 +88,7 @@
             data-attendance-role="attend-btn"
             hx-include="closest [data-attendance-container]"
             hx-swap="none"
-            class="hidden group btn-primary-outline h-10 md:h-[30px] flex items-center justify-center space-x-2 overflow-visible">
+            class="hidden group btn-primary-outline h-10 md:h-[30px] flex items-center justify-center md:space-x-2 overflow-visible">
       {% if !event.is_past() -%}
         {% if let Some(ticket_price_badge) = event.formatted_ticket_price_badge() -%}
           {{ attendance::control_content_with_badge(label = "Buy ticket",
@@ -108,7 +108,7 @@
             hx-post="/{{ event.community.name }}/event/{{ event.event_id }}/attend"
             hx-include="closest [data-attendance-container]"
             hx-swap="none"
-            class="hidden group btn-primary-outline h-10 md:h-[30px] flex items-center justify-center space-x-2 overflow-visible">
+            class="hidden group btn-primary-outline h-10 md:h-[30px] flex items-center justify-center md:space-x-2 overflow-visible">
       {% if !event.is_past() -%}
         {% if let Some(ticket_price_badge) = event.formatted_ticket_price_badge() -%}
           {% if event.attendee_approval_required -%}
@@ -318,7 +318,7 @@
        data-join-link
        target="_blank"
        rel="noopener noreferrer"
-       class="hidden max-xl:hidden group btn-primary-outline-anchor h-10 md:h-[30px] items-center justify-center space-x-2">
+       class="hidden max-xl:hidden group btn-primary-outline-anchor h-10 md:h-[30px] items-center justify-center md:space-x-2">
       <div class="svg-icon size-3 icon-meeting"></div>
       <span>Join meeting</span>
     </a>
@@ -330,7 +330,7 @@
           hx-delete="/{{ event.community.name }}/event/{{ event.event_id }}/leave"
           hx-trigger="confirmed"
           hx-swap="none"
-          class="hidden group btn-primary-outline h-10 md:h-[30px] flex items-center justify-center space-x-2">
+          class="hidden group btn-primary-outline h-10 md:h-[30px] flex items-center justify-center md:space-x-2">
     {{ attendance::control_content(label = "Cancel attendance", icon_class = "icon-logout") -}}
   </button>
 
@@ -340,7 +340,7 @@
           hx-delete="/{{ event.community.name }}/event/{{ event.event_id }}/checkout"
           hx-trigger="confirmed"
           hx-swap="none"
-          class="hidden group btn-primary-outline h-10 md:h-[30px] flex items-center justify-center space-x-2">
+          class="hidden group btn-primary-outline h-10 md:h-[30px] flex items-center justify-center md:space-x-2">
     {{ attendance::control_content(label = "Cancel checkout", icon_class = "icon-cancel") -}}
   </button>
 
@@ -350,7 +350,7 @@
           hx-post="/{{ event.community.name }}/event/{{ event.event_id }}/refund-request"
           hx-trigger="confirmed"
           hx-swap="none"
-          class="hidden group btn-primary-outline h-10 md:h-[30px] flex items-center justify-center space-x-2">
+          class="hidden group btn-primary-outline h-10 md:h-[30px] flex items-center justify-center md:space-x-2">
     {{ attendance::control_content(label = "Request refund", icon_class = "icon-refund") -}}
   </button>
 

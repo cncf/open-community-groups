@@ -80,14 +80,8 @@ const renderAttendanceDom = ({
     <span data-availability-caption="remaining" class="hidden">
       (Remaining: <span data-availability-remaining></span>)
     </span>
-    <span data-availability-caption="remaining-compact" class="hidden">
-      / <span data-availability-remaining></span> left
-    </span>
     <span data-availability-caption="waitlist" class="hidden">
       (Waitlist: <span data-availability-waitlist></span>)
-    </span>
-    <span data-availability-caption="waitlist-compact" class="hidden">
-      / <span data-availability-waitlist></span> waitlist
     </span>
   `;
 
@@ -103,9 +97,7 @@ const renderAttendanceDom = ({
     liveJoinLink: document.querySelector("[data-join-link]"),
     availabilityCaptions: {
       remaining: document.querySelector('[data-availability-caption="remaining"]'),
-      remainingCompact: document.querySelector('[data-availability-caption="remaining-compact"]'),
       waitlist: document.querySelector('[data-availability-caption="waitlist"]'),
-      waitlistCompact: document.querySelector('[data-availability-caption="waitlist-compact"]'),
     },
   };
 };
@@ -365,21 +357,15 @@ describe("event attendance", () => {
       expect(availabilityCaptions.remaining.classList.contains("hidden")).to.equal(false);
       expect(availabilityCaptions.remaining.classList.contains("inline")).to.equal(true);
       expect(availabilityCaptions.remaining.textContent).to.include("1");
-      expect(availabilityCaptions.remainingCompact.classList.contains("hidden")).to.equal(false);
-      expect(availabilityCaptions.remainingCompact.classList.contains("max-md:hidden")).to.equal(true);
-      expect(availabilityCaptions.remainingCompact.classList.contains("md:inline")).to.equal(true);
-      expect(availabilityCaptions.remainingCompact.classList.contains("lg:hidden")).to.equal(true);
       expect(availabilityCaptions.waitlist.classList.contains("hidden")).to.equal(true);
       expect(availabilityCaptions.waitlist.classList.contains("inline")).to.equal(false);
-      expect(availabilityCaptions.waitlistCompact.classList.contains("hidden")).to.equal(true);
-      expect(availabilityCaptions.waitlistCompact.classList.contains("max-md:hidden")).to.equal(false);
       expect(availabilityCaptions.waitlist.textContent).to.not.include("1");
     } finally {
       fetchMock.restore();
     }
   });
 
-  it("keeps compact waitlist captions hidden on mobile after refreshing availability", async () => {
+  it("shows waitlist count after refreshing availability", async () => {
     const { availabilityCaptions } = renderAttendanceDom({
       availabilityUrl: "/events/test-event/availability",
     });
@@ -406,14 +392,8 @@ describe("event attendance", () => {
       expect(availabilityCaptions.waitlist.classList.contains("hidden")).to.equal(false);
       expect(availabilityCaptions.waitlist.classList.contains("inline")).to.equal(true);
       expect(availabilityCaptions.waitlist.textContent).to.include("3");
-      expect(availabilityCaptions.waitlistCompact.classList.contains("hidden")).to.equal(false);
-      expect(availabilityCaptions.waitlistCompact.classList.contains("max-md:hidden")).to.equal(true);
-      expect(availabilityCaptions.waitlistCompact.classList.contains("md:inline")).to.equal(true);
-      expect(availabilityCaptions.waitlistCompact.classList.contains("lg:hidden")).to.equal(true);
       expect(availabilityCaptions.remaining.classList.contains("hidden")).to.equal(true);
       expect(availabilityCaptions.remaining.classList.contains("inline")).to.equal(false);
-      expect(availabilityCaptions.remainingCompact.classList.contains("hidden")).to.equal(true);
-      expect(availabilityCaptions.remainingCompact.classList.contains("max-md:hidden")).to.equal(false);
       expect(availabilityCaptions.remaining.textContent).to.not.include("3");
     } finally {
       fetchMock.restore();

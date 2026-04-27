@@ -179,13 +179,13 @@ export class ShareModal extends LitWrapper {
     return html`
       <button
         type="button"
-        class="group btn-primary-outline h-10 md:h-[30px] px-4
-               flex items-center justify-center space-x-2"
+        class="group btn-primary-outline flex h-10 w-10 items-center justify-center p-0 md:h-[30px] md:w-auto md:px-4 md:py-2 md:space-x-2"
+        aria-label="Share"
         @click=${this._openModal}
         title="Share"
       >
         <div class="svg-icon size-3 icon-share"></div>
-        <span>Share</span>
+        <span class="hidden md:inline">Share</span>
       </button>
 
       ${this._isOpen
