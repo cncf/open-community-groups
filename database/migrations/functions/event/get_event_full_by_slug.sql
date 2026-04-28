@@ -9,5 +9,5 @@ returns json as $$
     and e.slug = p_event_slug
     and e.deleted = false
     and g.active = true
-    and (e.published = true or e.canceled = true);
+    and e.published = true;
 $$ language sql;

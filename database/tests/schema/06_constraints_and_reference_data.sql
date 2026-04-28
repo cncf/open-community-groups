@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(41);
+select plan(40);
 
 -- ============================================================================
 -- TESTS
@@ -14,7 +14,6 @@ select has_check('custom_notification');
 
 -- Test: event table expected constraints exist
 select has_check('event', 'event_check');
-select has_check('event', 'event_check1');
 select has_check('event', 'event_check2');
 select has_check('event', 'event_cfs_fields_chk');
 select has_check('event', 'event_cfs_window_chk');

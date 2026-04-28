@@ -206,7 +206,7 @@
 
                   {# View event button -#}
                   <div>
-                    {% if event.published && !event.canceled -%}
+                    {% if event.published -%}
                       <a href="/{{ event.community_name }}/group/{{ event.group_slug }}/event/{{ event.slug }}"
                          target="_blank"
                          rel="noopener noreferrer"
@@ -217,7 +217,7 @@
                     {% else -%}
                       <button disabled
                               class="btn-tertiary p-2 inline-flex items-center justify-center opacity-50 cursor-not-allowed"
-                              title="Event must be published and not canceled"
+                              title="Event must be published"
                               aria-label="View event page: {{ event.name }}">
                         <div class="svg-icon size-4 icon-eye"></div>
                       </button>
@@ -467,7 +467,7 @@
 
                   {# View event button -#}
                   <div>
-                    {% if event.published && !event.canceled -%}
+                    {% if event.published -%}
                       <a href="/{{ event.community_name }}/group/{{ event.group_slug }}/event/{{ event.slug }}"
                          target="_blank"
                          rel="noopener noreferrer"
@@ -478,7 +478,7 @@
                     {% else -%}
                       <button disabled
                               class="btn-tertiary p-2 inline-flex items-center justify-center opacity-50 cursor-not-allowed"
-                              title="Event must be published and not canceled"
+                              title="Event must be published"
                               aria-label="View event page: {{ event.name }}">
                         <div class="svg-icon size-4 icon-eye"></div>
                       </button>
