@@ -140,12 +140,20 @@ const renderPaidAttendanceDom = ({
       >
         <span data-attendance-label>Cancel attendance</span>
       </button>
-      <button
-        data-attendance-role="checkout-cancel-btn"
-        class="hidden"
-      >
-        <span data-attendance-label>Cancel checkout</span>
-      </button>
+      <details data-attendance-role="actions-menu" data-event-actions-menu class="hidden">
+        <button
+          data-attendance-role="checkout-resume-btn"
+          class="hidden"
+        >
+          <span data-attendance-label>Complete payment</span>
+        </button>
+        <button
+          data-attendance-role="checkout-cancel-btn"
+          class="hidden"
+        >
+          <span data-attendance-label>Cancel checkout</span>
+        </button>
+      </details>
       <button
         data-attendance-role="refund-btn"
         class="hidden"
@@ -159,7 +167,9 @@ const renderPaidAttendanceDom = ({
     checker: document.querySelector('[data-attendance-role="attendance-checker"]'),
     signinButton: document.querySelector('[data-attendance-role="signin-btn"]'),
     attendButton: document.querySelector('[data-attendance-role="attend-btn"]'),
+    actionsMenu: document.querySelector('[data-attendance-role="actions-menu"]'),
     checkoutCancelButton: document.querySelector('[data-attendance-role="checkout-cancel-btn"]'),
+    checkoutResumeButton: document.querySelector('[data-attendance-role="checkout-resume-btn"]'),
     ticketModal: document.querySelector('[data-attendance-role="ticket-modal"]'),
     checkoutForm: document.querySelector('[data-attendance-role="checkout-form"]'),
     ticketModalForm: document.querySelector('[data-attendance-role="ticket-modal-form"]'),
@@ -440,9 +450,18 @@ describe("event attendance paid modal", () => {
   });
 
   it("keeps pending-payment on the main button instead of opening the ticket modal", async () => {
-    const { checker, signinButton, attendButton, checkoutCancelButton, ticketModal } = renderPaidAttendanceDom({
+    const {
+      actionsMenu,
+      checker,
+      signinButton,
+      attendButton,
+      checkoutCancelButton,
+      checkoutResumeButton,
+      ticketModal,
+    } =
+      renderPaidAttendanceDom({
       markButtonPriceBadge: false,
-    });
+      });
     await initializeAttendanceDom();
 
     dispatchHtmxAfterRequest(checker, {
@@ -452,15 +471,36 @@ describe("event attendance paid modal", () => {
       }),
     });
 
-    expect(attendButton.querySelector("[data-attendance-label]")?.textContent).to.equal(
+    expect(attendButton.classList.contains("hidden")).to.equal(true);
+    expect(checkoutResumeButton.querySelector("[data-attendance-label]")?.textContent).to.equal(
       "Complete payment",
     );
+    expect(checkoutResumeButton.classList.contains("hidden")).to.equal(false);
+    expect(checkoutResumeButton.dataset.resumeUrl).to.equal("https://example.test/checkout/resume");
     expect(attendButton.querySelector(".ticket-price-badge")?.hidden).to.equal(true);
     expect(attendButton.querySelector(".ticket-price-badge")?.classList.contains("hidden")).to.equal(true);
     expect(attendButton.querySelector(".ticket-price-badge")?.style.display).to.equal("none");
     expect(signinButton.querySelector(".ticket-price-badge")?.hidden).to.equal(true);
+    expect(actionsMenu.classList.contains("hidden")).to.equal(false);
     expect(checkoutCancelButton.classList.contains("hidden")).to.equal(false);
     expect(ticketModal.classList.contains("hidden")).to.equal(true);
+  });
+
+  it("closes the event actions menu when clicking outside", async () => {
+    const { actionsMenu, checker } = renderPaidAttendanceDom();
+    await initializeAttendanceDom();
+
+    dispatchHtmxAfterRequest(checker, {
+      responseText: JSON.stringify({
+        status: "pending-payment",
+        resume_checkout_url: "https://example.test/checkout/resume",
+      }),
+    });
+
+    actionsMenu.open = true;
+    document.body.click();
+
+    expect(actionsMenu.open).to.equal(false);
   });
 
   it("shows modal checkout loading, closes on success, and emits attendance changes", async () => {

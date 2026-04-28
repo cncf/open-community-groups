@@ -318,19 +318,35 @@ const getAttendState = (meta) => {
  * @param {HTMLElement} container - Attendance container element
  */
 export const resetPrimaryControls = (container) => {
-  const { loadingButton, signinButton, attendButton, checkoutCancelButton, leaveButton, refundButton } =
-    getPrimaryControls(container);
+  const {
+    actionsMenu,
+    loadingButton,
+    signinButton,
+    attendButton,
+    checkoutCancelButton,
+    checkoutResumeButton,
+    leaveButton,
+    refundButton,
+  } = getPrimaryControls(container);
 
+  actionsMenu?.classList.remove("hidden");
   hideControl(loadingButton);
   hideControl(signinButton);
   hideControl(attendButton);
   hideControl(checkoutCancelButton);
+  hideControl(checkoutResumeButton);
   hideControl(leaveButton);
   hideControl(refundButton);
   setControlPriceBadgesHidden(container, false);
 
   if (attendButton instanceof HTMLButtonElement) {
     delete attendButton.dataset.resumeUrl;
+  }
+  if (checkoutResumeButton instanceof HTMLButtonElement) {
+    delete checkoutResumeButton.dataset.resumeUrl;
+  }
+  if (actionsMenu instanceof HTMLDetailsElement) {
+    actionsMenu.open = false;
   }
 };
 
@@ -355,6 +371,12 @@ export const renderMeetingDetails = (isAttendee, meta) => {
   joinLinksLive.forEach((link) => {
     link.classList.toggle("hidden", !showAttendeeMeetingAccess);
     link.classList.toggle("xl:flex", showAttendeeMeetingAccess);
+  });
+
+  const joinLinksMenu = document.querySelectorAll("[data-join-link-menu]");
+  joinLinksMenu.forEach((link) => {
+    link.classList.toggle("hidden", !showAttendeeMeetingAccess);
+    link.classList.toggle("max-xl:flex", showAttendeeMeetingAccess);
   });
 };
 
@@ -487,19 +509,19 @@ export const showRejectedInvitationState = (container, meta) => {
  * @param {{resume_checkout_url?: string}} response - Attendance response
  */
 export const showPendingPaymentState = (container, meta, response) => {
-  const { checkoutCancelButton } = getPrimaryControls(container);
+  const { actionsMenu, checkoutCancelButton, checkoutResumeButton } = getPrimaryControls(container);
 
-  showPrimaryAttendanceState(
-    container,
-    meta,
-    "attendButton",
+  resetPrimaryControls(container);
+  setControlPriceBadgesHidden(container, true);
+  renderControl(actionsMenu);
+  renderControl(
+    checkoutResumeButton,
     withEventActionState(meta, {
-      hidePriceBadge: true,
+      icon: "icon-ticket",
       label: COMPLETE_PAYMENT_LABEL,
       resumeUrl: response.resume_checkout_url || "",
     }),
   );
-  setControlPriceBadgesHidden(container, true);
   renderControl(checkoutCancelButton, {
     icon: "icon-cancel",
     label: CANCEL_CHECKOUT_LABEL,
@@ -701,6 +723,11 @@ export const showPrimaryRequestLoading = (container, role) => {
 
   if (role === "checkout-cancel-btn") {
     getAttendanceControl(container, "attend-btn")?.classList.add("hidden");
+    const actionsMenu = getAttendanceControl(container, "actions-menu");
+    actionsMenu?.classList.add("hidden");
+    if (actionsMenu instanceof HTMLDetailsElement) {
+      actionsMenu.open = false;
+    }
   }
   targetControl.classList.add("hidden");
   loadingButton.classList.remove("hidden");
@@ -721,6 +748,8 @@ export const restorePrimaryRequestControl = (container, role) => {
   loadingButton.classList.add("hidden");
   if (role === "checkout-cancel-btn") {
     getAttendanceControl(container, "attend-btn")?.classList.remove("hidden");
+    const actionsMenu = getAttendanceControl(container, "actions-menu");
+    actionsMenu?.classList.remove("hidden");
   }
   targetControl.classList.remove("hidden");
 };

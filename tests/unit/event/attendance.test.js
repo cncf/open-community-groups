@@ -76,6 +76,7 @@ const renderAttendanceDom = ({
     </div>
     <div data-meeting-details data-has-recording="true" class="hidden"></div>
     <a data-join-link class="hidden"></a>
+    <a data-join-link-menu class="hidden xl:hidden"></a>
     <span data-availability-caption="remaining" class="hidden">
       (Remaining: <span data-availability-remaining></span>)
     </span>
@@ -95,6 +96,7 @@ const renderAttendanceDom = ({
     meetingDetails: Array.from(document.querySelectorAll("[data-meeting-details]")),
     alwaysJoinLink: document.querySelector("[data-join-link-always]"),
     liveJoinLink: document.querySelector("[data-join-link]"),
+    menuJoinLink: document.querySelector("[data-join-link-menu]"),
     availabilityCaptions: {
       remaining: document.querySelector('[data-availability-caption="remaining"]'),
       waitlist: document.querySelector('[data-availability-caption="waitlist"]'),
@@ -130,7 +132,7 @@ describe("event attendance", () => {
   });
 
   it("shows the join meeting link when attendee meeting access is open", () => {
-    const { checker, alwaysJoinLink, liveJoinLink, meetingDetails } = renderAttendanceDom({
+    const { checker, alwaysJoinLink, liveJoinLink, menuJoinLink, meetingDetails } = renderAttendanceDom({
       attendeeMeetingAccessOpen: "true",
     });
 
@@ -141,11 +143,13 @@ describe("event attendance", () => {
     expect(alwaysJoinLink.classList.contains("hidden")).to.equal(false);
     expect(liveJoinLink.classList.contains("hidden")).to.equal(false);
     expect(liveJoinLink.classList.contains("xl:flex")).to.equal(true);
+    expect(menuJoinLink.classList.contains("hidden")).to.equal(false);
+    expect(menuJoinLink.classList.contains("max-xl:flex")).to.equal(true);
     expect(meetingDetails[0].classList.contains("hidden")).to.equal(false);
   });
 
   it("keeps the join meeting link hidden before attendee meeting access opens", () => {
-    const { checker, alwaysJoinLink, liveJoinLink, meetingDetails } = renderAttendanceDom({
+    const { checker, alwaysJoinLink, liveJoinLink, menuJoinLink, meetingDetails } = renderAttendanceDom({
       attendeeMeetingAccessOpen: "false",
     });
 
@@ -156,6 +160,8 @@ describe("event attendance", () => {
     expect(alwaysJoinLink.classList.contains("hidden")).to.equal(true);
     expect(liveJoinLink.classList.contains("hidden")).to.equal(true);
     expect(liveJoinLink.classList.contains("xl:flex")).to.equal(false);
+    expect(menuJoinLink.classList.contains("hidden")).to.equal(true);
+    expect(menuJoinLink.classList.contains("max-xl:flex")).to.equal(false);
     expect(meetingDetails[0].classList.contains("hidden")).to.equal(true);
   });
 

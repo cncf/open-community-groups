@@ -803,6 +803,12 @@ const handleAttendanceClick = (event) => {
     return;
   }
 
+  document.querySelectorAll("[data-event-actions-menu][open]").forEach((actionsMenu) => {
+    if (actionsMenu instanceof HTMLDetailsElement && !actionsMenu.contains(target)) {
+      actionsMenu.open = false;
+    }
+  });
+
   const container = getAttendanceContainer(target);
   if (!container) {
     return;
@@ -831,6 +837,13 @@ const handleAttendanceClick = (event) => {
   if (attendButton instanceof HTMLButtonElement && getAttendanceMeta(container).isTicketed) {
     event.preventDefault();
     openTicketModal(container);
+    return;
+  }
+
+  const checkoutResumeButton = target.closest('[data-attendance-role="checkout-resume-btn"]');
+  if (checkoutResumeButton instanceof HTMLButtonElement && checkoutResumeButton.dataset.resumeUrl) {
+    event.preventDefault();
+    window.location.assign(checkoutResumeButton.dataset.resumeUrl);
     return;
   }
 

@@ -51,13 +51,15 @@ export const getAttendanceContainers = (root) => {
 /**
  * Returns the primary controls for a container.
  * @param {HTMLElement} container - Attendance container element
- * @returns {{attendButton: HTMLElement|null, checkoutCancelButton: HTMLElement|null, leaveButton: HTMLElement|null, loadingButton: HTMLElement|null, refundButton: HTMLElement|null, signinButton: HTMLElement|null}}
+ * @returns {{actionsMenu: HTMLElement|null, attendButton: HTMLElement|null, checkoutCancelButton: HTMLElement|null, checkoutResumeButton: HTMLElement|null, leaveButton: HTMLElement|null, loadingButton: HTMLElement|null, refundButton: HTMLElement|null, signinButton: HTMLElement|null}}
  */
 export const getPrimaryControls = (container) => ({
+  actionsMenu: getAttendanceControl(container, "actions-menu"),
   loadingButton: getAttendanceControl(container, "loading-btn"),
   signinButton: getAttendanceControl(container, "signin-btn"),
   attendButton: getAttendanceControl(container, "attend-btn"),
   checkoutCancelButton: getAttendanceControl(container, "checkout-cancel-btn"),
+  checkoutResumeButton: getAttendanceControl(container, "checkout-resume-btn"),
   leaveButton: getAttendanceControl(container, "leave-btn"),
   refundButton: getAttendanceControl(container, "refund-btn"),
 });

@@ -7,6 +7,7 @@ import "/static/vendor/js/sharer.v0.5.3.min.js";
 /**
  * ShareModal displays a Share button that opens a modal with share options.
  * @extends LitWrapper
+ * @property {string} triggerVariant - The trigger style variant
  * @property {string} title - The title to share
  * @property {string} url - The URL to share
  */
@@ -17,6 +18,7 @@ export class ShareModal extends LitWrapper {
    */
   static get properties() {
     return {
+      triggerVariant: { type: String, attribute: "trigger-variant" },
       title: { type: String },
       url: { type: String },
       _isOpen: { type: Boolean, state: true },
@@ -25,6 +27,7 @@ export class ShareModal extends LitWrapper {
 
   constructor() {
     super();
+    this.triggerVariant = "button";
     this.title = "";
     this.url = "";
     this._isOpen = false;
@@ -144,6 +147,40 @@ export class ShareModal extends LitWrapper {
   }
 
   /**
+   * Renders the control that opens the share modal.
+   * @returns {TemplateResult} The share trigger template
+   */
+  _renderTrigger() {
+    if (this.triggerVariant === "menu-item") {
+      return html`
+        <button
+          type="button"
+          class="group flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 hover:bg-stone-50"
+          aria-label="Share"
+          @click=${this._openModal}
+          title="Share"
+        >
+          <div class="svg-icon size-4 bg-stone-600 icon-share"></div>
+          <span>Share</span>
+        </button>
+      `;
+    }
+
+    return html`
+      <button
+        type="button"
+        class="group btn-primary-outline flex h-10 w-10 items-center justify-center p-0 md:h-[30px] md:w-auto md:px-4 md:py-2 md:space-x-2"
+        aria-label="Share"
+        @click=${this._openModal}
+        title="Share"
+      >
+        <div class="svg-icon size-3 icon-share"></div>
+        <span class="hidden md:inline">Share</span>
+      </button>
+    `;
+  }
+
+  /**
    * Renders a share button for a specific platform.
    * @param {string} sharer - The sharer.js platform identifier
    * @param {string} icon - The icon class name
@@ -177,17 +214,7 @@ export class ShareModal extends LitWrapper {
    */
   render() {
     return html`
-      <button
-        type="button"
-        class="group btn-primary-outline flex h-10 w-10 items-center justify-center p-0 md:h-[30px] md:w-auto md:px-4 md:py-2 md:space-x-2"
-        aria-label="Share"
-        @click=${this._openModal}
-        title="Share"
-      >
-        <div class="svg-icon size-3 icon-share"></div>
-        <span class="hidden md:inline">Share</span>
-      </button>
-
+      ${this._renderTrigger()}
       ${this._isOpen
         ? html`
             <div
