@@ -40,6 +40,7 @@ import {
   showSignedOutAttendanceState,
   showWaitlistedAttendanceState,
 } from "/static/js/event/attendance-view.js";
+import "/static/js/event/attendance-ticket-card.js";
 
 const PAYMENT_RETURN_PARAM = "payment";
 const PAYMENT_RETURN_POLL_ATTEMPTS = 8;
@@ -316,6 +317,37 @@ const renderTicketAvailability = (option, ticket) => {
 };
 
 /**
+ * Creates a ticket card for availability entries missing from cached markup.
+ * @param {HTMLElement} container - Attendance container element
+ * @param {Object} ticket - Public ticket availability payload
+ * @param {{canceled: boolean, ticketPurchaseAvailable: boolean}} meta - Attendance metadata
+ * @returns {HTMLInputElement|null} The created ticket option, if any
+ */
+const createTicketAvailabilityCard = (container, ticket, meta) => {
+  if (ticket.active === false) {
+    return null;
+  }
+
+  const ticketTypeList = getAttendanceControl(container, "ticket-type-list");
+  const eventTicketTypeId = getAvailabilityStringValue(ticket.event_ticket_type_id);
+  if (!(ticketTypeList instanceof HTMLElement) || !eventTicketTypeId) {
+    return null;
+  }
+
+  const card = document.createElement("attendance-ticket-card");
+  card.ticket = ticket;
+  card.canceled = meta.canceled;
+  card.ticketPurchaseAvailable = meta.ticketPurchaseAvailable;
+  card.addEventListener("change", () => {
+    restoreCheckoutModalControls(container);
+  });
+  ticketTypeList.append(card);
+  card.performUpdate?.();
+
+  return card.querySelector('[data-attendance-role="ticket-type-option"]');
+};
+
+/**
  * Updates ticket controls from fresh availability.
  * @param {HTMLElement} container - Attendance container element
  * @param {Object[]} ticketTypes - Public ticket availability payloads
@@ -323,6 +355,21 @@ const renderTicketAvailability = (option, ticket) => {
 const renderTicketAvailabilities = (container, ticketTypes = []) => {
   const meta = getAttendanceMeta(container);
   const ticketsById = new Map(ticketTypes.map((ticket) => [String(ticket.event_ticket_type_id), ticket]));
+  const existingTicketIds = new Set(
+    Array.from(container.querySelectorAll('[data-attendance-role="ticket-type-option"]'))
+      .filter((option) => option instanceof HTMLInputElement)
+      .map((option) => option.value),
+  );
+
+  ticketTypes.forEach((ticket) => {
+    const eventTicketTypeId = getAvailabilityStringValue(ticket.event_ticket_type_id);
+    if (eventTicketTypeId && !existingTicketIds.has(eventTicketTypeId)) {
+      const option = createTicketAvailabilityCard(container, ticket, meta);
+      if (option instanceof HTMLInputElement) {
+        existingTicketIds.add(option.value);
+      }
+    }
+  });
 
   container.querySelectorAll('[data-attendance-role="ticket-type-option"]').forEach((option) => {
     if (!(option instanceof HTMLInputElement)) {

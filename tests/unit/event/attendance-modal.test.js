@@ -38,24 +38,28 @@ const renderPaidAttendanceDom = ({
         <span data-attendance-label>Checking...</span>
       </button>
       <button data-attendance-role="signin-btn" class="hidden" data-path="/events/test-event">
-        ${includeButtonPriceBadge
-          ? `
+        ${
+          includeButtonPriceBadge
+            ? `
         <span class="ticket-price-badge absolute left-1/2"${markButtonPriceBadge ? ' data-attendance-role="control-price-badge"' : ""}>
           From EUR 50.00
         </span>`
-          : ""}
+            : ""
+        }
         <span data-attendance-label>Buy ticket</span>
       </button>
       <button
         data-attendance-role="attend-btn"
         class="hidden"
       >
-        ${includeButtonPriceBadge
-          ? `
+        ${
+          includeButtonPriceBadge
+            ? `
         <span class="ticket-price-badge absolute left-1/2"${markButtonPriceBadge ? ' data-attendance-role="control-price-badge"' : ""}>
           From EUR 50.00
         </span>`
-          : ""}
+            : ""
+        }
         <span data-attendance-label>Buy ticket</span>
       </button>
       <div
@@ -234,9 +238,7 @@ describe("event attendance paid modal", () => {
 
     expect(attendButton.classList.contains("hidden")).to.equal(false);
     expect(attendButton.querySelector("[data-attendance-label]")?.textContent).to.equal("Buy ticket");
-    expect(attendButton.querySelector(".ticket-price-badge")?.textContent?.trim()).to.equal(
-      "From EUR 50.00",
-    );
+    expect(attendButton.querySelector(".ticket-price-badge")?.textContent?.trim()).to.equal("From EUR 50.00");
     expect(attendButton.querySelector(".ticket-price-badge")?.hidden).to.equal(false);
     expect(attendButton.querySelector(".ticket-price-badge")?.style.display).to.equal("");
 
@@ -366,6 +368,60 @@ describe("event attendance paid modal", () => {
       expect(ticketCardBodies[2].classList.contains("cursor-not-allowed")).to.equal(false);
       expect(ticketCardBodies[2].classList.contains("opacity-60")).to.equal(false);
       expect(ticketStatusLabels()).to.deep.equal(["Available now"]);
+    } finally {
+      fetchMock.restore();
+    }
+  });
+
+  it("renders newly sellable ticket types from refreshed availability", async () => {
+    const { checkoutButton } = renderPaidAttendanceDom({
+      availabilityUrl: "/events/test-event/availability",
+    });
+    const fetchMock = mockFetch({
+      response: {
+        ok: true,
+        json: async () => ({
+          attendee_approval_required: false,
+          canceled: false,
+          capacity: 10,
+          has_sellable_ticket_types: true,
+          is_past: false,
+          is_ticketed: true,
+          remaining_capacity: 5,
+          ticket_types: [
+            {
+              active: true,
+              current_price_label: "EUR 75.00",
+              event_ticket_type_id: "ticket-4",
+              is_sellable_now: true,
+              sold_out: false,
+            },
+          ],
+          waitlist_enabled: false,
+        }),
+      },
+    });
+
+    try {
+      await initializeAttendanceDom();
+      await waitForMicrotask();
+
+      const newTicketOption = document.querySelector(
+        '[data-attendance-role="ticket-type-option"][value="ticket-4"]',
+      );
+      const newTicketCard = newTicketOption?.closest('[data-attendance-role="ticket-type-card"]');
+
+      expect(newTicketOption).to.not.equal(null);
+      expect(newTicketOption.disabled).to.equal(false);
+      expect(newTicketOption.dataset.ticketPurchasable).to.equal("true");
+      expect(newTicketCard?.textContent).to.include("Ticket");
+      expect(newTicketCard?.textContent).to.include("EUR 75.00");
+
+      newTicketOption.checked = true;
+      newTicketOption.dispatchEvent(new Event("change", { bubbles: true }));
+
+      expect(checkoutButton.disabled).to.equal(false);
+      expect(checkoutButton.hasAttribute("title")).to.equal(false);
     } finally {
       fetchMock.restore();
     }
@@ -502,10 +558,9 @@ describe("event attendance paid modal", () => {
       checkoutCancelButton,
       checkoutResumeButton,
       ticketModal,
-    } =
-      renderPaidAttendanceDom({
+    } = renderPaidAttendanceDom({
       markButtonPriceBadge: false,
-      });
+    });
     await initializeAttendanceDom();
 
     dispatchHtmxAfterRequest(checker, {
