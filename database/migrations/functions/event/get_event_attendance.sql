@@ -14,12 +14,12 @@ create or replace function get_event_attendance(
         and g.community_id = p_community_id
         and g.active = true
         and e.deleted = false
-        and e.published = true
-        and e.canceled = false
+        and (e.published = true or e.canceled = true)
         and (
             -- Keep started events without an end time readable for check-in and status views
             -- even though attend_event and leave_event treat them as inactive for mutations
-            e.ends_at is null
+            e.canceled = true
+            or e.ends_at is null
             or e.ends_at >= current_timestamp
         )
     ),

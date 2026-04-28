@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(13);
+select plan(14);
 
 -- ============================================================================
 -- VARIABLES
@@ -156,6 +156,10 @@ insert into event_attendee (event_id, user_id, checked_in) values (:'eventID', :
 -- Event Attendee - started event without end should still report attendee
 insert into event_attendee (event_id, user_id, checked_in)
 values (:'eventStartedNoEndID', :'user1ID', false);
+
+-- Event Attendee - canceled event should still report attendee
+insert into event_attendee (event_id, user_id, checked_in)
+values (:'eventCanceledID', :'user1ID', false);
 
 -- Event Waitlist
 insert into event_waitlist (event_id, user_id)
@@ -391,7 +395,24 @@ select is(
     'Should ignore rejected invitation requests when approval is disabled'
 );
 
--- Should return none for waitlisted users on canceled events
+-- Should return attendee status for attendees on canceled events
+select is(
+    get_event_attendance(
+        :'communityID'::uuid,
+        :'eventCanceledID'::uuid,
+        :'user1ID'::uuid
+    )::jsonb,
+    '{
+        "is_checked_in": false,
+        "purchase_amount_minor": null,
+        "refund_request_status": null,
+        "resume_checkout_url": null,
+        "status": "attendee"
+    }'::jsonb,
+    'Should return attendee status for attendees on canceled events'
+);
+
+-- Should return waitlisted status for waitlisted users on canceled events
 select is(
     get_event_attendance(
         :'communityID'::uuid,
@@ -403,9 +424,9 @@ select is(
         "purchase_amount_minor": null,
         "refund_request_status": null,
         "resume_checkout_url": null,
-        "status": "none"
+        "status": "waitlisted"
     }'::jsonb,
-    'Should return none for waitlisted users on canceled events'
+    'Should return waitlisted status for waitlisted users on canceled events'
 );
 
 -- Should return none for non-attendee
