@@ -34,11 +34,19 @@
 
   <div class="relative container mx-auto max-w-7xl p-4 sm:p-6 lg:p-8 pb-8 md:pb-10 lg:pb-16 flex grow h-full">
     <div class="bg-white border border-stone-200 rounded-lg flex flex-col w-full relative overflow-visible">
-      {{ badges::sold_out_corner_ribbon(remaining_capacity = event.remaining_capacity,
-            capacity = event.capacity,
-            data_attrs = "data-availability-sold-out-ribbon",
-            always_render = true) -}}
-      {# End sold out badge -#}
+      {% if event.canceled -%}
+        {{ badges::sold_out_corner_ribbon(remaining_capacity = event.remaining_capacity,
+                capacity = event.capacity,
+                label = "Canceled",
+                always_render = true,
+                force_visible = true) -}}
+      {% else -%}
+        {{ badges::sold_out_corner_ribbon(remaining_capacity = event.remaining_capacity,
+                capacity = event.capacity,
+                data_attrs = "data-availability-sold-out-ribbon",
+                always_render = true) -}}
+      {% endif -%}
+      {# End status badge -#}
 
       <div class="flex gap-y-6 sm:gap-y-8 lg:gap-y-12 flex-col px-4 sm:px-6 lg:px-10 py-4 sm:py-6 lg:py-10">
         {# Event header with name and group -#}
@@ -75,24 +83,17 @@
                   {# End event name -#}
                 </div>
 
-                {# Social networks and canceled badge
-                   (desktop) -#}
-                {% if event.canceled || has_social_links -%}
+                {# Social networks (desktop) -#}
+                {% if has_social_links -%}
                   <div class="hidden md:flex flex-col items-end gap-2">
-                    {% if event.canceled -%}
-                      {{ badges::event_badge(kind = event.kind, canceled = true, extra_styles = Some("px-2.5 py-0.5") ) -}}
-                    {% endif -%}
-                    {% if has_social_links -%}
-                      <div class="flex flex-wrap gap-2">
-                        {% if let Some(meetup_url) = &event.meetup_url -%}
-                          {{ social::social_link(url = meetup_url, icon_name = "meetup", platform_name = "Meetup") -}}
-                        {% endif -%}
-                      </div>
-                    {% endif -%}
+                    <div class="flex flex-wrap gap-2">
+                      {% if let Some(meetup_url) = &event.meetup_url -%}
+                        {{ social::social_link(url = meetup_url, icon_name = "meetup", platform_name = "Meetup") -}}
+                      {% endif -%}
+                    </div>
                   </div>
                 {% endif -%}
-                {# End social networks and canceled
-                   badge (desktop) -#}
+                {# End social networks (desktop) -#}
               </div>
             </div>
 
@@ -145,24 +146,10 @@
             </div>
 
             <div class="flex max-w-full flex-row flex-wrap gap-2 sm:flex-nowrap sm:gap-3 md:col-start-3 md:row-start-2 md:self-end md:justify-end md:gap-4">
-              {% if !event.canceled -%}
-                {# Attend button section -#}
-                {% let attendance_instance = "main" -%}
-                {% include "event/attend_button.html" %}
-                {# End attend button section -#}
-              {% else -%}
-                <details class="static shrink-0 sm:relative" data-event-actions-menu>
-                  <summary class="group btn-primary-outline flex h-10 w-10 cursor-pointer list-none items-center justify-center p-0 md:h-[30px] md:w-[30px] [&::-webkit-details-marker]:hidden"
-                           aria-label="More actions"
-                           title="More actions">
-                    <div class="svg-icon size-4 icon-vertical-dots"></div>
-                  </summary>
-                  <div class="absolute left-4 z-20 mt-2 w-56 max-w-[calc(100vw-2rem)] overflow-hidden rounded-lg border border-stone-200 bg-white py-1 shadow-lg sm:left-auto sm:right-0 sm:w-max sm:min-w-48">
-                    <share-modal trigger-variant="menu-item" title="{{ event.group.name }} · {{ event.name }}" url="/{{ event.community.name }}/group/{{ event.group.slug }}/event/{{ event.slug }}">
-                    </share-modal>
-                  </div>
-                </details>
-              {% endif -%}
+              {# Attend button section -#}
+              {% let attendance_instance = "main" -%}
+              {% include "event/attend_button.html" %}
+              {# End attend button section -#}
             </div>
 
           </div>
