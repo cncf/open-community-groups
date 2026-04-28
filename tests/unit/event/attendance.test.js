@@ -83,6 +83,7 @@ const renderAttendanceDom = ({
     <span data-availability-caption="waitlist" class="hidden">
       (Waitlist: <span data-availability-waitlist></span>)
     </span>
+    <div data-availability-sold-out-ribbon class="hidden"></div>
   `;
 
   return {
@@ -101,6 +102,7 @@ const renderAttendanceDom = ({
       remaining: document.querySelector('[data-availability-caption="remaining"]'),
       waitlist: document.querySelector('[data-availability-caption="waitlist"]'),
     },
+    soldOutRibbon: document.querySelector("[data-availability-sold-out-ribbon]"),
   };
 };
 
@@ -448,6 +450,39 @@ describe("event attendance", () => {
     }
   });
 
+  it("keeps the sold-out ribbon hidden for canceled availability", async () => {
+    const { soldOutRibbon } = renderAttendanceDom({
+      availabilityUrl: "/events/test-event/availability",
+    });
+    const fetchMock = mockFetch({
+      response: {
+        ok: true,
+        json: async () => ({
+          attendee_approval_required: false,
+          capacity: 2,
+          canceled: true,
+          has_sellable_ticket_types: false,
+          is_live: false,
+          is_past: false,
+          is_ticketed: false,
+          remaining_capacity: 0,
+          ticket_types: [],
+          waitlist_count: 0,
+          waitlist_enabled: false,
+        }),
+      },
+    });
+
+    try {
+      await initializeAttendanceDom();
+      await waitForMicrotask();
+
+      expect(soldOutRibbon.classList.contains("hidden")).to.equal(true);
+    } finally {
+      fetchMock.restore();
+    }
+  });
+
   it("disables attendance controls when cached event data is canceled", () => {
     const { checker, attendButton, signinButton } = renderAttendanceDom({
       canceled: "true",
@@ -461,6 +496,26 @@ describe("event attendance", () => {
     expect(attendButton.disabled).to.equal(true);
     expect(attendButton.title).to.equal("This event has been canceled.");
     expect(signinButton.classList.contains("hidden")).to.equal(true);
+  });
+
+  it("allows refund requests for paid attendees when cached event data is canceled", () => {
+    const { checker, leaveButton, refundButton } = renderAttendanceDom({
+      canceled: "true",
+    });
+
+    dispatchHtmxAfterRequest(checker, {
+      responseText: JSON.stringify({
+        can_request_refund: true,
+        purchase_amount_minor: 2500,
+        refund_request_status: null,
+        status: "attendee",
+      }),
+    });
+
+    expect(refundButton.classList.contains("hidden")).to.equal(false);
+    expect(refundButton.disabled).to.equal(false);
+    expect(refundButton.querySelector("[data-attendance-label]")?.textContent).to.equal("Request refund");
+    expect(leaveButton.classList.contains("hidden")).to.equal(true);
   });
 
   it("leaves standalone ticket price badge text untouched", async () => {

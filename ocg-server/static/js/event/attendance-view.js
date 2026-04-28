@@ -75,7 +75,7 @@ const getRefundState = (meta, response) => {
   }
 
   if (response.can_request_refund) {
-    return withEventActionState(meta, { label: REQUEST_REFUND_LABEL });
+    return { label: REQUEST_REFUND_LABEL };
   }
 
   return {

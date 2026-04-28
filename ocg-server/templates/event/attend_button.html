@@ -333,47 +333,49 @@
     {{ attendance::control_content(label = "Cancel attendance", icon_class = "icon-logout") -}}
   </button>
 
-  <details id="actions-menu-{{ attendance_instance }}"
-           data-attendance-role="actions-menu"
-           data-event-actions-menu
-           class="static shrink-0 sm:relative">
-    <summary class="group btn-primary-outline flex h-10 w-10 cursor-pointer list-none items-center justify-center p-0 md:h-[30px] md:w-[30px] [&::-webkit-details-marker]:hidden"
-             aria-label="More actions"
-             title="More actions">
-      <div class="svg-icon size-4 icon-vertical-dots"></div>
-    </summary>
-    <div class="absolute left-4 z-20 mt-2 w-56 max-w-[calc(100vw-2rem)] overflow-hidden rounded-lg border border-stone-200 bg-white py-1 shadow-lg sm:left-auto sm:right-0 sm:w-max sm:min-w-48">
-      <share-modal trigger-variant="menu-item" title="{{ event.group.name }} · {{ event.name }}" url="/{{ event.community.name }}/group/{{ event.group.slug }}/event/{{ event.slug }}">
-      </share-modal>
-      {% if let Some(meeting_join_url) = &event.meeting_join_url %}
-        <a id="join-meeting-menu-btn-{{ attendance_instance }}"
-           data-attendance-role="join-meeting-menu-btn"
-           href="{{ meeting_join_url }}"
-           data-join-link-menu
-           target="_blank"
-           rel="noopener noreferrer"
-           class="hidden xl:hidden group w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 hover:bg-stone-50">
-          <div class="svg-icon size-4 bg-stone-600 icon-meeting"></div>
-          <span>Join meeting</span>
-        </a>
-      {% endif %}
-      <button id="checkout-resume-btn-{{ attendance_instance }}"
-              data-attendance-role="checkout-resume-btn"
-              class="hidden group flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 hover:bg-stone-50">
-        <div class="svg-icon size-4 bg-stone-600 icon-ticket" data-attendance-icon></div>
-        <span data-attendance-label>Complete payment</span>
-      </button>
-      <button id="checkout-cancel-btn-{{ attendance_instance }}"
-              data-attendance-role="checkout-cancel-btn"
-              hx-delete="/{{ event.community.name }}/event/{{ event.event_id }}/checkout"
-              hx-trigger="confirmed"
-              hx-swap="none"
-              class="hidden group flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 hover:bg-stone-50">
-        <div class="svg-icon size-4 bg-stone-600 icon-cancel" data-attendance-icon></div>
-        <span data-attendance-label>Cancel checkout</span>
-      </button>
-    </div>
-  </details>
+  {% if !event.canceled -%}
+    <details id="actions-menu-{{ attendance_instance }}"
+             data-attendance-role="actions-menu"
+             data-event-actions-menu
+             class="order-last static shrink-0 sm:relative">
+      <summary class="group btn-primary-outline flex h-10 w-10 cursor-pointer list-none items-center justify-center p-0 md:h-[30px] md:w-[30px] [&::-webkit-details-marker]:hidden"
+               aria-label="More actions"
+               title="More actions">
+        <div class="svg-icon size-4 icon-vertical-dots"></div>
+      </summary>
+      <div class="absolute left-4 z-20 mt-2 w-56 max-w-[calc(100vw-2rem)] overflow-hidden rounded-lg border border-stone-200 bg-white py-1 shadow-lg sm:left-auto sm:right-0 sm:w-max sm:min-w-48">
+        <share-modal trigger-variant="menu-item" title="{{ event.group.name }} · {{ event.name }}" url="/{{ event.community.name }}/group/{{ event.group.slug }}/event/{{ event.slug }}">
+        </share-modal>
+        {% if let Some(meeting_join_url) = &event.meeting_join_url %}
+          <a id="join-meeting-menu-btn-{{ attendance_instance }}"
+             data-attendance-role="join-meeting-menu-btn"
+             href="{{ meeting_join_url }}"
+             data-join-link-menu
+             target="_blank"
+             rel="noopener noreferrer"
+             class="hidden xl:hidden group w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 hover:bg-stone-50">
+            <div class="svg-icon size-4 bg-stone-600 icon-meeting"></div>
+            <span>Join meeting</span>
+          </a>
+        {% endif %}
+        <button id="checkout-resume-btn-{{ attendance_instance }}"
+                data-attendance-role="checkout-resume-btn"
+                class="hidden group flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 hover:bg-stone-50">
+          <div class="svg-icon size-4 bg-stone-600 icon-ticket" data-attendance-icon></div>
+          <span data-attendance-label>Complete payment</span>
+        </button>
+        <button id="checkout-cancel-btn-{{ attendance_instance }}"
+                data-attendance-role="checkout-cancel-btn"
+                hx-delete="/{{ event.community.name }}/event/{{ event.event_id }}/checkout"
+                hx-trigger="confirmed"
+                hx-swap="none"
+                class="hidden group flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 hover:bg-stone-50">
+          <div class="svg-icon size-4 bg-stone-600 icon-cancel" data-attendance-icon></div>
+          <span data-attendance-label>Cancel checkout</span>
+        </button>
+      </div>
+    </details>
+  {% endif -%}
 
   <!-- Refund request button (hidden initially) -->
   <button id="refund-btn-{{ attendance_instance }}"

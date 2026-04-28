@@ -371,6 +371,50 @@ describe("event attendance paid modal", () => {
     }
   });
 
+  it("disables a cached ticket type missing from refreshed availability", async () => {
+    const { ticketTypeOptions, ticketCardBodies } = renderPaidAttendanceDom({
+      availabilityUrl: "/events/test-event/availability",
+    });
+    ticketTypeOptions[1].checked = true;
+    const fetchMock = mockFetch({
+      response: {
+        ok: true,
+        json: async () => ({
+          attendee_approval_required: false,
+          canceled: false,
+          capacity: 10,
+          has_sellable_ticket_types: true,
+          is_past: false,
+          is_ticketed: true,
+          remaining_capacity: 5,
+          ticket_types: [
+            {
+              current_price_label: "Free",
+              event_ticket_type_id: "ticket-2",
+              is_sellable_now: true,
+              sold_out: false,
+            },
+          ],
+          waitlist_enabled: false,
+        }),
+      },
+    });
+
+    try {
+      await initializeAttendanceDom();
+      await waitForMicrotask();
+
+      expect(ticketTypeOptions[1].checked).to.equal(false);
+      expect(ticketTypeOptions[1].disabled).to.equal(true);
+      expect(ticketTypeOptions[1].dataset.ticketPurchasable).to.equal("false");
+      expect(ticketCardBodies[1].classList.contains("bg-stone-50")).to.equal(true);
+      expect(ticketCardBodies[1].classList.contains("cursor-not-allowed")).to.equal(true);
+      expect(ticketCardBodies[1].classList.contains("opacity-60")).to.equal(true);
+    } finally {
+      fetchMock.restore();
+    }
+  });
+
   it("keeps ticket price badges in the modal as plain text", async () => {
     const { checker, ticketPriceBadge } = renderPaidAttendanceDom();
     await initializeAttendanceDom();

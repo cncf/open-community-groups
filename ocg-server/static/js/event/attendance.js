@@ -175,6 +175,7 @@ const renderAvailabilityRibbon = (availability) => {
   const capacity = Number(availability?.capacity);
   const remainingCapacity = Number(availability?.remaining_capacity);
   const isSoldOut =
+    availability?.canceled !== true &&
     isFiniteNumberValue(availability?.capacity) &&
     capacity > 0 &&
     isFiniteNumberValue(availability?.remaining_capacity) &&
@@ -311,11 +312,13 @@ const renderTicketAvailabilities = (container, ticketTypes = []) => {
       return;
     }
 
-    const ticket = ticketsById.get(option.value);
-    if (ticket) {
-      const isSellableNow = renderTicketAvailability(option, ticket);
-      option.disabled = meta.canceled || !meta.ticketPurchaseAvailable || !isSellableNow;
-    }
+    const ticket = ticketsById.get(option.value) || {
+      event_ticket_type_id: option.value,
+      is_sellable_now: false,
+      sold_out: false,
+    };
+    const isSellableNow = renderTicketAvailability(option, ticket);
+    option.disabled = meta.canceled || !meta.ticketPurchaseAvailable || !isSellableNow;
   });
 
   restoreCheckoutModalControls(container);
