@@ -13,6 +13,7 @@ const STRIPE_MINIMUM_CHARGE_AMOUNTS_MINOR = {
   AED: 200,
   ARS: 50,
   AUD: 50,
+  BGN: 100,
   BRL: 50,
   CAD: 50,
   CHF: 50,
