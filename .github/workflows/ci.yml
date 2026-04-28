@@ -35,8 +35,11 @@ jobs:
               - 'database/**'
               - 'justfile'
               - 'ocg-server/Cargo.toml'
+              - 'ocg-server/src/db.rs'
               - 'ocg-server/src/db/**'
+              - 'ocg-server/src/templates.rs'
               - 'ocg-server/src/templates/**'
+              - 'ocg-server/src/types.rs'
               - 'ocg-server/src/types/**'
             dependencies:
               - '.github/workflows/ci.yml'
