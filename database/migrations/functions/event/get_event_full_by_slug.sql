@@ -7,6 +7,7 @@ returns json as $$
     where g.community_id = p_community_id
     and g.slug = p_group_slug
     and e.slug = p_event_slug
+    and e.deleted = false
     and g.active = true
-    and e.published = true;
+    and (e.published = true or e.canceled = true);
 $$ language sql;
