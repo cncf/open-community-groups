@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(8);
+select plan(10);
 
 -- ============================================================================
 -- TESTS
@@ -193,6 +193,56 @@ select throws_ok(
     )$$,
     'ticket price windows cannot overlap',
     'Should delegate ticket type validation'
+);
+
+-- Should reject non-zero ticket prices below minimums
+select throws_ok(
+    $$select validate_event_ticketing_payload(
+        null,
+        'USD',
+        '[
+            {
+                "event_ticket_type_id": "00000000-0000-0000-0000-000000000061",
+                "order": 1,
+                "price_windows": [
+                    {
+                        "amount_minor": 49,
+                        "event_ticket_price_window_id": "00000000-0000-0000-0000-000000000071"
+                    }
+                ],
+                "seats_total": 50,
+                "title": "General admission"
+            }
+        ]'::jsonb,
+        false
+    )$$,
+    'payment amount must be zero or at least Stripe minimum charge amount',
+    'Should reject non-zero ticket prices below Stripe minimums'
+);
+
+-- Should reject ticket prices above maximums
+select throws_ok(
+    $$select validate_event_ticketing_payload(
+        null,
+        'USD',
+        '[
+            {
+                "event_ticket_type_id": "00000000-0000-0000-0000-000000000061",
+                "order": 1,
+                "price_windows": [
+                    {
+                        "amount_minor": 100000000,
+                        "event_ticket_price_window_id": "00000000-0000-0000-0000-000000000071"
+                    }
+                ],
+                "seats_total": 50,
+                "title": "General admission"
+            }
+        ]'::jsonb,
+        false
+    )$$,
+    'payment amount exceeds Stripe maximum charge amount',
+    'Should reject ticket prices above Stripe maximums'
 );
 
 -- ============================================================================

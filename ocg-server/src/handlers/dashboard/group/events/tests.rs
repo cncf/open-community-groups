@@ -170,7 +170,8 @@ async fn test_list_page_success() {
         Some(community_id),
         Some(group_id),
     );
-    let group_events = sample_group_events(Uuid::new_v4(), group_id);
+    let mut group_events = sample_group_events(Uuid::new_v4(), group_id);
+    group_events.upcoming.events[0].canceled = true;
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -243,7 +244,10 @@ async fn test_list_page_success() {
         parts.headers.get(CACHE_CONTROL).unwrap(),
         &HeaderValue::from_static(CACHE_CONTROL_NO_CACHE),
     );
-    assert!(!bytes.is_empty());
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
+    assert!(body.contains("aria-label=\"Open event details: Sample Event\""));
+    assert!(body.contains("title=\"View canceled event\""));
+    assert!(!body.contains("disabled title=\"Event is canceled\""));
 }
 
 #[tokio::test]

@@ -879,6 +879,12 @@ mock! {
             event_id: Uuid,
             user_id: Uuid,
         ) -> Result<crate::types::payments::EventPurchaseSummary>;
+        async fn cancel_event_checkout(
+            &self,
+            community_id: Uuid,
+            event_id: Uuid,
+            user_id: Uuid,
+        ) -> Result<()>;
         async fn complete_free_event_purchase(
             &self,
             event_purchase_id: Uuid,

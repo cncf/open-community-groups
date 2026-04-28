@@ -181,7 +181,11 @@ pub(crate) async fn approve_refund_request(
         })
         .await?;
 
-    Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-body")]).into_response())
+    Ok((
+        StatusCode::NO_CONTENT,
+        [("HX-Trigger", "refresh-event-attendees")],
+    )
+        .into_response())
 }
 
 /// Generates a QR code for event check-in.
@@ -285,7 +289,11 @@ pub(crate) async fn reject_refund_request(
         })
         .await?;
 
-    Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-body")]).into_response())
+    Ok((
+        StatusCode::NO_CONTENT,
+        [("HX-Trigger", "refresh-event-attendees")],
+    )
+        .into_response())
 }
 
 /// Sends a custom notification to event attendees.

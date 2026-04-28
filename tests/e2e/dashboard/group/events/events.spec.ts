@@ -443,6 +443,8 @@ test.describe("group dashboard events view", () => {
   test("organizer can override recording urls for automatic event and session meetings", async ({
     organizerGroupPage,
   }) => {
+    test.skip(!E2E_MEETINGS_ENABLED, "Automatic meetings are disabled in this environment.");
+
     const eventName = `E2E Automatic Recording Override ${Date.now()}`;
     const eventRecordingUrl = `https://youtube.com/watch?v=event-${Date.now()}`;
     const sessionName = `Session ${Date.now()}`;

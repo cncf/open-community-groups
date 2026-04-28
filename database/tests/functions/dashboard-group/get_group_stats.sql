@@ -103,7 +103,7 @@ insert into event (
         'First event', 'UTC', true, false, false,
         date_trunc('month', current_timestamp at time zone 'UTC') - interval '2 months' + interval '15 days'),
     (:'event2ID', :'group1ID', :'eventCategoryID', 'in-person', 'Event Two', 'event-two',
-        'Second event', 'UTC', false, true, false,
+        'Second event', 'UTC', true, true, false,
         date_trunc('month', current_timestamp at time zone 'UTC') + interval '15 days'),
     (:'event3ID', :'group3ID', :'eventCategory2ID', 'in-person', 'Other Group Event', 'other-event',
         'Other group event', 'UTC', true, false, false,

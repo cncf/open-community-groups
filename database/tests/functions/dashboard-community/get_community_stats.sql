@@ -179,7 +179,7 @@ insert into event (
         date_trunc('month', current_timestamp at time zone 'UTC') - interval '2 months' + interval '15 days'),
     (:'event7ID', :'group1ID', :'eventCategory1ID', 'in-person', 'Conference Draft', 'conference-draft', 'Draft Event', 'UTC', false, false, false,
         date_trunc('month', current_timestamp at time zone 'UTC') - interval '1 month' + interval '15 days'),
-    (:'event8ID', :'group2ID', :'eventCategory2ID', 'in-person', 'Meetup Canceled', 'meetup-canceled', 'Canceled Event', 'UTC', false, true, false,
+    (:'event8ID', :'group2ID', :'eventCategory2ID', 'in-person', 'Meetup Canceled', 'meetup-canceled', 'Canceled Event', 'UTC', true, true, false,
         date_trunc('month', current_timestamp at time zone 'UTC') + interval '15 days');
 
 -- Event attendees (in the same months as the events they attend)

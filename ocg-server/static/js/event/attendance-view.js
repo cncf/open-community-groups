@@ -17,6 +17,7 @@ export const JOIN_WAITLIST_LABEL = "Join waiting list";
 export const REQUEST_INVITATION_LABEL = "Request invitation";
 export const COMPLETE_PAYMENT_LABEL = "Complete payment";
 export const CANCEL_ATTENDANCE_LABEL = "Cancel attendance";
+export const CANCEL_CHECKOUT_LABEL = "Cancel checkout";
 export const CANCEL_INVITATION_REQUEST_LABEL = "Cancel request";
 export const INVITATION_REQUESTED_LABEL = "Invitation requested";
 export const REQUEST_REJECTED_LABEL = "Request rejected";
@@ -28,6 +29,7 @@ export const REFUND_UNAVAILABLE_LABEL = "Refund unavailable";
 
 const ATTEND_EVENT_ICON = "icon-user-plus";
 const REQUEST_INVITATION_ICON = "icon-request-invitation";
+const CANCELED_EVENT_TITLE = "This event has been canceled.";
 const PAST_EVENT_TITLE = "You cannot change attendance because the event has already started.";
 const TICKETS_UNAVAILABLE_TITLE = "Tickets are not currently available for this event.";
 const SOLD_OUT_TITLE = "This event is sold out.";
@@ -39,6 +41,7 @@ const REFUND_CLOSED_TITLE = "Refunds are no longer available for this ticket.";
 const PAST_CHECKOUT_TITLE = "You cannot buy tickets because the event has already started.";
 const INVITATION_PENDING_TITLE = "Your invitation request is waiting for organizer review.";
 const INVITATION_REJECTED_TITLE = "Your invitation request was rejected.";
+const CANCEL_CHECKOUT_TITLE = "Release this ticket hold and choose again.";
 
 /**
  * Returns the attendee refund-control state for the current response.
@@ -72,7 +75,7 @@ const getRefundState = (meta, response) => {
   }
 
   if (response.can_request_refund) {
-    return withEventDateState(meta, { label: REQUEST_REFUND_LABEL });
+    return { label: REQUEST_REFUND_LABEL };
   }
 
   return {
@@ -97,7 +100,47 @@ const setDisabledStyles = (control, disabled) => {
  * @param {HTMLElement|null} control - Control to hide
  */
 const hideControl = (control) => {
-  control?.classList.add("hidden");
+  if (!(control instanceof HTMLElement)) {
+    return;
+  }
+
+  control.classList.remove("opacity-100");
+  control.classList.add("hidden", "opacity-0", "transition-opacity", "duration-150");
+};
+
+/**
+ * Returns event price badges rendered inside a primary attendance control.
+ * @param {HTMLElement} control - Attendance control to inspect
+ * @returns {HTMLElement[]} Matching price badges
+ */
+const getControlPriceBadges = (control) =>
+  Array.from(control.children).filter(
+    (child) =>
+      child instanceof HTMLElement &&
+      child.tagName === "SPAN" &&
+      !child.hasAttribute("data-attendance-label") &&
+      (child.dataset.attendanceRole === "control-price-badge" ||
+        (child.classList.contains("absolute") && child.classList.contains("left-1/2"))),
+  );
+
+/**
+ * Toggles event price badges rendered inside primary attendance controls.
+ * @param {HTMLElement} container - Attendance container element
+ * @param {boolean} hidden - Whether the badges should be hidden
+ */
+const setControlPriceBadgesHidden = (container, hidden) => {
+  const { signinButton, attendButton } = getPrimaryControls(container);
+  [signinButton, attendButton].forEach((control) => {
+    if (!(control instanceof HTMLElement)) {
+      return;
+    }
+
+    getControlPriceBadges(control).forEach((priceBadge) => {
+      priceBadge.hidden = hidden;
+      priceBadge.classList.toggle("hidden", hidden);
+      priceBadge.style.display = hidden ? "none" : "";
+    });
+  });
 };
 
 /**
@@ -112,6 +155,7 @@ const renderControl = (control, state = {}) => {
 
   const {
     disabled = false,
+    hidePriceBadge = false,
     icon = null,
     label = null,
     resumeUrl = null,
@@ -120,7 +164,18 @@ const renderControl = (control, state = {}) => {
   } = state;
 
   if (visible) {
+    const wasHidden = control.classList.contains("hidden");
+    control.classList.add("opacity-0", "transition-opacity", "duration-150");
     control.classList.remove("hidden");
+    const showControl = () => {
+      control.classList.remove("opacity-0");
+      control.classList.add("opacity-100");
+    };
+    if (wasHidden && typeof window.requestAnimationFrame === "function") {
+      window.requestAnimationFrame(showControl);
+    } else {
+      showControl();
+    }
   }
   if (icon !== null) {
     setAttendanceControlIcon(control, icon);
@@ -128,6 +183,14 @@ const renderControl = (control, state = {}) => {
   if (label !== null) {
     setAttendanceControlLabel(control, label);
   }
+
+  // Price badges describe fresh ticket purchase options, not user-specific states.
+  const shouldHidePriceBadge = hidePriceBadge || (label !== null && label !== BUY_TICKET_LABEL);
+  getControlPriceBadges(control).forEach((priceBadge) => {
+    priceBadge.hidden = shouldHidePriceBadge;
+    priceBadge.classList.toggle("hidden", shouldHidePriceBadge);
+    priceBadge.style.display = shouldHidePriceBadge ? "none" : "";
+  });
 
   if (control instanceof HTMLButtonElement) {
     control.disabled = disabled;
@@ -151,12 +214,20 @@ const renderControl = (control, state = {}) => {
 };
 
 /**
- * Applies the past-event restriction when needed.
- * @param {{isPastEvent: boolean}} meta - Attendance metadata
+ * Applies event-level action restrictions when needed.
+ * @param {{canceled: boolean, isPastEvent: boolean}} meta - Attendance metadata
  * @param {object} state - Base render state
  * @returns {object} Render state
  */
-const withEventDateState = (meta, state) => {
+const withEventActionState = (meta, state) => {
+  if (meta.canceled) {
+    return {
+      ...state,
+      disabled: true,
+      title: CANCELED_EVENT_TITLE,
+    };
+  }
+
   if (!meta.isPastEvent) {
     return state;
   }
@@ -186,7 +257,7 @@ const getSigninLabel = (meta) => {
 };
 
 const getSigninState = (meta) => {
-  const state = withEventDateState(meta, { label: getSigninLabel(meta) });
+  const state = withEventActionState(meta, { label: getSigninLabel(meta) });
   if (meta.isTicketed) {
     return state;
   }
@@ -216,6 +287,13 @@ const getDefaultAttendLabel = (meta) => {
  * @returns {object} Render state
  */
 const getAttendState = (meta) => {
+  if (meta.canceled) {
+    return withEventActionState(meta, {
+      icon: meta.attendeeApprovalRequired ? REQUEST_INVITATION_ICON : ATTEND_EVENT_ICON,
+      label: getDefaultAttendLabel(meta),
+    });
+  }
+
   if (meta.isTicketed && !meta.ticketPurchaseAvailable && !meta.isPastEvent) {
     return {
       disabled: true,
@@ -225,7 +303,7 @@ const getAttendState = (meta) => {
   }
 
   if (meta.attendeeApprovalRequired) {
-    return withEventDateState(meta, {
+    return withEventActionState(meta, {
       icon: REQUEST_INVITATION_ICON,
       label: REQUEST_INVITATION_LABEL,
     });
@@ -245,7 +323,7 @@ const getAttendState = (meta) => {
     };
   }
 
-  return withEventDateState(meta, {
+  return withEventActionState(meta, {
     icon: ATTEND_EVENT_ICON,
     label: getDefaultAttendLabel(meta),
   });
@@ -256,24 +334,42 @@ const getAttendState = (meta) => {
  * @param {HTMLElement} container - Attendance container element
  */
 export const resetPrimaryControls = (container) => {
-  const { loadingButton, signinButton, attendButton, leaveButton, refundButton } =
-    getPrimaryControls(container);
+  const {
+    actionsMenu,
+    loadingButton,
+    signinButton,
+    attendButton,
+    checkoutCancelButton,
+    checkoutResumeButton,
+    leaveButton,
+    refundButton,
+  } = getPrimaryControls(container);
 
+  actionsMenu?.classList.remove("hidden");
   hideControl(loadingButton);
   hideControl(signinButton);
   hideControl(attendButton);
+  hideControl(checkoutCancelButton);
+  hideControl(checkoutResumeButton);
   hideControl(leaveButton);
   hideControl(refundButton);
+  setControlPriceBadgesHidden(container, false);
 
   if (attendButton instanceof HTMLButtonElement) {
     delete attendButton.dataset.resumeUrl;
+  }
+  if (checkoutResumeButton instanceof HTMLButtonElement) {
+    delete checkoutResumeButton.dataset.resumeUrl;
+  }
+  if (actionsMenu instanceof HTMLDetailsElement) {
+    actionsMenu.open = false;
   }
 };
 
 /**
  * Toggles meeting detail visibility based on attendance status.
  * @param {boolean} isAttendee - Whether the user is attending
- * @param {{eventIsLive: boolean}} meta - Attendance metadata
+ * @param {{attendeeMeetingAccessOpen: boolean}} meta - Attendance metadata
  */
 export const renderMeetingDetails = (isAttendee, meta) => {
   const sections = document.querySelectorAll("[data-meeting-details]");
@@ -282,17 +378,21 @@ export const renderMeetingDetails = (isAttendee, meta) => {
   sections.forEach((section) => {
     const sectionHasRecording = section.dataset?.hasRecording === "true";
     section.classList.toggle("hidden", !(sectionHasRecording || showAttendeeMeetingAccess));
-  });
-
-  const joinLinksAlways = document.querySelectorAll("[data-join-link-always]");
-  joinLinksAlways.forEach((link) => {
-    link.classList.toggle("hidden", !showAttendeeMeetingAccess);
+    section.querySelectorAll("[data-join-link-always]").forEach((link) => {
+      link.classList.toggle("hidden", !showAttendeeMeetingAccess);
+    });
   });
 
   const joinLinksLive = document.querySelectorAll("[data-join-link]");
   joinLinksLive.forEach((link) => {
     link.classList.toggle("hidden", !showAttendeeMeetingAccess);
     link.classList.toggle("xl:flex", showAttendeeMeetingAccess);
+  });
+
+  const joinLinksMenu = document.querySelectorAll("[data-join-link-menu]");
+  joinLinksMenu.forEach((link) => {
+    link.classList.toggle("hidden", !showAttendeeMeetingAccess);
+    link.classList.toggle("max-xl:flex", showAttendeeMeetingAccess);
   });
 };
 
@@ -305,6 +405,11 @@ export const showSignedOutAttendanceState = (container, meta) => {
   const { attendButton, signinButton } = getPrimaryControls(container);
 
   resetPrimaryControls(container);
+  if (meta.canceled) {
+    renderControl(attendButton, getAttendState(meta));
+    return;
+  }
+
   if (meta.isTicketed && !meta.ticketPurchaseAvailable && !meta.isPastEvent) {
     renderControl(attendButton, getAttendState(meta));
     return;
@@ -322,7 +427,7 @@ export const showSignedOutAttendanceState = (container, meta) => {
  * Shows a single primary attendance control and updates meeting details.
  * @param {HTMLElement} container - Attendance container element
  * @param {object} meta - Attendance metadata
- * @param {"attendButton"|"leaveButton"|"refundButton"} controlName - Primary control key
+ * @param {"attendButton"|"checkoutCancelButton"|"leaveButton"|"refundButton"} controlName - Primary control key
  * @param {object} state - Render state
  * @param {boolean} [isAttendee=false] Whether meeting access should be attendee-scoped
  */
@@ -363,7 +468,7 @@ export const showInvitationApprovedAttendanceState = (container, meta) => {
     container,
     meta,
     "attendButton",
-    withEventDateState(meta, {
+    withEventActionState(meta, {
       icon: ATTEND_EVENT_ICON,
       label: ATTEND_EVENT_LABEL,
     }),
@@ -380,7 +485,7 @@ export const showWaitlistedAttendanceState = (container, meta) => {
     container,
     meta,
     "leaveButton",
-    withEventDateState(meta, { label: LEAVE_WAITLIST_LABEL }),
+    withEventActionState(meta, { label: LEAVE_WAITLIST_LABEL }),
   );
 };
 
@@ -394,7 +499,7 @@ export const showPendingApprovalAttendanceState = (container, meta) => {
     container,
     meta,
     "leaveButton",
-    withEventDateState(meta, {
+    withEventActionState(meta, {
       label: CANCEL_INVITATION_REQUEST_LABEL,
       title: INVITATION_PENDING_TITLE,
     }),
@@ -420,15 +525,25 @@ export const showRejectedInvitationState = (container, meta) => {
  * @param {{resume_checkout_url?: string}} response - Attendance response
  */
 export const showPendingPaymentState = (container, meta, response) => {
-  showPrimaryAttendanceState(
-    container,
-    meta,
-    "attendButton",
-    withEventDateState(meta, {
+  const { actionsMenu, checkoutCancelButton, checkoutResumeButton } = getPrimaryControls(container);
+
+  resetPrimaryControls(container);
+  setControlPriceBadgesHidden(container, true);
+  renderControl(actionsMenu);
+  renderControl(
+    checkoutResumeButton,
+    withEventActionState(meta, {
+      icon: "icon-ticket",
       label: COMPLETE_PAYMENT_LABEL,
       resumeUrl: response.resume_checkout_url || "",
     }),
   );
+  renderControl(checkoutCancelButton, {
+    icon: "icon-cancel",
+    label: CANCEL_CHECKOUT_LABEL,
+    title: CANCEL_CHECKOUT_TITLE,
+  });
+  renderMeetingDetails(false, meta);
 };
 
 /**
@@ -449,7 +564,7 @@ export const showAttendeeState = (container, meta, response) => {
   ) {
     renderControl(refundButton, getRefundState(meta, response));
   } else {
-    renderControl(leaveButton, withEventDateState(meta, { label: CANCEL_ATTENDANCE_LABEL }));
+    renderControl(leaveButton, withEventActionState(meta, { label: CANCEL_ATTENDANCE_LABEL }));
   }
 
   renderMeetingDetails(true, meta);
@@ -468,12 +583,15 @@ export const updateCheckoutButtonState = (container) => {
   }
 
   const selectedTicketType = getSelectedTicketTypeValue(container);
-  const shouldDisable = !meta.ticketPurchaseAvailable || meta.isPastEvent || !selectedTicketType;
+  const shouldDisable =
+    meta.canceled || !meta.ticketPurchaseAvailable || meta.isPastEvent || !selectedTicketType;
 
   checkoutButton.disabled = shouldDisable;
   setDisabledStyles(checkoutButton, shouldDisable);
 
-  if (!meta.ticketPurchaseAvailable) {
+  if (meta.canceled) {
+    checkoutButton.title = CANCELED_EVENT_TITLE;
+  } else if (!meta.ticketPurchaseAvailable) {
     checkoutButton.title = TICKETS_UNAVAILABLE_TITLE;
   } else if (meta.isPastEvent) {
     checkoutButton.title = PAST_CHECKOUT_TITLE;
@@ -518,12 +636,14 @@ const syncTicketModalState = (container) => {
   ticketTypeOptions.forEach((ticketTypeOption) => {
     if (ticketTypeOption instanceof HTMLInputElement) {
       ticketTypeOption.disabled =
-        !meta.ticketPurchaseAvailable || ticketTypeOption.dataset.ticketPurchasable !== "true";
+        meta.canceled ||
+        !meta.ticketPurchaseAvailable ||
+        ticketTypeOption.dataset.ticketPurchasable !== "true";
     }
   });
 
   if (discountCodeInput instanceof HTMLInputElement) {
-    discountCodeInput.disabled = !meta.ticketPurchaseAvailable;
+    discountCodeInput.disabled = meta.canceled || !meta.ticketPurchaseAvailable;
   }
 
   updateCheckoutButtonState(container);
@@ -617,6 +737,14 @@ export const showPrimaryRequestLoading = (container, role) => {
     return;
   }
 
+  if (role === "checkout-cancel-btn") {
+    getAttendanceControl(container, "attend-btn")?.classList.add("hidden");
+    const actionsMenu = getAttendanceControl(container, "actions-menu");
+    actionsMenu?.classList.add("hidden");
+    if (actionsMenu instanceof HTMLDetailsElement) {
+      actionsMenu.open = false;
+    }
+  }
   targetControl.classList.add("hidden");
   loadingButton.classList.remove("hidden");
 };
@@ -634,6 +762,11 @@ export const restorePrimaryRequestControl = (container, role) => {
   }
 
   loadingButton.classList.add("hidden");
+  if (role === "checkout-cancel-btn") {
+    getAttendanceControl(container, "attend-btn")?.classList.remove("hidden");
+    const actionsMenu = getAttendanceControl(container, "actions-menu");
+    actionsMenu?.classList.remove("hidden");
+  }
   targetControl.classList.remove("hidden");
 };
 
@@ -651,15 +784,15 @@ export const initializeAttendanceContainer = (container) => {
 
   renderControl(attendButton, { ...getAttendState(meta), visible: false });
   renderControl(leaveButton, {
-    ...withEventDateState(meta, { label: CANCEL_ATTENDANCE_LABEL }),
+    ...withEventActionState(meta, { label: CANCEL_ATTENDANCE_LABEL }),
     visible: false,
   });
   renderControl(refundButton, {
-    ...withEventDateState(meta, { label: REQUEST_REFUND_LABEL }),
+    ...withEventActionState(meta, { label: REQUEST_REFUND_LABEL }),
     visible: false,
   });
   renderControl(signinButton, {
-    ...withEventDateState(meta, { label: getSigninLabel(meta) }),
+    ...withEventActionState(meta, { label: getSigninLabel(meta) }),
     visible: false,
   });
   initializeTicketModalControls(container);

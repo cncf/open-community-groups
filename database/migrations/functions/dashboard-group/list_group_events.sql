@@ -55,7 +55,11 @@ returns json as $$
         past_json as (
             select coalesce(
                 json_agg(
-                    get_event_summary(past_events.community_id, past_events.group_id, past_events.event_id)
+                    get_event_summary_dashboard(
+                        past_events.community_id,
+                        past_events.group_id,
+                        past_events.event_id
+                    )
                     order by past_events.starts_at desc nulls last, past_events.name asc, past_events.event_id asc
                 ),
                 '[]'::json
@@ -66,7 +70,7 @@ returns json as $$
         upcoming_json as (
             select coalesce(
                 json_agg(
-                    get_event_summary(
+                    get_event_summary_dashboard(
                         upcoming_events.community_id,
                         upcoming_events.group_id,
                         upcoming_events.event_id

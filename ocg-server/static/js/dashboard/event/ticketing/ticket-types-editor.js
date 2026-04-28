@@ -10,6 +10,7 @@ import { TicketingEditorBase } from "/static/js/dashboard/event/ticketing/editor
 import {
   formatMinorUnitsForInput,
   parseCurrencyInputToMinorUnits,
+  validateStripePaymentAmountMinor,
 } from "/static/js/dashboard/event/ticketing/currency.js";
 
 /**
@@ -390,6 +391,8 @@ class TicketTypesEditor extends TicketingEditorBase {
       return;
     }
 
+    this._syncPriceWindowAmountValidity();
+
     const invalidField = Array.from(this.querySelectorAll("[data-ticket-modal-field]")).find(
       (field) => typeof field.checkValidity === "function" && !field.checkValidity(),
     );
@@ -460,6 +463,23 @@ class TicketTypesEditor extends TicketingEditorBase {
           : windowRow,
       ),
     };
+  }
+
+  /**
+   * Applies Stripe amount limit validation to draft price inputs.
+   * @returns {void}
+   */
+  _syncPriceWindowAmountValidity() {
+    const currencyCode = this._currencyCode();
+
+    this.querySelectorAll('[data-ticket-window-field="amount"]').forEach((field) => {
+      if (typeof field.setCustomValidity !== "function") {
+        return;
+      }
+
+      const amountMinor = parseCurrencyInputToMinorUnits(field.value, currencyCode);
+      field.setCustomValidity(validateStripePaymentAmountMinor(amountMinor, currencyCode));
+    });
   }
 
   /**
@@ -600,6 +620,7 @@ class TicketTypesEditor extends TicketingEditorBase {
                     data-ticket-window-field="amount"
                     data-window-row-id=${String(windowRow._row_id)}
                     type="number"
+                    max=${this._currencyInputMax()}
                     min="0"
                     step=${this._currencyInputStep()}
                     class="input-primary"
@@ -607,8 +628,10 @@ class TicketTypesEditor extends TicketingEditorBase {
                     .value=${windowRow.amount}
                     ?disabled=${!this._isModalOpen}
                     required
-                    @input=${(event) =>
-                      this._updateDraftPriceWindow(windowRow._row_id, "amount", event.target.value)}
+                    @input=${(event) => {
+                      this._updateDraftPriceWindow(windowRow._row_id, "amount", event.target.value);
+                      this._syncPriceWindowAmountValidity();
+                    }}
                   />
                 </div>
                 <p class="form-legend">Use <span class="font-semibold">0</span> for free tickets.</p>

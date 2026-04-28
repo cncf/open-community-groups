@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(31);
+select plan(32);
 
 -- ============================================================================
 -- VARIABLES
@@ -148,6 +148,23 @@ select results_eq(
         where name = 'Kubernetes Fundamentals Workshop'
     $$,
     'Should create the expected audit row'
+);
+
+-- Should store the actor as the event creator
+select add_event(
+    :'user1ID'::uuid,
+    :'groupID'::uuid,
+    '{"name": "Created By Test", "description": "Verifies creator tracking", "timezone": "America/New_York", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person"}'::jsonb
+) as "createdByEventID" \gset
+
+select is(
+    (
+        select created_by
+        from event
+        where event_id = :'createdByEventID'::uuid
+    ),
+    :'user1ID'::uuid,
+    'Should store the actor as the event creator'
 );
 
 -- Should create event with all fields including hosts, sponsors, and sessions

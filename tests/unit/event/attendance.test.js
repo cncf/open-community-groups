@@ -4,6 +4,7 @@ import "/static/js/event/attendance.js";
 import { waitForMicrotask } from "/tests/unit/test-utils/async.js";
 import { useDashboardTestEnv } from "/tests/unit/test-utils/env.js";
 import { dispatchHtmxAfterRequest, dispatchHtmxBeforeRequest } from "/tests/unit/test-utils/htmx.js";
+import { mockFetch } from "/tests/unit/test-utils/network.js";
 
 const initializeAttendanceDom = async () => {
   document.body.dataset.attendanceListenersReady = "true";
@@ -15,8 +16,9 @@ const renderAttendanceDom = ({
   capacity = "10",
   remainingCapacity = "5",
   waitlistEnabled = "false",
-  isLive = "false",
   attendeeMeetingAccessOpen = "false",
+  canceled = "false",
+  availabilityUrl = "",
   attendeeApprovalRequired = "false",
 } = {}) => {
   document.body.innerHTML = `
@@ -26,7 +28,8 @@ const renderAttendanceDom = ({
       data-capacity="${capacity}"
       data-remaining-capacity="${remainingCapacity}"
       data-waitlist-enabled="${waitlistEnabled}"
-      data-is-live="${isLive}"
+      data-canceled="${canceled}"
+      ${availabilityUrl ? `data-availability-url="${availabilityUrl}"` : ""}
       data-attendee-meeting-access-open="${attendeeMeetingAccessOpen}"
       data-attendee-approval-required="${attendeeApprovalRequired}"
     >
@@ -68,13 +71,29 @@ const renderAttendanceDom = ({
         <span data-attendance-label>Request refund</span>
       </button>
     </div>
-    <div data-meeting-details class="hidden"></div>
+    <div data-meeting-details class="hidden">
+      <a data-join-link-always class="hidden"></a>
+    </div>
     <div data-meeting-details data-has-recording="true" class="hidden"></div>
-    <a data-join-link-always class="hidden"></a>
     <a data-join-link class="hidden"></a>
+    <a data-join-link-menu class="hidden xl:hidden"></a>
+    <span data-availability-caption="capacity">
+      Capacity:
+      <span data-availability-capacity>
+        <span data-availability-spinner></span>
+      </span>
+    </span>
+    <span data-availability-caption="remaining" class="hidden">
+      (Remaining: <span data-availability-remaining></span>)
+    </span>
+    <span data-availability-caption="waitlist" class="hidden">
+      (Waitlist: <span data-availability-waitlist></span>)
+    </span>
+    <div data-availability-sold-out-ribbon class="hidden"></div>
   `;
 
   return {
+    container: document.querySelector("[data-attendance-container]"),
     checker: document.querySelector('[data-attendance-role="attendance-checker"]'),
     loadingButton: document.querySelector('[data-attendance-role="loading-btn"]'),
     signinButton: document.querySelector('[data-attendance-role="signin-btn"]'),
@@ -84,6 +103,14 @@ const renderAttendanceDom = ({
     meetingDetails: Array.from(document.querySelectorAll("[data-meeting-details]")),
     alwaysJoinLink: document.querySelector("[data-join-link-always]"),
     liveJoinLink: document.querySelector("[data-join-link]"),
+    menuJoinLink: document.querySelector("[data-join-link-menu]"),
+    availabilityCaptions: {
+      capacity: document.querySelector('[data-availability-caption="capacity"]'),
+      remaining: document.querySelector('[data-availability-caption="remaining"]'),
+      waitlist: document.querySelector('[data-availability-caption="waitlist"]'),
+    },
+    availabilityCapacity: document.querySelector("[data-availability-capacity]"),
+    soldOutRibbon: document.querySelector("[data-availability-sold-out-ribbon]"),
   };
 };
 
@@ -98,7 +125,6 @@ describe("event attendance", () => {
 
   it("shows attendee controls and meeting details after a successful attendance check", () => {
     const { checker, leaveButton, alwaysJoinLink, liveJoinLink, meetingDetails } = renderAttendanceDom({
-      isLive: "true",
       attendeeMeetingAccessOpen: "true",
     });
 
@@ -116,8 +142,7 @@ describe("event attendance", () => {
   });
 
   it("shows the join meeting link when attendee meeting access is open", () => {
-    const { checker, alwaysJoinLink, liveJoinLink, meetingDetails } = renderAttendanceDom({
-      isLive: "false",
+    const { checker, alwaysJoinLink, liveJoinLink, menuJoinLink, meetingDetails } = renderAttendanceDom({
       attendeeMeetingAccessOpen: "true",
     });
 
@@ -128,12 +153,13 @@ describe("event attendance", () => {
     expect(alwaysJoinLink.classList.contains("hidden")).to.equal(false);
     expect(liveJoinLink.classList.contains("hidden")).to.equal(false);
     expect(liveJoinLink.classList.contains("xl:flex")).to.equal(true);
+    expect(menuJoinLink.classList.contains("hidden")).to.equal(false);
+    expect(menuJoinLink.classList.contains("max-xl:flex")).to.equal(true);
     expect(meetingDetails[0].classList.contains("hidden")).to.equal(false);
   });
 
-  it("keeps the join meeting link hidden when attendee meeting access is closed", () => {
-    const { checker, alwaysJoinLink, liveJoinLink, meetingDetails } = renderAttendanceDom({
-      isLive: "false",
+  it("keeps the join meeting link hidden before attendee meeting access opens", () => {
+    const { checker, alwaysJoinLink, liveJoinLink, menuJoinLink, meetingDetails } = renderAttendanceDom({
       attendeeMeetingAccessOpen: "false",
     });
 
@@ -144,6 +170,8 @@ describe("event attendance", () => {
     expect(alwaysJoinLink.classList.contains("hidden")).to.equal(true);
     expect(liveJoinLink.classList.contains("hidden")).to.equal(true);
     expect(liveJoinLink.classList.contains("xl:flex")).to.equal(false);
+    expect(menuJoinLink.classList.contains("hidden")).to.equal(true);
+    expect(menuJoinLink.classList.contains("max-xl:flex")).to.equal(false);
     expect(meetingDetails[0].classList.contains("hidden")).to.equal(true);
   });
 
@@ -293,9 +321,9 @@ describe("event attendance", () => {
     expect(attendButton.disabled).to.equal(true);
     expect(attendButton.title).to.equal("This event is sold out.");
     expect(attendButton.querySelector("[data-attendance-label]")?.textContent).to.equal("Attend event");
-    expect(attendButton.querySelector("[data-attendance-icon]")?.classList.contains("icon-user-plus")).to.equal(
-      true,
-    );
+    expect(
+      attendButton.querySelector("[data-attendance-icon]")?.classList.contains("icon-user-plus"),
+    ).to.equal(true);
   });
 
   it("shows a sold-out attend button when no waitlist is available", () => {
@@ -313,6 +341,304 @@ describe("event attendance", () => {
     expect(attendButton.disabled).to.equal(true);
     expect(attendButton.title).to.equal("This event is sold out.");
     expect(signinButton.classList.contains("hidden")).to.equal(true);
+  });
+
+  it("shows remaining seats instead of waitlist while capacity is still available", async () => {
+    const { availabilityCapacity, availabilityCaptions } = renderAttendanceDom({
+      availabilityUrl: "/events/test-event/availability",
+    });
+    const fetchMock = mockFetch({
+      response: {
+        ok: true,
+        json: async () => ({
+          attendee_approval_required: false,
+          capacity: 2,
+          canceled: false,
+          has_sellable_ticket_types: false,
+          is_live: false,
+          is_past: false,
+          is_ticketed: false,
+          remaining_capacity: 1,
+          ticket_types: [],
+          waitlist_count: 1,
+          waitlist_enabled: true,
+        }),
+      },
+    });
+
+    try {
+      await initializeAttendanceDom();
+      await waitForMicrotask();
+
+      expect(availabilityCaptions.capacity.classList.contains("hidden")).to.equal(false);
+      expect(availabilityCapacity.textContent.trim()).to.equal("2");
+      expect(availabilityCaptions.remaining.classList.contains("hidden")).to.equal(false);
+      expect(availabilityCaptions.remaining.classList.contains("inline")).to.equal(true);
+      expect(availabilityCaptions.remaining.textContent).to.include("1");
+      expect(availabilityCaptions.waitlist.classList.contains("hidden")).to.equal(true);
+      expect(availabilityCaptions.waitlist.classList.contains("inline")).to.equal(false);
+      expect(availabilityCaptions.waitlist.textContent).to.not.include("1");
+    } finally {
+      fetchMock.restore();
+    }
+  });
+
+  it("waits for refreshed availability before rendering attendance actions", async () => {
+    const { attendButton, checker } = renderAttendanceDom({
+      availabilityUrl: "/events/test-event/availability",
+    });
+    let resolveAvailability;
+    const availabilityResponse = new Promise((resolve) => {
+      resolveAvailability = resolve;
+    });
+    const fetchMock = mockFetch({
+      impl: async () => availabilityResponse,
+    });
+
+    try {
+      await initializeAttendanceDom();
+
+      dispatchHtmxAfterRequest(checker, {
+        responseText: JSON.stringify({ status: "guest" }),
+      });
+
+      expect(attendButton.classList.contains("hidden")).to.equal(true);
+
+      resolveAvailability({
+        ok: true,
+        json: async () => ({
+          attendee_approval_required: false,
+          capacity: 2,
+          canceled: false,
+          has_sellable_ticket_types: false,
+          is_live: false,
+          is_past: false,
+          is_ticketed: false,
+          remaining_capacity: 1,
+          ticket_types: [],
+          waitlist_count: 0,
+          waitlist_enabled: false,
+        }),
+      });
+      await waitForMicrotask();
+
+      dispatchHtmxAfterRequest(checker, {
+        responseText: JSON.stringify({ status: "guest" }),
+      });
+
+      expect(attendButton.classList.contains("hidden")).to.equal(false);
+    } finally {
+      fetchMock.restore();
+    }
+  });
+
+  it("falls back to cached attendance metadata when availability fails", async () => {
+    const { attendButton, checker, container } = renderAttendanceDom({
+      availabilityUrl: "/events/test-event/availability",
+    });
+    const fetchMock = mockFetch({
+      response: {
+        ok: false,
+      },
+    });
+
+    try {
+      await initializeAttendanceDom();
+      await waitForMicrotask();
+
+      expect(container.dataset.availabilityHydrated).to.equal("true");
+
+      dispatchHtmxAfterRequest(checker, {
+        responseText: JSON.stringify({ status: "guest" }),
+      });
+
+      expect(attendButton.classList.contains("hidden")).to.equal(false);
+      expect(attendButton.disabled).to.equal(false);
+    } finally {
+      fetchMock.restore();
+    }
+  });
+
+  it("hydrates attendee meeting access from refreshed availability", async () => {
+    const { container } = renderAttendanceDom({
+      availabilityUrl: "/events/test-event/availability",
+      attendeeMeetingAccessOpen: "false",
+    });
+    let changedEvents = 0;
+    document.body.addEventListener("attendance-changed", () => {
+      changedEvents += 1;
+    });
+    const fetchMock = mockFetch({
+      response: {
+        ok: true,
+        json: async () => ({
+          attendee_approval_required: false,
+          capacity: 2,
+          canceled: false,
+          has_sellable_ticket_types: false,
+          is_live: true,
+          is_past: false,
+          is_ticketed: false,
+          remaining_capacity: 1,
+          ticket_types: [],
+          waitlist_count: 0,
+          waitlist_enabled: false,
+        }),
+      },
+    });
+
+    try {
+      await initializeAttendanceDom();
+      await waitForMicrotask();
+
+      expect(container.dataset.attendeeMeetingAccessOpen).to.equal("true");
+      expect(changedEvents).to.equal(1);
+    } finally {
+      fetchMock.restore();
+    }
+  });
+
+  it("shows waitlist count after refreshing availability", async () => {
+    const { availabilityCapacity, availabilityCaptions } = renderAttendanceDom({
+      availabilityUrl: "/events/test-event/availability",
+    });
+    const fetchMock = mockFetch({
+      response: {
+        ok: true,
+        json: async () => ({
+          attendee_approval_required: false,
+          capacity: 2,
+          canceled: false,
+          has_sellable_ticket_types: false,
+          is_live: false,
+          is_past: false,
+          is_ticketed: false,
+          remaining_capacity: 0,
+          ticket_types: [],
+          waitlist_count: 3,
+          waitlist_enabled: true,
+        }),
+      },
+    });
+
+    try {
+      await initializeAttendanceDom();
+      await waitForMicrotask();
+
+      expect(availabilityCapacity.textContent.trim()).to.equal("2");
+      expect(availabilityCaptions.waitlist.classList.contains("hidden")).to.equal(false);
+      expect(availabilityCaptions.waitlist.classList.contains("inline")).to.equal(true);
+      expect(availabilityCaptions.waitlist.textContent).to.include("3");
+      expect(availabilityCaptions.remaining.classList.contains("hidden")).to.equal(true);
+      expect(availabilityCaptions.remaining.classList.contains("inline")).to.equal(false);
+      expect(availabilityCaptions.remaining.textContent).to.not.include("3");
+    } finally {
+      fetchMock.restore();
+    }
+  });
+
+  it("hides the capacity placeholder when refreshed availability is unlimited", async () => {
+    const { availabilityCapacity, availabilityCaptions } = renderAttendanceDom({
+      availabilityUrl: "/events/test-event/availability",
+    });
+    const fetchMock = mockFetch({
+      response: {
+        ok: true,
+        json: async () => ({
+          attendee_approval_required: false,
+          capacity: null,
+          canceled: false,
+          has_sellable_ticket_types: false,
+          is_live: false,
+          is_past: false,
+          is_ticketed: false,
+          remaining_capacity: null,
+          ticket_types: [],
+          waitlist_count: 0,
+          waitlist_enabled: false,
+        }),
+      },
+    });
+
+    try {
+      await initializeAttendanceDom();
+      await waitForMicrotask();
+
+      expect(availabilityCapacity.textContent.trim()).to.equal("");
+      expect(availabilityCaptions.capacity.classList.contains("hidden")).to.equal(true);
+      expect(availabilityCaptions.remaining.classList.contains("hidden")).to.equal(true);
+      expect(availabilityCaptions.waitlist.classList.contains("hidden")).to.equal(true);
+    } finally {
+      fetchMock.restore();
+    }
+  });
+
+  it("keeps the sold-out ribbon hidden for canceled availability", async () => {
+    const { soldOutRibbon } = renderAttendanceDom({
+      availabilityUrl: "/events/test-event/availability",
+    });
+    const fetchMock = mockFetch({
+      response: {
+        ok: true,
+        json: async () => ({
+          attendee_approval_required: false,
+          capacity: 2,
+          canceled: true,
+          has_sellable_ticket_types: false,
+          is_live: false,
+          is_past: false,
+          is_ticketed: false,
+          remaining_capacity: 0,
+          ticket_types: [],
+          waitlist_count: 0,
+          waitlist_enabled: false,
+        }),
+      },
+    });
+
+    try {
+      await initializeAttendanceDom();
+      await waitForMicrotask();
+
+      expect(soldOutRibbon.classList.contains("hidden")).to.equal(true);
+    } finally {
+      fetchMock.restore();
+    }
+  });
+
+  it("disables attendance controls when cached event data is canceled", () => {
+    const { checker, attendButton, signinButton } = renderAttendanceDom({
+      canceled: "true",
+    });
+
+    dispatchHtmxAfterRequest(checker, {
+      responseText: JSON.stringify({ status: "guest" }),
+    });
+
+    expect(attendButton.classList.contains("hidden")).to.equal(false);
+    expect(attendButton.disabled).to.equal(true);
+    expect(attendButton.title).to.equal("This event has been canceled.");
+    expect(signinButton.classList.contains("hidden")).to.equal(true);
+  });
+
+  it("allows refund requests for paid attendees when cached event data is canceled", () => {
+    const { checker, leaveButton, refundButton } = renderAttendanceDom({
+      canceled: "true",
+    });
+
+    dispatchHtmxAfterRequest(checker, {
+      responseText: JSON.stringify({
+        can_request_refund: true,
+        purchase_amount_minor: 2500,
+        refund_request_status: null,
+        status: "attendee",
+      }),
+    });
+
+    expect(refundButton.classList.contains("hidden")).to.equal(false);
+    expect(refundButton.disabled).to.equal(false);
+    expect(refundButton.querySelector("[data-attendance-label]")?.textContent).to.equal("Request refund");
+    expect(leaveButton.classList.contains("hidden")).to.equal(true);
   });
 
   it("leaves standalone ticket price badge text untouched", async () => {

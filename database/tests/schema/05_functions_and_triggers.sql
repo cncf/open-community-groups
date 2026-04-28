@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(223);
+select plan(225);
 
 -- ============================================================================
 -- TESTS
@@ -32,6 +32,7 @@ select has_function('attach_checkout_session_to_event_purchase');
 select has_function('attend_event');
 select has_function('begin_event_refund_approval');
 select has_function('cancel_event');
+select has_function('cancel_event_checkout');
 select has_function('cancel_event_series_events');
 select has_function('check_in_event');
 select has_function('complete_free_event_purchase');
@@ -68,6 +69,7 @@ select has_function('get_event_attendance');
 select has_function('get_event_full');
 select has_function('get_event_full_by_slug');
 select has_function('get_event_summary');
+select has_function('get_event_summary_dashboard');
 select has_function('get_event_summary_by_id');
 select has_function('get_filters_options');
 select has_function('get_group_full');

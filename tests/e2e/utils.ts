@@ -231,86 +231,14 @@ const getPngDimensions = (filePath: string) => {
 };
 
 /**
- * Aligns a locator screenshot height with the checked-in snapshot when drift is tiny.
+ * Checks whether a region is close enough to a snapshot for clipped capture.
  */
-const alignRegionHeightToSnapshot = async (
-  region: Locator,
-  screenshotName: string,
-  testInfo?: TestInfo,
-) => {
-  if (!testInfo) {
-    return;
-  }
-
-  const snapshotDimensions = getPngDimensions(testInfo.snapshotPath(screenshotName));
-
-  if (!snapshotDimensions) {
-    return;
-  }
-
-  const regionBox = await region.boundingBox();
-
-  if (!regionBox) {
-    return;
-  }
-
-  const actualHeight = Math.round(regionBox.height);
-  const heightDelta = snapshotDimensions.height - actualHeight;
-
-  if (heightDelta === 0 || Math.abs(heightDelta) > 2) {
-    return;
-  }
-
-  await region.evaluate(
-    (element, { expectedHeight, adjustHeight }) => {
-      const target = element as HTMLElement;
-
-      target.dataset.ocgE2ePrevBoxSizing = target.style.boxSizing;
-      target.dataset.ocgE2ePrevMinHeight = target.style.minHeight;
-      target.dataset.ocgE2ePrevMaxHeight = target.style.maxHeight;
-      target.dataset.ocgE2ePrevHeight = target.style.height;
-      target.dataset.ocgE2ePrevOverflow = target.style.overflow;
-      target.style.boxSizing = "border-box";
-
-      if (adjustHeight > 0) {
-        target.style.minHeight = `${expectedHeight}px`;
-        return;
-      }
-
-      target.style.maxHeight = `${expectedHeight}px`;
-      target.style.height = `${expectedHeight}px`;
-      target.style.overflow = "hidden";
-    },
-    {
-      expectedHeight: snapshotDimensions.height,
-      adjustHeight: heightDelta,
-    },
-  );
-};
-
-/**
- * Restores temporary region styles applied for screenshot normalization.
- */
-const resetRegionHeightAlignment = async (region: Locator) => {
-  await region.evaluate((element) => {
-    const target = element as HTMLElement;
-
-    if (!target.dataset.ocgE2ePrevBoxSizing) {
-      return;
-    }
-
-    target.style.boxSizing = target.dataset.ocgE2ePrevBoxSizing;
-    target.style.minHeight = target.dataset.ocgE2ePrevMinHeight ?? "";
-    target.style.maxHeight = target.dataset.ocgE2ePrevMaxHeight ?? "";
-    target.style.height = target.dataset.ocgE2ePrevHeight ?? "";
-    target.style.overflow = target.dataset.ocgE2ePrevOverflow ?? "";
-    delete target.dataset.ocgE2ePrevBoxSizing;
-    delete target.dataset.ocgE2ePrevMinHeight;
-    delete target.dataset.ocgE2ePrevMaxHeight;
-    delete target.dataset.ocgE2ePrevHeight;
-    delete target.dataset.ocgE2ePrevOverflow;
-  });
-};
+const hasTinySnapshotDimensionDrift = (
+  regionBox: { width: number; height: number },
+  snapshotDimensions: { width: number; height: number },
+) =>
+  Math.abs(snapshotDimensions.width - Math.round(regionBox.width)) <= 2 &&
+  Math.abs(snapshotDimensions.height - Math.round(regionBox.height)) <= 2;
 
 /**
  * Builds a fully-qualified URL.
@@ -605,41 +533,42 @@ export const expectRegionScreenshot = async (
   await expect(region).toBeVisible();
   await region.scrollIntoViewIfNeeded();
   await waitForVisualImages(region);
-  await alignRegionHeightToSnapshot(region, screenshotName, testInfo);
 
-  try {
-    if (useClippedPageScreenshot && testInfo) {
-      const snapshotDimensions = getPngDimensions(testInfo.snapshotPath(screenshotName));
-      const regionBox = await region.boundingBox();
+  if (testInfo) {
+    const snapshotDimensions = getPngDimensions(testInfo.snapshotPath(screenshotName));
+    const regionBox = await region.boundingBox();
+    const shouldUseClippedPageScreenshot =
+      useClippedPageScreenshot ||
+      (process.env.CI === "true" &&
+        snapshotDimensions &&
+        regionBox &&
+        hasTinySnapshotDimensionDrift(regionBox, snapshotDimensions));
 
-      if (snapshotDimensions && regionBox) {
-        await expect(page).toHaveScreenshot(screenshotName, {
-          animations: "disabled",
-          caret: "hide",
-          mask,
-          clip: {
-            x: Math.max(0, regionBox.x),
-            y: Math.max(0, regionBox.y),
-            width: snapshotDimensions.width,
-            height: snapshotDimensions.height,
-          },
-          scale: "css",
-          ...snapshotDiffOptions,
-        });
+    if (shouldUseClippedPageScreenshot && snapshotDimensions && regionBox) {
+      await expect(page).toHaveScreenshot(screenshotName, {
+        animations: "disabled",
+        caret: "hide",
+        mask,
+        clip: {
+          x: Math.max(0, regionBox.x),
+          y: Math.max(0, regionBox.y),
+          width: snapshotDimensions.width,
+          height: snapshotDimensions.height,
+        },
+        scale: "css",
+        ...snapshotDiffOptions,
+      });
 
-        return;
-      }
+      return;
     }
-
-    await expect(region).toHaveScreenshot(screenshotName, {
-      animations: "disabled",
-      caret: "hide",
-      mask,
-      ...snapshotDiffOptions,
-    });
-  } finally {
-    await resetRegionHeightAlignment(region);
   }
+
+  await expect(region).toHaveScreenshot(screenshotName, {
+    animations: "disabled",
+    caret: "hide",
+    mask,
+    ...snapshotDiffOptions,
+  });
 };
 
 /**

@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(3);
+select plan(6);
 
 -- ============================================================================
 -- VARIABLES
@@ -11,7 +11,10 @@ select plan(3);
 
 \set categoryID '00000000-0000-0000-0000-000000000011'
 \set communityID '00000000-0000-0000-0000-000000000001'
+\set eventCanceledID '00000000-0000-0000-0000-000000000043'
 \set eventCategoryID '00000000-0000-0000-0000-000000000021'
+\set eventDeletedID '00000000-0000-0000-0000-000000000044'
+\set eventDraftCanceledID '00000000-0000-0000-0000-000000000045'
 \set eventID '00000000-0000-0000-0000-000000000041'
 \set eventPaidID '00000000-0000-0000-0000-000000000042'
 \set groupID '00000000-0000-0000-0000-000000000031'
@@ -139,6 +142,92 @@ insert into event (
     '2024-06-16 09:00:00+00'
 );
 
+insert into event (
+    event_id,
+    name,
+    slug,
+    description,
+    description_short,
+    timezone,
+    event_category_id,
+    event_kind_id,
+    group_id,
+    canceled,
+    published,
+    starts_at
+) values (
+    :'eventCanceledID',
+    'Canceled Tech Conference 2024',
+    'canceled-tech-conference-2024',
+    'Canceled event for get_event_full_by_slug coverage',
+    'Canceled tech conference',
+    'America/New_York',
+    :'eventCategoryID',
+    'virtual',
+    :'groupID',
+    true,
+    true,
+    '2024-06-17 09:00:00+00'
+);
+
+insert into event (
+    event_id,
+    name,
+    slug,
+    description,
+    description_short,
+    timezone,
+    event_category_id,
+    event_kind_id,
+    group_id,
+    canceled,
+    published,
+    starts_at
+) values (
+    :'eventDraftCanceledID',
+    'Canceled Draft Tech Conference 2024',
+    'canceled-draft-tech-conference-2024',
+    'Canceled draft event for get_event_full_by_slug coverage',
+    'Canceled draft tech conference',
+    'America/New_York',
+    :'eventCategoryID',
+    'virtual',
+    :'groupID',
+    true,
+    false,
+    '2024-06-19 09:00:00+00'
+);
+
+insert into event (
+    event_id,
+    name,
+    slug,
+    description,
+    description_short,
+    timezone,
+    event_category_id,
+    event_kind_id,
+    group_id,
+    canceled,
+    deleted,
+    published,
+    starts_at
+) values (
+    :'eventDeletedID',
+    'Deleted Tech Conference 2024',
+    'deleted-tech-conference-2024',
+    'Deleted event for get_event_full_by_slug coverage',
+    'Deleted tech conference',
+    'America/New_York',
+    :'eventCategoryID',
+    'virtual',
+    :'groupID',
+    true,
+    true,
+    false,
+    '2024-06-18 09:00:00+00'
+);
+
 -- Event ticket type
 insert into event_ticket_type (
     event_ticket_type_id,
@@ -217,6 +306,29 @@ select is(
 select ok(
     get_event_full_by_slug(:'communityID'::uuid, 'abc1234', 'non-existing-event') is null,
     'Should return null with non-existing event slug'
+);
+
+-- Should return a canceled event when it remains published
+select is(
+    get_event_full_by_slug(
+        :'communityID'::uuid,
+        'abc1234',
+        'canceled-tech-conference-2024'
+    )::jsonb,
+    get_event_full(:'communityID'::uuid, :'groupID'::uuid, :'eventCanceledID'::uuid)::jsonb,
+    'Should return a canceled event when it remains published'
+);
+
+-- Should return null with canceled draft event slug
+select ok(
+    get_event_full_by_slug(:'communityID'::uuid, 'abc1234', 'canceled-draft-tech-conference-2024') is null,
+    'Should return null with canceled draft event slug'
+);
+
+-- Should return null with deleted event slug
+select ok(
+    get_event_full_by_slug(:'communityID'::uuid, 'abc1234', 'deleted-tech-conference-2024') is null,
+    'Should return null with deleted event slug'
 );
 
 -- Should return the same paid-event payload as get_event_full

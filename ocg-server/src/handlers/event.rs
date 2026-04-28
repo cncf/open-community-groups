@@ -4,12 +4,12 @@ use askama::Template;
 use axum::{
     Json,
     extract::{Path, State},
-    http::{HeaderMap, StatusCode, Uri},
+    http::{HeaderMap, HeaderValue, StatusCode, Uri, header::CACHE_CONTROL},
     response::{Html, IntoResponse},
 };
 use chrono::Duration;
 use garde::Validate;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{json, to_value};
 use tracing::{instrument, warn};
 use uuid::Uuid;
@@ -23,6 +23,7 @@ use crate::{
         extractors::{CurrentUser, ValidatedForm, ValidatedFormQs},
         prepare_headers, request_matches_site, trim_public_gallery_images,
     },
+    router::CACHE_CONTROL_NO_CACHE,
     services::{
         notifications::{DynNotificationsManager, NewNotification, NotificationKind},
         payments::{DynPaymentsManager, RequestRefundInput},
@@ -34,8 +35,8 @@ use crate::{
         notifications::{EventWaitlistJoined, EventWaitlistLeft, EventWaitlistPromoted, EventWelcome},
     },
     types::{
-        event::{EventAttendanceStatus, EventSummary},
-        payments::{EventPurchaseStatus, PreparedEventCheckout},
+        event::{EventAttendanceStatus, EventFull, EventSummary},
+        payments::{EventPurchaseStatus, EventTicketType, PreparedEventCheckout},
     },
     util::{build_event_calendar_attachment, build_event_page_link},
     validation::{
@@ -148,6 +149,27 @@ pub(crate) async fn cfs_modal(
     };
 
     Ok(Html(template.render()?))
+}
+
+// JSON handlers.
+
+/// Handler that returns fresh public availability for the event page.
+#[instrument(skip_all)]
+pub(crate) async fn availability(
+    State(db): State<DynDB>,
+    CommunityId(community_id): CommunityId,
+    Path((_, group_slug, event_slug)): Path<(String, String, String)>,
+) -> Result<impl IntoResponse, HandlerError> {
+    // Get current public event availability
+    let event = db
+        .get_event_full_by_slug(community_id, &group_slug, &event_slug)
+        .await?;
+
+    // Prevent volatile seat availability from being cached
+    let mut headers = HeaderMap::new();
+    headers.insert(CACHE_CONTROL, HeaderValue::from_static(CACHE_CONTROL_NO_CACHE));
+
+    Ok((headers, Json(EventAvailability::from_event(&event))))
 }
 
 // Actions handlers.
@@ -277,6 +299,24 @@ pub(crate) async fn attendance_status(
         "resume_checkout_url": attendance.resume_checkout_url,
         "status": attendance.status
     })))
+}
+
+/// Handler for canceling an active checkout hold.
+#[instrument(skip_all)]
+pub(crate) async fn cancel_checkout(
+    CurrentUser(user): CurrentUser,
+    State(db): State<DynDB>,
+    CommunityId(community_id): CommunityId,
+    Path((_, event_id)): Path<(String, Uuid)>,
+) -> Result<impl IntoResponse, HandlerError> {
+    db.cancel_event_checkout(community_id, event_id, user.user_id).await?;
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "status": EventAttendanceStatus::None,
+        })),
+    ))
 }
 
 /// Handler that marks the authenticated attendee as checked in.
@@ -528,25 +568,127 @@ pub(crate) async fn track_view(
 
 // Types.
 
+/// Submitted CFS proposal form data.
 #[derive(Debug, Deserialize, Validate)]
 pub(crate) struct CfsSubmissionInput {
+    /// Labels selected by the submitter for this proposal.
     #[serde(default)]
     #[garde(length(max = MAX_LEN_EVENT_LABELS_PER_SUBMISSION))]
     label_ids: Vec<Uuid>,
+    /// Session proposal being submitted to the event CFS.
     #[garde(skip)]
     session_proposal_id: Uuid,
 }
 
+/// Ticket checkout form data.
 #[derive(Debug, Deserialize, Validate)]
 pub(crate) struct CheckoutInput {
+    /// Optional discount code entered by the attendee.
     #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_S))]
     discount_code: Option<String>,
+    /// Ticket type selected by the attendee.
     #[garde(skip)]
     event_ticket_type_id: Option<Uuid>,
 }
 
+/// Public event availability returned to hydrate cached event pages.
+#[derive(Debug, Serialize)]
+#[allow(clippy::struct_excessive_bools)]
+struct EventAvailability {
+    /// Whether attendance requests require organizer approval.
+    attendee_approval_required: bool,
+    /// Whether the event has been canceled.
+    canceled: bool,
+    /// Whether the event has at least one ticket type selectable now.
+    has_sellable_ticket_types: bool,
+    /// Whether the event is live for attendee-facing access.
+    is_live: bool,
+    /// Whether the event has already ended or started without an end time.
+    is_past: bool,
+    /// Whether the event uses the ticketing flow.
+    is_ticketed: bool,
+    /// Current public availability for each ticket type.
+    ticket_types: Vec<EventTicketAvailability>,
+    /// Current number of users on the waiting list.
+    waitlist_count: i32,
+    /// Whether joining the waiting list is enabled.
+    waitlist_enabled: bool,
+
+    /// Maximum capacity for the event.
+    capacity: Option<i32>,
+    /// Remaining capacity after subtracting registered attendees.
+    remaining_capacity: Option<i32>,
+}
+
+impl EventAvailability {
+    /// Builds a public availability payload from the current event state.
+    fn from_event(event: &EventFull) -> Self {
+        Self {
+            attendee_approval_required: event.attendee_approval_required,
+            canceled: event.canceled,
+            has_sellable_ticket_types: event.has_sellable_ticket_types(),
+            is_live: event.is_live(),
+            is_past: event.is_past(),
+            is_ticketed: event.is_ticketed(),
+            ticket_types: event
+                .ticket_types
+                .as_deref()
+                .unwrap_or_default()
+                .iter()
+                .map(|ticket_type| {
+                    EventTicketAvailability::from_ticket_type(
+                        ticket_type,
+                        event.payment_currency_code.as_deref(),
+                    )
+                })
+                .collect(),
+            waitlist_count: event.waitlist_count,
+            waitlist_enabled: event.waitlist_enabled,
+
+            capacity: event.capacity,
+            remaining_capacity: event.remaining_capacity,
+        }
+    }
+}
+
+/// Public ticket type availability returned to hydrate cached event pages.
+#[derive(Debug, Serialize)]
+struct EventTicketAvailability {
+    /// Whether the ticket type is active.
+    active: bool,
+    /// Unique identifier for the ticket type.
+    event_ticket_type_id: Uuid,
+    /// Whether attendees can currently select this ticket type.
+    is_sellable_now: bool,
+    /// Whether all seats for this ticket type are currently reserved.
+    sold_out: bool,
+
+    /// Current attendee-facing price label for this ticket type.
+    current_price_label: Option<String>,
+    /// Number of seats still available for this ticket type.
+    remaining_seats: Option<i32>,
+}
+
+impl EventTicketAvailability {
+    /// Builds a public availability payload for one ticket type.
+    fn from_ticket_type(ticket_type: &EventTicketType, payment_currency_code: Option<&str>) -> Self {
+        Self {
+            active: ticket_type.active,
+            event_ticket_type_id: ticket_type.event_ticket_type_id,
+            is_sellable_now: ticket_type.is_sellable_now(),
+            sold_out: ticket_type.sold_out,
+
+            current_price_label: payment_currency_code
+                .and_then(|currency_code| ticket_type.formatted_current_price(currency_code)),
+            remaining_seats: ticket_type.remaining_seats,
+        }
+    }
+}
+
+/// Refund request form data.
 #[derive(Debug, Deserialize, Validate)]
 pub(crate) struct RefundRequestInput {
+    /// Optional reason provided by the attendee.
     #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_DESCRIPTION_SHORT))]
     requested_reason: Option<String>,
 }

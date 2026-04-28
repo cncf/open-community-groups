@@ -93,8 +93,11 @@ pub(crate) async fn setup(
     notifications_manager: DynNotificationsManager,
     server_cfg: &HttpServerConfig,
 ) -> Result<Router> {
-    // Check which meetings providers are configured
-    let zoom_enabled = meetings_cfg.as_ref().is_some_and(|cfg| cfg.zoom.is_some());
+    // Check whether the Zoom meetings provider is enabled
+    let zoom_enabled = meetings_cfg
+        .as_ref()
+        .and_then(|cfg| cfg.zoom.as_ref())
+        .is_some_and(|zoom_cfg| zoom_cfg.enabled);
 
     // Check whether a payments provider is configured
     let payments_enabled = payments_cfg.is_some();
@@ -131,7 +134,7 @@ pub(crate) async fn setup(
         .route("/{community}/event/{event_id}/attend", post(event::attend_event))
         .route(
             "/{community}/event/{event_id}/checkout",
-            post(event::start_checkout),
+            delete(event::cancel_checkout).post(event::start_checkout),
         )
         .route(
             "/{community}/event/{event_id}/attendance",
@@ -201,6 +204,10 @@ pub(crate) async fn setup(
         .route("/{community}", get(community::page))
         .route("/{community}/group/{group_slug}", get(group::page))
         .route("/{community}/event/{event_id}/cfs-modal", get(event::cfs_modal))
+        .route(
+            "/{community}/group/{group_slug}/event/{event_slug}/availability",
+            get(event::availability),
+        )
         .route(
             "/{community}/group/{group_slug}/event/{event_slug}",
             get(event::page),

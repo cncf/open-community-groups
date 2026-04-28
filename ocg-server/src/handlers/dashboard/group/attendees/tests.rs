@@ -197,7 +197,7 @@ async fn test_approve_refund_request_returns_no_content_when_payments_manager_su
     assert_eq!(parts.status, StatusCode::NO_CONTENT);
     assert_eq!(
         parts.headers.get("HX-Trigger"),
-        Some(&HeaderValue::from_static("refresh-body"))
+        Some(&HeaderValue::from_static("refresh-event-attendees"))
     );
     assert!(bytes.is_empty());
 }
@@ -831,7 +831,7 @@ async fn test_reject_refund_request_returns_no_content_when_payments_manager_suc
     assert_eq!(parts.status, StatusCode::NO_CONTENT);
     assert_eq!(
         parts.headers.get("HX-Trigger"),
-        Some(&HeaderValue::from_static("refresh-body"))
+        Some(&HeaderValue::from_static("refresh-event-attendees"))
     );
     assert!(bytes.is_empty());
 }

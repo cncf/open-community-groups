@@ -4,6 +4,7 @@ import {
   resolveCurrencyInputPlaceholder,
   resolveCurrencyInputStep,
   resolveEventCurrencyCode,
+  resolveStripeMaximumChargeInput,
 } from "/static/js/dashboard/event/ticketing/currency.js";
 
 /**
@@ -246,6 +247,14 @@ export class TicketingEditorBase extends LitWrapper {
    */
   _currencyInputPlaceholder() {
     return resolveCurrencyInputPlaceholder(this._currencyCode());
+  }
+
+  /**
+   * Resolves the maximum currency input value for the active currency.
+   * @returns {string}
+   */
+  _currencyInputMax() {
+    return resolveStripeMaximumChargeInput(this._currencyCode());
   }
 
   /**

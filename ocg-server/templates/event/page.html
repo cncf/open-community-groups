@@ -33,26 +33,36 @@
   {# End breadcrumb -#}
 
   <div class="relative container mx-auto max-w-7xl p-4 sm:p-6 lg:p-8 pb-8 md:pb-10 lg:pb-16 flex grow h-full">
-    <div class="bg-white border border-stone-200 rounded-lg flex flex-col w-full relative overflow-hidden">
-      {# Sold out badge -#}
-      {{ badges::sold_out_corner_ribbon(remaining_capacity = event.remaining_capacity, capacity = event.capacity) -}}
-      {# End sold out badge -#}
+    <div class="bg-white border border-stone-200 rounded-lg flex flex-col w-full relative overflow-visible">
+      {% if event.canceled -%}
+        {{ badges::sold_out_corner_ribbon(remaining_capacity = event.remaining_capacity,
+                capacity = event.capacity,
+                label = "Canceled",
+                always_render = true,
+                force_visible = true) -}}
+      {% else -%}
+        {{ badges::sold_out_corner_ribbon(remaining_capacity = event.remaining_capacity,
+                capacity = event.capacity,
+                data_attrs = "data-availability-sold-out-ribbon",
+                always_render = true) -}}
+      {% endif -%}
+      {# End status badge -#}
 
       <div class="flex gap-y-6 sm:gap-y-8 lg:gap-y-12 flex-col px-4 sm:px-6 lg:px-10 py-4 sm:py-6 lg:py-10">
         {# Event header with name and group -#}
         <div>
           {# Main flex container for logo, name/group,
              and social networks -#}
-          <div class="flex flex-1 flex-row items-stretch gap-6">
+          <div class="grid gap-x-6 gap-y-4 md:grid-cols-[auto_minmax(0,1fr)_auto]">
             {# Event logo -#}
-            <div class="relative hidden md:block">
+            <div class="relative hidden md:row-span-2 md:block">
               {{ ui::logo(logo_url = event.logo_url, classes = "size-24 md:size-28", size = 112) -}}
             </div>
             {# End event logo -#}
 
-            <div class="flex-1 min-w-0 flex flex-col justify-between">
-              <div class="flex-1 min-w-0 flex justify-between">
-                <div class="flex flex-col">
+            <div class="min-w-0 md:col-span-2 md:col-start-2">
+              <div class="min-w-0 flex justify-between">
+                <div class="min-w-0 flex flex-col">
                   {# Group/Category legend -#}
                   <a href="/{{ event.community.name }}/group/{{ event.group.slug }}"
                      class="text-sm font-semibold tracking-wide uppercase text-stone-400 hover:underline lg:-mt-1 md:mb-0.5"
@@ -73,73 +83,9 @@
                   {# End event name -#}
                 </div>
 
-                {# Social networks and canceled badge
-                   (desktop) -#}
-                {% if event.canceled || has_social_links -%}
-                  <div class="hidden md:flex flex-col items-end gap-2">
-                    {% if event.canceled -%}
-                      {{ badges::event_badge(kind = event.kind, canceled = true, extra_styles = Some("px-2.5 py-0.5") ) -}}
-                    {% endif -%}
-                    {% if has_social_links -%}
-                      <div class="flex flex-wrap gap-2">
-                        {% if let Some(meetup_url) = &event.meetup_url -%}
-                          {{ social::social_link(url = meetup_url, icon_name = "meetup", platform_name = "Meetup") -}}
-                        {% endif -%}
-                      </div>
-                    {% endif -%}
-                  </div>
-                {% endif -%}
-                {# End social networks and canceled
-                   badge (desktop) -#}
-              </div>
-
-              <div class="mt-2 md:mt-auto flex flex-col md:flex-row md:items-end md:justify-between w-full">
-                {# Event details and date -#}
-                <div class="flex flex-wrap items-center gap-3 md:gap-4 text-stone-600">
-                  {% if let Some(capacity) = &event.capacity -%}
-                    <div class="flex items-center gap-2 leading-none">
-                      <div class="svg-icon size-4 bg-stone-600 icon-people"></div>
-                      {% if event.is_past() -%}
-                        {% if let Some(remaining_capacity) = &event.remaining_capacity -%}
-                          <span class="inline-flex items-center text-sm">Attendees: {{ capacity - remaining_capacity }}</span>
-                        {% else -%}
-                          <span class="inline-flex items-center text-sm">
-                            <span class="md:hidden lg:inline">Capacity:</span>
-                            <span class="ms-1 md:ms-0 xl:ms-1">{{ capacity }}</span>
-                          </span>
-                        {% endif -%}
-                      {% else -%}
-                        <span class="inline-flex items-center text-sm">
-                          <span class="md:hidden lg:inline">Capacity:</span>
-                          <span class="ms-1 md:ms-0 xl:ms-1">{{ capacity }}</span>
-                        </span>
-                        {% if let Some(remaining_capacity) = &event.remaining_capacity %}
-                          {% if *remaining_capacity > 0 %}
-                            <span class="inline-flex items-center text-xs text-stone-500 md:hidden lg:inline">
-                              (Remaining: {{ remaining_capacity }})
-                            </span>
-                            <span class="hidden md:inline-flex lg:hidden items-center text-xs text-stone-500">
-                              / {{ remaining_capacity }} left
-                            </span>
-                          {% else if event.waitlist_count > 0 %}
-                            <span class="inline-flex items-center text-xs text-stone-500 md:hidden lg:inline">
-                              (Waitlist: {{ event.waitlist_count }})
-                            </span>
-                            <span class="hidden md:inline-flex lg:hidden items-center text-xs text-stone-500">
-                              / {{ event.waitlist_count }} waitlist
-                            </span>
-                          {% endif %}
-                        {% endif %}
-                      {% endif -%}
-                    </div>
-                  {% endif -%}
-                  <div>{{ badges::event_badge(kind = event.kind, extra_styles = Some("px-2.5 py-0.5") ) -}}</div>
-                </div>
-                {# End event details and date -#}
-
-                {# Social networks (mobile only) -#}
+                {# Social networks (desktop) -#}
                 {% if has_social_links -%}
-                  <div class="md:hidden mt-4 md:mb-0">
+                  <div class="hidden md:flex flex-col items-end gap-2">
                     <div class="flex flex-wrap gap-2">
                       {% if let Some(meetup_url) = &event.meetup_url -%}
                         {{ social::social_link(url = meetup_url, icon_name = "meetup", platform_name = "Meetup") -}}
@@ -147,23 +93,56 @@
                     </div>
                   </div>
                 {% endif -%}
-                {# End social networks (mobile) -#}
-
-                <div class="mt-4 md:mt-0 flex flex-row flex-wrap gap-4 items-end md:ml-auto">
-                  {# Share button -#}
-                  <share-modal title="{{ event.group.name }} · {{ event.name }}" url="/{{ event.community.name }}/group/{{ event.group.slug }}/event/{{ event.slug }}">
-                  </share-modal>
-                  {# End share button -#}
-
-                  {% if !event.canceled -%}
-                    {# Attend button section -#}
-                    {% let attendance_instance = "main" -%}
-                    {% include "event/attend_button.html" %}
-                    {# End attend button section -#}
-                  {% endif -%}
-                </div>
-
+                {# End social networks (desktop) -#}
               </div>
+            </div>
+
+            <div class="md:col-start-2 md:row-start-2 md:self-end">
+              {# Event details and date -#}
+              <div class="flex flex-wrap items-center gap-3 md:gap-4 md:max-xl:gap-3 text-stone-600">
+                <div data-availability-caption="capacity"
+                     class="flex items-center gap-2 leading-none">
+                  <div class="svg-icon size-4 bg-stone-600 icon-people"></div>
+                  <span class="inline-flex items-center text-sm">
+                    <span>Capacity:</span>
+                    <span class="ms-1 inline-flex min-w-4 items-center"
+                          data-availability-capacity>
+                      <span data-availability-spinner
+                            class="inline-flex size-3 animate-spin rounded-full border-2 border-stone-300 border-t-stone-600">
+                      </span>
+                    </span>
+                  </span>
+                  <span data-availability-caption="remaining"
+                        class="hidden text-xs text-stone-500 opacity-0 transition-opacity duration-150">
+                    (Remaining: <span data-availability-remaining></span>)
+                  </span>
+                  <span data-availability-caption="waitlist"
+                        class="hidden text-xs text-stone-500 opacity-0 transition-opacity duration-150">
+                    (Waitlist: <span data-availability-waitlist></span>)
+                  </span>
+                </div>
+                {{ badges::event_badge(kind = event.kind, extra_styles = Some("px-2.5 py-0.5") ) -}}
+              </div>
+              {# End event details and date -#}
+
+              {# Social networks (mobile only) -#}
+              {% if has_social_links -%}
+                <div class="md:hidden mt-4 md:mb-0">
+                  <div class="flex flex-wrap gap-2">
+                    {% if let Some(meetup_url) = &event.meetup_url -%}
+                      {{ social::social_link(url = meetup_url, icon_name = "meetup", platform_name = "Meetup") -}}
+                    {% endif -%}
+                  </div>
+                </div>
+              {% endif -%}
+              {# End social networks (mobile) -#}
+            </div>
+
+            <div class="flex max-w-full flex-row flex-wrap gap-2 sm:flex-nowrap sm:gap-3 md:col-start-3 md:row-start-2 md:self-end md:justify-end md:gap-4">
+              {# Attend button section -#}
+              {% let attendance_instance = "main" -%}
+              {% include "event/attend_button.html" %}
+              {# End attend button section -#}
             </div>
 
           </div>

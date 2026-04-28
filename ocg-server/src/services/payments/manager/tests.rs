@@ -1326,6 +1326,8 @@ fn sample_event_summary(event_id: Uuid) -> EventSummary {
         waitlist_count: 0,
         waitlist_enabled: false,
         capacity: None,
+        created_by_display_name: None,
+        created_by_username: None,
         description_short: None,
         ends_at: None,
         event_series_id: None,

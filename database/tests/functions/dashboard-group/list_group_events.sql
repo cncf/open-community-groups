@@ -18,6 +18,7 @@ select plan(3);
 \set group1ID '00000000-0000-0000-0000-000000000002'
 \set group2ID '00000000-0000-0000-0000-000000000003'
 \set groupCategory1ID '00000000-0000-0000-0000-000000000010'
+\set user1ID '00000000-0000-0000-0000-000000000030'
 
 -- ============================================================================
 -- SEED DATA
@@ -45,6 +46,10 @@ insert into community (
 -- Event Category
 insert into event_category (event_category_id, name, community_id)
 values (:'category1ID', 'Conference', :'community1ID');
+
+-- User
+insert into "user" (user_id, email, username, auth_hash, name)
+values (:'user1ID', 'creator@example.com', 'creator', 'hash', 'Creator User');
 
 -- Group Category
 insert into group_category (group_category_id, name, community_id)
@@ -101,7 +106,9 @@ insert into event (
     starts_at,
     created_at,
     logo_url,
-    venue_city
+    venue_city,
+
+    created_by
 ) values 
     (
         :'event1ID',
@@ -115,7 +122,9 @@ insert into event (
         '2099-12-01 10:00:00+00',
         '2024-01-01 00:00:00',
         'https://example.com/future-logo.png',
-        'San Francisco'
+        'San Francisco',
+
+        :'user1ID'
     ),
     (
         :'event2ID',
@@ -129,6 +138,8 @@ insert into event (
         '2000-01-15 14:00:00+00',
         '2024-01-02 00:00:00',
         null,
+        null,
+
         null
     ),
     (
@@ -143,7 +154,9 @@ insert into event (
         null,
         '2024-01-03 00:00:00',
         'https://example.com/no-date-logo.png',
-        'London'
+        'London',
+
+        null
     ),
     (
         :'event4ID',
@@ -157,7 +170,9 @@ insert into event (
         '2099-06-01 09:00:00+00',
         '2024-01-04 00:00:00',
         null,
-        'Chicago'
+        'Chicago',
+
+        null
     );
 
 -- Event (deleted)
@@ -211,14 +226,14 @@ select is(
     jsonb_build_object(
         'past', jsonb_build_object(
             'events', jsonb_build_array(
-                get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb
+                get_event_summary_dashboard(:'community1ID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb
             ),
             'total', 1
         ),
         'upcoming', jsonb_build_object(
             'events', jsonb_build_array(
-                get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event1ID'::uuid)::jsonb,
-                get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event3ID'::uuid)::jsonb
+                get_event_summary_dashboard(:'community1ID'::uuid, :'group1ID'::uuid, :'event1ID'::uuid)::jsonb,
+                get_event_summary_dashboard(:'community1ID'::uuid, :'group1ID'::uuid, :'event3ID'::uuid)::jsonb
             ),
             'total', 2
         )
@@ -236,7 +251,7 @@ select is(
         'past', jsonb_build_object('events', '[]'::jsonb, 'total', 0),
         'upcoming', jsonb_build_object(
             'events', jsonb_build_array(
-                get_event_summary(:'community1ID'::uuid, :'group2ID'::uuid, :'event4ID'::uuid)::jsonb
+                get_event_summary_dashboard(:'community1ID'::uuid, :'group2ID'::uuid, :'event4ID'::uuid)::jsonb
             ),
             'total', 1
         )

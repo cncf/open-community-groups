@@ -2,9 +2,11 @@
 {% import "macros/dashboard.html" as dashboard -%}
 
 {# Events update form -#}
+{% let event_read_only = event.canceled || !can_manage_events -%}
 <div id="event-update-page"
      class="space-y-12"
      data-event-page="update"
+     data-event-canceled="{{ event.canceled }}"
      data-event-past="{{ event.is_past() }}"
      data-can-manage-events="{{ can_manage_events }}">
   <ul class="flex flex-nowrap gap-1 lg:gap-2 -mb-px font-medium text-center border-b border-stone-900/10 w-full mb-10 overflow-x-auto overflow-y-hidden">
@@ -139,6 +141,9 @@
   {% if !can_manage_events -%}
     {{ dashboard::permission_warning(message = "Your role cannot update events.", extra_classes = "") -}}
   {% endif -%}
+  {% if event.canceled -%}
+    {{ dashboard::permission_warning(message = "This event is canceled. Event details are read-only, but attendee and refund review tools remain available.", extra_classes = "") -}}
+  {% endif -%}
 
   <div id="pending-changes-alert" class="hidden">
     <div class="flex flex-wrap items-center justify-between gap-3 rounded-md border border-primary-200 bg-primary-50 px-4 py-3 text-primary-900">
@@ -149,7 +154,7 @@
       <button id="update-event-button"
               type="button"
               class="btn-primary w-24 text-nowrap ms-auto
-                     {% if !can_manage_events -%}
+                     {% if event_read_only -%}
                        opacity-50 cursor-not-allowed
                      {% endif -%}"
               hx-put="/dashboard/group/events/{{ event.event_id }}/update"
@@ -161,7 +166,9 @@
               hx-indicator="#dashboard-spinner"
               hx-disabled-elt="#update-event-button, #cancel-button"
               data-waitlist-count="{{ event.waitlist_count }}"
-              {% if !can_manage_events -%}
+              {% if event.canceled -%}
+                disabled title="Canceled events are read-only."
+              {% else if !can_manage_events -%}
                 disabled title="Your role cannot update events."
               {% endif -%}
               hx-exclude="[name=toggle_registration_required], [name=toggle_attendee_approval_required], [name=toggle_waitlist_enabled], [name=toggle_meeting_requested], [name=toggle_cfs_enabled], [name=toggle_event_reminder_enabled]">
@@ -170,7 +177,7 @@
     </div>
   </div>
 
-  <div class="inert-form" {% if !can_manage_events -%} inert {% endif -%}>
+  <div class="inert-form" {% if event_read_only -%} inert {% endif -%}>
     <div class="space-y-12">
       {# Event Details Tab -#}
       <div data-content="details">
@@ -772,18 +779,19 @@
 {% if payments_ready -%}
   {# Payments Tab -#}
   <div data-content="payments" class="hidden">
+    {% if event.waitlist_count > 0 -%}
+      <div class="mb-12 flex items-start gap-3 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900">
+        <div class="svg-icon size-5 bg-amber-700 icon-warning mt-0.5 shrink-0"></div>
+        <p class="text-sm/6">This event cannot switch to ticketing while people are on the waitlist.</p>
+      </div>
+    {% endif -%}
+
     <form id="payments-form">
       <div class="space-y-12">
         <div>
           <p class="mt-1 text-sm/6 text-stone-500">
             Configure event currency, ticket tiers, and optional discount codes.
           </p>
-
-          {% if event.waitlist_count > 0 -%}
-            <p class="mt-3 text-sm text-amber-700">
-              This event cannot switch to ticketing while people are on the waitlist.
-            </p>
-          {% endif -%}
 
           <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6">
             <div class="col-span-full lg:col-span-3">

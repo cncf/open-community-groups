@@ -2,7 +2,7 @@
 
 use std::collections::{BTreeMap, HashSet};
 
-use chrono::{DateTime, NaiveDate, Utc};
+use chrono::{DateTime, Duration, NaiveDate, Utc};
 use chrono_tz::Tz;
 use garde::Validate;
 use serde::{Deserialize, Serialize};
@@ -20,6 +20,9 @@ use crate::{
     },
     validation::{MAX_LEN_EVENT_LABEL_NAME, trimmed_non_empty, valid_cfs_label_color},
 };
+
+/// Minutes before the scheduled start when attendee meeting access opens.
+const EVENT_LIVE_LEAD_TIME_MINUTES: i64 = 15;
 
 // Event types: summary and full.
 
@@ -69,6 +72,10 @@ pub struct EventSummary {
 
     /// Maximum capacity for the event.
     pub capacity: Option<i32>,
+    /// Display name for the user who created the event, in dashboard views.
+    pub created_by_display_name: Option<String>,
+    /// Username for the user who created the event, in dashboard views.
+    pub created_by_username: Option<String>,
     /// Brief event description for listings.
     pub description_short: Option<String>,
     /// Event end time in UTC.
@@ -114,6 +121,21 @@ pub struct EventSummary {
 }
 
 impl EventSummary {
+    /// Returns dashboard tooltip text for the user who created the event.
+    pub fn created_by_tooltip(&self) -> Option<String> {
+        match (
+            self.created_by_display_name.as_deref(),
+            self.created_by_username.as_deref(),
+        ) {
+            (Some(display_name), Some(username)) if display_name != username => {
+                Some(format!("Created by {display_name} (@{username})"))
+            }
+            (Some(display_name), _) => Some(format!("Created by {display_name}")),
+            (None, Some(username)) => Some(format!("Created by @{username}")),
+            (None, None) => None,
+        }
+    }
+
     /// Returns the cheapest attendee-facing ticket price available right now.
     pub fn formatted_ticket_price_badge(&self) -> Option<String> {
         format_ticket_price_badge(
@@ -355,12 +377,14 @@ impl EventFull {
         has_sellable_ticket_types(self.ticket_types.as_deref())
     }
 
-    /// Check if the event is currently live.
+    /// Check if the event is currently live, including attendee access lead time.
     pub fn is_live(&self) -> bool {
         match (self.starts_at, self.ends_at) {
             (Some(starts_at), Some(ends_at)) => {
                 let now = Utc::now();
-                now >= starts_at && now <= ends_at
+                let live_starts_at = starts_at - Duration::minutes(EVENT_LIVE_LEAD_TIME_MINUTES);
+
+                now >= live_starts_at && now <= ends_at
             }
             _ => false,
         }
@@ -465,6 +489,8 @@ impl From<&EventFull> for EventSummary {
             waitlist_enabled: event.waitlist_enabled,
 
             capacity: event.capacity,
+            created_by_display_name: None,
+            created_by_username: None,
             description_short: event.description_short.clone(),
             ends_at: event.ends_at,
             event_series_id: event.event_series_id,
@@ -1011,6 +1037,16 @@ mod tests {
     }
 
     #[test]
+    fn event_full_is_live_returns_true_when_event_starts_soon() {
+        let event = EventFull {
+            starts_at: Some(Utc::now() + Duration::minutes(10)),
+            ends_at: Some(Utc::now() + Duration::hours(1)),
+            ..Default::default()
+        };
+        assert!(event.is_live());
+    }
+
+    #[test]
     fn event_full_is_past_returns_false_when_both_times_are_none() {
         let event = EventFull {
             ends_at: None,
@@ -1348,6 +1384,8 @@ mod tests {
             waitlist_enabled: false,
 
             capacity: None,
+            created_by_display_name: None,
+            created_by_username: None,
             description_short: None,
             ends_at: None,
             event_series_id: None,

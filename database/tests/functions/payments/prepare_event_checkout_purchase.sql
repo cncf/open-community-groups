@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(9);
+select plan(10);
 
 -- ============================================================================
 -- VARIABLES
@@ -41,6 +41,8 @@ select plan(9);
 \set inactiveUserID '79100000-0000-0000-0000-000000000030'
 \set redeemedUserID '79100000-0000-0000-0000-000000000031'
 \set soldOutHolderUserID '79100000-0000-0000-0000-000000000032'
+\set underMinimumUserID '79100000-0000-0000-0000-000000000033'
+\set underMinimumDiscountID '79100000-0000-0000-0000-000000000034'
 
 -- ============================================================================
 -- SEED DATA
@@ -70,7 +72,8 @@ insert into "user" (user_id, auth_hash, email, email_verified, username) values
     (:'soldOutUserID', 'hash-8', 'soldout@example.com', true, 'soldout-user'),
     (:'inactiveUserID', 'hash-9', 'inactive@example.com', true, 'inactive-user'),
     (:'redeemedUserID', 'hash-10', 'redeemed@example.com', true, 'redeemed-user'),
-    (:'soldOutHolderUserID', 'hash-11', 'holder@example.com', true, 'holder-user');
+    (:'soldOutHolderUserID', 'hash-11', 'holder@example.com', true, 'holder-user'),
+    (:'underMinimumUserID', 'hash-12', 'under-minimum@example.com', true, 'under-minimum-user');
 
 -- Group
 insert into "group" (group_id, community_id, group_category_id, name, payment_recipient, slug)
@@ -202,6 +205,17 @@ insert into event_discount_code (
     'fixed_amount',
     1,
     'Limited discount'
+), (
+    :'underMinimumDiscountID',
+    true,
+    2475,
+    5,
+    true,
+    'UNDERMIN',
+    :'mainEventID',
+    'fixed_amount',
+    null,
+    'Under minimum discount'
 );
 
 -- Existing attendee
@@ -444,6 +458,22 @@ select results_eq(
     $$,
     $$ values ('0'::text, '1'::text) $$,
     'Should persist the discounted amount and decrement its availability'
+);
+
+-- Should reject discounted checkout amounts below minimums
+select throws_ok(
+    $$
+        select prepare_event_checkout_purchase(
+            '79100000-0000-0000-0000-000000000001'::uuid,
+            '79100000-0000-0000-0000-000000000003'::uuid,
+            '79100000-0000-0000-0000-000000000006'::uuid,
+            '79100000-0000-0000-0000-000000000033'::uuid,
+            'UNDERMIN',
+            'stripe'
+        )
+    $$,
+    'payment amount must be zero or at least Stripe minimum charge amount',
+    'Should reject discounted checkout amounts below Stripe minimums'
 );
 
 -- ============================================================================

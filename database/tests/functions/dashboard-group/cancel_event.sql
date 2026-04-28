@@ -208,10 +208,10 @@ insert into session (
 -- TESTS
 -- ============================================================================
 
--- Should mark as canceled and clear publication metadata
+-- Should mark as canceled and preserve publication metadata
 select lives_ok(
     $$select cancel_event(null::uuid, '00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000031'::uuid)$$,
-    'Should mark as canceled and clear publication metadata'
+    'Should mark as canceled and preserve publication metadata'
 );
 
 -- Should set canceled=true
@@ -221,25 +221,25 @@ select is(
     'Should set canceled=true'
 );
 
--- Should set published=false
+-- Should keep published=true
 select is(
     (select published from event where event_id = :'eventID'),
-    false,
-    'Should set published=false'
+    true,
+    'Should keep published=true'
 );
 
--- Should set published_at to null
-select is(
+-- Should keep published_at
+select isnt(
     (select published_at from event where event_id = :'eventID'),
-    null,
-    'Should set published_at to null'
+    null::timestamptz,
+    'Should keep published_at'
 );
 
--- Should set published_by to null
+-- Should keep published_by
 select is(
     (select published_by from event where event_id = :'eventID'),
-    null,
-    'Should set published_by to null'
+    :'userID'::uuid,
+    'Should keep published_by'
 );
 
 -- Should create the expected audit row

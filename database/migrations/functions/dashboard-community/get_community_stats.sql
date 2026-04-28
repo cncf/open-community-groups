@@ -90,7 +90,7 @@ events_for_views as (
     from event e
     join filtered_groups fg on fg.group_id = e.group_id
     where e.deleted = false
-        and (e.canceled = true or e.published = true)
+        and e.published = true
 ),
 events_with_start as (
     select *

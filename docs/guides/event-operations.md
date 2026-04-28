@@ -73,7 +73,8 @@ State intent:
 
 - `Draft`: still being authored.
 - `Published`: live for public participation.
-- `Canceled`: visible as canceled and no longer running.
+- `Canceled`: no longer running. If the event was published, its public page remains available
+  with canceled-state messaging.
 
 ![Events operations list](../screenshots/dashboard-group-events.png)
 
@@ -332,6 +333,8 @@ Paid-attendance behavior:
 - Paid tickets require payment before attendance is created.
 - If checkout is interrupted, the public event page shows a `Complete payment` state while the
   hold is still active.
+- Attendees can use `Cancel checkout` before payment completes to release the hold and choose a
+  different ticket or discount code.
 - Free ticket attendees can still leave the event themselves.
 - Paid attendees request refunds instead of leaving directly.
 
@@ -474,8 +477,9 @@ Constraint violations can disable automatic mode until fixed.
 These actions serve different intents:
 
 - `Publish`: make event publicly available.
-- `Unpublish`: hide event without canceling it.
-- `Cancel`: mark event as not proceeding.
+- `Unpublish`: hide event without changing its canceled state.
+- `Cancel`: mark event as not proceeding while keeping an already published page available as
+  canceled.
 - `Delete`: permanently remove from normal operations.
 
 Message behavior:

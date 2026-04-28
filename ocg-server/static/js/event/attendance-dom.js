@@ -51,12 +51,15 @@ export const getAttendanceContainers = (root) => {
 /**
  * Returns the primary controls for a container.
  * @param {HTMLElement} container - Attendance container element
- * @returns {{attendButton: HTMLElement|null, leaveButton: HTMLElement|null, loadingButton: HTMLElement|null, refundButton: HTMLElement|null, signinButton: HTMLElement|null}}
+ * @returns {{actionsMenu: HTMLElement|null, attendButton: HTMLElement|null, checkoutCancelButton: HTMLElement|null, checkoutResumeButton: HTMLElement|null, leaveButton: HTMLElement|null, loadingButton: HTMLElement|null, refundButton: HTMLElement|null, signinButton: HTMLElement|null}}
  */
 export const getPrimaryControls = (container) => ({
+  actionsMenu: getAttendanceControl(container, "actions-menu"),
   loadingButton: getAttendanceControl(container, "loading-btn"),
   signinButton: getAttendanceControl(container, "signin-btn"),
   attendButton: getAttendanceControl(container, "attend-btn"),
+  checkoutCancelButton: getAttendanceControl(container, "checkout-cancel-btn"),
+  checkoutResumeButton: getAttendanceControl(container, "checkout-resume-btn"),
   leaveButton: getAttendanceControl(container, "leave-btn"),
   refundButton: getAttendanceControl(container, "refund-btn"),
 });
@@ -139,9 +142,26 @@ const parseRemainingCapacity = (container) => {
 };
 
 /**
+ * Returns the refreshed past-event state when availability has hydrated it.
+ * @param {HTMLElement} container - Attendance container element
+ * @returns {boolean|null} Parsed past-event state, or null if unavailable
+ */
+const parseHydratedIsPast = (container) => {
+  const isPastAttr = container?.dataset?.isPast;
+  if (isPastAttr === "true") {
+    return true;
+  }
+  if (isPastAttr === "false") {
+    return false;
+  }
+
+  return null;
+};
+
+/**
  * Computes attendance metadata for the current event.
  * @param {HTMLElement} container - Attendance container element
- * @returns {{attendeeApprovalRequired: boolean, attendeeMeetingAccessOpen: boolean, eventIsLive: boolean, isPastEvent: boolean, isSoldOut: boolean, isTicketed: boolean, ticketPurchaseAvailable: boolean, waitlistEnabled: boolean}}
+ * @returns {{attendeeApprovalRequired: boolean, attendeeMeetingAccessOpen: boolean, canceled: boolean, isPastEvent: boolean, isSoldOut: boolean, isTicketed: boolean, ticketPurchaseAvailable: boolean, waitlistEnabled: boolean}}
  */
 export const getAttendanceMeta = (container) => {
   const startsAtValue = container?.dataset?.starts ?? null;
@@ -150,11 +170,16 @@ export const getAttendanceMeta = (container) => {
   const isSoldOut = capacity !== null && remainingCapacity !== null && remainingCapacity <= 0;
   const attendeeApprovalRequired = container?.dataset?.attendeeApprovalRequired === "true";
   const attendeeMeetingAccessOpen = container?.dataset?.attendeeMeetingAccessOpen === "true";
-  const eventIsLive = container?.dataset?.isLive === "true";
+  const canceled = container?.dataset?.canceled === "true";
+  const hydratedIsPast = parseHydratedIsPast(container);
   const isTicketed = container?.dataset?.isTicketed === "true";
   const ticketPurchaseAvailable = container?.dataset?.ticketPurchaseAvailable === "true";
   const waitlistEnabled = container?.dataset?.waitlistEnabled === "true";
   const isPastEvent = (() => {
+    if (hydratedIsPast !== null) {
+      return hydratedIsPast;
+    }
+
     if (!startsAtValue) {
       return false;
     }
@@ -170,9 +195,9 @@ export const getAttendanceMeta = (container) => {
   return {
     attendeeApprovalRequired,
     attendeeMeetingAccessOpen,
+    canceled,
     isSoldOut,
     isPastEvent,
-    eventIsLive,
     ticketPurchaseAvailable,
     waitlistEnabled,
     isTicketed,

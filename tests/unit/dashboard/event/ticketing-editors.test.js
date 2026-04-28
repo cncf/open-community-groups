@@ -130,6 +130,7 @@ describe("ticketing editors", () => {
     expect(uiRoot.querySelector('label[for="ticket-title-draft"]')?.textContent).to.contain("*");
     expect(uiRoot.querySelector('label[for="ticket-seats-draft"]')?.textContent).to.contain("*");
     expect(uiRoot.querySelector('label[for="ticket-price-1"]')?.textContent).to.contain("*");
+    expect(uiRoot.querySelector("#ticket-price-1")?.max).to.equal("999999.99");
 
     await setInputValue(uiRoot, "#ticket-title-draft", "Early bird");
     await setInputValue(uiRoot, "#ticket-seats-draft", "40");
@@ -145,6 +146,32 @@ describe("ticketing editors", () => {
       uiRoot.querySelector('input[name="ticket_types[0][price_windows][0][amount_minor]"]')?.value,
     ).to.equal("1500");
     expect(events.at(-1)).to.deep.equal({ hasTicketTypes: true });
+  });
+
+  it("rejects ticket prices outside Stripe charge limits before saving", async () => {
+    document.getElementById("payment_currency_code").value = "USD";
+
+    const uiRoot = mountTicketTypesUi();
+    await uiRoot.updateComplete;
+
+    uiRoot._openTicketModal();
+    await uiRoot.updateComplete;
+
+    await setInputValue(uiRoot, "#ticket-title-draft", "Tiny paid ticket");
+    await setInputValue(uiRoot, "#ticket-seats-draft", "40");
+    const priceInput = await setInputValue(uiRoot, "#ticket-price-1", "0.49");
+
+    uiRoot.querySelector('[data-ticketing-action="save-ticket"]')?.click();
+    await uiRoot.updateComplete;
+
+    expect(priceInput.validationMessage).to.equal("Use 0 for free tickets, or at least 0.50 USD.");
+    expect(uiRoot.querySelector('input[name="ticket_types[0][title]"]')).to.equal(null);
+
+    await setInputValue(uiRoot, "#ticket-price-1", "1000000.00");
+    uiRoot.querySelector('[data-ticketing-action="save-ticket"]')?.click();
+    await uiRoot.updateComplete;
+
+    expect(priceInput.validationMessage).to.equal("Stripe allows up to 999999.99 USD.");
   });
 
   it("uses explicit ticket type controller dependencies instead of global fields", async () => {
@@ -770,9 +797,9 @@ describe("ticketing editors", () => {
     await ticketTypesUiRoot.updateComplete;
     await discountCodesUiRoot.updateComplete;
 
-    expect(ticketTypesUiRoot.querySelector('[data-ticketing-role="modal-title"]')?.textContent?.trim()).to.equal(
-      "Add ticket type",
-    );
+    expect(
+      ticketTypesUiRoot.querySelector('[data-ticketing-role="modal-title"]')?.textContent?.trim(),
+    ).to.equal("Add ticket type");
     expect(
       discountCodesUiRoot.querySelector('[data-ticketing-role="modal-title"]')?.textContent?.trim(),
     ).to.equal("Add discount code");
@@ -793,9 +820,9 @@ describe("ticketing editors", () => {
     await ticketTypesUiRoot.updateComplete;
     await discountCodesUiRoot.updateComplete;
 
-    expect(ticketTypesUiRoot.querySelector('[data-ticketing-role="modal-title"]')?.textContent?.trim()).to.equal(
-      "Add ticket type",
-    );
+    expect(
+      ticketTypesUiRoot.querySelector('[data-ticketing-role="modal-title"]')?.textContent?.trim(),
+    ).to.equal("Add ticket type");
     expect(
       discountCodesUiRoot.querySelector('[data-ticketing-role="modal-title"]')?.textContent?.trim(),
     ).to.equal("Add discount code");

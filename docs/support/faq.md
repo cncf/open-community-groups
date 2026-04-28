@@ -54,6 +54,9 @@ Current behavior:
   time.
 - Free ticket attendees can still leave the event normally.
 
+Before payment is complete, attendees can use `Cancel checkout` from the public event page to
+release the ticket hold and choose a different ticket or discount code.
+
 ## Can I Use Automatic Meeting Creation on In-Person Events?
 
 No. Automatic meeting requests are allowed only for `virtual` and `hybrid` events.

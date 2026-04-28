@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(13);
+select plan(15);
 
 -- ============================================================================
 -- VARIABLES
@@ -15,6 +15,7 @@ select plan(13);
 \set eventApprovalID '00000000-0000-0000-0000-000000000044'
 \set eventCanceledID '00000000-0000-0000-0000-000000000042'
 \set eventCategoryID '00000000-0000-0000-0000-000000000012'
+\set eventDraftCanceledID '00000000-0000-0000-0000-000000000045'
 \set eventID '00000000-0000-0000-0000-000000000041'
 \set eventPurchaseID '00000000-0000-0000-0000-000000000061'
 \set eventPurchaseCurrentID '00000000-0000-0000-0000-000000000062'
@@ -116,6 +117,20 @@ insert into event (
     'in-person',
     :'groupID',
     null,
+    true,
+    true,
+    null
+), (
+    :'eventDraftCanceledID',
+    false,
+    'Canceled Draft Event',
+    'canceled-draft-event',
+    'desc',
+    'UTC',
+    :'eventCategoryID',
+    'in-person',
+    :'groupID',
+    null,
     false,
     true,
     null
@@ -156,6 +171,14 @@ insert into event_attendee (event_id, user_id, checked_in) values (:'eventID', :
 -- Event Attendee - started event without end should still report attendee
 insert into event_attendee (event_id, user_id, checked_in)
 values (:'eventStartedNoEndID', :'user1ID', false);
+
+-- Event Attendee - canceled event should still report attendee
+insert into event_attendee (event_id, user_id, checked_in)
+values (:'eventCanceledID', :'user1ID', false);
+
+-- Event Attendee - canceled draft event should not report attendee
+insert into event_attendee (event_id, user_id, checked_in)
+values (:'eventDraftCanceledID', :'user2ID', false);
 
 -- Event Waitlist
 insert into event_waitlist (event_id, user_id)
@@ -391,7 +414,24 @@ select is(
     'Should ignore rejected invitation requests when approval is disabled'
 );
 
--- Should return none for waitlisted users on canceled events
+-- Should return attendee status for attendees on canceled events
+select is(
+    get_event_attendance(
+        :'communityID'::uuid,
+        :'eventCanceledID'::uuid,
+        :'user1ID'::uuid
+    )::jsonb,
+    '{
+        "is_checked_in": false,
+        "purchase_amount_minor": null,
+        "refund_request_status": null,
+        "resume_checkout_url": null,
+        "status": "attendee"
+    }'::jsonb,
+    'Should return attendee status for attendees on canceled events'
+);
+
+-- Should return waitlisted status for waitlisted users on canceled events
 select is(
     get_event_attendance(
         :'communityID'::uuid,
@@ -403,9 +443,26 @@ select is(
         "purchase_amount_minor": null,
         "refund_request_status": null,
         "resume_checkout_url": null,
+        "status": "waitlisted"
+    }'::jsonb,
+    'Should return waitlisted status for waitlisted users on canceled events'
+);
+
+-- Should return none for attendees on canceled draft events
+select is(
+    get_event_attendance(
+        :'communityID'::uuid,
+        :'eventDraftCanceledID'::uuid,
+        :'user2ID'::uuid
+    )::jsonb,
+    '{
+        "is_checked_in": false,
+        "purchase_amount_minor": null,
+        "refund_request_status": null,
+        "resume_checkout_url": null,
         "status": "none"
     }'::jsonb,
-    'Should return none for waitlisted users on canceled events'
+    'Should return none for attendees on canceled draft events'
 );
 
 -- Should return none for non-attendee

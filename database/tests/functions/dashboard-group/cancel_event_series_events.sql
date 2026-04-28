@@ -160,12 +160,11 @@ select lives_ok(
     'Should cancel all requested events'
 );
 
--- Should mark all requested events as canceled and unpublished
+-- Should mark all requested events as canceled
 select results_eq(
     $$
         select
-            canceled,
-            published
+            canceled
         from event
         where event_id in (
             '00000000-0000-0000-0000-000000000031'::uuid,
@@ -174,9 +173,9 @@ select results_eq(
         order by event_id
     $$,
     $$
-        values (true, false), (true, false)
+        values (true), (true)
     $$,
-    'Should mark all requested events as canceled and unpublished'
+    'Should mark all requested events as canceled'
 );
 
 -- Should create one audit row per canceled event

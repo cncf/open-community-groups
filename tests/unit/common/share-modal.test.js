@@ -55,6 +55,17 @@ describe("share-modal", () => {
     expect(element.textContent).to.include("Share");
   });
 
+  it("renders the menu item trigger variant", async () => {
+    const element = await mountLitComponent("share-modal", {
+      triggerVariant: "menu-item",
+      title: "Open Community Groups",
+      url: "/groups/cncf",
+    });
+
+    expect(element.querySelector("button")?.classList.contains("w-full")).to.equal(true);
+    expect(element.textContent).to.include("Share");
+  });
+
   it("opens and closes the modal while updating body scroll state", async () => {
     const element = await mountLitComponent("share-modal", {
       title: "Open Community Groups",

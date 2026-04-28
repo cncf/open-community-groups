@@ -63,6 +63,8 @@
 
 {{ template "dashboard-group/get_event_ticket_capacity.sql" }} -- Dependency for add/update_event
 {{ template "dashboard-group/list_payment_currency_codes.sql" }} -- Dependency for payment currency validation and dashboard forms
+{{ template "dashboard-group/validate_payment_currency_code.sql" }} -- Dependency for payment amount validation
+{{ template "dashboard-group/validate_payment_amount.sql" }} -- Dependency for event ticketing and checkout validation
 {{ template "dashboard-group/validate_event_capacity.sql" }} -- Dependency for add/update_event
 {{ template "dashboard-group/validate_event_cfs_labels_payload.sql" }} -- Dependency for add/update_event
 {{ template "dashboard-group/validate_event_discount_codes_payload.sql" }} -- Dependency for validate_event_ticketing_payload
@@ -70,7 +72,6 @@
 {{ template "dashboard-group/validate_event_series_action_event_ids.sql" }} -- Dependency for series actions
 {{ template "dashboard-group/validate_event_ticket_types_payload.sql" }} -- Dependency for validate_event_ticketing_payload
 {{ template "dashboard-group/validate_event_ticketing_payload.sql" }} -- Dependency for add/update_event
-{{ template "dashboard-group/validate_payment_currency_code.sql" }} -- Dependency for publish_event and checkout validation
 {{ template "event/promote_event_waitlist.sql" }} -- Dependency for update_event and leave_event
 {{ template "dashboard-group/sync_event_discount_codes.sql" }} -- Dependency for add/update_event
 {{ template "dashboard-group/sync_event_ticket_types.sql" }} -- Dependency for add/update_event
@@ -86,6 +87,7 @@
 {{ template "dashboard-group/delete_group_sponsor.sql" }}
 {{ template "dashboard-group/delete_group_team_member.sql" }}
 {{ template "dashboard-group/get_cfs_submission_notification_data.sql" }}
+{{ template "dashboard-group/get_event_summary_dashboard.sql" }} -- Dependency for list_group_events
 {{ template "dashboard-group/get_group_sponsor.sql" }}
 {{ template "dashboard-group/get_group_stats.sql" }}
 {{ template "dashboard-group/is_event_meeting_in_sync.sql" }}
@@ -187,6 +189,7 @@
 {{ template "payments/approve_event_refund_request.sql" }}
 {{ template "payments/attach_checkout_session_to_event_purchase.sql" }}
 {{ template "payments/begin_event_refund_approval.sql" }}
+{{ template "payments/cancel_event_checkout.sql" }}
 {{ template "payments/complete_free_event_purchase.sql" }}
 {{ template "payments/expire_event_purchase_for_checkout_session.sql" }}
 {{ template "payments/prepare_event_checkout_expire_previous_hold.sql" }} -- Dependency for prepare_event_checkout_purchase

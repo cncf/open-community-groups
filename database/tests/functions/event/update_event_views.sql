@@ -9,10 +9,11 @@ select plan(3);
 -- VARIABLES
 -- ============================================================================
 
+\set canceledDraftEventID '00000000-0000-0000-0000-000000000303'
 \set canceledEventID '00000000-0000-0000-0000-000000000302'
+\set communityID '00000000-0000-0000-0000-000000000001'
 \set eventCategoryID '00000000-0000-0000-0000-000000000201'
 \set groupID '00000000-0000-0000-0000-000000000101'
-\set communityID '00000000-0000-0000-0000-000000000001'
 \set publishedEventID '00000000-0000-0000-0000-000000000301'
 \set unknownEventID '00000000-0000-0000-0000-999999999999'
 
@@ -74,7 +75,8 @@ insert into event (
     starts_at
 ) values
     (:'publishedEventID', :'eventCategoryID', 'in-person', :'groupID', 'Published Event', 'published-event', 'Published event', 'UTC', true, false, false, current_timestamp + interval '10 days'),
-    (:'canceledEventID', :'eventCategoryID', 'in-person', :'groupID', 'Canceled Event', 'canceled-event', 'Canceled event', 'UTC', false, true, false, current_timestamp + interval '20 days');
+    (:'canceledEventID', :'eventCategoryID', 'in-person', :'groupID', 'Canceled Event', 'canceled-event', 'Canceled event', 'UTC', true, true, false, current_timestamp + interval '20 days'),
+    (:'canceledDraftEventID', :'eventCategoryID', 'in-person', :'groupID', 'Canceled Draft Event', 'canceled-draft-event', 'Canceled draft event', 'UTC', false, true, false, current_timestamp + interval '30 days');
 
 -- ============================================================================
 -- TESTS
@@ -85,6 +87,7 @@ select update_event_views(
     jsonb_build_array(
         jsonb_build_array(:'publishedEventID'::text, current_date::text, 3),
         jsonb_build_array(:'canceledEventID'::text, current_date::text, 5),
+        jsonb_build_array(:'canceledDraftEventID'::text, current_date::text, 7),
         jsonb_build_array(:'unknownEventID'::text, current_date::text, 8)
     )
 );

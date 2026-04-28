@@ -744,9 +744,15 @@ pub(crate) async fn user_has_community_dashboard_permission(
         return StatusCode::FORBIDDEN.into_response();
     };
 
-    // Resolve selected community from session context
-    let community_id = match get_selected_community_id(&session).await {
-        Ok(community_id) => community_id,
+    // Resolve selected community from session context, repairing it if needed
+    let community_id = match get_selected_community_id_optional(&session).await {
+        Ok(Some(community_id)) => community_id,
+        Ok(None) => match select_first_accessible_community_for_dashboard(&db, &session, &user.user_id).await
+        {
+            Ok(Some(community_id)) => community_id,
+            Ok(None) => return Redirect::to(USER_DASHBOARD_INVITATIONS_URL).into_response(),
+            Err(error) => return error.into_response(),
+        },
         Err(response) => return response,
     };
 
@@ -854,9 +860,15 @@ pub(crate) async fn user_has_selected_community_permission(
         return StatusCode::FORBIDDEN.into_response();
     };
 
-    // Resolve selected community from session context
-    let community_id = match get_selected_community_id(&session).await {
-        Ok(community_id) => community_id,
+    // Resolve selected community from session context, repairing it if needed
+    let community_id = match get_selected_community_id_optional(&session).await {
+        Ok(Some(community_id)) => community_id,
+        Ok(None) => match select_first_accessible_community_for_dashboard(&db, &session, &user.user_id).await
+        {
+            Ok(Some(community_id)) => community_id,
+            Ok(None) => return Redirect::to(USER_DASHBOARD_INVITATIONS_URL).into_response(),
+            Err(error) => return error.into_response(),
+        },
         Err(response) => return response,
     };
 
@@ -892,9 +904,27 @@ pub(crate) async fn user_has_selected_group_permission(
         return StatusCode::FORBIDDEN.into_response();
     };
 
-    // Resolve selected community and group from session context
-    let (community_id, group_id) = match get_selected_community_and_group_ids(&session).await {
-        Ok(ids) => ids,
+    // Resolve selected community and group from session context, repairing them if needed
+    let (community_id, group_id) = match get_selected_community_and_group_ids_optional(&session).await {
+        Ok(Some(ids)) => ids,
+        Ok(None) => {
+            let selected_community_id = match get_selected_community_id_optional(&session).await {
+                Ok(selected_community_id) => selected_community_id,
+                Err(response) => return response,
+            };
+            match select_first_accessible_group_for_dashboard(
+                &db,
+                &session,
+                &user.user_id,
+                selected_community_id,
+            )
+            .await
+            {
+                Ok(Some(ids)) => ids,
+                Ok(None) => return Redirect::to(USER_DASHBOARD_INVITATIONS_URL).into_response(),
+                Err(error) => return error.into_response(),
+            }
+        }
         Err(response) => return response,
     };
 
@@ -921,23 +951,39 @@ pub(crate) async fn user_has_selected_group_permission(
 
 /// Resolves the selected community ID from the current session.
 async fn get_selected_community_id(session: &Session) -> Result<Uuid, Response> {
-    match session.get::<Uuid>(SELECTED_COMMUNITY_ID_KEY).await {
+    match get_selected_community_id_optional(session).await {
         Ok(Some(community_id)) => Ok(community_id),
         Ok(None) => Err(Redirect::to(USER_DASHBOARD_INVITATIONS_URL).into_response()),
+        Err(response) => Err(response),
+    }
+}
+
+/// Resolves the selected community ID from the current session if present.
+async fn get_selected_community_id_optional(session: &Session) -> Result<Option<Uuid>, Response> {
+    match session.get::<Uuid>(SELECTED_COMMUNITY_ID_KEY).await {
+        Ok(community_id) => Ok(community_id),
         Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR.into_response()),
     }
 }
 
-/// Resolves selected community and group IDs from the current session.
-async fn get_selected_community_and_group_ids(session: &Session) -> Result<(Uuid, Uuid), Response> {
-    let community_id = get_selected_community_id(session).await?;
+/// Resolves selected community and group IDs from the current session if present.
+async fn get_selected_community_and_group_ids_optional(
+    session: &Session,
+) -> Result<Option<(Uuid, Uuid)>, Response> {
+    // Load selected community context from the session
+    let Some(community_id) = get_selected_community_id_optional(session).await? else {
+        return Ok(None);
+    };
+
+    // Load selected group context from the session
     let group_id = match session.get::<Uuid>(SELECTED_GROUP_ID_KEY).await {
         Ok(Some(group_id)) => group_id,
-        Ok(None) => return Err(Redirect::to(USER_DASHBOARD_INVITATIONS_URL).into_response()),
+        Ok(None) => return Ok(None),
         Err(_) => return Err(StatusCode::INTERNAL_SERVER_ERROR.into_response()),
     };
 
-    Ok((community_id, group_id))
+    // Return the complete dashboard context when both parts are present
+    Ok(Some((community_id, group_id)))
 }
 
 /// Selects the first community dashboard the user can still access.
@@ -946,12 +992,56 @@ async fn select_first_accessible_community_for_dashboard(
     session: &Session,
     user_id: &Uuid,
 ) -> Result<Option<Uuid>, HandlerError> {
+    // Load all community dashboards available to the user
     let communities = db.list_user_communities(user_id).await?;
     let Some(first_community) = communities.first() else {
         return Ok(None);
     };
 
+    // Persist the repaired community dashboard context in the session
     sync_selected_community_and_group(db, session, user_id, first_community.community_id).await?;
 
+    // Return the selected community for downstream request context
     Ok(Some(first_community.community_id))
+}
+
+/// Selects the first group dashboard the user can access.
+async fn select_first_accessible_group_for_dashboard(
+    db: &DynDB,
+    session: &Session,
+    user_id: &Uuid,
+    selected_community_id: Option<Uuid>,
+) -> Result<Option<(Uuid, Uuid)>, HandlerError> {
+    // Load all group dashboards available to the user
+    let groups_by_community = db.list_user_groups(user_id).await?;
+
+    // Prefer the selected community when it has at least one group
+    let selected_community = selected_community_id
+        .and_then(|community_id| {
+            groups_by_community
+                .iter()
+                .find(|c| c.community.community_id == community_id)
+        })
+        .filter(|c| !c.groups.is_empty());
+
+    // Fall back to the first community with available groups
+    let first_community = selected_community.or_else(|| {
+        groups_by_community
+            .iter()
+            .find(|community| !community.groups.is_empty())
+    });
+    let Some(first_community) = first_community else {
+        return Ok(None);
+    };
+    let Some(first_group) = first_community.groups.first() else {
+        return Ok(None);
+    };
+
+    // Persist the repaired dashboard context in the session
+    let community_id = first_community.community.community_id;
+    let group_id = first_group.group_id;
+    session.insert(SELECTED_COMMUNITY_ID_KEY, community_id).await?;
+    session.insert(SELECTED_GROUP_ID_KEY, group_id).await?;
+
+    Ok(Some((community_id, group_id)))
 }

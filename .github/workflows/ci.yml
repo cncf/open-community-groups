@@ -12,6 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       database: ${{ steps.filter.outputs.database }}
+      database_contracts: ${{ steps.filter.outputs.database_contracts }}
       dependencies: ${{ steps.filter.outputs.dependencies }}
       javascript: ${{ steps.filter.outputs.javascript }}
       markdown: ${{ steps.filter.outputs.markdown }}
@@ -27,6 +28,19 @@ jobs:
               - '.github/workflows/ci.yml'
               - '.github/workflows/tern.conf'
               - 'database/**'
+            database_contracts:
+              - '.github/workflows/ci.yml'
+              - 'Cargo.lock'
+              - 'Cargo.toml'
+              - 'database/**'
+              - 'justfile'
+              - 'ocg-server/Cargo.toml'
+              - 'ocg-server/src/db.rs'
+              - 'ocg-server/src/db/**'
+              - 'ocg-server/src/templates.rs'
+              - 'ocg-server/src/templates/**'
+              - 'ocg-server/src/types.rs'
+              - 'ocg-server/src/types/**'
             dependencies:
               - '.github/workflows/ci.yml'
               - '**/Cargo.lock'
@@ -166,6 +180,64 @@ jobs:
       - name: Run database tests
         working-directory: ./database/tests
         run: PGPASSWORD=tests pg_prove --host postgres --dbname tests --username tests --verbose schema/*.sql functions/*/*.sql
+
+  test-database-contracts:
+    needs: changes
+    if: needs.changes.outputs.database_contracts == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    services:
+      postgres:
+        image: ghcr.io/cncf/open-community-groups/postgres-db-tests
+        env:
+          POSTGRES_USER: tests
+          POSTGRES_PASSWORD: tests
+          POSTGRES_DB: tests
+        ports:
+          - 5432:5432
+        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.94.1
+      - name: Install just
+        uses: taiki-e/install-action@just
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Install Tailwind CSS
+        run: |
+          wget -O /usr/local/bin/tailwindcss https://github.com/tailwindlabs/tailwindcss/releases/download/v4.1.10/tailwindcss-linux-x64
+          chmod +x /usr/local/bin/tailwindcss
+      - name: Install tern
+        run: |
+          curl -sL https://github.com/jackc/tern/releases/download/v2.3.2/tern_2.3.2_linux_amd64.tar.gz -o tern.tar.gz
+          tar -xzf tern.tar.gz
+          sudo mv tern /usr/local/bin/tern
+      - name: Create contract test tern config
+        run: |
+          mkdir -p /tmp/ocg
+          cat >/tmp/ocg/tern-tests-contract.conf <<EOF
+          [database]
+          host = 127.0.0.1
+          port = ${{ job.services.postgres.ports[5432] }}
+          database = ocg_tests_contract
+          user = tests
+          password = tests
+          EOF
+      - name: Run database contract tests
+        env:
+          OCG_CONFIG: /tmp/ocg
+          OCG_DB_HOST: 127.0.0.1
+          OCG_DB_PORT: ${{ job.services.postgres.ports[5432] }}
+          OCG_DB_PASSWORD: tests
+          OCG_DB_USER: tests
+          OCG_PG_BIN: /usr/bin
+        run: just db-contract-tests
 
   test-frontend:
     needs: changes

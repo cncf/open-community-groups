@@ -16,7 +16,7 @@ returns void as $$
     ) as views_batch
     join event e on e.event_id = views_batch.event_id
     where e.deleted = false
-        and (e.canceled = true or e.published = true)
+        and e.published = true
     on conflict (event_id, day) do
     update set total = event_views.total + excluded.total;
 $$ language sql;
