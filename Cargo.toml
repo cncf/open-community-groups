@@ -17,7 +17,12 @@ base64 = "0.22"
 askama = { version = "0.15.6", features = ["serde_json"] }
 async-trait = "0.1.89"
 aws-credential-types = "1.2.14"
-aws-sdk-s3 = { version = "1.128.0", features = ["rustls"] }
+aws-sdk-s3 = { version = "1.128.0", default-features = false, features = [
+    "default-https-client",
+    "http-1x",
+    "rt-tokio",
+    "sigv4a",
+] }
 axum = { version = "0.8.8", features = ["macros", "multipart"] }
 axum-login = "0.18.0"
 axum-messages = "0.8.0"
