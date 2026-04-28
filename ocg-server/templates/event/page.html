@@ -100,34 +100,27 @@
             <div class="md:col-start-2 md:row-start-2 md:self-end">
               {# Event details and date -#}
               <div class="flex flex-wrap items-center gap-3 md:gap-4 md:max-xl:gap-3 text-stone-600">
-                {% if let Some(capacity) = &event.capacity -%}
-                  <div class="flex items-center gap-2 leading-none">
-                    <div class="svg-icon size-4 bg-stone-600 icon-people"></div>
-                    {% if event.is_past() -%}
-                      {% if let Some(remaining_capacity) = &event.remaining_capacity -%}
-                        <span class="inline-flex items-center text-sm">Attendees: {{ capacity - remaining_capacity }}</span>
-                      {% else -%}
-                        <span class="inline-flex items-center text-sm">
-                          <span>Capacity:</span>
-                          <span class="ms-1">{{ capacity }}</span>
-                        </span>
-                      {% endif -%}
-                    {% else -%}
-                      <span class="inline-flex items-center text-sm">
-                        <span>Capacity:</span>
-                        <span class="ms-1">{{ capacity }}</span>
+                <div data-availability-caption="capacity"
+                     class="flex items-center gap-2 leading-none">
+                  <div class="svg-icon size-4 bg-stone-600 icon-people"></div>
+                  <span class="inline-flex items-center text-sm">
+                    <span>Capacity:</span>
+                    <span class="ms-1 inline-flex min-w-4 items-center"
+                          data-availability-capacity>
+                      <span data-availability-spinner
+                            class="inline-flex size-3 animate-spin rounded-full border-2 border-stone-300 border-t-stone-600">
                       </span>
-                      <span data-availability-caption="remaining"
-                            class="hidden text-xs text-stone-500">
-                        (Remaining: <span data-availability-remaining></span>)
-                      </span>
-                      <span data-availability-caption="waitlist"
-                            class="hidden text-xs text-stone-500">
-                        (Waitlist: <span data-availability-waitlist></span>)
-                      </span>
-                    {% endif -%}
-                  </div>
-                {% endif -%}
+                    </span>
+                  </span>
+                  <span data-availability-caption="remaining"
+                        class="hidden text-xs text-stone-500 opacity-0 transition-opacity duration-150">
+                    (Remaining: <span data-availability-remaining></span>)
+                  </span>
+                  <span data-availability-caption="waitlist"
+                        class="hidden text-xs text-stone-500 opacity-0 transition-opacity duration-150">
+                    (Waitlist: <span data-availability-waitlist></span>)
+                  </span>
+                </div>
                 {{ badges::event_badge(kind = event.kind, extra_styles = Some("px-2.5 py-0.5") ) -}}
               </div>
               {# End event details and date -#}

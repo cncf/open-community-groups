@@ -140,6 +140,17 @@ const renderAvailabilityCaption = (caption, visible, displayClasses) => {
     displayClasses.forEach((className) => {
       node.classList.toggle(className, visible);
     });
+    node.classList.toggle("opacity-0", !visible);
+    if (visible) {
+      const fadeCaptionIn = () => node.classList.add("opacity-100");
+      if (typeof window.requestAnimationFrame === "function") {
+        window.requestAnimationFrame(fadeCaptionIn);
+      } else {
+        fadeCaptionIn();
+      }
+    } else {
+      node.classList.remove("opacity-100");
+    }
   });
 };
 
@@ -148,8 +159,10 @@ const renderAvailabilityCaption = (caption, visible, displayClasses) => {
  * @param {Object} availability - Public availability payload
  */
 const renderAvailabilityCaptions = (availability) => {
+  const capacity = Number(availability?.capacity);
   const remainingCapacity = Number(availability?.remaining_capacity);
   const waitlistCount = Number(availability?.waitlist_count);
+  const hasCapacity = isFiniteNumberValue(availability?.capacity);
   const hasRemainingCapacity = isFiniteNumberValue(availability?.remaining_capacity) && remainingCapacity > 0;
   const hasWaitlistCount =
     isFiniteNumberValue(availability?.remaining_capacity) &&
@@ -157,12 +170,16 @@ const renderAvailabilityCaptions = (availability) => {
     isFiniteNumberValue(availability?.waitlist_count) &&
     waitlistCount > 0;
 
+  document.querySelectorAll("[data-availability-capacity]").forEach((node) => {
+    node.textContent = hasCapacity ? String(capacity) : "";
+  });
   document.querySelectorAll("[data-availability-remaining]").forEach((node) => {
     node.textContent = hasRemainingCapacity ? String(remainingCapacity) : "";
   });
   document.querySelectorAll("[data-availability-waitlist]").forEach((node) => {
     node.textContent = hasWaitlistCount ? String(waitlistCount) : "";
   });
+  renderAvailabilityCaption("capacity", hasCapacity, ["flex"]);
   renderAvailabilityCaption("remaining", hasRemainingCapacity, ["inline"]);
   renderAvailabilityCaption("waitlist", hasWaitlistCount, ["inline"]);
 };
@@ -335,6 +352,7 @@ const applyAvailability = (container, availability, options = {}) => {
   renderAvailabilityCaptions(availability);
   renderAvailabilityRibbon(availability);
   renderTicketAvailabilities(container, availability.ticket_types || []);
+  container.dataset.availabilityHydrated = "true";
 
   if (options.rerenderAttendance) {
     document.body.dispatchEvent(new Event("attendance-changed"));
@@ -547,6 +565,10 @@ const reconcilePaymentReturn = async () => {
  * @param {Event} event - HTMX afterRequest event
  */
 const renderAttendanceCheckResponse = (container, event) => {
+  if (container.dataset.availabilityHydrated === "false") {
+    return;
+  }
+
   const meta = getAttendanceMeta(container);
   const xhr = event.detail?.xhr;
 
@@ -919,6 +941,9 @@ const initializeAttendance = (root = document) => {
 
     if (container.dataset.availabilityReady !== "true") {
       container.dataset.availabilityReady = "true";
+      if (container.dataset.availabilityUrl) {
+        container.dataset.availabilityHydrated = "false";
+      }
       refreshAvailability(container, { rerenderAttendance: true }).catch(() => {});
     }
   });

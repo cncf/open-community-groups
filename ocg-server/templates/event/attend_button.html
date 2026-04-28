@@ -9,10 +9,6 @@
      data-availability-url="/{{ event.community.name }}/group/{{ event.group.slug }}/event/{{ event.slug }}/availability"
      data-attendee-approval-required="{{ event.attendee_approval_required }}"
      {% if let Some(starts_at) = &event.starts_at %}data-starts="{{ starts_at.to_rfc3339() }}"{% endif %}
-     {% if let Some(capacity) = &event.capacity %}data-capacity="{{ capacity }}"{% endif %}
-     {% if let Some(remaining_capacity) = &event.remaining_capacity %}
-       data-remaining-capacity="{{ remaining_capacity }}"
-     {% endif %}
      data-waitlist-enabled="{{ event.waitlist_enabled }}"
      data-attendee-meeting-access-open="{{ event.is_live() }}"
      class="flex max-w-full flex-row flex-wrap gap-2 sm:flex-nowrap sm:gap-3 md:gap-4 md:max-xl:gap-2

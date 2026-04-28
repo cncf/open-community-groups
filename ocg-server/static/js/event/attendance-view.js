@@ -100,7 +100,12 @@ const setDisabledStyles = (control, disabled) => {
  * @param {HTMLElement|null} control - Control to hide
  */
 const hideControl = (control) => {
-  control?.classList.add("hidden");
+  if (!(control instanceof HTMLElement)) {
+    return;
+  }
+
+  control.classList.remove("opacity-100");
+  control.classList.add("hidden", "opacity-0", "transition-opacity", "duration-150");
 };
 
 /**
@@ -159,7 +164,18 @@ const renderControl = (control, state = {}) => {
   } = state;
 
   if (visible) {
+    const wasHidden = control.classList.contains("hidden");
+    control.classList.add("opacity-0", "transition-opacity", "duration-150");
     control.classList.remove("hidden");
+    const showControl = () => {
+      control.classList.remove("opacity-0");
+      control.classList.add("opacity-100");
+    };
+    if (wasHidden && typeof window.requestAnimationFrame === "function") {
+      window.requestAnimationFrame(showControl);
+    } else {
+      showControl();
+    }
   }
   if (icon !== null) {
     setAttendanceControlIcon(control, icon);

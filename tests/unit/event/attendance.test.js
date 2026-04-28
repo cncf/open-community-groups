@@ -77,6 +77,12 @@ const renderAttendanceDom = ({
     <div data-meeting-details data-has-recording="true" class="hidden"></div>
     <a data-join-link class="hidden"></a>
     <a data-join-link-menu class="hidden xl:hidden"></a>
+    <span data-availability-caption="capacity">
+      Capacity:
+      <span data-availability-capacity>
+        <span data-availability-spinner></span>
+      </span>
+    </span>
     <span data-availability-caption="remaining" class="hidden">
       (Remaining: <span data-availability-remaining></span>)
     </span>
@@ -99,9 +105,11 @@ const renderAttendanceDom = ({
     liveJoinLink: document.querySelector("[data-join-link]"),
     menuJoinLink: document.querySelector("[data-join-link-menu]"),
     availabilityCaptions: {
+      capacity: document.querySelector('[data-availability-caption="capacity"]'),
       remaining: document.querySelector('[data-availability-caption="remaining"]'),
       waitlist: document.querySelector('[data-availability-caption="waitlist"]'),
     },
+    availabilityCapacity: document.querySelector("[data-availability-capacity]"),
     soldOutRibbon: document.querySelector("[data-availability-sold-out-ribbon]"),
   };
 };
@@ -336,7 +344,7 @@ describe("event attendance", () => {
   });
 
   it("shows remaining seats instead of waitlist while capacity is still available", async () => {
-    const { availabilityCaptions } = renderAttendanceDom({
+    const { availabilityCapacity, availabilityCaptions } = renderAttendanceDom({
       availabilityUrl: "/events/test-event/availability",
     });
     const fetchMock = mockFetch({
@@ -362,12 +370,63 @@ describe("event attendance", () => {
       await initializeAttendanceDom();
       await waitForMicrotask();
 
+      expect(availabilityCaptions.capacity.classList.contains("hidden")).to.equal(false);
+      expect(availabilityCapacity.textContent.trim()).to.equal("2");
       expect(availabilityCaptions.remaining.classList.contains("hidden")).to.equal(false);
       expect(availabilityCaptions.remaining.classList.contains("inline")).to.equal(true);
       expect(availabilityCaptions.remaining.textContent).to.include("1");
       expect(availabilityCaptions.waitlist.classList.contains("hidden")).to.equal(true);
       expect(availabilityCaptions.waitlist.classList.contains("inline")).to.equal(false);
       expect(availabilityCaptions.waitlist.textContent).to.not.include("1");
+    } finally {
+      fetchMock.restore();
+    }
+  });
+
+  it("waits for refreshed availability before rendering attendance actions", async () => {
+    const { attendButton, checker } = renderAttendanceDom({
+      availabilityUrl: "/events/test-event/availability",
+    });
+    let resolveAvailability;
+    const availabilityResponse = new Promise((resolve) => {
+      resolveAvailability = resolve;
+    });
+    const fetchMock = mockFetch({
+      impl: async () => availabilityResponse,
+    });
+
+    try {
+      await initializeAttendanceDom();
+
+      dispatchHtmxAfterRequest(checker, {
+        responseText: JSON.stringify({ status: "guest" }),
+      });
+
+      expect(attendButton.classList.contains("hidden")).to.equal(true);
+
+      resolveAvailability({
+        ok: true,
+        json: async () => ({
+          attendee_approval_required: false,
+          capacity: 2,
+          canceled: false,
+          has_sellable_ticket_types: false,
+          is_live: false,
+          is_past: false,
+          is_ticketed: false,
+          remaining_capacity: 1,
+          ticket_types: [],
+          waitlist_count: 0,
+          waitlist_enabled: false,
+        }),
+      });
+      await waitForMicrotask();
+
+      dispatchHtmxAfterRequest(checker, {
+        responseText: JSON.stringify({ status: "guest" }),
+      });
+
+      expect(attendButton.classList.contains("hidden")).to.equal(false);
     } finally {
       fetchMock.restore();
     }
@@ -413,7 +472,7 @@ describe("event attendance", () => {
   });
 
   it("shows waitlist count after refreshing availability", async () => {
-    const { availabilityCaptions } = renderAttendanceDom({
+    const { availabilityCapacity, availabilityCaptions } = renderAttendanceDom({
       availabilityUrl: "/events/test-event/availability",
     });
     const fetchMock = mockFetch({
@@ -439,12 +498,49 @@ describe("event attendance", () => {
       await initializeAttendanceDom();
       await waitForMicrotask();
 
+      expect(availabilityCapacity.textContent.trim()).to.equal("2");
       expect(availabilityCaptions.waitlist.classList.contains("hidden")).to.equal(false);
       expect(availabilityCaptions.waitlist.classList.contains("inline")).to.equal(true);
       expect(availabilityCaptions.waitlist.textContent).to.include("3");
       expect(availabilityCaptions.remaining.classList.contains("hidden")).to.equal(true);
       expect(availabilityCaptions.remaining.classList.contains("inline")).to.equal(false);
       expect(availabilityCaptions.remaining.textContent).to.not.include("3");
+    } finally {
+      fetchMock.restore();
+    }
+  });
+
+  it("hides the capacity placeholder when refreshed availability is unlimited", async () => {
+    const { availabilityCapacity, availabilityCaptions } = renderAttendanceDom({
+      availabilityUrl: "/events/test-event/availability",
+    });
+    const fetchMock = mockFetch({
+      response: {
+        ok: true,
+        json: async () => ({
+          attendee_approval_required: false,
+          capacity: null,
+          canceled: false,
+          has_sellable_ticket_types: false,
+          is_live: false,
+          is_past: false,
+          is_ticketed: false,
+          remaining_capacity: null,
+          ticket_types: [],
+          waitlist_count: 0,
+          waitlist_enabled: false,
+        }),
+      },
+    });
+
+    try {
+      await initializeAttendanceDom();
+      await waitForMicrotask();
+
+      expect(availabilityCapacity.textContent.trim()).to.equal("");
+      expect(availabilityCaptions.capacity.classList.contains("hidden")).to.equal(true);
+      expect(availabilityCaptions.remaining.classList.contains("hidden")).to.equal(true);
+      expect(availabilityCaptions.waitlist.classList.contains("hidden")).to.equal(true);
     } finally {
       fetchMock.restore();
     }
