@@ -30,6 +30,23 @@
 }
 
 @layer components {
+  breadcrumb-nav {
+    display: block;
+    min-height: calc(((100vw - 2rem) * 12 / 61) + 3.625rem);
+  }
+
+  @media (min-width: 640px) {
+    breadcrumb-nav {
+      min-height: calc(((100vw - 3rem) * 48 / 607) + 4.875rem);
+    }
+  }
+
+  @media (min-width: 1024px) {
+    breadcrumb-nav {
+      min-height: calc(((min(100vw, 80rem) - 4rem) * 48 / 607) + 4.875rem);
+    }
+  }
+
   .btn-primary {
      @apply py-1.5 px-5 h-10 text-sm text-center text-white rounded-full bg-primary-500 transition-colors enabled:hover:bg-primary-700 enabled:focus:ring-4 enabled:focus:ring-primary-300 enabled:active:ring-4 enabled:active:ring-primary-300 enabled:focus:bg-primary-700 enabled:focus:text-white relative overflow-hidden;
   }
