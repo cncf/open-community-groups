@@ -27,7 +27,7 @@ const renderPaidAttendanceDom = ({
       data-ticket-purchase-available="${ticketPurchaseAvailable}"
       ${availabilityUrl ? `data-availability-url="${availabilityUrl}"` : ""}
       data-path="/events/test-event"
-      data-is-live="false"
+      data-attendee-meeting-access-open="false"
       data-waitlist-enabled="false"
     >
       <button

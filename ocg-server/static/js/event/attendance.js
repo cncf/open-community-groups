@@ -194,7 +194,6 @@ const updateAvailabilityMeta = (container, availability) => {
   container.dataset.attendeeApprovalRequired = String(availability.attendee_approval_required === true);
   container.dataset.attendeeMeetingAccessOpen = String(availability.is_live === true);
   container.dataset.canceled = String(availability.canceled === true);
-  container.dataset.isLive = String(availability.is_live === true);
   container.dataset.isPast = String(availability.is_past === true);
   container.dataset.isTicketed = String(availability.is_ticketed === true);
   container.dataset.ticketPurchaseAvailable = String(availability.has_sellable_ticket_types === true);

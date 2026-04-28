@@ -677,7 +677,7 @@
     {% endif -%}
     {% let has_join_session = session.meeting_join_url.is_some() -%}
     {% let has_recording_session = session.meeting_recording_url.is_some() -%}
-    {% let show_join_link_session = has_join_session && !event.is_past() -%}
+    {% let show_join_link_session = has_join_session && session.is_live() -%}
     {% let show_recording_link_session = has_recording_session && event.is_past() -%}
     {% if show_join_link_session || show_recording_link_session -%}
       <div data-meeting-details

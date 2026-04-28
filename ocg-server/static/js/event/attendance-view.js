@@ -337,20 +337,18 @@ export const resetPrimaryControls = (container) => {
 /**
  * Toggles meeting detail visibility based on attendance status.
  * @param {boolean} isAttendee - Whether the user is attending
- * @param {{eventIsLive: boolean}} meta - Attendance metadata
+ * @param {{attendeeMeetingAccessOpen: boolean}} meta - Attendance metadata
  */
 export const renderMeetingDetails = (isAttendee, meta) => {
   const sections = document.querySelectorAll("[data-meeting-details]");
-  const showAttendeeMeetingAccess = isAttendee && meta.eventIsLive;
+  const showAttendeeMeetingAccess = isAttendee && meta.attendeeMeetingAccessOpen;
 
   sections.forEach((section) => {
     const sectionHasRecording = section.dataset?.hasRecording === "true";
     section.classList.toggle("hidden", !(sectionHasRecording || showAttendeeMeetingAccess));
-  });
-
-  const joinLinksAlways = document.querySelectorAll("[data-join-link-always]");
-  joinLinksAlways.forEach((link) => {
-    link.classList.toggle("hidden", !showAttendeeMeetingAccess);
+    section.querySelectorAll("[data-join-link-always]").forEach((link) => {
+      link.classList.toggle("hidden", !showAttendeeMeetingAccess);
+    });
   });
 
   const joinLinksLive = document.querySelectorAll("[data-join-link]");

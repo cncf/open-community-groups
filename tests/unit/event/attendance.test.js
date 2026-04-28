@@ -16,10 +16,9 @@ const renderAttendanceDom = ({
   capacity = "10",
   remainingCapacity = "5",
   waitlistEnabled = "false",
-  isLive = "false",
+  attendeeMeetingAccessOpen = "false",
   canceled = "false",
   availabilityUrl = "",
-  attendeeMeetingAccessOpen = "false",
   attendeeApprovalRequired = "false",
 } = {}) => {
   document.body.innerHTML = `
@@ -31,7 +30,6 @@ const renderAttendanceDom = ({
       data-waitlist-enabled="${waitlistEnabled}"
       data-canceled="${canceled}"
       ${availabilityUrl ? `data-availability-url="${availabilityUrl}"` : ""}
-      data-is-live="${isLive}"
       data-attendee-meeting-access-open="${attendeeMeetingAccessOpen}"
       data-attendee-approval-required="${attendeeApprovalRequired}"
     >
@@ -73,9 +71,10 @@ const renderAttendanceDom = ({
         <span data-attendance-label>Request refund</span>
       </button>
     </div>
-    <div data-meeting-details class="hidden"></div>
+    <div data-meeting-details class="hidden">
+      <a data-join-link-always class="hidden"></a>
+    </div>
     <div data-meeting-details data-has-recording="true" class="hidden"></div>
-    <a data-join-link-always class="hidden"></a>
     <a data-join-link class="hidden"></a>
     <span data-availability-caption="remaining" class="hidden">
       (Remaining: <span data-availability-remaining></span>)
@@ -114,7 +113,6 @@ describe("event attendance", () => {
 
   it("shows attendee controls and meeting details after a successful attendance check", () => {
     const { checker, leaveButton, alwaysJoinLink, liveJoinLink, meetingDetails } = renderAttendanceDom({
-      isLive: "true",
       attendeeMeetingAccessOpen: "true",
     });
 
@@ -131,9 +129,9 @@ describe("event attendance", () => {
     expect(meetingDetails[1].classList.contains("hidden")).to.equal(false);
   });
 
-  it("shows the join meeting link when the event is live", () => {
+  it("shows the join meeting link when attendee meeting access is open", () => {
     const { checker, alwaysJoinLink, liveJoinLink, meetingDetails } = renderAttendanceDom({
-      isLive: "true",
+      attendeeMeetingAccessOpen: "true",
     });
 
     dispatchHtmxAfterRequest(checker, {
@@ -146,10 +144,9 @@ describe("event attendance", () => {
     expect(meetingDetails[0].classList.contains("hidden")).to.equal(false);
   });
 
-  it("keeps the join meeting link hidden before the event is live", () => {
+  it("keeps the join meeting link hidden before attendee meeting access opens", () => {
     const { checker, alwaysJoinLink, liveJoinLink, meetingDetails } = renderAttendanceDom({
-      isLive: "false",
-      attendeeMeetingAccessOpen: "true",
+      attendeeMeetingAccessOpen: "false",
     });
 
     dispatchHtmxAfterRequest(checker, {
@@ -368,10 +365,10 @@ describe("event attendance", () => {
     }
   });
 
-  it("hydrates event live state from refreshed availability", async () => {
+  it("hydrates attendee meeting access from refreshed availability", async () => {
     const { container } = renderAttendanceDom({
       availabilityUrl: "/events/test-event/availability",
-      isLive: "false",
+      attendeeMeetingAccessOpen: "false",
     });
     let changedEvents = 0;
     document.body.addEventListener("attendance-changed", () => {
@@ -401,7 +398,6 @@ describe("event attendance", () => {
       await waitForMicrotask();
 
       expect(container.dataset.attendeeMeetingAccessOpen).to.equal("true");
-      expect(container.dataset.isLive).to.equal("true");
       expect(changedEvents).to.equal(1);
     } finally {
       fetchMock.restore();
