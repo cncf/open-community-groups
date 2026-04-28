@@ -3,19 +3,20 @@
 # Configuration: Set these environment variables
 #
 #   Optional (with defaults):
-#     OCG_CONFIG        - Path to config directory (default: $HOME/.config/ocg)
-#     OCG_DB_HOST       - Database host or unix socket path (default: localhost)
-#     OCG_DB_NAME       - Main database name (default: ocg)
-#     OCG_DB_NAME_TESTS - Test database name (default: ocg_tests)
-#     OCG_DB_NAME_TESTS_E2E - E2E test database name (default: ocg_tests_e2e)
-#     OCG_DB_PORT       - Database port (default: 5432)
-#     OCG_DB_USER       - Database user (default: postgres)
-#     OCG_PG_BIN        - Path to PostgreSQL binaries (default: /opt/homebrew/opt/postgresql@17/bin)
-#     OCG_SERVER_CONFIG - Server config path (default: $OCG_CONFIG/server.yml)
+#     OCG_CONFIG                  - Path to config directory (default: $HOME/.config/ocg)
+#     OCG_DB_HOST                 - Database host or unix socket path (default: localhost)
+#     OCG_DB_NAME                 - Main database name (default: ocg)
+#     OCG_DB_NAME_TESTS           - Test database name (default: ocg_tests)
+#     OCG_DB_NAME_TESTS_CONTRACT  - Contract test database name (default: ocg_tests_contract)
+#     OCG_DB_NAME_TESTS_E2E       - E2E test database name (default: ocg_tests_e2e)
+#     OCG_DB_PORT                 - Database port (default: 5432)
+#     OCG_DB_USER                 - Database user (default: postgres)
+#     OCG_PG_BIN                  - Path to PostgreSQL binaries (default: /opt/homebrew/opt/postgresql@17/bin)
+#     OCG_SERVER_CONFIG           - Server config path (default: $OCG_CONFIG/server.yml)
 #     OCG_SERVER_CONFIG_TESTS_E2E - E2E server config path (default: $OCG_CONFIG/server-tests-e2e.yml)
 #
 # Please don't forget to set up the tern config files (tern.conf, tern-e2e-tests.conf,
-# and tern-tests.conf) in the config directory (OCG_CONFIG). Make sure the database
+# tern-tests.conf, and tern-tests-contract.conf) in the config directory (OCG_CONFIG). Make sure the database
 # connection settings match the environment variables set here.
 # Configuration
 
@@ -23,6 +24,7 @@ config_dir := env("OCG_CONFIG", env_var("HOME") / ".config/ocg")
 db_host := env("OCG_DB_HOST", "localhost")
 db_name := env("OCG_DB_NAME", "ocg")
 db_name_tests := env("OCG_DB_NAME_TESTS", "ocg_tests")
+db_name_tests_contract := env("OCG_DB_NAME_TESTS_CONTRACT", "ocg_tests_contract")
 db_name_tests_e2e := env("OCG_DB_NAME_TESTS_E2E", "ocg_tests_e2e")
 db_port := env("OCG_DB_PORT", "5432")
 db_user := env("OCG_DB_USER", "postgres")
@@ -49,9 +51,17 @@ db-client:
 db-client-tests:
     just pg psql {{ pg_conn }} {{ db_name_tests }}
 
+# Connect to contract test database.
+db-client-tests-contract:
+    just pg psql {{ pg_conn }} {{ db_name_tests_contract }}
+
 # Connect to e2e test database.
 db-client-tests-e2e:
     just pg psql {{ pg_conn }} {{ db_name_tests_e2e }}
+
+# Run Rust database contract tests against the contract test database.
+db-contract-tests: db-recreate-tests-contract
+    OCG_DB_NAME_TESTS_CONTRACT="{{ db_name_tests_contract }}" cargo test -p ocg-server db_contracts -- --ignored --test-threads=1
 
 # Create main database.
 db-create:
@@ -61,6 +71,10 @@ db-create:
 db-create-tests:
     just pg createdb {{ pg_conn }} {{ db_name_tests }}
     PGPASSWORD="{{ db_password }}" PATH="{{ pg_bin }}:$PATH" psql {{ pg_conn }} {{ db_name_tests }} -c "CREATE EXTENSION IF NOT EXISTS pgtap"
+
+# Create contract test database.
+db-create-tests-contract:
+    just pg createdb {{ pg_conn }} {{ db_name_tests_contract }}
 
 # Create e2e test database.
 db-create-tests-e2e:
@@ -73,6 +87,10 @@ db-drop:
 # Drop test database.
 db-drop-tests:
     just pg dropdb {{ pg_conn }} --if-exists --force {{ db_name_tests }}
+
+# Drop contract test database.
+db-drop-tests-contract:
+    just pg dropdb {{ pg_conn }} --if-exists --force {{ db_name_tests_contract }}
 
 # Drop e2e test database.
 db-drop-tests-e2e:
@@ -88,6 +106,10 @@ db-load-tests-e2e-data:
     just pg psql {{ pg_conn }} {{ db_name_tests_e2e }} -f "{{ source_dir }}/database/tests/data/e2e.sql"
     PGPASSWORD="{{ db_password }}" PATH="{{ pg_bin }}:$PATH" psql {{ pg_conn }} {{ db_name_tests_e2e }} -c 'update "user" set password = $$$argon2id$v=19$m=19456,t=2,p=1$q55jlxUx8bffhFM3xN36ZA$te6OiWkZ/q35lpSEAZbd/A3iJyCByxbive9F61sTp7g$$ where username like $$e2e-%$$'
 
+# Load contract test seed data into contract test database.
+db-load-tests-contract-data:
+    just pg psql {{ pg_conn }} {{ db_name_tests_contract }} -f "{{ source_dir }}/database/tests/data/contract.sql"
+
 # Run migrations on main database.
 db-migrate:
     @output=$(cd "{{ source_dir }}/database/migrations" && TERN_CONF="{{ config_dir }}/tern.conf" ./migrate.sh 2>&1); status=$?; if [ $status -ne 0 ]; then printf '%s\n' "$output"; fi; exit $status
@@ -95,6 +117,10 @@ db-migrate:
 # Run migrations on test database.
 db-migrate-tests:
     @output=$(cd "{{ source_dir }}/database/migrations" && TERN_CONF="{{ config_dir }}/tern-tests.conf" ./migrate.sh 2>&1); status=$?; if [ $status -ne 0 ]; then printf '%s\n' "$output"; fi; exit $status
+
+# Run migrations on contract test database.
+db-migrate-tests-contract:
+    @output=$(cd "{{ source_dir }}/database/migrations" && TERN_CONF="{{ config_dir }}/tern-tests-contract.conf" ./migrate.sh 2>&1); status=$?; if [ $status -ne 0 ]; then printf '%s\n' "$output"; fi; exit $status
 
 # Run migrations on e2e test database.
 db-migrate-tests-e2e:
@@ -105,6 +131,9 @@ db-recreate: db-drop db-create db-migrate
 
 # Drop, create, and migrate test database.
 db-recreate-tests: db-drop-tests db-create-tests db-migrate-tests
+
+# Drop, create, migrate, and seed contract test database.
+db-recreate-tests-contract: db-drop-tests-contract db-create-tests-contract db-migrate-tests-contract db-load-tests-contract-data
 
 # Drop, create, and migrate e2e test database.
 db-recreate-tests-e2e: db-drop-tests-e2e db-create-tests-e2e db-migrate-tests-e2e

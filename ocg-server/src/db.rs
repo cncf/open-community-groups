@@ -25,6 +25,10 @@ pub(crate) mod auth;
 /// Module containing common database operations.
 pub(crate) mod common;
 
+/// Module containing database contract tests.
+#[cfg(test)]
+mod contract_tests;
+
 /// Module containing database functionality for the community site.
 pub(crate) mod community;
 
