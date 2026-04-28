@@ -31,6 +31,8 @@ import { initializeSectionTabs } from "/static/js/dashboard/group/page-form-stat
  */
 const readBooleanDataAttribute = (element, attributeName) => element?.dataset?.[attributeName] === "true";
 
+const canceledEventReviewSections = new Set(["submissions", "attendees", "invitation-requests", "waitlist"]);
+
 /**
  * Initializes the event update page behavior for the active form fragment.
  * @param {Document|Element} [root=document] Root page container
@@ -156,8 +158,12 @@ export const initializeEventUpdatePage = (root = document) => {
         syncSessionsDateRange();
       }
 
-      if (!canManageEvents && !isCanceledEvent && inertForm) {
-        if (sectionName === "submissions") {
+      if ((isCanceledEvent || !canManageEvents) && inertForm) {
+        const canUseReadOnlyReviewSection =
+          (isCanceledEvent && canManageEvents && canceledEventReviewSections.has(sectionName)) ||
+          (!isCanceledEvent && !canManageEvents && sectionName === "submissions");
+
+        if (canUseReadOnlyReviewSection) {
           inertForm.removeAttribute("inert");
         } else {
           inertForm.setAttribute("inert", "");

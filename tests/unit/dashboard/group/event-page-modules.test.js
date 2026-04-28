@@ -48,17 +48,24 @@ const mountAddPageShell = () => {
   `;
 };
 
-const mountUpdatePageShell = ({ canManageEvents = false, waitlistCount = "2" } = {}) => {
+const mountUpdatePageShell = ({
+  canManageEvents = false,
+  eventCanceled = false,
+  waitlistCount = "2",
+} = {}) => {
   document.body.innerHTML = `
     <div id="event-update-page"
          data-event-page="update"
+         data-event-canceled="${String(eventCanceled)}"
          data-event-past="false"
          data-can-manage-events="${String(canManageEvents)}">
       ${sharedEventFormsMarkup()}
       <button data-section="details" data-active="true" class="active">Details</button>
       <button data-section="submissions" data-active="false">Submissions</button>
+      <button data-section="attendees" data-active="false">Attendees</button>
       <section data-content="details"></section>
       <section data-content="submissions" class="hidden"></section>
+      <section data-content="attendees" class="hidden"></section>
       <div class="inert-form" inert></div>
       <input id="capacity" value="" />
       <button id="update-event-button" type="button" data-waitlist-count="${waitlistCount}"></button>
@@ -262,6 +269,24 @@ describe("event page modules", () => {
       .dispatchEvent(new Event("click", { bubbles: true }));
 
     expect(document.querySelector(".inert-form").hasAttribute("inert")).to.equal(false);
+  });
+
+  it("keeps canceled event review tabs interactive for event managers", () => {
+    mountUpdatePageShell({ canManageEvents: true, eventCanceled: true });
+
+    initializeEventUpdatePage();
+
+    document
+      .querySelector('[data-section="attendees"]')
+      .dispatchEvent(new Event("click", { bubbles: true }));
+
+    expect(document.querySelector(".inert-form").hasAttribute("inert")).to.equal(false);
+
+    document
+      .querySelector('[data-section="details"]')
+      .dispatchEvent(new Event("click", { bubbles: true }));
+
+    expect(document.querySelector(".inert-form").hasAttribute("inert")).to.equal(true);
   });
 
   it("warns before clearing capacity with a populated waitlist on the update page", async () => {

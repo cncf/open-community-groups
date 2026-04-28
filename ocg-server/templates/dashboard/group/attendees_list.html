@@ -17,7 +17,13 @@
   <div class="shrink-0 w-auto mb-1.5 flex gap-3 flex-row">
     <button id="open-event-qr-code-modal"
             type="button"
-            class="btn-primary-outline w-full lg:w-auto"
+            class="btn-primary-outline w-full lg:w-auto
+                   {% if event.canceled -%}
+                     opacity-50 cursor-not-allowed
+                   {% endif -%}"
+            {% if event.canceled -%}
+              disabled title="Canceled events cannot use check-in."
+            {% endif -%}
             data-event-id="{{ event.event_id }}"
             data-event-name="{{ event.name }}"
             data-group-name="{{ event.group_name }}"
@@ -30,11 +36,13 @@
     <button id="open-attendee-notification-modal"
             type="button"
             class="btn-primary-outline w-full lg:w-auto
-                   {% if total == 0 || !can_manage_events -%}
+                   {% if total == 0 || !can_manage_events || event.canceled -%}
                      opacity-50 cursor-not-allowed
                    {% endif -%}"
             {% if !can_manage_events -%}
               disabled title="Your role cannot send emails to attendees."
+            {% else if event.canceled -%}
+              disabled title="Canceled events cannot send attendee emails."
             {% else if total == 0 -%}
               disabled title="No attendees to send emails to."
             {% endif -%}
@@ -154,7 +162,7 @@
             {# Checked In Toggle -#}
             <td class="px-3 xl:px-5 py-4 w-30">
               <label class="inline-flex items-center
-                            {% if attendee.checked_in || !can_manage_events %}
+                            {% if attendee.checked_in || !can_manage_events || event.canceled %}
                               cursor-not-allowed
                             {% else %}
                               cursor-pointer
@@ -163,12 +171,14 @@
                        class="sr-only peer check-in-toggle"
                        aria-label="{% if attendee.checked_in %}
                                      Checked in
+                                   {% else if event.canceled %}
+                                     Canceled event check-in unavailable
                                    {% else %}
                                      Check in attendee
                                    {% endif %}"
                        data-url="/dashboard/group/events/{{ event.event_id }}/attendees/{{ attendee.user_id }}/check-in"
                        {% if attendee.checked_in %}checked{% endif %}
-                       {% if attendee.checked_in || !can_manage_events %}disabled{% endif %}>
+                       {% if attendee.checked_in || !can_manage_events || event.canceled %}disabled{% endif %}>
                 <div class="relative w-11 h-6 bg-stone-200 rounded-full peer peer-checked:bg-primary-500 peer-disabled:opacity-70 after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-stone-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white">
                 </div>
               </label>
@@ -314,11 +324,13 @@
             <button id="submit-attendee-notification"
                     type="submit"
                     class="btn-primary relative
-                           {% if !can_manage_events -%}
+                           {% if !can_manage_events || event.canceled -%}
                              opacity-50 cursor-not-allowed
                            {% endif -%}"
                     {% if !can_manage_events -%}
                       disabled title="Your role cannot send emails to attendees."
+                    {% else if event.canceled -%}
+                      disabled title="Canceled events cannot send attendee emails."
                     {% endif -%}>
               {{ ui::btn_spinner(id = "attendee-notification-spinner", spinner_type = "2") -}}
               Send email
