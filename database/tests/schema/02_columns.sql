@@ -199,6 +199,7 @@ select columns_are('event', array[
     'cfs_enabled',
     'cfs_ends_at',
     'cfs_starts_at',
+    'created_by',
     'deleted_at',
     'description_short',
     'ends_at',

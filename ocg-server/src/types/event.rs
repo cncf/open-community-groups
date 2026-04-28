@@ -72,6 +72,10 @@ pub struct EventSummary {
 
     /// Maximum capacity for the event.
     pub capacity: Option<i32>,
+    /// Display name for the user who created the event, in dashboard views.
+    pub created_by_display_name: Option<String>,
+    /// Username for the user who created the event, in dashboard views.
+    pub created_by_username: Option<String>,
     /// Brief event description for listings.
     pub description_short: Option<String>,
     /// Event end time in UTC.
@@ -117,6 +121,21 @@ pub struct EventSummary {
 }
 
 impl EventSummary {
+    /// Returns dashboard tooltip text for the user who created the event.
+    pub fn created_by_tooltip(&self) -> Option<String> {
+        match (
+            self.created_by_display_name.as_deref(),
+            self.created_by_username.as_deref(),
+        ) {
+            (Some(display_name), Some(username)) if display_name != username => {
+                Some(format!("Created by {display_name} (@{username})"))
+            }
+            (Some(display_name), _) => Some(format!("Created by {display_name}")),
+            (None, Some(username)) => Some(format!("Created by @{username}")),
+            (None, None) => None,
+        }
+    }
+
     /// Returns the cheapest attendee-facing ticket price available right now.
     pub fn formatted_ticket_price_badge(&self) -> Option<String> {
         format_ticket_price_badge(
@@ -470,6 +489,8 @@ impl From<&EventFull> for EventSummary {
             waitlist_enabled: event.waitlist_enabled,
 
             capacity: event.capacity,
+            created_by_display_name: None,
+            created_by_username: None,
             description_short: event.description_short.clone(),
             ends_at: event.ends_at,
             event_series_id: event.event_series_id,
@@ -1363,6 +1384,8 @@ mod tests {
             waitlist_enabled: false,
 
             capacity: None,
+            created_by_display_name: None,
+            created_by_username: None,
             description_short: None,
             ends_at: None,
             event_series_id: None,

@@ -120,6 +120,9 @@
                             hx-swap="innerHTML show:body:top"
                             hx-disabled-elt="this"
                             class="block max-w-full truncate hover:underline text-left cursor-pointer bg-transparent border-0 p-0 font-medium text-stone-900"
+                            {% if let Some(created_by_tooltip) = event.created_by_tooltip() -%}
+                              title="{{ created_by_tooltip }}"
+                            {% endif -%}
                             aria-label="Open event details: {{ event.name }}">{{ event.name }}</button>
                     {# End event name -#}
 
@@ -378,6 +381,9 @@
                             hx-swap="innerHTML show:body:top"
                             hx-disabled-elt="this"
                             class="block max-w-full truncate hover:underline text-left cursor-pointer bg-transparent border-0 p-0 font-medium text-stone-900"
+                            {% if let Some(created_by_tooltip) = event.created_by_tooltip() -%}
+                              title="{{ created_by_tooltip }}"
+                            {% endif -%}
                             aria-label="Open event details: {{ event.name }}">{{ event.name }}</button>
                     {# End event name -#}
 

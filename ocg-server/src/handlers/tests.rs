@@ -460,6 +460,8 @@ pub(crate) fn sample_event_summary(event_id: Uuid, _group_id: Uuid) -> EventSumm
         timezone: UTC,
 
         capacity: None,
+        created_by_display_name: None,
+        created_by_username: None,
         description_short: Some("A brief summary of the sample event".to_string()),
         ends_at: Some(starts_at + chrono::Duration::hours(2)),
         event_series_id: None,

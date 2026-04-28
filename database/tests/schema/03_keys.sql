@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(147);
+select plan(148);
 
 -- ============================================================================
 -- TESTS
@@ -92,6 +92,7 @@ select col_is_fk('cfs_submission_rating', 'cfs_submission_id', 'cfs_submission')
 select col_is_fk('cfs_submission_rating', 'reviewer_id', 'user');
 select col_is_fk('email_verification_code', 'user_id', 'user');
 select col_is_fk('event', 'event_category_id', 'event_category');
+select col_is_fk('event', 'created_by', 'user');
 select col_is_fk('event', 'event_kind_id', 'event_kind');
 select col_is_fk('event', 'event_series_id', 'event_series');
 select col_is_fk('event', 'group_id', 'group');
