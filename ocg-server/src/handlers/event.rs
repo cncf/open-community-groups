@@ -601,6 +601,8 @@ struct EventAvailability {
     canceled: bool,
     /// Whether the event has at least one ticket type selectable now.
     has_sellable_ticket_types: bool,
+    /// Whether the event is live for attendee-facing access.
+    is_live: bool,
     /// Whether the event has already ended or started without an end time.
     is_past: bool,
     /// Whether the event uses the ticketing flow.
@@ -625,6 +627,7 @@ impl EventAvailability {
             attendee_approval_required: event.attendee_approval_required,
             canceled: event.canceled,
             has_sellable_ticket_types: event.has_sellable_ticket_types(),
+            is_live: event.is_live(),
             is_past: event.is_past(),
             is_ticketed: event.is_ticketed(),
             ticket_types: event

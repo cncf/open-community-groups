@@ -35,6 +35,8 @@ async fn test_availability_success() {
     let event_ticket_type_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let mut event = sample_event_full(community_id, event_id, group_id);
+    event.starts_at = Some(chrono::Utc::now() + chrono::Duration::minutes(10));
+    event.ends_at = Some(chrono::Utc::now() + chrono::Duration::hours(1));
     event.payment_currency_code = Some("usd".to_string());
     event.remaining_capacity = Some(7);
     event.ticket_types = Some(vec![EventTicketType {
@@ -90,6 +92,7 @@ async fn test_availability_success() {
     );
     assert_eq!(payload["capacity"], json!(100));
     assert_eq!(payload["has_sellable_ticket_types"], json!(true));
+    assert_eq!(payload["is_live"], json!(true));
     assert_eq!(payload["remaining_capacity"], json!(7));
     assert_eq!(
         payload["ticket_types"][0]["event_ticket_type_id"],

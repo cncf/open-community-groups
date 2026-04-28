@@ -86,6 +86,7 @@ const renderAttendanceDom = ({
   `;
 
   return {
+    container: document.querySelector("[data-attendance-container]"),
     checker: document.querySelector('[data-attendance-role="attendance-checker"]'),
     loadingButton: document.querySelector('[data-attendance-role="loading-btn"]'),
     signinButton: document.querySelector('[data-attendance-role="signin-btn"]'),
@@ -130,10 +131,9 @@ describe("event attendance", () => {
     expect(meetingDetails[1].classList.contains("hidden")).to.equal(false);
   });
 
-  it("shows the join meeting link when attendee meeting access is open", () => {
+  it("shows the join meeting link when the event is live", () => {
     const { checker, alwaysJoinLink, liveJoinLink, meetingDetails } = renderAttendanceDom({
-      isLive: "false",
-      attendeeMeetingAccessOpen: "true",
+      isLive: "true",
     });
 
     dispatchHtmxAfterRequest(checker, {
@@ -146,10 +146,10 @@ describe("event attendance", () => {
     expect(meetingDetails[0].classList.contains("hidden")).to.equal(false);
   });
 
-  it("keeps the join meeting link hidden when attendee meeting access is closed", () => {
+  it("keeps the join meeting link hidden before the event is live", () => {
     const { checker, alwaysJoinLink, liveJoinLink, meetingDetails } = renderAttendanceDom({
       isLive: "false",
-      attendeeMeetingAccessOpen: "false",
+      attendeeMeetingAccessOpen: "true",
     });
 
     dispatchHtmxAfterRequest(checker, {
@@ -340,7 +340,10 @@ describe("event attendance", () => {
         json: async () => ({
           attendee_approval_required: false,
           capacity: 2,
+          canceled: false,
           has_sellable_ticket_types: false,
+          is_live: false,
+          is_past: false,
           is_ticketed: false,
           remaining_capacity: 1,
           ticket_types: [],
@@ -365,6 +368,46 @@ describe("event attendance", () => {
     }
   });
 
+  it("hydrates event live state from refreshed availability", async () => {
+    const { container } = renderAttendanceDom({
+      availabilityUrl: "/events/test-event/availability",
+      isLive: "false",
+    });
+    let changedEvents = 0;
+    document.body.addEventListener("attendance-changed", () => {
+      changedEvents += 1;
+    });
+    const fetchMock = mockFetch({
+      response: {
+        ok: true,
+        json: async () => ({
+          attendee_approval_required: false,
+          capacity: 2,
+          canceled: false,
+          has_sellable_ticket_types: false,
+          is_live: true,
+          is_past: false,
+          is_ticketed: false,
+          remaining_capacity: 1,
+          ticket_types: [],
+          waitlist_count: 0,
+          waitlist_enabled: false,
+        }),
+      },
+    });
+
+    try {
+      await initializeAttendanceDom();
+      await waitForMicrotask();
+
+      expect(container.dataset.attendeeMeetingAccessOpen).to.equal("true");
+      expect(container.dataset.isLive).to.equal("true");
+      expect(changedEvents).to.equal(1);
+    } finally {
+      fetchMock.restore();
+    }
+  });
+
   it("shows waitlist count after refreshing availability", async () => {
     const { availabilityCaptions } = renderAttendanceDom({
       availabilityUrl: "/events/test-event/availability",
@@ -375,7 +418,10 @@ describe("event attendance", () => {
         json: async () => ({
           attendee_approval_required: false,
           capacity: 2,
+          canceled: false,
           has_sellable_ticket_types: false,
+          is_live: false,
+          is_past: false,
           is_ticketed: false,
           remaining_capacity: 0,
           ticket_types: [],

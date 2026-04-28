@@ -341,7 +341,7 @@ export const resetPrimaryControls = (container) => {
  */
 export const renderMeetingDetails = (isAttendee, meta) => {
   const sections = document.querySelectorAll("[data-meeting-details]");
-  const showAttendeeMeetingAccess = isAttendee && meta.attendeeMeetingAccessOpen;
+  const showAttendeeMeetingAccess = isAttendee && meta.eventIsLive;
 
   sections.forEach((section) => {
     const sectionHasRecording = section.dataset?.hasRecording === "true";

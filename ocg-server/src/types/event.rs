@@ -2,7 +2,7 @@
 
 use std::collections::{BTreeMap, HashSet};
 
-use chrono::{DateTime, NaiveDate, Utc};
+use chrono::{DateTime, Duration, NaiveDate, Utc};
 use chrono_tz::Tz;
 use garde::Validate;
 use serde::{Deserialize, Serialize};
@@ -20,6 +20,9 @@ use crate::{
     },
     validation::{MAX_LEN_EVENT_LABEL_NAME, trimmed_non_empty, valid_cfs_label_color},
 };
+
+/// Minutes before the scheduled start when attendee meeting access opens.
+const EVENT_LIVE_LEAD_TIME_MINUTES: i64 = 15;
 
 // Event types: summary and full.
 
@@ -355,12 +358,14 @@ impl EventFull {
         has_sellable_ticket_types(self.ticket_types.as_deref())
     }
 
-    /// Check if the event is currently live.
+    /// Check if the event is currently live, including attendee access lead time.
     pub fn is_live(&self) -> bool {
         match (self.starts_at, self.ends_at) {
             (Some(starts_at), Some(ends_at)) => {
                 let now = Utc::now();
-                now >= starts_at && now <= ends_at
+                let live_starts_at = starts_at - Duration::minutes(EVENT_LIVE_LEAD_TIME_MINUTES);
+
+                now >= live_starts_at && now <= ends_at
             }
             _ => false,
         }
@@ -1004,6 +1009,16 @@ mod tests {
     fn event_full_is_live_returns_true_when_event_is_live() {
         let event = EventFull {
             starts_at: Some(Utc::now() - Duration::hours(1)),
+            ends_at: Some(Utc::now() + Duration::hours(1)),
+            ..Default::default()
+        };
+        assert!(event.is_live());
+    }
+
+    #[test]
+    fn event_full_is_live_returns_true_when_event_starts_soon() {
+        let event = EventFull {
+            starts_at: Some(Utc::now() + Duration::minutes(10)),
             ends_at: Some(Utc::now() + Duration::hours(1)),
             ..Default::default()
         };
