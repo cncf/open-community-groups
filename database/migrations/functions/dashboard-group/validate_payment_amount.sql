@@ -32,6 +32,7 @@ begin
         when 'AED' then 200
         when 'ARS' then 50
         when 'AUD' then 50
+        when 'BGN' then 100
         when 'BRL' then 50
         when 'CAD' then 50
         when 'CHF' then 50
