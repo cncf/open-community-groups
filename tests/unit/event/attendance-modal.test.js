@@ -168,6 +168,7 @@ const renderPaidAttendanceDom = ({
   `;
 
   return {
+    container: document.querySelector("[data-attendance-container]"),
     checker: document.querySelector('[data-attendance-role="attendance-checker"]'),
     signinButton: document.querySelector('[data-attendance-role="signin-btn"]'),
     attendButton: document.querySelector('[data-attendance-role="attend-btn"]'),
@@ -600,6 +601,53 @@ describe("event attendance paid modal", () => {
     document.body.click();
 
     expect(actionsMenu.open).to.equal(false);
+  });
+
+  it("waits for refreshed availability before rechecking after checkout cancel", async () => {
+    const { checkoutCancelButton, container } = renderPaidAttendanceDom();
+    await initializeAttendanceDom();
+    container.dataset.availabilityUrl = "/events/test-event/availability";
+    let changedEvents = 0;
+    let resolveAvailability;
+    const availabilityResponse = new Promise((resolve) => {
+      resolveAvailability = resolve;
+    });
+    const fetchMock = mockFetch({
+      impl: async () => availabilityResponse,
+    });
+    document.body.addEventListener("attendance-changed", () => {
+      changedEvents += 1;
+    });
+
+    try {
+      dispatchHtmxAfterRequest(checkoutCancelButton, {
+        responseText: JSON.stringify({ status: "guest" }),
+      });
+
+      expect(changedEvents).to.equal(0);
+
+      resolveAvailability({
+        ok: true,
+        json: async () => ({
+          attendee_approval_required: false,
+          canceled: false,
+          capacity: 10,
+          has_sellable_ticket_types: true,
+          is_past: false,
+          is_ticketed: true,
+          remaining_capacity: 1,
+          ticket_types: [],
+          waitlist_count: 0,
+          waitlist_enabled: false,
+        }),
+      });
+      await waitForMicrotask();
+
+      expect(changedEvents).to.equal(1);
+      expect(container.dataset.remainingCapacity).to.equal("1");
+    } finally {
+      fetchMock.restore();
+    }
   });
 
   it("shows modal checkout loading, closes on success, and emits attendance changes", async () => {

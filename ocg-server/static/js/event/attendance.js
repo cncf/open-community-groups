@@ -407,6 +407,21 @@ const applyAvailability = (container, availability, options = {}) => {
 };
 
 /**
+ * Falls back to cached event metadata when availability cannot be refreshed.
+ * @param {HTMLElement} container - Attendance container element
+ * @param {{rerenderAttendance?: boolean}} options - Render options
+ */
+const handleAvailabilityRefreshFailure = (container, options = {}) => {
+  if (container?.dataset?.availabilityHydrated === "false") {
+    container.dataset.availabilityHydrated = "true";
+  }
+
+  if (options.rerenderAttendance) {
+    document.body.dispatchEvent(new Event("attendance-changed"));
+  }
+};
+
+/**
  * Loads fresh public availability for the event page.
  * @param {HTMLElement} container - Attendance container element
  * @param {{rerenderAttendance?: boolean}} options - Render options
@@ -430,6 +445,21 @@ const refreshAvailability = async (container, options = {}) => {
   }
 
   applyAvailability(container, await response.json(), options);
+};
+
+/**
+ * Refreshes public availability before asking HTMX to redraw attendance state.
+ * @param {HTMLElement} container - Attendance container element
+ */
+const refreshAvailabilityAndRenderAttendance = (container) => {
+  if (!container?.dataset?.availabilityUrl) {
+    document.body.dispatchEvent(new Event("attendance-changed"));
+    return;
+  }
+
+  refreshAvailability(container, { rerenderAttendance: true }).catch(() => {
+    handleAvailabilityRefreshFailure(container, { rerenderAttendance: true });
+  });
 };
 
 /**
@@ -740,8 +770,7 @@ const handlePrimaryActionAfterRequest = (event) => {
 
   const response = parseJsonResponse(xhr);
   if (config.onSuccess(response) !== false) {
-    document.body.dispatchEvent(new Event("attendance-changed"));
-    refreshAvailability(container).catch(() => {});
+    refreshAvailabilityAndRenderAttendance(container);
   }
 };
 
@@ -804,8 +833,7 @@ const handleCheckoutAfterRequest = (event) => {
     showInfoAlert("You have successfully registered for this event.");
   }
 
-  document.body.dispatchEvent(new Event("attendance-changed"));
-  refreshAvailability(container).catch(() => {});
+  refreshAvailabilityAndRenderAttendance(container);
 };
 
 /**
@@ -991,7 +1019,9 @@ const initializeAttendance = (root = document) => {
       if (container.dataset.availabilityUrl) {
         container.dataset.availabilityHydrated = "false";
       }
-      refreshAvailability(container, { rerenderAttendance: true }).catch(() => {});
+      refreshAvailability(container, { rerenderAttendance: true }).catch(() => {
+        handleAvailabilityRefreshFailure(container, { rerenderAttendance: true });
+      });
     }
   });
 

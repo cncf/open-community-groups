@@ -432,6 +432,33 @@ describe("event attendance", () => {
     }
   });
 
+  it("falls back to cached attendance metadata when availability fails", async () => {
+    const { attendButton, checker, container } = renderAttendanceDom({
+      availabilityUrl: "/events/test-event/availability",
+    });
+    const fetchMock = mockFetch({
+      response: {
+        ok: false,
+      },
+    });
+
+    try {
+      await initializeAttendanceDom();
+      await waitForMicrotask();
+
+      expect(container.dataset.availabilityHydrated).to.equal("true");
+
+      dispatchHtmxAfterRequest(checker, {
+        responseText: JSON.stringify({ status: "guest" }),
+      });
+
+      expect(attendButton.classList.contains("hidden")).to.equal(false);
+      expect(attendButton.disabled).to.equal(false);
+    } finally {
+      fetchMock.restore();
+    }
+  });
+
   it("hydrates attendee meeting access from refreshed availability", async () => {
     const { container } = renderAttendanceDom({
       availabilityUrl: "/events/test-event/availability",
