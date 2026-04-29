@@ -1,4 +1,4 @@
-import { html } from "/static/vendor/js/lit-all.v3.3.1.min.js";
+import { html, render } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { lockBodyScroll, unlockBodyScroll } from "/static/js/common/common.js";
 import { showSuccessAlert, showErrorAlert } from "/static/js/common/alerts.js";
@@ -31,6 +31,7 @@ export class ShareModal extends LitWrapper {
     this.title = "";
     this.url = "";
     this._isOpen = false;
+    this._modalContainer = null;
   }
 
   /**
@@ -48,6 +49,7 @@ export class ShareModal extends LitWrapper {
   disconnectedCallback() {
     super.disconnectedCallback();
     this._removeEventListeners();
+    this._removeModalContainer();
     if (this._isOpen) {
       unlockBodyScroll();
     }
@@ -61,6 +63,8 @@ export class ShareModal extends LitWrapper {
     lockBodyScroll();
     document.addEventListener("keydown", this._handleKeydown);
     document.addEventListener("mousedown", this._handleOutsideClick);
+    this._renderModal();
+    this._closeContainingDropdown();
   }
 
   /**
@@ -70,6 +74,7 @@ export class ShareModal extends LitWrapper {
     this._isOpen = false;
     unlockBodyScroll();
     this._removeEventListeners();
+    this._removeModalContainer();
   }
 
   /**
@@ -78,6 +83,55 @@ export class ShareModal extends LitWrapper {
   _removeEventListeners() {
     document.removeEventListener("keydown", this._handleKeydown);
     document.removeEventListener("mousedown", this._handleOutsideClick);
+  }
+
+  /**
+   * Ensures the modal is mounted outside any dropdown that contains the trigger.
+   * @returns {HTMLElement} The document-level modal container
+   */
+  _ensureModalContainer() {
+    if (!this._modalContainer) {
+      this._modalContainer = document.createElement("div");
+      document.body.append(this._modalContainer);
+    }
+
+    return this._modalContainer;
+  }
+
+  /**
+   * Removes the document-level modal container.
+   */
+  _removeModalContainer() {
+    if (!this._modalContainer) {
+      return;
+    }
+
+    render("", this._modalContainer);
+    this._modalContainer.remove();
+    this._modalContainer = null;
+  }
+
+  /**
+   * Renders the modal into the document-level container.
+   */
+  _renderModal() {
+    if (!this._isOpen) {
+      this._removeModalContainer();
+      return;
+    }
+
+    render(this._renderModalContent(), this._ensureModalContainer());
+  }
+
+  /**
+   * Closes the dropdown that contains the share trigger, when present.
+   */
+  _closeContainingDropdown() {
+    const dropdown = this.closest("[data-event-actions-menu], details[open]");
+
+    if (dropdown instanceof HTMLDetailsElement) {
+      dropdown.open = false;
+    }
   }
 
   /**
@@ -157,7 +211,7 @@ export class ShareModal extends LitWrapper {
           type="button"
           class="group flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 hover:bg-stone-50"
           aria-label="Share"
-          @click=${this._openModal}
+          @click=${() => this._openModal()}
           title="Share"
         >
           <div class="svg-icon size-4 bg-stone-600 icon-share"></div>
@@ -171,7 +225,7 @@ export class ShareModal extends LitWrapper {
         type="button"
         class="group btn-primary-outline flex h-10 w-10 items-center justify-center p-0 md:h-[30px] md:w-auto md:px-4 md:py-2 md:space-x-2"
         aria-label="Share"
-        @click=${this._openModal}
+        @click=${() => this._openModal()}
         title="Share"
       >
         <div class="svg-icon size-3 icon-share"></div>
@@ -198,7 +252,7 @@ export class ShareModal extends LitWrapper {
         class="group btn-secondary-anchor flex items-center justify-center size-12 p-2"
         title=${label}
         aria-label=${label}
-        @click=${this._handleShareClick}
+        @click=${(event) => this._handleShareClick(event)}
       >
         <div
           class="svg-icon size-5 bg-primary-500 group-hover:bg-white transition-colors
@@ -209,89 +263,92 @@ export class ShareModal extends LitWrapper {
   }
 
   /**
-   * Renders the share button and modal.
+   * Renders the share modal.
    * @returns {TemplateResult} The component template
    */
-  render() {
+  _renderModalContent() {
     return html`
-      ${this._renderTrigger()}
-      ${this._isOpen
-        ? html`
+      <div
+        class="fixed inset-0 z-1300 flex items-center justify-center
+               overflow-y-auto overflow-x-hidden"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="share-modal-title"
+      >
+        <div
+          class="modal-overlay absolute w-full h-full bg-stone-950 opacity-[0.35]"
+          @click=${() => this._closeModal()}
+        ></div>
+
+        <div class="modal-panel p-4 max-w-lg">
+          <div class="modal-card rounded-lg">
             <div
-              class="fixed inset-0 z-1300 flex items-center justify-center
-                     overflow-y-auto overflow-x-hidden"
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="share-modal-title"
+              class="flex items-center justify-between p-4 border-b
+                     border-stone-200 rounded-t"
             >
-              <div
-                class="modal-overlay absolute w-full h-full bg-stone-950 opacity-[0.35]"
-                @click=${this._closeModal}
-              ></div>
+              <h3 id="share-modal-title" class="text-lg font-semibold text-stone-900">Share</h3>
+              <button
+                type="button"
+                class="group text-stone-400 bg-transparent hover:bg-stone-200
+                       hover:text-stone-900 transition-colors rounded-lg text-sm
+                       w-8 h-8 inline-flex justify-center items-center"
+                @click=${() => this._closeModal()}
+                aria-label="Close modal"
+              >
+                <div
+                  class="svg-icon w-5 h-5 bg-stone-500 group-hover:bg-stone-900
+                         transition-colors icon-close"
+                ></div>
+              </button>
+            </div>
 
-              <div class="modal-panel p-4 max-w-lg">
-                <div class="modal-card rounded-lg">
-                  <div
-                    class="flex items-center justify-between p-4 border-b
-                           border-stone-200 rounded-t"
+            <div class="modal-body p-5">
+              <div class="text-sm font-medium text-stone-700 mb-4">Share this link via</div>
+              <div class="flex flex-wrap gap-3">
+                ${this._renderShareButton("email", "email", "Email")}
+                ${this._renderShareButton("twitter", "twitter", "X")}
+                ${this._renderShareButton("facebook", "facebook", "Facebook")}
+                ${this._renderShareButton("whatsapp", "whatsapp", "WhatsApp")}
+                ${this._renderShareButton("reddit", "reddit", "Reddit")}
+                ${this._renderShareButton("linkedin", "linkedin", "LinkedIn")}
+                ${this._renderShareButton("bluesky", "bluesky", "Bluesky")}
+              </div>
+
+              <div class="border-t border-stone-200 mt-5 pt-5">
+                <div class="text-sm font-medium text-stone-700 mb-3">Copy link</div>
+                <div
+                  class="flex items-center gap-2 p-3 border border-stone-200
+                         rounded-lg bg-stone-50"
+                >
+                  <span class="flex-1 text-sm text-stone-600 truncate select-all">
+                    ${this._getFullUrl()}
+                  </span>
+                  <button
+                    type="button"
+                    class="flex items-center justify-center size-8 rounded
+                           hover:bg-stone-200 transition-colors cursor-pointer
+                           flex-shrink-0"
+                    title="Copy link"
+                    aria-label="Copy link"
+                    @click=${() => this._handleCopyClick()}
                   >
-                    <h3 id="share-modal-title" class="text-lg font-semibold text-stone-900">Share</h3>
-                    <button
-                      type="button"
-                      class="group text-stone-400 bg-transparent hover:bg-stone-200
-                             hover:text-stone-900 transition-colors rounded-lg text-sm
-                             w-8 h-8 inline-flex justify-center items-center"
-                      @click=${this._closeModal}
-                      aria-label="Close modal"
-                    >
-                      <div
-                        class="svg-icon w-5 h-5 bg-stone-500 group-hover:bg-stone-900
-                               transition-colors icon-close"
-                      ></div>
-                    </button>
-                  </div>
-
-                  <div class="modal-body p-5">
-                    <div class="text-sm font-medium text-stone-700 mb-4">Share this link via</div>
-                    <div class="flex flex-wrap gap-3">
-                      ${this._renderShareButton("email", "email", "Email")}
-                      ${this._renderShareButton("twitter", "twitter", "X")}
-                      ${this._renderShareButton("facebook", "facebook", "Facebook")}
-                      ${this._renderShareButton("whatsapp", "whatsapp", "WhatsApp")}
-                      ${this._renderShareButton("reddit", "reddit", "Reddit")}
-                      ${this._renderShareButton("linkedin", "linkedin", "LinkedIn")}
-                      ${this._renderShareButton("bluesky", "bluesky", "Bluesky")}
-                    </div>
-
-                    <div class="border-t border-stone-200 mt-5 pt-5">
-                      <div class="text-sm font-medium text-stone-700 mb-3">Copy link</div>
-                      <div
-                        class="flex items-center gap-2 p-3 border border-stone-200
-                               rounded-lg bg-stone-50"
-                      >
-                        <span class="flex-1 text-sm text-stone-600 truncate select-all">
-                          ${this._getFullUrl()}
-                        </span>
-                        <button
-                          type="button"
-                          class="flex items-center justify-center size-8 rounded
-                                 hover:bg-stone-200 transition-colors cursor-pointer
-                                 flex-shrink-0"
-                          title="Copy link"
-                          aria-label="Copy link"
-                          @click=${this._handleCopyClick}
-                        >
-                          <div class="svg-icon size-5 bg-stone-600 icon-copy"></div>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
+                    <div class="svg-icon size-5 bg-stone-600 icon-copy"></div>
+                  </button>
                 </div>
               </div>
             </div>
-          `
-        : ""}
+          </div>
+        </div>
+      </div>
     `;
+  }
+
+  /**
+   * Renders the share button.
+   * @returns {TemplateResult} The component template
+   */
+  render() {
+    return this._renderTrigger();
   }
 }
 

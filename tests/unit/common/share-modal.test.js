@@ -78,7 +78,7 @@ describe("share-modal", () => {
     expect(element._isOpen).to.equal(true);
     expect(document.body.style.overflow).to.equal("hidden");
     expect(document.body.dataset.modalOpenCount).to.equal("1");
-    expect(element.querySelector('[role="dialog"]')).to.not.equal(null);
+    expect(document.body.querySelector('[role="dialog"]')).to.not.equal(null);
 
     element._handleKeydown({
       key: "Escape",
@@ -88,7 +88,29 @@ describe("share-modal", () => {
 
     expect(element._isOpen).to.equal(false);
     expect(document.body.style.overflow).to.equal("");
-    expect(element.querySelector('[role="dialog"]')).to.equal(null);
+    expect(document.body.querySelector('[role="dialog"]')).to.equal(null);
+  });
+
+  it("closes the containing event actions dropdown when opened from a menu item", async () => {
+    document.body.innerHTML = `
+      <details data-event-actions-menu open>
+        <summary>Actions</summary>
+      </details>
+    `;
+    const dropdown = document.querySelector("[data-event-actions-menu]");
+    const element = document.createElement("share-modal");
+    element.triggerVariant = "menu-item";
+    element.title = "Open Community Groups";
+    element.url = "/groups/cncf";
+    dropdown.append(element);
+    await element.updateComplete;
+
+    element.querySelector("button").click();
+    await element.updateComplete;
+
+    expect(dropdown.open).to.equal(false);
+    expect(element._isOpen).to.equal(true);
+    expect(document.body.querySelector('[role="dialog"]')).to.not.equal(null);
   });
 
   it("copies the share url and shows a success alert", async () => {
@@ -151,7 +173,7 @@ describe("share-modal", () => {
     element._openModal();
     await element.updateComplete;
 
-    const button = element.querySelector('[data-sharer="linkedin"]');
+    const button = document.body.querySelector('[data-sharer="linkedin"]');
     element._handleShareClick({ currentTarget: button });
     await element.updateComplete;
 
