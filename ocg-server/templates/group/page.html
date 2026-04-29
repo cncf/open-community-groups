@@ -98,15 +98,23 @@
                 {% endif -%}
                 {# End social networks (mobile) -#}
 
-                <div class="mt-4 md:mt-0 flex flex-row flex-wrap gap-4 items-end md:ml-auto">
-                  {# Share button -#}
-                  <share-modal title="{{ group.name }}" url="/{{ group.community.name }}/group/{{ group.slug }}">
-                  </share-modal>
-                  {# End share button -#}
-
+                <div class="mt-4 flex max-w-full flex-row flex-wrap gap-2 sm:flex-nowrap sm:gap-3 md:mt-0 md:ml-auto md:gap-4">
                   {# Membership button section -#}
                   {% include "group/membership_button.html" %}
                   {# End membership button section -#}
+
+                  <details data-group-actions-menu
+                           class="order-last static shrink-0 sm:relative">
+                    <summary class="group btn-primary-outline flex h-10 w-10 cursor-pointer list-none items-center justify-center p-0 md:h-[30px] md:w-[30px] [&::-webkit-details-marker]:hidden"
+                             aria-label="More actions"
+                             title="More actions">
+                      <div class="svg-icon size-4 icon-vertical-dots"></div>
+                    </summary>
+                    <div class="absolute left-4 z-20 mt-2 w-56 max-w-[calc(100vw-2rem)] overflow-hidden rounded-lg border border-stone-200 bg-white py-1 shadow-lg sm:left-auto sm:right-0 sm:w-max sm:min-w-48">
+                      <share-modal trigger-variant="menu-item" title="{{ group.name }}" url="/{{ group.community.name }}/group/{{ group.slug }}">
+                      </share-modal>
+                    </div>
+                  </details>
                 </div>
               </div>
             </div>

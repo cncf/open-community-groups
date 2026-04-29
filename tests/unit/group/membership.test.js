@@ -98,6 +98,19 @@ describe("group membership", () => {
     expect(env.current.htmx.triggerCalls).to.deep.equal([["#leave-btn", "confirmed"]]);
   });
 
+  it("closes the group actions menu when clicking outside it", () => {
+    renderMembershipDom();
+    document.body.insertAdjacentHTML(
+      "beforeend",
+      "<details data-group-actions-menu open><summary>More actions</summary></details>",
+    );
+
+    const actionsMenu = document.querySelector("[data-group-actions-menu]");
+    document.body.click();
+
+    expect(actionsMenu.open).to.equal(false);
+  });
+
   it("emits membership-changed after a successful join request", () => {
     const { joinButton } = renderMembershipDom();
     let changedEvents = 0;

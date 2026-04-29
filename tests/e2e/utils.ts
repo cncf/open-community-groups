@@ -240,6 +240,38 @@ const hasTinySnapshotDimensionDrift = (
   Math.abs(snapshotDimensions.width - Math.round(regionBox.width)) <= 2 &&
   Math.abs(snapshotDimensions.height - Math.round(regionBox.height)) <= 2;
 
+const getClippedScreenshotBox = async (
+  page: Page,
+  regionBox: { x: number; y: number },
+  snapshotDimensions: { width: number; height: number },
+) => {
+  const viewportSize = page.viewportSize();
+  const documentSize = await page.evaluate(() => ({
+    height: Math.max(
+      document.body.scrollHeight,
+      document.documentElement.scrollHeight,
+    ),
+    width: Math.max(document.body.scrollWidth, document.documentElement.scrollWidth),
+  }));
+  const maxX = Math.max(
+    0,
+    Math.min(viewportSize?.width ?? documentSize.width, documentSize.width) -
+      snapshotDimensions.width,
+  );
+  const maxY = Math.max(
+    0,
+    Math.min(viewportSize?.height ?? documentSize.height, documentSize.height) -
+      snapshotDimensions.height,
+  );
+
+  return {
+    x: Math.min(Math.max(0, regionBox.x), maxX),
+    y: Math.min(Math.max(0, regionBox.y), maxY),
+    width: snapshotDimensions.width,
+    height: snapshotDimensions.height,
+  };
+};
+
 /**
  * Builds a fully-qualified URL.
  */
@@ -539,22 +571,18 @@ export const expectRegionScreenshot = async (
     const regionBox = await region.boundingBox();
     const shouldUseClippedPageScreenshot =
       useClippedPageScreenshot ||
-      (process.env.CI === "true" &&
-        snapshotDimensions &&
+      (snapshotDimensions &&
         regionBox &&
         hasTinySnapshotDimensionDrift(regionBox, snapshotDimensions));
 
     if (shouldUseClippedPageScreenshot && snapshotDimensions && regionBox) {
+      const clip = await getClippedScreenshotBox(page, regionBox, snapshotDimensions);
+
       await expect(page).toHaveScreenshot(screenshotName, {
         animations: "disabled",
         caret: "hide",
         mask,
-        clip: {
-          x: Math.max(0, regionBox.x),
-          y: Math.max(0, regionBox.y),
-          width: snapshotDimensions.width,
-          height: snapshotDimensions.height,
-        },
+        clip,
         scale: "css",
         ...snapshotDiffOptions,
       });

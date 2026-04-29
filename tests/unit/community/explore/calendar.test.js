@@ -110,6 +110,34 @@ describe("community explore calendar", () => {
     expect(document.querySelector(".no-results-default")?.classList.contains("hidden")).to.equal(true);
   });
 
+  it("opens event popovers upward on the last calendar row", () => {
+    const calendar = new Calendar({ events: [] });
+    document.head.querySelector('script[src*="fullcalendar"]')?.onload();
+
+    const eventElement = document.createElement("a");
+    const eventParent = document.createElement("div");
+    eventElement.fcSeg = { firstCol: 2, row: 4 };
+    eventParent.appendChild(eventElement);
+
+    calendar.fullCalendar.config.eventDidMount({
+      el: eventElement,
+      event: {
+        extendedProps: {
+          event: {
+            slug: "last-row-event",
+            popover_html: "<article>Last row event</article>",
+          },
+        },
+      },
+    });
+
+    expect(JSON.parse(eventParent.dataset.popoverAlign)).to.include({
+      id: "popover-last-row-event",
+      horizontal: "left",
+      vertical: "top",
+    });
+  });
+
   it("fetches month data, syncs date inputs and url, and shows the empty placeholder", async () => {
     fetchMock.setImpl(async () => ({
       ok: true,

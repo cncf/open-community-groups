@@ -59,7 +59,7 @@ const renderAttendanceDom = ({
         data-attendance-role="leave-btn"
         class="hidden"
       >
-        <div class="svg-icon icon-logout" data-attendance-icon></div>
+        <div class="svg-icon icon-cancel" data-attendance-icon></div>
         <span data-attendance-label>Cancel attendance</span>
       </button>
       <button
@@ -134,6 +134,9 @@ describe("event attendance", () => {
 
     expect(leaveButton.classList.contains("hidden")).to.equal(false);
     expect(leaveButton.querySelector("[data-attendance-label]")?.textContent).to.equal("Cancel attendance");
+    expect(leaveButton.querySelector("[data-attendance-icon]")?.classList.contains("icon-cancel")).to.equal(
+      true,
+    );
     expect(alwaysJoinLink.classList.contains("hidden")).to.equal(false);
     expect(liveJoinLink.classList.contains("hidden")).to.equal(false);
     expect(liveJoinLink.classList.contains("xl:flex")).to.equal(true);
@@ -156,6 +159,24 @@ describe("event attendance", () => {
     expect(menuJoinLink.classList.contains("hidden")).to.equal(false);
     expect(menuJoinLink.classList.contains("max-xl:flex")).to.equal(true);
     expect(meetingDetails[0].classList.contains("hidden")).to.equal(false);
+  });
+
+  it("keeps the join meeting link hidden when the event is canceled", () => {
+    const { checker, alwaysJoinLink, liveJoinLink, menuJoinLink, meetingDetails } = renderAttendanceDom({
+      attendeeMeetingAccessOpen: "true",
+      canceled: "true",
+    });
+
+    dispatchHtmxAfterRequest(checker, {
+      responseText: JSON.stringify({ status: "attendee" }),
+    });
+
+    expect(alwaysJoinLink.classList.contains("hidden")).to.equal(true);
+    expect(liveJoinLink.classList.contains("hidden")).to.equal(true);
+    expect(liveJoinLink.classList.contains("xl:flex")).to.equal(false);
+    expect(menuJoinLink.classList.contains("hidden")).to.equal(true);
+    expect(menuJoinLink.classList.contains("max-xl:flex")).to.equal(false);
+    expect(meetingDetails[0].classList.contains("hidden")).to.equal(true);
   });
 
   it("keeps the join meeting link hidden before attendee meeting access opens", () => {
@@ -268,6 +289,28 @@ describe("event attendance", () => {
       icon: "warning",
     });
     expect(env.current.htmx.triggerCalls).to.deep.equal([["#leave-btn", "confirmed"]]);
+  });
+
+  it("uses cancel icons for waitlist and pending invitation cancellation", () => {
+    const { checker, leaveButton } = renderAttendanceDom();
+
+    dispatchHtmxAfterRequest(checker, {
+      responseText: JSON.stringify({ status: "waitlisted" }),
+    });
+
+    expect(leaveButton.querySelector("[data-attendance-label]")?.textContent).to.equal("Leave waiting list");
+    expect(leaveButton.querySelector("[data-attendance-icon]")?.classList.contains("icon-cancel")).to.equal(
+      true,
+    );
+
+    dispatchHtmxAfterRequest(checker, {
+      responseText: JSON.stringify({ status: "pending-approval" }),
+    });
+
+    expect(leaveButton.querySelector("[data-attendance-label]")?.textContent).to.equal("Cancel request");
+    expect(leaveButton.querySelector("[data-attendance-icon]")?.classList.contains("icon-cancel")).to.equal(
+      true,
+    );
   });
 
   it("disables attendance changes for past events", () => {

@@ -277,7 +277,7 @@
       {# End event date and location -#}
 
       {# Call for Speakers -#}
-      {% if event.cfs_is_enabled() -%}
+      {% if event.cfs_is_enabled() && !event.canceled -%}
         <div class="pb-4">
           <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-6 pb-6 lg:pt-2 lg:pb-14">
             Call for Speakers
@@ -322,7 +322,7 @@
             <div id="overlay-cfs-modal"
                  class="modal-overlay absolute w-full h-full bg-stone-950 opacity-[0.35]"></div>
             <div class="modal-panel p-4 max-w-2xl">
-              <div class="modal-card rounded-lg">
+              <div class="modal-card rounded-lg modal-overflow-visible">
                 <div class="flex items-center justify-between p-4 md:p-5 border-b border-stone-200 rounded-t">
                   <h3 id="cfs-modal-title" class="text-xl font-semibold text-stone-900">Submit a proposal</h3>
                   <button id="close-cfs-modal"
@@ -332,7 +332,8 @@
                     <span class="sr-only">Close modal</span>
                   </button>
                 </div>
-                <div id="cfs-modal-root" class="modal-body p-4 md:p-6 space-y-6"></div>
+                <div id="cfs-modal-root"
+                     class="modal-body p-4 md:p-6 space-y-6 modal-overflow-visible"></div>
               </div>
             </div>
           </div>
@@ -350,7 +351,7 @@
         {% let meeting_recording_url = event.meeting_recording_url -%}
         {% let has_join = meeting_join_url.is_some() -%}
         {% let has_recording = meeting_recording_url.is_some() -%}
-        {% let show_join_link = has_join && !event.is_past() -%}
+        {% let show_join_link = has_join && !event.is_past() && !event.canceled -%}
         {% let show_recording_link = has_recording && event.is_past() -%}
         {% if show_join_link || show_recording_link -%}
           <div data-meeting-details
@@ -664,7 +665,7 @@
     {% endif -%}
     {% let has_join_session = session.meeting_join_url.is_some() -%}
     {% let has_recording_session = session.meeting_recording_url.is_some() -%}
-    {% let show_join_link_session = has_join_session && !event.is_past() -%}
+    {% let show_join_link_session = has_join_session && !event.is_past() && !event.canceled -%}
     {% let show_recording_link_session = has_recording_session && event.is_past() -%}
     {% if show_join_link_session || show_recording_link_session -%}
       <div data-meeting-details
