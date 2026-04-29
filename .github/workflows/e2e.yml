@@ -4,9 +4,6 @@ on:
   pull_request:
     branches:
       - main
-  push:
-    branches:
-      - cynthia-sg/some-improvements
   workflow_dispatch:
 
 jobs:
@@ -40,7 +37,7 @@ jobs:
   e2e-tests:
     name: ${{ matrix.suite }}
     needs: changes
-    if: github.event_name == 'workflow_dispatch' || github.event_name == 'push' || needs.changes.outputs.e2e == 'true'
+    if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.e2e == 'true'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
