@@ -2,6 +2,7 @@ import { showConfirmAlert, showInfoAlert, handleHtmxResponse } from "/static/js/
 import { isSuccessfulXHRStatus } from "/static/js/common/common.js";
 
 const MEMBERSHIP_CONTAINER_SELECTOR = "#membership-container";
+const GROUP_ACTIONS_MENU_SELECTOR = "[data-group-actions-menu]";
 
 /**
  * Returns all membership containers within a root node.
@@ -231,6 +232,12 @@ const handleMembershipClick = (event) => {
   if (!(target instanceof Element)) {
     return;
   }
+
+  document.querySelectorAll(`${GROUP_ACTIONS_MENU_SELECTOR}[open]`).forEach((actionsMenu) => {
+    if (actionsMenu instanceof HTMLDetailsElement && !actionsMenu.contains(target)) {
+      actionsMenu.open = false;
+    }
+  });
 
   if (!target.closest(MEMBERSHIP_CONTAINER_SELECTOR)) {
     return;
