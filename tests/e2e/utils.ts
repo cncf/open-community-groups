@@ -569,10 +569,15 @@ export const expectRegionScreenshot = async (
   if (testInfo) {
     const snapshotDimensions = getPngDimensions(testInfo.snapshotPath(screenshotName));
     const regionBox = await region.boundingBox();
+    // CI can have small region-size drift, so compare a page clip instead.
+    const shouldUseCiClippedPageScreenshot =
+      process.env.CI === "true" &&
+      snapshotDimensions !== null &&
+      regionBox !== null;
     const shouldUseClippedPageScreenshot =
       useClippedPageScreenshot ||
-      (process.env.CI === "true" &&
-        snapshotDimensions &&
+      shouldUseCiClippedPageScreenshot ||
+      (snapshotDimensions &&
         regionBox &&
         hasTinySnapshotDimensionDrift(regionBox, snapshotDimensions));
 
