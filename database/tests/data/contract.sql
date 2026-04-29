@@ -333,6 +333,98 @@ insert into event (
     );
 
 -- ============================================================================
+-- MEETING CLAIM GROUPS
+-- ============================================================================
+
+insert into "group" (
+    active,
+    community_id,
+    description,
+    group_category_id,
+    group_id,
+    name,
+    slug
+) values (
+    false,
+    '00000000-0000-0000-0000-00000000c001',
+    'A private group used by Rust meeting claim contract tests',
+    '00000000-0000-0000-0000-00000000c012',
+    '00000000-0000-0000-0000-00000000c0a0',
+    'Contract Meeting Claim Group',
+    'contract-meeting-claim-group'
+);
+
+-- ============================================================================
+-- MEETING CLAIM CANDIDATES
+-- ============================================================================
+
+insert into event (
+    capacity,
+    description,
+    ends_at,
+    event_category_id,
+    event_id,
+    event_kind_id,
+    group_id,
+    meeting_in_sync,
+    meeting_provider_id,
+    meeting_requested,
+    name,
+    published,
+    slug,
+    starts_at,
+    timezone
+) values
+    (
+        100,
+        'A meeting sync event used by Rust database contract tests',
+        '2099-06-01 11:00:00+00',
+        '00000000-0000-0000-0000-00000000c013',
+        '00000000-0000-0000-0000-00000000c0a1',
+        'virtual',
+        '00000000-0000-0000-0000-00000000c0a0',
+        false,
+        'zoom',
+        true,
+        'Contract Meeting Sync Event',
+        true,
+        'contract-meeting-sync-event',
+        '2099-06-01 10:00:00+00',
+        'UTC'
+    ),
+    (
+        100,
+        'An auto-end event used by Rust database contract tests',
+        '2000-06-01 11:00:00+00',
+        '00000000-0000-0000-0000-00000000c013',
+        '00000000-0000-0000-0000-00000000c0a2',
+        'virtual',
+        '00000000-0000-0000-0000-00000000c0a0',
+        true,
+        'zoom',
+        true,
+        'Contract Auto End Event',
+        true,
+        'contract-auto-end-event',
+        '2000-06-01 10:00:00+00',
+        'UTC'
+    );
+
+insert into meeting (
+    event_id,
+    join_url,
+    meeting_id,
+    meeting_provider_id,
+    provider_meeting_id
+) values (
+    '00000000-0000-0000-0000-00000000c0a2',
+    'https://zoom.us/j/contract-auto-end',
+    '00000000-0000-0000-0000-00000000c0a3',
+    'zoom',
+    'contract-auto-end'
+);
+
+-- ============================================================================
 -- EVENT ATTENDEES
 -- ============================================================================
 

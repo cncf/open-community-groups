@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(11);
+select plan(12);
 
 -- ============================================================================
 -- VARIABLES
@@ -17,8 +17,19 @@ select plan(11);
 -- ============================================================================
 
 -- Zoom meeting row
-insert into meeting (meeting_id, join_url, meeting_provider_id, provider_meeting_id)
-values (:'meetingID', 'https://zoom.us/j/auto-end-check', 'zoom', 'auto-end-check');
+insert into meeting (
+    auto_end_check_claimed_at,
+    join_url,
+    meeting_id,
+    meeting_provider_id,
+    provider_meeting_id
+) values (
+    current_timestamp,
+    'https://zoom.us/j/auto-end-check',
+    :'meetingID',
+    'zoom',
+    'auto-end-check'
+);
 
 -- ============================================================================
 -- TESTS
@@ -41,6 +52,11 @@ select is(
     (select auto_end_check_outcome from meeting where meeting_id = :'meetingID'),
     'auto_ended',
     'Should persist auto_ended outcome'
+);
+select is(
+    (select auto_end_check_claimed_at from meeting where meeting_id = :'meetingID'),
+    null,
+    'Should clear auto-end check claim when writing auto_ended'
 );
 
 -- Should allow already_not_running outcome

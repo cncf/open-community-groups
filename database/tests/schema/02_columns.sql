@@ -214,9 +214,11 @@ select columns_are('event', array[
     'meeting_hosts',
     'meeting_in_sync',
     'meeting_join_url',
+    'meeting_provider_host_user',
     'meeting_provider_id',
     'meeting_recording_url',
     'meeting_requested',
+    'meeting_sync_claimed_at',
     'meetup_url',
     'payment_currency_code',
     'photos_urls',
@@ -425,12 +427,14 @@ select columns_are('meeting', array[
     'provider_meeting_id',
 
     'auto_end_check_at',
+    'auto_end_check_claimed_at',
     'auto_end_check_outcome',
     'event_id',
     'password',
     'provider_host_user_id',
     'recording_url',
     'session_id',
+    'sync_claimed_at',
     'updated_at'
 ]);
 
@@ -587,9 +591,11 @@ select columns_are('session', array[
     'meeting_hosts',
     'meeting_in_sync',
     'meeting_join_url',
+    'meeting_provider_host_user',
     'meeting_provider_id',
     'meeting_recording_url',
-    'meeting_requested'
+    'meeting_requested',
+    'meeting_sync_claimed_at'
 ]);
 
 -- Test: session_kind columns should match expected

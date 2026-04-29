@@ -94,7 +94,7 @@ async fn main() -> Result<()> {
 
     // Setup shared worker coordination and core infrastructure
     let background_tasks = BackgroundTasks::new();
-    let db = setup_db(&cfg, &background_tasks)?;
+    let db = setup_db(&cfg)?;
     let image_storage = setup_image_storage(&cfg, db.clone());
 
     // Configure background services that depend on the database
@@ -151,8 +151,8 @@ fn setup_logging(log_format: &LogFormat) {
     }
 }
 
-/// Configure the database pool and start the transaction cleaner worker.
-fn setup_db(cfg: &Config, background_tasks: &BackgroundTasks) -> Result<Arc<PgDB>> {
+/// Configure the database pool.
+fn setup_db(cfg: &Config) -> Result<Arc<PgDB>> {
     // Build the TLS connector used by the Postgres pool
     let mut builder = SslConnector::builder(SslMethod::tls())?;
     builder.set_verify(SslVerifyMode::NONE);
@@ -161,15 +161,6 @@ fn setup_db(cfg: &Config, background_tasks: &BackgroundTasks) -> Result<Arc<PgDB
     let connector = MakeTlsConnector::new(builder.build());
     let pool = cfg.db.create_pool(Some(Runtime::Tokio1), connector)?;
     let db = Arc::new(PgDB::new(pool));
-
-    // Keep the transaction cleaner running in the background
-    {
-        let cancellation_token = background_tasks.cancellation_token.clone();
-        let db = db.clone();
-        background_tasks.task_tracker.spawn(async move {
-            db.tx_cleaner(cancellation_token).await;
-        });
-    }
 
     Ok(db)
 }

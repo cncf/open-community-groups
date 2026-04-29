@@ -1,4 +1,4 @@
-use std::env;
+use std::{env, time::Duration};
 
 use anyhow::{Context, Result};
 use deadpool_postgres::{Config as DbConfig, Runtime};
@@ -6,7 +6,8 @@ use tokio_postgres::NoTls;
 use uuid::Uuid;
 
 use crate::{
-    db::{PgDB, common::DBCommon, dashboard::group::DBDashboardGroup, event::DBEvent},
+    db::{PgDB, common::DBCommon, dashboard::group::DBDashboardGroup, event::DBEvent, meetings::DBMeetings},
+    services::meetings::MeetingProvider,
     templates::dashboard::{
         audit::AuditLogFilters,
         group::{
@@ -22,6 +23,41 @@ use crate::{
         search::{SearchEventsFilters, SearchGroupsFilters},
     },
 };
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_claim_meeting_for_auto_end_deserializes() -> Result<()> {
+    let db = contract_tests_db()?;
+    let candidate = db
+        .claim_meeting_for_auto_end()
+        .await?
+        .expect("contract auto-end candidate should exist");
+
+    assert_eq!(candidate.meeting_id, auto_end_meeting_id());
+    assert_eq!(candidate.provider, MeetingProvider::Zoom);
+    assert_eq!(candidate.provider_meeting_id, "contract-auto-end");
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_claim_meeting_out_of_sync_deserializes() -> Result<()> {
+    let db = contract_tests_db()?;
+    let meeting = db
+        .claim_meeting_out_of_sync()
+        .await?
+        .expect("contract meeting sync candidate should exist");
+
+    assert_eq!(meeting.duration, Some(Duration::from_hours(1)));
+    assert_eq!(meeting.event_id, Some(sync_event_id()));
+    assert_eq!(meeting.provider, MeetingProvider::Zoom);
+    assert!(meeting.sync_claimed_at.is_some());
+    assert!(meeting.sync_state_hash.is_some());
+    assert_eq!(meeting.topic.as_deref(), Some("Contract Meeting Sync Event"));
+
+    Ok(())
+}
 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
@@ -346,15 +382,21 @@ async fn db_contracts_search_groups_deserializes() -> Result<()> {
 // Helpers.
 
 const ATTENDEE_ID: &str = "00000000-0000-0000-0000-00000000c042";
+const AUTO_END_MEETING_ID: &str = "00000000-0000-0000-0000-00000000c0a3";
 const COMMUNITY_ID: &str = "00000000-0000-0000-0000-00000000c001";
 const EVENT_ID: &str = "00000000-0000-0000-0000-00000000c031";
 const GROUP_ID: &str = "00000000-0000-0000-0000-00000000c021";
 const GROUP_SPONSOR_ID: &str = "00000000-0000-0000-0000-00000000c061";
 const ORGANIZER_ID: &str = "00000000-0000-0000-0000-00000000c041";
+const SYNC_EVENT_ID: &str = "00000000-0000-0000-0000-00000000c0a1";
 const WAITLIST_ID: &str = "00000000-0000-0000-0000-00000000c043";
 
 fn attendee_id() -> Uuid {
     parse_uuid(ATTENDEE_ID)
+}
+
+fn auto_end_meeting_id() -> Uuid {
+    parse_uuid(AUTO_END_MEETING_ID)
 }
 
 fn community_id() -> Uuid {
@@ -404,6 +446,10 @@ fn organizer_id() -> Uuid {
 
 fn parse_uuid(value: &str) -> Uuid {
     Uuid::parse_str(value).expect("contract fixture UUID should be valid")
+}
+
+fn sync_event_id() -> Uuid {
+    parse_uuid(SYNC_EVENT_ID)
 }
 
 fn waitlist_id() -> Uuid {

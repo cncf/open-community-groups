@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(226);
+select plan(232);
 
 -- ============================================================================
 -- TESTS
@@ -28,6 +28,7 @@ select has_function('add_meeting');
 select has_function('add_region');
 select has_function('add_session_proposal');
 select has_function('approve_event_refund_request');
+select has_function('assign_zoom_host_user');
 select has_function('attach_checkout_session_to_event_purchase');
 select has_function('attend_event');
 select has_function('begin_event_refund_approval');
@@ -35,6 +36,8 @@ select has_function('cancel_event');
 select has_function('cancel_event_checkout');
 select has_function('cancel_event_series_events');
 select has_function('check_in_event');
+select has_function('claim_meeting_for_auto_end');
+select has_function('claim_meeting_out_of_sync');
 select has_function('claim_pending_notification');
 select has_function('complete_free_event_purchase');
 select has_function('deactivate_group');
@@ -56,7 +59,6 @@ select has_function('expire_event_purchase_for_checkout_session');
 select has_function('generate_slug');
 select has_function('generate_slug_from_source');
 select has_function('get_event_ticket_capacity');
-select has_function('get_available_zoom_host_user');
 select has_function('get_cfs_submission_notification_data');
 select has_function('get_community_full');
 select has_function('get_community_id_by_name');
@@ -69,6 +71,7 @@ select has_function('get_community_upcoming_events');
 select has_function('get_event_attendance');
 select has_function('get_event_full');
 select has_function('get_event_full_by_slug');
+select has_function('get_event_meeting_sync_state_hash');
 select has_function('get_event_summary');
 select has_function('get_event_summary_dashboard');
 select has_function('get_event_summary_by_id');
@@ -80,8 +83,7 @@ select has_function('get_group_sponsor');
 select has_function('get_group_stats');
 select has_function('get_group_summary');
 select has_function('get_group_upcoming_events');
-select has_function('get_meeting_for_auto_end');
-select has_function('get_meeting_out_of_sync');
+select has_function('get_session_meeting_sync_state_hash');
 select has_function('get_site_home_stats');
 select has_function('get_site_recently_added_groups');
 select has_function('get_site_settings');
@@ -140,6 +142,8 @@ select has_function('list_user_pending_session_proposal_co_speaker_invitations')
 select has_function('list_user_session_proposals');
 select has_function('list_user_session_proposals_for_cfs_event');
 select has_function('manual_check_in_event');
+select has_function('mark_stale_meeting_auto_end_checks_unknown');
+select has_function('mark_stale_meeting_syncs_unknown');
 select has_function('mark_stale_processing_notifications_unknown');
 select has_function('promote_event_waitlist');
 select has_function('prepare_event_checkout_expire_previous_hold');
@@ -162,6 +166,8 @@ select has_function('reject_event_refund_request');
 select has_function('reject_group_team_invitation');
 select has_function('reject_session_proposal_co_speaker_invitation');
 select has_function('release_event_discount_code_availability');
+select has_function('release_meeting_auto_end_check_claim');
+select has_function('release_meeting_sync_claim');
 select has_function('request_event_refund');
 select has_function('resubmit_cfs_submission');
 select has_function('revert_event_refund_approval');
