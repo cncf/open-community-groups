@@ -369,11 +369,11 @@ export const resetPrimaryControls = (container) => {
 /**
  * Toggles meeting detail visibility based on attendance status.
  * @param {boolean} isAttendee - Whether the user is attending
- * @param {{attendeeMeetingAccessOpen: boolean}} meta - Attendance metadata
+ * @param {{attendeeMeetingAccessOpen: boolean, canceled: boolean}} meta - Attendance metadata
  */
 export const renderMeetingDetails = (isAttendee, meta) => {
   const sections = document.querySelectorAll("[data-meeting-details]");
-  const showAttendeeMeetingAccess = isAttendee && meta.attendeeMeetingAccessOpen;
+  const showAttendeeMeetingAccess = isAttendee && meta.attendeeMeetingAccessOpen && !meta.canceled;
 
   sections.forEach((section) => {
     const sectionHasRecording = section.dataset?.hasRecording === "true";

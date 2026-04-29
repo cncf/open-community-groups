@@ -306,17 +306,19 @@
   {% endif -%}
 
   <!-- Join meeting button (hidden initially, shown for attendees when live) -->
-  {% if let Some(meeting_join_url) = &event.meeting_join_url %}
-    <a id="join-meeting-btn-{{ attendance_instance }}"
-       data-attendance-role="join-meeting-btn"
-       href="{{ meeting_join_url }}"
-       data-join-link
-       target="_blank"
-       rel="noopener noreferrer"
-       class="hidden max-xl:hidden group btn-primary-outline-anchor h-10 md:h-[30px] items-center justify-center md:space-x-2 md:max-xl:space-x-1.5 whitespace-nowrap px-3 text-xs sm:px-5 sm:text-sm md:max-xl:px-3 md:max-xl:text-xs max-[360px]:px-2 max-[360px]:text-[11px]">
-      <div class="svg-icon size-3 icon-meeting"></div>
-      <span>Join meeting</span>
-    </a>
+  {% if !event.canceled %}
+    {% if let Some(meeting_join_url) = &event.meeting_join_url %}
+      <a id="join-meeting-btn-{{ attendance_instance }}"
+         data-attendance-role="join-meeting-btn"
+         href="{{ meeting_join_url }}"
+         data-join-link
+         target="_blank"
+         rel="noopener noreferrer"
+         class="hidden max-xl:hidden group btn-primary-outline-anchor h-10 md:h-[30px] items-center justify-center md:space-x-2 md:max-xl:space-x-1.5 whitespace-nowrap px-3 text-xs sm:px-5 sm:text-sm md:max-xl:px-3 md:max-xl:text-xs max-[360px]:px-2 max-[360px]:text-[11px]">
+        <div class="svg-icon size-3 icon-meeting"></div>
+        <span>Join meeting</span>
+      </a>
+    {% endif %}
   {% endif %}
 
   <!-- Leave button (hidden initially) -->

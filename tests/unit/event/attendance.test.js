@@ -158,6 +158,24 @@ describe("event attendance", () => {
     expect(meetingDetails[0].classList.contains("hidden")).to.equal(false);
   });
 
+  it("keeps the join meeting link hidden when the event is canceled", () => {
+    const { checker, alwaysJoinLink, liveJoinLink, menuJoinLink, meetingDetails } = renderAttendanceDom({
+      attendeeMeetingAccessOpen: "true",
+      canceled: "true",
+    });
+
+    dispatchHtmxAfterRequest(checker, {
+      responseText: JSON.stringify({ status: "attendee" }),
+    });
+
+    expect(alwaysJoinLink.classList.contains("hidden")).to.equal(true);
+    expect(liveJoinLink.classList.contains("hidden")).to.equal(true);
+    expect(liveJoinLink.classList.contains("xl:flex")).to.equal(false);
+    expect(menuJoinLink.classList.contains("hidden")).to.equal(true);
+    expect(menuJoinLink.classList.contains("max-xl:flex")).to.equal(false);
+    expect(meetingDetails[0].classList.contains("hidden")).to.equal(true);
+  });
+
   it("keeps the join meeting link hidden before attendee meeting access opens", () => {
     const { checker, alwaysJoinLink, liveJoinLink, menuJoinLink, meetingDetails } = renderAttendanceDom({
       attendeeMeetingAccessOpen: "false",
