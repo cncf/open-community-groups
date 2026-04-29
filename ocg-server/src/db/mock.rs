@@ -835,10 +835,13 @@ mock! {
             &self,
             attachment_id: Uuid
         ) -> Result<crate::services::notifications::Attachment>;
-        async fn get_pending_notification(
+        async fn claim_pending_notification(
             &self,
-            client_id: Uuid,
         ) -> Result<Option<crate::services::notifications::Notification>>;
+        async fn mark_stale_processing_notifications_unknown(
+            &self,
+            timeout: std::time::Duration,
+        ) -> Result<usize>;
         async fn track_custom_notification(
             &self,
             created_by: Uuid,
@@ -850,7 +853,6 @@ mock! {
         ) -> Result<()>;
         async fn update_notification(
             &self,
-            client_id: Uuid,
             notification: &crate::services::notifications::Notification,
             error: Option<String>,
         ) -> Result<()>;

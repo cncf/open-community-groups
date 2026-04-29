@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(225);
+select plan(226);
 
 -- ============================================================================
 -- TESTS
@@ -35,6 +35,7 @@ select has_function('cancel_event');
 select has_function('cancel_event_checkout');
 select has_function('cancel_event_series_events');
 select has_function('check_in_event');
+select has_function('claim_pending_notification');
 select has_function('complete_free_event_purchase');
 select has_function('deactivate_group');
 select has_function('delete_community_team_member');
@@ -81,7 +82,6 @@ select has_function('get_group_summary');
 select has_function('get_group_upcoming_events');
 select has_function('get_meeting_for_auto_end');
 select has_function('get_meeting_out_of_sync');
-select has_function('get_pending_notification');
 select has_function('get_site_home_stats');
 select has_function('get_site_recently_added_groups');
 select has_function('get_site_settings');
@@ -140,6 +140,7 @@ select has_function('list_user_pending_session_proposal_co_speaker_invitations')
 select has_function('list_user_session_proposals');
 select has_function('list_user_session_proposals_for_cfs_event');
 select has_function('manual_check_in_event');
+select has_function('mark_stale_processing_notifications_unknown');
 select has_function('promote_event_waitlist');
 select has_function('prepare_event_checkout_expire_previous_hold');
 select has_function('prepare_event_checkout_expire_stale_holds');

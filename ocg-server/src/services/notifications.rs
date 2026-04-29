@@ -39,14 +39,26 @@ mod tests;
 /// Number of concurrent workers that deliver notifications.
 const NUM_DELIVERY_WORKERS: usize = 2;
 
+/// Number of workers that recover stale notification delivery claims.
+const NUM_DELIVERY_RECOVERY_WORKERS: usize = 1;
+
 /// Number of workers that enqueue due notifications.
 const NUM_ENQUEUE_WORKERS: usize = 1;
+
+/// Time after which a claimed notification requires manual delivery review.
+const DELIVERY_PROCESSING_TIMEOUT: Duration = Duration::from_mins(15);
 
 /// Time to wait after a delivery error before retrying.
 const PAUSE_ON_DELIVERY_ERROR: Duration = Duration::from_secs(10);
 
 /// Time to wait when there are no notifications to deliver.
 const PAUSE_ON_DELIVERY_NONE: Duration = Duration::from_secs(15);
+
+/// Time to wait after a delivery recovery error before retrying.
+const PAUSE_ON_DELIVERY_RECOVERY_ERROR: Duration = Duration::from_secs(30);
+
+/// Time to wait between delivery recovery checks.
+const PAUSE_ON_DELIVERY_RECOVERY_NONE: Duration = Duration::from_mins(1);
 
 /// Time to wait after an enqueue error before retrying.
 const PAUSE_ON_ENQUEUE_ERROR: Duration = Duration::from_secs(30);
@@ -86,6 +98,17 @@ impl PgNotificationsManager {
             let worker = EnqueueWorker {
                 db: db.clone(),
                 base_url: base_url.to_string(),
+                cancellation_token: cancellation_token.clone(),
+            };
+            task_tracker.spawn(async move {
+                worker.run().await;
+            });
+        }
+
+        // Setup and run workers to recover abandoned notification delivery claims
+        for _ in 1..=NUM_DELIVERY_RECOVERY_WORKERS {
+            let worker = DeliveryRecoveryWorker {
+                db: db.clone(),
                 cancellation_token: cancellation_token.clone(),
             };
             task_tracker.spawn(async move {
@@ -156,6 +179,49 @@ impl EnqueueWorker {
     }
 }
 
+/// Worker responsible for marking abandoned delivery claims as unknown.
+struct DeliveryRecoveryWorker {
+    /// Database handle for notification queries.
+    db: DynDB,
+    /// Token to signal worker shutdown.
+    cancellation_token: CancellationToken,
+}
+
+impl DeliveryRecoveryWorker {
+    /// Main worker loop: marks stale processing notifications until cancelled.
+    async fn run(&self) {
+        loop {
+            // Recover stale delivery claims and pick next pause interval
+            let pause = match self.mark_stale_processing_notifications_unknown().await {
+                Ok(recovered) => {
+                    if recovered > 0 {
+                        warn!(recovered, "marked stale notification deliveries unknown");
+                    }
+                    PAUSE_ON_DELIVERY_RECOVERY_NONE
+                }
+                Err(err) => {
+                    error!(?err, "error recovering stale notification deliveries");
+                    PAUSE_ON_DELIVERY_RECOVERY_ERROR
+                }
+            };
+
+            // Exit if the worker has been asked to stop
+            tokio::select! {
+                () = sleep(pause) => {},
+                () = self.cancellation_token.cancelled() => break,
+            }
+        }
+    }
+
+    /// Mark stale processing notifications with an unknown delivery outcome.
+    #[instrument(skip(self), err)]
+    async fn mark_stale_processing_notifications_unknown(&self) -> Result<usize> {
+        self.db
+            .mark_stale_processing_notifications_unknown(DELIVERY_PROCESSING_TIMEOUT)
+            .await
+    }
+}
+
 /// Worker responsible for delivering notifications from the queue.
 struct DeliveryWorker {
     /// Database handle for notification queries.
@@ -205,25 +271,14 @@ impl DeliveryWorker {
     /// Attempt to deliver a pending notification, if available.
     #[instrument(skip(self), err)]
     async fn deliver_notification(&mut self) -> Result<bool> {
-        // Begin transaction
-        let client_id = self.db.tx_begin().await?;
-
-        // Get pending notification
-        let notification = match self.db.get_pending_notification(client_id).await {
-            Ok(notification) => notification,
-            Err(err) => {
-                self.db.tx_rollback(client_id).await?;
-                return Err(err);
-            }
+        // Claim a notification before any external delivery side effects
+        let Some(notification) = self.db.claim_pending_notification().await? else {
+            return Ok(false);
         };
 
-        // Deliver notification (if any)
-        let notification_delivered = if let Some(notification) = &notification {
-            // Prepare notification subject and body.
-            let (subject, body) = Self::prepare_content(notification)?;
-
-            // Prepare message and send email
-            let err = match self
+        // Prepare and send the notification
+        let err = match Self::prepare_content(&notification) {
+            Ok((subject, body)) => match self
                 .send_email(
                     &notification.email,
                     subject.as_str(),
@@ -234,25 +289,14 @@ impl DeliveryWorker {
             {
                 Ok(()) => None,
                 Err(err) => Some(err.to_string()),
-            };
-
-            // Update notification with result
-            if let Err(err) = self.db.update_notification(client_id, notification, err).await {
-                error!(?err, "error updating notification");
-            }
-
-            // Commit transaction
-            self.db.tx_commit(client_id).await?;
-
-            true
-        } else {
-            // No pending notification, rollback transaction
-            self.db.tx_rollback(client_id).await?;
-
-            false
+            },
+            Err(err) => Some(err.to_string()),
         };
 
-        Ok(notification_delivered)
+        // Persist the attempt outcome
+        self.db.update_notification(&notification, err).await?;
+
+        Ok(true)
     }
 
     /// Prepare the subject and body for a notification email.
