@@ -168,9 +168,34 @@ const BASE_URL = process.env.OCG_E2E_BASE_URL || "http://localhost:9001";
 
 const buildUrl = (path: string) => new URL(path, BASE_URL).toString();
 
+const waitForHtmxIdle = async (page: Page) => {
+  await page.waitForFunction(() => {
+    const htmxConfig = (
+      window as Window & {
+        htmx?: {
+          config?: {
+            requestClass?: string;
+            settlingClass?: string;
+            swappingClass?: string;
+          };
+        };
+      }
+    ).htmx?.config;
+    const classNames = [
+      htmxConfig?.requestClass ?? "htmx-request",
+      htmxConfig?.settlingClass ?? "htmx-settling",
+      htmxConfig?.swappingClass ?? "htmx-swapping",
+    ];
+    const selector = classNames.map((className) => `.${className}`).join(", ");
+
+    return document.querySelector(selector) === null;
+  });
+};
+
 /** Waits for the page to finish the visual work needed before snapshotting. */
 const waitForVisualReady = async (page: Page) => {
   await page.waitForLoadState("networkidle");
+  await waitForHtmxIdle(page);
   await page.evaluate(async () => {
     await document.fonts.ready;
     await new Promise<void>((resolve) => {
