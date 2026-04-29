@@ -85,7 +85,7 @@ export class Calendar {
           parent.dataset.popoverAlign = JSON.stringify({
             id: `popover-${info.event.extendedProps.event.slug}`,
             horizontal: info.el.fcSeg.firstCol > 3 ? "right" : "left",
-            vertical: info.el.fcSeg.row > 4 ? "top" : "bottom",
+            vertical: info.el.fcSeg.row >= 4 ? "top" : "bottom",
           });
         } else if (parent.dataset.popoverAlign) {
           const { id } = JSON.parse(parent.dataset.popoverAlign);
