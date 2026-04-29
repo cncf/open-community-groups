@@ -12,11 +12,7 @@ mock! {
     pub(crate) DB {}
 
     #[async_trait]
-    impl crate::db::DB for DB {
-        async fn tx_begin(&self) -> Result<Uuid>;
-        async fn tx_commit(&self, client_id: Uuid) -> Result<()>;
-        async fn tx_rollback(&self, client_id: Uuid) -> Result<()>;
-    }
+    impl crate::db::DB for DB {}
 
     #[async_trait]
     impl crate::db::auth::DBAuth for DB {
@@ -772,45 +768,54 @@ mock! {
     impl crate::db::meetings::DBMeetings for DB {
         async fn add_meeting(
             &self,
-            client_id: Uuid,
             meeting: &crate::services::meetings::Meeting,
         ) -> Result<()>;
-        async fn delete_meeting(
+        async fn assign_zoom_host_user(
             &self,
-            client_id: Uuid,
             meeting: &crate::services::meetings::Meeting,
-        ) -> Result<()>;
-        async fn get_available_zoom_host_user(
-            &self,
-            client_id: Uuid,
             pool_users: &[String],
             max_simultaneous_meetings_per_user: i32,
             starts_at: chrono::DateTime<chrono::Utc>,
             ends_at: chrono::DateTime<chrono::Utc>,
         ) -> Result<Option<String>>;
-        async fn get_meeting_for_auto_end(
+        async fn claim_meeting_for_auto_end(
             &self,
-            client_id: Uuid,
         ) -> Result<Option<crate::db::meetings::MeetingAutoEndCandidate>>;
-        async fn get_meeting_out_of_sync(
+        async fn claim_meeting_out_of_sync(
             &self,
-            client_id: Uuid,
         ) -> Result<Option<crate::services::meetings::Meeting>>;
+        async fn delete_meeting(
+            &self,
+            meeting: &crate::services::meetings::Meeting,
+        ) -> Result<()>;
+        async fn mark_stale_meeting_auto_end_checks_unknown(
+            &self,
+            timeout: std::time::Duration,
+        ) -> Result<usize>;
+        async fn mark_stale_meeting_syncs_unknown(
+            &self,
+            timeout: std::time::Duration,
+        ) -> Result<usize>;
+        async fn release_meeting_auto_end_check_claim(
+            &self,
+            meeting_id: Uuid,
+        ) -> Result<()>;
+        async fn release_meeting_sync_claim(
+            &self,
+            meeting: &crate::services::meetings::Meeting,
+        ) -> Result<()>;
         async fn set_meeting_auto_end_check_outcome(
             &self,
-            client_id: Uuid,
             meeting_id: Uuid,
             outcome: crate::services::meetings::MeetingAutoEndCheckOutcome,
         ) -> Result<()>;
         async fn set_meeting_error(
             &self,
-            client_id: Uuid,
             meeting: &crate::services::meetings::Meeting,
             error: &str,
         ) -> Result<()>;
         async fn update_meeting(
             &self,
-            client_id: Uuid,
             meeting: &crate::services::meetings::Meeting,
         ) -> Result<()>;
         async fn update_meeting_recording_url(

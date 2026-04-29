@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(10);
+select plan(13);
 
 -- ============================================================================
 -- VARIABLES
@@ -12,9 +12,11 @@ select plan(10);
 \set categoryID '00000000-0000-0000-0000-000000000011'
 \set communityID '00000000-0000-0000-0000-000000000001'
 \set eventID '00000000-0000-0000-0000-000000000101'
+\set eventStaleClaimID '00000000-0000-0000-0000-000000000102'
 \set groupCategoryID '00000000-0000-0000-0000-000000000010'
 \set groupID '00000000-0000-0000-0000-000000000002'
 \set meetingEventID '00000000-0000-0000-0000-000000000301'
+\set meetingEventStaleClaimID '00000000-0000-0000-0000-000000000304'
 \set meetingOrphanID '00000000-0000-0000-0000-000000000303'
 \set meetingSessionID '00000000-0000-0000-0000-000000000302'
 \set sessionID '00000000-0000-0000-0000-000000000201'
@@ -70,7 +72,9 @@ insert into event (
     meeting_error,
     meeting_in_sync,
     meeting_provider_id,
-    meeting_requested
+    meeting_provider_host_user,
+    meeting_requested,
+    meeting_sync_claimed_at
 ) values (
     :'eventID',
     :'groupID',
@@ -88,12 +92,61 @@ insert into event (
     'Previous sync error',
     false,
     'zoom',
-    true
+    'event-claim-host@example.com',
+    true,
+    current_timestamp
 );
 
 -- Meeting linked to event
 insert into meeting (meeting_id, event_id, meeting_provider_id, provider_meeting_id, join_url, password)
 values (:'meetingEventID', :'eventID', 'zoom', '123456789', 'https://zoom.us/j/123456789', 'pass123');
+
+-- Event with stale claim: has meeting to delete after owner state changes
+insert into event (
+    event_id,
+    group_id,
+    name,
+    slug,
+    description,
+    timezone,
+    event_category_id,
+    event_kind_id,
+    starts_at,
+    ends_at,
+
+    canceled,
+    capacity,
+    meeting_error,
+    meeting_in_sync,
+    meeting_provider_id,
+    meeting_provider_host_user,
+    meeting_requested,
+    meeting_sync_claimed_at
+) values (
+    :'eventStaleClaimID',
+    :'groupID',
+    'Event Stale Claim',
+    'event-stale-claim',
+    'Test event for stale meeting delete',
+    'America/New_York',
+    :'categoryID',
+    'virtual',
+    '2025-06-02 10:00:00-04',
+    '2025-06-02 11:00:00-04',
+
+    true,
+    100,
+    'Previous sync error',
+    false,
+    'zoom',
+    'event-stale-claim-host@example.com',
+    true,
+    current_timestamp
+);
+
+-- Meeting linked to stale event claim
+insert into meeting (meeting_id, event_id, meeting_provider_id, provider_meeting_id, join_url, password)
+values (:'meetingEventStaleClaimID', :'eventStaleClaimID', 'zoom', 'stale123', 'https://zoom.us/j/stale123', 'stale');
 
 -- Session: has meeting to delete (with previous error)
 insert into session (
@@ -107,7 +160,9 @@ insert into session (
     meeting_error,
     meeting_in_sync,
     meeting_provider_id,
-    meeting_requested
+    meeting_provider_host_user,
+    meeting_requested,
+    meeting_sync_claimed_at
 ) values (
     :'sessionID',
     :'eventID',
@@ -119,7 +174,9 @@ insert into session (
     'Previous sync error',
     false,
     'zoom',
-    true
+    'session-claim-host@example.com',
+    true,
+    current_timestamp
 );
 
 -- Meeting linked to session
@@ -137,8 +194,10 @@ values (:'meetingOrphanID', 'zoom', '555666777', 'https://zoom.us/j/555666777');
 -- Should delete meeting record when linked to event
 select lives_ok(
     format(
-        'select delete_meeting(%L, %L, null)',
+        'select delete_meeting(%L, %L, null, (select meeting_sync_claimed_at from event where event_id = %L::uuid), get_event_meeting_sync_state_hash(%L::uuid))',
         :'meetingEventID',
+        :'eventID',
+        :'eventID',
         :'eventID'
     ),
     'Should delete meeting record when linked to event'
@@ -149,18 +208,98 @@ select is(
     'Meeting record deleted for event'
 );
 
--- Should mark event as synced after deleting meeting
+-- Should mark event as synced and clear the claim after deleting meeting
+select results_eq(
+    format(
+        $query$
+        select
+            meeting_in_sync,
+            meeting_provider_host_user,
+            meeting_sync_claimed_at
+        from event
+        where event_id = %L::uuid
+        $query$,
+        :'eventID'
+    ),
+    $expected$
+    values (
+        true,
+        null::text,
+        null::timestamptz
+    )
+    $expected$,
+    'Event marked as synced and claim cleared after deleting meeting'
+);
+
+-- Should not mark event as synced when delete completes after owner state changed
+select lives_ok(
+    format(
+        $sql$
+        with claimed as (
+            select
+                get_event_meeting_sync_state_hash(event_id) as sync_state_hash,
+                meeting_sync_claimed_at
+            from event
+            where event_id = %L::uuid
+        ),
+        changed as (
+            update event
+            set name = 'Event Changed After Claim'
+            where event_id = %L::uuid
+            returning event_id
+        )
+        select delete_meeting(
+            %L,
+            %L,
+            null,
+            claimed.meeting_sync_claimed_at,
+            claimed.sync_state_hash
+        )
+        from claimed, changed
+        $sql$,
+        :'eventStaleClaimID',
+        :'eventStaleClaimID',
+        :'meetingEventStaleClaimID',
+        :'eventStaleClaimID'
+    ),
+    'Should delete meeting record for stale event claim'
+);
 select is(
-    (select meeting_in_sync from event where event_id = :'eventID'),
-    true,
-    'Event marked as synced after deleting meeting'
+    (select count(*) from meeting where meeting_id = :'meetingEventStaleClaimID'),
+    0::bigint,
+    'Meeting record deleted even when event claim is stale'
+);
+select results_eq(
+    format(
+        $query$
+        select
+            meeting_error,
+            meeting_in_sync,
+            meeting_provider_host_user,
+            meeting_sync_claimed_at
+        from event
+        where event_id = %L::uuid
+        $query$,
+        :'eventStaleClaimID'
+    ),
+    $expected$
+    values (
+        'Previous sync error',
+        false,
+        null::text,
+        null::timestamptz
+    )
+    $expected$,
+    'Event changed after delete claim remains out of sync'
 );
 
 -- Should delete meeting record when linked to session
 select lives_ok(
     format(
-        'select delete_meeting(%L, null, %L)',
+        'select delete_meeting(%L, null, %L, (select meeting_sync_claimed_at from session where session_id = %L::uuid), get_session_meeting_sync_state_hash(%L::uuid))',
         :'meetingSessionID',
+        :'sessionID',
+        :'sessionID',
         :'sessionID'
     ),
     'Should delete meeting record when linked to session'
@@ -171,17 +310,33 @@ select is(
     'Meeting record deleted for session'
 );
 
--- Should mark session as synced after deleting meeting
-select is(
-    (select meeting_in_sync from session where session_id = :'sessionID'),
-    true,
-    'Session marked as synced after deleting meeting'
+-- Should mark session as synced and clear the claim after deleting meeting
+select results_eq(
+    format(
+        $query$
+        select
+            meeting_in_sync,
+            meeting_provider_host_user,
+            meeting_sync_claimed_at
+        from session
+        where session_id = %L::uuid
+        $query$,
+        :'sessionID'
+    ),
+    $expected$
+    values (
+        true,
+        null::text,
+        null::timestamptz
+    )
+    $expected$,
+    'Session marked as synced and claim cleared after deleting meeting'
 );
 
 -- Should delete orphan meeting record
 select lives_ok(
     format(
-        'select delete_meeting(%L, null, null)',
+        'select delete_meeting(%L, null, null, null, null)',
         :'meetingOrphanID'
     ),
     'Should delete orphan meeting record'

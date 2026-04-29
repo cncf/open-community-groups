@@ -8,7 +8,7 @@ use chrono::{DateTime, Utc};
 #[cfg(test)]
 use mockall::automock;
 use serde::{Deserialize, Serialize};
-use serde_with::skip_serializing_none;
+use serde_with::{DefaultOnNull, DurationSecondsWithFrac, serde_as, skip_serializing_none};
 use strum::{AsRefStr, Display, EnumString};
 use tokio::time::sleep;
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
@@ -22,8 +22,14 @@ mod tests;
 
 pub(crate) mod zoom;
 
+/// Time after which claimed meeting processing requires manual review.
+const MEETING_PROCESSING_TIMEOUT: Duration = Duration::from_mins(15);
+
 /// Number of concurrent workers that auto-end meetings.
 const NUM_AUTO_END_WORKERS: usize = 1;
+
+/// Number of workers that recover stale meeting processing claims.
+const NUM_CLAIM_RECOVERY_WORKERS: usize = 1;
 
 /// Number of concurrent workers that synchronize meetings.
 const NUM_SYNC_WORKERS: usize = 2;
@@ -33,6 +39,12 @@ const PAUSE_ON_AUTO_END_ERROR: Duration = Duration::from_secs(30);
 
 /// Time to wait when there are no meetings to auto-end.
 const PAUSE_ON_AUTO_END_NONE: Duration = Duration::from_mins(1);
+
+/// Time to wait after a claim recovery error before retrying.
+const PAUSE_ON_CLAIM_RECOVERY_ERROR: Duration = Duration::from_secs(30);
+
+/// Time to wait between claim recovery checks.
+const PAUSE_ON_CLAIM_RECOVERY_NONE: Duration = Duration::from_mins(1);
 
 /// Time to wait after a sync error before retrying.
 const PAUSE_ON_SYNC_ERROR: Duration = Duration::from_secs(30);
@@ -150,6 +162,29 @@ impl MeetingsManager {
         task_tracker: &TaskTracker,
         cancellation_token: &CancellationToken,
     ) -> Self {
+        // Setup and run workers to auto-end overdue meetings
+        for _ in 1..=NUM_AUTO_END_WORKERS {
+            let mut worker = MeetingsAutoEndWorker {
+                cancellation_token: cancellation_token.clone(),
+                db: db.clone(),
+                providers: providers.clone(),
+            };
+            task_tracker.spawn(async move {
+                worker.run().await;
+            });
+        }
+
+        // Setup and run workers to recover abandoned meeting processing claims
+        for _ in 1..=NUM_CLAIM_RECOVERY_WORKERS {
+            let worker = MeetingsClaimRecoveryWorker {
+                cancellation_token: cancellation_token.clone(),
+                db: db.clone(),
+            };
+            task_tracker.spawn(async move {
+                worker.run().await;
+            });
+        }
+
         // Setup and run workers to synchronize meetings
         for _ in 1..=NUM_SYNC_WORKERS {
             let mut worker = MeetingsSyncWorker {
@@ -157,18 +192,6 @@ impl MeetingsManager {
                 db: db.clone(),
                 providers: providers.clone(),
                 zoom_cfg: zoom_cfg.clone(),
-            };
-            task_tracker.spawn(async move {
-                worker.run().await;
-            });
-        }
-
-        // Setup and run workers to auto-end overdue meetings
-        for _ in 1..=NUM_AUTO_END_WORKERS {
-            let mut worker = MeetingsAutoEndWorker {
-                cancellation_token: cancellation_token.clone(),
-                db: db.clone(),
-                providers: providers.clone(),
             };
             task_tracker.spawn(async move {
                 worker.run().await;
@@ -224,82 +247,101 @@ impl MeetingsAutoEndWorker {
     /// Attempt to auto-end one overdue meeting, if any.
     #[instrument(skip(self), err)]
     async fn auto_end_meeting(&self) -> Result<bool, SyncError> {
-        // Begin transaction
-        let client_id = self.db.tx_begin().await.map_err(SyncError::Other)?;
+        // Claim an overdue meeting candidate before provider side effects
+        let Some(candidate) = self.db.claim_meeting_for_auto_end().await.map_err(SyncError::Other)? else {
+            return Ok(false);
+        };
 
-        // Get overdue meeting candidate
-        let candidate = match self.db.get_meeting_for_auto_end(client_id).await {
-            Ok(candidate) => candidate,
+        // Ensure this meeting provider is configured and supported at runtime
+        let Some(provider) = self.providers.get(&candidate.provider) else {
+            error!(
+                meeting_id = %candidate.meeting_id,
+                provider = %candidate.provider,
+                "provider not configured for auto-end, recording error outcome",
+            );
+
+            self.db
+                .set_meeting_auto_end_check_outcome(candidate.meeting_id, MeetingAutoEndCheckOutcome::Error)
+                .await
+                .map_err(SyncError::Other)?;
+            return Ok(true);
+        };
+
+        // End meeting and map provider outcome to a stored check outcome
+        let check_outcome = match provider.end_meeting(&candidate.provider_meeting_id).await {
+            Ok(MeetingEndResult::AlreadyNotRunning) => MeetingAutoEndCheckOutcome::AlreadyNotRunning,
+            Ok(MeetingEndResult::Ended) => MeetingAutoEndCheckOutcome::AutoEnded,
+            Err(MeetingProviderError::NotFound) => MeetingAutoEndCheckOutcome::NotFound,
+            Err(err) if err.is_retryable() => {
+                self.db
+                    .release_meeting_auto_end_check_claim(candidate.meeting_id)
+                    .await
+                    .map_err(SyncError::Other)?;
+                return Err(SyncError::Provider(err));
+            }
             Err(err) => {
-                let _ = self.db.tx_rollback(client_id).await;
-                return Err(SyncError::Other(err));
+                error!(
+                    %err,
+                    meeting_id = %candidate.meeting_id,
+                    provider_meeting_id = %candidate.provider_meeting_id,
+                    "non-retryable auto-end error, recording error outcome",
+                );
+                MeetingAutoEndCheckOutcome::Error
             }
         };
 
-        // Process candidate if found
-        if let Some(candidate) = candidate {
-            // Ensure this meeting provider is configured and supported at runtime
-            let Some(provider) = self.providers.get(&candidate.provider) else {
-                error!(
-                    meeting_id = %candidate.meeting_id,
-                    provider = %candidate.provider,
-                    "provider not configured for auto-end, recording error outcome",
-                );
+        // Persist check outcome to avoid reprocessing the same meeting
+        self.db
+            .set_meeting_auto_end_check_outcome(candidate.meeting_id, check_outcome)
+            .await
+            .map_err(SyncError::Other)?;
 
-                if let Err(err) = self
-                    .db
-                    .set_meeting_auto_end_check_outcome(
-                        client_id,
-                        candidate.meeting_id,
-                        MeetingAutoEndCheckOutcome::Error,
-                    )
-                    .await
-                {
-                    let _ = self.db.tx_rollback(client_id).await;
-                    return Err(SyncError::Other(err));
-                }
+        Ok(true)
+    }
+}
 
-                self.db.tx_commit(client_id).await.map_err(SyncError::Other)?;
-                return Ok(true);
-            };
+/// Worker responsible for marking abandoned meeting processing claims.
+struct MeetingsClaimRecoveryWorker {
+    /// Token to signal worker shutdown.
+    cancellation_token: CancellationToken,
+    /// Database handle for meeting queries.
+    db: DynDB,
+}
 
-            // End meeting and map provider outcome to a stored check outcome
-            let check_outcome = match provider.end_meeting(&candidate.provider_meeting_id).await {
-                Ok(MeetingEndResult::AlreadyNotRunning) => MeetingAutoEndCheckOutcome::AlreadyNotRunning,
-                Ok(MeetingEndResult::Ended) => MeetingAutoEndCheckOutcome::AutoEnded,
-                Err(MeetingProviderError::NotFound) => MeetingAutoEndCheckOutcome::NotFound,
-                Err(err) if err.is_retryable() => {
-                    let _ = self.db.tx_rollback(client_id).await;
-                    return Err(SyncError::Provider(err));
-                }
+impl MeetingsClaimRecoveryWorker {
+    /// Main worker loop: recovers stale meeting claims until cancelled.
+    async fn run(&self) {
+        loop {
+            // Recover stale meeting claims and pick next pause interval
+            let pause = match self.mark_stale_meeting_claims_unknown().await {
+                Ok(_) => PAUSE_ON_CLAIM_RECOVERY_NONE,
                 Err(err) => {
-                    error!(
-                        %err,
-                        meeting_id = %candidate.meeting_id,
-                        provider_meeting_id = %candidate.provider_meeting_id,
-                        "non-retryable auto-end error, recording error outcome",
-                    );
-                    MeetingAutoEndCheckOutcome::Error
+                    error!(%err, "error recovering stale meeting claims");
+                    PAUSE_ON_CLAIM_RECOVERY_ERROR
                 }
             };
 
-            // Persist check outcome to avoid reprocessing the same meeting
-            if let Err(err) = self
-                .db
-                .set_meeting_auto_end_check_outcome(client_id, candidate.meeting_id, check_outcome)
-                .await
-            {
-                let _ = self.db.tx_rollback(client_id).await;
-                return Err(SyncError::Other(err));
+            // Exit if the worker has been asked to stop
+            tokio::select! {
+                () = sleep(pause) => {},
+                () = self.cancellation_token.cancelled() => break,
             }
-
-            self.db.tx_commit(client_id).await.map_err(SyncError::Other)?;
-            Ok(true)
-        } else {
-            // No candidate found, rollback transaction
-            let _ = self.db.tx_rollback(client_id).await;
-            Ok(false)
         }
+    }
+
+    /// Mark stale meeting processing claims with an unknown outcome.
+    #[instrument(skip(self), err)]
+    async fn mark_stale_meeting_claims_unknown(&self) -> Result<usize> {
+        let auto_end_count = self
+            .db
+            .mark_stale_meeting_auto_end_checks_unknown(MEETING_PROCESSING_TIMEOUT)
+            .await?;
+        let sync_count = self
+            .db
+            .mark_stale_meeting_syncs_unknown(MEETING_PROCESSING_TIMEOUT)
+            .await?;
+
+        Ok(auto_end_count + sync_count)
     }
 }
 
@@ -352,75 +394,55 @@ impl MeetingsSyncWorker {
     /// Attempt to sync an out-of-sync meeting, if any.
     #[instrument(skip(self), err)]
     async fn sync_meeting(&mut self) -> Result<bool, SyncError> {
-        // Begin transaction
-        let client_id = self.db.tx_begin().await.map_err(SyncError::Other)?;
-
-        // Get out-of-sync meeting
-        let meeting = match self.db.get_meeting_out_of_sync(client_id).await {
-            Ok(meeting) => meeting,
-            Err(err) => {
-                let _ = self.db.tx_rollback(client_id).await;
-                return Err(SyncError::Other(err));
-            }
+        // Claim an out-of-sync meeting before provider side effects
+        let Some(meeting) = self.db.claim_meeting_out_of_sync().await.map_err(SyncError::Other)? else {
+            return Ok(false);
         };
 
-        // Process meeting if found
-        if let Some(meeting) = meeting {
-            // Look up the provider for this meeting
-            let provider = self.providers.get(&meeting.provider);
+        // Look up the provider for this meeting
+        let provider = self.providers.get(&meeting.provider);
 
-            // Determine action and sync with provider
-            let result = match provider {
-                Some(provider) => match meeting.sync_action() {
-                    SyncAction::Create => self.create_meeting(client_id, &meeting, provider).await,
-                    SyncAction::Delete => self.delete_meeting(client_id, &meeting, provider).await,
-                    SyncAction::Update => self.update_meeting(client_id, &meeting, provider).await,
-                },
-                None => Err(SyncError::ProviderNotConfigured(meeting.provider)),
-            };
+        // Determine action and sync with provider
+        let result = match provider {
+            Some(provider) => match meeting.sync_action() {
+                SyncAction::Create => self.create_meeting(&meeting, provider).await,
+                SyncAction::Delete => self.delete_meeting(&meeting, provider).await,
+                SyncAction::Update => self.update_meeting(&meeting, provider).await,
+            },
+            None => Err(SyncError::ProviderNotConfigured(meeting.provider)),
+        };
 
-            // Handle errors based on type
-            if let Err(err) = result {
-                // Non-retryable: record error and mark as synced
-                if err.is_non_retryable() {
-                    if let Err(db_err) =
-                        self.db.set_meeting_error(client_id, &meeting, &err.to_string()).await
-                    {
-                        error!(?db_err, "error recording meeting error");
-                        let _ = self.db.tx_rollback(client_id).await;
-                        return Err(SyncError::Other(anyhow::anyhow!("{err}")));
-                    }
-                    if let Err(e) = self.db.tx_commit(client_id).await {
-                        return Err(SyncError::Other(e));
-                    }
-                    return Ok(true);
-                }
-
-                // Retryable error: rollback so meeting stays out-of-sync for retry
-                let _ = self.db.tx_rollback(client_id).await;
-                return Err(err);
+        // Handle errors based on type
+        if let Err(err) = result {
+            // Non-retryable: record error and mark as synced
+            if err.is_non_retryable() {
+                self.db
+                    .set_meeting_error(&meeting, &err.to_string())
+                    .await
+                    .map_err(SyncError::Other)?;
+                return Ok(true);
             }
 
-            // Success - commit transaction
-            self.db.tx_commit(client_id).await.map_err(SyncError::Other)?;
-            Ok(true)
-        } else {
-            // No meeting to sync, rollback
-            let _ = self.db.tx_rollback(client_id).await;
-            Ok(false)
+            // Retryable error: release the claim so the meeting can be retried
+            self.db
+                .release_meeting_sync_claim(&meeting)
+                .await
+                .map_err(SyncError::Other)?;
+            return Err(err);
         }
+
+        Ok(true)
     }
 
     /// Create a meeting on the provider and update local database.
     #[instrument(skip(self, meeting, provider), err)]
     async fn create_meeting(
         &self,
-        client_id: Uuid,
         meeting: &Meeting,
         provider: &DynMeetingsProvider,
     ) -> Result<(), SyncError> {
         // Assign provider host user ID when needed before creating the provider meeting
-        let meeting = self.assign_provider_host_user(client_id, meeting).await?;
+        let meeting = self.assign_provider_host_user(meeting).await?;
 
         // Call provider to create meeting
         let provider_meeting = provider.create_meeting(&meeting).await?;
@@ -434,10 +456,7 @@ impl MeetingsSyncWorker {
         };
 
         // Add meeting to database
-        self.db
-            .add_meeting(client_id, &meeting)
-            .await
-            .map_err(SyncError::Other)?;
+        self.db.add_meeting(&meeting).await.map_err(SyncError::Other)?;
 
         Ok(())
     }
@@ -446,7 +465,6 @@ impl MeetingsSyncWorker {
     #[instrument(skip(self, meeting, provider), err)]
     async fn delete_meeting(
         &self,
-        client_id: Uuid,
         meeting: &Meeting,
         provider: &DynMeetingsProvider,
     ) -> Result<(), SyncError> {
@@ -462,10 +480,7 @@ impl MeetingsSyncWorker {
         }
 
         // Remove meeting from database
-        self.db
-            .delete_meeting(client_id, meeting)
-            .await
-            .map_err(SyncError::Other)?;
+        self.db.delete_meeting(meeting).await.map_err(SyncError::Other)?;
 
         Ok(())
     }
@@ -474,7 +489,6 @@ impl MeetingsSyncWorker {
     #[instrument(skip(self, meeting, provider), err)]
     async fn update_meeting(
         &self,
-        client_id: Uuid,
         meeting: &Meeting,
         provider: &DynMeetingsProvider,
     ) -> Result<(), SyncError> {
@@ -498,27 +512,24 @@ impl MeetingsSyncWorker {
         };
 
         // Update meeting in database
-        self.db
-            .update_meeting(client_id, &meeting)
-            .await
-            .map_err(SyncError::Other)?;
+        self.db.update_meeting(&meeting).await.map_err(SyncError::Other)?;
 
         Ok(())
     }
 
     /// Assign provider-specific host user information before meeting creation.
-    async fn assign_provider_host_user(
-        &self,
-        client_id: Uuid,
-        meeting: &Meeting,
-    ) -> Result<Meeting, SyncError> {
+    async fn assign_provider_host_user(&self, meeting: &Meeting) -> Result<Meeting, SyncError> {
         match meeting.provider {
-            MeetingProvider::Zoom => self.assign_zoom_host_user(client_id, meeting).await,
+            MeetingProvider::Zoom => self.assign_zoom_host_user(meeting).await,
         }
     }
 
     /// Assign a Zoom host user from the configured pool based on overlapping load.
-    async fn assign_zoom_host_user(&self, client_id: Uuid, meeting: &Meeting) -> Result<Meeting, SyncError> {
+    async fn assign_zoom_host_user(&self, meeting: &Meeting) -> Result<Meeting, SyncError> {
+        if meeting.provider_host_user_id.is_some() {
+            return Ok(meeting.clone());
+        }
+
         // Ensure Zoom configuration is available
         let zoom_cfg = self
             .zoom_cfg
@@ -540,8 +551,8 @@ impl MeetingsSyncWorker {
         // Query database for an available host user with capacity for this meeting's time slot
         let provider_host_user_id = self
             .db
-            .get_available_zoom_host_user(
-                client_id,
+            .assign_zoom_host_user(
+                meeting,
                 &zoom_cfg.host_pool_users,
                 zoom_cfg.max_simultaneous_meetings_per_host,
                 starts_at,
@@ -564,11 +575,16 @@ impl MeetingsSyncWorker {
 
 /// Represents a meeting to be synced with the provider.
 #[skip_serializing_none]
-#[derive(Clone, Default, Serialize)]
+#[serde_as]
+#[derive(Clone, Default, Deserialize, Serialize)]
 pub(crate) struct Meeting {
+    #[serde(alias = "meeting_provider_id", default)]
+    #[serde_as(deserialize_as = "DefaultOnNull")]
     pub provider: MeetingProvider,
 
     pub delete: Option<bool>,
+    #[serde(alias = "duration_secs")]
+    #[serde_as(deserialize_as = "Option<DurationSecondsWithFrac<f64>>")]
     pub duration: Option<Duration>,
     pub event_id: Option<Uuid>,
     pub hosts: Option<Vec<String>>,
@@ -579,6 +595,10 @@ pub(crate) struct Meeting {
     pub provider_meeting_id: Option<String>,
     pub session_id: Option<Uuid>,
     pub starts_at: Option<DateTime<Utc>>,
+    #[serde(skip_serializing)]
+    pub sync_claimed_at: Option<DateTime<Utc>>,
+    #[serde(skip_serializing)]
+    pub sync_state_hash: Option<String>,
     pub timezone: Option<String>,
     pub topic: Option<String>,
 }

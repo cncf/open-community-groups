@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(8);
+select plan(11);
 
 -- ============================================================================
 -- VARIABLES
@@ -12,6 +12,7 @@ select plan(8);
 \set categoryID '00000000-0000-0000-0000-000000000211'
 \set communityID '00000000-0000-0000-0000-000000000201'
 \set eventID '00000000-0000-0000-0000-000000000212'
+\set eventStaleClaimID '00000000-0000-0000-0000-000000000215'
 \set groupCategoryID '00000000-0000-0000-0000-000000000210'
 \set groupID '00000000-0000-0000-0000-000000000202'
 \set orphanMeetingID '00000000-0000-0000-0000-000000000214'
@@ -39,31 +40,66 @@ values (:'groupID', :'communityID', :'groupCategoryID', 'Test Group', 'test-grou
 
 -- Event
 insert into event (
+    description,
     event_id,
     event_category_id,
     event_kind_id,
     group_id,
     meeting_in_sync,
+    meeting_provider_host_user,
+    meeting_sync_claimed_at,
     name,
     slug,
-    timezone,
-    description
+    timezone
 ) values (
+    'A test event',
     :'eventID',
     :'categoryID',
     'virtual',
     :'groupID',
     false,
+    'event-claim-host@example.com',
+    current_timestamp,
     'Test Event',
     'test-event',
-    'America/New_York',
-    'A test event'
+    'America/New_York'
+);
+
+-- Event with stale claim
+insert into event (
+    description,
+    event_id,
+    event_category_id,
+    event_kind_id,
+    group_id,
+    meeting_error,
+    meeting_in_sync,
+    meeting_provider_host_user,
+    meeting_sync_claimed_at,
+    name,
+    slug,
+    timezone
+) values (
+    'A stale claim event',
+    :'eventStaleClaimID',
+    :'categoryID',
+    'virtual',
+    :'groupID',
+    'Previous sync error',
+    false,
+    'event-stale-claim-host@example.com',
+    current_timestamp,
+    'Stale Claim Event',
+    'stale-claim-event',
+    'America/New_York'
 );
 
 -- Session
 insert into session (
     event_id,
     meeting_in_sync,
+    meeting_provider_host_user,
+    meeting_sync_claimed_at,
     name,
     session_id,
     session_kind_id,
@@ -71,6 +107,8 @@ insert into session (
 ) values (
     :'eventID',
     false,
+    'session-claim-host@example.com',
+    current_timestamp,
     'Test Session',
     :'sessionID',
     'virtual',
@@ -88,8 +126,10 @@ values (:'orphanMeetingID', 'zoom', 'provider-001', 'https://zoom.us/j/provider-
 -- Should set event error and sync flag for event meeting
 select lives_ok(
     format(
-        $$select set_meeting_error(%L::text, %L::uuid, null, null)$$,
+        $$select set_meeting_error(%L::text, %L::uuid, null, null, (select meeting_sync_claimed_at from event where event_id = %L::uuid), get_event_meeting_sync_state_hash(%L::uuid))$$,
         'event sync failed',
+        :'eventID',
+        :'eventID',
         :'eventID'
     ),
     'Should set event error and sync flag for event meeting'
@@ -99,17 +139,95 @@ select is(
     'event sync failed',
     'Should persist event meeting_error'
 );
+select results_eq(
+    format(
+        $query$
+        select
+            meeting_in_sync,
+            meeting_provider_host_user,
+            meeting_sync_claimed_at
+        from event
+        where event_id = %L::uuid
+        $query$,
+        :'eventID'
+    ),
+    $expected$
+    values (
+        true,
+        null::text,
+        null::timestamptz
+    )
+    $expected$,
+    'Should mark event as in sync and clear claim'
+);
+
+-- Should not set event error as current when owner state changed after claim
+select lives_ok(
+    format(
+        $sql$
+        with claimed as (
+            select
+                get_event_meeting_sync_state_hash(event_id) as sync_state_hash,
+                meeting_sync_claimed_at
+            from event
+            where event_id = %L::uuid
+        ),
+        changed as (
+            update event
+            set name = 'Event Changed After Claim'
+            where event_id = %L::uuid
+            returning event_id
+        )
+        select set_meeting_error(
+            'new sync failure',
+            %L,
+            null,
+            null,
+            claimed.meeting_sync_claimed_at,
+            claimed.sync_state_hash
+        )
+        from claimed, changed
+        $sql$,
+        :'eventStaleClaimID',
+        :'eventStaleClaimID',
+        :'eventStaleClaimID'
+    ),
+    'Should complete error path for stale event claim'
+);
 select is(
-    (select meeting_in_sync from event where event_id = :'eventID'),
-    true,
-    'Should mark event as in sync'
+    (select meeting_error from event where event_id = :'eventStaleClaimID'),
+    'Previous sync error',
+    'Should preserve previous event meeting_error when claim is stale'
+);
+select results_eq(
+    format(
+        $query$
+        select
+            meeting_in_sync,
+            meeting_provider_host_user,
+            meeting_sync_claimed_at
+        from event
+        where event_id = %L::uuid
+        $query$,
+        :'eventStaleClaimID'
+    ),
+    $expected$
+    values (
+        false,
+        null::text,
+        null::timestamptz
+    )
+    $expected$,
+    'Event changed after error claim remains out of sync'
 );
 
 -- Should set session error and sync flag for session meeting
 select lives_ok(
     format(
-        $$select set_meeting_error(%L::text, null, null, %L::uuid)$$,
+        $$select set_meeting_error(%L::text, null, null, %L::uuid, (select meeting_sync_claimed_at from session where session_id = %L::uuid), get_session_meeting_sync_state_hash(%L::uuid))$$,
         'session sync failed',
+        :'sessionID',
+        :'sessionID',
         :'sessionID'
     ),
     'Should set session error and sync flag for session meeting'
@@ -119,16 +237,32 @@ select is(
     'session sync failed',
     'Should persist session meeting_error'
 );
-select is(
-    (select meeting_in_sync from session where session_id = :'sessionID'),
-    true,
-    'Should mark session as in sync'
+select results_eq(
+    format(
+        $query$
+        select
+            meeting_in_sync,
+            meeting_provider_host_user,
+            meeting_sync_claimed_at
+        from session
+        where session_id = %L::uuid
+        $query$,
+        :'sessionID'
+    ),
+    $expected$
+    values (
+        true,
+        null::text,
+        null::timestamptz
+    )
+    $expected$,
+    'Should mark session as in sync and clear claim'
 );
 
 -- Should delete orphan meeting when no event/session exists
 select lives_ok(
     format(
-        $$select set_meeting_error(%L::text, null, %L::uuid, null)$$,
+        $$select set_meeting_error(%L::text, null, %L::uuid, null, null, null)$$,
         'orphan sync failed',
         :'orphanMeetingID'
     ),

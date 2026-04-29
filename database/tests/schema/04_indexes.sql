@@ -131,6 +131,7 @@ select indexes_are('event', array[
     'event_event_series_id_idx',
     'event_group_id_idx',
     'event_location_idx',
+    'event_meeting_sync_claim_idx',
     'event_meeting_sync_idx',
     'event_published_by_idx',
     'event_search_idx',
@@ -337,12 +338,14 @@ select indexes_are('legacy_event_speaker', array[
 
 -- Test: meeting indexes should match expected
 select indexes_are('meeting', array[
+    'meeting_auto_end_check_claim_idx',
     'meeting_event_id_idx',
     'meeting_meeting_provider_id_idx',
     'meeting_meeting_provider_id_provider_meeting_id_idx',
     'meeting_meeting_provider_id_provider_host_user_id_idx',
     'meeting_pkey',
     'meeting_session_id_idx',
+    'meeting_sync_claim_idx',
     'meeting_zoom_auto_end_pending_idx'
 ]);
 
@@ -403,6 +406,7 @@ select indexes_are('session', array[
     'session_pkey',
     'session_cfs_submission_id_unique_idx',
     'session_event_id_idx',
+    'session_meeting_sync_claim_idx',
     'session_meeting_sync_idx',
     'session_session_kind_id_idx'
 ]);

@@ -5,6 +5,7 @@ use std::time::Duration;
 use anyhow::Result;
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
+use serde::Deserialize;
 use tracing::instrument;
 use uuid::Uuid;
 
@@ -16,41 +17,52 @@ use crate::{
 /// Trait that defines database operations used to manage meetings.
 #[async_trait]
 pub(crate) trait DBMeetings {
-    /// Adds a new meeting.
-    async fn add_meeting(&self, client_id: Uuid, meeting: &Meeting) -> Result<()>;
+    /// Adds a new meeting and completes the sync claim.
+    async fn add_meeting(&self, meeting: &Meeting) -> Result<()>;
 
-    /// Deletes a meeting.
-    async fn delete_meeting(&self, client_id: Uuid, meeting: &Meeting) -> Result<()>;
-
-    /// Finds an available Zoom host user for a meeting time window.
-    async fn get_available_zoom_host_user(
+    /// Reserves an available Zoom host user for a claimed meeting time window.
+    async fn assign_zoom_host_user(
         &self,
-        client_id: Uuid,
+        meeting: &Meeting,
         pool_users: &[String],
         max_simultaneous_meetings_per_user: i32,
         starts_at: DateTime<Utc>,
         ends_at: DateTime<Utc>,
     ) -> Result<Option<String>>;
 
-    /// Retrieves one overdue meeting for auto-end checks.
-    async fn get_meeting_for_auto_end(&self, client_id: Uuid) -> Result<Option<MeetingAutoEndCandidate>>;
+    /// Claims one overdue meeting for auto-end checks.
+    async fn claim_meeting_for_auto_end(&self) -> Result<Option<MeetingAutoEndCandidate>>;
 
-    /// Retrieves a meeting that is out of sync.
-    async fn get_meeting_out_of_sync(&self, client_id: Uuid) -> Result<Option<Meeting>>;
+    /// Claims a meeting that is out of sync.
+    async fn claim_meeting_out_of_sync(&self) -> Result<Option<Meeting>>;
+
+    /// Deletes a meeting and completes the sync claim.
+    async fn delete_meeting(&self, meeting: &Meeting) -> Result<()>;
+
+    /// Marks stale auto-end check claims with an unknown outcome.
+    async fn mark_stale_meeting_auto_end_checks_unknown(&self, timeout: Duration) -> Result<usize>;
+
+    /// Marks stale meeting sync claims with an unknown outcome.
+    async fn mark_stale_meeting_syncs_unknown(&self, timeout: Duration) -> Result<usize>;
+
+    /// Releases a retryable auto-end check claim.
+    async fn release_meeting_auto_end_check_claim(&self, meeting_id: Uuid) -> Result<()>;
+
+    /// Releases a retryable sync claim.
+    async fn release_meeting_sync_claim(&self, meeting: &Meeting) -> Result<()>;
 
     /// Records the outcome of an auto-end check for a meeting.
     async fn set_meeting_auto_end_check_outcome(
         &self,
-        client_id: Uuid,
         meeting_id: Uuid,
         outcome: MeetingAutoEndCheckOutcome,
     ) -> Result<()>;
 
-    /// Records an error for a meeting and marks it as synced.
-    async fn set_meeting_error(&self, client_id: Uuid, meeting: &Meeting, error: &str) -> Result<()>;
+    /// Records an error for a meeting and completes the sync claim.
+    async fn set_meeting_error(&self, meeting: &Meeting, error: &str) -> Result<()>;
 
-    /// Updates meeting details and marks it as synced.
-    async fn update_meeting(&self, client_id: Uuid, meeting: &Meeting) -> Result<()>;
+    /// Updates meeting details and completes the sync claim.
+    async fn update_meeting(&self, meeting: &Meeting) -> Result<()>;
 
     /// Updates the recording URL for a meeting by its provider and provider meeting ID.
     async fn update_meeting_recording_url(
@@ -64,11 +76,9 @@ pub(crate) trait DBMeetings {
 #[async_trait]
 impl DBMeetings for PgDB {
     #[instrument(skip(self, meeting), err)]
-    async fn add_meeting(&self, client_id: Uuid, meeting: &Meeting) -> Result<()> {
-        let tx = self.tx_client(client_id).await?;
-
-        tx.execute(
-            "select add_meeting($1, $2, $3, $4, $5, $6, $7)",
+    async fn add_meeting(&self, meeting: &Meeting) -> Result<()> {
+        self.execute(
+            "select add_meeting($1, $2, $3, $4, $5, $6, $7, $8, $9)",
             &[
                 &meeting.provider.as_ref(),
                 &meeting.provider_meeting_id,
@@ -77,6 +87,8 @@ impl DBMeetings for PgDB {
                 &meeting.password,
                 &meeting.event_id,
                 &meeting.session_id,
+                &meeting.sync_claimed_at,
+                &meeting.sync_state_hash,
             ],
         )
         .await?;
@@ -84,148 +96,151 @@ impl DBMeetings for PgDB {
         Ok(())
     }
 
-    #[instrument(skip(self, meeting), err)]
-    async fn delete_meeting(&self, client_id: Uuid, meeting: &Meeting) -> Result<()> {
-        let tx = self.tx_client(client_id).await?;
-
-        tx.execute(
-            "select delete_meeting($1, $2, $3)",
-            &[&meeting.meeting_id, &meeting.event_id, &meeting.session_id],
-        )
-        .await?;
-
-        Ok(())
-    }
-
-    #[instrument(skip(self, pool_users), err)]
-    async fn get_available_zoom_host_user(
+    #[instrument(skip(self, meeting, pool_users), err)]
+    async fn assign_zoom_host_user(
         &self,
-        client_id: Uuid,
+        meeting: &Meeting,
         pool_users: &[String],
         max_simultaneous_meetings_per_user: i32,
         starts_at: DateTime<Utc>,
         ends_at: DateTime<Utc>,
     ) -> Result<Option<String>> {
-        let tx = self.tx_client(client_id).await?;
+        self.fetch_scalar_one(
+            "
+            select assign_zoom_host_user(
+                $1::uuid,
+                $2::uuid,
+                $3::timestamptz,
+                $4::text[],
+                $5::int4,
+                $6::timestamptz,
+                $7::timestamptz
+            );
+            ",
+            &[
+                &meeting.event_id,
+                &meeting.session_id,
+                &meeting.sync_claimed_at,
+                &pool_users,
+                &max_simultaneous_meetings_per_user,
+                &starts_at,
+                &ends_at,
+            ],
+        )
+        .await
+    }
 
-        // Find one host user with available slots
-        let row = tx
-            .query_one(
-                "select get_available_zoom_host_user($1::text[], $2::int4, $3::timestamptz, $4::timestamptz)",
-                &[
-                    &pool_users,
-                    &max_simultaneous_meetings_per_user,
-                    &starts_at,
-                    &ends_at,
-                ],
+    #[instrument(skip(self), err)]
+    async fn claim_meeting_for_auto_end(&self) -> Result<Option<MeetingAutoEndCandidate>> {
+        self.fetch_json_opt("select claim_meeting_for_auto_end()", &[]).await
+    }
+
+    #[instrument(skip(self), err)]
+    async fn claim_meeting_out_of_sync(&self) -> Result<Option<Meeting>> {
+        self.fetch_json_opt("select claim_meeting_out_of_sync()", &[]).await
+    }
+
+    #[instrument(skip(self, meeting), err)]
+    async fn delete_meeting(&self, meeting: &Meeting) -> Result<()> {
+        self.execute(
+            "select delete_meeting($1, $2, $3, $4, $5)",
+            &[
+                &meeting.meeting_id,
+                &meeting.event_id,
+                &meeting.session_id,
+                &meeting.sync_claimed_at,
+                &meeting.sync_state_hash,
+            ],
+        )
+        .await
+    }
+
+    #[instrument(skip(self), err)]
+    async fn mark_stale_meeting_auto_end_checks_unknown(&self, timeout: Duration) -> Result<usize> {
+        let timeout_seconds = i64::try_from(timeout.as_secs())
+            .map_err(|_| anyhow::anyhow!("processing timeout cannot exceed i64::MAX seconds"))?;
+
+        let count = self
+            .fetch_scalar_one::<i64>(
+                "select mark_stale_meeting_auto_end_checks_unknown($1::bigint)::bigint;",
+                &[&timeout_seconds],
             )
             .await?;
 
-        Ok(row.get("get_available_zoom_host_user"))
+        usize::try_from(count).map_err(|_| anyhow::anyhow!("stale auto-end claim count cannot be negative"))
     }
 
     #[instrument(skip(self), err)]
-    async fn get_meeting_for_auto_end(&self, client_id: Uuid) -> Result<Option<MeetingAutoEndCandidate>> {
-        let tx = self.tx_client(client_id).await?;
+    async fn mark_stale_meeting_syncs_unknown(&self, timeout: Duration) -> Result<usize> {
+        let timeout_seconds = i64::try_from(timeout.as_secs())
+            .map_err(|_| anyhow::anyhow!("processing timeout cannot exceed i64::MAX seconds"))?;
 
-        // Get one overdue meeting for auto-end checks (if any)
-        let Some(row) = tx.query_opt("select * from get_meeting_for_auto_end()", &[]).await? else {
-            return Ok(None);
-        };
+        let count = self
+            .fetch_scalar_one::<i64>(
+                "select mark_stale_meeting_syncs_unknown($1::bigint)::bigint;",
+                &[&timeout_seconds],
+            )
+            .await?;
 
-        // Parse meeting provider
-        let provider_id: String = row.get("meeting_provider_id");
-        let provider = provider_id
-            .parse()
-            .map_err(|_| anyhow::anyhow!("unsupported meeting provider: {provider_id}"))?;
-
-        Ok(Some(MeetingAutoEndCandidate {
-            meeting_id: row.get("meeting_id"),
-            provider,
-            provider_meeting_id: row.get("provider_meeting_id"),
-        }))
+        usize::try_from(count).map_err(|_| anyhow::anyhow!("stale sync claim count cannot be negative"))
     }
 
     #[instrument(skip(self), err)]
-    async fn get_meeting_out_of_sync(&self, client_id: Uuid) -> Result<Option<Meeting>> {
-        let tx = self.tx_client(client_id).await?;
+    async fn release_meeting_auto_end_check_claim(&self, meeting_id: Uuid) -> Result<()> {
+        self.execute(
+            "select release_meeting_auto_end_check_claim($1::uuid)",
+            &[&meeting_id],
+        )
+        .await
+    }
 
-        // Get out of sync meeting (if any)
-        let Some(row) = tx.query_opt("select * from get_meeting_out_of_sync()", &[]).await? else {
-            return Ok(None);
-        };
-
-        // Convert duration_secs (f64) to std::time::Duration
-        let duration = row
-            .get::<_, Option<f64>>("duration_secs")
-            .map(Duration::from_secs_f64);
-
-        // Build meeting
-        let meeting = Meeting {
-            delete: row.get("delete"),
-            duration,
-            event_id: row.get("event_id"),
-            hosts: row.get("hosts"),
-            join_url: row.get("join_url"),
-            meeting_id: row.get("meeting_id"),
-            password: row.get("password"),
-            provider: row
-                .get::<_, Option<String>>("meeting_provider_id")
-                .and_then(|s| s.parse().ok())
-                .unwrap_or_default(),
-            provider_host_user_id: None,
-            provider_meeting_id: row.get("provider_meeting_id"),
-            session_id: row.get("session_id"),
-            starts_at: row.get("starts_at"),
-            timezone: row.get("timezone"),
-            topic: row.get("topic"),
-        };
-
-        Ok(Some(meeting))
+    #[instrument(skip(self, meeting), err)]
+    async fn release_meeting_sync_claim(&self, meeting: &Meeting) -> Result<()> {
+        self.execute(
+            "select release_meeting_sync_claim($1::uuid, $2::uuid, $3::uuid, $4::timestamptz)",
+            &[
+                &meeting.event_id,
+                &meeting.meeting_id,
+                &meeting.session_id,
+                &meeting.sync_claimed_at,
+            ],
+        )
+        .await
     }
 
     #[instrument(skip(self), err)]
     async fn set_meeting_auto_end_check_outcome(
         &self,
-        client_id: Uuid,
         meeting_id: Uuid,
         outcome: MeetingAutoEndCheckOutcome,
     ) -> Result<()> {
-        let tx = self.tx_client(client_id).await?;
-
-        tx.execute(
+        self.execute(
             "select set_meeting_auto_end_check_outcome($1::uuid, $2::text)",
             &[&meeting_id, &outcome.as_ref()],
         )
-        .await?;
-
-        Ok(())
+        .await
     }
 
     #[instrument(skip(self, meeting), err)]
-    async fn set_meeting_error(&self, client_id: Uuid, meeting: &Meeting, error: &str) -> Result<()> {
-        let tx = self.tx_client(client_id).await?;
-
-        tx.execute(
-            "select set_meeting_error($1::text, $2::uuid, $3::uuid, $4::uuid)",
+    async fn set_meeting_error(&self, meeting: &Meeting, error: &str) -> Result<()> {
+        self.execute(
+            "select set_meeting_error($1::text, $2::uuid, $3::uuid, $4::uuid, $5::timestamptz, $6::text)",
             &[
                 &error,
                 &meeting.event_id,
                 &meeting.meeting_id,
                 &meeting.session_id,
+                &meeting.sync_claimed_at,
+                &meeting.sync_state_hash,
             ],
         )
-        .await?;
-
-        Ok(())
+        .await
     }
 
     #[instrument(skip(self, meeting), err)]
-    async fn update_meeting(&self, client_id: Uuid, meeting: &Meeting) -> Result<()> {
-        let tx = self.tx_client(client_id).await?;
-
-        tx.execute(
-            "select update_meeting($1, $2, $3, $4, $5, $6)",
+    async fn update_meeting(&self, meeting: &Meeting) -> Result<()> {
+        self.execute(
+            "select update_meeting($1, $2, $3, $4, $5, $6, $7, $8)",
             &[
                 &meeting.meeting_id,
                 &meeting.provider_meeting_id,
@@ -233,11 +248,11 @@ impl DBMeetings for PgDB {
                 &meeting.password,
                 &meeting.event_id,
                 &meeting.session_id,
+                &meeting.sync_claimed_at,
+                &meeting.sync_state_hash,
             ],
         )
-        .await?;
-
-        Ok(())
+        .await
     }
 
     #[instrument(skip(self), err)]
@@ -256,9 +271,10 @@ impl DBMeetings for PgDB {
 }
 
 /// Candidate meeting to process for auto-end checks.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
 pub(crate) struct MeetingAutoEndCandidate {
     pub meeting_id: Uuid,
+    #[serde(alias = "meeting_provider_id")]
     pub provider: MeetingProvider,
     pub provider_meeting_id: String,
 }

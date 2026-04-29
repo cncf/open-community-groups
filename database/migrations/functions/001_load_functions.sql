@@ -171,11 +171,17 @@
 {{ template "group/leave_group.sql" }}
 {{ template "group/update_group_views.sql" }}
 
+{{ template "meetings/get_event_meeting_sync_state_hash.sql" }} -- Dependency for meeting sync completion functions
+{{ template "meetings/get_session_meeting_sync_state_hash.sql" }} -- Dependency for meeting sync completion functions
 {{ template "meetings/add_meeting.sql" }}
+{{ template "meetings/assign_zoom_host_user.sql" }}
+{{ template "meetings/claim_meeting_for_auto_end.sql" }}
+{{ template "meetings/claim_meeting_out_of_sync.sql" }}
 {{ template "meetings/delete_meeting.sql" }}
-{{ template "meetings/get_available_zoom_host_user.sql" }}
-{{ template "meetings/get_meeting_for_auto_end.sql" }}
-{{ template "meetings/get_meeting_out_of_sync.sql" }}
+{{ template "meetings/mark_stale_meeting_auto_end_checks_unknown.sql" }}
+{{ template "meetings/mark_stale_meeting_syncs_unknown.sql" }}
+{{ template "meetings/release_meeting_auto_end_check_claim.sql" }}
+{{ template "meetings/release_meeting_sync_claim.sql" }}
 {{ template "meetings/set_meeting_auto_end_check_outcome.sql" }}
 {{ template "meetings/set_meeting_error.sql" }}
 {{ template "meetings/update_meeting.sql" }}
