@@ -28,6 +28,7 @@ export const REFUND_PROCESSING_LABEL = "Refund processing";
 export const REFUND_UNAVAILABLE_LABEL = "Refund unavailable";
 
 const ATTEND_EVENT_ICON = "icon-user-plus";
+const CANCEL_ACTION_ICON = "icon-cancel";
 const REQUEST_INVITATION_ICON = "icon-request-invitation";
 const CANCELED_EVENT_TITLE = "This event has been canceled.";
 const PAST_EVENT_TITLE = "You cannot change attendance because the event has already started.";
@@ -485,7 +486,10 @@ export const showWaitlistedAttendanceState = (container, meta) => {
     container,
     meta,
     "leaveButton",
-    withEventActionState(meta, { label: LEAVE_WAITLIST_LABEL }),
+    withEventActionState(meta, {
+      icon: CANCEL_ACTION_ICON,
+      label: LEAVE_WAITLIST_LABEL,
+    }),
   );
 };
 
@@ -500,6 +504,7 @@ export const showPendingApprovalAttendanceState = (container, meta) => {
     meta,
     "leaveButton",
     withEventActionState(meta, {
+      icon: CANCEL_ACTION_ICON,
       label: CANCEL_INVITATION_REQUEST_LABEL,
       title: INVITATION_PENDING_TITLE,
     }),
@@ -564,7 +569,13 @@ export const showAttendeeState = (container, meta, response) => {
   ) {
     renderControl(refundButton, getRefundState(meta, response));
   } else {
-    renderControl(leaveButton, withEventActionState(meta, { label: CANCEL_ATTENDANCE_LABEL }));
+    renderControl(
+      leaveButton,
+      withEventActionState(meta, {
+        icon: CANCEL_ACTION_ICON,
+        label: CANCEL_ATTENDANCE_LABEL,
+      }),
+    );
   }
 
   renderMeetingDetails(true, meta);
