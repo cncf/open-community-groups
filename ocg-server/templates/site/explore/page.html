@@ -7,15 +7,19 @@
           src="/static/js/community/explore/multi-select-filter.js"></script>
 {% endblock scripts -%}
 
-{% block content -%}
+{% block jumbotron -%}
   {# Site title -#}
-  <div class="text-center pt-4 xl:pt-7">
-    <h1 class="mb-2 xl:mb-6 mx-3 md:mx-5 text-[1.4rem] font-semibold tracking-tight leading-8 sm:leading-none md:text-2xl lg:text-4xl xl:text-5xl">
-      {{ site_settings.title }}
-    </h1>
+  <div class="relative container mx-auto max-w-7xl px-4 pt-4 xl:pt-7 sm:px-6 lg:px-8">
+    <div class="relative z-10 max-w-7xl text-center">
+      <h1 class="mb-2 xl:mb-6 text-[1.8rem] font-semibold tracking-tight leading-10 md:leading-8 sm:leading-none md:text-2xl lg:text-4xl xl:text-5xl">
+        {{ site_settings.title }}
+      </h1>
+    </div>
   </div>
   {# End site title -#}
+{% endblock jumbotron -%}
 
+{% block content -%}
   {# Main content -#}
   <div id="explore-content"
        class="relative container mx-auto max-w-7xl p-4 pb-8 sm:p-6 lg:p-8 lg:pb-16 flex grow h-full">
