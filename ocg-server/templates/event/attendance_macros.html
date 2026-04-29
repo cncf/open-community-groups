@@ -1,13 +1,11 @@
 {% macro control_content(label, icon_class) -%}
-  <div class="svg-icon size-3 {{ icon_class }}"
-       data-attendance-icon></div>
+  <div class="svg-icon size-3 {{ icon_class }}" data-attendance-icon></div>
   <span data-attendance-label>{{ label }}</span>
 {% endmacro control_content -%}
 
 {% macro control_content_with_badge(label, icon_class, badge_label, badge_classes) -%}
   <span class="{{ badge_classes }}"
         data-attendance-role="control-price-badge">{{ badge_label }}</span>
-  <div class="svg-icon size-3 {{ icon_class }}"
-       data-attendance-icon></div>
+  <div class="svg-icon size-3 {{ icon_class }}" data-attendance-icon></div>
   <span data-attendance-label>{{ label }}</span>
 {% endmacro control_content_with_badge -%}
