@@ -210,6 +210,7 @@ impl DBNotifications for PgDB {
             )
             .await?;
 
+        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
         Ok(count as usize)
     }
 
