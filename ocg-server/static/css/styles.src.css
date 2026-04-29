@@ -280,6 +280,10 @@
     @apply min-h-0 overflow-y-auto;
   }
 
+  .modal-overflow-visible {
+    @apply overflow-visible;
+  }
+
   .featured-speakers-grid:empty {
     display: none;
     margin: 0;
