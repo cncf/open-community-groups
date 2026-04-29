@@ -4,11 +4,18 @@ create or replace function update_notification(
     p_error text
 )
 returns void as $$
-    -- Mark the notification as processed
+begin
+    -- Finalize the claimed notification with the delivery outcome
     update notification
     set
+        delivery_status = case when p_error is null then 'processed' else 'failed' end,
         error = p_error,
-        processed = true,
         processed_at = current_timestamp
-    where notification_id = p_notification_id;
-$$ language sql;
+    where notification_id = p_notification_id
+    and delivery_status = 'processing';
+
+    if not found then
+        raise exception 'claimed notification not found or already finalized';
+    end if;
+end;
+$$ language plpgsql;

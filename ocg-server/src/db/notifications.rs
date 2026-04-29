@@ -20,6 +20,9 @@ use crate::{
 /// Trait that defines database operations used to manage notifications.
 #[async_trait]
 pub(crate) trait DBNotifications {
+    /// Claims a pending notification for delivery.
+    async fn claim_pending_notification(&self) -> Result<Option<Notification>>;
+
     /// Enqueues due event reminders and returns the number of notifications created.
     async fn enqueue_due_event_reminders(&self, base_url: &str) -> Result<usize>;
 
@@ -29,8 +32,8 @@ pub(crate) trait DBNotifications {
     /// Retrieves a notification attachment by its ID.
     async fn get_notification_attachment(&self, attachment_id: Uuid) -> Result<Attachment>;
 
-    /// Retrieves a pending notification for delivery.
-    async fn get_pending_notification(&self, client_id: Uuid) -> Result<Option<Notification>>;
+    /// Marks stale claimed notifications with an unknown delivery outcome.
+    async fn mark_stale_processing_notifications_unknown(&self, timeout: Duration) -> Result<usize>;
 
     /// Tracks a custom notification after it's been successfully enqueued.
     async fn track_custom_notification(
@@ -44,16 +47,61 @@ pub(crate) trait DBNotifications {
     ) -> Result<()>;
 
     /// Updates a notification after a delivery attempt.
-    async fn update_notification(
-        &self,
-        client_id: Uuid,
-        notification: &Notification,
-        error: Option<String>,
-    ) -> Result<()>;
+    async fn update_notification(&self, notification: &Notification, error: Option<String>) -> Result<()>;
 }
 
 #[async_trait]
 impl DBNotifications for PgDB {
+    #[instrument(skip(self), err)]
+    async fn claim_pending_notification(&self) -> Result<Option<Notification>> {
+        // Claim pending notification (if any)
+        let db = self.pool.get().await?;
+        let Some(row) = db
+            .query_opt("select * from claim_pending_notification();", &[])
+            .await?
+        else {
+            return Ok(None);
+        };
+
+        // Fetch notification attachments
+        let notification_id: Uuid = row.get("notification_id");
+        let attachment_ids = row.get::<_, Option<Vec<Uuid>>>("attachment_ids").unwrap_or_default();
+        let mut attachments = Vec::with_capacity(attachment_ids.len());
+        for attachment_id in attachment_ids {
+            let attachment = match self.get_notification_attachment(attachment_id).await {
+                Ok(attachment) => attachment,
+                Err(err) => {
+                    // Finalize pre-send failures so claimed rows are not stranded
+                    let error = err.to_string();
+                    db.execute(
+                        "
+                        select update_notification($1::uuid, $2::text);
+                        ",
+                        &[&notification_id, &error],
+                    )
+                    .await?;
+                    return Err(err);
+                }
+            };
+            attachments.push(attachment);
+        }
+
+        // Prepare notification and return it
+        let notification = Notification {
+            email: row.get("email"),
+            kind: row
+                .get::<_, String>("kind")
+                .as_str()
+                .try_into()
+                .expect("kind to be valid"),
+            notification_id,
+            template_data: row.get("template_data"),
+            attachments,
+        };
+
+        Ok(Some(notification))
+    }
+
     #[instrument(skip(self), err)]
     async fn enqueue_due_event_reminders(&self, base_url: &str) -> Result<usize> {
         let db = self.pool.get().await?;
@@ -149,38 +197,21 @@ impl DBNotifications for PgDB {
     }
 
     #[instrument(skip(self), err)]
-    async fn get_pending_notification(&self, client_id: Uuid) -> Result<Option<Notification>> {
-        // Get transaction client
-        let tx = self.tx_client(client_id).await?;
+    async fn mark_stale_processing_notifications_unknown(&self, timeout: Duration) -> Result<usize> {
+        // Convert timeout to the database integer type
+        let timeout_seconds = i64::try_from(timeout.as_secs())
+            .map_err(|_| anyhow!("processing timeout cannot exceed i64::MAX seconds"))?;
 
-        // Get pending notification (if any)
-        let Some(row) = tx.query_opt("select * from get_pending_notification();", &[]).await? else {
-            return Ok(None);
-        };
+        // Mark stale processing notifications with an unknown delivery outcome
+        let count = self
+            .fetch_scalar_one::<i64>(
+                "select mark_stale_processing_notifications_unknown($1::bigint)::bigint;",
+                &[&timeout_seconds],
+            )
+            .await?;
 
-        // Fetch notification attachments
-        let notification_id: Uuid = row.get("notification_id");
-        let attachment_ids = row.get::<_, Option<Vec<Uuid>>>("attachment_ids").unwrap_or_default();
-        let mut attachments = Vec::with_capacity(attachment_ids.len());
-        for attachment_id in attachment_ids {
-            let attachment = self.get_notification_attachment(attachment_id).await?;
-            attachments.push(attachment);
-        }
-
-        // Prepare notification and return it
-        let notification = Notification {
-            email: row.get("email"),
-            kind: row
-                .get::<_, String>("kind")
-                .as_str()
-                .try_into()
-                .expect("kind to be valid"),
-            notification_id,
-            template_data: row.get("template_data"),
-            attachments,
-        };
-
-        Ok(Some(notification))
+        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+        Ok(count as usize)
     }
 
     #[instrument(skip(self), err)]
@@ -224,17 +255,10 @@ impl DBNotifications for PgDB {
     /// Updates the notification record after processing, marking it as processed and
     /// recording any error.
     #[instrument(skip(self, notification), err)]
-    async fn update_notification(
-        &self,
-        client_id: Uuid,
-        notification: &Notification,
-        error: Option<String>,
-    ) -> Result<()> {
-        // Get transaction client
-        let tx = self.tx_client(client_id).await?;
-
-        // Mark the notification as processed
-        tx.execute(
+    async fn update_notification(&self, notification: &Notification, error: Option<String>) -> Result<()> {
+        // Mark the claimed notification as processed
+        let db = self.pool.get().await?;
+        db.execute(
             "
             select update_notification($1::uuid, $2::text);
             ",

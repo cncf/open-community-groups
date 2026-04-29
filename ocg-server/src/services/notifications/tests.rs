@@ -11,8 +11,9 @@ use crate::{
 };
 
 use super::{
-    Attachment, DeliveryWorker, DynEmailSender, EnqueueWorker, MockEmailSender, NewNotification,
-    Notification, NotificationKind, NotificationsManager, PgNotificationsManager,
+    Attachment, DELIVERY_PROCESSING_TIMEOUT, DeliveryRecoveryWorker, DeliveryWorker, DynEmailSender,
+    EnqueueWorker, MockEmailSender, NewNotification, Notification, NotificationKind, NotificationsManager,
+    PgNotificationsManager,
 };
 
 #[tokio::test]
@@ -148,9 +149,57 @@ async fn test_enqueue_worker_run_stops_on_cancellation_after_enqueue_success() {
 }
 
 #[tokio::test]
+async fn test_delivery_recovery_worker_mark_stale_processing_notifications_unknown() {
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_mark_stale_processing_notifications_unknown()
+        .times(1)
+        .withf(|timeout| *timeout == DELIVERY_PROCESSING_TIMEOUT)
+        .returning(|_| Ok(2));
+    let db: DynDB = Arc::new(db);
+
+    // Setup worker and recover stale processing notifications
+    let worker = DeliveryRecoveryWorker {
+        db,
+        cancellation_token: CancellationToken::new(),
+    };
+    let recovered = worker.mark_stale_processing_notifications_unknown().await.unwrap();
+
+    // Check result matches expectations
+    assert_eq!(recovered, 2);
+}
+
+#[tokio::test]
+async fn test_delivery_recovery_worker_run_stops_on_cancellation_after_success() {
+    // Setup cancellation token
+    let cancellation_token = CancellationToken::new();
+    let cancellation_token_for_mock = cancellation_token.clone();
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_mark_stale_processing_notifications_unknown()
+        .times(1)
+        .withf(|timeout| *timeout == DELIVERY_PROCESSING_TIMEOUT)
+        .returning(move |_| {
+            cancellation_token_for_mock.cancel();
+            Ok(1)
+        });
+    let db: DynDB = Arc::new(db);
+
+    // Setup worker and execute loop
+    let worker = DeliveryRecoveryWorker {
+        db,
+        cancellation_token: cancellation_token.clone(),
+    };
+    worker.run().await;
+
+    // Check cancellation state
+    assert!(cancellation_token.is_cancelled());
+}
+
+#[tokio::test]
 async fn test_delivery_worker_deliver_notification_sends_pending_notification() {
     // Setup identifiers and data structures
-    let client_id = Uuid::new_v4();
     let notification = Notification {
         attachments: vec![],
         email: "notify@example.test".to_string(),
@@ -163,21 +212,13 @@ async fn test_delivery_worker_deliver_notification_sends_pending_notification() 
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_tx_begin().times(1).returning(move || Ok(client_id));
-    db.expect_get_pending_notification()
+    db.expect_claim_pending_notification()
         .times(1)
-        .withf(move |cid| *cid == client_id)
-        .returning(move |_| Ok(Some(notification.clone())));
+        .returning(move || Ok(Some(notification.clone())));
     db.expect_update_notification()
         .times(1)
-        .withf(move |cid, notif, err| {
-            *cid == client_id && notif.notification_id == notification_id && err.is_none()
-        })
-        .returning(|_, _, _| Ok(()));
-    db.expect_tx_commit()
-        .times(1)
-        .withf(move |cid| *cid == client_id)
-        .returning(|_| Ok(()));
+        .withf(move |notif, err| notif.notification_id == notification_id && err.is_none())
+        .returning(|_, _| Ok(()));
     let db: DynDB = Arc::new(db);
 
     // Setup email sender mock
@@ -210,7 +251,6 @@ async fn test_delivery_worker_deliver_notification_sends_pending_notification() 
 #[tokio::test]
 async fn test_delivery_worker_deliver_notification_sends_pending_notification_with_attachment() {
     // Setup identifiers and data structures
-    let client_id = Uuid::new_v4();
     let attachments = vec![Attachment {
         content_type: "text/calendar".to_string(),
         data: b"BEGIN:VCALENDAR".to_vec(),
@@ -228,21 +268,13 @@ async fn test_delivery_worker_deliver_notification_sends_pending_notification_wi
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_tx_begin().times(1).returning(move || Ok(client_id));
-    db.expect_get_pending_notification()
+    db.expect_claim_pending_notification()
         .times(1)
-        .withf(move |cid| *cid == client_id)
-        .returning(move |_| Ok(Some(notification.clone())));
+        .returning(move || Ok(Some(notification.clone())));
     db.expect_update_notification()
         .times(1)
-        .withf(move |cid, notif, err| {
-            *cid == client_id && notif.notification_id == notification_id && err.is_none()
-        })
-        .returning(|_, _, _| Ok(()));
-    db.expect_tx_commit()
-        .times(1)
-        .withf(move |cid| *cid == client_id)
-        .returning(|_| Ok(()));
+        .withf(move |notif, err| notif.notification_id == notification_id && err.is_none())
+        .returning(|_, _| Ok(()));
     let db: DynDB = Arc::new(db);
 
     // Setup email sender mock
@@ -274,20 +306,9 @@ async fn test_delivery_worker_deliver_notification_sends_pending_notification_wi
 
 #[tokio::test]
 async fn test_delivery_worker_deliver_notification_no_pending_notifications() {
-    // Setup identifiers and data structures
-    let client_id = Uuid::new_v4();
-
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_tx_begin().times(1).returning(move || Ok(client_id));
-    db.expect_get_pending_notification()
-        .times(1)
-        .withf(move |cid| *cid == client_id)
-        .returning(|_| Ok(None));
-    db.expect_tx_rollback()
-        .times(1)
-        .withf(move |cid| *cid == client_id)
-        .returning(|_| Ok(()));
+    db.expect_claim_pending_notification().times(1).returning(|| Ok(None));
     let db: DynDB = Arc::new(db);
 
     // Setup email sender mock
@@ -311,7 +332,6 @@ async fn test_delivery_worker_deliver_notification_no_pending_notifications() {
 #[tokio::test]
 async fn test_delivery_worker_deliver_notification_records_send_error() {
     // Setup identifiers and data structures
-    let client_id = Uuid::new_v4();
     let notification = Notification {
         attachments: vec![],
         email: "notify@example.test".to_string(),
@@ -323,23 +343,15 @@ async fn test_delivery_worker_deliver_notification_records_send_error() {
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_tx_begin().times(1).returning(move || Ok(client_id));
-    db.expect_get_pending_notification()
+    db.expect_claim_pending_notification()
         .times(1)
-        .withf(move |cid| *cid == client_id)
-        .returning(move |_| Ok(Some(notification.clone())));
+        .returning(move || Ok(Some(notification.clone())));
     db.expect_update_notification()
         .times(1)
-        .withf(move |cid, notif, err| {
-            *cid == client_id
-                && notif.notification_id == notification_id
-                && err.as_deref() == Some("delivery error")
+        .withf(move |notif, err| {
+            notif.notification_id == notification_id && err.as_deref() == Some("delivery error")
         })
-        .returning(|_, _, _| Ok(()));
-    db.expect_tx_commit()
-        .times(1)
-        .withf(move |cid| *cid == client_id)
-        .returning(|_| Ok(()));
+        .returning(|_, _| Ok(()));
     let db: DynDB = Arc::new(db);
 
     // Setup email sender mock
@@ -360,6 +372,49 @@ async fn test_delivery_worker_deliver_notification_records_send_error() {
 
     // Check result matches expectations
     assert!(delivered);
+}
+
+#[tokio::test]
+async fn test_delivery_worker_deliver_notification_returns_update_error() {
+    // Setup identifiers and data structures
+    let notification = Notification {
+        attachments: vec![],
+        email: "notify@example.test".to_string(),
+        kind: NotificationKind::EmailVerification,
+        notification_id: Uuid::new_v4(),
+        template_data: Some(sample_email_verification_template_data()),
+    };
+    let notification_id = notification.notification_id;
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_claim_pending_notification()
+        .times(1)
+        .returning(move || Ok(Some(notification.clone())));
+    db.expect_update_notification()
+        .times(1)
+        .withf(move |notif, err| notif.notification_id == notification_id && err.is_none())
+        .returning(|_, _| Err(anyhow!("update error")));
+    let db: DynDB = Arc::new(db);
+
+    // Setup email sender mock
+    let mut es = MockEmailSender::new();
+    es.expect_send()
+        .times(1)
+        .returning(|_| Box::pin(async { Ok::<(), anyhow::Error>(()) }));
+    let es: DynEmailSender = Arc::new(es);
+
+    // Setup worker and deliver notification
+    let mut worker = DeliveryWorker {
+        db,
+        cfg: sample_email_config(None),
+        cancellation_token: CancellationToken::new(),
+        email_sender: es,
+    };
+    let err = worker.deliver_notification().await.unwrap_err();
+
+    // Check result matches expectations
+    assert!(err.to_string().contains("update error"));
 }
 
 #[test]

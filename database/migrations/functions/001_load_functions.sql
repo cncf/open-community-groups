@@ -181,11 +181,13 @@
 {{ template "meetings/update_meeting.sql" }}
 {{ template "meetings/update_meeting_recording_url.sql" }}
 
+{{ template "notifications/claim_pending_notification.sql" }}
 {{ template "notifications/enqueue_due_event_reminders.sql" }}
 {{ template "notifications/enqueue_notification.sql" }}
-{{ template "notifications/get_pending_notification.sql" }}
+{{ template "notifications/mark_stale_processing_notifications_unknown.sql" }}
 {{ template "notifications/track_custom_notification.sql" }}
 {{ template "notifications/update_notification.sql" }}
+
 {{ template "payments/approve_event_refund_request.sql" }}
 {{ template "payments/attach_checkout_session_to_event_purchase.sql" }}
 {{ template "payments/begin_event_refund_approval.sql" }}

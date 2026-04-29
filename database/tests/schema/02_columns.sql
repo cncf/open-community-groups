@@ -659,10 +659,12 @@ select columns_are('legacy_event_speaker', array[
 select columns_are('notification', array[
     'notification_id',
     'created_at',
+    'delivery_attempts',
+    'delivery_status',
     'kind',
-    'processed',
     'user_id',
 
+    'delivery_claimed_at',
     'error',
     'notification_template_data_id',
     'processed_at'

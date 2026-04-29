@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(40);
+select plan(42);
 
 -- ============================================================================
 -- TESTS
@@ -93,6 +93,10 @@ select results_eq(
     $$,
     'Meeting providers should exist'
 );
+
+-- Test: notification table expected constraints exist
+select has_check('notification', 'notification_delivery_attempts_chk');
+select has_check('notification', 'notification_delivery_status_chk');
 
 -- Test: payment providers should match expected values
 select results_eq(
