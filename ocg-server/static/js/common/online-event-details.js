@@ -662,6 +662,25 @@ export class OnlineEventDetails extends LitWrapper {
   }
 
   /**
+   * Applies manual meeting fields after resetting automatic meeting state.
+   * @param {object} fields Manual meeting field values.
+   * @param {string} [fields.meeting_join_instructions] Join instructions.
+   * @param {string} [fields.meeting_join_url] URL to join the meeting.
+   */
+  setManualMeetingDetails({
+    meeting_join_instructions: joinInstructions = "",
+    meeting_join_url: joinUrl = "",
+  }) {
+    this._mode = "manual";
+    this._joinInstructions = joinInstructions || "";
+    this._joinUrl = joinUrl || "";
+    this._createMeeting = false;
+    this.meetingJoinInstructions = this._joinInstructions;
+    this.meetingJoinUrl = this._joinUrl;
+    this.requestUpdate();
+  }
+
+  /**
    * Renders hidden inputs for form submission.
    * @returns {import('lit').TemplateResult} Hidden input elements
    */

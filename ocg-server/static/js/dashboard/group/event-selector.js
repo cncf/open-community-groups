@@ -325,6 +325,7 @@ class EventSelector extends LitWrapper {
     setTextValue("venue_address", details.venue_address);
     setTextValue("venue_city", details.venue_city);
     setTextValue("venue_zip_code", details.venue_zip_code);
+    this._copyManualMeetingFields(details);
     setHosts(details.hosts);
     setSponsors(details.sponsors);
     setSessions([]);
@@ -334,12 +335,33 @@ class EventSelector extends LitWrapper {
    * Resets meeting-related fields to avoid copying existing links or sync state.
    */
   _resetMeetingFields() {
-    setTextValue("meeting_join_instructions", "");
-    setTextValue("meeting_join_url", "");
     setTextValue("meeting_recording_url", "");
     const meetingDetails = document.querySelector("online-event-details");
     if (meetingDetails && typeof meetingDetails.reset === "function") {
       meetingDetails.reset();
+    }
+  }
+
+  /**
+   * Copies reusable manual meeting access details into the event form.
+   * @param {object} details Event details payload
+   */
+  _copyManualMeetingFields(details) {
+    if (details.meeting_requested === true) {
+      return;
+    }
+
+    const meetingFields = {
+      meeting_join_instructions: details.meeting_join_instructions || "",
+      meeting_join_url: details.meeting_join_url || "",
+    };
+
+    setTextValue("meeting_join_instructions", meetingFields.meeting_join_instructions);
+    setTextValue("meeting_join_url", meetingFields.meeting_join_url);
+
+    const meetingDetails = document.querySelector("online-event-details");
+    if (meetingDetails && typeof meetingDetails.setManualMeetingDetails === "function") {
+      meetingDetails.setManualMeetingDetails(meetingFields);
     }
   }
 

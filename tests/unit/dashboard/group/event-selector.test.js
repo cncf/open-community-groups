@@ -218,8 +218,12 @@ describe("event-selector", () => {
 
     const meetingDetails = document.querySelector("online-event-details");
     let resetCalls = 0;
+    let manualMeetingDetails = null;
     meetingDetails.reset = () => {
       resetCalls += 1;
+    };
+    meetingDetails.setManualMeetingDetails = (fields) => {
+      manualMeetingDetails = fields;
     };
 
     const editor = document.querySelector("markdown-editor#description");
@@ -238,6 +242,9 @@ describe("event-selector", () => {
       event_reminder_enabled: true,
       registration_required: true,
       meetup_url: "https://meetup.com/cloud-native-malaga",
+      meeting_join_instructions: "Use your registration name when joining.",
+      meeting_join_url: "https://meet.example.com/cloud-native-malaga",
+      meeting_recording_url: "https://video.example.com/old-recording",
       payment_currency_code: "EUR",
       photos_urls: [" one.png ", "two.png"],
       tags: ["cloud", " malaga "],
@@ -293,9 +300,17 @@ describe("event-selector", () => {
     expect(document.getElementById("meetup_url")?.value).to.equal("https://meetup.com/cloud-native-malaga");
     expect(document.getElementById("payment_currency_code")?.value).to.equal("EUR");
     expect(document.getElementById("venue_city")?.value).to.equal("Málaga");
-    expect(document.getElementById("meeting_join_instructions")?.value).to.equal("");
-    expect(document.getElementById("meeting_join_url")?.value).to.equal("");
+    expect(document.getElementById("meeting_join_instructions")?.value).to.equal(
+      "Use your registration name when joining.",
+    );
+    expect(document.getElementById("meeting_join_url")?.value).to.equal(
+      "https://meet.example.com/cloud-native-malaga",
+    );
     expect(document.getElementById("meeting_recording_url")?.value).to.equal("");
+    expect(manualMeetingDetails).to.deep.equal({
+      meeting_join_instructions: "Use your registration name when joining.",
+      meeting_join_url: "https://meet.example.com/cloud-native-malaga",
+    });
     expect(ticketTypesEditor.querySelector('input[name="ticket_types[0][title]"]')?.value).to.equal(
       "General admission",
     );
