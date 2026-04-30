@@ -47,7 +47,6 @@ impl Config {
 
     /// Validates configuration consistency after loading from all sources.
     fn validate(&self) -> Result<()> {
-        validate_url(&self.server.base_legacy_url, "server.base_legacy_url")?;
         validate_url(&self.server.base_redirect_url, "server.base_redirect_url")?;
 
         Ok(())
@@ -76,10 +75,19 @@ pub(crate) enum LogFormat {
 pub(crate) struct HttpServerConfig {
     /// The address the HTTP server will listen on.
     pub addr: String,
-    /// Base URL used for unmatched legacy redirects.
-    pub base_legacy_url: String,
     /// Base URL used for matched redirects.
     pub base_redirect_url: String,
+}
+
+impl HttpServerConfig {
+    /// Returns the redirect host suffix derived from the base redirect URL.
+    pub(crate) fn redirect_host_suffix(&self) -> String {
+        let uri = Uri::from_str(&self.base_redirect_url)
+            .expect("server.base_redirect_url must be validated before router setup");
+        let host = uri.host().expect("server.base_redirect_url must include a host");
+
+        format!("redirects.{host}")
+    }
 }
 
 /// Validates that the provided string is an absolute HTTP(S) URL.

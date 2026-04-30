@@ -1,7 +1,7 @@
 //! Open Community Groups redirector.
 //!
-//! This service handles permanent redirects from legacy group and event URLs to
-//! their canonical pages in Open Community Groups.
+//! This service handles permanent redirects from community-specific legacy URLs
+//! to their canonical pages in Open Community Groups.
 
 #![warn(clippy::all, clippy::pedantic)]
 #![allow(clippy::struct_field_names)]
