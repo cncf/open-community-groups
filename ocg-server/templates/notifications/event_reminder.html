@@ -38,6 +38,12 @@
         <br />
       {% endif -%}
     {% endif -%}
+    {% if let Some(meeting_join_instructions) = &event.meeting_join_instructions -%}
+      Meeting instructions:
+      <br />
+      <span class="preline">{{ meeting_join_instructions }}</span>
+      <br />
+    {% endif -%}
   </p>
 
   {{ email::button(link = link, text = "View event") }}

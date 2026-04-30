@@ -473,6 +473,7 @@ fn test_delivery_worker_prepare_content_event_reminder() {
     // Check content matches expectations
     assert_eq!(subject, "Reminder: Reminder Event starts in 24 hours");
     assert!(body.contains("Reminder Event"));
+    assert!(body.contains("Use your registration name when joining."));
     assert!(
         body.contains("https://example.test/test-community/group/notification-group/event/reminder-event")
     );
@@ -559,6 +560,7 @@ fn test_delivery_worker_prepare_content_speaker_series_welcome() {
     // Check content matches expectations
     assert_eq!(subject, "You're speaking at upcoming events");
     assert!(body.contains("2 events with"));
+    assert!(body.contains("Join five minutes early for speaker setup."));
     assert!(body.contains("Series Event One"));
     assert!(body.contains("Series Event Two"));
 }
@@ -620,6 +622,7 @@ fn test_delivery_worker_prepare_content_event_waitlist_promoted() {
     // Check content matches expectations
     assert_eq!(subject, "You moved off the waiting list");
     assert!(body.contains("you are now registered"));
+    assert!(body.contains("Use the waiting room display name from your ticket."));
     assert!(body.contains("Waitlist Event"));
 }
 
@@ -820,6 +823,7 @@ fn sample_event_reminder_template_data() -> serde_json::Value {
             "group_slug": "notification-group",
             "kind": "hybrid",
             "logo_url": "https://example.com/logo.png",
+            "meeting_join_instructions": "Use your registration name when joining.",
             "name": "Reminder Event",
             "published": true,
             "slug": "reminder-event",
@@ -852,6 +856,7 @@ fn sample_event_series_template_data() -> serde_json::Value {
                     "group_slug": "notification-group",
                     "kind": "hybrid",
                     "logo_url": "https://example.com/logo.png",
+                    "meeting_join_instructions": "Join five minutes early for speaker setup.",
                     "name": "Series Event One",
                     "published": true,
                     "slug": "series-event-one",
@@ -906,6 +911,8 @@ fn sample_event_waitlist_template_data() -> serde_json::Value {
             "group_slug": "notification-group",
             "kind": "virtual",
             "logo_url": "https://example.com/logo.png",
+            "meeting_join_instructions": "Use the waiting room display name from your ticket.",
+            "meeting_join_url": "https://example.test/waitlist-event/live",
             "name": "Waitlist Event",
             "published": true,
             "slug": "waitlist-event",

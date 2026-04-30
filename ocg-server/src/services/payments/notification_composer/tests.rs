@@ -220,6 +220,7 @@ fn sample_event_summary(event_id: Uuid) -> EventSummary {
         event_series_id: None,
         latitude: None,
         longitude: None,
+        meeting_join_instructions: None,
         meeting_join_url: None,
         meeting_password: None,
         meeting_provider: None,

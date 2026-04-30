@@ -304,6 +304,7 @@ mod tests {
             event_series_id: None,
             latitude: Some(37.78),
             longitude: Some(-122.42),
+            meeting_join_instructions: None,
             meeting_join_url: Some("https://example.test/live".to_string()),
             meeting_password: Some("secret123".to_string()),
             meeting_provider: None,

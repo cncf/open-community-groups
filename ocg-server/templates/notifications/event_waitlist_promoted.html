@@ -20,6 +20,30 @@
       {{ starts_at.with_timezone(event.timezone).format("%A, %B %e, %G · %I:%M %p %Z") }}
       <br />
     {% endif -%}
+    {% if let Some(location) = &self.event.location(90) -%}
+      Location: {{ location }}
+      <br />
+    {% endif -%}
+    {% if let Some(meeting_join_url) = &event.meeting_join_url -%}
+      Meeting link:
+      <a href="{{ meeting_join_url }}"
+         target="_blank"
+         rel="noopener noreferrer">{{ meeting_join_url }}</a>
+      <br />
+      {% if let Some(meeting_password) = &event.meeting_password -%}
+        Meeting password:
+        <code class="ml-2 px-2 py-0.5 bg-stone-100 rounded text-stone-800">
+          {{ meeting_password }}
+        </code>
+        <br />
+      {% endif -%}
+    {% endif -%}
+    {% if let Some(meeting_join_instructions) = &event.meeting_join_instructions -%}
+      Meeting instructions:
+      <br />
+      <span class="preline">{{ meeting_join_instructions }}</span>
+      <br />
+    {% endif -%}
   </p>
 
   {{ email::button(link = link, text = "View event") }}
