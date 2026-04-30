@@ -8,11 +8,13 @@ describe("online-event-details", () => {
 
   it("returns manual meeting data and resets back to manual defaults", async () => {
     const element = await mountLitComponent("online-event-details", {
+      meetingJoinInstructions: " Bring your ticket confirmation. ",
       meetingJoinUrl: " https://example.com/join ",
       meetingRecordingUrl: " https://example.com/recording ",
     });
 
     expect(element.getMeetingData()).to.deep.equal({
+      meeting_join_instructions: "Bring your ticket confirmation.",
       meeting_join_url: "https://example.com/join",
       meeting_recording_url: "https://example.com/recording",
       meeting_requested: false,
@@ -22,6 +24,7 @@ describe("online-event-details", () => {
     element.reset();
 
     expect(element._mode).to.equal("manual");
+    expect(element._joinInstructions).to.equal("");
     expect(element._joinUrl).to.equal("");
     expect(element._recordingUrl).to.equal("");
   });
@@ -67,6 +70,7 @@ describe("online-event-details", () => {
     expect(element._joinUrl).to.equal("");
     expect(element._recordingUrl).to.equal(" https://youtube.com/watch?v=processed ");
     expect(element.getMeetingData()).to.deep.equal({
+      meeting_join_instructions: "",
       meeting_join_url: "",
       meeting_recording_url: "https://youtube.com/watch?v=processed",
       meeting_requested: true,
@@ -88,6 +92,7 @@ describe("online-event-details", () => {
     });
 
     expect(element.getMeetingData()).to.deep.equal({
+      meeting_join_instructions: "",
       meeting_join_url: "",
       meeting_recording_url: "https://youtube.com/watch?v=session-processed",
       meeting_requested: true,

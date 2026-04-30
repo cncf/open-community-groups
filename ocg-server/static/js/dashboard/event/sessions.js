@@ -227,6 +227,7 @@ export class SessionsSection extends LitWrapper {
     location: "",
     meeting_requested: false,
     meeting_in_sync: false,
+    meeting_join_instructions: "",
     meeting_join_url: "",
     meeting_provider_id: "",
     meeting_password: "",
@@ -591,6 +592,9 @@ export class SessionsSection extends LitWrapper {
         const automaticMeetingRequested =
           session.meeting_requested === true || session.meeting_requested === "true";
         const isCfsLinkedSession = Boolean(session.cfs_submission_id);
+        const meetingJoinInstructions = automaticMeetingRequested
+          ? ""
+          : session.meeting_join_instructions || "";
         const meetingJoinUrl = automaticMeetingRequested ? "" : session.meeting_join_url || "";
         const meetingRecordingUrl = session.meeting_recording_url || "";
         const meetingProviderId =
@@ -614,6 +618,11 @@ export class SessionsSection extends LitWrapper {
             type="hidden"
             name="sessions[${index}][cfs_submission_id]"
             value=${session.cfs_submission_id || ""}
+          />
+          <input
+            type="hidden"
+            name="sessions[${index}][meeting_join_instructions]"
+            value=${meetingJoinInstructions}
           />
           <input type="hidden" name="sessions[${index}][meeting_join_url]" value=${meetingJoinUrl} />
           <input
@@ -952,6 +961,7 @@ class SessionFormModal extends LitWrapper {
       location: "",
       meeting_requested: false,
       meeting_in_sync: false,
+      meeting_join_instructions: "",
       meeting_join_url: "",
       meeting_provider_id: "",
       meeting_password: "",
@@ -1172,6 +1182,7 @@ class SessionItem extends LitWrapper {
       ends_at: "",
       location: "",
       meeting_requested: false,
+      meeting_join_instructions: "",
       meeting_join_url: "",
       meeting_recording_url: "",
       meeting_provider_id: "",
@@ -1620,6 +1631,7 @@ class SessionItem extends LitWrapper {
                         starts-at=${this.data.starts_at || ""}
                         ends-at=${this.data.ends_at || ""}
                         .meetingHosts=${this.data.meeting_hosts || {}}
+                        .meetingJoinInstructions=${this.data.meeting_join_instructions || ""}
                         .meetingMaxParticipants=${this.meetingMaxParticipants || {}}
                         field-name-prefix="sessions[${this.index}]"
                         ?disabled=${this.disabled}
@@ -1646,6 +1658,30 @@ class SessionItem extends LitWrapper {
                               />
                             </div>
                             <p class="form-legend">Teams, Meet, or any other video link.</p>
+                          </div>
+                          <div class="space-y-2">
+                            <label for="meeting_join_instructions_${this.index}" class="form-label"
+                              >Join instructions (optional)</label
+                            >
+                            <div class="mt-2">
+                              <textarea
+                                id="meeting_join_instructions_${this.index}"
+                                name="sessions[${this.index}][meeting_join_instructions]"
+                                rows="4"
+                                maxlength="500"
+                                class="input-primary ${this.disabled
+                                  ? "bg-stone-100 text-stone-500 cursor-not-allowed"
+                                  : ""}"
+                                placeholder="Add passcodes, waiting room details, or other attendee instructions."
+                                .value=${this.data.meeting_join_instructions || ""}
+                                @input=${(e) => this._onInputChange(e)}
+                                data-name="meeting_join_instructions"
+                                ?disabled=${this.disabled}
+                              ></textarea>
+                            </div>
+                            <p class="form-legend">
+                              Shown with the meeting details on the public event page.
+                            </p>
                           </div>
                           <div class="space-y-2">
                             <label for="meeting_recording_url_${this.index}" class="form-label"

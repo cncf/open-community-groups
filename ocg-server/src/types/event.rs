@@ -276,6 +276,8 @@ pub struct EventFull {
     pub meeting_hosts: Option<Vec<String>>,
     /// Whether the event meeting is in sync.
     pub meeting_in_sync: Option<bool>,
+    /// Extra instructions attendees need to join the event meeting.
+    pub meeting_join_instructions: Option<String>,
     /// URL to join the meeting.
     pub meeting_join_url: Option<String>,
     /// Password required to join the event meeting.
@@ -701,6 +703,8 @@ pub struct Session {
     pub meeting_hosts: Option<Vec<String>>,
     /// Whether the meeting data is in sync with the provider.
     pub meeting_in_sync: Option<bool>,
+    /// Extra instructions attendees need to join the session meeting.
+    pub meeting_join_instructions: Option<String>,
     /// URL to join the meeting.
     pub meeting_join_url: Option<String>,
     /// Password required to join the session meeting.

@@ -309,6 +309,7 @@ const buildSessionEntries = (sessionsData) => {
         description: toOptionalString(session.description),
         kind: toOptionalString(session.kind),
         location: toOptionalString(session.location),
+        meeting_join_instructions: "",
         meeting_join_url: "",
         meeting_recording_url: "",
         meeting_requested: false,

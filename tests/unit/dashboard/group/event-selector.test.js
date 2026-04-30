@@ -176,6 +176,7 @@ describe("event-selector", () => {
       <input id="venue_address" />
       <input id="venue_city" />
       <input id="venue_zip_code" />
+      <textarea id="meeting_join_instructions">filled</textarea>
       <input id="meeting_join_url" value="filled" />
       <input id="meeting_recording_url" value="filled" />
       <ticket-types-editor id="ticket-types-ui" ticket-types="[]" data-disabled="false"></ticket-types-editor>
@@ -292,6 +293,7 @@ describe("event-selector", () => {
     expect(document.getElementById("meetup_url")?.value).to.equal("https://meetup.com/cloud-native-malaga");
     expect(document.getElementById("payment_currency_code")?.value).to.equal("EUR");
     expect(document.getElementById("venue_city")?.value).to.equal("Málaga");
+    expect(document.getElementById("meeting_join_instructions")?.value).to.equal("");
     expect(document.getElementById("meeting_join_url")?.value).to.equal("");
     expect(document.getElementById("meeting_recording_url")?.value).to.equal("");
     expect(ticketTypesEditor.querySelector('input[name="ticket_types[0][title]"]')?.value).to.equal(

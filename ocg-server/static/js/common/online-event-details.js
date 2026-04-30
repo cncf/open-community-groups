@@ -17,6 +17,20 @@ import "/static/js/common/multiple-inputs.js";
 export class OnlineEventDetails extends LitWrapper {
   static properties = {
     kind: { type: String },
+    meetingJoinInstructions: {
+      type: String,
+      attribute: "meeting-join-instructions",
+      converter: {
+        fromAttribute: (value) => {
+          if (!value) return "";
+          try {
+            return JSON.parse(value);
+          } catch {
+            return value;
+          }
+        },
+      },
+    },
     meetingJoinUrl: { type: String, attribute: "meeting-join-url" },
     meetingRecordingUrl: { type: String, attribute: "meeting-recording-url" },
     meetingRequested: { type: Boolean, attribute: "meeting-requested" },
@@ -57,6 +71,7 @@ export class OnlineEventDetails extends LitWrapper {
       },
     },
     _mode: { type: String, state: true },
+    _joinInstructions: { type: String, state: true },
     _joinUrl: { type: String, state: true },
     _recordingUrl: { type: String, state: true },
     _createMeeting: { type: Boolean, state: true },
@@ -69,6 +84,7 @@ export class OnlineEventDetails extends LitWrapper {
   constructor() {
     super();
     this.kind = "virtual";
+    this.meetingJoinInstructions = "";
     this.meetingJoinUrl = "";
     this.meetingRecordingUrl = "";
     this.meetingRequested = false;
@@ -83,6 +99,7 @@ export class OnlineEventDetails extends LitWrapper {
     this.meetingMaxParticipants = {};
 
     this._mode = "manual";
+    this._joinInstructions = "";
     this._joinUrl = "";
     this._recordingUrl = "";
     this._createMeeting = false;
@@ -107,6 +124,7 @@ export class OnlineEventDetails extends LitWrapper {
     if (this._initializedFromProps) {
       return;
     }
+    this._joinInstructions = this.meetingJoinInstructions || "";
     this._joinUrl = this.meetingJoinUrl || "";
     this._recordingUrl = this.meetingRecordingUrl || "";
     this._createMeeting = this.meetingRequested;
@@ -168,6 +186,15 @@ export class OnlineEventDetails extends LitWrapper {
    */
   _isSession() {
     return this.fieldNamePrefix.startsWith("sessions");
+  }
+
+  /**
+   * Checks whether join instructions should be rendered.
+   * @returns {boolean} True when instructions are supported.
+   * @private
+   */
+  _supportsJoinInstructions() {
+    return true;
   }
 
   /**
@@ -498,6 +525,7 @@ export class OnlineEventDetails extends LitWrapper {
         }
       }
       this._mode = "automatic";
+      this._joinInstructions = "";
       this._joinUrl = "";
       this._createMeeting = true;
     } else {
@@ -514,6 +542,15 @@ export class OnlineEventDetails extends LitWrapper {
   _handleJoinUrlChange(e) {
     if (this.disabled) return;
     this._joinUrl = e.target.value;
+  }
+
+  /**
+   * Handles input change for meeting join instructions.
+   * @param {Event} e - Input event
+   */
+  _handleJoinInstructionsChange(e) {
+    if (this.disabled) return;
+    this._joinInstructions = e.target.value;
   }
 
   /**
@@ -596,12 +633,18 @@ export class OnlineEventDetails extends LitWrapper {
    */
   getMeetingData() {
     const isAutomatic = this._mode === "automatic" && this._createMeeting;
-    return {
+    const data = {
       meeting_join_url: isAutomatic ? "" : (this._joinUrl || "").trim(),
       meeting_recording_url: (this._recordingUrl || "").trim(),
       meeting_requested: isAutomatic,
       meeting_provider_id: isAutomatic ? (this._providerId || DEFAULT_MEETING_PROVIDER).trim() : "",
     };
+
+    if (this._supportsJoinInstructions()) {
+      data.meeting_join_instructions = isAutomatic ? "" : (this._joinInstructions || "").trim();
+    }
+
+    return data;
   }
 
   /**
@@ -609,6 +652,7 @@ export class OnlineEventDetails extends LitWrapper {
    */
   reset() {
     this._mode = "manual";
+    this._joinInstructions = "";
     this._joinUrl = "";
     this._recordingUrl = "";
     this._createMeeting = false;
@@ -623,6 +667,7 @@ export class OnlineEventDetails extends LitWrapper {
    */
   _renderHiddenInputs() {
     const {
+      meeting_join_instructions: joinInstructionsValue,
       meeting_join_url: joinUrlValue,
       meeting_recording_url: recordingUrlValue,
       meeting_requested: isAutomatic,
@@ -631,6 +676,15 @@ export class OnlineEventDetails extends LitWrapper {
 
     return html`
       <input type="hidden" name="${this._getFieldName("meeting_join_url")}" value="${joinUrlValue}" />
+      ${this._supportsJoinInstructions()
+        ? html`
+            <input
+              type="hidden"
+              name="${this._getFieldName("meeting_join_instructions")}"
+              value="${joinInstructionsValue}"
+            />
+          `
+        : ""}
       <input
         type="hidden"
         name="${this._getFieldName("meeting_recording_url")}"
@@ -794,6 +848,29 @@ export class OnlineEventDetails extends LitWrapper {
         </div>
         <p class="form-legend">Zoom, Teams, Meet, or any other video link.</p>
       </div>
+
+      ${this._supportsJoinInstructions()
+        ? html`
+            <div class="space-y-2">
+              <label for="${this._getFieldName("meeting_join_instructions")}" class="form-label"
+                >Join instructions (optional)</label
+              >
+              <div class="mt-2">
+                <textarea
+                  id="${this._getFieldName("meeting_join_instructions")}"
+                  class="input-primary ${disabledClasses}"
+                  rows="4"
+                  maxlength="500"
+                  placeholder="Add passcodes, waiting room details, or other attendee instructions."
+                  .value="${this._joinInstructions}"
+                  @input="${this._handleJoinInstructionsChange}"
+                  ?disabled=${this.disabled}
+                ></textarea>
+              </div>
+              <p class="form-legend">Shown with the meeting details on the public event page.</p>
+            </div>
+          `
+        : ""}
 
       <div class="space-y-2">
         <label for="${this._getFieldName("meeting_recording_url")}" class="form-label"

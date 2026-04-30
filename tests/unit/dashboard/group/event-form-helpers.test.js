@@ -182,6 +182,7 @@ describe("event form helpers", () => {
         description: "Kickoff",
         kind: "talk",
         location: "Main room",
+        meeting_join_instructions: "",
         meeting_join_url: "",
         meeting_recording_url: "",
         meeting_requested: false,

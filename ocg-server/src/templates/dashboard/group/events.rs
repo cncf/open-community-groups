@@ -286,6 +286,9 @@ pub(crate) struct Event {
     /// Meeting hosts to synchronize with provider (email addresses).
     #[garde(custom(email_vec))]
     pub meeting_hosts: Option<Vec<String>>,
+    /// Extra instructions attendees need to join the event meeting.
+    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_DESCRIPTION_SHORT))]
+    pub meeting_join_instructions: Option<String>,
     /// URL to join the meeting.
     #[garde(url, length(max = MAX_LEN_L))]
     pub meeting_join_url: Option<String>,
@@ -613,6 +616,9 @@ pub(crate) struct Session {
     /// Meeting hosts to synchronize with provider (email addresses).
     #[garde(custom(email_vec))]
     pub meeting_hosts: Option<Vec<String>>,
+    /// Extra instructions attendees need to join the session meeting.
+    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_DESCRIPTION_SHORT))]
+    pub meeting_join_instructions: Option<String>,
     /// URL to join the meeting.
     #[garde(url, length(max = MAX_LEN_L))]
     pub meeting_join_url: Option<String>,

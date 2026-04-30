@@ -347,13 +347,16 @@
           About this event
         </div>
         <div class="text-stone-500 text-sm/6 markdown">{{ event.description|md_to_html|safe }}</div>
+        {% let meeting_join_instructions = event.meeting_join_instructions -%}
         {% let meeting_join_url = event.meeting_join_url -%}
         {% let meeting_recording_url = event.meeting_recording_url -%}
+        {% let has_instructions = meeting_join_instructions.is_some() -%}
         {% let has_join = meeting_join_url.is_some() -%}
         {% let has_recording = meeting_recording_url.is_some() -%}
+        {% let show_join_instructions = has_instructions && !event.is_past() && !event.canceled -%}
         {% let show_join_link = has_join && !event.is_past() && !event.canceled -%}
         {% let show_recording_link = has_recording && event.is_past() -%}
-        {% if show_join_link || show_recording_link -%}
+        {% if show_join_instructions || show_join_link || show_recording_link -%}
           <div data-meeting-details
                data-has-recording="{{ show_recording_link }}"
                class="{% if !show_recording_link %}
@@ -368,10 +371,17 @@
               <div class="text-sm text-stone-700 mb-4">
                 {% if show_join_link -%}
                   Use the link below to join the session.
+                {% elif show_join_instructions -%}
+                  Review the instructions below before joining.
                 {% else -%}
                   Use the link below to watch the recording.
                 {% endif -%}
               </div>
+              {% if show_join_instructions -%}
+                {% if let Some(meeting_join_instructions) = &meeting_join_instructions -%}
+                  <div class="text-sm text-stone-700 whitespace-pre-line mb-4">{{ meeting_join_instructions }}</div>
+                {% endif -%}
+              {% endif -%}
               <div class="flex flex-wrap items-center gap-3">
                 {% if show_join_link -%}
                   {% if let Some(meeting_join_url) = &meeting_join_url -%}
@@ -663,17 +673,24 @@
     {% if let Some(description) = &session.description -%}
       <div class="text-sm/6 text-stone-600 markdown mt-3">{{ description|md_to_html|safe }}</div>
     {% endif -%}
+    {% let has_instructions_session = session.meeting_join_instructions.is_some() -%}
     {% let has_join_session = session.meeting_join_url.is_some() -%}
     {% let has_recording_session = session.meeting_recording_url.is_some() -%}
+    {% let show_join_instructions_session = has_instructions_session && !event.is_past() && !event.canceled -%}
     {% let show_join_link_session = has_join_session && !event.is_past() && !event.canceled -%}
     {% let show_recording_link_session = has_recording_session && event.is_past() -%}
-    {% if show_join_link_session || show_recording_link_session -%}
+    {% if show_join_instructions_session || show_join_link_session || show_recording_link_session -%}
       <div data-meeting-details
            data-has-recording="{{ show_recording_link_session }}"
            class="{% if !show_recording_link_session %}
                     hidden
                   {% endif %}
                   mt-3">
+        {% if show_join_instructions_session -%}
+          {% if let Some(meeting_join_instructions) = &session.meeting_join_instructions -%}
+            <div class="text-sm text-stone-700 whitespace-pre-line mb-3">{{ meeting_join_instructions }}</div>
+          {% endif -%}
+        {% endif -%}
         <div class="flex flex-wrap items-center gap-3">
           {% if show_join_link_session -%}
             {% if let Some(meeting_join_url) = &session.meeting_join_url -%}
