@@ -363,8 +363,8 @@
                         hidden
                       {% endif %}
                       mt-6 sm:mt-8">
-            <div class="border border-stone-200 bg-stone-50 rounded-lg p-4 sm:p-5">
-              <div class="flex items-center gap-2 mb-3">
+            <div class="border border-stone-200 bg-stone-50 rounded-lg px-4 pt-4 pb-6 sm:px-5 sm:pt-5 sm:pb-7">
+              <div class="flex items-center gap-2 mb-6">
                 <div class="svg-icon size-4 bg-stone-700 icon-meeting"></div>
                 <div class="text-sm font-semibold uppercase tracking-wide text-stone-700">Meeting details</div>
               </div>
@@ -374,7 +374,7 @@
                 {% endif -%}
               {% endif -%}
               {% if show_join_link || show_recording_link -%}
-                <div class="text-sm text-stone-700 mb-4">
+                <div class="text-sm text-stone-700 mb-6">
                   {% if show_join_link -%}
                     Use the link below to join the session.
                   {% else -%}
@@ -382,7 +382,7 @@
                   {% endif -%}
                 </div>
               {% endif -%}
-              <div class="flex flex-wrap items-center gap-3">
+              <div class="flex flex-wrap items-center gap-3 mt-1">
                 {% if show_join_link -%}
                   {% if let Some(meeting_join_url) = &meeting_join_url -%}
                     <div data-join-link-always>
@@ -685,10 +685,10 @@
            class="{% if !show_recording_link_session %}
                     hidden
                   {% endif %}
-                  mt-3">
+                  mt-3 pb-1">
         {% if show_join_instructions_session -%}
           {% if let Some(meeting_join_instructions) = &session.meeting_join_instructions -%}
-            <div class="text-sm text-stone-700 whitespace-pre-line mb-3">{{ meeting_join_instructions }}</div>
+            <div class="text-sm text-stone-700 whitespace-pre-line mb-6">{{ meeting_join_instructions }}</div>
           {% endif -%}
         {% endif -%}
         <div class="flex flex-wrap items-center gap-3">
