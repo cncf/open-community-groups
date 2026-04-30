@@ -10,7 +10,7 @@
 {% endblock preheader -%}
 
 {% block content -%}
-  <p class="default mb-30">
+  <div class="default mb-30">
     Friendly reminder that <strong>{{ event.name }}</strong> from
     <strong>{{ event.group_name }}</strong> starts in less than 24 hours.
     <br />
@@ -41,10 +41,11 @@
     {% if let Some(meeting_join_instructions) = &event.meeting_join_instructions -%}
       Meeting instructions:
       <br />
-      <span class="preline">{{ meeting_join_instructions }}</span>
+      <br />
+      <blockquote class="join-instructions">{{ meeting_join_instructions }}</blockquote>
       <br />
     {% endif -%}
-  </p>
+  </div>
 
   {{ email::button(link = link, text = "View event") }}
 {% endblock content -%}

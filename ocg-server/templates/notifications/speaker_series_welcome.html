@@ -31,7 +31,7 @@
   </p>
 
   {% for item in events -%}
-    <p class="default mb-15">
+    <div class="default mb-15">
       <strong>
         <a href="{{ item.link }}" target="_blank" rel="noopener noreferrer">{{ item.event.name }}</a>
       </strong>
@@ -61,10 +61,11 @@
       {% if let Some(meeting_join_instructions) = &item.event.meeting_join_instructions -%}
         Meeting instructions:
         <br />
-        <span class="preline">{{ meeting_join_instructions }}</span>
+        <br />
+        <blockquote class="join-instructions">{{ meeting_join_instructions }}</blockquote>
         <br />
       {% endif -%}
-    </p>
+    </div>
   {% endfor -%}
 
   <p class="default mt-30 mb-15">Thanks for speaking!</p>
