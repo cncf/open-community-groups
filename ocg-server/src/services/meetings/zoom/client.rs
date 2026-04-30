@@ -9,7 +9,7 @@ use percent_encoding::{NON_ALPHANUMERIC, utf8_percent_encode};
 use reqwest::Client as HttpClient;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
-use tokio::sync::Mutex;
+use tokio::{sync::Mutex, time::sleep};
 use tracing::{instrument, trace};
 
 use crate::{config::MeetingsZoomConfig, services::meetings::Meeting};
@@ -37,6 +37,9 @@ const MIN_DURATION_MINUTES: i64 = 5;
 /// Margin before token expiry to trigger refresh.
 const TOKEN_EXPIRY_MARGIN: Duration = Duration::from_mins(5);
 
+/// Minimum delay between Zoom HTTP requests.
+const ZOOM_REQUEST_INTERVAL: Duration = Duration::from_secs(1);
+
 /// Zoom OAuth token endpoint.
 const ZOOM_TOKEN_URL: &str = "https://zoom.us/oauth/token";
 
@@ -45,6 +48,7 @@ pub(crate) struct ZoomClient {
     cfg: MeetingsZoomConfig,
     http_client: HttpClient,
 
+    next_request_at: Mutex<Option<Instant>>,
     token: Mutex<Option<CachedToken>>,
 }
 
@@ -59,6 +63,7 @@ impl ZoomClient {
         Self {
             cfg,
             http_client,
+            next_request_at: Mutex::new(None),
             token: Mutex::new(None),
         }
     }
@@ -78,6 +83,7 @@ impl ZoomClient {
             .map_err(|e| ZoomClientError::Token(e.to_string()))?;
         let encoded_host_user_id = utf8_percent_encode(host_user_id, NON_ALPHANUMERIC).to_string();
         let url = format!("{BASE_URL}/users/{encoded_host_user_id}/meetings");
+        self.wait_for_request_slot().await;
         let response = self
             .http_client
             .post(&url)
@@ -106,6 +112,7 @@ impl ZoomClient {
             .await
             .map_err(|e| ZoomClientError::Token(e.to_string()))?;
         let url = format!("{BASE_URL}/meetings/{meeting_id}");
+        self.wait_for_request_slot().await;
         let response = self
             .http_client
             .delete(&url)
@@ -131,6 +138,7 @@ impl ZoomClient {
             .map_err(|e| ZoomClientError::Token(e.to_string()))?;
         let url = format!("{BASE_URL}/meetings/{meeting_id}/status");
         let req = UpdateMeetingStatusRequest { action: "end" };
+        self.wait_for_request_slot().await;
         let response = self
             .http_client
             .put(&url)
@@ -156,6 +164,7 @@ impl ZoomClient {
             .await
             .map_err(|e| ZoomClientError::Token(e.to_string()))?;
         let url = format!("{BASE_URL}/meetings/{meeting_id}");
+        self.wait_for_request_slot().await;
         let response = self
             .http_client
             .get(&url)
@@ -187,6 +196,7 @@ impl ZoomClient {
             .await
             .map_err(|e| ZoomClientError::Token(e.to_string()))?;
         let url = format!("{BASE_URL}/meetings/{meeting_id}");
+        self.wait_for_request_slot().await;
         let response = self
             .http_client
             .patch(&url)
@@ -212,6 +222,7 @@ impl ZoomClient {
         let encoded = BASE64.encode(credentials.as_bytes());
 
         // Make the token request
+        self.wait_for_request_slot().await;
         let response = self
             .http_client
             .post(ZOOM_TOKEN_URL)
@@ -254,6 +265,23 @@ impl ZoomClient {
         *token_guard = Some(new_token);
 
         Ok(access_token)
+    }
+
+    /// Wait until the next Zoom HTTP request can start.
+    async fn wait_for_request_slot(&self) {
+        // Serialize slot checks so concurrent workers cannot race past the limit
+        let mut next_request_at = self.next_request_at.lock().await;
+        let now = Instant::now();
+
+        // Wait for the current slot when another request was sent too recently
+        if let Some(allowed_at) = *next_request_at
+            && now < allowed_at
+        {
+            sleep(allowed_at - now).await;
+        }
+
+        // Reserve the following slot before releasing the lock
+        *next_request_at = Some(Instant::now() + ZOOM_REQUEST_INTERVAL);
     }
 }
 
