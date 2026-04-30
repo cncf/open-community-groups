@@ -231,7 +231,7 @@ describe("event-selector", () => {
 
     const element = await renderSelector();
 
-    element._applyEventDetails({
+    await element._applyEventDetails({
       name: "Cloud Native Málaga",
       category_name: "Conference",
       kind: "workshop",
@@ -348,5 +348,28 @@ describe("event-selector", () => {
     expect(sessionsSection.sessions).to.deep.equal([]);
     expect(timezoneSelector.value).to.equal("Europe/Madrid");
     expect(resetCalls).to.equal(1);
+
+    document.getElementById("meeting_join_instructions").value = "stale instructions";
+    document.getElementById("meeting_join_url").value = "https://stale.example.com";
+    manualMeetingDetails = null;
+
+    await element._applyEventDetails({
+      name: "Automatic Meeting Event",
+      category_name: "Conference",
+      kind: "workshop",
+      meeting_requested: true,
+      ticket_types: [],
+      discount_codes: [],
+      photos_urls: [],
+      tags: [],
+      hosts: [],
+      sponsors: [],
+      timezone: "Europe/Madrid",
+    });
+
+    expect(document.getElementById("meeting_join_instructions")?.value).to.equal("");
+    expect(document.getElementById("meeting_join_url")?.value).to.equal("");
+    expect(manualMeetingDetails).to.equal(null);
+    expect(resetCalls).to.equal(2);
   });
 });

@@ -335,6 +335,8 @@ class EventSelector extends LitWrapper {
    * Resets meeting-related fields to avoid copying existing links or sync state.
    */
   _resetMeetingFields() {
+    setTextValue("meeting_join_instructions", "");
+    setTextValue("meeting_join_url", "");
     setTextValue("meeting_recording_url", "");
     const meetingDetails = document.querySelector("online-event-details");
     if (meetingDetails && typeof meetingDetails.reset === "function") {
