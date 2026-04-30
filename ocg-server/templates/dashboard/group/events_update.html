@@ -686,6 +686,10 @@
               meeting-join-url="{{ meeting_join_url }}"
             {% endif %}
 
+            {% if let Some(meeting_join_instructions) = &event.meeting_join_instructions %}
+              meeting-join-instructions="{{ meeting_join_instructions|json }}"
+            {% endif %}
+
             {% if let Some(meeting_recording_url) = &event.meeting_recording_url %}
               meeting-recording-url="{{ meeting_recording_url }}"
             {% endif %}
@@ -720,6 +724,18 @@
                            {% if let Some(meeting_join_url) = &event.meeting_join_url %}value="{{ meeting_join_url }}"{% endif %}>
                   </div>
                   <p class="form-legend">Teams, Meet, or any other video link.</p>
+                </div>
+                <div class="space-y-2">
+                  <label for="meeting_join_instructions" class="form-label">Join instructions (optional)</label>
+                  <div class="mt-2">
+                    <textarea id="meeting_join_instructions"
+                              name="meeting_join_instructions"
+                              rows="4"
+                              maxlength="{{ crate::validation::MAX_LEN_DESCRIPTION_SHORT }}"
+                              class="input-primary"
+                              placeholder="Add passcodes, waiting room details, or other attendee instructions.">{% if let Some(meeting_join_instructions) = &event.meeting_join_instructions %}{{ meeting_join_instructions }}{% endif %}</textarea>
+                  </div>
+                  <p class="form-legend">Shown with the meeting details on the public event page.</p>
                 </div>
                 <div class="space-y-2">
                   <label for="meeting_recording_url" class="form-label">Recording URL (optional)</label>

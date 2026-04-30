@@ -17,6 +17,7 @@ begin
           and e.deleted = false
           and e.canceled = false
           and e.published = true
+          and e.starts_at > current_timestamp
         for update skip locked
         limit 1
     ),
@@ -77,6 +78,7 @@ begin
           and e.deleted = false
           and e.canceled = false
           and e.published = true
+          and s.starts_at > current_timestamp
         for update of s skip locked
         limit 1
     ),

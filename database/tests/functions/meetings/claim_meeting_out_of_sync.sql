@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(25);
+select plan(26);
 
 -- ============================================================================
 -- VARIABLES
@@ -19,6 +19,7 @@ select plan(25);
 \set eventInSyncID '00000000-0000-0000-0000-000000001521'
 \set eventNoRequestID '00000000-0000-0000-0000-000000001522'
 \set eventOrphanCascadeID '00000000-0000-0000-0000-000000001527'
+\set eventPastImportID '00000000-0000-0000-0000-000000001551'
 \set eventUnpublishedID '00000000-0000-0000-0000-000000001517'
 \set eventUnpublishedWithMeetingID '00000000-0000-0000-0000-000000001528'
 \set eventUpdateID '00000000-0000-0000-0000-000000001513'
@@ -44,6 +45,7 @@ select plan(25);
 \set sessionDeleteID '00000000-0000-0000-0000-000000001525'
 \set sessionDisabledID '00000000-0000-0000-0000-000000001531'
 \set sessionOrphanCascadeID '00000000-0000-0000-0000-000000001532'
+\set sessionPastImportID '00000000-0000-0000-0000-000000001552'
 \set sessionUnpublishedNoMeetingID '00000000-0000-0000-0000-000000001549'
 \set sessionUnpublishedWithMeetingID '00000000-0000-0000-0000-000000001550'
 \set sessionUpdateID '00000000-0000-0000-0000-000000001524'
@@ -323,6 +325,26 @@ insert into event (
     100,
     false,
     false,
+    'Past import event exclusion',
+    '2020-06-11 11:00:00+00',
+    :'categoryID',
+    :'eventPastImportID',
+    'virtual',
+    :'groupID',
+    null,
+    true,
+    'zoom',
+    true,
+    'Past Import Event Test',
+    true,
+    'past-import-event-test',
+    '2020-06-11 10:00:00+00',
+    'UTC'
+),
+(
+    100,
+    false,
+    false,
     'Event for hard-delete orphan meetings',
     '2026-06-10 11:00:00+00',
     :'categoryID',
@@ -461,6 +483,18 @@ insert into session (
     :'sessionOrphanCascadeID',
     'virtual',
     '2026-06-10 10:00:00+00'
+),
+(
+    '2020-06-11 10:30:00+00',
+    :'eventPastImportID',
+    null,
+    true,
+    'zoom',
+    true,
+    'Past Import Session Test',
+    :'sessionPastImportID',
+    'virtual',
+    '2020-06-11 10:00:00+00'
 );
 
 -- Hosts and speakers for combined hosts testing
@@ -1008,6 +1042,21 @@ select is(
     claim_meeting_out_of_sync(),
     null::jsonb,
     'Empty queue returns null'
+);
+
+-- Imported past events and sessions are never claimed for provider create/update
+update event
+set meeting_in_sync = false,
+    meeting_sync_claimed_at = null
+where event_id = :'eventPastImportID';
+update session
+set meeting_in_sync = false,
+    meeting_sync_claimed_at = null
+where session_id = :'sessionPastImportID';
+select is(
+    claim_meeting_out_of_sync(),
+    null::jsonb,
+    'Past event and session automatic meetings are skipped'
 );
 
 -- Republished event triggers create instead of delete

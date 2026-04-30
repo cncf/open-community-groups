@@ -185,6 +185,7 @@ with new_event as (
             "ends_at": "2030-01-01T12:00:00",
             "logo_url": "https://example.com/logo.png",
             "meeting_hosts": ["host1@example.com", "host2@example.com"],
+            "meeting_join_instructions": "Use the waiting room display name from your ticket.",
             "meeting_join_url": "https://youtube.com/live",
             "meeting_recording_url": "https://youtube.com/recording",
             "meetup_url": "https://meetup.com/event",
@@ -220,6 +221,7 @@ with new_event as (
                     "ends_at": "2030-01-01T11:45:00",
                     "kind": "virtual",
                     "meeting_hosts": ["session-host@example.com"],
+                    "meeting_join_instructions": "Use the session access code from your email.",
                     "meeting_join_url": "https://youtube.com/live/session2",
                     "speakers": [
                         {"user_id": "00000000-0000-0000-0000-000000000020", "featured": false},
@@ -270,6 +272,7 @@ select ok(
         "ends_at": 1893528000,
         "logo_url": "https://example.com/logo.png",
         "meeting_hosts": ["host1@example.com", "host2@example.com"],
+        "meeting_join_instructions": "Use the waiting room display name from your ticket.",
         "meeting_join_url": "https://youtube.com/live",
         "meeting_recording_url": "https://youtube.com/recording",
         "meetup_url": "https://meetup.com/event",
@@ -311,6 +314,7 @@ select ok(
                 "ends_at": 1893527100,
                 "kind": "virtual",
                 "meeting_hosts": ["session-host@example.com"],
+                "meeting_join_instructions": "Use the session access code from your email.",
                 "meeting_join_url": "https://youtube.com/live/session2",
                 "speakers": [
                     {"name": "Host One", "user_id": "00000000-0000-0000-0000-000000000020", "username": "host1", "featured": false},

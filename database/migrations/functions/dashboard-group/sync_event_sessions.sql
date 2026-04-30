@@ -53,6 +53,7 @@ begin
                         then false
                         else is_session_meeting_in_sync(v_session_before, v_session, p_event_before, p_event)
                     end,
+                    meeting_join_instructions = nullif(v_session->>'meeting_join_instructions', ''),
                     meeting_join_url = nullif(v_session->>'meeting_join_url', ''),
                     meeting_provider_id = nullif(v_session->>'meeting_provider_id', ''),
                     meeting_recording_url = nullif(v_session->>'meeting_recording_url', ''),
@@ -80,6 +81,7 @@ begin
                     location,
                     meeting_hosts,
                     meeting_in_sync,
+                    meeting_join_instructions,
                     meeting_join_url,
                     meeting_provider_id,
                     meeting_recording_url,
@@ -98,6 +100,7 @@ begin
                         when (v_session->>'meeting_requested')::boolean = true then false
                         else null
                     end,
+                    nullif(v_session->>'meeting_join_instructions', ''),
                     nullif(v_session->>'meeting_join_url', ''),
                     nullif(v_session->>'meeting_provider_id', ''),
                     nullif(v_session->>'meeting_recording_url', ''),

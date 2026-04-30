@@ -87,6 +87,8 @@ pub struct EventSummary {
     pub latitude: Option<f64>,
     /// Longitude of the event's location.
     pub longitude: Option<f64>,
+    /// Extra instructions attendees need to join the meeting.
+    pub meeting_join_instructions: Option<String>,
     /// URL to join the meeting.
     pub meeting_join_url: Option<String>,
     /// Password required to join the meeting.
@@ -276,6 +278,8 @@ pub struct EventFull {
     pub meeting_hosts: Option<Vec<String>>,
     /// Whether the event meeting is in sync.
     pub meeting_in_sync: Option<bool>,
+    /// Extra instructions attendees need to join the event meeting.
+    pub meeting_join_instructions: Option<String>,
     /// URL to join the meeting.
     pub meeting_join_url: Option<String>,
     /// Password required to join the event meeting.
@@ -496,6 +500,7 @@ impl From<&EventFull> for EventSummary {
             event_series_id: event.event_series_id,
             latitude: event.latitude,
             longitude: event.longitude,
+            meeting_join_instructions: event.meeting_join_instructions.clone(),
             meeting_join_url: event.meeting_join_url.clone(),
             meeting_password: event.meeting_password.clone(),
             meeting_provider: event.meeting_provider,
@@ -701,6 +706,8 @@ pub struct Session {
     pub meeting_hosts: Option<Vec<String>>,
     /// Whether the meeting data is in sync with the provider.
     pub meeting_in_sync: Option<bool>,
+    /// Extra instructions attendees need to join the session meeting.
+    pub meeting_join_instructions: Option<String>,
     /// URL to join the meeting.
     pub meeting_join_url: Option<String>,
     /// Password required to join the session meeting.
@@ -1391,6 +1398,7 @@ mod tests {
             event_series_id: None,
             latitude: None,
             longitude: None,
+            meeting_join_instructions: None,
             meeting_join_url: None,
             meeting_password: None,
             meeting_provider: None,

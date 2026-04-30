@@ -467,6 +467,7 @@ pub(crate) fn sample_event_summary(event_id: Uuid, _group_id: Uuid) -> EventSumm
         event_series_id: None,
         latitude: Some(42.3601),
         longitude: Some(-71.0589),
+        meeting_join_instructions: None,
         meeting_join_url: Some("https://example.test/meeting".to_string()),
         meeting_password: None,
         meeting_provider: None,

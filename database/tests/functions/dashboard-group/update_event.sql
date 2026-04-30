@@ -1658,6 +1658,7 @@ select lives_ok(
             "ends_at": "2030-02-01T16:00:00",
             "logo_url": "https://example.com/new-logo.png",
             "meeting_hosts": ["althost1@example.com", "althost2@example.com"],
+            "meeting_join_instructions": "Use the event ticket name when joining.",
             "meeting_join_url": "https://youtube.com/new-live",
             "meeting_recording_url": "https://youtube.com/new-recording",
             "meetup_url": "https://meetup.com/new-event",
@@ -1732,6 +1733,7 @@ select is(
         "starts_at": 1896152400,
         "ends_at": 1896159600,
         "logo_url": "https://example.com/new-logo.png",
+        "meeting_join_instructions": "Use the event ticket name when joining.",
         "meeting_join_url": "https://youtube.com/new-live",
         "meeting_recording_url": "https://youtube.com/new-recording",
         "meetup_url": "https://meetup.com/new-event",
@@ -2462,7 +2464,7 @@ select lives_ok(
             "hosts": ["00000000-0000-0000-0000-000000000020"],
             "speakers": [{"user_id": "00000000-0000-0000-0000-000000000022", "featured": true}],
             "sponsors": [{"group_sponsor_id": "00000000-0000-0000-0000-000000000061", "level": "Gold"}],
-            "sessions": [{"name": "Past Session", "starts_at": "2020-01-02T10:30:00", "ends_at": "2020-01-02T11:30:00", "kind": "virtual"}]
+            "sessions": [{"name": "Past Session", "starts_at": "2020-01-02T10:30:00", "ends_at": "2020-01-02T11:30:00", "kind": "virtual", "meeting_join_instructions": "Past session instructions"}]
         }'::jsonb
     )$$,
     'Should update all fields on past events'
@@ -2585,6 +2587,7 @@ select is(
     (
         select jsonb_build_object(
             'ends_at', ends_at,
+            'meeting_join_instructions', meeting_join_instructions,
             'name', name,
             'session_kind_id', session_kind_id,
             'starts_at', starts_at
@@ -2595,6 +2598,7 @@ select is(
     ),
     jsonb_build_object(
         'ends_at', '2020-01-02 11:30:00+00'::timestamptz,
+        'meeting_join_instructions', 'Past session instructions',
         'name', 'Past Session',
         'session_kind_id', 'virtual',
         'starts_at', '2020-01-02 10:30:00+00'::timestamptz

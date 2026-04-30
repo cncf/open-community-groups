@@ -176,6 +176,7 @@ describe("event-selector", () => {
       <input id="venue_address" />
       <input id="venue_city" />
       <input id="venue_zip_code" />
+      <textarea id="meeting_join_instructions">filled</textarea>
       <input id="meeting_join_url" value="filled" />
       <input id="meeting_recording_url" value="filled" />
       <ticket-types-editor id="ticket-types-ui" ticket-types="[]" data-disabled="false"></ticket-types-editor>
@@ -217,8 +218,12 @@ describe("event-selector", () => {
 
     const meetingDetails = document.querySelector("online-event-details");
     let resetCalls = 0;
+    let manualMeetingDetails = null;
     meetingDetails.reset = () => {
       resetCalls += 1;
+    };
+    meetingDetails.setManualMeetingDetails = (fields) => {
+      manualMeetingDetails = fields;
     };
 
     const editor = document.querySelector("markdown-editor#description");
@@ -226,7 +231,7 @@ describe("event-selector", () => {
 
     const element = await renderSelector();
 
-    element._applyEventDetails({
+    await element._applyEventDetails({
       name: "Cloud Native Málaga",
       category_name: "Conference",
       kind: "workshop",
@@ -237,6 +242,9 @@ describe("event-selector", () => {
       event_reminder_enabled: true,
       registration_required: true,
       meetup_url: "https://meetup.com/cloud-native-malaga",
+      meeting_join_instructions: "Use your registration name when joining.",
+      meeting_join_url: "https://meet.example.com/cloud-native-malaga",
+      meeting_recording_url: "https://video.example.com/old-recording",
       payment_currency_code: "EUR",
       photos_urls: [" one.png ", "two.png"],
       tags: ["cloud", " malaga "],
@@ -292,8 +300,17 @@ describe("event-selector", () => {
     expect(document.getElementById("meetup_url")?.value).to.equal("https://meetup.com/cloud-native-malaga");
     expect(document.getElementById("payment_currency_code")?.value).to.equal("EUR");
     expect(document.getElementById("venue_city")?.value).to.equal("Málaga");
-    expect(document.getElementById("meeting_join_url")?.value).to.equal("");
+    expect(document.getElementById("meeting_join_instructions")?.value).to.equal(
+      "Use your registration name when joining.",
+    );
+    expect(document.getElementById("meeting_join_url")?.value).to.equal(
+      "https://meet.example.com/cloud-native-malaga",
+    );
     expect(document.getElementById("meeting_recording_url")?.value).to.equal("");
+    expect(manualMeetingDetails).to.deep.equal({
+      meeting_join_instructions: "Use your registration name when joining.",
+      meeting_join_url: "https://meet.example.com/cloud-native-malaga",
+    });
     expect(ticketTypesEditor.querySelector('input[name="ticket_types[0][title]"]')?.value).to.equal(
       "General admission",
     );
@@ -331,5 +348,28 @@ describe("event-selector", () => {
     expect(sessionsSection.sessions).to.deep.equal([]);
     expect(timezoneSelector.value).to.equal("Europe/Madrid");
     expect(resetCalls).to.equal(1);
+
+    document.getElementById("meeting_join_instructions").value = "stale instructions";
+    document.getElementById("meeting_join_url").value = "https://stale.example.com";
+    manualMeetingDetails = null;
+
+    await element._applyEventDetails({
+      name: "Automatic Meeting Event",
+      category_name: "Conference",
+      kind: "workshop",
+      meeting_requested: true,
+      ticket_types: [],
+      discount_codes: [],
+      photos_urls: [],
+      tags: [],
+      hosts: [],
+      sponsors: [],
+      timezone: "Europe/Madrid",
+    });
+
+    expect(document.getElementById("meeting_join_instructions")?.value).to.equal("");
+    expect(document.getElementById("meeting_join_url")?.value).to.equal("");
+    expect(manualMeetingDetails).to.equal(null);
+    expect(resetCalls).to.equal(2);
   });
 });

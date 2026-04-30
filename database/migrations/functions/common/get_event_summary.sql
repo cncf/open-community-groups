@@ -37,6 +37,7 @@ returns json as $$
         'latitude', st_y(e.location::geometry),
         'logo_url', coalesce(e.logo_url, g.logo_url, c.logo_url),
         'longitude', st_x(e.location::geometry),
+        'meeting_join_instructions', e.meeting_join_instructions,
         'meeting_join_url', coalesce(m_event.join_url, e.meeting_join_url),
         'meeting_password', m_event.password,
         'meeting_provider', e.meeting_provider_id,
