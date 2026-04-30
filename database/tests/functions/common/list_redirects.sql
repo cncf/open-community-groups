@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(6);
+select plan(7);
 
 -- ============================================================================
 -- VARIABLES
@@ -30,6 +30,7 @@ select plan(6);
 \set inactiveGroupID '00000000-0000-0000-0000-000000000204'
 \set rootGroupID '00000000-0000-0000-0000-000000000206'
 \set sharedPathGroupID '00000000-0000-0000-0000-000000000209'
+\set scopedDuplicateGroupID '00000000-0000-0000-0000-000000000210'
 \set sharedPathEventID '00000000-0000-0000-0000-000000000107'
 
 -- ============================================================================
@@ -82,6 +83,7 @@ insert into "group" (
     (:'duplicateGroupOnlyID', :'duplicateCommunityID', :'duplicateGroupCategoryID', 'Duplicate Group Only', 'duplicate-group-only', 'Another group sharing the same legacy URL', 'https://legacy.example.org/group-duplicate'),
     (:'inactiveGroupID', :'inactiveCommunityID', :'inactiveGroupCategoryID', 'Inactive Group', 'inactive-group', 'A group under an inactive community', 'https://legacy.example.org/inactive-group'),
     (:'rootGroupID', :'activeCommunityID', :'activeGroupCategoryID', 'Root Group', 'root-group', 'A group using the site root as legacy URL', 'https://legacy.example.org'),
+    (:'scopedDuplicateGroupID', :'duplicateCommunityID', :'duplicateGroupCategoryID', 'Scoped Duplicate Group', 'scoped-duplicate-group', 'A group sharing a legacy URL path across communities', 'https://legacy-duplicate.example.org/groups/active'),
     (:'sharedPathGroupID', :'activeCommunityID', :'activeGroupCategoryID', 'Shared Path Group', 'shared-path-group', 'A group sharing a path with an event', 'https://legacy.example.org/shared-path');
 
 -- Events
@@ -112,15 +114,16 @@ insert into event (
 -- Should return all unique normalized redirect mappings ordered by legacy path
 select is(
     (
-        select jsonb_agg(row_to_json(r) order by r.legacy_path)
+        select jsonb_agg(row_to_json(r) order by r.community_name, r.legacy_path)
         from list_redirects() r
     ),
     '[
-        {"legacy_path": "/", "new_path": "/active-community/group/root-group"},
-        {"legacy_path": "/events/active", "new_path": "/active-community/group/active-group/event/active-event"},
-        {"legacy_path": "/events/active-slash", "new_path": "/active-community/group/active-group/event/active-event-slash"},
-        {"legacy_path": "/groups/active", "new_path": "/active-community/group/active-group"},
-        {"legacy_path": "/groups/active-slash", "new_path": "/active-community/group/active-group-slash"}
+        {"community_name": "active-community", "legacy_path": "/", "new_path": "/active-community/group/root-group"},
+        {"community_name": "active-community", "legacy_path": "/events/active", "new_path": "/active-community/group/active-group/event/active-event"},
+        {"community_name": "active-community", "legacy_path": "/events/active-slash", "new_path": "/active-community/group/active-group/event/active-event-slash"},
+        {"community_name": "active-community", "legacy_path": "/groups/active", "new_path": "/active-community/group/active-group"},
+        {"community_name": "active-community", "legacy_path": "/groups/active-slash", "new_path": "/active-community/group/active-group-slash"},
+        {"community_name": "duplicate-community", "legacy_path": "/groups/active", "new_path": "/duplicate-community/group/scoped-duplicate-group"}
     ]'::jsonb,
     'Should return all unique normalized redirect mappings ordered by legacy path'
 );
@@ -130,10 +133,25 @@ select is(
     (
         select new_path
         from list_redirects()
-        where legacy_path = '/groups/active'
+        where community_name = 'active-community'
+          and legacy_path = '/groups/active'
     ),
     '/active-community/group/active-group',
     'Should return canonical relative paths without the base URL prefix'
+);
+
+-- Should scope duplicate legacy paths by community
+select is(
+    (
+        select jsonb_agg(row_to_json(r) order by r.community_name)
+        from list_redirects() r
+        where legacy_path = '/groups/active'
+    ),
+    '[
+        {"community_name": "active-community", "legacy_path": "/groups/active", "new_path": "/active-community/group/active-group"},
+        {"community_name": "duplicate-community", "legacy_path": "/groups/active", "new_path": "/duplicate-community/group/scoped-duplicate-group"}
+    ]'::jsonb,
+    'Should scope duplicate legacy paths by community'
 );
 
 -- Should exclude duplicate group legacy paths

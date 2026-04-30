@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(232);
+select plan(233);
 
 -- ============================================================================
 -- TESTS
@@ -127,6 +127,7 @@ select has_function('list_group_sponsors');
 select has_function('list_group_team_members');
 select has_function('list_group_team_members_ids');
 select has_function('list_payment_currency_codes');
+select has_function('list_redirect_communities');
 select has_function('list_redirects');
 select has_function('list_regions');
 select has_function('list_session_kinds');

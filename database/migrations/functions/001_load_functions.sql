@@ -23,6 +23,7 @@
 {{ template "common/get_group_full.sql" }}
 {{ template "common/insert_audit_log.sql" }}
 {{ template "common/list_event_cfs_labels.sql" }}
+{{ template "common/list_redirect_communities.sql" }}
 {{ template "common/list_redirects.sql" }}
 {{ template "common/search_events.sql" }}
 {{ template "common/search_groups.sql" }}

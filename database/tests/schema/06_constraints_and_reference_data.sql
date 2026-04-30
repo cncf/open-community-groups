@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(42);
+select plan(46);
 
 -- ============================================================================
 -- TESTS
@@ -11,6 +11,127 @@ select plan(42);
 
 -- Test: custom_notification table expected constraints exist
 select has_check('custom_notification');
+
+-- Test: community redirect settings table expected constraints exist
+select has_check(
+    'community_redirect_settings',
+    'community_redirect_settings_base_legacy_url_chk'
+);
+
+-- Test: community redirect settings should accept absolute legacy origin URLs
+select lives_ok(
+    $$
+        with inserted_community as (
+            insert into community (
+                community_id,
+                name,
+                display_name,
+                description,
+                logo_url,
+                banner_mobile_url,
+                banner_url
+            ) values (
+                '00000000-0000-0000-0000-000000000501',
+                'redirect-settings-valid',
+                'Redirect Settings Valid',
+                'A community with valid redirect settings',
+                'https://example.com/logo-valid.png',
+                'https://example.com/banner-mobile-valid.png',
+                'https://example.com/banner-valid.png'
+            )
+            returning community_id
+        )
+        insert into community_redirect_settings (
+            community_id,
+
+            base_legacy_url
+        )
+        select
+            community_id,
+
+            'https://legacy.example.org'
+        from inserted_community
+    $$,
+    'Community redirect settings should accept absolute legacy origin URLs'
+);
+
+-- Test: community redirect settings should reject legacy URLs with paths
+select throws_ok(
+    $$
+        with inserted_community as (
+            insert into community (
+                community_id,
+                name,
+                display_name,
+                description,
+                logo_url,
+                banner_mobile_url,
+                banner_url
+            ) values (
+                '00000000-0000-0000-0000-000000000503',
+                'redirect-settings-path',
+                'Redirect Settings Path',
+                'A community with invalid redirect settings',
+                'https://example.com/logo-path.png',
+                'https://example.com/banner-mobile-path.png',
+                'https://example.com/banner-path.png'
+            )
+            returning community_id
+        )
+        insert into community_redirect_settings (
+            community_id,
+
+            base_legacy_url
+        )
+        select
+            community_id,
+
+            'https://legacy.example.org/path'
+        from inserted_community
+    $$,
+    '23514',
+    'new row for relation "community_redirect_settings" violates check constraint "community_redirect_settings_base_legacy_url_chk"',
+    'Community redirect settings should reject legacy URLs with paths'
+);
+
+-- Test: community redirect settings should reject relative legacy URLs
+select throws_ok(
+    $$
+        with inserted_community as (
+            insert into community (
+                community_id,
+                name,
+                display_name,
+                description,
+                logo_url,
+                banner_mobile_url,
+                banner_url
+            ) values (
+                '00000000-0000-0000-0000-000000000502',
+                'redirect-settings-invalid',
+                'Redirect Settings Invalid',
+                'A community with invalid redirect settings',
+                'https://example.com/logo-invalid.png',
+                'https://example.com/banner-mobile-invalid.png',
+                'https://example.com/banner-invalid.png'
+            )
+            returning community_id
+        )
+        insert into community_redirect_settings (
+            community_id,
+
+            base_legacy_url
+        )
+        select
+            community_id,
+
+            'legacy.example.org'
+        from inserted_community
+    $$,
+    '23514',
+    'new row for relation "community_redirect_settings" violates check constraint "community_redirect_settings_base_legacy_url_chk"',
+    'Community redirect settings should reject relative legacy URLs'
+);
 
 -- Test: event table expected constraints exist
 select has_check('event', 'event_check');

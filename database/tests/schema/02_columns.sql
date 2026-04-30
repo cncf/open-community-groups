@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(64);
+select plan(65);
 
 -- ============================================================================
 -- TESTS
@@ -109,6 +109,13 @@ select columns_are('community', array[
     'website_url',
     'wechat_url',
     'youtube_url'
+]);
+
+-- Test: community_redirect_settings columns should match expected
+select columns_are('community_redirect_settings', array[
+    'community_id',
+
+    'base_legacy_url'
 ]);
 
 -- Test: community_site_layout columns should match expected

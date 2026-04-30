@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(148);
+select plan(150);
 
 -- ============================================================================
 -- TESTS
@@ -18,6 +18,7 @@ select has_pk('cfs_submission_rating');
 select has_pk('cfs_submission_status');
 select has_pk('community');
 select has_pk('community_permission');
+select has_pk('community_redirect_settings');
 select has_pk('community_role');
 select has_pk('community_role_community_permission');
 select has_pk('community_role_group_permission');
@@ -74,6 +75,7 @@ select has_pk('user');
 
 -- Test: check tables have expected foreign keys
 select col_is_fk('community', 'community_site_layout_id', 'community_site_layout');
+select col_is_fk('community_redirect_settings', 'community_id', 'community');
 select col_is_fk('community_role_community_permission', 'community_permission_id', 'community_permission');
 select col_is_fk('community_role_community_permission', 'community_role_id', 'community_role');
 select col_is_fk('community_role_group_permission', 'community_role_id', 'community_role');

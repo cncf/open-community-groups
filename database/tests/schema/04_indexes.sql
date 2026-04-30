@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(63);
+select plan(64);
 
 -- ============================================================================
 -- TESTS
@@ -64,6 +64,11 @@ select indexes_are('community', array[
     'community_community_site_layout_id_idx',
     'community_display_name_key',
     'community_name_key'
+]);
+
+-- Test: community_redirect_settings indexes should match expected
+select indexes_are('community_redirect_settings', array[
+    'community_redirect_settings_pkey'
 ]);
 
 -- Test: community_site_layout indexes should match expected

@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(66);
+select plan(67);
 
 -- ============================================================================
 -- TESTS
@@ -23,6 +23,7 @@ select has_table('cfs_submission_rating');
 select has_table('cfs_submission_status');
 select has_table('community');
 select has_table('community_permission');
+select has_table('community_redirect_settings');
 select has_table('community_role');
 select has_table('community_role_community_permission');
 select has_table('community_role_group_permission');

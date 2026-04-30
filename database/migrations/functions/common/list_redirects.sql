@@ -1,12 +1,14 @@
 -- Returns all unique normalized redirect mappings with canonical relative paths.
 create or replace function list_redirects()
 returns table (
+    community_name text,
     legacy_path text,
     new_path text
 ) as $$
     with redirect_candidates as (
         -- Load active group redirect targets
         select
+            c.name as community_name,
             coalesce(
                 nullif(
                     trim(
@@ -32,6 +34,7 @@ returns table (
 
         -- Load published event redirect targets
         select
+            c.name as community_name,
             coalesce(
                 nullif(
                     trim(
@@ -56,12 +59,13 @@ returns table (
           and e.published = true
           and e.legacy_url is not null
     )
-    -- Keep only unique normalized legacy paths
+    -- Keep only unique normalized legacy paths within each community
     select
+        community_name,
         legacy_path,
         min(new_path) as new_path
     from redirect_candidates
-    group by legacy_path
+    group by community_name, legacy_path
     having count(*) = 1
-    order by legacy_path;
+    order by community_name, legacy_path;
 $$ language sql stable;
