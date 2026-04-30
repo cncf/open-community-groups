@@ -586,14 +586,15 @@ class EventSelector extends LitWrapper {
         result.push(...upcomingEvents.slice(0, 5).reverse());
         result.push(...pastEvents.slice(0, 5));
 
-        if (result.length < 10) {
-          const remainingSlots = 10 - result.length;
+        const uniquePrimaryResults = this._uniqueEventsById(result);
+        if (uniquePrimaryResults.length < 10) {
+          const remainingSlots = 10 - uniquePrimaryResults.length;
           const extraUpcoming = upcomingEvents.slice(5, 5 + remainingSlots).reverse();
           const extraPast = pastEvents.slice(5, 5 + remainingSlots);
           result.push(...extraUpcoming, ...extraPast);
         }
 
-        this._primaryResults = result.slice(0, 10);
+        this._primaryResults = this._uniqueEventsById(result).slice(0, 10);
         this._results = this._primaryResults;
         this._activeIndex = -1;
         this._hasFetched = true;
@@ -624,6 +625,27 @@ class EventSelector extends LitWrapper {
   }
 
   /**
+   * Returns the first occurrence of each event id.
+   * @param {object[]} events Event payloads
+   * @returns {object[]}
+   */
+  _uniqueEventsById(events) {
+    const seenEventIds = new Set();
+    return events.filter((event) => {
+      const eventId = event?.event_id;
+      if (!eventId) {
+        return true;
+      }
+      const normalizedEventId = String(eventId);
+      if (seenEventIds.has(normalizedEventId)) {
+        return false;
+      }
+      seenEventIds.add(normalizedEventId);
+      return true;
+    });
+  }
+
+  /**
    * Queries remote events using the selected group id.
    */
   async _fetchEvents() {
@@ -649,12 +671,12 @@ class EventSelector extends LitWrapper {
         query: trimmed,
         dateFrom: this.dateFrom,
       });
-      this._results = events;
+      this._results = this._uniqueEventsById(events);
       this._activeIndex = -1;
       this._hasFetched = true;
       if (this.selectedEventId) {
         const selectedId = String(this.selectedEventId);
-        const match = events.find((item) => item.event_id === selectedId);
+        const match = this._results.find((item) => item.event_id === selectedId);
         if (match) {
           this.selectedEvent = match;
         }
