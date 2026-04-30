@@ -329,6 +329,15 @@
       }
 
       group.setAttribute(auditLogDetailsHoverBoundAttribute, "true");
+      group.addEventListener("mouseenter", () => {
+        const currentTrigger = group.querySelector(auditLogDetailsTriggerSelector);
+
+        document.querySelectorAll(auditLogDetailsTriggerSelector).forEach((trigger) => {
+          if (trigger !== currentTrigger) {
+            setAuditLogDetailsExpanded(trigger, false);
+          }
+        });
+      });
       group.addEventListener("mouseleave", () => {
         group.removeAttribute(auditLogDetailsHoverDisabledAttribute);
       });

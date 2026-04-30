@@ -99,13 +99,12 @@ const bindLifecycleListeners = () => {
 };
 
 // Toggles dropdown visibility when the avatar button is clicked.
-const toggleDropdownVisibility = (event) => {
+const toggleDropdownVisibility = () => {
   const dropdown = document.getElementById("user-dropdown");
   if (!dropdown) {
     return;
   }
 
-  event.stopPropagation();
   dropdown.classList.toggle("hidden");
 };
 

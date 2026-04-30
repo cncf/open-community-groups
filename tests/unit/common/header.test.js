@@ -41,6 +41,27 @@ describe("header", () => {
     expect(dropdown.classList.contains("hidden")).to.equal(true);
   });
 
+  it("allows avatar clicks to close other open popovers", () => {
+    document.body.innerHTML = `
+      <button id="user-dropdown-button" type="button">User</button>
+      <div id="user-dropdown" class="hidden"></div>
+    `;
+
+    initUserDropdown();
+
+    const button = document.getElementById("user-dropdown-button");
+    let documentClickReceived = false;
+    const handleDocumentClick = () => {
+      documentClickReceived = true;
+    };
+
+    document.addEventListener("click", handleDocumentClick);
+    button.click();
+    document.removeEventListener("click", handleDocumentClick);
+
+    expect(documentClickReceived).to.equal(true);
+  });
+
   it("closes the dropdown on escape and focuses the button", () => {
     document.body.innerHTML = `
       <button id="user-dropdown-button" type="button">User</button>
