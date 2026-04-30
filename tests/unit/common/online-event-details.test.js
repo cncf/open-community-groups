@@ -47,6 +47,98 @@ describe("online-event-details", () => {
     expect(element._capacityWarning).to.include("Capacity (150) exceeds");
   });
 
+  it("does not copy synced automatic meeting details into manual fields", async () => {
+    const element = await mountLitComponent("online-event-details", {
+      meetingInSync: true,
+      meetingJoinUrl: "https://zoom.us/j/synced",
+      meetingRecordingUrl: "https://zoom.us/rec/share/synced",
+      meetingRequested: true,
+    });
+
+    globalThis.Swal = {
+      fire: async () => ({ isConfirmed: true }),
+    };
+
+    await element._handleModeChange({
+      preventDefault() {},
+      target: { value: "manual" },
+    });
+
+    expect(element._mode).to.equal("manual");
+    expect(element._joinUrl).to.equal("");
+    expect(element._recordingUrl).to.equal("");
+    expect(element.getMeetingData()).to.deep.equal({
+      meeting_join_url: "",
+      meeting_recording_url: "",
+      meeting_requested: false,
+      meeting_provider_id: "",
+    });
+  });
+
+  it("restores synced automatic recording when switching back without saving", async () => {
+    const element = await mountLitComponent("online-event-details", {
+      endsAt: "2030-05-10T12:00",
+      kind: "virtual",
+      meetingInSync: true,
+      meetingJoinUrl: "https://zoom.us/j/synced",
+      meetingRecordingUrl: "https://zoom.us/rec/share/synced",
+      meetingRequested: true,
+      startsAt: "2030-05-10T10:00",
+    });
+
+    globalThis.Swal = {
+      fire: async () => ({ isConfirmed: true }),
+    };
+
+    await element._handleModeChange({
+      preventDefault() {},
+      target: { value: "manual" },
+    });
+    await element._handleModeChange({
+      preventDefault() {},
+      target: { value: "automatic" },
+    });
+
+    expect(element._mode).to.equal("automatic");
+    expect(element._joinUrl).to.equal("");
+    expect(element._recordingUrl).to.equal("https://zoom.us/rec/share/synced");
+    expect(element.getMeetingData()).to.deep.equal({
+      meeting_join_url: "",
+      meeting_recording_url: "https://zoom.us/rec/share/synced",
+      meeting_requested: true,
+      meeting_provider_id: "zoom",
+    });
+  });
+
+  it("keeps automatic recording edits when switching to manual without saving", async () => {
+    const element = await mountLitComponent("online-event-details", {
+      meetingInSync: true,
+      meetingRecordingUrl: "https://zoom.us/rec/share/synced",
+      meetingRequested: true,
+    });
+
+    globalThis.Swal = {
+      fire: async () => ({ isConfirmed: true }),
+    };
+
+    element._handleRecordingUrlChange({
+      target: { value: " https://youtube.com/watch?v=processed " },
+    });
+    await element._handleModeChange({
+      preventDefault() {},
+      target: { value: "manual" },
+    });
+
+    expect(element._mode).to.equal("manual");
+    expect(element._recordingUrl).to.equal(" https://youtube.com/watch?v=processed ");
+    expect(element.getMeetingData()).to.deep.equal({
+      meeting_join_url: "",
+      meeting_recording_url: "https://youtube.com/watch?v=processed",
+      meeting_requested: false,
+      meeting_provider_id: "",
+    });
+  });
+
   it("preserves recording overrides when switching from manual to automatic mode", async () => {
     const capacity = document.createElement("input");
     capacity.id = "capacity";
