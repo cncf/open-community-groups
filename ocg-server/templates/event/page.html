@@ -368,19 +368,19 @@
                 <div class="svg-icon size-4 bg-stone-700 icon-meeting"></div>
                 <div class="text-sm font-semibold uppercase tracking-wide text-stone-700">Meeting details</div>
               </div>
-              <div class="text-sm text-stone-700 mb-4">
-                {% if show_join_link -%}
-                  Use the link below to join the session.
-                {% elif show_join_instructions -%}
-                  Review the instructions below before joining.
-                {% else -%}
-                  Use the link below to watch the recording.
-                {% endif -%}
-              </div>
               {% if show_join_instructions -%}
                 {% if let Some(meeting_join_instructions) = &meeting_join_instructions -%}
                   <div class="text-sm text-stone-700 whitespace-pre-line mb-4">{{ meeting_join_instructions }}</div>
                 {% endif -%}
+              {% endif -%}
+              {% if show_join_link || show_recording_link -%}
+                <div class="text-sm text-stone-700 mb-4">
+                  {% if show_join_link -%}
+                    Use the link below to join the session.
+                  {% else -%}
+                    Use the link below to watch the recording.
+                  {% endif -%}
+                </div>
               {% endif -%}
               <div class="flex flex-wrap items-center gap-3">
                 {% if show_join_link -%}
