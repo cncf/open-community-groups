@@ -30,7 +30,7 @@ description = "Manage invitations to join communities.") -}}
           {% for invitation in community_invitations -%}
             <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
               {# Community -#}
-              <td class="px-3 xl:px-5 py-4 font-medium text-stone-900">
+              <td class="px-3 xl:px-5 py-4 font-medium text-stone-900 max-w-0">
                 <div class="max-w-full text-black truncate uppercase">{{ invitation.community_name }}</div>
               </td>
               {# End community -#}
@@ -111,7 +111,7 @@ description = "Manage invitations to join groups.") -}}
           {% for invitation in group_invitations -%}
             <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
               {# Group -#}
-              <td class="px-3 xl:px-5 py-4 font-medium text-stone-900">
+              <td class="px-3 xl:px-5 py-4 font-medium text-stone-900 max-w-0">
                 <div class="max-w-full text-black truncate">{{ invitation.group_name }}</div>
               </td>
               {# End group -#}
