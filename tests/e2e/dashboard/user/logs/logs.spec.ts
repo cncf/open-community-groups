@@ -98,7 +98,9 @@ test.describe("user dashboard logs view", () => {
       /\/dashboard\/user\?tab=logs&action=community_team_invitation_accepted/,
     );
     await expect(
-      dashboardContent.getByText("No audit log entries found."),
+      dashboardContent.locator("td:visible", {
+        hasText: "No audit log entries found.",
+      }),
     ).toBeVisible();
     await expect(
       dashboardContent.getByRole("button", { name: "Filters" }),
