@@ -29,7 +29,16 @@ test.describe("site explore groups page", () => {
     await expect(page.getByText(TEST_GROUP_NAMES.gamma, { exact: true })).toBeVisible();
     await expect(page.getByText(TEST_GROUP_NAMES.alpha, { exact: true })).toHaveCount(0);
 
-    await page.locator('label[for="map"]').click();
+    await Promise.all([
+      page.waitForResponse(
+        (response) =>
+          response.request().method() === "GET" &&
+          response.url().includes("/explore/groups-section") &&
+          response.url().includes("view_mode=map") &&
+          response.ok(),
+      ),
+      page.locator('label[for="map"]').click(),
+    ]);
 
     await expect(page.locator("#map-box")).toBeVisible();
     await expect(page.locator("#map-box.leaflet-container")).toBeVisible();

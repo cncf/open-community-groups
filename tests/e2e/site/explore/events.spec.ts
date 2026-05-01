@@ -153,7 +153,16 @@ test.describe("site explore events page", () => {
     await expect(page.getByText(TEST_EVENT_NAMES.alpha[0], { exact: true })).toBeVisible();
     await expect(page.getByText(TEST_EVENT_NAMES.alpha[1], { exact: true })).toHaveCount(0);
 
-    await page.locator('label[for="calendar"]').click();
+    await Promise.all([
+      page.waitForResponse(
+        (response) =>
+          response.request().method() === "GET" &&
+          response.url().includes("/explore/events-section") &&
+          response.url().includes("view_mode=calendar") &&
+          response.ok(),
+      ),
+      page.locator('label[for="calendar"]').click(),
+    ]);
 
     await expect(page.locator("#calendar-box")).toBeVisible();
     await expect(page.locator("#calendar-date")).toBeVisible();
