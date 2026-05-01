@@ -388,10 +388,10 @@
                     {# End event name -#}
 
                     {# Mobile type and date -#}
-                    <div class="block xl:hidden text-xs text-stone-500">
-                      <div class="max-w-full truncate">{{ event.kind }}</div>
+                    <div class="block xl:hidden mt-1.5 space-y-1.5">
+                      <div>{{ badges::event_badge(kind = event.kind, extra_styles = Some("px-2.5 py-0.5") ) -}}</div>
                       {% if let Some(start_time) = &event.starts_at -%}
-                        <div class="max-w-full truncate">
+                        <div class="max-w-full truncate text-xs text-stone-500">
                           {{ start_time.with_timezone(event.timezone).format("%b %d, %Y at %I:%M %p %Z") }}
                         </div>
                       {% endif -%}
