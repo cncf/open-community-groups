@@ -101,7 +101,7 @@ config. The default e2e test database name is configured by
 The e2e server uses `server-tests-e2e.yml` from `OCG_CONFIG` by default. This
 config should point at the e2e database and listen on a different port from the
 main local server, for example `127.0.0.1:9001` with base URL
-`http://localhost:9001`.
+`http://127.0.0.1:9001`.
 
 When `OCG_DB_*` variables are not set, the email verification test reads DB
 settings from `server-tests-e2e.yml`.

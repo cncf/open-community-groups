@@ -76,16 +76,24 @@ test.describe("group dashboard logs view", () => {
     });
     const firstDetailsButton = detailsButtons.nth(0);
     const secondDetailsButton = detailsButtons.nth(1);
-    const detailPopovers = dashboardContent.locator(
-      "[data-audit-log-details-card]",
-    );
+    const getDetailsPopover = async (detailsButton: typeof firstDetailsButton) => {
+      const popoverId = await detailsButton.getAttribute("aria-controls");
+
+      if (!popoverId) {
+        throw new Error("Expected audit log details button to control a popover");
+      }
+
+      return dashboardContent.locator(`#${popoverId}`);
+    };
+    const firstDetailsPopover = await getDetailsPopover(firstDetailsButton);
+    const secondDetailsPopover = await getDetailsPopover(secondDetailsButton);
 
     await firstDetailsButton.click();
-    await expect(detailPopovers.nth(0)).toBeVisible();
+    await expect(firstDetailsPopover).toBeVisible();
 
     await secondDetailsButton.hover();
-    await expect(detailPopovers.nth(0)).toBeHidden();
-    await expect(detailPopovers.nth(1)).toBeVisible();
+    await expect(firstDetailsPopover).toBeHidden();
+    await expect(secondDetailsPopover).toBeVisible();
   });
 
   test("organizer can browse the full seeded group logs list", async ({
