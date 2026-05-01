@@ -109,6 +109,34 @@ describe("event page modules", () => {
     expect(document.getElementById("event_reminder_enabled").value).to.equal("true");
   });
 
+  it("clears add page venue fields from the location clear button", () => {
+    mountAddPageShell();
+    const pageRoot = document.querySelector('[data-event-page="add"]');
+    pageRoot.insertAdjacentHTML(
+      "beforeend",
+      `
+        <button id="clear-location-fields" type="button"></button>
+        <input id="venue_name" value="Main hall" />
+        <input id="venue_address" value="123 Street" />
+        <location-search-field></location-search-field>
+      `,
+    );
+
+    const locationSearchField = pageRoot.querySelector("location-search-field");
+    let locationFieldsCleared = false;
+    locationSearchField.clearLocationFields = () => {
+      locationFieldsCleared = true;
+    };
+
+    initializeEventAddPage();
+
+    document.getElementById("clear-location-fields").click();
+
+    expect(document.getElementById("venue_name").value).to.equal("");
+    expect(document.getElementById("venue_address").value).to.equal("");
+    expect(locationFieldsCleared).to.equal(true);
+  });
+
   it("converts event and session dates during add page HTMX config requests", () => {
     mountAddPageShell();
 
@@ -269,6 +297,34 @@ describe("event page modules", () => {
       .dispatchEvent(new Event("click", { bubbles: true }));
 
     expect(document.querySelector(".inert-form").hasAttribute("inert")).to.equal(false);
+  });
+
+  it("clears update page venue fields from the location clear button", () => {
+    mountUpdatePageShell();
+    const pageRoot = document.querySelector('[data-event-page="update"]');
+    pageRoot.insertAdjacentHTML(
+      "beforeend",
+      `
+        <button id="clear-location-fields" type="button"></button>
+        <input id="venue_name" value="Main hall" />
+        <input id="venue_address" value="123 Street" />
+        <location-search-field></location-search-field>
+      `,
+    );
+
+    const locationSearchField = pageRoot.querySelector("location-search-field");
+    let locationFieldsCleared = false;
+    locationSearchField.clearLocationFields = () => {
+      locationFieldsCleared = true;
+    };
+
+    initializeEventUpdatePage();
+
+    document.getElementById("clear-location-fields").click();
+
+    expect(document.getElementById("venue_name").value).to.equal("");
+    expect(document.getElementById("venue_address").value).to.equal("");
+    expect(locationFieldsCleared).to.equal(true);
   });
 
   it("keeps canceled event review tabs interactive for event managers", () => {

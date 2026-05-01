@@ -407,7 +407,7 @@
   }
 
   const clearLocationButton = document.getElementById('clear-location-fields');
-  const locationSearchField = document.querySelector('location-search-field');
+  const locationSearchField = document.getElementById('group-location-search');
 
   if (clearLocationButton && locationSearchField && typeof locationSearchField.clearLocationFields === 'function') {
     clearLocationButton.addEventListener('click', () => {
