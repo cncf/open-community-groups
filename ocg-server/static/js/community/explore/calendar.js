@@ -197,7 +197,9 @@ export class Calendar {
       this.addEvents([]);
       const visiblePlaceholder = wrapper
         ? wrapper.querySelector(
-            hasActiveCalendarFilters("events-form") ? ".no-results-filtered" : ".no-results-default",
+            hasActiveCalendarFilters("events-form", this.fullCalendar.getDate())
+              ? ".no-results-filtered"
+              : ".no-results-default",
           )
         : null;
       if (visiblePlaceholder) {

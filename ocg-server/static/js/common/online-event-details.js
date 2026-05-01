@@ -108,6 +108,10 @@ export class OnlineEventDetails extends LitWrapper {
     this._capacityWarning = "";
     this.disabled = false;
     this._initializedFromProps = false;
+    this._manualJoinUrl = "";
+    this._manualRecordingUrl = "";
+    this._automaticRecordingUrl = "";
+    this._automaticRecordingEdited = false;
   }
 
   connectedCallback() {
@@ -124,13 +128,17 @@ export class OnlineEventDetails extends LitWrapper {
     if (this._initializedFromProps) {
       return;
     }
+    const startsInAutomaticMode = this.meetingRequested || this.meetingInSync;
+    this._manualJoinUrl = startsInAutomaticMode ? "" : this.meetingJoinUrl || "";
+    this._manualRecordingUrl = startsInAutomaticMode ? "" : this.meetingRecordingUrl || "";
+    this._automaticRecordingUrl = startsInAutomaticMode ? this.meetingRecordingUrl || "" : "";
     this._joinInstructions = this.meetingJoinInstructions || "";
-    this._joinUrl = this.meetingJoinUrl || "";
-    this._recordingUrl = this.meetingRecordingUrl || "";
+    this._joinUrl = this._manualJoinUrl;
+    this._recordingUrl = startsInAutomaticMode ? this._automaticRecordingUrl : this._manualRecordingUrl;
     this._createMeeting = this.meetingRequested;
     this._providerId = this.meetingProviderId || DEFAULT_MEETING_PROVIDER;
     this._hosts = Array.isArray(this.meetingHosts) ? [...this.meetingHosts] : [];
-    this._mode = this.meetingRequested || this.meetingInSync ? "automatic" : "manual";
+    this._mode = startsInAutomaticMode ? "automatic" : "manual";
     this._checkMeetingCapacity();
     this._initializedFromProps = true;
   }
@@ -509,6 +517,12 @@ export class OnlineEventDetails extends LitWrapper {
 
       this._mode = "manual";
       this._createMeeting = false;
+      this._joinUrl = this._manualJoinUrl;
+      this._automaticRecordingUrl = this._recordingUrl;
+      if (this._automaticRecordingEdited && !this._manualRecordingUrl) {
+        this._manualRecordingUrl = this._automaticRecordingUrl;
+      }
+      this._recordingUrl = this._manualRecordingUrl;
     } else if (newMode === "automatic" && this._mode === "manual") {
       const availability = this._getAutomaticAvailability();
       if (!availability.allowed) {
@@ -526,7 +540,13 @@ export class OnlineEventDetails extends LitWrapper {
       }
       this._mode = "automatic";
       this._joinInstructions = "";
+      this._manualJoinUrl = this._joinUrl;
+      this._manualRecordingUrl = this._recordingUrl;
       this._joinUrl = "";
+      if (this._manualRecordingUrl) {
+        this._automaticRecordingUrl = this._manualRecordingUrl;
+      }
+      this._recordingUrl = this._automaticRecordingUrl;
       this._createMeeting = true;
     } else {
       this._mode = newMode;
@@ -542,6 +562,7 @@ export class OnlineEventDetails extends LitWrapper {
   _handleJoinUrlChange(e) {
     if (this.disabled) return;
     this._joinUrl = e.target.value;
+    this._manualJoinUrl = this._joinUrl;
   }
 
   /**
@@ -560,6 +581,12 @@ export class OnlineEventDetails extends LitWrapper {
   _handleRecordingUrlChange(e) {
     if (this.disabled) return;
     this._recordingUrl = e.target.value;
+    if (this._mode === "automatic") {
+      this._automaticRecordingUrl = this._recordingUrl;
+      this._automaticRecordingEdited = true;
+      return;
+    }
+    this._manualRecordingUrl = this._recordingUrl;
   }
 
   _getAutomaticAvailability() {
@@ -592,13 +619,15 @@ export class OnlineEventDetails extends LitWrapper {
       }
     }
 
-    const capacityValue = this._getCapacityValue();
-    if (!Number.isFinite(capacityValue) || capacityValue <= 0) {
-      reasons.push("Set event capacity.");
-    } else {
-      const capacityLimit = this._getCapacityLimit();
-      if (Number.isFinite(capacityLimit) && capacityValue > capacityLimit) {
-        reasons.push(`Capacity exceeds meeting limit (${capacityLimit}).`);
+    if (!this.meetingInSync) {
+      const capacityValue = this._getCapacityValue();
+      if (!Number.isFinite(capacityValue) || capacityValue <= 0) {
+        reasons.push("Set event capacity.");
+      } else {
+        const capacityLimit = this._getCapacityLimit();
+        if (Number.isFinite(capacityLimit) && capacityValue > capacityLimit) {
+          reasons.push(`Capacity exceeds meeting limit (${capacityLimit}).`);
+        }
       }
     }
 

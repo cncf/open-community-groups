@@ -45,11 +45,12 @@ describe("event-selector", () => {
       if (config.sortDirection === "asc") {
         return [
           { event_id: "future-1", name: "Future 1" },
-          { event_id: "future-2", name: "Future 2" },
+          { event_id: "today-1", name: "Today 1" },
           { event_id: "future-3", name: "Future 3" },
         ];
       }
       return [
+        { event_id: "today-1", name: "Today 1" },
         { event_id: "past-1", name: "Past 1" },
         { event_id: "past-2", name: "Past 2" },
       ];
@@ -62,13 +63,27 @@ describe("event-selector", () => {
     expect(requestCalls[1]).to.include({ sortDirection: "desc", query: "" });
     expect(element._primaryResults.map((event) => event.event_id)).to.deep.equal([
       "future-3",
-      "future-2",
+      "today-1",
       "future-1",
       "past-1",
       "past-2",
     ]);
     expect(element._results).to.deep.equal(element._primaryResults);
     expect(element._hasFetched).to.equal(true);
+  });
+
+  it("deduplicates searched events by id", async () => {
+    const element = await renderSelector();
+    element._query = "today";
+    element._requestEvents = async () => [
+      { event_id: "event-1", name: "Event 1" },
+      { event_id: "event-1", name: "Event 1 duplicate" },
+      { event_id: "event-2", name: "Event 2" },
+    ];
+
+    await element._fetchEvents();
+
+    expect(element._results.map((event) => event.event_id)).to.deep.equal(["event-1", "event-2"]);
   });
 
   it("updates active navigation and closes the dropdown on escape", async () => {
