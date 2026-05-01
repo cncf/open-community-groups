@@ -49,10 +49,11 @@
 
 {% block dashboard_main -%}
   <div id="dashboard-content"
-       hx-get
+       {% if !content.is_account() -%}
+         hx-get="/dashboard/user/{%- if content.is_events() -%}events{%- elif content.is_invitations() -%}invitations{%- elif content.is_logs() -%}logs{%- elif content.is_session_proposals() -%}session-proposals{%- else -%}submissions{%- endif -%}"
+       {% endif -%}
        hx-trigger="refresh-user-dashboard-content"
-       hx-select="#dashboard-content"
-       hx-swap="outerHTML show:window:top"
+       hx-swap="innerHTML show:window:top"
        hx-indicator="#dashboard-spinner"
        class="p-4 sm:p-6 lg:p-12">
     {# Content -#}

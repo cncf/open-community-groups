@@ -39,6 +39,7 @@ export const initializeEventAddPage = (root = document) => {
   const cancelButton = queryById("cancel-button");
   const kindSelect = queryById("kind_id");
   const onlineEventDetails = queryById("online-event-details");
+  const clearLocationButton = queryById("clear-location-fields");
   const toggleCfsEnabled = queryById("toggle_cfs_enabled");
   const cfsEnabledInput = queryById("cfs_enabled");
   const cfsStartsAtInput = queryById("cfs_starts_at");
@@ -106,6 +107,12 @@ export const initializeEventAddPage = (root = document) => {
     clearVenueFields: () => clearVenueFields(pageRoot),
     updateSectionVisibility: (kind) => updateSectionVisibility(kind, pageRoot),
   });
+
+  if (clearLocationButton) {
+    clearLocationButton.addEventListener("click", () => {
+      clearVenueFields(pageRoot);
+    });
+  }
 
   bindSharedEventDateFieldListeners({
     queryById,
