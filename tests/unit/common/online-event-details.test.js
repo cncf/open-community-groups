@@ -68,6 +68,7 @@ describe("online-event-details", () => {
     expect(element._joinUrl).to.equal("");
     expect(element._recordingUrl).to.equal("");
     expect(element.getMeetingData()).to.deep.equal({
+      meeting_join_instructions: "",
       meeting_join_url: "",
       meeting_recording_url: "",
       meeting_requested: false,
@@ -103,6 +104,7 @@ describe("online-event-details", () => {
     expect(element._joinUrl).to.equal("");
     expect(element._recordingUrl).to.equal("https://zoom.us/rec/share/synced");
     expect(element.getMeetingData()).to.deep.equal({
+      meeting_join_instructions: "",
       meeting_join_url: "",
       meeting_recording_url: "https://zoom.us/rec/share/synced",
       meeting_requested: true,
@@ -132,6 +134,7 @@ describe("online-event-details", () => {
     expect(element._mode).to.equal("manual");
     expect(element._recordingUrl).to.equal(" https://youtube.com/watch?v=processed ");
     expect(element.getMeetingData()).to.deep.equal({
+      meeting_join_instructions: "",
       meeting_join_url: "",
       meeting_recording_url: "https://youtube.com/watch?v=processed",
       meeting_requested: false,

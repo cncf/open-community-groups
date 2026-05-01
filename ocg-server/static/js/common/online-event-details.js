@@ -619,13 +619,15 @@ export class OnlineEventDetails extends LitWrapper {
       }
     }
 
-    const capacityValue = this._getCapacityValue();
-    if (!Number.isFinite(capacityValue) || capacityValue <= 0) {
-      reasons.push("Set event capacity.");
-    } else {
-      const capacityLimit = this._getCapacityLimit();
-      if (Number.isFinite(capacityLimit) && capacityValue > capacityLimit) {
-        reasons.push(`Capacity exceeds meeting limit (${capacityLimit}).`);
+    if (!this.meetingInSync) {
+      const capacityValue = this._getCapacityValue();
+      if (!Number.isFinite(capacityValue) || capacityValue <= 0) {
+        reasons.push("Set event capacity.");
+      } else {
+        const capacityLimit = this._getCapacityLimit();
+        if (Number.isFinite(capacityLimit) && capacityValue > capacityLimit) {
+          reasons.push(`Capacity exceeds meeting limit (${capacityLimit}).`);
+        }
       }
     }
 

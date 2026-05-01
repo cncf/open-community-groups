@@ -302,11 +302,12 @@ export const hasActiveFilters = (formId, { ignoreDateRange = false } = {}) => {
 
 /**
  * Checks for active filters in calendar view.
- * Treats the current month as the default calendar state.
+ * Treats the provided month as the default calendar state.
  * @param {string} formId - The ID of the form to check
+ * @param {Date} [date] - The date to use as the default calendar month
  * @returns {boolean} True if any non-default calendar filter is active
  */
-export const hasActiveCalendarFilters = (formId) => {
+export const hasActiveCalendarFilters = (formId, date) => {
   const form = document.getElementById(formId);
   if (!form) return false;
 
@@ -318,7 +319,7 @@ export const hasActiveCalendarFilters = (formId) => {
   const dateToInput = form.querySelector('input[name="date_to"]');
   const dateFrom = dateFromInput ? dateFromInput.value.trim() : "";
   const dateTo = dateToInput ? dateToInput.value.trim() : "";
-  const { first, last } = getFirstAndLastDayOfMonth();
+  const { first, last } = getFirstAndLastDayOfMonth(date);
 
   return dateFrom !== first || dateTo !== last;
 };
