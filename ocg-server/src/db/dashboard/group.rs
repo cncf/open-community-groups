@@ -1,6 +1,6 @@
 //! Database interface for group dashboard operations.
 
-use std::{collections::HashMap, time::Duration};
+use std::collections::HashMap;
 
 use anyhow::Result;
 use async_trait::async_trait;

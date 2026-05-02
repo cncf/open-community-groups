@@ -1,7 +1,5 @@
 //! Database interface for community dashboard operations.
 
-use std::time::Duration;
-
 use anyhow::Result;
 use async_trait::async_trait;
 use cached::proc_macro::cached;
