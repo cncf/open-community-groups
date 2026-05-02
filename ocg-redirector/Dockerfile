@@ -1,5 +1,5 @@
 # Build redirector
-FROM rust:1-alpine3.23 AS builder
+FROM rust:1.95.0-alpine3.23 AS builder
 RUN apk --no-cache add musl-dev perl make
 WORKDIR /ocg
 COPY Cargo.* ./
@@ -11,7 +11,7 @@ WORKDIR /ocg/ocg-redirector
 RUN cargo build --locked --release
 
 # Final stage
-FROM alpine:3.23.3
+FROM alpine:3.23.4
 RUN apk --no-cache add ca-certificates && addgroup -S ocg && adduser -S ocg -G ocg
 USER ocg
 WORKDIR /home/ocg

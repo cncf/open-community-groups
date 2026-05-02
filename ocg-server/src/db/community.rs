@@ -1,7 +1,5 @@
 //! This module defines some database functionality for the community site.
 
-use std::time::Duration;
-
 use anyhow::Result;
 use async_trait::async_trait;
 use cached::proc_macro::cached;

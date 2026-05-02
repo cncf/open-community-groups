@@ -108,7 +108,7 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: 1.94.1
+          toolchain: 1.95.0
           components: clippy, rustfmt
       - name: Install Tailwind CSS
         run: |
@@ -204,7 +204,7 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: 1.94.1
+          toolchain: 1.95.0
       - name: Install just
         uses: taiki-e/install-action@just
       - name: Install PostgreSQL client
