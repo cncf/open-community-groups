@@ -123,21 +123,24 @@
 
 {# Location section -#}
 <div class="border-b border-stone-900/10 pb-12">
-  {{ dashboard::form_title(title = "Location",
-    description = "Optional location information for the group.",
-    button = "<button id='clear-location-fields'
-          type='button'
-          class='btn-primary-outline btn-mini whitespace-nowrap'
-          aria-label='Clear location details'>Clear location</button>") -}}
+  {% let clear_location_button -%}
+  <button id="clear-location-fields"
+          type="button"
+          class="btn-primary-outline btn-mini whitespace-nowrap"
+          aria-label="Clear location details">Clear location</button>
+{%- endlet %}
+{{ dashboard::form_title(title = "Location",
+description = "Optional location information for the group.",
+button = clear_location_button) -}}
 
-  <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
-    {# Location search -#}
-    <div class="col-span-full">
-      <location-search-field id="group-location-search" placeholder-text="Search for a city..." venue-city-field-name="city" state-field-name="state" country-name-field-name="country_name" country-code-field-name="country_code" latitude-field-name="latitude" longitude-field-name="longitude" map-enabled>
-      </location-search-field>
-    </div>
-    {# End Location search -#}
+<div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
+  {# Location search -#}
+  <div class="col-span-full">
+    <location-search-field id="group-location-search" placeholder-text="Search for a city..." venue-city-field-name="city" state-field-name="state" country-name-field-name="country_name" country-code-field-name="country_code" latitude-field-name="latitude" longitude-field-name="longitude" map-enabled>
+    </location-search-field>
   </div>
+  {# End Location search -#}
+</div>
 </div>
 {# End location section -#}
 

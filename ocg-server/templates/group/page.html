@@ -36,14 +36,16 @@
         {# Group header with name and region -#}
         <div>
           {# Main flex container for logo, name/region, and social networks -#}
-          <div class="flex flex-1 flex-row items-stretch gap-6">
+          <div class="grid gap-x-6 gap-y-4 md:gap-y-0 md:grid-cols-[auto_minmax(0,1fr)_auto]">
             {# Group logo -#}
-            {{ ui::logo(logo_url = group.logo_url, classes = "hidden md:block size-24 md:size-28", size = 112) -}}
+            <div class="relative hidden md:row-span-2 md:block">
+              {{ ui::logo(logo_url = group.logo_url, classes = "size-24 md:size-28", size = 112) -}}
+            </div>
             {# End group logo -#}
 
-            <div class="flex-1 flex flex-col justify-between">
-              <div class="flex-1 flex justify-between">
-                <div class="flex flex-col">
+            <div class="min-w-0 md:col-span-2 md:col-start-2">
+              <div class="min-w-0 flex justify-between">
+                <div class="min-w-0 flex flex-col">
                   {# Region/Category legend -#}
                   <span class="text-sm font-semibold tracking-wide uppercase text-stone-400 lg:-mt-1 md:mb-0.5">
                     {% if let Some(region) = &group.region -%}
@@ -67,56 +69,56 @@
                   {# End group name -#}
                 </div>
 
-                {# Social networks -#}
+                {# Social networks (desktop) -#}
                 {% if has_social_links -%}
                   <div class="hidden md:flex flex-col items-end gap-2">
                     <div class="flex flex-wrap gap-2">{% include "group/social_networks.html" -%}</div>
                   </div>
                 {% endif -%}
-                {# End social networks -#}
+                {# End social networks (desktop) -#}
               </div>
+            </div>
 
-              <div class="mt-2 md:mt-auto flex flex-col md:flex-row md:items-end md:justify-between w-full">
-                {# Members count and founded date -#}
-                <div class="flex items-center gap-4 text-stone-600">
-                  <div class="flex items-center">
-                    <div class="svg-icon size-4 mr-2 bg-stone-600 icon-people"></div>
-                    <span class="text-sm">{{ group.members_count }} members</span>
-                  </div>
-                  <div class="flex items-center">
-                    <div class="svg-icon size-4 mr-2 bg-stone-600 icon-date"></div>
-                    <span class="text-sm">{{ group.created_at.format("%B %Y") }}</span>
-                  </div>
+            <div class="md:col-start-2 md:row-start-2 md:self-end">
+              {# Members count and founded date -#}
+              <div class="flex items-center gap-4 text-stone-600">
+                <div class="flex items-center">
+                  <div class="svg-icon size-4 mr-2 bg-stone-600 icon-people"></div>
+                  <span class="text-sm">{{ group.members_count }} members</span>
                 </div>
-                {# End members count and founded date -#}
-
-                {# Social networks (mobile only) -#}
-                {% if has_social_links -%}
-                  <div class="md:hidden mt-4 md:mb-0">
-                    <div class="flex flex-wrap gap-2">{% include "group/social_networks.html" -%}</div>
-                  </div>
-                {% endif -%}
-                {# End social networks (mobile) -#}
-
-                <div class="mt-4 flex max-w-full flex-row flex-wrap gap-2 sm:flex-nowrap sm:gap-3 md:mt-0 md:ml-auto md:gap-4">
-                  {# Membership button section -#}
-                  {% include "group/membership_button.html" %}
-                  {# End membership button section -#}
-
-                  <details data-group-actions-menu
-                           class="order-last static shrink-0 sm:relative">
-                    <summary class="group btn-primary-outline flex h-10 w-10 cursor-pointer list-none items-center justify-center p-0 md:h-[30px] md:w-[30px] [&::-webkit-details-marker]:hidden"
-                             aria-label="More actions"
-                             title="More actions">
-                      <div class="svg-icon size-4 icon-vertical-dots"></div>
-                    </summary>
-                    <div class="absolute left-4 z-20 mt-2 w-56 max-w-[calc(100vw-2rem)] overflow-hidden rounded-lg border border-stone-200 bg-white py-1 shadow-lg sm:left-auto sm:right-0 sm:w-max sm:min-w-48">
-                      <share-modal trigger-variant="menu-item" title="{{ group.name }}" url="/{{ group.community.name }}/group/{{ group.slug }}">
-                      </share-modal>
-                    </div>
-                  </details>
+                <div class="flex items-center">
+                  <div class="svg-icon size-4 mr-2 bg-stone-600 icon-date"></div>
+                  <span class="text-sm">{{ group.created_at.format("%B %Y") }}</span>
                 </div>
               </div>
+              {# End members count and founded date -#}
+
+              {# Social networks (mobile only) -#}
+              {% if has_social_links -%}
+                <div class="md:hidden mt-4 md:mb-0">
+                  <div class="flex flex-wrap gap-2">{% include "group/social_networks.html" -%}</div>
+                </div>
+              {% endif -%}
+              {# End social networks (mobile) -#}
+            </div>
+
+            <div class="flex max-w-full flex-row flex-wrap gap-2 sm:flex-nowrap sm:gap-3 md:col-start-3 md:row-start-2 md:self-end md:justify-end md:gap-4">
+              {# Membership button section -#}
+              {% include "group/membership_button.html" %}
+              {# End membership button section -#}
+
+              <details data-group-actions-menu
+                       class="order-last static shrink-0 sm:relative">
+                <summary class="group btn-primary-outline flex h-10 w-10 cursor-pointer list-none items-center justify-center p-0 md:h-[30px] md:w-[30px] [&::-webkit-details-marker]:hidden"
+                         aria-label="More actions"
+                         title="More actions">
+                  <div class="svg-icon size-4 icon-vertical-dots"></div>
+                </summary>
+                <div class="absolute left-4 z-20 mt-2 w-56 max-w-[calc(100vw-2rem)] overflow-hidden rounded-lg border border-stone-200 bg-white py-1 shadow-lg sm:left-auto sm:right-0 sm:w-max sm:min-w-48">
+                  <share-modal trigger-variant="menu-item" title="{{ group.name }}" url="/{{ group.community.name }}/group/{{ group.slug }}">
+                  </share-modal>
+                </div>
+              </details>
             </div>
           </div>
           {# End main flex container -#}

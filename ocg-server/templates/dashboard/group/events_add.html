@@ -585,76 +585,79 @@
       {# Venue Information section -#}
       <div id="venue-information-section"
            class="border-t border-stone-900/10 pt-12">
-        {{ dashboard::form_title(title = "Venue Information",
-                description = "Location details for in-person and hybrid events.",
-                button = "<button id='clear-location-fields'
-                type='button'
-                class='btn-primary-outline btn-mini whitespace-nowrap'
-                aria-label='Clear location details'>Clear location</button>") -}}
+        {% let clear_location_button -%}
+        <button id="clear-location-fields"
+                type="button"
+                class="btn-primary-outline btn-mini whitespace-nowrap"
+                aria-label="Clear location details">Clear location</button>
+      {%- endlet %}
+      {{ dashboard::form_title(title = "Venue Information",
+            description = "Location details for in-person and hybrid events.",
+            button = clear_location_button) -}}
 
-        <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
-          {# Location search -#}
-          <div class="col-span-full">
-            <location-search-field placeholder-text="Search for a venue or address..." venue-name-field-name="venue_name" venue-address-field-name="venue_address" venue-city-field-name="venue_city" venue-zip-code-field-name="venue_zip_code" latitude-field-name="latitude" longitude-field-name="longitude" map-enabled>
-            </location-search-field>
-          </div>
-          {# End location search -#}
+      <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
+        {# Location search -#}
+        <div class="col-span-full">
+          <location-search-field placeholder-text="Search for a venue or address..." venue-name-field-name="venue_name" venue-address-field-name="venue_address" venue-city-field-name="venue_city" venue-zip-code-field-name="venue_zip_code" latitude-field-name="latitude" longitude-field-name="longitude" map-enabled>
+          </location-search-field>
         </div>
+        {# End location search -#}
       </div>
-      {# End venue information section -#}
+    </div>
+    {# End venue information section -#}
 
-      {# Online Event Details section -#}
-      <div id="online-event-details-section"
-           class="border-t border-stone-900/10 pt-12">
-        {{ dashboard::form_title(title = "Online Event Details", description = "Meeting information for virtual and hybrid events.") -}}
-        <div class="mt-10 max-w-5xl">
-          {% if meetings_enabled %}
-            <online-event-details id="online-event-details" kind="virtual" meeting-max-participants="{{ meetings_max_participants|json }}"></online-event-details>
-          {% else %}
-            <div class="space-y-6">
-              <div class="grid grid-cols-1 gap-6">
-                <div class="space-y-2">
-                  <label for="meeting_join_url" class="form-label">Meeting URL</label>
-                  <div class="mt-2">
-                    <input type="url"
-                           id="meeting_join_url"
-                           name="meeting_join_url"
-                           class="input-primary"
-                           placeholder="https://meet.example.com/123456789">
-                  </div>
-                  <p class="form-legend">Teams, Meet, or any other video link.</p>
+    {# Online Event Details section -#}
+    <div id="online-event-details-section"
+         class="border-t border-stone-900/10 pt-12">
+      {{ dashboard::form_title(title = "Online Event Details", description = "Meeting information for virtual and hybrid events.") -}}
+      <div class="mt-10 max-w-5xl">
+        {% if meetings_enabled %}
+          <online-event-details id="online-event-details" kind="virtual" meeting-max-participants="{{ meetings_max_participants|json }}"></online-event-details>
+        {% else %}
+          <div class="space-y-6">
+            <div class="grid grid-cols-1 gap-6">
+              <div class="space-y-2">
+                <label for="meeting_join_url" class="form-label">Meeting URL</label>
+                <div class="mt-2">
+                  <input type="url"
+                         id="meeting_join_url"
+                         name="meeting_join_url"
+                         class="input-primary"
+                         placeholder="https://meet.example.com/123456789">
                 </div>
-                <div class="space-y-2">
-                  <label for="meeting_join_instructions" class="form-label">Join instructions (optional)</label>
-                  <div class="mt-2">
-                    <textarea id="meeting_join_instructions"
-                              name="meeting_join_instructions"
-                              rows="4"
-                              maxlength="{{ crate::validation::MAX_LEN_DESCRIPTION_SHORT }}"
-                              class="input-primary"
-                              placeholder="Add passcodes, waiting room details, or other attendee instructions."></textarea>
-                  </div>
-                  <p class="form-legend">Shown with the meeting details on the public event page.</p>
+                <p class="form-legend">Teams, Meet, or any other video link.</p>
+              </div>
+              <div class="space-y-2">
+                <label for="meeting_join_instructions" class="form-label">Join instructions (optional)</label>
+                <div class="mt-2">
+                  <textarea id="meeting_join_instructions"
+                            name="meeting_join_instructions"
+                            rows="4"
+                            maxlength="{{ crate::validation::MAX_LEN_DESCRIPTION_SHORT }}"
+                            class="input-primary"
+                            placeholder="Add passcodes, waiting room details, or other attendee instructions."></textarea>
                 </div>
-                <div class="space-y-2">
-                  <label for="meeting_recording_url" class="form-label">Recording URL (optional)</label>
-                  <div class="mt-2">
-                    <input type="url"
-                           id="meeting_recording_url"
-                           name="meeting_recording_url"
-                           class="input-primary"
-                           placeholder="https://youtube.com/watch?v=...">
-                  </div>
-                  <p class="form-legend">Add a recording link now or after the event.</p>
+                <p class="form-legend">Shown with the meeting details on the public event page.</p>
+              </div>
+              <div class="space-y-2">
+                <label for="meeting_recording_url" class="form-label">Recording URL (optional)</label>
+                <div class="mt-2">
+                  <input type="url"
+                         id="meeting_recording_url"
+                         name="meeting_recording_url"
+                         class="input-primary"
+                         placeholder="https://youtube.com/watch?v=...">
                 </div>
+                <p class="form-legend">Add a recording link now or after the event.</p>
               </div>
             </div>
-          {% endif %}
-        </div>
+          </div>
+        {% endif %}
       </div>
-      {# End online event details section -#}
     </div>
-  </form>
+    {# End online event details section -#}
+  </div>
+</form>
 </div>
 {# End Date & Venue Tab -#}
 
