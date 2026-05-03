@@ -58,7 +58,7 @@ pub(crate) trait DBEvent {
         community_id: Uuid,
         group_slug: &str,
         event_slug: &str,
-    ) -> Result<EventFull>;
+    ) -> Result<Option<EventFull>>;
 
     /// Retrieves summary event information by its identifier.
     async fn get_event_summary_by_id(&self, community_id: Uuid, event_id: Uuid) -> Result<EventSummary>;
@@ -175,8 +175,8 @@ impl DBEvent for PgDB {
         community_id: Uuid,
         group_slug: &str,
         event_slug: &str,
-    ) -> Result<EventFull> {
-        self.fetch_json_one(
+    ) -> Result<Option<EventFull>> {
+        self.fetch_json_opt(
             "select get_event_full_by_slug($1::uuid, $2::text, $3::text)",
             &[&community_id, &group_slug, &event_slug],
         )

@@ -671,7 +671,7 @@ mock! {
             community_id: Uuid,
             group_slug: &str,
             event_slug: &str,
-        ) -> Result<crate::types::event::EventFull>;
+        ) -> Result<Option<crate::types::event::EventFull>>;
         async fn get_event_summary_by_id(
             &self,
             community_id: Uuid,
@@ -714,7 +714,7 @@ mock! {
             &self,
             community_id: Uuid,
             group_slug: &str,
-        ) -> Result<crate::types::group::GroupFull>;
+        ) -> Result<Option<crate::types::group::GroupFull>>;
         async fn get_group_past_events(
             &self,
             community_id: Uuid,

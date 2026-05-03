@@ -17,7 +17,8 @@ use crate::{
 #[async_trait]
 pub(crate) trait DBGroup {
     /// Retrieves group information.
-    async fn get_group_full_by_slug(&self, community_id: Uuid, group_slug: &str) -> Result<GroupFull>;
+    async fn get_group_full_by_slug(&self, community_id: Uuid, group_slug: &str)
+    -> Result<Option<GroupFull>>;
 
     /// Retrieves past events for a specific group.
     async fn get_group_past_events(
@@ -51,8 +52,12 @@ pub(crate) trait DBGroup {
 impl DBGroup for PgDB {
     /// [`DBGroup::get_group_full_by_slug`]
     #[instrument(skip(self), err)]
-    async fn get_group_full_by_slug(&self, community_id: Uuid, group_slug: &str) -> Result<GroupFull> {
-        self.fetch_json_one(
+    async fn get_group_full_by_slug(
+        &self,
+        community_id: Uuid,
+        group_slug: &str,
+    ) -> Result<Option<GroupFull>> {
+        self.fetch_json_opt(
             "select get_group_full_by_slug($1::uuid, $2::text)",
             &[&community_id, &group_slug],
         )

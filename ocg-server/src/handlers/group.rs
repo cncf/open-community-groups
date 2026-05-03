@@ -44,12 +44,13 @@ pub(crate) async fn page(
 ) -> Result<impl IntoResponse, HandlerError> {
     // Fetch the group page data
     let event_kinds = vec![EventKind::InPerson, EventKind::Virtual, EventKind::Hybrid];
-    let (mut group, past_events, site_settings, upcoming_events) = tokio::try_join!(
+    let (group, past_events, site_settings, upcoming_events) = tokio::try_join!(
         db.get_group_full_by_slug(community_id, &group_slug),
         db.get_group_past_events(community_id, &group_slug, event_kinds.clone(), 9),
         db.get_site_settings(),
         db.get_group_upcoming_events(community_id, &group_slug, event_kinds, 9)
     )?;
+    let mut group = group.ok_or(HandlerError::NotFound)?;
 
     // Trim gallery media
     trim_public_gallery_images(&mut group.photos_urls);
