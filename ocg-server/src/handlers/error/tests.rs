@@ -22,3 +22,11 @@ async fn test_non_db_anyhow_error_returns_500() {
 
     assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
 }
+
+#[tokio::test]
+async fn test_not_found_error_returns_404() {
+    let response = HandlerError::NotFound.into_response();
+    let parts = response.into_parts().0;
+
+    assert_eq!(parts.status, StatusCode::NOT_FOUND);
+}

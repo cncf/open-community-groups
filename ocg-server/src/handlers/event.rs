@@ -60,10 +60,11 @@ pub(crate) async fn page(
     uri: Uri,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
-    let (mut event, site_settings) = tokio::try_join!(
+    let (event, site_settings) = tokio::try_join!(
         db.get_event_full_by_slug(community_id, &group_slug, &event_slug),
         db.get_site_settings()
     )?;
+    let mut event = event.ok_or(HandlerError::NotFound)?;
     trim_public_gallery_images(&mut event.photos_urls);
     let template = Page {
         event,
@@ -163,7 +164,8 @@ pub(crate) async fn availability(
     // Get current public event availability
     let event = db
         .get_event_full_by_slug(community_id, &group_slug, &event_slug)
-        .await?;
+        .await?
+        .ok_or(HandlerError::NotFound)?;
 
     // Prevent volatile seat availability from being cached
     let mut headers = HeaderMap::new();

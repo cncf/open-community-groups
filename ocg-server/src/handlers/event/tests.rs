@@ -68,7 +68,7 @@ async fn test_availability_success() {
         .withf(move |id, group_slug, event_slug| {
             *id == community_id && group_slug == "test-group" && event_slug == "test-event"
         })
-        .returning(move |_, _, _| Ok(event.clone()));
+        .returning(move |_, _, _| Ok(Some(event.clone())));
 
     // Setup router and send request
     let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
@@ -124,7 +124,7 @@ async fn test_page_success() {
         .withf(move |id, group_slug, event_slug| {
             *id == community_id && group_slug == "test-group" && event_slug == "test-event"
         })
-        .returning(move |_, _, _| Ok(sample_event_full(community_id, event_id, group_id)));
+        .returning(move |_, _, _| Ok(Some(sample_event_full(community_id, event_id, group_id))));
     db.expect_get_site_settings()
         .times(1)
         .returning(|| Ok(sample_site_settings()));
@@ -154,6 +154,46 @@ async fn test_page_success() {
         &HeaderValue::from_static("max-age=3600")
     );
     assert!(!bytes.is_empty());
+}
+
+#[tokio::test]
+async fn test_page_not_found() {
+    // Setup identifiers and data structures
+    let community_id = Uuid::new_v4();
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_community_id_by_name()
+        .times(1)
+        .withf(|name| name == "test-community")
+        .returning(move |_| Ok(Some(community_id)));
+    db.expect_get_event_full_by_slug()
+        .times(1)
+        .withf(move |id, group_slug, event_slug| {
+            *id == community_id && group_slug == "test-group" && event_slug == "missing-event"
+        })
+        .returning(move |_, _, _| Ok(None));
+    db.expect_get_site_settings()
+        .times(1)
+        .returning(|| Ok(sample_site_settings()));
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("GET")
+        .uri("/test-community/group/test-group/event/missing-event")
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_eq!(parts.status, StatusCode::NOT_FOUND);
+    assert!(bytes.is_empty());
 }
 
 #[tokio::test]

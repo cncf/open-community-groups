@@ -31,6 +31,10 @@ pub(crate) enum HandlerError {
     #[error("forbidden")]
     Forbidden,
 
+    /// Resource was not found.
+    #[error("not found")]
+    NotFound,
+
     /// Any other error, wrapped in `anyhow::Error` for flexibility.
     #[error(transparent)]
     Other(anyhow::Error),
@@ -61,6 +65,7 @@ impl IntoResponse for HandlerError {
                 (StatusCode::UNPROCESSABLE_ENTITY, msg).into_response()
             }
             HandlerError::Forbidden => StatusCode::FORBIDDEN.into_response(),
+            HandlerError::NotFound => StatusCode::NOT_FOUND.into_response(),
             HandlerError::Validation(report) => {
                 (StatusCode::UNPROCESSABLE_ENTITY, report.to_string()).into_response()
             }

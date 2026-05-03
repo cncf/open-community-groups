@@ -45,7 +45,7 @@ async fn test_page_success() {
     db.expect_get_group_full_by_slug()
         .times(1)
         .withf(move |id, slug| *id == community_id && slug == "test-group")
-        .returning(move |_, _| Ok(group.clone()));
+        .returning(move |_, _| Ok(Some(group.clone())));
     db.expect_get_group_upcoming_events()
         .times(1)
         .withf(move |id, slug, kinds, limit| {
@@ -96,6 +96,62 @@ async fn test_page_success() {
 }
 
 #[tokio::test]
+async fn test_page_not_found() {
+    // Setup identifiers and data structures
+    let community_id = Uuid::new_v4();
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_community_id_by_name()
+        .times(1)
+        .withf(|name| name == "test-community")
+        .returning(move |_| Ok(Some(community_id)));
+    db.expect_get_group_full_by_slug()
+        .times(1)
+        .withf(move |id, slug| *id == community_id && slug == "missing-group")
+        .returning(move |_, _| Ok(None));
+    db.expect_get_group_upcoming_events()
+        .times(1)
+        .withf(move |id, slug, kinds, limit| {
+            *id == community_id
+                && slug == "missing-group"
+                && kinds == &vec![EventKind::InPerson, EventKind::Virtual, EventKind::Hybrid]
+                && *limit == 9
+        })
+        .returning(move |_, _, _, _| Ok(vec![]));
+    db.expect_get_group_past_events()
+        .times(1)
+        .withf(move |id, slug, kinds, limit| {
+            *id == community_id
+                && slug == "missing-group"
+                && kinds == &vec![EventKind::InPerson, EventKind::Virtual, EventKind::Hybrid]
+                && *limit == 9
+        })
+        .returning(move |_, _, _, _| Ok(vec![]));
+    db.expect_get_site_settings()
+        .times(1)
+        .returning(|| Ok(sample_site_settings()));
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("GET")
+        .uri("/test-community/group/missing-group")
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_eq!(parts.status, StatusCode::NOT_FOUND);
+    assert!(bytes.is_empty());
+}
+
+#[tokio::test]
 async fn test_page_db_error() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
@@ -110,7 +166,7 @@ async fn test_page_db_error() {
     db.expect_get_group_full_by_slug()
         .times(1)
         .withf(move |id, slug| *id == community_id && slug == "test-group")
-        .returning(move |_, _| Ok(sample_group_full(community_id, group_id)));
+        .returning(move |_, _| Ok(Some(sample_group_full(community_id, group_id))));
     db.expect_get_group_past_events()
         .times(1)
         .withf(move |id, slug, kinds, limit| {
