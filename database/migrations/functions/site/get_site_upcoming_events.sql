@@ -15,7 +15,6 @@ returns json as $$
         where g.active = true
         and e.published = true
         and e.event_kind_id = any(p_event_kind_ids)
-        and (g.city is not null or e.venue_city is not null)
         and e.starts_at is not null
         and e.starts_at > now()
         and e.canceled = false
