@@ -193,7 +193,17 @@ async fn test_page_not_found() {
 
     // Check response matches expectations
     assert_eq!(parts.status, StatusCode::NOT_FOUND);
-    assert!(bytes.is_empty());
+    assert_eq!(
+        parts.headers.get(CONTENT_TYPE).unwrap(),
+        &HeaderValue::from_static("text/html; charset=utf-8")
+    );
+    assert_eq!(
+        parts.headers.get(CACHE_CONTROL).unwrap(),
+        &HeaderValue::from_static("max-age=900")
+    );
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
+    assert!(body.contains("We could not find that page"));
+    assert!(body.contains("Go to home page"));
 }
 
 #[tokio::test]

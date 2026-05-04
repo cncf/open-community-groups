@@ -21,7 +21,9 @@ use crate::{
     db::{DynDB, payments::PrepareEventCheckoutPurchaseInput},
     handlers::{
         extractors::{CurrentUser, ValidatedForm, ValidatedFormQs},
-        prepare_headers, request_matches_site, trim_public_gallery_images,
+        prepare_headers, request_matches_site,
+        site::not_found,
+        trim_public_gallery_images,
     },
     router::CACHE_CONTROL_NO_CACHE,
     services::{
@@ -59,13 +61,19 @@ pub(crate) async fn page(
     Path((_, group_slug, event_slug)): Path<(String, String, String)>,
     uri: Uri,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Prepare template
+    // Fetch event page data
     let (event, site_settings) = tokio::try_join!(
         db.get_event_full_by_slug(community_id, &group_slug, &event_slug),
         db.get_site_settings()
     )?;
-    let mut event = event.ok_or(HandlerError::NotFound)?;
+    let Some(mut event) = event else {
+        return not_found::render(site_settings);
+    };
+
+    // Trim gallery media
     trim_public_gallery_images(&mut event.photos_urls);
+
+    // Prepare template
     let template = Page {
         event,
         page_id: PageId::Event,
@@ -77,7 +85,7 @@ pub(crate) async fn page(
     // Prepare response headers
     let headers = prepare_headers(Duration::hours(1), &[])?;
 
-    Ok((headers, Html(template.render()?)))
+    Ok((headers, Html(template.render()?)).into_response())
 }
 
 /// Handler that renders the check-in page.

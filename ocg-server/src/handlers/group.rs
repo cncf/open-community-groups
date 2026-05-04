@@ -16,7 +16,10 @@ use crate::{
     activity_tracker::{Activity, DynActivityTracker},
     config::HttpServerConfig,
     db::DynDB,
-    handlers::{extractors::CurrentUser, prepare_headers, request_matches_site, trim_public_gallery_images},
+    handlers::{
+        extractors::CurrentUser, prepare_headers, request_matches_site, site::not_found,
+        trim_public_gallery_images,
+    },
     services::notifications::{DynNotificationsManager, NewNotification, NotificationKind},
     templates::{
         PageId,
@@ -50,7 +53,9 @@ pub(crate) async fn page(
         db.get_site_settings(),
         db.get_group_upcoming_events(community_id, &group_slug, event_kinds, 9)
     )?;
-    let mut group = group.ok_or(HandlerError::NotFound)?;
+    let Some(mut group) = group else {
+        return not_found::render(site_settings);
+    };
 
     // Trim gallery media
     trim_public_gallery_images(&mut group.photos_urls);
@@ -78,7 +83,7 @@ pub(crate) async fn page(
     // Prepare response headers
     let headers = prepare_headers(Duration::hours(1), &[])?;
 
-    Ok((headers, Html(template.render()?)))
+    Ok((headers, Html(template.render()?)).into_response())
 }
 
 // Actions handlers.

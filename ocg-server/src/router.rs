@@ -215,7 +215,8 @@ pub(crate) async fn setup(
         // Page view tracking routes
         .route("/communities/{community_id}/views", post(community::track_view))
         .route("/events/{event_id}/views", post(event::track_view))
-        .route("/groups/{group_id}/views", post(group::track_view));
+        .route("/groups/{group_id}/views", post(group::track_view))
+        .fallback(site::not_found::page);
 
     // Setup some routes based on the login options enabled
     if server_cfg.login.email {

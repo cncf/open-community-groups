@@ -40,6 +40,7 @@ pub(crate) enum PageId {
     SiteDocs,
     SiteExplore,
     SiteHome,
+    SiteNotFound,
     SiteStats,
     UserDashboard,
 }
