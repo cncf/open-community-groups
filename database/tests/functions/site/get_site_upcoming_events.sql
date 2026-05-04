@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(4);
+select plan(5);
 
 -- ============================================================================
 -- VARIABLES
@@ -17,8 +17,10 @@ select plan(4);
 \set event4ID '00000000-0000-0000-0000-000000000044'
 \set event5ID '00000000-0000-0000-0000-000000000045'
 \set event6ID '00000000-0000-0000-0000-000000000046'
+\set event7ID '00000000-0000-0000-0000-000000000047'
 \set eventCategory1ID '00000000-0000-0000-0000-000000000021'
 \set group1ID '00000000-0000-0000-0000-000000000031'
+\set group2ID '00000000-0000-0000-0000-000000000032'
 
 -- ============================================================================
 -- SEED DATA
@@ -50,6 +52,9 @@ values (:'category1ID', 'Technology', :'communityID');
 -- Group
 insert into "group" (group_id, name, slug, community_id, group_category_id, city, state, country_code, country_name, logo_url)
 values (:'group1ID', 'Test Group', 'test-group', :'communityID', :'category1ID', 'New York', 'NY', 'US', 'United States', 'https://example.com/group-logo.png');
+
+insert into "group" (group_id, name, slug, community_id, group_category_id, logo_url)
+values (:'group2ID', 'Virtual Group', 'virtual-group', :'communityID', :'category1ID', 'https://example.com/virtual-group-logo.png');
 
 -- Event Category
 insert into event_category (event_category_id, name, community_id)
@@ -88,11 +93,17 @@ insert into event (
     (:'event4ID', 'Canceled Future Event', 'canceled-future-event', 'A canceled event', 'UTC',
      :'eventCategory1ID', 'in-person', :'group1ID', false,
      now() + interval '2 weeks', now() + interval '2 weeks' + interval '2 hours', true, null),
-    -- Future event 4 (no logo - should be filtered out)
+    -- Future event 4 (uses group logo fallback)
     (:'event5ID', 'No Logo Event', 'no-logo-event', 'An event without logo', 'UTC',
      :'eventCategory1ID', 'in-person', :'group1ID', true,
      now() + interval '1 month' + interval '1 day', now() + interval '1 month' + interval '1 day' + interval '2 hours',
-     false, null);
+     false, null),
+    -- Future event 5 (virtual event for a group without location data)
+    (:'event7ID', 'Locationless Virtual Event', 'locationless-virtual-event',
+     'A virtual event for a group without location data', 'UTC',
+     :'eventCategory1ID', 'virtual', :'group2ID', true,
+     now() + interval '3 months', now() + interval '3 months' + interval '2 hours',
+     false, 'https://example.com/locationless-virtual-event-logo.png');
 
 -- ============================================================================
 -- TESTS
@@ -103,7 +114,8 @@ select is(
     get_site_upcoming_events(array['in-person', 'virtual', 'hybrid'])::jsonb,
     jsonb_build_array(
         get_event_summary(:'communityID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb,
-        get_event_summary(:'communityID'::uuid, :'group1ID'::uuid, :'event5ID'::uuid)::jsonb
+        get_event_summary(:'communityID'::uuid, :'group1ID'::uuid, :'event5ID'::uuid)::jsonb,
+        get_event_summary(:'communityID'::uuid, :'group2ID'::uuid, :'event7ID'::uuid)::jsonb
     ),
     'Should return published future events'
 );
@@ -113,7 +125,8 @@ delete from event where event_id = :'event5ID';
 select is(
     get_site_upcoming_events(array['in-person', 'virtual', 'hybrid'])::jsonb,
     jsonb_build_array(
-        get_event_summary(:'communityID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb
+        get_event_summary(:'communityID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb,
+        get_event_summary(:'communityID'::uuid, :'group2ID'::uuid, :'event7ID'::uuid)::jsonb
     ),
     'Should return only published future events'
 );
@@ -162,8 +175,18 @@ select is(
         select jsonb_agg(event_item->>'event_id')
         from jsonb_array_elements(get_site_upcoming_events(array['virtual'])::jsonb) event_item
     ),
-    jsonb_build_array(:'event2ID', :'event6ID'),
+    jsonb_build_array(:'event2ID', :'event6ID', :'event7ID'),
     'Should order tied future events by event ID'
+);
+
+-- Should include virtual events for groups without location data
+select ok(
+    exists (
+        select 1
+        from jsonb_array_elements(get_site_upcoming_events(array['virtual'])::jsonb) event_item
+        where event_item->>'event_id' = :'event7ID'
+    ),
+    'Should include virtual events for groups without location data'
 );
 
 -- ============================================================================
