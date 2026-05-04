@@ -96,6 +96,161 @@ async fn test_page_success() {
 }
 
 #[tokio::test]
+async fn test_page_json_success() {
+    // Setup identifiers and data structures
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_community_id_by_name()
+        .times(1)
+        .withf(|name| name == "test-community")
+        .returning(move |_| Ok(Some(community_id)));
+    db.expect_get_group_full_by_slug()
+        .times(1)
+        .withf(move |id, slug| *id == community_id && slug == "test-group")
+        .returning(move |_, _| Ok(Some(sample_group_full(community_id, group_id))));
+    db.expect_get_group_upcoming_events()
+        .times(1)
+        .withf(move |id, slug, kinds, limit| {
+            *id == community_id
+                && slug == "test-group"
+                && kinds == &vec![EventKind::InPerson, EventKind::Virtual, EventKind::Hybrid]
+                && *limit == 50
+        })
+        .returning(move |_, _, _, _| Ok(vec![sample_event_summary(event_id, group_id)]));
+    db.expect_get_group_past_events()
+        .times(1)
+        .withf(move |id, slug, kinds, limit| {
+            *id == community_id
+                && slug == "test-group"
+                && kinds == &vec![EventKind::InPerson, EventKind::Virtual, EventKind::Hybrid]
+                && *limit == 50
+        })
+        .returning(move |_, _, _, _| Ok(vec![sample_event_summary(event_id, group_id)]));
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("GET")
+        .uri("/test-community/group/test-group/json")
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_eq!(parts.status, StatusCode::OK);
+    assert_eq!(
+        parts.headers.get(CONTENT_TYPE).unwrap(),
+        &HeaderValue::from_static("application/json")
+    );
+    assert_eq!(
+        parts.headers.get(CACHE_CONTROL).unwrap(),
+        &HeaderValue::from_static("max-age=600")
+    );
+    let body: serde_json::Value = from_slice(&bytes).unwrap();
+    assert_eq!(body["group"]["name"], "Test Group");
+    assert_eq!(body["group"]["members_count"], 0);
+    assert_eq!(body["upcoming_events"].as_array().map(Vec::len), Some(1));
+    assert_eq!(body["past_events"].as_array().map(Vec::len), Some(1));
+}
+
+#[tokio::test]
+async fn test_page_json_not_found() {
+    // Setup identifiers and data structures
+    let community_id = Uuid::new_v4();
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_community_id_by_name()
+        .times(1)
+        .withf(|name| name == "test-community")
+        .returning(move |_| Ok(Some(community_id)));
+    db.expect_get_group_full_by_slug()
+        .times(1)
+        .withf(move |id, slug| *id == community_id && slug == "missing-group")
+        .returning(move |_, _| Ok(None));
+    db.expect_get_group_upcoming_events()
+        .times(1)
+        .withf(move |id, slug, kinds, limit| {
+            *id == community_id
+                && slug == "missing-group"
+                && kinds == &vec![EventKind::InPerson, EventKind::Virtual, EventKind::Hybrid]
+                && *limit == 50
+        })
+        .returning(move |_, _, _, _| Ok(vec![]));
+    db.expect_get_group_past_events()
+        .times(1)
+        .withf(move |id, slug, kinds, limit| {
+            *id == community_id
+                && slug == "missing-group"
+                && kinds == &vec![EventKind::InPerson, EventKind::Virtual, EventKind::Hybrid]
+                && *limit == 50
+        })
+        .returning(move |_, _, _, _| Ok(vec![]));
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("GET")
+        .uri("/test-community/group/missing-group/json")
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_eq!(parts.status, StatusCode::NOT_FOUND);
+    assert!(bytes.is_empty());
+}
+
+#[tokio::test]
+async fn test_page_json_db_error() {
+    // Setup identifiers and data structures
+    let community_id = Uuid::new_v4();
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_community_id_by_name()
+        .times(1)
+        .withf(|name| name == "test-community")
+        .returning(move |_| Ok(Some(community_id)));
+    db.expect_get_group_full_by_slug()
+        .times(1)
+        .withf(move |id, slug| *id == community_id && slug == "test-group")
+        .returning(move |_, _| Err(anyhow!("db error")));
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("GET")
+        .uri("/test-community/group/test-group/json")
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
+    assert!(bytes.is_empty());
+}
+
+#[tokio::test]
 async fn test_page_not_found() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();

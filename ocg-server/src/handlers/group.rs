@@ -8,6 +8,7 @@ use axum::{
     response::{Html, IntoResponse},
 };
 use chrono::Duration;
+use serde::Serialize;
 use serde_json::json;
 use tracing::instrument;
 use uuid::Uuid;
@@ -31,6 +32,53 @@ use super::{error::HandlerError, extractors::CommunityId};
 
 #[cfg(test)]
 mod tests;
+
+/// Public JSON payload for group details and events.
+#[derive(Debug, Serialize)]
+struct PublicGroupPayload {
+    group: PublicGroupDetails,
+    upcoming_events: Vec<PublicEventDetails>,
+    past_events: Vec<PublicEventDetails>,
+}
+
+/// Public group details section.
+#[derive(Debug, Serialize)]
+struct PublicGroupDetails {
+    name: String,
+    description: Option<String>,
+    description_short: Option<String>,
+    members_count: i64,
+    organizers: Vec<crate::types::user::User>,
+    social_links: PublicGroupSocialLinks,
+}
+
+/// Public group social links.
+#[derive(Debug, Serialize)]
+struct PublicGroupSocialLinks {
+    website_url: Option<String>,
+    github_url: Option<String>,
+    linkedin_url: Option<String>,
+    twitter_url: Option<String>,
+    slack_url: Option<String>,
+    facebook_url: Option<String>,
+    instagram_url: Option<String>,
+    youtube_url: Option<String>,
+    bluesky_url: Option<String>,
+    flickr_url: Option<String>,
+    wechat_url: Option<String>,
+    extra_links: Option<std::collections::BTreeMap<String, String>>,
+}
+
+/// Public event details section.
+#[derive(Debug, Serialize)]
+struct PublicEventDetails {
+    title: String,
+    starts_at: Option<chrono::DateTime<chrono::Utc>>,
+    ends_at: Option<chrono::DateTime<chrono::Utc>>,
+    location: Option<String>,
+    kind: EventKind,
+    image_url: String,
+}
 
 // Pages handlers.
 
@@ -79,6 +127,72 @@ pub(crate) async fn page(
     let headers = prepare_headers(Duration::hours(1), &[])?;
 
     Ok((headers, Html(template.render()?)))
+}
+
+/// Handler that returns public group details and events as JSON.
+#[instrument(skip_all)]
+pub(crate) async fn page_json(
+    State(db): State<DynDB>,
+    CommunityId(community_id): CommunityId,
+    Path((_, group_slug)): Path<(String, String)>,
+) -> Result<impl IntoResponse, HandlerError> {
+    let event_kinds = vec![EventKind::InPerson, EventKind::Virtual, EventKind::Hybrid];
+    let (group, past_events, upcoming_events) = tokio::try_join!(
+        db.get_group_full_by_slug(community_id, &group_slug),
+        db.get_group_past_events(community_id, &group_slug, event_kinds.clone(), 50),
+        db.get_group_upcoming_events(community_id, &group_slug, event_kinds, 50)
+    )?;
+    let group = group.ok_or(HandlerError::NotFound)?;
+
+    let payload = PublicGroupPayload {
+        group: PublicGroupDetails {
+            name: group.name,
+            description: group.description,
+            description_short: group.description_short,
+            members_count: group.members_count,
+            organizers: group.organizers,
+            social_links: PublicGroupSocialLinks {
+                website_url: group.website_url,
+                github_url: group.github_url,
+                linkedin_url: group.linkedin_url,
+                twitter_url: group.twitter_url,
+                slack_url: group.slack_url,
+                facebook_url: group.facebook_url,
+                instagram_url: group.instagram_url,
+                youtube_url: group.youtube_url,
+                bluesky_url: group.bluesky_url,
+                flickr_url: group.flickr_url,
+                wechat_url: group.wechat_url,
+                extra_links: group.extra_links,
+            },
+        },
+        upcoming_events: upcoming_events
+            .into_iter()
+            .map(|event| PublicEventDetails {
+                title: event.name,
+                starts_at: event.starts_at,
+                ends_at: event.ends_at,
+                location: event.location(500),
+                kind: event.kind,
+                image_url: event.logo_url,
+            })
+            .collect(),
+        past_events: past_events
+            .into_iter()
+            .map(|event| PublicEventDetails {
+                title: event.name,
+                starts_at: event.starts_at,
+                ends_at: event.ends_at,
+                location: event.location(500),
+                kind: event.kind,
+                image_url: event.logo_url,
+            })
+            .collect(),
+    };
+
+    let headers = prepare_headers(Duration::minutes(10), &[])?;
+
+    Ok((headers, Json(payload)))
 }
 
 // Actions handlers.
