@@ -162,3 +162,28 @@ pub(crate) async fn track_view(
 
     Ok(StatusCode::NO_CONTENT)
 }
+
+/// Handler for getting group details as JSON.
+#[instrument(skip_all)]
+pub(crate) async fn group_details(
+    State(db): State<DynDB>,
+    CommunityId(community_id): CommunityId,
+    Path((_, group_slug)): Path<(String, String)>,
+) -> Result<impl IntoResponse, HandlerError> {
+    let event_kinds = vec![EventKind::InPerson, EventKind::Virtual, EventKind::Hybrid];
+    let (group, past_events, upcoming_events) = tokio::try_join!(
+        db.get_group_full_by_slug(community_id, &group_slug),
+        db.get_group_past_events(community_id, &group_slug, event_kinds.clone(), 50),
+        db.get_group_upcoming_events(community_id, &group_slug, event_kinds, 50)
+    )?;
+    
+    let group = group.ok_or(HandlerError::NotFound)?;
+    
+    Ok(Json(json!({
+        "group": group,
+        "past_events": past_events,
+        "upcoming_events": upcoming_events,
+    })))
+}
+
+

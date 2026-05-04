@@ -155,6 +155,11 @@ pub(crate) async fn setup(
             "/{community}/group/{group_id}/membership",
             get(group::membership_status),
         )
+        .route(
+            "/{community}/group/{group_slug}/json",
+            get(group::group_details),
+        )
+
         // Protected dashboard routes
         .route(
             "/dashboard/account/update/details",
