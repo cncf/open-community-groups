@@ -6,7 +6,7 @@ returns table (
     new_path text
 ) as $$
     with redirect_candidates as (
-        -- Load active group redirect targets
+        -- Load active, non-deleted group redirect targets
         select
             c.name as community_name,
             coalesce(
@@ -28,11 +28,12 @@ returns table (
         join community c using (community_id)
         where c.active = true
           and g.active = true
+          and g.deleted = false
           and g.legacy_url is not null
 
         union all
 
-        -- Load published event redirect targets
+        -- Load published, non-deleted event redirect targets
         select
             c.name as community_name,
             coalesce(
@@ -56,6 +57,8 @@ returns table (
         join community c using (community_id)
         where c.active = true
           and g.active = true
+          and g.deleted = false
+          and e.deleted = false
           and e.published = true
           and e.legacy_url is not null
     )

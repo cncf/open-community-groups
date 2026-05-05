@@ -25,6 +25,8 @@ select plan(7);
 \set activeGroupNullLegacyID '00000000-0000-0000-0000-000000000208'
 \set duplicateEventID '00000000-0000-0000-0000-000000000102'
 \set duplicateEventOnlyID '00000000-0000-0000-0000-000000000103'
+\set deletedEventID '00000000-0000-0000-0000-000000000108'
+\set deletedGroupID '00000000-0000-0000-0000-000000000211'
 \set duplicateGroupID '00000000-0000-0000-0000-000000000202'
 \set duplicateGroupOnlyID '00000000-0000-0000-0000-000000000203'
 \set inactiveGroupID '00000000-0000-0000-0000-000000000204'
@@ -74,17 +76,20 @@ insert into "group" (
     name,
     slug,
     description,
+    active,
+    deleted,
     legacy_url
 ) values
-    (:'activeGroupID', :'activeCommunityID', :'activeGroupCategoryID', 'Active Group', 'active-group', 'A group with a unique legacy URL', 'https://legacy.example.org/groups/active?source=legacy'),
-    (:'activeGroupSlashID', :'activeCommunityID', :'activeGroupCategoryID', 'Active Group Slash', 'active-group-slash', 'A group with a trailing-slash legacy URL', 'https://legacy.example.org/groups/active-slash/'),
-    (:'activeGroupNullLegacyID', :'activeCommunityID', :'activeGroupCategoryID', 'Active Group Null Legacy', 'active-group-null-legacy', 'A group without a legacy URL', null),
-    (:'duplicateGroupID', :'duplicateCommunityID', :'duplicateGroupCategoryID', 'Duplicate Group', 'duplicate-group', 'A group sharing a legacy URL', 'https://legacy.example.org/group-duplicate'),
-    (:'duplicateGroupOnlyID', :'duplicateCommunityID', :'duplicateGroupCategoryID', 'Duplicate Group Only', 'duplicate-group-only', 'Another group sharing the same legacy URL', 'https://legacy.example.org/group-duplicate'),
-    (:'inactiveGroupID', :'inactiveCommunityID', :'inactiveGroupCategoryID', 'Inactive Group', 'inactive-group', 'A group under an inactive community', 'https://legacy.example.org/inactive-group'),
-    (:'rootGroupID', :'activeCommunityID', :'activeGroupCategoryID', 'Root Group', 'root-group', 'A group using the site root as legacy URL', 'https://legacy.example.org'),
-    (:'scopedDuplicateGroupID', :'duplicateCommunityID', :'duplicateGroupCategoryID', 'Scoped Duplicate Group', 'scoped-duplicate-group', 'A group sharing a legacy URL path across communities', 'https://legacy-duplicate.example.org/groups/active'),
-    (:'sharedPathGroupID', :'activeCommunityID', :'activeGroupCategoryID', 'Shared Path Group', 'shared-path-group', 'A group sharing a path with an event', 'https://legacy.example.org/shared-path');
+    (:'activeGroupID', :'activeCommunityID', :'activeGroupCategoryID', 'Active Group', 'active-group', 'A group with a unique legacy URL', true, false, 'https://legacy.example.org/groups/active?source=legacy'),
+    (:'activeGroupSlashID', :'activeCommunityID', :'activeGroupCategoryID', 'Active Group Slash', 'active-group-slash', 'A group with a trailing-slash legacy URL', true, false, 'https://legacy.example.org/groups/active-slash/'),
+    (:'activeGroupNullLegacyID', :'activeCommunityID', :'activeGroupCategoryID', 'Active Group Null Legacy', 'active-group-null-legacy', 'A group without a legacy URL', true, false, null),
+    (:'deletedGroupID', :'activeCommunityID', :'activeGroupCategoryID', 'Deleted Group', 'deleted-group', 'A deleted group with a legacy URL', false, true, 'https://legacy.example.org/deleted-group'),
+    (:'duplicateGroupID', :'duplicateCommunityID', :'duplicateGroupCategoryID', 'Duplicate Group', 'duplicate-group', 'A group sharing a legacy URL', true, false, 'https://legacy.example.org/group-duplicate'),
+    (:'duplicateGroupOnlyID', :'duplicateCommunityID', :'duplicateGroupCategoryID', 'Duplicate Group Only', 'duplicate-group-only', 'Another group sharing the same legacy URL', true, false, 'https://legacy.example.org/group-duplicate'),
+    (:'inactiveGroupID', :'inactiveCommunityID', :'inactiveGroupCategoryID', 'Inactive Group', 'inactive-group', 'A group under an inactive community', true, false, 'https://legacy.example.org/inactive-group'),
+    (:'rootGroupID', :'activeCommunityID', :'activeGroupCategoryID', 'Root Group', 'root-group', 'A group using the site root as legacy URL', true, false, 'https://legacy.example.org'),
+    (:'scopedDuplicateGroupID', :'duplicateCommunityID', :'duplicateGroupCategoryID', 'Scoped Duplicate Group', 'scoped-duplicate-group', 'A group sharing a legacy URL path across communities', true, false, 'https://legacy-duplicate.example.org/groups/active'),
+    (:'sharedPathGroupID', :'activeCommunityID', :'activeGroupCategoryID', 'Shared Path Group', 'shared-path-group', 'A group sharing a path with an event', true, false, 'https://legacy.example.org/shared-path');
 
 -- Events
 insert into event (
@@ -96,16 +101,18 @@ insert into event (
     slug,
     description,
     timezone,
+    deleted,
 
     legacy_url,
     published
 ) values
-    (:'activeEventID', :'activeEventCategoryID', 'virtual', :'activeGroupID', 'Active Event', 'active-event', 'A published event with a unique legacy URL', 'UTC', 'https://legacy.example.org/events/active?ref=legacy', true),
-    (:'activeEventSlashID', :'activeEventCategoryID', 'virtual', :'activeGroupID', 'Active Event Slash', 'active-event-slash', 'A published event with a trailing-slash legacy URL', 'UTC', 'https://legacy.example.org/events/active-slash/', true),
-    (:'activeEventNullLegacyID', :'activeEventCategoryID', 'virtual', :'activeGroupID', 'Active Event Null Legacy', 'active-event-null-legacy', 'A published event without a legacy URL', 'UTC', null, true),
-    (:'duplicateEventID', :'duplicateEventCategoryID', 'virtual', :'duplicateGroupID', 'Duplicate Event', 'duplicate-event', 'A published event sharing a legacy URL', 'UTC', 'https://legacy.example.org/events/duplicate', true),
-    (:'duplicateEventOnlyID', :'duplicateEventCategoryID', 'virtual', :'duplicateGroupID', 'Duplicate Event Only', 'duplicate-event-only', 'Another published event sharing the same legacy URL', 'UTC', 'https://legacy.example.org/events/duplicate', true),
-    (:'sharedPathEventID', :'activeEventCategoryID', 'virtual', :'activeGroupID', 'Shared Path Event', 'shared-path-event', 'A published event sharing a path with a group', 'UTC', 'https://legacy.example.org/shared-path', true);
+    (:'activeEventID', :'activeEventCategoryID', 'virtual', :'activeGroupID', 'Active Event', 'active-event', 'A published event with a unique legacy URL', 'UTC', false, 'https://legacy.example.org/events/active?ref=legacy', true),
+    (:'activeEventSlashID', :'activeEventCategoryID', 'virtual', :'activeGroupID', 'Active Event Slash', 'active-event-slash', 'A published event with a trailing-slash legacy URL', 'UTC', false, 'https://legacy.example.org/events/active-slash/', true),
+    (:'activeEventNullLegacyID', :'activeEventCategoryID', 'virtual', :'activeGroupID', 'Active Event Null Legacy', 'active-event-null-legacy', 'A published event without a legacy URL', 'UTC', false, null, true),
+    (:'deletedEventID', :'activeEventCategoryID', 'virtual', :'activeGroupID', 'Deleted Event', 'deleted-event', 'A deleted event with a legacy URL', 'UTC', true, 'https://legacy.example.org/events/deleted', false),
+    (:'duplicateEventID', :'duplicateEventCategoryID', 'virtual', :'duplicateGroupID', 'Duplicate Event', 'duplicate-event', 'A published event sharing a legacy URL', 'UTC', false, 'https://legacy.example.org/events/duplicate', true),
+    (:'duplicateEventOnlyID', :'duplicateEventCategoryID', 'virtual', :'duplicateGroupID', 'Duplicate Event Only', 'duplicate-event-only', 'Another published event sharing the same legacy URL', 'UTC', false, 'https://legacy.example.org/events/duplicate', true),
+    (:'sharedPathEventID', :'activeEventCategoryID', 'virtual', :'activeGroupID', 'Shared Path Event', 'shared-path-event', 'A published event sharing a path with a group', 'UTC', false, 'https://legacy.example.org/shared-path', true);
 
 -- ============================================================================
 -- TESTS
@@ -184,14 +191,14 @@ select ok(
     'Should exclude normalized paths shared by events and groups'
 );
 
--- Should exclude inactive and null legacy URL records
+-- Should exclude inactive, deleted, and null legacy URL records
 select ok(
     not exists(
         select 1
         from list_redirects()
-        where legacy_path in ('/inactive-group', '/events/active-event-null-legacy')
+        where legacy_path in ('/deleted-group', '/events/deleted', '/inactive-group', '/events/active-event-null-legacy')
     ),
-    'Should exclude inactive and null legacy URL records'
+    'Should exclude inactive, deleted, and null legacy URL records'
 );
 
 -- ============================================================================
