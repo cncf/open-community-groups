@@ -174,12 +174,12 @@
     }
 
     .line {
-      border-top: 7px solid var(--color-primary-500);
+      border-top: 7px solid {{ theme.primary_color }};
     }
 
     .btn {
-      background-color: var(--color-primary-500);
-      border: solid 1px var(--color-primary-500);
+      background-color: {{ theme.primary_color }};
+      border: solid 1px {{ theme.primary_color }};
       color: #ffffff;
       border-radius: 25px;
       display: inline-flex;
@@ -198,7 +198,7 @@
       }
 
       .line {
-        border-color: var(--color-primary-500) !important;
+        border-color: {{ theme.primary_color }} !important;
       }
 
       .main, .copy-link {
@@ -210,8 +210,8 @@
       }
 
       .btn {
-        background-color: var(--color-primary-500);
-        border-color: var(--color-primary-500);
+        background-color: {{ theme.primary_color }};
+        border-color: {{ theme.primary_color }};
         color: #ffffff;
       }
 
@@ -226,6 +226,8 @@
   {# djlint:off H021 #}
   <body class="body"
         style="font-family: sans-serif;
+               background-color: #f4f4f4;
+               color: #38383f;
                -webkit-font-smoothing: antialiased;
                font-size: 14px;
                line-height: 1.4;
@@ -240,6 +242,8 @@
            style="border-collapse: separate;
                   mso-table-lspace: 0pt;
                   mso-table-rspace: 0pt;
+                  background-color: #f4f4f4;
+                  color: #38383f;
                   width: 100%">
       <tr>
         <td style="font-family: sans-serif; font-size: 14px; vertical-align: top">&nbsp;</td>
@@ -278,6 +282,8 @@
                    style="border-collapse: separate;
                           mso-table-lspace: 0pt;
                           mso-table-rspace: 0pt;
+                          background-color: #ffffff;
+                          border-top: 7px solid {{ theme.primary_color }};
                           width: 100%;
                           border-radius: 3px">
 
