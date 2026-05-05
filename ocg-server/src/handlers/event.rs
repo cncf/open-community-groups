@@ -57,15 +57,22 @@ mod tests;
 #[instrument(skip_all)]
 pub(crate) async fn page(
     State(db): State<DynDB>,
-    CommunityId(community_id): CommunityId,
-    Path((_, group_slug, event_slug)): Path<(String, String, String)>,
+    Path((community_name, group_slug, event_slug)): Path<(String, String, String)>,
     uri: Uri,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Fetch event page data
-    let (event, site_settings) = tokio::try_join!(
-        db.get_event_full_by_slug(community_id, &group_slug, &event_slug),
+    // Get community and site settings
+    let (community_id, site_settings) = tokio::try_join!(
+        db.get_community_id_by_name(&community_name),
         db.get_site_settings()
     )?;
+    let Some(community_id) = community_id else {
+        return not_found::render(site_settings);
+    };
+
+    // Fetch event page data
+    let event = db
+        .get_event_full_by_slug(community_id, &group_slug, &event_slug)
+        .await?;
     let Some(mut event) = event else {
         return not_found::render(site_settings);
     };

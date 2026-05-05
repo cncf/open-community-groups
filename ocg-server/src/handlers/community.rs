@@ -18,7 +18,7 @@ use crate::{
     activity_tracker::{Activity, DynActivityTracker},
     db::DynDB,
     handlers::{
-        error::HandlerError, extractors::CommunityId, prepare_headers, request_matches_site,
+        error::HandlerError, prepare_headers, request_matches_site, site::not_found,
         trim_public_gallery_images,
     },
     templates::{PageId, auth::User, community},
@@ -34,21 +34,22 @@ mod tests;
 #[instrument(skip_all, err)]
 pub(crate) async fn page(
     State(db): State<DynDB>,
-    CommunityId(community_id): CommunityId,
+    Path(community_name): Path<String>,
     uri: Uri,
 ) -> Result<impl IntoResponse, HandlerError> {
+    // Get community and site settings
+    let (community_id, site_settings) = tokio::try_join!(
+        db.get_community_id_by_name(&community_name),
+        db.get_site_settings()
+    )?;
+    let Some(community_id) = community_id else {
+        return not_found::render(site_settings);
+    };
+
     // Prepare template
-    let (
-        mut community,
-        recently_added_groups,
-        site_settings,
-        upcoming_in_person_events,
-        upcoming_virtual_events,
-        stats,
-    ) = tokio::try_join!(
+    let (mut community, recently_added_groups, upcoming_in_person_events, upcoming_virtual_events, stats) = tokio::try_join!(
         db.get_community_full(community_id),
         db.get_community_recently_added_groups(community_id),
-        db.get_site_settings(),
         db.get_community_upcoming_events(community_id, vec![EventKind::InPerson, EventKind::Hybrid]),
         db.get_community_upcoming_events(community_id, vec![EventKind::Virtual, EventKind::Hybrid]),
         db.get_community_site_stats(community_id),
@@ -78,7 +79,7 @@ pub(crate) async fn page(
     // Prepare response headers
     let headers = prepare_headers(Duration::hours(1), &[])?;
 
-    Ok((headers, Html(template.render()?)))
+    Ok((headers, Html(template.render()?)).into_response())
 }
 
 // Actions handlers.
