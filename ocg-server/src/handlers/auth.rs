@@ -7,7 +7,7 @@ use async_trait::async_trait;
 use axum::{
     Form,
     extract::{Path, Query, Request, State},
-    http::StatusCode,
+    http::{Method, StatusCode},
     middleware::Next,
     response::{Html, IntoResponse, Redirect, Response},
 };
@@ -35,9 +35,13 @@ use crate::{
     templates::{
         self, PageId,
         auth::{User, UserDetails},
+        dashboard::group::home::UserGroupsByCommunity,
         notifications::EmailVerification,
     },
-    types::permissions::{CommunityPermission, GroupPermission},
+    types::{
+        community::CommunitySummary,
+        permissions::{CommunityPermission, GroupPermission},
+    },
     validation::{MAX_LEN_S, trimmed_non_empty},
 };
 
@@ -873,12 +877,50 @@ pub(crate) async fn user_has_selected_community_permission(
     };
 
     // Check required permission in the selected community
-    let Ok(has_permission) = db
+    let Ok(mut has_permission) = db
         .user_has_community_permission(&community_id, &user.user_id, permission)
         .await
     else {
         return StatusCode::INTERNAL_SERVER_ERROR.into_response();
     };
+
+    // A failed permission check is ambiguous: the selected community might be
+    // stale, or the user might simply lack this specific permission. For GET
+    // requests, check whether the selected community is still accessible before
+    // repairing the session; if it is still accessible, keep the denial tied to
+    // the user's current selection.
+    let community_id = if !has_permission && request.method() == Method::GET {
+        let Ok(communities) = db.list_user_communities(&user.user_id).await else {
+            return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+        };
+        if communities
+            .iter()
+            .any(|community| community.community_id == community_id)
+        {
+            community_id
+        } else {
+            let community_id =
+                match select_first_accessible_community_from_list(&db, &session, &user.user_id, &communities)
+                    .await
+                {
+                    Ok(Some(community_id)) => community_id,
+                    Ok(None) => return StatusCode::FORBIDDEN.into_response(),
+                    Err(error) => return error.into_response(),
+                };
+            let Ok(repaired_has_permission) = db
+                .user_has_community_permission(&community_id, &user.user_id, permission)
+                .await
+            else {
+                return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+            };
+            has_permission = repaired_has_permission;
+            community_id
+        }
+    } else {
+        community_id
+    };
+
+    // Deny when neither the selected nor repaired community grants the requested permission.
     if !has_permission {
         return StatusCode::FORBIDDEN.into_response();
     }
@@ -929,12 +971,54 @@ pub(crate) async fn user_has_selected_group_permission(
     };
 
     // Check required permission in the selected group
-    let Ok(has_permission) = db
+    let Ok(mut has_permission) = db
         .user_has_group_permission(&community_id, &group_id, &user.user_id, permission)
         .await
     else {
         return StatusCode::INTERNAL_SERVER_ERROR.into_response();
     };
+
+    // A failed permission check is ambiguous: the selected group might be
+    // stale, or the user might simply lack this specific permission. For GET
+    // requests, check whether the selected group is still accessible before
+    // repairing the session; if it is still accessible, keep the denial tied to
+    // the user's current selection.
+    let (community_id, group_id) = if !has_permission && request.method() == Method::GET {
+        let Ok(groups_by_community) = db.list_user_groups(&user.user_id).await else {
+            return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+        };
+        let selected_group_is_available = groups_by_community.iter().any(|community| {
+            community.community.community_id == community_id
+                && community.groups.iter().any(|group| group.group_id == group_id)
+        });
+        if selected_group_is_available {
+            (community_id, group_id)
+        } else {
+            let (community_id, group_id) = match select_first_accessible_group_from_list(
+                &session,
+                &groups_by_community,
+                Some(community_id),
+            )
+            .await
+            {
+                Ok(Some(ids)) => ids,
+                Ok(None) => return Redirect::to(USER_DASHBOARD_INVITATIONS_URL).into_response(),
+                Err(error) => return error.into_response(),
+            };
+            let Ok(repaired_has_permission) = db
+                .user_has_group_permission(&community_id, &group_id, &user.user_id, permission)
+                .await
+            else {
+                return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+            };
+            has_permission = repaired_has_permission;
+            (community_id, group_id)
+        }
+    } else {
+        (community_id, group_id)
+    };
+
+    // Deny when neither the selected nor repaired group grants the requested permission.
     if !has_permission {
         return StatusCode::FORBIDDEN.into_response();
     }
@@ -994,6 +1078,18 @@ async fn select_first_accessible_community_for_dashboard(
 ) -> Result<Option<Uuid>, HandlerError> {
     // Load all community dashboards available to the user
     let communities = db.list_user_communities(user_id).await?;
+
+    select_first_accessible_community_from_list(db, session, user_id, &communities).await
+}
+
+/// Selects the first community dashboard from a preloaded accessible list.
+async fn select_first_accessible_community_from_list(
+    db: &DynDB,
+    session: &Session,
+    user_id: &Uuid,
+    communities: &[CommunitySummary],
+) -> Result<Option<Uuid>, HandlerError> {
+    // Get first community from the list provided
     let Some(first_community) = communities.first() else {
         return Ok(None);
     };
@@ -1015,6 +1111,15 @@ async fn select_first_accessible_group_for_dashboard(
     // Load all group dashboards available to the user
     let groups_by_community = db.list_user_groups(user_id).await?;
 
+    select_first_accessible_group_from_list(session, &groups_by_community, selected_community_id).await
+}
+
+/// Selects the first group dashboard from a preloaded accessible list.
+async fn select_first_accessible_group_from_list(
+    session: &Session,
+    groups_by_community: &[UserGroupsByCommunity],
+    selected_community_id: Option<Uuid>,
+) -> Result<Option<(Uuid, Uuid)>, HandlerError> {
     // Prefer the selected community when it has at least one group
     let selected_community = selected_community_id
         .and_then(|community_id| {
