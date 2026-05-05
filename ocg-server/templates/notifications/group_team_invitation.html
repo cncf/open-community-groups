@@ -10,7 +10,7 @@
 {% endblock preheader -%}
 
 {% block content -%}
-  <p class="default mb-30">
+  <p class="default mb-30" style="margin-bottom: 30px">
     You have been invited to join the <strong>{{ group.name }}</strong> team on
     <strong>Open Community Groups</strong>.
     <br />
@@ -19,7 +19,7 @@
     invitation from your dashboard.
   </p>
 
-  {{ email::button(link = link, text = "Review invitation") }}
+  {{ email::button(link = link, text = "Review invitation", color = theme.primary_color) }}
 {% endblock content -%}
 
 {% block footer -%}

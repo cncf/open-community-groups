@@ -10,16 +10,18 @@
 {% endblock preheader -%}
 
 {% block content -%}
-  <p class="default mb-30">
+  <p class="default mb-30" style="margin-bottom: 30px">
     Welcome to <strong>Open Community Groups</strong>!
     <br />
     <br />
     Please note that the verification code <strong>is only valid for 24 hours</strong>. If you haven't verified your account by then you'll need to sign up again.
   </p>
 
-  {{ email::button(link = link, text = "Verify your email") }}
+  {{ email::button(link = link, text = "Verify your email", color = theme.primary_color) }}
 
-  <p class="default mt-30 mb-15">
+  <p class="default mt-30 mb-15"
+     style="margin-top: 30px;
+            margin-bottom: 15px">
     Once you've verified your email, you'll be able to log in using your credentials.
     <br />
     <br />

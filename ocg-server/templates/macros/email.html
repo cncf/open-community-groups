@@ -1,4 +1,4 @@
-{% macro button(link, text = "") -%}
+{% macro button(link, text = "", color = "#0094FF") -%}
   {# djlint:off H021 #}
   <table border="0"
          cellpadding="0"
@@ -7,6 +7,9 @@
          style="border-collapse: separate;
                 mso-table-lspace: 0pt;
                 mso-table-rspace: 0pt;
+                background-color: transparent;
+                border: 0;
+                color: inherit;
                 box-sizing: border-box">
     <tbody>
       <tr>
@@ -32,6 +35,11 @@
                      class="btn"
                      target="_blank"
                      style="cursor: pointer;
+                            background-color: {{ color }};
+                            border: solid 1px {{ color }};
+                            border-radius: 25px;
+                            color: #ffffff;
+                            display: inline-block;
                             text-decoration: none;
                             font-size: 14px;
                             font-weight: bold;

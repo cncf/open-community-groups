@@ -10,14 +10,14 @@
 {% endblock preheader -%}
 
 {% block content -%}
-  <p class="default mb-30">
+  <p class="default mb-30" style="margin-bottom: 30px">
     Your refund request for <strong>{{ event.name }}</strong> was reviewed and was not approved.
     <br />
     <br />
     Your attendance is still active, and you can continue managing the event from its page.
   </p>
 
-  {{ email::button(link = link, text = "View event") }}
+  {{ email::button(link = link, text = "View event", color = theme.primary_color) }}
 {% endblock content -%}
 
 {% block footer -%}

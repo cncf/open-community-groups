@@ -10,7 +10,7 @@
 {% endblock preheader -%}
 
 {% block content -%}
-  <p class="default mb-30">
+  <p class="default mb-30" style="margin-bottom: 30px">
     {{ event.name }} from <strong>{{ event.group_name }}</strong> is currently full.
     <br />
     <br />
@@ -18,7 +18,7 @@
     we will send you a follow-up email.
   </p>
 
-  {{ email::button(link = link, text = "View event") }}
+  {{ email::button(link = link, text = "View event", color = theme.primary_color) }}
 {% endblock content -%}
 
 {% block footer -%}

@@ -10,14 +10,14 @@
 {% endblock preheader -%}
 
 {% block content -%}
-  <p class="default mb-30">
+  <p class="default mb-30" style="margin-bottom: 30px">
     Your refund request for <strong>{{ event.name }}</strong> has been approved.
     <br />
     <br />
     The refund is now being processed by Stripe and your ticket has been released.
   </p>
 
-  {{ email::button(link = link, text = "View event") }}
+  {{ email::button(link = link, text = "View event", color = theme.primary_color) }}
 {% endblock content -%}
 
 {% block footer -%}

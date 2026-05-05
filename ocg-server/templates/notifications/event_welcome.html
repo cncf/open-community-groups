@@ -10,7 +10,7 @@
 {% endblock preheader -%}
 
 {% block content -%}
-  <div class="default mb-30">
+  <div class="default mb-30" style="margin-bottom: 30px">
     Thanks for registering for <strong>{{ event.name }}</strong> with
     <strong>{{ event.group_name }}</strong> on
     <strong>Open Community Groups</strong>.
@@ -53,9 +53,11 @@
     {% endif -%}
   </div>
 
-  {{ email::button(link = link, text = "View event") }}
+  {{ email::button(link = link, text = "View event", color = theme.primary_color) }}
 
-  <p class="default mt-30 mb-15">
+  <p class="default mt-30 mb-15"
+     style="margin-top: 30px;
+            margin-bottom: 15px">
     Please find attached an .ics file containing the event details.
     <br />
     <br />

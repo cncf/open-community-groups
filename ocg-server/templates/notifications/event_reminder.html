@@ -10,7 +10,7 @@
 {% endblock preheader -%}
 
 {% block content -%}
-  <div class="default mb-30">
+  <div class="default mb-30" style="margin-bottom: 30px">
     Friendly reminder that <strong>{{ event.name }}</strong> from
     <strong>{{ event.group_name }}</strong> starts in less than 24 hours.
     <br />
@@ -49,7 +49,7 @@
     {% endif -%}
   </div>
 
-  {{ email::button(link = link, text = "View event") }}
+  {{ email::button(link = link, text = "View event", color = theme.primary_color) }}
 {% endblock content -%}
 
 {% block footer -%}
