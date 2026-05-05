@@ -69,6 +69,25 @@ export const createNoEmptyValuesExtension = (dropZero) => ({
 });
 
 /**
+ * Allows the shared HTML not found page to replace the current body on boosted requests.
+ * @param {CustomEvent} event HTMX beforeSwap event.
+ * @returns {void}
+ */
+export const handleNotFoundBeforeSwap = (event) => {
+  const xhr = event.detail?.xhr;
+  if (!xhr || xhr.status !== 404 || typeof xhr.getResponseHeader !== "function") {
+    return;
+  }
+
+  if (xhr.getResponseHeader("X-OCG-Not-Found") !== "true") {
+    return;
+  }
+
+  event.detail.shouldSwap = true;
+  event.detail.isError = false;
+};
+
+/**
  * Registers the shared HTMX parameter filtering extensions.
  * @param {{defineExtension?: Function}|undefined|null} htmxInstance Global HTMX instance.
  * @returns {void}
@@ -80,4 +99,13 @@ export const registerHtmxNoEmptyValuesExtensions = (htmxInstance) => {
 
   htmxInstance.defineExtension("no-empty-vals", createNoEmptyValuesExtension(true));
   htmxInstance.defineExtension("no-empty-vals-keep-zero", createNoEmptyValuesExtension(false));
+};
+
+/**
+ * Registers shared HTMX response handling hooks.
+ * @param {Document|undefined|null} root Event listener root.
+ * @returns {void}
+ */
+export const registerHtmxResponseHandlers = (root = document) => {
+  root?.body?.addEventListener("htmx:beforeSwap", handleNotFoundBeforeSwap);
 };

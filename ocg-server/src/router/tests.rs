@@ -140,6 +140,9 @@ async fn test_missing_route_returns_not_found_page() {
         parts.headers.get(CACHE_CONTROL).unwrap(),
         &HeaderValue::from_static("max-age=300")
     );
+    assert_eq!(parts.headers.get("X-OCG-Not-Found").unwrap(), "true");
+    assert_eq!(parts.headers.get("HX-Retarget").unwrap(), "body");
+    assert_eq!(parts.headers.get("HX-Reswap").unwrap(), "innerHTML");
     let body = String::from_utf8(bytes.to_vec()).unwrap();
     assert!(body.contains("We could not find that page"));
     assert!(body.contains("Go to home page"));

@@ -16,6 +16,9 @@ use crate::{
     types::site::SiteSettings,
 };
 
+/// Header marking a 404 response as the shared site not found page.
+const NOT_FOUND_PAGE_HEADER: &str = "X-OCG-Not-Found";
+
 /// Stable template path for not found pages.
 const NOT_FOUND_PATH: &str = "/404";
 
@@ -45,7 +48,14 @@ pub(crate) fn render(site_settings: SiteSettings) -> Result<Response, HandlerErr
     };
 
     // Prepare response headers
-    let headers = prepare_headers(Duration::minutes(5), &[])?;
+    let headers = prepare_headers(
+        Duration::minutes(5),
+        &[
+            (NOT_FOUND_PAGE_HEADER, "true"),
+            ("HX-Retarget", "body"),
+            ("HX-Reswap", "innerHTML"),
+        ],
+    )?;
 
     Ok((StatusCode::NOT_FOUND, headers, Html(template.render()?)).into_response())
 }

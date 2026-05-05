@@ -2,7 +2,9 @@ import { expect } from "@open-wc/testing";
 
 import {
   createNoEmptyValuesExtension,
+  handleNotFoundBeforeSwap,
   registerHtmxNoEmptyValuesExtensions,
+  registerHtmxResponseHandlers,
 } from "/static/js/common/htmx-extensions.js";
 
 const formDataToEntries = (formData) => Array.from(formData.entries());
@@ -91,5 +93,54 @@ describe("htmx extensions", () => {
       ["title", "Free entry"],
     ]);
     expect(event.detail.parameters).to.equal(event.detail.formData);
+  });
+
+  it("allows marked not found pages to swap on htmx 404 responses", () => {
+    const event = {
+      detail: {
+        isError: true,
+        shouldSwap: false,
+        xhr: {
+          status: 404,
+          getResponseHeader: (name) => (name === "X-OCG-Not-Found" ? "true" : null),
+        },
+      },
+    };
+
+    handleNotFoundBeforeSwap(event);
+
+    expect(event.detail.shouldSwap).to.equal(true);
+    expect(event.detail.isError).to.equal(false);
+  });
+
+  it("keeps unmarked 404 responses on the default htmx error path", () => {
+    const event = {
+      detail: {
+        isError: true,
+        shouldSwap: false,
+        xhr: {
+          status: 404,
+          getResponseHeader: () => null,
+        },
+      },
+    };
+
+    handleNotFoundBeforeSwap(event);
+
+    expect(event.detail.shouldSwap).to.equal(false);
+    expect(event.detail.isError).to.equal(true);
+  });
+
+  it("registers the not found beforeSwap handler", () => {
+    const listeners = [];
+    const root = {
+      body: {
+        addEventListener: (name, handler) => listeners.push([name, handler]),
+      },
+    };
+
+    registerHtmxResponseHandlers(root);
+
+    expect(listeners).to.deep.equal([["htmx:beforeSwap", handleNotFoundBeforeSwap]]);
   });
 });
