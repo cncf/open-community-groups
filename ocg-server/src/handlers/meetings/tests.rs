@@ -204,7 +204,7 @@ async fn test_zoom_event_returns_not_found_when_zoom_is_disabled() {
     );
     assert_eq!(
         parts.headers.get(CACHE_CONTROL).unwrap(),
-        &HeaderValue::from_static("max-age=900")
+        &HeaderValue::from_static("max-age=300")
     );
     let body = String::from_utf8(bytes.to_vec()).unwrap();
     assert!(body.contains("We could not find that page"));

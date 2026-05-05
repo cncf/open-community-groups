@@ -45,7 +45,7 @@ pub(crate) fn render(site_settings: SiteSettings) -> Result<Response, HandlerErr
     };
 
     // Prepare response headers
-    let headers = prepare_headers(Duration::minutes(15), &[])?;
+    let headers = prepare_headers(Duration::minutes(5), &[])?;
 
     Ok((StatusCode::NOT_FOUND, headers, Html(template.render()?)).into_response())
 }
