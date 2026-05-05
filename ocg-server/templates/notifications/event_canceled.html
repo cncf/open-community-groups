@@ -10,7 +10,7 @@
 {% endblock preheader -%}
 
 {% block content -%}
-  <p class="default mb-30">
+  <p class="default mb-30" style="margin-bottom: 30px">
     We are sorry to inform you that the event
     <strong>{{ event.name }}</strong> from
     <strong>{{ event.group_name }}</strong> has been <strong>canceled</strong>.
@@ -18,7 +18,9 @@
 
   {{ email::button(link = link, text = "View event details", color = theme.primary_color) }}
 
-  <p class="default mt-30 mb-15">
+  <p class="default mt-30 mb-15"
+     style="margin-top: 30px;
+            margin-bottom: 15px">
     Please find attached an .ics file containing the updated event details.
     <br />
     <br />

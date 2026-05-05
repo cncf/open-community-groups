@@ -10,7 +10,7 @@
 {% endblock preheader -%}
 
 {% block content -%}
-  <div class="default mb-30">
+  <div class="default mb-30" style="margin-bottom: 30px">
     Good news - a seat opened up for <strong>{{ event.name }}</strong> from
     <strong>{{ event.group_name }}</strong>, and you are now registered.
     <br />
@@ -51,7 +51,9 @@
 
   {{ email::button(link = link, text = "View event", color = theme.primary_color) }}
 
-  <p class="default mt-30 mb-15">Please find attached an .ics file containing the event details.</p>
+  <p class="default mt-30 mb-15"
+     style="margin-top: 30px;
+            margin-bottom: 15px">Please find attached an .ics file containing the event details.</p>
 {% endblock content -%}
 
 {% block footer -%}

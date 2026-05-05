@@ -10,7 +10,7 @@
 {% endblock preheader -%}
 
 {% block content -%}
-  <p class="default mb-30">
+  <p class="default mb-30" style="margin-bottom: 30px">
     Welcome to <strong>{{ group.name }}</strong> on
     <strong>Open Community Groups</strong>!
     <br />
@@ -26,7 +26,9 @@
 
   {{ email::button(link = link, text = "Visit group page", color = theme.primary_color) }}
 
-  <p class="default mt-30 mb-15">Thanks for being part of the community!</p>
+  <p class="default mt-30 mb-15"
+     style="margin-top: 30px;
+            margin-bottom: 15px">Thanks for being part of the community!</p>
 {% endblock content -%}
 
 {% block footer -%}
