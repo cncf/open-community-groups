@@ -109,9 +109,52 @@ async fn test_health_check_returns_ok() {
 }
 
 #[tokio::test]
+async fn test_missing_route_returns_not_found_page() {
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_site_settings()
+        .times(1)
+        .returning(|| Ok(sample_site_settings()));
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("GET")
+        .uri("/missing/page")
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_eq!(parts.status, StatusCode::NOT_FOUND);
+    assert_eq!(
+        parts.headers.get(CONTENT_TYPE).unwrap(),
+        &HeaderValue::from_static("text/html; charset=utf-8")
+    );
+    assert_eq!(
+        parts.headers.get(CACHE_CONTROL).unwrap(),
+        &HeaderValue::from_static("max-age=300")
+    );
+    assert_eq!(parts.headers.get("X-OCG-Not-Found").unwrap(), "true");
+    assert_eq!(parts.headers.get("HX-Retarget").unwrap(), "body");
+    assert_eq!(parts.headers.get("HX-Reswap").unwrap(), "innerHTML");
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
+    assert!(body.contains("We could not find that page"));
+    assert!(body.contains("Go to home page"));
+}
+
+#[tokio::test]
 async fn test_payments_webhook_route_is_not_mounted_without_payments_config() {
     // Setup database mock
-    let db = MockDB::new();
+    let mut db = MockDB::new();
+    db.expect_get_site_settings()
+        .times(1)
+        .returning(|| Ok(sample_site_settings()));
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
@@ -129,7 +172,16 @@ async fn test_payments_webhook_route_is_not_mounted_without_payments_config() {
 
     // Check response matches expectations
     assert_eq!(parts.status, StatusCode::NOT_FOUND);
-    assert!(bytes.is_empty());
+    assert_eq!(
+        parts.headers.get(CONTENT_TYPE).unwrap(),
+        &HeaderValue::from_static("text/html; charset=utf-8")
+    );
+    assert_eq!(
+        parts.headers.get(CACHE_CONTROL).unwrap(),
+        &HeaderValue::from_static("max-age=300")
+    );
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
+    assert!(body.contains("We could not find that page"));
 }
 
 #[tokio::test]
@@ -193,7 +245,10 @@ async fn test_static_handler_missing_asset_returns_not_found() {
 #[tokio::test]
 async fn test_zoom_webhook_route_is_not_mounted_when_zoom_is_disabled() {
     // Setup database mock
-    let db = MockDB::new();
+    let mut db = MockDB::new();
+    db.expect_get_site_settings()
+        .times(1)
+        .returning(|| Ok(sample_site_settings()));
 
     // Setup disabled Zoom configuration
     let mut meetings_cfg = sample_zoom_meetings_cfg("zoom-secret");
@@ -220,5 +275,14 @@ async fn test_zoom_webhook_route_is_not_mounted_when_zoom_is_disabled() {
 
     // Check response matches expectations
     assert_eq!(parts.status, StatusCode::NOT_FOUND);
-    assert!(bytes.is_empty());
+    assert_eq!(
+        parts.headers.get(CONTENT_TYPE).unwrap(),
+        &HeaderValue::from_static("text/html; charset=utf-8")
+    );
+    assert_eq!(
+        parts.headers.get(CACHE_CONTROL).unwrap(),
+        &HeaderValue::from_static("max-age=300")
+    );
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
+    assert!(body.contains("We could not find that page"));
 }

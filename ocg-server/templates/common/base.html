@@ -64,10 +64,12 @@
     <script src="/static/vendor/js/easymde.v2.20.0.min.js"></script>
     <script type="module">
       import {
-        registerHtmxNoEmptyValuesExtensions
+        registerHtmxNoEmptyValuesExtensions,
+        registerHtmxResponseHandlers
       } from "/static/js/common/htmx-extensions.js";
 
       registerHtmxNoEmptyValuesExtensions(window.htmx);
+      registerHtmxResponseHandlers(document);
     </script>
     <script type="module" src="/static/js/common/form-validation.js"></script>
     <script type="module" src="/static/js/event/attendance.js"></script>
@@ -106,7 +108,7 @@
       {# End content -#}
 
       {# Footer -#}
-      {% if !path.starts_with("/dashboard") && path != "/docs" && path != "/log-in" && path != "/sign-up" && !path.contains("/check-in/") -%}
+      {% if !path.starts_with("/dashboard") && path != "/404" && path != "/docs" && path != "/log-in" && path != "/sign-up" && !path.contains("/check-in/") -%}
         {% include "common/footer.html" -%}
       {% endif -%}
       {# End footer -#}

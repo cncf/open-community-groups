@@ -1,0 +1,25 @@
+{% extends "common/base.html" -%}
+
+{% block content -%}
+  <div class="flex min-h-[calc(100vh-5rem)] w-full items-center justify-center">
+    <div class="container max-w-3xl m-auto px-4 py-8 md:px-6 md:py-12">
+      <div class="bg-white p-8 md:p-10 border border-stone-200 rounded-lg shadow-sm">
+        <div class="mx-auto max-w-2xl text-center">
+          <p class="text-sm font-semibold uppercase tracking-wide text-primary-700">Page not found</p>
+          <h1 class="mt-4 text-3xl sm:text-4xl lg:text-5xl font-semibold tracking-tight text-stone-950">
+            We could not find that page
+          </h1>
+          <p class="mt-6 text-base sm:text-lg leading-8 text-stone-600">
+            The page you requested may have moved, been deleted, or the link may be incorrect.
+          </p>
+          <div class="mt-10">
+            <a href="/"
+               hx-boost="true"
+               hx-target="body"
+               class="btn-primary-anchor text-base py-3 px-7 font-semibold">Go to home page</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock content -%}

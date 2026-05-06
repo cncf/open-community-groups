@@ -119,15 +119,15 @@ async fn test_page_success() {
         .times(1)
         .withf(|name| name == "test-community")
         .returning(move |_| Ok(Some(community_id)));
+    db.expect_get_site_settings()
+        .times(1)
+        .returning(|| Ok(sample_site_settings()));
     db.expect_get_event_full_by_slug()
         .times(1)
         .withf(move |id, group_slug, event_slug| {
             *id == community_id && group_slug == "test-group" && event_slug == "test-event"
         })
         .returning(move |_, _, _| Ok(Some(sample_event_full(community_id, event_id, group_id))));
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
@@ -154,6 +154,47 @@ async fn test_page_success() {
         &HeaderValue::from_static("max-age=3600")
     );
     assert!(!bytes.is_empty());
+}
+
+#[tokio::test]
+async fn test_page_community_not_found() {
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_community_id_by_name()
+        .times(1)
+        .withf(|name| name == "missing-community")
+        .returning(|_| Ok(None));
+    db.expect_get_site_settings()
+        .times(1)
+        .returning(|| Ok(sample_site_settings()));
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("GET")
+        .uri("/missing-community/group/test-group/event/test-event")
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_eq!(parts.status, StatusCode::NOT_FOUND);
+    assert_eq!(
+        parts.headers.get(CONTENT_TYPE).unwrap(),
+        &HeaderValue::from_static("text/html; charset=utf-8")
+    );
+    assert_eq!(
+        parts.headers.get(CACHE_CONTROL).unwrap(),
+        &HeaderValue::from_static("max-age=300")
+    );
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
+    assert!(body.contains("We could not find that page"));
+    assert!(body.contains("Go to home page"));
 }
 
 #[tokio::test]
@@ -193,7 +234,17 @@ async fn test_page_not_found() {
 
     // Check response matches expectations
     assert_eq!(parts.status, StatusCode::NOT_FOUND);
-    assert!(bytes.is_empty());
+    assert_eq!(
+        parts.headers.get(CONTENT_TYPE).unwrap(),
+        &HeaderValue::from_static("text/html; charset=utf-8")
+    );
+    assert_eq!(
+        parts.headers.get(CACHE_CONTROL).unwrap(),
+        &HeaderValue::from_static("max-age=300")
+    );
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
+    assert!(body.contains("We could not find that page"));
+    assert!(body.contains("Go to home page"));
 }
 
 #[tokio::test]
@@ -207,6 +258,9 @@ async fn test_page_db_error() {
         .times(1)
         .withf(|name| name == "test-community")
         .returning(move |_| Ok(Some(community_id)));
+    db.expect_get_site_settings()
+        .times(1)
+        .returning(|| Ok(sample_site_settings()));
     db.expect_get_event_full_by_slug()
         .times(1)
         .withf(move |id, group_slug, event_slug| {

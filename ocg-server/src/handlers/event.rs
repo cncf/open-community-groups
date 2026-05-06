@@ -21,7 +21,9 @@ use crate::{
     db::{DynDB, payments::PrepareEventCheckoutPurchaseInput},
     handlers::{
         extractors::{CurrentUser, ValidatedForm, ValidatedFormQs},
-        prepare_headers, request_matches_site, trim_public_gallery_images,
+        prepare_headers, request_matches_site,
+        site::not_found,
+        trim_public_gallery_images,
     },
     router::CACHE_CONTROL_NO_CACHE,
     services::{
@@ -55,17 +57,30 @@ mod tests;
 #[instrument(skip_all)]
 pub(crate) async fn page(
     State(db): State<DynDB>,
-    CommunityId(community_id): CommunityId,
-    Path((_, group_slug, event_slug)): Path<(String, String, String)>,
+    Path((community_name, group_slug, event_slug)): Path<(String, String, String)>,
     uri: Uri,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Prepare template
-    let (event, site_settings) = tokio::try_join!(
-        db.get_event_full_by_slug(community_id, &group_slug, &event_slug),
+    // Get community and site settings
+    let (community_id, site_settings) = tokio::try_join!(
+        db.get_community_id_by_name(&community_name),
         db.get_site_settings()
     )?;
-    let mut event = event.ok_or(HandlerError::NotFound)?;
+    let Some(community_id) = community_id else {
+        return not_found::render(site_settings);
+    };
+
+    // Fetch event page data
+    let event = db
+        .get_event_full_by_slug(community_id, &group_slug, &event_slug)
+        .await?;
+    let Some(mut event) = event else {
+        return not_found::render(site_settings);
+    };
+
+    // Trim gallery media
     trim_public_gallery_images(&mut event.photos_urls);
+
+    // Prepare template
     let template = Page {
         event,
         page_id: PageId::Event,
@@ -77,7 +92,7 @@ pub(crate) async fn page(
     // Prepare response headers
     let headers = prepare_headers(Duration::hours(1), &[])?;
 
-    Ok((headers, Html(template.render()?)))
+    Ok((headers, Html(template.render()?)).into_response())
 }
 
 /// Handler that renders the check-in page.
