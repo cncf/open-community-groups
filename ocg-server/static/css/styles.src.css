@@ -828,6 +828,7 @@ input:placeholder-shown {
 }
 
 .markdown a {
+  color: var(--ocg-primary);
   text-decoration: none;
   word-break: break-word;
 }
