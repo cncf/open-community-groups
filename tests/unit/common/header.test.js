@@ -110,6 +110,33 @@ describe("header", () => {
     expect(dropdown.classList.contains("hidden")).to.equal(false);
   });
 
+  it("shows spinner loading on non-boosted dropdown links", () => {
+    document.body.innerHTML = `
+      <button id="user-dropdown-button" type="button">User</button>
+      <div id="user-dropdown">
+        <a id="docs-link" hx-boost="false">
+          Docs
+          <span class="hx-spinner"></span>
+        </a>
+      </div>
+    `;
+
+    initUserDropdown();
+
+    const link = document.getElementById("docs-link");
+    const dropdown = document.getElementById("user-dropdown");
+    link.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+
+    expect(dropdown.classList.contains("hidden")).to.equal(false);
+    expect(link.classList.contains("header-dropdown-link-pending")).to.equal(true);
+    expect(link.getAttribute("aria-busy")).to.equal("true");
+
+    window.dispatchEvent(new Event("pageshow"));
+
+    expect(link.classList.contains("header-dropdown-link-pending")).to.equal(false);
+    expect(link.hasAttribute("aria-busy")).to.equal(false);
+  });
+
   it("scrolls to the top after dashboard swaps", () => {
     setLocationPath("/dashboard/groups");
     document.body.innerHTML = `

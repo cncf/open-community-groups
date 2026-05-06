@@ -27,6 +27,9 @@ const getHeaderNavLinkFromEvent = (event) => {
   return source.closest(headerNavLinkSelector);
 };
 
+/**
+ * Clears the pending loading state from the desktop header nav link.
+ */
 const clearHeaderNavLoading = () => {
   if (pendingHeaderNavLinkTimer) {
     window.clearTimeout(pendingHeaderNavLinkTimer);
@@ -40,6 +43,32 @@ const clearHeaderNavLoading = () => {
   pendingHeaderNavLink.classList.remove("header-nav-link-pending");
   pendingHeaderNavLink.removeAttribute("aria-busy");
   pendingHeaderNavLink = null;
+};
+
+/**
+ * Clears pending loading state from dropdown links with manual spinners.
+ */
+const clearHeaderDropdownLoading = () => {
+  document.querySelectorAll(".header-dropdown-link-pending").forEach((link) => {
+    link.classList.remove("header-dropdown-link-pending");
+    link.removeAttribute("aria-busy");
+  });
+};
+
+/**
+ * Clears all header loading indicators.
+ */
+const clearHeaderLoading = () => {
+  clearHeaderNavLoading();
+  clearHeaderDropdownLoading();
+};
+
+/**
+ * Restores header interactions after browser or HTMX history navigation.
+ */
+const restoreHeaderState = () => {
+  clearHeaderLoading();
+  initUserDropdown();
 };
 
 /**
@@ -202,16 +231,12 @@ const bindLifecycleListeners = () => {
     return;
   }
 
-  document.addEventListener("htmx:historyRestore", initUserDropdown);
-  document.addEventListener("htmx:historyRestore", clearHeaderNavLoading);
+  document.addEventListener("htmx:historyRestore", restoreHeaderState);
   document.addEventListener("htmx:beforeRequest", startHeaderNavLoadingFromHtmx);
   document.addEventListener("htmx:afterRequest", clearHeaderNavLoadingFromHtmx);
   document.addEventListener("htmx:afterSwap", initUserDropdown);
   document.addEventListener("htmx:afterSwap", scrollToTopOnDashboardSwap);
-  window.addEventListener("pageshow", () => {
-    clearHeaderNavLoading();
-    initUserDropdown();
-  });
+  window.addEventListener("pageshow", restoreHeaderState);
 
   lifecycleListenersBound = true;
 };
@@ -251,6 +276,10 @@ export const initUserDropdown = () => {
         }
         // Close immediately unless the link shows a loading spinner.
         if (link.querySelector(".hx-spinner")) {
+          if (link.getAttribute("hx-boost") === "false") {
+            link.classList.add("header-dropdown-link-pending");
+            link.setAttribute("aria-busy", "true");
+          }
           return;
         }
         dropdown.classList.add("hidden");

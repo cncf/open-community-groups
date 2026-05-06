@@ -982,6 +982,9 @@ input:placeholder-shown {
 .htmx-request.hx-spinner {
   display: inline;
 }
+.header-dropdown-link-pending .hx-spinner {
+  display: inline;
+}
 
 /* End spinner */
 
