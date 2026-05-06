@@ -3,7 +3,10 @@ import { expect } from "@open-wc/testing";
 import "/static/js/common/location-search-field.js";
 import { waitForMicrotask } from "/tests/unit/test-utils/async.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
-import { mountLitComponent, useMountedElementsCleanup } from "/tests/unit/test-utils/lit.js";
+import {
+  mountLitComponent,
+  useMountedElementsCleanup,
+} from "/tests/unit/test-utils/lit.js";
 import { mockFetch } from "/tests/unit/test-utils/network.js";
 
 describe("location-search-field", () => {
@@ -73,6 +76,23 @@ describe("location-search-field", () => {
     expect(element._isSearching).to.equal(false);
   });
 
+  it("searches with browser-safe request headers", async () => {
+    const element = await renderField();
+
+    fetchMock.setImpl(async () => ({
+      ok: true,
+      async json() {
+        return [];
+      },
+    }));
+
+    await element._performSearch("Málaga");
+
+    expect(fetchMock.calls[0][1].headers).to.deep.equal({
+      Accept: "application/json",
+    });
+  });
+
   it("surfaces fetch errors without keeping stale results", async () => {
     const element = await renderField();
     element._searchResults = [{ place_id: 99 }];
@@ -91,7 +111,9 @@ describe("location-search-field", () => {
 
   it("ignores aborted searches without replacing the existing search state", async () => {
     const element = await renderField();
-    element._searchResults = [{ place_id: 42, display_name: "Existing result" }];
+    element._searchResults = [
+      { place_id: 42, display_name: "Existing result" },
+    ];
     element._searchError = "Previous error";
 
     fetchMock.setImpl(async () => {
@@ -102,7 +124,9 @@ describe("location-search-field", () => {
 
     await element._performSearch("Málaga");
 
-    expect(element._searchResults).to.deep.equal([{ place_id: 42, display_name: "Existing result" }]);
+    expect(element._searchResults).to.deep.equal([
+      { place_id: 42, display_name: "Existing result" },
+    ]);
     expect(element._searchError).to.equal("Previous error");
     expect(element._isSearching).to.equal(false);
     expect(element._abortController).to.equal(null);
@@ -169,8 +193,12 @@ describe("location-search-field", () => {
     expect(element._venueCityValue).to.equal("Málaga");
     expect(element._countryCodeValue).to.equal("ES");
     expect(element._latitudeValue).to.equal("36.7213");
-    expect(document.getElementById("venue-city-field")?.value).to.equal("Málaga");
-    expect(document.getElementById("venue-country-field")?.value).to.equal("Spain");
+    expect(document.getElementById("venue-city-field")?.value).to.equal(
+      "Málaga",
+    );
+    expect(document.getElementById("venue-country-field")?.value).to.equal(
+      "Spain",
+    );
     expect(selectedEvents).to.deep.equal([
       {
         venueName: "Málaga",
@@ -239,6 +267,34 @@ describe("location-search-field", () => {
     expect(element._searchResults).to.deep.equal([]);
     expect(event.preventDefaultCalled).to.equal(1);
     expect(fetchMock.calls).to.have.length(0);
+  });
+
+  it("keeps the search button clickable when focus moves from the input", async () => {
+    const element = await renderField();
+    element._searchQuery = "Málaga";
+    await element.updateComplete;
+
+    fetchMock.setImpl(async () => ({
+      ok: true,
+      async json() {
+        return [];
+      },
+    }));
+
+    const searchButton = [...element.querySelectorAll("button")].find(
+      (button) => button.textContent.trim() === "Search",
+    );
+    const pointerEvent = new PointerEvent("pointerdown", {
+      bubbles: true,
+      cancelable: true,
+    });
+
+    searchButton.dispatchEvent(pointerEvent);
+    searchButton.click();
+    await waitForMicrotask();
+
+    expect(pointerEvent.defaultPrevented).to.equal(true);
+    expect(fetchMock.calls).to.have.length(1);
   });
 
   it("clears current values, tears down the map, and emits a clear event", async () => {
