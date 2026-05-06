@@ -42,15 +42,12 @@ describe("dashboard selection", () => {
   it("persists the selection, swaps the dashboard body, and updates history", async () => {
     await selectDashboardAndSwapBody("/dashboard/select/group-1", "/dashboard/groups/group-1");
 
-    expect(fetchMock.calls).to.deep.equal([
-      [
-        "/dashboard/select/group-1",
-        {
-          method: "PUT",
-          credentials: "same-origin",
-        },
-      ],
-    ]);
+    expect(fetchMock.calls).to.have.length(1);
+    const [url, options] = fetchMock.calls[0];
+    expect(url).to.equal("/dashboard/select/group-1");
+    expect(options.credentials).to.equal("same-origin");
+    expect(options.headers.get("X-OCG-Fetch")).to.equal("true");
+    expect(options.method).to.equal("PUT");
 
     expect(htmx.ajaxCalls).to.deep.equal([
       [

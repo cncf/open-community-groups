@@ -3,6 +3,7 @@ import { initializeQrCodeModal } from "/static/js/dashboard/group/qr-code-modal.
 import { showErrorAlert } from "/static/js/common/alerts.js";
 import { isSuccessfulXHRStatus, toggleModalVisibility } from "/static/js/common/common.js";
 import { queryElementById } from "/static/js/common/dom.js";
+import { ocgFetch } from "/static/js/common/fetch.js";
 
 const modalId = "attendee-notification-modal";
 const formId = "attendee-notification-form";
@@ -203,7 +204,10 @@ const initCheckInToggles = (root = document) => {
       }
 
       try {
-        const response = await fetch(url, { method: "POST" });
+        const response = await ocgFetch(url, {
+          credentials: "same-origin",
+          method: "POST",
+        });
         if (!response.ok) {
           throw new Error("Check-in failed");
         }

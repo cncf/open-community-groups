@@ -1,4 +1,5 @@
 import { html, repeat } from "/static/vendor/js/lit-all.v3.3.1.min.js";
+import { ocgFetch } from "/static/js/common/fetch.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import "/static/js/common/logo-image.js";
 import { computeUserInitials } from "/static/js/common/common.js";
@@ -144,7 +145,7 @@ export class UserSearchField extends LitWrapper {
   async _performSearch(query) {
     if (this.disabled) return;
     try {
-      const response = await fetch(
+      const response = await ocgFetch(
         `/dashboard/${this.dashboardType}/users/search?q=${encodeURIComponent(query)}`,
       );
       if (!response.ok) {
