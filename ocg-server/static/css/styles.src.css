@@ -833,10 +833,6 @@ input:placeholder-shown {
   word-break: break-word;
 }
 
-.markdown a:hover {
-  text-decoration: underline;
-}
-
 .markdown img {
   display: none;
 }
