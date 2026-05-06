@@ -1,18 +1,20 @@
 /** Dispatches an HTMX before-request event from the provided target. */
-export const dispatchHtmxBeforeRequest = (target) => {
+export const dispatchHtmxBeforeRequest = (target, detail = {}) => {
   target.dispatchEvent(
     new CustomEvent("htmx:beforeRequest", {
       bubbles: true,
+      detail,
     }),
   );
 };
 
 /** Dispatches an HTMX after-request event with a configurable xhr payload. */
-export const dispatchHtmxAfterRequest = (target, { status = 200, responseText = "" } = {}) => {
+export const dispatchHtmxAfterRequest = (target, { status = 200, responseText = "", ...detail } = {}) => {
   target.dispatchEvent(
     new CustomEvent("htmx:afterRequest", {
       bubbles: true,
       detail: {
+        ...detail,
         xhr: {
           status,
           responseText,
