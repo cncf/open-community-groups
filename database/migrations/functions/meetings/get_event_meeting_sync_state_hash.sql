@@ -24,6 +24,7 @@ create or replace function get_event_meeting_sync_state_hash(
                     from unnest(e.meeting_hosts) as meeting_host(email)
                 ),
                 'meeting_provider_id', e.meeting_provider_id,
+                'meeting_recording_requested', e.meeting_recording_requested,
                 'meeting_requested', e.meeting_requested,
                 'name', e.name,
                 'published', e.published,

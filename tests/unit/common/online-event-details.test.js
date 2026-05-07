@@ -1,7 +1,11 @@
 import { expect } from "@open-wc/testing";
 
 import "/static/js/common/online-event-details.js";
-import { mountLitComponent, useMountedElementsCleanup } from "/tests/unit/test-utils/lit.js";
+import {
+  mountLitComponent,
+  mountLitComponentWithAttributes,
+  useMountedElementsCleanup,
+} from "/tests/unit/test-utils/lit.js";
 
 describe("online-event-details", () => {
   useMountedElementsCleanup("online-event-details");
@@ -16,6 +20,7 @@ describe("online-event-details", () => {
     expect(element.getMeetingData()).to.deep.equal({
       meeting_join_instructions: "Bring your ticket confirmation.",
       meeting_join_url: "https://example.com/join",
+      meeting_recording_requested: true,
       meeting_recording_url: "https://example.com/recording",
       meeting_requested: false,
       meeting_provider_id: "",
@@ -27,6 +32,21 @@ describe("online-event-details", () => {
     expect(element._joinInstructions).to.equal("");
     expect(element._joinUrl).to.equal("");
     expect(element._recordingUrl).to.equal("");
+  });
+
+  it("honors a server-rendered false recording request attribute", async () => {
+    const element = await mountLitComponentWithAttributes(
+      "online-event-details",
+      {
+        attributes: {
+          "meeting-recording-requested": "false",
+        },
+      },
+    );
+
+    expect(element.getMeetingData()).to.include({
+      meeting_recording_requested: false,
+    });
   });
 
   it("shows a capacity warning when automatic meeting capacity is exceeded", async () => {
@@ -70,6 +90,7 @@ describe("online-event-details", () => {
     expect(element.getMeetingData()).to.deep.equal({
       meeting_join_instructions: "",
       meeting_join_url: "",
+      meeting_recording_requested: true,
       meeting_recording_url: "",
       meeting_requested: false,
       meeting_provider_id: "",
@@ -106,6 +127,7 @@ describe("online-event-details", () => {
     expect(element.getMeetingData()).to.deep.equal({
       meeting_join_instructions: "",
       meeting_join_url: "",
+      meeting_recording_requested: true,
       meeting_recording_url: "https://zoom.us/rec/share/synced",
       meeting_requested: true,
       meeting_provider_id: "zoom",
@@ -132,10 +154,13 @@ describe("online-event-details", () => {
     });
 
     expect(element._mode).to.equal("manual");
-    expect(element._recordingUrl).to.equal(" https://youtube.com/watch?v=processed ");
+    expect(element._recordingUrl).to.equal(
+      " https://youtube.com/watch?v=processed ",
+    );
     expect(element.getMeetingData()).to.deep.equal({
       meeting_join_instructions: "",
       meeting_join_url: "",
+      meeting_recording_requested: true,
       meeting_recording_url: "https://youtube.com/watch?v=processed",
       meeting_requested: false,
       meeting_provider_id: "",
@@ -163,10 +188,13 @@ describe("online-event-details", () => {
 
     expect(element._mode).to.equal("automatic");
     expect(element._joinUrl).to.equal("");
-    expect(element._recordingUrl).to.equal(" https://youtube.com/watch?v=processed ");
+    expect(element._recordingUrl).to.equal(
+      " https://youtube.com/watch?v=processed ",
+    );
     expect(element.getMeetingData()).to.deep.equal({
       meeting_join_instructions: "",
       meeting_join_url: "",
+      meeting_recording_requested: true,
       meeting_recording_url: "https://youtube.com/watch?v=processed",
       meeting_requested: true,
       meeting_provider_id: "zoom",
@@ -189,6 +217,7 @@ describe("online-event-details", () => {
     expect(element.getMeetingData()).to.deep.equal({
       meeting_join_instructions: "",
       meeting_join_url: "",
+      meeting_recording_requested: true,
       meeting_recording_url: "https://youtube.com/watch?v=session-processed",
       meeting_requested: true,
       meeting_provider_id: "zoom",

@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(100);
+select plan(101);
 
 -- ============================================================================
 -- VARIABLES
@@ -1119,6 +1119,7 @@ select is(
         "has_ticket_purchases": false,
         "meeting_in_sync": false,
         "meeting_provider": "zoom",
+        "meeting_recording_requested": true,
         "meeting_requested": true,
         "sessions": {},
         "starts_at": 1896213600,
@@ -1735,6 +1736,7 @@ select is(
         "logo_url": "https://example.com/new-logo.png",
         "meeting_join_instructions": "Use the event ticket name when joining.",
         "meeting_join_url": "https://youtube.com/new-live",
+        "meeting_recording_requested": true,
         "meeting_recording_url": "https://youtube.com/new-recording",
         "meetup_url": "https://meetup.com/new-event",
         "photos_urls": ["https://example.com/new-photo1.jpg", "https://example.com/new-photo2.jpg"],
@@ -2007,6 +2009,7 @@ select lives_ok(
             "capacity": 100,
             "kind_id": "virtual",
             "meeting_provider_id": "zoom",
+            "meeting_recording_requested": false,
             "meeting_recording_url": "https://youtube.com/watch?v=event-override",
             "meeting_requested": true,
             "starts_at": "2030-03-01T10:00:00",
@@ -2019,6 +2022,11 @@ select is(
     (select meeting_recording_url from event where event_id = :'event5ID'::uuid),
     'https://youtube.com/watch?v=event-override',
     'Should persist event recording override for automatic meetings'
+);
+select is(
+    (select meeting_recording_requested from event where event_id = :'event5ID'::uuid),
+    false,
+    'Should persist event meeting recording preference when disabled'
 );
 
 -- Should clear event recording override and fall back to synced meeting recording

@@ -820,6 +820,7 @@ select is(
         "meeting_password": "event-secret",
         "meeting_requested": false,
         "meeting_join_url": "https://meeting.example.com/event",
+        "meeting_recording_requested": true,
         "meeting_recording_url": "https://meeting.example.com/event-recording",
         "meetup_url": "https://meetup.com/event123",
         "photos_urls": ["https://example.com/photo1.jpg", "https://example.com/photo2.jpg"],

@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(5);
+select plan(6);
 
 -- ============================================================================
 -- VARIABLES
@@ -140,6 +140,15 @@ where event_id = :'eventID';
 insert into session_sync_hash (label, sync_state_hash)
 values ('after_parent_event_change', get_session_meeting_sync_state_hash(:'sessionID'));
 
+-- Capture hashes before and after changing the parent recording preference
+insert into session_sync_hash (label, sync_state_hash)
+values ('before_parent_recording_requested_change', get_session_meeting_sync_state_hash(:'sessionID'));
+update event
+set meeting_recording_requested = false
+where event_id = :'eventID';
+insert into session_sync_hash (label, sync_state_hash)
+values ('after_parent_recording_requested_change', get_session_meeting_sync_state_hash(:'sessionID'));
+
 -- Capture hashes before and after changing session speakers
 insert into session_sync_hash (label, sync_state_hash)
 values ('before_session_speakers_change', get_session_meeting_sync_state_hash(:'sessionID'));
@@ -187,6 +196,16 @@ select is(
        and after.label = 'after_parent_event_change'),
     true,
     'Should change hash when parent event meeting input changes'
+);
+
+-- Changing parent recording preference should change the hash
+select is(
+    (select before.sync_state_hash <> after.sync_state_hash
+     from session_sync_hash before, session_sync_hash after
+     where before.label = 'before_parent_recording_requested_change'
+       and after.label = 'after_parent_recording_requested_change'),
+    true,
+    'Should change hash when parent event meeting recording preference changes'
 );
 
 -- Changing session speakers should change the hash

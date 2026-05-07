@@ -224,6 +224,7 @@ select columns_are('event', array[
     'meeting_join_url',
     'meeting_provider_host_user',
     'meeting_provider_id',
+    'meeting_recording_requested',
     'meeting_recording_url',
     'meeting_requested',
     'meeting_sync_claimed_at',

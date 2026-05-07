@@ -296,6 +296,9 @@ pub(crate) struct Event {
     #[serde(rename = "meeting_provider_id")]
     #[garde(skip)]
     pub meeting_provider: Option<MeetingProvider>,
+    /// Whether automatic event meetings should be recorded.
+    #[garde(skip)]
+    pub meeting_recording_requested: Option<bool>,
     /// Recording URL for meeting.
     #[garde(url, length(max = MAX_LEN_L))]
     pub meeting_recording_url: Option<String>,

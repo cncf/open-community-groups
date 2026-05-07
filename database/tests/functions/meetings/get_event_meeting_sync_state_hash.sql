@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(5);
+select plan(6);
 
 -- ============================================================================
 -- VARIABLES
@@ -116,6 +116,15 @@ where event_id = :'eventID';
 insert into event_sync_hash (label, sync_state_hash)
 values ('after_meeting_hosts_change', get_event_meeting_sync_state_hash(:'eventID'));
 
+-- Capture hashes before and after changing the recording preference
+insert into event_sync_hash (label, sync_state_hash)
+values ('before_recording_requested_change', get_event_meeting_sync_state_hash(:'eventID'));
+update event
+set meeting_recording_requested = false
+where event_id = :'eventID';
+insert into event_sync_hash (label, sync_state_hash)
+values ('after_recording_requested_change', get_event_meeting_sync_state_hash(:'eventID'));
+
 -- Capture hashes before and after changing event hosts
 insert into event_sync_hash (label, sync_state_hash)
 values ('before_event_hosts_change', get_event_meeting_sync_state_hash(:'eventID'));
@@ -163,6 +172,16 @@ select is(
        and after.label = 'after_meeting_hosts_change'),
     true,
     'Should change hash when explicit meeting hosts change'
+);
+
+-- Changing recording preference should change the hash
+select is(
+    (select before.sync_state_hash <> after.sync_state_hash
+     from event_sync_hash before, event_sync_hash after
+     where before.label = 'before_recording_requested_change'
+       and after.label = 'after_recording_requested_change'),
+    true,
+    'Should change hash when event meeting recording preference changes'
 );
 
 -- Changing event hosts should change the hash

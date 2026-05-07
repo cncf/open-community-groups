@@ -286,6 +286,8 @@ pub struct EventFull {
     pub meeting_password: Option<String>,
     /// Desired meeting provider for this event.
     pub meeting_provider: Option<MeetingProvider>,
+    /// Whether automatic event meetings should be recorded.
+    pub meeting_recording_requested: Option<bool>,
     /// URL for meeting recording.
     pub meeting_recording_url: Option<String>,
     /// Whether the event requests a meeting.

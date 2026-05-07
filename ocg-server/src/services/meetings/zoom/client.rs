@@ -316,7 +316,7 @@ impl TryFrom<&Meeting> for CreateMeetingRequest {
 
             default_password: Some(true),
             duration: m.duration.map(Minutes::try_from_duration).transpose()?,
-            settings: Some(default_meeting_settings()),
+            settings: Some(default_meeting_settings(m.recording_requested)),
             start_time: m.starts_at,
             timezone: m.timezone.clone(),
         })
@@ -375,7 +375,7 @@ impl TryFrom<&Meeting> for UpdateMeetingRequest {
     fn try_from(m: &Meeting) -> Result<Self, Self::Error> {
         Ok(Self {
             duration: m.duration.map(Minutes::try_from_duration).transpose()?,
-            settings: Some(default_meeting_settings()),
+            settings: Some(default_meeting_settings(m.recording_requested)),
             start_time: m.starts_at,
             timezone: m.timezone.clone(),
             topic: m.topic.clone(),
@@ -502,13 +502,110 @@ pub(crate) struct ZoomMeeting {
 }
 
 /// Returns the default settings applied to all meetings.
-fn default_meeting_settings() -> MeetingSettings {
+fn default_meeting_settings(recording_requested: Option<bool>) -> MeetingSettings {
     MeetingSettings {
-        auto_recording: Some("cloud".to_string()),
+        auto_recording: Some(if recording_requested.unwrap_or(true) {
+            "cloud".to_string()
+        } else {
+            "none".to_string()
+        }),
         jbh_time: Some(15),
         join_before_host: Some(true),
         mute_upon_entry: Some(true),
         participant_video: Some(false),
         waiting_room: Some(false),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use serde_json::json;
+
+    use crate::services::meetings::Meeting;
+
+    use super::{CreateMeetingRequest, UpdateMeetingRequest};
+
+    #[test]
+    fn create_meeting_request_sets_cloud_recording_when_requested() {
+        let request = CreateMeetingRequest::try_from(&Meeting {
+            recording_requested: Some(true),
+            ..Default::default()
+        })
+        .unwrap();
+
+        assert_eq!(
+            serde_json::to_value(request).unwrap()["settings"]["auto_recording"],
+            json!("cloud")
+        );
+    }
+
+    #[test]
+    fn create_meeting_request_sets_cloud_recording_by_default() {
+        let request = CreateMeetingRequest::try_from(&Meeting {
+            recording_requested: None,
+            ..Default::default()
+        })
+        .unwrap();
+
+        assert_eq!(
+            serde_json::to_value(request).unwrap()["settings"]["auto_recording"],
+            json!("cloud")
+        );
+    }
+
+    #[test]
+    fn create_meeting_request_sets_no_recording_when_not_requested() {
+        let request = CreateMeetingRequest::try_from(&Meeting {
+            recording_requested: Some(false),
+            ..Default::default()
+        })
+        .unwrap();
+
+        assert_eq!(
+            serde_json::to_value(request).unwrap()["settings"]["auto_recording"],
+            json!("none")
+        );
+    }
+
+    #[test]
+    fn update_meeting_request_sets_cloud_recording_when_requested() {
+        let request = UpdateMeetingRequest::try_from(&Meeting {
+            recording_requested: Some(true),
+            ..Default::default()
+        })
+        .unwrap();
+
+        assert_eq!(
+            serde_json::to_value(request).unwrap()["settings"]["auto_recording"],
+            json!("cloud")
+        );
+    }
+
+    #[test]
+    fn update_meeting_request_sets_cloud_recording_by_default() {
+        let request = UpdateMeetingRequest::try_from(&Meeting {
+            recording_requested: None,
+            ..Default::default()
+        })
+        .unwrap();
+
+        assert_eq!(
+            serde_json::to_value(request).unwrap()["settings"]["auto_recording"],
+            json!("cloud")
+        );
+    }
+
+    #[test]
+    fn update_meeting_request_sets_no_recording_when_not_requested() {
+        let request = UpdateMeetingRequest::try_from(&Meeting {
+            recording_requested: Some(false),
+            ..Default::default()
+        })
+        .unwrap();
+
+        assert_eq!(
+            serde_json::to_value(request).unwrap()["settings"]["auto_recording"],
+            json!("none")
+        );
     }
 }

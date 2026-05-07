@@ -61,6 +61,7 @@ returns json as $$
             'meeting_join_url', coalesce(m_event.join_url, e.meeting_join_url),
             'meeting_password', m_event.password,
             'meeting_provider', e.meeting_provider_id,
+            'meeting_recording_requested', e.meeting_recording_requested,
             'meeting_recording_url', coalesce(e.meeting_recording_url, m_event.recording_url),
             'meeting_requested', e.meeting_requested,
             'meetup_url', e.meetup_url,

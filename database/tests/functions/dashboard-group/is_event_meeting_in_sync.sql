@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(14);
+select plan(15);
 
 -- ============================================================================
 -- TESTS
@@ -174,6 +174,32 @@ select is(
     ),
     false,
     'Event timezone change desyncs meeting'
+);
+
+-- Recording preference change desyncs meeting
+select is(
+    is_event_meeting_in_sync(
+        '{
+            "name": "Sync Event",
+            "timezone": "America/New_York",
+            "kind": "virtual",
+            "starts_at": 1748786400,
+            "ends_at": 1748790000,
+            "meeting_recording_requested": true,
+            "meeting_requested": true
+        }'::jsonb,
+        '{
+            "name": "Sync Event",
+            "timezone": "America/New_York",
+            "kind_id": "virtual",
+            "starts_at": "2025-06-01T10:00:00",
+            "ends_at": "2025-06-01T11:00:00",
+            "meeting_recording_requested": false,
+            "meeting_requested": true
+        }'::jsonb
+    ),
+    false,
+    'Event recording preference change desyncs meeting'
 );
 
 -- meeting_hosts unchanged keeps sync

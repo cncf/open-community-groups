@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(16);
+select plan(17);
 
 -- ============================================================================
 -- TESTS
@@ -174,6 +174,36 @@ select is(
     ),
     false,
     'Event timezone change desyncs session meeting'
+);
+
+-- Parent event recording preference change desyncs session meeting
+select is(
+    is_session_meeting_in_sync(
+        '{
+            "name": "Session One",
+            "session_kind_id": "virtual",
+            "starts_at": 1748787300,
+            "ends_at": 1748789100,
+            "meeting_requested": true
+        }'::jsonb,
+        '{
+            "name": "Session One",
+            "kind": "virtual",
+            "starts_at": "2025-06-01T10:15:00",
+            "ends_at": "2025-06-01T10:45:00",
+            "meeting_requested": true
+        }'::jsonb,
+        '{
+            "timezone": "America/New_York",
+            "meeting_recording_requested": true
+        }'::jsonb,
+        '{
+            "timezone": "America/New_York",
+            "meeting_recording_requested": false
+        }'::jsonb
+    ),
+    false,
+    'Parent event recording preference change desyncs session meeting'
 );
 
 -- Kind change from hybrid to in-person desyncs meeting
