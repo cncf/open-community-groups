@@ -1,6 +1,7 @@
 import { html } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { isSuccessfulXHRStatus } from "/static/js/common/common.js";
+import { ocgFetch } from "/static/js/common/fetch.js";
 import { showErrorAlert } from "/static/js/common/alerts.js";
 import "/static/js/common/svg-spinner.js";
 
@@ -257,7 +258,7 @@ export class GalleryField extends LitWrapper {
     const formData = new FormData();
     formData.append("file", file, file.name);
 
-    const response = await fetch("/images", {
+    const response = await ocgFetch("/images", {
       method: "POST",
       body: formData,
       credentials: "same-origin",

@@ -1,4 +1,5 @@
 import { html } from "/static/vendor/js/lit-all.v3.3.1.min.js";
+import { ocgFetch } from "/static/js/common/fetch.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { showErrorAlert, showInfoAlert } from "/static/js/common/alerts.js";
 import { setImageFieldValue, setSelectValue, setTextValue } from "/static/js/common/utils.js";
@@ -261,7 +262,7 @@ class EventSelector extends LitWrapper {
    */
   async _fetchEventDetails(eventId) {
     const url = `/dashboard/group/events/${encodeURIComponent(eventId)}/details`;
-    const response = await fetch(url, {
+    const response = await ocgFetch(url, {
       headers: { Accept: "application/json" },
       credentials: "same-origin",
     });
@@ -508,7 +509,7 @@ class EventSelector extends LitWrapper {
     }
     const url = `/explore/events/search?${params.toString()}`;
 
-    const response = await fetch(url, {
+    const response = await ocgFetch(url, {
       headers: {
         Accept: "application/json",
       },

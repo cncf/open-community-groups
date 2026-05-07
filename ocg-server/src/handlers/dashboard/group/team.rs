@@ -4,7 +4,7 @@ use anyhow::Result;
 use askama::Template;
 use axum::{
     extract::{Path, RawQuery, State},
-    http::{HeaderName, StatusCode},
+    http::{HeaderMap, HeaderName, StatusCode},
     response::{Html, IntoResponse},
 };
 use garde::Validate;
@@ -13,9 +13,11 @@ use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
+    auth::AuthSession,
     config::HttpServerConfig,
     db::DynDB,
     handlers::{
+        auth::log_out_for_stale_dashboard_context,
         error::HandlerError,
         extractors::{CurrentUser, SelectedCommunityId, SelectedGroupId, ValidatedForm},
     },
@@ -112,18 +114,38 @@ pub(crate) async fn add(
 /// Deletes a user from the group team.
 #[instrument(skip_all, err)]
 pub(crate) async fn delete(
-    CurrentUser(user): CurrentUser,
+    mut auth_session: AuthSession,
+    headers: HeaderMap,
+    SelectedCommunityId(community_id): SelectedCommunityId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     Path(user_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
+    // Get user from session (endpoint is behind login_required)
+    let Some(user) = auth_session.user.clone() else {
+        return Err(HandlerError::Auth("user not logged in".to_string()));
+    };
+
     // Remove team member from database
     db.delete_group_team_member(user.user_id, group_id, user_id).await?;
+
+    // The user may still inherit group read access from a community role
+    // so only log out when selected group read access is actually gone
+    if user_id == user.user_id {
+        let has_read_permission = db
+            .user_has_group_permission(&community_id, &group_id, &user.user_id, GroupPermission::Read)
+            .await?;
+
+        if !has_read_permission {
+            return log_out_for_stale_dashboard_context(&mut auth_session, &headers).await;
+        }
+    }
 
     Ok((
         StatusCode::NO_CONTENT,
         [("HX-Trigger", "refresh-group-dashboard-table")],
-    ))
+    )
+        .into_response())
 }
 
 /// Updates a user role in the group team.

@@ -41,6 +41,7 @@ describe("user-search-field", () => {
 
     await element._performSearch("a");
 
+    expect(fetchMock.calls[0][1].headers.get("X-OCG-Fetch")).to.equal("true");
     expect(element._searchResults).to.deep.equal([{ user_id: "1", username: "ada", name: "Ada Lovelace" }]);
   });
 

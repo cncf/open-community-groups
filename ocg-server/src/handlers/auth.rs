@@ -7,7 +7,7 @@ use async_trait::async_trait;
 use axum::{
     Form,
     extract::{Path, Query, Request, State},
-    http::StatusCode,
+    http::{HeaderMap, StatusCode},
     middleware::Next,
     response::{Html, IntoResponse, Redirect, Response},
 };
@@ -609,93 +609,6 @@ where
     Ok(Redirect::to(next_url))
 }
 
-// Other helpers.
-
-/// Percent-encode a `next_url` so it can be safely embedded in a query string.
-fn encode_next_url(next_url: &str) -> String {
-    utf8_percent_encode(next_url, NON_ALPHANUMERIC).to_string()
-}
-
-/// Get the log in url including the next url if provided.
-fn get_log_in_url(next_url: Option<&str>) -> String {
-    let mut log_in_url = LOG_IN_URL.to_string();
-    if let Some(next_url) = sanitize_next_url(next_url) {
-        log_in_url = format!("{log_in_url}?next_url={}", encode_next_url(&next_url));
-    }
-    log_in_url
-}
-
-/// Get the sign up url including the next url if provided.
-fn get_sign_up_url(next_url: Option<&str>) -> Redirect {
-    let mut sign_up_url = SIGN_UP_URL.to_string();
-    if let Some(next_url) = sanitize_next_url(next_url) {
-        sign_up_url = format!("{sign_up_url}?next_url={}", encode_next_url(&next_url));
-    }
-    Redirect::to(&sign_up_url)
-}
-
-/// Sanitize a `next_url` value ensuring it points to an in-site path.
-fn sanitize_next_url(next_url: Option<&str>) -> Option<String> {
-    let value = next_url?.trim();
-    if value.is_empty() {
-        return None;
-    }
-    if !value.starts_with('/') || value.starts_with("//") {
-        return None;
-    }
-    Some(value.to_string())
-}
-
-/// Selects the first available community and group for the user in the session.
-pub(crate) async fn select_first_community_and_group(
-    db: &DynDB,
-    session: &Session,
-    user_id: &Uuid,
-) -> Result<(), HandlerError> {
-    let groups_by_community = db.list_user_groups(user_id).await?;
-    if let Some(first_community) = groups_by_community.first() {
-        session
-            .insert(SELECTED_COMMUNITY_ID_KEY, first_community.community.community_id)
-            .await?;
-        if let Some(first_group) = first_community.groups.first() {
-            session.insert(SELECTED_GROUP_ID_KEY, first_group.group_id).await?;
-        }
-    } else {
-        // User might be a community team member without groups
-        let communities = db.list_user_communities(user_id).await?;
-        if let Some(first_community) = communities.first() {
-            session
-                .insert(SELECTED_COMMUNITY_ID_KEY, first_community.community_id)
-                .await?;
-        }
-    }
-    Ok(())
-}
-
-/// Syncs the selected community and first available group in the session.
-pub(crate) async fn sync_selected_community_and_group(
-    db: &DynDB,
-    session: &Session,
-    user_id: &Uuid,
-    community_id: Uuid,
-) -> Result<(), HandlerError> {
-    // Load the user's groups to keep the selected group in sync
-    let groups_by_community = db.list_user_groups(user_id).await?;
-    let community_groups = groups_by_community
-        .iter()
-        .find(|c| c.community.community_id == community_id);
-
-    // Persist the community selection and align the group selection with it
-    session.insert(SELECTED_COMMUNITY_ID_KEY, community_id).await?;
-    if let Some(first_group_id) = community_groups.and_then(|c| c.groups.first()).map(|g| g.group_id) {
-        session.insert(SELECTED_GROUP_ID_KEY, first_group_id).await?;
-    } else {
-        session.remove::<Uuid>(SELECTED_GROUP_ID_KEY).await?;
-    }
-
-    Ok(())
-}
-
 // Types.
 
 /// Login form data from the user.
@@ -734,21 +647,20 @@ pub(crate) struct NextUrl {
 #[instrument(skip_all)]
 pub(crate) async fn user_has_community_dashboard_permission(
     State(db): State<DynDB>,
-    auth_session: AuthSession,
+    mut auth_session: AuthSession,
     session: Session,
     request: Request,
     next: Next,
 ) -> impl IntoResponse {
     // Require an authenticated user
-    let Some(user) = auth_session.user else {
+    let Some(user_id) = auth_session.user.as_ref().map(|user| user.user_id) else {
         return StatusCode::FORBIDDEN.into_response();
     };
 
     // Resolve selected community from session context, repairing it if needed
     let community_id = match get_selected_community_id_optional(&session).await {
         Ok(Some(community_id)) => community_id,
-        Ok(None) => match select_first_accessible_community_for_dashboard(&db, &session, &user.user_id).await
-        {
+        Ok(None) => match select_first_accessible_community_for_dashboard(&db, &session, &user_id).await {
             Ok(Some(community_id)) => community_id,
             Ok(None) => return Redirect::to(USER_DASHBOARD_INVITATIONS_URL).into_response(),
             Err(error) => return error.into_response(),
@@ -756,24 +668,19 @@ pub(crate) async fn user_has_community_dashboard_permission(
         Err(response) => return response,
     };
 
-    // Check required permission in the selected community
-    let Ok(has_permission) = db
-        .user_has_community_permission(&community_id, &user.user_id, CommunityPermission::Read)
+    // Check base dashboard access in the selected community
+    let Ok(has_read_permission) = db
+        .user_has_community_permission(&community_id, &user_id, CommunityPermission::Read)
         .await
     else {
         return StatusCode::INTERNAL_SERVER_ERROR.into_response();
     };
-
-    // Fall back to the first accessible community when the current selection is stale
-    let community_id = if has_permission {
-        community_id
-    } else {
-        match select_first_accessible_community_for_dashboard(&db, &session, &user.user_id).await {
-            Ok(Some(community_id)) => community_id,
-            Ok(None) => return StatusCode::FORBIDDEN.into_response(),
-            Err(error) => return error.into_response(),
-        }
-    };
+    if !has_read_permission {
+        return match log_out_for_stale_dashboard_context(&mut auth_session, request.headers()).await {
+            Ok(response) => response,
+            Err(error) => error.into_response(),
+        };
+    }
 
     // Store selected community context for downstream extractors
     let mut request = request;
@@ -850,21 +757,20 @@ pub(crate) async fn user_has_path_group_permission(
 #[instrument(skip_all)]
 pub(crate) async fn user_has_selected_community_permission(
     State((db, permission)): State<(DynDB, CommunityPermission)>,
-    auth_session: AuthSession,
+    mut auth_session: AuthSession,
     session: Session,
     request: Request,
     next: Next,
 ) -> impl IntoResponse {
     // Require an authenticated user
-    let Some(user) = auth_session.user else {
+    let Some(user_id) = auth_session.user.as_ref().map(|user| user.user_id) else {
         return StatusCode::FORBIDDEN.into_response();
     };
 
     // Resolve selected community from session context, repairing it if needed
     let community_id = match get_selected_community_id_optional(&session).await {
         Ok(Some(community_id)) => community_id,
-        Ok(None) => match select_first_accessible_community_for_dashboard(&db, &session, &user.user_id).await
-        {
+        Ok(None) => match select_first_accessible_community_for_dashboard(&db, &session, &user_id).await {
             Ok(Some(community_id)) => community_id,
             Ok(None) => return Redirect::to(USER_DASHBOARD_INVITATIONS_URL).into_response(),
             Err(error) => return error.into_response(),
@@ -874,13 +780,30 @@ pub(crate) async fn user_has_selected_community_permission(
 
     // Check required permission in the selected community
     let Ok(has_permission) = db
-        .user_has_community_permission(&community_id, &user.user_id, permission)
+        .user_has_community_permission(&community_id, &user_id, permission)
         .await
     else {
         return StatusCode::INTERNAL_SERVER_ERROR.into_response();
     };
     if !has_permission {
-        return StatusCode::FORBIDDEN.into_response();
+        // Missing write permission is a normal 403 when base Read still works
+        if permission != CommunityPermission::Read {
+            let Ok(has_read_permission) = db
+                .user_has_community_permission(&community_id, &user_id, CommunityPermission::Read)
+                .await
+            else {
+                return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+            };
+            if has_read_permission {
+                return StatusCode::FORBIDDEN.into_response();
+            }
+        }
+
+        // Missing base Read access means the selected community became stale
+        return match log_out_for_stale_dashboard_context(&mut auth_session, request.headers()).await {
+            Ok(response) => response,
+            Err(error) => error.into_response(),
+        };
     }
 
     // Store selected community context for downstream extractors
@@ -894,13 +817,13 @@ pub(crate) async fn user_has_selected_community_permission(
 #[instrument(skip_all)]
 pub(crate) async fn user_has_selected_group_permission(
     State((db, permission)): State<(DynDB, GroupPermission)>,
-    auth_session: AuthSession,
+    mut auth_session: AuthSession,
     session: Session,
     request: Request,
     next: Next,
 ) -> impl IntoResponse {
     // Require an authenticated user
-    let Some(user) = auth_session.user else {
+    let Some(user_id) = auth_session.user.as_ref().map(|user| user.user_id) else {
         return StatusCode::FORBIDDEN.into_response();
     };
 
@@ -912,13 +835,8 @@ pub(crate) async fn user_has_selected_group_permission(
                 Ok(selected_community_id) => selected_community_id,
                 Err(response) => return response,
             };
-            match select_first_accessible_group_for_dashboard(
-                &db,
-                &session,
-                &user.user_id,
-                selected_community_id,
-            )
-            .await
+            match select_first_accessible_group_for_dashboard(&db, &session, &user_id, selected_community_id)
+                .await
             {
                 Ok(Some(ids)) => ids,
                 Ok(None) => return Redirect::to(USER_DASHBOARD_INVITATIONS_URL).into_response(),
@@ -930,13 +848,31 @@ pub(crate) async fn user_has_selected_group_permission(
 
     // Check required permission in the selected group
     let Ok(has_permission) = db
-        .user_has_group_permission(&community_id, &group_id, &user.user_id, permission)
+        .user_has_group_permission(&community_id, &group_id, &user_id, permission)
         .await
     else {
         return StatusCode::INTERNAL_SERVER_ERROR.into_response();
     };
     if !has_permission {
-        return StatusCode::FORBIDDEN.into_response();
+        // Missing write permission is a normal 403 when base Read still works
+        if permission != GroupPermission::Read {
+            let Ok(has_read_permission) = db
+                .user_has_group_permission(&community_id, &group_id, &user_id, GroupPermission::Read)
+                .await
+            else {
+                return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+            };
+
+            if has_read_permission {
+                return StatusCode::FORBIDDEN.into_response();
+            }
+        }
+
+        // Missing base Read access means the selected group became stale
+        return match log_out_for_stale_dashboard_context(&mut auth_session, request.headers()).await {
+            Ok(response) => response,
+            Err(error) => error.into_response(),
+        };
     }
 
     // Store selected community and group context for downstream extractors
@@ -948,6 +884,20 @@ pub(crate) async fn user_has_selected_group_permission(
 }
 
 // Helpers.
+
+/// Percent-encode a `next_url` so it can be safely embedded in a query string.
+fn encode_next_url(next_url: &str) -> String {
+    utf8_percent_encode(next_url, NON_ALPHANUMERIC).to_string()
+}
+
+/// Get the log in url including the next url if provided.
+fn get_log_in_url(next_url: Option<&str>) -> String {
+    let mut log_in_url = LOG_IN_URL.to_string();
+    if let Some(next_url) = sanitize_next_url(next_url) {
+        log_in_url = format!("{log_in_url}?next_url={}", encode_next_url(&next_url));
+    }
+    log_in_url
+}
 
 /// Resolves the selected community ID from the current session.
 async fn get_selected_community_id(session: &Session) -> Result<Uuid, Response> {
@@ -984,6 +934,70 @@ async fn get_selected_community_and_group_ids_optional(
 
     // Return the complete dashboard context when both parts are present
     Ok(Some((community_id, group_id)))
+}
+
+/// Get the sign up url including the next url if provided.
+fn get_sign_up_url(next_url: Option<&str>) -> Redirect {
+    let mut sign_up_url = SIGN_UP_URL.to_string();
+    if let Some(next_url) = sanitize_next_url(next_url) {
+        sign_up_url = format!("{sign_up_url}?next_url={}", encode_next_url(&next_url));
+    }
+    Redirect::to(&sign_up_url)
+}
+
+/// Returns whether the request came from HTMX.
+fn is_htmx_request(headers: &HeaderMap) -> bool {
+    headers
+        .get("HX-Request")
+        .is_some_and(|value| value.as_bytes().eq_ignore_ascii_case(b"true"))
+}
+
+/// Returns whether the request came from an OCG fetch helper.
+fn is_ocg_fetch_request(headers: &HeaderMap) -> bool {
+    headers
+        .get("X-OCG-Fetch")
+        .is_some_and(|value| value.as_bytes().eq_ignore_ascii_case(b"true"))
+}
+
+/// Logs out the user after detecting a stale dashboard selection.
+pub(crate) async fn log_out_for_stale_dashboard_context(
+    auth_session: &mut AuthSession,
+    headers: &HeaderMap,
+) -> Result<Response, HandlerError> {
+    auth_session
+        .logout()
+        .await
+        .map_err(|e| HandlerError::Auth(e.to_string()))?;
+
+    Ok(redirect_to_log_in_for_request(headers))
+}
+
+/// Builds the log-in redirect response expected by the request type.
+fn redirect_to_log_in_for_request(headers: &HeaderMap) -> Response {
+    // HTMX follows redirects from response headers when swapping fragments
+    if is_htmx_request(headers) {
+        return (StatusCode::OK, [("HX-Redirect", LOG_IN_URL)]).into_response();
+    }
+
+    // OCG fetch helpers use redirect metadata for browser navigation
+    if is_ocg_fetch_request(headers) {
+        return (StatusCode::UNAUTHORIZED, [("X-OCG-Redirect", LOG_IN_URL)]).into_response();
+    }
+
+    // Normal page requests can use a standard redirect response
+    Redirect::to(LOG_IN_URL).into_response()
+}
+
+/// Sanitize a `next_url` value ensuring it points to an in-site path.
+fn sanitize_next_url(next_url: Option<&str>) -> Option<String> {
+    let value = next_url?.trim();
+    if value.is_empty() {
+        return None;
+    }
+    if !value.starts_with('/') || value.starts_with("//") {
+        return None;
+    }
+    Some(value.to_string())
 }
 
 /// Selects the first community dashboard the user can still access.
@@ -1044,4 +1058,54 @@ async fn select_first_accessible_group_for_dashboard(
     session.insert(SELECTED_GROUP_ID_KEY, group_id).await?;
 
     Ok(Some((community_id, group_id)))
+}
+
+/// Selects the first available community and group for the user in the session.
+pub(crate) async fn select_first_community_and_group(
+    db: &DynDB,
+    session: &Session,
+    user_id: &Uuid,
+) -> Result<(), HandlerError> {
+    let groups_by_community = db.list_user_groups(user_id).await?;
+    if let Some(first_community) = groups_by_community.first() {
+        session
+            .insert(SELECTED_COMMUNITY_ID_KEY, first_community.community.community_id)
+            .await?;
+        if let Some(first_group) = first_community.groups.first() {
+            session.insert(SELECTED_GROUP_ID_KEY, first_group.group_id).await?;
+        }
+    } else {
+        // User might be a community team member without groups
+        let communities = db.list_user_communities(user_id).await?;
+        if let Some(first_community) = communities.first() {
+            session
+                .insert(SELECTED_COMMUNITY_ID_KEY, first_community.community_id)
+                .await?;
+        }
+    }
+    Ok(())
+}
+
+/// Syncs the selected community and first available group in the session.
+pub(crate) async fn sync_selected_community_and_group(
+    db: &DynDB,
+    session: &Session,
+    user_id: &Uuid,
+    community_id: Uuid,
+) -> Result<(), HandlerError> {
+    // Load the user's groups to keep the selected group in sync
+    let groups_by_community = db.list_user_groups(user_id).await?;
+    let community_groups = groups_by_community
+        .iter()
+        .find(|c| c.community.community_id == community_id);
+
+    // Persist the community selection and align the group selection with it
+    session.insert(SELECTED_COMMUNITY_ID_KEY, community_id).await?;
+    if let Some(first_group_id) = community_groups.and_then(|c| c.groups.first()).map(|g| g.group_id) {
+        session.insert(SELECTED_GROUP_ID_KEY, first_group_id).await?;
+    } else {
+        session.remove::<Uuid>(SELECTED_GROUP_ID_KEY).await?;
+    }
+
+    Ok(())
 }

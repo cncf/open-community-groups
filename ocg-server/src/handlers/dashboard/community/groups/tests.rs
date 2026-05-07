@@ -1021,11 +1021,11 @@ async fn test_delete_non_selected_group() {
 }
 
 #[tokio::test]
-async fn test_delete_selected_group_selects_another() {
+async fn test_delete_selected_group_updates_selection() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
-    let other_group_id = Uuid::new_v4();
+    let next_group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
@@ -1036,8 +1036,6 @@ async fn test_delete_selected_group_selects_another() {
         Some(community_id),
         Some(group_id),
     );
-    let groups = sample_user_groups_by_community(community_id, other_group_id);
-
     // Setup database mock
     let mut db = MockDB::new();
     db.expect_get_session()
@@ -1060,8 +1058,8 @@ async fn test_delete_selected_group_selects_another() {
         .returning(move |_, _, _| Ok(()));
     db.expect_list_user_groups()
         .times(1)
-        .withf(move |uid| *uid == user_id)
-        .returning(move |_| Ok(groups.clone()));
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(sample_user_groups_by_community(community_id, next_group_id)));
     db.expect_update_session()
         .times(1)
         .withf(move |record| {
@@ -1069,7 +1067,7 @@ async fn test_delete_selected_group_selects_another() {
                 && record
                     .data
                     .get(SELECTED_GROUP_ID_KEY)
-                    .is_some_and(|value| value == &json!(other_group_id))
+                    .is_some_and(|value| value == &json!(next_group_id))
         })
         .returning(|_| Ok(()));
 
@@ -1099,7 +1097,7 @@ async fn test_delete_selected_group_selects_another() {
 }
 
 #[tokio::test]
-async fn test_delete_selected_group_clears_selection() {
+async fn test_delete_selected_group_without_fallback_clears_selection() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
@@ -1136,7 +1134,7 @@ async fn test_delete_selected_group_clears_selection() {
         .returning(move |_, _, _| Ok(()));
     db.expect_list_user_groups()
         .times(1)
-        .withf(move |uid| *uid == user_id)
+        .withf(move |id| *id == user_id)
         .returning(|_| Ok(vec![]));
     db.expect_update_session()
         .times(1)

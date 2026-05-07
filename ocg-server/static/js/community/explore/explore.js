@@ -1,4 +1,5 @@
 import { handleHtmxResponse } from "/static/js/common/alerts.js";
+import { ocgFetch } from "/static/js/common/fetch.js";
 
 /**
  * Updates the results container in the DOM with new content.
@@ -25,7 +26,7 @@ export async function fetchData(entity, params) {
   /** @type {Response} */
   let response;
   try {
-    response = await fetch(url, { headers: { Accept: "application/json" } });
+    response = await ocgFetch(url, { headers: { Accept: "application/json" } });
   } catch (error) {
     handleHtmxResponse({ xhr: null, successMessage: "", errorMessage: baseMessage });
     throw error;

@@ -1,4 +1,5 @@
 import { confirmAction, showErrorAlert } from "/static/js/common/alerts.js";
+import { ocgFetch } from "/static/js/common/fetch.js";
 
 /**
  * Update a sponsor featured toggle and refresh the dashboard table on success.
@@ -19,7 +20,7 @@ const updateSponsorFeatured = async (checkbox, nextChecked) => {
   }
 
   try {
-    const response = await fetch(url, {
+    const response = await ocgFetch(url, {
       method: "PUT",
       credentials: "same-origin",
       headers: {

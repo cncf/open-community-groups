@@ -1,3 +1,5 @@
+import { ocgFetch } from "/static/js/common/fetch.js";
+
 /**
  * Persists dashboard selection using HTMX.
  *
@@ -30,7 +32,7 @@ export const selectDashboardAndSwapBody = async (selectUrl, dashboardUrl) => {
     throw new Error("HTMX is required for dashboard selection.");
   }
 
-  const response = await fetch(selectUrl, {
+  const response = await ocgFetch(selectUrl, {
     method: "PUT",
     credentials: "same-origin",
   });

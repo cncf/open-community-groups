@@ -348,9 +348,12 @@ describe("dashboard group attendees", () => {
     checkbox.dispatchEvent(new Event("change", { bubbles: true }));
     await waitForMicrotask();
 
-    expect(fetchMock.calls).to.deep.equal([
-      ["/dashboard/group/attendees/check-in/7", { method: "POST" }],
-    ]);
+    expect(fetchMock.calls).to.have.length(1);
+    const [url, options] = fetchMock.calls[0];
+    expect(url).to.equal("/dashboard/group/attendees/check-in/7");
+    expect(options.credentials).to.equal("same-origin");
+    expect(options.headers.get("X-OCG-Fetch")).to.equal("true");
+    expect(options.method).to.equal("POST");
     expect(checkbox.disabled).to.equal(true);
     expect(label.classList.contains("cursor-not-allowed")).to.equal(true);
     expect(label.classList.contains("cursor-pointer")).to.equal(false);
