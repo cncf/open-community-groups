@@ -21,6 +21,7 @@ cached = { workspace = true }
 clap = { workspace = true }
 chrono = { workspace = true }
 chrono-tz = { workspace = true }
+csv = { workspace = true }
 deadpool-postgres = { workspace = true }
 emojis = { workspace = true }
 figment = { workspace = true }

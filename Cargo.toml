@@ -31,6 +31,7 @@ cached = { version = "0.59.0", features = ["async"] }
 clap = { version = "4.6.1", features = ["derive"] }
 chrono = { version = "0.4.44", features = ["serde"] }
 chrono-tz = { version = "0.10.4", features = ["serde"] }
+csv = "1.4.0"
 deadpool-postgres = { version = "0.14.1", features = ["serde"] }
 emojis = "0.8.1"
 figment = { version = "0.10.19", features = ["yaml", "env"] }

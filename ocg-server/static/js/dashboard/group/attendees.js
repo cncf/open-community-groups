@@ -11,6 +11,7 @@ const dataKey = "attendeeNotificationReady";
 const refundModalId = "attendee-refund-modal";
 const refundApproveButtonId = "attendee-refund-approve";
 const refundRejectButtonId = "attendee-refund-reject";
+const attendeeActionsDropdownSelector = "[data-attendee-actions-dropdown]";
 
 const resolveAttendeesRoot = (root = document) => {
   if (root instanceof Element && root.id === "attendees-content") {
@@ -89,6 +90,24 @@ const processRefundActionButton = (button) => {
   if (button && window.htmx && typeof window.htmx.process === "function") {
     window.htmx.process(button);
   }
+};
+
+/**
+ * Close the attendee actions dropdown.
+ * @param {Document|Element} [root=document] Query root.
+ * @returns {void}
+ */
+const closeAttendeeActionsDropdown = (root = document) => {
+  root.querySelector?.(attendeeActionsDropdownSelector)?.classList.add("hidden");
+};
+
+/**
+ * Toggle the attendee actions dropdown.
+ * @param {Document|Element} [root=document] Query root.
+ * @returns {void}
+ */
+const toggleAttendeeActionsDropdown = (root = document) => {
+  root.querySelector?.(attendeeActionsDropdownSelector)?.classList.toggle("hidden");
 };
 
 /**
@@ -178,6 +197,52 @@ const initializeAttendeeNotification = (root) => {
         form.removeAttribute("hx-post");
       }
     },
+  });
+};
+
+/**
+ * Initialize the attendee actions dropdown.
+ * @param {Document|Element} [root=document] Query root.
+ */
+const initializeAttendeeActionsMenu = (root = document) => {
+  if (!(root instanceof Element) || root.dataset.attendeeActionsMenuReady === "true") {
+    return;
+  }
+
+  root.dataset.attendeeActionsMenuReady = "true";
+
+  root.addEventListener("click", (event) => {
+    const target = event.target instanceof Element ? event.target : null;
+    const trigger = target?.closest("#attendee-actions-button");
+    if (trigger instanceof HTMLElement && root.contains(trigger)) {
+      event.stopPropagation();
+      toggleAttendeeActionsDropdown(root);
+      return;
+    }
+
+    const menuItem = target?.closest(`${attendeeActionsDropdownSelector} a`);
+    if (menuItem instanceof HTMLAnchorElement && root.contains(menuItem)) {
+      closeAttendeeActionsDropdown(root);
+      return;
+    }
+
+    if (!target?.closest(attendeeActionsDropdownSelector)) {
+      closeAttendeeActionsDropdown(root);
+    }
+  });
+
+  document.addEventListener("click", (event) => {
+    const target = event.target instanceof Element ? event.target : null;
+    if (target && !root.contains(target)) {
+      closeAttendeeActionsDropdown(root);
+    }
+  });
+
+  root.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      closeAttendeeActionsDropdown(root);
+      queryElementById(root, "attendee-actions-button")?.focus();
+    }
   });
 };
 
@@ -283,6 +348,7 @@ const initializeAttendeesFeatures = (root = document) => {
     return;
   }
 
+  initializeAttendeeActionsMenu(attendeesRoot);
   initializeAttendeeNotification(attendeesRoot);
   initializeQrCodeModal(attendeesRoot);
   initializeRefundReviewModal(attendeesRoot);
