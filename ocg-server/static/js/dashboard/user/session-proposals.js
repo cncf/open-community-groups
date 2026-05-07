@@ -187,6 +187,4 @@ const initializeSessionProposals = () => {
 
 initializeSessionProposals();
 
-if (document.body) {
-  document.body.addEventListener("htmx:load", initializeSessionProposals);
-}
+document.addEventListener("htmx:load", initializeSessionProposals);

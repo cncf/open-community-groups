@@ -83,6 +83,35 @@ describe("dashboard group attendees", () => {
     expect(modal.classList.contains("hidden")).to.equal(false);
   });
 
+  it("opens the attendee notification modal after the dashboard body is swapped", () => {
+    const replacementBody = document.createElement("body");
+    replacementBody.innerHTML = `
+      <button
+        id="open-attendee-notification-modal"
+        type="button"
+        data-event-id="event-99"
+      >
+        Notify attendees
+      </button>
+      <div id="attendee-notification-modal" class="hidden"></div>
+      <button id="close-attendee-notification-modal" type="button">Close</button>
+      <button id="cancel-attendee-notification" type="button">Cancel</button>
+      <div id="overlay-attendee-notification-modal"></div>
+      <form id="attendee-notification-form"></form>
+    `;
+    document.documentElement.replaceChild(replacementBody, document.body);
+
+    initializeAttendeesUi();
+    document.getElementById("open-attendee-notification-modal")?.click();
+
+    expect(document.getElementById("attendee-notification-form")?.getAttribute("hx-post")).to.equal(
+      "/dashboard/group/notifications/event-99",
+    );
+    expect(document.getElementById("attendee-notification-modal")?.classList.contains("hidden")).to.equal(
+      false,
+    );
+  });
+
   it("opens the refund review modal with attendee payment details", () => {
     const originalHtmx = window.htmx;
     const processCalls = [];
@@ -136,10 +165,7 @@ describe("dashboard group attendees", () => {
     expect(rejectButton.getAttribute("hx-put")).to.equal(
       "/dashboard/group/events/event-1/attendees/user-1/refund/reject",
     );
-    expect(processCalls).to.deep.equal([
-      "attendee-refund-approve",
-      "attendee-refund-reject",
-    ]);
+    expect(processCalls).to.deep.equal(["attendee-refund-approve", "attendee-refund-reject"]);
 
     window.htmx = originalHtmx;
   });
@@ -344,12 +370,8 @@ describe("dashboard group attendees", () => {
     document.querySelector("[data-refund-review-trigger]")?.click();
 
     expect(modal.classList.contains("hidden")).to.equal(false);
-    expect(document.getElementById("attendee-refund-name")?.textContent).to.equal(
-      "Swapped Attendee",
-    );
-    expect(document.getElementById("attendee-refund-ticket")?.textContent).to.equal(
-      "Swapped Ticket",
-    );
+    expect(document.getElementById("attendee-refund-name")?.textContent).to.equal("Swapped Attendee");
+    expect(document.getElementById("attendee-refund-ticket")?.textContent).to.equal("Swapped Ticket");
     expect(document.getElementById("attendee-refund-amount")?.textContent).to.equal("EUR 25.00");
     expect(approveButton.getAttribute("hx-put")).to.equal(
       "/dashboard/group/events/event-2/attendees/user-2/refund/approve",
@@ -463,10 +485,7 @@ describe("dashboard group attendees", () => {
 
     document.querySelector("[data-refund-review-trigger]")?.click();
 
-    expect(processCalls).to.deep.equal([
-      "attendee-refund-approve",
-      "attendee-refund-reject",
-    ]);
+    expect(processCalls).to.deep.equal(["attendee-refund-approve", "attendee-refund-reject"]);
 
     window.htmx = originalHtmx;
   });

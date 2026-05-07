@@ -107,8 +107,6 @@ const initializeSponsorsFeatures = (root = document) => {
 
 initializeSponsorsFeatures();
 
-if (document.body) {
-  document.body.addEventListener("htmx:load", (event) => {
-    initializeSponsorsFeatures(event.target || document);
-  });
-}
+document.addEventListener("htmx:load", (event) => {
+  initializeSponsorsFeatures(event.target || document);
+});

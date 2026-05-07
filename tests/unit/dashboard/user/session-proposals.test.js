@@ -50,6 +50,20 @@ describe("dashboard user session proposals", () => {
     expect(modalComponent.dataset.sessionProposalReady).to.equal("true");
   });
 
+  it("opens the create modal after the dashboard body is swapped", () => {
+    const replacementBody = document.createElement("body");
+    replacementBody.innerHTML = `
+      <button id="open-session-proposal-modal" type="button">Open</button>
+    `;
+    replacementBody.append(modalComponent);
+    document.documentElement.replaceChild(replacementBody, document.body);
+
+    initializeSessionProposalsUi();
+    document.getElementById("open-session-proposal-modal")?.click();
+
+    expect(modalComponent.openCreateCalls).to.equal(1);
+  });
+
   it("opens edit and view modals with normalized proposal payloads", () => {
     const proposalPayload = JSON.stringify({
       session_proposal_id: 12,
@@ -132,7 +146,10 @@ describe("dashboard user session proposals", () => {
       text: "Are you sure you want to delete this session proposal?",
       confirmButtonText: "Delete",
     });
-    expect(env.current.htmx.triggerCalls[0]).to.deep.equal(["#delete-session-proposal-proposal-7", "confirmed"]);
+    expect(env.current.htmx.triggerCalls[0]).to.deep.equal([
+      "#delete-session-proposal-proposal-7",
+      "confirmed",
+    ]);
 
     const rejectButton = document.querySelector('[data-action="reject-co-speaker-invitation"]');
     rejectButton.click();

@@ -97,6 +97,20 @@ describe("team-add-member", () => {
     expect(focusCalls).to.equal(1);
   });
 
+  it("allows the user search dropdown to overflow the modal", async () => {
+    const element = await mountLitComponentWithAttributes("team-add-member", {
+      attributes: {
+        "role-options": JSON.stringify([{ display_name: "Maintainer", community_role_id: "role-1" }]),
+      },
+    });
+
+    element._open();
+    await element.updateComplete;
+
+    expect(element.querySelector(".modal-card").classList.contains("modal-overflow-visible")).to.equal(true);
+    expect(element.querySelector(".modal-body").classList.contains("modal-overflow-visible")).to.equal(true);
+  });
+
   it("enables submit only after both a user and role have been selected", async () => {
     const element = await mountLitComponentWithAttributes("team-add-member", {
       attributes: {

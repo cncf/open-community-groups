@@ -98,6 +98,17 @@ describe("group membership", () => {
     expect(env.current.htmx.triggerCalls).to.deep.equal([["#leave-btn", "confirmed"]]);
   });
 
+  it("handles membership clicks after the page body is swapped", () => {
+    const replacementBody = document.createElement("body");
+    document.documentElement.replaceChild(replacementBody, document.body);
+    const { signinButton } = renderMembershipDom();
+
+    signinButton.click();
+
+    expect(env.current.swal.calls[0].icon).to.equal("info");
+    expect(env.current.swal.calls[0].html).to.include("/log-in?next_url=/groups/test-group");
+  });
+
   it("closes the group actions menu when clicking outside it", () => {
     renderMembershipDom();
     document.body.insertAdjacentHTML(

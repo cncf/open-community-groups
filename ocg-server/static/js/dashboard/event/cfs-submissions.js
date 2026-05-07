@@ -1147,11 +1147,11 @@ if (!customElements.get("review-submission-modal")) {
 }
 
 const initializeCfsSubmissions = () => {
-  if (!document.body || document.body.dataset[DATA_KEY] === "true") {
+  if (document.documentElement.dataset[DATA_KEY] === "true") {
     return;
   }
-  document.body.dataset[DATA_KEY] = "true";
-  document.body.addEventListener("htmx:afterSwap", (event) => {
+  document.documentElement.dataset[DATA_KEY] = "true";
+  document.addEventListener("htmx:afterSwap", (event) => {
     const target = event?.detail?.target || event?.detail?.elt;
     if (!(target instanceof Element) || target.id !== SUBMISSIONS_CONTENT_ID) {
       return;
@@ -1165,7 +1165,7 @@ const initializeCfsSubmissions = () => {
     modal.syncLabelsFromFilter();
   });
 
-  document.body.addEventListener("click", (event) => {
+  document.addEventListener("click", (event) => {
     if (!(event.target instanceof Element)) {
       return;
     }

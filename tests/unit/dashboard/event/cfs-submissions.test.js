@@ -87,9 +87,7 @@ describe("review-submission-modal", () => {
     await element.updateComplete;
 
     expect(element._isOpen).to.equal(true);
-    expect(element.labels).to.deep.equal([
-      { event_cfs_label_id: "7", name: "Backend", color: "blue" },
-    ]);
+    expect(element.labels).to.deep.equal([{ event_cfs_label_id: "7", name: "Backend", color: "blue" }]);
     expect(element._message).to.equal("Please expand the abstract");
     expect(element._ratingComment).to.equal("Looks promising");
     expect(element._ratingStars).to.equal(4);
@@ -97,6 +95,33 @@ describe("review-submission-modal", () => {
     expect(document.body.style.overflow).to.equal("hidden");
     expect(processCalls).to.have.length(1);
     expect(element.querySelector("#cfs-submission-form")).to.not.equal(null);
+  });
+
+  it("opens from a review trigger after the dashboard body is swapped", async () => {
+    const replacementBody = document.createElement("body");
+    document.documentElement.replaceChild(replacementBody, document.body);
+
+    const element = await renderModal();
+    element.id = "review-submission-modal";
+    const submissionPayload = JSON.stringify(buildSubmission());
+    document.body.insertAdjacentHTML(
+      "beforeend",
+      `
+        <button
+          type="button"
+          data-action="open-cfs-submission-modal"
+          data-submission='${submissionPayload}'
+        >
+          Review
+        </button>
+      `,
+    );
+
+    document.querySelector('[data-action="open-cfs-submission-modal"]')?.click();
+    await element.updateComplete;
+
+    expect(element._isOpen).to.equal(true);
+    expect(element._submission.cfs_submission_id).to.equal(12);
   });
 
   it("tracks pending changes while keeping label order snapshots stable", async () => {
