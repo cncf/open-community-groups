@@ -9,6 +9,7 @@ returns boolean as $$
 declare
     v_after_ends_at timestamptz;
     v_after_event_host_ids uuid[];
+    v_after_event_meeting_recording_requested boolean := coalesce((p_after_event->>'meeting_recording_requested')::boolean, true);
     v_after_meeting_hosts text[] := case when p_after_session->'meeting_hosts' is not null then array(select jsonb_array_elements_text(p_after_session->'meeting_hosts')) else null end;
     v_after_meeting_provider_id text := p_after_session->>'meeting_provider_id';
     v_after_meeting_requested boolean := (p_after_session->>'meeting_requested')::boolean;
@@ -20,6 +21,7 @@ declare
 
     v_before_ends_at timestamptz := to_timestamp((p_before_session->>'ends_at')::double precision);
     v_before_event_host_ids uuid[];
+    v_before_event_meeting_recording_requested boolean := coalesce((p_before_event->>'meeting_recording_requested')::boolean, true);
     v_before_meeting_hosts text[] := case when p_before_session->'meeting_hosts' is not null then array(select jsonb_array_elements_text(p_before_session->'meeting_hosts')) else null end;
     v_before_meeting_provider_id text := p_before_session->>'meeting_provider_id';
     v_before_meeting_requested boolean := coalesce((p_before_session->>'meeting_requested')::boolean, false);
@@ -70,6 +72,7 @@ begin
     v_in_sync := v_before_meeting_requested = true
         and v_before_ends_at is not distinct from v_after_ends_at
         and v_before_event_host_ids is not distinct from v_after_event_host_ids
+        and v_before_event_meeting_recording_requested = v_after_event_meeting_recording_requested
         and v_before_meeting_hosts is not distinct from v_after_meeting_hosts
         and v_before_meeting_provider_id is not distinct from v_after_meeting_provider_id
         and v_before_name = v_after_name

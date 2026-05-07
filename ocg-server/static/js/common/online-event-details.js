@@ -33,6 +33,13 @@ export class OnlineEventDetails extends LitWrapper {
     },
     meetingJoinUrl: { type: String, attribute: "meeting-join-url" },
     meetingRecordingUrl: { type: String, attribute: "meeting-recording-url" },
+    meetingRecordingRequested: {
+      type: Boolean,
+      attribute: "meeting-recording-requested",
+      converter: {
+        fromAttribute: (value) => value !== "false",
+      },
+    },
     meetingRequested: { type: Boolean, attribute: "meeting-requested" },
     meetingHosts: {
       type: Array,
@@ -74,6 +81,7 @@ export class OnlineEventDetails extends LitWrapper {
     _joinInstructions: { type: String, state: true },
     _joinUrl: { type: String, state: true },
     _recordingUrl: { type: String, state: true },
+    _recordingRequested: { type: Boolean, state: true },
     _createMeeting: { type: Boolean, state: true },
     _providerId: { type: String, state: true },
     _hosts: { type: Array, state: true },
@@ -87,6 +95,7 @@ export class OnlineEventDetails extends LitWrapper {
     this.meetingJoinInstructions = "";
     this.meetingJoinUrl = "";
     this.meetingRecordingUrl = "";
+    this.meetingRecordingRequested = true;
     this.meetingRequested = false;
     this.meetingHosts = [];
     this.startsAt = "";
@@ -102,6 +111,7 @@ export class OnlineEventDetails extends LitWrapper {
     this._joinInstructions = "";
     this._joinUrl = "";
     this._recordingUrl = "";
+    this._recordingRequested = true;
     this._createMeeting = false;
     this._providerId = DEFAULT_MEETING_PROVIDER;
     this._hosts = [];
@@ -135,6 +145,7 @@ export class OnlineEventDetails extends LitWrapper {
     this._joinInstructions = this.meetingJoinInstructions || "";
     this._joinUrl = this._manualJoinUrl;
     this._recordingUrl = startsInAutomaticMode ? this._automaticRecordingUrl : this._manualRecordingUrl;
+    this._recordingRequested = this.meetingRecordingRequested !== false;
     this._createMeeting = this.meetingRequested;
     this._providerId = this.meetingProviderId || DEFAULT_MEETING_PROVIDER;
     this._hosts = Array.isArray(this.meetingHosts) ? [...this.meetingHosts] : [];
@@ -589,6 +600,15 @@ export class OnlineEventDetails extends LitWrapper {
     this._manualRecordingUrl = this._recordingUrl;
   }
 
+  /**
+   * Handles the automatic recording request toggle.
+   * @param {Event} e - Change event
+   */
+  _handleRecordingRequestedChange(e) {
+    if (this.disabled) return;
+    this._recordingRequested = e.target.checked;
+  }
+
   _getAutomaticAvailability() {
     if (this.disabled) {
       return { allowed: false, reasons: [] };
@@ -664,6 +684,7 @@ export class OnlineEventDetails extends LitWrapper {
     const isAutomatic = this._mode === "automatic" && this._createMeeting;
     const data = {
       meeting_join_url: isAutomatic ? "" : (this._joinUrl || "").trim(),
+      meeting_recording_requested: this._recordingRequested !== false,
       meeting_recording_url: (this._recordingUrl || "").trim(),
       meeting_requested: isAutomatic,
       meeting_provider_id: isAutomatic ? (this._providerId || DEFAULT_MEETING_PROVIDER).trim() : "",
@@ -684,6 +705,7 @@ export class OnlineEventDetails extends LitWrapper {
     this._joinInstructions = "";
     this._joinUrl = "";
     this._recordingUrl = "";
+    this._recordingRequested = true;
     this._createMeeting = false;
     this._providerId = DEFAULT_MEETING_PROVIDER;
     this._hosts = [];
@@ -717,6 +739,7 @@ export class OnlineEventDetails extends LitWrapper {
     const {
       meeting_join_instructions: joinInstructionsValue,
       meeting_join_url: joinUrlValue,
+      meeting_recording_requested: recordingRequestedValue,
       meeting_recording_url: recordingUrlValue,
       meeting_requested: isAutomatic,
       meeting_provider_id: providerIdValue,
@@ -733,6 +756,11 @@ export class OnlineEventDetails extends LitWrapper {
             />
           `
         : ""}
+      <input
+        type="hidden"
+        name="${this._getFieldName("meeting_recording_requested")}"
+        value="${recordingRequestedValue}"
+      />
       <input
         type="hidden"
         name="${this._getFieldName("meeting_recording_url")}"
@@ -995,6 +1023,28 @@ export class OnlineEventDetails extends LitWrapper {
                   >
                   </multiple-inputs>
                 </div>
+                ${!this._isSession()
+                  ? html`
+                      <div class="space-y-2">
+                        <label class="inline-flex items-center cursor-pointer">
+                          <input
+                            type="checkbox"
+                            class="sr-only peer"
+                            .checked="${this._recordingRequested}"
+                            @change="${this._handleRecordingRequestedChange}"
+                            ?disabled=${this.disabled}
+                          />
+                          <span
+                            class="relative w-11 h-6 bg-stone-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-stone-300 after:border after:border-stone-200 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500"
+                          ></span>
+                          <span class="ms-3 text-sm font-medium text-stone-900">Record meeting</span>
+                        </label>
+                        <p class="form-legend">
+                          When enabled, Zoom will automatically record this meeting to the cloud.
+                        </p>
+                      </div>
+                    `
+                  : ""}
               </div>
             `
           : ""}

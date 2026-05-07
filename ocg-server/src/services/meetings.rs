@@ -593,6 +593,8 @@ pub(crate) struct Meeting {
     pub password: Option<String>,
     pub provider_host_user_id: Option<String>,
     pub provider_meeting_id: Option<String>,
+    #[serde(alias = "meeting_recording_requested")]
+    pub recording_requested: Option<bool>,
     pub session_id: Option<Uuid>,
     pub starts_at: Option<DateTime<Utc>>,
     #[serde(skip_serializing)]

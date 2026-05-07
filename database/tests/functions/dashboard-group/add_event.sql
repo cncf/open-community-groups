@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(32);
+select plan(33);
 
 -- ============================================================================
 -- VARIABLES
@@ -114,6 +114,7 @@ select ok(
         "sessions": {},
         "timezone": "America/New_York",
         "attendee_approval_required": false,
+        "meeting_recording_requested": true,
         "waitlist_count": 0,
         "waitlist_enabled": false
     }'::jsonb,
@@ -274,6 +275,7 @@ select ok(
         "meeting_hosts": ["host1@example.com", "host2@example.com"],
         "meeting_join_instructions": "Use the waiting room display name from your ticket.",
         "meeting_join_url": "https://youtube.com/live",
+        "meeting_recording_requested": true,
         "meeting_recording_url": "https://youtube.com/recording",
         "meetup_url": "https://meetup.com/event",
         "photos_urls": ["https://example.com/photo1.jpg", "https://example.com/photo2.jpg"],
@@ -467,6 +469,7 @@ select is(
         select jsonb_build_object(
             'event', jsonb_build_object(
                 'meeting_hosts', meeting_hosts,
+                'meeting_recording_requested', meeting_recording_requested,
                 'meeting_requested', meeting_requested,
                 'meeting_in_sync', meeting_in_sync
             ),
@@ -486,6 +489,7 @@ select is(
     '{
         "event": {
             "meeting_hosts": ["event-alt-host@example.com"],
+            "meeting_recording_requested": true,
             "meeting_requested": true,
             "meeting_in_sync": false
         },
@@ -496,6 +500,31 @@ select is(
         }
     }'::jsonb,
     'Should set meeting flags and hosts for event and session when requested'
+);
+
+-- Should persist explicit event meeting recording preference
+select add_event(
+    null::uuid,
+    :'groupID'::uuid,
+    '{
+        "name": "Meeting Recording Disabled Event",
+        "description": "Event requesting meeting support without recording",
+        "timezone": "UTC",
+        "category_id": "00000000-0000-0000-0000-000000000011",
+        "kind_id": "virtual",
+        "capacity": 100,
+        "starts_at": "2030-03-02T10:00:00",
+        "ends_at": "2030-03-02T11:30:00",
+        "meeting_provider_id": "zoom",
+        "meeting_recording_requested": false,
+        "meeting_requested": true
+    }'::jsonb
+) as "recordingDisabledEventID" \gset
+
+select is(
+    (select meeting_recording_requested from event where event_id = :'recordingDisabledEventID'::uuid),
+    false,
+    'Should persist event meeting recording preference when disabled'
 );
 
 -- Should throw error when capacity exceeds max_participants with meeting_requested

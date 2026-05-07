@@ -698,6 +698,10 @@
             meeting-recording-url="{{ meeting_recording_url }}"
           {% endif %}
 
+          {% if let Some(meeting_recording_requested) = &event.meeting_recording_requested %}
+            meeting-recording-requested="{{ meeting_recording_requested }}"
+          {% endif %}
+
           {% if event.meeting_requested.unwrap_or(false) %}meeting-requested="true"{% endif %}
 
           {% if let Some(meeting_in_sync) = &event.meeting_in_sync %}

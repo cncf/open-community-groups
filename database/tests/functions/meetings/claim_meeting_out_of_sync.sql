@@ -653,6 +653,7 @@ select is(
         "event_id": "00000000-0000-0000-0000-000000001512",
         "hosts": ["eventhost@example.com", "eventspeaker@example.com", "explicit@example.com"],
         "meeting_provider_id": "zoom",
+        "meeting_recording_requested": true,
         "timezone": "UTC",
         "topic": "Event Create Test"
     }'::jsonb,
@@ -677,6 +678,7 @@ select is(
         "join_url": "https://zoom.us/j/event-update",
         "meeting_id": "00000000-0000-0000-0000-000000001533",
         "meeting_provider_id": "zoom",
+        "meeting_recording_requested": true,
         "password": "eventpass",
         "provider_meeting_id": "event-update",
         "timezone": "UTC",
@@ -698,6 +700,7 @@ select is(
         "duration_secs": 1800,
         "hosts": ["eventhost@example.com", "sessionhost@example.com", "sessionspeaker@example.com"],
         "meeting_provider_id": "zoom",
+        "meeting_recording_requested": true,
         "session_id": "00000000-0000-0000-0000-000000001523",
         "timezone": "UTC",
         "topic": "Session Create Test"
@@ -719,6 +722,7 @@ select is(
         "join_url": "https://zoom.us/j/session-update",
         "meeting_id": "00000000-0000-0000-0000-000000001534",
         "meeting_provider_id": "zoom",
+        "meeting_recording_requested": true,
         "password": "sessionpass",
         "provider_meeting_id": "session-update",
         "session_id": "00000000-0000-0000-0000-000000001524",
@@ -1075,6 +1079,7 @@ select is(
         "duration_secs": 3600,
         "event_id": "00000000-0000-0000-0000-000000001517",
         "meeting_provider_id": "zoom",
+        "meeting_recording_requested": true,
         "timezone": "UTC",
         "topic": "Event Unpublished Test"
     }'::jsonb,

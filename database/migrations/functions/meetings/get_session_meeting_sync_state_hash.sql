@@ -13,6 +13,7 @@ create or replace function get_session_meeting_sync_state_hash(
                     where eh.event_id = e.event_id
                 ),
                 'event_published', e.published,
+                'event_meeting_recording_requested', e.meeting_recording_requested,
                 'event_timezone', e.timezone,
                 'ends_at', s.ends_at,
                 'meeting_hosts', (
