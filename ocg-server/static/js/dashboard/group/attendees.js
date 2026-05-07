@@ -357,8 +357,6 @@ const initializeAttendeesFeatures = (root = document) => {
 
 initializeAttendeesFeatures();
 
-if (document.body) {
-  document.body.addEventListener("htmx:load", (event) => {
-    initializeAttendeesFeatures(event.target || document);
-  });
-}
+document.addEventListener("htmx:load", (event) => {
+  initializeAttendeesFeatures(event.target || document);
+});

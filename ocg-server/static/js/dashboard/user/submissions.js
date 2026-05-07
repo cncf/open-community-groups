@@ -101,6 +101,4 @@ const initializeSubmissionActions = () => {
 
 initializeSubmissionActions();
 
-if (document.body) {
-  document.body.addEventListener("htmx:load", initializeSubmissionActions);
-}
+document.addEventListener("htmx:load", initializeSubmissionActions);

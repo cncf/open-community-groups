@@ -50,6 +50,33 @@ describe("dashboard user submissions", () => {
     expect(document.body.style.overflow).to.equal("");
   });
 
+  it("opens the action required modal after the dashboard body is swapped", () => {
+    const replacementBody = document.createElement("body");
+    replacementBody.innerHTML = `
+      <div id="action-required-modal" class="hidden"></div>
+      <div id="action-required-modal-message"></div>
+      <button id="close-action-required-modal" type="button">Close</button>
+      <button id="cancel-action-required-modal" type="button">Cancel</button>
+      <div id="overlay-action-required-modal"></div>
+      <button
+        type="button"
+        data-action="open-action-required-modal"
+        data-action-required-message="Please update the bio before resubmitting."
+      >
+        Open
+      </button>
+    `;
+    document.documentElement.replaceChild(replacementBody, document.body);
+
+    initializeSubmissionsUi();
+    document.querySelector('[data-action="open-action-required-modal"]')?.click();
+
+    expect(document.getElementById("action-required-modal-message")?.textContent).to.equal(
+      "Please update the bio before resubmitting.",
+    );
+    expect(document.getElementById("action-required-modal")?.classList.contains("hidden")).to.equal(false);
+  });
+
   it("opens a confirmation dialog for withdraw actions and handles request errors", async () => {
     document.body.innerHTML = `
       <button
@@ -71,7 +98,9 @@ describe("dashboard user submissions", () => {
     expect(env.current.swal.calls).to.have.length(1);
     expect(env.current.swal.calls[0].html).to.include("Are you sure you want to withdraw this submission?");
     expect(env.current.swal.calls[0].confirmButtonText).to.equal("Withdraw");
-    expect(env.current.htmx.triggerCalls).to.deep.equal([["#withdraw-submission-submission-42", "confirmed"]]);
+    expect(env.current.htmx.triggerCalls).to.deep.equal([
+      ["#withdraw-submission-submission-42", "confirmed"],
+    ]);
 
     dispatchHtmxAfterRequest(button, {
       status: 500,
@@ -106,7 +135,9 @@ describe("dashboard user submissions", () => {
     expect(env.current.swal.calls).to.have.length(1);
     expect(env.current.swal.calls[0].html).to.include("Before resubmitting, please make sure");
     expect(env.current.swal.calls[0].confirmButtonText).to.equal("Resubmit");
-    expect(env.current.htmx.triggerCalls).to.deep.equal([["#resubmit-submission-submission-84", "confirmed"]]);
+    expect(env.current.htmx.triggerCalls).to.deep.equal([
+      ["#resubmit-submission-submission-84", "confirmed"],
+    ]);
 
     dispatchHtmxAfterRequest(button, {
       status: 204,

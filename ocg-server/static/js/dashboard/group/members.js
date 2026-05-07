@@ -20,6 +20,4 @@ const initializeMembersNotification = () => {
 
 initializeMembersNotification();
 
-if (document.body) {
-  document.body.addEventListener("htmx:load", initializeMembersNotification);
-}
+document.addEventListener("htmx:load", initializeMembersNotification);

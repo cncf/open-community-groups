@@ -266,14 +266,14 @@ const handleMembershipClick = (event) => {
 const initializeMembership = (root = document) => {
   getMembershipContainers(root).forEach(initializeMembershipContainer);
 
-  if (document.body?.dataset.membershipListenersReady === "true") {
+  if (document.documentElement.dataset.membershipListenersReady === "true") {
     return;
   }
 
-  document.body.dataset.membershipListenersReady = "true";
-  document.body.addEventListener("htmx:beforeRequest", handleBeforeRequest);
-  document.body.addEventListener("htmx:afterRequest", handleAfterRequest);
-  document.body.addEventListener("click", handleMembershipClick);
+  document.documentElement.dataset.membershipListenersReady = "true";
+  document.addEventListener("htmx:beforeRequest", handleBeforeRequest);
+  document.addEventListener("htmx:afterRequest", handleAfterRequest);
+  document.addEventListener("click", handleMembershipClick);
 };
 
 if (document.readyState === "loading") {

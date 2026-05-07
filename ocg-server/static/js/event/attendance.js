@@ -1026,16 +1026,15 @@ const initializeAttendance = (root = document) => {
     }
   });
 
-  if (document.body?.dataset.attendanceListenersReady === "true") {
-    return;
+  if (document.documentElement.dataset.attendanceListenersReady !== "true") {
+    document.documentElement.dataset.attendanceListenersReady = "true";
+    document.addEventListener("htmx:configRequest", handleConfigRequest);
+    document.addEventListener("htmx:beforeRequest", handleBeforeRequest);
+    document.addEventListener("htmx:afterRequest", handleAfterRequest);
+    document.addEventListener("click", handleAttendanceClick);
+    document.addEventListener("keydown", handleAttendanceKeydown);
   }
 
-  document.body.dataset.attendanceListenersReady = "true";
-  document.body.addEventListener("htmx:configRequest", handleConfigRequest);
-  document.body.addEventListener("htmx:beforeRequest", handleBeforeRequest);
-  document.body.addEventListener("htmx:afterRequest", handleAfterRequest);
-  document.body.addEventListener("click", handleAttendanceClick);
-  document.addEventListener("keydown", handleAttendanceKeydown);
   reconcilePaymentReturn();
 };
 

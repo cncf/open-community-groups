@@ -161,6 +161,17 @@ describe("event attendance", () => {
     expect(meetingDetails[0].classList.contains("hidden")).to.equal(false);
   });
 
+  it("handles attendance clicks after the page body is swapped", () => {
+    const replacementBody = document.createElement("body");
+    document.documentElement.replaceChild(replacementBody, document.body);
+    const { signinButton } = renderAttendanceDom();
+
+    signinButton.click();
+
+    expect(env.current.swal.calls[0].icon).to.equal("info");
+    expect(env.current.swal.calls[0].html).to.include("/log-in?next_url=/events/test-event");
+  });
+
   it("keeps the join meeting link hidden when the event is canceled", () => {
     const { checker, alwaysJoinLink, liveJoinLink, menuJoinLink, meetingDetails } = renderAttendanceDom({
       attendeeMeetingAccessOpen: "true",

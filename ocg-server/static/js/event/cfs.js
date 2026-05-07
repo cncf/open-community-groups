@@ -65,6 +65,7 @@ const handleModalSwap = (event) => {
   }
 };
 
-if (document.body) {
-  document.body.addEventListener("htmx:afterSwap", handleModalSwap);
+if (document.documentElement.dataset.cfsModalSwapReady !== "true") {
+  document.documentElement.dataset.cfsModalSwapReady = "true";
+  document.addEventListener("htmx:afterSwap", handleModalSwap);
 }
