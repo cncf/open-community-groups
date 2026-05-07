@@ -24,7 +24,12 @@ export const ocgFetch = async (input, init = {}) => {
   return response;
 };
 
-// Returns whether the request target resolves to the current browser origin.
+/**
+ * Returns whether the request target resolves to the current browser origin.
+ *
+ * @param {RequestInfo|URL} input Request target
+ * @returns {boolean}
+ */
 const isSameOriginRequest = (input) => {
   const url = typeof input === "string" ? input : input instanceof URL ? input.href : input?.url;
   if (!url) {
