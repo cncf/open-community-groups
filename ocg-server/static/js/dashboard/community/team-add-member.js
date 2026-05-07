@@ -242,7 +242,7 @@ export class TeamAddMember extends LitWrapper {
           @click=${() => this._close()}
         ></div>
         <div class="modal-panel p-4 max-w-3xl">
-          <div class="modal-card rounded-lg">
+          <div class="modal-card rounded-lg modal-overflow-visible">
             <div class="flex items-center justify-between p-4 md:p-5 border-b border-stone-200 rounded-t">
               <h3 class="text-xl font-semibold text-stone-900">Add member</h3>
               <button
@@ -254,7 +254,7 @@ export class TeamAddMember extends LitWrapper {
                 <span class="sr-only">Close modal</span>
               </button>
             </div>
-            <div class="modal-body p-4 md:p-8">
+            <div class="modal-body p-4 md:p-8 modal-overflow-visible">
               <form
                 id="team-add-form"
                 hx-post="/dashboard/${this.dashboardType}/team/add"
