@@ -96,33 +96,11 @@ const initializeSponsorFeaturedToggles = (root = document) => {
 };
 
 /**
- * Keep the dashboard URL aligned after opening the add sponsor form.
- * @param {Document|Element} [root=document] Query root.
- * @returns {void}
- */
-const initializeAddSponsorButton = (root = document) => {
-  const addSponsorButton = root.querySelector?.("#add-sponsor-button");
-  if (!(addSponsorButton instanceof HTMLElement)) {
-    return;
-  }
-
-  if (addSponsorButton.dataset.addSponsorReady === "true") {
-    return;
-  }
-
-  addSponsorButton.dataset.addSponsorReady = "true";
-  addSponsorButton.addEventListener("htmx:afterRequest", () => {
-    history.pushState({}, "Sponsors list", "/dashboard/group?tab=sponsors");
-  });
-};
-
-/**
  * Initialize sponsors dashboard interactions.
  * @param {Document|Element} [root=document] Query root.
  * @returns {void}
  */
 const initializeSponsorsFeatures = (root = document) => {
-  initializeAddSponsorButton(root);
   initializeSponsorFeaturedToggles(root);
 };
 

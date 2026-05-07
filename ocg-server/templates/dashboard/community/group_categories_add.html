@@ -6,6 +6,7 @@
       hx-post="/dashboard/community/group-categories/add"
       hx-ext="no-empty-vals"
       hx-target="#dashboard-content"
+      hx-history="false"
       hx-indicator="#dashboard-spinner, #community-group-category-create-spinner"
       hx-disabled-elt="button[type=submit], #cancel-button">
   <div class="space-y-12">
@@ -58,13 +59,6 @@
   } from '/static/js/common/alerts.js';
 
   const groupCategoryForm = document.getElementById('group-category-form');
-  const cancelButton = document.getElementById('cancel-button');
-
-  if (cancelButton) {
-    cancelButton.addEventListener('htmx:afterRequest', () => {
-      history.pushState({}, 'Group categories list', '/dashboard/community?tab=group-categories');
-    });
-  }
 
   if (groupCategoryForm) {
     groupCategoryForm.addEventListener('htmx:afterRequest', (e) => {

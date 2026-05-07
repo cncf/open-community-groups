@@ -6,6 +6,7 @@
       hx-put="/dashboard/group/sponsors/{{ sponsor.group_sponsor_id }}/update"
       hx-ext="no-empty-vals"
       hx-target="#dashboard-content"
+      hx-history="false"
       hx-indicator="#dashboard-spinner, #group-sponsor-update-spinner"
       hx-disabled-elt="button[type=submit], #cancel-button">
   <div class="space-y-12">
@@ -118,13 +119,6 @@
   } from '/static/js/common/alerts.js';
 
   const sponsorForm = document.getElementById('sponsor-form');
-  const cancelButton = document.getElementById('cancel-button');
-
-  if (cancelButton) {
-    cancelButton.addEventListener('htmx:afterRequest', () => {
-      history.pushState({}, 'Sponsors list', '/dashboard/group?tab=sponsors');
-    });
-  }
 
   if (sponsorForm) {
     sponsorForm.addEventListener('htmx:afterRequest', (e) => {

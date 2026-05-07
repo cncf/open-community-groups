@@ -6,6 +6,7 @@
       hx-put="/dashboard/community/regions/{{ region.region_id }}/update"
       hx-ext="no-empty-vals"
       hx-target="#dashboard-content"
+      hx-history="false"
       hx-indicator="#dashboard-spinner, #community-region-update-spinner"
       hx-disabled-elt="button[type=submit], #cancel-button">
   <div class="space-y-12">
@@ -71,13 +72,6 @@
   } from '/static/js/common/alerts.js';
 
   const regionForm = document.getElementById('region-form');
-  const cancelButton = document.getElementById('cancel-button');
-
-  if (cancelButton) {
-    cancelButton.addEventListener('htmx:afterRequest', () => {
-      history.pushState({}, 'Regions list', '/dashboard/community?tab=regions');
-    });
-  }
 
   if (regionForm) {
     regionForm.addEventListener('htmx:afterRequest', (e) => {

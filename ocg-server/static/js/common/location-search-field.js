@@ -317,7 +317,6 @@ export class LocationSearchField extends LitWrapper {
         signal: this._abortController.signal,
         headers: {
           Accept: "application/json",
-          "User-Agent": "OpenCommunityGroups/0.5.0 (https://github.com/open-community-groups)",
         },
       });
 
@@ -671,6 +670,15 @@ export class LocationSearchField extends LitWrapper {
   }
 
   /**
+   * Keeps focusout from re-rendering the search area before Chromium fires click.
+   * @param {PointerEvent} event - Pointer event from the search button
+   * @private
+   */
+  _handleSearchButtonPointerDown(event) {
+    event.preventDefault();
+  }
+
+  /**
    * Renders the search interface with input and button.
    * @returns {import('lit').TemplateResult} Search interface template
    * @private
@@ -726,6 +734,7 @@ export class LocationSearchField extends LitWrapper {
             <button
               type="button"
               class="btn-primary"
+              @pointerdown=${this._handleSearchButtonPointerDown}
               @click=${this._triggerSearch}
               ?disabled=${this.disabled || this._searchQuery.length < 3 || this._isSearching}
             >

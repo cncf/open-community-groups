@@ -6,6 +6,7 @@
 <div id="event-update-page"
      class="space-y-12"
      data-event-page="update"
+     hx-history="false"
      data-event-canceled="{{ event.canceled }}"
      data-event-past="{{ event.is_past() }}"
      data-can-manage-events="{{ can_manage_events }}">

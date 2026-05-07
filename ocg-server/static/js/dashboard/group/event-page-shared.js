@@ -504,21 +504,6 @@ export const initializeEventPagePendingChanges = ({ pageRoot, confirmMessage }) 
 };
 
 /**
- * Initializes the shared cancel navigation behavior for event pages.
- * @param {HTMLElement|null} cancelButton Cancel button element.
- * @returns {void}
- */
-export const initializeEventPageCancelNavigation = (cancelButton) => {
-  if (!cancelButton) {
-    return;
-  }
-
-  cancelButton.addEventListener("htmx:afterRequest", () => {
-    history.pushState({}, "Events list", "/dashboard/group?tab=events");
-  });
-};
-
-/**
  * Attaches the shared HTMX before-request validation flow for event save buttons.
  * @param {Object} config Save validation configuration.
  * @param {HTMLElement|null} config.saveButton Save button element.

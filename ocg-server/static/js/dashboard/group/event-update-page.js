@@ -12,7 +12,6 @@ import {
   initializeEventPageContext,
   initializeCommonEventPageToggles,
   initializeEventKindField,
-  initializeEventPageCancelNavigation,
   initializeEventPagePendingChanges,
 } from "/static/js/dashboard/group/event-page-shared.js";
 import {
@@ -222,8 +221,6 @@ export const initializeEventUpdatePage = (root = document) => {
     cfsEndsAtInput,
     onlineEventDetails,
   });
-
-  initializeEventPageCancelNavigation(cancelButton);
 
   initializeEventPagePendingChanges({
     pageRoot,

@@ -8,7 +8,8 @@
      {% if !target.is_empty() -%}
        target="{{ target }}"
      {% endif -%}
-     class="mx-3 pb-1 border-0 border-primary-500 text-base font-semibold tracking-widest text-primary-500 uppercase border-b-2 transition-colors
+     data-header-nav-link
+     class="header-nav-link mx-3 pb-1 border-0 border-primary-500 text-base font-semibold tracking-widest text-primary-500 uppercase border-b-2 transition-colors
             {% if current_path == href || current_path == path -%}
               border-primary-500{%- else -%}border-transparent hover:border-primary-300{%- endif -%} {{ extra_styles_ }}">{{ content }}</a>
 {% endmacro link -%}
