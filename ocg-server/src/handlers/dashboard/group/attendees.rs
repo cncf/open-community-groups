@@ -4,7 +4,10 @@ use anyhow::Result;
 use askama::Template;
 use axum::{
     extract::{Path, RawQuery, State},
-    http::{StatusCode, header::CONTENT_TYPE},
+    http::{
+        StatusCode,
+        header::{CONTENT_DISPOSITION, CONTENT_TYPE},
+    },
     response::{Html, IntoResponse},
 };
 use chrono::Duration;
@@ -354,6 +357,58 @@ pub(crate) async fn send_event_custom_notification(
     .await?;
 
     Ok(StatusCode::NO_CONTENT.into_response())
+}
+
+// Download handlers.
+
+/// Downloads a CSV file with all attendees for a specific event.
+#[instrument(skip_all, err)]
+pub(crate) async fn download_csv(
+    SelectedCommunityId(community_id): SelectedCommunityId,
+    SelectedGroupId(group_id): SelectedGroupId,
+    State(db): State<DynDB>,
+    Path(event_id): Path<Uuid>,
+) -> Result<impl IntoResponse, HandlerError> {
+    // Fetch event summary and all attendees
+    let search_filters = AttendeesFilters {
+        event_id,
+        limit: None,
+        offset: None,
+    };
+    let (event, search_attendees_results) = tokio::try_join!(
+        db.get_event_summary(community_id, group_id, event_id),
+        db.search_event_attendees(group_id, &search_filters)
+    )?;
+
+    // Prepare CSV response
+    let mut writer = csv::WriterBuilder::new()
+        .terminator(csv::Terminator::Any(b'\n'))
+        .from_writer(vec![]);
+    writer
+        .write_record(["Name", "Company", "Title"])
+        .map_err(anyhow::Error::from)?;
+    for attendee in &search_attendees_results.attendees {
+        writer
+            .write_record([
+                attendee.name.as_deref().unwrap_or(&attendee.username),
+                attendee.company.as_deref().unwrap_or_default(),
+                attendee.title.as_deref().unwrap_or_default(),
+            ])
+            .map_err(anyhow::Error::from)?;
+    }
+    let csv = writer.into_inner().map_err(anyhow::Error::from)?;
+    let file_name = format!("event-{}-attendees.csv", event.slug);
+
+    Ok((
+        [
+            (CONTENT_TYPE, "text/csv; charset=utf-8".to_string()),
+            (
+                CONTENT_DISPOSITION,
+                format!("attachment; filename=\"{file_name}\""),
+            ),
+        ],
+        csv,
+    ))
 }
 
 // Types.

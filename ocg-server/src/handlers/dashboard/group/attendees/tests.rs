@@ -3,7 +3,7 @@ use axum::{
     body::{Body, to_bytes},
     http::{
         HeaderValue, Request, StatusCode,
-        header::{CACHE_CONTROL, CONTENT_TYPE, COOKIE},
+        header::{CACHE_CONTROL, CONTENT_DISPOSITION, CONTENT_TYPE, COOKIE},
     },
 };
 use axum_login::tower_sessions::session;
@@ -279,6 +279,98 @@ async fn test_approve_refund_request_returns_internal_server_error_when_payments
     // Check response matches expectations
     assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
     assert!(bytes.is_empty());
+}
+
+#[tokio::test]
+async fn test_download_csv_success() {
+    // Setup identifiers and data structures
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(
+        session_id,
+        user_id,
+        &auth_hash,
+        Some(community_id),
+        Some(group_id),
+    );
+    let mut attendee = sample_attendee();
+    attendee.name = Some("Doe, Jane".to_string());
+    attendee.company = Some("Example \"Cloud\"".to_string());
+    attendee.title = Some("Principal\nEngineer".to_string());
+    let mut attendee_without_name = sample_attendee();
+    attendee_without_name.name = None;
+    attendee_without_name.username = "anonymous-attendee".to_string();
+    attendee_without_name.company = None;
+    attendee_without_name.title = None;
+    let event = sample_event_summary(event_id, group_id);
+    let output = crate::templates::dashboard::group::attendees::AttendeesOutput {
+        attendees: vec![attendee, attendee_without_name],
+        total: 2,
+    };
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id && *gid == group_id && *uid == user_id && permission == GroupPermission::Read
+        })
+        .returning(|_, _, _, _| Ok(true));
+    db.expect_search_event_attendees()
+        .times(1)
+        .withf(move |gid, filters| {
+            *gid == group_id
+                && filters.event_id == event_id
+                && filters.limit.is_none()
+                && filters.offset.is_none()
+        })
+        .returning(move |_, _| Ok(output.clone()));
+    db.expect_get_event_summary()
+        .times(1)
+        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
+        .returning(move |_, _, _| Ok(event.clone()));
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("GET")
+        .uri(format!("/dashboard/group/events/{event_id}/attendees.csv"))
+        .header(COOKIE, format!("id={session_id}"))
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_eq!(parts.status, StatusCode::OK);
+    assert_eq!(
+        parts.headers.get(CONTENT_TYPE).unwrap(),
+        &HeaderValue::from_static("text/csv; charset=utf-8"),
+    );
+    assert_eq!(
+        parts.headers.get(CONTENT_DISPOSITION).unwrap(),
+        &HeaderValue::from_static("attachment; filename=\"event-ghi9abc-attendees.csv\""),
+    );
+    assert_eq!(
+        String::from_utf8(bytes.to_vec()).unwrap(),
+        "Name,Company,Title\n\"Doe, Jane\",\"Example \"\"Cloud\"\"\",\"Principal\nEngineer\"\nanonymous-attendee,,\n",
+    );
 }
 
 #[tokio::test]

@@ -47,6 +47,31 @@
               disabled title="No attendees to send emails to."
             {% endif -%}
             data-event-id="{{ event.event_id }}">Send email</button>
+    <div class="group relative">
+      <button id="attendee-actions-button"
+              type="button"
+              class="btn-actions btn-tertiary p-2 group-has-[.dropdown:not(.hidden)]:bg-stone-50"
+              aria-label="Open attendee actions menu"
+              aria-haspopup="menu"
+              aria-controls="attendee-actions-menu">
+        <div class="svg-icon size-4 icon-vertical-dots"></div>
+      </button>
+      <div id="attendee-actions-menu"
+           data-attendee-actions-dropdown
+           class="dropdown absolute hidden z-10 end-0 top-8 w-[200px] bg-white divide-y divide-stone-100 rounded-lg shadow border border-stone-200">
+        <ul class="py-2 text-sm text-stone-700" role="menu">
+          <li>
+            <a href="/dashboard/group/events/{{ event.event_id }}/attendees.csv"
+               download
+               role="menuitem"
+               class="flex items-center w-full px-4 py-2 hover:bg-stone-100 hover:text-stone-900 transition-colors gap-3">
+              <div class="svg-icon size-4 icon-list shrink-0 bg-stone-500"></div>
+              <span>Download CSV</span>
+            </a>
+          </li>
+        </ul>
+      </div>
+    </div>
   </div>
 </div>
 

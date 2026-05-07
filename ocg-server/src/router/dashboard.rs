@@ -218,6 +218,10 @@ pub(super) fn setup_group_dashboard_router(state: &State) -> Router<State> {
             get(dashboard::group::attendees::list_page),
         )
         .route(
+            "/events/{event_id}/attendees.csv",
+            get(dashboard::group::attendees::download_csv),
+        )
+        .route(
             "/events/{event_id}/invitation-requests",
             get(dashboard::group::invitation_requests::list_page),
         )

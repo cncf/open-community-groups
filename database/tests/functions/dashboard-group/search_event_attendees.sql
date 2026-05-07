@@ -197,6 +197,22 @@ select is(
     'Should return paginated attendees when limit and offset are provided'
 );
 
+-- Should return full attendee list when pagination is omitted
+select is(
+    search_event_attendees(
+        :'groupID'::uuid,
+        '{"event_id":"00000000-0000-0000-0000-000000000041"}'::jsonb
+    )::jsonb,
+    jsonb_build_object(
+        'attendees', '[
+            {"checked_in": true,  "created_at": 1704067200, "user_id": "00000000-0000-0000-0000-000000000031", "username": "alice", "checked_in_at": 1704103200, "amount_minor": 2500, "company": "Cloud Corp", "currency_code": "USD", "discount_code": "SAVE5", "event_purchase_id": "00000000-0000-0000-0000-000000000071", "name": "Alice", "photo_url": "https://e/u1.png", "refund_request_status": null, "ticket_title": "General admission", "title": "Principal Engineer"},
+            {"checked_in": false, "created_at": 1704153600, "user_id": "00000000-0000-0000-0000-000000000032", "username": "bob",   "checked_in_at": null,       "amount_minor": null, "company": null,        "currency_code": null, "discount_code": null, "event_purchase_id": null, "name": null,    "photo_url": "https://e/u2.png", "refund_request_status": null, "ticket_title": null, "title": null}
+        ]'::jsonb,
+        'total', 2
+    ),
+    'Should return full attendee list when pagination is omitted'
+);
+
 -- Should return attendees for event2
 select is(
     search_event_attendees(

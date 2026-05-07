@@ -27,6 +27,36 @@ describe("dashboard group attendees", () => {
     dispatchHtmxLoad();
   };
 
+  it("toggles and closes the attendee actions menu", () => {
+    document.body.innerHTML = `
+      <div id="attendees-content">
+        <button id="attendee-actions-button" type="button">
+          More
+        </button>
+        <div id="attendee-actions-menu" data-attendee-actions-dropdown class="hidden">
+          <a href="/dashboard/group/events/event-42/attendees.csv" download>Download CSV</a>
+        </div>
+      </div>
+    `;
+
+    initializeAttendeesUi();
+
+    const button = document.getElementById("attendee-actions-button");
+    const dropdown = document.getElementById("attendee-actions-menu");
+
+    button.click();
+    expect(dropdown.classList.contains("hidden")).to.equal(false);
+
+    dropdown.querySelector("a")?.click();
+    expect(dropdown.classList.contains("hidden")).to.equal(true);
+
+    button.click();
+    expect(dropdown.classList.contains("hidden")).to.equal(false);
+
+    document.body.click();
+    expect(dropdown.classList.contains("hidden")).to.equal(true);
+  });
+
   it("updates the attendee notification endpoint before opening the modal", () => {
     document.body.innerHTML = `
       <button
