@@ -509,7 +509,7 @@ class EventSelector extends LitWrapper {
     }
     const url = `/explore/events/search?${params.toString()}`;
 
-    const response = await fetch(url, {
+    const response = await ocgFetch(url, {
       headers: {
         Accept: "application/json",
       },

@@ -32,9 +32,9 @@ describe("explore helpers", () => {
   it("fetches explore data as json", async () => {
     fetchMock.setImpl(async (url, options) => {
       expect(url).to.equal("/explore/events/search?kind=conference");
-      expect(options).to.deep.equal({
-        headers: { Accept: "application/json" },
-      });
+      expect(options.headers).to.be.instanceOf(Headers);
+      expect(options.headers.get("Accept")).to.equal("application/json");
+      expect(options.headers.get("X-OCG-Fetch")).to.equal("true");
 
       return {
         ok: true,

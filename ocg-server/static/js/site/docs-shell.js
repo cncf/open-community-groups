@@ -1,3 +1,5 @@
+import { ocgFetch } from "/static/js/common/fetch.js";
+
 const DOCS_ROOT_SELECTOR = ".ocg-docs-root";
 const DOCS_APP_SELECTOR = "#ocg-docs-app";
 const DOCS_SCOPE_SELECTOR = ".ocg-docs-root";
@@ -211,7 +213,7 @@ const DOCS_LOAD_ERROR_MESSAGE = "We could not load the documentation. Please ref
  * @returns {Promise<string>} Resolved text.
  */
 const fetchText = async (url) => {
-  const response = await fetch(url, { credentials: "same-origin" });
+  const response = await ocgFetch(url, { credentials: "same-origin" });
   if (!response.ok) {
     throw new Error(`Failed to fetch style asset: ${url}`);
   }

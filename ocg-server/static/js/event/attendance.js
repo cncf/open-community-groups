@@ -5,6 +5,7 @@ import {
   showSuccessAlert,
 } from "/static/js/common/alerts.js";
 import { isSuccessfulXHRStatus } from "/static/js/common/common.js";
+import { ocgFetch } from "/static/js/common/fetch.js";
 
 import {
   ATTENDANCE_CONTAINER_SELECTOR,
@@ -433,7 +434,7 @@ const refreshAvailability = async (container, options = {}) => {
     return;
   }
 
-  const response = await fetch(availabilityUrl, {
+  const response = await ocgFetch(availabilityUrl, {
     cache: "no-store",
     credentials: "same-origin",
     headers: {
@@ -547,7 +548,7 @@ const fetchAttendanceStatus = async () => {
     return null;
   }
 
-  const response = await fetch(attendanceUrl, {
+  const response = await ocgFetch(attendanceUrl, {
     credentials: "same-origin",
     headers: {
       Accept: "application/json",
