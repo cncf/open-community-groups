@@ -11,7 +11,6 @@ import {
   initializeEventPageContext,
   initializeCommonEventPageToggles,
   initializeEventKindField,
-  initializeEventPageCancelNavigation,
   initializeEventPagePendingChanges,
 } from "/static/js/dashboard/group/event-page-shared.js";
 import {
@@ -130,8 +129,6 @@ export const initializeEventAddPage = (root = document) => {
     recurrencePatternSelect,
     startsAtInput,
   });
-
-  initializeEventPageCancelNavigation(cancelButton);
 
   initializeEventPagePendingChanges({
     pageRoot,

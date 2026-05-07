@@ -6,6 +6,7 @@
       hx-put="/dashboard/community/event-categories/{{ category.event_category_id }}/update"
       hx-ext="no-empty-vals"
       hx-target="#dashboard-content"
+      hx-history="false"
       hx-indicator="#dashboard-spinner, #community-event-category-update-spinner"
       hx-disabled-elt="button[type=submit], #cancel-button">
   <div class="space-y-12">
@@ -73,13 +74,6 @@
   } from '/static/js/common/alerts.js';
 
   const eventCategoryForm = document.getElementById('event-category-form');
-  const cancelButton = document.getElementById('cancel-button');
-
-  if (cancelButton) {
-    cancelButton.addEventListener('htmx:afterRequest', () => {
-      history.pushState({}, 'Event categories list', '/dashboard/community?tab=event-categories');
-    });
-  }
 
   if (eventCategoryForm) {
     eventCategoryForm.addEventListener('htmx:afterRequest', (e) => {

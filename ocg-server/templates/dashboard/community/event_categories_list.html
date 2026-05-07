@@ -11,6 +11,7 @@
     <button id="add-event-category-button"
             hx-get="/dashboard/community/event-categories/add"
             hx-target="#dashboard-content"
+            hx-replace-url="/dashboard/community?tab=event-categories"
             hx-indicator="#dashboard-spinner"
             {% if !can_manage_taxonomy -%}
               disabled title="Your role cannot add event categories."
@@ -20,14 +21,6 @@
                      opacity-50 cursor-not-allowed
                    {% endif -%}">Add Event Category</button>
   </div>
-  <script type="module">
-    const addEventCategoryButton = document.getElementById('add-event-category-button');
-    if (addEventCategoryButton) {
-      addEventCategoryButton.addEventListener('htmx:afterRequest', () => {
-        history.pushState({}, 'Event categories list', '/dashboard/community?tab=event-categories');
-      });
-    }
-  </script>
 </div>
 
 {# Event categories table -#}
@@ -66,6 +59,7 @@
               <div class="flex items-center justify-end gap-2">
                 <button hx-get="/dashboard/community/event-categories/{{ category.event_category_id }}/update"
                         hx-target="#dashboard-content"
+                        hx-replace-url="/dashboard/community?tab=event-categories"
                         hx-indicator="#dashboard-spinner"
                         hx-swap="innerHTML show:body:top"
                         hx-disabled-elt="this"

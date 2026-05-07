@@ -11,6 +11,7 @@
     <button id="add-region-button"
             hx-get="/dashboard/community/regions/add"
             hx-target="#dashboard-content"
+            hx-replace-url="/dashboard/community?tab=regions"
             hx-indicator="#dashboard-spinner"
             {% if !can_manage_taxonomy -%}
               disabled title="Your role cannot add regions."
@@ -20,14 +21,6 @@
                      opacity-50 cursor-not-allowed
                    {% endif -%}">Add Region</button>
   </div>
-  <script type="module">
-    const addRegionButton = document.getElementById('add-region-button');
-    if (addRegionButton) {
-      addRegionButton.addEventListener('htmx:afterRequest', () => {
-        history.pushState({}, 'Regions list', '/dashboard/community?tab=regions');
-      });
-    }
-  </script>
 </div>
 
 {# Regions table -#}
@@ -69,6 +62,7 @@
               <div class="flex items-center justify-end gap-2">
                 <button hx-get="/dashboard/community/regions/{{ region.region_id }}/update"
                         hx-target="#dashboard-content"
+                        hx-replace-url="/dashboard/community?tab=regions"
                         hx-indicator="#dashboard-spinner"
                         hx-swap="innerHTML show:body:top"
                         hx-disabled-elt="this"

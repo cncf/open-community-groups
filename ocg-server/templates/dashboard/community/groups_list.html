@@ -45,6 +45,7 @@
     <button id="add-group-button"
             hx-get="/dashboard/community/groups/add"
             hx-target="#dashboard-content"
+            hx-replace-url="/dashboard/community?tab=groups"
             hx-indicator="#dashboard-spinner"
             {% if !can_manage_groups -%}
               disabled title="Your role cannot add groups."
@@ -67,13 +68,6 @@
     if (searchInput) {
       searchInput.addEventListener('keydown', (event) => {
         searchOnEnter(event, 'groups-search-form');
-      });
-    }
-
-    const addGroupButton = document.getElementById('add-group-button');
-    if (addGroupButton) {
-      addGroupButton.addEventListener('htmx:afterRequest', () => {
-        history.pushState({}, "Groups list", '/dashboard/community?tab=groups');
       });
     }
   </script>
@@ -183,6 +177,7 @@
                 <div>
                   <button hx-get="/dashboard/community/groups/{{ group.group_id }}/update"
                           hx-target="#dashboard-content"
+                          hx-replace-url="/dashboard/community?tab=groups"
                           hx-indicator="#dashboard-spinner"
                           hx-swap="innerHTML show:body:top"
                           hx-disabled-elt="this"

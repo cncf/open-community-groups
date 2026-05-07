@@ -12,6 +12,7 @@
     <button id="add-sponsor-button"
             hx-get="/dashboard/group/sponsors/add"
             hx-target="#dashboard-content"
+            hx-replace-url="/dashboard/group?tab=sponsors"
             hx-indicator="#dashboard-spinner"
             {% if !can_manage_sponsors -%}
               disabled title="Your role cannot add sponsors."
@@ -112,6 +113,7 @@
                 <div>
                   <button hx-get="/dashboard/group/sponsors/{{ sponsor.group_sponsor_id }}/update"
                           hx-target="#dashboard-content"
+                          hx-replace-url="/dashboard/group?tab=sponsors"
                           hx-indicator="#dashboard-spinner"
                           hx-swap="innerHTML show:body:top"
                           hx-disabled-elt="this"
