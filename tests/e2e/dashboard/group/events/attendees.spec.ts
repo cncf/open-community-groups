@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import type { Page } from "@playwright/test";
 
 import { expect, test } from "../../../fixtures";
@@ -353,6 +354,49 @@ test.describe("group dashboard attendees tab", () => {
     await expect(
       attendeesContent.getByRole("button", { name: "Send email" }),
     ).toHaveAttribute("title", "No attendees to send emails to.");
+  });
+
+  test("organizer can download attendees as CSV from the attendees tab", async ({
+    organizerGroupPage,
+  }) => {
+    const attendeesContent = await openAttendeesTab(
+      organizerGroupPage,
+      "Full Event With Waitlist",
+      TEST_EVENT_IDS.alpha.waitlistLab,
+    );
+
+    const actionsButton = attendeesContent.getByRole("button", {
+      name: "Open attendee actions menu",
+    });
+    await expect(actionsButton).toBeVisible();
+    await actionsButton.click();
+
+    const downloadCsvLink = attendeesContent.getByRole("menuitem", {
+      name: "Download CSV",
+    });
+    await expect(downloadCsvLink).toBeVisible();
+    await expect(downloadCsvLink).toHaveAttribute(
+      "href",
+      `/dashboard/group/events/${TEST_EVENT_IDS.alpha.waitlistLab}/attendees.csv`,
+    );
+
+    const [download] = await Promise.all([
+      organizerGroupPage.waitForEvent("download"),
+      downloadCsvLink.click(),
+    ]);
+    const downloadPath = await download.path();
+
+    if (!downloadPath) {
+      throw new Error("Expected attendee CSV download to have a local file path.");
+    }
+
+    expect(download.suggestedFilename()).toBe(
+      "event-alpha-waitlist-lab-attendees.csv",
+    );
+    const csvContents = await readFile(downloadPath, "utf8");
+    expect(csvContents).toContain(
+      "Name,Company,Title\nE2E Organizer One,,\n",
+    );
   });
 
   test.describe("payment-enabled attendee refund flows", () => {
