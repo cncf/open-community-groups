@@ -6,11 +6,10 @@ use axum::{
     extract::{Path, RawQuery, State},
     http::{
         StatusCode,
-        header::{CONTENT_DISPOSITION, CONTENT_TYPE},
+        header::{CACHE_CONTROL, CONTENT_DISPOSITION, CONTENT_TYPE},
     },
     response::{Html, IntoResponse},
 };
-use chrono::Duration;
 use garde::Validate;
 use qrcode::render::svg;
 use serde::{Deserialize, Serialize};
@@ -23,7 +22,6 @@ use crate::{
     handlers::{
         error::HandlerError,
         extractors::{CurrentUser, SelectedCommunityId, SelectedGroupId, ValidatedForm},
-        prepare_headers,
     },
     router::serde_qs_config,
     services::{
@@ -226,7 +224,10 @@ pub(crate) async fn generate_check_in_qr_code(
         .build();
 
     // Prepare response headers
-    let headers = prepare_headers(Duration::hours(1), &[(CONTENT_TYPE.as_str(), "image/svg+xml")])?;
+    let headers = [
+        (CACHE_CONTROL, "private, max-age=3600"),
+        (CONTENT_TYPE, "image/svg+xml"),
+    ];
 
     // Return SVG response
     Ok((StatusCode::OK, headers, svg))

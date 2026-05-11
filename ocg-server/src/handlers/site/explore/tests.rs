@@ -11,6 +11,7 @@ use uuid::Uuid;
 use crate::{
     db::mock::MockDB,
     handlers::tests::*,
+    router::CACHE_CONTROL_PUBLIC_SHARED,
     services::notifications::MockNotificationsManager,
     templates::site::explore::{self},
     types::{
@@ -53,7 +54,7 @@ async fn test_events_results_section_success() {
     );
     assert_eq!(
         parts.headers.get(CACHE_CONTROL).unwrap(),
-        &HeaderValue::from_static("max-age=600")
+        &HeaderValue::from_static(CACHE_CONTROL_PUBLIC_SHARED)
     );
     assert_eq!(
         parts.headers.get("HX-Push-Url").unwrap().to_str().unwrap(),
@@ -100,7 +101,7 @@ async fn test_events_section_success() {
     );
     assert_eq!(
         parts.headers.get(CACHE_CONTROL).unwrap(),
-        &HeaderValue::from_static("max-age=600")
+        &HeaderValue::from_static(CACHE_CONTROL_PUBLIC_SHARED)
     );
     assert_eq!(
         parts.headers.get("HX-Push-Url").unwrap().to_str().unwrap(),
@@ -177,7 +178,7 @@ async fn test_groups_results_section_success() {
     );
     assert_eq!(
         parts.headers.get(CACHE_CONTROL).unwrap(),
-        &HeaderValue::from_static("max-age=600")
+        &HeaderValue::from_static(CACHE_CONTROL_PUBLIC_SHARED)
     );
     assert_eq!(
         parts.headers.get("HX-Push-Url").unwrap().to_str().unwrap(),
@@ -224,7 +225,7 @@ async fn test_groups_section_success() {
     );
     assert_eq!(
         parts.headers.get(CACHE_CONTROL).unwrap(),
-        &HeaderValue::from_static("max-age=600")
+        &HeaderValue::from_static(CACHE_CONTROL_PUBLIC_SHARED)
     );
     assert_eq!(
         parts.headers.get("HX-Push-Url").unwrap().to_str().unwrap(),
@@ -388,7 +389,7 @@ async fn test_page_success_events() {
     );
     assert_eq!(
         parts.headers.get(CACHE_CONTROL).unwrap(),
-        &HeaderValue::from_static("max-age=600")
+        &HeaderValue::from_static(CACHE_CONTROL_PUBLIC_SHARED)
     );
     assert!(!bytes.is_empty());
 }
@@ -433,7 +434,7 @@ async fn test_page_success_groups() {
     );
     assert_eq!(
         parts.headers.get(CACHE_CONTROL).unwrap(),
-        &HeaderValue::from_static("max-age=600")
+        &HeaderValue::from_static(CACHE_CONTROL_PUBLIC_SHARED)
     );
     assert!(!bytes.is_empty());
 }
@@ -471,7 +472,7 @@ async fn test_search_events_success() {
     );
     assert_eq!(
         parts.headers.get(CACHE_CONTROL).unwrap(),
-        &HeaderValue::from_static("max-age=3600")
+        &HeaderValue::from_static(CACHE_CONTROL_PUBLIC_SHARED)
     );
     assert!(!bytes.is_empty());
 }
@@ -509,7 +510,7 @@ async fn test_search_groups_success() {
     );
     assert_eq!(
         parts.headers.get(CACHE_CONTROL).unwrap(),
-        &HeaderValue::from_static("max-age=3600")
+        &HeaderValue::from_static(CACHE_CONTROL_PUBLIC_SHARED)
     );
     assert!(!bytes.is_empty());
 }

@@ -566,7 +566,7 @@ impl DBDashboardGroup for PgDB {
     #[instrument(skip(self), err)]
     async fn get_group_stats(&self, community_id: Uuid, group_id: Uuid) -> Result<GroupDashboardStats> {
         #[cached(
-            time = 21600,
+            time = 3600,
             key = "(Uuid, Uuid)",
             convert = "{ (community_id, group_id) }",
             sync_writes = "by_key",

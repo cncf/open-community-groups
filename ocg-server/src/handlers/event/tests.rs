@@ -15,7 +15,7 @@ use crate::{
     activity_tracker::{Activity, MockActivityTracker},
     db::mock::MockDB,
     handlers::tests::*,
-    router::CACHE_CONTROL_NO_CACHE,
+    router::{CACHE_CONTROL_NO_STORE, CACHE_CONTROL_PUBLIC_SHARED},
     services::{
         notifications::{MockNotificationsManager, NotificationKind},
         payments::MockPaymentsManager,
@@ -88,7 +88,7 @@ async fn test_availability_success() {
     assert_eq!(parts.status, StatusCode::OK);
     assert_eq!(
         parts.headers.get(CACHE_CONTROL).unwrap(),
-        &HeaderValue::from_static(CACHE_CONTROL_NO_CACHE)
+        &HeaderValue::from_static(CACHE_CONTROL_NO_STORE)
     );
     assert_eq!(payload["capacity"], json!(100));
     assert_eq!(payload["has_sellable_ticket_types"], json!(true));
@@ -151,7 +151,7 @@ async fn test_page_success() {
     );
     assert_eq!(
         parts.headers.get(CACHE_CONTROL).unwrap(),
-        &HeaderValue::from_static("max-age=3600")
+        &HeaderValue::from_static(CACHE_CONTROL_PUBLIC_SHARED)
     );
     assert!(!bytes.is_empty());
 }
@@ -190,7 +190,7 @@ async fn test_page_community_not_found() {
     );
     assert_eq!(
         parts.headers.get(CACHE_CONTROL).unwrap(),
-        &HeaderValue::from_static("max-age=300")
+        &HeaderValue::from_static(CACHE_CONTROL_PUBLIC_SHARED)
     );
     let body = String::from_utf8(bytes.to_vec()).unwrap();
     assert!(body.contains("We could not find that page"));
@@ -240,7 +240,7 @@ async fn test_page_not_found() {
     );
     assert_eq!(
         parts.headers.get(CACHE_CONTROL).unwrap(),
-        &HeaderValue::from_static("max-age=300")
+        &HeaderValue::from_static(CACHE_CONTROL_PUBLIC_SHARED)
     );
     let body = String::from_utf8(bytes.to_vec()).unwrap();
     assert!(body.contains("We could not find that page"));
@@ -358,10 +358,6 @@ async fn test_check_in_page_success() {
         parts.headers.get(CONTENT_TYPE),
         Some(&HeaderValue::from_static("text/html; charset=utf-8"))
     );
-    assert_eq!(
-        parts.headers.get(CACHE_CONTROL),
-        Some(&HeaderValue::from_static(CACHE_CONTROL_NO_CACHE))
-    );
     assert!(!bytes.is_empty());
 }
 
@@ -407,10 +403,6 @@ async fn test_cfs_modal_success_anonymous() {
     assert_eq!(
         parts.headers.get(CONTENT_TYPE).unwrap(),
         &HeaderValue::from_static("text/html; charset=utf-8")
-    );
-    assert_eq!(
-        parts.headers.get(CACHE_CONTROL),
-        Some(&HeaderValue::from_static(CACHE_CONTROL_NO_CACHE))
     );
     assert!(!bytes.is_empty());
 }
@@ -476,10 +468,6 @@ async fn test_cfs_modal_success_authenticated() {
     assert_eq!(
         parts.headers.get(CONTENT_TYPE).unwrap(),
         &HeaderValue::from_static("text/html; charset=utf-8")
-    );
-    assert_eq!(
-        parts.headers.get(CACHE_CONTROL),
-        Some(&HeaderValue::from_static(CACHE_CONTROL_NO_CACHE))
     );
     assert!(!bytes.is_empty());
 }
@@ -847,10 +835,6 @@ async fn test_attendance_status_success() {
     assert_eq!(
         parts.headers.get(CONTENT_TYPE).unwrap(),
         &HeaderValue::from_static("application/json")
-    );
-    assert_eq!(
-        parts.headers.get(CACHE_CONTROL).unwrap(),
-        &HeaderValue::from_static(CACHE_CONTROL_NO_CACHE)
     );
     let body: serde_json::Value = from_slice(&bytes).unwrap();
     assert_eq!(
@@ -1872,10 +1856,6 @@ async fn test_submit_cfs_submission_success() {
     assert_eq!(
         parts.headers.get(CONTENT_TYPE).unwrap(),
         &HeaderValue::from_static("text/html; charset=utf-8")
-    );
-    assert_eq!(
-        parts.headers.get(CACHE_CONTROL),
-        Some(&HeaderValue::from_static(CACHE_CONTROL_NO_CACHE))
     );
     assert!(!bytes.is_empty());
 }

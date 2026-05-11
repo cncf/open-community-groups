@@ -10,6 +10,34 @@ use crate::{db::mock::MockDB, handlers::tests::*, services::notifications::MockN
 use super::*;
 
 #[tokio::test]
+async fn test_default_response_cache_header_is_private_no_store() {
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_site_settings()
+        .times(1)
+        .returning(|| Ok(sample_site_settings()));
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("GET")
+        .uri("/log-in")
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+
+    // Check response matches expectations
+    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(
+        response.headers().get(CACHE_CONTROL).unwrap(),
+        &HeaderValue::from_static(CACHE_CONTROL_PRIVATE_NO_STORE)
+    );
+}
+
+#[tokio::test]
 async fn test_favicon_route_returns_not_found_without_configured_url() {
     // Setup database mock
     let mut db = MockDB::new();
@@ -138,7 +166,7 @@ async fn test_missing_route_returns_not_found_page() {
     );
     assert_eq!(
         parts.headers.get(CACHE_CONTROL).unwrap(),
-        &HeaderValue::from_static("max-age=300")
+        &HeaderValue::from_static(CACHE_CONTROL_PUBLIC_SHARED)
     );
     assert_eq!(parts.headers.get("X-OCG-Not-Found").unwrap(), "true");
     assert_eq!(parts.headers.get("HX-Retarget").unwrap(), "body");
@@ -176,10 +204,6 @@ async fn test_payments_webhook_route_is_not_mounted_without_payments_config() {
         parts.headers.get(CONTENT_TYPE).unwrap(),
         &HeaderValue::from_static("text/html; charset=utf-8")
     );
-    assert_eq!(
-        parts.headers.get(CACHE_CONTROL).unwrap(),
-        &HeaderValue::from_static("max-age=300")
-    );
     let body = String::from_utf8(bytes.to_vec()).unwrap();
     assert!(body.contains("We could not find that page"));
 }
@@ -214,6 +238,16 @@ async fn test_redirect_old_hosts_redirects_matching_host() {
 }
 
 #[tokio::test]
+async fn test_static_handler_missing_asset_returns_not_found() {
+    let uri = Uri::from_static("/static/does/not/exist.txt");
+    let response = static_handler(uri).await.into_response();
+    let (parts, body) = response.into_parts();
+
+    assert_eq!(parts.status, StatusCode::NOT_FOUND);
+    assert!(to_bytes(body, usize::MAX).await.unwrap().is_empty());
+}
+
+#[tokio::test]
 async fn test_static_handler_serves_existing_asset() {
     let uri = Uri::from_static("/static/images/icons/arrow_left.svg");
     let response = static_handler(uri).await.into_response();
@@ -227,19 +261,68 @@ async fn test_static_handler_serves_existing_asset() {
     );
     assert_eq!(
         parts.headers.get(CACHE_CONTROL).unwrap(),
-        &HeaderValue::from_static("max-age=604800")
+        &HeaderValue::from_static(CACHE_CONTROL_STATIC_IMAGES)
     );
     assert!(!bytes.is_empty());
 }
 
 #[tokio::test]
-async fn test_static_handler_missing_asset_returns_not_found() {
-    let uri = Uri::from_static("/static/does/not/exist.txt");
+async fn test_static_handler_serves_hashed_css_asset_with_immutable_cache() {
+    let path = static_path_with_prefix_and_suffix("css/", ".css");
+    let uri = Uri::try_from(format!("/static/{path}")).unwrap();
     let response = static_handler(uri).await.into_response();
     let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
-    assert_eq!(parts.status, StatusCode::NOT_FOUND);
-    assert!(to_bytes(body, usize::MAX).await.unwrap().is_empty());
+    assert_eq!(parts.status, StatusCode::OK);
+    assert_eq!(
+        parts.headers.get(CONTENT_TYPE).unwrap(),
+        &HeaderValue::from_static("text/css")
+    );
+    assert_eq!(
+        parts.headers.get(CACHE_CONTROL).unwrap(),
+        &HeaderValue::from_static(CACHE_CONTROL_IMMUTABLE)
+    );
+    assert!(!bytes.is_empty());
+}
+
+#[tokio::test]
+async fn test_static_handler_serves_hashed_js_asset_with_immutable_cache() {
+    let path = static_path_with_prefix_and_suffix("js/", ".js");
+    let uri = Uri::try_from(format!("/static/{path}")).unwrap();
+    let response = static_handler(uri).await.into_response();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    assert_eq!(parts.status, StatusCode::OK);
+    assert_eq!(
+        parts.headers.get(CONTENT_TYPE).unwrap(),
+        &HeaderValue::from_static("text/javascript")
+    );
+    assert_eq!(
+        parts.headers.get(CACHE_CONTROL).unwrap(),
+        &HeaderValue::from_static(CACHE_CONTROL_IMMUTABLE)
+    );
+    assert!(!bytes.is_empty());
+}
+
+#[tokio::test]
+async fn test_static_handler_serves_vendor_asset_with_immutable_cache() {
+    let uri = Uri::from_static("/static/vendor/js/htmx.v2.0.7.min.js");
+    let response = static_handler(uri).await.into_response();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    assert_eq!(parts.status, StatusCode::OK);
+    assert_eq!(
+        parts.headers.get(CONTENT_TYPE).unwrap(),
+        &HeaderValue::from_static("text/javascript")
+    );
+    assert_eq!(
+        parts.headers.get(CACHE_CONTROL).unwrap(),
+        &HeaderValue::from_static(CACHE_CONTROL_IMMUTABLE)
+    );
+    assert!(!bytes.is_empty());
 }
 
 #[tokio::test]
@@ -279,10 +362,16 @@ async fn test_zoom_webhook_route_is_not_mounted_when_zoom_is_disabled() {
         parts.headers.get(CONTENT_TYPE).unwrap(),
         &HeaderValue::from_static("text/html; charset=utf-8")
     );
-    assert_eq!(
-        parts.headers.get(CACHE_CONTROL).unwrap(),
-        &HeaderValue::from_static("max-age=300")
-    );
     let body = String::from_utf8(bytes.to_vec()).unwrap();
     assert!(body.contains("We could not find that page"));
+}
+
+// Helpers.
+
+/// Finds an embedded static asset path matching the given prefix and suffix.
+fn static_path_with_prefix_and_suffix(prefix: &str, suffix: &str) -> String {
+    StaticFile::iter()
+        .find(|path| path.starts_with(prefix) && path.ends_with(suffix))
+        .unwrap_or_else(|| panic!("{prefix} asset ending with {suffix} to exist"))
+        .to_string()
 }

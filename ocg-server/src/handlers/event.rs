@@ -7,7 +7,6 @@ use axum::{
     http::{HeaderMap, HeaderValue, StatusCode, Uri, header::CACHE_CONTROL},
     response::{Html, IntoResponse},
 };
-use chrono::Duration;
 use garde::Validate;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, to_value};
@@ -21,11 +20,11 @@ use crate::{
     db::{DynDB, payments::PrepareEventCheckoutPurchaseInput},
     handlers::{
         extractors::{CurrentUser, ValidatedForm, ValidatedFormQs},
-        prepare_headers, request_matches_site,
+        request_matches_site,
         site::not_found,
         trim_public_gallery_images,
     },
-    router::CACHE_CONTROL_NO_CACHE,
+    router::{CACHE_CONTROL_NO_STORE, PUBLIC_SHARED_CACHE_HEADERS},
     services::{
         notifications::{DynNotificationsManager, NewNotification, NotificationKind},
         payments::{DynPaymentsManager, RequestRefundInput},
@@ -89,10 +88,7 @@ pub(crate) async fn page(
         user: User::default(),
     };
 
-    // Prepare response headers
-    let headers = prepare_headers(Duration::hours(1), &[])?;
-
-    Ok((headers, Html(template.render()?)).into_response())
+    Ok((PUBLIC_SHARED_CACHE_HEADERS, Html(template.render()?)).into_response())
 }
 
 /// Handler that renders the check-in page.
@@ -184,7 +180,7 @@ pub(crate) async fn availability(
 
     // Prevent volatile seat availability from being cached
     let mut headers = HeaderMap::new();
-    headers.insert(CACHE_CONTROL, HeaderValue::from_static(CACHE_CONTROL_NO_CACHE));
+    headers.insert(CACHE_CONTROL, HeaderValue::from_static(CACHE_CONTROL_NO_STORE));
 
     Ok((headers, Json(EventAvailability::from_event(&event))))
 }

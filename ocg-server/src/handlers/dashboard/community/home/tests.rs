@@ -3,7 +3,7 @@ use axum::{
     body::{Body, to_bytes},
     http::{
         HeaderValue, Request, StatusCode,
-        header::{CACHE_CONTROL, CONTENT_TYPE, COOKIE, HOST},
+        header::{CONTENT_TYPE, COOKIE, HOST},
     },
 };
 use axum_login::tower_sessions::session;
@@ -13,7 +13,6 @@ use uuid::Uuid;
 use crate::{
     db::{common::SearchGroupsOutput, mock::MockDB},
     handlers::tests::*,
-    router::CACHE_CONTROL_NO_CACHE,
     services::notifications::MockNotificationsManager,
     templates::dashboard::DASHBOARD_PAGINATION_LIMIT,
     types::permissions::CommunityPermission,
@@ -82,10 +81,6 @@ async fn test_page_analytics_tab_success() {
     assert_eq!(
         parts.headers.get(CONTENT_TYPE).unwrap(),
         &HeaderValue::from_static("text/html; charset=utf-8"),
-    );
-    assert_eq!(
-        parts.headers.get(CACHE_CONTROL).unwrap(),
-        &HeaderValue::from_static(CACHE_CONTROL_NO_CACHE),
     );
     assert!(!bytes.is_empty());
 }
@@ -175,10 +170,6 @@ async fn test_page_groups_tab_success() {
         parts.headers.get(CONTENT_TYPE).unwrap(),
         &HeaderValue::from_static("text/html; charset=utf-8"),
     );
-    assert_eq!(
-        parts.headers.get(CACHE_CONTROL).unwrap(),
-        &HeaderValue::from_static(CACHE_CONTROL_NO_CACHE),
-    );
     assert!(!bytes.is_empty());
 }
 
@@ -251,10 +242,6 @@ async fn test_page_logs_tab_success() {
         parts.headers.get(CONTENT_TYPE).unwrap(),
         &HeaderValue::from_static("text/html; charset=utf-8"),
     );
-    assert_eq!(
-        parts.headers.get(CACHE_CONTROL).unwrap(),
-        &HeaderValue::from_static(CACHE_CONTROL_NO_CACHE),
-    );
     assert!(!bytes.is_empty());
 }
 
@@ -322,10 +309,6 @@ async fn test_page_settings_tab_success() {
     assert_eq!(
         parts.headers.get(CONTENT_TYPE).unwrap(),
         &HeaderValue::from_static("text/html; charset=utf-8"),
-    );
-    assert_eq!(
-        parts.headers.get(CACHE_CONTROL).unwrap(),
-        &HeaderValue::from_static(CACHE_CONTROL_NO_CACHE),
     );
     assert!(!bytes.is_empty());
 }
@@ -416,10 +399,6 @@ async fn test_page_team_tab_success() {
         parts.headers.get(CONTENT_TYPE).unwrap(),
         &HeaderValue::from_static("text/html; charset=utf-8"),
     );
-    assert_eq!(
-        parts.headers.get(CACHE_CONTROL).unwrap(),
-        &HeaderValue::from_static(CACHE_CONTROL_NO_CACHE),
-    );
     assert!(!bytes.is_empty());
 }
 
@@ -492,10 +471,6 @@ async fn test_page_regions_tab_success() {
     assert_eq!(
         parts.headers.get(CONTENT_TYPE).unwrap(),
         &HeaderValue::from_static("text/html; charset=utf-8"),
-    );
-    assert_eq!(
-        parts.headers.get(CACHE_CONTROL).unwrap(),
-        &HeaderValue::from_static(CACHE_CONTROL_NO_CACHE),
     );
     assert!(!bytes.is_empty());
 }
@@ -570,10 +545,6 @@ async fn test_page_group_categories_tab_success() {
         parts.headers.get(CONTENT_TYPE).unwrap(),
         &HeaderValue::from_static("text/html; charset=utf-8"),
     );
-    assert_eq!(
-        parts.headers.get(CACHE_CONTROL).unwrap(),
-        &HeaderValue::from_static(CACHE_CONTROL_NO_CACHE),
-    );
     assert!(!bytes.is_empty());
 }
 
@@ -646,10 +617,6 @@ async fn test_page_event_categories_tab_success() {
     assert_eq!(
         parts.headers.get(CONTENT_TYPE).unwrap(),
         &HeaderValue::from_static("text/html; charset=utf-8"),
-    );
-    assert_eq!(
-        parts.headers.get(CACHE_CONTROL).unwrap(),
-        &HeaderValue::from_static(CACHE_CONTROL_NO_CACHE),
     );
     assert!(!bytes.is_empty());
 }

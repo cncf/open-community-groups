@@ -11,6 +11,7 @@ use crate::{
     activity_tracker::{Activity, MockActivityTracker},
     db::mock::MockDB,
     handlers::tests::*,
+    router::CACHE_CONTROL_PUBLIC_SHARED,
     services::notifications::MockNotificationsManager,
     templates::community::Stats,
     types::event::EventKind,
@@ -73,7 +74,7 @@ async fn test_page_success() {
     );
     assert_eq!(
         parts.headers.get(CACHE_CONTROL).unwrap(),
-        &HeaderValue::from_static("max-age=3600")
+        &HeaderValue::from_static(CACHE_CONTROL_PUBLIC_SHARED)
     );
     assert!(!bytes.is_empty());
 }
@@ -112,7 +113,7 @@ async fn test_page_community_not_found() {
     );
     assert_eq!(
         parts.headers.get(CACHE_CONTROL).unwrap(),
-        &HeaderValue::from_static("max-age=300")
+        &HeaderValue::from_static(CACHE_CONTROL_PUBLIC_SHARED)
     );
     let body = String::from_utf8(bytes.to_vec()).unwrap();
     assert!(body.contains("We could not find that page"));

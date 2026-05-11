@@ -7,7 +7,7 @@ use axum::{
     body::{Body, to_bytes},
     http::{
         HeaderValue, Request, StatusCode,
-        header::{CACHE_CONTROL, CONTENT_TYPE, COOKIE, HOST, LOCATION},
+        header::{CONTENT_TYPE, COOKIE, HOST, LOCATION},
     },
     middleware,
     response::IntoResponse,
@@ -29,7 +29,6 @@ use crate::{
         extractors::{OAuth2, Oidc},
         tests::*,
     },
-    router::CACHE_CONTROL_NO_CACHE,
     services::{
         images::MockImageStorage,
         notifications::{MockNotificationsManager, NotificationKind},
@@ -66,10 +65,6 @@ async fn test_log_in_page_success() {
     assert_eq!(
         parts.headers.get(CONTENT_TYPE).unwrap(),
         &HeaderValue::from_static("text/html; charset=utf-8"),
-    );
-    assert_eq!(
-        parts.headers.get(CACHE_CONTROL).unwrap(),
-        &HeaderValue::from_static(CACHE_CONTROL_NO_CACHE),
     );
     assert!(!bytes.is_empty());
 }
@@ -144,10 +139,6 @@ async fn test_sign_up_page_success() {
     assert_eq!(
         parts.headers.get(CONTENT_TYPE).unwrap(),
         &HeaderValue::from_static("text/html; charset=utf-8"),
-    );
-    assert_eq!(
-        parts.headers.get(CACHE_CONTROL).unwrap(),
-        &HeaderValue::from_static(CACHE_CONTROL_NO_CACHE),
     );
     assert!(!bytes.is_empty());
 }
@@ -235,10 +226,6 @@ async fn test_user_menu_section_success() {
     assert_eq!(
         parts.headers.get(CONTENT_TYPE).unwrap(),
         &HeaderValue::from_static("text/html; charset=utf-8"),
-    );
-    assert_eq!(
-        parts.headers.get(CACHE_CONTROL).unwrap(),
-        &HeaderValue::from_static(CACHE_CONTROL_NO_CACHE),
     );
     assert!(!bytes.is_empty());
 }

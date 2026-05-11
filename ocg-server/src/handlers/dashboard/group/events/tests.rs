@@ -3,7 +3,7 @@ use axum::{
     body::{Body, to_bytes},
     http::{
         HeaderValue, Request, StatusCode,
-        header::{CACHE_CONTROL, CONTENT_TYPE, COOKIE},
+        header::{CONTENT_TYPE, COOKIE},
     },
 };
 use axum_login::tower_sessions::session;
@@ -16,7 +16,6 @@ use crate::{
     config::{PaymentsConfig, PaymentsStripeConfig},
     db::mock::MockDB,
     handlers::tests::*,
-    router::CACHE_CONTROL_NO_CACHE,
     services::{
         meetings::MeetingProvider,
         notifications::{MockNotificationsManager, NotificationKind},
@@ -148,10 +147,6 @@ async fn test_add_page_success() {
         parts.headers.get(CONTENT_TYPE).unwrap(),
         &HeaderValue::from_static("text/html; charset=utf-8"),
     );
-    assert_eq!(
-        parts.headers.get(CACHE_CONTROL).unwrap(),
-        &HeaderValue::from_static(CACHE_CONTROL_NO_CACHE),
-    );
     assert!(!bytes.is_empty());
 }
 
@@ -239,10 +234,6 @@ async fn test_list_page_success() {
     assert_eq!(
         parts.headers.get(CONTENT_TYPE).unwrap(),
         &HeaderValue::from_static("text/html; charset=utf-8"),
-    );
-    assert_eq!(
-        parts.headers.get(CACHE_CONTROL).unwrap(),
-        &HeaderValue::from_static(CACHE_CONTROL_NO_CACHE),
     );
     let body = String::from_utf8(bytes.to_vec()).unwrap();
     assert!(body.contains("aria-label=\"Open event details: Sample Event\""));
@@ -387,10 +378,6 @@ async fn test_update_page_hides_clear_ticketing_when_event_has_ticket_purchases(
         parts.headers.get(CONTENT_TYPE).unwrap(),
         &HeaderValue::from_static("text/html; charset=utf-8"),
     );
-    assert_eq!(
-        parts.headers.get(CACHE_CONTROL).unwrap(),
-        &HeaderValue::from_static(CACHE_CONTROL_NO_CACHE),
-    );
     assert!(!bytes.is_empty());
 }
 
@@ -521,10 +508,6 @@ async fn test_update_page_success() {
     assert_eq!(
         parts.headers.get(CONTENT_TYPE).unwrap(),
         &HeaderValue::from_static("text/html; charset=utf-8"),
-    );
-    assert_eq!(
-        parts.headers.get(CACHE_CONTROL).unwrap(),
-        &HeaderValue::from_static(CACHE_CONTROL_NO_CACHE),
     );
     assert!(!bytes.is_empty());
 }
