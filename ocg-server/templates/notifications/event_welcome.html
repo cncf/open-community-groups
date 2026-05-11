@@ -66,6 +66,8 @@
 {% endblock content -%}
 
 {% block footer -%}
-  You are receiving this because you registered for {{ event.name }}.
-  If this wasn't you, feel free to ignore this message.
+  You received this email notification because you registered for
+  {{ event.name }}, an event from {{ event.group_name }} in the
+  {{ event.community_display_name }} community. If this wasn't you, you can
+  ignore this message.
 {% endblock footer -%}

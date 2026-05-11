@@ -50,5 +50,7 @@
 {% endblock content -%}
 
 {% block footer -%}
-  You are receiving this because you submitted a session proposal for this event.
+  You received this email notification because you submitted a session proposal for
+  {{ event.name }} from {{ event.group_name }} in the
+  {{ event.community_display_name }} community.
 {% endblock footer -%}
