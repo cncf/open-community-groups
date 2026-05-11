@@ -19,5 +19,7 @@
 {% endblock content -%}
 
 {% block footer -%}
-  You are receiving this because you left the waiting list for {{ event.name }}.
+  You received this email notification because you left the waiting list for
+  {{ event.name }}, an event from {{ event.group_name }} in the
+  {{ event.community_display_name }} community.
 {% endblock footer -%}

@@ -139,6 +139,7 @@ select lives_ok(
             "facebook_url": "https://facebook.com/updateduser",
             "interests": ["programming", "music", "sports"],
             "linkedin_url": "https://linkedin.com/in/updateduser",
+            "optional_notifications_enabled": false,
             "photo_url": "https://example.com/photo.jpg",
             "timezone": "America/Los_Angeles",
             "title": "Software Engineer",
@@ -160,6 +161,7 @@ select is(
         "belongs_to_community_team": false,
         "email": "test@example.com",
         "email_verified": true,
+        "optional_notifications_enabled": false,
         "name": "Updated User",
         "username": "testuser",
         "bio": "This is my bio",
@@ -225,6 +227,7 @@ select is(
         "belongs_to_community_team": false,
         "email": "test2@example.com",
         "email_verified": true,
+        "optional_notifications_enabled": true,
         "name": "Updated Name Only",
         "username": "testuser2"
     }'::jsonb,
@@ -267,6 +270,7 @@ select is(
         "belongs_to_community_team": false,
         "email": "test3@example.com",
         "email_verified": true,
+        "optional_notifications_enabled": true,
         "name": "Explicitly Nulled User",
         "username": "testuser3"
     }'::jsonb,

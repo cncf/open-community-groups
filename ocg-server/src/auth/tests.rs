@@ -777,6 +777,7 @@ fn sample_user() -> User {
         email: "user@example.com".to_string(),
         email_verified: true,
         name: "Test User".to_string(),
+        optional_notifications_enabled: true,
         provider: Some(sample_user_provider()),
         username: "test-user".to_string(),
         ..User::default()

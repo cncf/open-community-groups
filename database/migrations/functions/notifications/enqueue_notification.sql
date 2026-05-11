@@ -12,8 +12,33 @@ declare
     v_data bytea;
     v_notification_ids uuid[];
     v_notification_template_data_id uuid;
+    v_optional_notification boolean;
+    v_recipients uuid[];
     v_template_hash text;
 begin
+    -- Resolve notification kind metadata before creating notification data
+    select optional_notification into v_optional_notification from notification_kind where name = p_kind;
+
+    if not found then
+        raise exception 'notification kind does not exist: %', p_kind
+            using errcode = 'foreign_key_violation';
+    end if;
+
+    -- Filter optional notifications for users who opted out before creating rows
+    if v_optional_notification then
+        select coalesce(array_agg(recipient_id), '{}')
+        into v_recipients
+        from unnest(p_recipients) as recipient_id
+        left join "user" u on u.user_id = recipient_id
+        where coalesce(u.optional_notifications_enabled, true) = true;
+
+        if cardinality(v_recipients) = 0 then
+            return;
+        end if;
+    else
+        v_recipients := p_recipients;
+    end if;
+
     -- Insert or reuse template data and get its ID
     if p_template_data is not null then
         v_template_hash := encode(digest(convert_to(p_template_data::text, 'utf8'), 'sha256'), 'hex');
@@ -27,7 +52,7 @@ begin
     -- Insert one notification per recipient and collect IDs
     with inserted as (
         insert into notification (kind, notification_template_data_id, user_id)
-        select p_kind, v_notification_template_data_id, unnest(p_recipients)
+        select p_kind, v_notification_template_data_id, unnest(v_recipients)
         returning notification_id
     )
     select coalesce(array_agg(notification_id order by notification_id), '{}')

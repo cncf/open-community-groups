@@ -262,6 +262,34 @@
   </div>
   {# End social links section -#}
 
+  {# Notifications section -#}
+  <div class="border-b border-stone-900/10 pb-12">
+    {{ dashboard::form_title(title = "Notifications", description = "Choose which email notifications you receive.") -}}
+    <div class="mt-10 max-w-5xl">
+      <input type="hidden"
+             id="optional_notifications_enabled"
+             name="optional_notifications_enabled"
+             value="{{ user.optional_notifications_enabled }}">
+      <label for="toggle_optional_notifications_enabled"
+             class="inline-flex items-center cursor-pointer">
+        <span class="relative inline-flex shrink-0 items-center">
+          <input id="toggle_optional_notifications_enabled"
+                 type="checkbox"
+                 class="sr-only peer"
+                 {% if user.optional_notifications_enabled %}checked{% endif %}>
+          <span class="relative w-11 h-6 bg-stone-200 rounded-full peer peer-checked:bg-primary-500 after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-stone-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white">
+          </span>
+        </span>
+        <span class="ms-3 text-sm font-medium text-stone-900">Receive optional notifications</span>
+      </label>
+      <p class="form-legend">
+        Receive broader announcements such as new event announcements, event reminders, and custom messages from organizers.
+        You will still receive account, invitation, registration, speaker, refund, waitlist, cancellation, and reschedule updates.
+      </p>
+    </div>
+  </div>
+  {# End Notifications section -#}
+
   <div class="mt-6">
     <button type="submit" class="btn-primary relative">
       {{ ui::btn_spinner(id = "user-details-spinner", spinner_type = "2") -}}
@@ -354,6 +382,14 @@
 
   const userDetailsForm = document.getElementById('user-details-form');
   const passwordForm = document.getElementById('password-form');
+  const optionalNotificationsInput = document.getElementById('optional_notifications_enabled');
+  const optionalNotificationsToggle = document.getElementById('toggle_optional_notifications_enabled');
+
+  if (optionalNotificationsInput && optionalNotificationsToggle) {
+    optionalNotificationsToggle.addEventListener('change', () => {
+      optionalNotificationsInput.value = String(optionalNotificationsToggle.checked);
+    });
+  }
 
   if (userDetailsForm) {
     userDetailsForm.addEventListener('htmx:afterRequest', (e) => {

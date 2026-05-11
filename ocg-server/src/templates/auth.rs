@@ -126,6 +126,9 @@ pub(crate) struct UserDetails {
     /// User's display name.
     #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_DISPLAY_NAME))]
     pub name: String,
+    /// Whether the user receives optional notifications.
+    #[garde(skip)]
+    pub optional_notifications_enabled: bool,
 
     /// User's biography.
     #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_BIO))]
@@ -172,6 +175,7 @@ impl From<crate::auth::User> for UserDetails {
     fn from(user: crate::auth::User) -> Self {
         Self {
             name: user.name,
+            optional_notifications_enabled: user.optional_notifications_enabled,
             bio: user.bio,
             bluesky_url: user.bluesky_url,
             city: user.city,

@@ -1663,7 +1663,9 @@ async fn test_update_user_details_success() {
         .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
     db.expect_update_user_details()
         .times(1)
-        .withf(move |uid, details| *uid == user_id && details.name == "Updated User")
+        .withf(move |uid, details| {
+            *uid == user_id && details.optional_notifications_enabled && details.name == "Updated User"
+        })
         .returning(|_, _| Ok(()));
     db.expect_update_session()
         .times(1)
@@ -1681,7 +1683,9 @@ async fn test_update_user_details_success() {
         .header(HOST, "example.test")
         .header(COOKIE, format!("id={session_id}"))
         .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .body(Body::from("name=Updated+User&company=Example"))
+        .body(Body::from(
+            "name=Updated+User&company=Example&optional_notifications_enabled=true",
+        ))
         .unwrap();
     let response = router.oneshot(request).await.unwrap();
     let (parts, body) = response.into_parts();
@@ -1757,7 +1761,9 @@ async fn test_update_user_details_returns_error_on_db_failure() {
         .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
     db.expect_update_user_details()
         .times(1)
-        .withf(move |uid, details| *uid == user_id && details.name == "Updated User")
+        .withf(move |uid, details| {
+            *uid == user_id && !details.optional_notifications_enabled && details.name == "Updated User"
+        })
         .returning(|_, _| Err(anyhow!("db error")));
 
     // Setup notifications manager mock
@@ -1771,7 +1777,9 @@ async fn test_update_user_details_returns_error_on_db_failure() {
         .header(HOST, "example.test")
         .header(COOKIE, format!("id={session_id}"))
         .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .body(Body::from("name=Updated+User&company=Example"))
+        .body(Body::from(
+            "name=Updated+User&company=Example&optional_notifications_enabled=false",
+        ))
         .unwrap();
     let response = router.oneshot(request).await.unwrap();
     let (parts, body) = response.into_parts();

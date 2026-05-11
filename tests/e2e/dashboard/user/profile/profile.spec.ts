@@ -48,6 +48,46 @@ const UPDATED_DETAILS = {
 const ACCOUNT_PATH = "/dashboard/user?tab=account";
 
 test.describe("user dashboard profile view", () => {
+  test("user sees the notifications toggle in the compact switch layout", async ({ page }) => {
+    await logInWithSeededUser(page, TEST_USER_CREDENTIALS.admin2);
+    await navigateToPath(page, ACCOUNT_PATH);
+
+    const notificationToggleLabel = page.locator(
+      'label[for="toggle_optional_notifications_enabled"]',
+    );
+    const notificationSwitch = notificationToggleLabel.locator(
+      "span.relative.w-11.h-6",
+    );
+    const notificationText = notificationToggleLabel.getByText(
+      "Receive optional notifications",
+    );
+    const notificationDescription = page.getByText(
+      "Receive broader announcements such as new event announcements",
+    );
+
+    await expect(notificationToggleLabel).toBeVisible();
+    await expect(notificationSwitch).toBeVisible();
+    await expect(notificationText).toBeVisible();
+    await expect(notificationDescription).toBeVisible();
+
+    const switchBox = await notificationSwitch.boundingBox();
+    const textBox = await notificationText.boundingBox();
+    const descriptionBox = await notificationDescription.boundingBox();
+
+    expect(switchBox).not.toBeNull();
+    expect(textBox).not.toBeNull();
+    expect(descriptionBox).not.toBeNull();
+
+    if (!switchBox || !textBox || !descriptionBox) {
+      return;
+    }
+
+    expect(switchBox.x).toBeLessThan(textBox.x);
+    expect(Math.abs(switchBox.y - textBox.y)).toBeLessThanOrEqual(4);
+    expect(descriptionBox.y).toBeGreaterThan(switchBox.y + switchBox.height);
+    expect(Math.abs(descriptionBox.x - switchBox.x)).toBeLessThanOrEqual(2);
+  });
+
   test("user can update and restore profile details", async ({ page }) => {
     test.setTimeout(60_000);
 
