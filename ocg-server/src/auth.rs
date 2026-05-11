@@ -424,6 +424,8 @@ pub(crate) struct User {
     pub email: String,
     /// Whether the user's email is verified.
     pub email_verified: bool,
+    /// Whether the user receives mass communication notifications.
+    pub mass_notifications_enabled: bool,
     /// User's display name.
     pub name: String,
     /// User's username.

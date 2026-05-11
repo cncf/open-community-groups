@@ -696,6 +696,7 @@ select columns_are('notification_attachment', array[
 select columns_are('notification_kind', array[
     'notification_kind_id',
 
+    'mass_communication',
     'name'
 ]);
 
@@ -746,6 +747,7 @@ select columns_are('user', array[
     'created_at',
     'email',
     'email_verified',
+    'mass_notifications_enabled',
     'username',
 
     'bio',

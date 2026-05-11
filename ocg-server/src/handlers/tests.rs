@@ -145,6 +145,7 @@ pub(crate) fn sample_auth_user(user_id: Uuid, auth_hash: &str) -> AuthUser {
         auth_hash: auth_hash.to_string(),
         email: "user@example.test".to_string(),
         email_verified: true,
+        mass_notifications_enabled: true,
         name: "Test User".to_string(),
         user_id,
         username: "test-user".to_string(),

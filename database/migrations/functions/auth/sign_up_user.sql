@@ -74,6 +74,7 @@ begin
             'auth_hash', u.auth_hash,
             'email', u.email,
             'email_verified', u.email_verified,
+            'mass_notifications_enabled', u.mass_notifications_enabled,
             'name', u.name,
             'provider', u.provider,
             'user_id', u.user_id,

@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(11);
+select plan(13);
 
 -- ============================================================================
 -- VARIABLES
@@ -18,16 +18,55 @@ select plan(11);
 -- ============================================================================
 
 -- Users
-insert into "user" (auth_hash, email, email_verified, user_id, username) values
-    ('hash-1', 'user1@example.com', true, :'userID1', 'user-one'),
-    ('hash-2', 'user2@example.com', true, :'userID2', 'user-two'),
-    ('hash-3', 'user3@example.com', false, :'userID3', 'user-three');
+insert into "user" (
+    auth_hash,
+    email,
+    email_verified,
+    mass_notifications_enabled,
+    user_id,
+    username
+) values
+    ('hash-1', 'user1@example.com', true, true, :'userID1', 'user-one'),
+    ('hash-2', 'user2@example.com', true, false, :'userID2', 'user-two'),
+    ('hash-3', 'user3@example.com', false, true, :'userID3', 'user-three');
 
 -- ============================================================================
 -- TESTS
 -- ============================================================================
 
 -- Should enqueue one notification per recipient without template or attachments
+select lives_ok(
+    format(
+        $$select enqueue_notification(
+            'event-canceled',
+            null,
+            '[]'::jsonb,
+            array[%L, %L]::uuid[]
+        )$$,
+        :'userID1',
+        :'userID2'
+    ),
+    'Should enqueue one notification per recipient without template or attachments'
+);
+
+-- Should create event-canceled notifications for expected recipients
+select results_eq(
+    $$
+    select
+        n.user_id,
+        n.notification_template_data_id
+    from notification n
+    where n.kind = 'event-canceled'
+    order by n.user_id
+    $$,
+    $$ values
+        ('00000000-0000-0000-0000-000000000801'::uuid, null::uuid),
+        ('00000000-0000-0000-0000-000000000802'::uuid, null::uuid)
+    $$,
+    'Should create event-canceled notifications for expected recipients'
+);
+
+-- Should enqueue mass notifications only for recipients who receive them
 select lives_ok(
     format(
         $$select enqueue_notification(
@@ -39,10 +78,10 @@ select lives_ok(
         :'userID1',
         :'userID2'
     ),
-    'Should enqueue one notification per recipient without template or attachments'
+    'Should enqueue mass notifications only for recipients who receive them'
 );
 
--- Should create event-published notifications for expected recipients
+-- Should create event-published notifications for mass notifications recipients only
 select results_eq(
     $$
     select
@@ -53,10 +92,9 @@ select results_eq(
     order by n.user_id
     $$,
     $$ values
-        ('00000000-0000-0000-0000-000000000801'::uuid, null::uuid),
-        ('00000000-0000-0000-0000-000000000802'::uuid, null::uuid)
+        ('00000000-0000-0000-0000-000000000801'::uuid, null::uuid)
     $$,
-    'Should create event-published notifications for expected recipients'
+    'Should create event-published notifications for mass notifications recipients only'
 );
 
 -- Should enqueue notifications with deduplicated template data
