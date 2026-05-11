@@ -128,6 +128,31 @@ test.describe("user dashboard profile view", () => {
       await page.locator("#twitter_url").fill(values.twitterUrl);
       await page.locator("#facebook_url").fill(values.facebookUrl);
 
+      await page.evaluate(() => {
+        const testWindow = window as unknown as {
+          Swal?: {
+            fire: (...args: unknown[]) => unknown;
+            __ocgOriginalFire?: (...args: unknown[]) => unknown;
+          };
+          __ocgSwalCalls?: unknown[];
+        };
+        const swal = testWindow.Swal;
+
+        if (!swal || typeof swal.fire !== "function") {
+          return;
+        }
+
+        if (!swal.__ocgOriginalFire) {
+          swal.__ocgOriginalFire = swal.fire.bind(swal);
+        }
+
+        testWindow.__ocgSwalCalls = [];
+        swal.fire = (...args: unknown[]) => {
+          testWindow.__ocgSwalCalls?.push(args[0]);
+          return swal.__ocgOriginalFire?.(...args);
+        };
+      });
+
       await Promise.all([
         page.waitForResponse(
           (response) =>
@@ -137,6 +162,19 @@ test.describe("user dashboard profile view", () => {
         ),
         detailsForm.getByRole("button", { name: "Save" }).click(),
       ]);
+
+      await expect(
+        page.locator(".swal2-popup").filter({ hasText: "User details updated successfully." }),
+      ).toBeVisible();
+      const successAlertMessages = await page.evaluate<string[]>(() => {
+        const calls =
+          (window as unknown as { __ocgSwalCalls?: Array<{ icon?: string; text?: string }> })
+            .__ocgSwalCalls ?? [];
+
+        return calls.filter((call) => call.icon === "success").map((call) => call.text ?? "");
+      });
+
+      expect(successAlertMessages).toEqual(["User details updated successfully."]);
     };
 
     const expectProfileDetails = async (values: typeof BASELINE_DETAILS) => {
