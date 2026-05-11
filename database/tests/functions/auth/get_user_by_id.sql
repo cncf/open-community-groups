@@ -253,7 +253,7 @@ select is(
         "bluesky_url": "https://bsky.app/profile/testuser",
         "email": "test@example.com",
         "email_verified": true,
-        "mass_notifications_enabled": true,
+        "optional_notifications_enabled": true,
         "has_password": true,
         "name": "Test User",
         "provider": {
@@ -277,7 +277,7 @@ select is(
         "bluesky_url": "https://bsky.app/profile/testuser",
         "email": "test@example.com",
         "email_verified": true,
-        "mass_notifications_enabled": true,
+        "optional_notifications_enabled": true,
         "has_password": true,
         "name": "Test User",
         "password": "hashed_password_here",
@@ -308,7 +308,7 @@ select is(
         "belongs_to_community_team": false,
         "email": "nogroups@example.com",
         "email_verified": true,
-        "mass_notifications_enabled": true,
+        "optional_notifications_enabled": true,
         "name": "No Groups User",
         "user_id": "00000000-0000-0000-0001-000000000002",
         "username": "nogroupsuser"
@@ -325,7 +325,7 @@ select is(
         "belongs_to_community_team": false,
         "email": "grouponly@example.com",
         "email_verified": true,
-        "mass_notifications_enabled": true,
+        "optional_notifications_enabled": true,
         "name": "Group Only User",
         "user_id": "00000000-0000-0000-0001-000000000003",
         "username": "grouponlyuser"
@@ -342,7 +342,7 @@ select is(
         "belongs_to_community_team": true,
         "email": "communityonly@example.com",
         "email_verified": true,
-        "mass_notifications_enabled": true,
+        "optional_notifications_enabled": true,
         "name": "Community Only User",
         "user_id": "00000000-0000-0000-0001-000000000004",
         "username": "communityonlyuser"
@@ -359,7 +359,7 @@ select is(
         "belongs_to_community_team": true,
         "email": "both@example.com",
         "email_verified": true,
-        "mass_notifications_enabled": true,
+        "optional_notifications_enabled": true,
         "name": "Both Teams User",
         "user_id": "00000000-0000-0000-0001-000000000005",
         "username": "bothuser"

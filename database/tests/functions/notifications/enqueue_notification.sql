@@ -22,7 +22,7 @@ insert into "user" (
     auth_hash,
     email,
     email_verified,
-    mass_notifications_enabled,
+    optional_notifications_enabled,
     user_id,
     username
 ) values
@@ -66,7 +66,7 @@ select results_eq(
     'Should create event-canceled notifications for expected recipients'
 );
 
--- Should enqueue mass notifications only for recipients who receive them
+-- Should enqueue optional notifications only for recipients who receive them
 select lives_ok(
     format(
         $$select enqueue_notification(
@@ -78,10 +78,10 @@ select lives_ok(
         :'userID1',
         :'userID2'
     ),
-    'Should enqueue mass notifications only for recipients who receive them'
+    'Should enqueue optional notifications only for recipients who receive them'
 );
 
--- Should create event-published notifications for mass notifications recipients only
+-- Should create event-published notifications for optional notifications recipients only
 select results_eq(
     $$
     select
@@ -94,7 +94,7 @@ select results_eq(
     $$ values
         ('00000000-0000-0000-0000-000000000801'::uuid, null::uuid)
     $$,
-    'Should create event-published notifications for mass notifications recipients only'
+    'Should create event-published notifications for optional notifications recipients only'
 );
 
 -- Should enqueue notifications with deduplicated template data

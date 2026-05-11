@@ -243,7 +243,7 @@ select results_eq(
 
 -- Test: notification kinds should match expected values
 select results_eq(
-    'select name, mass_communication from notification_kind order by name',
+    'select name, optional_notification from notification_kind order by name',
     $$ values
         ('cfs-submission-updated', false),
         ('community-team-invitation', false),

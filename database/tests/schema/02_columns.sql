@@ -696,8 +696,8 @@ select columns_are('notification_attachment', array[
 select columns_are('notification_kind', array[
     'notification_kind_id',
 
-    'mass_communication',
-    'name'
+    'name',
+    'optional_notification'
 ]);
 
 -- Test: notification_template_data columns should match expected
@@ -747,7 +747,6 @@ select columns_are('user', array[
     'created_at',
     'email',
     'email_verified',
-    'mass_notifications_enabled',
     'username',
 
     'bio',
@@ -760,6 +759,7 @@ select columns_are('user', array[
     'legacy_id',
     'linkedin_url',
     'name',
+    'optional_notifications_enabled',
     'password',
     'photo_url',
     'provider',

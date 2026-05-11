@@ -53,13 +53,13 @@ test.describe("user dashboard profile view", () => {
     await navigateToPath(page, ACCOUNT_PATH);
 
     const notificationToggleLabel = page.locator(
-      'label[for="toggle_mass_notifications_enabled"]',
+      'label[for="toggle_optional_notifications_enabled"]',
     );
     const notificationSwitch = notificationToggleLabel.locator(
       "span.relative.w-11.h-6",
     );
     const notificationText = notificationToggleLabel.getByText(
-      "Receive mass notifications",
+      "Receive optional notifications",
     );
     const notificationDescription = page.getByText(
       "Receive broader announcements such as new event announcements",

@@ -1664,7 +1664,7 @@ async fn test_update_user_details_success() {
     db.expect_update_user_details()
         .times(1)
         .withf(move |uid, details| {
-            *uid == user_id && details.mass_notifications_enabled && details.name == "Updated User"
+            *uid == user_id && details.optional_notifications_enabled && details.name == "Updated User"
         })
         .returning(|_, _| Ok(()));
     db.expect_update_session()
@@ -1684,7 +1684,7 @@ async fn test_update_user_details_success() {
         .header(COOKIE, format!("id={session_id}"))
         .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
         .body(Body::from(
-            "name=Updated+User&company=Example&mass_notifications_enabled=true",
+            "name=Updated+User&company=Example&optional_notifications_enabled=true",
         ))
         .unwrap();
     let response = router.oneshot(request).await.unwrap();
@@ -1762,7 +1762,7 @@ async fn test_update_user_details_returns_error_on_db_failure() {
     db.expect_update_user_details()
         .times(1)
         .withf(move |uid, details| {
-            *uid == user_id && !details.mass_notifications_enabled && details.name == "Updated User"
+            *uid == user_id && !details.optional_notifications_enabled && details.name == "Updated User"
         })
         .returning(|_, _| Err(anyhow!("db error")));
 
@@ -1778,7 +1778,7 @@ async fn test_update_user_details_returns_error_on_db_failure() {
         .header(COOKIE, format!("id={session_id}"))
         .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
         .body(Body::from(
-            "name=Updated+User&company=Example&mass_notifications_enabled=false",
+            "name=Updated+User&company=Example&optional_notifications_enabled=false",
         ))
         .unwrap();
     let response = router.oneshot(request).await.unwrap();

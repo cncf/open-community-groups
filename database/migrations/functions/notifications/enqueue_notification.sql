@@ -10,27 +10,27 @@ declare
     v_attachment jsonb;
     v_attachment_id uuid;
     v_data bytea;
-    v_mass_communication boolean;
     v_notification_ids uuid[];
     v_notification_template_data_id uuid;
+    v_optional_notification boolean;
     v_recipients uuid[];
     v_template_hash text;
 begin
     -- Resolve notification kind metadata before creating notification data
-    select mass_communication into v_mass_communication from notification_kind where name = p_kind;
+    select optional_notification into v_optional_notification from notification_kind where name = p_kind;
 
     if not found then
         raise exception 'notification kind does not exist: %', p_kind
             using errcode = 'foreign_key_violation';
     end if;
 
-    -- Filter mass communications for users who opted out before creating rows
-    if v_mass_communication then
+    -- Filter optional notifications for users who opted out before creating rows
+    if v_optional_notification then
         select coalesce(array_agg(recipient_id), '{}')
         into v_recipients
         from unnest(p_recipients) as recipient_id
         left join "user" u on u.user_id = recipient_id
-        where coalesce(u.mass_notifications_enabled, true) = true;
+        where coalesce(u.optional_notifications_enabled, true) = true;
 
         if cardinality(v_recipients) = 0 then
             return;

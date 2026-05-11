@@ -776,8 +776,8 @@ fn sample_user() -> User {
         auth_hash: "session-auth-hash".to_string(),
         email: "user@example.com".to_string(),
         email_verified: true,
-        mass_notifications_enabled: true,
         name: "Test User".to_string(),
+        optional_notifications_enabled: true,
         provider: Some(sample_user_provider()),
         username: "test-user".to_string(),
         ..User::default()

@@ -20,9 +20,9 @@ begin
             else null
         end,
         linkedin_url = nullif(p_user->>'linkedin_url', ''),
-        mass_notifications_enabled = coalesce(
-            (p_user->>'mass_notifications_enabled')::boolean,
-            mass_notifications_enabled
+        optional_notifications_enabled = coalesce(
+            (p_user->>'optional_notifications_enabled')::boolean,
+            optional_notifications_enabled
         ),
         photo_url = nullif(p_user->>'photo_url', ''),
         timezone = nullif(p_user->>'timezone', ''),

@@ -123,12 +123,12 @@ impl User {
 #[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize, Validate)]
 pub(crate) struct UserDetails {
-    /// Whether the user receives mass communication notifications.
-    #[garde(skip)]
-    pub mass_notifications_enabled: bool,
     /// User's display name.
     #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_DISPLAY_NAME))]
     pub name: String,
+    /// Whether the user receives optional notifications.
+    #[garde(skip)]
+    pub optional_notifications_enabled: bool,
 
     /// User's biography.
     #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_BIO))]
@@ -174,8 +174,8 @@ pub(crate) struct UserDetails {
 impl From<crate::auth::User> for UserDetails {
     fn from(user: crate::auth::User) -> Self {
         Self {
-            mass_notifications_enabled: user.mass_notifications_enabled,
             name: user.name,
+            optional_notifications_enabled: user.optional_notifications_enabled,
             bio: user.bio,
             bluesky_url: user.bluesky_url,
             city: user.city,

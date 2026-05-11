@@ -30,7 +30,7 @@ select ok(
     ("user"::jsonb - 'user_id'::text - 'auth_hash'::text = '{
         "email": "verified@example.com",
         "email_verified": true,
-        "mass_notifications_enabled": true,
+        "optional_notifications_enabled": true,
         "name": "Verified User",
         "provider": {
             "github": {
@@ -61,7 +61,7 @@ select ok(
     ("user"::jsonb - 'user_id'::text - 'auth_hash'::text = '{
         "email": "unverified@example.com",
         "email_verified": false,
-        "mass_notifications_enabled": true,
+        "optional_notifications_enabled": true,
         "name": "Unverified User",
         "username": "unverifieduser"
     }'::jsonb)
@@ -86,7 +86,7 @@ select ok(
     ("user"::jsonb - 'user_id'::text - 'auth_hash'::text = '{
         "email": "default@example.com",
         "email_verified": false,
-        "mass_notifications_enabled": true,
+        "optional_notifications_enabled": true,
         "name": "Default User",
         "username": "defaultuser"
     }'::jsonb)
