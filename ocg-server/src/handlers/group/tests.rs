@@ -15,7 +15,7 @@ use crate::{
     activity_tracker::{Activity, MockActivityTracker},
     db::mock::MockDB,
     handlers::tests::*,
-    router::CACHE_CONTROL_NO_CACHE,
+    router::CACHE_CONTROL_PUBLIC_SHARED,
     services::notifications::{MockNotificationsManager, NotificationKind},
     templates::notifications::GroupWelcome,
     types::event::EventKind,
@@ -90,7 +90,7 @@ async fn test_page_success() {
     );
     assert_eq!(
         parts.headers.get(CACHE_CONTROL).unwrap(),
-        &HeaderValue::from_static("max-age=3600")
+        &HeaderValue::from_static(CACHE_CONTROL_PUBLIC_SHARED)
     );
     assert!(!bytes.is_empty());
 }
@@ -129,7 +129,7 @@ async fn test_page_community_not_found() {
     );
     assert_eq!(
         parts.headers.get(CACHE_CONTROL).unwrap(),
-        &HeaderValue::from_static("max-age=300")
+        &HeaderValue::from_static(CACHE_CONTROL_PUBLIC_SHARED)
     );
     let body = String::from_utf8(bytes.to_vec()).unwrap();
     assert!(body.contains("We could not find that page"));
@@ -195,7 +195,7 @@ async fn test_page_not_found() {
     );
     assert_eq!(
         parts.headers.get(CACHE_CONTROL).unwrap(),
-        &HeaderValue::from_static("max-age=300")
+        &HeaderValue::from_static(CACHE_CONTROL_PUBLIC_SHARED)
     );
     let body = String::from_utf8(bytes.to_vec()).unwrap();
     assert!(body.contains("We could not find that page"));
@@ -421,10 +421,6 @@ async fn test_membership_status_success() {
     assert_eq!(
         parts.headers.get(CONTENT_TYPE).unwrap(),
         &HeaderValue::from_static("application/json")
-    );
-    assert_eq!(
-        parts.headers.get(CACHE_CONTROL).unwrap(),
-        &HeaderValue::from_static(CACHE_CONTROL_NO_CACHE)
     );
     let body: serde_json::Value = from_slice(&bytes).unwrap();
     assert_eq!(body, json!({ "is_member": true }));

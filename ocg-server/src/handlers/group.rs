@@ -7,7 +7,6 @@ use axum::{
     http::{HeaderMap, StatusCode, Uri},
     response::{Html, IntoResponse},
 };
-use chrono::Duration;
 use serde_json::json;
 use tracing::instrument;
 use uuid::Uuid;
@@ -16,10 +15,8 @@ use crate::{
     activity_tracker::{Activity, DynActivityTracker},
     config::HttpServerConfig,
     db::DynDB,
-    handlers::{
-        extractors::CurrentUser, prepare_headers, request_matches_site, site::not_found,
-        trim_public_gallery_images,
-    },
+    handlers::{extractors::CurrentUser, request_matches_site, site::not_found, trim_public_gallery_images},
+    router::PUBLIC_SHARED_CACHE_HEADERS,
     services::notifications::{DynNotificationsManager, NewNotification, NotificationKind},
     templates::{
         PageId,
@@ -87,10 +84,7 @@ pub(crate) async fn page(
         user: User::default(),
     };
 
-    // Prepare response headers
-    let headers = prepare_headers(Duration::hours(1), &[])?;
-
-    Ok((headers, Html(template.render()?)).into_response())
+    Ok((PUBLIC_SHARED_CACHE_HEADERS, Html(template.render()?)).into_response())
 }
 
 // Actions handlers.

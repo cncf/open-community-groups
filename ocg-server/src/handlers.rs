@@ -7,10 +7,8 @@ use std::str::FromStr;
 
 use anyhow::{Result, anyhow};
 use axum::http::{HeaderMap, HeaderName, HeaderValue, Uri, header::ORIGIN, header::REFERER};
-use chrono::Duration;
-use reqwest::header::CACHE_CONTROL;
 
-use crate::config::HttpServerConfig;
+use crate::{config::HttpServerConfig, router::PUBLIC_SHARED_CACHE_HEADERS};
 
 /// Authentication handlers.
 pub(crate) mod auth;
@@ -41,23 +39,16 @@ pub(crate) mod tests;
 /// Maximum number of gallery images rendered on public pages.
 pub(crate) const MAX_PUBLIC_GALLERY_IMAGES: usize = 50;
 
-/// Helper function to prepare headers for HTTP responses, including cache control and
-/// additional custom headers.
-#[allow(unused_variables)]
-pub(crate) fn prepare_headers(cache_duration: Duration, extra_headers: &[(&str, &str)]) -> Result<HeaderMap> {
+/// Extends public shared-cache headers with additional dynamic headers.
+pub(crate) fn extend_public_shared_cache_headers(extra_headers: &[(&str, &str)]) -> Result<HeaderMap> {
     let mut headers = HeaderMap::new();
 
-    // Set cache control header
-    #[cfg(all(debug_assertions, not(test)))]
-    let duration_secs = 0; // Disable caching in debug mode
-    #[cfg(any(not(debug_assertions), test))]
-    let duration_secs = cache_duration.num_seconds();
-    headers.insert(
-        CACHE_CONTROL,
-        HeaderValue::try_from(format!("max-age={duration_secs}"))?,
-    );
+    // Add shared public cache headers first
+    for (key, value) in PUBLIC_SHARED_CACHE_HEADERS {
+        headers.insert(key, HeaderValue::from_static(value));
+    }
 
-    // Set extra headers
+    // Add dynamic headers that may be computed per request
     for (key, value) in extra_headers {
         headers.insert(HeaderName::try_from(*key)?, HeaderValue::try_from(*value)?);
     }
@@ -114,31 +105,32 @@ pub(crate) fn trim_public_gallery_images(photos_urls: &mut Option<Vec<String>>) 
 
 #[cfg(test)]
 mod helpers_tests {
-    use axum::http::{HeaderMap, HeaderValue};
-    use chrono::Duration;
+    use axum::http::{HeaderMap, HeaderValue, header::CACHE_CONTROL};
 
-    use crate::config::HttpServerConfig;
+    use crate::{config::HttpServerConfig, router::CACHE_CONTROL_PUBLIC_SHARED};
 
     use super::*;
 
     #[test]
-    fn test_prepare_headers_rejects_invalid_extra_header_name() {
-        let result = prepare_headers(Duration::minutes(5), &[("invalid header", "value")]);
+    fn test_extend_public_shared_cache_headers_rejects_invalid_extra_header_name() {
+        let result = extend_public_shared_cache_headers(&[("invalid header", "value")]);
 
         assert!(result.is_err());
     }
 
     #[test]
-    fn test_prepare_headers_sets_cache_control_and_extra_headers() {
-        let headers = prepare_headers(
-            Duration::minutes(5),
-            &[("content-type", "application/json"), ("x-test", "ok")],
-        )
-        .unwrap();
+    fn test_extend_public_shared_cache_headers_rejects_invalid_extra_header_value() {
+        let result = extend_public_shared_cache_headers(&[("x-test", "invalid\nvalue")]);
 
-        assert_eq!(headers.get(super::CACHE_CONTROL).unwrap(), "max-age=300");
-        assert_eq!(headers.get("content-type").unwrap(), "application/json");
-        assert_eq!(headers.get("x-test").unwrap(), "ok");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_extend_public_shared_cache_headers_sets_cache_and_extra_headers() {
+        let headers = extend_public_shared_cache_headers(&[("HX-Push-Url", "/explore")]).unwrap();
+
+        assert_eq!(headers.get(CACHE_CONTROL).unwrap(), CACHE_CONTROL_PUBLIC_SHARED);
+        assert_eq!(headers.get("HX-Push-Url").unwrap(), "/explore");
     }
 
     #[test]

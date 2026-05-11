@@ -8,7 +8,10 @@ use axum::{
 };
 use tower::ServiceExt;
 
-use crate::{db::mock::MockDB, handlers::tests::*, services::notifications::MockNotificationsManager};
+use crate::{
+    db::mock::MockDB, handlers::tests::*, router::CACHE_CONTROL_PUBLIC_SHARED,
+    services::notifications::MockNotificationsManager,
+};
 
 #[tokio::test]
 async fn test_page_db_error() {
@@ -69,7 +72,7 @@ async fn test_page_success() {
     );
     assert_eq!(
         parts.headers.get(CACHE_CONTROL).unwrap(),
-        &HeaderValue::from_static("max-age=21600")
+        &HeaderValue::from_static(CACHE_CONTROL_PUBLIC_SHARED)
     );
     assert!(!bytes.is_empty());
 }

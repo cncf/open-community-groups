@@ -14,7 +14,6 @@ use crate::{
     config::HttpServerConfig,
     db::mock::MockDB,
     handlers::{dashboard::group::attendees::EventCustomNotification, tests::*},
-    router::CACHE_CONTROL_NO_CACHE,
     services::{
         notifications::{MockNotificationsManager, NotificationKind},
         payments::MockPaymentsManager,
@@ -447,7 +446,7 @@ async fn test_generate_check_in_qr_code_success() {
     );
     assert_eq!(
         parts.headers.get(CACHE_CONTROL).unwrap().to_str().unwrap(),
-        "max-age=3600"
+        "private, max-age=3600"
     );
     assert!(svg_body.contains("<svg"));
     assert!(svg_body.contains("</svg>"));
@@ -538,10 +537,6 @@ async fn test_list_page_success() {
         parts.headers.get(CONTENT_TYPE).unwrap(),
         &HeaderValue::from_static("text/html; charset=utf-8"),
     );
-    assert_eq!(
-        parts.headers.get(CACHE_CONTROL).unwrap(),
-        &HeaderValue::from_static(CACHE_CONTROL_NO_CACHE),
-    );
     assert!(!bytes.is_empty());
 }
 
@@ -629,10 +624,6 @@ async fn test_list_page_with_pagination_params() {
     assert_eq!(
         parts.headers.get(CONTENT_TYPE).unwrap(),
         &HeaderValue::from_static("text/html; charset=utf-8"),
-    );
-    assert_eq!(
-        parts.headers.get(CACHE_CONTROL).unwrap(),
-        &HeaderValue::from_static(CACHE_CONTROL_NO_CACHE),
     );
     assert!(!bytes.is_empty());
 }

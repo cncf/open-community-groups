@@ -3,7 +3,7 @@ use axum::{
     body::{Body, to_bytes},
     http::{
         HeaderValue, Request, StatusCode,
-        header::{CACHE_CONTROL, CONTENT_TYPE, COOKIE, HOST},
+        header::{CONTENT_TYPE, COOKIE, HOST},
     },
 };
 use axum_login::tower_sessions::session;
@@ -14,7 +14,6 @@ use uuid::Uuid;
 use crate::{
     db::{common::SearchGroupsOutput, mock::MockDB},
     handlers::{auth::SELECTED_GROUP_ID_KEY, tests::*},
-    router::CACHE_CONTROL_NO_CACHE,
     services::notifications::MockNotificationsManager,
     templates::dashboard::DASHBOARD_PAGINATION_LIMIT,
     types::permissions::CommunityPermission,
@@ -96,10 +95,6 @@ async fn test_list_page_success() {
     assert_eq!(
         parts.headers.get(CONTENT_TYPE).unwrap(),
         &HeaderValue::from_static("text/html; charset=utf-8"),
-    );
-    assert_eq!(
-        parts.headers.get(CACHE_CONTROL).unwrap(),
-        &HeaderValue::from_static(CACHE_CONTROL_NO_CACHE),
     );
     assert!(!bytes.is_empty());
 }
@@ -233,10 +228,6 @@ async fn test_add_page_success() {
         parts.headers.get(CONTENT_TYPE).unwrap(),
         &HeaderValue::from_static("text/html; charset=utf-8"),
     );
-    assert_eq!(
-        parts.headers.get(CACHE_CONTROL).unwrap(),
-        &HeaderValue::from_static(CACHE_CONTROL_NO_CACHE),
-    );
     assert!(!bytes.is_empty());
 }
 
@@ -366,10 +357,6 @@ async fn test_update_page_success() {
     assert_eq!(
         parts.headers.get(CONTENT_TYPE).unwrap(),
         &HeaderValue::from_static("text/html; charset=utf-8"),
-    );
-    assert_eq!(
-        parts.headers.get(CACHE_CONTROL).unwrap(),
-        &HeaderValue::from_static(CACHE_CONTROL_NO_CACHE),
     );
     assert!(!bytes.is_empty());
 }

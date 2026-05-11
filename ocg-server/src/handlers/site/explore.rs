@@ -13,7 +13,6 @@ use axum::{
     http::{HeaderMap, Uri},
     response::{Html, IntoResponse},
 };
-use chrono::Duration;
 use tracing::instrument;
 
 use crate::{
@@ -21,7 +20,8 @@ use crate::{
         DynDB,
         common::{SearchEventsOutput, SearchGroupsOutput},
     },
-    handlers::{error::HandlerError, prepare_headers},
+    handlers::{error::HandlerError, extend_public_shared_cache_headers},
+    router::PUBLIC_SHARED_CACHE_HEADERS,
     templates::{
         PageId,
         auth::User,
@@ -74,10 +74,7 @@ pub(crate) async fn page(
         }
     }
 
-    // Prepare response headers
-    let headers = prepare_headers(Duration::minutes(10), &[])?;
-
-    Ok((headers, Html(template.render()?)))
+    Ok((PUBLIC_SHARED_CACHE_HEADERS, Html(template.render()?)))
 }
 
 /// Handler that renders the events section of the explore page.
@@ -93,8 +90,7 @@ pub(crate) async fn events_section(
 
     // Prepare response headers
     let url = pagination::build_url("/explore?entity=events", &filters)?;
-    let extra_headers = [("HX-Push-Url", url.as_str())];
-    let headers = prepare_headers(Duration::minutes(10), &extra_headers)?;
+    let headers = extend_public_shared_cache_headers(&[("HX-Push-Url", url.as_str())])?;
 
     Ok((headers, Html(template.render()?)))
 }
@@ -112,8 +108,7 @@ pub(crate) async fn events_results_section(
 
     // Prepare response headers
     let url = pagination::build_url("/explore?entity=events", &filters)?;
-    let extra_headers = [("HX-Push-Url", url.as_str())];
-    let headers = prepare_headers(Duration::minutes(10), &extra_headers)?;
+    let headers = extend_public_shared_cache_headers(&[("HX-Push-Url", url.as_str())])?;
 
     Ok((headers, Html(template.render()?)))
 }
@@ -197,8 +192,7 @@ pub(crate) async fn groups_section(
 
     // Prepare response headers
     let url = pagination::build_url("/explore?entity=groups", &filters)?;
-    let extra_headers = [("HX-Push-Url", url.as_str())];
-    let headers = prepare_headers(Duration::minutes(10), &extra_headers)?;
+    let headers = extend_public_shared_cache_headers(&[("HX-Push-Url", url.as_str())])?;
 
     Ok((headers, Html(template.render()?)))
 }
@@ -216,8 +210,7 @@ pub(crate) async fn groups_results_section(
 
     // Prepare response headers
     let url = pagination::build_url("/explore?entity=groups", &filters)?;
-    let extra_headers = [("HX-Push-Url", url.as_str())];
-    let headers = prepare_headers(Duration::minutes(10), &extra_headers)?;
+    let headers = extend_public_shared_cache_headers(&[("HX-Push-Url", url.as_str())])?;
 
     Ok((headers, Html(template.render()?)))
 }
@@ -302,10 +295,7 @@ pub(crate) async fn search_events(
         event.popover_html = Some(render_event_popover(event)?);
     }
 
-    // Prepare response headers
-    let headers = prepare_headers(Duration::hours(1), &[])?;
-
-    Ok((headers, Json(search_events_output)).into_response())
+    Ok((PUBLIC_SHARED_CACHE_HEADERS, Json(search_events_output)).into_response())
 }
 
 /// Handler for the groups search endpoint (JSON format).
@@ -324,8 +314,5 @@ pub(crate) async fn search_groups(
         group.popover_html = Some(render_group_popover(group)?);
     }
 
-    // Prepare response headers
-    let headers = prepare_headers(Duration::hours(1), &[])?;
-
-    Ok((headers, Json(search_groups_output)).into_response())
+    Ok((PUBLIC_SHARED_CACHE_HEADERS, Json(search_groups_output)).into_response())
 }

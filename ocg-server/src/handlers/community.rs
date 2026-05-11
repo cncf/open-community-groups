@@ -10,17 +10,14 @@ use axum::{
     http::{HeaderMap, StatusCode, Uri},
     response::{Html, IntoResponse},
 };
-use chrono::Duration;
 use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
     activity_tracker::{Activity, DynActivityTracker},
     db::DynDB,
-    handlers::{
-        error::HandlerError, prepare_headers, request_matches_site, site::not_found,
-        trim_public_gallery_images,
-    },
+    handlers::{error::HandlerError, request_matches_site, site::not_found, trim_public_gallery_images},
+    router::PUBLIC_SHARED_CACHE_HEADERS,
     templates::{PageId, auth::User, community},
     types::event::EventKind,
 };
@@ -76,10 +73,7 @@ pub(crate) async fn page(
         user: User::default(),
     };
 
-    // Prepare response headers
-    let headers = prepare_headers(Duration::hours(1), &[])?;
-
-    Ok((headers, Html(template.render()?)).into_response())
+    Ok((PUBLIC_SHARED_CACHE_HEADERS, Html(template.render()?)).into_response())
 }
 
 // Actions handlers.

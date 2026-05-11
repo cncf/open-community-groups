@@ -13,7 +13,7 @@ use axum::{
     Router,
     extract::{FromRef, Request, State as AxumState},
     http::{
-        HeaderValue, StatusCode, Uri,
+        HeaderName, HeaderValue, StatusCode, Uri,
         header::{CACHE_CONTROL, CONTENT_TYPE, HOST},
     },
     middleware::{self, Next},
@@ -41,10 +41,43 @@ use crate::{
     },
 };
 
-/// Cache-Control header value instructing clients not to cache responses.
-pub(crate) const CACHE_CONTROL_NO_CACHE: &str = "max-age=0, private, must-revalidate";
+/// Cache-Control header value for immutable public assets.
+#[cfg(any(not(debug_assertions), test))]
+pub(crate) const CACHE_CONTROL_IMMUTABLE: &str = "public, max-age=31536000, immutable";
+
+/// Cache-Control header value instructing clients and proxies not to store responses.
+pub(crate) const CACHE_CONTROL_NO_STORE: &str = "no-store";
+
+/// Cache-Control header value for private responses that must not be stored.
+pub(crate) const CACHE_CONTROL_PRIVATE_NO_STORE: &str = "private, no-store";
+
+/// Cache-Control header value for shared public responses.
+#[cfg(any(not(debug_assertions), test))]
+pub(crate) const CACHE_CONTROL_PUBLIC_SHARED: &str =
+    "public, max-age=0, s-maxage=300, stale-while-revalidate=60";
+
+/// Cache-Control header value for shared public responses in local development.
+#[cfg(all(debug_assertions, not(test)))]
+pub(crate) const CACHE_CONTROL_PUBLIC_SHARED: &str = "public, max-age=0";
+
 /// Cache-Control header value for favicon redirects.
 const CACHE_CONTROL_FAVICON_REDIRECT: &str = "public, max-age=604800";
+
+/// Cache-Control header value for default static asset responses.
+#[cfg(any(not(debug_assertions), test))]
+const CACHE_CONTROL_STATIC_DEFAULT: &str = "max-age=3600";
+
+/// Cache-Control header value for local development static asset responses.
+#[cfg(all(debug_assertions, not(test)))]
+const CACHE_CONTROL_STATIC_DEVELOPMENT: &str = "max-age=0";
+
+/// Cache-Control header value for static image responses.
+#[cfg(any(not(debug_assertions), test))]
+const CACHE_CONTROL_STATIC_IMAGES: &str = "max-age=604800";
+
+/// Headers for public shared-cache responses without additional headers.
+pub(crate) const PUBLIC_SHARED_CACHE_HEADERS: [(HeaderName, &str); 1] =
+    [(CACHE_CONTROL, CACHE_CONTROL_PUBLIC_SHARED)];
 
 /// Static file embedder using rust-embed.
 ///
@@ -258,7 +291,7 @@ pub(crate) async fn setup(
         .route("/static/{*file}", get(static_handler))
         .layer(SetResponseHeaderLayer::if_not_present(
             CACHE_CONTROL,
-            HeaderValue::from_static(CACHE_CONTROL_NO_CACHE),
+            HeaderValue::from_static(CACHE_CONTROL_PRIVATE_NO_STORE),
         ))
         .layer(middleware::from_fn_with_state(state.clone(), redirect_old_hosts));
 
@@ -306,29 +339,28 @@ async fn static_handler(uri: Uri) -> impl IntoResponse {
     // Extract file path from URI
     let path = uri.path().trim_start_matches("/static/");
 
-    // Set cache duration based on resource type
+    // Set cache policy based on resource type
     #[cfg(any(not(debug_assertions), test))]
-    let cache_max_age = if path.starts_with("js/") || path.starts_with("css/") {
-        // These assets are hashed
-        60 * 60 * 24 * 365 // 1 year
+    let cache = if path.starts_with("js/") || path.starts_with("css/") {
+        // These assets are hashed.
+        CACHE_CONTROL_IMMUTABLE
     } else if path.starts_with("vendor/") {
-        // Vendor libraries files include versions
-        60 * 60 * 24 * 365 // 1 year
+        // Vendor library files include versions.
+        CACHE_CONTROL_IMMUTABLE
     } else if path.starts_with("images/") {
-        60 * 60 * 24 * 7 // 1 week
+        CACHE_CONTROL_STATIC_IMAGES
     } else {
-        // Default cache duration for other static resources
-        60 * 60 // 1 hour
+        // Default cache duration for other static resources.
+        CACHE_CONTROL_STATIC_DEFAULT
     };
     #[cfg(all(debug_assertions, not(test)))]
-    let cache_max_age = 0;
+    let cache = CACHE_CONTROL_STATIC_DEVELOPMENT;
 
     // Get file content and return it (if available)
     match StaticFile::get(path) {
         Some(file) => {
             let mime = mime_guess::from_path(path).first_or_octet_stream();
-            let cache = format!("max-age={cache_max_age}");
-            let headers = [(CONTENT_TYPE, mime.as_ref()), (CACHE_CONTROL, &cache)];
+            let headers = [(CONTENT_TYPE, mime.as_ref()), (CACHE_CONTROL, cache)];
             (headers, file.data).into_response()
         }
         None => StatusCode::NOT_FOUND.into_response(),

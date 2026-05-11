@@ -335,7 +335,7 @@ impl DBDashboardCommunity for PgDB {
     #[instrument(skip(self), err)]
     async fn get_community_stats(&self, community_id: Uuid) -> Result<CommunityDashboardStats> {
         #[cached(
-            time = 21600,
+            time = 3600,
             key = "Uuid",
             convert = "{ community_id }",
             sync_writes = "by_key",

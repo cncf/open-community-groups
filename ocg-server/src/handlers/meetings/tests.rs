@@ -1,10 +1,7 @@
 use anyhow::anyhow;
 use axum::{
     body::{Body, to_bytes},
-    http::{
-        HeaderValue, Request, StatusCode,
-        header::{CACHE_CONTROL, CONTENT_TYPE},
-    },
+    http::{HeaderValue, Request, StatusCode, header::CONTENT_TYPE},
 };
 use serde_json::{Value, json};
 use tower::ServiceExt;
@@ -201,10 +198,6 @@ async fn test_zoom_event_returns_not_found_when_zoom_is_disabled() {
     assert_eq!(
         parts.headers.get(CONTENT_TYPE).unwrap(),
         &HeaderValue::from_static("text/html; charset=utf-8")
-    );
-    assert_eq!(
-        parts.headers.get(CACHE_CONTROL).unwrap(),
-        &HeaderValue::from_static("max-age=300")
     );
     let body = String::from_utf8(bytes.to_vec()).unwrap();
     assert!(body.contains("We could not find that page"));
