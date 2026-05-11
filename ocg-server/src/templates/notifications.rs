@@ -173,6 +173,8 @@ pub(crate) struct EventSeriesCanceled {
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "notifications/event_series_published.html")]
 pub(crate) struct EventSeriesPublished {
+    /// Community display name for the events.
+    pub community_display_name: String,
     /// Number of events included in the notification.
     pub event_count: usize,
     /// Events included in the notification.

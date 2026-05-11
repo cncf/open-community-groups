@@ -454,6 +454,30 @@ fn test_delivery_worker_prepare_content_event_custom() {
     // Check content matches expectations
     assert_eq!(subject, "Notification Group: Custom Event");
     assert!(body.contains("Custom event body"));
+    assert!(body.contains("You received this email notification because you're a member of"));
+    assert!(body.contains("Notification Group"));
+    assert!(body.contains("Test Community community"));
+}
+
+#[test]
+fn test_delivery_worker_prepare_content_event_published() {
+    // Setup notification
+    let notification = Notification {
+        attachments: vec![],
+        email: "user@example.test".to_string(),
+        kind: NotificationKind::EventPublished,
+        notification_id: Uuid::new_v4(),
+        template_data: Some(sample_event_reminder_template_data()),
+    };
+
+    // Prepare content
+    let (subject, body) = DeliveryWorker::prepare_content(&notification).unwrap();
+
+    // Check content matches expectations
+    assert_eq!(subject, "New event published");
+    assert!(body.contains("You received this email notification because you're a member of"));
+    assert!(body.contains("Notification Group"));
+    assert!(body.contains("Test Community community"));
 }
 
 #[test]
@@ -474,6 +498,10 @@ fn test_delivery_worker_prepare_content_event_reminder() {
     assert_eq!(subject, "Reminder: Reminder Event starts in 24 hours");
     assert!(body.contains("Reminder Event"));
     assert!(body.contains("Use your registration name when joining."));
+    assert!(body.contains("You received this email notification because you're attending or speaking at"));
+    assert!(body.contains("Reminder Event"));
+    assert!(body.contains("Notification Group"));
+    assert!(body.contains("Test Community community"));
     assert!(
         body.contains("https://example.test/test-community/group/notification-group/event/reminder-event")
     );
@@ -541,6 +569,9 @@ fn test_delivery_worker_prepare_content_event_series_published() {
     assert!(body.contains("2 new events"));
     assert!(body.contains("Series Event One"));
     assert!(body.contains("Series Event Two"));
+    assert!(body.contains("You received this email notification because you're a member of"));
+    assert!(body.contains("Notification Group"));
+    assert!(body.contains("Test Community community"));
 }
 
 #[test]
@@ -643,6 +674,9 @@ fn test_delivery_worker_prepare_content_group_custom() {
     // Check content matches expectations
     assert_eq!(subject, "Hello Group");
     assert!(body.contains("Custom group body"));
+    assert!(body.contains("You received this email notification because you're a member of"));
+    assert!(body.contains("Hello Group"));
+    assert!(body.contains("Test Community community"));
 }
 
 #[test]
@@ -843,6 +877,7 @@ fn sample_event_reminder_template_data() -> serde_json::Value {
 /// Sample template payload for aggregate event series notifications.
 fn sample_event_series_template_data() -> serde_json::Value {
     json!({
+        "community_display_name": "Test Community",
         "event_count": 2,
         "events": [
             {

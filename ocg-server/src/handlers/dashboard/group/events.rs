@@ -1079,10 +1079,18 @@ async fn notify_events_published(
     // Notify group members about the published event series
     let site_settings = db.get_site_settings().await?;
     for group in group_recipients_by_events(member_events) {
+        let Some(community_display_name) = group
+            .events
+            .first()
+            .map(|event| event.event.community_display_name.clone())
+        else {
+            continue;
+        };
         let Some(group_name) = group.events.first().map(|event| event.event.group_name.clone()) else {
             continue;
         };
         let template_data = EventSeriesPublished {
+            community_display_name,
             event_count: group.events.len(),
             events: group.events,
             group_name,
