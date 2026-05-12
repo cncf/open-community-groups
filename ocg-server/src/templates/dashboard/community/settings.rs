@@ -45,6 +45,9 @@ pub(crate) struct CommunityUpdate {
     /// Human-readable name shown in the UI (e.g., "CNCF").
     #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_DISPLAY_NAME))]
     pub display_name: String,
+    /// Whether group team management is restricted to community roles.
+    #[garde(skip)]
+    pub group_team_management_restricted: bool,
     /// URL to the logo image.
     #[garde(custom(image_url))]
     pub logo_url: String,

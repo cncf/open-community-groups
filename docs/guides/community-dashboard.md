@@ -75,6 +75,8 @@ Community role impact on group-level operations in the same community:
 
 - `admin` and `groups-manager` can perform group write operations (`events`, `members`,
   `settings`, `sponsors`, `team`) without needing group-team role assignment.
+- If `Restrict group team management` is enabled in community settings, group team management
+  (`team`) is limited to community `admin` and `groups-manager` roles.
 - `viewer` keeps read-only visibility.
 
 UI behavior:
@@ -100,6 +102,7 @@ Key sections include:
 Common use cases:
 
 - Keeping display name and description up to date.
+- Restricting group team management to community admins and groups managers when policy requires it.
 - Maintaining logo/banner assets for consistent presentation.
 - Managing social links, optional ad placements, gallery images, tags, and extra links.
 

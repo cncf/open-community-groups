@@ -27,6 +27,8 @@ pub struct CommunityFull {
     pub description: String,
     /// Human-readable name shown in the UI (e.g., "CNCF").
     pub display_name: String,
+    /// Whether group team management is restricted to community roles.
+    pub group_team_management_restricted: bool,
     /// URL to the logo image shown in the page header.
     pub logo_url: String,
     /// Unique identifier used in URLs and database references.

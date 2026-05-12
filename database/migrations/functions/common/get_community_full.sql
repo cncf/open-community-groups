@@ -12,6 +12,7 @@ returns json as $$
         'created_at', floor(extract(epoch from created_at)*1000),
         'description', description,
         'display_name', display_name,
+        'group_team_management_restricted', group_team_management_restricted,
         'logo_url', logo_url,
         'name', name,
 

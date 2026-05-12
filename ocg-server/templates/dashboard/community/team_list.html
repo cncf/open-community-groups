@@ -10,13 +10,11 @@
     {{ pagination::range_display(offset = offset.unwrap_or(0) , count = members.len(), total = total, label = "member") }}
   </div>
   <div>
-    {% if can_manage_team -%}
-      <team-add-member dashboard-type="community" selected-users='{{ members|json }}' role-options='{{ roles|json }}' can-manage-team="true"></team-add-member>
-    {% else -%}
-      <button class="btn-primary"
-              disabled
-              title="Your role cannot invite team members.">Add member</button>
+    <team-add-member dashboard-type="community" can-manage-team="{{ can_manage_team }}"
+    {% if can_manage_team %}
+      selected-users='{{ members|json }}' role-options='{{ roles|json }}'
     {% endif -%}
+    ></team-add-member>
   </div>
 </div>
 

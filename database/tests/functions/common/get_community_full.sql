@@ -26,6 +26,7 @@ insert into community (
     community_site_layout_id,
     description,
     display_name,
+    group_team_management_restricted,
     logo_url,
     name,
 
@@ -53,6 +54,7 @@ insert into community (
     'default',
     'A vibrant community for cloud native technologies and practices in Seattle',
     'Cloud Native Seattle',
+    true,
     'https://example.com/logo.png',
     'cloud-native-seattle',
 
@@ -110,6 +112,7 @@ select is(
         "community_site_layout_id": "default",
         "description": "A vibrant community for cloud native technologies and practices in Seattle",
         "display_name": "Cloud Native Seattle",
+        "group_team_management_restricted": true,
         "extra_links": {"docs": "https://docs.example.com", "blog": "https://blog.example.com"},
         "facebook_url": "https://facebook.com/testcommunity",
         "flickr_url": "https://flickr.com/testcommunity",
@@ -139,6 +142,7 @@ select is(
         "community_site_layout_id": "default",
         "description": "A growing community for cloud native technologies in Portland",
         "display_name": "Cloud Native Portland",
+        "group_team_management_restricted": false,
         "logo_url": "https://portland.cloudnative.org/logo.png",
         "name": "cloud-native-portland"
     }'::jsonb,

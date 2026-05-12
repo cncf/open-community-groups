@@ -23,6 +23,8 @@ use crate::{
 pub(crate) struct ListPage {
     /// Whether the current user can update team membership and roles.
     pub can_manage_team: bool,
+    /// Tooltip shown when the current user cannot update team membership.
+    pub manage_team_disabled_message: Option<String>,
     /// List of team members in the group.
     pub members: Vec<GroupTeamMember>,
     /// Pagination navigation links.
@@ -40,6 +42,13 @@ pub(crate) struct ListPage {
     pub limit: Option<usize>,
     /// Pagination offset for results.
     pub offset: Option<usize>,
+}
+
+impl ListPage {
+    /// Returns the tooltip text for disabled group team management controls.
+    pub(crate) fn manage_team_disabled_message(&self) -> &str {
+        self.manage_team_disabled_message.as_deref().unwrap_or("")
+    }
 }
 
 // Types.
