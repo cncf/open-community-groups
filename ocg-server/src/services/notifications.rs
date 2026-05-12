@@ -11,7 +11,9 @@ use lettre::{
         Mailbox, MessageBuilder, MultiPart, SinglePart,
         header::{ContentDisposition, ContentType},
     },
-    transport::smtp::{AsyncSmtpTransportBuilder, SUBMISSIONS_PORT, authentication::Credentials},
+    transport::smtp::{
+        AsyncSmtpTransportBuilder, Error as SmtpError, SUBMISSIONS_PORT, authentication::Credentials,
+    },
 };
 #[cfg(test)]
 use mockall::automock;
@@ -48,6 +50,9 @@ const NUM_ENQUEUE_WORKERS: usize = 1;
 /// Time after which a claimed notification requires manual delivery review.
 const DELIVERY_PROCESSING_TIMEOUT: Duration = Duration::from_mins(15);
 
+/// Maximum number of attempts for one notification delivery claim.
+const DELIVERY_SEND_MAX_ATTEMPTS: usize = 3;
+
 /// Time to wait after a delivery error before retrying.
 const PAUSE_ON_DELIVERY_ERROR: Duration = Duration::from_secs(10);
 
@@ -59,6 +64,9 @@ const PAUSE_ON_DELIVERY_RECOVERY_ERROR: Duration = Duration::from_secs(30);
 
 /// Time to wait between delivery recovery checks.
 const PAUSE_ON_DELIVERY_RECOVERY_NONE: Duration = Duration::from_mins(1);
+
+/// Time to wait before retrying a transient notification delivery error.
+const PAUSE_ON_DELIVERY_RETRY: Duration = Duration::from_secs(5);
 
 /// Time to wait after an enqueue error before retrying.
 const PAUSE_ON_ENQUEUE_ERROR: Duration = Duration::from_secs(30);
@@ -279,7 +287,7 @@ impl DeliveryWorker {
         // Prepare and send the notification
         let err = match Self::prepare_content(&notification) {
             Ok((subject, body)) => match self
-                .send_email(
+                .send_email_with_retries(
                     &notification.email,
                     subject.as_str(),
                     body,
@@ -495,6 +503,49 @@ impl DeliveryWorker {
 
         Ok(())
     }
+
+    /// Send an email and retry transient transport errors before giving up.
+    async fn send_email_with_retries(
+        &self,
+        to_address: &str,
+        subject: &str,
+        body: String,
+        attachments: &[Attachment],
+    ) -> Result<()> {
+        let mut attempt = 1;
+        loop {
+            match self.send_email(to_address, subject, body.clone(), attachments).await {
+                Ok(()) => return Ok(()),
+                Err(err) if attempt < DELIVERY_SEND_MAX_ATTEMPTS && is_retryable_delivery_error(&err) => {
+                    warn!(
+                        %to_address,
+                        attempt,
+                        next_attempt = attempt + 1,
+                        max_attempts = DELIVERY_SEND_MAX_ATTEMPTS,
+                        error = %err,
+                        "transient notification email delivery error; retrying",
+                    );
+                    sleep(PAUSE_ON_DELIVERY_RETRY).await;
+                    attempt += 1;
+                }
+                Err(err) => return Err(err),
+            }
+        }
+    }
+}
+
+/// Return whether a delivery error may succeed on a later attempt.
+fn is_retryable_delivery_error(err: &anyhow::Error) -> bool {
+    err.chain().any(|source| {
+        // Prefer typed Lettre SMTP error classification when available
+        if let Some(smtp_err) = source.downcast_ref::<SmtpError>() {
+            return smtp_err.is_transient() || smtp_err.to_string().starts_with("Connection error");
+        }
+
+        // Fall back to persisted transport messages from wrapped errors
+        let message = source.to_string();
+        message.starts_with("Connection error")
+    })
 }
 
 /// Trait representing an async email sender used by the notifications workers.

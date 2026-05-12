@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::anyhow;
+use mockall::Sequence;
 use serde_json::json;
 use tokio_util::sync::CancellationToken;
 use uuid::Uuid;
@@ -746,6 +747,64 @@ async fn test_delivery_worker_send_email_blocks_non_whitelisted_recipient() {
         )
         .await
         .unwrap();
+}
+
+#[tokio::test(start_paused = true)]
+async fn test_delivery_worker_send_email_retries_transient_send_error() {
+    // Setup email config and sender mock
+    let cfg = sample_email_config(None);
+    let mut es = MockEmailSender::new();
+    let mut seq = Sequence::new();
+    es.expect_send().times(1).in_sequence(&mut seq).returning(|_| {
+        Box::pin(async {
+            Err(anyhow!(
+                "Connection error: Connection error: received fatal alert: UnexpectedMessage"
+            ))
+        })
+    });
+    es.expect_send()
+        .times(1)
+        .in_sequence(&mut seq)
+        .returning(|_| Box::pin(async { Ok(()) }));
+    let es: DynEmailSender = Arc::new(es);
+
+    // Setup worker and send email
+    let worker = sample_delivery_worker(cfg, es);
+    worker
+        .send_email_with_retries(
+            "notify@example.test",
+            "Subject line",
+            "<p>Body content</p>".to_string(),
+            &[],
+        )
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn test_delivery_worker_send_email_does_not_retry_unknown_network_error() {
+    // Setup email config and sender mock
+    let cfg = sample_email_config(None);
+    let mut es = MockEmailSender::new();
+    es.expect_send()
+        .times(1)
+        .returning(|_| Box::pin(async { Err(anyhow!("network error: connection reset by peer")) }));
+    let es: DynEmailSender = Arc::new(es);
+
+    // Setup worker and send email
+    let worker = sample_delivery_worker(cfg, es);
+    let err = worker
+        .send_email_with_retries(
+            "notify@example.test",
+            "Subject line",
+            "<p>Body content</p>".to_string(),
+            &[],
+        )
+        .await
+        .unwrap_err();
+
+    // Check the unknown network outcome is not retried
+    assert_eq!(err.to_string(), "network error: connection reset by peer");
 }
 
 #[test]
