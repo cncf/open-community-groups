@@ -12,8 +12,8 @@ use crate::{
 
 use super::{
     Attachment, DELIVERY_PROCESSING_TIMEOUT, DeliveryRecoveryWorker, DeliveryWorker, DynEmailSender,
-    EnqueueWorker, MockEmailSender, NewNotification, Notification, NotificationKind, NotificationsManager,
-    PgNotificationsManager,
+    EnqueueWorker, LettreEmailSender, MockEmailSender, NewNotification, Notification, NotificationKind,
+    NotificationsManager, PgNotificationsManager,
 };
 
 #[tokio::test]
@@ -746,6 +746,35 @@ async fn test_delivery_worker_send_email_blocks_non_whitelisted_recipient() {
         )
         .await
         .unwrap();
+}
+
+#[test]
+fn test_lettre_email_sender_uses_starttls_for_submission_port() {
+    // Setup email config
+    let cfg = sample_email_config(None);
+
+    // Build transport configuration
+    let builder = LettreEmailSender::transport_builder(&cfg).unwrap();
+    let debug = format!("{builder:?}");
+
+    // Check configured port and TLS mode
+    assert!(debug.contains("port: 587"), "{debug}");
+    assert!(debug.contains("tls: Required"), "{debug}");
+}
+
+#[test]
+fn test_lettre_email_sender_uses_wrapper_tls_for_submissions_port() {
+    // Setup email config
+    let mut cfg = sample_email_config(None);
+    cfg.smtp.port = 465;
+
+    // Build transport configuration
+    let builder = LettreEmailSender::transport_builder(&cfg).unwrap();
+    let debug = format!("{builder:?}");
+
+    // Check configured port and TLS mode
+    assert!(debug.contains("port: 465"), "{debug}");
+    assert!(debug.contains("tls: Wrapper"), "{debug}");
 }
 
 // Helpers.
