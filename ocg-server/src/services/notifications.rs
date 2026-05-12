@@ -11,7 +11,7 @@ use lettre::{
         Mailbox, MessageBuilder, MultiPart, SinglePart,
         header::{ContentDisposition, ContentType},
     },
-    transport::smtp::authentication::Credentials,
+    transport::smtp::{AsyncSmtpTransportBuilder, SUBMISSIONS_PORT, authentication::Credentials},
 };
 #[cfg(test)]
 use mockall::automock;
@@ -516,7 +516,7 @@ pub(crate) struct LettreEmailSender {
 impl LettreEmailSender {
     /// Create a new `LettreEmailSender` from the provided config.
     pub(crate) fn new(cfg: &EmailConfig) -> Result<Self> {
-        let transport = AsyncSmtpTransport::<Tokio1Executor>::relay(&cfg.smtp.host)?
+        let transport = Self::transport_builder(cfg)?
             .credentials(Credentials::new(
                 cfg.smtp.username.clone(),
                 cfg.smtp.password.clone(),
@@ -524,6 +524,18 @@ impl LettreEmailSender {
             .build();
 
         Ok(Self { transport })
+    }
+
+    /// Create a SMTP transport builder for the configured server.
+    fn transport_builder(cfg: &EmailConfig) -> Result<AsyncSmtpTransportBuilder> {
+        // Port 465 expects TLS before SMTP; other submission ports use STARTTLS.
+        let builder = if cfg.smtp.port == SUBMISSIONS_PORT {
+            AsyncSmtpTransport::<Tokio1Executor>::relay(&cfg.smtp.host)?
+        } else {
+            AsyncSmtpTransport::<Tokio1Executor>::starttls_relay(&cfg.smtp.host)?
+        };
+
+        Ok(builder.port(cfg.smtp.port))
     }
 }
 
