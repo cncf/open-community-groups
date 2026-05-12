@@ -21,12 +21,14 @@ export class TeamAddMember extends LitWrapper {
   /**
    * Component properties definition
    * @property {string} dashboardType - Dashboard context ("community").
+   * @property {string} disabledTooltip - Tooltip shown when inviting is disabled.
    * @property {boolean} _isOpen - Internal modal visibility state.
    * @property {Object|null} _selectedUser - Selected user object.
    */
   static properties = {
     dashboardType: { type: String, attribute: "dashboard-type" },
-    canManageTeam: { type: Boolean, attribute: "can-manage-team", reflect: true },
+    canManageTeam: { attribute: "can-manage-team", reflect: true },
+    disabledTooltip: { type: String, attribute: "disabled-tooltip" },
     selectedUsers: { type: Array, attribute: false },
     roleOptions: { type: Array, attribute: false },
     disabledUserIds: { type: Array, attribute: false },
@@ -39,6 +41,7 @@ export class TeamAddMember extends LitWrapper {
     super();
     this.canManageTeam = true;
     this.dashboardType = "community";
+    this.disabledTooltip = "Your role cannot invite team members.";
     this.selectedUsers = [];
     this.roleOptions = [];
     this.disabledUserIds = [];
@@ -52,6 +55,10 @@ export class TeamAddMember extends LitWrapper {
     super.connectedCallback();
     this._onKeydown = this._onKeydown.bind(this);
     document.addEventListener("keydown", this._onKeydown);
+
+    if (this.hasAttribute("can-manage-team")) {
+      this.canManageTeam = this.getAttribute("can-manage-team") !== "false";
+    }
 
     // Parse selected-users attribute (JSON array of user objects)
     const selectedAttr = this.getAttribute("selected-users");
@@ -109,7 +116,7 @@ export class TeamAddMember extends LitWrapper {
    * @private
    */
   _open() {
-    if (!this.canManageTeam) return;
+    if (!this._canManageTeam()) return;
     this._isOpen = true;
     lockBodyScroll();
     this.updateComplete.then(() => {
@@ -125,6 +132,15 @@ export class TeamAddMember extends LitWrapper {
   _close() {
     this._isOpen = false;
     unlockBodyScroll();
+  }
+
+  /**
+   * Returns whether the component should allow opening the invite modal.
+   * @returns {boolean} Whether the current user can manage the team
+   * @private
+   */
+  _canManageTeam() {
+    return this.canManageTeam === true || this.canManageTeam === "true";
   }
 
   /**
@@ -305,12 +321,10 @@ export class TeamAddMember extends LitWrapper {
   }
 
   render() {
-    if (!this.canManageTeam) {
+    if (!this._canManageTeam()) {
       return html`
         <div class="inline-flex items-center gap-3">
-          <button class="btn-primary" disabled title="Your role cannot invite team members.">
-            Add member
-          </button>
+          <button class="btn-primary" disabled title=${this.disabledTooltip}>Add member</button>
         </div>
       `;
     }

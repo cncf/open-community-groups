@@ -66,6 +66,8 @@ Group role permissions are fixed and enforced by middleware plus database checks
 Community role interaction:
 
 - Community `admin` and `groups-manager` also have group write permissions inside that community.
+- Communities can restrict group team management so only community `admin` and `groups-manager`
+  roles can add, update, or remove group team members.
 - Community `viewer` remains read-only at group scope.
 
 UI behavior:

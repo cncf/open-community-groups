@@ -89,6 +89,7 @@ select columns_are('community', array[
     'created_at',
     'description',
     'display_name',
+    'group_team_management_restricted',
     'logo_url',
     'name',
 

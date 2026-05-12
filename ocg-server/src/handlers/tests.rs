@@ -176,6 +176,7 @@ pub(crate) fn sample_community_full(community_id: Uuid) -> CommunityFull {
         created_at: 0,
         description: "Test community".to_string(),
         display_name: "Test".to_string(),
+        group_team_management_restricted: false,
         logo_url: "/static/images/placeholder_cncf.png".to_string(),
         name: "test".to_string(),
         ..Default::default()
@@ -314,6 +315,7 @@ pub(crate) fn sample_community_update() -> CommunityUpdate {
         banner_url: "https://example.test/banner.png".to_string(),
         description: "Updated description".to_string(),
         display_name: "Test".to_string(),
+        group_team_management_restricted: false,
         logo_url: "https://example.test/logo.png".to_string(),
         ..Default::default()
     }

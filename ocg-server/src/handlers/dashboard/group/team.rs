@@ -39,6 +39,11 @@ mod tests;
 const DASHBOARD_URL: &str = "/dashboard/group?tab=team";
 const PARTIAL_URL: &str = "/dashboard/group/team";
 
+// Tooltip text for disabled group team management controls.
+const GROUP_TEAM_MANAGEMENT_RESTRICTED_TOOLTIP: &str =
+    "Only community admins and groups managers can manage this group's team.";
+const GROUP_TEAM_MANAGEMENT_INSUFFICIENT_ROLE_TOOLTIP: &str = "Your role cannot manage this group's team.";
+
 // Pages handlers.
 
 /// Displays the list of group team members.
@@ -208,8 +213,21 @@ pub(crate) async fn prepare_list_page(
     // Prepare template
     let navigation_links =
         NavigationLinks::from_filters(&filters, results.total, DASHBOARD_URL, PARTIAL_URL)?;
+    let manage_team_disabled_message = if can_manage_team {
+        None
+    } else {
+        let community = db.get_community_full(community_id).await?;
+        let message = if community.group_team_management_restricted {
+            GROUP_TEAM_MANAGEMENT_RESTRICTED_TOOLTIP
+        } else {
+            GROUP_TEAM_MANAGEMENT_INSUFFICIENT_ROLE_TOOLTIP
+        };
+
+        Some(message.to_string())
+    };
     let template = team::ListPage {
         can_manage_team,
+        manage_team_disabled_message,
         members: results.members,
         navigation_links,
         roles,

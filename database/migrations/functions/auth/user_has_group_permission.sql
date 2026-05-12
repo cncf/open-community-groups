@@ -10,6 +10,7 @@ create or replace function user_has_group_permission(
         select 1
         from group_team gt
         join "group" g on g.group_id = gt.group_id
+        join community c on c.community_id = g.community_id
         join group_role_group_permission grp on grp.group_role_id = gt.role
         where g.community_id = p_community_id
           and g.deleted = false
@@ -17,6 +18,10 @@ create or replace function user_has_group_permission(
           and gt.user_id = p_user_id
           and gt.accepted = true
           and grp.group_permission_id = p_permission
+          and (
+              p_permission <> 'group.team.write'
+              or c.group_team_management_restricted = false
+          )
     )
     or exists (
         select 1

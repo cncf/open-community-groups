@@ -12,6 +12,10 @@ begin
         banner_url = coalesce(p_data->>'banner_url', banner_url),
         description = coalesce(p_data->>'description', description),
         display_name = coalesce(p_data->>'display_name', display_name),
+        group_team_management_restricted = coalesce(
+            (p_data->>'group_team_management_restricted')::boolean,
+            group_team_management_restricted
+        ),
         logo_url = coalesce(p_data->>'logo_url', logo_url),
 
         ad_banner_link_url = nullif(p_data->>'ad_banner_link_url', ''),

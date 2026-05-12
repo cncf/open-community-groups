@@ -13,9 +13,7 @@
     {% if can_manage_team -%}
       <team-add-member dashboard-type="community" selected-users='{{ members|json }}' role-options='{{ roles|json }}' can-manage-team="true"></team-add-member>
     {% else -%}
-      <button class="btn-primary"
-              disabled
-              title="Your role cannot invite team members.">Add member</button>
+      <team-add-member dashboard-type="community" can-manage-team="false" disabled-tooltip="Your role cannot invite team members."></team-add-member>
     {% endif -%}
   </div>
 </div>

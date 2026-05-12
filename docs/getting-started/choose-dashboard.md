@@ -72,6 +72,7 @@ Group team roles:
 UI behavior:
 
 - Controls are disabled when your role cannot perform an operation.
+- Communities can restrict group team management to community `admin` and `groups-manager` roles.
 - Server-side authorization still enforces permissions even if a request is sent manually.
 
 ## If a Dashboard Is Missing

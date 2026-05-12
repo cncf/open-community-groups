@@ -71,6 +71,22 @@ describe("team-add-member", () => {
     expect(element.querySelector("#team-add-form")).to.equal(null);
   });
 
+  it("renders the configured disabled tooltip", async () => {
+    const tooltip = "Only community admins and groups managers can manage this group's team.";
+    const element = await mountLitComponentWithAttributes("team-add-member", {
+      attributes: {
+        "can-manage-team": "false",
+        "disabled-tooltip": tooltip,
+      },
+    });
+
+    const button = element.querySelector("button");
+
+    expect(button.disabled).to.equal(true);
+    expect(button.title).to.equal(tooltip);
+    expect(element.querySelector("#team-add-form")).to.equal(null);
+  });
+
   it("opens the modal, locks body scroll, focuses the search field, and processes htmx", async () => {
     let focusCalls = 0;
     userSearchFieldPrototype.focusInput = () => {

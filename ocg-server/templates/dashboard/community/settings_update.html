@@ -5,7 +5,7 @@
 <form id="settings-form"
       hx-put="/dashboard/community/settings/update"
       hx-ext="no-empty-vals"
-      hx-exclude="[name=toggle_active]"
+      hx-exclude="[name=toggle_active], [name=toggle_group_team_management_restricted]"
       hx-target="#dashboard-content"
       hx-indicator="#dashboard-spinner, #community-settings-spinner"
       hx-disabled-elt="button[type=submit], #cancel-button">
@@ -60,6 +60,31 @@
             </p>
           </div>
           {# End description -#}
+
+          {# Group team management restriction -#}
+          <div class="col-span-full">
+            <label class="inline-flex items-center cursor-pointer">
+              <input id="toggle_group_team_management_restricted"
+                     name="toggle_group_team_management_restricted"
+                     value="restricted"
+                     type="checkbox"
+                     class="sr-only peer"
+                     {% if community.group_team_management_restricted -%}
+                       checked
+                     {% endif -%}>
+              <input type="hidden"
+                     id="group_team_management_restricted"
+                     name="group_team_management_restricted"
+                     value="{{ community.group_team_management_restricted }}">
+              <div class="relative w-11 h-6 bg-stone-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-stone-300 after:border after:border-stone-200 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500">
+              </div>
+              <span class="ms-3 text-sm font-medium text-stone-900">Restrict group team management to community admins and groups managers</span>
+            </label>
+            <p class="form-legend">
+              When enabled, group team members cannot add, update, or remove group team members unless they also have a qualifying community role.
+            </p>
+          </div>
+          {# End group team management restriction -#}
 
           {# Hidden layout field -#}
           <input type="hidden"
@@ -388,10 +413,21 @@
   import {
     handleHtmxResponse
   } from '/static/js/common/alerts.js';
+  import {
+    bindBooleanToggle
+  } from '/static/js/dashboard/group/page-form-state.js';
 
   const settingsForm = document.getElementById('settings-form');
+  const groupTeamRestrictionToggle = document.getElementById('toggle_group_team_management_restricted');
+  const groupTeamRestrictionInput = document.getElementById('group_team_management_restricted');
 
   if (settingsForm) {
+    bindBooleanToggle({
+      toggle: groupTeamRestrictionToggle,
+      hiddenInput: groupTeamRestrictionInput,
+      syncOnInit: true
+    });
+
     settingsForm.addEventListener('htmx:afterRequest', (e) => {
       if (e.detail.elt.id === 'settings-form') {
         const xhr = e.detail?.xhr;

@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(127);
+select plan(131);
 
 -- ============================================================================
 -- VARIABLES
@@ -17,6 +17,9 @@ select plan(127);
 \set otherCommunityGroupID '00000000-0000-0000-0000-000000000024'
 \set otherCommunityID '00000000-0000-0000-0000-000000000002'
 \set otherGroupID '00000000-0000-0000-0000-000000000022'
+\set restrictedCategoryID '00000000-0000-0000-0000-000000000033'
+\set restrictedCommunityID '00000000-0000-0000-0000-000000000003'
+\set restrictedGroupID '00000000-0000-0000-0000-000000000025'
 \set userCommunityAdminID '00000000-0000-0000-0000-000000000018'
 \set userCommunityGroupsManagerID '00000000-0000-0000-0000-000000000014'
 \set userCommunityPendingGroupsManagerID '00000000-0000-0000-0000-000000000019'
@@ -58,6 +61,27 @@ insert into community (
     'https://example.com/other-logo.png',
     'https://example.com/other-banner_mobile.png',
     'https://example.com/other-banner.png'
+);
+
+-- Restricted community
+insert into community (
+    community_id,
+    name,
+    display_name,
+    description,
+    logo_url,
+    banner_mobile_url,
+    banner_url,
+    group_team_management_restricted
+) values (
+    :'restrictedCommunityID',
+    'cloud-native-portland',
+    'Cloud Native Portland',
+    'Portland community for cloud native technologies',
+    'https://example.com/restricted-logo.png',
+    'https://example.com/restricted-banner_mobile.png',
+    'https://example.com/restricted-banner.png',
+    true
 );
 
 -- Users
@@ -160,6 +184,10 @@ insert into group_category (
     :'otherCategoryID',
     :'otherCommunityID',
     'Platform Engineering'
+), (
+    :'restrictedCategoryID',
+    :'restrictedCommunityID',
+    'Technology'
 );
 
 -- Group
@@ -198,6 +226,13 @@ insert into "group" (
     'Internal Developer Platform',
     'internal-developer-platform',
     'Platform engineering group in a different community'
+), (
+    :'restrictedGroupID',
+    :'restrictedCommunityID',
+    :'restrictedCategoryID',
+    'Restricted Kubernetes Study Group',
+    'restricted-kubernetes-study',
+    'Weekly Kubernetes study and discussion group in a restricted community'
 );
 
 -- Soft-delete one group for permission checks
@@ -252,6 +287,11 @@ insert into group_team (
     :'otherCommunityGroupID',
     'admin',
     :'userOtherGroupAdminID'
+), (
+    true,
+    :'restrictedGroupID',
+    'admin',
+    :'userGroupAdminID'
 );
 
 -- Community team membership
@@ -285,6 +325,16 @@ insert into community_team (
     :'communityID',
     'groups-manager',
     :'userDualRoleID'
+), (
+    true,
+    :'restrictedCommunityID',
+    'admin',
+    :'userCommunityAdminID'
+), (
+    true,
+    :'restrictedCommunityID',
+    'groups-manager',
+    :'userCommunityGroupsManagerID'
 );
 
 -- ============================================================================
@@ -549,6 +599,54 @@ select is(
 )
 from test_cases
 order by actor, permission;
+
+-- Should block group admins from managing teams in restricted communities
+select is(
+    user_has_group_permission(
+        :'restrictedCommunityID'::uuid,
+        :'restrictedGroupID'::uuid,
+        :'userGroupAdminID'::uuid,
+        'group.team.write'
+    ),
+    false,
+    'Group admin should not manage group team when community restriction is enabled'
+);
+
+-- Should allow community admins to manage teams in restricted communities
+select is(
+    user_has_group_permission(
+        :'restrictedCommunityID'::uuid,
+        :'restrictedGroupID'::uuid,
+        :'userCommunityAdminID'::uuid,
+        'group.team.write'
+    ),
+    true,
+    'Community admin should manage group team when community restriction is enabled'
+);
+
+-- Should allow community groups managers to manage teams in restricted communities
+select is(
+    user_has_group_permission(
+        :'restrictedCommunityID'::uuid,
+        :'restrictedGroupID'::uuid,
+        :'userCommunityGroupsManagerID'::uuid,
+        'group.team.write'
+    ),
+    true,
+    'Community groups manager should manage group team when community restriction is enabled'
+);
+
+-- Should keep group admin non-team permissions unchanged in restricted communities
+select is(
+    user_has_group_permission(
+        :'restrictedCommunityID'::uuid,
+        :'restrictedGroupID'::uuid,
+        :'userGroupAdminID'::uuid,
+        'group.events.write'
+    ),
+    true,
+    'Group admin event permissions should remain unchanged when community restriction is enabled'
+);
 
 -- ============================================================================
 -- CLEANUP
