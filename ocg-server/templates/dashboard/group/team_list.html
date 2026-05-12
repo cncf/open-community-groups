@@ -10,11 +10,11 @@
     {{ pagination::range_display(offset = offset.unwrap_or(0) , count = members.len(), total = total, label = "member") }}
   </div>
   <div>
-    {% if can_manage_team -%}
-      <team-add-member dashboard-type="group" selected-users='{{ members|json }}' role-options='{{ roles|json }}' can-manage-team="true"></team-add-member>
-    {% else -%}
-      <team-add-member dashboard-type="group" can-manage-team="false" disabled-tooltip="{{ self.manage_team_disabled_message() }}"></team-add-member>
+    <team-add-member dashboard-type="group" can-manage-team="{{ can_manage_team }}" disabled-tooltip="{{ self.manage_team_disabled_message() }}"
+    {% if can_manage_team %}
+      selected-users='{{ members|json }}' role-options='{{ roles|json }}'
     {% endif -%}
+    ></team-add-member>
   </div>
 </div>
 
