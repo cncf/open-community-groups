@@ -110,9 +110,7 @@
               hx-target="#dashboard-content"
               hx-indicator="#dashboard-spinner"
               hx-disabled-elt="#add-event-button, #cancel-button"
-              hx-exclude="[name=toggle_registration_required], [name=toggle_attendee_approval_required], [name=toggle_waitlist_enabled], [name=toggle_meeting_requested], [name=toggle_cfs_enabled], [name=toggle_event_reminder_enabled], [name=toggle_meeting_recording_published]">
-        Save
-      </button>
+              hx-exclude="input[type='checkbox'][name^='toggle_']">Save</button>
     </div>
   </div>
 
