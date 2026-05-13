@@ -98,6 +98,22 @@ describe("online-event-details", () => {
     expect(element._capacityWarning).to.include("Capacity (150) exceeds");
   });
 
+  it("shows shared pending copy for started unsynced automatic meetings", async () => {
+    const element = await mountLitComponent("online-event-details", {
+      meetingInSync: false,
+      meetingRequested: true,
+      startsAt: "2020-01-01T10:00",
+    });
+
+    const statusText = element.renderRoot.textContent.replace(/\s+/g, " ");
+
+    expect(statusText).to.include("Meeting not synced yet");
+    expect(statusText).to.include(
+      "We've requested a meeting for this event. The meeting details (join link and password) will appear here once synced",
+    );
+    expect(statusText).to.not.include("Meeting sync archived");
+  });
+
   it("does not copy synced automatic meeting details into manual fields", async () => {
     const element = await mountLitComponent("online-event-details", {
       meetingInSync: true,

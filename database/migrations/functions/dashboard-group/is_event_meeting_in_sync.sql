@@ -8,6 +8,7 @@ declare
     v_before_ends_at timestamptz := to_timestamp((p_before_event->>'ends_at')::double precision);
     v_before_host_ids uuid[];
     v_before_meeting_hosts text[] := case when p_before_event->'meeting_hosts' is not null then array(select jsonb_array_elements_text(p_before_event->'meeting_hosts')) else null end;
+    v_before_meeting_in_sync boolean := (p_before_event->>'meeting_in_sync')::boolean;
     v_before_meeting_provider_id text := p_before_event->>'meeting_provider_id';
     v_before_meeting_recording_requested boolean := coalesce((p_before_event->>'meeting_recording_requested')::boolean, true);
     v_before_meeting_requested boolean := coalesce((p_before_event->>'meeting_requested')::boolean, false);
@@ -57,6 +58,18 @@ begin
     -- requested to determine if we need to trigger deletion
     if v_after_meeting_requested is distinct from true then
         return case when v_before_meeting_requested = true then false else null end;
+    end if;
+
+    -- Preserve real pending/error states instead of hiding unsynced work
+    if v_before_meeting_requested = true and v_before_meeting_in_sync = false then
+        return false;
+    end if;
+
+    -- Provider create/update sync is not claimed after the meeting starts
+    if v_before_meeting_requested = true
+       and v_before_meeting_in_sync = true
+       and v_before_starts_at <= current_timestamp then
+        return true;
     end if;
 
     -- Determine if all relevant fields remain in sync
