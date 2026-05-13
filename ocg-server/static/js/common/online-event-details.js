@@ -8,9 +8,9 @@ import {
 } from "/static/js/dashboard/group/meeting-validations.js";
 import { getCommonAlertOptions, showErrorAlert, showInfoAlert } from "/static/js/common/alerts.js";
 import {
-  getMeetingRecordingVisibilityText,
   MEETING_RECORDING_URL_LEGEND,
-} from "/static/js/common/meeting-recordings.js";
+  MEETING_RECORDING_VISIBILITY_LEGEND,
+} from "/static/js/common/common.js";
 import "/static/js/common/multiple-inputs.js";
 
 /**
@@ -932,13 +932,35 @@ export class OnlineEventDetails extends LitWrapper {
     `;
   }
 
+  _renderRecordingVisibilityControl() {
+    return html`
+      <div class="space-y-2">
+        <label class="inline-flex items-center cursor-pointer">
+          <input
+            type="checkbox"
+            class="sr-only peer"
+            .checked="${this._recordingPublished}"
+            @change="${this._handleRecordingPublishedChange}"
+            ?disabled=${this.disabled}
+          />
+          <span
+            class="relative w-11 h-6 bg-stone-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-stone-300 after:border after:border-stone-200 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500"
+          ></span>
+          <span class="ms-3 text-sm font-medium text-stone-900">Publish recording publicly</span>
+        </label>
+        <p class="form-legend">${MEETING_RECORDING_VISIBILITY_LEGEND}</p>
+      </div>
+    `;
+  }
+
   /**
-   * Renders recording visibility, raw provider URL, and final URL controls.
+   * Renders raw provider URL, final URL, and optional visibility controls.
    * @param {string} disabledClasses - CSS classes applied to disabled fields
    * @param {string} inputWidthClass - Optional width class for input wrappers
+   * @param {boolean} showVisibilityControl - Whether to render public visibility controls
    * @returns {import('lit').TemplateResult} Recording controls
    */
-  _renderRecordingControls(disabledClasses, inputWidthClass = "") {
+  _renderRecordingControls(disabledClasses, inputWidthClass = "", showVisibilityControl = true) {
     return html`
       <div class="space-y-4">
         ${this._rawRecordingUrl
@@ -956,7 +978,7 @@ export class OnlineEventDetails extends LitWrapper {
                     readonly
                   />
                 </div>
-                <p class="form-legend">Read-only recording synced from the meeting provider.</p>
+                <p class="form-legend">Original recording from the meeting provider.</p>
               </div>
             `
           : ""}
@@ -979,28 +1001,7 @@ export class OnlineEventDetails extends LitWrapper {
           <p class="form-legend">${MEETING_RECORDING_URL_LEGEND}</p>
         </div>
 
-        <div class="space-y-2">
-          <label class="inline-flex items-center cursor-pointer">
-            <input
-              type="checkbox"
-              class="sr-only peer"
-              .checked="${this._recordingPublished}"
-              @change="${this._handleRecordingPublishedChange}"
-              ?disabled=${this.disabled}
-            />
-            <span
-              class="relative w-11 h-6 bg-stone-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-stone-300 after:border after:border-stone-200 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500"
-            ></span>
-            <span class="ms-3 text-sm font-medium text-stone-900">Publish recording publicly</span>
-          </label>
-          <p class="form-legend">
-            ${getMeetingRecordingVisibilityText({
-              published: this._recordingPublished,
-              finalUrl: this._recordingUrl,
-              rawUrl: this._rawRecordingUrl,
-            })}
-          </p>
-        </div>
+        ${showVisibilityControl ? this._renderRecordingVisibilityControl() : ""}
       </div>
     `;
   }
@@ -1077,7 +1078,7 @@ export class OnlineEventDetails extends LitWrapper {
 
         ${this._createMeeting
           ? html`
-              <div class="rounded-lg border border-stone-100 bg-stone-50 p-3 space-y-7">
+              <div class="space-y-7">
                 <div class="space-y-2 lg:w-1/2">
                   <label class="form-label text-sm font-medium text-stone-900">Meeting provider</label>
                   <select
@@ -1111,23 +1112,24 @@ export class OnlineEventDetails extends LitWrapper {
                 </div>
                 ${!this._isSession()
                   ? html`
-                      <div class="space-y-2">
-                        <label class="inline-flex items-center cursor-pointer">
-                          <input
-                            type="checkbox"
-                            class="sr-only peer"
-                            .checked="${this._recordingRequested}"
-                            @change="${this._handleRecordingRequestedChange}"
-                            ?disabled=${this.disabled}
-                          />
-                          <span
-                            class="relative w-11 h-6 bg-stone-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-stone-300 after:border after:border-stone-200 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500"
-                          ></span>
-                          <span class="ms-3 text-sm font-medium text-stone-900">Record meeting</span>
-                        </label>
-                        <p class="form-legend">
-                          When enabled, Zoom will automatically record this meeting to the cloud.
-                        </p>
+                      <div class="space-y-4">
+                        <div class="space-y-2">
+                          <label class="inline-flex items-center cursor-pointer">
+                            <input
+                              type="checkbox"
+                              class="sr-only peer"
+                              .checked="${this._recordingRequested}"
+                              @change="${this._handleRecordingRequestedChange}"
+                              ?disabled=${this.disabled}
+                            />
+                            <span
+                              class="relative w-11 h-6 bg-stone-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-stone-300 after:border after:border-stone-200 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500"
+                            ></span>
+                            <span class="ms-3 text-sm font-medium text-stone-900">Record meeting</span>
+                          </label>
+                          <p class="form-legend">Enable automatic recording for this meeting.</p>
+                        </div>
+                        ${this._renderRecordingVisibilityControl()}
                       </div>
                     `
                   : ""}
@@ -1137,6 +1139,7 @@ export class OnlineEventDetails extends LitWrapper {
         ${this._renderRecordingControls(
           this.disabled ? "bg-stone-100 text-stone-500 cursor-not-allowed" : "",
           "lg:w-1/2",
+          this._isSession() || !this._createMeeting,
         )}
       </div>
     `;

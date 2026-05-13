@@ -6,15 +6,13 @@ import {
   lockBodyScroll,
   unlockBodyScroll,
   computeUserInitials,
+  MEETING_RECORDING_URL_LEGEND,
+  MEETING_RECORDING_VISIBILITY_LEGEND,
 } from "/static/js/common/common.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import "/static/js/common/logo-image.js";
 import "/static/js/common/speakers-selector.js";
 import "/static/js/common/online-event-details.js";
-import {
-  getMeetingRecordingVisibilityText,
-  MEETING_RECORDING_URL_LEGEND,
-} from "/static/js/common/meeting-recordings.js";
 import { normalizeSpeakers } from "/static/js/dashboard/event/speaker-utils.js";
 import { DEFAULT_MEETING_PROVIDER } from "/static/js/dashboard/group/meeting-validations.js";
 
@@ -1716,9 +1714,7 @@ class SessionItem extends LitWrapper {
                                       readonly
                                     />
                                   </div>
-                                  <p class="form-legend">
-                                    Read-only recording synced from the meeting provider.
-                                  </p>
+                                  <p class="form-legend">Original recording from the meeting provider.</p>
                                 </div>
                               `
                             : ""}
@@ -1760,13 +1756,7 @@ class SessionItem extends LitWrapper {
                                 Publish recording publicly
                               </span>
                             </label>
-                            <p class="form-legend">
-                              ${getMeetingRecordingVisibilityText({
-                                published: this.data.meeting_recording_published,
-                                finalUrl: this.data.meeting_recording_url,
-                                rawUrl: this.data.meeting_recording_raw_url,
-                              })}
-                            </p>
+                            <p class="form-legend">${MEETING_RECORDING_VISIBILITY_LEGEND}</p>
                           </div>
                         </div>
                       </div>

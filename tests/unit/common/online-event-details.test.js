@@ -65,7 +65,9 @@ describe("online-event-details", () => {
     expect(element.getMeetingData()).to.include({
       meeting_recording_published: false,
     });
-    expect(element.textContent).to.include("Public visitors will not see a recording link.");
+    expect(element.textContent).to.include(
+      "Controls whether public visitors can see a recording link when one is available.",
+    );
 
     element._handleRecordingPublishedChange({ target: { checked: true } });
     await element.updateComplete;
@@ -73,7 +75,9 @@ describe("online-event-details", () => {
     expect(element.getMeetingData()).to.include({
       meeting_recording_published: true,
     });
-    expect(element.textContent).to.include("Public visitors will see the original provider recording.");
+    expect(element.textContent).to.include(
+      "Controls whether public visitors can see a recording link when one is available.",
+    );
   });
 
   it("shows a capacity warning when automatic meeting capacity is exceeded", async () => {
