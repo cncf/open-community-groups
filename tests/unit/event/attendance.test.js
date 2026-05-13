@@ -397,6 +397,22 @@ describe("event attendance", () => {
     expect(signinButton.classList.contains("hidden")).to.equal(true);
   });
 
+  it("shows a no-capacity attend button when event capacity is zero", () => {
+    const { checker, attendButton } = renderAttendanceDom({
+      capacity: "0",
+      remainingCapacity: "0",
+      waitlistEnabled: "false",
+    });
+
+    dispatchHtmxAfterRequest(checker, {
+      responseText: JSON.stringify({ status: "guest" }),
+    });
+
+    expect(attendButton.classList.contains("hidden")).to.equal(false);
+    expect(attendButton.disabled).to.equal(true);
+    expect(attendButton.title).to.equal("This event has no attendee capacity.");
+  });
+
   it("shows remaining seats instead of waitlist while capacity is still available", async () => {
     const { availabilityCapacity, availabilityCaptions } = renderAttendanceDom({
       availabilityUrl: "/events/test-event/availability",

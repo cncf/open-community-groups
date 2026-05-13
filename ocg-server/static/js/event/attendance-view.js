@@ -31,6 +31,7 @@ const ATTEND_EVENT_ICON = "icon-user-plus";
 const CANCEL_ACTION_ICON = "icon-cancel";
 const REQUEST_INVITATION_ICON = "icon-request-invitation";
 const CANCELED_EVENT_TITLE = "This event has been canceled.";
+const NO_CAPACITY_TITLE = "This event has no attendee capacity.";
 const PAST_EVENT_TITLE = "You cannot change attendance because the event has already started.";
 const TICKETS_UNAVAILABLE_TITLE = "Tickets are not currently available for this event.";
 const SOLD_OUT_TITLE = "This event is sold out.";
@@ -310,6 +311,15 @@ const getAttendState = (meta) => {
     });
   }
 
+  if (!meta.isTicketed && meta.hasNoCapacity && !meta.isPastEvent) {
+    return {
+      disabled: true,
+      icon: ATTEND_EVENT_ICON,
+      label: ATTEND_EVENT_LABEL,
+      title: NO_CAPACITY_TITLE,
+    };
+  }
+
   if (!meta.isTicketed && meta.isSoldOut && !meta.isPastEvent) {
     if (meta.waitlistEnabled) {
       return {
@@ -416,6 +426,11 @@ export const showSignedOutAttendanceState = (container, meta) => {
     return;
   }
 
+  if (!meta.isTicketed && meta.hasNoCapacity && !meta.isPastEvent) {
+    renderControl(attendButton, getAttendState(meta));
+    return;
+  }
+
   if (meta.isSoldOut && !meta.waitlistEnabled && !meta.attendeeApprovalRequired) {
     renderControl(attendButton, getAttendState(meta));
     return;
@@ -455,6 +470,16 @@ export const showGuestAttendanceState = (container, meta) => {
  * @param {{isPastEvent: boolean}} meta - Attendance metadata
  */
 export const showInvitationApprovedAttendanceState = (container, meta) => {
+  if (!meta.isPastEvent && meta.hasNoCapacity) {
+    showPrimaryAttendanceState(container, meta, "attendButton", {
+      disabled: true,
+      icon: ATTEND_EVENT_ICON,
+      label: ATTEND_EVENT_LABEL,
+      title: NO_CAPACITY_TITLE,
+    });
+    return;
+  }
+
   if (!meta.isPastEvent && meta.isSoldOut) {
     showPrimaryAttendanceState(container, meta, "attendButton", {
       disabled: true,
