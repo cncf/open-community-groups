@@ -7,6 +7,10 @@ import {
   DEFAULT_MEETING_PROVIDER,
 } from "/static/js/dashboard/group/meeting-validations.js";
 import { getCommonAlertOptions, showErrorAlert, showInfoAlert } from "/static/js/common/alerts.js";
+import {
+  getMeetingRecordingVisibilityText,
+  MEETING_RECORDING_URL_LEGEND,
+} from "/static/js/common/meeting-recordings.js";
 import "/static/js/common/multiple-inputs.js";
 
 /**
@@ -243,33 +247,6 @@ export class OnlineEventDetails extends LitWrapper {
       return "By default, hosts and session speakers are included in this host email list. Add extra emails when needed (optional). These emails are saved for coordination and are not assigned as Zoom hosts automatically.";
     }
     return "By default, hosts and event speakers are included in this host email list. Add extra emails when needed (optional). These emails are saved for coordination and are not assigned as Zoom hosts automatically.";
-  }
-
-  _getRecordingLegend() {
-    if (this._mode === "automatic") {
-      return "Optional processed recording that takes priority over the original provider recording.";
-    }
-
-    return "Optional processed recording that takes priority over the original provider recording.";
-  }
-
-  _getRecordingVisibilityText() {
-    const hasFinalUrl = Boolean((this._recordingUrl || "").trim());
-    const hasRawUrl = Boolean((this._rawRecordingUrl || "").trim());
-
-    if (this._recordingPublished === false) {
-      return "Public visitors will not see a recording link.";
-    }
-
-    if (hasFinalUrl) {
-      return "Public visitors will see the final public recording URL.";
-    }
-
-    if (hasRawUrl) {
-      return "Public visitors will see the original provider recording.";
-    }
-
-    return "Public visitors will not see a recording link until a recording URL is available.";
   }
 
   /**
@@ -999,7 +976,7 @@ export class OnlineEventDetails extends LitWrapper {
               ?disabled=${this.disabled}
             />
           </div>
-          <p class="form-legend">${this._getRecordingLegend()}</p>
+          <p class="form-legend">${MEETING_RECORDING_URL_LEGEND}</p>
         </div>
 
         <div class="space-y-2">
@@ -1016,7 +993,13 @@ export class OnlineEventDetails extends LitWrapper {
             ></span>
             <span class="ms-3 text-sm font-medium text-stone-900">Publish recording publicly</span>
           </label>
-          <p class="form-legend">${this._getRecordingVisibilityText()}</p>
+          <p class="form-legend">
+            ${getMeetingRecordingVisibilityText({
+              published: this._recordingPublished,
+              finalUrl: this._recordingUrl,
+              rawUrl: this._rawRecordingUrl,
+            })}
+          </p>
         </div>
       </div>
     `;

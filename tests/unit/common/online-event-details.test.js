@@ -65,18 +65,15 @@ describe("online-event-details", () => {
     expect(element.getMeetingData()).to.include({
       meeting_recording_published: false,
     });
-    expect(element._getRecordingVisibilityText()).to.equal(
-      "Public visitors will not see a recording link.",
-    );
+    expect(element.textContent).to.include("Public visitors will not see a recording link.");
 
     element._handleRecordingPublishedChange({ target: { checked: true } });
+    await element.updateComplete;
 
     expect(element.getMeetingData()).to.include({
       meeting_recording_published: true,
     });
-    expect(element._getRecordingVisibilityText()).to.equal(
-      "Public visitors will see the original provider recording.",
-    );
+    expect(element.textContent).to.include("Public visitors will see the original provider recording.");
   });
 
   it("shows a capacity warning when automatic meeting capacity is exceeded", async () => {
