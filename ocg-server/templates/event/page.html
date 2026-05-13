@@ -349,7 +349,7 @@
         <div class="text-stone-500 text-sm/6 markdown">{{ event.description|md_to_html|safe }}</div>
         {% let meeting_join_instructions = event.meeting_join_instructions -%}
         {% let meeting_join_url = event.meeting_join_url -%}
-        {% let meeting_recording_url = event.meeting_recording_url -%}
+        {% let meeting_recording_url = event.meeting_recording_public_url -%}
         {% let has_instructions = meeting_join_instructions.is_some() -%}
         {% let has_join = meeting_join_url.is_some() -%}
         {% let has_recording = meeting_recording_url.is_some() -%}
@@ -675,7 +675,7 @@
     {% endif -%}
     {% let has_instructions_session = session.meeting_join_instructions.is_some() -%}
     {% let has_join_session = session.meeting_join_url.is_some() -%}
-    {% let has_recording_session = session.meeting_recording_url.is_some() -%}
+    {% let has_recording_session = session.meeting_recording_public_url.is_some() -%}
     {% let show_join_instructions_session = has_instructions_session && !event.is_past() && !event.canceled -%}
     {% let show_join_link_session = has_join_session && !event.is_past() && !event.canceled -%}
     {% let show_recording_link_session = has_recording_session && event.is_past() -%}
@@ -705,7 +705,7 @@
             {% endif -%}
           {% endif -%}
           {% if show_recording_link_session -%}
-            {% if let Some(meeting_recording_url) = &session.meeting_recording_url -%}
+            {% if let Some(meeting_recording_url) = &session.meeting_recording_public_url -%}
               <a href="{{ meeting_recording_url }}"
                  target="_blank"
                  rel="noopener noreferrer"

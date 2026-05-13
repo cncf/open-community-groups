@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(33);
+select plan(34);
 
 -- ============================================================================
 -- VARIABLES
@@ -114,6 +114,7 @@ select ok(
         "sessions": {},
         "timezone": "America/New_York",
         "attendee_approval_required": false,
+        "meeting_recording_published": false,
         "meeting_recording_requested": true,
         "waitlist_count": 0,
         "waitlist_enabled": false
@@ -275,6 +276,7 @@ select ok(
         "meeting_hosts": ["host1@example.com", "host2@example.com"],
         "meeting_join_instructions": "Use the waiting room display name from your ticket.",
         "meeting_join_url": "https://youtube.com/live",
+        "meeting_recording_published": false,
         "meeting_recording_requested": true,
         "meeting_recording_url": "https://youtube.com/recording",
         "meetup_url": "https://meetup.com/event",
@@ -469,6 +471,7 @@ select is(
         select jsonb_build_object(
             'event', jsonb_build_object(
                 'meeting_hosts', meeting_hosts,
+                'meeting_recording_published', meeting_recording_published,
                 'meeting_recording_requested', meeting_recording_requested,
                 'meeting_requested', meeting_requested,
                 'meeting_in_sync', meeting_in_sync
@@ -476,6 +479,7 @@ select is(
             'session', (
                 select jsonb_build_object(
                     'meeting_hosts', meeting_hosts,
+                    'meeting_recording_published', meeting_recording_published,
                     'meeting_requested', meeting_requested,
                     'meeting_in_sync', meeting_in_sync
                 )
@@ -489,12 +493,14 @@ select is(
     '{
         "event": {
             "meeting_hosts": ["event-alt-host@example.com"],
+            "meeting_recording_published": false,
             "meeting_recording_requested": true,
             "meeting_requested": true,
             "meeting_in_sync": false
         },
         "session": {
             "meeting_hosts": ["session-alt-host@example.com"],
+            "meeting_recording_published": false,
             "meeting_requested": true,
             "meeting_in_sync": false
         }
@@ -516,11 +522,16 @@ select add_event(
         "starts_at": "2030-03-02T10:00:00",
         "ends_at": "2030-03-02T11:30:00",
         "meeting_provider_id": "zoom",
+        "meeting_recording_published": false,
         "meeting_recording_requested": false,
         "meeting_requested": true
     }'::jsonb
 ) as "recordingDisabledEventID" \gset
-
+select is(
+    (select meeting_recording_published from event where event_id = :'recordingDisabledEventID'::uuid),
+    false,
+    'Should persist event meeting recording visibility when unpublished'
+);
 select is(
     (select meeting_recording_requested from event where event_id = :'recordingDisabledEventID'::uuid),
     false,

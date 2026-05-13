@@ -286,9 +286,15 @@ pub struct EventFull {
     pub meeting_password: Option<String>,
     /// Desired meeting provider for this event.
     pub meeting_provider: Option<MeetingProvider>,
+    /// Public URL for the meeting recording.
+    pub meeting_recording_public_url: Option<String>,
+    /// Whether the meeting recording is publicly visible.
+    pub meeting_recording_published: Option<bool>,
+    /// Read-only raw URL for synced provider recording.
+    pub meeting_recording_raw_url: Option<String>,
     /// Whether automatic event meetings should be recorded.
     pub meeting_recording_requested: Option<bool>,
-    /// URL for meeting recording.
+    /// Organizer-managed final URL for meeting recording.
     pub meeting_recording_url: Option<String>,
     /// Whether the event requests a meeting.
     pub meeting_requested: Option<bool>,
@@ -716,7 +722,13 @@ pub struct Session {
     pub meeting_password: Option<String>,
     /// Desired meeting provider for this session.
     pub meeting_provider: Option<MeetingProvider>,
-    /// URL for meeting recording.
+    /// Public URL for the meeting recording.
+    pub meeting_recording_public_url: Option<String>,
+    /// Whether the meeting recording is publicly visible.
+    pub meeting_recording_published: Option<bool>,
+    /// Read-only raw URL for synced provider recording.
+    pub meeting_recording_raw_url: Option<String>,
+    /// Organizer-managed final URL for meeting recording.
     pub meeting_recording_url: Option<String>,
     /// Whether the session requests a meeting.
     pub meeting_requested: Option<bool>,

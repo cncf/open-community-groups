@@ -110,7 +110,7 @@
               hx-target="#dashboard-content"
               hx-indicator="#dashboard-spinner"
               hx-disabled-elt="#add-event-button, #cancel-button"
-              hx-exclude="[name=toggle_registration_required], [name=toggle_attendee_approval_required], [name=toggle_waitlist_enabled], [name=toggle_meeting_requested], [name=toggle_cfs_enabled], [name=toggle_event_reminder_enabled]">
+              hx-exclude="[name=toggle_registration_required], [name=toggle_attendee_approval_required], [name=toggle_waitlist_enabled], [name=toggle_meeting_requested], [name=toggle_cfs_enabled], [name=toggle_event_reminder_enabled], [name=toggle_meeting_recording_published]">
         Save
       </button>
     </div>
@@ -640,7 +640,7 @@
                 <p class="form-legend">Shown with the meeting details on the public event page.</p>
               </div>
               <div class="space-y-2">
-                <label for="meeting_recording_url" class="form-label">Recording URL (optional)</label>
+                <label for="meeting_recording_url" class="form-label">Final public recording URL (optional)</label>
                 <div class="mt-2">
                   <input type="url"
                          id="meeting_recording_url"
@@ -648,7 +648,24 @@
                          class="input-primary"
                          placeholder="https://youtube.com/watch?v=...">
                 </div>
-                <p class="form-legend">Add a recording link now or after the event.</p>
+                <p class="form-legend">
+                  Optional processed recording that takes priority over the original provider recording.
+                </p>
+              </div>
+              <div class="space-y-2">
+                <label class="inline-flex items-center cursor-pointer">
+                  <input id="toggle_meeting_recording_published"
+                         name="toggle_meeting_recording_published"
+                         type="checkbox"
+                         class="sr-only peer">
+                  <input type="hidden"
+                         id="meeting_recording_published"
+                         name="meeting_recording_published"
+                         value="false">
+                  <span class="relative w-11 h-6 bg-stone-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-stone-300 after:border after:border-stone-200 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500"></span>
+                  <span class="ms-3 text-sm font-medium text-stone-900">Publish recording publicly</span>
+                </label>
+                <p class="form-legend">Public visitors will not see a recording link.</p>
               </div>
             </div>
           </div>

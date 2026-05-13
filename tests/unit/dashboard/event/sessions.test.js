@@ -132,6 +132,7 @@ describe("sessions-section", () => {
           cfs_submission_id: "sub-1",
           meeting_requested: true,
           meeting_provider_id: "",
+          meeting_recording_published: false,
           meeting_join_instructions: "Automatic instructions should clear",
           meeting_join_url: "https://join.example",
           meeting_recording_url: "https://recording.example",
@@ -151,6 +152,7 @@ describe("sessions-section", () => {
           meeting_provider_id: "teams",
           meeting_join_instructions: "Manual instructions",
           meeting_join_url: "https://teams.example",
+          meeting_recording_published: true,
           meeting_recording_url: "https://recording.example/manual",
           speakers: [{ user_id: "speaker-2", featured: true }],
         },
@@ -162,6 +164,9 @@ describe("sessions-section", () => {
     expect(element.querySelector('input[name="sessions[0][description]"]')?.value).to.equal("");
     expect(element.querySelector('input[name="sessions[0][meeting_join_instructions]"]')?.value).to.equal("");
     expect(element.querySelector('input[name="sessions[0][meeting_join_url]"]')?.value).to.equal("");
+    expect(element.querySelector('input[name="sessions[0][meeting_recording_published]"]')?.value).to.equal(
+      "false",
+    );
     expect(element.querySelector('input[name="sessions[0][meeting_recording_url]"]')?.value).to.equal(
       "https://recording.example",
     );
@@ -173,6 +178,9 @@ describe("sessions-section", () => {
     );
     expect(element.querySelector('input[name="sessions[1][meeting_join_instructions]"]')?.value).to.equal(
       "Manual instructions",
+    );
+    expect(element.querySelector('input[name="sessions[1][meeting_recording_published]"]')?.value).to.equal(
+      "true",
     );
     expect(element.querySelector('input[name="sessions[1][meeting_provider_id]"]')?.value).to.equal("teams");
     expect(element.querySelector('input[name="sessions[1][speakers][0][user_id]"]')?.value).to.equal(

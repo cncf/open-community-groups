@@ -56,6 +56,11 @@ begin
                     meeting_join_instructions = nullif(v_session->>'meeting_join_instructions', ''),
                     meeting_join_url = nullif(v_session->>'meeting_join_url', ''),
                     meeting_provider_id = nullif(v_session->>'meeting_provider_id', ''),
+                    meeting_recording_published = coalesce(
+                        (v_session->>'meeting_recording_published')::boolean,
+                        (v_session_before->>'meeting_recording_published')::boolean,
+                        false
+                    ),
                     meeting_recording_url = nullif(v_session->>'meeting_recording_url', ''),
                     meeting_requested = (v_session->>'meeting_requested')::boolean,
                     name = v_session->>'name',
@@ -84,6 +89,7 @@ begin
                     meeting_join_instructions,
                     meeting_join_url,
                     meeting_provider_id,
+                    meeting_recording_published,
                     meeting_recording_url,
                     meeting_requested
                 ) values (
@@ -103,6 +109,7 @@ begin
                     nullif(v_session->>'meeting_join_instructions', ''),
                     nullif(v_session->>'meeting_join_url', ''),
                     nullif(v_session->>'meeting_provider_id', ''),
+                    coalesce((v_session->>'meeting_recording_published')::boolean, false),
                     nullif(v_session->>'meeting_recording_url', ''),
                     (v_session->>'meeting_requested')::boolean
                 )

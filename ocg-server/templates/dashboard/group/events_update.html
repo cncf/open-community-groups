@@ -172,7 +172,7 @@
               {% else if !can_manage_events -%}
                 disabled title="Your role cannot update events."
               {% endif -%}
-              hx-exclude="[name=toggle_registration_required], [name=toggle_attendee_approval_required], [name=toggle_waitlist_enabled], [name=toggle_meeting_requested], [name=toggle_cfs_enabled], [name=toggle_event_reminder_enabled]">
+              hx-exclude="[name=toggle_registration_required], [name=toggle_attendee_approval_required], [name=toggle_waitlist_enabled], [name=toggle_meeting_requested], [name=toggle_cfs_enabled], [name=toggle_event_reminder_enabled], [name=toggle_meeting_recording_published]">
         Save
       </button>
     </div>
@@ -697,6 +697,10 @@
           {% if let Some(meeting_recording_url) = &event.meeting_recording_url %}
             meeting-recording-url="{{ meeting_recording_url }}"
           {% endif %}
+          meeting-recording-published="{{ event.meeting_recording_published.unwrap_or(false) }}"
+          {% if let Some(meeting_recording_raw_url) = &event.meeting_recording_raw_url %}
+            meeting-recording-raw-url="{{ meeting_recording_raw_url }}"
+          {% endif %}
 
           {% if let Some(meeting_recording_requested) = &event.meeting_recording_requested %}
             meeting-recording-requested="{{ meeting_recording_requested }}"
@@ -745,8 +749,21 @@
                 </div>
                 <p class="form-legend">Shown with the meeting details on the public event page.</p>
               </div>
+              {% if let Some(meeting_recording_raw_url) = &event.meeting_recording_raw_url %}
+                <div class="space-y-2">
+                  <label for="meeting_recording_raw_url" class="form-label">Original provider recording</label>
+                  <div class="mt-2">
+                    <input type="url"
+                           id="meeting_recording_raw_url"
+                           class="input-primary bg-stone-100 text-stone-600 cursor-not-allowed"
+                           value="{{ meeting_recording_raw_url }}"
+                           readonly>
+                  </div>
+                  <p class="form-legend">Read-only recording synced from the meeting provider.</p>
+                </div>
+              {% endif %}
               <div class="space-y-2">
-                <label for="meeting_recording_url" class="form-label">Recording URL (optional)</label>
+                <label for="meeting_recording_url" class="form-label">Final public recording URL (optional)</label>
                 <div class="mt-2">
                   <input type="url"
                          id="meeting_recording_url"
@@ -757,7 +774,36 @@
                            value="{{ meeting_recording_url }}"
                          {% endif %}>
                 </div>
-                <p class="form-legend">Add a recording link now or after the event.</p>
+                <p class="form-legend">
+                  Optional processed recording that takes priority over the original provider recording.
+                </p>
+              </div>
+              <div class="space-y-2">
+                <label class="inline-flex items-center cursor-pointer">
+                  <input type="checkbox"
+                         id="toggle_meeting_recording_published"
+                         name="toggle_meeting_recording_published"
+                         class="sr-only peer"
+                         value="true"
+                         {% if event.meeting_recording_published.unwrap_or(false) %}checked{% endif %}>
+                  <input type="hidden"
+                         id="meeting_recording_published"
+                         name="meeting_recording_published"
+                         value="{{ event.meeting_recording_published.unwrap_or(false) }}">
+                  <span class="relative w-11 h-6 bg-stone-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-stone-300 after:border after:border-stone-200 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500"></span>
+                  <span class="ms-3 text-sm font-medium text-stone-900">Publish recording publicly</span>
+                </label>
+                <p class="form-legend">
+                  {% if !event.meeting_recording_published.unwrap_or(false) -%}
+                    Public visitors will not see a recording link.
+                  {% else if event.meeting_recording_url.is_some() -%}
+                    Public visitors will see the final public recording URL.
+                  {% else if event.meeting_recording_raw_url.is_some() -%}
+                    Public visitors will see the original provider recording.
+                  {% else -%}
+                    Public visitors will not see a recording link until a recording URL is available.
+                  {% endif -%}
+                </p>
               </div>
             </div>
           </div>

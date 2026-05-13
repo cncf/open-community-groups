@@ -380,6 +380,11 @@ export const initializeCommonEventPageToggles = ({
     hiddenInput: queryById("event_reminder_enabled"),
   });
 
+  bindBooleanToggle({
+    toggle: queryById("toggle_meeting_recording_published"),
+    hiddenInput: queryById("meeting_recording_published"),
+  });
+
   if (toggleCfsEnabled) {
     if (cfsEnabledInput) {
       cfsEnabledInput.value = String(toggleCfsEnabled.checked);

@@ -120,6 +120,7 @@ begin
                 meeting_join_instructions,
                 meeting_join_url,
                 meeting_provider_id,
+                meeting_recording_published,
                 meeting_recording_requested,
                 meeting_recording_url,
                 meeting_requested,
@@ -172,6 +173,7 @@ begin
                 nullif(p_event->>'meeting_join_instructions', ''),
                 nullif(p_event->>'meeting_join_url', ''),
                 nullif(p_event->>'meeting_provider_id', ''),
+                coalesce((p_event->>'meeting_recording_published')::boolean, false),
                 coalesce((p_event->>'meeting_recording_requested')::boolean, true),
                 nullif(p_event->>'meeting_recording_url', ''),
                 (p_event->>'meeting_requested')::boolean,
@@ -275,6 +277,7 @@ begin
                 meeting_join_instructions,
                 meeting_join_url,
                 meeting_provider_id,
+                meeting_recording_published,
                 meeting_recording_url,
                 meeting_requested
             ) values (
@@ -294,6 +297,7 @@ begin
                 nullif(v_session->>'meeting_join_instructions', ''),
                 nullif(v_session->>'meeting_join_url', ''),
                 nullif(v_session->>'meeting_provider_id', ''),
+                coalesce((v_session->>'meeting_recording_published')::boolean, false),
                 nullif(v_session->>'meeting_recording_url', ''),
                 (v_session->>'meeting_requested')::boolean
             )

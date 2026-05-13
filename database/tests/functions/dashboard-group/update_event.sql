@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(101);
+select plan(103);
 
 -- ============================================================================
 -- VARIABLES
@@ -1119,6 +1119,7 @@ select is(
         "has_ticket_purchases": false,
         "meeting_in_sync": false,
         "meeting_provider": "zoom",
+        "meeting_recording_published": false,
         "meeting_recording_requested": true,
         "meeting_requested": true,
         "sessions": {},
@@ -1736,6 +1737,7 @@ select is(
         "logo_url": "https://example.com/new-logo.png",
         "meeting_join_instructions": "Use the event ticket name when joining.",
         "meeting_join_url": "https://youtube.com/new-live",
+        "meeting_recording_published": false,
         "meeting_recording_requested": true,
         "meeting_recording_url": "https://youtube.com/new-recording",
         "meetup_url": "https://meetup.com/new-event",
@@ -2009,6 +2011,7 @@ select lives_ok(
             "capacity": 100,
             "kind_id": "virtual",
             "meeting_provider_id": "zoom",
+            "meeting_recording_published": false,
             "meeting_recording_requested": false,
             "meeting_recording_url": "https://youtube.com/watch?v=event-override",
             "meeting_requested": true,
@@ -2022,6 +2025,11 @@ select is(
     (select meeting_recording_url from event where event_id = :'event5ID'::uuid),
     'https://youtube.com/watch?v=event-override',
     'Should persist event recording override for automatic meetings'
+);
+select is(
+    (select meeting_recording_published from event where event_id = :'event5ID'::uuid),
+    false,
+    'Should persist event recording visibility when unpublished'
 );
 select is(
     (select meeting_recording_requested from event where event_id = :'event5ID'::uuid),
@@ -2057,10 +2065,10 @@ select is(
             :'community1ID'::uuid,
             :'group1ID'::uuid,
             :'event5ID'::uuid
-        )::jsonb->>'meeting_recording_url'
+        )::jsonb->>'meeting_recording_public_url'
     ),
-    'https://zoom.example/event-pending-recording',
-    'Should fall back to synced event meeting recording after clearing override'
+    null::text,
+    'Should keep synced event meeting recording hidden after clearing unpublished override'
 );
 
 -- Should preserve session meeting_in_sync=false when updating unrelated fields
@@ -2157,6 +2165,7 @@ select lives_ok(
                     "ends_at": "2030-04-01T11:00:00",
                     "kind": "virtual",
                     "meeting_provider_id": "zoom",
+                    "meeting_recording_published": false,
                     "meeting_recording_url": "https://youtube.com/watch?v=session-override",
                     "meeting_requested": true
                 }
@@ -2164,6 +2173,11 @@ select lives_ok(
         }'::jsonb
     )$$,
     'Should execute update when automatic session meeting recording override is provided'
+);
+select is(
+    (select meeting_recording_published from session where session_id = :'session1ID'::uuid),
+    false,
+    'Should persist session recording visibility when unpublished'
 );
 select is(
     (select meeting_recording_url from session where session_id = :'session1ID'::uuid),
@@ -2211,14 +2225,14 @@ select is(
                 :'event6ID'::uuid
             )::jsonb as event_json
         )
-        select session_json->>'meeting_recording_url'
+        select session_json->>'meeting_recording_public_url'
         from payload
         cross join lateral jsonb_each(event_json->'sessions') as day(day, sessions)
         cross join lateral jsonb_array_elements(sessions) as session_json
         where session_json->>'session_id' = :'session1ID'
     ),
-    'https://zoom.example/session-pending-recording',
-    'Should fall back to synced session meeting recording after clearing override'
+    null::text,
+    'Should keep synced session meeting recording hidden after clearing unpublished override'
 );
 
 -- Should throw error when updating cancelled event

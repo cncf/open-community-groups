@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(8);
+select plan(9);
 
 -- ============================================================================
 -- VARIABLES
@@ -203,6 +203,7 @@ insert into event (
     meeting_join_instructions,
     location,
     meeting_join_url,
+    meeting_recording_published,
     meeting_recording_url,
     meeting_requested,
     meetup_url,
@@ -241,6 +242,7 @@ insert into event (
     'Use your registration name when joining.',
     ST_SetSRID(ST_MakePoint(-122.3321, 47.6062), 4326),  -- Seattle coordinates (different from group)
     null,
+    true,
     null,
     false,
     'https://meetup.com/event123',
@@ -295,6 +297,7 @@ insert into event (
     capacity,
     meeting_in_sync,
     meeting_provider_id,
+    meeting_recording_published,
     meeting_recording_url,
     meeting_requested
 ) values (
@@ -312,6 +315,7 @@ insert into event (
     100,
     true,
     'zoom',
+    true,
     'https://youtube.com/watch?v=event-override',
     true
 );
@@ -388,6 +392,7 @@ insert into session (
     meeting_join_instructions,
     meeting_join_url,
     meeting_provider_id,
+    meeting_recording_published,
     meeting_recording_url,
     meeting_requested
 ) values (
@@ -404,6 +409,7 @@ insert into session (
     'Join five minutes early for the speaker Q&A.',
     'https://stream.example.com/session1',
     null,
+    true,
     'https://youtube.com/watch?v=session1',
     false
 ),
@@ -421,6 +427,7 @@ insert into session (
     null,
     null,
     'zoom',
+    true,
     null,
     true
 );
@@ -469,6 +476,7 @@ insert into session (
     ends_at,
     meeting_in_sync,
     meeting_provider_id,
+    meeting_recording_published,
     meeting_recording_url,
     meeting_requested
 ) values (
@@ -481,6 +489,7 @@ insert into session (
     '2024-06-18 11:00:00+00',
     true,
     'zoom',
+    true,
     'https://youtube.com/watch?v=session2-override',
     true
 );
@@ -820,8 +829,10 @@ select is(
         "meeting_password": "event-secret",
         "meeting_requested": false,
         "meeting_join_url": "https://meeting.example.com/event",
+        "meeting_recording_public_url": "https://meeting.example.com/event-recording",
+        "meeting_recording_published": true,
+        "meeting_recording_raw_url": "https://meeting.example.com/event-recording",
         "meeting_recording_requested": true,
-        "meeting_recording_url": "https://meeting.example.com/event-recording",
         "meetup_url": "https://meetup.com/event123",
         "photos_urls": ["https://example.com/photo1.jpg", "https://example.com/photo2.jpg"],
         "published_at": 1714564800,
@@ -947,6 +958,7 @@ select is(
                     "kind": "in-person",
                     "name": "Breakfast & Registration",
                     "starts_at": 1718438400,
+                    "meeting_recording_published": false,
                     "meeting_requested": false,
                     "location": "Lobby",
                     "speakers": [
@@ -1002,6 +1014,8 @@ select is(
                     "location": "Main Hall",
                     "meeting_join_instructions": "Join five minutes early for the speaker Q&A.",
                     "meeting_join_url": "https://stream.example.com/session1",
+                    "meeting_recording_public_url": "https://youtube.com/watch?v=session1",
+                    "meeting_recording_published": true,
                     "meeting_recording_url": "https://youtube.com/watch?v=session1",
                     "meeting_requested": false,
                     "speakers": [
@@ -1054,7 +1068,9 @@ select is(
                     "meeting_requested": true,
                     "location": "Room A",
                     "meeting_join_url": "https://meeting.example.com/session2",
-                    "meeting_recording_url": "https://meeting.example.com/session2-recording",
+                    "meeting_recording_public_url": "https://meeting.example.com/session2-recording",
+                    "meeting_recording_published": true,
+                    "meeting_recording_raw_url": "https://meeting.example.com/session2-recording",
                     "speakers": []
                 }
             ]
@@ -1261,8 +1277,35 @@ select is(
             )::jsonb as event_json
         )
         select jsonb_build_object(
+            'event_meeting_recording_public_url',
+            event_json->>'meeting_recording_public_url',
+            'event_meeting_recording_published',
+            (event_json->>'meeting_recording_published')::boolean,
+            'event_meeting_recording_raw_url',
+            event_json->>'meeting_recording_raw_url',
             'event_meeting_recording_url',
             event_json->>'meeting_recording_url',
+            'session_meeting_recording_public_url',
+            (
+                select session_json->>'meeting_recording_public_url'
+                from jsonb_each(event_json->'sessions') as day(day, sessions)
+                cross join lateral jsonb_array_elements(sessions) as session_json
+                where session_json->>'session_id' = :'sessionOverrideID'
+            ),
+            'session_meeting_recording_published',
+            (
+                select (session_json->>'meeting_recording_published')::boolean
+                from jsonb_each(event_json->'sessions') as day(day, sessions)
+                cross join lateral jsonb_array_elements(sessions) as session_json
+                where session_json->>'session_id' = :'sessionOverrideID'
+            ),
+            'session_meeting_recording_raw_url',
+            (
+                select session_json->>'meeting_recording_raw_url'
+                from jsonb_each(event_json->'sessions') as day(day, sessions)
+                cross join lateral jsonb_array_elements(sessions) as session_json
+                where session_json->>'session_id' = :'sessionOverrideID'
+            ),
             'session_meeting_recording_url',
             (
                 select session_json->>'meeting_recording_url'
@@ -1274,10 +1317,85 @@ select is(
         from payload
     ),
     '{
+        "event_meeting_recording_public_url": "https://youtube.com/watch?v=event-override",
+        "event_meeting_recording_published": true,
+        "event_meeting_recording_raw_url": "https://meeting.example.com/event-override-recording",
         "event_meeting_recording_url": "https://youtube.com/watch?v=event-override",
+        "session_meeting_recording_public_url": "https://youtube.com/watch?v=session2-override",
+        "session_meeting_recording_published": true,
+        "session_meeting_recording_raw_url": "https://meeting.example.com/session-override-recording",
         "session_meeting_recording_url": "https://youtube.com/watch?v=session2-override"
     }'::jsonb,
     'Should prefer organizer recording overrides over synced meeting recordings'
+);
+
+update event
+set meeting_recording_published = false
+where event_id = :'eventRecordingOverrideID'::uuid;
+
+update session
+set meeting_recording_published = false
+where session_id = :'sessionOverrideID'::uuid;
+
+-- Should keep organizer and raw recording URLs while hiding unpublished public recording URLs
+select is(
+    (
+        with payload as (
+            select get_event_full(
+                :'communityID'::uuid,
+                :'groupID'::uuid,
+                :'eventRecordingOverrideID'::uuid
+            )::jsonb as event_json
+        )
+        select jsonb_strip_nulls(jsonb_build_object(
+            'event_meeting_recording_public_url',
+            event_json->>'meeting_recording_public_url',
+            'event_meeting_recording_published',
+            (event_json->>'meeting_recording_published')::boolean,
+            'event_meeting_recording_raw_url',
+            event_json->>'meeting_recording_raw_url',
+            'event_meeting_recording_url',
+            event_json->>'meeting_recording_url',
+            'session_meeting_recording_public_url',
+            (
+                select session_json->>'meeting_recording_public_url'
+                from jsonb_each(event_json->'sessions') as day(day, sessions)
+                cross join lateral jsonb_array_elements(sessions) as session_json
+                where session_json->>'session_id' = :'sessionOverrideID'
+            ),
+            'session_meeting_recording_published',
+            (
+                select (session_json->>'meeting_recording_published')::boolean
+                from jsonb_each(event_json->'sessions') as day(day, sessions)
+                cross join lateral jsonb_array_elements(sessions) as session_json
+                where session_json->>'session_id' = :'sessionOverrideID'
+            ),
+            'session_meeting_recording_raw_url',
+            (
+                select session_json->>'meeting_recording_raw_url'
+                from jsonb_each(event_json->'sessions') as day(day, sessions)
+                cross join lateral jsonb_array_elements(sessions) as session_json
+                where session_json->>'session_id' = :'sessionOverrideID'
+            ),
+            'session_meeting_recording_url',
+            (
+                select session_json->>'meeting_recording_url'
+                from jsonb_each(event_json->'sessions') as day(day, sessions)
+                cross join lateral jsonb_array_elements(sessions) as session_json
+                where session_json->>'session_id' = :'sessionOverrideID'
+            )
+        ))
+        from payload
+    ),
+    '{
+        "event_meeting_recording_published": false,
+        "event_meeting_recording_raw_url": "https://meeting.example.com/event-override-recording",
+        "event_meeting_recording_url": "https://youtube.com/watch?v=event-override",
+        "session_meeting_recording_published": false,
+        "session_meeting_recording_raw_url": "https://meeting.example.com/session-override-recording",
+        "session_meeting_recording_url": "https://youtube.com/watch?v=session2-override"
+    }'::jsonb,
+    'Should keep organizer and raw recording URLs while hiding unpublished public recording URLs'
 );
 
 -- ============================================================================

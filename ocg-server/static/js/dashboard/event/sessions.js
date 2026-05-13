@@ -232,6 +232,8 @@ export class SessionsSection extends LitWrapper {
     meeting_provider_id: "",
     meeting_password: "",
     meeting_error: "",
+    meeting_recording_published: false,
+    meeting_recording_raw_url: "",
     meeting_recording_url: "",
     meeting_hosts: [],
     speakers: [],
@@ -597,6 +599,7 @@ export class SessionsSection extends LitWrapper {
           : session.meeting_join_instructions || "";
         const meetingJoinUrl = automaticMeetingRequested ? "" : session.meeting_join_url || "";
         const meetingRecordingUrl = session.meeting_recording_url || "";
+        const meetingRecordingPublished = session.meeting_recording_published === true;
         const meetingProviderId =
           session.meeting_provider_id ||
           session.meeting_provider ||
@@ -625,6 +628,11 @@ export class SessionsSection extends LitWrapper {
             value=${meetingJoinInstructions}
           />
           <input type="hidden" name="sessions[${index}][meeting_join_url]" value=${meetingJoinUrl} />
+          <input
+            type="hidden"
+            name="sessions[${index}][meeting_recording_published]"
+            value=${meetingRecordingPublished}
+          />
           <input
             type="hidden"
             name="sessions[${index}][meeting_recording_url]"
@@ -966,6 +974,8 @@ class SessionFormModal extends LitWrapper {
       meeting_provider_id: "",
       meeting_password: "",
       meeting_error: "",
+      meeting_recording_published: false,
+      meeting_recording_raw_url: "",
       meeting_recording_url: "",
       meeting_hosts: [],
       speakers: [],
@@ -1184,6 +1194,8 @@ class SessionItem extends LitWrapper {
       meeting_requested: false,
       meeting_join_instructions: "",
       meeting_join_url: "",
+      meeting_recording_published: false,
+      meeting_recording_raw_url: "",
       meeting_recording_url: "",
       meeting_provider_id: "",
       meeting_hosts: [],
@@ -1252,7 +1264,7 @@ class SessionItem extends LitWrapper {
    */
   _onInputChange = (event) => {
     if (this.disabled) return;
-    const value = event.target.value;
+    const value = event.target.type === "checkbox" ? event.target.checked : event.target.value;
     const name = event.target.dataset.name;
 
     this.data = { ...this.data, [name]: value };
@@ -1299,6 +1311,25 @@ class SessionItem extends LitWrapper {
     this.onDataChange(this.data, this.index);
     this.requestUpdate();
   };
+
+  _getRecordingVisibilityText() {
+    const hasFinalUrl = Boolean((this.data.meeting_recording_url || "").trim());
+    const hasRawUrl = Boolean((this.data.meeting_recording_raw_url || "").trim());
+
+    if (this.data.meeting_recording_published !== true) {
+      return "Public visitors will not see a recording link.";
+    }
+
+    if (hasFinalUrl) {
+      return "Public visitors will see the final public recording URL.";
+    }
+
+    if (hasRawUrl) {
+      return "Public visitors will see the original provider recording.";
+    }
+
+    return "Public visitors will not see a recording link until a recording URL is available.";
+  }
 
   /**
    * Handles input mode radio button changes.
@@ -1623,6 +1654,8 @@ class SessionItem extends LitWrapper {
                       <online-event-details
                         kind=${this.data.kind || "virtual"}
                         meeting-join-url=${this.data.meeting_join_url || ""}
+                        meeting-recording-published=${String(this.data.meeting_recording_published === true)}
+                        meeting-recording-raw-url=${this.data.meeting_recording_raw_url || ""}
                         meeting-recording-url=${this.data.meeting_recording_url || ""}
                         ?meeting-requested=${this.data.meeting_requested}
                         ?meeting-in-sync=${this.data.meeting_in_sync}
@@ -1683,9 +1716,30 @@ class SessionItem extends LitWrapper {
                               Shown with the meeting details on the public event page.
                             </p>
                           </div>
+                          ${this.data.meeting_recording_raw_url
+                            ? html`
+                                <div class="space-y-2">
+                                  <label for="meeting_recording_raw_url_${this.index}" class="form-label"
+                                    >Original provider recording</label
+                                  >
+                                  <div class="mt-2">
+                                    <input
+                                      type="url"
+                                      id="meeting_recording_raw_url_${this.index}"
+                                      class="input-primary bg-stone-100 text-stone-600 cursor-not-allowed"
+                                      value=${this.data.meeting_recording_raw_url || ""}
+                                      readonly
+                                    />
+                                  </div>
+                                  <p class="form-legend">
+                                    Read-only recording synced from the meeting provider.
+                                  </p>
+                                </div>
+                              `
+                            : ""}
                           <div class="space-y-2">
                             <label for="meeting_recording_url_${this.index}" class="form-label"
-                              >Recording URL (optional)</label
+                              >Final public recording URL (optional)</label
                             >
                             <div class="mt-2">
                               <input
@@ -1703,8 +1757,28 @@ class SessionItem extends LitWrapper {
                               />
                             </div>
                             <p class="form-legend">
-                              Add a recording link now or replace it later with a processed upload.
+                              Optional processed recording that takes priority over the original provider
+                              recording.
                             </p>
+                          </div>
+                          <div class="space-y-2">
+                            <label class="inline-flex items-center cursor-pointer">
+                              <input
+                                type="checkbox"
+                                class="sr-only peer"
+                                .checked=${this.data.meeting_recording_published === true}
+                                @change=${(e) => this._onInputChange(e)}
+                                data-name="meeting_recording_published"
+                                ?disabled=${this.disabled}
+                              />
+                              <span
+                                class="relative w-11 h-6 bg-stone-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-stone-300 after:border after:border-stone-200 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500"
+                              ></span>
+                              <span class="ms-3 text-sm font-medium text-stone-900">
+                                Publish recording publicly
+                              </span>
+                            </label>
+                            <p class="form-legend">${this._getRecordingVisibilityText()}</p>
                           </div>
                         </div>
                       </div>
