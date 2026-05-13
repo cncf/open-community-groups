@@ -1,6 +1,8 @@
 import { expect } from "@open-wc/testing";
 
 import "/static/js/event/attendance.js";
+import { getAttendanceMeta } from "/static/js/event/attendance-dom.js";
+import { showSignedOutAttendanceState } from "/static/js/event/attendance-view.js";
 import { waitForMicrotask } from "/tests/unit/test-utils/async.js";
 import { useDashboardTestEnv } from "/tests/unit/test-utils/env.js";
 import { dispatchHtmxAfterRequest, dispatchHtmxBeforeRequest } from "/tests/unit/test-utils/htmx.js";
@@ -242,6 +244,33 @@ describe("event attendance", () => {
     ).to.equal(false);
   });
 
+  it("keeps no-capacity events behind sign-in when signed out", () => {
+    const { attendButton, container, signinButton } = renderAttendanceDom({
+      capacity: "0",
+      remainingCapacity: "0",
+    });
+
+    showSignedOutAttendanceState(container, getAttendanceMeta(container));
+
+    expect(signinButton.classList.contains("hidden")).to.equal(false);
+    expect(signinButton.querySelector("[data-attendance-label]")?.textContent).to.equal("Attend event");
+    expect(attendButton.classList.contains("hidden")).to.equal(true);
+  });
+
+  it("keeps approval-required no-capacity events behind sign-in when signed out", () => {
+    const { attendButton, container, signinButton } = renderAttendanceDom({
+      attendeeApprovalRequired: "true",
+      capacity: "0",
+      remainingCapacity: "0",
+    });
+
+    showSignedOutAttendanceState(container, getAttendanceMeta(container));
+
+    expect(signinButton.classList.contains("hidden")).to.equal(false);
+    expect(signinButton.querySelector("[data-attendance-label]")?.textContent).to.equal("Request invitation");
+    expect(attendButton.classList.contains("hidden")).to.equal(true);
+  });
+
   it("shows loading state before attending and emits a waitlist success message", () => {
     const { attendButton, loadingButton } = renderAttendanceDom();
     let changedEvents = 0;
@@ -378,6 +407,24 @@ describe("event attendance", () => {
     expect(
       attendButton.querySelector("[data-attendance-icon]")?.classList.contains("icon-user-plus"),
     ).to.equal(true);
+  });
+
+  it("shows canceled state for approved invitations when a no-capacity event is canceled", () => {
+    const { checker, attendButton } = renderAttendanceDom({
+      attendeeApprovalRequired: "true",
+      canceled: "true",
+      capacity: "0",
+      remainingCapacity: "0",
+    });
+
+    dispatchHtmxAfterRequest(checker, {
+      responseText: JSON.stringify({ status: "invitation-approved" }),
+    });
+
+    expect(attendButton.classList.contains("hidden")).to.equal(false);
+    expect(attendButton.disabled).to.equal(true);
+    expect(attendButton.title).to.equal("This event has been canceled.");
+    expect(attendButton.querySelector("[data-attendance-label]")?.textContent).to.equal("Attend event");
   });
 
   it("shows a sold-out attend button when no waitlist is available", () => {

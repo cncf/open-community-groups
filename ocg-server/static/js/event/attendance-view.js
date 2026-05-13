@@ -311,7 +311,7 @@ const getAttendState = (meta) => {
     });
   }
 
-  if (!meta.isTicketed && meta.hasNoCapacity && !meta.isPastEvent) {
+  if (!meta.isTicketed && meta.hasNoCapacity && !meta.attendeeApprovalRequired && !meta.isPastEvent) {
     return {
       disabled: true,
       icon: ATTEND_EVENT_ICON,
@@ -426,11 +426,6 @@ export const showSignedOutAttendanceState = (container, meta) => {
     return;
   }
 
-  if (!meta.isTicketed && meta.hasNoCapacity && !meta.isPastEvent) {
-    renderControl(attendButton, getAttendState(meta));
-    return;
-  }
-
   if (meta.isSoldOut && !meta.waitlistEnabled && !meta.attendeeApprovalRequired) {
     renderControl(attendButton, getAttendState(meta));
     return;
@@ -470,6 +465,19 @@ export const showGuestAttendanceState = (container, meta) => {
  * @param {{isPastEvent: boolean}} meta - Attendance metadata
  */
 export const showInvitationApprovedAttendanceState = (container, meta) => {
+  if (meta.canceled) {
+    showPrimaryAttendanceState(
+      container,
+      meta,
+      "attendButton",
+      withEventActionState(meta, {
+        icon: ATTEND_EVENT_ICON,
+        label: ATTEND_EVENT_LABEL,
+      }),
+    );
+    return;
+  }
+
   if (!meta.isPastEvent && meta.hasNoCapacity) {
     showPrimaryAttendanceState(container, meta, "attendButton", {
       disabled: true,
