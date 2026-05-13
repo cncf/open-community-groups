@@ -105,6 +105,29 @@ export const clearBrokenImagePlaceholder = (target) => {
   return true;
 };
 
+/**
+ * Applies the broken image placeholder to images that failed before listeners ran.
+ * @param {ParentNode} root - Root node to scan for image elements
+ * @returns {number} Number of placeholders applied
+ */
+export const applyBrokenImagePlaceholders = (root = document) => {
+  if (!root || typeof root.querySelectorAll !== "function") {
+    return 0;
+  }
+
+  return [...root.querySelectorAll("img")].reduce((appliedCount, image) => {
+    if (!image.complete || image.naturalWidth > 0) {
+      return appliedCount;
+    }
+
+    return applyBrokenImagePlaceholder(image) ? appliedCount + 1 : appliedCount;
+  }, 0);
+};
+
+const applyBrokenImagePlaceholdersForDocument = () => {
+  applyBrokenImagePlaceholders(document);
+};
+
 document.addEventListener(
   "error",
   (event) => {
@@ -120,6 +143,16 @@ document.addEventListener(
   },
   true,
 );
+
+// Some images can fail before this module registers captured error listeners.
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", applyBrokenImagePlaceholdersForDocument, { once: true });
+} else {
+  applyBrokenImagePlaceholdersForDocument();
+}
+
+// Re-scan after all resources settle so late or lazy image failures are covered.
+window.addEventListener("load", applyBrokenImagePlaceholdersForDocument, { once: true });
 
 /**
  * Shows a loading spinner by adding the 'is-loading' class to the element.

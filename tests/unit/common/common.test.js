@@ -7,6 +7,7 @@ import {
   convertTimestampToDateTimeLocal,
   convertTimestampToDateTimeLocalInTz,
   applyBrokenImagePlaceholder,
+  applyBrokenImagePlaceholders,
   BROKEN_IMAGE_PLACEHOLDER_URL,
   clearBrokenImagePlaceholder,
   hideLoadingSpinner,
@@ -73,6 +74,22 @@ describe("common utilities", () => {
     expect(icon?.classList.contains("icon-broken-image") ?? false).to.equal(true);
     expect(icon?.classList.contains("bg-stone-400") ?? false).to.equal(true);
     expect(applyBrokenImagePlaceholder(image)).to.equal(false);
+  });
+
+  it("replaces images that failed before the error listener ran", () => {
+    const container = document.createElement("div");
+    const image = document.createElement("img");
+    image.src = "https://example.com/missing-before-listener.png";
+    Object.defineProperty(image, "complete", { configurable: true, value: true });
+    Object.defineProperty(image, "naturalWidth", { configurable: true, value: 0 });
+    container.append(image);
+    document.body.append(container);
+
+    expect(applyBrokenImagePlaceholders(document)).to.equal(1);
+
+    expect(image.src.endsWith(BROKEN_IMAGE_PLACEHOLDER_URL)).to.equal(true);
+    expect(image.dataset.ocgBrokenImagePlaceholder).to.equal("true");
+    expect(image.nextElementSibling?.dataset.ocgBrokenImageIcon).to.equal("true");
   });
 
   it("keeps initials avatar images on their component fallback path", () => {
