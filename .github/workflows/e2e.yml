@@ -1,6 +1,9 @@
 name: E2E
 
 on:
+  push:
+    branches:
+      - cynthia-sg/fix-e2e-action
   pull_request:
     branches:
       - main
@@ -12,7 +15,7 @@ jobs:
       pull-requests: read
     runs-on: ubuntu-latest
     outputs:
-      e2e: ${{ steps.filter.outputs.e2e || steps.manual.outputs.e2e }}
+      e2e: ${{ steps.filter.outputs.e2e || steps.direct.outputs.e2e }}
     steps:
       - name: Determine changed paths
         if: github.event_name == 'pull_request'
@@ -29,9 +32,9 @@ jobs:
               - 'docs/**'
               - 'ocg-server/**'
               - 'tests/e2e/**'
-      - name: Mark manual run as e2e-relevant
-        if: github.event_name == 'workflow_dispatch'
-        id: manual
+      - name: Mark direct run as e2e-relevant
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
+        id: direct
         run: echo "e2e=true" >> "$GITHUB_OUTPUT"
 
   e2e-tests:
