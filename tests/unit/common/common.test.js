@@ -108,6 +108,10 @@ describe("common utilities", () => {
   it("ignores empty image sources until a real source fails", () => {
     const image = document.createElement("img");
     image.setAttribute("src", "");
+    Object.defineProperty(image, "currentSrc", {
+      configurable: true,
+      value: "https://example.com/current-page",
+    });
     document.body.append(image);
 
     image.dispatchEvent(new Event("error"));

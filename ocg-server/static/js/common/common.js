@@ -18,7 +18,11 @@ const shouldSkipBrokenImagePlaceholder = (image) => {
     return true;
   }
 
-  const srcAttribute = image.getAttribute("src")?.trim() || "";
+  const srcAttribute = image.getAttribute("src");
+  if (srcAttribute !== null && srcAttribute.trim().length === 0) {
+    return true;
+  }
+
   const currentSource = image.currentSrc || image.src;
   if (!srcAttribute && !image.currentSrc) {
     return true;
