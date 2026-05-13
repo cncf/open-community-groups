@@ -220,7 +220,7 @@ insert into event (
     '{"meetup", "tech", "networking"}',
     'https://www.meetup.com/test-group/events/123456789/',
     'https://zoom.us/j/1234567890',
-    '{"/static/images/e2e/event-photo-1.svg", "/static/images/e2e/event-photo-2.svg"}'
+    '{"/static/images/e2e/missing-event-gallery-photo.svg", "/static/images/e2e/event-photo-2.svg"}'
 );
 
 -- Upcoming virtual event with recording
