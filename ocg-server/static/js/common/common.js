@@ -7,6 +7,7 @@ export const MEETING_RECORDING_VISIBILITY_LEGEND =
   "Controls whether public visitors can see a recording link when one is available.";
 
 export const BROKEN_IMAGE_PLACEHOLDER_URL = "/static/images/icons/broken_image.svg";
+const DEFAULT_BROKEN_IMAGE_PLACEHOLDER_BG_CLASS = "bg-stone-50";
 
 /**
  * Checks if a failed image should keep an existing fallback, such as avatar initials.
@@ -32,6 +33,24 @@ const shouldSkipBrokenImagePlaceholder = (image) => {
 };
 
 /**
+ * Resolves the background color class used behind the broken-image icon.
+ * @param {HTMLImageElement} image - Image element that emitted the event
+ * @returns {string} Background class used by the placeholder container
+ */
+const getBrokenImagePlaceholderBgClass = (image) =>
+  toTrimmedString(image.dataset.ocgBrokenImageBgClass) || DEFAULT_BROKEN_IMAGE_PLACEHOLDER_BG_CLASS;
+
+/**
+ * Checks whether an element already creates a containing block for the placeholder.
+ * @param {Element} element - Parent element for the broken image
+ * @returns {boolean} True when the element is already positioned
+ */
+const isPositionedElement = (element) => {
+  const position = element.ownerDocument.defaultView?.getComputedStyle(element).position;
+  return Boolean(position && position !== "static");
+};
+
+/**
  * Hides a failed image and overlays the shared broken-image icon.
  * @param {EventTarget|null} target - Possible image element from an error event
  * @returns {boolean} True when the placeholder was applied
@@ -47,7 +66,7 @@ export const applyBrokenImagePlaceholder = (target) => {
 
   target.dataset.ocgBrokenImagePlaceholder = "true";
   target.classList.add("invisible");
-  if (target.parentElement && !target.parentElement.classList.contains("relative")) {
+  if (target.parentElement && !isPositionedElement(target.parentElement)) {
     target.parentElement.dataset.ocgBrokenImageAddedRelative = "true";
     target.parentElement.classList.add("relative");
   }
@@ -62,7 +81,7 @@ export const applyBrokenImagePlaceholder = (target) => {
       "flex",
       "items-center",
       "justify-center",
-      "bg-stone-50",
+      getBrokenImagePlaceholderBgClass(target),
       "pointer-events-none",
     ].join(" ");
     placeholderIcon.className = ["svg-icon", "size-8", "icon-broken-image", "bg-stone-400"].join(" ");

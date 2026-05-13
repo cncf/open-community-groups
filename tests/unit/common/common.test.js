@@ -76,6 +76,36 @@ describe("common utilities", () => {
     expect(applyBrokenImagePlaceholder(image)).to.equal(false);
   });
 
+  it("uses a custom broken image placeholder background when provided", () => {
+    const container = document.createElement("div");
+    const image = document.createElement("img");
+    image.src = "https://example.com/missing.png";
+    image.dataset.ocgBrokenImageBgClass = "bg-stone-950";
+    container.append(image);
+    document.body.append(container);
+
+    image.dispatchEvent(new Event("error"));
+
+    expect(image.nextElementSibling?.classList.contains("bg-stone-950") ?? false).to.equal(true);
+    expect(image.nextElementSibling?.classList.contains("bg-stone-50") ?? false).to.equal(false);
+  });
+
+  it("does not add relative to parents that are already positioned", () => {
+    const container = document.createElement("div");
+    const image = document.createElement("img");
+    container.style.position = "absolute";
+    image.src = "https://example.com/missing.png";
+    container.append(image);
+    document.body.append(container);
+
+    image.dispatchEvent(new Event("error"));
+
+    expect(getComputedStyle(container).position).to.equal("absolute");
+    expect(container.classList.contains("relative")).to.equal(false);
+    expect(container.dataset.ocgBrokenImageAddedRelative).to.equal(undefined);
+    expect(image.nextElementSibling?.classList.contains("absolute") ?? false).to.equal(true);
+  });
+
   it("replaces images that failed before the error listener ran", () => {
     const container = document.createElement("div");
     const image = document.createElement("img");
