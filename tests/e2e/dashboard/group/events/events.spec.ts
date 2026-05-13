@@ -287,7 +287,11 @@ test.describe("group dashboard events view", () => {
       await organizerGroupPage.locator("#capacity").fill("50");
     }
     
-    await organizerGroupPage.locator('button[data-section="date-venue"]').click();
+    await organizerGroupPage.locator("button[data-section-next]").click();
+    await expect(organizerGroupPage.locator('button[data-section="date-venue"]')).toHaveAttribute(
+      "data-active",
+      "true",
+    );
     await selectTimezone(organizerGroupPage, "UTC");
     await expect(organizerGroupPage.locator("#starts_at")).toBeVisible();
     await organizerGroupPage.locator("#starts_at").fill("2030-05-10T10:00");
@@ -1267,7 +1271,11 @@ test.describe("group dashboard events view", () => {
       await organizerGroupPage.locator("#name").fill(values.name);
       await organizerGroupPage.locator("#meetup_url").fill(values.meetupUrl);
 
-      await organizerGroupPage.locator('button[data-section="date-venue"]').click();
+      await organizerGroupPage.locator("button[data-section-next]").click();
+      await expect(organizerGroupPage.locator('button[data-section="date-venue"]')).toHaveAttribute(
+        "data-active",
+        "true",
+      );
       await expect(organizerGroupPage.locator("#starts_at")).toBeVisible();
       await organizerGroupPage.locator("#starts_at").fill(values.startsAt);
       await organizerGroupPage.locator("#ends_at").fill(values.endsAt);
