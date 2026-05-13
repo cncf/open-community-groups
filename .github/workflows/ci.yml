@@ -258,7 +258,7 @@ jobs:
         run: npm ci
       - name: Install Playwright browser for frontend unit tests
         working-directory: tests/unit
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install chromium
       - name: Run frontend unit tests
         working-directory: tests/unit
         run: npm test
