@@ -68,6 +68,7 @@ test.describe("group dashboard logs view", () => {
   test("organizer sees one group log details popover at a time", async ({
     organizerGroupPage,
   }) => {
+    await organizerGroupPage.setViewportSize({ width: 1100, height: 720 });
     await navigateToPath(organizerGroupPage, GROUP_LOGS_PATH);
 
     const dashboardContent = organizerGroupPage.locator("#dashboard-content");

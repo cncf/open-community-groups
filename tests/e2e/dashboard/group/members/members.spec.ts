@@ -2,7 +2,7 @@ import { expect, test } from "../../../fixtures";
 
 import { navigateToPath } from "../../../utils";
 
-const NOTIFICATION_TITLE = "E2E member notification";
+const NOTIFICATION_SUBJECT = "E2E member notification";
 const NOTIFICATION_BODY = "Reminder for all members from the e2e suite.";
 
 test.describe("group dashboard members view", () => {
@@ -21,8 +21,8 @@ test.describe("group dashboard members view", () => {
     const notificationModal = organizerGroupPage.locator("#notification-modal");
     await expect(notificationModal).toBeVisible();
 
-    await organizerGroupPage.getByLabel("Title").fill(NOTIFICATION_TITLE);
-    await organizerGroupPage.getByLabel("Body").fill(NOTIFICATION_BODY);
+    await notificationModal.getByLabel("Subject").fill(NOTIFICATION_SUBJECT);
+    await notificationModal.getByLabel("Body").fill(NOTIFICATION_BODY);
 
     await Promise.all([
       organizerGroupPage.waitForResponse(
