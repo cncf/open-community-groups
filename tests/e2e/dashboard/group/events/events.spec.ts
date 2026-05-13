@@ -478,6 +478,33 @@ test.describe("group dashboard events view", () => {
     await eventOnlineDetails.locator('input[type="radio"][value="automatic"]').check({
       force: true,
     });
+    const recordMeetingLabel = eventOnlineDetails.getByText("Record meeting", { exact: true });
+    const publishRecordingLabel = eventOnlineDetails.getByText("Publish recording publicly", {
+      exact: true,
+    });
+    await expect(recordMeetingLabel).toBeVisible();
+    await expect(publishRecordingLabel).toBeVisible();
+    const [recordMeetingLabelBox, publishRecordingLabelBox] = await Promise.all([
+      recordMeetingLabel.boundingBox(),
+      publishRecordingLabel.boundingBox(),
+    ]);
+    if (!recordMeetingLabelBox || !publishRecordingLabelBox) {
+      throw new Error("Recording visibility controls should be visible.");
+    }
+    expect(publishRecordingLabelBox.y).toBeGreaterThan(recordMeetingLabelBox.y);
+
+    const eventRecordingPublishedInput = eventOnlineDetails.locator(
+      'input[type="hidden"][name="meeting_recording_published"]',
+    );
+    const eventRecordingPublishedToggle = eventOnlineDetails.getByLabel(
+      "Publish recording publicly",
+    );
+    await expect(eventRecordingPublishedInput).toHaveValue("false");
+    await expect(eventRecordingPublishedToggle).not.toBeChecked();
+    await eventRecordingPublishedToggle.check({ force: true });
+    await expect(eventRecordingPublishedToggle).toBeChecked();
+    await expect(eventRecordingPublishedInput).toHaveValue("true");
+
     await eventOnlineDetails
       .locator('input[type="url"][placeholder="https://youtube.com/watch?v=..."]')
       .fill(eventRecordingUrl);
@@ -502,11 +529,26 @@ test.describe("group dashboard events view", () => {
     await expect(sessionOnlineDetails).toHaveAttribute("ends-at", "2030-06-10T11:30");
     await sessionOnlineDetails.getByText("Create meeting automatically", { exact: true }).click();
     await expect(sessionOnlineDetails.getByText("Meeting provider", { exact: true })).toBeVisible();
+    const sessionRecordingPublishedInput = sessionOnlineDetails.locator(
+      'input[type="hidden"][name="sessions[0][meeting_recording_published]"]',
+    );
+    const sessionRecordingPublishedToggle = sessionOnlineDetails.getByLabel(
+      "Publish recording publicly",
+    );
+    await expect(sessionRecordingPublishedInput).toHaveValue("false");
+    await expect(sessionRecordingPublishedToggle).not.toBeChecked();
+    await sessionRecordingPublishedToggle.check({ force: true });
+    await expect(sessionRecordingPublishedToggle).toBeChecked();
+    await expect(sessionRecordingPublishedInput).toHaveValue("true");
+
     await sessionOnlineDetails
       .locator('input[type="url"][placeholder="https://youtube.com/watch?v=..."]')
       .fill(sessionRecordingUrl);
     await sessionModal.getByRole("button", { name: "Add session" }).click();
     await expect(sessionDialog).toBeHidden();
+    await expect(
+      sessionsSection.locator('input[name="sessions[0][meeting_recording_published]"]'),
+    ).toHaveValue("true");
 
     const visibleAddEventButton = organizerGroupPage.locator(
       "#pending-changes-alert:not(.hidden) #add-event-button",
@@ -529,6 +571,8 @@ test.describe("group dashboard events view", () => {
     await expect(
       eventOnlineDetails.locator('input[type="url"][placeholder="https://youtube.com/watch?v=..."]'),
     ).toHaveValue(eventRecordingUrl);
+    await expect(eventOnlineDetails.getByLabel("Publish recording publicly")).toBeChecked();
+    await expect(eventRecordingPublishedInput).toHaveValue("true");
 
     await organizerGroupPage.locator('button[data-section="sessions"]').click();
     const sessionCard = organizerGroupPage.locator("session-card").filter({
@@ -538,11 +582,20 @@ test.describe("group dashboard events view", () => {
     await sessionCard.locator('button[title="Edit"]').click();
 
     await expect(sessionDialog).toBeVisible();
+    const reopenedSessionOnlineDetails = sessionModal.locator("online-event-details");
     await expect(
-      sessionModal
-        .locator("online-event-details")
-      .locator('input[type="url"][placeholder="https://youtube.com/watch?v=..."]'),
+      reopenedSessionOnlineDetails.locator(
+        'input[type="url"][placeholder="https://youtube.com/watch?v=..."]',
+      ),
     ).toHaveValue(sessionRecordingUrl);
+    await expect(
+      reopenedSessionOnlineDetails.getByLabel("Publish recording publicly"),
+    ).toBeChecked();
+    await expect(
+      reopenedSessionOnlineDetails.locator(
+        'input[type="hidden"][name="sessions[0][meeting_recording_published]"]',
+      ),
+    ).toHaveValue("true");
     await sessionModal.getByRole("button", { name: "Cancel" }).click();
     await expect(sessionDialog).toBeHidden();
   });
