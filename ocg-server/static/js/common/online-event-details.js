@@ -7,6 +7,10 @@ import {
   DEFAULT_MEETING_PROVIDER,
 } from "/static/js/dashboard/group/meeting-validations.js";
 import { getCommonAlertOptions, showErrorAlert, showInfoAlert } from "/static/js/common/alerts.js";
+import {
+  MEETING_RECORDING_URL_LEGEND,
+  MEETING_RECORDING_VISIBILITY_LEGEND,
+} from "/static/js/common/common.js";
 import "/static/js/common/multiple-inputs.js";
 
 /**
@@ -62,6 +66,14 @@ export class OnlineEventDetails extends LitWrapper {
     meetingError: { type: String, attribute: "meeting-error" },
     fieldNamePrefix: { type: String, attribute: "field-name-prefix" },
     meetingProviderId: { type: String, attribute: "meeting-provider-id" },
+    meetingRecordingRawUrl: { type: String, attribute: "meeting-recording-raw-url" },
+    meetingRecordingPublished: {
+      type: Boolean,
+      attribute: "meeting-recording-published",
+      converter: {
+        fromAttribute: (value) => value !== "false",
+      },
+    },
     meetingMaxParticipants: {
       type: Object,
       attribute: "meeting-max-participants",
@@ -81,6 +93,8 @@ export class OnlineEventDetails extends LitWrapper {
     _joinInstructions: { type: String, state: true },
     _joinUrl: { type: String, state: true },
     _recordingUrl: { type: String, state: true },
+    _recordingPublished: { type: Boolean, state: true },
+    _rawRecordingUrl: { type: String, state: true },
     _recordingRequested: { type: Boolean, state: true },
     _createMeeting: { type: Boolean, state: true },
     _providerId: { type: String, state: true },
@@ -105,12 +119,16 @@ export class OnlineEventDetails extends LitWrapper {
     this.meetingError = "";
     this.fieldNamePrefix = "";
     this.meetingProviderId = DEFAULT_MEETING_PROVIDER;
+    this.meetingRecordingRawUrl = "";
+    this.meetingRecordingPublished = false;
     this.meetingMaxParticipants = {};
 
     this._mode = "manual";
     this._joinInstructions = "";
     this._joinUrl = "";
     this._recordingUrl = "";
+    this._recordingPublished = false;
+    this._rawRecordingUrl = "";
     this._recordingRequested = true;
     this._createMeeting = false;
     this._providerId = DEFAULT_MEETING_PROVIDER;
@@ -145,6 +163,8 @@ export class OnlineEventDetails extends LitWrapper {
     this._joinInstructions = this.meetingJoinInstructions || "";
     this._joinUrl = this._manualJoinUrl;
     this._recordingUrl = startsInAutomaticMode ? this._automaticRecordingUrl : this._manualRecordingUrl;
+    this._recordingPublished = this.meetingRecordingPublished === true;
+    this._rawRecordingUrl = this.meetingRecordingRawUrl || "";
     this._recordingRequested = this.meetingRecordingRequested !== false;
     this._createMeeting = this.meetingRequested;
     this._providerId = this.meetingProviderId || DEFAULT_MEETING_PROVIDER;
@@ -227,14 +247,6 @@ export class OnlineEventDetails extends LitWrapper {
       return "By default, hosts and session speakers are included in this host email list. Add extra emails when needed (optional). These emails are saved for coordination and are not assigned as Zoom hosts automatically.";
     }
     return "By default, hosts and event speakers are included in this host email list. Add extra emails when needed (optional). These emails are saved for coordination and are not assigned as Zoom hosts automatically.";
-  }
-
-  _getRecordingLegend() {
-    if (this._mode === "automatic") {
-      return "We will sync the provider recording here when it is ready. You can replace it later with a processed upload.";
-    }
-
-    return "Add a recording link now or replace it later with a processed upload.";
   }
 
   /**
@@ -601,6 +613,15 @@ export class OnlineEventDetails extends LitWrapper {
   }
 
   /**
+   * Handles the public recording visibility toggle.
+   * @param {Event} e - Change event
+   */
+  _handleRecordingPublishedChange(e) {
+    if (this.disabled) return;
+    this._recordingPublished = e.target.checked;
+  }
+
+  /**
    * Handles the automatic recording request toggle.
    * @param {Event} e - Change event
    */
@@ -684,6 +705,7 @@ export class OnlineEventDetails extends LitWrapper {
     const isAutomatic = this._mode === "automatic" && this._createMeeting;
     const data = {
       meeting_join_url: isAutomatic ? "" : (this._joinUrl || "").trim(),
+      meeting_recording_published: this._recordingPublished === true,
       meeting_recording_requested: this._recordingRequested !== false,
       meeting_recording_url: (this._recordingUrl || "").trim(),
       meeting_requested: isAutomatic,
@@ -705,6 +727,8 @@ export class OnlineEventDetails extends LitWrapper {
     this._joinInstructions = "";
     this._joinUrl = "";
     this._recordingUrl = "";
+    this._recordingPublished = false;
+    this._rawRecordingUrl = "";
     this._recordingRequested = true;
     this._createMeeting = false;
     this._providerId = DEFAULT_MEETING_PROVIDER;
@@ -739,6 +763,7 @@ export class OnlineEventDetails extends LitWrapper {
     const {
       meeting_join_instructions: joinInstructionsValue,
       meeting_join_url: joinUrlValue,
+      meeting_recording_published: recordingPublishedValue,
       meeting_recording_requested: recordingRequestedValue,
       meeting_recording_url: recordingUrlValue,
       meeting_requested: isAutomatic,
@@ -756,6 +781,11 @@ export class OnlineEventDetails extends LitWrapper {
             />
           `
         : ""}
+      <input
+        type="hidden"
+        name="${this._getFieldName("meeting_recording_published")}"
+        value="${recordingPublishedValue}"
+      />
       <input
         type="hidden"
         name="${this._getFieldName("meeting_recording_requested")}"
@@ -902,6 +932,80 @@ export class OnlineEventDetails extends LitWrapper {
     `;
   }
 
+  _renderRecordingVisibilityControl() {
+    return html`
+      <div class="space-y-2">
+        <label class="inline-flex items-center cursor-pointer">
+          <input
+            type="checkbox"
+            class="sr-only peer"
+            .checked="${this._recordingPublished}"
+            @change="${this._handleRecordingPublishedChange}"
+            ?disabled=${this.disabled}
+          />
+          <span
+            class="relative w-11 h-6 bg-stone-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-stone-300 after:border after:border-stone-200 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500"
+          ></span>
+          <span class="ms-3 text-sm font-medium text-stone-900">Publish recording publicly</span>
+        </label>
+        <p class="form-legend">${MEETING_RECORDING_VISIBILITY_LEGEND}</p>
+      </div>
+    `;
+  }
+
+  /**
+   * Renders raw provider URL, final URL, and optional visibility controls.
+   * @param {string} disabledClasses - CSS classes applied to disabled fields
+   * @param {string} inputWidthClass - Optional width class for input wrappers
+   * @param {boolean} showVisibilityControl - Whether to render public visibility controls
+   * @returns {import('lit').TemplateResult} Recording controls
+   */
+  _renderRecordingControls(disabledClasses, inputWidthClass = "", showVisibilityControl = true) {
+    return html`
+      <div class="space-y-4">
+        ${this._rawRecordingUrl
+          ? html`
+              <div class="space-y-2">
+                <label for="${this._getFieldName("meeting_recording_raw_url")}" class="form-label"
+                  >Original provider recording</label
+                >
+                <div class="mt-2 ${inputWidthClass}">
+                  <input
+                    type="url"
+                    id="${this._getFieldName("meeting_recording_raw_url")}"
+                    class="input-primary bg-stone-100 text-stone-600 cursor-not-allowed"
+                    .value="${this._rawRecordingUrl}"
+                    readonly
+                  />
+                </div>
+                <p class="form-legend">Original recording from the meeting provider.</p>
+              </div>
+            `
+          : ""}
+
+        <div class="space-y-2">
+          <label for="${this._getFieldName("meeting_recording_url")}" class="form-label"
+            >Final public recording URL (optional)</label
+          >
+          <div class="mt-2 ${inputWidthClass}">
+            <input
+              type="url"
+              id="${this._getFieldName("meeting_recording_url")}"
+              class="input-primary ${disabledClasses}"
+              placeholder="https://youtube.com/watch?v=..."
+              .value="${this._recordingUrl}"
+              @input="${this._handleRecordingUrlChange}"
+              ?disabled=${this.disabled}
+            />
+          </div>
+          <p class="form-legend">${MEETING_RECORDING_URL_LEGEND}</p>
+        </div>
+
+        ${showVisibilityControl ? this._renderRecordingVisibilityControl() : ""}
+      </div>
+    `;
+  }
+
   /**
    * Renders manual mode fields (meeting and recording URLs).
    * @returns {import('lit').TemplateResult} Manual mode field elements
@@ -947,24 +1051,7 @@ export class OnlineEventDetails extends LitWrapper {
             </div>
           `
         : ""}
-
-      <div class="space-y-2">
-        <label for="${this._getFieldName("meeting_recording_url")}" class="form-label"
-          >Recording URL (optional)</label
-        >
-        <div class="mt-2">
-          <input
-            type="url"
-            id="${this._getFieldName("meeting_recording_url")}"
-            class="input-primary ${disabledClasses}"
-            placeholder="https://youtube.com/watch?v=..."
-            .value="${this._recordingUrl}"
-            @input="${this._handleRecordingUrlChange}"
-            ?disabled=${this.disabled}
-          />
-        </div>
-        <p class="form-legend">${this._getRecordingLegend()}</p>
-      </div>
+      ${this._renderRecordingControls(disabledClasses)}
     `;
   }
 
@@ -991,7 +1078,7 @@ export class OnlineEventDetails extends LitWrapper {
 
         ${this._createMeeting
           ? html`
-              <div class="rounded-lg border border-stone-100 bg-stone-50 p-3 space-y-7">
+              <div class="space-y-7">
                 <div class="space-y-2 lg:w-1/2">
                   <label class="form-label text-sm font-medium text-stone-900">Meeting provider</label>
                   <select
@@ -1025,47 +1112,35 @@ export class OnlineEventDetails extends LitWrapper {
                 </div>
                 ${!this._isSession()
                   ? html`
-                      <div class="space-y-2">
-                        <label class="inline-flex items-center cursor-pointer">
-                          <input
-                            type="checkbox"
-                            class="sr-only peer"
-                            .checked="${this._recordingRequested}"
-                            @change="${this._handleRecordingRequestedChange}"
-                            ?disabled=${this.disabled}
-                          />
-                          <span
-                            class="relative w-11 h-6 bg-stone-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-stone-300 after:border after:border-stone-200 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500"
-                          ></span>
-                          <span class="ms-3 text-sm font-medium text-stone-900">Record meeting</span>
-                        </label>
-                        <p class="form-legend">
-                          When enabled, Zoom will automatically record this meeting to the cloud.
-                        </p>
+                      <div class="space-y-4">
+                        <div class="space-y-2">
+                          <label class="inline-flex items-center cursor-pointer">
+                            <input
+                              type="checkbox"
+                              class="sr-only peer"
+                              .checked="${this._recordingRequested}"
+                              @change="${this._handleRecordingRequestedChange}"
+                              ?disabled=${this.disabled}
+                            />
+                            <span
+                              class="relative w-11 h-6 bg-stone-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-stone-300 after:border after:border-stone-200 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500"
+                            ></span>
+                            <span class="ms-3 text-sm font-medium text-stone-900">Record meeting</span>
+                          </label>
+                          <p class="form-legend">Enable automatic recording for this meeting.</p>
+                        </div>
+                        ${this._renderRecordingVisibilityControl()}
                       </div>
                     `
                   : ""}
               </div>
             `
           : ""}
-
-        <div class="space-y-2">
-          <label for="${this._getFieldName("meeting_recording_url")}" class="form-label"
-            >Recording URL (optional)</label
-          >
-          <div class="mt-2 lg:w-1/2">
-            <input
-              type="url"
-              id="${this._getFieldName("meeting_recording_url")}"
-              class="input-primary ${this.disabled ? "bg-stone-100 text-stone-500 cursor-not-allowed" : ""}"
-              placeholder="https://youtube.com/watch?v=..."
-              .value="${this._recordingUrl}"
-              @input="${this._handleRecordingUrlChange}"
-              ?disabled=${this.disabled}
-            />
-          </div>
-          <p class="form-legend">${this._getRecordingLegend()}</p>
-        </div>
+        ${this._renderRecordingControls(
+          this.disabled ? "bg-stone-100 text-stone-500 cursor-not-allowed" : "",
+          "lg:w-1/2",
+          this._isSession() || !this._createMeeting,
+        )}
       </div>
     `;
   }

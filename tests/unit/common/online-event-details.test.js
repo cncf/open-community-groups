@@ -20,6 +20,7 @@ describe("online-event-details", () => {
     expect(element.getMeetingData()).to.deep.equal({
       meeting_join_instructions: "Bring your ticket confirmation.",
       meeting_join_url: "https://example.com/join",
+      meeting_recording_published: false,
       meeting_recording_requested: true,
       meeting_recording_url: "https://example.com/recording",
       meeting_requested: false,
@@ -31,6 +32,7 @@ describe("online-event-details", () => {
     expect(element._mode).to.equal("manual");
     expect(element._joinInstructions).to.equal("");
     expect(element._joinUrl).to.equal("");
+    expect(element._recordingPublished).to.equal(false);
     expect(element._recordingUrl).to.equal("");
   });
 
@@ -47,6 +49,35 @@ describe("online-event-details", () => {
     expect(element.getMeetingData()).to.include({
       meeting_recording_requested: false,
     });
+  });
+
+  it("submits recording visibility and explains the public target", async () => {
+    const element = await mountLitComponentWithAttributes(
+      "online-event-details",
+      {
+        attributes: {
+          "meeting-recording-published": "false",
+          "meeting-recording-raw-url": "https://zoom.us/rec/share/raw",
+        },
+      },
+    );
+
+    expect(element.getMeetingData()).to.include({
+      meeting_recording_published: false,
+    });
+    expect(element.textContent).to.include(
+      "Controls whether public visitors can see a recording link when one is available.",
+    );
+
+    element._handleRecordingPublishedChange({ target: { checked: true } });
+    await element.updateComplete;
+
+    expect(element.getMeetingData()).to.include({
+      meeting_recording_published: true,
+    });
+    expect(element.textContent).to.include(
+      "Controls whether public visitors can see a recording link when one is available.",
+    );
   });
 
   it("shows a capacity warning when automatic meeting capacity is exceeded", async () => {
@@ -71,7 +102,7 @@ describe("online-event-details", () => {
     const element = await mountLitComponent("online-event-details", {
       meetingInSync: true,
       meetingJoinUrl: "https://zoom.us/j/synced",
-      meetingRecordingUrl: "https://zoom.us/rec/share/synced",
+      meetingRecordingRawUrl: "https://zoom.us/rec/share/synced",
       meetingRequested: true,
     });
 
@@ -90,6 +121,7 @@ describe("online-event-details", () => {
     expect(element.getMeetingData()).to.deep.equal({
       meeting_join_instructions: "",
       meeting_join_url: "",
+      meeting_recording_published: false,
       meeting_recording_requested: true,
       meeting_recording_url: "",
       meeting_requested: false,
@@ -103,7 +135,7 @@ describe("online-event-details", () => {
       kind: "virtual",
       meetingInSync: true,
       meetingJoinUrl: "https://zoom.us/j/synced",
-      meetingRecordingUrl: "https://zoom.us/rec/share/synced",
+      meetingRecordingRawUrl: "https://zoom.us/rec/share/synced",
       meetingRequested: true,
       startsAt: "2030-05-10T10:00",
     });
@@ -123,12 +155,14 @@ describe("online-event-details", () => {
 
     expect(element._mode).to.equal("automatic");
     expect(element._joinUrl).to.equal("");
-    expect(element._recordingUrl).to.equal("https://zoom.us/rec/share/synced");
+    expect(element._rawRecordingUrl).to.equal("https://zoom.us/rec/share/synced");
+    expect(element._recordingUrl).to.equal("");
     expect(element.getMeetingData()).to.deep.equal({
       meeting_join_instructions: "",
       meeting_join_url: "",
+      meeting_recording_published: false,
       meeting_recording_requested: true,
-      meeting_recording_url: "https://zoom.us/rec/share/synced",
+      meeting_recording_url: "",
       meeting_requested: true,
       meeting_provider_id: "zoom",
     });
@@ -137,7 +171,7 @@ describe("online-event-details", () => {
   it("keeps automatic recording edits when switching to manual without saving", async () => {
     const element = await mountLitComponent("online-event-details", {
       meetingInSync: true,
-      meetingRecordingUrl: "https://zoom.us/rec/share/synced",
+      meetingRecordingRawUrl: "https://zoom.us/rec/share/synced",
       meetingRequested: true,
     });
 
@@ -160,6 +194,7 @@ describe("online-event-details", () => {
     expect(element.getMeetingData()).to.deep.equal({
       meeting_join_instructions: "",
       meeting_join_url: "",
+      meeting_recording_published: false,
       meeting_recording_requested: true,
       meeting_recording_url: "https://youtube.com/watch?v=processed",
       meeting_requested: false,
@@ -194,6 +229,7 @@ describe("online-event-details", () => {
     expect(element.getMeetingData()).to.deep.equal({
       meeting_join_instructions: "",
       meeting_join_url: "",
+      meeting_recording_published: false,
       meeting_recording_requested: true,
       meeting_recording_url: "https://youtube.com/watch?v=processed",
       meeting_requested: true,
@@ -204,7 +240,7 @@ describe("online-event-details", () => {
   it("returns automatic recording overrides for session meeting data", async () => {
     const element = await mountLitComponent("online-event-details", {
       fieldNamePrefix: "sessions[0]",
-      meetingRecordingUrl: "https://example.com/original",
+      meetingRecordingRawUrl: "https://example.com/original",
     });
 
     element._mode = "automatic";
@@ -217,6 +253,7 @@ describe("online-event-details", () => {
     expect(element.getMeetingData()).to.deep.equal({
       meeting_join_instructions: "",
       meeting_join_url: "",
+      meeting_recording_published: false,
       meeting_recording_requested: true,
       meeting_recording_url: "https://youtube.com/watch?v=session-processed",
       meeting_requested: true,

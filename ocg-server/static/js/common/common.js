@@ -1,5 +1,11 @@
 import { toTrimmedString } from "/static/js/common/utils.js";
 
+export const MEETING_RECORDING_URL_LEGEND =
+  "Optional processed recording that takes priority over the original provider recording.";
+
+export const MEETING_RECORDING_VISIBILITY_LEGEND =
+  "Controls whether public visitors can see a recording link when one is available.";
+
 /**
  * Shows a loading spinner by adding the 'is-loading' class to the element.
  * @param {string} id - The ID of the element to show loading spinner for

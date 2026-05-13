@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(6);
+select plan(7);
 
 -- ============================================================================
 -- VARIABLES
@@ -100,6 +100,10 @@ select isnt(
     'updated_at is set after recording URL update'
 );
 
+update event
+set meeting_recording_published = false
+where event_id = :'eventID';
+
 -- Should overwrite recording URL when updating with different URL
 select lives_ok(
     $$select update_meeting_recording_url('zoom', '123456789', 'https://zoom.us/rec/share/xyz789')$$,
@@ -109,6 +113,11 @@ select is(
     (select recording_url from meeting where meeting_id = :'meetingID'),
     'https://zoom.us/rec/share/xyz789',
     'Recording URL can be updated with a new value'
+);
+select is(
+    (select meeting_recording_published from event where event_id = :'eventID'),
+    false,
+    'Recording visibility is not changed by provider recording updates'
 );
 
 -- Should not raise error when updating non-existent meeting

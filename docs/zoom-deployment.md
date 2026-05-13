@@ -205,6 +205,10 @@ URL for OCG to store when the `recording.completed` webhook arrives.
 If recording sharing is disabled, or if Zoom does not generate a shareable URL,
 OCG cannot populate the recording link from the webhook payload.
 
+Stored Zoom recording URLs are not published automatically. Group
+administrators must enable `Publish recording publicly` on the event or session
+before public visitors can see the original provider recording.
+
 References:
 
 - [Managing cloud recording settings](https://support.zoom.com/hc/en/article?id=zm_kb&sysparm_article=KB0065362)
