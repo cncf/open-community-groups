@@ -6,6 +6,121 @@ export const MEETING_RECORDING_URL_LEGEND =
 export const MEETING_RECORDING_VISIBILITY_LEGEND =
   "Controls whether public visitors can see a recording link when one is available.";
 
+export const BROKEN_IMAGE_PLACEHOLDER_URL = "/static/images/icons/broken_image.svg";
+
+/**
+ * Checks if a failed image should keep an existing fallback, such as avatar initials.
+ * @param {HTMLImageElement} image - Image element that emitted the event
+ * @returns {boolean} True when the global fallback should not replace it
+ */
+const shouldSkipBrokenImagePlaceholder = (image) => {
+  if (image.closest("logo-image")) {
+    return true;
+  }
+
+  const srcAttribute = image.getAttribute("src")?.trim() || "";
+  const currentSource = image.currentSrc || image.src;
+  if (!srcAttribute && !image.currentSrc) {
+    return true;
+  }
+
+  return currentSource.endsWith(BROKEN_IMAGE_PLACEHOLDER_URL);
+};
+
+/**
+ * Hides a failed image and overlays the shared broken-image icon.
+ * @param {EventTarget|null} target - Possible image element from an error event
+ * @returns {boolean} True when the placeholder was applied
+ */
+export const applyBrokenImagePlaceholder = (target) => {
+  if (!(target instanceof HTMLImageElement)) {
+    return false;
+  }
+
+  if (target.dataset.ocgBrokenImagePlaceholder === "true" || shouldSkipBrokenImagePlaceholder(target)) {
+    return false;
+  }
+
+  target.dataset.ocgBrokenImagePlaceholder = "true";
+  target.classList.add("invisible");
+  if (target.parentElement && !target.parentElement.classList.contains("relative")) {
+    target.parentElement.dataset.ocgBrokenImageAddedRelative = "true";
+    target.parentElement.classList.add("relative");
+  }
+  target.removeAttribute("srcset");
+  target.src = BROKEN_IMAGE_PLACEHOLDER_URL;
+  if (target.nextElementSibling?.dataset?.ocgBrokenImageIcon !== "true") {
+    const placeholderContainer = document.createElement("span");
+    const placeholderIcon = document.createElement("span");
+    placeholderContainer.className = [
+      "absolute",
+      "inset-0",
+      "flex",
+      "items-center",
+      "justify-center",
+      "bg-stone-50",
+      "pointer-events-none",
+    ].join(" ");
+    placeholderIcon.className = ["svg-icon", "size-8", "icon-broken-image", "bg-stone-400"].join(" ");
+    placeholderContainer.dataset.ocgBrokenImageIcon = "true";
+    placeholderContainer.setAttribute("aria-hidden", "true");
+    placeholderContainer.append(placeholderIcon);
+    target.insertAdjacentElement("afterend", placeholderContainer);
+  }
+
+  return true;
+};
+
+/**
+ * Removes fallback state when a previously broken image loads normally.
+ * @param {EventTarget|null} target - Possible image element from a load event
+ * @returns {boolean} True when fallback state was cleared
+ */
+export const clearBrokenImagePlaceholder = (target) => {
+  if (!(target instanceof HTMLImageElement)) {
+    return false;
+  }
+
+  if (target.dataset.ocgBrokenImagePlaceholder !== "true") {
+    return false;
+  }
+
+  const currentSource = target.currentSrc || target.src;
+  if (currentSource.endsWith(BROKEN_IMAGE_PLACEHOLDER_URL)) {
+    return false;
+  }
+
+  delete target.dataset.ocgBrokenImagePlaceholder;
+  target.classList.remove("invisible");
+  if (target.nextElementSibling?.dataset?.ocgBrokenImageIcon === "true") {
+    target.nextElementSibling.remove();
+  }
+  if (!target.parentElement?.querySelector('[data-ocg-broken-image-placeholder="true"]')) {
+    if (target.parentElement?.dataset.ocgBrokenImageAddedRelative === "true") {
+      delete target.parentElement.dataset.ocgBrokenImageAddedRelative;
+      target.parentElement.classList.remove("relative");
+    }
+  }
+
+  return true;
+};
+
+document.addEventListener(
+  "error",
+  (event) => {
+    applyBrokenImagePlaceholder(event.target);
+  },
+  true,
+);
+
+document.addEventListener(
+  "load",
+  (event) => {
+    clearBrokenImagePlaceholder(event.target);
+  },
+  true,
+);
+
 /**
  * Shows a loading spinner by adding the 'is-loading' class to the element.
  * @param {string} id - The ID of the element to show loading spinner for

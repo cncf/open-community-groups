@@ -2,12 +2,18 @@
 {% macro logo(logo_url, classes, size, border = true) -%}
   {% let bg_image = logo_url.replace("c_fill,dpr_2,f_auto,g_center,q_auto:good", &format!("c_scale,w_{}", size * 2) ) -%}
 
-  <div class="md:my-auto bg-white overflow-hidden bg-no-repeat bg-center bg-contain
+  <div class="md:my-auto bg-white overflow-hidden
               {% if border -%}
                 rounded-lg outline outline-1 outline-stone-300 border border-[5px] border-white
               {% endif -%}
-              {{ classes }}"
-       style="background-image: url('{{ bg_image }}')"></div>
+              {{ classes }}">
+    <img src="{{ bg_image }}"
+         alt=""
+         class="h-full w-full object-contain"
+         width="{{ size }}"
+         height="{{ size }}"
+         loading="lazy" />
+  </div>
 {% endmacro logo -%}
 {# End logo -#}
 
