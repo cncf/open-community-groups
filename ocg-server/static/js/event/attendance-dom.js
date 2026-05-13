@@ -161,13 +161,14 @@ const parseHydratedIsPast = (container) => {
 /**
  * Computes attendance metadata for the current event.
  * @param {HTMLElement} container - Attendance container element
- * @returns {{attendeeApprovalRequired: boolean, attendeeMeetingAccessOpen: boolean, canceled: boolean, isPastEvent: boolean, isSoldOut: boolean, isTicketed: boolean, ticketPurchaseAvailable: boolean, waitlistEnabled: boolean}}
+ * @returns {object} Attendance metadata
  */
 export const getAttendanceMeta = (container) => {
   const startsAtValue = container?.dataset?.starts ?? null;
   const capacity = parseCapacity(container);
   const remainingCapacity = parseRemainingCapacity(container);
-  const isSoldOut = capacity !== null && remainingCapacity !== null && remainingCapacity <= 0;
+  const hasNoCapacity = capacity === 0;
+  const isSoldOut = capacity !== null && capacity > 0 && remainingCapacity !== null && remainingCapacity <= 0;
   const attendeeApprovalRequired = container?.dataset?.attendeeApprovalRequired === "true";
   const attendeeMeetingAccessOpen = container?.dataset?.attendeeMeetingAccessOpen === "true";
   const canceled = container?.dataset?.canceled === "true";
@@ -196,6 +197,7 @@ export const getAttendanceMeta = (container) => {
     attendeeApprovalRequired,
     attendeeMeetingAccessOpen,
     canceled,
+    hasNoCapacity,
     isSoldOut,
     isPastEvent,
     ticketPurchaseAvailable,

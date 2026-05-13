@@ -5,7 +5,7 @@
 <form id="settings-form"
       hx-put="/dashboard/community/settings/update"
       hx-ext="no-empty-vals"
-      hx-exclude="[name=toggle_active], [name=toggle_group_team_management_restricted]"
+      hx-exclude="input[type='checkbox'][name^='toggle_']"
       hx-target="#dashboard-content"
       hx-indicator="#dashboard-spinner, #community-settings-spinner"
       hx-disabled-elt="button[type=submit], #cancel-button">

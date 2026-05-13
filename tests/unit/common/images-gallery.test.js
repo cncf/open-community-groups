@@ -26,6 +26,32 @@ describe("images-gallery", () => {
     expect(element._currentIndex).to.equal(0);
   });
 
+  it("renders gallery images inside stable positioned containers", async () => {
+    const element = await mountLitComponent("images-gallery", {
+      images: ["https://example.com/1.png"],
+      title: "Gallery",
+    });
+
+    const thumbnailButton = [...element.querySelectorAll("button")].find((button) =>
+      button.querySelector('img[alt="Gallery image 1"]'),
+    );
+    const mobileImage = [...element.querySelectorAll('img[alt="Gallery image 1"]')].find((image) =>
+      image.parentElement?.classList.contains("md:hidden"),
+    );
+
+    expect(thumbnailButton?.classList.contains("relative")).to.equal(true);
+    expect(mobileImage?.parentElement?.classList.contains("relative")).to.equal(true);
+
+    element._openModal(0);
+    await element.updateComplete;
+
+    const modalImage = [...element.querySelectorAll('img[alt="Gallery image 1"]')].find((image) =>
+      image.classList.contains("top-1/2"),
+    );
+    expect(modalImage?.parentElement?.classList.contains("absolute")).to.equal(true);
+    expect(modalImage?.parentElement?.classList.contains("relative")).to.equal(false);
+  });
+
   it("closes the modal from escape and background clicks", async () => {
     const element = await mountLitComponent("images-gallery", {
       images: ["https://example.com/1.png"],

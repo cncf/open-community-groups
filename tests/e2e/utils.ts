@@ -386,10 +386,10 @@ export const getEventAboutSection = (page: Page) =>
   page.getByText("About this event", { exact: true }).locator("..");
 
 /**
- * Selects the event logo container.
+ * Selects the event logo in the page intro.
  */
 export const getEventLogo = (page: Page) =>
-  page.locator("div[style*='background-image']").first();
+  getIntroSection(page).locator("img").first();
 
 /**
  * Selects the stable intro section used by community, group, and event pages.

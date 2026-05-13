@@ -98,7 +98,7 @@ export class ImagesGallery extends LitWrapper {
         ${this.images.map(
           (image, index) => html`
             <div class="hidden md:block">
-              <button class="w-full" @click=${() => this._openModal(index)}>
+              <button class="relative w-full" @click=${() => this._openModal(index)}>
                 <img
                   width="160"
                   height="160"
@@ -108,7 +108,7 @@ export class ImagesGallery extends LitWrapper {
                 />
               </button>
             </div>
-            <div class="block md:hidden">
+            <div class="relative block md:hidden">
               <img
                 width="160"
                 height="160"

@@ -69,7 +69,9 @@ test.describe("event page", () => {
     if (hasFormattedDate) {
       expect(eventDateText).toMatch(/\d{1,2}:\d{2}\s?(AM|PM)/);
     } else {
-      await expect(eventDateSection.getByText("TBD", { exact: true })).toBeVisible();
+      await expect(
+        eventDateSection.getByText("TBD", { exact: true }),
+      ).toBeVisible();
     }
   });
 
@@ -94,13 +96,13 @@ test.describe("event page", () => {
       locationText !== "" &&
       /,/.test(locationText);
 
-    expect(
-      hasMapButton || hasFallbackText || hasLocationDetails,
-    ).toBeTruthy();
+    expect(hasMapButton || hasFallbackText || hasLocationDetails).toBeTruthy();
 
     if (hasMapButton) {
       await expect(
-        locationSection.getByRole("button", { name: "Open full map view" }).first(),
+        locationSection
+          .getByRole("button", { name: "Open full map view" })
+          .first(),
       ).toBeVisible();
     } else if (hasFallbackText) {
       await expect(locationSection).toContainText(
@@ -147,7 +149,10 @@ test.describe("event page", () => {
     });
 
     test("meetup social link is visible", async ({ page }) => {
-      const meetupLink = page.getByRole("link", { name: "Meetup", exact: true });
+      const meetupLink = page.getByRole("link", {
+        name: "Meetup",
+        exact: true,
+      });
       await expect(meetupLink).toBeVisible();
       await expect(meetupLink).toHaveAttribute(
         "href",
@@ -156,9 +161,61 @@ test.describe("event page", () => {
     });
 
     test("gallery section renders with photos", async ({ page }) => {
-      await expect(page.getByText("Gallery", { exact: true }).first()).toBeVisible();
+      await expect(
+        page.getByText("Gallery", { exact: true }).first(),
+      ).toBeVisible();
       const gallery = page.locator("images-gallery");
       await expect(gallery).toBeVisible();
+    });
+
+    test("gallery handles broken images in thumbnails and carousel", async ({
+      page,
+    }) => {
+      const gallery = page.locator("images-gallery");
+      const brokenImageAlt = `Event ${TEST_EVENT_NAME} image 1`;
+      const validImageAlt = `Event ${TEST_EVENT_NAME} image 2`;
+      const thumbnailButton = gallery.locator(
+        `button:has(img[alt="${brokenImageAlt}"])`,
+      );
+      const thumbnailImage = thumbnailButton.locator(
+        `img[alt="${brokenImageAlt}"]`,
+      );
+
+      await expect(gallery).toBeVisible();
+      await expect(thumbnailButton).toBeVisible();
+      await expect(thumbnailButton).toHaveClass(/relative/);
+      await expect(thumbnailImage).toHaveAttribute(
+        "data-ocg-broken-image-placeholder",
+        "true",
+      );
+      await expect(thumbnailImage).toHaveAttribute(
+        "src",
+        /\/static\/images\/icons\/broken_image\.svg$/,
+      );
+      await expect(
+        thumbnailButton.locator('[data-ocg-broken-image-icon="true"]'),
+      ).toBeVisible();
+
+      await thumbnailButton.click();
+
+      const modal = gallery.locator(".modal");
+      const activeSlide = modal.locator(".z-30.translate-x-0");
+      await expect(modal).not.toHaveClass(/pointer-events-none/);
+      await expect(activeSlide).toHaveClass(/absolute/);
+      await expect(activeSlide).not.toHaveClass(/relative/);
+      await expect(
+        activeSlide.locator(`img[alt="${brokenImageAlt}"]`),
+      ).toHaveAttribute("data-ocg-broken-image-placeholder", "true");
+      await expect(
+        activeSlide.locator('[data-ocg-broken-image-icon="true"]'),
+      ).toBeVisible();
+
+      await modal.getByRole("button", { name: "Next" }).click();
+      await expect(
+        modal
+          .locator(".z-30.translate-x-0")
+          .locator(`img[alt="${validImageAlt}"]`),
+      ).toBeVisible();
     });
 
     test("sponsors section renders with sponsor badge", async ({ page }) => {
@@ -246,9 +303,7 @@ test.describe("event page - alpha event logo", () => {
 });
 
 test.describe("event page - virtual event with recording", () => {
-  test("recording link is hidden until the event is past", async ({
-    page,
-  }) => {
+  test("recording link is hidden until the event is past", async ({ page }) => {
     await navigateToEvent(
       page,
       TEST_COMMUNITY_NAME,
