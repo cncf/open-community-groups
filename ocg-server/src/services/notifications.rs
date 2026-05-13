@@ -342,7 +342,7 @@ impl DeliveryWorker {
             }
             NotificationKind::EventCustom => {
                 let template: EventCustom = serde_json::from_value(template_data)?;
-                let subject = format!("{}: {}", template.event.group_name, template.event.name);
+                let subject = template.subject.clone();
                 let body = template.render()?;
                 (subject, body)
             }
@@ -420,7 +420,7 @@ impl DeliveryWorker {
             }
             NotificationKind::GroupCustom => {
                 let template: GroupCustom = serde_json::from_value(template_data)?;
-                let subject = template.group.name.clone();
+                let subject = template.subject.clone();
                 let body = template.render()?;
                 (subject, body)
             }

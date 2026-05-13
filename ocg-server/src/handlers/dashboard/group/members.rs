@@ -106,8 +106,8 @@ pub(crate) async fn send_group_custom_notification(
         body: notification.body.clone(),
         group,
         link,
+        subject: notification.subject.clone(),
         theme: site_settings.theme,
-        title: notification.title.clone(),
     };
     let new_notification = NewNotification {
         attachments: vec![],
@@ -123,7 +123,7 @@ pub(crate) async fn send_group_custom_notification(
         None, // event_id is None for group notifications
         Some(group_id),
         new_notification.recipients.len(),
-        &notification.title,
+        &notification.subject,
         &notification.body,
     )
     .await?;
@@ -139,9 +139,10 @@ pub(crate) struct GroupCustomNotification {
     /// Body text for the notification.
     #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_NOTIFICATION_BODY))]
     pub body: String,
-    /// Title line for the notification email.
+    /// Subject line for the notification email.
+    #[serde(alias = "title")]
     #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_M))]
-    pub title: String,
+    pub subject: String,
 }
 
 // Helpers.
@@ -156,8 +157,9 @@ pub(crate) async fn prepare_list_page(
 ) -> Result<(GroupMembersFilters, members::ListPage), HandlerError> {
     // Fetch group members
     let filters: GroupMembersFilters = serde_qs_config().deserialize_str(raw_query)?;
-    let (can_manage_members, results) = tokio::try_join!(
+    let (can_manage_members, group, results) = tokio::try_join!(
         db.user_has_group_permission(&community_id, &group_id, &user_id, GroupPermission::MembersWrite),
+        db.get_group_summary(community_id, group_id),
         db.list_group_members(group_id, &filters)
     )?;
 
@@ -166,6 +168,7 @@ pub(crate) async fn prepare_list_page(
         NavigationLinks::from_filters(&filters, results.total, DASHBOARD_URL, PARTIAL_URL)?;
     let template = members::ListPage {
         can_manage_members,
+        default_notification_subject: group.name,
         members: results.members,
         navigation_links,
         total: results.total,

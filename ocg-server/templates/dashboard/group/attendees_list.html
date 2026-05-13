@@ -314,17 +314,18 @@
               hx-indicator="#attendee-notification-spinner"
               hx-disabled-elt="#submit-attendee-notification">
           <div class="mb-4">
-            <label for="attendee-title" class="form-label">
-              Title <span class="asterisk">*</span>
+            <label for="attendee-subject" class="form-label">
+              Subject <span class="asterisk">*</span>
             </label>
             <div class="mt-2">
               <input type="text"
-                     id="attendee-title"
-                     name="title"
+                     id="attendee-subject"
+                     name="subject"
                      required
                      maxlength="{{ crate::validation::MAX_LEN_M }}"
                      class="input-primary"
-                     placeholder="Enter notification title">
+                     value="{{ event.group_name }}: {{ event.name }}"
+                     placeholder="Enter notification subject">
             </div>
           </div>
           <div class="mb-6">

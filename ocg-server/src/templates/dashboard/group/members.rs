@@ -20,6 +20,8 @@ use crate::{
 pub(crate) struct ListPage {
     /// Whether the current user can manage members.
     pub can_manage_members: bool,
+    /// Default notification subject.
+    pub default_notification_subject: String,
     /// List of members in the group.
     pub members: Vec<GroupMember>,
     /// Pagination navigation links.

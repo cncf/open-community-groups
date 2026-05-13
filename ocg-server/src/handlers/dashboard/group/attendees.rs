@@ -335,8 +335,8 @@ pub(crate) async fn send_event_custom_notification(
         body: notification.body.clone(),
         event,
         link,
+        subject: notification.subject.clone(),
         theme: site_settings.theme,
-        title: notification.title.clone(),
     };
     let new_notification = NewNotification {
         attachments: vec![],
@@ -352,7 +352,7 @@ pub(crate) async fn send_event_custom_notification(
         Some(event_id),
         Some(group_id),
         new_notification.recipients.len(),
-        &notification.title,
+        &notification.subject,
         &notification.body,
     )
     .await?;
@@ -420,9 +420,10 @@ pub(crate) struct EventCustomNotification {
     /// Body text for the notification.
     #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_NOTIFICATION_BODY))]
     pub body: String,
-    /// Title line for the notification email.
+    /// Subject line for the notification email.
+    #[serde(alias = "title")]
     #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_M))]
-    pub title: String,
+    pub subject: String,
 }
 
 /// Form data for refund reviews.
