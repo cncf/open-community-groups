@@ -460,6 +460,23 @@ describe("event attendance", () => {
     expect(attendButton.title).to.equal("This event has no attendee capacity.");
   });
 
+  it("disables approval-required attendance when event capacity is zero", () => {
+    const { checker, attendButton } = renderAttendanceDom({
+      attendeeApprovalRequired: "true",
+      capacity: "0",
+      remainingCapacity: "0",
+    });
+
+    dispatchHtmxAfterRequest(checker, {
+      responseText: JSON.stringify({ status: "guest" }),
+    });
+
+    expect(attendButton.classList.contains("hidden")).to.equal(false);
+    expect(attendButton.disabled).to.equal(true);
+    expect(attendButton.title).to.equal("This event has no attendee capacity.");
+    expect(attendButton.querySelector("[data-attendance-label]")?.textContent).to.equal("Attend event");
+  });
+
   it("shows remaining seats instead of waitlist while capacity is still available", async () => {
     const { availabilityCapacity, availabilityCaptions } = renderAttendanceDom({
       availabilityUrl: "/events/test-event/availability",

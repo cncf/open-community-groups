@@ -304,20 +304,20 @@ const getAttendState = (meta) => {
     };
   }
 
-  if (meta.attendeeApprovalRequired) {
-    return withEventActionState(meta, {
-      icon: REQUEST_INVITATION_ICON,
-      label: REQUEST_INVITATION_LABEL,
-    });
-  }
-
-  if (!meta.isTicketed && meta.hasNoCapacity && !meta.attendeeApprovalRequired && !meta.isPastEvent) {
+  if (!meta.isTicketed && meta.hasNoCapacity && !meta.isPastEvent) {
     return {
       disabled: true,
       icon: ATTEND_EVENT_ICON,
       label: ATTEND_EVENT_LABEL,
       title: NO_CAPACITY_TITLE,
     };
+  }
+
+  if (meta.attendeeApprovalRequired) {
+    return withEventActionState(meta, {
+      icon: REQUEST_INVITATION_ICON,
+      label: REQUEST_INVITATION_LABEL,
+    });
   }
 
   if (!meta.isTicketed && meta.isSoldOut && !meta.isPastEvent) {
