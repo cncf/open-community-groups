@@ -496,12 +496,15 @@ test.describe("group dashboard events view", () => {
     const eventRecordingPublishedInput = eventOnlineDetails.locator(
       'input[type="hidden"][name="meeting_recording_published"]',
     );
+    const eventRecordingPublishedControl = eventOnlineDetails.locator("label", {
+      hasText: "Publish recording publicly",
+    });
     const eventRecordingPublishedToggle = eventOnlineDetails.getByLabel(
       "Publish recording publicly",
     );
     await expect(eventRecordingPublishedInput).toHaveValue("false");
     await expect(eventRecordingPublishedToggle).not.toBeChecked();
-    await eventRecordingPublishedToggle.check({ force: true });
+    await eventRecordingPublishedControl.click();
     await expect(eventRecordingPublishedToggle).toBeChecked();
     await expect(eventRecordingPublishedInput).toHaveValue("true");
 
@@ -532,12 +535,15 @@ test.describe("group dashboard events view", () => {
     const sessionRecordingPublishedInput = sessionOnlineDetails.locator(
       'input[type="hidden"][name="sessions[0][meeting_recording_published]"]',
     );
+    const sessionRecordingPublishedControl = sessionOnlineDetails.locator("label", {
+      hasText: "Publish recording publicly",
+    });
     const sessionRecordingPublishedToggle = sessionOnlineDetails.getByLabel(
       "Publish recording publicly",
     );
     await expect(sessionRecordingPublishedInput).toHaveValue("false");
     await expect(sessionRecordingPublishedToggle).not.toBeChecked();
-    await sessionRecordingPublishedToggle.check({ force: true });
+    await sessionRecordingPublishedControl.click();
     await expect(sessionRecordingPublishedToggle).toBeChecked();
     await expect(sessionRecordingPublishedInput).toHaveValue("true");
 
