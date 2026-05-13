@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(103);
+select plan(107);
 
 -- ============================================================================
 -- VARIABLES
@@ -33,6 +33,8 @@ select plan(103);
 \set event22ID '00000000-0000-0000-0000-000000000029'
 \set event23ID '00000000-0000-0000-0000-000000000030'
 \set event24ID '00000000-0000-0000-0000-000000000031'
+\set event25ID '00000000-0000-0000-0000-000000000032'
+\set event26ID '00000000-0000-0000-0000-000000000033'
 \set group1ID '00000000-0000-0000-0000-000000000002'
 \set invalidUserID '99999999-9999-9999-9999-999999999999'
 \set label1ID '00000000-0000-0000-0000-000000000401'
@@ -42,9 +44,12 @@ select plan(103);
 \set meeting1ID '00000000-0000-0000-0000-000000000301'
 \set meeting2ID '00000000-0000-0000-0000-000000000302'
 \set meeting3ID '00000000-0000-0000-0000-000000000303'
+\set meeting4ID '00000000-0000-0000-0000-000000000304'
+\set meeting5ID '00000000-0000-0000-0000-000000000305'
 \set session1ID '00000000-0000-0000-0000-000000000101'
 \set session2ID '00000000-0000-0000-0000-000000000102'
 \set session3ID '00000000-0000-0000-0000-000000000103'
+\set session4ID '00000000-0000-0000-0000-000000000104'
 \set sponsorNewID '00000000-0000-0000-0000-000000000062'
 \set sponsorOrigID '00000000-0000-0000-0000-000000000061'
 \set user1ID '00000000-0000-0000-0000-000000000020'
@@ -179,6 +184,51 @@ insert into meeting (
     'zoom',
     'event-pending-sync',
     'https://zoom.example/event-pending-recording'
+);
+
+-- Started event with synced automatic meeting
+insert into event (
+    event_id,
+    group_id,
+    name,
+    slug,
+    description,
+    timezone,
+    event_category_id,
+    event_kind_id,
+    capacity,
+    meeting_in_sync,
+    meeting_provider_id,
+    meeting_requested,
+    published,
+    starts_at,
+    ends_at
+) values (
+    :'event25ID',
+    :'group1ID',
+    'Started Synced Event',
+    'started-synced-event',
+    'This event started with a synced automatic meeting',
+    'UTC',
+    :'category1ID',
+    'virtual',
+    100,
+    true,
+    'zoom',
+    true,
+    true,
+    '2020-02-01 10:00:00+00',
+    '2020-02-01 12:00:00+00'
+);
+
+-- Started event meeting for archived sync checks
+insert into meeting (event_id, join_url, meeting_id, meeting_provider_id, provider_meeting_id)
+values (
+    :'event25ID',
+    'https://zoom.us/j/started-event',
+    :'meeting4ID',
+    'zoom',
+    'started-event'
 );
 
 -- Published dateless event for waitlist promotion checks
@@ -449,6 +499,7 @@ insert into event (
     '2030-04-01 17:00:00-04'
 );
 
+-- Session with pending meeting sync for preservation checks
 insert into session (
     session_id,
     event_id,
@@ -490,6 +541,70 @@ insert into meeting (
     :'session1ID'
 );
 
+-- Started session with synced automatic meeting
+insert into event (
+    event_id,
+    group_id,
+    name,
+    slug,
+    description,
+    timezone,
+    event_category_id,
+    event_kind_id,
+    capacity,
+    published,
+    starts_at,
+    ends_at
+) values (
+    :'event26ID',
+    :'group1ID',
+    'Started Session Parent Event',
+    'started-session-parent-event',
+    'This event started with a synced session meeting',
+    'UTC',
+    :'category1ID',
+    'virtual',
+    100,
+    true,
+    '2020-02-02 09:00:00+00',
+    '2020-02-02 13:00:00+00'
+);
+
+-- Started session row for archived sync checks
+insert into session (
+    session_id,
+    event_id,
+    name,
+    description,
+    starts_at,
+    ends_at,
+    session_kind_id,
+    meeting_in_sync,
+    meeting_provider_id,
+    meeting_requested
+) values (
+    :'session4ID',
+    :'event26ID',
+    'Started Synced Session',
+    'Started synced session description',
+    '2020-02-02 10:00:00+00',
+    '2020-02-02 11:00:00+00',
+    'virtual',
+    true,
+    'zoom',
+    true
+);
+
+-- Started session meeting for archived sync checks
+insert into meeting (join_url, meeting_id, meeting_provider_id, provider_meeting_id, session_id)
+values (
+    'https://zoom.us/j/started-session',
+    :'meeting5ID',
+    'zoom',
+    'started-session',
+    :'session4ID'
+);
+
 -- Event with session that has a meeting (for orphan test)
 insert into event (
     event_id,
@@ -517,6 +632,7 @@ insert into event (
     true
 );
 
+-- Existing session row for removal/orphan checks
 insert into session (
     session_id,
     event_id,
@@ -541,6 +657,7 @@ insert into session (
     true
 );
 
+-- Existing session meeting for removal/orphan checks
 insert into meeting (join_url, meeting_id, meeting_provider_id, provider_meeting_id, session_id)
 values ('https://zoom.us/j/123123123', :'meeting1ID', 'zoom', '123123123', :'session2ID');
 
@@ -2233,6 +2350,94 @@ select is(
     ),
     null::text,
     'Should keep synced session meeting recording hidden after clearing unpublished override'
+);
+
+-- Should keep started synced event automatic meeting archived after meeting setting changes
+select lives_ok(
+    $$select update_event(
+        null::uuid,
+        '00000000-0000-0000-0000-000000000002'::uuid,
+        '00000000-0000-0000-0000-000000000032'::uuid,
+        '{
+            "name": "Started Synced Event Updated",
+            "description": "Updated started synced event description",
+            "timezone": "UTC",
+            "category_id": "00000000-0000-0000-0000-000000000011",
+            "capacity": 100,
+            "kind_id": "virtual",
+            "meeting_provider_id": "zoom",
+            "meeting_recording_requested": false,
+            "meeting_requested": true,
+            "starts_at": "2020-02-01T10:00:00",
+            "ends_at": "2020-02-01T12:00:00"
+        }'::jsonb
+    )$$,
+    'Should execute update for started synced event automatic meeting settings'
+);
+select is(
+    (
+        select jsonb_build_object(
+            'meeting_in_sync', meeting_in_sync,
+            'meeting_recording_requested', meeting_recording_requested,
+            'name', name
+        )
+        from event
+        where event_id = :'event25ID'::uuid
+    ),
+    '{
+        "meeting_in_sync": true,
+        "meeting_recording_requested": false,
+        "name": "Started Synced Event Updated"
+    }'::jsonb,
+    'Should keep started synced event meeting archived as in sync'
+);
+
+-- Should keep started synced session automatic meeting archived after meeting setting changes
+select lives_ok(
+    $$select update_event(
+        null::uuid,
+        '00000000-0000-0000-0000-000000000002'::uuid,
+        '00000000-0000-0000-0000-000000000033'::uuid,
+        '{
+            "name": "Started Session Parent Event Updated",
+            "description": "Updated started session parent description",
+            "timezone": "UTC",
+            "category_id": "00000000-0000-0000-0000-000000000011",
+            "capacity": 100,
+            "kind_id": "virtual",
+            "meeting_requested": false,
+            "starts_at": "2020-02-02T09:00:00",
+            "ends_at": "2020-02-02T13:00:00",
+            "sessions": [
+                {
+                    "session_id": "00000000-0000-0000-0000-000000000104",
+                    "name": "Started Synced Session Updated",
+                    "description": "Updated started synced session description",
+                    "starts_at": "2020-02-02T10:00:00",
+                    "ends_at": "2020-02-02T11:00:00",
+                    "kind": "virtual",
+                    "meeting_provider_id": "zoom",
+                    "meeting_requested": true
+                }
+            ]
+        }'::jsonb
+    )$$,
+    'Should execute update for started synced session automatic meeting settings'
+);
+select is(
+    (
+        select jsonb_build_object(
+            'meeting_in_sync', meeting_in_sync,
+            'name', name
+        )
+        from session
+        where session_id = :'session4ID'::uuid
+    ),
+    '{
+        "meeting_in_sync": true,
+        "name": "Started Synced Session Updated"
+    }'::jsonb,
+    'Should keep started synced session meeting archived as in sync'
 );
 
 -- Should throw error when updating cancelled event

@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(15);
+select plan(18);
 
 -- ============================================================================
 -- TESTS
@@ -174,6 +174,80 @@ select is(
     ),
     false,
     'Event timezone change desyncs meeting'
+);
+
+-- Started synced event changes stay archived instead of creating provider update work
+select is(
+    is_event_meeting_in_sync(
+        jsonb_build_object(
+            'ends_at', floor(extract(epoch from current_timestamp - interval '1 hour')),
+            'meeting_in_sync', true,
+            'meeting_recording_requested', true,
+            'meeting_requested', true,
+            'name', 'Started Event',
+            'starts_at', floor(extract(epoch from current_timestamp - interval '2 hours')),
+            'timezone', 'UTC'
+        ),
+        jsonb_build_object(
+            'ends_at', to_char(current_timestamp at time zone 'UTC' - interval '1 hour', 'YYYY-MM-DD"T"HH24:MI:SS'),
+            'kind_id', 'virtual',
+            'meeting_recording_requested', false,
+            'meeting_requested', true,
+            'name', 'Started Event Updated',
+            'starts_at', to_char(current_timestamp at time zone 'UTC' - interval '2 hours', 'YYYY-MM-DD"T"HH24:MI:SS'),
+            'timezone', 'UTC'
+        )
+    ),
+    true,
+    'Started synced event meeting changes stay in sync'
+);
+
+-- Started event meeting disabled after being enabled still triggers deletion
+select is(
+    is_event_meeting_in_sync(
+        jsonb_build_object(
+            'ends_at', floor(extract(epoch from current_timestamp - interval '1 hour')),
+            'meeting_in_sync', true,
+            'meeting_requested', true,
+            'name', 'Started Event',
+            'starts_at', floor(extract(epoch from current_timestamp - interval '2 hours')),
+            'timezone', 'UTC'
+        ),
+        jsonb_build_object(
+            'ends_at', to_char(current_timestamp at time zone 'UTC' - interval '1 hour', 'YYYY-MM-DD"T"HH24:MI:SS'),
+            'kind_id', 'virtual',
+            'meeting_requested', false,
+            'name', 'Started Event',
+            'starts_at', to_char(current_timestamp at time zone 'UTC' - interval '2 hours', 'YYYY-MM-DD"T"HH24:MI:SS'),
+            'timezone', 'UTC'
+        )
+    ),
+    false,
+    'Started event meeting disabled after being enabled returns false'
+);
+
+-- Started pending event remains out of sync
+select is(
+    is_event_meeting_in_sync(
+        jsonb_build_object(
+            'ends_at', floor(extract(epoch from current_timestamp - interval '1 hour')),
+            'meeting_in_sync', false,
+            'meeting_requested', true,
+            'name', 'Started Pending Event',
+            'starts_at', floor(extract(epoch from current_timestamp - interval '2 hours')),
+            'timezone', 'UTC'
+        ),
+        jsonb_build_object(
+            'ends_at', to_char(current_timestamp at time zone 'UTC' - interval '1 hour', 'YYYY-MM-DD"T"HH24:MI:SS'),
+            'kind_id', 'virtual',
+            'meeting_requested', true,
+            'name', 'Started Pending Event Updated',
+            'starts_at', to_char(current_timestamp at time zone 'UTC' - interval '2 hours', 'YYYY-MM-DD"T"HH24:MI:SS'),
+            'timezone', 'UTC'
+        )
+    ),
+    false,
+    'Started pending event meeting stays out of sync'
 );
 
 -- Recording preference change desyncs meeting
