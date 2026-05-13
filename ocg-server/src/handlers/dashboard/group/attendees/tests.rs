@@ -537,7 +537,9 @@ async fn test_list_page_success() {
         parts.headers.get(CONTENT_TYPE).unwrap(),
         &HeaderValue::from_static("text/html; charset=utf-8"),
     );
-    assert!(!bytes.is_empty());
+    let body = std::str::from_utf8(&bytes).unwrap();
+    assert!(body.contains("name=\"subject\""));
+    assert!(body.contains("value=\"Test Group: Sample Event\""));
 }
 
 #[tokio::test]
@@ -950,8 +952,8 @@ async fn test_send_event_custom_notification_success() {
     let notification_body = "Hello, event attendees!";
     let notification_subject = "Event Update";
     let form_data = serde_qs::to_string(&EventCustomNotification {
-        title: notification_subject.to_string(),
         body: notification_body.to_string(),
+        subject: notification_subject.to_string(),
     })
     .unwrap();
 
@@ -1015,7 +1017,7 @@ async fn test_send_event_custom_notification_success() {
                 && notification.recipients == vec![attendee_id1, attendee_id2]
                 && notification.template_data.as_ref().is_some_and(|value| {
                     serde_json::from_value::<EventCustom>(value.clone()).is_ok_and(|template| {
-                        template.title == notification_subject
+                        template.subject == notification_subject
                             && template.body == notification_body
                             && template.event.name == event_for_notifications.name
                             && template.event.group_name == event_for_notifications.group_name
@@ -1062,8 +1064,8 @@ async fn test_send_event_custom_notification_no_attendees() {
         Some(group_id),
     );
     let form_data = serde_qs::to_string(&EventCustomNotification {
-        title: "Subject".to_string(),
         body: "Body".to_string(),
+        subject: "Subject".to_string(),
     })
     .unwrap();
 

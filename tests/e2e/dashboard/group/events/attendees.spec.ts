@@ -19,7 +19,7 @@ import {
 
 import {
   ATTENDEE_NOTIFICATION_BODY,
-  ATTENDEE_NOTIFICATION_TITLE,
+  ATTENDEE_NOTIFICATION_SUBJECT,
 } from "../helpers";
 
 const openAttendeesTab = async (page: Page, eventName: string, eventId: string) => {
@@ -516,7 +516,9 @@ test.describe("group dashboard attendees tab", () => {
     await expect(
       modal.getByText("This email will be sent to all event attendees."),
     ).toBeVisible();
-    await expect(modal.locator("#attendee-title")).toHaveValue("");
+    await expect(modal.locator("#attendee-subject")).toHaveValue(
+      "Platform Ops Meetup: Full Event With Waitlist",
+    );
     await expect(modal.locator("#attendee-body")).toHaveValue("");
 
     await modal.getByRole("button", { name: "Cancel" }).click();
@@ -568,7 +570,7 @@ test.describe("group dashboard attendees tab", () => {
     const modal = organizerGroupPage.locator("#attendee-notification-modal");
     await expect(modal).toBeVisible();
 
-    await modal.locator("#attendee-title").fill(ATTENDEE_NOTIFICATION_TITLE);
+    await modal.locator("#attendee-subject").fill(ATTENDEE_NOTIFICATION_SUBJECT);
     await modal.locator("#attendee-body").fill(ATTENDEE_NOTIFICATION_BODY);
 
     await Promise.all([

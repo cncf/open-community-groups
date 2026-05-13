@@ -260,6 +260,7 @@ async fn test_page_members_tab_success() {
         Some(group_id),
     );
     let groups = sample_user_groups_by_community(community_id, group_id);
+    let group = sample_group_summary(group_id);
     let member = sample_group_member();
     let output = crate::templates::dashboard::group::members::GroupMembersOutput {
         members: vec![member.clone()],
@@ -301,6 +302,10 @@ async fn test_page_members_tab_success() {
             *id == group_id && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT) && filters.offset == Some(0)
         })
         .returning(move |_, _| Ok(output.clone()));
+    db.expect_get_group_summary()
+        .times(1)
+        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
+        .returning(move |_, _| Ok(group.clone()));
     db.expect_get_site_settings()
         .times(1)
         .returning(|| Ok(sample_site_settings()));
@@ -326,7 +331,9 @@ async fn test_page_members_tab_success() {
         parts.headers.get(CONTENT_TYPE).unwrap(),
         &HeaderValue::from_static("text/html; charset=utf-8"),
     );
-    assert!(!bytes.is_empty());
+    let body = std::str::from_utf8(&bytes).unwrap();
+    assert!(body.contains("name=\"subject\""));
+    assert!(body.contains("value=\"Test Group\""));
 }
 
 #[tokio::test]

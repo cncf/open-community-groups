@@ -134,17 +134,18 @@
               hx-indicator="#notification-spinner"
               hx-disabled-elt="#submit-notification">
           <div class="mb-4">
-            <label for="title" class="form-label">
-              Title <span class="asterisk">*</span>
+            <label for="subject" class="form-label">
+              Subject <span class="asterisk">*</span>
             </label>
             <div class="mt-2">
               <input type="text"
-                     id="title"
-                     name="title"
+                     id="subject"
+                     name="subject"
                      required
                      maxlength="{{ crate::validation::MAX_LEN_M }}"
                      class="input-primary"
-                     placeholder="Enter notification title">
+                     value="{{ default_notification_subject }}"
+                     placeholder="Enter notification subject">
             </div>
           </div>
           <div class="mb-6">

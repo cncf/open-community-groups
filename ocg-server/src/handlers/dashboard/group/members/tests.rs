@@ -35,6 +35,7 @@ async fn test_list_page_success() {
         Some(group_id),
     );
     let member = sample_group_member();
+    let group = sample_group_summary(group_id);
     let output = crate::templates::dashboard::group::members::GroupMembersOutput {
         members: vec![member.clone()],
         total: 1,
@@ -71,6 +72,10 @@ async fn test_list_page_success() {
             *id == group_id && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT) && filters.offset == Some(0)
         })
         .returning(move |_, _| Ok(output.clone()));
+    db.expect_get_group_summary()
+        .times(1)
+        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
+        .returning(move |_, _| Ok(group.clone()));
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
@@ -93,7 +98,9 @@ async fn test_list_page_success() {
         parts.headers.get(CONTENT_TYPE).unwrap(),
         &HeaderValue::from_static("text/html; charset=utf-8"),
     );
-    assert!(!bytes.is_empty());
+    let body = std::str::from_utf8(&bytes).unwrap();
+    assert!(body.contains("name=\"subject\""));
+    assert!(body.contains("value=\"Test Group\""));
 }
 
 #[tokio::test]
@@ -112,6 +119,7 @@ async fn test_list_page_with_pagination_params() {
         Some(group_id),
     );
     let member = sample_group_member();
+    let group = sample_group_summary(group_id);
     let output = crate::templates::dashboard::group::members::GroupMembersOutput {
         members: vec![member.clone()],
         total: 1,
@@ -146,6 +154,10 @@ async fn test_list_page_with_pagination_params() {
         .times(1)
         .withf(move |id, filters| *id == group_id && filters.limit == Some(5) && filters.offset == Some(10))
         .returning(move |_, _| Ok(output.clone()));
+    db.expect_get_group_summary()
+        .times(1)
+        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
+        .returning(move |_, _| Ok(group.clone()));
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
@@ -186,6 +198,7 @@ async fn test_list_page_db_error() {
         Some(community_id),
         Some(group_id),
     );
+    let group = sample_group_summary(group_id);
     // Setup database mock
     let mut db = MockDB::new();
     db.expect_get_session()
@@ -217,6 +230,10 @@ async fn test_list_page_db_error() {
             *id == group_id && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT) && filters.offset == Some(0)
         })
         .returning(move |_, _| Err(anyhow!("db error")));
+    db.expect_get_group_summary()
+        .times(1)
+        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
+        .returning(move |_, _| Ok(group.clone()));
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
@@ -268,8 +285,8 @@ async fn test_send_group_custom_notification_success() {
     let mut expected_recipients = vec![member_id1, member_id2, team_member_id];
     expected_recipients.sort();
     let form_data = serde_qs::to_string(&GroupCustomNotification {
-        title: notification_subject.to_string(),
         body: notification_body.to_string(),
+        subject: notification_subject.to_string(),
     })
     .unwrap();
 
@@ -336,7 +353,7 @@ async fn test_send_group_custom_notification_success() {
                 && notification.recipients == expected_recipients
                 && notification.template_data.as_ref().is_some_and(|value| {
                     serde_json::from_value::<GroupCustom>(value.clone()).is_ok_and(|template| {
-                        template.title == notification_subject
+                        template.subject == notification_subject
                             && template.body == notification_body
                             && template.group.name == group_for_notifications.name
                             && template.link == expected_link
@@ -382,8 +399,8 @@ async fn test_send_group_custom_notification_no_members() {
         Some(group_id),
     );
     let form_data = serde_qs::to_string(&GroupCustomNotification {
-        title: "Subject".to_string(),
         body: "Body".to_string(),
+        subject: "Subject".to_string(),
     })
     .unwrap();
 

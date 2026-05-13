@@ -68,10 +68,11 @@ pub(crate) struct EventCustom {
     pub event: EventSummary,
     /// Link to the event page.
     pub link: String,
+    /// Subject provided for the event notification.
+    #[serde(alias = "title")]
+    pub subject: String,
     /// Theme configuration for the notification.
     pub theme: Theme,
-    /// Display title provided for the event notification.
-    pub title: String,
 }
 
 /// Template for event published notification.
@@ -243,10 +244,11 @@ pub(crate) struct GroupCustom {
     pub group: GroupSummary,
     /// Link to the group page.
     pub link: String,
+    /// Subject provided for the group notification.
+    #[serde(alias = "title")]
+    pub subject: String,
     /// Theme configuration for the notification.
     pub theme: Theme,
-    /// Display title provided for the group notification.
-    pub title: String,
 }
 
 /// Template for group team invitation notification.

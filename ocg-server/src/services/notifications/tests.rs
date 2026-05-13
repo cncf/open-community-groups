@@ -453,11 +453,32 @@ fn test_delivery_worker_prepare_content_event_custom() {
     let (subject, body) = DeliveryWorker::prepare_content(&notification).unwrap();
 
     // Check content matches expectations
-    assert_eq!(subject, "Notification Group: Custom Event");
+    assert_eq!(subject, "Custom event subject");
+    assert!(body.contains("Custom event subject"));
     assert!(body.contains("Custom event body"));
     assert!(body.contains("You received this email notification because you're a member of"));
     assert!(body.contains("Notification Group"));
     assert!(body.contains("Test Community community"));
+}
+
+#[test]
+fn test_delivery_worker_prepare_content_event_custom_legacy_template_data() {
+    // Setup notification
+    let notification = Notification {
+        attachments: vec![],
+        email: "user@example.test".to_string(),
+        kind: NotificationKind::EventCustom,
+        notification_id: Uuid::new_v4(),
+        template_data: Some(sample_event_custom_legacy_template_data()),
+    };
+
+    // Prepare content
+    let (subject, body) = DeliveryWorker::prepare_content(&notification).unwrap();
+
+    // Check content matches expectations
+    assert_eq!(subject, "Custom event title");
+    assert!(body.contains("Custom event title"));
+    assert!(body.contains("Custom event body"));
 }
 
 #[test]
@@ -673,11 +694,32 @@ fn test_delivery_worker_prepare_content_group_custom() {
     let (subject, body) = DeliveryWorker::prepare_content(&notification).unwrap();
 
     // Check content matches expectations
-    assert_eq!(subject, "Hello Group");
+    assert_eq!(subject, "Custom group subject");
+    assert!(body.contains("Custom group subject"));
     assert!(body.contains("Custom group body"));
     assert!(body.contains("You received this email notification because you're a member of"));
     assert!(body.contains("Hello Group"));
     assert!(body.contains("Test Community community"));
+}
+
+#[test]
+fn test_delivery_worker_prepare_content_group_custom_legacy_template_data() {
+    // Setup notification
+    let notification = Notification {
+        attachments: vec![],
+        email: "user@example.test".to_string(),
+        kind: NotificationKind::GroupCustom,
+        notification_id: Uuid::new_v4(),
+        template_data: Some(sample_group_custom_legacy_template_data()),
+    };
+
+    // Prepare content
+    let (subject, body) = DeliveryWorker::prepare_content(&notification).unwrap();
+
+    // Check content matches expectations
+    assert_eq!(subject, "Custom group title");
+    assert!(body.contains("Custom group title"));
+    assert!(body.contains("Custom group body"));
 }
 
 #[test]
@@ -879,7 +921,7 @@ fn sample_email_verification_template_data() -> serde_json::Value {
 /// Sample template payload for custom event notifications.
 fn sample_event_custom_template_data() -> serde_json::Value {
     json!({
-        "title": "Custom event title",
+        "subject": "Custom event subject",
         "body": "Custom event body",
         "event": {
             "canceled": false,
@@ -903,6 +945,15 @@ fn sample_event_custom_template_data() -> serde_json::Value {
             "primary_color": "#000000"
         }
     })
+}
+
+/// Sample legacy payload for custom event notifications.
+fn sample_event_custom_legacy_template_data() -> serde_json::Value {
+    let mut payload = sample_event_custom_template_data();
+    let object = payload.as_object_mut().expect("custom event payload is an object");
+    object.remove("subject");
+    object.insert("title".to_string(), json!("Custom event title"));
+    payload
 }
 
 /// Sample legacy payload for event reminder notifications without waitlist data.
@@ -1054,7 +1105,7 @@ fn sample_event_waitlist_template_data() -> serde_json::Value {
 /// Sample template payload for custom group notifications.
 fn sample_group_custom_template_data() -> serde_json::Value {
     json!({
-        "title": "Custom group title",
+        "subject": "Custom group subject",
         "body": "Custom group body",
         "group": {
             "active": true,
@@ -1076,4 +1127,13 @@ fn sample_group_custom_template_data() -> serde_json::Value {
             "primary_color": "#000000"
         }
     })
+}
+
+/// Sample legacy payload for custom group notifications.
+fn sample_group_custom_legacy_template_data() -> serde_json::Value {
+    let mut payload = sample_group_custom_template_data();
+    let object = payload.as_object_mut().expect("custom group payload is an object");
+    object.remove("subject");
+    object.insert("title".to_string(), json!("Custom group title"));
+    payload
 }
