@@ -16,6 +16,9 @@ alter table meeting
         and array_position(recording_urls, '') is null
     );
 
+-- Drop the legacy single-URL updater before removing its target column
+drop function if exists update_meeting_recording_url(text, text, text);
+
 -- Drop the legacy single raw recording URL
 alter table meeting
     drop column recording_url;
