@@ -115,6 +115,7 @@ begin
                 event_reminder_enabled,
                 location,
                 logo_url,
+                luma_url,
                 meeting_hosts,
                 meeting_in_sync,
                 meeting_join_instructions,
@@ -165,6 +166,7 @@ begin
                     else null
                 end,
                 nullif(p_event->>'logo_url', ''),
+                nullif(p_event->>'luma_url', ''),
                 case when p_event->'meeting_hosts' is not null then array(select jsonb_array_elements_text(p_event->'meeting_hosts')) else null end,
                 case
                     when (p_event->>'meeting_requested')::boolean = true then false

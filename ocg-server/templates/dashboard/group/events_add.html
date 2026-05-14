@@ -355,7 +355,19 @@
         </div>
         {# End Meetup URL -#}
 
-        <div class="hidden lg:flex col-span-3"></div>
+        {# Luma URL -#}
+        <div class="col-span-full lg:col-span-3">
+          <label for="luma_url" class="form-label">Luma URL</label>
+          <div class="mt-2">
+            <input type="url"
+                   name="luma_url"
+                   id="luma_url"
+                   class="input-primary"
+                   placeholder="https://luma.com/event">
+          </div>
+          <p class="form-legend">Link to the Luma event page.</p>
+        </div>
+        {# End Luma URL -#}
 
         {# Photos -#}
         <div class="col-span-full">

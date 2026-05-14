@@ -183,6 +183,7 @@ describe("event-selector", () => {
       <input id="toggle_registration_required" type="checkbox" />
       <input id="registration_required" type="hidden" />
       <input id="meetup_url" />
+      <input id="luma_url" />
       <select id="payment_currency_code">
         <option value="">Select currency</option>
         <option value="EUR">EUR</option>
@@ -257,6 +258,7 @@ describe("event-selector", () => {
       event_reminder_enabled: true,
       registration_required: true,
       meetup_url: "https://meetup.com/cloud-native-malaga",
+      luma_url: "https://luma.com/cloud-native-malaga",
       meeting_join_instructions: "Use your registration name when joining.",
       meeting_join_url: "https://meet.example.com/cloud-native-malaga",
       meeting_recording_url: "https://video.example.com/old-recording",
@@ -313,6 +315,7 @@ describe("event-selector", () => {
     expect(document.getElementById("toggle_registration_required")?.checked).to.equal(true);
     expect(document.getElementById("registration_required")?.value).to.equal("true");
     expect(document.getElementById("meetup_url")?.value).to.equal("https://meetup.com/cloud-native-malaga");
+    expect(document.getElementById("luma_url")?.value).to.equal("https://luma.com/cloud-native-malaga");
     expect(document.getElementById("payment_currency_code")?.value).to.equal("EUR");
     expect(document.getElementById("venue_city")?.value).to.equal("Málaga");
     expect(document.getElementById("meeting_join_instructions")?.value).to.equal(

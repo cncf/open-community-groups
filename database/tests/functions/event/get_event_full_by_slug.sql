@@ -83,6 +83,7 @@ insert into event (
     meeting_join_url,
     meeting_recording_url,
     meeting_requested,
+    luma_url,
     meetup_url
 ) values (
     :'eventID',
@@ -111,6 +112,7 @@ insert into event (
     'https://stream.example.com/live',
     'https://youtube.com/watch?v=123',
     false,
+    'https://luma.com/event123',
     'https://meetup.com/event123'
 );
 

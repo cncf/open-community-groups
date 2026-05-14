@@ -236,6 +236,7 @@ begin
         end,
         location = v_event_location,
         logo_url = nullif(p_event->>'logo_url', ''),
+        luma_url = nullif(p_event->>'luma_url', ''),
         meeting_hosts = v_event_meeting_hosts,
         meeting_in_sync = case
             when (v_event_before->>'meeting_in_sync')::boolean = false

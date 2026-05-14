@@ -283,6 +283,9 @@ pub(crate) struct Event {
     /// URL to the event logo.
     #[garde(custom(image_url_opt))]
     pub logo_url: Option<String>,
+    /// Luma URL.
+    #[garde(url, length(max = MAX_LEN_L))]
+    pub luma_url: Option<String>,
     /// Meeting hosts to synchronize with provider (email addresses).
     #[garde(custom(email_vec))]
     pub meeting_hosts: Option<Vec<String>>,

@@ -26,7 +26,7 @@
 {% endblock scripts -%}
 
 {% block content -%}
-  {% let has_social_links = event.meetup_url.is_some() -%}
+  {% let has_social_links = event.meetup_url.is_some() || event.luma_url.is_some() -%}
 
   {# Breadcrumb -#}
   <breadcrumb-nav banner-url="{{ event.banner_url.as_ref().or(event.group.banner_url.as_ref()).unwrap_or(&event.community.banner_url) }}" banner-mobile-url="{{ event.banner_mobile_url.as_ref().or(event.group.banner_mobile_url.as_ref()).unwrap_or(&event.community.banner_mobile_url) }}" items='[{"label": "Home", "href": "/", "icon": "home"}, {"label": {{ event.community.display_name|json }}, "href": "/{{ event.community.name }}", "icon": "community"}, {"label": {{ event.group.name|json }}, "href": "/{{ event.community.name }}/group/{{ event.group.slug }}", "icon": "groups"}, {"label": {{ event.name|demoji|json }}, "icon": "date", "current": true}]'></breadcrumb-nav>
@@ -90,6 +90,9 @@
                       {% if let Some(meetup_url) = &event.meetup_url -%}
                         {{ social::social_link(url = meetup_url, icon_name = "meetup", platform_name = "Meetup") -}}
                       {% endif -%}
+                      {% if let Some(luma_url) = &event.luma_url -%}
+                        {{ social::social_link(url = luma_url, icon_name = "luma", platform_name = "Luma") -}}
+                      {% endif -%}
                     </div>
                   </div>
                 {% endif -%}
@@ -131,6 +134,9 @@
                   <div class="flex flex-wrap gap-2">
                     {% if let Some(meetup_url) = &event.meetup_url -%}
                       {{ social::social_link(url = meetup_url, icon_name = "meetup", platform_name = "Meetup") -}}
+                    {% endif -%}
+                    {% if let Some(luma_url) = &event.luma_url -%}
+                      {{ social::social_link(url = luma_url, icon_name = "luma", platform_name = "Luma") -}}
                     {% endif -%}
                   </div>
                 </div>

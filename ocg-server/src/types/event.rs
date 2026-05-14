@@ -272,6 +272,8 @@ pub struct EventFull {
     pub legacy_speakers: Option<Vec<LegacyUser>>,
     /// Longitude of the event's location.
     pub longitude: Option<f64>,
+    /// Luma URL for the event.
+    pub luma_url: Option<String>,
     /// Error message if meeting sync failed.
     pub meeting_error: Option<String>,
     /// Meeting hosts to synchronize with provider (email addresses).
