@@ -255,7 +255,8 @@ When OCG creates or updates a Zoom meeting, it currently applies these values:
 
 - Scheduled meeting type
 - Default password enabled
-- Automatic recording set to `cloud`
+- Automatic recording set to `cloud` when `Record meeting` is enabled in OCG, or `none` when it
+  is disabled
 - Join before host enabled
 - Join-before-host time set to `15` minutes
 - Mute upon entry enabled
@@ -317,7 +318,11 @@ Check:
 Check:
 
 - `Cloud recording` is enabled in Zoom.
-- `Automatic recording` is enabled and set to `Record in the cloud`.
+- `Automatic recording` is enabled and set to `Record in the cloud` in Zoom.
+- `Record meeting` is enabled for the event in OCG before OCG creates or updates the provider
+  meeting.
 - `Allow cloud recording sharing` is enabled.
 - The webhook is subscribed to `recording.completed`.
 - Zoom has finished processing the recording.
+- `Publish recording publicly` is enabled in OCG if the recording exists but does not appear on
+  the public event page.

@@ -379,11 +379,17 @@ This tab supports delivery-day execution:
 - Run manual check-in.
 - Generate check-in QR code for on-site flow.
 - Send attendee-wide operational emails.
+- Download the attendee list as CSV.
 
 Manual check-in bypasses attendee self-check-in timing windows, but the person must already be
 registered as an attendee and the event must still be published or active.
 
-`Send email` in this tab sends operational updates to attendees.
+`Download CSV` is available from the attendee actions menu and exports attendee name, company,
+and title.
+
+`Send email` in this tab sends operational updates to attendees who receive optional
+notifications. The email form includes a required `Subject`, defaults it to
+`{group name}: {event name}`, and sends the message body as plain text.
 
 ![Event attendees](../screenshots/dashboard-group-event-attendees.png)
 
@@ -437,6 +443,8 @@ How automatic mode works:
 - Choose `Create meeting automatically`.
 - Select provider (currently `Zoom`).
 - Optionally add host emails for coordination.
+- Leave `Record meeting` enabled when OCG should ask the provider to record automatically, or
+  turn it off when the event should not be recorded.
 - Save the event.
 - Publish the event to trigger meeting creation.
 - Wait for sync; join link/password appear once ready.
@@ -466,9 +474,13 @@ Constraint violations can disable automatic mode until fixed.
 - Switching manual to automatic can replace existing manual links.
 - Event and session recording links for automatic meetings can be replaced later
   with processed uploads hosted elsewhere.
+- `Record meeting` controls whether automatically created Zoom event and session meetings request
+  cloud recording.
 - Event and session recordings are not public by default. Enable
   `Publish recording publicly` to show either the final public recording URL or,
   when no final URL exists, the original provider recording.
+- After an automatic meeting or session has started, OCG keeps an already synced provider meeting
+  settled instead of re-queueing provider updates for a past start time.
 - Schedule or type changes can disable automatic mode if constraints are no longer met.
 - If sync fails, meeting errors surface in the editor until resolved.
 - In deployments without automatic-meeting support, only manual meeting URL fields are available.

@@ -52,14 +52,16 @@ organizations.
 
 - Zoom integration with automatic meeting setup
 - Per-event and per-session meeting support with automatic meeting cleanup
-- Support for manual meeting and recording links
+- Support for manual meeting and recording links, plus organizer-controlled
+  recording visibility
 
 ### Notifications
 
 - Automated notifications for registrations, reminders, event changes,
   cancellations, waitlists, speaker submissions, and refunds
 - Calendar attachments for event confirmations and updates
-- Custom emails to event attendees and group members
+- Custom emails to event attendees and group members, with user preferences for
+  optional notifications
 
 ### Users
 

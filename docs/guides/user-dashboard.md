@@ -69,8 +69,16 @@ You can maintain:
 - Personal details: name, timezone, company, title, photo, bio, interests.
 - Location: city and country.
 - Social links: website, LinkedIn, Bluesky, X, Facebook.
+- Notification preferences.
 
 Field requirements and limits are shown inline in the dashboard forms while you edit.
+
+Notification preferences:
+
+- `Receive optional notifications` controls broader announcements such as new event
+  announcements, event reminders, and custom messages from organizers.
+- Turning this off does not disable account, invitation, registration, speaker, refund, waitlist,
+  cancellation, or reschedule updates.
 
 ![User profile area](../screenshots/dashboard-user-profile.png)
 
