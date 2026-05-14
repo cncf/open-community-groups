@@ -244,6 +244,8 @@ jobs:
     if: needs.changes.outputs.javascript == 'true'
     runs-on:
       labels: ubuntu-latest
+    env:
+      PLAYWRIGHT_BROWSERS_PATH: 0
     steps:
       - name: Checkout code
         uses: actions/checkout@v6

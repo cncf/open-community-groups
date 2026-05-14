@@ -83,6 +83,7 @@ jobs:
       OCG_E2E_PAYMENTS_ENABLED: "true"
       OCG_PG_BIN: /usr/bin
       PGPASSWORD: postgres
+      PLAYWRIGHT_BROWSERS_PATH: 0
 
     steps:
       - name: Checkout code
