@@ -290,8 +290,8 @@ pub struct EventFull {
     pub meeting_recording_public_url: Option<String>,
     /// Whether the meeting recording is publicly visible.
     pub meeting_recording_published: Option<bool>,
-    /// Read-only raw URL for synced provider recording.
-    pub meeting_recording_raw_url: Option<String>,
+    /// Read-only raw URLs for synced provider recordings.
+    pub meeting_recording_raw_urls: Option<Vec<String>>,
     /// Whether automatic event meetings should be recorded.
     pub meeting_recording_requested: Option<bool>,
     /// Organizer-managed final URL for meeting recording.
@@ -726,8 +726,8 @@ pub struct Session {
     pub meeting_recording_public_url: Option<String>,
     /// Whether the meeting recording is publicly visible.
     pub meeting_recording_published: Option<bool>,
-    /// Read-only raw URL for synced provider recording.
-    pub meeting_recording_raw_url: Option<String>,
+    /// Read-only raw URLs for synced provider recordings.
+    pub meeting_recording_raw_urls: Option<Vec<String>>,
     /// Organizer-managed final URL for meeting recording.
     pub meeting_recording_url: Option<String>,
     /// Whether the session requests a meeting.

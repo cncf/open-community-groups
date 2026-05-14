@@ -86,16 +86,16 @@ async fn handle_recording_completed(db: &DynDB, payload: &ZoomWebhookPayload) ->
     };
     let provider_meeting_id = object.id.to_string();
 
-    // Update recording URL in database
+    // Append recording URL in database
     if let Err(err) = db
-        .update_meeting_recording_url(MeetingProvider::Zoom, &provider_meeting_id, recording_url)
+        .append_meeting_recording_url(MeetingProvider::Zoom, &provider_meeting_id, recording_url)
         .await
     {
-        warn!(?err, "failed to update meeting recording url");
+        warn!(?err, "failed to append meeting recording url");
         return StatusCode::INTERNAL_SERVER_ERROR.into_response();
     }
 
-    trace!(provider_meeting_id, "updated recording url");
+    trace!(provider_meeting_id, "appended recording url");
     StatusCode::OK.into_response()
 }
 

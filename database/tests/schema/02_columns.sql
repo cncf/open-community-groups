@@ -467,7 +467,7 @@ select columns_are('meeting', array[
     'event_id',
     'password',
     'provider_host_user_id',
-    'recording_url',
+    'recording_urls',
     'session_id',
     'sync_claimed_at',
     'updated_at'

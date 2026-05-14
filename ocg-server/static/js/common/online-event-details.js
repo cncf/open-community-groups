@@ -8,6 +8,7 @@ import {
 } from "/static/js/dashboard/group/meeting-validations.js";
 import { getCommonAlertOptions, showErrorAlert, showInfoAlert } from "/static/js/common/alerts.js";
 import {
+  MEETING_RECORDING_RAW_URLS_LEGEND,
   MEETING_RECORDING_URL_LEGEND,
   MEETING_RECORDING_VISIBILITY_LEGEND,
 } from "/static/js/common/common.js";
@@ -66,7 +67,20 @@ export class OnlineEventDetails extends LitWrapper {
     meetingError: { type: String, attribute: "meeting-error" },
     fieldNamePrefix: { type: String, attribute: "field-name-prefix" },
     meetingProviderId: { type: String, attribute: "meeting-provider-id" },
-    meetingRecordingRawUrl: { type: String, attribute: "meeting-recording-raw-url" },
+    meetingRecordingRawUrls: {
+      type: Array,
+      attribute: "meeting-recording-raw-urls",
+      converter: {
+        fromAttribute: (value) => {
+          if (!value || value.trim() === "") return [];
+          try {
+            return JSON.parse(value);
+          } catch {
+            return [];
+          }
+        },
+      },
+    },
     meetingRecordingPublished: {
       type: Boolean,
       attribute: "meeting-recording-published",
@@ -94,7 +108,7 @@ export class OnlineEventDetails extends LitWrapper {
     _joinUrl: { type: String, state: true },
     _recordingUrl: { type: String, state: true },
     _recordingPublished: { type: Boolean, state: true },
-    _rawRecordingUrl: { type: String, state: true },
+    _rawRecordingUrls: { type: Array, state: true },
     _recordingRequested: { type: Boolean, state: true },
     _createMeeting: { type: Boolean, state: true },
     _providerId: { type: String, state: true },
@@ -119,7 +133,7 @@ export class OnlineEventDetails extends LitWrapper {
     this.meetingError = "";
     this.fieldNamePrefix = "";
     this.meetingProviderId = DEFAULT_MEETING_PROVIDER;
-    this.meetingRecordingRawUrl = "";
+    this.meetingRecordingRawUrls = [];
     this.meetingRecordingPublished = false;
     this.meetingMaxParticipants = {};
 
@@ -128,7 +142,7 @@ export class OnlineEventDetails extends LitWrapper {
     this._joinUrl = "";
     this._recordingUrl = "";
     this._recordingPublished = false;
-    this._rawRecordingUrl = "";
+    this._rawRecordingUrls = [];
     this._recordingRequested = true;
     this._createMeeting = false;
     this._providerId = DEFAULT_MEETING_PROVIDER;
@@ -164,7 +178,9 @@ export class OnlineEventDetails extends LitWrapper {
     this._joinUrl = this._manualJoinUrl;
     this._recordingUrl = startsInAutomaticMode ? this._automaticRecordingUrl : this._manualRecordingUrl;
     this._recordingPublished = this.meetingRecordingPublished === true;
-    this._rawRecordingUrl = this.meetingRecordingRawUrl || "";
+    this._rawRecordingUrls = Array.isArray(this.meetingRecordingRawUrls)
+      ? [...this.meetingRecordingRawUrls]
+      : [];
     this._recordingRequested = this.meetingRecordingRequested !== false;
     this._createMeeting = this.meetingRequested;
     this._providerId = this.meetingProviderId || DEFAULT_MEETING_PROVIDER;
@@ -728,7 +744,7 @@ export class OnlineEventDetails extends LitWrapper {
     this._joinUrl = "";
     this._recordingUrl = "";
     this._recordingPublished = false;
-    this._rawRecordingUrl = "";
+    this._rawRecordingUrls = [];
     this._recordingRequested = true;
     this._createMeeting = false;
     this._providerId = DEFAULT_MEETING_PROVIDER;
@@ -954,7 +970,7 @@ export class OnlineEventDetails extends LitWrapper {
   }
 
   /**
-   * Renders raw provider URL, final URL, and optional visibility controls.
+   * Renders raw provider URLs, final URL, and optional visibility controls.
    * @param {string} disabledClasses - CSS classes applied to disabled fields
    * @param {string} inputWidthClass - Optional width class for input wrappers
    * @param {boolean} showVisibilityControl - Whether to render public visibility controls
@@ -963,22 +979,29 @@ export class OnlineEventDetails extends LitWrapper {
   _renderRecordingControls(disabledClasses, inputWidthClass = "", showVisibilityControl = true) {
     return html`
       <div class="space-y-4">
-        ${this._rawRecordingUrl
+        ${this._rawRecordingUrls.length > 0
           ? html`
               <div class="space-y-2">
-                <label for="${this._getFieldName("meeting_recording_raw_url")}" class="form-label"
-                  >Original provider recording</label
-                >
-                <div class="mt-2 ${inputWidthClass}">
-                  <input
-                    type="url"
-                    id="${this._getFieldName("meeting_recording_raw_url")}"
-                    class="input-primary bg-stone-100 text-stone-600 cursor-not-allowed"
-                    .value="${this._rawRecordingUrl}"
-                    readonly
-                  />
-                </div>
-                <p class="form-legend">Original recording from the meeting provider.</p>
+                ${this._rawRecordingUrls.map((rawRecordingUrl, index) => {
+                  const fieldId = `${this._getFieldName("meeting_recording_raw_urls")}_${index}`;
+                  return html`
+                    <div class="space-y-2">
+                      <label for="${fieldId}" class="form-label"
+                        >Original provider recording ${index + 1}</label
+                      >
+                      <div class="mt-2 ${inputWidthClass}">
+                        <input
+                          type="url"
+                          id="${fieldId}"
+                          class="input-primary bg-stone-100 text-stone-600 cursor-not-allowed"
+                          .value="${rawRecordingUrl}"
+                          readonly
+                        />
+                      </div>
+                    </div>
+                  `;
+                })}
+                <p class="form-legend">${MEETING_RECORDING_RAW_URLS_LEGEND}</p>
               </div>
             `
           : ""}
@@ -1071,7 +1094,7 @@ export class OnlineEventDetails extends LitWrapper {
               Meeting duration must be between ${MIN_MEETING_MINUTES} and ${MAX_MEETING_MINUTES} minutes.
             </li>
             <li>Manual join links cannot be set while automatic creation is on.</li>
-            <li>You can replace the synced recording link later with a processed upload.</li>
+            <li>You can choose a raw provider recording or replace it later with a processed upload.</li>
             <li>The meeting is not going to be created until you publish the event.</li>
           </ul>
         </div>

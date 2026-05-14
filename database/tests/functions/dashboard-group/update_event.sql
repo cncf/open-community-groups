@@ -176,14 +176,14 @@ insert into meeting (
     meeting_id,
     meeting_provider_id,
     provider_meeting_id,
-    recording_url
+    recording_urls
 ) values (
     :'event5ID',
     'https://zoom.us/j/event-pending-sync',
     :'meeting2ID',
     'zoom',
     'event-pending-sync',
-    'https://zoom.example/event-pending-recording'
+    array['https://zoom.example/event-pending-recording']::text[]
 );
 
 -- Started event with synced automatic meeting
@@ -530,14 +530,14 @@ insert into meeting (
     meeting_id,
     meeting_provider_id,
     provider_meeting_id,
-    recording_url,
+    recording_urls,
     session_id
 ) values (
     'https://zoom.us/j/session-pending-sync',
     :'meeting3ID',
     'zoom',
     'session-pending-sync',
-    'https://zoom.example/session-pending-recording',
+    array['https://zoom.example/session-pending-recording']::text[],
     :'session1ID'
 );
 

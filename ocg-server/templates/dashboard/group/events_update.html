@@ -696,8 +696,8 @@
             meeting-recording-url="{{ meeting_recording_url }}"
           {% endif %}
           meeting-recording-published="{{ event.meeting_recording_published.unwrap_or(false) }}"
-          {% if let Some(meeting_recording_raw_url) = &event.meeting_recording_raw_url %}
-            meeting-recording-raw-url="{{ meeting_recording_raw_url }}"
+          {% if let Some(meeting_recording_raw_urls) = &event.meeting_recording_raw_urls %}
+            meeting-recording-raw-urls="{{ meeting_recording_raw_urls|json }}"
           {% endif %}
 
           {% if let Some(meeting_recording_requested) = &event.meeting_recording_requested %}
@@ -747,17 +747,25 @@
                 </div>
                 <p class="form-legend">Shown with the meeting details on the public event page.</p>
               </div>
-              {% if let Some(meeting_recording_raw_url) = &event.meeting_recording_raw_url %}
+              {% if let Some(meeting_recording_raw_urls) = &event.meeting_recording_raw_urls %}
                 <div class="space-y-2">
-                  <label for="meeting_recording_raw_url" class="form-label">Original provider recording</label>
-                  <div class="mt-2">
-                    <input type="url"
-                           id="meeting_recording_raw_url"
-                           class="input-primary bg-stone-100 text-stone-600 cursor-not-allowed"
-                           value="{{ meeting_recording_raw_url }}"
-                           readonly>
-                  </div>
-                  <p class="form-legend">Original recording from the meeting provider.</p>
+                  {% for meeting_recording_raw_url in meeting_recording_raw_urls %}
+                    <div class="space-y-2">
+                      <label for="meeting_recording_raw_urls_{{ loop.index }}" class="form-label">
+                        Original provider recording {{ loop.index }}
+                      </label>
+                      <div class="mt-2">
+                        <input type="url"
+                               id="meeting_recording_raw_urls_{{ loop.index }}"
+                               class="input-primary bg-stone-100 text-stone-600 cursor-not-allowed"
+                               value="{{ meeting_recording_raw_url }}"
+                               readonly>
+                      </div>
+                    </div>
+                  {% endfor %}
+                  <p class="form-legend">
+                    Zoom can send multiple raw recordings when participants join before or after the main meeting. Review them and copy the correct URL into the final public recording field if needed.
+                  </p>
                 </div>
               {% endif %}
               <div class="space-y-2">
@@ -773,7 +781,7 @@
                          {% endif %}>
                 </div>
                 <p class="form-legend">
-                  Optional processed recording that takes priority over the original provider recording.
+                  Optional final recording URL, such as a processed upload or a reviewed provider recording.
                 </p>
               </div>
               <div class="space-y-2">
@@ -791,7 +799,7 @@
                   <span class="relative w-11 h-6 bg-stone-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-stone-300 after:border after:border-stone-200 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500"></span>
                   <span class="ms-3 text-sm font-medium text-stone-900">Publish recording publicly</span>
                 </label>
-                <p class="form-legend">Controls whether public visitors can see a recording link when one is available.</p>
+                <p class="form-legend">Controls whether public visitors can see the final public recording URL.</p>
               </div>
             </div>
           </div>

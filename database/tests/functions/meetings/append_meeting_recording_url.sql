@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(7);
+select plan(11);
 
 -- ============================================================================
 -- VARIABLES
@@ -82,15 +82,15 @@ values (:'meetingID', :'eventID', 'zoom', '123456789', 'https://zoom.us/j/123456
 -- TESTS
 -- ============================================================================
 
--- Should set recording_url when updating
+-- Should append recording URL
 select lives_ok(
-    $$select update_meeting_recording_url('zoom', '123456789', 'https://zoom.us/rec/share/abc123')$$,
-    'Should set recording_url when updating'
+    $$select append_meeting_recording_url('zoom', '123456789', 'https://zoom.us/rec/share/abc123')$$,
+    'Should append recording URL'
 );
-select is(
-    (select recording_url from meeting where meeting_id = :'meetingID'),
-    'https://zoom.us/rec/share/abc123',
-    'Recording URL updated successfully'
+select results_eq(
+    $$ select recording_urls from meeting where meeting_id = '00000000-0000-0000-0000-000000000301' $$,
+    $$ values (array['https://zoom.us/rec/share/abc123']::text[]) $$,
+    'Recording URL appended successfully'
 );
 
 -- Should set updated_at after recording URL update
@@ -104,15 +104,15 @@ update event
 set meeting_recording_published = false
 where event_id = :'eventID';
 
--- Should overwrite recording URL when updating with different URL
+-- Should append distinct recording URL
 select lives_ok(
-    $$select update_meeting_recording_url('zoom', '123456789', 'https://zoom.us/rec/share/xyz789')$$,
-    'Should overwrite recording URL when updating with different URL'
+    $$select append_meeting_recording_url('zoom', '123456789', 'https://zoom.us/rec/share/xyz789')$$,
+    'Should append distinct recording URL'
 );
-select is(
-    (select recording_url from meeting where meeting_id = :'meetingID'),
-    'https://zoom.us/rec/share/xyz789',
-    'Recording URL can be updated with a new value'
+select results_eq(
+    $$ select recording_urls from meeting where meeting_id = '00000000-0000-0000-0000-000000000301' $$,
+    $$ values (array['https://zoom.us/rec/share/abc123', 'https://zoom.us/rec/share/xyz789']::text[]) $$,
+    'Distinct recording URL is appended'
 );
 select is(
     (select meeting_recording_published from event where event_id = :'eventID'),
@@ -120,9 +120,31 @@ select is(
     'Recording visibility is not changed by provider recording updates'
 );
 
+-- Should not append duplicate recording URL
+select lives_ok(
+    $$select append_meeting_recording_url('zoom', '123456789', 'https://zoom.us/rec/share/abc123')$$,
+    'Should accept duplicate recording URL update'
+);
+select results_eq(
+    $$ select recording_urls from meeting where meeting_id = '00000000-0000-0000-0000-000000000301' $$,
+    $$ values (array['https://zoom.us/rec/share/abc123', 'https://zoom.us/rec/share/xyz789']::text[]) $$,
+    'Duplicate recording URL is not appended'
+);
+
+-- Should not append blank recording URL
+select lives_ok(
+    $$select append_meeting_recording_url('zoom', '123456789', '   ')$$,
+    'Should accept blank recording URL update'
+);
+select results_eq(
+    $$ select recording_urls from meeting where meeting_id = '00000000-0000-0000-0000-000000000301' $$,
+    $$ values (array['https://zoom.us/rec/share/abc123', 'https://zoom.us/rec/share/xyz789']::text[]) $$,
+    'Blank recording URL is not appended'
+);
+
 -- Should not raise error when updating non-existent meeting
 select lives_ok(
-    $$ select update_meeting_recording_url('zoom', 'nonexistent', 'https://example.com/rec') $$,
+    $$ select append_meeting_recording_url('zoom', 'nonexistent', 'https://example.com/rec') $$,
     'Updating non-existent meeting does not raise error'
 );
 
