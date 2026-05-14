@@ -23,6 +23,7 @@ returns json as $$
         'company', company,
         'country', country,
         'facebook_url', facebook_url,
+        'github_url', github_url,
         'has_password', case when password is not null then true else null end,
         'interests', interests,
         'linkedin_url', linkedin_url,

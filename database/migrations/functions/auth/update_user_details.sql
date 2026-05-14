@@ -14,6 +14,7 @@ begin
         company = nullif(p_user->>'company', ''),
         country = nullif(p_user->>'country', ''),
         facebook_url = nullif(p_user->>'facebook_url', ''),
+        github_url = nullif(p_user->>'github_url', ''),
         interests = case
             when p_user ? 'interests' and jsonb_typeof(p_user->'interests') != 'null' then
                 array(select jsonb_array_elements_text(p_user->'interests'))

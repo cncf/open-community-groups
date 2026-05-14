@@ -21,6 +21,8 @@ pub(crate) struct User {
     pub company: Option<String>,
     /// Facebook profile URL.
     pub facebook_url: Option<String>,
+    /// GitHub profile URL.
+    pub github_url: Option<String>,
     /// `LinkedIn` profile URL.
     pub linkedin_url: Option<String>,
     /// User's name.

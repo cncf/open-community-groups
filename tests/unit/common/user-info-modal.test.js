@@ -48,6 +48,7 @@ describe("user-info-modal", () => {
           username: "ada",
           websiteUrl: "https://example.com",
           linkedinUrl: "https://linkedin.com/in/ada",
+          githubUrl: "https://github.com/ada",
           provider: {
             linuxfoundation: {
               username: "ada-lf",
@@ -63,10 +64,12 @@ describe("user-info-modal", () => {
     expect(links).to.deep.equal([
       { url: "https://example.com", icon: "website", label: "Website" },
       { url: "https://linkedin.com/in/ada", icon: "linkedin", label: "LinkedIn" },
+      { url: "https://github.com/ada", icon: "github", label: "GitHub" },
     ]);
     expect(element.querySelector('a[href="https://openprofile.dev/profile/ada-lf"]')).to.not.equal(null);
     expect(element.querySelector('a[aria-label="Website"]')).to.not.equal(null);
     expect(element.querySelector('a[aria-label="LinkedIn"]')).to.not.equal(null);
+    expect(element.querySelector('a[aria-label="GitHub"]')).to.not.equal(null);
   });
 
   it("shows the profile placeholder when the user has no bio or social links", async () => {

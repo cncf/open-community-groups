@@ -82,6 +82,10 @@ async fn db_contracts_get_event_full_deserializes() -> Result<()> {
     assert_eq!(event.event_id, event_id());
     assert_eq!(event.sessions.len(), 1);
     assert_eq!(event.sponsors.len(), 1);
+    assert_eq!(
+        event.hosts[0].github_url.as_deref(),
+        Some("https://github.com/contract-organizer")
+    );
 
     Ok(())
 }
@@ -108,6 +112,10 @@ async fn db_contracts_get_group_full_deserializes() -> Result<()> {
     assert_eq!(group.group_id, group_id());
     assert_eq!(group.organizers.len(), 1);
     assert_eq!(group.sponsors.len(), 1);
+    assert_eq!(
+        group.organizers[0].github_url.as_deref(),
+        Some("https://github.com/contract-organizer")
+    );
 
     Ok(())
 }

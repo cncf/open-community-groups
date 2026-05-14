@@ -148,6 +148,9 @@ pub(crate) struct UserDetails {
     /// User's Facebook URL.
     #[garde(url, length(max = MAX_LEN_L))]
     pub facebook_url: Option<String>,
+    /// User's GitHub URL.
+    #[garde(url, length(max = MAX_LEN_L))]
+    pub github_url: Option<String>,
     /// User's interests.
     #[garde(custom(trimmed_non_empty_tag_vec))]
     pub interests: Option<Vec<String>>,
@@ -182,6 +185,7 @@ impl From<crate::auth::User> for UserDetails {
             company: user.company,
             country: user.country,
             facebook_url: user.facebook_url,
+            github_url: user.github_url,
             interests: user.interests,
             linkedin_url: user.linkedin_url,
             photo_url: user.photo_url,

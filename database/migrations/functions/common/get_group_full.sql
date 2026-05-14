@@ -71,6 +71,7 @@ returns json as $$
                 'bluesky_url', u.bluesky_url,
                 'company', u.company,
                 'facebook_url', u.facebook_url,
+                'github_url', u.github_url,
                 'linkedin_url', u.linkedin_url,
                 'name', u.name,
                 'photo_url', u.photo_url,

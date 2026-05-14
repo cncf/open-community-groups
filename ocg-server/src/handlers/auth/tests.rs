@@ -1651,7 +1651,10 @@ async fn test_update_user_details_success() {
     db.expect_update_user_details()
         .times(1)
         .withf(move |uid, details| {
-            *uid == user_id && details.optional_notifications_enabled && details.name == "Updated User"
+            *uid == user_id
+                && details.optional_notifications_enabled
+                && details.name == "Updated User"
+                && details.github_url.as_deref() == Some("https://github.com/updated-user")
         })
         .returning(|_, _| Ok(()));
     db.expect_update_session()
@@ -1671,7 +1674,7 @@ async fn test_update_user_details_success() {
         .header(COOKIE, format!("id={session_id}"))
         .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
         .body(Body::from(
-            "name=Updated+User&company=Example&optional_notifications_enabled=true",
+            "name=Updated+User&company=Example&github_url=https%3A%2F%2Fgithub.com%2Fupdated-user&optional_notifications_enabled=true",
         ))
         .unwrap();
     let response = router.oneshot(request).await.unwrap();
