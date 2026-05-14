@@ -1724,7 +1724,9 @@ class SessionItem extends LitWrapper {
                                       </div>
                                     `,
                                   )}
-                                  <p class="form-legend">${MEETING_RECORDING_RAW_URLS_LEGEND}</p>
+                                  <p class="form-legend whitespace-pre-line">
+                                    ${MEETING_RECORDING_RAW_URLS_LEGEND}
+                                  </p>
                                 </div>
                               `
                             : ""}

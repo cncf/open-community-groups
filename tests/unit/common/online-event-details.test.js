@@ -1,6 +1,7 @@
 import { expect } from "@open-wc/testing";
 
 import "/static/js/common/online-event-details.js";
+import { mockSwal } from "/tests/unit/test-utils/globals.js";
 import {
   mountLitComponent,
   mountLitComponentWithAttributes,
@@ -37,14 +38,11 @@ describe("online-event-details", () => {
   });
 
   it("honors a server-rendered false recording request attribute", async () => {
-    const element = await mountLitComponentWithAttributes(
-      "online-event-details",
-      {
-        attributes: {
-          "meeting-recording-requested": "false",
-        },
+    const element = await mountLitComponentWithAttributes("online-event-details", {
+      attributes: {
+        "meeting-recording-requested": "false",
       },
-    );
+    });
 
     expect(element.getMeetingData()).to.include({
       meeting_recording_requested: false,
@@ -52,43 +50,91 @@ describe("online-event-details", () => {
   });
 
   it("submits recording visibility and explains the public target", async () => {
-    const element = await mountLitComponentWithAttributes(
-      "online-event-details",
-      {
-        attributes: {
-          "meeting-recording-published": "false",
-          "meeting-recording-raw-urls": JSON.stringify([
-            "https://zoom.us/rec/share/raw-main",
-            "https://zoom.us/rec/share/raw-late",
-          ]),
+    const originalClipboardDescriptor = Object.getOwnPropertyDescriptor(navigator, "clipboard");
+    const originalOpen = window.open;
+    const clipboardCalls = [];
+    const openCalls = [];
+    const swal = mockSwal();
+
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: {
+        writeText: async (value) => {
+          clipboardCalls.push(value);
         },
       },
-    );
-
-    expect(element.getMeetingData()).to.include({
-      meeting_recording_published: false,
     });
-    expect(
-      [...element.renderRoot.querySelectorAll('input[readonly][type="url"]')].map(
-        (input) => input.value,
-      ),
-    ).to.deep.equal(["https://zoom.us/rec/share/raw-main", "https://zoom.us/rec/share/raw-late"]);
-    expect(element.textContent).to.include(
-      "Controls whether public visitors can see the final public recording URL.",
-    );
-    expect(element.textContent).to.include(
-      "Zoom can send multiple raw recordings when participants join before or after the main meeting.",
-    );
+    window.open = (...args) => {
+      openCalls.push(args);
+    };
 
-    element._handleRecordingPublishedChange({ target: { checked: true } });
-    await element.updateComplete;
-
-    expect(element.getMeetingData()).to.include({
-      meeting_recording_published: true,
+    const element = await mountLitComponentWithAttributes("online-event-details", {
+      attributes: {
+        "meeting-recording-published": "false",
+        "meeting-recording-raw-urls": JSON.stringify([
+          "https://zoom.us/rec/share/raw-main",
+          "https://zoom.us/rec/share/raw-late",
+        ]),
+      },
     });
-    expect(element.textContent).to.include(
-      "Controls whether public visitors can see the final public recording URL.",
-    );
+
+    try {
+      expect(element.getMeetingData()).to.include({
+        meeting_recording_published: false,
+      });
+      expect(
+        [...element.renderRoot.querySelectorAll('input[readonly][type="url"]')].map((input) => input.value),
+      ).to.deep.equal(["https://zoom.us/rec/share/raw-main", "https://zoom.us/rec/share/raw-late"]);
+      expect(
+        [...element.renderRoot.querySelectorAll("label.form-label")]
+          .map((label) => label.textContent.trim())
+          .filter((label) => label.includes("Original provider")),
+      ).to.deep.equal(["Original provider recordings"]);
+      expect(element.textContent).to.include(
+        "Controls whether public visitors can see the final public recording URL.",
+      );
+      expect(element.textContent).to.include(
+        "Zoom can send multiple raw recordings when participants join before or after the main meeting.",
+      );
+
+      const copyButtons = [...element.renderRoot.querySelectorAll("[data-raw-recording-copy]")];
+      const openButtons = [...element.renderRoot.querySelectorAll("[data-raw-recording-open]")];
+
+      expect(copyButtons).to.have.length(2);
+      expect(openButtons).to.have.length(2);
+
+      copyButtons[0].click();
+      openButtons[1].click();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(clipboardCalls).to.deep.equal(["https://zoom.us/rec/share/raw-main"]);
+      expect(openCalls).to.deep.equal([
+        ["https://zoom.us/rec/share/raw-late", "_blank", "noopener,noreferrer"],
+      ]);
+      expect(swal.calls[0]).to.include({
+        text: "Recording URL copied to clipboard.",
+        icon: "info",
+      });
+
+      element._handleRecordingPublishedChange({ target: { checked: true } });
+      await element.updateComplete;
+
+      expect(element.getMeetingData()).to.include({
+        meeting_recording_published: true,
+      });
+      expect(element.textContent).to.include(
+        "Controls whether public visitors can see the final public recording URL.",
+      );
+    } finally {
+      swal.restore();
+      window.open = originalOpen;
+
+      if (originalClipboardDescriptor) {
+        Object.defineProperty(navigator, "clipboard", originalClipboardDescriptor);
+      } else {
+        delete navigator.clipboard;
+      }
+    }
   });
 
   it("shows a capacity warning when automatic meeting capacity is exceeded", async () => {
@@ -199,9 +245,7 @@ describe("online-event-details", () => {
     });
 
     expect(element._mode).to.equal("manual");
-    expect(element._recordingUrl).to.equal(
-      " https://youtube.com/watch?v=processed ",
-    );
+    expect(element._recordingUrl).to.equal(" https://youtube.com/watch?v=processed ");
     expect(element.getMeetingData()).to.deep.equal({
       meeting_join_instructions: "",
       meeting_join_url: "",
@@ -234,9 +278,7 @@ describe("online-event-details", () => {
 
     expect(element._mode).to.equal("automatic");
     expect(element._joinUrl).to.equal("");
-    expect(element._recordingUrl).to.equal(
-      " https://youtube.com/watch?v=processed ",
-    );
+    expect(element._recordingUrl).to.equal(" https://youtube.com/watch?v=processed ");
     expect(element.getMeetingData()).to.deep.equal({
       meeting_join_instructions: "",
       meeting_join_url: "",
