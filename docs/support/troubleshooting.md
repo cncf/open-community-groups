@@ -135,7 +135,7 @@ For group members or event attendees:
 
 Also verify required fields:
 
-- Title
+- Subject
 - Body (plain text)
 
 ## More Help

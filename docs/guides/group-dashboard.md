@@ -186,7 +186,9 @@ Analytics values can lag briefly due to caching.
 - Browse member list and join dates.
 - Send plain-text email to all group members.
 
-`Send email` reaches both group members and group team members.
+`Send email` reaches both group members and group team members who receive optional
+notifications. The email form includes a required `Subject`, defaults it to the group name, and
+sends the message body as plain text.
 
 ![Group members area](../screenshots/dashboard-group-members.png)
 
