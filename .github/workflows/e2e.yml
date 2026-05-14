@@ -116,7 +116,7 @@ jobs:
 
       - name: Install Playwright browsers
         working-directory: tests/e2e
-        run: npx playwright install ${{ matrix.playwright_browsers }}
+        run: npx playwright install --force ${{ matrix.playwright_browsers }}
 
       - name: Install Tailwind CSS
         run: |
