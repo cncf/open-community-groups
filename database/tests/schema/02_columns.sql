@@ -218,6 +218,7 @@ select columns_are('event', array[
     'legacy_url',
     'location',
     'logo_url',
+    'luma_url',
     'meeting_error',
     'meeting_hosts',
     'meeting_in_sync',

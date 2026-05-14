@@ -314,6 +314,7 @@ class EventSelector extends LitWrapper {
     setAttendeeApprovalRequired(false);
     setWaitlistEnabled(false);
     setTextValue("meetup_url", details.meetup_url);
+    setTextValue("luma_url", details.luma_url);
     setGalleryImages(details.photos_urls);
     setTags(details.tags);
     setPaymentCurrencyCode(details.payment_currency_code);

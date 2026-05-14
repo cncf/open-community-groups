@@ -54,6 +54,7 @@ returns json as $$
             'latitude', st_y(e.location::geometry),
             'logo_url', coalesce(e.logo_url, g.logo_url, c.logo_url),
             'longitude', st_x(e.location::geometry),
+            'luma_url', e.luma_url,
             'meeting_error', e.meeting_error,
             'meeting_hosts', e.meeting_hosts,
             'meeting_in_sync', e.meeting_in_sync,

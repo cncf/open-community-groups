@@ -682,6 +682,7 @@ input:placeholder-shown {
 .icon-logs { --icon-url: url('/static/images/icons/logs.svg'); }
 .icon-login { --icon-url: url('/static/images/icons/login.svg'); }
 .icon-logout { --icon-url: url('/static/images/icons/logout.svg'); }
+.icon-luma { --icon-url: url('/static/images/icons/luma.svg'); }
 .icon-magnifying-glass { --icon-url: url('/static/images/icons/magnifying_glass.svg'); }
 .icon-map { --icon-url: url('/static/images/icons/map.svg'); }
 .icon-marker { --icon-url: url('/static/images/icons/marker.svg'); }

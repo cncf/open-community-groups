@@ -341,21 +341,35 @@
         </div>
         {# End Waitlist enabled -#}
 
-        {# Meetup URL -#}
-        <div class="col-span-full lg:col-span-3">
-          <label for="meetup_url" class="form-label">Meetup.com URL</label>
-          <div class="mt-2">
-            <input type="url"
-                   name="meetup_url"
-                   id="meetup_url"
-                   class="input-primary"
-                   placeholder="https://meetup.com/group/events/123456">
+        <div class="col-span-full grid grid-cols-1 gap-x-6 gap-y-8 lg:grid-cols-2">
+          {# Meetup URL -#}
+          <div>
+            <label for="meetup_url" class="form-label">Meetup.com URL</label>
+            <div class="mt-2">
+              <input type="url"
+                     name="meetup_url"
+                     id="meetup_url"
+                     class="input-primary"
+                     placeholder="https://meetup.com/group/events/123456">
+            </div>
+            <p class="form-legend">Link to the Meetup.com event page.</p>
           </div>
-          <p class="form-legend">Link to the Meetup.com event page.</p>
-        </div>
-        {# End Meetup URL -#}
+          {# End Meetup URL -#}
 
-        <div class="hidden lg:flex col-span-3"></div>
+          {# Luma URL -#}
+          <div>
+            <label for="luma_url" class="form-label">Luma URL</label>
+            <div class="mt-2">
+              <input type="url"
+                     name="luma_url"
+                     id="luma_url"
+                     class="input-primary"
+                     placeholder="https://luma.com/event">
+            </div>
+            <p class="form-legend">Link to the Luma event page.</p>
+          </div>
+          {# End Luma URL -#}
+        </div>
 
         {# Photos -#}
         <div class="col-span-full">

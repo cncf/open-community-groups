@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(47);
+select plan(48);
 
 -- ============================================================================
 -- TESTS
@@ -139,6 +139,7 @@ select has_check('event', 'event_check2');
 select has_check('event', 'event_cfs_fields_chk');
 select has_check('event', 'event_cfs_window_chk');
 select has_check('event', 'event_attendee_approval_waitlist_exclusive_chk');
+select has_check('event', 'event_luma_url_check');
 select has_check('event', 'event_meeting_capacity_required_chk');
 select has_check('event', 'event_meeting_conflict_chk');
 select has_check('event', 'event_meeting_kind_chk');

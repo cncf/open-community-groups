@@ -80,6 +80,7 @@ async fn db_contracts_get_event_full_deserializes() -> Result<()> {
     let event = db.get_event_full(community_id(), group_id(), event_id()).await?;
 
     assert_eq!(event.event_id, event_id());
+    assert_eq!(event.luma_url.as_deref(), Some("https://luma.com/contract-event"));
     assert_eq!(event.sessions.len(), 1);
     assert_eq!(event.sponsors.len(), 1);
     assert_eq!(
