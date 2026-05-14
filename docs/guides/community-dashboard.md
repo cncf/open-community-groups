@@ -218,7 +218,8 @@ Community analytics shows totals and trends for:
 Each metric is available as total, running total, and monthly values. This helps you spot
 steady progress and notice unusual jumps with better context.
 
-The `Page views` tab also includes a daily chart for the last month for each page type.
+The `Page views` tab starts with total community, group, and event page views, then breaks
+views down by page type with daily charts for the last month.
 
 Analytics data is cached and may lag for a few minutes.
 

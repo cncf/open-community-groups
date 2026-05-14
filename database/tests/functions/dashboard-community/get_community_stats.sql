@@ -613,6 +613,22 @@ select is(
             ),
             'page_views', jsonb_build_object(
                 'total_views', 98,
+                'total', jsonb_build_object(
+                    'total_views', 98,
+                    'per_day_views', jsonb_build_array(
+                        jsonb_build_array(to_char(d0, 'YYYY-MM-DD'), 17)
+                    ),
+                    'per_month_views', jsonb_build_array(
+                        jsonb_build_array(to_char(m10, 'YYYY-MM'), 33),
+                        jsonb_build_array(to_char(m9, 'YYYY-MM'), 8),
+                        jsonb_build_array(to_char(m8, 'YYYY-MM'), 17),
+                        jsonb_build_array(to_char(m7, 'YYYY-MM'), 6),
+                        jsonb_build_array(to_char(m6, 'YYYY-MM'), 6),
+                        jsonb_build_array(to_char(m4, 'YYYY-MM'), 4),
+                        jsonb_build_array(to_char(m3, 'YYYY-MM'), 7),
+                        jsonb_build_array(to_char(m0, 'YYYY-MM'), 17)
+                    )
+                ),
                 'community', jsonb_build_object(
                     'total_views', 25,
                     'per_day_views', jsonb_build_array(
@@ -714,6 +730,11 @@ select is(
         },
         "page_views": {
             "total_views": 0,
+            "total": {
+                "total_views": 0,
+                "per_day_views": [],
+                "per_month_views": []
+            },
             "community": {
                 "total_views": 0,
                 "per_day_views": [],

@@ -69,6 +69,8 @@ pub(crate) struct GroupPageViewsStats {
     pub events: PageViewsStats,
     /// Group page views statistics.
     pub group: PageViewsStats,
+    /// Total page views statistics.
+    pub total: PageViewsStats,
     /// Total views across all tracked pages.
     pub total_views: i64,
 }
