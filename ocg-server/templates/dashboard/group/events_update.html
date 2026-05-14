@@ -307,7 +307,7 @@
     <div class="border-t border-stone-900/10 pt-12">
       {{ dashboard::form_title(title = "Additional Information", description = "Optional event settings and external links.") -}}
 
-      <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
+      <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-6xl">
         {# Capacity -#}
         <div class="col-span-full lg:col-span-4">
           <label for="capacity" class="form-label">
@@ -1020,7 +1020,8 @@
 {# End Waitlist Tab -#}
 
 {# Form buttons -#}
-<div class="flex items-center justify-end mt-6">
+<div class="flex flex-wrap items-center justify-end gap-3 mt-6">
+  <button type="button" data-section-next class="btn-primary w-24">Next</button>
   <button id="cancel-button"
           type="button"
           hx-get="/dashboard/group?tab=events"
