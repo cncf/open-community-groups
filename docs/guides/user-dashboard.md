@@ -68,7 +68,7 @@ You can maintain:
 
 - Personal details: name, timezone, company, title, photo, bio, interests.
 - Location: city and country.
-- Social links: website, LinkedIn, Bluesky, X, Facebook.
+- Social links: website, LinkedIn, Bluesky, X, Facebook, GitHub.
 - Notification preferences.
 
 Field requirements and limits are shown inline in the dashboard forms while you edit.

@@ -447,6 +447,8 @@ pub(crate) struct User {
     pub country: Option<String>,
     /// User's Facebook URL.
     pub facebook_url: Option<String>,
+    /// User's GitHub URL.
+    pub github_url: Option<String>,
     /// Whether the user has a password set.
     pub has_password: Option<bool>,
     /// User's interests.

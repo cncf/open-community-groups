@@ -65,6 +65,7 @@ export class UserChip extends LitWrapper {
           bioIsHtml: this.bioIsHtml,
           blueskyUrl: this.user.bluesky_url,
           facebookUrl: this.user.facebook_url,
+          githubUrl: this.user.github_url,
           linkedinUrl: this.user.linkedin_url,
           provider: this.user.provider,
           twitterUrl: this.user.twitter_url,

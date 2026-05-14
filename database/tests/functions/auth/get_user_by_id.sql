@@ -46,6 +46,7 @@ insert into community (
 insert into "user" (
     user_id,
     bluesky_url,
+    github_url,
     email,
     username,
     email_verified,
@@ -56,6 +57,7 @@ insert into "user" (
 ) values (
     :'userWithTeamsID',
     'https://bsky.app/profile/testuser',
+    'https://github.com/testuser',
     'test@example.com',
     'testuser',
     true,
@@ -253,6 +255,7 @@ select is(
         "bluesky_url": "https://bsky.app/profile/testuser",
         "email": "test@example.com",
         "email_verified": true,
+        "github_url": "https://github.com/testuser",
         "optional_notifications_enabled": true,
         "has_password": true,
         "name": "Test User",
@@ -277,6 +280,7 @@ select is(
         "bluesky_url": "https://bsky.app/profile/testuser",
         "email": "test@example.com",
         "email_verified": true,
+        "github_url": "https://github.com/testuser",
         "optional_notifications_enabled": true,
         "has_password": true,
         "name": "Test User",

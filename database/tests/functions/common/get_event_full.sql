@@ -144,11 +144,11 @@ insert into "group" (
 );
 
 -- User
-insert into "user" (user_id, email, username, email_verified, auth_hash, bio, bluesky_url, name, photo_url, provider, company, title, facebook_url, linkedin_url, twitter_url, website_url)
+insert into "user" (user_id, email, username, email_verified, auth_hash, bio, bluesky_url, name, photo_url, provider, company, title, facebook_url, github_url, linkedin_url, twitter_url, website_url)
 values
-    (:'user1ID', 'host@seattle.cloudnative.org', 'sarah-host', false, 'test_hash', 'Cloud native community leader', 'https://bsky.app/profile/sarahchen', 'Sarah Chen', 'https://example.com/sarah.png', jsonb_build_object('linuxfoundation', jsonb_build_object('username', 'sarah-lf')), 'Microsoft', 'Principal Engineer', 'https://facebook.com/sarahchen', 'https://linkedin.com/in/sarahchen', 'https://twitter.com/sarahchen', 'https://sarahchen.dev'),
-    (:'user2ID', 'organizer@seattle.cloudnative.org', 'mike-organizer', false, 'test_hash', 'Event organizer and speaker', 'https://bsky.app/profile/mikerod', 'Mike Rodriguez', 'https://example.com/mike.png', jsonb_build_object('github', jsonb_build_object('username', 'mike-gh')), 'AWS', 'Solutions Architect', 'https://facebook.com/mikerod', 'https://linkedin.com/in/mikerod', 'https://twitter.com/mikerod', 'https://mikerodriguez.io'),
-    (:'user3ID', 'speaker@seattle.cloudnative.org', 'alex-speaker', false, 'test_hash', 'Kubernetes expert and speaker', 'https://bsky.app/profile/alexthompson', 'Alex Thompson', 'https://example.com/alex.png', null, 'Google', 'Staff Engineer', null, 'https://linkedin.com/in/alexthompson', null, null);
+    (:'user1ID', 'host@seattle.cloudnative.org', 'sarah-host', false, 'test_hash', 'Cloud native community leader', 'https://bsky.app/profile/sarahchen', 'Sarah Chen', 'https://example.com/sarah.png', jsonb_build_object('linuxfoundation', jsonb_build_object('username', 'sarah-lf')), 'Microsoft', 'Principal Engineer', 'https://facebook.com/sarahchen', 'https://github.com/sarahchen', 'https://linkedin.com/in/sarahchen', 'https://twitter.com/sarahchen', 'https://sarahchen.dev'),
+    (:'user2ID', 'organizer@seattle.cloudnative.org', 'mike-organizer', false, 'test_hash', 'Event organizer and speaker', 'https://bsky.app/profile/mikerod', 'Mike Rodriguez', 'https://example.com/mike.png', jsonb_build_object('github', jsonb_build_object('username', 'mike-gh')), 'AWS', 'Solutions Architect', 'https://facebook.com/mikerod', 'https://github.com/mikerod', 'https://linkedin.com/in/mikerod', 'https://twitter.com/mikerod', 'https://mikerodriguez.io'),
+    (:'user3ID', 'speaker@seattle.cloudnative.org', 'alex-speaker', false, 'test_hash', 'Kubernetes expert and speaker', 'https://bsky.app/profile/alexthompson', 'Alex Thompson', 'https://example.com/alex.png', null, 'Google', 'Staff Engineer', null, 'https://github.com/alexthompson', 'https://linkedin.com/in/alexthompson', null, null);
 
 -- Event Series
 insert into event_series (
@@ -901,6 +901,7 @@ select is(
                 "name": "Sarah Chen",
                 "company": "Microsoft",
                 "facebook_url": "https://facebook.com/sarahchen",
+                "github_url": "https://github.com/sarahchen",
                 "linkedin_url": "https://linkedin.com/in/sarahchen",
                 "photo_url": "https://example.com/sarah.png",
                 "provider": {
@@ -950,6 +951,7 @@ select is(
                 "name": "Mike Rodriguez",
                 "company": "AWS",
                 "facebook_url": "https://facebook.com/mikerod",
+                "github_url": "https://github.com/mikerod",
                 "linkedin_url": "https://linkedin.com/in/mikerod",
                 "photo_url": "https://example.com/mike.png",
                 "provider": {
@@ -985,6 +987,7 @@ select is(
                             "company": "Microsoft",
                             "facebook_url": "https://facebook.com/sarahchen",
                             "featured": false,
+                            "github_url": "https://github.com/sarahchen",
                             "linkedin_url": "https://linkedin.com/in/sarahchen",
                             "photo_url": "https://example.com/sarah.png",
                             "provider": {
@@ -1005,6 +1008,7 @@ select is(
                             "company": "AWS",
                             "facebook_url": "https://facebook.com/mikerod",
                             "featured": false,
+                            "github_url": "https://github.com/mikerod",
                             "linkedin_url": "https://linkedin.com/in/mikerod",
                             "photo_url": "https://example.com/mike.png",
                             "provider": {
@@ -1041,6 +1045,7 @@ select is(
                             "name": "Alex Thompson",
                             "company": "Google",
                             "featured": true,
+                            "github_url": "https://github.com/alexthompson",
                             "linkedin_url": "https://linkedin.com/in/alexthompson",
                             "photo_url": "https://example.com/alex.png",
                             "title": "Staff Engineer"
@@ -1054,6 +1059,7 @@ select is(
                             "company": "Microsoft",
                             "facebook_url": "https://facebook.com/sarahchen",
                             "featured": false,
+                            "github_url": "https://github.com/sarahchen",
                             "linkedin_url": "https://linkedin.com/in/sarahchen",
                             "photo_url": "https://example.com/sarah.png",
                             "provider": {
@@ -1100,6 +1106,7 @@ select is(
                 "name": "Alex Thompson",
                 "company": "Google",
                 "featured": true,
+                "github_url": "https://github.com/alexthompson",
                 "linkedin_url": "https://linkedin.com/in/alexthompson",
                 "photo_url": "https://example.com/alex.png",
                 "title": "Staff Engineer"
@@ -1113,6 +1120,7 @@ select is(
                 "company": "AWS",
                 "facebook_url": "https://facebook.com/mikerod",
                 "featured": false,
+                "github_url": "https://github.com/mikerod",
                 "linkedin_url": "https://linkedin.com/in/mikerod",
                 "photo_url": "https://example.com/mike.png",
                 "provider": {
@@ -1133,6 +1141,7 @@ select is(
                 "company": "Microsoft",
                 "facebook_url": "https://facebook.com/sarahchen",
                 "featured": false,
+                "github_url": "https://github.com/sarahchen",
                 "linkedin_url": "https://linkedin.com/in/sarahchen",
                 "photo_url": "https://example.com/sarah.png",
                 "provider": {

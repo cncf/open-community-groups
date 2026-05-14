@@ -806,6 +806,7 @@ select columns_are('user', array[
     'company',
     'country',
     'facebook_url',
+    'github_url',
     'interests',
     'legacy_id',
     'linkedin_url',

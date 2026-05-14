@@ -18,6 +18,7 @@ const BASELINE_DETAILS = {
   company: "Open Community Groups",
   country: "Spain",
   facebookUrl: "https://facebook.com/e2e.admin.two.baseline",
+  githubUrl: "https://github.com/e2e-admin-two-baseline",
   interests: ["platform engineering", "community operations"],
   linkedinUrl: "https://linkedin.com/in/e2e-admin-two-baseline",
   name: "E2E Admin Two Baseline",
@@ -35,6 +36,7 @@ const UPDATED_DETAILS = {
   company: "Platform Guild",
   country: "Portugal",
   facebookUrl: "https://facebook.com/e2e.admin.two.updated",
+  githubUrl: "https://github.com/e2e-admin-two-updated",
   interests: ["developer experience", "event operations"],
   linkedinUrl: "https://linkedin.com/in/e2e-admin-two-updated",
   name: "E2E Admin Two Updated",
@@ -127,6 +129,7 @@ test.describe("user dashboard profile view", () => {
       await page.locator("#bluesky_url").fill(values.blueskyUrl);
       await page.locator("#twitter_url").fill(values.twitterUrl);
       await page.locator("#facebook_url").fill(values.facebookUrl);
+      await page.locator("#github_url").fill(values.githubUrl);
 
       await page.evaluate(() => {
         const testWindow = window as unknown as {
@@ -203,6 +206,7 @@ test.describe("user dashboard profile view", () => {
       await expect(page.locator("#bluesky_url")).toHaveValue(values.blueskyUrl);
       await expect(page.locator("#twitter_url")).toHaveValue(values.twitterUrl);
       await expect(page.locator("#facebook_url")).toHaveValue(values.facebookUrl);
+      await expect(page.locator("#github_url")).toHaveValue(values.githubUrl);
     };
 
     await logInWithSeededUser(page, TEST_USER_CREDENTIALS.admin2);

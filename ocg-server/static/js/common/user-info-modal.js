@@ -120,6 +120,13 @@ export class UserInfoModal extends LitWrapper {
         label: "Facebook",
       });
     }
+    if (this._userData.githubUrl) {
+      links.push({
+        url: this._userData.githubUrl,
+        icon: "github",
+        label: "GitHub",
+      });
+    }
 
     return links;
   }
