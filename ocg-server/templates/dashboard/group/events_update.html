@@ -3,13 +3,27 @@
 
 {# Events update form -#}
 {% let event_read_only = event.canceled || !can_manage_events -%}
+{% let event_public_url = "/".to_owned() + &event.community.name + "/group/" + &event.group.slug + "/event/" + &event.slug -%}
+{% let event_public_url_enabled = event.published || event.canceled -%}
 <div id="event-update-page"
      class="space-y-12"
      data-event-page="update"
      hx-history="false"
+     data-event-public-url="{{ event_public_url }}"
+     data-event-public-url-enabled="{{ event_public_url_enabled }}"
      data-event-canceled="{{ event.canceled }}"
      data-event-past="{{ event.is_past() }}"
-     data-can-manage-events="{{ can_manage_events }}">
+     data-can-manage-events="{{ can_manage_events }}"
+     data-community-name="{{ event.community.name }}"
+     data-community-display-name="{{ event.community.display_name }}"
+     data-community-logo-url="{{ event.community.logo_url }}"
+     data-community-banner-url="{{ event.community.banner_url }}"
+     data-community-banner-mobile-url="{{ event.community.banner_mobile_url }}"
+     data-group-name="{{ event.group.name }}"
+     data-group-slug="{{ event.group.slug }}"
+     data-group-logo-url="{{ event.group.logo_url }}"
+     data-group-banner-url="{%- if let Some(banner_url) = &event.group.banner_url -%}{{ banner_url }}{%- endif -%}"
+     data-group-banner-mobile-url="{%- if let Some(banner_mobile_url) = &event.group.banner_mobile_url -%}{{ banner_mobile_url }}{%- endif -%}">
   <ul class="flex flex-nowrap gap-1 lg:gap-2 -mb-px font-medium text-center border-b border-stone-900/10 w-full mb-10 overflow-x-auto overflow-y-hidden">
     <li class="shrink-0">
       <button type="button"
@@ -136,6 +150,42 @@
         </div>
         <span class="text-[10px] 2xl:text-xs">Waitlist</span>
       </button>
+    </li>
+    <li class="shrink-0 lg:ms-auto">
+      <button id="event-preview-button"
+              type="button"
+              class="px-2 xl:w-[90px] 2xl:w-[120px] xl:px-0 inline-flex cursor-pointer flex-col items-center justify-center rounded-t-lg border-b-2 border-transparent p-4 pt-0 hover:border-stone-300 hover:text-stone-600 group
+                     {% if !can_manage_events -%}
+                       opacity-50 cursor-not-allowed
+                     {% endif -%}"
+              {% if !can_manage_events -%}
+                disabled title="Your role cannot preview events."
+              {% endif -%}>
+        <div class="svg-icon size-4 lg:size-5 mb-2 icon-eye bg-stone-400 group-hover:bg-stone-500 shrink-0"></div>
+        <span class="text-[10px] 2xl:text-xs">Preview</span>
+      </button>
+    </li>
+    <li class="shrink-0">
+      {% if event_public_url_enabled -%}
+        <a id="event-public-page-link"
+           href="{{ event_public_url }}"
+           target="_blank"
+           rel="noopener noreferrer"
+           class="px-2 xl:w-[90px] 2xl:w-[120px] xl:px-0 inline-flex cursor-pointer flex-col items-center justify-center rounded-t-lg border-b-2 border-transparent p-4 pt-0 hover:border-stone-300 hover:text-stone-600 group">
+          <div class="svg-icon size-4 lg:size-5 mb-2 icon-external-link bg-stone-400 group-hover:bg-stone-500 shrink-0">
+          </div>
+          <span class="text-[10px] 2xl:text-xs">Public page</span>
+        </a>
+      {% else -%}
+        <button id="event-public-page-link"
+                type="button"
+                disabled
+                title="Event must be published."
+                class="px-2 xl:w-[90px] 2xl:w-[120px] xl:px-0 inline-flex cursor-not-allowed flex-col items-center justify-center rounded-t-lg border-b-2 border-transparent p-4 pt-0 opacity-50 group">
+          <div class="svg-icon size-4 lg:size-5 mb-2 icon-external-link bg-stone-400 shrink-0"></div>
+          <span class="text-[10px] 2xl:text-xs">Public page</span>
+        </button>
+      {% endif -%}
     </li>
   </ul>
 
@@ -1047,6 +1097,8 @@
 </div>
 {# End form buttons -#}
 </div>
+
+<div id="event-preview-modal-root"></div>
 
 <script type="module" src="/static/js/dashboard/group/attendees.js"></script>
 <script type="module">

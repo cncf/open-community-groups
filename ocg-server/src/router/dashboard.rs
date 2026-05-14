@@ -256,6 +256,7 @@ pub(super) fn setup_group_dashboard_router(state: &State) -> Router<State> {
     // Group events management endpoints
     let events_management = Router::new()
         .route("/events/add", post(dashboard::group::events::add))
+        .route("/events/preview", post(dashboard::group::events::preview))
         .route(
             "/events/{event_id}/attendees/{user_id}/check-in",
             post(dashboard::group::attendees::manual_check_in),

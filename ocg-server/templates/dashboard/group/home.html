@@ -111,6 +111,12 @@
   {% let current_selection = current_selection_details() -%}
   <div id="dashboard-content"
        data-community="{{ current_selection.0.name }}"
+       data-community-name="{{ current_selection.0.name }}"
+       data-community-display-name="{{ current_selection.0.display_name }}"
+       data-community-logo-url="{{ current_selection.0.logo_url }}"
+       data-community-banner-url="{{ current_selection.0.banner_url }}"
+       data-community-banner-mobile-url="{{ current_selection.0.banner_mobile_url }}"
+       data-group-name="{{ current_selection.1.name }}"
        data-group-slug="{{ current_selection.1.slug }}"
        hx-get="/dashboard/group/{%- if content.is_team() -%}team{%- else if content.is_settings() -%}settings{%- else if content.is_sponsors() -%}sponsors{%- else if content.is_logs() -%}logs{%- else -%}events{%- endif -%}"
        hx-trigger="refresh-group-dashboard-table"

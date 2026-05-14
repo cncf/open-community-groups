@@ -31,6 +31,8 @@ use crate::{
     },
 };
 
+pub(crate) mod preview;
+
 // Pages templates.
 
 /// Add event page template.

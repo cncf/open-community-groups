@@ -1,4 +1,5 @@
 import { initializeSessionsRemovalWarning } from "/static/js/dashboard/group/event-form-helpers.js";
+import { initializeEventPreview } from "/static/js/dashboard/group/event-preview.js";
 import {
   attachEventSaveAfterRequest,
   attachEventSaveBeforeRequestValidation,
@@ -134,6 +135,10 @@ export const initializeEventAddPage = (root = document) => {
     pageRoot,
     confirmMessage:
       "You have pending changes for this new event. If you continue, this event will not be created.",
+  });
+
+  initializeEventPreview({
+    pageRoot,
   });
 
   if (!addEventButton) {

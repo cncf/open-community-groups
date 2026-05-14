@@ -90,6 +90,20 @@
         <span class="text-[10px] 2xl:text-xs">CFS</span>
       </button>
     </li>
+    <li class="shrink-0 lg:ms-auto">
+      <button id="event-preview-button"
+              type="button"
+              class="px-2 xl:w-[90px] 2xl:w-[120px] xl:px-0 inline-flex cursor-pointer flex-col items-center justify-center rounded-t-lg border-b-2 border-transparent p-4 pt-0 hover:border-stone-300 hover:text-stone-600 group
+                     {% if !can_manage_events -%}
+                       opacity-50 cursor-not-allowed
+                     {% endif -%}"
+              {% if !can_manage_events -%}
+                disabled title="Your role cannot preview events."
+              {% endif -%}>
+        <div class="svg-icon size-4 lg:size-5 mb-2 icon-eye bg-stone-400 group-hover:bg-stone-500 shrink-0"></div>
+        <span class="text-[10px] 2xl:text-xs">Preview</span>
+      </button>
+    </li>
   </ul>
 
   <div id="pending-changes-alert" class="hidden">
@@ -829,6 +843,8 @@
 {# End form buttons -#}
 </div>
 </div>
+
+<div id="event-preview-modal-root"></div>
 
 <script type="module">
   import {
