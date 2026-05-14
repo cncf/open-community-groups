@@ -254,7 +254,7 @@ select results_eq(
             provider_meeting_id,
 
             password,
-            recording_url,
+            recording_urls,
             session_id,
             updated_at,
 
@@ -275,7 +275,7 @@ select results_eq(
             '123456789',
 
             'pass123',
-            null,
+            array[]::text[],
             null::uuid,
             null::timestamptz,
 
@@ -391,7 +391,7 @@ select results_eq(
 
             event_id,
             password,
-            recording_url,
+            recording_urls,
             updated_at,
 
             created_at is not null as has_created_at,
@@ -412,7 +412,7 @@ select results_eq(
 
             null::uuid,
             'sesspass',
-            null,
+            array[]::text[],
             null::timestamptz,
 
             true,

@@ -8,7 +8,7 @@ describe("sessions-section", () => {
   const originalHtmx = globalThis.htmx;
   const SessionsSection = customElements.get("sessions-section");
 
-  useMountedElementsCleanup("sessions-section");
+  useMountedElementsCleanup("sessions-section", "session-item");
 
   let htmxOnCalls;
 
@@ -187,6 +187,37 @@ describe("sessions-section", () => {
       "speaker-2",
     );
     expect(element.querySelector('input[name="sessions[1][speakers][0][featured]"]')?.value).to.equal("true");
+  });
+
+  it("renders multiple raw provider recording URLs as read-only fields", async () => {
+    const element = await mountLitComponent("session-item", {
+      data: {
+        id: 1,
+        name: "Session with recordings",
+        kind: "virtual",
+        starts_at: "2025-05-10T10:00",
+        ends_at: "2025-05-10T11:00",
+        meeting_recording_raw_urls: [
+          "https://zoom.us/rec/share/session-main",
+          "https://zoom.us/rec/share/session-late",
+        ],
+      },
+      index: 0,
+      descriptionMaxLength: 1000,
+      locationMaxLength: 100,
+      sessionNameMaxLength: 100,
+      sessionKinds: [{ session_kind_id: "virtual", display_name: "Virtual" }],
+    });
+
+    const rawRecordingInputs = [...element.querySelectorAll('input[readonly][type="url"]')];
+
+    expect(rawRecordingInputs.map((input) => input.value)).to.deep.equal([
+      "https://zoom.us/rec/share/session-main",
+      "https://zoom.us/rec/share/session-late",
+    ]);
+    expect(element.textContent).to.include(
+      "Zoom can send multiple raw recordings when participants join before or after the main meeting.",
+    );
   });
 
   it("adds new sessions with the next numeric id and updates existing ones in place", async () => {

@@ -199,15 +199,18 @@ Configure these settings in Zoom:
 - `Require users to authenticate before viewing cloud recordings`: disabled
 - `Require passcode to access shared cloud recordings`: disabled
 
-These settings are recommended so Zoom can produce a usable shared recording
-URL for OCG to store when the `recording.completed` webhook arrives.
+These settings are recommended so Zoom can produce usable shared recording URLs
+for OCG to store when `recording.completed` webhooks arrive.
 
 If recording sharing is disabled, or if Zoom does not generate a shareable URL,
 OCG cannot populate the recording link from the webhook payload.
 
-Stored Zoom recording URLs are not published automatically. Group
-administrators must enable `Publish recording publicly` on the event or session
-before public visitors can see the original provider recording.
+Stored Zoom recording URLs are not published automatically. Zoom can send
+multiple raw recording URLs for one OCG meeting when participants join before or
+after the main meeting. Group administrators should review the raw URLs, copy
+the correct one into the final public recording URL field or use a processed
+upload, and enable `Publish recording publicly` before public visitors can see
+a recording.
 
 References:
 
@@ -284,10 +287,14 @@ If Zoom is disabled, the route is not registered.
 
 ### Recording URL Handling
 
-OCG currently listens for `recording.completed` and stores the `share_url`
-provided by Zoom.
+OCG currently listens for `recording.completed` and stores every distinct
+`share_url` provided by Zoom for the matching meeting.
 
 If the webhook payload has no `share_url`, OCG skips the recording-link update.
+
+Raw Zoom URLs remain organizer-only candidates. OCG does not use them as a
+public fallback because Zoom can produce extra recordings when isolated
+participants join before or after the main meeting.
 
 ### Host Controls Limitation
 
@@ -324,5 +331,7 @@ Check:
 - `Allow cloud recording sharing` is enabled.
 - The webhook is subscribed to `recording.completed`.
 - Zoom has finished processing the recording.
-- `Publish recording publicly` is enabled in OCG if the recording exists but does not appear on
-  the public event page.
+- The correct raw Zoom URL has been copied into the final public recording URL
+  field, or a processed recording URL has been provided.
+- `Publish recording publicly` is enabled in OCG if the final recording exists
+  but does not appear on the public event page.

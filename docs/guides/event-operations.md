@@ -476,9 +476,11 @@ Constraint violations can disable automatic mode until fixed.
   with processed uploads hosted elsewhere.
 - `Record meeting` controls whether automatically created Zoom event and session meetings request
   cloud recording.
+- Zoom can send multiple raw recording URLs when participants join before or
+  after the main meeting. Review the raw URLs and copy the correct one into the
+  final public recording URL field, or use a processed upload.
 - Event and session recordings are not public by default. Enable
-  `Publish recording publicly` to show either the final public recording URL or,
-  when no final URL exists, the original provider recording.
+  `Publish recording publicly` to show the final public recording URL.
 - After an automatic meeting or session has started, OCG keeps an already synced provider meeting
   settled instead of re-queueing provider updates for a past start time.
 - Schedule or type changes can disable automatic mode if constraints are no longer met.

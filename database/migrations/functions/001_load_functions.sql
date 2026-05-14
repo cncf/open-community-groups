@@ -175,6 +175,7 @@
 {{ template "meetings/get_event_meeting_sync_state_hash.sql" }} -- Dependency for meeting sync completion functions
 {{ template "meetings/get_session_meeting_sync_state_hash.sql" }} -- Dependency for meeting sync completion functions
 {{ template "meetings/add_meeting.sql" }}
+{{ template "meetings/append_meeting_recording_url.sql" }}
 {{ template "meetings/assign_zoom_host_user.sql" }}
 {{ template "meetings/claim_meeting_for_auto_end.sql" }}
 {{ template "meetings/claim_meeting_out_of_sync.sql" }}
@@ -186,7 +187,6 @@
 {{ template "meetings/set_meeting_auto_end_check_outcome.sql" }}
 {{ template "meetings/set_meeting_error.sql" }}
 {{ template "meetings/update_meeting.sql" }}
-{{ template "meetings/update_meeting_recording_url.sql" }}
 
 {{ template "notifications/claim_pending_notification.sql" }}
 {{ template "notifications/enqueue_due_event_reminders.sql" }}

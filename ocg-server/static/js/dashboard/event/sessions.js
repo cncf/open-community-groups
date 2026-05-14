@@ -6,6 +6,7 @@ import {
   lockBodyScroll,
   unlockBodyScroll,
   computeUserInitials,
+  MEETING_RECORDING_RAW_URLS_LEGEND,
   MEETING_RECORDING_URL_LEGEND,
   MEETING_RECORDING_VISIBILITY_LEGEND,
 } from "/static/js/common/common.js";
@@ -235,7 +236,7 @@ export class SessionsSection extends LitWrapper {
     meeting_password: "",
     meeting_error: "",
     meeting_recording_published: false,
-    meeting_recording_raw_url: "",
+    meeting_recording_raw_urls: [],
     meeting_recording_url: "",
     meeting_hosts: [],
     speakers: [],
@@ -977,7 +978,7 @@ class SessionFormModal extends LitWrapper {
       meeting_password: "",
       meeting_error: "",
       meeting_recording_published: false,
-      meeting_recording_raw_url: "",
+      meeting_recording_raw_urls: [],
       meeting_recording_url: "",
       meeting_hosts: [],
       speakers: [],
@@ -1197,7 +1198,7 @@ class SessionItem extends LitWrapper {
       meeting_join_instructions: "",
       meeting_join_url: "",
       meeting_recording_published: false,
-      meeting_recording_raw_url: "",
+      meeting_recording_raw_urls: [],
       meeting_recording_url: "",
       meeting_provider_id: "",
       meeting_hosts: [],
@@ -1638,7 +1639,6 @@ class SessionItem extends LitWrapper {
                         kind=${this.data.kind || "virtual"}
                         meeting-join-url=${this.data.meeting_join_url || ""}
                         meeting-recording-published=${String(this.data.meeting_recording_published === true)}
-                        meeting-recording-raw-url=${this.data.meeting_recording_raw_url || ""}
                         meeting-recording-url=${this.data.meeting_recording_url || ""}
                         ?meeting-requested=${this.data.meeting_requested}
                         ?meeting-in-sync=${this.data.meeting_in_sync}
@@ -1646,6 +1646,7 @@ class SessionItem extends LitWrapper {
                         meeting-error=${this.data.meeting_error || ""}
                         starts-at=${this.data.starts_at || ""}
                         ends-at=${this.data.ends_at || ""}
+                        .meetingRecordingRawUrls=${this.data.meeting_recording_raw_urls || []}
                         .meetingHosts=${this.data.meeting_hosts || {}}
                         .meetingJoinInstructions=${this.data.meeting_join_instructions || ""}
                         .meetingMaxParticipants=${this.meetingMaxParticipants || {}}
@@ -1699,22 +1700,33 @@ class SessionItem extends LitWrapper {
                               Shown with the meeting details on the public event page.
                             </p>
                           </div>
-                          ${this.data.meeting_recording_raw_url
+                          ${Array.isArray(this.data.meeting_recording_raw_urls) &&
+                          this.data.meeting_recording_raw_urls.length > 0
                             ? html`
                                 <div class="space-y-2">
-                                  <label for="meeting_recording_raw_url_${this.index}" class="form-label"
-                                    >Original provider recording</label
-                                  >
-                                  <div class="mt-2">
-                                    <input
-                                      type="url"
-                                      id="meeting_recording_raw_url_${this.index}"
-                                      class="input-primary bg-stone-100 text-stone-600 cursor-not-allowed"
-                                      value=${this.data.meeting_recording_raw_url || ""}
-                                      readonly
-                                    />
-                                  </div>
-                                  <p class="form-legend">Original recording from the meeting provider.</p>
+                                  ${this.data.meeting_recording_raw_urls.map(
+                                    (rawRecordingUrl, rawRecordingIndex) => html`
+                                      <div class="space-y-2">
+                                        <label
+                                          for="meeting_recording_raw_urls_${this.index}_${rawRecordingIndex}"
+                                          class="form-label"
+                                          >Original provider recording ${rawRecordingIndex + 1}</label
+                                        >
+                                        <div class="mt-2">
+                                          <input
+                                            type="url"
+                                            id="meeting_recording_raw_urls_${this.index}_${rawRecordingIndex}"
+                                            class="input-primary bg-stone-100 text-stone-600 cursor-not-allowed"
+                                            value=${rawRecordingUrl}
+                                            readonly
+                                          />
+                                        </div>
+                                      </div>
+                                    `,
+                                  )}
+                                  <p class="form-legend whitespace-pre-line">
+                                    ${MEETING_RECORDING_RAW_URLS_LEGEND}
+                                  </p>
                                 </div>
                               `
                             : ""}

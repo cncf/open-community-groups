@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(46);
+select plan(47);
 
 -- ============================================================================
 -- TESTS
@@ -205,6 +205,9 @@ select results_eq(
     $$,
     'Meeting auto-end check outcomes should exist'
 );
+
+-- Test: meeting table expected constraints exist
+select has_check('meeting', 'meeting_recording_urls_not_empty_chk');
 
 -- Test: meeting providers should match expected values
 select results_eq(

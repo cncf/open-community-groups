@@ -20,6 +20,14 @@ pub(crate) trait DBMeetings {
     /// Adds a new meeting and completes the sync claim.
     async fn add_meeting(&self, meeting: &Meeting) -> Result<()>;
 
+    /// Appends a recording URL for a meeting by its provider and provider meeting ID.
+    async fn append_meeting_recording_url(
+        &self,
+        provider: MeetingProvider,
+        provider_meeting_id: &str,
+        recording_url: &str,
+    ) -> Result<()>;
+
     /// Reserves an available Zoom host user for a claimed meeting time window.
     async fn assign_zoom_host_user(
         &self,
@@ -63,14 +71,6 @@ pub(crate) trait DBMeetings {
 
     /// Updates meeting details and completes the sync claim.
     async fn update_meeting(&self, meeting: &Meeting) -> Result<()>;
-
-    /// Updates the recording URL for a meeting by its provider and provider meeting ID.
-    async fn update_meeting_recording_url(
-        &self,
-        provider: MeetingProvider,
-        provider_meeting_id: &str,
-        recording_url: &str,
-    ) -> Result<()>;
 }
 
 #[async_trait]
@@ -94,6 +94,20 @@ impl DBMeetings for PgDB {
         .await?;
 
         Ok(())
+    }
+
+    #[instrument(skip(self), err)]
+    async fn append_meeting_recording_url(
+        &self,
+        provider: MeetingProvider,
+        provider_meeting_id: &str,
+        recording_url: &str,
+    ) -> Result<()> {
+        self.execute(
+            "select append_meeting_recording_url($1, $2, $3)",
+            &[&provider.as_ref(), &provider_meeting_id, &recording_url],
+        )
+        .await
     }
 
     #[instrument(skip(self, meeting, pool_users), err)]
@@ -251,20 +265,6 @@ impl DBMeetings for PgDB {
                 &meeting.sync_claimed_at,
                 &meeting.sync_state_hash,
             ],
-        )
-        .await
-    }
-
-    #[instrument(skip(self), err)]
-    async fn update_meeting_recording_url(
-        &self,
-        provider: MeetingProvider,
-        provider_meeting_id: &str,
-        recording_url: &str,
-    ) -> Result<()> {
-        self.execute(
-            "select update_meeting_recording_url($1, $2, $3)",
-            &[&provider.as_ref(), &provider_meeting_id, &recording_url],
         )
         .await
     }

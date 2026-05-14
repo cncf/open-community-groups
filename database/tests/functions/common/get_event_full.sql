@@ -495,46 +495,58 @@ insert into session (
 );
 
 -- Link meeting to event
-insert into meeting (event_id, join_url, meeting_provider_id, password, provider_meeting_id, recording_url)
+insert into meeting (event_id, join_url, meeting_provider_id, password, provider_meeting_id, recording_urls)
 values (
     :'eventID',
     'https://meeting.example.com/event',
     'zoom',
     'event-secret',
     'meeting-event-001',
-    'https://meeting.example.com/event-recording'
+    array[
+        'https://meeting.example.com/event-recording',
+        'https://meeting.example.com/event-recording-late-joiner'
+    ]::text[]
 );
 
 -- Link meeting to session
-insert into meeting (join_url, meeting_provider_id, password, provider_meeting_id, recording_url, session_id)
+insert into meeting (join_url, meeting_provider_id, password, provider_meeting_id, recording_urls, session_id)
 values (
     'https://meeting.example.com/session2',
     'zoom',
     'session-secret',
     'meeting-session2-001',
-    'https://meeting.example.com/session2-recording',
+    array[
+        'https://meeting.example.com/session2-recording',
+        'https://meeting.example.com/session2-recording-early-joiner'
+    ]::text[],
     :'session2ID'
 );
 
 -- Link meeting to event with automatic recording override
-insert into meeting (event_id, join_url, meeting_provider_id, password, provider_meeting_id, recording_url)
+insert into meeting (event_id, join_url, meeting_provider_id, password, provider_meeting_id, recording_urls)
 values (
     :'eventRecordingOverrideID',
     'https://meeting.example.com/event-override',
     'zoom',
     'event-override-secret',
     'meeting-event-override-001',
-    'https://meeting.example.com/event-override-recording'
+    array[
+        'https://meeting.example.com/event-override-recording',
+        'https://meeting.example.com/event-override-recording-late-joiner'
+    ]::text[]
 );
 
 -- Link meeting to session with automatic recording override
-insert into meeting (join_url, meeting_provider_id, password, provider_meeting_id, recording_url, session_id)
+insert into meeting (join_url, meeting_provider_id, password, provider_meeting_id, recording_urls, session_id)
 values (
     'https://meeting.example.com/session-override',
     'zoom',
     'session-override-secret',
     'meeting-session-override-001',
-    'https://meeting.example.com/session-override-recording',
+    array[
+        'https://meeting.example.com/session-override-recording',
+        'https://meeting.example.com/session-override-recording-early-joiner'
+    ]::text[],
     :'sessionOverrideID'
 );
 
@@ -829,9 +841,11 @@ select is(
         "meeting_password": "event-secret",
         "meeting_requested": false,
         "meeting_join_url": "https://meeting.example.com/event",
-        "meeting_recording_public_url": "https://meeting.example.com/event-recording",
         "meeting_recording_published": true,
-        "meeting_recording_raw_url": "https://meeting.example.com/event-recording",
+        "meeting_recording_raw_urls": [
+            "https://meeting.example.com/event-recording",
+            "https://meeting.example.com/event-recording-late-joiner"
+        ],
         "meeting_recording_requested": true,
         "meetup_url": "https://meetup.com/event123",
         "photos_urls": ["https://example.com/photo1.jpg", "https://example.com/photo2.jpg"],
@@ -1068,9 +1082,11 @@ select is(
                     "meeting_requested": true,
                     "location": "Room A",
                     "meeting_join_url": "https://meeting.example.com/session2",
-                    "meeting_recording_public_url": "https://meeting.example.com/session2-recording",
                     "meeting_recording_published": true,
-                    "meeting_recording_raw_url": "https://meeting.example.com/session2-recording",
+                    "meeting_recording_raw_urls": [
+                        "https://meeting.example.com/session2-recording",
+                        "https://meeting.example.com/session2-recording-early-joiner"
+                    ],
                     "speakers": []
                 }
             ]
@@ -1281,8 +1297,8 @@ select is(
             event_json->>'meeting_recording_public_url',
             'event_meeting_recording_published',
             (event_json->>'meeting_recording_published')::boolean,
-            'event_meeting_recording_raw_url',
-            event_json->>'meeting_recording_raw_url',
+            'event_meeting_recording_raw_urls',
+            event_json->'meeting_recording_raw_urls',
             'event_meeting_recording_url',
             event_json->>'meeting_recording_url',
             'session_meeting_recording_public_url',
@@ -1299,9 +1315,9 @@ select is(
                 cross join lateral jsonb_array_elements(sessions) as session_json
                 where session_json->>'session_id' = :'sessionOverrideID'
             ),
-            'session_meeting_recording_raw_url',
+            'session_meeting_recording_raw_urls',
             (
-                select session_json->>'meeting_recording_raw_url'
+                select session_json->'meeting_recording_raw_urls'
                 from jsonb_each(event_json->'sessions') as day(day, sessions)
                 cross join lateral jsonb_array_elements(sessions) as session_json
                 where session_json->>'session_id' = :'sessionOverrideID'
@@ -1319,11 +1335,17 @@ select is(
     '{
         "event_meeting_recording_public_url": "https://youtube.com/watch?v=event-override",
         "event_meeting_recording_published": true,
-        "event_meeting_recording_raw_url": "https://meeting.example.com/event-override-recording",
+        "event_meeting_recording_raw_urls": [
+            "https://meeting.example.com/event-override-recording",
+            "https://meeting.example.com/event-override-recording-late-joiner"
+        ],
         "event_meeting_recording_url": "https://youtube.com/watch?v=event-override",
         "session_meeting_recording_public_url": "https://youtube.com/watch?v=session2-override",
         "session_meeting_recording_published": true,
-        "session_meeting_recording_raw_url": "https://meeting.example.com/session-override-recording",
+        "session_meeting_recording_raw_urls": [
+            "https://meeting.example.com/session-override-recording",
+            "https://meeting.example.com/session-override-recording-early-joiner"
+        ],
         "session_meeting_recording_url": "https://youtube.com/watch?v=session2-override"
     }'::jsonb,
     'Should prefer organizer recording overrides over synced meeting recordings'
@@ -1352,8 +1374,8 @@ select is(
             event_json->>'meeting_recording_public_url',
             'event_meeting_recording_published',
             (event_json->>'meeting_recording_published')::boolean,
-            'event_meeting_recording_raw_url',
-            event_json->>'meeting_recording_raw_url',
+            'event_meeting_recording_raw_urls',
+            event_json->'meeting_recording_raw_urls',
             'event_meeting_recording_url',
             event_json->>'meeting_recording_url',
             'session_meeting_recording_public_url',
@@ -1370,9 +1392,9 @@ select is(
                 cross join lateral jsonb_array_elements(sessions) as session_json
                 where session_json->>'session_id' = :'sessionOverrideID'
             ),
-            'session_meeting_recording_raw_url',
+            'session_meeting_recording_raw_urls',
             (
-                select session_json->>'meeting_recording_raw_url'
+                select session_json->'meeting_recording_raw_urls'
                 from jsonb_each(event_json->'sessions') as day(day, sessions)
                 cross join lateral jsonb_array_elements(sessions) as session_json
                 where session_json->>'session_id' = :'sessionOverrideID'
@@ -1389,10 +1411,16 @@ select is(
     ),
     '{
         "event_meeting_recording_published": false,
-        "event_meeting_recording_raw_url": "https://meeting.example.com/event-override-recording",
+        "event_meeting_recording_raw_urls": [
+            "https://meeting.example.com/event-override-recording",
+            "https://meeting.example.com/event-override-recording-late-joiner"
+        ],
         "event_meeting_recording_url": "https://youtube.com/watch?v=event-override",
         "session_meeting_recording_published": false,
-        "session_meeting_recording_raw_url": "https://meeting.example.com/session-override-recording",
+        "session_meeting_recording_raw_urls": [
+            "https://meeting.example.com/session-override-recording",
+            "https://meeting.example.com/session-override-recording-early-joiner"
+        ],
         "session_meeting_recording_url": "https://youtube.com/watch?v=session2-override"
     }'::jsonb,
     'Should keep organizer and raw recording URLs while hiding unpublished public recording URLs'

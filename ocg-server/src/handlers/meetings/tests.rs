@@ -121,7 +121,7 @@ async fn test_zoom_event_returns_bad_request_for_invalid_payload() {
 }
 
 #[tokio::test]
-async fn test_zoom_event_returns_internal_server_error_when_recording_update_fails() {
+async fn test_zoom_event_returns_internal_server_error_when_recording_append_fails() {
     // Setup request body and signature
     let body = json!({
         "event": EVENT_RECORDING_COMPLETED,
@@ -138,7 +138,7 @@ async fn test_zoom_event_returns_internal_server_error_when_recording_update_fai
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_update_meeting_recording_url()
+    db.expect_append_meeting_recording_url()
         .times(1)
         .withf(|provider, provider_meeting_id, recording_url| {
             *provider == MeetingProvider::Zoom
@@ -238,7 +238,7 @@ async fn test_zoom_event_returns_unauthorized_for_invalid_signature() {
 }
 
 #[tokio::test]
-async fn test_zoom_event_updates_recording_url() {
+async fn test_zoom_event_appends_recording_url() {
     // Setup request body and signature
     let body = json!({
         "event": EVENT_RECORDING_COMPLETED,
@@ -255,7 +255,7 @@ async fn test_zoom_event_updates_recording_url() {
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_update_meeting_recording_url()
+    db.expect_append_meeting_recording_url()
         .times(1)
         .withf(|provider, provider_meeting_id, recording_url| {
             *provider == MeetingProvider::Zoom

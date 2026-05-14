@@ -770,6 +770,12 @@ mock! {
             &self,
             meeting: &crate::services::meetings::Meeting,
         ) -> Result<()>;
+        async fn append_meeting_recording_url(
+            &self,
+            provider: crate::services::meetings::MeetingProvider,
+            provider_meeting_id: &str,
+            recording_url: &str,
+        ) -> Result<()>;
         async fn assign_zoom_host_user(
             &self,
             meeting: &crate::services::meetings::Meeting,
@@ -817,12 +823,6 @@ mock! {
         async fn update_meeting(
             &self,
             meeting: &crate::services::meetings::Meeting,
-        ) -> Result<()>;
-        async fn update_meeting_recording_url(
-            &self,
-            provider: crate::services::meetings::MeetingProvider,
-            provider_meeting_id: &str,
-            recording_url: &str,
         ) -> Result<()>;
     }
 
