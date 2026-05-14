@@ -23,9 +23,18 @@ alter table meeting
 -- Raw provider URLs are no longer public fallbacks for events
 update event
 set meeting_recording_published = false
-where meeting_recording_url is null;
+where meeting_recording_published = true
+and meeting_recording_url is null;
 
 -- Raw provider URLs are no longer public fallbacks for sessions
-update session
-set meeting_recording_published = false
-where meeting_recording_url is null;
+do $$
+begin
+    -- Avoid failing this data cleanup on pre-existing legacy session bounds
+    perform set_config('ocg.skip_session_bounds_check', 'on', true);
+
+    update session
+    set meeting_recording_published = false
+    where meeting_recording_published = true
+    and meeting_recording_url is null;
+end;
+$$;
