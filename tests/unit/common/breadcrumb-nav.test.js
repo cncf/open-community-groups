@@ -43,6 +43,19 @@ describe("breadcrumb-nav", () => {
     expect(element.textContent).to.include("KubeCon");
   });
 
+  it("renders breadcrumb items without hrefs as plain text", async () => {
+    const element = await mountLitComponent("breadcrumb-nav", {
+      items: [
+        { label: "Home", icon: "home" },
+        { label: "Groups", icon: "groups" },
+        { label: "KubeCon", icon: "date", current: true },
+      ],
+    });
+
+    expect(element.querySelector("ol a")).to.equal(null);
+    expect(element.querySelector('li[aria-current="page"]').textContent).to.include("KubeCon");
+  });
+
   it("closes the mobile dropdown on outside clicks and escape", async () => {
     const element = await mountLitComponent("breadcrumb-nav", { items: breadcrumbItems });
 

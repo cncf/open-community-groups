@@ -25,72 +25,97 @@
     </p>
   </div>
 
-  <ul class="flex flex-nowrap gap-1 lg:gap-2 -mb-px font-medium text-center border-b border-stone-900/10 w-full mb-10 overflow-x-auto overflow-y-hidden">
-    <li class="shrink-0">
-      <button type="button"
-              data-section="details"
-              data-active="true"
-              class="px-2 xl:w-[90px] 2xl:w-[120px] xl:px-0 cursor-pointer inline-flex flex-col items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 active data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group">
-        <div class="svg-icon size-4 lg:size-5 mb-2 icon-event bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
-        </div>
-        <span class="text-[10px] 2xl:text-xs">Details</span>
+  <div class="mb-10 grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-stretch gap-x-3">
+    <div class="min-w-0 overflow-x-auto overflow-y-hidden">
+      <ul class="inline-flex min-w-max flex-nowrap gap-1 border-b border-stone-900/10 text-center font-medium lg:gap-2">
+        <li class="shrink-0">
+          <button type="button"
+                  data-section="details"
+                  data-active="true"
+                  class="group active inline-flex cursor-pointer flex-col items-center justify-center rounded-t-lg border-b-2 border-transparent p-4 px-2 pt-0 hover:border-stone-300 hover:text-stone-600 data-[active=true]:border-primary-500 data-[active=true]:text-primary-500 xl:w-[90px] xl:px-0 2xl:w-[120px]">
+            <div class="svg-icon size-4 lg:size-5 mb-2 icon-event bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
+            </div>
+            <span class="text-[10px] 2xl:text-xs">Details</span>
+          </button>
+        </li>
+        <li class="shrink-0">
+          <button type="button"
+                  data-section="date-venue"
+                  data-active="false"
+                  class="group inline-flex cursor-pointer flex-col items-center justify-center rounded-t-lg border-b-2 border-transparent p-4 px-2 pt-0 hover:border-stone-300 hover:text-stone-600 data-[active=true]:border-primary-500 data-[active=true]:text-primary-500 xl:w-[90px] xl:px-0 2xl:w-[120px]">
+            <div class="svg-icon size-4 lg:size-5 mb-2 icon-calendar bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
+            </div>
+            <span class="text-[10px] 2xl:text-xs">Date & Venue</span>
+          </button>
+        </li>
+        <li class="shrink-0">
+          <button type="button"
+                  data-section="hosts-sponsors"
+                  data-active="false"
+                  class="group inline-flex cursor-pointer flex-col items-center justify-center rounded-t-lg border-b-2 border-transparent p-4 px-2 pt-0 hover:border-stone-300 hover:text-stone-600 data-[active=true]:border-primary-500 data-[active=true]:text-primary-500 xl:w-[90px] xl:px-0 2xl:w-[120px]">
+            <div class="svg-icon size-4 lg:size-5 mb-2 icon-user-plus bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
+            </div>
+            <span class="text-[10px] 2xl:text-xs">Hosts & Speakers</span>
+          </button>
+        </li>
+        <li class="shrink-0">
+          <button type="button"
+                  data-section="sessions"
+                  data-active="false"
+                  class="group inline-flex cursor-pointer flex-col items-center justify-center rounded-t-lg border-b-2 border-transparent p-4 px-2 pt-0 hover:border-stone-300 hover:text-stone-600 data-[active=true]:border-primary-500 data-[active=true]:text-primary-500 xl:w-[90px] xl:px-0 2xl:w-[120px]">
+            <div class="svg-icon size-4 lg:size-5 mb-2 icon-presentation bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
+            </div>
+            <span class="text-[10px] 2xl:text-xs">Sessions</span>
+          </button>
+        </li>
+        {% if payments_ready -%}
+          <li class="shrink-0">
+            <button type="button"
+                    data-section="payments"
+                    data-active="false"
+                    class="group inline-flex cursor-pointer flex-col items-center justify-center rounded-t-lg border-b-2 border-transparent p-4 px-2 pt-0 hover:border-stone-300 hover:text-stone-600 data-[active=true]:border-primary-500 data-[active=true]:text-primary-500 xl:w-[90px] xl:px-0 2xl:w-[120px]">
+              <div class="svg-icon size-4 lg:size-5 mb-2 icon-ticket bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
+              </div>
+              <span class="text-[10px] 2xl:text-xs">Payments</span>
+            </button>
+          </li>
+        {% endif -%}
+        <li class="shrink-0">
+          <button type="button"
+                  data-section="cfs"
+                  data-active="false"
+                  class="group inline-flex cursor-pointer flex-col items-center justify-center rounded-t-lg border-b-2 border-transparent p-4 px-2 pt-0 hover:border-stone-300 hover:text-stone-600 data-[active=true]:border-primary-500 data-[active=true]:text-primary-500 xl:w-[90px] xl:px-0 2xl:w-[120px]">
+            <div class="svg-icon size-4 lg:size-5 mb-2 icon-megaphone bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
+            </div>
+            <span class="text-[10px] 2xl:text-xs">CFS</span>
+          </button>
+        </li>
+      </ul>
+    </div>
+    <div class="flex min-w-28 flex-col items-stretch justify-center gap-2">
+      <button id="event-preview-button"
+              type="button"
+              aria-label="Preview"
+              class="group btn-primary-outline btn-mini inline-flex h-7 min-w-28 items-center justify-center gap-2 whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50"
+              {% if !can_manage_events -%}
+                disabled title="Your role cannot preview events."
+              {% else -%}
+                title="Preview"
+              {% endif -%}>
+        <svg class="size-4 shrink-0"
+             aria-hidden="true"
+             stroke="currentColor"
+             fill="currentColor"
+             stroke-width="0"
+             viewBox="0 0 16 16"
+             xmlns="http://www.w3.org/2000/svg">
+          <path fill-rule="evenodd" clip-rule="evenodd" d="M2 2h12l1 1v10l-1 1H2l-1-1V3l1-1zm0 11h12V3H2v10zm11-9H3v3h10V4zm-1 2H4V5h8v1zm-3 6h4V8H9v4zm1-3h2v2h-2V9zM7 8H3v1h4V8zm-4 3h4v1H3v-1z">
+          </path>
+        </svg>
+        <span>Preview</span>
       </button>
-    </li>
-    <li class="shrink-0">
-      <button type="button"
-              data-section="date-venue"
-              data-active="false"
-              class="px-2 xl:w-[90px] 2xl:w-[120px] xl:px-0 cursor-pointer inline-flex flex-col items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group">
-        <div class="svg-icon size-4 lg:size-5 mb-2 icon-calendar bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
-        </div>
-        <span class="text-[10px] 2xl:text-xs hidden xl:inline">Date & Venue</span>
-        <span class="text-[10px] 2xl:text-xs xl:hidden">Schedule</span>
-      </button>
-    </li>
-    <li class="shrink-0">
-      <button type="button"
-              data-section="hosts-sponsors"
-              data-active="false"
-              class="px-2 xl:w-[90px] 2xl:w-[120px] xl:px-0 cursor-pointer inline-flex flex-col items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group">
-        <div class="svg-icon size-4 lg:size-5 mb-2 icon-user-plus bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
-        </div>
-        <span class="text-[10px] 2xl:text-xs hidden 2xl:inline">Hosts & Speakers</span>
-        <span class="text-[10px] 2xl:text-xs 2xl:hidden">Hosts</span>
-      </button>
-    </li>
-    <li class="shrink-0">
-      <button type="button"
-              data-section="sessions"
-              data-active="false"
-              class="px-2 xl:w-[90px] 2xl:w-[120px] xl:px-0 cursor-pointer inline-flex flex-col items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group">
-        <div class="svg-icon size-4 lg:size-5 mb-2 icon-presentation bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
-        </div>
-        <span class="text-[10px] 2xl:text-xs">Sessions</span>
-      </button>
-    </li>
-    {% if payments_ready -%}
-      <li class="shrink-0">
-        <button type="button"
-                data-section="payments"
-                data-active="false"
-                class="px-2 xl:w-[90px] 2xl:w-[120px] xl:px-0 cursor-pointer inline-flex flex-col items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group">
-          <div class="svg-icon size-4 lg:size-5 mb-2 icon-ticket bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
-          </div>
-          <span class="text-[10px] 2xl:text-xs">Payments</span>
-        </button>
-      </li>
-    {% endif -%}
-    <li class="shrink-0">
-      <button type="button"
-              data-section="cfs"
-              data-active="false"
-              class="px-2 xl:w-[90px] 2xl:w-[120px] xl:px-0 cursor-pointer inline-flex flex-col items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group">
-        <div class="svg-icon size-4 lg:size-5 mb-2 icon-megaphone bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
-        </div>
-        <span class="text-[10px] 2xl:text-xs">CFS</span>
-      </button>
-    </li>
-  </ul>
+    </div>
+  </div>
 
   <div id="pending-changes-alert" class="hidden">
     <div class="flex flex-wrap items-center justify-between gap-3 rounded-md border border-primary-200 bg-primary-50 px-4 py-3 text-primary-900">
@@ -829,6 +854,8 @@
 {# End form buttons -#}
 </div>
 </div>
+
+<div id="event-preview-modal-root"></div>
 
 <script type="module">
   import {

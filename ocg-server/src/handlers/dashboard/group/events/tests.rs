@@ -578,6 +578,86 @@ async fn test_details_success() {
 }
 
 #[tokio::test]
+async fn test_preview_uses_submitted_payload_without_event_db_calls() {
+    // Setup identifiers and data structures
+    let community_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(
+        session_id,
+        user_id,
+        &auth_hash,
+        Some(community_id),
+        Some(group_id),
+    );
+
+    // Setup database mock for session and permission middleware only.
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::EventsWrite
+        })
+        .returning(|_, _, _, _| Ok(true));
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let body = concat!(
+        "kind_id=virtual",
+        "&registration_required=true",
+        "&timezone=Europe%2FMadrid",
+        "&waitlist_enabled=false",
+        "&sessions%5B0%5D%5Bname%5D=Opening%20session",
+        "&sessions%5B0%5D%5Bkind%5D=talk",
+        "&sessions%5B0%5D%5Bstarts_at%5D=2026-06-01T19%3A00%3A00",
+        "&preview_context=%7B%22kind_label%22%3A%22Virtual%22%2C%22category_label%22%3A%22Meetup%22%2C",
+        "%22group%22%3A%7B%22name%22%3A%22Test%20Group%22%7D%2C",
+        "%22community%22%3A%7B%22display_name%22%3A%22Test%20Community%22%7D%7D"
+    );
+    let request = Request::builder()
+        .method("POST")
+        .uri("/dashboard/group/events/preview")
+        .header(COOKIE, format!("id={session_id}"))
+        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+        .body(Body::from(body))
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
+
+    // Check response matches expectations
+    assert_eq!(parts.status, StatusCode::OK);
+    assert_eq!(
+        parts.headers.get(CONTENT_TYPE).unwrap(),
+        &HeaderValue::from_static("text/html; charset=utf-8"),
+    );
+    assert!(body.contains("Event preview"));
+    assert!(body.contains("Missing event name"));
+    assert!(body.contains("Missing start date"));
+    assert!(body.contains("Online meeting details"));
+    assert!(body.contains("Test Group"));
+    assert!(body.contains("Test Community"));
+    assert!(body.contains("7:00 PM Europe/Madrid"));
+}
+
+#[tokio::test]
 async fn test_add_success() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();

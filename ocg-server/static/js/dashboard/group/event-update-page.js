@@ -1,5 +1,6 @@
 import { showConfirmAlert } from "/static/js/common/alerts.js";
 import { initializeSessionsRemovalWarning } from "/static/js/dashboard/group/event-form-helpers.js";
+import { initializeEventPreview } from "/static/js/dashboard/group/event-preview.js";
 import {
   attachEventSaveAfterRequest,
   attachEventSaveBeforeRequestValidation,
@@ -225,6 +226,10 @@ export const initializeEventUpdatePage = (root = document) => {
   initializeEventPagePendingChanges({
     pageRoot,
     confirmMessage: "You have pending changes. If you continue, unsaved changes will be lost.",
+  });
+
+  initializeEventPreview({
+    pageRoot,
   });
 
   if (!updateEventButton) {
