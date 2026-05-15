@@ -28,6 +28,7 @@
       </div>
 
       <div class="modal-body bg-stone-50">
+        {# Missing fields warning -#}
         {% if !event.missing_fields.is_empty() -%}
           <div class="container mx-auto max-w-[90rem] px-4 pt-4 sm:px-6 md:pt-6 lg:px-8">
             <div class="rounded-lg border border-amber-300 bg-amber-50 p-4 text-amber-950">
@@ -45,7 +46,9 @@
             </div>
           </div>
         {% endif -%}
+        {# End missing fields warning -#}
 
+        {# Breadcrumb -#}
         <breadcrumb-nav class="[&>.container]:max-w-[90rem]"
         {% if let Some(banner_url) = &event.banner_url -%}
           banner-url="{{ banner_url }}"
@@ -55,12 +58,17 @@
           {"label": {{ community_display_name|json }}, "icon": "community"},
         {% endif -%}
         {"label": {{ event.group_name() |json }}, "icon": "groups"}, {"label": {{ event.name_label() |json }}, "icon": "date", "current": true} ]'></breadcrumb-nav>
+        {# End breadcrumb -#}
 
+        {# Preview content -#}
         <div class="relative container mx-auto flex h-full max-w-[90rem] grow p-4 sm:p-6 lg:p-8">
-          <article class="relative flex w-full flex-col overflow-visible rounded-lg border border-stone-200 bg-white">
+          <div class="relative flex w-full flex-col overflow-visible rounded-lg border border-stone-200 bg-white">
             <div class="flex flex-col gap-y-8 px-4 py-5 sm:px-6 sm:py-6 lg:gap-y-12 lg:px-10 lg:py-10">
+              {# Event header with name and group -#}
               <header>
+                {# Main grid container for logo, name/group, social links, and actions -#}
                 <div class="grid gap-x-6 gap-y-4 md:gap-y-0 md:grid-cols-[auto_minmax(0,1fr)_auto]">
+                  {# Event logo -#}
                   <div class="relative hidden md:row-span-2 md:block">
                     {% if let Some(logo_url) = &event.logo_url -%}
                       {{ ui::logo(logo_url = logo_url, classes = "size-24 md:size-28", size = 112) -}}
@@ -70,13 +78,18 @@
                       </div>
                     {% endif -%}
                   </div>
+                  {# End event logo -#}
 
                   <div class="min-w-0 md:col-span-2 md:col-start-2">
                     <div class="min-w-0 flex justify-between">
                       <div class="min-w-0 flex flex-col">
+                        {# Group legend -#}
                         <div class="text-sm font-semibold uppercase tracking-wide text-stone-400 md:mb-0.5 lg:-mt-1">
                           {{ event.group_name() }}
                         </div>
+                        {# End group legend -#}
+
+                        {# Event name -#}
                         {% if event.name_label().len() > 68 -%}
                           <h1 class="mt-2 line-clamp-2 text-[0.95rem]/5 font-semibold text-stone-900 md:mt-1 xl:mt-0 xl:text-[1.45rem]/[1.35]">
                             {{ event.name_label() }}
@@ -86,15 +99,19 @@
                             {{ event.name_label() }}
                           </h1>
                         {% endif -%}
+                        {# End event name -#}
                       </div>
+                      {# Social networks (desktop) -#}
                       <div class="hidden md:flex flex-col items-end gap-2"
                            data-event-preview-social-links>
                         <div class="flex flex-wrap gap-2" data-event-preview-social-links-list></div>
                       </div>
+                      {# End social networks (desktop) -#}
                     </div>
                   </div>
 
                   <div class="md:col-start-2 md:row-start-2 md:self-end">
+                    {# Event details -#}
                     <div class="flex flex-wrap items-center gap-3 text-stone-600 md:gap-4 md:max-xl:gap-3">
                       {% if event.input.capacity.is_some() -%}
                         <div class="flex items-center gap-2 leading-none">
@@ -107,11 +124,16 @@
                       {% endif -%}
                       {{ badges::event_badge(kind = event.kind_display_label() , extra_styles = Some("px-2.5 py-0.5")) -}}
                     </div>
+                    {# End event details -#}
+
+                    {# Social networks (mobile) -#}
                     <div class="hidden mt-4 md:hidden" data-event-preview-social-links>
                       <div class="flex flex-wrap gap-2" data-event-preview-social-links-list></div>
                     </div>
+                    {# End social networks (mobile) -#}
                   </div>
 
+                  {# Event actions -#}
                   <div class="flex max-w-full flex-row flex-wrap gap-2 sm:flex-nowrap sm:gap-3 md:col-start-3 md:row-start-2 md:self-end md:justify-end md:gap-4">
                     <button type="button"
                             disabled
@@ -130,11 +152,16 @@
                       <div class="svg-icon size-4 icon-vertical-dots"></div>
                     </button>
                   </div>
+                  {# End event actions -#}
                 </div>
+                {# End main grid container -#}
               </header>
+              {# End event header -#}
 
+              {# Event date and location -#}
               <section class="py-4">
                 <div class="grid gap-5 sm:gap-8 md:grid-cols-2 md:gap-5 lg:gap-8">
+                  {# Event date -#}
                   <div class="h-full rounded-lg border border-stone-200 bg-white">
                     <div class="flex h-full flex-col p-4">
                       <div class="mb-4 flex min-h-[25px] items-center justify-between">
@@ -146,7 +173,9 @@
                       </div>
                     </div>
                   </div>
+                  {# End event date -#}
 
+                  {# Location -#}
                   <div class="flex h-full flex-col rounded-lg border border-stone-200 bg-white p-4">
                     <div class="mb-4 flex min-h-[25px] items-center justify-between">
                       <div class="text-base/3 font-semibold uppercase text-stone-400">Location</div>
@@ -193,9 +222,12 @@
                       {% endif -%}
                     </div>
                   </div>
+                  {# End location -#}
                 </div>
               </section>
+              {# End event date and location -#}
 
+              {# Call for Speakers -#}
               {% if event.has_cfs() -%}
                 <section>
                   <div class="pb-6 text-lg font-bold uppercase leading-6 tracking-wide text-stone-900 lg:pb-10 lg:text-2xl">
@@ -214,7 +246,9 @@
                   {% endif -%}
                 </section>
               {% endif -%}
+              {# End Call for Speakers -#}
 
+              {# Event description -#}
               <section>
                 <div class="pb-6 text-lg font-bold uppercase leading-6 tracking-wide text-stone-900 lg:pb-10 lg:text-2xl">
                   About this event
@@ -254,10 +288,14 @@
                   {% endif -%}
                 {% endif -%}
               </section>
+              {# End event description -#}
 
+              {# Tags -#}
               <section class="hidden" data-event-preview-tags-section>
               </section>
+              {# End tags -#}
 
+              {# Sessions section -#}
               {% if !event.sessions.is_empty() -%}
                 <section>
                   <div class="pb-8 text-lg font-bold uppercase leading-10 tracking-wide text-stone-900 lg:pb-14 lg:pt-2 lg:text-2xl">
@@ -298,9 +336,12 @@
                   </ol>
                 </section>
               {% endif -%}
+              {# End sessions section -#}
 
+              {# People and sponsors section -#}
               {% if event.has_people_or_sponsors() -%}
                 <section class="space-y-8 lg:space-y-12">
+                  {# Hosts section -#}
                   {% if !event.hosts.is_empty() -%}
                     <div class="hidden has-[user-chip]:block">
                       <div class="pb-8 text-lg font-bold uppercase leading-10 tracking-wide text-stone-900 lg:pb-14 lg:pt-2 lg:text-2xl">
@@ -315,7 +356,9 @@
                       </div>
                     </div>
                   {% endif -%}
+                  {# End hosts section -#}
 
+                  {# Event speakers section -#}
                   {% if !event.speakers.is_empty() -%}
                     <div class="featured-speakers-section hidden has-[user-chip]:block">
                       <div class="pb-8 text-lg font-bold uppercase leading-10 tracking-wide text-stone-900 lg:pb-14 lg:pt-2 lg:text-2xl">
@@ -355,7 +398,9 @@
                       </div>
                     </div>
                   {% endif -%}
+                  {# End event speakers section -#}
 
+                  {# Sponsors section -#}
                   {% if !event.sponsors.is_empty() -%}
                     <div>
                       <div class="pb-8 text-lg font-bold uppercase leading-10 tracking-wide text-stone-900 lg:pb-14 lg:pt-2 lg:text-2xl">
@@ -380,9 +425,12 @@
                       </div>
                     </div>
                   {% endif -%}
+                  {# End sponsors section -#}
                 </section>
               {% endif -%}
+              {# End people and sponsors section -#}
 
+              {# Gallery -#}
               {% if !event.photos.is_empty() -%}
                 <section>
                   <div class="pb-8 text-lg font-bold uppercase leading-10 tracking-wide text-stone-900 lg:pb-14 lg:pt-2 lg:text-2xl">
@@ -391,10 +439,12 @@
                   <images-gallery title="Gallery" altImage="Event {{ event.name_label() }}" images="{{ event.photos|json }}"></images-gallery>
                 </section>
               {% endif -%}
+              {# End gallery -#}
 
             </div>
-          </article>
+          </div>
         </div>
+        {# End preview content -#}
       </div>
     </div>
   </div>
