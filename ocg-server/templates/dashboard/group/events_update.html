@@ -24,170 +24,181 @@
      data-group-logo-url="{{ event.group.logo_url }}"
      data-group-banner-url="{%- if let Some(banner_url) = &event.group.banner_url -%}{{ banner_url }}{%- endif -%}"
      data-group-banner-mobile-url="{%- if let Some(banner_mobile_url) = &event.group.banner_mobile_url -%}{{ banner_mobile_url }}{%- endif -%}">
-  <ul class="flex flex-nowrap gap-1 lg:gap-2 -mb-px font-medium text-center border-b border-stone-900/10 w-full mb-10 overflow-x-auto overflow-y-hidden">
-    <li class="shrink-0">
-      <button type="button"
-              data-section="details"
-              data-active="true"
-              class="px-2 xl:w-[90px] 2xl:w-[120px] xl:px-0 cursor-pointer inline-flex flex-col items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 active data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group">
-        <div class="svg-icon size-4 lg:size-5 mb-2 icon-event bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
-        </div>
-        <span class="text-[10px] 2xl:text-xs">Details</span>
-      </button>
-    </li>
-    <li class="shrink-0">
-      <button type="button"
-              data-section="date-venue"
-              data-active="false"
-              class="px-2 xl:w-[90px] 2xl:w-[120px] xl:px-0 cursor-pointer inline-flex flex-col items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group">
-        <div class="svg-icon size-4 lg:size-5 mb-2 icon-calendar bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
-        </div>
-        <span class="text-[10px] 2xl:text-xs hidden xl:inline">Date & Venue</span>
-        <span class="text-[10px] 2xl:text-xs xl:hidden">Schedule</span>
-      </button>
-    </li>
-    <li class="shrink-0">
-      <button type="button"
-              data-section="hosts-sponsors"
-              data-active="false"
-              class="px-2 xl:w-[90px] 2xl:w-[120px] xl:px-0 cursor-pointer inline-flex flex-col items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group">
-        <div class="svg-icon size-4 lg:size-5 mb-2 icon-user-plus bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
-        </div>
-        <span class="text-[10px] 2xl:text-xs hidden 2xl:inline">Hosts & Speakers</span>
-        <span class="text-[10px] 2xl:text-xs 2xl:hidden">Hosts</span>
-      </button>
-    </li>
-    <li class="shrink-0">
-      <button type="button"
-              data-section="sessions"
-              data-active="false"
-              class="px-2 xl:w-[90px] 2xl:w-[120px] xl:px-0 cursor-pointer inline-flex flex-col items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group">
-        <div class="svg-icon size-4 lg:size-5 mb-2 icon-presentation bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
-        </div>
-        <span class="text-[10px] 2xl:text-xs">Sessions</span>
-      </button>
-    </li>
-    {% if payments_ready -%}
-      <li class="shrink-0">
-        <button type="button"
-                data-section="payments"
-                data-active="false"
-                class="px-2 xl:w-[90px] 2xl:w-[120px] xl:px-0 cursor-pointer inline-flex flex-col items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group">
-          <div class="svg-icon size-4 lg:size-5 mb-2 icon-ticket bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
-          </div>
-          <span class="text-[10px] 2xl:text-xs">Payments</span>
-        </button>
-      </li>
-    {% endif -%}
-    <li class="shrink-0">
-      <button type="button"
-              data-section="cfs"
-              data-active="false"
-              class="px-2 xl:w-[90px] 2xl:w-[120px] xl:px-0 cursor-pointer inline-flex flex-col items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group">
-        <div class="svg-icon size-4 lg:size-5 mb-2 icon-megaphone bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
-        </div>
-        <span class="text-[10px] 2xl:text-xs">CFS</span>
-      </button>
-    </li>
-    <li class="shrink-0">
-      <button type="button"
-              data-section="submissions"
-              data-active="false"
-              hx-get="/dashboard/group/events/{{ event.event_id }}/submissions"
-              hx-trigger="click once"
-              hx-target="#submissions-content"
-              hx-swap="innerHTML"
-              hx-indicator="#submissions-loading"
-              class="px-2 xl:w-[90px] 2xl:w-[120px] xl:px-0 cursor-pointer inline-flex flex-col items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group">
-        <div class="svg-icon size-4 lg:size-5 mb-2 icon-submission bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
-        </div>
-        <span class="text-[10px] 2xl:text-xs">Submissions</span>
-      </button>
-    </li>
-    <li class="shrink-0">
-      <button type="button"
-              data-section="attendees"
-              data-active="false"
-              hx-get="/dashboard/group/events/{{ event.event_id }}/attendees"
-              hx-trigger="click once"
-              hx-target="#attendees-content"
-              hx-swap="innerHTML"
-              hx-indicator="#attendees-loading"
-              class="px-2 xl:w-[90px] 2xl:w-[120px] xl:px-0 cursor-pointer inline-flex flex-col items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group">
-        <div class="svg-icon size-4 lg:size-5 mb-2 icon-attendees bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
-        </div>
-        <span class="text-[10px] 2xl:text-xs">Attendees</span>
-      </button>
-    </li>
-    {% if event.attendee_approval_required -%}
-      <li class="shrink-0">
-        <button type="button"
-                data-section="invitation-requests"
-                data-active="false"
-                hx-get="/dashboard/group/events/{{ event.event_id }}/invitation-requests"
-                hx-trigger="click once"
-                hx-target="#invitation-requests-content"
-                hx-swap="innerHTML"
-                hx-indicator="#invitation-requests-loading"
-                class="px-2 xl:w-[90px] 2xl:w-[120px] xl:px-0 cursor-pointer inline-flex flex-col items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group">
-          <div class="svg-icon size-4 lg:size-5 mb-2 icon-request-invitation bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
-          </div>
-          <span class="text-[10px] 2xl:text-xs">Requests</span>
-        </button>
-      </li>
-    {% endif -%}
-    <li class="shrink-0">
-      <button type="button"
-              data-section="waitlist"
-              data-active="false"
-              hx-get="/dashboard/group/events/{{ event.event_id }}/waitlist"
-              hx-trigger="click once"
-              hx-target="#waitlist-content"
-              hx-swap="innerHTML"
-              hx-indicator="#waitlist-loading"
-              class="px-2 xl:w-[90px] 2xl:w-[120px] xl:px-0 cursor-pointer inline-flex flex-col items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group">
-        <div class="svg-icon size-4 lg:size-5 mb-2 icon-waitlist bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
-        </div>
-        <span class="text-[10px] 2xl:text-xs">Waitlist</span>
-      </button>
-    </li>
-    <li class="shrink-0 lg:ms-auto">
+  <div class="mb-10 flex min-w-0 items-stretch">
+    <div class="min-w-0 flex-1 overflow-x-auto overflow-y-hidden">
+      <ul class="inline-flex min-w-max flex-nowrap gap-1 border-b border-stone-900/10 text-center font-medium lg:gap-2">
+        <li class="shrink-0">
+          <button type="button"
+                  data-section="details"
+                  data-active="true"
+                  class="group active inline-flex cursor-pointer flex-col items-center justify-center rounded-t-lg border-b-2 border-transparent p-4 px-2 pt-0 hover:border-stone-300 hover:text-stone-600 data-[active=true]:border-primary-500 data-[active=true]:text-primary-500 xl:w-[90px] xl:px-0 2xl:w-[120px]">
+            <div class="svg-icon size-4 lg:size-5 mb-2 icon-event bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
+            </div>
+            <span class="text-[10px] 2xl:text-xs">Details</span>
+          </button>
+        </li>
+        <li class="shrink-0">
+          <button type="button"
+                  data-section="date-venue"
+                  data-active="false"
+                  class="group inline-flex cursor-pointer flex-col items-center justify-center rounded-t-lg border-b-2 border-transparent p-4 px-2 pt-0 hover:border-stone-300 hover:text-stone-600 data-[active=true]:border-primary-500 data-[active=true]:text-primary-500 xl:w-[90px] xl:px-0 2xl:w-[120px]">
+            <div class="svg-icon size-4 lg:size-5 mb-2 icon-calendar bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
+            </div>
+            <span class="text-[10px] 2xl:text-xs">Date & Venue</span>
+          </button>
+        </li>
+        <li class="shrink-0">
+          <button type="button"
+                  data-section="hosts-sponsors"
+                  data-active="false"
+                  class="group inline-flex cursor-pointer flex-col items-center justify-center rounded-t-lg border-b-2 border-transparent p-4 px-2 pt-0 hover:border-stone-300 hover:text-stone-600 data-[active=true]:border-primary-500 data-[active=true]:text-primary-500 xl:w-[90px] xl:px-0 2xl:w-[120px]">
+            <div class="svg-icon size-4 lg:size-5 mb-2 icon-user-plus bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
+            </div>
+            <span class="text-[10px] 2xl:text-xs">Hosts & Speakers</span>
+          </button>
+        </li>
+        <li class="shrink-0">
+          <button type="button"
+                  data-section="sessions"
+                  data-active="false"
+                  class="group inline-flex cursor-pointer flex-col items-center justify-center rounded-t-lg border-b-2 border-transparent p-4 px-2 pt-0 hover:border-stone-300 hover:text-stone-600 data-[active=true]:border-primary-500 data-[active=true]:text-primary-500 xl:w-[90px] xl:px-0 2xl:w-[120px]">
+            <div class="svg-icon size-4 lg:size-5 mb-2 icon-presentation bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
+            </div>
+            <span class="text-[10px] 2xl:text-xs">Sessions</span>
+          </button>
+        </li>
+        {% if payments_ready -%}
+          <li class="shrink-0">
+            <button type="button"
+                    data-section="payments"
+                    data-active="false"
+                    class="group inline-flex cursor-pointer flex-col items-center justify-center rounded-t-lg border-b-2 border-transparent p-4 px-2 pt-0 hover:border-stone-300 hover:text-stone-600 data-[active=true]:border-primary-500 data-[active=true]:text-primary-500 xl:w-[90px] xl:px-0 2xl:w-[120px]">
+              <div class="svg-icon size-4 lg:size-5 mb-2 icon-ticket bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
+              </div>
+              <span class="text-[10px] 2xl:text-xs">Payments</span>
+            </button>
+          </li>
+        {% endif -%}
+        <li class="shrink-0">
+          <button type="button"
+                  data-section="cfs"
+                  data-active="false"
+                  class="group inline-flex cursor-pointer flex-col items-center justify-center rounded-t-lg border-b-2 border-transparent p-4 px-2 pt-0 hover:border-stone-300 hover:text-stone-600 data-[active=true]:border-primary-500 data-[active=true]:text-primary-500 xl:w-[90px] xl:px-0 2xl:w-[120px]">
+            <div class="svg-icon size-4 lg:size-5 mb-2 icon-megaphone bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
+            </div>
+            <span class="text-[10px] 2xl:text-xs">CFS</span>
+          </button>
+        </li>
+        <li class="shrink-0">
+          <button type="button"
+                  data-section="submissions"
+                  data-active="false"
+                  hx-get="/dashboard/group/events/{{ event.event_id }}/submissions"
+                  hx-trigger="click once"
+                  hx-target="#submissions-content"
+                  hx-swap="innerHTML"
+                  hx-indicator="#submissions-loading"
+                  class="group inline-flex cursor-pointer flex-col items-center justify-center rounded-t-lg border-b-2 border-transparent p-4 px-2 pt-0 hover:border-stone-300 hover:text-stone-600 data-[active=true]:border-primary-500 data-[active=true]:text-primary-500 xl:w-[90px] xl:px-0 2xl:w-[120px]">
+            <div class="svg-icon size-4 lg:size-5 mb-2 icon-submission bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
+            </div>
+            <span class="text-[10px] 2xl:text-xs">Submissions</span>
+          </button>
+        </li>
+        <li class="shrink-0">
+          <button type="button"
+                  data-section="attendees"
+                  data-active="false"
+                  hx-get="/dashboard/group/events/{{ event.event_id }}/attendees"
+                  hx-trigger="click once"
+                  hx-target="#attendees-content"
+                  hx-swap="innerHTML"
+                  hx-indicator="#attendees-loading"
+                  class="group inline-flex cursor-pointer flex-col items-center justify-center rounded-t-lg border-b-2 border-transparent p-4 px-2 pt-0 hover:border-stone-300 hover:text-stone-600 data-[active=true]:border-primary-500 data-[active=true]:text-primary-500 xl:w-[90px] xl:px-0 2xl:w-[120px]">
+            <div class="svg-icon size-4 lg:size-5 mb-2 icon-attendees bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
+            </div>
+            <span class="text-[10px] 2xl:text-xs">Attendees</span>
+          </button>
+        </li>
+        {% if event.attendee_approval_required -%}
+          <li class="shrink-0">
+            <button type="button"
+                    data-section="invitation-requests"
+                    data-active="false"
+                    hx-get="/dashboard/group/events/{{ event.event_id }}/invitation-requests"
+                    hx-trigger="click once"
+                    hx-target="#invitation-requests-content"
+                    hx-swap="innerHTML"
+                    hx-indicator="#invitation-requests-loading"
+                    class="group inline-flex cursor-pointer flex-col items-center justify-center rounded-t-lg border-b-2 border-transparent p-4 px-2 pt-0 hover:border-stone-300 hover:text-stone-600 data-[active=true]:border-primary-500 data-[active=true]:text-primary-500 xl:w-[90px] xl:px-0 2xl:w-[120px]">
+              <div class="svg-icon size-4 lg:size-5 mb-2 icon-request-invitation bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
+              </div>
+              <span class="text-[10px] 2xl:text-xs">Requests</span>
+            </button>
+          </li>
+        {% endif -%}
+        <li class="shrink-0">
+          <button type="button"
+                  data-section="waitlist"
+                  data-active="false"
+                  hx-get="/dashboard/group/events/{{ event.event_id }}/waitlist"
+                  hx-trigger="click once"
+                  hx-target="#waitlist-content"
+                  hx-swap="innerHTML"
+                  hx-indicator="#waitlist-loading"
+                  class="group inline-flex cursor-pointer flex-col items-center justify-center rounded-t-lg border-b-2 border-transparent p-4 px-2 pt-0 hover:border-stone-300 hover:text-stone-600 data-[active=true]:border-primary-500 data-[active=true]:text-primary-500 xl:w-[90px] xl:px-0 2xl:w-[120px]">
+            <div class="svg-icon size-4 lg:size-5 mb-2 icon-waitlist bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
+            </div>
+            <span class="text-[10px] 2xl:text-xs">Waitlist</span>
+          </button>
+        </li>
+      </ul>
+    </div>
+    <div class="flex shrink-0 flex-col items-stretch justify-center gap-2 ps-3">
       <button id="event-preview-button"
               type="button"
-              class="px-2 xl:w-[90px] 2xl:w-[120px] xl:px-0 inline-flex cursor-pointer flex-col items-center justify-center rounded-t-lg border-b-2 border-transparent p-4 pt-0 hover:border-stone-300 hover:text-stone-600 group
-                     {% if !can_manage_events -%}
-                       opacity-50 cursor-not-allowed
-                     {% endif -%}"
+              aria-label="Preview"
+              class="group btn-primary-outline btn-mini inline-flex h-7 min-w-28 items-center justify-center gap-2 whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50"
               {% if !can_manage_events -%}
                 disabled title="Your role cannot preview events."
+              {% else -%}
+                title="Preview"
               {% endif -%}>
-        <div class="svg-icon size-4 lg:size-5 mb-2 icon-eye bg-stone-400 group-hover:bg-stone-500 shrink-0"></div>
-        <span class="text-[10px] 2xl:text-xs">Preview</span>
+        <svg class="size-4 shrink-0"
+             aria-hidden="true"
+             stroke="currentColor"
+             fill="currentColor"
+             stroke-width="0"
+             viewBox="0 0 16 16"
+             xmlns="http://www.w3.org/2000/svg">
+          <path fill-rule="evenodd" clip-rule="evenodd" d="M2 2h12l1 1v10l-1 1H2l-1-1V3l1-1zm0 11h12V3H2v10zm11-9H3v3h10V4zm-1 2H4V5h8v1zm-3 6h4V8H9v4zm1-3h2v2h-2V9zM7 8H3v1h4V8zm-4 3h4v1H3v-1z">
+          </path>
+        </svg>
+        <span>Preview</span>
       </button>
-    </li>
-    <li class="shrink-0">
       {% if event_public_url_enabled -%}
         <a id="event-public-page-link"
            href="{{ event_public_url }}"
            target="_blank"
            rel="noopener noreferrer"
-           class="px-2 xl:w-[90px] 2xl:w-[120px] xl:px-0 inline-flex cursor-pointer flex-col items-center justify-center rounded-t-lg border-b-2 border-transparent p-4 pt-0 hover:border-stone-300 hover:text-stone-600 group">
-          <div class="svg-icon size-4 lg:size-5 mb-2 icon-external-link bg-stone-400 group-hover:bg-stone-500 shrink-0">
-          </div>
-          <span class="text-[10px] 2xl:text-xs">Public page</span>
+           aria-label="Public page"
+           title="Public page"
+           class="group btn-primary-anchor btn-mini inline-flex h-7 min-w-28 items-center justify-center gap-2 whitespace-nowrap">
+          <div class="svg-icon size-3 icon-eye bg-white shrink-0"></div>
+          <span>Public page</span>
         </a>
       {% else -%}
         <button id="event-public-page-link"
                 type="button"
                 disabled
+                aria-label="Public page"
                 title="Event must be published."
-                class="px-2 xl:w-[90px] 2xl:w-[120px] xl:px-0 inline-flex cursor-not-allowed flex-col items-center justify-center rounded-t-lg border-b-2 border-transparent p-4 pt-0 opacity-50 group">
-          <div class="svg-icon size-4 lg:size-5 mb-2 icon-external-link bg-stone-400 shrink-0"></div>
-          <span class="text-[10px] 2xl:text-xs">Public page</span>
+                class="btn-primary btn-mini inline-flex h-7 min-w-28 cursor-not-allowed items-center justify-center gap-2 whitespace-nowrap opacity-50">
+          <div class="svg-icon size-3 icon-eye bg-white shrink-0"></div>
+          <span>Public page</span>
         </button>
       {% endif -%}
-    </li>
-  </ul>
+    </div>
+  </div>
 
   {% if !can_manage_events -%}
     {{ dashboard::permission_warning(message = "Your role cannot update events.", extra_classes = "") -}}
