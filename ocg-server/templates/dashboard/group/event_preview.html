@@ -64,7 +64,7 @@
                    data-preview-waitlist="{{ event.waitlist_label() }}">
             <div class="flex flex-col gap-y-8 px-4 py-5 sm:px-6 sm:py-6 lg:gap-y-12 lg:px-10 lg:py-10">
               <header>
-                <div class="grid gap-x-6 gap-y-4 md:grid-cols-[auto_minmax(0,1fr)_auto]">
+                <div class="grid gap-x-6 gap-y-4 md:gap-y-0 md:grid-cols-[auto_minmax(0,1fr)_auto]">
                   <div class="relative hidden md:row-span-2 md:block">
                     {% if let Some(logo_url) = &event.logo_url -%}
                       {{ ui::logo(logo_url = logo_url, classes = "size-24 md:size-28", size = 112) -}}
