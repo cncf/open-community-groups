@@ -22,7 +22,9 @@ const initMembersCharts = (stats = {}, palette) => {
   const runningData = stats.running_total || [];
   const runningChart = renderChart(
     "members-running-chart",
-    createAreaChart("Members over time", "Members", runningData, palette),
+    createAreaChart("Members over time", "Members", runningData, palette, {
+      description: "Cumulative group members over time.",
+    }),
     hasTimeSeriesData(runningData),
   );
   if (runningChart) charts.push(runningChart);
@@ -31,6 +33,7 @@ const initMembersCharts = (stats = {}, palette) => {
   const monthlyChart = renderChart(
     "members-monthly-chart",
     createMonthlyBarChart("New Members per Month", "Members", monthlyData, palette, {
+      description: "Member joins each month.",
       reservePeriodStart: true,
     }),
     hasChartData(monthlyData),
@@ -52,7 +55,9 @@ const initEventsCharts = (stats = {}, palette) => {
   const runningData = stats.running_total || [];
   const runningChart = renderChart(
     "events-running-chart",
-    createAreaChart("Events over time", "Events", runningData, palette),
+    createAreaChart("Events over time", "Events", runningData, palette, {
+      description: "Cumulative group events over time.",
+    }),
     hasTimeSeriesData(runningData),
   );
   if (runningChart) charts.push(runningChart);
@@ -60,7 +65,8 @@ const initEventsCharts = (stats = {}, palette) => {
   const monthlyData = stats.per_month || [];
   const monthlyChart = renderChart(
     "events-monthly-chart",
-    createMonthlyBarChart("New Events per Month", "Events", monthlyData, palette, {
+    createMonthlyBarChart("Events per Month", "Events", monthlyData, palette, {
+      description: "Published events by scheduled month.",
       reservePeriodStart: true,
     }),
     hasChartData(monthlyData),
@@ -81,10 +87,33 @@ const initPageViewsCharts = async (stats = {}, palette) => {
 
   const charts = [];
 
+  const totalMonthlyData = stats.total?.per_month_views || [];
+  const totalMonthlyChart = renderChart(
+    "total-views-monthly-chart",
+    createMonthlyBarChart("Monthly total page views", "Page views", totalMonthlyData, palette, {
+      description: "Group and event views grouped by month.",
+      useTimeAxis: true,
+      reservePeriodStart: true,
+    }),
+    hasChartData(totalMonthlyData),
+  );
+  if (totalMonthlyChart) charts.push(totalMonthlyChart);
+
+  const totalDailyData = stats.total?.per_day_views || [];
+  const totalDailyChart = renderChart(
+    "total-views-daily-chart",
+    createDailyBarChart("Daily total page views", "Page views", totalDailyData, palette, {
+      description: "Group and event views over the last 30 days.",
+    }),
+    hasChartData(totalDailyData),
+  );
+  if (totalDailyChart) charts.push(totalDailyChart);
+
   const groupMonthlyData = stats.group?.per_month_views || [];
   const groupMonthlyChart = renderChart(
     "group-views-monthly-chart",
     createMonthlyBarChart("Monthly group page views", "Page views", groupMonthlyData, palette, {
+      description: "Group page views grouped by month.",
       useTimeAxis: true,
       reservePeriodStart: true,
     }),
@@ -100,6 +129,7 @@ const initPageViewsCharts = async (stats = {}, palette) => {
       "Page views",
       groupDailyData,
       palette,
+      { description: "Group page views over the last 30 days." },
     ),
     hasChartData(groupDailyData),
   );
@@ -108,7 +138,8 @@ const initPageViewsCharts = async (stats = {}, palette) => {
   const eventMonthlyData = stats.events?.per_month_views || [];
   const eventMonthlyChart = renderChart(
     "event-views-monthly-chart",
-    createMonthlyBarChart("Monthly events pages views", "Page views", eventMonthlyData, palette, {
+    createMonthlyBarChart("Monthly event page views", "Page views", eventMonthlyData, palette, {
+      description: "Event page views grouped by month.",
       useTimeAxis: true,
       reservePeriodStart: true,
     }),
@@ -120,10 +151,11 @@ const initPageViewsCharts = async (stats = {}, palette) => {
   const eventDailyChart = renderChart(
     "event-views-daily-chart",
     createDailyBarChart(
-      "Daily events pages views during the last month",
+      "Daily event page views during the last month",
       "Page views",
       eventDailyData,
       palette,
+      { description: "Event page views over the last 30 days." },
     ),
     hasChartData(eventDailyData),
   );
@@ -144,7 +176,9 @@ const initAttendeesCharts = (stats = {}, palette) => {
   const runningData = stats.running_total || [];
   const runningChart = renderChart(
     "attendees-running-chart",
-    createAreaChart("Attendees over time", "Attendees", runningData, palette),
+    createAreaChart("Attendees over time", "Attendees", runningData, palette, {
+      description: "Cumulative event RSVPs over time.",
+    }),
     hasTimeSeriesData(runningData),
   );
   if (runningChart) charts.push(runningChart);
@@ -152,7 +186,8 @@ const initAttendeesCharts = (stats = {}, palette) => {
   const monthlyData = stats.per_month || [];
   const monthlyChart = renderChart(
     "attendees-monthly-chart",
-    createMonthlyBarChart("New Attendees per Month", "Attendees", monthlyData, palette, {
+    createMonthlyBarChart("Attendees per Month", "Attendees", monthlyData, palette, {
+      description: "Event RSVPs created each month.",
       reservePeriodStart: true,
     }),
     hasChartData(monthlyData),

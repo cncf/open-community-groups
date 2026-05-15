@@ -191,6 +191,16 @@ select is(
             ),
             'page_views', jsonb_build_object(
                 'total_views', 22,
+                'total', jsonb_build_object(
+                    'total_views', 22,
+                    'per_day_views', jsonb_build_array(
+                        jsonb_build_array(to_char(d0, 'YYYY-MM-DD'), 11)
+                    ),
+                    'per_month_views', jsonb_build_array(
+                        jsonb_build_array(to_char(m2, 'YYYY-MM'), 11),
+                        jsonb_build_array(to_char(m0, 'YYYY-MM'), 11)
+                    )
+                ),
                 'events', jsonb_build_object(
                     'total_views', 12,
                     'per_day_views', jsonb_build_array(
@@ -240,6 +250,11 @@ select is(
         },
         "page_views": {
             "total_views": 0,
+            "total": {
+                "total_views": 0,
+                "per_day_views": [],
+                "per_month_views": []
+            },
             "events": {
                 "total_views": 0,
                 "per_day_views": [],

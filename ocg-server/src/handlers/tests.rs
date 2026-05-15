@@ -303,6 +303,18 @@ pub(crate) fn sample_community_stats() -> CommunityDashboardStats {
                 per_month_views: vec![("2024-01".to_string(), 9)],
                 total_views: 9,
             },
+            total: CommunityPageViewsEntry {
+                per_day_views: vec![
+                    ("2024-01-10".to_string(), 2),
+                    ("2024-01-11".to_string(), 5),
+                    ("2024-01-12".to_string(), 4),
+                    ("2024-01-20".to_string(), 2),
+                    ("2024-01-21".to_string(), 7),
+                    ("2024-01-22".to_string(), 5),
+                ],
+                per_month_views: vec![("2024-01".to_string(), 25)],
+                total_views: 25,
+            },
             total_views: 25,
         },
     }
@@ -676,6 +688,16 @@ pub(crate) fn sample_group_stats() -> GroupDashboardStats {
                 per_day_views: vec![("2024-01-11".to_string(), 1), ("2024-01-21".to_string(), 3)],
                 per_month_views: vec![("2024-01".to_string(), 4)],
                 total_views: 4,
+            },
+            total: GroupPageViewsEntry {
+                per_day_views: vec![
+                    ("2024-01-10".to_string(), 3),
+                    ("2024-01-11".to_string(), 1),
+                    ("2024-01-20".to_string(), 4),
+                    ("2024-01-21".to_string(), 3),
+                ],
+                per_month_views: vec![("2024-01".to_string(), 11)],
+                total_views: 11,
             },
             total_views: 11,
         },

@@ -27,6 +27,8 @@ describe("dashboard group analytics", () => {
     document.documentElement.style.setProperty("--color-primary-700", "#115e59");
 
     [
+      "total-views-monthly-chart",
+      "total-views-daily-chart",
       "group-views-monthly-chart",
       "group-views-daily-chart",
       "event-views-monthly-chart",
@@ -56,6 +58,7 @@ describe("dashboard group analytics", () => {
   it("initializes the expected group analytics charts", async () => {
     await initAnalyticsCharts({
       page_views: {
+        total: { per_month_views: [["2025-01", 4]], per_day_views: [["2025-01-01", 2]] },
         group: { per_month_views: [["2025-01", 2]], per_day_views: [["2025-01-01", 1]] },
         events: { per_month_views: [["2025-01", 2]], per_day_views: [["2025-01-01", 1]] },
       },
@@ -64,8 +67,18 @@ describe("dashboard group analytics", () => {
       attendees: { running_total: [[1, 1], [2, 2]], per_month: [["2025-01", 1]] },
     });
 
-    expect(setOptionCalls).to.have.length(10);
+    expect(setOptionCalls).to.have.length(12);
     expect(setOptionCalls.map((call) => call.id)).to.include("members-running-chart");
+    expect(setOptionCalls.map((call) => call.id)).to.include("total-views-monthly-chart");
     expect(setOptionCalls.map((call) => call.id)).to.include("event-views-daily-chart");
+    expect(setOptionCalls.find((call) => call.id === "events-monthly-chart").option.title.text).to.equal(
+      "Events per Month",
+    );
+    expect(setOptionCalls.find((call) => call.id === "attendees-monthly-chart").option.title.text).to.equal(
+      "Attendees per Month",
+    );
+    expect(
+      setOptionCalls.find((call) => call.id === "total-views-monthly-chart").option.title.subtext,
+    ).to.equal("Group and event views grouped by month.");
   });
 });

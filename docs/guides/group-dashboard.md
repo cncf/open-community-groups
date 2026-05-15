@@ -173,7 +173,8 @@ Group analytics focuses on operational output:
 Each metric includes running totals and monthly trends, so it is easier to tell whether growth is
 steady over time or mainly tied to isolated spikes.
 
-The `Page views` section also includes a daily chart for the last month for each page type.
+The `Page views` section starts with total group and event page views, then breaks views down by
+page type with daily charts for the last month.
 
 Analytics values can lag briefly due to caching.
 

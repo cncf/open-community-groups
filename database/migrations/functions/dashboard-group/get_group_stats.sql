@@ -10,7 +10,7 @@
 --   - running_total: Cumulative total over time (all-time)
 --   - per_month: Monthly counts (last 2 years)
 --
--- View metrics are grouped under page_views and include:
+-- View metrics are grouped under page_views by total, group, and events and include:
 --   - total_views: Total page views
 --   - per_day_views: Daily page views (last month)
 --   - per_month_views: Monthly page views (last 2 years)
@@ -85,6 +85,13 @@ group_views_data as (
         gv.day
     from group_views gv
     join filtered_group fg on fg.group_id = gv.group_id
+),
+all_page_views_data as (
+    select total, viewed_month, day
+    from event_views_data
+    union all
+    select total, viewed_month, day
+    from group_views_data
 )
 select json_strip_nulls(json_build_object(
     'members', json_build_object(
@@ -175,11 +182,31 @@ select json_strip_nulls(json_build_object(
         ), '[]'::json)
     ),
     'page_views', json_build_object(
-        'total_views', (
-            select (
-                coalesce((select sum(total) from event_views_data), 0) +
-                coalesce((select sum(total) from group_views_data), 0)
-            )::int
+        'total_views', (select coalesce(sum(total), 0)::int from all_page_views_data),
+        'total', json_build_object(
+            'total_views', (select coalesce(sum(total), 0)::int from all_page_views_data),
+            'per_day_views', coalesce((
+                select json_agg(json_build_array(day_label, day_count) order by day_label)
+                from (
+                    select
+                        to_char(apv.day, 'YYYY-MM-DD') as day_label,
+                        sum(apv.total)::int as day_count
+                    from all_page_views_data apv
+                    join params p on apv.day >= p.recent_views_start
+                    group by to_char(apv.day, 'YYYY-MM-DD')
+                ) daily
+            ), '[]'::json),
+            'per_month_views', coalesce((
+                select json_agg(json_build_array(month_label, month_count) order by month_label)
+                from (
+                    select
+                        to_char(apv.viewed_month, 'YYYY-MM') as month_label,
+                        sum(apv.total)::int as month_count
+                    from all_page_views_data apv
+                    join params p on apv.day >= p.period_start
+                    group by to_char(apv.viewed_month, 'YYYY-MM')
+                ) monthly
+            ), '[]'::json)
         ),
         'events', json_build_object(
             'total_views', (select coalesce(sum(total), 0)::int from event_views_data),

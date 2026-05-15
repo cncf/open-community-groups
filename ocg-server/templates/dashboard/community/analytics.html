@@ -256,6 +256,14 @@ description = "Community statistics and growth trends. Analytics are cached for 
     {{ dashboard::form_title(title = "Page views") }}
     <div class="mt-8 space-y-8">
       <div>
+        <div class="text-sm font-semibold text-stone-500">Total</div>
+        <div class="mt-4 grid grid-cols-1 xl:grid-cols-2 gap-6">
+          {{ stats_macro::analytics_chart(chart_id = "total-views-monthly-chart", data = stats.page_views.total.per_month_views, class = "h-[340px]") -}}
+          {{ stats_macro::analytics_chart(chart_id = "total-views-daily-chart", data = stats.page_views.total.per_day_views, class = "h-[340px]") -}}
+        </div>
+      </div>
+
+      <div>
         <div class="text-sm font-semibold text-stone-500">Community page</div>
         <div class="mt-4 grid grid-cols-1 xl:grid-cols-2 gap-6">
           {{ stats_macro::analytics_chart(chart_id = "community-views-monthly-chart", data = stats.page_views.community.per_month_views, class = "h-[340px]") -}}

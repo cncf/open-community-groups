@@ -392,15 +392,40 @@ export const getChartUiColors = () => {
  * Build a shared chart title configuration.
  * @param {string} title - Chart title text.
  * @param {Object} palette - Theme color palette.
+ * @param {string} description - Short chart description.
  * @returns {Object} ECharts title config.
  */
-export const getChartTitleConfig = (title, palette) => {
-  return {
+export const getChartTitleConfig = (title, palette, description = "") => {
+  const uiColors = getChartUiColors();
+  const config = {
     text: title,
     left: "center",
     top: 12,
     textStyle: { fontFamily: dashboardFontFamily, fontSize: 14, fontWeight: 500, color: palette[950] },
   };
+
+  if (description) {
+    config.subtext = description;
+    config.itemGap = 6;
+    config.subtextStyle = {
+      color: uiColors.muted,
+      fontFamily: dashboardFontFamily,
+      fontSize: 12,
+      lineHeight: 16,
+    };
+  }
+
+  return config;
+};
+
+/**
+ * Leave extra room when chart titles include a one-line description.
+ * @param {string} description - Short chart description.
+ * @param {number} top - Base grid top padding.
+ * @returns {number} Adjusted grid top padding.
+ */
+const getChartGridTop = (description, top = 80) => {
+  return description ? top + 20 : top;
 };
 
 /**
@@ -532,15 +557,19 @@ export const baseText = () => {
  * @param {string} name - Series name.
  * @param {Array} data - Time series data.
  * @param {Object} palette - Theme color palette.
+ * @param {Object} options - Chart options.
+ * @param {string} options.description - Short chart description.
  * @returns {Object} ECharts option.
  */
-export const createAreaChart = (title, name, data, palette) => {
+export const createAreaChart = (title, name, data, palette, options = {}) => {
+  const { description = "" } = options;
+
   return {
     baseOption: Object.assign(baseText(), {
-      title: getChartTitleConfig(title, palette),
+      title: getChartTitleConfig(title, palette, description),
       color: [palette[700]],
       tooltip: getAxisTooltipConfig(),
-      grid: { left: 70, right: 40, bottom: 90, top: 80 },
+      grid: { left: 70, right: 40, bottom: 90, top: getChartGridTop(description) },
       xAxis: {
         type: "time",
         boundaryGap: false,
@@ -591,12 +620,13 @@ export const createAreaChart = (title, name, data, palette) => {
  * @param {Array} data - Monthly data pairs.
  * @param {Object} palette - Theme color palette.
  * @param {Object} options - Chart options.
+ * @param {string} options.description - Short chart description.
  * @param {number} options.recentWindowMonths - Number of months to display on the axis.
  * @param {boolean} options.reservePeriodStart - Reserve empty buckets from the recent period start.
  * @returns {Object} ECharts option.
  */
 export const createMonthlyBarChart = (title, name, data, palette, options = {}) => {
-  const { recentWindowMonths = 24, reservePeriodStart = false } = options;
+  const { description = "", recentWindowMonths = 24, reservePeriodStart = false } = options;
   const filledSeries = buildRecentBarSeries(data, "month", recentWindowMonths, {
     useFormattedMonthLabels: true,
     reservePeriodStart,
@@ -604,7 +634,7 @@ export const createMonthlyBarChart = (title, name, data, palette, options = {}) 
   const barSeriesStyle = getVerticalBarSeriesStyle(filledSeries.values.length);
 
   return Object.assign(baseText(), {
-    title: getChartTitleConfig(title, palette),
+    title: getChartTitleConfig(title, palette, description),
     color: [palette[700]],
     tooltip: getAxisTooltipConfig(),
     legend: {
@@ -612,7 +642,7 @@ export const createMonthlyBarChart = (title, name, data, palette, options = {}) 
       left: "center",
       textStyle: { fontFamily: dashboardFontFamily, fontSize: 12 },
     },
-    grid: { left: 70, right: 40, bottom: 100, top: 80 },
+    grid: { left: 70, right: 40, bottom: 100, top: getChartGridTop(description) },
     xAxis: getVerticalBarCategoryAxisConfig(filledSeries.categories),
     yAxis: getValueAxisConfig(),
     series: [
@@ -632,14 +662,17 @@ export const createMonthlyBarChart = (title, name, data, palette, options = {}) 
  * @param {string} name - Series name.
  * @param {Array} data - Daily data pairs.
  * @param {Object} palette - Theme color palette.
+ * @param {Object} options - Chart options.
+ * @param {string} options.description - Short chart description.
  * @returns {Object} ECharts option.
  */
-export const createDailyBarChart = (title, name, data, palette) => {
+export const createDailyBarChart = (title, name, data, palette, options = {}) => {
+  const { description = "" } = options;
   const seriesData = buildRecentBarSeries(data, "day", 30);
   const barSeriesStyle = getVerticalBarSeriesStyle(seriesData.values.length);
 
   return Object.assign(baseText(), {
-    title: getChartTitleConfig(title, palette),
+    title: getChartTitleConfig(title, palette, description),
     color: [palette[700]],
     tooltip: getAxisTooltipConfig(),
     legend: {
@@ -647,7 +680,7 @@ export const createDailyBarChart = (title, name, data, palette) => {
       left: "center",
       textStyle: { fontFamily: dashboardFontFamily, fontSize: 12 },
     },
-    grid: { left: 70, right: 40, bottom: 100, top: 80 },
+    grid: { left: 70, right: 40, bottom: 100, top: getChartGridTop(description) },
     xAxis: getVerticalBarCategoryAxisConfig(seriesData.categories),
     yAxis: getValueAxisConfig(),
     series: [
@@ -786,14 +819,17 @@ export const buildStackedTimeSeries = (seriesMap = {}) => {
  * @param {Array<string>} months - Month labels.
  * @param {Array<{name: string, data: Array<number>}>} seriesData - Aligned series data.
  * @param {Object} palette - Theme color palette.
+ * @param {Object} options - Chart options.
+ * @param {string} options.description - Short chart description.
  * @returns {Object} ECharts option.
  */
-export const createStackedMonthlyChart = (title, months, seriesData, palette) => {
+export const createStackedMonthlyChart = (title, months, seriesData, palette, options = {}) => {
+  const { description = "" } = options;
   const colors = buildSeriesColors(palette, seriesData.length || 1);
   const barSeriesStyle = getVerticalBarSeriesStyle(months.length);
 
   return Object.assign(baseText(), {
-    title: getChartTitleConfig(title, palette),
+    title: getChartTitleConfig(title, palette, description),
     color: colors,
     tooltip: Object.assign(getAxisTooltipConfig(), { axisPointer: { type: "shadow" } }),
     legend: {
@@ -802,7 +838,7 @@ export const createStackedMonthlyChart = (title, months, seriesData, palette) =>
       left: "center",
       textStyle: { fontFamily: dashboardFontFamily, fontSize: 12 },
     },
-    grid: { left: 70, right: 40, bottom: 100, top: 80 },
+    grid: { left: 70, right: 40, bottom: 100, top: getChartGridTop(description) },
     xAxis: getVerticalBarCategoryAxisConfig(months),
     yAxis: getValueAxisConfig(),
     series: seriesData.map((series) => ({
@@ -821,14 +857,17 @@ export const createStackedMonthlyChart = (title, months, seriesData, palette) =>
  * @param {string} title - Chart title.
  * @param {Array<{name: string, data: Array<[number, number]>}>} seriesData - Aligned series data.
  * @param {Object} palette - Theme color palette.
+ * @param {Object} options - Chart options.
+ * @param {string} options.description - Short chart description.
  * @returns {Object} ECharts option.
  */
-export const createStackedAreaChart = (title, seriesData, palette) => {
+export const createStackedAreaChart = (title, seriesData, palette, options = {}) => {
+  const { description = "" } = options;
   const colors = buildSeriesColors(palette, seriesData.length || 1);
 
   return {
     baseOption: Object.assign(baseText(), {
-      title: getChartTitleConfig(title, palette),
+      title: getChartTitleConfig(title, palette, description),
       color: colors,
       tooltip: getAxisTooltipConfig(),
       legend: {
@@ -837,7 +876,7 @@ export const createStackedAreaChart = (title, seriesData, palette) => {
         left: "center",
         textStyle: { fontFamily: dashboardFontFamily, fontSize: 12 },
       },
-      grid: { left: 70, right: 40, bottom: 90, top: 60 },
+      grid: { left: 70, right: 40, bottom: 90, top: getChartGridTop(description, 60) },
       xAxis: {
         type: "time",
         boundaryGap: false,
@@ -874,10 +913,21 @@ export const createStackedAreaChart = (title, seriesData, palette) => {
  * @param {string} title - Chart title.
  * @param {Array} categoryData - Category series data.
  * @param {Object} palette - Theme color palette.
- * @param {number} leftMargin - Left margin for labels.
+ * @param {number|Object} leftMarginOrOptions - Left margin for labels or chart options.
+ * @param {Object} options - Chart options.
+ * @param {string} options.description - Short chart description.
  * @returns {Object} ECharts option.
  */
-export const createHorizontalBarChart = (title, categoryData, palette, leftMargin = 140) => {
+export const createHorizontalBarChart = (
+  title,
+  categoryData,
+  palette,
+  leftMarginOrOptions = 140,
+  options = {},
+) => {
+  const leftMargin = typeof leftMarginOrOptions === "number" ? leftMarginOrOptions : 140;
+  const chartOptions = typeof leftMarginOrOptions === "object" ? leftMarginOrOptions : options;
+  const { description = "" } = chartOptions;
   const total = categoryData.reduce((sum, d) => sum + d.value, 0);
   const gridLineColor = getChartGridLineColor();
   const tooltipColors = getChartTooltipColors();
@@ -886,6 +936,18 @@ export const createHorizontalBarChart = (title, categoryData, palette, leftMargi
   return Object.assign(baseText(), {
     title: {
       text: title,
+      ...(description
+        ? {
+            subtext: description,
+            itemGap: 6,
+            subtextStyle: {
+              color: uiColors.muted,
+              fontFamily: dashboardFontFamily,
+              fontSize: 12,
+              lineHeight: 16,
+            },
+          }
+        : {}),
       left: "center",
       top: 12,
       textStyle: { fontFamily: dashboardFontFamily, fontSize: 14, fontWeight: 500, color: palette[950] },
@@ -902,7 +964,7 @@ export const createHorizontalBarChart = (title, categoryData, palette, leftMargi
         return `${params.name}: ${params.value} (${percent}%)`;
       },
     },
-    grid: { left: leftMargin, right: 80, bottom: 40, top: 80 },
+    grid: { left: leftMargin, right: 80, bottom: 40, top: getChartGridTop(description) },
     xAxis: {
       type: "value",
       minInterval: 1,
@@ -944,9 +1006,12 @@ export const createHorizontalBarChart = (title, categoryData, palette, leftMargi
  * @param {string} name - Series name.
  * @param {Array} data - Category series data.
  * @param {Object} palette - Theme color palette.
+ * @param {Object} options - Chart options.
+ * @param {string} options.description - Short chart description.
  * @returns {Object} ECharts option.
  */
-export const createPieChart = (title, name, data, palette) => {
+export const createPieChart = (title, name, data, palette, options = {}) => {
+  const { description = "" } = options;
   const tooltipColors = getChartTooltipColors();
   const uiColors = getChartUiColors();
   const pieColors =
@@ -980,6 +1045,18 @@ export const createPieChart = (title, name, data, palette) => {
   return Object.assign(baseText(), {
     title: {
       text: title,
+      ...(description
+        ? {
+            subtext: description,
+            itemGap: 6,
+            subtextStyle: {
+              color: uiColors.muted,
+              fontFamily: dashboardFontFamily,
+              fontSize: 12,
+              lineHeight: 16,
+            },
+          }
+        : {}),
       left: "center",
       top: 12,
       textStyle: { fontFamily: dashboardFontFamily, fontSize: 14, fontWeight: 500, color: palette[950] },

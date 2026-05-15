@@ -42,7 +42,7 @@ test.describe("group dashboard analytics view", () => {
     ).toBeVisible();
 
     const pageViewsSection = dashboardContent
-      .getByText("Page Views", { exact: true })
+      .getByText("Page views", { exact: true })
       .last()
       .locator("..")
       .locator("..");
