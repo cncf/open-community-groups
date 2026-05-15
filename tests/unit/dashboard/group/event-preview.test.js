@@ -138,7 +138,10 @@ describe("event preview", () => {
       impl: async () =>
         new Response(
           `<div id="event-preview-modal">
-            <div data-event-preview-social-links class="hidden">
+            <div data-event-preview-social-links class="hidden md:flex">
+              <div data-event-preview-social-links-list></div>
+            </div>
+            <div data-event-preview-social-links class="hidden mt-4 md:hidden">
               <div data-event-preview-social-links-list></div>
             </div>
             <button type="button" data-event-preview-close>Close</button>
@@ -171,6 +174,9 @@ describe("event preview", () => {
       expect(document.querySelector('[title="Luma"]')?.getAttribute("href")).to.equal(
         "https://luma.example/draft",
       );
+      const socialContainers = [...document.querySelectorAll("[data-event-preview-social-links]")];
+      expect(socialContainers[0].classList.contains("hidden")).to.equal(true);
+      expect(socialContainers[1].classList.contains("hidden")).to.equal(false);
       expect(document.body.dataset.modalOpenCount).to.equal("1");
 
       document.querySelector("[data-event-preview-close]").click();

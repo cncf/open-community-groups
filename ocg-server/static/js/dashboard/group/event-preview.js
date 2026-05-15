@@ -109,8 +109,7 @@ export const buildEventPreviewPayload = (pageRoot) => {
  * @returns {Object} Preview context.
  */
 export const collectEventPreviewContext = (pageRoot) => {
-  const dashboardContent =
-    pageRoot.closest?.("#dashboard-content") || document.getElementById("dashboard-content");
+  const dashboardContent = getDashboardContent(pageRoot);
   const kindSelect = pageRoot.querySelector?.("#kind_id");
   const categorySelect = pageRoot.querySelector?.("#category_id");
   const sessionsSection = pageRoot.querySelector?.("sessions-section");
@@ -145,6 +144,14 @@ export const collectEventPreviewContext = (pageRoot) => {
     sponsors: collectSponsors(pageRoot.querySelector?.("sponsors-section")?.selectedSponsors),
   });
 };
+
+/**
+ * Finds the dashboard content root for event preview context.
+ * @param {Document|Element} pageRoot Event page root.
+ * @returns {HTMLElement|null} Dashboard content root.
+ */
+const getDashboardContent = (pageRoot) =>
+  pageRoot.closest?.("#dashboard-content") || document.getElementById("dashboard-content");
 
 /**
  * Inserts preview HTML and binds modal close behavior.
@@ -253,9 +260,11 @@ const initializeEventPreviewMap = async (mapRoot, latitude, longitude) => {
 const readPreviewCoordinate = (pageRoot, fieldName, initialAttribute) => {
   const coordinateField = pageRoot.querySelector?.(`[name="${fieldName}"]`);
   const locationSearchField = pageRoot.querySelector?.("location-search-field");
-  return parsePreviewCoordinate(
-    firstValue(coordinateField?.value, locationSearchField?.getAttribute(initialAttribute)),
-  );
+  if (coordinateField) {
+    return parsePreviewCoordinate(coordinateField.value);
+  }
+
+  return parsePreviewCoordinate(locationSearchField?.getAttribute(initialAttribute));
 };
 
 /**
@@ -312,7 +321,9 @@ const renderEventPreviewSocialLinks = (modalRoot, links) => {
 
     const linksList = container.querySelector("[data-event-preview-social-links-list]") || container;
     linksList.replaceChildren(...links.map(createEventPreviewSocialLink));
-    container.classList.remove("hidden");
+    if (!container.classList.contains("md:flex")) {
+      container.classList.remove("hidden");
+    }
   });
 };
 
