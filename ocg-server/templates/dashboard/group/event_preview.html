@@ -56,7 +56,7 @@
         {% endif -%}
         {"label": {{ event.group_name() |json }}, "icon": "groups"}, {"label": {{ event.name_label() |json }}, "icon": "date", "current": true} ]'></breadcrumb-nav>
 
-        <div class="relative container mx-auto flex h-full max-w-7xl grow p-4 pb-8 sm:p-6 md:pb-10 lg:p-8 lg:pb-16">
+        <div class="relative container mx-auto flex h-full max-w-7xl grow p-4 sm:p-6 lg:p-8">
           <article class="relative flex w-full flex-col overflow-visible rounded-lg border border-stone-200 bg-white"
                    data-preview-category="{{ event.category_display_label() }}"
                    data-preview-online-details="{{ event.online_details_label() }}"
@@ -378,34 +378,6 @@
                 </section>
               {% endif -%}
 
-              {% if !event.ticket_types.is_empty() -%}
-                <section>
-                  <div class="mb-4 text-lg font-semibold uppercase tracking-wide text-stone-900">Tickets</div>
-                  <div class="grid gap-3 md:grid-cols-2">
-                    {% for ticket in event.ticket_types -%}
-                      <div class="rounded-lg border border-stone-200 bg-white p-4">
-                        <div class="flex items-start justify-between gap-3">
-                          <div>
-                            <div class="text-base font-semibold text-stone-900">{{ ticket.title_label() }}</div>
-                            {% if let Some(description) = &ticket.description -%}
-                              <div class="mt-1 text-sm text-stone-600">{{ description }}</div>
-                            {% endif -%}
-                          </div>
-                          {% if ticket.active -%}
-                            <span class="custom-badge border-green-800 bg-green-100 px-2.5 py-0.5 text-green-800">Active</span>
-                          {% else -%}
-                            <span class="custom-badge border-stone-500 bg-stone-100 px-2.5 py-0.5 text-stone-700">Inactive</span>
-                          {% endif -%}
-                        </div>
-                        <div class="mt-4 flex flex-wrap gap-2 text-xs font-medium text-stone-700">
-                          <span class="rounded-full bg-stone-100 px-2.5 py-1">{{ ticket.price_label }}</span>
-                          <span class="rounded-full bg-stone-100 px-2.5 py-1">Seats: {{ ticket.seats_label }}</span>
-                        </div>
-                      </div>
-                    {% endfor -%}
-                  </div>
-                </section>
-              {% endif -%}
             </div>
           </article>
         </div>
