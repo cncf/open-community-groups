@@ -24,8 +24,6 @@ pub(crate) struct Page {
 pub(crate) struct Event {
     /// Banner image URL selected for the preview.
     pub banner_url: Option<String>,
-    /// Category display label.
-    pub category_label: Option<String>,
     /// Community display name.
     pub community_display_name: Option<String>,
     /// Event description.
@@ -58,13 +56,6 @@ impl Event {
     /// Returns the configured capacity label or an unlimited fallback.
     pub(crate) fn capacity_label(&self) -> String {
         normalize_text(self.input.capacity.clone()).unwrap_or_else(|| "Unlimited".to_string())
-    }
-
-    /// Returns the event category label or a missing-field placeholder.
-    pub(crate) fn category_display_label(&self) -> String {
-        self.category_label
-            .clone()
-            .unwrap_or_else(|| "Missing category".to_string())
     }
 
     /// Returns the CFS date range label.
@@ -139,26 +130,6 @@ impl Event {
         normalize_text(self.input.name.clone()).unwrap_or_else(|| "Missing event name".to_string())
     }
 
-    /// Returns the online details label from submitted meeting fields.
-    pub(crate) fn online_details_label(&self) -> &'static str {
-        if option_truthy(self.input.meeting_requested.as_deref()) {
-            "Automatic meeting requested"
-        } else if normalize_text(self.input.meeting_join_url.clone()).is_some() {
-            "Meeting link provided"
-        } else {
-            "Missing online meeting details"
-        }
-    }
-
-    /// Returns a registration display label from configured editor state.
-    pub(crate) fn registration_label(&self) -> &'static str {
-        if option_truthy(self.input.registration_required.as_deref()) {
-            "Registration required"
-        } else {
-            "Registration optional"
-        }
-    }
-
     /// Returns the event time display label.
     pub(crate) fn time_label(&self) -> String {
         let starts_at = parse_datetime(self.input.starts_at.as_deref());
@@ -186,15 +157,6 @@ impl Event {
             (None, _) => "Missing start time".to_string(),
         }
     }
-
-    /// Returns whether the waitlist was enabled in the editor.
-    pub(crate) fn waitlist_label(&self) -> &'static str {
-        if option_truthy(self.input.waitlist_enabled.as_deref()) {
-            "Waitlist enabled"
-        } else {
-            "Waitlist disabled"
-        }
-    }
 }
 
 impl From<Input> for Event {
@@ -212,7 +174,6 @@ impl From<Input> for Event {
                 .as_ref()
                 .and_then(|community| community.banner_url.as_deref()),
         ]);
-        let category_label = first_text([context.category_label.as_deref(), input.category_id.as_deref()]);
         let community_display_name = first_text([
             context
                 .community
@@ -255,7 +216,6 @@ impl From<Input> for Event {
         // Assemble the render model
         Self {
             banner_url,
-            category_label,
             community_display_name,
             description: normalize_text(input.description.clone()),
             hosts: context.hosts.clone(),
@@ -354,8 +314,6 @@ pub(crate) struct Input {
     pub photos_urls: Option<Vec<String>>,
     /// Preview-only JSON context provided by the dashboard page.
     pub preview_context: Option<String>,
-    /// Whether registration is required.
-    pub registration_required: Option<String>,
     /// Event sessions configured in the editor.
     pub sessions: Option<Vec<InputSession>>,
     /// Event start time.
@@ -374,8 +332,6 @@ pub(crate) struct Input {
     pub venue_state: Option<String>,
     /// Venue zip code.
     pub venue_zip_code: Option<String>,
-    /// Whether joining the waitlist is enabled.
-    pub waitlist_enabled: Option<String>,
 }
 
 impl Input {
