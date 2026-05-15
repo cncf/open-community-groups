@@ -45,7 +45,11 @@ const mountPreviewPage = () => {
           <speakers-selector field-name-prefix="speakers"></speakers-selector>
           <sponsors-section></sponsors-section>
         </form>
-        <form id="payments-form"></form>
+        <form id="payments-form">
+          <input name="payment_currency_code" value="USD" />
+          <input name="ticket_types[0][title]" value="General admission" />
+          <input name="ticket_types[0][price_windows][0][price]" value="25.00" />
+        </form>
         <form id="cfs-form"></form>
         <sessions-section></sessions-section>
         <button id="event-preview-button" type="button">Preview</button>
@@ -106,6 +110,9 @@ describe("event preview", () => {
 
     expect(payload.get("name")).to.equal("Draft Event");
     expect(payload.get("capacity")).to.equal(null);
+    expect(payload.get("payment_currency_code")).to.equal(null);
+    expect(payload.get("ticket_types[0][title]")).to.equal(null);
+    expect(payload.get("ticket_types[0][price_windows][0][price]")).to.equal(null);
     expect(payload.get("toggle_registration_required")).to.equal(null);
     expect(payload.get("starts_at")).to.equal("2026-06-01T18:30:00");
     expect(payload.get("timezone")).to.equal("PDT");

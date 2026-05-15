@@ -14,6 +14,7 @@ import { EVENT_PAGE_FORM_IDS } from "/static/js/dashboard/group/event-page-share
 const PREVIEW_ENDPOINT = "/dashboard/group/events/preview";
 const PREVIEW_BUTTON_ID = "event-preview-button";
 const PREVIEW_MODAL_ROOT_ID = "event-preview-modal-root";
+const EVENT_PREVIEW_FORM_IDS = EVENT_PAGE_FORM_IDS.filter((formId) => formId !== "payments-form");
 const modalState = new WeakMap();
 
 /**
@@ -73,7 +74,7 @@ export const initializeEventPreview = ({ pageRoot }) => {
 export const buildEventPreviewPayload = (pageRoot) => {
   const payload = new URLSearchParams();
 
-  for (const formId of EVENT_PAGE_FORM_IDS) {
+  for (const formId of EVENT_PREVIEW_FORM_IDS) {
     const form = pageRoot.querySelector?.(`#${formId}`);
     if (!form) {
       continue;
@@ -124,10 +125,6 @@ export const collectEventPreviewContext = (pageRoot) => {
     }),
     hosts: collectPeople(pageRoot.querySelector?.('user-search-selector[field-name="hosts"]')?.selectedUsers),
     kind_label: selectedOptionLabel(kindSelect),
-    public_url:
-      pageRoot.dataset?.eventPublicUrlEnabled === "true"
-        ? firstValue(pageRoot.dataset?.eventPublicUrl)
-        : undefined,
     sessions: collectSessionContexts(sessionsSection),
     speakers: collectPeople(
       pageRoot.querySelector?.('speakers-selector[field-name-prefix="speakers"]')?.selectedSpeakers,
