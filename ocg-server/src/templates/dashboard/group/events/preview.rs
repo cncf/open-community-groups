@@ -5,7 +5,7 @@ use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 
-use crate::{templates::filters, types::payments::format_amount_minor};
+use crate::templates::filters;
 
 // Pages templates.
 
@@ -50,8 +50,6 @@ pub(crate) struct Event {
     pub sponsors: Vec<ContextSponsor>,
     /// Configured public URL, when the event already has one.
     pub public_url: Option<String>,
-    /// Ticket types configured in the editor.
-    pub ticket_types: Vec<TicketType>,
     /// Venue or location label.
     pub venue_label: Option<String>,
 }
@@ -249,10 +247,6 @@ impl From<Input> for Event {
             context.sessions.as_slice(),
             input.timezone.as_deref(),
         );
-        let ticket_types = build_ticket_types(
-            input.ticket_types.as_deref(),
-            input.payment_currency_code.as_deref(),
-        );
 
         // Derive location and missing-field display state
         let venue_label = build_location(&input);
@@ -274,7 +268,6 @@ impl From<Input> for Event {
             sessions,
             speakers: context.speakers.clone(),
             sponsors: context.sponsors.clone(),
-            ticket_types,
             venue_label,
         }
     }
@@ -318,31 +311,6 @@ impl Session {
     }
 }
 
-/// Prepared ticket type preview data.
-#[skip_serializing_none]
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub(crate) struct TicketType {
-    /// Whether this ticket type is active.
-    pub active: bool,
-    /// Ticket type description.
-    pub description: Option<String>,
-    /// Formatted price label.
-    pub price_label: String,
-    /// Seat count label.
-    pub seats_label: String,
-    /// Ticket type title.
-    pub title: Option<String>,
-}
-
-impl TicketType {
-    /// Returns the ticket type title or a missing-field placeholder.
-    pub(crate) fn title_label(&self) -> String {
-        self.title
-            .clone()
-            .unwrap_or_else(|| "Missing ticket name".to_string())
-    }
-}
-
 // Input types.
 
 /// Submitted event editor payload accepted by the preview endpoint.
@@ -382,8 +350,6 @@ pub(crate) struct Input {
     pub meeting_join_url: Option<String>,
     /// Whether an automatic meeting was requested.
     pub meeting_requested: Option<String>,
-    /// Event currency used for tickets.
-    pub payment_currency_code: Option<String>,
     /// Event gallery image URLs.
     pub photos_urls: Option<Vec<String>>,
     /// Preview-only JSON context provided by the dashboard page.
@@ -394,8 +360,6 @@ pub(crate) struct Input {
     pub sessions: Option<Vec<InputSession>>,
     /// Event start time.
     pub starts_at: Option<String>,
-    /// Ticket types configured in the editor.
-    pub ticket_types: Option<Vec<InputTicketType>>,
     /// Venue address.
     pub venue_address: Option<String>,
     /// Venue city.
@@ -457,30 +421,6 @@ pub(crate) struct InputSessionSpeaker {
     pub featured: Option<String>,
     /// Speaker user identifier.
     pub user_id: Option<String>,
-}
-
-/// Tolerant preview-only ticket price window payload.
-#[skip_serializing_none]
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub(crate) struct InputTicketPriceWindow {
-    /// Price amount in minor units.
-    pub amount_minor: Option<String>,
-}
-
-/// Tolerant preview-only ticket type editor payload.
-#[skip_serializing_none]
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub(crate) struct InputTicketType {
-    /// Whether the ticket type is active.
-    pub active: Option<String>,
-    /// Ticket description.
-    pub description: Option<String>,
-    /// Ticket price windows.
-    pub price_windows: Option<Vec<InputTicketPriceWindow>>,
-    /// Total seats available for this ticket type.
-    pub seats_total: Option<String>,
-    /// Ticket type title.
-    pub title: Option<String>,
 }
 
 // Context types.
@@ -694,26 +634,6 @@ fn build_missing_fields(input: &Input, context: &Context, venue_label: Option<&s
         }
     }
 
-    // Check ticketing fields only when tickets are configured
-    let ticket_types: Vec<_> = input
-        .ticket_types
-        .as_deref()
-        .unwrap_or_default()
-        .iter()
-        .filter(|ticket_type| ticket_type_has_content(ticket_type))
-        .collect();
-    if !ticket_types.is_empty() {
-        if normalize_text(input.payment_currency_code.clone()).is_none() {
-            missing.push("Ticketing currency".to_string());
-        }
-        if ticket_types
-            .iter()
-            .any(|ticket_type| ticket_type_has_missing_display_fields(ticket_type))
-        {
-            missing.push("Ticket type details".to_string());
-        }
-    }
-
     missing
 }
 
@@ -766,30 +686,6 @@ fn build_sessions(
                     timezone,
                 ),
             })
-        })
-        .collect()
-}
-
-/// Builds preview ticket type view data from editor payload.
-fn build_ticket_types(
-    ticket_types: Option<&[InputTicketType]>,
-    payment_currency_code: Option<&str>,
-) -> Vec<TicketType> {
-    // Keep configured ticket rows and prepare display labels
-    ticket_types
-        .unwrap_or_default()
-        .iter()
-        .filter(|ticket_type| ticket_type_has_content(ticket_type))
-        .map(|ticket_type| TicketType {
-            active: ticket_type
-                .active
-                .as_deref()
-                .is_none_or(|value| option_truthy(Some(value))),
-            description: normalize_text(ticket_type.description.clone()),
-            price_label: ticket_price_label(ticket_type, payment_currency_code),
-            seats_label: normalize_text(ticket_type.seats_total.clone())
-                .unwrap_or_else(|| "Unlimited".to_string()),
-            title: normalize_text(ticket_type.title.clone()),
         })
         .collect()
 }
@@ -884,52 +780,4 @@ fn session_time_label(starts_at: Option<&str>, ends_at: Option<&str>, timezone: 
         (Some(starts_at), None) => format!("{} {}", starts_at.format("%-I:%M %p"), timezone),
         (None, _) => "Missing start time".to_string(),
     }
-}
-
-/// Formats a preview price label for a ticket type.
-fn ticket_price_label(ticket_type: &InputTicketType, payment_currency_code: Option<&str>) -> String {
-    // Find the first configured price amount
-    let amount_minor = ticket_type
-        .price_windows
-        .as_deref()
-        .unwrap_or_default()
-        .iter()
-        .find_map(|window| normalize_text(window.amount_minor.clone()))
-        .and_then(|value| value.parse::<i64>().ok());
-
-    // Format missing, free, and paid values
-    let Some(amount_minor) = amount_minor else {
-        return "Missing price".to_string();
-    };
-    if amount_minor == 0 {
-        return "Free".to_string();
-    }
-
-    // Prefer formatted currency labels when a currency is configured
-    match payment_currency_code.and_then(|value| normalize_text(Some(value))) {
-        Some(currency_code) => format_amount_minor(amount_minor, &currency_code),
-        None => format!("{amount_minor} minor units"),
-    }
-}
-
-/// Returns true when a ticket type should be included in the preview.
-fn ticket_type_has_content(ticket_type: &InputTicketType) -> bool {
-    normalize_text(ticket_type.title.clone()).is_some()
-        || normalize_text(ticket_type.description.clone()).is_some()
-        || normalize_text(ticket_type.seats_total.clone()).is_some()
-        || ticket_type.price_windows.as_deref().is_some_and(|windows| {
-            windows
-                .iter()
-                .any(|window| normalize_text(window.amount_minor.clone()).is_some())
-        })
-}
-
-/// Returns true when a ticket row is missing display-critical details.
-fn ticket_type_has_missing_display_fields(ticket_type: &InputTicketType) -> bool {
-    normalize_text(ticket_type.title.clone()).is_none()
-        || ticket_type.price_windows.as_deref().is_none_or(|windows| {
-            windows
-                .iter()
-                .all(|window| normalize_text(window.amount_minor.clone()).is_none())
-        })
 }
