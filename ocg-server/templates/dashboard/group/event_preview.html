@@ -141,21 +141,45 @@
                       <div class="text-base/3 font-semibold uppercase text-stone-400">Location</div>
                     </div>
                     <div class="relative min-h-[108px] grow overflow-hidden rounded-lg border border-dashed border-stone-200 bg-white">
-                      <div class="absolute inset-0 bg-[url('/static/images/map.png')] bg-cover bg-center bg-no-repeat opacity-30">
-                      </div>
-                      <div class="relative flex min-h-[108px] w-full items-center justify-center p-4 text-center">
-                        {% if event.has_venue_component() -%}
+                      {% if event.has_venue_component() -%}
+                        <div class="relative h-full min-h-[108px] w-full"
+                             data-event-preview-location-map>
+                          <div class="absolute inset-0 bg-[url('/static/images/map.png')] bg-cover bg-center bg-no-repeat opacity-30"
+                               data-event-preview-location-map-fallback></div>
+                          <div id="event-preview-location-map"
+                               class="absolute inset-0 hidden h-full min-h-[108px] w-full"
+                               data-event-preview-location-map-canvas></div>
                           {% if let Some(venue_label) = &event.venue_label -%}
-                            <div class="text-xl font-semibold text-stone-700">{{ venue_label }}</div>
+                            <div class="absolute bottom-2 left-2 z-10 hidden rounded-full bg-white/80 px-1.5 py-1 text-xs text-stone-700 pointer-events-none sm:block md:hidden xl:block">
+                              {{ venue_label }}
+                            </div>
+                            <div class="absolute bottom-2 left-2 z-10 block rounded-full bg-white/80 px-1.5 py-1 text-xs text-stone-700 pointer-events-none sm:hidden md:block md:px-3 xl:hidden">
+                              {{ venue_label }}
+                            </div>
                           {% else -%}
-                            <div class="text-xl font-semibold text-stone-700">Location not provided</div>
+                            <div class="relative flex min-h-[108px] w-full items-center justify-center p-4 text-center"
+                                 data-event-preview-location-empty>
+                              <div class="text-xl font-semibold text-stone-700">Location not provided</div>
+                            </div>
                           {% endif -%}
-                        {% else if event.has_online_component() -%}
-                          <div class="text-xl font-semibold text-stone-700">Virtual event</div>
-                        {% else -%}
-                          <div class="text-xl font-semibold text-stone-700">Location not provided</div>
-                        {% endif -%}
-                      </div>
+                        </div>
+                      {% else if event.has_online_component() -%}
+                        <div class="relative flex min-h-[108px] w-full items-center justify-center p-4 text-center">
+                          <div class="absolute inset-0 bg-[url('/static/images/map.png')] bg-cover bg-center bg-no-repeat opacity-30">
+                          </div>
+                          <div class="relative flex w-full items-center justify-center">
+                            <div class="text-xl font-semibold text-stone-700">Virtual event</div>
+                          </div>
+                        </div>
+                      {% else -%}
+                        <div class="relative flex min-h-[108px] w-full items-center justify-center p-4 text-center">
+                          <div class="absolute inset-0 bg-[url('/static/images/map.png')] bg-cover bg-center bg-no-repeat opacity-30">
+                          </div>
+                          <div class="relative flex w-full items-center justify-center">
+                            <div class="text-xl font-semibold text-stone-700">Location not provided</div>
+                          </div>
+                        </div>
+                      {% endif -%}
                     </div>
                   </div>
                 </div>

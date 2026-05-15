@@ -1,6 +1,11 @@
 import { showErrorAlert } from "/static/js/common/alerts.js";
 import "/static/js/common/breadcrumb-nav.js";
-import { convertDateTimeLocalToISO, lockBodyScroll, unlockBodyScroll } from "/static/js/common/common.js";
+import {
+  convertDateTimeLocalToISO,
+  loadMap,
+  lockBodyScroll,
+  unlockBodyScroll,
+} from "/static/js/common/common.js";
 import { ocgFetch } from "/static/js/common/fetch.js";
 import "/static/js/common/images-gallery.js";
 import "/static/js/common/user-chip.js";
@@ -50,7 +55,7 @@ export const initializeEventPreview = ({ pageRoot }) => {
         throw new Error(`Preview request failed with status ${response.status}`);
       }
 
-      openEventPreviewModal(modalRoot, await response.text());
+      openEventPreviewModal(modalRoot, await response.text(), pageRoot);
     } catch (_) {
       showErrorAlert("Unable to open the event preview. Please try again.");
     } finally {
@@ -135,11 +140,13 @@ export const collectEventPreviewContext = (pageRoot) => {
  * Inserts preview HTML and binds modal close behavior.
  * @param {HTMLElement} modalRoot Modal root element.
  * @param {string} html Modal HTML.
+ * @param {Document|Element} [pageRoot=document] Event page root.
  * @returns {void}
  */
-export const openEventPreviewModal = (modalRoot, html) => {
+export const openEventPreviewModal = (modalRoot, html, pageRoot = document) => {
   closeEventPreviewModal(modalRoot);
   modalRoot.innerHTML = html;
+  initializeEventPreviewMaps(modalRoot, pageRoot);
   lockBodyScroll();
 
   const handleClick = (event) => {
@@ -175,6 +182,83 @@ export const closeEventPreviewModal = (modalRoot) => {
   modalState.delete(modalRoot);
   modalRoot.innerHTML = "";
   unlockBodyScroll();
+};
+
+/**
+ * Initializes preview maps from the editor coordinates, when available.
+ * @param {HTMLElement} modalRoot Modal root element.
+ * @param {Document|Element} pageRoot Event page root.
+ * @returns {void}
+ */
+const initializeEventPreviewMaps = (modalRoot, pageRoot) => {
+  const latitude = readPreviewCoordinate(pageRoot, "latitude", "initial-latitude");
+  const longitude = readPreviewCoordinate(pageRoot, "longitude", "initial-longitude");
+  if (latitude === null || longitude === null) {
+    return;
+  }
+
+  modalRoot.querySelectorAll("[data-event-preview-location-map]").forEach((mapRoot) => {
+    initializeEventPreviewMap(mapRoot, latitude, longitude);
+  });
+};
+
+/**
+ * Initializes one preview map container.
+ * @param {Element} mapRoot Preview map root.
+ * @param {number} latitude Map latitude.
+ * @param {number} longitude Map longitude.
+ * @returns {void}
+ */
+const initializeEventPreviewMap = async (mapRoot, latitude, longitude) => {
+  const mapCanvas = mapRoot.querySelector("[data-event-preview-location-map-canvas]");
+  if (!(mapCanvas instanceof HTMLElement) || !mapCanvas.id) {
+    return;
+  }
+
+  const fallback = mapRoot.querySelector("[data-event-preview-location-map-fallback]");
+  const emptyState = mapRoot.querySelector("[data-event-preview-location-empty]");
+  mapCanvas.classList.remove("hidden");
+
+  try {
+    await loadMap(mapCanvas.id, latitude, longitude, {
+      interactive: false,
+    });
+    fallback?.classList.add("hidden");
+    emptyState?.classList.add("hidden");
+  } catch (_) {
+    mapCanvas.classList.add("hidden");
+    fallback?.classList.remove("hidden");
+    emptyState?.classList.remove("hidden");
+  }
+};
+
+/**
+ * Reads a coordinate from current form fields or the location component seed.
+ * @param {Document|Element} pageRoot Event page root.
+ * @param {string} fieldName Coordinate field name.
+ * @param {string} initialAttribute Coordinate initial value attribute.
+ * @returns {number|null} Parsed coordinate.
+ */
+const readPreviewCoordinate = (pageRoot, fieldName, initialAttribute) => {
+  const coordinateField = pageRoot.querySelector?.(`[name="${fieldName}"]`);
+  const locationSearchField = pageRoot.querySelector?.("location-search-field");
+  return parsePreviewCoordinate(
+    firstValue(coordinateField?.value, locationSearchField?.getAttribute(initialAttribute)),
+  );
+};
+
+/**
+ * Parses a coordinate from an editor field value.
+ * @param {string|undefined} value Coordinate value.
+ * @returns {number|null} Parsed coordinate.
+ */
+const parsePreviewCoordinate = (value) => {
+  if (!value) {
+    return null;
+  }
+
+  const coordinate = Number.parseFloat(value);
+  return Number.isFinite(coordinate) ? coordinate : null;
 };
 
 /**
