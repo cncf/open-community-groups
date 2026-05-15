@@ -1,4 +1,4 @@
-import { html } from "/static/vendor/js/lit-all.v3.3.1.min.js";
+import { html, nothing } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 
 /**
@@ -125,15 +125,17 @@ export class BreadcrumbNav extends LitWrapper {
     if (isCurrent || !item.href) {
       return html`
         <div
-          class="flex items-center gap-3 px-4 py-2.5 bg-stone-50 text-sm"
+          class="flex items-center gap-3 px-4 py-2.5 ${isCurrent ? "bg-stone-50" : ""} text-sm"
           role="option"
-          aria-selected="true"
-          aria-current="page"
+          aria-selected="${isCurrent}"
+          aria-current="${isCurrent ? "page" : nothing}"
         >
-          <span class="shrink-0 text-stone-600">
+          <span class="shrink-0 ${isCurrent ? "text-stone-600" : "text-stone-400"}">
             <div class="svg-icon size-4 bg-current icon-${item.icon}"></div>
           </span>
-          <span class="text-stone-900 font-medium truncate flex-1">${item.label}</span>
+          <span class="${isCurrent ? "text-stone-900 font-medium" : "text-stone-600"} truncate flex-1">
+            ${item.label}
+          </span>
         </div>
       `;
     }
@@ -169,31 +171,36 @@ export class BreadcrumbNav extends LitWrapper {
       </li>
     `;
 
+    const itemClass = `flex items-center gap-1.5 ${isHome ? "shrink-0" : "min-w-0 breadcrumb-item"}`;
+    const labelClass = `${isHome ? "" : "truncate min-w-0"}`;
+
     const content = isCurrent
       ? html`
-          <li
-            class="flex items-center gap-1.5 ${isHome ? "shrink-0" : "min-w-0 breadcrumb-item"}"
-            aria-current="page"
-          >
+          <li class="${itemClass}" aria-current="page">
             <div class="svg-icon size-4 bg-stone-700 icon-${item.icon} shrink-0"></div>
-            <span class="${isHome ? "" : "truncate min-w-0"} text-stone-700 font-medium">
-              ${item.label}
-            </span>
+            <span class="${labelClass} text-stone-700 font-medium">${item.label}</span>
           </li>
         `
-      : html`
-          <li class="flex items-center gap-1.5 ${isHome ? "shrink-0" : "min-w-0 breadcrumb-item"}">
-            <a
-              href="${item.href}"
-              class="flex items-center gap-1.5 hover:text-stone-700 hover:underline min-w-0"
-              hx-boost="true"
-              hx-target="body"
-            >
+      : !item.href
+        ? html`
+            <li class="${itemClass}">
               <div class="svg-icon size-4 bg-stone-500 icon-${item.icon} shrink-0"></div>
-              <span class="${isHome ? "" : "truncate min-w-0"}">${item.label}</span>
-            </a>
-          </li>
-        `;
+              <span class="${labelClass}">${item.label}</span>
+            </li>
+          `
+        : html`
+            <li class="${itemClass}">
+              <a
+                href="${item.href}"
+                class="flex items-center gap-1.5 hover:text-stone-700 hover:underline min-w-0"
+                hx-boost="true"
+                hx-target="body"
+              >
+                <div class="svg-icon size-4 bg-stone-500 icon-${item.icon} shrink-0"></div>
+                <span class="${labelClass}">${item.label}</span>
+              </a>
+            </li>
+          `;
 
     return html`${index > 0 ? separator : ""}${content}`;
   }

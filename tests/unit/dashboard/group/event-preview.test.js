@@ -34,7 +34,7 @@ const mountPreviewPage = () => {
         </form>
         <form id="date-venue-form">
           <input name="starts_at" value="2026-06-01T18:30" />
-          <input name="timezone" value="Europe/Madrid" />
+          <input name="timezone" value="America/Los_Angeles" />
         </form>
         <form id="sessions-form">
           <input name="sessions[0][name]" value="Opening session" />
@@ -108,6 +108,7 @@ describe("event preview", () => {
     expect(payload.get("capacity")).to.equal(null);
     expect(payload.get("toggle_registration_required")).to.equal(null);
     expect(payload.get("starts_at")).to.equal("2026-06-01T18:30:00");
+    expect(payload.get("timezone")).to.equal("PDT");
     expect(payload.get("sessions[0][starts_at]")).to.equal("2026-06-01T19:00:00");
     expect(context.kind_label).to.equal("Hybrid");
     expect(context.category_label).to.equal("Meetup");

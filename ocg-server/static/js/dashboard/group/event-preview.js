@@ -1,6 +1,9 @@
 import { showErrorAlert } from "/static/js/common/alerts.js";
+import "/static/js/common/breadcrumb-nav.js";
 import { convertDateTimeLocalToISO, lockBodyScroll, unlockBodyScroll } from "/static/js/common/common.js";
 import { ocgFetch } from "/static/js/common/fetch.js";
+import "/static/js/common/images-gallery.js";
+import "/static/js/common/user-chip.js";
 import { EVENT_PAGE_FORM_IDS } from "/static/js/dashboard/group/event-page-shared.js";
 
 const PREVIEW_ENDPOINT = "/dashboard/group/events/preview";
@@ -76,6 +79,7 @@ export const buildEventPreviewPayload = (pageRoot) => {
     }
   }
 
+  normalizePreviewTimezone(payload);
   payload.set("preview_context", JSON.stringify(collectEventPreviewContext(pageRoot)));
   return payload;
 };
@@ -203,6 +207,52 @@ const normalizePreviewParameterValue = (name, value) => {
   const isEventDate = /^(starts_at|ends_at|cfs_starts_at|cfs_ends_at)$/.test(name);
   const isSessionDate = /^sessions\[\d+\]\[(starts_at|ends_at)\]$/.test(name);
   return isEventDate || isSessionDate ? convertDateTimeLocalToISO(value) : value;
+};
+
+/**
+ * Replaces the submitted timezone with a short display label for the preview.
+ * @param {URLSearchParams} payload Payload being built.
+ * @returns {void}
+ */
+const normalizePreviewTimezone = (payload) => {
+  const timezone = payload.get("timezone");
+  if (!timezone) {
+    return;
+  }
+
+  const timezoneLabel = getShortTimezoneLabel(timezone, payload.get("starts_at"));
+  if (timezoneLabel) {
+    payload.set("timezone", timezoneLabel);
+  }
+};
+
+/**
+ * Returns the short timezone label used by the public event page.
+ * @param {string} timezone IANA timezone identifier.
+ * @param {string|null} startsAt Event start date.
+ * @returns {string|undefined}
+ */
+const getShortTimezoneLabel = (timezone, startsAt) => {
+  const date = getTimezoneLabelDate(startsAt);
+  try {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: timezone,
+      timeZoneName: "short",
+    }).formatToParts(date);
+    return parts.find((part) => part.type === "timeZoneName")?.value;
+  } catch (_) {
+    return undefined;
+  }
+};
+
+/**
+ * Builds a stable date for resolving the timezone abbreviation.
+ * @param {string|null} startsAt Event start date.
+ * @returns {Date}
+ */
+const getTimezoneLabelDate = (startsAt) => {
+  const datePart = String(startsAt || "").match(/^\d{4}-\d{2}-\d{2}/)?.[0];
+  return datePart ? new Date(`${datePart}T12:00:00Z`) : new Date();
 };
 
 /**
