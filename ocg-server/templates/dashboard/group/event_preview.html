@@ -17,7 +17,9 @@
         <div class="min-w-0">
           <h3 id="event-preview-modal-title"
               class="text-lg font-semibold text-stone-900">Event preview</h3>
-          <p class="mt-1 text-sm text-stone-500">Previewing the editor state currently on this page.</p>
+          <p class="mt-1 text-sm text-stone-500">
+            Previewing the editor state currently on this page. Public-page organizers are not included.
+          </p>
         </div>
         <button type="button"
                 data-event-preview-close
@@ -92,13 +94,15 @@
 
                   <div class="md:col-start-2 md:row-start-2 md:self-end">
                     <div class="flex flex-wrap items-center gap-3 text-stone-600 md:gap-4 md:max-xl:gap-3">
-                      <div class="flex items-center gap-2 leading-none">
-                        <div class="svg-icon size-4 bg-stone-600 icon-people"></div>
-                        <span class="inline-flex items-center text-sm">
-                          <span>Capacity:</span>
-                          <span class="ms-1 inline-flex min-w-4 items-center">{{ event.capacity_label() }}</span>
-                        </span>
-                      </div>
+                      {% if event.input.capacity.is_some() -%}
+                        <div class="flex items-center gap-2 leading-none">
+                          <div class="svg-icon size-4 bg-stone-600 icon-people"></div>
+                          <span class="inline-flex items-center text-sm">
+                            <span>Capacity:</span>
+                            <span class="ms-1 inline-flex min-w-4 items-center">{{ event.capacity_label() }}</span>
+                          </span>
+                        </div>
+                      {% endif -%}
                       <span class="custom-badge border-stone-300 bg-stone-100 px-2.5 py-0.5 text-stone-700">{{ event.kind_display_label() }}</span>
                     </div>
                   </div>
@@ -238,6 +242,9 @@
                     </div>
                   {% endif -%}
                 {% endif -%}
+              </section>
+
+              <section class="hidden" data-event-preview-tags-section>
               </section>
 
               {% if !event.sessions.is_empty() -%}

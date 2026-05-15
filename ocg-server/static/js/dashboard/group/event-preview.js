@@ -147,6 +147,7 @@ export const openEventPreviewModal = (modalRoot, html, pageRoot = document) => {
   closeEventPreviewModal(modalRoot);
   modalRoot.innerHTML = html;
   initializeEventPreviewMaps(modalRoot, pageRoot);
+  initializeEventPreviewDraftSections(modalRoot, pageRoot);
   lockBodyScroll();
 
   const handleClick = (event) => {
@@ -259,6 +260,84 @@ const parsePreviewCoordinate = (value) => {
 
   const coordinate = Number.parseFloat(value);
   return Number.isFinite(coordinate) ? coordinate : null;
+};
+
+/**
+ * Renders preview-only sections that come from the current editor state.
+ * @param {HTMLElement} modalRoot Modal root element.
+ * @param {Document|Element} pageRoot Event page root.
+ * @returns {void}
+ */
+const initializeEventPreviewDraftSections = (modalRoot, pageRoot) => {
+  renderEventPreviewTags(modalRoot, collectEventPreviewTags(pageRoot));
+};
+
+/**
+ * Collects event tags from the current editor component.
+ * @param {Document|Element} pageRoot Event page root.
+ * @returns {string[]} Tag labels.
+ */
+const collectEventPreviewTags = (pageRoot) => {
+  const tags = new Set();
+  const tagsComponent = pageRoot.querySelector?.('multiple-inputs[field-name="tags"]');
+
+  readArray(tagsComponent?.items).forEach((item) => {
+    const tag = typeof item === "object" ? item?.value : item;
+    const normalizedTag = toOptionalString(tag);
+    if (normalizedTag) {
+      tags.add(normalizedTag);
+    }
+  });
+
+  pageRoot.querySelectorAll?.('[name="tags"], [name="tags[]"]').forEach((field) => {
+    const normalizedTag = toOptionalString(field.value);
+    if (normalizedTag) {
+      tags.add(normalizedTag);
+    }
+  });
+
+  return [...tags];
+};
+
+/**
+ * Renders the event tags section when tags are present.
+ * @param {HTMLElement} modalRoot Modal root element.
+ * @param {string[]} tags Tag labels.
+ * @returns {void}
+ */
+const renderEventPreviewTags = (modalRoot, tags) => {
+  const tagsSection = modalRoot.querySelector("[data-event-preview-tags-section]");
+  if (!(tagsSection instanceof HTMLElement) || tags.length === 0) {
+    return;
+  }
+
+  const heading = createEventPreviewSectionHeading("Tags");
+  const tagList = document.createElement("div");
+  tagList.className = "flex flex-wrap gap-2";
+
+  tags.forEach((tag) => {
+    const tagBadge = document.createElement("span");
+    tagBadge.className =
+      "inline-block max-w-full truncate rounded-full bg-stone-50 px-3 py-1 text-sm uppercase text-stone-700";
+    tagBadge.textContent = tag;
+    tagList.append(tagBadge);
+  });
+
+  tagsSection.replaceChildren(heading, tagList);
+  tagsSection.classList.remove("hidden");
+};
+
+/**
+ * Creates a preview section heading matching the public event page.
+ * @param {string} text Heading text.
+ * @returns {HTMLDivElement} Section heading.
+ */
+const createEventPreviewSectionHeading = (text) => {
+  const heading = document.createElement("div");
+  heading.className =
+    "pb-8 text-lg font-bold uppercase leading-10 tracking-wide text-stone-900 lg:pb-14 lg:pt-2 lg:text-2xl";
+  heading.textContent = text;
+  return heading;
 };
 
 /**

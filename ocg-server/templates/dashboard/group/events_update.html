@@ -24,8 +24,8 @@
      data-group-logo-url="{{ event.group.logo_url }}"
      data-group-banner-url="{%- if let Some(banner_url) = &event.group.banner_url -%}{{ banner_url }}{%- endif -%}"
      data-group-banner-mobile-url="{%- if let Some(banner_mobile_url) = &event.group.banner_mobile_url -%}{{ banner_mobile_url }}{%- endif -%}">
-  <div class="mb-10 flex min-w-0 items-stretch">
-    <div class="min-w-0 flex-1 overflow-x-auto overflow-y-hidden">
+  <div class="mb-10 grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-stretch gap-x-3">
+    <div class="min-w-0 overflow-x-auto overflow-y-hidden">
       <ul class="inline-flex min-w-max flex-nowrap gap-1 border-b border-stone-900/10 text-center font-medium lg:gap-2">
         <li class="shrink-0">
           <button type="button"
@@ -153,7 +153,7 @@
         </li>
       </ul>
     </div>
-    <div class="flex shrink-0 flex-col items-stretch justify-center gap-2 ps-3">
+    <div class="flex min-w-28 flex-col items-stretch justify-center gap-2">
       <button id="event-preview-button"
               type="button"
               aria-label="Preview"
