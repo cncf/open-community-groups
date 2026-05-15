@@ -15,6 +15,19 @@ const PREVIEW_ENDPOINT = "/dashboard/group/events/preview";
 const PREVIEW_BUTTON_ID = "event-preview-button";
 const PREVIEW_MODAL_ROOT_ID = "event-preview-modal-root";
 const EVENT_PREVIEW_FORM_IDS = EVENT_PAGE_FORM_IDS.filter((formId) => formId !== "payments-form");
+const EVENT_PREVIEW_CLIENT_RENDERED_FIELDS = new Set(["luma_url", "meetup_url"]);
+const EVENT_PREVIEW_SOCIAL_LINKS = [
+  {
+    fieldName: "meetup_url",
+    iconName: "meetup",
+    platformName: "Meetup",
+  },
+  {
+    fieldName: "luma_url",
+    iconName: "luma",
+    platformName: "Luma",
+  },
+];
 const modalState = new WeakMap();
 
 /**
@@ -266,7 +279,65 @@ const parsePreviewCoordinate = (value) => {
  * @returns {void}
  */
 const initializeEventPreviewDraftSections = (modalRoot, pageRoot) => {
+  renderEventPreviewSocialLinks(modalRoot, collectEventPreviewSocialLinks(pageRoot));
   renderEventPreviewTags(modalRoot, collectEventPreviewTags(pageRoot));
+};
+
+/**
+ * Collects event social links from the current editor state.
+ * @param {Document|Element} pageRoot Event page root.
+ * @returns {Array<Object>} Social link data.
+ */
+const collectEventPreviewSocialLinks = (pageRoot) =>
+  EVENT_PREVIEW_SOCIAL_LINKS.map((link) => ({
+    ...link,
+    url: toOptionalString(pageRoot.querySelector?.(`[name="${link.fieldName}"]`)?.value),
+  })).filter((link) => link.url);
+
+/**
+ * Renders the event social links section when links are present.
+ * @param {HTMLElement} modalRoot Modal root element.
+ * @param {Array<Object>} links Social link data.
+ * @returns {void}
+ */
+const renderEventPreviewSocialLinks = (modalRoot, links) => {
+  if (links.length === 0) {
+    return;
+  }
+
+  modalRoot.querySelectorAll("[data-event-preview-social-links]").forEach((container) => {
+    if (!(container instanceof HTMLElement)) {
+      return;
+    }
+
+    const linksList = container.querySelector("[data-event-preview-social-links-list]") || container;
+    linksList.replaceChildren(...links.map(createEventPreviewSocialLink));
+    container.classList.remove("hidden");
+  });
+};
+
+/**
+ * Creates a social link using the same classes as the public event page.
+ * @param {Object} link Social link data.
+ * @param {string} link.iconName Icon name.
+ * @param {string} link.platformName Platform name.
+ * @param {string} link.url Link URL.
+ * @returns {HTMLAnchorElement} Social link.
+ */
+const createEventPreviewSocialLink = ({ iconName, platformName, url }) => {
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.target = "_blank";
+  anchor.rel = "noopener noreferrer";
+  anchor.className =
+    "group btn-secondary-anchor flex size-[40px] items-center justify-center p-1.5 sm:size-[30px]";
+  anchor.title = platformName;
+
+  const icon = document.createElement("div");
+  icon.className = `svg-icon size-4 bg-primary-500 transition-colors group-hover:bg-white icon-${iconName}`;
+  anchor.append(icon);
+
+  return anchor;
 };
 
 /**
@@ -345,7 +416,12 @@ const createEventPreviewSectionHeading = (text) => {
  * @returns {void}
  */
 const appendPreviewFormValue = (payload, name, value) => {
-  if (!name || name.startsWith("toggle_") || value instanceof File) {
+  if (
+    !name ||
+    name.startsWith("toggle_") ||
+    EVENT_PREVIEW_CLIENT_RENDERED_FIELDS.has(name) ||
+    value instanceof File
+  ) {
     return;
   }
 

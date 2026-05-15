@@ -21,6 +21,8 @@ const mountPreviewPage = () => {
         <form id="details-form">
           <input name="name" value="Draft Event" />
           <input name="capacity" value="" />
+          <input name="meetup_url" value="https://meetup.example/events/draft" />
+          <input name="luma_url" value="https://luma.example/draft" />
           <input name="toggle_registration_required" value="on" />
           <select id="kind_id" name="kind_id">
             <option value="">Select</option>
@@ -110,6 +112,8 @@ describe("event preview", () => {
 
     expect(payload.get("name")).to.equal("Draft Event");
     expect(payload.get("capacity")).to.equal(null);
+    expect(payload.get("meetup_url")).to.equal(null);
+    expect(payload.get("luma_url")).to.equal(null);
     expect(payload.get("payment_currency_code")).to.equal(null);
     expect(payload.get("ticket_types[0][title]")).to.equal(null);
     expect(payload.get("ticket_types[0][price_windows][0][price]")).to.equal(null);
@@ -133,7 +137,12 @@ describe("event preview", () => {
     const fetchMock = mockFetch({
       impl: async () =>
         new Response(
-          '<div id="event-preview-modal"><button type="button" data-event-preview-close>Close</button></div>',
+          `<div id="event-preview-modal">
+            <div data-event-preview-social-links class="hidden">
+              <div data-event-preview-social-links-list></div>
+            </div>
+            <button type="button" data-event-preview-close>Close</button>
+          </div>`,
           {
             headers: { "Content-Type": "text/html" },
             status: 200,
@@ -156,6 +165,12 @@ describe("event preview", () => {
       expect(fetchMock.calls[0][1].method).to.equal("POST");
       expect(fetchMock.calls[0][1].body.get("name")).to.equal("Draft Event");
       expect(document.querySelector("#event-preview-modal")).to.not.equal(null);
+      expect(document.querySelector('[title="Meetup"]')?.getAttribute("href")).to.equal(
+        "https://meetup.example/events/draft",
+      );
+      expect(document.querySelector('[title="Luma"]')?.getAttribute("href")).to.equal(
+        "https://luma.example/draft",
+      );
       expect(document.body.dataset.modalOpenCount).to.equal("1");
 
       document.querySelector("[data-event-preview-close]").click();
