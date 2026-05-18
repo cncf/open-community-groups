@@ -305,6 +305,21 @@ test.describe("event page - alpha event logo", () => {
 });
 
 test.describe("event page - virtual event with recording", () => {
+  test("location fallback uses virtual event artwork", async ({ page }) => {
+    await navigateToEvent(
+      page,
+      TEST_COMMUNITY_NAME,
+      TEST_GROUP_SLUG,
+      "alpha-event-2",
+    );
+
+    const locationSection = getEventInfoSection(page, "Location");
+    await expect(locationSection).toContainText("Virtual event");
+    await expect(
+      locationSection.locator('[style*="/static/images/virtual_event.png"]'),
+    ).toBeVisible();
+  });
+
   test("recording link is hidden until the event is past", async ({ page }) => {
     await navigateToEvent(
       page,
