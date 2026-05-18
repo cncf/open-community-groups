@@ -9,11 +9,15 @@ import {
   registerHtmxResponseHandlers,
 } from "/static/js/common/htmx-extensions.js";
 import {
+  COMMIT_SHA_HEADER,
   resetDeploymentReloadState,
   setDeploymentReloadHandler,
 } from "/static/js/common/deployment-version.js";
 
 const formDataToEntries = (formData) => Array.from(formData.entries());
+const setLoadedCommitSha = (commitSha) => {
+  document.head.innerHTML = `<meta name="ocg-commit-sha" content="${commitSha}">`;
+};
 
 describe("htmx extensions", () => {
   afterEach(() => {
@@ -143,7 +147,7 @@ describe("htmx extensions", () => {
   });
 
   it("adds the loaded commit SHA to htmx request headers", () => {
-    document.head.innerHTML = '<meta name="ocg-commit-sha" content="abc123">';
+    setLoadedCommitSha("abc123");
     const event = {
       detail: {
         headers: {
@@ -156,12 +160,12 @@ describe("htmx extensions", () => {
 
     expect(event.detail.headers).to.deep.equal({
       Existing: "value",
-      "X-OCG-Commit-SHA": "abc123",
+      [COMMIT_SHA_HEADER]: "abc123",
     });
   });
 
   it("cancels the swap and reloads when an htmx response comes from a newer commit", () => {
-    document.head.innerHTML = '<meta name="ocg-commit-sha" content="abc123">';
+    setLoadedCommitSha("abc123");
     let reloads = 0;
     setDeploymentReloadHandler(() => {
       reloads += 1;
@@ -170,7 +174,7 @@ describe("htmx extensions", () => {
       detail: {
         shouldSwap: true,
         xhr: {
-          getResponseHeader: (name) => (name === "X-OCG-Commit-SHA" ? "def456" : null),
+          getResponseHeader: (name) => (name === COMMIT_SHA_HEADER ? "def456" : null),
         },
       },
     };
@@ -182,7 +186,7 @@ describe("htmx extensions", () => {
   });
 
   it("suppresses later swaps while a deployment reload is already pending", () => {
-    document.head.innerHTML = '<meta name="ocg-commit-sha" content="abc123">';
+    setLoadedCommitSha("abc123");
     let reloads = 0;
     setDeploymentReloadHandler(() => {
       reloads += 1;
@@ -191,7 +195,7 @@ describe("htmx extensions", () => {
       detail: {
         shouldSwap: true,
         xhr: {
-          getResponseHeader: (name) => (name === "X-OCG-Commit-SHA" ? "def456" : null),
+          getResponseHeader: (name) => (name === COMMIT_SHA_HEADER ? "def456" : null),
         },
       },
     });
@@ -211,13 +215,13 @@ describe("htmx extensions", () => {
   });
 
   it("keeps marked not found responses suppressed while a deployment reload is already pending", () => {
-    document.head.innerHTML = '<meta name="ocg-commit-sha" content="abc123">';
+    setLoadedCommitSha("abc123");
     setDeploymentReloadHandler(() => {});
     handleCommitShaBeforeSwap({
       detail: {
         shouldSwap: true,
         xhr: {
-          getResponseHeader: (name) => (name === "X-OCG-Commit-SHA" ? "def456" : null),
+          getResponseHeader: (name) => (name === COMMIT_SHA_HEADER ? "def456" : null),
         },
       },
     });
@@ -246,6 +250,24 @@ describe("htmx extensions", () => {
       },
     };
 
+    registerHtmxResponseHandlers(root);
+
+    expect(listeners).to.deep.equal([
+      ["htmx:configRequest", handleCommitShaConfigRequest],
+      ["htmx:beforeSwap", handleCommitShaBeforeSwap],
+      ["htmx:beforeSwap", handleNotFoundBeforeSwap],
+    ]);
+  });
+
+  it("registers shared htmx response handlers once per event root", () => {
+    const listeners = [];
+    const root = {
+      body: {
+        addEventListener: (name, handler) => listeners.push([name, handler]),
+      },
+    };
+
+    registerHtmxResponseHandlers(root);
     registerHtmxResponseHandlers(root);
 
     expect(listeners).to.deep.equal([

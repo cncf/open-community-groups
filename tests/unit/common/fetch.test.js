@@ -2,10 +2,16 @@ import { expect } from "@open-wc/testing";
 
 import { ocgFetch } from "/static/js/common/fetch.js";
 import {
+  COMMIT_SHA_HEADER,
+  REFRESH_HEADER,
   resetDeploymentReloadState,
   setDeploymentReloadHandler,
 } from "/static/js/common/deployment-version.js";
 import { mockFetch } from "/tests/unit/test-utils/network.js";
+
+const setLoadedCommitSha = (commitSha) => {
+  document.head.innerHTML = `<meta name="ocg-commit-sha" content="${commitSha}">`;
+};
 
 describe("ocgFetch", () => {
   let fetchMock;
@@ -22,11 +28,11 @@ describe("ocgFetch", () => {
   });
 
   it("adds OCG fetch and commit SHA headers for same-origin requests", async () => {
-    document.head.innerHTML = '<meta name="ocg-commit-sha" content="abc123">';
+    setLoadedCommitSha("abc123");
     fetchMock.setImpl(async (_url, options) => {
       expect(options.headers).to.be.instanceOf(Headers);
       expect(options.headers.get("X-OCG-Fetch")).to.equal("true");
-      expect(options.headers.get("X-OCG-Commit-SHA")).to.equal("abc123");
+      expect(options.headers.get(COMMIT_SHA_HEADER)).to.equal("abc123");
 
       return {
         headers: new Headers(),
@@ -46,7 +52,7 @@ describe("ocgFetch", () => {
       reloads += 1;
     });
     fetchMock.setImpl(async () => ({
-      headers: new Headers({ "X-OCG-Refresh": "true" }),
+      headers: new Headers({ [REFRESH_HEADER]: "true" }),
       ok: true,
       status: 204,
     }));
@@ -63,13 +69,13 @@ describe("ocgFetch", () => {
   });
 
   it("reloads and throws when a same-origin response comes from a newer commit", async () => {
-    document.head.innerHTML = '<meta name="ocg-commit-sha" content="abc123">';
+    setLoadedCommitSha("abc123");
     let reloads = 0;
     setDeploymentReloadHandler(() => {
       reloads += 1;
     });
     fetchMock.setImpl(async () => ({
-      headers: new Headers({ "X-OCG-Commit-SHA": "def456" }),
+      headers: new Headers({ [COMMIT_SHA_HEADER]: "def456" }),
       ok: true,
       status: 200,
     }));

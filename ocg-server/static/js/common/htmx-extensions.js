@@ -4,6 +4,9 @@ import {
   reloadIfDeploymentChanged,
 } from "/static/js/common/deployment-version.js";
 
+// Tracks event roots already wired so repeated initialization stays idempotent.
+const responseHandlerRoots = new WeakSet();
+
 /**
  * Filters HTMX parameters by trimming strings and dropping selected empty values.
  * @param {FormData|URLSearchParams} source Source entries collection.
@@ -143,12 +146,18 @@ export const registerHtmxNoEmptyValuesExtensions = (htmxInstance) => {
 };
 
 /**
- * Registers shared HTMX response handling hooks.
+ * Registers shared HTMX request and response handling hooks.
  * @param {Document|undefined|null} root Event listener root.
  * @returns {void}
  */
 export const registerHtmxResponseHandlers = (root = document) => {
-  root?.body?.addEventListener("htmx:configRequest", handleCommitShaConfigRequest);
-  root?.body?.addEventListener("htmx:beforeSwap", handleCommitShaBeforeSwap);
-  root?.body?.addEventListener("htmx:beforeSwap", handleNotFoundBeforeSwap);
+  const eventRoot = root?.body;
+  if (!eventRoot || responseHandlerRoots.has(eventRoot)) {
+    return;
+  }
+
+  eventRoot.addEventListener("htmx:configRequest", handleCommitShaConfigRequest);
+  eventRoot.addEventListener("htmx:beforeSwap", handleCommitShaBeforeSwap);
+  eventRoot.addEventListener("htmx:beforeSwap", handleNotFoundBeforeSwap);
+  responseHandlerRoots.add(eventRoot);
 };
