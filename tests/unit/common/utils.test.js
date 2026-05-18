@@ -36,6 +36,7 @@ describe("common utils", () => {
     expect(parseJsonAttribute("[1,2,3]", [])).to.deep.equal([1, 2, 3]);
     expect(parseJsonAttribute([{ id: 1 }], [])).to.deep.equal([{ id: 1 }]);
     expect(parseJsonAttribute({ zoom: 100 }, {})).to.deep.equal({ zoom: 100 });
+    expect(parseJsonAttribute({ day_1: [{ id: 1 }] }, [])).to.deep.equal({ day_1: [{ id: 1 }] });
     expect(parseJsonAttribute("not-json", ["fallback"])).to.deep.equal(["fallback"]);
     expect(parseJsonAttribute("", ["fallback"])).to.deep.equal(["fallback"]);
 

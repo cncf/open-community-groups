@@ -102,20 +102,17 @@ const setImageFieldValue = (fieldName, url) => {
 };
 
 /**
- * Safely parses a JSON attribute.
+ * Safely parses a JSON attribute or returns already parsed JSON-like values.
  * @param {*} value Raw attribute value
  * @param {*} fallback Fallback value
  * @returns {*}
  */
 const parseJsonAttribute = (value, fallback) => {
-  if (Array.isArray(fallback) && Array.isArray(value)) {
+  if (Array.isArray(value)) {
     return value;
   }
 
-  const expectsObject = fallback !== null && typeof fallback === "object" && !Array.isArray(fallback);
-  const hasObject = value !== null && typeof value === "object" && !Array.isArray(value);
-
-  if (expectsObject && hasObject) {
+  if (value !== null && typeof value === "object") {
     return value;
   }
 
