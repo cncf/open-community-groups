@@ -1,3 +1,5 @@
+import { parseJsonAttribute } from "/static/js/common/utils.js";
+
 /**
  * Normalizes a single speaker entry to a flat shape.
  * @param {any} speaker
@@ -30,14 +32,7 @@ const normalizeSpeaker = (speaker) => {
  * @returns {Array}
  */
 export const normalizeSpeakers = (value) => {
-  let list = value;
-  if (typeof list === "string") {
-    try {
-      list = JSON.parse(list || "[]");
-    } catch (_) {
-      list = [];
-    }
-  }
+  const list = parseJsonAttribute(value, []);
   if (!Array.isArray(list)) return [];
   return list.map((speaker) => normalizeSpeaker(speaker)).filter(Boolean);
 };

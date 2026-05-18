@@ -2,6 +2,7 @@ import { html, unsafeHTML } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { handleHtmxResponse } from "/static/js/common/alerts.js";
 import { computeUserInitials, lockBodyScroll, unlockBodyScroll } from "/static/js/common/common.js";
+import { parseJsonAttribute } from "/static/js/common/utils.js";
 import "/static/js/common/cfs-label-selector.js";
 import "/static/js/common/logo-image.js";
 import "/static/js/common/rating-stars.js";
@@ -167,13 +168,9 @@ export class ReviewSubmissionModal extends LitWrapper {
     if (!statusesAttr || this.statuses.length > 0) {
       return;
     }
-    try {
-      const parsedStatuses = JSON.parse(statusesAttr);
-      if (Array.isArray(parsedStatuses)) {
-        this.statuses = parsedStatuses;
-      }
-    } catch (error) {
-      console.error("Invalid statuses payload", error);
+    const parsedStatuses = parseJsonAttribute(statusesAttr, []);
+    if (Array.isArray(parsedStatuses)) {
+      this.statuses = parsedStatuses;
     }
   }
 
@@ -185,13 +182,9 @@ export class ReviewSubmissionModal extends LitWrapper {
     if (!labelsAttr || this.labels.length > 0) {
       return;
     }
-    try {
-      const parsedLabels = JSON.parse(labelsAttr);
-      if (Array.isArray(parsedLabels)) {
-        this.labels = parsedLabels;
-      }
-    } catch (error) {
-      console.error("Invalid labels payload", error);
+    const parsedLabels = parseJsonAttribute(labelsAttr, []);
+    if (Array.isArray(parsedLabels)) {
+      this.labels = parsedLabels;
     }
   }
 
@@ -215,13 +208,7 @@ export class ReviewSubmissionModal extends LitWrapper {
       return;
     }
 
-    try {
-      const parsedLabels = JSON.parse(labelsAttr);
-      this.labels = this._normalizeLabels(parsedLabels);
-    } catch (error) {
-      console.error("Invalid labels payload", error);
-      this.labels = [];
-    }
+    this.labels = this._normalizeLabels(parseJsonAttribute(labelsAttr, []));
   }
 
   /**
@@ -1181,23 +1168,19 @@ const initializeCfsSubmissions = () => {
     if (!modal || typeof modal.open !== "function") {
       return;
     }
-    try {
-      const submission = JSON.parse(payload);
-      const descriptionHtmlPayload = button.dataset.proposalDescriptionHtml;
-      if (descriptionHtmlPayload && submission?.session_proposal) {
-        try {
-          const descriptionHtml = JSON.parse(descriptionHtmlPayload);
-          if (typeof descriptionHtml === "string") {
-            submission.session_proposal.description_html = descriptionHtml;
-          }
-        } catch (error) {
-          console.error("Invalid proposal description html payload", error);
-        }
-      }
-      modal.open(submission);
-    } catch (error) {
-      console.error("Invalid submission payload", error);
+    const submission = parseJsonAttribute(payload, null);
+    if (!submission || typeof submission !== "object" || Array.isArray(submission)) {
+      console.error("Invalid submission payload");
+      return;
     }
+    const descriptionHtmlPayload = button.dataset.proposalDescriptionHtml;
+    if (descriptionHtmlPayload && submission?.session_proposal) {
+      const descriptionHtml = parseJsonAttribute(descriptionHtmlPayload, "");
+      if (typeof descriptionHtml === "string") {
+        submission.session_proposal.description_html = descriptionHtml;
+      }
+    }
+    modal.open(submission);
   });
 };
 

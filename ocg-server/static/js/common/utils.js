@@ -108,7 +108,14 @@ const setImageFieldValue = (fieldName, url) => {
  * @returns {*}
  */
 const parseJsonAttribute = (value, fallback) => {
-  if (Array.isArray(value)) {
+  if (Array.isArray(fallback) && Array.isArray(value)) {
+    return value;
+  }
+
+  const expectsObject = fallback !== null && typeof fallback === "object" && !Array.isArray(fallback);
+  const hasObject = value !== null && typeof value === "object" && !Array.isArray(value);
+
+  if (expectsObject && hasObject) {
     return value;
   }
 
