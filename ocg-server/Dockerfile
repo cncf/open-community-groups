@@ -1,5 +1,7 @@
 # Build server
 FROM rust:1.95.0-alpine3.23 AS builder
+ARG OCG_COMMIT_SHA
+ENV OCG_COMMIT_SHA=$OCG_COMMIT_SHA
 RUN apk --no-cache add musl-dev perl make
 RUN wget -O /usr/local/bin/tailwindcss https://github.com/tailwindlabs/tailwindcss/releases/download/v4.1.10/tailwindcss-linux-x64-musl
 RUN chmod +x /usr/local/bin/tailwindcss

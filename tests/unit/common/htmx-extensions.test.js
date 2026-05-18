@@ -2,14 +2,25 @@ import { expect } from "@open-wc/testing";
 
 import {
   createNoEmptyValuesExtension,
+  handleCommitShaBeforeSwap,
+  handleCommitShaConfigRequest,
   handleNotFoundBeforeSwap,
   registerHtmxNoEmptyValuesExtensions,
   registerHtmxResponseHandlers,
 } from "/static/js/common/htmx-extensions.js";
+import {
+  resetDeploymentReloadState,
+  setDeploymentReloadHandler,
+} from "/static/js/common/deployment-version.js";
 
 const formDataToEntries = (formData) => Array.from(formData.entries());
 
 describe("htmx extensions", () => {
+  afterEach(() => {
+    document.head.innerHTML = "";
+    resetDeploymentReloadState();
+  });
+
   it('registers both "no-empty-vals" variants', () => {
     const extensions = new Map();
     const htmxMock = {
@@ -131,7 +142,103 @@ describe("htmx extensions", () => {
     expect(event.detail.isError).to.equal(true);
   });
 
-  it("registers the not found beforeSwap handler", () => {
+  it("adds the loaded commit SHA to htmx request headers", () => {
+    document.head.innerHTML = '<meta name="ocg-commit-sha" content="abc123">';
+    const event = {
+      detail: {
+        headers: {
+          Existing: "value",
+        },
+      },
+    };
+
+    handleCommitShaConfigRequest(event);
+
+    expect(event.detail.headers).to.deep.equal({
+      Existing: "value",
+      "X-OCG-Commit-SHA": "abc123",
+    });
+  });
+
+  it("cancels the swap and reloads when an htmx response comes from a newer commit", () => {
+    document.head.innerHTML = '<meta name="ocg-commit-sha" content="abc123">';
+    let reloads = 0;
+    setDeploymentReloadHandler(() => {
+      reloads += 1;
+    });
+    const event = {
+      detail: {
+        shouldSwap: true,
+        xhr: {
+          getResponseHeader: (name) => (name === "X-OCG-Commit-SHA" ? "def456" : null),
+        },
+      },
+    };
+
+    handleCommitShaBeforeSwap(event);
+
+    expect(event.detail.shouldSwap).to.equal(false);
+    expect(reloads).to.equal(1);
+  });
+
+  it("suppresses later swaps while a deployment reload is already pending", () => {
+    document.head.innerHTML = '<meta name="ocg-commit-sha" content="abc123">';
+    let reloads = 0;
+    setDeploymentReloadHandler(() => {
+      reloads += 1;
+    });
+    handleCommitShaBeforeSwap({
+      detail: {
+        shouldSwap: true,
+        xhr: {
+          getResponseHeader: (name) => (name === "X-OCG-Commit-SHA" ? "def456" : null),
+        },
+      },
+    });
+    const laterEvent = {
+      detail: {
+        shouldSwap: true,
+        xhr: {
+          getResponseHeader: () => null,
+        },
+      },
+    };
+
+    handleCommitShaBeforeSwap(laterEvent);
+
+    expect(laterEvent.detail.shouldSwap).to.equal(false);
+    expect(reloads).to.equal(1);
+  });
+
+  it("keeps marked not found responses suppressed while a deployment reload is already pending", () => {
+    document.head.innerHTML = '<meta name="ocg-commit-sha" content="abc123">';
+    setDeploymentReloadHandler(() => {});
+    handleCommitShaBeforeSwap({
+      detail: {
+        shouldSwap: true,
+        xhr: {
+          getResponseHeader: (name) => (name === "X-OCG-Commit-SHA" ? "def456" : null),
+        },
+      },
+    });
+    const event = {
+      detail: {
+        isError: true,
+        shouldSwap: false,
+        xhr: {
+          status: 404,
+          getResponseHeader: (name) => (name === "X-OCG-Not-Found" ? "true" : null),
+        },
+      },
+    };
+
+    handleNotFoundBeforeSwap(event);
+
+    expect(event.detail.shouldSwap).to.equal(false);
+    expect(event.detail.isError).to.equal(true);
+  });
+
+  it("registers the shared htmx response handlers", () => {
     const listeners = [];
     const root = {
       body: {
@@ -141,6 +248,10 @@ describe("htmx extensions", () => {
 
     registerHtmxResponseHandlers(root);
 
-    expect(listeners).to.deep.equal([["htmx:beforeSwap", handleNotFoundBeforeSwap]]);
+    expect(listeners).to.deep.equal([
+      ["htmx:configRequest", handleCommitShaConfigRequest],
+      ["htmx:beforeSwap", handleCommitShaBeforeSwap],
+      ["htmx:beforeSwap", handleNotFoundBeforeSwap],
+    ]);
   });
 });

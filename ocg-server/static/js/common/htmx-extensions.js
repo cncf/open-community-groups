@@ -1,3 +1,9 @@
+import {
+  addLoadedCommitShaHeader,
+  isDeploymentReloadRequested,
+  reloadIfDeploymentChanged,
+} from "/static/js/common/deployment-version.js";
+
 /**
  * Filters HTMX parameters by trimming strings and dropping selected empty values.
  * @param {FormData|URLSearchParams} source Source entries collection.
@@ -74,6 +80,10 @@ export const createNoEmptyValuesExtension = (dropZero) => ({
  * @returns {void}
  */
 export const handleNotFoundBeforeSwap = (event) => {
+  if (isDeploymentReloadRequested()) {
+    return;
+  }
+
   const xhr = event.detail?.xhr;
   if (!xhr || xhr.status !== 404 || typeof xhr.getResponseHeader !== "function") {
     return;
@@ -85,6 +95,37 @@ export const handleNotFoundBeforeSwap = (event) => {
 
   event.detail.shouldSwap = true;
   event.detail.isError = false;
+};
+
+/**
+ * Adds the loaded page commit SHA to HTMX requests.
+ * @param {CustomEvent} event HTMX configRequest event.
+ * @param {Document} root Document used to read the loaded commit SHA.
+ * @returns {void}
+ */
+export const handleCommitShaConfigRequest = (event, root = document) => {
+  if (!event.detail) {
+    return;
+  }
+
+  event.detail.headers = event.detail.headers || {};
+  addLoadedCommitShaHeader(event.detail.headers, root);
+};
+
+/**
+ * Prevents stale deployment fragments from being swapped into the loaded page.
+ * @param {CustomEvent} event HTMX beforeSwap event.
+ * @param {Document} root Document used to read the loaded commit SHA.
+ * @returns {void}
+ */
+export const handleCommitShaBeforeSwap = (event, root = document) => {
+  if (!event.detail) {
+    return;
+  }
+
+  if (isDeploymentReloadRequested() || reloadIfDeploymentChanged(event.detail.xhr, root)) {
+    event.detail.shouldSwap = false;
+  }
 };
 
 /**
@@ -107,5 +148,7 @@ export const registerHtmxNoEmptyValuesExtensions = (htmxInstance) => {
  * @returns {void}
  */
 export const registerHtmxResponseHandlers = (root = document) => {
+  root?.body?.addEventListener("htmx:configRequest", handleCommitShaConfigRequest);
+  root?.body?.addEventListener("htmx:beforeSwap", handleCommitShaBeforeSwap);
   root?.body?.addEventListener("htmx:beforeSwap", handleNotFoundBeforeSwap);
 };
