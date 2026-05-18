@@ -1,7 +1,9 @@
 export const COMMIT_SHA_HEADER = "X-OCG-Commit-SHA";
+export const DEPLOYMENT_REFRESH_MESSAGE = "This page was refreshed because a new version is available.";
 export const REFRESH_HEADER = "X-OCG-Refresh";
 
 const COMMIT_SHA_META_SELECTOR = 'meta[name="ocg-commit-sha"]';
+const DEPLOYMENT_REFRESH_ALERT_STORAGE_KEY = "ocg.deploymentRefreshAlert";
 
 let reloadRequested = false;
 let reloadHandler = () => window.location.reload();
@@ -40,6 +42,16 @@ export const getLoadedCommitSha = (root = document) =>
 export const isDeploymentReloadRequested = () => reloadRequested;
 
 /**
+ * Returns whether a deployment refresh alert was pending and clears it.
+ * @returns {boolean} Whether the alert should be shown.
+ */
+export const consumePendingDeploymentRefreshAlert = () => {
+  const pending = sessionStorageGetItem(DEPLOYMENT_REFRESH_ALERT_STORAGE_KEY) === "true";
+  sessionStorageRemoveItem(DEPLOYMENT_REFRESH_ALERT_STORAGE_KEY);
+  return pending;
+};
+
+/**
  * Reloads the page once when response headers indicate a deployment mismatch.
  * @param {XMLHttpRequest|Headers|object|null|undefined} headersSource Response headers source.
  * @param {Document} root Document used to read the loaded commit SHA.
@@ -67,6 +79,7 @@ export const reloadIfDeploymentChanged = (headersSource, root = document) => {
 export const resetDeploymentReloadState = () => {
   reloadRequested = false;
   reloadHandler = () => window.location.reload();
+  sessionStorageRemoveItem(DEPLOYMENT_REFRESH_ALERT_STORAGE_KEY);
 };
 
 /**
@@ -118,5 +131,46 @@ const requestDeploymentReload = () => {
   }
 
   reloadRequested = true;
+  sessionStorageSetItem(DEPLOYMENT_REFRESH_ALERT_STORAGE_KEY, "true");
   reloadHandler();
+};
+
+/**
+ * Reads a session storage item when browser storage is available.
+ * @param {string} key Storage key.
+ * @returns {string|null} Stored value, or null when unavailable.
+ */
+const sessionStorageGetItem = (key) => {
+  try {
+    return window.sessionStorage?.getItem(key) ?? null;
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * Removes a session storage item when browser storage is available.
+ * @param {string} key Storage key.
+ * @returns {void}
+ */
+const sessionStorageRemoveItem = (key) => {
+  try {
+    window.sessionStorage?.removeItem(key);
+  } catch {
+    // Ignore unavailable browser storage.
+  }
+};
+
+/**
+ * Stores a session storage item when browser storage is available.
+ * @param {string} key Storage key.
+ * @param {string} value Storage value.
+ * @returns {void}
+ */
+const sessionStorageSetItem = (key, value) => {
+  try {
+    window.sessionStorage?.setItem(key, value);
+  } catch {
+    // Ignore unavailable browser storage.
+  }
 };
