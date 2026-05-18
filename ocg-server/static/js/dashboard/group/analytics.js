@@ -23,7 +23,7 @@ const initMembersCharts = (stats = {}, palette) => {
   const runningChart = renderChart(
     "members-running-chart",
     createAreaChart("Members over time", "Members", runningData, palette, {
-      description: "Cumulative group members over time.",
+      description: "Cumulative group members over time",
     }),
     hasTimeSeriesData(runningData),
   );
@@ -33,7 +33,7 @@ const initMembersCharts = (stats = {}, palette) => {
   const monthlyChart = renderChart(
     "members-monthly-chart",
     createMonthlyBarChart("New Members per Month", "Members", monthlyData, palette, {
-      description: "Member joins each month.",
+      description: "Member joins each month",
       reservePeriodStart: true,
     }),
     hasChartData(monthlyData),
@@ -56,7 +56,7 @@ const initEventsCharts = (stats = {}, palette) => {
   const runningChart = renderChart(
     "events-running-chart",
     createAreaChart("Events over time", "Events", runningData, palette, {
-      description: "Cumulative group events over time.",
+      description: "Cumulative group events over time",
     }),
     hasTimeSeriesData(runningData),
   );
@@ -66,7 +66,7 @@ const initEventsCharts = (stats = {}, palette) => {
   const monthlyChart = renderChart(
     "events-monthly-chart",
     createMonthlyBarChart("Events per Month", "Events", monthlyData, palette, {
-      description: "Published events by scheduled month.",
+      description: "Published events by scheduled month",
       reservePeriodStart: true,
     }),
     hasChartData(monthlyData),
@@ -91,7 +91,7 @@ const initPageViewsCharts = async (stats = {}, palette) => {
   const totalMonthlyChart = renderChart(
     "total-views-monthly-chart",
     createMonthlyBarChart("Monthly total page views", "Page views", totalMonthlyData, palette, {
-      description: "Group and event views grouped by month.",
+      description: "Group and event views grouped by month",
       useTimeAxis: true,
       reservePeriodStart: true,
     }),
@@ -103,7 +103,7 @@ const initPageViewsCharts = async (stats = {}, palette) => {
   const totalDailyChart = renderChart(
     "total-views-daily-chart",
     createDailyBarChart("Daily total page views", "Page views", totalDailyData, palette, {
-      description: "Group and event views over the last 30 days.",
+      description: "Group and event views over the last 30 days",
     }),
     hasChartData(totalDailyData),
   );
@@ -113,7 +113,7 @@ const initPageViewsCharts = async (stats = {}, palette) => {
   const groupMonthlyChart = renderChart(
     "group-views-monthly-chart",
     createMonthlyBarChart("Monthly group page views", "Page views", groupMonthlyData, palette, {
-      description: "Group page views grouped by month.",
+      description: "Group page views grouped by month",
       useTimeAxis: true,
       reservePeriodStart: true,
     }),
@@ -129,7 +129,7 @@ const initPageViewsCharts = async (stats = {}, palette) => {
       "Page views",
       groupDailyData,
       palette,
-      { description: "Group page views over the last 30 days." },
+      { description: "Group page views over the last 30 days" },
     ),
     hasChartData(groupDailyData),
   );
@@ -139,7 +139,7 @@ const initPageViewsCharts = async (stats = {}, palette) => {
   const eventMonthlyChart = renderChart(
     "event-views-monthly-chart",
     createMonthlyBarChart("Monthly event page views", "Page views", eventMonthlyData, palette, {
-      description: "Event page views grouped by month.",
+      description: "Event page views grouped by month",
       useTimeAxis: true,
       reservePeriodStart: true,
     }),
@@ -155,7 +155,7 @@ const initPageViewsCharts = async (stats = {}, palette) => {
       "Page views",
       eventDailyData,
       palette,
-      { description: "Event page views over the last 30 days." },
+      { description: "Event page views over the last 30 days" },
     ),
     hasChartData(eventDailyData),
   );
@@ -177,7 +177,7 @@ const initAttendeesCharts = (stats = {}, palette) => {
   const runningChart = renderChart(
     "attendees-running-chart",
     createAreaChart("Attendees over time", "Attendees", runningData, palette, {
-      description: "Cumulative event RSVPs over time.",
+      description: "Cumulative event RSVPs over time",
     }),
     hasTimeSeriesData(runningData),
   );
@@ -187,7 +187,7 @@ const initAttendeesCharts = (stats = {}, palette) => {
   const monthlyChart = renderChart(
     "attendees-monthly-chart",
     createMonthlyBarChart("Attendees per Month", "Attendees", monthlyData, palette, {
-      description: "Event RSVPs created each month.",
+      description: "Event RSVPs created each month",
       reservePeriodStart: true,
     }),
     hasChartData(monthlyData),

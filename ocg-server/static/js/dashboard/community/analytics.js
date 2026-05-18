@@ -33,7 +33,7 @@ const initPageViewsCharts = async (pageViews = {}, palette) => {
   const totalMonthlyChart = renderChart(
     "total-views-monthly-chart",
     createMonthlyBarChart("Monthly total page views", "Page views", totalMonthlyData, palette, {
-      description: "All tracked views grouped by month.",
+      description: "All tracked views grouped by month",
       useTimeAxis: true,
       reservePeriodStart: true,
     }),
@@ -45,7 +45,7 @@ const initPageViewsCharts = async (pageViews = {}, palette) => {
   const totalDailyChart = renderChart(
     "total-views-daily-chart",
     createDailyBarChart("Daily total page views", "Page views", totalDailyData, palette, {
-      description: "All tracked views over the last 30 days.",
+      description: "All tracked views over the last 30 days",
     }),
     hasChartData(totalDailyData),
   );
@@ -55,7 +55,7 @@ const initPageViewsCharts = async (pageViews = {}, palette) => {
   const communityMonthlyChart = renderChart(
     "community-views-monthly-chart",
     createMonthlyBarChart("Monthly community page views", "Page views", communityMonthlyData, palette, {
-      description: "Community page views grouped by month.",
+      description: "Community page views grouped by month",
       useTimeAxis: true,
       reservePeriodStart: true,
     }),
@@ -71,7 +71,7 @@ const initPageViewsCharts = async (pageViews = {}, palette) => {
       "Page views",
       communityDailyData,
       palette,
-      { description: "Community page views over the last 30 days." },
+      { description: "Community page views over the last 30 days" },
     ),
     hasChartData(communityDailyData),
   );
@@ -81,7 +81,7 @@ const initPageViewsCharts = async (pageViews = {}, palette) => {
   const groupMonthlyChart = renderChart(
     "groups-views-monthly-chart",
     createMonthlyBarChart("Monthly group page views", "Page views", groupMonthlyData, palette, {
-      description: "Group page views grouped by month.",
+      description: "Group page views grouped by month",
       useTimeAxis: true,
       reservePeriodStart: true,
     }),
@@ -97,7 +97,7 @@ const initPageViewsCharts = async (pageViews = {}, palette) => {
       "Page views",
       groupDailyData,
       palette,
-      { description: "Group page views over the last 30 days." },
+      { description: "Group page views over the last 30 days" },
     ),
     hasChartData(groupDailyData),
   );
@@ -107,7 +107,7 @@ const initPageViewsCharts = async (pageViews = {}, palette) => {
   const eventMonthlyChart = renderChart(
     "events-views-monthly-chart",
     createMonthlyBarChart("Monthly event page views", "Page views", eventMonthlyData, palette, {
-      description: "Event page views grouped by month.",
+      description: "Event page views grouped by month",
       useTimeAxis: true,
       reservePeriodStart: true,
     }),
@@ -123,7 +123,7 @@ const initPageViewsCharts = async (pageViews = {}, palette) => {
       "Page views",
       eventDailyData,
       palette,
-      { description: "Event page views over the last 30 days." },
+      { description: "Event page views over the last 30 days" },
     ),
     hasChartData(eventDailyData),
   );
@@ -147,7 +147,7 @@ const initGroupsCharts = async (groups = {}, palette) => {
   const runningChart = renderChart(
     "groups-running-chart",
     createAreaChart("Groups over time", "Groups", runningData, palette, {
-      description: "Cumulative active groups over time.",
+      description: "Cumulative active groups over time",
     }),
     hasTimeSeriesData(runningData),
   );
@@ -156,7 +156,7 @@ const initGroupsCharts = async (groups = {}, palette) => {
   const monthlyChart = renderChart(
     "groups-monthly-chart",
     createMonthlyBarChart("New Groups per Month", "Groups", groups.per_month, palette, {
-      description: "Groups created each month.",
+      description: "Groups created each month",
       reservePeriodStart: true,
     }),
     hasChartData(groups.per_month || []),
@@ -167,7 +167,7 @@ const initGroupsCharts = async (groups = {}, palette) => {
   const categoryChart = renderChart(
     "groups-category-chart",
     createHorizontalBarChart("Groups by Category", categoryData, palette, {
-      description: "Current groups split by category.",
+      description: "Current groups split by category",
     }),
     hasChartData(categoryData),
   );
@@ -177,7 +177,7 @@ const initGroupsCharts = async (groups = {}, palette) => {
   const regionChart = renderChart(
     "groups-region-chart",
     createPieChart("Groups by Region", "Groups", regionData, palette, {
-      description: "Current groups split by region.",
+      description: "Current groups split by region",
     }),
     hasChartData(regionData),
   );
@@ -187,7 +187,7 @@ const initGroupsCharts = async (groups = {}, palette) => {
   const runningCategoryChart = renderChart(
     "groups-running-category-chart",
     createStackedAreaChart("Groups over time by category", runningCategorySeries, palette, {
-      description: "Cumulative groups split by category.",
+      description: "Cumulative groups split by category",
     }),
     hasStackedTimeSeriesData(runningCategorySeries),
   );
@@ -197,7 +197,7 @@ const initGroupsCharts = async (groups = {}, palette) => {
   const runningRegionChart = renderChart(
     "groups-running-region-chart",
     createStackedAreaChart("Groups over time by region", runningRegionSeries, palette, {
-      description: "Cumulative groups split by region.",
+      description: "Cumulative groups split by region",
     }),
     hasStackedTimeSeriesData(runningRegionSeries),
   );
@@ -213,7 +213,7 @@ const initGroupsCharts = async (groups = {}, palette) => {
       monthlyByCategory.months,
       monthlyByCategory.series,
       palette,
-      { description: "Groups created each month by category." },
+      { description: "Groups created each month by category" },
     ),
     hasChartData(monthlyByCategory.months),
   );
@@ -229,7 +229,7 @@ const initGroupsCharts = async (groups = {}, palette) => {
       monthlyByRegion.months,
       monthlyByRegion.series,
       palette,
-      { description: "Groups created each month by region." },
+      { description: "Groups created each month by region" },
     ),
     hasChartData(monthlyByRegion.months),
   );
@@ -260,7 +260,7 @@ const initMembersCharts = async (members = {}, palette) => {
       monthlyByCategory.months,
       monthlyByCategory.series,
       palette,
-      { description: "Member joins each month by category." },
+      { description: "Member joins each month by category" },
     ),
     hasChartData(monthlyByCategory.months),
   );
@@ -276,7 +276,7 @@ const initMembersCharts = async (members = {}, palette) => {
       monthlyByRegion.months,
       monthlyByRegion.series,
       palette,
-      { description: "Member joins each month by region." },
+      { description: "Member joins each month by region" },
     ),
     hasChartData(monthlyByRegion.months),
   );
@@ -285,7 +285,7 @@ const initMembersCharts = async (members = {}, palette) => {
   const runningChart = renderChart(
     "members-running-chart",
     createAreaChart("Members over time", "Members", runningData, palette, {
-      description: "Cumulative member joins over time.",
+      description: "Cumulative member joins over time",
     }),
     hasTimeSeriesData(runningData),
   );
@@ -294,7 +294,7 @@ const initMembersCharts = async (members = {}, palette) => {
   const monthlyChart = renderChart(
     "members-monthly-chart",
     createMonthlyBarChart("New Members per Month", "Members", members.per_month, palette, {
-      description: "Member joins each month.",
+      description: "Member joins each month",
       reservePeriodStart: true,
     }),
     hasChartData(members.per_month || []),
@@ -305,7 +305,7 @@ const initMembersCharts = async (members = {}, palette) => {
   const categoryChart = renderChart(
     "members-category-chart",
     createHorizontalBarChart("Members by Group Category", categoryData, palette, {
-      description: "Current members split by group category.",
+      description: "Current members split by group category",
     }),
     hasChartData(categoryData),
   );
@@ -315,7 +315,7 @@ const initMembersCharts = async (members = {}, palette) => {
   const regionChart = renderChart(
     "members-region-chart",
     createPieChart("Members by Region", "Members", regionData, palette, {
-      description: "Current members split by region.",
+      description: "Current members split by region",
     }),
     hasChartData(regionData),
   );
@@ -325,7 +325,7 @@ const initMembersCharts = async (members = {}, palette) => {
   const runningCategoryChart = renderChart(
     "members-running-category-chart",
     createStackedAreaChart("Members over time by category", runningCategorySeries, palette, {
-      description: "Cumulative members split by category.",
+      description: "Cumulative members split by category",
     }),
     hasStackedTimeSeriesData(runningCategorySeries),
   );
@@ -335,7 +335,7 @@ const initMembersCharts = async (members = {}, palette) => {
   const runningRegionChart = renderChart(
     "members-running-region-chart",
     createStackedAreaChart("Members over time by region", runningRegionSeries, palette, {
-      description: "Cumulative members split by region.",
+      description: "Cumulative members split by region",
     }),
     hasStackedTimeSeriesData(runningRegionSeries),
   );
@@ -359,7 +359,7 @@ const initEventsCharts = async (events = {}, palette) => {
   const runningChart = renderChart(
     "events-running-chart",
     createAreaChart("Events over time", "Events", runningData, palette, {
-      description: "Cumulative published events over time.",
+      description: "Cumulative published events over time",
     }),
     hasTimeSeriesData(runningData),
   );
@@ -368,7 +368,7 @@ const initEventsCharts = async (events = {}, palette) => {
   const monthlyChart = renderChart(
     "events-monthly-chart",
     createMonthlyBarChart("Events per Month", "Events", events.per_month, palette, {
-      description: "Published events by scheduled month.",
+      description: "Published events by scheduled month",
       reservePeriodStart: true,
     }),
     hasChartData(events.per_month || []),
@@ -379,7 +379,7 @@ const initEventsCharts = async (events = {}, palette) => {
   const groupCategoryChart = renderChart(
     "events-group-category-chart",
     createHorizontalBarChart("Events by Group Category", groupCategoryData, palette, {
-      description: "Published events split by group category.",
+      description: "Published events split by group category",
     }),
     hasChartData(groupCategoryData),
   );
@@ -389,7 +389,7 @@ const initEventsCharts = async (events = {}, palette) => {
   const regionChart = renderChart(
     "events-region-chart",
     createPieChart("Events by Region", "Events", regionData, palette, {
-      description: "Published events split by region.",
+      description: "Published events split by region",
     }),
     hasChartData(regionData),
   );
@@ -399,7 +399,7 @@ const initEventsCharts = async (events = {}, palette) => {
   const categoryChart = renderChart(
     "events-category-chart",
     createHorizontalBarChart("Events by Type", categoryData, palette, {
-      description: "Published events split by event type.",
+      description: "Published events split by event type",
     }),
     hasChartData(categoryData),
   );
@@ -409,7 +409,7 @@ const initEventsCharts = async (events = {}, palette) => {
   const runningGroupCategoryChart = renderChart(
     "events-running-group-category-chart",
     createStackedAreaChart("Events over time by group category", runningByGroupCategory.series, palette, {
-      description: "Cumulative events by group category.",
+      description: "Cumulative events by group category",
     }),
     hasStackedTimeSeriesData(runningByGroupCategory.series),
   );
@@ -419,7 +419,7 @@ const initEventsCharts = async (events = {}, palette) => {
   const runningGroupRegionChart = renderChart(
     "events-running-group-region-chart",
     createStackedAreaChart("Events over time by group region", runningByGroupRegion.series, palette, {
-      description: "Cumulative events by group region.",
+      description: "Cumulative events by group region",
     }),
     hasStackedTimeSeriesData(runningByGroupRegion.series),
   );
@@ -429,7 +429,7 @@ const initEventsCharts = async (events = {}, palette) => {
   const runningEventCategoryChart = renderChart(
     "events-running-event-category-chart",
     createStackedAreaChart("Events over time by event category", runningByEventCategory.series, palette, {
-      description: "Cumulative events by event type.",
+      description: "Cumulative events by event type",
     }),
     hasStackedTimeSeriesData(runningByEventCategory.series),
   );
@@ -445,7 +445,7 @@ const initEventsCharts = async (events = {}, palette) => {
       monthlyByGroupCategory.months,
       monthlyByGroupCategory.series,
       palette,
-      { description: "Scheduled events each month by group category." },
+      { description: "Scheduled events each month by group category" },
     ),
     hasChartData(monthlyByGroupCategory.months),
   );
@@ -461,7 +461,7 @@ const initEventsCharts = async (events = {}, palette) => {
       monthlyByGroupRegion.months,
       monthlyByGroupRegion.series,
       palette,
-      { description: "Scheduled events each month by group region." },
+      { description: "Scheduled events each month by group region" },
     ),
     hasChartData(monthlyByGroupRegion.months),
   );
@@ -477,7 +477,7 @@ const initEventsCharts = async (events = {}, palette) => {
       monthlyByEventCategory.months,
       monthlyByEventCategory.series,
       palette,
-      { description: "Scheduled events each month by event type." },
+      { description: "Scheduled events each month by event type" },
     ),
     hasChartData(monthlyByEventCategory.months),
   );
@@ -501,7 +501,7 @@ const initAttendeesCharts = async (attendees = {}, palette) => {
   const runningChart = renderChart(
     "attendees-running-chart",
     createAreaChart("Attendees over time", "Attendees", runningData, palette, {
-      description: "Cumulative event RSVPs over time.",
+      description: "Cumulative event RSVPs over time",
     }),
     hasTimeSeriesData(runningData),
   );
@@ -510,7 +510,7 @@ const initAttendeesCharts = async (attendees = {}, palette) => {
   const monthlyChart = renderChart(
     "attendees-monthly-chart",
     createMonthlyBarChart("Attendees per Month", "Attendees", attendees.per_month, palette, {
-      description: "Event RSVPs created each month.",
+      description: "Event RSVPs created each month",
       reservePeriodStart: true,
     }),
     hasChartData(attendees.per_month || []),
@@ -521,7 +521,7 @@ const initAttendeesCharts = async (attendees = {}, palette) => {
   const categoryChart = renderChart(
     "attendees-category-chart",
     createHorizontalBarChart("Attendees by Event Type", categoryData, palette, {
-      description: "Total RSVPs split by event type.",
+      description: "Total RSVPs split by event type",
     }),
     hasChartData(categoryData),
   );
@@ -531,7 +531,7 @@ const initAttendeesCharts = async (attendees = {}, palette) => {
   const regionChart = renderChart(
     "attendees-region-chart",
     createPieChart("Attendees by Region", "Attendees", regionData, palette, {
-      description: "Total RSVPs split by group region.",
+      description: "Total RSVPs split by group region",
     }),
     hasChartData(regionData),
   );
@@ -541,7 +541,7 @@ const initAttendeesCharts = async (attendees = {}, palette) => {
   const runningGroupCategoryChart = renderChart(
     "attendees-running-group-category-chart",
     createStackedAreaChart("Attendees over time by group category", runningByGroupCategory.series, palette, {
-      description: "Cumulative RSVPs by group category.",
+      description: "Cumulative RSVPs by group category",
     }),
     hasStackedTimeSeriesData(runningByGroupCategory.series),
   );
@@ -551,7 +551,7 @@ const initAttendeesCharts = async (attendees = {}, palette) => {
   const runningGroupRegionChart = renderChart(
     "attendees-running-group-region-chart",
     createStackedAreaChart("Attendees over time by group region", runningByGroupRegion.series, palette, {
-      description: "Cumulative RSVPs by group region.",
+      description: "Cumulative RSVPs by group region",
     }),
     hasStackedTimeSeriesData(runningByGroupRegion.series),
   );
@@ -561,7 +561,7 @@ const initAttendeesCharts = async (attendees = {}, palette) => {
   const runningEventCategoryChart = renderChart(
     "attendees-running-event-category-chart",
     createStackedAreaChart("Attendees over time by event category", runningByEventCategory.series, palette, {
-      description: "Cumulative RSVPs by event type.",
+      description: "Cumulative RSVPs by event type",
     }),
     hasStackedTimeSeriesData(runningByEventCategory.series),
   );
@@ -577,7 +577,7 @@ const initAttendeesCharts = async (attendees = {}, palette) => {
       monthlyByGroupCategory.months,
       monthlyByGroupCategory.series,
       palette,
-      { description: "RSVPs created each month by group category." },
+      { description: "RSVPs created each month by group category" },
     ),
     hasChartData(monthlyByGroupCategory.months),
   );
@@ -593,7 +593,7 @@ const initAttendeesCharts = async (attendees = {}, palette) => {
       monthlyByGroupRegion.months,
       monthlyByGroupRegion.series,
       palette,
-      { description: "RSVPs created each month by group region." },
+      { description: "RSVPs created each month by group region" },
     ),
     hasChartData(monthlyByGroupRegion.months),
   );
@@ -609,7 +609,7 @@ const initAttendeesCharts = async (attendees = {}, palette) => {
       monthlyByEventCategory.months,
       monthlyByEventCategory.series,
       palette,
-      { description: "RSVPs created each month by event type." },
+      { description: "RSVPs created each month by event type" },
     ),
     hasChartData(monthlyByEventCategory.months),
   );

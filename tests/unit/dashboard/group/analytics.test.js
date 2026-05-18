@@ -62,9 +62,27 @@ describe("dashboard group analytics", () => {
         group: { per_month_views: [["2025-01", 2]], per_day_views: [["2025-01-01", 1]] },
         events: { per_month_views: [["2025-01", 2]], per_day_views: [["2025-01-01", 1]] },
       },
-      members: { running_total: [[1, 1], [2, 2]], per_month: [["2025-01", 1]] },
-      events: { running_total: [[1, 1], [2, 2]], per_month: [["2025-01", 1]] },
-      attendees: { running_total: [[1, 1], [2, 2]], per_month: [["2025-01", 1]] },
+      members: {
+        running_total: [
+          [1, 1],
+          [2, 2],
+        ],
+        per_month: [["2025-01", 1]],
+      },
+      events: {
+        running_total: [
+          [1, 1],
+          [2, 2],
+        ],
+        per_month: [["2025-01", 1]],
+      },
+      attendees: {
+        running_total: [
+          [1, 1],
+          [2, 2],
+        ],
+        per_month: [["2025-01", 1]],
+      },
     });
 
     expect(setOptionCalls).to.have.length(12);
@@ -79,6 +97,6 @@ describe("dashboard group analytics", () => {
     );
     expect(
       setOptionCalls.find((call) => call.id === "total-views-monthly-chart").option.title.subtext,
-    ).to.equal("Group and event views grouped by month.");
+    ).to.equal("Group and event views grouped by month");
   });
 });

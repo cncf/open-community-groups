@@ -64,12 +64,25 @@ describe("dashboard community analytics", () => {
   it("initializes the default groups analytics tab", async () => {
     await initAnalyticsCharts({
       groups: {
-        running_total: [[1, 1], [2, 2]],
+        running_total: [
+          [1, 1],
+          [2, 2],
+        ],
         per_month: [["2025-01", 1]],
         total_by_category: [["Cloud", 3]],
         total_by_region: [["EU", 2]],
-        running_total_by_category: { Cloud: [[1, 1], [2, 2]] },
-        running_total_by_region: { EU: [[1, 1], [2, 2]] },
+        running_total_by_category: {
+          Cloud: [
+            [1, 1],
+            [2, 2],
+          ],
+        },
+        running_total_by_region: {
+          EU: [
+            [1, 1],
+            [2, 2],
+          ],
+        },
         per_month_by_category: { Cloud: [["2025-01", 1]] },
         per_month_by_region: { EU: [["2025-01", 1]] },
       },
@@ -79,7 +92,7 @@ describe("dashboard community analytics", () => {
     expect(setOptionCalls.map((call) => call.id)).to.include("groups-region-chart");
     expect(
       setOptionCalls.find((call) => call.id === "groups-running-chart").option.baseOption.title.subtext,
-    ).to.equal("Cumulative active groups over time.");
+    ).to.equal("Cumulative active groups over time");
     expect(document.querySelector('[data-analytics-tab="groups"]').dataset.active).to.equal("true");
   });
 
@@ -116,7 +129,7 @@ describe("dashboard community analytics", () => {
       "Events per Month",
     );
     expect(setOptionCalls.find((call) => call.id === "events-monthly-chart").option.title.subtext).to.equal(
-      "Published events by scheduled month.",
+      "Published events by scheduled month",
     );
 
     setOptionCalls = [];
@@ -126,9 +139,9 @@ describe("dashboard community analytics", () => {
     expect(setOptionCalls.find((call) => call.id === "attendees-monthly-chart").option.title.text).to.equal(
       "Attendees per Month",
     );
-    expect(setOptionCalls.find((call) => call.id === "attendees-monthly-chart").option.title.subtext).to.equal(
-      "Event RSVPs created each month.",
-    );
+    expect(
+      setOptionCalls.find((call) => call.id === "attendees-monthly-chart").option.title.subtext,
+    ).to.equal("Event RSVPs created each month");
 
     setOptionCalls = [];
     document.querySelector('[data-analytics-tab="page-views"]').click();
@@ -139,6 +152,6 @@ describe("dashboard community analytics", () => {
     );
     expect(
       setOptionCalls.find((call) => call.id === "total-views-monthly-chart").option.title.subtext,
-    ).to.equal("All tracked views grouped by month.");
+    ).to.equal("All tracked views grouped by month");
   });
 });
