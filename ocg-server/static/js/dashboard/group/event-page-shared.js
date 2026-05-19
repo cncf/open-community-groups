@@ -373,6 +373,11 @@ export const initializeCommonEventPageToggles = ({
     hiddenInput: queryById("registration_required"),
   });
 
+  bindBooleanToggle({
+    toggle: queryById("toggle_test_event"),
+    hiddenInput: queryById("test_event"),
+  });
+
   initializeEventEnrollmentState(pageRoot);
 
   bindBooleanToggle({

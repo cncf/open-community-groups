@@ -19,6 +19,8 @@ const sharedEventFormsMarkup = () => `
   <input id="ends_at" />
   <input id="toggle_registration_required" type="checkbox" />
   <input id="registration_required" type="hidden" value="false" />
+  <input id="toggle_test_event" type="checkbox" />
+  <input id="test_event" type="hidden" value="false" />
   <input id="toggle_event_reminder_enabled" type="checkbox" />
   <input id="event_reminder_enabled" type="hidden" value="false" />
   <input id="toggle_cfs_enabled" type="checkbox" />
@@ -98,14 +100,18 @@ describe("event page modules", () => {
     initializeEventAddPage();
 
     const registrationToggle = document.getElementById("toggle_registration_required");
+    const testEventToggle = document.getElementById("toggle_test_event");
     const reminderToggle = document.getElementById("toggle_event_reminder_enabled");
 
     registrationToggle.checked = true;
     registrationToggle.dispatchEvent(new Event("change", { bubbles: true }));
+    testEventToggle.checked = true;
+    testEventToggle.dispatchEvent(new Event("change", { bubbles: true }));
     reminderToggle.checked = true;
     reminderToggle.dispatchEvent(new Event("change", { bubbles: true }));
 
     expect(document.getElementById("registration_required").value).to.equal("true");
+    expect(document.getElementById("test_event").value).to.equal("true");
     expect(document.getElementById("event_reminder_enabled").value).to.equal("true");
   });
 

@@ -17,6 +17,7 @@ create or replace function get_group_upcoming_events(
         and g.slug = p_group_slug
         and g.active = true
         and e.published = true
+        and e.test_event = false
         and e.event_kind_id = any(p_event_kind_ids)
         and e.starts_at is not null
         and e.starts_at > now()

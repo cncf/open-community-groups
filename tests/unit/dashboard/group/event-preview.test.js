@@ -3,12 +3,13 @@ import { expect } from "@open-wc/testing";
 import {
   buildEventPreviewPayload,
   initializeEventPreview,
+  openEventPreviewModal,
 } from "/static/js/dashboard/group/event-preview.js";
 import { waitForMicrotask } from "/tests/unit/test-utils/async.js";
 import { useDashboardTestEnv } from "/tests/unit/test-utils/env.js";
 import { mockFetch } from "/tests/unit/test-utils/network.js";
 
-const mountPreviewPage = () => {
+const mountPreviewPage = ({ testEvent = false } = {}) => {
   document.body.innerHTML = `
     <div id="dashboard-content"
          data-community="test-community"
@@ -24,6 +25,10 @@ const mountPreviewPage = () => {
           <input name="meetup_url" value="https://meetup.example/events/draft" />
           <input name="luma_url" value="https://luma.example/draft" />
           <input name="toggle_registration_required" value="on" />
+          <input id="test_event"
+                 name="test_event"
+                 type="hidden"
+                 value="${testEvent ? "true" : "false"}" />
           <select id="kind_id" name="kind_id">
             <option value="">Select</option>
             <option value="hybrid" selected>Hybrid</option>
@@ -186,5 +191,29 @@ describe("event preview", () => {
     } finally {
       fetchMock.restore();
     }
+  });
+
+  it("shows the test badge in the preview modal when test event is enabled", () => {
+    const pageRoot = mountPreviewPage({ testEvent: true });
+    const modalRoot = document.getElementById("event-preview-modal-root");
+
+    openEventPreviewModal(
+      modalRoot,
+      `<div id="event-preview-modal">
+        <div class="flex flex-wrap items-center gap-1.5">
+          <span class="custom-badge">Hybrid</span>
+          <span class="custom-badge hidden bg-amber-100 border-amber-800 text-amber-800"
+                data-event-preview-test-badge>Test</span>
+        </div>
+        <button type="button" data-event-preview-close>Close</button>
+      </div>`,
+      pageRoot,
+    );
+
+    const testBadge = modalRoot.querySelector("[data-event-preview-test-badge]");
+    expect(testBadge.classList.contains("hidden")).to.equal(false);
+    expect(testBadge.textContent.trim()).to.equal("Test");
+
+    modalRoot.querySelector("[data-event-preview-close]").click();
   });
 });

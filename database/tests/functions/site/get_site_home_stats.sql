@@ -16,6 +16,7 @@ select plan(2);
 \set event2ID '00000000-0000-0000-0000-000000000052'
 \set event3ID '00000000-0000-0000-0000-000000000053'
 \set event4ID '00000000-0000-0000-0000-000000000054'
+\set event5ID '00000000-0000-0000-0000-000000000055'
 \set eventCategoryID '00000000-0000-0000-0000-000000000061'
 \set eventID '00000000-0000-0000-0000-000000000051'
 \set group2ID '00000000-0000-0000-0000-000000000032'
@@ -72,6 +73,7 @@ insert into event (
     name,
     slug,
     description,
+    test_event,
     timezone,
     event_category_id,
     event_kind_id,
@@ -80,10 +82,11 @@ insert into event (
     deleted,
     published
 ) values
-    (:'eventID', 'E1', 'e1', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', false, false, true),
-    (:'event2ID', 'E2', 'e2', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', false, false, false),
-    (:'event3ID', 'E3', 'e3', 'd', 'UTC', :'eventCategoryID', 'in-person', :'group2ID', true, false, false),
-    (:'event4ID', 'E4', 'e4', 'd', 'UTC', :'eventCategoryID', 'in-person', :'group2ID', false, true, false);
+    (:'eventID', 'E1', 'e1', 'd', false, 'UTC', :'eventCategoryID', 'in-person', :'groupID', false, false, true),
+    (:'event2ID', 'E2', 'e2', 'd', false, 'UTC', :'eventCategoryID', 'in-person', :'groupID', false, false, false),
+    (:'event3ID', 'E3', 'e3', 'd', false, 'UTC', :'eventCategoryID', 'in-person', :'group2ID', true, false, false),
+    (:'event4ID', 'E4', 'e4', 'd', false, 'UTC', :'eventCategoryID', 'in-person', :'group2ID', false, true, false),
+    (:'event5ID', 'E5', 'e5', 'd', true, 'UTC', :'eventCategoryID', 'in-person', :'groupID', false, false, true);
 
 -- Group Member
 insert into group_member (group_id, user_id, created_at)
@@ -100,7 +103,8 @@ values
     (:'eventID', :'user2ID', '2024-01-01 00:00:00'),
     (:'event2ID', :'user1ID', '2024-01-01 00:00:00'),
     (:'event3ID', :'user2ID', '2024-01-01 00:00:00'),
-    (:'event4ID', :'user3ID', '2024-01-01 00:00:00');
+    (:'event4ID', :'user3ID', '2024-01-01 00:00:00'),
+    (:'event5ID', :'user3ID', '2024-01-01 00:00:00');
 
 -- ============================================================================
 -- TESTS
@@ -123,9 +127,10 @@ select is(
 -- Data setup:
 -- - 3 communities: 2 active (community, community2), 1 inactive (community3)
 -- - 3 groups: 2 active (group, group2), 1 deleted (group3)
--- - 4 events: 1 published (event), 1 unpublished (event2), 1 canceled (event3), 1 deleted (event4)
+-- - 5 events: 1 published (event), 1 unpublished (event2), 1 canceled (event3),
+--   1 deleted (event4), 1 test event (event5)
 -- - 4 group members: 3 in active groups, 1 in deleted group (should be excluded)
--- - 5 event attendees: 2 in published event, 3 in excluded events (should be excluded)
+-- - 6 event attendees: 2 in published event, 4 in excluded events (should be excluded)
 -- Expected: communities=2, groups=2, events=1, groups_members=3, events_attendees=2
 select is(
     get_site_home_stats()::jsonb,

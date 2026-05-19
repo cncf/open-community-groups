@@ -80,6 +80,7 @@ events as (
     where e.published = true
         and e.canceled = false
         and e.deleted = false
+        and e.test_event = false
 ),
 events_for_views as (
     select
@@ -91,6 +92,7 @@ events_for_views as (
     join filtered_groups fg on fg.group_id = e.group_id
     where e.deleted = false
         and e.published = true
+        and e.test_event = false
 ),
 events_with_start as (
     select *

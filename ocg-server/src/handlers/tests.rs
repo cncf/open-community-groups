@@ -472,6 +472,7 @@ pub(crate) fn sample_event_summary(event_id: Uuid, _group_id: Uuid) -> EventSumm
         name: "Sample Event".to_string(),
         published: true,
         slug: "ghi9abc".to_string(),
+        test_event: false,
         timezone: UTC,
 
         capacity: None,

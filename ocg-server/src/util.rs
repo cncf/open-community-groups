@@ -294,6 +294,7 @@ mod tests {
             name: "Test Event".to_string(),
             published: true,
             slug: "test-event".to_string(),
+            test_event: false,
             timezone: Los_Angeles,
 
             capacity: None,

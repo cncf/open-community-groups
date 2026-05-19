@@ -346,6 +346,9 @@ pub(crate) struct Event {
     /// Tags associated with the event.
     #[garde(custom(trimmed_non_empty_tag_vec))]
     pub tags: Option<Vec<String>>,
+    /// Whether this event is only for testing.
+    #[garde(skip)]
+    pub test_event: Option<bool>,
     /// Ticket types configured for the event.
     #[garde(dive)]
     pub ticket_types: Option<Vec<TicketType>>,

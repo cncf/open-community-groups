@@ -203,6 +203,7 @@ begin
     update event set
         name = p_event->>'name',
         description = p_event->>'description',
+        test_event = coalesce((p_event->>'test_event')::boolean, false),
         timezone = p_event->>'timezone',
         event_category_id = (p_event->>'category_id')::uuid,
         event_kind_id = p_event->>'kind_id',

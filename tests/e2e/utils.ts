@@ -16,6 +16,11 @@ export const TEST_EVENT_SLUG =
   process.env.OCG_E2E_EVENT_SLUG || "alpha-event-1";
 export const TEST_GROUP_NAME = "Platform Ops Meetup";
 export const TEST_EVENT_NAME = "Upcoming In-Person Event";
+export const TEST_EVENT_PAGE_BADGE_EVENT = {
+  id: "55555555-5555-5555-5555-555555555524",
+  name: "Test Event Page Badge",
+  slug: "alpha-test-event-badge",
+} as const;
 export const TEST_SEARCH_QUERY = "Test";
 export const TEST_SITE_TITLE = "E2E Test Site";
 export const TEST_COMMUNITY_TITLE = "Platform Engineering Community";

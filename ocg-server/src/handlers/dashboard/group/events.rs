@@ -327,7 +327,7 @@ pub(crate) async fn cancel(
         .filter(|event| {
             matches!(
                 (event.published, event.canceled, event.starts_at),
-                (true, false, Some(starts_at)) if starts_at > Utc::now()
+                (true, false, Some(starts_at)) if !event.test_event && starts_at > Utc::now()
             )
         })
         .collect();
@@ -443,7 +443,7 @@ pub(crate) async fn publish(
         .filter(|event| {
             matches!(
                 (event.published, event.starts_at),
-                (false, Some(starts_at)) if starts_at > Utc::now()
+                (false, Some(starts_at)) if !event.test_event && starts_at > Utc::now()
             )
         })
         .collect();
@@ -552,13 +552,13 @@ pub(crate) async fn update(
         .await?;
 
     // Notify users promoted from the waitlist when the update opens capacity
-    if !promoted_user_ids.is_empty() {
+    if !promoted_user_ids.is_empty() && !before.test_event {
         // Fetch notification context and updated event summary concurrently
         match tokio::try_join!(
             db.get_site_settings(),
             db.get_event_summary(community_id, group_id, event_id),
         ) {
-            Ok((site_settings, event)) => {
+            Ok((site_settings, event)) if !event.test_event => {
                 // Build and enqueue the waitlist promotion notification
                 let base_url = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
                 let link = build_event_page_link(base_url, &event);
@@ -578,6 +578,7 @@ pub(crate) async fn update(
                     warn!(error = %err, "failed to enqueue waitlist promotion notification");
                 }
             }
+            Ok(_) => {}
             Err(err) => {
                 warn!(error = %err, "failed to load event notification context after event update");
             }
@@ -585,7 +586,7 @@ pub(crate) async fn update(
     }
 
     // Notify attendees and speakers if event was rescheduled (only if not past)
-    if !before.is_past() {
+    if !before.is_past() && !before.test_event {
         // Fetch updated event summary to compare start times and detect reschedule
         let after = db.get_event_summary(community_id, group_id, event_id).await?;
         let should_notify = match (before.published, before.starts_at, after.starts_at) {
@@ -865,6 +866,11 @@ async fn notify_event_canceled(
         db.list_event_waitlist_ids(group_id, event_id)
     )?;
 
+    // Test events are reachable by direct link but should not broadcast cancellations
+    if event_full.test_event {
+        return Ok(());
+    }
+
     // Combine attendee, waitlist, and speaker IDs
     let speaker_ids = event_full.speakers_ids();
     let recipients: Vec<Uuid> = attendee_ids
@@ -916,6 +922,11 @@ async fn notify_event_published(
         db.list_group_members_ids(group_id),
         db.list_group_team_members_ids(group_id)
     )?;
+
+    // Test events are reachable by direct link but should not broadcast publication
+    if event_full.test_event {
+        return Ok(());
+    }
 
     // Combine group members and team members
     let mut recipients = group_member_ids;
@@ -1001,6 +1012,11 @@ async fn notify_events_canceled(
             db.list_event_waitlist_ids(group_id, *event_id)
         )?;
 
+        // Test events in a series should stay out of cancellation broadcasts
+        if event_full.test_event {
+            continue;
+        }
+
         // Map each recipient to the canceled occurrence relevant to them
         let event = event_series_notification_item(base_url, &event_full);
         let speaker_ids = event_full.speakers_ids();
@@ -1071,6 +1087,11 @@ async fn notify_events_published(
     for event_id in event_ids {
         // Map members and speakers to the published occurrence relevant to them
         let event_full = db.get_event_full(community_id, group_id, *event_id).await?;
+
+        // Test events in a series should stay out of publication broadcasts
+        if event_full.test_event {
+            continue;
+        }
         let event = event_series_notification_item(base_url, &event_full);
         let speaker_ids = event_full.speakers_ids();
         let speaker_set: HashSet<Uuid> = speaker_ids.iter().copied().collect();

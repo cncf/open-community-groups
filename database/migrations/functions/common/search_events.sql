@@ -100,6 +100,7 @@ begin
         where g.active = true
         and e.published = true
         and e.canceled = false
+        and e.test_event = false
         and
             case when v_bbox is not null then
             st_intersects(coalesce(e.location, g.location), v_bbox) else true end

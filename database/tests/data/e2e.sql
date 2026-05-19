@@ -551,6 +551,26 @@ insert into event (
     true
 );
 
+-- Published test event for direct event-page badge coverage.
+insert into event (
+    event_id, name, slug, description, description_short, timezone, event_category_id,
+    event_kind_id, group_id, published, test_event, starts_at, ends_at
+) values (
+    '55555555-5555-5555-5555-555555555524',
+    'Test Event Page Badge',
+    'alpha-test-event-badge',
+    'Published test event used for event page badge coverage.',
+    'Direct link coverage for test event badges.',
+    'UTC',
+    '33333333-3333-3333-3333-333333333331',
+    'virtual',
+    '44444444-4444-4444-4444-444444444441',
+    true,
+    true,
+    now() + interval '70 days',
+    now() + interval '70 days 2 hours'
+);
+
 -- Ticketed payment fixtures reserved for the Playwright suite.
 insert into event (
     event_id, name, slug, description, timezone, event_category_id,

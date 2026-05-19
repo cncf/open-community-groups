@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(5);
+select plan(6);
 
 -- ============================================================================
 -- VARIABLES
@@ -100,6 +100,15 @@ select is(
     ]'::jsonb,
     'Should return only communities with at least one group and one published event'
 );
+
+-- Should exclude communities with only test events
+update event set test_event = true where event_id = :'event1ID';
+select is(
+    list_communities()::jsonb,
+    '[]'::jsonb,
+    'Should exclude communities with only test events'
+);
+update event set test_event = false where event_id = :'event1ID';
 
 -- Should exclude communities with only deleted groups
 update "group" set deleted = true, active = false where group_id = :'group1ID';

@@ -117,7 +117,12 @@
 
                     {# Mobile type and date -#}
                     <div class="block xl:hidden mt-1.5 space-y-1.5">
-                      <div>{{ badges::event_badge(kind = event.kind, extra_styles = Some("px-2.5 py-0.5") ) -}}</div>
+                      <div class="flex flex-wrap items-center gap-1.5">
+                        {{ badges::event_badge(kind = event.kind, extra_styles = Some("px-2.5 py-0.5") ) -}}
+                        {% if event.test_event -%}
+                          {{ badges::test_event_badge() -}}
+                        {% endif -%}
+                      </div>
                       {% if let Some(start_time) = &event.starts_at -%}
                         <div class="max-w-full truncate text-xs text-stone-500">
                           {{ start_time.with_timezone(event.timezone).format("%b %d, %Y at %I:%M %p %Z") }}
@@ -159,7 +164,12 @@
 
               {# Event Type -#}
               <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap min-w-[100px] max-w-[150px]">
-                {{ badges::event_badge(kind = event.kind, extra_styles = Some("px-2.5 py-0.5") ) -}}
+                <div class="flex flex-wrap items-center gap-1.5">
+                  {{ badges::event_badge(kind = event.kind, extra_styles = Some("px-2.5 py-0.5") ) -}}
+                  {% if event.test_event -%}
+                    {{ badges::test_event_badge() -}}
+                  {% endif -%}
+                </div>
               </td>
               {# End event type -#}
 
@@ -380,7 +390,12 @@
 
                     {# Mobile type and date -#}
                     <div class="block xl:hidden mt-1.5 space-y-1.5">
-                      <div>{{ badges::event_badge(kind = event.kind, extra_styles = Some("px-2.5 py-0.5") ) -}}</div>
+                      <div class="flex flex-wrap items-center gap-1.5">
+                        {{ badges::event_badge(kind = event.kind, extra_styles = Some("px-2.5 py-0.5") ) -}}
+                        {% if event.test_event -%}
+                          {{ badges::test_event_badge() -}}
+                        {% endif -%}
+                      </div>
                       {% if let Some(start_time) = &event.starts_at -%}
                         <div class="max-w-full truncate text-xs text-stone-500">
                           {{ start_time.with_timezone(event.timezone).format("%b %d, %Y at %I:%M %p %Z") }}
@@ -422,7 +437,12 @@
 
               {# Event Type -#}
               <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap min-w-[100px] max-w-[150px]">
-                {{ badges::event_badge(kind = event.kind, extra_styles = Some("px-2.5 py-0.5") ) -}}
+                <div class="flex flex-wrap items-center gap-1.5">
+                  {{ badges::event_badge(kind = event.kind, extra_styles = Some("px-2.5 py-0.5") ) -}}
+                  {% if event.test_event -%}
+                    {{ badges::test_event_badge() -}}
+                  {% endif -%}
+                </div>
               </td>
               {# End event type -#}
 

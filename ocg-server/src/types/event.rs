@@ -61,6 +61,9 @@ pub struct EventSummary {
     pub published: bool,
     /// URL-friendly identifier for this event.
     pub slug: String,
+    /// Whether the event was created only for testing.
+    #[serde(default)]
+    pub test_event: bool,
     /// Timezone in which the event times should be displayed.
     pub timezone: Tz,
     /// Current number of users on the waiting list.
@@ -233,6 +236,9 @@ pub struct EventFull {
     pub speakers: Vec<Speaker>,
     /// Event sponsors.
     pub sponsors: Vec<EventSponsor>,
+    /// Whether the event was created only for testing.
+    #[serde(default)]
+    pub test_event: bool,
     /// Timezone for event times.
     pub timezone: Tz,
     /// Whether joining the waiting list is enabled for the event.
@@ -501,6 +507,7 @@ impl From<&EventFull> for EventSummary {
             name: event.name.clone(),
             published: event.published,
             slug: event.slug.clone(),
+            test_event: event.test_event,
             timezone: event.timezone,
             waitlist_count: event.waitlist_count,
             waitlist_enabled: event.waitlist_enabled,
@@ -891,6 +898,7 @@ mod tests {
             remaining_capacity: Some(7),
             slug: "event-slug".to_string(),
             starts_at: Some(starts_at),
+            test_event: true,
             timezone: chrono_tz::Europe::Madrid,
             venue_city: Some("Madrid".to_string()),
             waitlist_count: 3,
@@ -919,6 +927,7 @@ mod tests {
         assert_eq!(summary.remaining_capacity, Some(7));
         assert_eq!(summary.slug, "event-slug");
         assert_eq!(summary.starts_at, Some(starts_at));
+        assert!(summary.test_event);
         assert_eq!(summary.timezone, chrono_tz::Europe::Madrid);
         assert_eq!(summary.venue_city.as_deref(), Some("Madrid"));
         assert_eq!(summary.waitlist_count, 3);
@@ -1404,6 +1413,7 @@ mod tests {
             payment_currency_code: Some("USD".to_string()),
             published: true,
             slug: "event".to_string(),
+            test_event: false,
             ticket_types: Some(ticket_types),
             timezone: chrono_tz::UTC,
             waitlist_count: 0,

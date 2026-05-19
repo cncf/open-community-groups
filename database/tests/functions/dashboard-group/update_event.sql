@@ -1226,6 +1226,7 @@ select is(
         "slug": "def5678",
         "speakers": [],
         "sponsors": [],
+        "test_event": false,
         "timezone": "America/Los_Angeles",
 
         "attendee_approval_required": false,
@@ -1786,6 +1787,7 @@ select lives_ok(
             "photos_urls": ["https://example.com/new-photo1.jpg", "https://example.com/new-photo2.jpg"],
             "registration_required": false,
             "tags": ["updated", "event", "tags"],
+            "test_event": true,
             "venue_address": "456 New St",
             "venue_city": "Tokyo",
             "venue_country_code": "JP",
@@ -1847,6 +1849,7 @@ select is(
         "published": false,
         "slug": "def5678",
         "timezone": "Asia/Tokyo",
+        "test_event": true,
         "attendee_approval_required": false,
         "banner_url": "https://example.com/new-banner.jpg",
         "capacity": 200,
