@@ -18,6 +18,16 @@
 {% endmacro event_badge -%}
 {# End event badge -#}
 
+{# Test event badge -#}
+{% macro test_event_badge(extra_styles = None) -%}
+  {% let extra_styles_ = extra_styles.unwrap_or("") -%}
+
+  <span class="custom-badge bg-amber-100 border-amber-800 text-amber-800 px-2.5 py-0.5 {{ extra_styles_ }}">
+    Test
+  </span>
+{% endmacro test_event_badge -%}
+{# End test event badge -#}
+
 {# Status badge -#}
 {% macro status_badge(label, canceled = false, published = false, title = "", extra_styles = None) -%}
   {% let extra_styles_ = extra_styles.unwrap_or("") -%}
