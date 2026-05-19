@@ -14,7 +14,7 @@ use axum::{
     extract::{FromRef, Request, State as AxumState},
     http::{
         HeaderName, HeaderValue, StatusCode, Uri,
-        header::{CACHE_CONTROL, CONTENT_TYPE, HOST},
+        header::{CACHE_CONTROL, CONTENT_TYPE, HOST, VARY},
     },
     middleware::{self, Next},
     response::{IntoResponse, Redirect},
@@ -85,8 +85,13 @@ pub(crate) const COMMIT_SHA_HEADER: &str = "x-ocg-commit-sha";
 const OCG_REFRESH_HEADER: &str = "x-ocg-refresh";
 
 /// Headers for public shared-cache responses without additional headers.
-pub(crate) const PUBLIC_SHARED_CACHE_HEADERS: [(HeaderName, &str); 1] =
-    [(CACHE_CONTROL, CACHE_CONTROL_PUBLIC_SHARED)];
+pub(crate) const PUBLIC_SHARED_CACHE_HEADERS: [(HeaderName, &str); 2] = [
+    (CACHE_CONTROL, CACHE_CONTROL_PUBLIC_SHARED),
+    (VARY, PUBLIC_SHARED_CACHE_VARY),
+];
+
+/// Vary header value for public shared-cache responses.
+pub(crate) const PUBLIC_SHARED_CACHE_VARY: &str = "x-ocg-commit-sha, hx-request, x-ocg-fetch";
 
 /// Static file embedder using rust-embed.
 ///
