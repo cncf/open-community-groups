@@ -19,7 +19,7 @@ export const ocgFetch = async (input, init = {}) => {
     headers,
   });
   if (reloadIfDeploymentChanged(response.headers)) {
-    throw new Error("Page reload requested by server.");
+    return waitForDeploymentReload();
   }
 
   const redirectUrl = response.headers?.get?.("X-OCG-Redirect");
@@ -49,3 +49,9 @@ const isSameOriginRequest = (input) => {
     return false;
   }
 };
+
+/**
+ * Keeps caller catch/finally handlers from rendering stale UI during reload.
+ * @returns {Promise<void>} Promise that stays pending until navigation replaces the page.
+ */
+const waitForDeploymentReload = () => new Promise(() => {});

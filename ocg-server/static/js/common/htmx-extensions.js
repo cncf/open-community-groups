@@ -116,7 +116,8 @@ export const handleCommitShaConfigRequest = (event, root = document) => {
 };
 
 /**
- * Records deployment refreshes before HTMX consumes refresh response headers.
+ * Records deployment refreshes before HTMX consumes native refresh headers.
+ * This keeps the one-shot post-refresh alert in deployment state.
  * @param {CustomEvent} event HTMX beforeOnLoad event.
  * @param {Document} root Document used to read the loaded commit SHA.
  * @returns {void}
