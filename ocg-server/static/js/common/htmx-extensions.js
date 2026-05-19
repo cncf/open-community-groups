@@ -116,6 +116,22 @@ export const handleCommitShaConfigRequest = (event, root = document) => {
 };
 
 /**
+ * Records deployment refreshes before HTMX consumes refresh response headers.
+ * @param {CustomEvent} event HTMX beforeOnLoad event.
+ * @param {Document} root Document used to read the loaded commit SHA.
+ * @returns {void}
+ */
+export const handleCommitShaBeforeOnLoad = (event, root = document) => {
+  if (!event.detail) {
+    return;
+  }
+
+  if (reloadIfDeploymentChanged(event.detail.xhr, root)) {
+    event.preventDefault();
+  }
+};
+
+/**
  * Prevents stale deployment fragments from being swapped into the loaded page.
  * @param {CustomEvent} event HTMX beforeSwap event.
  * @param {Document} root Document used to read the loaded commit SHA.
@@ -157,6 +173,7 @@ export const registerHtmxResponseHandlers = (root = document) => {
   }
 
   eventRoot.addEventListener("htmx:configRequest", handleCommitShaConfigRequest);
+  eventRoot.addEventListener("htmx:beforeOnLoad", handleCommitShaBeforeOnLoad);
   eventRoot.addEventListener("htmx:beforeSwap", handleCommitShaBeforeSwap);
   eventRoot.addEventListener("htmx:beforeSwap", handleNotFoundBeforeSwap);
   responseHandlerRoots.add(eventRoot);

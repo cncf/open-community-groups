@@ -2,6 +2,7 @@ import { expect } from "@open-wc/testing";
 
 import {
   createNoEmptyValuesExtension,
+  handleCommitShaBeforeOnLoad,
   handleCommitShaBeforeSwap,
   handleCommitShaConfigRequest,
   handleNotFoundBeforeSwap,
@@ -10,6 +11,8 @@ import {
 } from "/static/js/common/htmx-extensions.js";
 import {
   COMMIT_SHA_HEADER,
+  consumePendingDeploymentRefreshAlert,
+  REFRESH_HEADER,
   resetDeploymentReloadState,
   setDeploymentReloadHandler,
 } from "/static/js/common/deployment-version.js";
@@ -33,10 +36,7 @@ describe("htmx extensions", () => {
 
     registerHtmxNoEmptyValuesExtensions(htmxMock);
 
-    expect(Array.from(extensions.keys())).to.deep.equal([
-      "no-empty-vals",
-      "no-empty-vals-keep-zero",
-    ]);
+    expect(Array.from(extensions.keys())).to.deep.equal(["no-empty-vals", "no-empty-vals-keep-zero"]);
   });
 
   it('drops empty strings and "0" for the default no-empty-vals extension', () => {
@@ -164,6 +164,27 @@ describe("htmx extensions", () => {
     });
   });
 
+  it("records and owns htmx refresh headers before htmx handles them", () => {
+    let reloads = 0;
+    setDeploymentReloadHandler(() => {
+      reloads += 1;
+    });
+    const event = new CustomEvent("htmx:beforeOnLoad", {
+      cancelable: true,
+      detail: {
+        xhr: {
+          getResponseHeader: (name) => (name === REFRESH_HEADER ? "true" : null),
+        },
+      },
+    });
+
+    handleCommitShaBeforeOnLoad(event);
+
+    expect(event.defaultPrevented).to.equal(true);
+    expect(reloads).to.equal(1);
+    expect(consumePendingDeploymentRefreshAlert()).to.equal(true);
+  });
+
   it("cancels the swap and reloads when an htmx response comes from a newer commit", () => {
     setLoadedCommitSha("abc123");
     let reloads = 0;
@@ -254,6 +275,7 @@ describe("htmx extensions", () => {
 
     expect(listeners).to.deep.equal([
       ["htmx:configRequest", handleCommitShaConfigRequest],
+      ["htmx:beforeOnLoad", handleCommitShaBeforeOnLoad],
       ["htmx:beforeSwap", handleCommitShaBeforeSwap],
       ["htmx:beforeSwap", handleNotFoundBeforeSwap],
     ]);
@@ -272,6 +294,7 @@ describe("htmx extensions", () => {
 
     expect(listeners).to.deep.equal([
       ["htmx:configRequest", handleCommitShaConfigRequest],
+      ["htmx:beforeOnLoad", handleCommitShaBeforeOnLoad],
       ["htmx:beforeSwap", handleCommitShaBeforeSwap],
       ["htmx:beforeSwap", handleNotFoundBeforeSwap],
     ]);
