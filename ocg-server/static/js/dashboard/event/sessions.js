@@ -11,6 +11,7 @@ import {
   MEETING_RECORDING_VISIBILITY_LEGEND,
 } from "/static/js/common/common.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
+import { parseJsonAttribute } from "/static/js/common/utils.js";
 import "/static/js/common/logo-image.js";
 import "/static/js/common/speakers-selector.js";
 import "/static/js/common/online-event-details.js";
@@ -137,13 +138,7 @@ export class SessionsSection extends LitWrapper {
    * @private
    */
   _parseAttributes() {
-    if (typeof this.sessions === "string") {
-      try {
-        this.sessions = JSON.parse(this.sessions || "[]");
-      } catch (_) {
-        this.sessions = [];
-      }
-    }
+    this.sessions = parseJsonAttribute(this.sessions, []);
 
     if (!Array.isArray(this.sessions) && this.sessions && typeof this.sessions === "object") {
       try {
@@ -158,32 +153,18 @@ export class SessionsSection extends LitWrapper {
     }
     if (!Array.isArray(this.sessions)) this.sessions = [];
 
-    if (typeof this.sessionKinds === "string") {
-      try {
-        this.sessionKinds = JSON.parse(this.sessionKinds || "[]");
-      } catch (_) {
-        this.sessionKinds = [];
-      }
-    }
+    this.sessionKinds = parseJsonAttribute(this.sessionKinds, []);
     if (!Array.isArray(this.sessionKinds)) this.sessionKinds = [];
 
-    if (typeof this.approvedSubmissions === "string") {
-      try {
-        this.approvedSubmissions = JSON.parse(this.approvedSubmissions || "[]");
-      } catch (_) {
-        this.approvedSubmissions = [];
-      }
-    }
+    this.approvedSubmissions = parseJsonAttribute(this.approvedSubmissions, []);
     if (!Array.isArray(this.approvedSubmissions)) this.approvedSubmissions = [];
 
-    if (typeof this.meetingMaxParticipants === "string") {
-      try {
-        this.meetingMaxParticipants = JSON.parse(this.meetingMaxParticipants || "{}");
-      } catch (_) {
-        this.meetingMaxParticipants = {};
-      }
-    }
-    if (!this.meetingMaxParticipants || typeof this.meetingMaxParticipants !== "object") {
+    this.meetingMaxParticipants = parseJsonAttribute(this.meetingMaxParticipants, {});
+    if (
+      !this.meetingMaxParticipants ||
+      typeof this.meetingMaxParticipants !== "object" ||
+      Array.isArray(this.meetingMaxParticipants)
+    ) {
       this.meetingMaxParticipants = {};
     }
   }
@@ -1242,14 +1223,12 @@ class SessionItem extends LitWrapper {
       this.usedSubmissionIds = [];
     }
 
-    if (typeof this.meetingMaxParticipants === "string") {
-      try {
-        this.meetingMaxParticipants = JSON.parse(this.meetingMaxParticipants || "{}");
-      } catch (_) {
-        this.meetingMaxParticipants = {};
-      }
-    }
-    if (!this.meetingMaxParticipants || typeof this.meetingMaxParticipants !== "object") {
+    this.meetingMaxParticipants = parseJsonAttribute(this.meetingMaxParticipants, {});
+    if (
+      !this.meetingMaxParticipants ||
+      typeof this.meetingMaxParticipants !== "object" ||
+      Array.isArray(this.meetingMaxParticipants)
+    ) {
       this.meetingMaxParticipants = {};
     }
 

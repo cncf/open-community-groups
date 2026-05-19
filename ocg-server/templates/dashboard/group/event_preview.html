@@ -208,8 +208,8 @@
                         </div>
                       {% else if event.has_online_component() -%}
                         <div class="relative flex min-h-[108px] w-full items-center justify-center p-4 text-center">
-                          <div class="absolute inset-0 bg-[url('/static/images/map.png')] bg-cover bg-center bg-no-repeat opacity-30">
-                          </div>
+                          <div class="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-30"
+                               style="background-image: url('/static/images/virtual_event.png')"></div>
                           <div class="relative flex w-full items-center justify-center">
                             <div class="text-xl font-semibold text-stone-700">Virtual event</div>
                           </div>

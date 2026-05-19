@@ -35,9 +35,9 @@ describe("common utils", () => {
   it("parses JSON attributes safely and normalizes booleans", () => {
     expect(parseJsonAttribute("[1,2,3]", [])).to.deep.equal([1, 2, 3]);
     expect(parseJsonAttribute([{ id: 1 }], [])).to.deep.equal([{ id: 1 }]);
-    expect(parseJsonAttribute("not-json", ["fallback"])).to.deep.equal([
-      "fallback",
-    ]);
+    expect(parseJsonAttribute({ zoom: 100 }, {})).to.deep.equal({ zoom: 100 });
+    expect(parseJsonAttribute({ day_1: [{ id: 1 }] }, [])).to.deep.equal({ day_1: [{ id: 1 }] });
+    expect(parseJsonAttribute("not-json", ["fallback"])).to.deep.equal(["fallback"]);
     expect(parseJsonAttribute("", ["fallback"])).to.deep.equal(["fallback"]);
 
     expect(toBoolean(true)).to.equal(true);
@@ -47,10 +47,7 @@ describe("common utils", () => {
   });
 
   it("sanitizes string arrays and normalizes users", () => {
-    expect(sanitizeStringArray([" alpha ", "", " beta ", null])).to.deep.equal([
-      "alpha",
-      "beta",
-    ]);
+    expect(sanitizeStringArray([" alpha ", "", " beta ", null])).to.deep.equal(["alpha", "beta"]);
 
     expect(
       normalizeUsers([

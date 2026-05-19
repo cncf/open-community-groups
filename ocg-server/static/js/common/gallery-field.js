@@ -3,6 +3,7 @@ import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { isSuccessfulXHRStatus } from "/static/js/common/common.js";
 import { ocgFetch } from "/static/js/common/fetch.js";
 import { showErrorAlert } from "/static/js/common/alerts.js";
+import { parseJsonAttribute } from "/static/js/common/utils.js";
 import "/static/js/common/svg-spinner.js";
 
 const DEFAULT_MAX_IMAGES = 8;
@@ -60,17 +61,11 @@ export class GalleryField extends LitWrapper {
    * Normalize and trim stored image URLs according to maxImages.
    */
   _normalizeImages() {
-    let current = this.images;
-    if (typeof current === "string") {
-      try {
-        current = JSON.parse(current);
-      } catch (error) {
-        current = [];
-      }
-    }
+    const current = parseJsonAttribute(this.images, []);
 
     if (!Array.isArray(current)) {
-      current = [];
+      this.images = [];
+      return;
     }
 
     const limit = this.maxImages > 0 ? this.maxImages : undefined;
