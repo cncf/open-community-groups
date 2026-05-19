@@ -148,6 +148,10 @@ async fn test_select_group_success() {
         .times(1)
         .withf(move |id| *id == user_id)
         .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_group_belongs_to_community()
+        .times(1)
+        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
+        .returning(|_, _| Ok(true));
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, _permission| *cid == community_id && *gid == group_id && *uid == user_id)

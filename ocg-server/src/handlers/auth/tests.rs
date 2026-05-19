@@ -3197,6 +3197,10 @@ async fn test_user_has_path_group_permission_allows_request() {
         .times(1)
         .withf(move |id| *id == user_id)
         .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_group_belongs_to_community()
+        .times(1)
+        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
+        .returning(|_, _| Ok(true));
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, _permission| *cid == community_id && *gid == group_id && *uid == user_id)
@@ -3258,10 +3262,76 @@ async fn test_user_has_path_group_permission_forbidden_without_permission() {
         .times(1)
         .withf(move |id| *id == user_id)
         .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_group_belongs_to_community()
+        .times(1)
+        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
+        .returning(|_, _| Ok(true));
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, _permission| *cid == community_id && *gid == group_id && *uid == user_id)
         .returning(|_, _, _, _| Ok(false));
+
+    // Setup router
+    let server_cfg = HttpServerConfig::default();
+    let db: DynDB = Arc::new(db);
+    let nm = Arc::new(MockNotificationsManager::new());
+    let state = test_state_with_server_cfg(
+        db.clone(),
+        Arc::new(MockImageStorage::new()),
+        nm.clone(),
+        &server_cfg,
+    );
+    let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
+    let router = Router::new()
+        .route("/groups/{group_id}", get(|| async { StatusCode::OK }))
+        .layer(middleware::from_fn_with_state(
+            (db.clone(), GroupPermission::Read),
+            user_has_path_group_permission,
+        ))
+        .layer(auth_layer)
+        .with_state(state);
+
+    // Execute request
+    let request = Request::builder()
+        .method("GET")
+        .uri(format!("/groups/{group_id}"))
+        .header(COOKIE, format!("id={session_id}"))
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_eq!(parts.status, StatusCode::FORBIDDEN);
+    assert!(bytes.is_empty());
+}
+
+#[tokio::test]
+async fn test_user_has_path_group_permission_forbidden_when_group_is_outside_selected_community() {
+    // Setup identifiers and data structures
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let community_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_group_belongs_to_community()
+        .times(1)
+        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
+        .returning(|_, _| Ok(false));
+    db.expect_user_has_group_permission().times(0);
 
     // Setup router
     let server_cfg = HttpServerConfig::default();
@@ -3319,6 +3389,10 @@ async fn test_user_has_path_group_permission_returns_error_on_db_failure() {
         .times(1)
         .withf(move |id| *id == user_id)
         .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_group_belongs_to_community()
+        .times(1)
+        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
+        .returning(|_, _| Ok(true));
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, _permission| *cid == community_id && *gid == group_id && *uid == user_id)
@@ -3379,6 +3453,7 @@ async fn test_user_has_path_group_permission_redirects_when_selected_community_i
         .times(1)
         .withf(move |id| *id == user_id)
         .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_group_belongs_to_community().times(0);
     db.expect_user_has_group_permission().times(0);
 
     // Setup router
@@ -3439,6 +3514,7 @@ async fn test_user_has_path_group_permission_forbidden_when_not_logged_in() {
         .withf(move |id| *id == session_id)
         .returning(move |_| Ok(Some(session_record.clone())));
     db.expect_get_user_by_id().times(0);
+    db.expect_group_belongs_to_community().times(0);
     db.expect_user_has_group_permission().times(0);
 
     // Setup router
