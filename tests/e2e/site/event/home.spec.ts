@@ -4,8 +4,10 @@ import {
   getEventAboutSection,
   getEventInfoSection,
   getEventLogo,
+  getIntroSection,
   TEST_COMMUNITY_NAME,
   TEST_EVENT_NAME,
+  TEST_EVENT_PAGE_BADGE_EVENT,
   TEST_EVENT_SLUG,
   TEST_GROUP_NAME,
   TEST_GROUP_SLUG,
@@ -313,5 +315,35 @@ test.describe("event page - virtual event with recording", () => {
 
     const recordingLink = page.getByRole("link", { name: "View recording" });
     await expect(recordingLink).toHaveCount(0);
+  });
+});
+
+test.describe("event page - test event badge", () => {
+  test("shows the test badge next to the event type", async ({ page }) => {
+    await navigateToEvent(
+      page,
+      TEST_COMMUNITY_NAME,
+      TEST_GROUP_SLUG,
+      TEST_EVENT_PAGE_BADGE_EVENT.slug,
+    );
+
+    const introSection = getIntroSection(page);
+    await expect(
+      introSection.getByRole("heading", {
+        level: 1,
+        name: TEST_EVENT_PAGE_BADGE_EVENT.name,
+      }),
+    ).toBeVisible();
+
+    const eventTypeBadge = introSection
+      .locator(".custom-badge")
+      .filter({ hasText: /^virtual$/i })
+      .first();
+    const badgeGroup = eventTypeBadge.locator("..");
+    const testBadge = badgeGroup.getByText("Test", { exact: true });
+
+    await expect(eventTypeBadge).toBeVisible();
+    await expect(testBadge).toBeVisible();
+    await expect(testBadge).toHaveClass(/custom-badge/);
   });
 });
