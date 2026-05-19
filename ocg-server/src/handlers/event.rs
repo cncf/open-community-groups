@@ -402,7 +402,7 @@ pub(crate) async fn leave_event(
     }
 
     // Notify users promoted off the waitlist after a spot opens up
-    if !leave_result.promoted_user_ids.is_empty() {
+    if !leave_result.promoted_user_ids.is_empty() && !event.test_event {
         let calendar_ics = build_event_calendar_attachment(base_url, &event);
         let template_data = EventWaitlistPromoted {
             event: event.clone(),

@@ -14,6 +14,7 @@ returns json as $$
         join "group" g using (group_id)
         where g.active = true
         and e.published = true
+        and e.test_event = false
         and e.event_kind_id = any(p_event_kind_ids)
         and e.starts_at is not null
         and e.starts_at > now()

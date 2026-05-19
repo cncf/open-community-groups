@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(16);
+select plan(17);
 
 -- ============================================================================
 -- VARIABLES
@@ -19,6 +19,7 @@ select plan(16);
 \set event4ID '00000000-0000-0000-0000-000000000044'
 \set event5ID '00000000-0000-0000-0000-000000000045'
 \set event6ID '00000000-0000-0000-0000-000000000046'
+\set event7ID '00000000-0000-0000-0000-000000000047'
 \set eventCategory1ID '00000000-0000-0000-0000-000000000021'
 \set eventCategory2ID '00000000-0000-0000-0000-000000000022'
 \set group1ID '00000000-0000-0000-0000-000000000031'
@@ -89,6 +90,7 @@ insert into event (
     name,
     slug,
     description,
+    test_event,
     description_short,
     timezone,
     event_category_id,
@@ -106,38 +108,44 @@ insert into event (
 
     location
 ) values
-    (:'event1ID', 'Kubernetes Workshop', 'kubernetes-workshop', 'Learn Kubernetes', 'K8s intro workshop', 'UTC',
+    (:'event1ID', 'Kubernetes Workshop', 'kubernetes-workshop', 'Learn Kubernetes', false, 'K8s intro workshop', 'UTC',
      :'eventCategory1ID', 'in-person', :'group1ID', true,
      now() + interval '1 day', now() + interval '1 day' + interval '2 hours', array['kubernetes', 'cloud'],
      'San Francisco', 'Tech Hub', '123 Market St', 'https://example.com/k8s-workshop.png', false,
      null),
-    (:'event2ID', 'Docker Training', 'docker-training', 'Docker fundamentals', 'Docker basics', 'UTC',
+    (:'event2ID', 'Docker Training', 'docker-training', 'Docker fundamentals', false, 'Docker basics', 'UTC',
      :'eventCategory1ID', 'virtual', :'group1ID', true,
      now() + interval '2 days', now() + interval '2 days' + interval '3 hours', array['docker', 'containers'],
      'New York', 'Online', null, 'https://example.com/docker-training.png', false,
      null),
-    (:'event3ID', 'Cloud Summit', 'cloud-summit', 'Annual cloud conference', 'Cloud conf 2026', 'UTC',
+    (:'event3ID', 'Cloud Summit', 'cloud-summit', 'Annual cloud conference', false, 'Cloud conf 2026', 'UTC',
      :'eventCategory1ID', 'hybrid', :'group1ID', true,
      now() + interval '3 days', now() + interval '3 days' + interval '7 hours', array['cloud', 'aws'],
      'London', 'Convention Center', '456 Oxford St', 'https://example.com/cloud-summit.png', false,
      null),
     -- Canceled event (should be filtered out from search results)
-    (:'event4ID', 'Canceled Tech Conference', 'canceled-tech-conf', 'This event was canceled', 'Canceled conf', 'UTC',
+    (:'event4ID', 'Canceled Tech Conference', 'canceled-tech-conf', 'This event was canceled', false, 'Canceled conf', 'UTC',
      :'eventCategory1ID', 'in-person', :'group1ID', false,
      now() - interval '1 day', now() - interval '1 day' + interval '9 hours', array['tech', 'conference'],
      'Boston', 'Convention Center', '789 Congress St', 'https://example.com/canceled-conf.png', true,
      null),
     -- Event with its own location (different from group location - group is in New York, event is in San Francisco)
-    (:'event5ID', 'Cloud Innovation Summit', 'cloud-innovation-summit', 'Cloud innovations', 'Cloud summit', 'UTC',
+    (:'event5ID', 'Cloud Innovation Summit', 'cloud-innovation-summit', 'Cloud innovations', false, 'Cloud summit', 'UTC',
      :'eventCategory1ID', 'in-person', :'group2ID', true,
      now() + interval '4 days', now() + interval '4 days' + interval '7 hours', array['cloud', 'innovation'],
      'San Francisco', 'Innovation Center', '123 Tech Ave', 'https://example.com/cloud-innovation.png', false,
      ST_GeogFromText('POINT(-122.4194 37.7749)')),
     -- Event in community 2
-    (:'event6ID', 'Python Workshop', 'python-workshop', 'Learn Python', 'Python basics', 'UTC',
+    (:'event6ID', 'Python Workshop', 'python-workshop', 'Learn Python', false, 'Python basics', 'UTC',
      :'eventCategory2ID', 'in-person', :'group3ID', true,
      now() + interval '5 days', now() + interval '5 days' + interval '4 hours', array['python', 'programming'],
      'Chicago', 'Tech Center', '555 Lake St', 'https://example.com/python-workshop.png', false,
+     null),
+    -- Test event (should be filtered out from search results)
+    (:'event7ID', 'Test Fixture Event', 'test-fixture-event', 'Internal test event', true, 'Test fixture', 'UTC',
+     :'eventCategory1ID', 'virtual', :'group1ID', true,
+     now() + interval '6 days', now() + interval '6 days' + interval '1 hour', array['test'],
+     'Online', 'Online', null, 'https://example.com/test-fixture.png', false,
      null);
 
 -- ============================================================================
@@ -155,6 +163,17 @@ select is(
         get_event_summary(:'community2ID'::uuid, :'group3ID'::uuid, :'event6ID'::uuid)::jsonb
     ),
     'Should return all published events without filters'
+);
+
+-- Should exclude test events from total counts
+select is(
+    (
+        select (
+            search_events(jsonb_build_object('limit', 10, 'offset', 0))::jsonb->>'total'
+        )::bigint
+    ),
+    5::bigint,
+    'Should exclude test events from total counts'
 );
 
 -- Should filter events by community

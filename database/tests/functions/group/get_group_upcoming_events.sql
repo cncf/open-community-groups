@@ -46,6 +46,7 @@ insert into event (
     slug,
     description,
     description_short,
+    test_event,
     timezone,
     event_category_id,
     event_kind_id,
@@ -57,22 +58,22 @@ insert into event (
     venue_city
 ) values
     -- Past event (should not be included)
-    (:'event1ID', 'Past Event', 'past-event', 'A past event', 'A past event', 'UTC',
+    (:'event1ID', 'Past Event', 'past-event', 'A past event', 'A past event', false, 'UTC',
      :'eventCategory1ID', 'in-person', :'group1ID', true,
      now() - interval '1 year', now() - interval '1 year' + interval '2 hours',
      null, 'San Francisco'),
     -- Future published event (closest)
-    (:'event2ID', 'Future Event 1', 'future-event-1', 'First future event', 'First future event', 'UTC',
+    (:'event2ID', 'Future Event 1', 'future-event-1', 'First future event', 'First future event', false, 'UTC',
      :'eventCategory1ID', 'virtual', :'group1ID', true,
      now() + interval '1 month', now() + interval '1 month' + interval '2 hours',
      'https://example.com/future-event-1.png', 'Online'),
     -- Future published event (later)
-    (:'event3ID', 'Future Event 2', 'future-event-2', 'Second future event', 'Second future event', 'UTC',
+    (:'event3ID', 'Future Event 2', 'future-event-2', 'Second future event', 'Second future event', true, 'UTC',
      :'eventCategory1ID', 'hybrid', :'group1ID', true,
      now() + interval '2 months', now() + interval '2 months' + interval '2 hours',
      'https://example.com/future-event-2.png', 'Los Angeles'),
     -- Future unpublished event (should not be included)
-    (:'event4ID', 'Future Event 3', 'future-event-3', 'Unpublished future event', 'Unpublished future event', 'UTC',
+    (:'event4ID', 'Future Event 3', 'future-event-3', 'Unpublished future event', 'Unpublished future event', false, 'UTC',
      :'eventCategory1ID', 'in-person', :'group1ID', false,
      now() + interval '3 months', now() + interval '3 months' + interval '2 hours',
      null, 'New York');
@@ -81,14 +82,13 @@ insert into event (
 -- TESTS
 -- ============================================================================
 
--- Should return published future events ordered by date ASC as JSON
+-- Should return published non-test future events ordered by date ASC as JSON
 select is(
     get_group_upcoming_events(:'community1ID'::uuid, 'test-group', array['in-person', 'virtual', 'hybrid'], 10)::jsonb,
     jsonb_build_array(
-        get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb,
-        get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event3ID'::uuid)::jsonb
+        get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb
     ),
-    'Should return published future events ordered by date ASC as JSON'
+    'Should return published non-test future events ordered by date ASC as JSON'
 );
 
 -- Should return empty array with non-existing group slug

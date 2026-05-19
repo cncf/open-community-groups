@@ -816,6 +816,7 @@ select is(
         "name": "KubeCon Seattle 2024",
         "published": true,
         "slug": "def5678",
+        "test_event": false,
         "timezone": "America/New_York",
         "attendee_approval_required": false,
         "attendee_count": 2,

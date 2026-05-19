@@ -19,6 +19,7 @@ returns json as $$
             'name', e.name,
             'published', e.published,
             'slug', e.slug,
+            'test_event', e.test_event,
             'timezone', e.timezone
         )
         -- Include optional fields and nested related collections

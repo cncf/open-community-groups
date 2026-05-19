@@ -39,6 +39,7 @@ begin
         and e.deleted = false
         and e.canceled = false
         and e.published = true
+        and e.test_event = false
         and g.active = true
         and g.deleted = false
         and e.starts_at is not null

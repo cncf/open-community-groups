@@ -1322,6 +1322,7 @@ fn sample_event_summary(event_id: Uuid) -> EventSummary {
         name: "Event".to_string(),
         published: true,
         slug: "event".to_string(),
+        test_event: false,
         timezone: chrono_tz::UTC,
         waitlist_count: 0,
         waitlist_enabled: false,

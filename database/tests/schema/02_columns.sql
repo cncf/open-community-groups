@@ -196,6 +196,7 @@ select columns_are('event', array[
     'name',
     'published',
     'slug',
+    'test_event',
     'timezone',
     'tsdoc',
 

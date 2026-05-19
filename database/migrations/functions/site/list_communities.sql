@@ -23,5 +23,6 @@ returns json as $$
         and e.canceled = false
         and e.deleted = false
         and e.published = true
+        and e.test_event = false
     );
 $$ language sql;
