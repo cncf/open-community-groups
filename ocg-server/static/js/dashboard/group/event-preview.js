@@ -307,7 +307,9 @@ const updateEventPreviewTestBadge = (modalRoot, pageRoot) => {
 
   const testEventInput = pageRoot.querySelector?.('[name="test_event"]');
   const testEventToggle = pageRoot.querySelector?.("#toggle_test_event");
-  const testEventValue = String(testEventInput?.value || "").trim().toLowerCase();
+  const testEventValue = String(testEventInput?.value || "")
+    .trim()
+    .toLowerCase();
   const isTestEvent = testEventValue === "true" || testEventToggle?.checked === true;
 
   badge.classList.toggle("hidden", !isTestEvent);
