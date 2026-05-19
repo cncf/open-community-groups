@@ -9,6 +9,7 @@ returns json as $$
     select jsonb_strip_nulls(
         jsonb_build_object(
             -- Include core event fields
+            'attendee_count', coalesce(ea.attendee_count, 0),
             'canceled', e.canceled,
             'category_name', ec.name,
             'created_at', floor(extract(epoch from e.created_at)),

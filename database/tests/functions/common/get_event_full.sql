@@ -818,6 +818,7 @@ select is(
         "slug": "def5678",
         "timezone": "America/New_York",
         "attendee_approval_required": false,
+        "attendee_count": 2,
         "banner_url": "https://example.com/event-banner.png",
         "capacity": 500,
         "cfs_labels": [

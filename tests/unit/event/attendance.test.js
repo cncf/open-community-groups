@@ -91,6 +91,12 @@ const renderAttendanceDom = ({
     <span data-availability-caption="waitlist" class="hidden">
       (Waitlist: <span data-availability-waitlist></span>)
     </span>
+    <span data-availability-caption="attendees" class="hidden">
+      Attendees:
+      <span data-availability-attendee-count>
+        <span data-availability-spinner></span>
+      </span>
+    </span>
     <div data-availability-sold-out-ribbon class="hidden"></div>
   `;
 
@@ -108,9 +114,11 @@ const renderAttendanceDom = ({
     menuJoinLink: document.querySelector("[data-join-link-menu]"),
     availabilityCaptions: {
       capacity: document.querySelector('[data-availability-caption="capacity"]'),
+      attendees: document.querySelector('[data-availability-caption="attendees"]'),
       remaining: document.querySelector('[data-availability-caption="remaining"]'),
       waitlist: document.querySelector('[data-availability-caption="waitlist"]'),
     },
+    availabilityAttendeeCount: document.querySelector("[data-availability-attendee-count]"),
     availabilityCapacity: document.querySelector("[data-availability-capacity]"),
     soldOutRibbon: document.querySelector("[data-availability-sold-out-ribbon]"),
   };
@@ -504,6 +512,7 @@ describe("event attendance", () => {
       await initializeAttendanceDom();
       await waitForMicrotask();
 
+      expect(availabilityCaptions.attendees.classList.contains("hidden")).to.equal(true);
       expect(availabilityCaptions.capacity.classList.contains("hidden")).to.equal(false);
       expect(availabilityCapacity.textContent.trim()).to.equal("2");
       expect(availabilityCaptions.remaining.classList.contains("hidden")).to.equal(false);
@@ -671,8 +680,8 @@ describe("event attendance", () => {
     }
   });
 
-  it("hides the capacity placeholder when refreshed availability is unlimited", async () => {
-    const { availabilityCapacity, availabilityCaptions } = renderAttendanceDom({
+  it("shows attendee count when refreshed availability is unlimited", async () => {
+    const { availabilityAttendeeCount, availabilityCapacity, availabilityCaptions } = renderAttendanceDom({
       availabilityUrl: "/events/test-event/availability",
     });
     const fetchMock = mockFetch({
@@ -680,6 +689,7 @@ describe("event attendance", () => {
         ok: true,
         json: async () => ({
           attendee_approval_required: false,
+          attendee_count: 12,
           capacity: null,
           canceled: false,
           has_sellable_ticket_types: false,
@@ -699,6 +709,9 @@ describe("event attendance", () => {
       await waitForMicrotask();
 
       expect(availabilityCapacity.textContent.trim()).to.equal("");
+      expect(availabilityAttendeeCount.textContent.trim()).to.equal("12");
+      expect(availabilityCaptions.attendees.classList.contains("hidden")).to.equal(false);
+      expect(availabilityCaptions.attendees.classList.contains("flex")).to.equal(true);
       expect(availabilityCaptions.capacity.classList.contains("hidden")).to.equal(true);
       expect(availabilityCaptions.remaining.classList.contains("hidden")).to.equal(true);
       expect(availabilityCaptions.waitlist.classList.contains("hidden")).to.equal(true);

@@ -187,6 +187,9 @@ pub struct EventFull {
     /// Whether attendance requests require organizer approval.
     #[serde(default)]
     pub attendee_approval_required: bool,
+    /// Current number of event attendees.
+    #[serde(default)]
+    pub attendee_count: i32,
     /// Whether the event has been canceled.
     pub canceled: bool,
     /// Event category information.
