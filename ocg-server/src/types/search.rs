@@ -165,6 +165,13 @@ impl SearchEventsFilters {
         trace!(?filters);
         Ok(filters)
     }
+
+    /// Returns whether this search depends on viewer location headers.
+    pub(crate) fn uses_viewer_location(&self) -> bool {
+        self.latitude.is_some()
+            && self.longitude.is_some()
+            && (self.distance.is_some() || self.sort_by.as_deref() == Some("distance"))
+    }
 }
 
 impl ToRawQuery for SearchEventsFilters {
@@ -302,6 +309,13 @@ impl SearchGroupsFilters {
 
         trace!(?filters);
         Ok(filters)
+    }
+
+    /// Returns whether this search depends on viewer location headers.
+    pub(crate) fn uses_viewer_location(&self) -> bool {
+        self.latitude.is_some()
+            && self.longitude.is_some()
+            && (self.distance.is_some() || self.sort_by.as_deref() == Some("distance"))
     }
 }
 
@@ -623,6 +637,26 @@ mod tests {
     }
 
     #[test]
+    fn test_events_filters_uses_viewer_location_for_distance_searches() {
+        // Prepare headers
+        let mut headers = HeaderMap::new();
+        headers.insert("CloudFront-Viewer-Latitude", HeaderValue::from_static("51.5"));
+        headers.insert("CloudFront-Viewer-Longitude", HeaderValue::from_static("-0.12"));
+
+        // Create filters
+        let default_filters = SearchEventsFilters::new(&headers, "").expect("filters to be created");
+        let distance_filter_filters =
+            SearchEventsFilters::new(&headers, "distance=25000").expect("filters to be created");
+        let distance_sort_filters =
+            SearchEventsFilters::new(&headers, "sort_by=distance").expect("filters to be created");
+
+        // Check filters match expected values
+        assert!(!default_filters.uses_viewer_location());
+        assert!(distance_filter_filters.uses_viewer_location());
+        assert!(distance_sort_filters.uses_viewer_location());
+    }
+
+    #[test]
     fn test_groups_filters_new_list_cleans_empty_entries() {
         // Prepare headers and raw query (using bracket notation for arrays)
         let raw_query = [
@@ -764,6 +798,26 @@ mod tests {
         assert!(!query.contains("latitude"));
         assert!(!query.contains("longitude"));
         assert!(!query.contains("sort_by"));
+    }
+
+    #[test]
+    fn test_groups_filters_uses_viewer_location_for_distance_searches() {
+        // Prepare headers
+        let mut headers = HeaderMap::new();
+        headers.insert("CloudFront-Viewer-Latitude", HeaderValue::from_static("51.5"));
+        headers.insert("CloudFront-Viewer-Longitude", HeaderValue::from_static("-0.12"));
+
+        // Create filters
+        let default_filters = SearchGroupsFilters::new(&headers, "").expect("filters to be created");
+        let distance_filter_filters =
+            SearchGroupsFilters::new(&headers, "distance=25000").expect("filters to be created");
+        let distance_sort_filters =
+            SearchGroupsFilters::new(&headers, "sort_by=distance").expect("filters to be created");
+
+        // Check filters match expected values
+        assert!(!default_filters.uses_viewer_location());
+        assert!(distance_filter_filters.uses_viewer_location());
+        assert!(distance_sort_filters.uses_viewer_location());
     }
 
     #[test]

@@ -11,7 +11,7 @@ use uuid::Uuid;
 use crate::{
     db::mock::MockDB,
     handlers::tests::*,
-    router::CACHE_CONTROL_PUBLIC_SHARED,
+    router::{CACHE_CONTROL_NO_STORE, CACHE_CONTROL_PUBLIC_SHARED},
     services::notifications::MockNotificationsManager,
     templates::site::explore::{self},
     types::{
@@ -478,6 +478,121 @@ async fn test_search_events_success() {
 }
 
 #[tokio::test]
+async fn test_search_events_with_location_headers_but_no_location_sensitive_filter_is_cached() {
+    // Setup identifiers and data structures
+    let event_id = Uuid::new_v4();
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_search_events()
+        .times(1)
+        .withf(|filters| filters.latitude == Some(51.5) && filters.longitude == Some(-0.12))
+        .returning(move |_| Ok(sample_search_events_output(event_id)));
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("GET")
+        .uri("/explore/events/search")
+        .header("CloudFront-Viewer-Latitude", "51.5")
+        .header("CloudFront-Viewer-Longitude", "-0.12")
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_eq!(parts.status, StatusCode::OK);
+    assert_eq!(
+        parts.headers.get(CACHE_CONTROL).unwrap(),
+        &HeaderValue::from_static(CACHE_CONTROL_PUBLIC_SHARED)
+    );
+    assert!(!bytes.is_empty());
+}
+
+#[tokio::test]
+async fn test_search_events_with_distance_sort_and_location_headers_is_not_cached() {
+    // Setup identifiers and data structures
+    let event_id = Uuid::new_v4();
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_search_events()
+        .times(1)
+        .withf(SearchEventsFilters::uses_viewer_location)
+        .returning(move |_| Ok(sample_search_events_output(event_id)));
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("GET")
+        .uri("/explore/events/search?sort_by=distance")
+        .header("CloudFront-Viewer-Latitude", "51.5")
+        .header("CloudFront-Viewer-Longitude", "-0.12")
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_eq!(parts.status, StatusCode::OK);
+    assert_eq!(
+        parts.headers.get(CACHE_CONTROL).unwrap(),
+        &HeaderValue::from_static(CACHE_CONTROL_NO_STORE)
+    );
+    assert!(!bytes.is_empty());
+}
+
+#[tokio::test]
+async fn test_events_results_section_with_distance_sort_and_location_headers_is_not_cached() {
+    // Setup identifiers and data structures
+    let event_id = Uuid::new_v4();
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_search_events()
+        .times(1)
+        .withf(SearchEventsFilters::uses_viewer_location)
+        .returning(move |_| Ok(sample_search_events_output(event_id)));
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("GET")
+        .uri("/explore/events-results-section?sort_by=distance")
+        .header("CloudFront-Viewer-Latitude", "51.5")
+        .header("CloudFront-Viewer-Longitude", "-0.12")
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_eq!(parts.status, StatusCode::OK);
+    assert_eq!(
+        parts.headers.get(CACHE_CONTROL).unwrap(),
+        &HeaderValue::from_static(CACHE_CONTROL_NO_STORE)
+    );
+    assert_eq!(
+        parts.headers.get("HX-Push-Url").unwrap().to_str().unwrap(),
+        expected_events_push_url("sort_by=distance")
+    );
+    assert!(!bytes.is_empty());
+}
+
+#[tokio::test]
 async fn test_search_groups_success() {
     // Setup identifiers and data structures
     let group_id = Uuid::new_v4();
@@ -511,6 +626,84 @@ async fn test_search_groups_success() {
     assert_eq!(
         parts.headers.get(CACHE_CONTROL).unwrap(),
         &HeaderValue::from_static(CACHE_CONTROL_PUBLIC_SHARED)
+    );
+    assert!(!bytes.is_empty());
+}
+
+#[tokio::test]
+async fn test_search_groups_with_distance_filter_and_location_headers_is_not_cached() {
+    // Setup identifiers and data structures
+    let group_id = Uuid::new_v4();
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_search_groups()
+        .times(1)
+        .withf(SearchGroupsFilters::uses_viewer_location)
+        .returning(move |_| Ok(sample_search_groups_output(group_id)));
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("GET")
+        .uri("/explore/groups/search?distance=25000")
+        .header("CloudFront-Viewer-Latitude", "51.5")
+        .header("CloudFront-Viewer-Longitude", "-0.12")
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_eq!(parts.status, StatusCode::OK);
+    assert_eq!(
+        parts.headers.get(CACHE_CONTROL).unwrap(),
+        &HeaderValue::from_static(CACHE_CONTROL_NO_STORE)
+    );
+    assert!(!bytes.is_empty());
+}
+
+#[tokio::test]
+async fn test_groups_results_section_with_distance_filter_and_location_headers_is_not_cached() {
+    // Setup identifiers and data structures
+    let group_id = Uuid::new_v4();
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_search_groups()
+        .times(1)
+        .withf(SearchGroupsFilters::uses_viewer_location)
+        .returning(move |_| Ok(sample_search_groups_output(group_id)));
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("GET")
+        .uri("/explore/groups-results-section?distance=25000")
+        .header("CloudFront-Viewer-Latitude", "51.5")
+        .header("CloudFront-Viewer-Longitude", "-0.12")
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_eq!(parts.status, StatusCode::OK);
+    assert_eq!(
+        parts.headers.get(CACHE_CONTROL).unwrap(),
+        &HeaderValue::from_static(CACHE_CONTROL_NO_STORE)
+    );
+    assert_eq!(
+        parts.headers.get("HX-Push-Url").unwrap().to_str().unwrap(),
+        expected_groups_push_url("distance=25000")
     );
     assert!(!bytes.is_empty());
 }

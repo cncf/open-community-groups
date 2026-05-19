@@ -10,7 +10,7 @@ use askama::Template;
 use axum::{
     Json,
     extract::{Query, RawQuery, State},
-    http::{HeaderMap, Uri},
+    http::{HeaderMap, HeaderName, HeaderValue, Uri, header::CACHE_CONTROL},
     response::{Html, IntoResponse},
 };
 use tracing::instrument;
@@ -21,7 +21,7 @@ use crate::{
         common::{SearchEventsOutput, SearchGroupsOutput},
     },
     handlers::{error::HandlerError, extend_public_shared_cache_headers},
-    router::PUBLIC_SHARED_CACHE_HEADERS,
+    router::CACHE_CONTROL_NO_STORE,
     templates::{
         PageId,
         auth::User,
@@ -74,7 +74,19 @@ pub(crate) async fn page(
         }
     }
 
-    Ok((PUBLIC_SHARED_CACHE_HEADERS, Html(template.render()?)))
+    // Prepare response headers after the active section has resolved its filters
+    let headers = search_response_headers(match &entity {
+        explore::Entity::Events => template
+            .events_section
+            .as_ref()
+            .is_some_and(|section| section.filters.uses_viewer_location()),
+        explore::Entity::Groups => template
+            .groups_section
+            .as_ref()
+            .is_some_and(|section| section.filters.uses_viewer_location()),
+    })?;
+
+    Ok((headers, Html(template.render()?)))
 }
 
 /// Handler that renders the events section of the explore page.
@@ -90,7 +102,8 @@ pub(crate) async fn events_section(
 
     // Prepare response headers
     let url = pagination::build_url("/explore?entity=events", &filters)?;
-    let headers = extend_public_shared_cache_headers(&[("HX-Push-Url", url.as_str())])?;
+    let headers =
+        search_response_headers_with_extra(filters.uses_viewer_location(), &[("HX-Push-Url", url.as_str())])?;
 
     Ok((headers, Html(template.render()?)))
 }
@@ -108,7 +121,8 @@ pub(crate) async fn events_results_section(
 
     // Prepare response headers
     let url = pagination::build_url("/explore?entity=events", &filters)?;
-    let headers = extend_public_shared_cache_headers(&[("HX-Push-Url", url.as_str())])?;
+    let headers =
+        search_response_headers_with_extra(filters.uses_viewer_location(), &[("HX-Push-Url", url.as_str())])?;
 
     Ok((headers, Html(template.render()?)))
 }
@@ -192,7 +206,8 @@ pub(crate) async fn groups_section(
 
     // Prepare response headers
     let url = pagination::build_url("/explore?entity=groups", &filters)?;
-    let headers = extend_public_shared_cache_headers(&[("HX-Push-Url", url.as_str())])?;
+    let headers =
+        search_response_headers_with_extra(filters.uses_viewer_location(), &[("HX-Push-Url", url.as_str())])?;
 
     Ok((headers, Html(template.render()?)))
 }
@@ -210,7 +225,8 @@ pub(crate) async fn groups_results_section(
 
     // Prepare response headers
     let url = pagination::build_url("/explore?entity=groups", &filters)?;
-    let headers = extend_public_shared_cache_headers(&[("HX-Push-Url", url.as_str())])?;
+    let headers =
+        search_response_headers_with_extra(filters.uses_viewer_location(), &[("HX-Push-Url", url.as_str())])?;
 
     Ok((headers, Html(template.render()?)))
 }
@@ -295,7 +311,10 @@ pub(crate) async fn search_events(
         event.popover_html = Some(render_event_popover(event)?);
     }
 
-    Ok((PUBLIC_SHARED_CACHE_HEADERS, Json(search_events_output)).into_response())
+    // Prepare response headers
+    let headers = search_response_headers(filters.uses_viewer_location())?;
+
+    Ok((headers, Json(search_events_output)).into_response())
 }
 
 /// Handler for the groups search endpoint (JSON format).
@@ -314,5 +333,37 @@ pub(crate) async fn search_groups(
         group.popover_html = Some(render_group_popover(group)?);
     }
 
-    Ok((PUBLIC_SHARED_CACHE_HEADERS, Json(search_groups_output)).into_response())
+    // Prepare response headers
+    let headers = search_response_headers(filters.uses_viewer_location())?;
+
+    Ok((headers, Json(search_groups_output)).into_response())
+}
+
+// Helpers.
+
+/// Returns search response headers.
+fn search_response_headers(uses_viewer_location: bool) -> Result<HeaderMap> {
+    search_response_headers_with_extra(uses_viewer_location, &[])
+}
+
+/// Returns search response headers with dynamic headers.
+fn search_response_headers_with_extra(
+    uses_viewer_location: bool,
+    extra_headers: &[(&str, &str)],
+) -> Result<HeaderMap> {
+    // Use shared cache headers when the response does not depend on viewer location
+    if !uses_viewer_location {
+        return extend_public_shared_cache_headers(extra_headers);
+    }
+
+    // Disable storage for location-sensitive search responses
+    let mut headers = HeaderMap::new();
+    headers.insert(CACHE_CONTROL, HeaderValue::from_static(CACHE_CONTROL_NO_STORE));
+
+    // Add dynamic response headers
+    for (key, value) in extra_headers {
+        headers.insert(HeaderName::try_from(*key)?, HeaderValue::try_from(*value)?);
+    }
+
+    Ok(headers)
 }
