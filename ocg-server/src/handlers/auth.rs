@@ -68,6 +68,12 @@ pub(crate) const SELECTED_COMMUNITY_ID_KEY: &str = "selected_community_id";
 /// Key used to store the selected group ID in the session.
 pub(crate) const SELECTED_GROUP_ID_KEY: &str = "selected_group_id";
 
+/// Defines whether syncing a community selection requires a group selection.
+pub(crate) enum SelectedGroupPolicy {
+    Optional,
+    Required,
+}
+
 /// URL for the sign up page.
 pub(crate) const SIGN_UP_URL: &str = "/sign-up";
 
@@ -738,6 +744,14 @@ pub(crate) async fn user_has_path_group_permission(
         Err(response) => return response,
     };
 
+    // Ensure the path group belongs to the selected community before checking permissions
+    let Ok(group_belongs_to_community) = db.group_belongs_to_community(&community_id, &group_id).await else {
+        return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+    };
+    if !group_belongs_to_community {
+        return StatusCode::FORBIDDEN.into_response();
+    }
+
     // Check required permission against the group id from the path
     let Ok(has_permission) = db
         .user_has_group_permission(&community_id, &group_id, &user.user_id, permission)
@@ -1013,7 +1027,14 @@ async fn select_first_accessible_community_for_dashboard(
     };
 
     // Persist the repaired community dashboard context in the session
-    sync_selected_community_and_group(db, session, user_id, first_community.community_id).await?;
+    sync_selected_community_and_group(
+        db,
+        session,
+        user_id,
+        first_community.community_id,
+        SelectedGroupPolicy::Optional,
+    )
+    .await?;
 
     // Return the selected community for downstream request context
     Ok(Some(first_community.community_id))
@@ -1092,16 +1113,23 @@ pub(crate) async fn sync_selected_community_and_group(
     session: &Session,
     user_id: &Uuid,
     community_id: Uuid,
+    selected_group_policy: SelectedGroupPolicy,
 ) -> Result<(), HandlerError> {
     // Load the user's groups to keep the selected group in sync
     let groups_by_community = db.list_user_groups(user_id).await?;
-    let community_groups = groups_by_community
+    let first_group_id = groups_by_community
         .iter()
-        .find(|c| c.community.community_id == community_id);
+        .find(|c| c.community.community_id == community_id)
+        .and_then(|c| c.groups.first())
+        .map(|g| g.group_id);
+
+    if matches!(selected_group_policy, SelectedGroupPolicy::Required) && first_group_id.is_none() {
+        return Err(HandlerError::Forbidden);
+    }
 
     // Persist the community selection and align the group selection with it
     session.insert(SELECTED_COMMUNITY_ID_KEY, community_id).await?;
-    if let Some(first_group_id) = community_groups.and_then(|c| c.groups.first()).map(|g| g.group_id) {
+    if let Some(first_group_id) = first_group_id {
         session.insert(SELECTED_GROUP_ID_KEY, first_group_id).await?;
     } else {
         session.remove::<Uuid>(SELECTED_GROUP_ID_KEY).await?;

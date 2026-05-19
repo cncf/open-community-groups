@@ -39,6 +39,9 @@ pub(crate) trait DBAuth {
     /// Retrieves the password hash for a user.
     async fn get_user_password(&self, user_id: &Uuid) -> Result<Option<String>>;
 
+    /// Checks whether a group belongs to a community.
+    async fn group_belongs_to_community(&self, community_id: &Uuid, group_id: &Uuid) -> Result<bool>;
+
     /// Registers a new user in the database.
     async fn sign_up_user(
         &self,
@@ -156,6 +159,23 @@ impl DBAuth for PgDB {
         self.fetch_scalar_opt(
             r#"select password from "user" where user_id = $1::uuid;"#,
             &[&user_id],
+        )
+        .await
+    }
+
+    #[instrument(skip(self), err)]
+    async fn group_belongs_to_community(&self, community_id: &Uuid, group_id: &Uuid) -> Result<bool> {
+        self.fetch_scalar_one(
+            r#"
+            select exists (
+                select 1
+                from "group"
+                where community_id = $1::uuid
+                  and group_id = $2::uuid
+                  and deleted = false
+            );
+            "#,
+            &[&community_id, &group_id],
         )
         .await
     }

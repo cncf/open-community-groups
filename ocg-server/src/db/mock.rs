@@ -38,6 +38,11 @@ mock! {
             username: &str,
         ) -> Result<Option<crate::auth::User>>;
         async fn get_user_password(&self, user_id: &Uuid) -> Result<Option<String>>;
+        async fn group_belongs_to_community(
+            &self,
+            community_id: &Uuid,
+            group_id: &Uuid,
+        ) -> Result<bool>;
         async fn sign_up_user(
             &self,
             user_summary: &crate::auth::UserSummary,
