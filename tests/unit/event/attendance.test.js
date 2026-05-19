@@ -720,6 +720,42 @@ describe("event attendance", () => {
     }
   });
 
+  it("hides attendee count when refreshed unlimited availability has no attendees", async () => {
+    const { availabilityAttendeeCount, availabilityCaptions } = renderAttendanceDom({
+      availabilityUrl: "/events/test-event/availability",
+    });
+    const fetchMock = mockFetch({
+      response: {
+        ok: true,
+        json: async () => ({
+          attendee_approval_required: false,
+          attendee_count: 0,
+          capacity: null,
+          canceled: false,
+          has_sellable_ticket_types: false,
+          is_live: false,
+          is_past: false,
+          is_ticketed: false,
+          remaining_capacity: null,
+          ticket_types: [],
+          waitlist_count: 0,
+          waitlist_enabled: false,
+        }),
+      },
+    });
+
+    try {
+      await initializeAttendanceDom();
+      await waitForMicrotask();
+
+      expect(availabilityAttendeeCount.textContent.trim()).to.equal("");
+      expect(availabilityCaptions.attendees.classList.contains("hidden")).to.equal(true);
+      expect(availabilityCaptions.attendees.classList.contains("flex")).to.equal(false);
+    } finally {
+      fetchMock.restore();
+    }
+  });
+
   it("keeps the sold-out ribbon hidden for canceled availability", async () => {
     const { soldOutRibbon } = renderAttendanceDom({
       availabilityUrl: "/events/test-event/availability",

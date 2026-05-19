@@ -166,7 +166,8 @@ const renderAvailabilityCaptions = (availability) => {
   const remainingCapacity = Number(availability?.remaining_capacity);
   const waitlistCount = Number(availability?.waitlist_count);
   const hasCapacity = isFiniteNumberValue(availability?.capacity);
-  const hasAttendeeCount = !hasCapacity && isFiniteNumberValue(availability?.attendee_count);
+  const hasAttendeeCount =
+    !hasCapacity && isFiniteNumberValue(availability?.attendee_count) && attendeeCount > 0;
   const hasRemainingCapacity = isFiniteNumberValue(availability?.remaining_capacity) && remainingCapacity > 0;
   const hasWaitlistCount =
     isFiniteNumberValue(availability?.remaining_capacity) &&
