@@ -19,12 +19,11 @@
 {# End event badge -#}
 
 {# Test event badge -#}
-{% macro test_event_badge(extra_styles = None) -%}
+{% macro test_event_badge(extra_styles = None, data_attrs = "") -%}
   {% let extra_styles_ = extra_styles.unwrap_or("") -%}
 
-  <span class="custom-badge bg-amber-100 border-amber-800 text-amber-800 px-2.5 py-0.5 {{ extra_styles_ }}">
-    Test
-  </span>
+  <span class="custom-badge bg-amber-100 border-amber-800 text-amber-800 px-2.5 py-0.5 {{ extra_styles_ }}"
+        {{ data_attrs|safe }}>Test</span>
 {% endmacro test_event_badge -%}
 {# End test event badge -#}
 

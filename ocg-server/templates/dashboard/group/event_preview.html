@@ -122,7 +122,10 @@
                           </span>
                         </div>
                       {% endif -%}
-                      {{ badges::event_badge(kind = event.kind_display_label() , extra_styles = Some("px-2.5 py-0.5")) -}}
+                      <div class="flex flex-wrap items-center gap-1.5">
+                        {{ badges::event_badge(kind = event.kind_display_label() , extra_styles = Some("px-2.5 py-0.5")) -}}
+                        {{ badges::test_event_badge(extra_styles = Some("hidden") , data_attrs = "data-event-preview-test-badge") -}}
+                      </div>
                     </div>
                     {# End event details -#}
 

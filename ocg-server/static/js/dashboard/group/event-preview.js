@@ -288,8 +288,29 @@ const parsePreviewCoordinate = (value) => {
  * @returns {void}
  */
 const initializeEventPreviewDraftSections = (modalRoot, pageRoot) => {
+  updateEventPreviewTestBadge(modalRoot, pageRoot);
   renderEventPreviewSocialLinks(modalRoot, collectEventPreviewSocialLinks(pageRoot));
   renderEventPreviewTags(modalRoot, collectEventPreviewTags(pageRoot));
+};
+
+/**
+ * Shows the preview test badge when the current event editor marks it as test.
+ * @param {HTMLElement} modalRoot Modal root element.
+ * @param {Document|Element} pageRoot Event page root.
+ * @returns {void}
+ */
+const updateEventPreviewTestBadge = (modalRoot, pageRoot) => {
+  const badge = modalRoot.querySelector("[data-event-preview-test-badge]");
+  if (!(badge instanceof HTMLElement)) {
+    return;
+  }
+
+  const testEventInput = pageRoot.querySelector?.('[name="test_event"]');
+  const testEventToggle = pageRoot.querySelector?.("#toggle_test_event");
+  const testEventValue = String(testEventInput?.value || "").trim().toLowerCase();
+  const isTestEvent = testEventValue === "true" || testEventToggle?.checked === true;
+
+  badge.classList.toggle("hidden", !isTestEvent);
 };
 
 /**
