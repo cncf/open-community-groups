@@ -610,6 +610,8 @@ pub(crate) struct CheckoutInput {
 struct EventAvailability {
     /// Whether attendance requests require organizer approval.
     attendee_approval_required: bool,
+    /// Current number of event attendees.
+    attendee_count: i32,
     /// Whether the event has been canceled.
     canceled: bool,
     /// Whether the event has at least one ticket type selectable now.
@@ -638,6 +640,7 @@ impl EventAvailability {
     fn from_event(event: &EventFull) -> Self {
         Self {
             attendee_approval_required: event.attendee_approval_required,
+            attendee_count: event.attendee_count,
             canceled: event.canceled,
             has_sellable_ticket_types: event.has_sellable_ticket_types(),
             is_live: event.is_live(),

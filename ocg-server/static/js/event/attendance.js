@@ -157,14 +157,17 @@ const renderAvailabilityCaption = (caption, visible, displayClasses) => {
 };
 
 /**
- * Updates the public capacity and waitlist counters from fresh availability.
+ * Updates the public attendance, capacity and waitlist counters from fresh availability.
  * @param {Object} availability - Public availability payload
  */
 const renderAvailabilityCaptions = (availability) => {
+  const attendeeCount = Number(availability?.attendee_count);
   const capacity = Number(availability?.capacity);
   const remainingCapacity = Number(availability?.remaining_capacity);
   const waitlistCount = Number(availability?.waitlist_count);
   const hasCapacity = isFiniteNumberValue(availability?.capacity);
+  const hasAttendeeCount =
+    !hasCapacity && isFiniteNumberValue(availability?.attendee_count) && attendeeCount > 0;
   const hasRemainingCapacity = isFiniteNumberValue(availability?.remaining_capacity) && remainingCapacity > 0;
   const hasWaitlistCount =
     isFiniteNumberValue(availability?.remaining_capacity) &&
@@ -175,12 +178,16 @@ const renderAvailabilityCaptions = (availability) => {
   document.querySelectorAll("[data-availability-capacity]").forEach((node) => {
     node.textContent = hasCapacity ? String(capacity) : "";
   });
+  document.querySelectorAll("[data-availability-attendee-count]").forEach((node) => {
+    node.textContent = hasAttendeeCount ? String(attendeeCount) : "";
+  });
   document.querySelectorAll("[data-availability-remaining]").forEach((node) => {
     node.textContent = hasRemainingCapacity ? String(remainingCapacity) : "";
   });
   document.querySelectorAll("[data-availability-waitlist]").forEach((node) => {
     node.textContent = hasWaitlistCount ? String(waitlistCount) : "";
   });
+  renderAvailabilityCaption("attendees", hasAttendeeCount, ["flex"]);
   renderAvailabilityCaption("capacity", hasCapacity, ["flex"]);
   renderAvailabilityCaption("remaining", hasRemainingCapacity, ["inline"]);
   renderAvailabilityCaption("waitlist", hasWaitlistCount, ["inline"]);

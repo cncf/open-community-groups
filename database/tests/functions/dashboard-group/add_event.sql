@@ -98,6 +98,7 @@ select ok(
             )
         )::jsonb - 'community' - 'created_at' - 'event_id' - 'organizers' - 'group' - 'legacy_hosts' - 'legacy_speakers' - 'slug' - 'cfs_labels'
     )) = '{
+        "attendee_count": 0,
         "canceled": false,
         "category_name": "Conference",
         "description": "Learn the basics of Kubernetes deployment and management",
@@ -248,6 +249,7 @@ select ok(
         :'groupID'::uuid,
         :'eventID'::uuid
     )::jsonb - 'community' - 'created_at' - 'event_id' - 'organizers' - 'group' - 'legacy_hosts' - 'legacy_speakers' - 'sessions' - 'slug' - 'cfs_labels') = '{
+        "attendee_count": 0,
         "canceled": false,
         "category_name": "Conference",
         "description": "Premier conference for cloud native technologies and community collaboration",
