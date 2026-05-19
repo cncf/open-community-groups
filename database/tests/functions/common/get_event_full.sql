@@ -370,10 +370,11 @@ values
     (:'eventID', :'user2ID', false);
 
 -- Event Attendee
-insert into event_attendee (event_id, user_id, checked_in, checked_in_at, created_at)
+insert into event_attendee (event_id, user_id, status, checked_in, checked_in_at, created_at)
 values
-    (:'eventID', :'user1ID', true, '2024-01-01 00:00:00', '2024-01-01 00:00:00'),
-    (:'eventID', :'user2ID', false, null, '2024-01-01 00:00:00');
+    (:'eventID', :'user1ID', 'confirmed', true, '2024-01-01 00:00:00', '2024-01-01 00:00:00'),
+    (:'eventID', :'user2ID', 'confirmed', false, null, '2024-01-01 00:00:00'),
+    (:'eventID', :'user3ID', 'invitation-pending', false, null, '2024-01-01 00:00:00');
 
 -- Group Team
 insert into group_team (group_id, user_id, role, accepted, "order")

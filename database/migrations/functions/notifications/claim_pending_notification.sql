@@ -14,7 +14,11 @@ returns table (
         from notification n
         join "user" u using (user_id)
         where n.delivery_status = 'pending'
-        and (u.email_verified = true or n.kind = 'email-verification')
+        and (
+            u.email_verified = true
+            or n.kind = 'email-verification'
+            or (n.kind = 'event-invitation' and u.registration_status = 'pre-registered')
+        )
         order by n.created_at asc
         limit 1
         for update of n skip locked

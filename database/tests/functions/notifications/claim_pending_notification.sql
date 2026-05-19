@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(10);
+select plan(12);
 
 -- ============================================================================
 -- VARIABLES
@@ -17,6 +17,8 @@ select plan(10);
 \set notificationEmailVerificationID '00000000-0000-0000-0000-000000000104'
 \set notificationEventPublishedID '00000000-0000-0000-0000-000000000105'
 \set notificationGroupWelcomeID '00000000-0000-0000-0000-000000000106'
+\set notificationPreRegisteredEventInvitationID '00000000-0000-0000-0000-000000000111'
+\set notificationPreRegisteredGroupWelcomeID '00000000-0000-0000-0000-000000000112'
 \set notificationRetryID '00000000-0000-0000-0000-000000000107'
 \set notificationUnverifiedEmailVerificationID '00000000-0000-0000-0000-000000000108'
 \set notificationUnverifiedEventPublishedID '00000000-0000-0000-0000-000000000109'
@@ -24,6 +26,7 @@ select plan(10);
 \set templateEmailVerificationID '00000000-0000-0000-0000-000000000301'
 \set templateEventPublishedID '00000000-0000-0000-0000-000000000302'
 \set templateGroupWelcomeID '00000000-0000-0000-0000-000000000303'
+\set userPreRegisteredID '00000000-0000-0000-0000-000000000203'
 \set userUnverifiedID '00000000-0000-0000-0000-000000000201'
 \set userVerifiedID '00000000-0000-0000-0000-000000000202'
 
@@ -32,9 +35,10 @@ select plan(10);
 -- ============================================================================
 
 -- Users
-insert into "user" (auth_hash, email, email_verified, user_id, username) values
-    ('hash1', 'verified@example.com', true, :'userVerifiedID', 'verified'),
-    ('hash2', 'unverified@example.com', false, :'userUnverifiedID', 'unverified');
+insert into "user" (auth_hash, email, email_verified, registration_status, user_id, username) values
+    ('hash1', 'verified@example.com', true, 'registered', :'userVerifiedID', 'verified'),
+    ('hash2', 'unverified@example.com', false, 'registered', :'userUnverifiedID', 'unverified'),
+    ('hash3', 'invited@example.com', false, 'pre-registered', :'userPreRegisteredID', 'invited');
 
 -- Notification templates
 insert into notification_template_data (data, hash, notification_template_data_id) values
@@ -157,6 +161,24 @@ insert into notification (
         :'notificationUnverifiedEmailVerificationID',
         :'templateEmailVerificationID',
         :'userUnverifiedID'
+    ),
+    (
+        '2025-01-01 00:00:11',
+        0,
+        'pending',
+        'event-invitation',
+        :'notificationPreRegisteredEventInvitationID',
+        :'templateEventPublishedID',
+        :'userPreRegisteredID'
+    ),
+    (
+        '2025-01-01 00:00:12',
+        0,
+        'pending',
+        'group-welcome',
+        :'notificationPreRegisteredGroupWelcomeID',
+        :'templateGroupWelcomeID',
+        :'userPreRegisteredID'
     );
 
 -- Notification attachments
@@ -263,6 +285,19 @@ select is(
     'Claims email verification notification for unverified user'
 );
 
+-- Should return event invitation notifications for pre-registered users
+select is(
+    (select row_to_json(r)::jsonb from claim_pending_notification() r),
+    jsonb_build_object(
+        'attachment_ids', null,
+        'email', 'invited@example.com',
+        'kind', 'event-invitation',
+        'notification_id', :'notificationPreRegisteredEventInvitationID',
+        'template_data', '{"event": "test"}'::jsonb
+    ),
+    'Claims event invitation notification for pre-registered user'
+);
+
 -- Should leave other notification kinds for unverified users pending
 select results_eq(
     $$
@@ -278,6 +313,21 @@ select results_eq(
             ('00000000-0000-0000-0000-000000000110'::uuid)
     $$,
     'Leaves other notification kinds for unverified users pending'
+);
+
+-- Should leave other notification kinds for pre-registered users pending
+select results_eq(
+    $$
+        select notification_id
+        from notification
+        where user_id = '00000000-0000-0000-0000-000000000203'
+        and delivery_status = 'pending'
+        order by notification_id
+    $$,
+    $$
+        values ('00000000-0000-0000-0000-000000000112'::uuid)
+    $$,
+    'Leaves other notification kinds for pre-registered users pending'
 );
 
 -- Should return NULL when no deliverable pending notifications exist

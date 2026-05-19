@@ -9,6 +9,7 @@ returns json as $$
             from "user" u
             where u.user_id = p_user_id
             and u.email_verified = true
+            and u.registration_status = 'registered'
         ),
         false
     );

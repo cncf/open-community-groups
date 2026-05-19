@@ -18,6 +18,9 @@ use crate::{
 /// Trait for database operations related to authentication and authorization.
 #[async_trait]
 pub(crate) trait DBAuth {
+    /// Activates a pre-registered user using externally verified identity details.
+    async fn activate_pre_registered_user(&self, user_id: &Uuid, user_summary: &UserSummary) -> Result<User>;
+
     /// Creates a new session in the database.
     async fn create_session(&self, record: &session::Record) -> Result<()>;
 
@@ -27,8 +30,8 @@ pub(crate) trait DBAuth {
     /// Retrieves a session by its ID.
     async fn get_session(&self, session_id: &session::Id) -> Result<Option<session::Record>>;
 
-    /// Retrieves a user by their email address.
-    async fn get_user_by_email(&self, email: &str) -> Result<Option<User>>;
+    /// Retrieves a registered or pre-registered user by email for external auth.
+    async fn get_user_by_email_for_external_auth(&self, email: &str) -> Result<Option<User>>;
 
     /// Retrieves a user by their unique ID.
     async fn get_user_by_id(&self, user_id: &Uuid) -> Result<Option<User>>;
@@ -86,6 +89,15 @@ pub(crate) trait DBAuth {
 /// related database operations.
 #[async_trait]
 impl DBAuth for PgDB {
+    #[instrument(skip(self, user_summary), err)]
+    async fn activate_pre_registered_user(&self, user_id: &Uuid, user_summary: &UserSummary) -> Result<User> {
+        self.fetch_json_one(
+            "select activate_pre_registered_user($1::uuid, $2::jsonb);",
+            &[user_id, &Json(user_summary)],
+        )
+        .await
+    }
+
     #[instrument(skip(self, record), err)]
     async fn create_session(&self, record: &session::Record) -> Result<()> {
         self.execute(
@@ -137,8 +149,8 @@ impl DBAuth for PgDB {
     }
 
     #[instrument(skip(self, email), err)]
-    async fn get_user_by_email(&self, email: &str) -> Result<Option<User>> {
-        self.fetch_json_opt("select get_user_by_email($1::text);", &[&email])
+    async fn get_user_by_email_for_external_auth(&self, email: &str) -> Result<Option<User>> {
+        self.fetch_json_opt("select get_user_by_email_for_external_auth($1::text);", &[&email])
             .await
     }
 

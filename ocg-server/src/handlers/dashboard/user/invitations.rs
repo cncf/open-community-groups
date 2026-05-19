@@ -8,17 +8,21 @@ use axum::{
 };
 use axum_messages::Messages;
 use tower_sessions::Session;
-use tracing::instrument;
+use tracing::{instrument, warn};
 use uuid::Uuid;
 
 use crate::{
+    config::HttpServerConfig,
     db::DynDB,
     handlers::{
         auth::{SELECTED_COMMUNITY_ID_KEY, select_first_community_and_group},
         error::HandlerError,
         extractors::CurrentUser,
     },
+    services::notifications::{DynNotificationsManager, NewNotification, NotificationKind},
     templates::dashboard::user::invitations,
+    templates::notifications::EventWelcome,
+    util::{build_event_calendar_attachment, build_event_page_link},
 };
 
 #[cfg(test)]
@@ -62,6 +66,50 @@ pub(crate) async fn accept_community_team_invitation(
     Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-body")]))
 }
 
+/// Accepts a pending event invitation.
+#[instrument(skip_all, err)]
+pub(crate) async fn accept_event_attendee_invitation(
+    messages: Messages,
+    CurrentUser(user): CurrentUser,
+    State(db): State<DynDB>,
+    State(notifications_manager): State<DynNotificationsManager>,
+    State(server_cfg): State<HttpServerConfig>,
+    Path(event_id): Path<Uuid>,
+) -> Result<impl IntoResponse, HandlerError> {
+    // Accept event invitation
+    let community_id = db.accept_event_attendee_invitation(user.user_id, event_id).await?;
+    messages.success("Event invitation accepted.");
+
+    // Send the normal attendee welcome notification
+    let (site_settings, event) = match tokio::try_join!(
+        db.get_site_settings(),
+        db.get_event_summary_by_id(community_id, event_id)
+    ) {
+        Ok(context) => context,
+        Err(err) => {
+            warn!(error = %err, "failed to load event invitation welcome notification context");
+            return Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-body")]).into_response());
+        }
+    };
+    let base_url = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
+    let template_data = EventWelcome {
+        link: build_event_page_link(base_url, &event),
+        event,
+        theme: site_settings.theme,
+    };
+    let notification = NewNotification {
+        attachments: vec![build_event_calendar_attachment(base_url, &template_data.event)],
+        kind: NotificationKind::EventWelcome,
+        recipients: vec![user.user_id],
+        template_data: Some(serde_json::to_value(&template_data)?),
+    };
+    if let Err(err) = notifications_manager.enqueue(&notification).await {
+        warn!(error = %err, "failed to enqueue event invitation welcome notification");
+    }
+
+    Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-body")]).into_response())
+}
+
 /// Accepts a pending group team invitation.
 #[instrument(skip_all, err)]
 pub(crate) async fn accept_group_team_invitation(
@@ -99,6 +147,21 @@ pub(crate) async fn reject_community_team_invitation(
     Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-body")]))
 }
 
+/// Rejects a pending event invitation.
+#[instrument(skip_all, err)]
+pub(crate) async fn reject_event_attendee_invitation(
+    messages: Messages,
+    CurrentUser(user): CurrentUser,
+    State(db): State<DynDB>,
+    Path(event_id): Path<Uuid>,
+) -> Result<impl IntoResponse, HandlerError> {
+    // Reject the pending invitation
+    db.reject_event_attendee_invitation(user.user_id, event_id).await?;
+    messages.success("Event invitation rejected.");
+
+    Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-body")]))
+}
+
 /// Rejects a pending group team invitation.
 #[instrument(skip_all, err)]
 pub(crate) async fn reject_group_team_invitation(
@@ -122,13 +185,15 @@ pub(crate) async fn prepare_list_page(
     user_id: Uuid,
 ) -> Result<invitations::ListPage, HandlerError> {
     // Prepare template fetching both lists concurrently
-    let (community_invitations, group_invitations) = tokio::try_join!(
+    let (community_invitations, event_invitations, group_invitations) = tokio::try_join!(
         db.list_user_community_team_invitations(user_id),
+        db.list_user_event_invitations(user_id),
         db.list_user_group_team_invitations(user_id)
     )?;
 
     Ok(invitations::ListPage {
         community_invitations,
+        event_invitations,
         group_invitations,
     })
 }

@@ -82,6 +82,7 @@ attendees as (
         ) as created_month
     from event_attendee ea
     join events e on e.event_id = ea.event_id
+    where ea.status = 'confirmed'
 )
 select json_strip_nulls(json_build_object(
     'groups', json_build_object(

@@ -50,6 +50,10 @@ pub struct Attendee {
     /// RSVP creation time.
     #[serde(with = "chrono::serde::ts_seconds")]
     pub created_at: DateTime<Utc>,
+    /// Email address for invitation placeholders and registered users.
+    pub email: String,
+    /// Event attendee status.
+    pub status: String,
     /// User id.
     pub user_id: Uuid,
     /// Username.

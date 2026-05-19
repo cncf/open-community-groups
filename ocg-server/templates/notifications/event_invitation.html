@@ -1,0 +1,36 @@
+{% extends "notifications/base.html" -%}
+{% import "macros/email.html" as email -%}
+
+{% block subject -%}
+  You have been invited: {{ event.name }}
+{% endblock subject -%}
+
+{% block preheader -%}
+  You received an invitation to {{ event.name }} from {{ event.group_name }}.
+{% endblock preheader -%}
+
+{% block content -%}
+  <p class="default mb-30" style="margin-bottom: 30px">
+    You have been invited to <strong>{{ event.name }}</strong> with
+    <strong>{{ event.group_name }}</strong> on
+    <strong>Open Community Groups</strong>.
+    <br />
+    <br />
+    Use the link below to review and accept or reject the invitation from your
+    dashboard.
+    <br />
+    <br />
+    When logging in with LF SSO, make sure the invited email address matches
+    the primary email configured on your LF account. If the emails do not
+    match, you will not be able to accept this invitation.
+  </p>
+
+  {{ email::button(link = link, text = "Review invitation", color = theme.primary_color) }}
+{% endblock content -%}
+
+{% block footer -%}
+  You received this email notification because someone invited this email
+  address to attend {{ event.name }}, an event from {{ event.group_name }} in
+  the {{ event.community_display_name }} community. If you did not expect this
+  invitation, you can ignore this message.
+{% endblock footer -%}

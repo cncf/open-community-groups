@@ -18,6 +18,8 @@ use crate::{
 pub(crate) struct ListPage {
     /// Pending community invitations for the current user.
     pub community_invitations: Vec<CommunityTeamInvitation>,
+    /// Pending event invitations for the current user.
+    pub event_invitations: Vec<EventInvitation>,
     /// Pending group invitations for the current user.
     pub group_invitations: Vec<GroupTeamInvitation>,
 }
@@ -37,6 +39,30 @@ pub(crate) struct CommunityTeamInvitation {
     /// Invitation creation time.
     #[serde(with = "chrono::serde::ts_seconds")]
     pub created_at: DateTime<Utc>,
+}
+
+/// Organizer-created event invitation summary information.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct EventInvitation {
+    /// Human-readable display name of the community.
+    pub community_display_name: String,
+    /// Community slug.
+    pub community_name: String,
+    /// Event identifier.
+    pub event_id: Uuid,
+    /// Event display name.
+    pub event_name: String,
+    /// Group display name.
+    pub group_name: String,
+    /// Timezone in which event dates should be displayed.
+    pub timezone: chrono_tz::Tz,
+
+    /// Invitation creation time.
+    #[serde(with = "chrono::serde::ts_seconds")]
+    pub created_at: DateTime<Utc>,
+    /// Event start time.
+    #[serde(default, with = "chrono::serde::ts_seconds_option")]
+    pub starts_at: Option<DateTime<Utc>>,
 }
 
 /// Group team invitation summary information.

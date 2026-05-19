@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(15);
+select plan(16);
 
 -- ============================================================================
 -- VARIABLES
@@ -30,6 +30,7 @@ select plan(15);
 \set user5ID '00000000-0000-0000-0000-000000000055'
 \set user6ID '00000000-0000-0000-0000-000000000056'
 \set user7ID '00000000-0000-0000-0000-000000000057'
+\set user8ID '00000000-0000-0000-0000-000000000058'
 
 -- ============================================================================
 -- SEED DATA
@@ -61,7 +62,8 @@ values
     (:'user4ID', 'h4', 'att4@example.com', 'att4', 'Att Four'),
     (:'user5ID', 'h5', 'att5@example.com', 'att5', 'Att Five'),
     (:'user6ID', 'h6', 'att6@example.com', 'att6', 'Att Six'),
-    (:'user7ID', 'h7', 'att7@example.com', 'att7', 'Att Seven');
+    (:'user7ID', 'h7', 'att7@example.com', 'att7', 'Att Seven'),
+    (:'user8ID', 'h8', 'att8@example.com', 'att8', 'Att Eight');
 
 -- Event
 insert into event (
@@ -179,6 +181,10 @@ values (:'eventCanceledID', :'user1ID', false);
 -- Event Attendee - canceled draft event should not report attendee
 insert into event_attendee (event_id, user_id, checked_in)
 values (:'eventDraftCanceledID', :'user2ID', false);
+
+-- Event Attendee - pending organizer invitation should not report attendee
+insert into event_attendee (event_id, user_id, status)
+values (:'eventID', :'user8ID', 'invitation-pending');
 
 -- Event Waitlist
 insert into event_waitlist (event_id, user_id)
@@ -362,6 +368,19 @@ select is(
     'Should return waitlisted status for a waitlisted user'
 );
 
+-- Should return none for pending organizer-created invitations
+select is(
+    get_event_attendance(:'communityID'::uuid, :'eventID'::uuid, :'user8ID'::uuid)::jsonb,
+    '{
+        "is_checked_in": false,
+        "purchase_amount_minor": null,
+        "refund_request_status": null,
+        "resume_checkout_url": null,
+        "status": "none"
+    }'::jsonb,
+    'Should return none for pending organizer-created invitations'
+);
+
 -- Should return pending approval status for pending invitation request
 select is(
     get_event_attendance(:'communityID'::uuid, :'eventApprovalID'::uuid, :'user5ID'::uuid)::jsonb,
@@ -470,7 +489,7 @@ select is(
     get_event_attendance(
         :'communityID'::uuid,
         :'eventID'::uuid,
-        '00000000-0000-0000-0000-000000000058'::uuid
+        '00000000-0000-0000-0000-000000000059'::uuid
     )::jsonb,
     '{
         "is_checked_in": false,

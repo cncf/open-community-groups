@@ -290,6 +290,7 @@ select columns_are('event_attendee', array[
     'event_id',
     'user_id',
     'checked_in',
+    'status',
     'checked_in_at',
     'created_at'
 ]);
@@ -817,6 +818,7 @@ select columns_are('user', array[
     'password',
     'photo_url',
     'provider',
+    'registration_status',
     'timezone',
     'title',
     'twitter_url',

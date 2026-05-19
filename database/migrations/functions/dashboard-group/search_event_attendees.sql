@@ -9,11 +9,13 @@ returns json as $$
                 (p_filters->>'limit')::int as limit_value,
                 (p_filters->>'offset')::int as offset_value
         ),
-        -- Select confirmed attendee rows
+        -- Select visible attendee and invitation rows
         attendees as (
             select
                 ea.checked_in,
                 extract(epoch from ea.created_at)::bigint as created_at,
+                u.email,
+                ea.status,
                 u.user_id,
                 u.username,
 
@@ -54,6 +56,7 @@ returns json as $$
             ) err on true
             where e.group_id = p_group_id
             and ea.event_id = (select event_id from filters)
+            and ea.status in ('confirmed', 'invitation-pending', 'invitation-rejected')
             order by coalesce(lower(u.name), lower(u.username)) asc, u.user_id asc
             offset (select offset_value from filters)
             limit (select limit_value from filters)
@@ -65,6 +68,7 @@ returns json as $$
             join event e on e.event_id = ea.event_id
             where e.group_id = p_group_id
             and ea.event_id = (select event_id from filters)
+            and ea.status in ('confirmed', 'invitation-pending', 'invitation-rejected')
         ),
         -- Render attendees as JSON
         attendees_json as (

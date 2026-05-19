@@ -3,7 +3,7 @@ import { expect } from "@open-wc/testing";
 import "/static/js/dashboard/group/attendees.js";
 import { waitForMicrotask } from "/tests/unit/test-utils/async.js";
 import { useDashboardTestEnv } from "/tests/unit/test-utils/env.js";
-import { dispatchHtmxLoad } from "/tests/unit/test-utils/htmx.js";
+import { dispatchHtmxAfterRequest, dispatchHtmxLoad } from "/tests/unit/test-utils/htmx.js";
 import { mockFetch } from "/tests/unit/test-utils/network.js";
 
 describe("dashboard group attendees", () => {
@@ -26,6 +26,31 @@ describe("dashboard group attendees", () => {
   const initializeAttendeesUi = () => {
     dispatchHtmxLoad();
   };
+
+  const attendeeInvitationMarkup = () => `
+    <button id="open-attendee-invitation-modal" type="button">Invite</button>
+    <div id="attendee-invitation-modal" class="hidden">
+      <button id="close-attendee-invitation-modal" type="button">Close</button>
+      <button id="cancel-attendee-invitation" type="button">Cancel</button>
+      <div id="overlay-attendee-invitation-modal"></div>
+      <form id="attendee-invitation-form">
+        <button type="button" class="btn-primary" data-attendee-invitation-mode="user">
+          Registered user
+        </button>
+        <button type="button" class="btn-tertiary" data-attendee-invitation-mode="email">
+          Email
+        </button>
+        <div data-attendee-invitation-panel="user">
+          <input type="hidden" name="user_id" id="attendee-invitation-user-id" />
+          <div id="attendee-invitation-selected-user"></div>
+        </div>
+        <div data-attendee-invitation-panel="email" class="hidden">
+          <input type="email" id="attendee-invitation-email" name="email" disabled />
+        </div>
+        <button id="submit-attendee-invitation" type="submit" disabled>Send invitation</button>
+      </form>
+    </div>
+  `;
 
   it("toggles and closes the attendee actions menu", () => {
     document.body.innerHTML = `
@@ -379,6 +404,48 @@ describe("dashboard group attendees", () => {
     expect(rejectButton.getAttribute("hx-put")).to.equal(
       "/dashboard/group/events/event-2/attendees/user-2/refund/reject",
     );
+  });
+
+  it("handles invitation modal controls after attendee content refreshes", () => {
+    document.body.innerHTML = `
+      <div id="attendees-content">
+        ${attendeeInvitationMarkup()}
+      </div>
+    `;
+
+    const attendeesRoot = document.getElementById("attendees-content");
+    dispatchHtmxLoad(attendeesRoot);
+
+    document.getElementById("open-attendee-invitation-modal")?.click();
+    document.querySelector('[data-attendee-invitation-mode="email"]')?.click();
+
+    const initialSubmit = document.getElementById("submit-attendee-invitation");
+    const initialEmailInput = document.getElementById("attendee-invitation-email");
+    initialEmailInput.value = "first@example.com";
+    initialEmailInput.dispatchEvent(new Event("input", { bubbles: true }));
+    expect(initialSubmit.disabled).to.equal(false);
+
+    attendeesRoot.innerHTML = attendeeInvitationMarkup();
+    dispatchHtmxLoad(attendeesRoot);
+
+    document.getElementById("open-attendee-invitation-modal")?.click();
+    document.querySelector('[data-attendee-invitation-mode="email"]')?.click();
+
+    const refreshedModal = document.getElementById("attendee-invitation-modal");
+    const refreshedSubmit = document.getElementById("submit-attendee-invitation");
+    const refreshedEmailInput = document.getElementById("attendee-invitation-email");
+    refreshedEmailInput.value = "second@example.com";
+    refreshedEmailInput.dispatchEvent(new Event("input", { bubbles: true }));
+
+    expect(refreshedSubmit.disabled).to.equal(false);
+
+    dispatchHtmxAfterRequest(document.getElementById("attendee-invitation-form"), { status: 201 });
+
+    expect(env.current.swal.calls[0]).to.include({
+      text: "Invitation sent.",
+      icon: "success",
+    });
+    expect(refreshedModal.classList.contains("hidden")).to.equal(true);
   });
 
   it("keeps the check-in toggle disabled after a successful check-in", async () => {

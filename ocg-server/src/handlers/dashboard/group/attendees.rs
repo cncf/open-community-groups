@@ -10,7 +10,7 @@ use axum::{
     },
     response::{Html, IntoResponse},
 };
-use garde::Validate;
+use garde::{Validate, rules::email::parse_email};
 use qrcode::render::svg;
 use serde::{Deserialize, Serialize};
 use tracing::{instrument, warn};
@@ -30,7 +30,7 @@ use crate::{
     },
     templates::{
         dashboard::group::attendees::{self, AttendeesFilters, AttendeesPaginationFilters},
-        notifications::{EventCustom, EventWelcome},
+        notifications::{EventCustom, EventInvitation, EventWelcome},
     },
     types::{pagination::NavigationLinks, permissions::GroupPermission},
     util::{build_event_calendar_attachment, build_event_page_link},
@@ -42,6 +42,9 @@ use crate::{
 
 #[cfg(test)]
 mod tests;
+
+/// Status used for rows that represent confirmed event attendees.
+const ATTENDEE_STATUS_CONFIRMED: &str = "confirmed";
 
 // Pages handlers.
 
@@ -189,6 +192,24 @@ pub(crate) async fn approve_refund_request(
         .into_response())
 }
 
+/// Cancels a pending organizer-created event invitation.
+#[instrument(skip_all, err)]
+pub(crate) async fn cancel_event_attendee_invitation(
+    CurrentUser(user): CurrentUser,
+    SelectedGroupId(group_id): SelectedGroupId,
+    State(db): State<DynDB>,
+    Path((event_id, user_id)): Path<(Uuid, Uuid)>,
+) -> Result<impl IntoResponse, HandlerError> {
+    db.cancel_event_attendee_invitation(user.user_id, group_id, event_id, user_id)
+        .await?;
+
+    Ok((
+        StatusCode::NO_CONTENT,
+        [("HX-Trigger", "refresh-event-attendees")],
+    )
+        .into_response())
+}
+
 /// Generates a QR code for event check-in.
 #[instrument(skip_all, err)]
 pub(crate) async fn generate_check_in_qr_code(
@@ -231,6 +252,67 @@ pub(crate) async fn generate_check_in_qr_code(
 
     // Return SVG response
     Ok((StatusCode::OK, headers, svg))
+}
+
+/// Invites a user to attend an event.
+#[instrument(skip_all, err)]
+#[allow(clippy::too_many_arguments)]
+pub(crate) async fn invite_event_attendee(
+    CurrentUser(user): CurrentUser,
+    SelectedCommunityId(community_id): SelectedCommunityId,
+    SelectedGroupId(group_id): SelectedGroupId,
+    State(db): State<DynDB>,
+    State(notifications_manager): State<DynNotificationsManager>,
+    State(server_cfg): State<HttpServerConfig>,
+    Path(event_id): Path<Uuid>,
+    ValidatedForm(invitation): ValidatedForm<EventAttendeeInvitation>,
+) -> Result<impl IntoResponse, HandlerError> {
+    // Validate target shape and normalize email
+    if (invitation.user_id.is_none() && invitation.email.is_none())
+        || (invitation.user_id.is_some() && invitation.email.is_some())
+    {
+        return Ok((StatusCode::BAD_REQUEST, "provide exactly one invite target").into_response());
+    }
+    let email = invitation.email.map(|email| email.trim().to_string());
+    if let Some(email) = &email {
+        parse_email(email).map_err(|err| anyhow::anyhow!("invalid email: {err}"))?;
+    }
+
+    // Create the pending invitation
+    let invited_user_id = db
+        .invite_event_attendee(user.user_id, group_id, event_id, invitation.user_id, email)
+        .await?;
+
+    // Load context and enqueue the invitation notification
+    let (site_settings, event) = match tokio::try_join!(
+        db.get_site_settings(),
+        db.get_event_summary_by_id(community_id, event_id)
+    ) {
+        Ok(context) => context,
+        Err(err) => {
+            warn!(error = %err, "failed to load event invitation notification context");
+            return Ok((StatusCode::CREATED, [("HX-Trigger", "refresh-event-attendees")]).into_response());
+        }
+    };
+    let template_data = EventInvitation {
+        event,
+        link: format!(
+            "{}/dashboard/user?tab=invitations",
+            server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url)
+        ),
+        theme: site_settings.theme,
+    };
+    let notification = NewNotification {
+        attachments: vec![],
+        kind: NotificationKind::EventInvitation,
+        recipients: vec![invited_user_id],
+        template_data: Some(serde_json::to_value(&template_data)?),
+    };
+    if let Err(err) = notifications_manager.enqueue(&notification).await {
+        warn!(error = %err, "failed to enqueue event invitation notification");
+    }
+
+    Ok((StatusCode::CREATED, [("HX-Trigger", "refresh-event-attendees")]).into_response())
 }
 
 /// Manually checks in a user for an event, bypassing the check-in window validation.
@@ -370,7 +452,7 @@ pub(crate) async fn download_csv(
     State(db): State<DynDB>,
     Path(event_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Fetch event summary and all attendees
+    // Fetch event summary and all attendee rows
     let search_filters = AttendeesFilters {
         event_id,
         limit: None,
@@ -388,7 +470,11 @@ pub(crate) async fn download_csv(
     writer
         .write_record(["Name", "Company", "Title"])
         .map_err(anyhow::Error::from)?;
-    for attendee in &search_attendees_results.attendees {
+    for attendee in search_attendees_results
+        .attendees
+        .iter()
+        .filter(|attendee| attendee.status == ATTENDEE_STATUS_CONFIRMED)
+    {
         writer
             .write_record([
                 attendee.name.as_deref().unwrap_or(&attendee.username),
@@ -413,6 +499,17 @@ pub(crate) async fn download_csv(
 }
 
 // Types.
+
+/// Form data for organizer-created event invitations.
+#[derive(Debug, Deserialize, Serialize, Validate)]
+pub(crate) struct EventAttendeeInvitation {
+    /// Email address for an unregistered invitee.
+    #[garde(length(max = MAX_LEN_M))]
+    pub email: Option<String>,
+    /// Existing registered user identifier.
+    #[garde(skip)]
+    pub user_id: Option<Uuid>,
+}
 
 /// Form data for custom event notifications.
 #[derive(Debug, Deserialize, Serialize, Validate)]

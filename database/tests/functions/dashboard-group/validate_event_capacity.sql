@@ -17,6 +17,8 @@ select plan(6);
 \set user1ID '00000000-0000-0000-0000-000000000051'
 \set user2ID '00000000-0000-0000-0000-000000000052'
 \set user3ID '00000000-0000-0000-0000-000000000053'
+\set user4ID '00000000-0000-0000-0000-000000000054'
+\set user5ID '00000000-0000-0000-0000-000000000055'
 
 -- ============================================================================
 -- SEED DATA
@@ -42,7 +44,9 @@ values (:'eventCategoryID', :'communityID', 'Meetup');
 insert into "user" (user_id, auth_hash, email, username, email_verified, name) values
     (:'user1ID', gen_random_bytes(32), 'user1@example.com', 'user1', true, 'User 1'),
     (:'user2ID', gen_random_bytes(32), 'user2@example.com', 'user2', true, 'User 2'),
-    (:'user3ID', gen_random_bytes(32), 'user3@example.com', 'user3', true, 'User 3');
+    (:'user3ID', gen_random_bytes(32), 'user3@example.com', 'user3', true, 'User 3'),
+    (:'user4ID', gen_random_bytes(32), 'user4@example.com', 'user4', true, 'User 4'),
+    (:'user5ID', gen_random_bytes(32), 'user5@example.com', 'user5', true, 'User 5');
 
 -- Event
 insert into event (
@@ -72,10 +76,12 @@ insert into event (
 );
 
 -- Event attendees
-insert into event_attendee (event_id, user_id) values
-    (:'eventID', :'user1ID'),
-    (:'eventID', :'user2ID'),
-    (:'eventID', :'user3ID');
+insert into event_attendee (event_id, user_id, status) values
+    (:'eventID', :'user1ID', 'confirmed'),
+    (:'eventID', :'user2ID', 'confirmed'),
+    (:'eventID', :'user3ID', 'confirmed'),
+    (:'eventID', :'user4ID', 'invitation-pending'),
+    (:'eventID', :'user5ID', 'invitation-rejected');
 
 -- ============================================================================
 -- TESTS

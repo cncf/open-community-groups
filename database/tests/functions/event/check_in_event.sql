@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(22);
+select plan(23);
 
 -- ============================================================================
 -- VARIABLES
@@ -230,14 +230,15 @@ insert into event (
 );
 
 -- Attendees registration
-insert into event_attendee (event_id, user_id) values
-    (:'futureEventID'::uuid, :'userID'::uuid),
-    (:'futureEventID'::uuid, :'userID2'::uuid),
-    (:'checkInWindowEventID'::uuid, :'userID'::uuid),
-    (:'noStartTimeEventID'::uuid, :'userID'::uuid),
-    (:'pastEventID'::uuid, :'userID'::uuid),
-    (:'multiDayEventID'::uuid, :'userID'::uuid),
-    (:'sameDayWithEndsAtEventID'::uuid, :'userID'::uuid);
+insert into event_attendee (event_id, user_id, status) values
+    (:'futureEventID'::uuid, :'userID'::uuid, 'confirmed'),
+    (:'futureEventID'::uuid, :'userID2'::uuid, 'confirmed'),
+    (:'checkInWindowEventID'::uuid, :'userID'::uuid, 'confirmed'),
+    (:'checkInWindowEventID'::uuid, :'userID2'::uuid, 'invitation-pending'),
+    (:'noStartTimeEventID'::uuid, :'userID'::uuid, 'confirmed'),
+    (:'pastEventID'::uuid, :'userID'::uuid, 'confirmed'),
+    (:'multiDayEventID'::uuid, :'userID'::uuid, 'confirmed'),
+    (:'sameDayWithEndsAtEventID'::uuid, :'userID'::uuid, 'confirmed');
 
 -- ============================================================================
 -- TESTS
@@ -284,14 +285,26 @@ select ok(
     'Should set checked_in_at to current time'
 );
 
--- Should error when user is not attending
+-- Should error when user has only a pending organizer-created invitation
 select throws_ok(
     format(
         'select check_in_event(%L::uuid,%L::uuid,%L::uuid,false)',
         :'communityID', :'checkInWindowEventID', :'userID2'
     ),
     'user is not registered for this event',
-    'Should require attendee record'
+    'Should require confirmed attendee record'
+);
+
+-- Should leave pending invitation rows unchecked
+select is(
+    (
+        select checked_in
+        from event_attendee
+        where event_id = :'checkInWindowEventID'::uuid
+        and user_id = :'userID2'::uuid
+    ),
+    false,
+    'Should leave pending invitation rows unchecked'
 );
 
 -- Should error if window has not opened yet

@@ -105,6 +105,7 @@ begin
         select 1
         from event_attendee
         where event_id = p_event_id
+        and status in ('confirmed', 'invitation-pending', 'invitation-rejected')
     );
     v_has_pending_invitation_requests := exists(
         select 1

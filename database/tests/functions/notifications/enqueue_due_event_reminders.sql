@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(13);
+select plan(14);
 
 -- ============================================================================
 -- VARIABLES
@@ -27,6 +27,7 @@ select plan(13);
 \set groupID '00000000-0000-0000-0000-000000009909'
 \set groupInactiveCommunityID '00000000-0000-0000-0000-000000009921'
 \set groupInactiveID '00000000-0000-0000-0000-000000009922'
+\set userPreRegisteredInvitedID '00000000-0000-0000-0000-000000009923'
 \set userVerifiedAttendeeID '00000000-0000-0000-0000-000000009910'
 \set userVerifiedLateSignupID '00000000-0000-0000-0000-000000009911'
 \set userVerifiedSpeakerID '00000000-0000-0000-0000-000000009912'
@@ -174,11 +175,12 @@ insert into "group" (
 );
 
 -- Users
-insert into "user" (user_id, auth_hash, email, email_verified, username) values
-    (:'userVerifiedAttendeeID', 'hash-1', 'attendee@example.com', true, 'attendee'),
-    (:'userVerifiedLateSignupID', 'hash-2', 'late-signup@example.com', true, 'late-signup'),
-    (:'userVerifiedSpeakerID', 'hash-3', 'speaker@example.com', true, 'speaker'),
-    (:'userUnverifiedID', 'hash-4', 'unverified@example.com', false, 'unverified');
+insert into "user" (user_id, auth_hash, email, email_verified, username, registration_status) values
+    (:'userVerifiedAttendeeID', 'hash-1', 'attendee@example.com', true, 'attendee', 'registered'),
+    (:'userVerifiedLateSignupID', 'hash-2', 'late-signup@example.com', true, 'late-signup', 'registered'),
+    (:'userVerifiedSpeakerID', 'hash-3', 'speaker@example.com', true, 'speaker', 'registered'),
+    (:'userUnverifiedID', 'hash-4', 'unverified@example.com', false, 'unverified', 'registered'),
+    (:'userPreRegisteredInvitedID', 'hash-5', 'invited@example.com', false, 'invited', 'pre-registered');
 
 -- Events
 insert into event (
@@ -376,12 +378,13 @@ insert into event (
 );
 
 -- Attendees and speakers for due event
-insert into event_attendee (event_id, user_id) values
-    (:'eventDueID', :'userVerifiedAttendeeID'),
-    (:'eventDeletedGroupID', :'userVerifiedAttendeeID'),
-    (:'eventInactiveCommunityID', :'userVerifiedAttendeeID'),
-    (:'eventInactiveGroupID', :'userVerifiedAttendeeID'),
-    (:'eventDueID', :'userUnverifiedID');
+insert into event_attendee (event_id, user_id, status) values
+    (:'eventDueID', :'userVerifiedAttendeeID', 'confirmed'),
+    (:'eventDeletedGroupID', :'userVerifiedAttendeeID', 'confirmed'),
+    (:'eventInactiveCommunityID', :'userVerifiedAttendeeID', 'confirmed'),
+    (:'eventInactiveGroupID', :'userVerifiedAttendeeID', 'confirmed'),
+    (:'eventDueID', :'userUnverifiedID', 'confirmed'),
+    (:'eventDueID', :'userPreRegisteredInvitedID', 'invitation-pending');
 
 insert into event_speaker (event_id, user_id, featured) values
     (:'eventDueID', :'userVerifiedSpeakerID', true),
@@ -414,6 +417,18 @@ select results_eq(
         ('00000000-0000-0000-0000-000000009912'::uuid)
     $$,
     'Should create one reminder notification per verified recipient for the due event'
+);
+
+-- Should not enqueue reminders for pending invitation rows
+select is(
+    (
+        select count(*)::int
+        from notification
+        where kind = 'event-reminder'
+        and user_id = :'userPreRegisteredInvitedID'::uuid
+    ),
+    0,
+    'Should not enqueue reminders for pending invitation rows'
 );
 
 -- Should build reminder link using the provided base URL

@@ -191,16 +191,17 @@ insert into event_discount_code (
 );
 
 -- Event Attendees
-insert into event_attendee (event_id, user_id) values
-	    (:'eventOK', :'user1ID'),
-	    (:'eventDisabledWaitlist', :'user1ID'),
-	    (:'eventDisabledWaitlist', :'user2ID'),
-	    (:'eventPast', :'user1ID'),
-	    (:'eventPaidTicketed', :'user3ID'),
-	    (:'eventStartedNoEnd', :'user1ID'),
-	    (:'eventFull', :'user1ID'),
-	    (:'eventUnlimited', :'user1ID'),
-	    (:'eventTicketed', :'user1ID');
+insert into event_attendee (event_id, user_id, status) values
+    (:'eventOK', :'user1ID', 'confirmed'),
+    (:'eventOK', :'user3ID', 'invitation-pending'),
+    (:'eventDisabledWaitlist', :'user1ID', 'confirmed'),
+    (:'eventDisabledWaitlist', :'user2ID', 'confirmed'),
+    (:'eventPast', :'user1ID', 'confirmed'),
+    (:'eventPaidTicketed', :'user3ID', 'confirmed'),
+    (:'eventStartedNoEnd', :'user1ID', 'confirmed'),
+    (:'eventFull', :'user1ID', 'confirmed'),
+    (:'eventUnlimited', :'user1ID', 'confirmed'),
+    (:'eventTicketed', :'user1ID', 'confirmed');
 
 -- Event Waitlists
 insert into event_waitlist (event_id, user_id, created_at) values
@@ -459,14 +460,14 @@ select is(
     'Moves the full waitlist into attendees when an unlimited event is left'
 );
 
--- Should reject unknown attendee state
+-- Should reject pending organizer-created invitations
 select throws_ok(
     format(
         'select leave_event(%L::uuid,%L::uuid,%L::uuid)',
         :'communityID', :'eventOK', :'user3ID'
     ),
     'user is not attending or waitlisted for this event',
-    'Rejects leave requests for users without attendance state'
+    'Rejects leave requests for pending organizer-created invitations'
 );
 
 -- Should reject past events

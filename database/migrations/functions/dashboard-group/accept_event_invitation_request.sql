@@ -52,7 +52,8 @@ begin
     if v_capacity is not null then
         select count(*) into v_attendee_count
         from event_attendee
-        where event_id = p_event_id;
+        where event_id = p_event_id
+        and status = 'confirmed';
 
         if v_attendee_count >= v_capacity then
             raise exception 'event has reached capacity';
@@ -71,7 +72,9 @@ begin
 
     insert into event_attendee (event_id, user_id)
     values (p_event_id, p_user_id)
-    on conflict (event_id, user_id) do nothing;
+    on conflict (event_id, user_id) do update
+    set status = 'confirmed'
+    where event_attendee.status = 'invitation-canceled';
 
     -- Track the organizer decision
     perform insert_audit_log(

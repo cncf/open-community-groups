@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(7);
+select plan(8);
 
 -- ============================================================================
 -- VARIABLES
@@ -17,6 +17,7 @@ select plan(7);
 \set user6ID '00000000-0000-0000-0000-000000000016'
 \set user7ID '00000000-0000-0000-0000-000000000017'
 \set user8ID '00000000-0000-0000-0000-000000000018'
+\set userPreRegisteredID '00000000-0000-0000-0000-000000000019'
 \set userUnverifiedID '00000000-0000-0000-0000-000000000020'
 
 -- ============================================================================
@@ -24,19 +25,21 @@ select plan(7);
 -- ============================================================================
 
 -- User
-insert into "user" (user_id, username, email, email_verified, auth_hash, name, photo_url)
+insert into "user" (user_id, username, email, email_verified, auth_hash, name, photo_url, registration_status)
 values
-    (:'user1ID', 'johndoe', 'john.doe@example.com', true, 'hash1', 'John Doe', 'https://example.com/john.jpg'),
-    (:'user2ID', 'janedoe', 'jane.doe@example.com', true, 'hash2', 'Jane Doe', 'https://example.com/jane.jpg'),
-    (:'user3ID', 'johnsmith', 'john.smith@example.com', true, 'hash3', 'John Smith', null),
-    (:'user4ID', 'alice', 'alice@example.com', true, 'hash4', 'Alice Johnson', 'https://example.com/alice.jpg'),
-    (:'user5ID', 'bob', 'bob@example.com', true, 'hash5', null, null),
-    (:'user6ID', 'charlie', 'charlie@example.com', true, 'hash6', 'Charlie Brown', 'https://example.com/charlie.jpg'),
+    (:'user1ID', 'johndoe', 'john.doe@example.com', true, 'hash1', 'John Doe', 'https://example.com/john.jpg', 'registered'),
+    (:'user2ID', 'janedoe', 'jane.doe@example.com', true, 'hash2', 'Jane Doe', 'https://example.com/jane.jpg', 'registered'),
+    (:'user3ID', 'johnsmith', 'john.smith@example.com', true, 'hash3', 'John Smith', null, 'registered'),
+    (:'user4ID', 'alice', 'alice@example.com', true, 'hash4', 'Alice Johnson', 'https://example.com/alice.jpg', 'registered'),
+    (:'user5ID', 'bob', 'bob@example.com', true, 'hash5', null, null, 'registered'),
+    (:'user6ID', 'charlie', 'charlie@example.com', true, 'hash6', 'Charlie Brown', 'https://example.com/charlie.jpg', 'registered'),
     -- Users for testing special characters
-    (:'user7ID', 'user%test', 'usertest@example.com', true, 'hash14', 'User Percent Test', null),
-    (:'user8ID', 'user_special', 'userspecial@example.com', true, 'hash15', 'User Underscore', null),
+    (:'user7ID', 'user%test', 'usertest@example.com', true, 'hash14', 'User Percent Test', null, 'registered'),
+    (:'user8ID', 'user_special', 'userspecial@example.com', true, 'hash15', 'User Underscore', null, 'registered'),
+    -- Pre-registered users should not appear in regular dashboard search
+    (:'userPreRegisteredID', 'invited-user', 'invited@example.com', true, 'hash17', 'Invited User', null, 'pre-registered'),
     -- User with unverified email (should not appear in results)
-    (:'userUnverifiedID', 'unverified', 'unverified@example.com', false, 'hash16', 'Unverified User', null);
+    (:'userUnverifiedID', 'unverified', 'unverified@example.com', false, 'hash16', 'Unverified User', null, 'registered');
 
 -- User (for testing max results limit)
 insert into "user" (username, email, email_verified, auth_hash, name)
@@ -126,6 +129,13 @@ select is(
     search_user('unverified'),
     '[]'::jsonb,
     'Should not return users with unverified email'
+);
+
+-- Should not return pre-registered users
+select is(
+    search_user('invited'),
+    '[]'::jsonb,
+    'Should not return pre-registered users'
 );
 
 -- ============================================================================

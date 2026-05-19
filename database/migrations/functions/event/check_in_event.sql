@@ -41,6 +41,7 @@ begin
         from event_attendee ea
         where ea.event_id = p_event_id
         and ea.user_id = p_user_id
+        and ea.status = 'confirmed'
     ) then
         raise exception 'user is not registered for this event';
     end if;
@@ -51,7 +52,8 @@ begin
         checked_in = true,
         checked_in_at = coalesce(checked_in_at, now())
     where event_id = p_event_id
-    and user_id = p_user_id;
+    and user_id = p_user_id
+    and status = 'confirmed';
     if not found then
         raise exception 'failed to update check-in status';
     end if;

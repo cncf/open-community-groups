@@ -23,6 +23,9 @@ select plan(6);
 \set groupID '00000000-0000-0000-0000-000000000021'
 \set user1ID '00000000-0000-0000-0000-000000000031'
 \set user2ID '00000000-0000-0000-0000-000000000032'
+\set user3ID '00000000-0000-0000-0000-000000000033'
+\set user4ID '00000000-0000-0000-0000-000000000034'
+\set user5ID '00000000-0000-0000-0000-000000000035'
 
 -- ============================================================================
 -- SEED DATA
@@ -45,10 +48,13 @@ insert into "group" (group_id, community_id, group_category_id, name, slug)
 values (:'groupID', :'communityID', :'categoryID', 'G1', 'g1');
 
 -- Users
-insert into "user" (auth_hash, email, user_id, username, company, name, photo_url, title)
+insert into "user" (auth_hash, email, user_id, username, company, name, photo_url, title, registration_status)
 values
-    (gen_random_bytes(32), 'alice@example.com', :'user1ID', 'alice', 'Cloud Corp', 'Alice', 'https://e/u1.png', 'Principal Engineer'),
-    (gen_random_bytes(32), 'bob@example.com', :'user2ID', 'bob', null, null, 'https://e/u2.png', null);
+    (gen_random_bytes(32), 'alice@example.com', :'user1ID', 'alice', 'Cloud Corp', 'Alice', 'https://e/u1.png', 'Principal Engineer', 'registered'),
+    (gen_random_bytes(32), 'bob@example.com', :'user2ID', 'bob', null, null, 'https://e/u2.png', null, 'registered'),
+    (gen_random_bytes(32), 'pending@example.com', :'user3ID', 'pending', null, 'Pending Invite', null, null, 'pre-registered'),
+    (gen_random_bytes(32), 'rejected@example.com', :'user4ID', 'rejected', null, 'Rejected Invite', null, null, 'registered'),
+    (gen_random_bytes(32), 'canceled@example.com', :'user5ID', 'canceled', null, 'Canceled Invite', null, null, 'registered');
 
 -- Events
 insert into event (
@@ -100,11 +106,14 @@ values (
 );
 
 -- Attendees
-insert into event_attendee (event_id, user_id, checked_in, created_at, checked_in_at)
+insert into event_attendee (event_id, user_id, status, checked_in, created_at, checked_in_at)
 values
-    (:'event1ID', :'user1ID', true,  '2024-01-01 00:00:00+00', '2024-01-01 10:00:00+00'),
-    (:'event1ID', :'user2ID', false, '2024-01-02 00:00:00+00', null),
-    (:'event2ID', :'user2ID', true,  '2024-01-03 00:00:00+00', '2024-01-03 15:00:00+00');
+    (:'event1ID', :'user1ID', 'confirmed', true, '2024-01-01 00:00:00+00', '2024-01-01 10:00:00+00'),
+    (:'event1ID', :'user2ID', 'confirmed', false, '2024-01-02 00:00:00+00', null),
+    (:'event1ID', :'user3ID', 'invitation-pending', false, '2024-01-03 00:00:00+00', null),
+    (:'event1ID', :'user4ID', 'invitation-rejected', false, '2024-01-04 00:00:00+00', null),
+    (:'event1ID', :'user5ID', 'invitation-canceled', false, '2024-01-05 00:00:00+00', null),
+    (:'event2ID', :'user2ID', 'confirmed', true, '2024-01-03 00:00:00+00', '2024-01-03 15:00:00+00');
 
 -- Purchases
 insert into event_purchase (
@@ -174,10 +183,12 @@ select is(
     )::jsonb,
     jsonb_build_object(
         'attendees', '[
-            {"checked_in": true,  "created_at": 1704067200, "user_id": "00000000-0000-0000-0000-000000000031", "username": "alice", "checked_in_at": 1704103200, "amount_minor": 2500, "company": "Cloud Corp", "currency_code": "USD", "discount_code": "SAVE5", "event_purchase_id": "00000000-0000-0000-0000-000000000071", "name": "Alice", "photo_url": "https://e/u1.png", "refund_request_status": null, "ticket_title": "General admission", "title": "Principal Engineer"},
-            {"checked_in": false, "created_at": 1704153600, "user_id": "00000000-0000-0000-0000-000000000032", "username": "bob",   "checked_in_at": null,       "amount_minor": null, "company": null,        "currency_code": null, "discount_code": null, "event_purchase_id": null, "name": null,    "photo_url": "https://e/u2.png", "refund_request_status": null, "ticket_title": null, "title": null}
+            {"checked_in": true,  "created_at": 1704067200, "email": "alice@example.com", "status": "confirmed", "user_id": "00000000-0000-0000-0000-000000000031", "username": "alice", "checked_in_at": 1704103200, "amount_minor": 2500, "company": "Cloud Corp", "currency_code": "USD", "discount_code": "SAVE5", "event_purchase_id": "00000000-0000-0000-0000-000000000071", "name": "Alice", "photo_url": "https://e/u1.png", "refund_request_status": null, "ticket_title": "General admission", "title": "Principal Engineer"},
+            {"checked_in": false, "created_at": 1704153600, "email": "bob@example.com", "status": "confirmed", "user_id": "00000000-0000-0000-0000-000000000032", "username": "bob", "checked_in_at": null, "amount_minor": null, "company": null, "currency_code": null, "discount_code": null, "event_purchase_id": null, "name": null, "photo_url": "https://e/u2.png", "refund_request_status": null, "ticket_title": null, "title": null},
+            {"checked_in": false, "created_at": 1704240000, "email": "pending@example.com", "status": "invitation-pending", "user_id": "00000000-0000-0000-0000-000000000033", "username": "pending", "checked_in_at": null, "amount_minor": null, "company": null, "currency_code": null, "discount_code": null, "event_purchase_id": null, "name": "Pending Invite", "photo_url": null, "refund_request_status": null, "ticket_title": null, "title": null},
+            {"checked_in": false, "created_at": 1704326400, "email": "rejected@example.com", "status": "invitation-rejected", "user_id": "00000000-0000-0000-0000-000000000034", "username": "rejected", "checked_in_at": null, "amount_minor": null, "company": null, "currency_code": null, "discount_code": null, "event_purchase_id": null, "name": "Rejected Invite", "photo_url": null, "refund_request_status": null, "ticket_title": null, "title": null}
         ]'::jsonb,
-        'total', 2
+        'total', 4
     ),
     'Should return attendees for event1 with expected fields and order'
 );
@@ -190,9 +201,9 @@ select is(
     )::jsonb,
     jsonb_build_object(
         'attendees', '[
-            {"checked_in": false, "created_at": 1704153600, "user_id": "00000000-0000-0000-0000-000000000032", "username": "bob", "checked_in_at": null, "amount_minor": null, "company": null, "currency_code": null, "discount_code": null, "event_purchase_id": null, "name": null, "photo_url": "https://e/u2.png", "refund_request_status": null, "ticket_title": null, "title": null}
+            {"checked_in": false, "created_at": 1704153600, "email": "bob@example.com", "status": "confirmed", "user_id": "00000000-0000-0000-0000-000000000032", "username": "bob", "checked_in_at": null, "amount_minor": null, "company": null, "currency_code": null, "discount_code": null, "event_purchase_id": null, "name": null, "photo_url": "https://e/u2.png", "refund_request_status": null, "ticket_title": null, "title": null}
         ]'::jsonb,
-        'total', 2
+        'total', 4
     ),
     'Should return paginated attendees when limit and offset are provided'
 );
@@ -205,10 +216,12 @@ select is(
     )::jsonb,
     jsonb_build_object(
         'attendees', '[
-            {"checked_in": true,  "created_at": 1704067200, "user_id": "00000000-0000-0000-0000-000000000031", "username": "alice", "checked_in_at": 1704103200, "amount_minor": 2500, "company": "Cloud Corp", "currency_code": "USD", "discount_code": "SAVE5", "event_purchase_id": "00000000-0000-0000-0000-000000000071", "name": "Alice", "photo_url": "https://e/u1.png", "refund_request_status": null, "ticket_title": "General admission", "title": "Principal Engineer"},
-            {"checked_in": false, "created_at": 1704153600, "user_id": "00000000-0000-0000-0000-000000000032", "username": "bob",   "checked_in_at": null,       "amount_minor": null, "company": null,        "currency_code": null, "discount_code": null, "event_purchase_id": null, "name": null,    "photo_url": "https://e/u2.png", "refund_request_status": null, "ticket_title": null, "title": null}
+            {"checked_in": true,  "created_at": 1704067200, "email": "alice@example.com", "status": "confirmed", "user_id": "00000000-0000-0000-0000-000000000031", "username": "alice", "checked_in_at": 1704103200, "amount_minor": 2500, "company": "Cloud Corp", "currency_code": "USD", "discount_code": "SAVE5", "event_purchase_id": "00000000-0000-0000-0000-000000000071", "name": "Alice", "photo_url": "https://e/u1.png", "refund_request_status": null, "ticket_title": "General admission", "title": "Principal Engineer"},
+            {"checked_in": false, "created_at": 1704153600, "email": "bob@example.com", "status": "confirmed", "user_id": "00000000-0000-0000-0000-000000000032", "username": "bob", "checked_in_at": null, "amount_minor": null, "company": null, "currency_code": null, "discount_code": null, "event_purchase_id": null, "name": null, "photo_url": "https://e/u2.png", "refund_request_status": null, "ticket_title": null, "title": null},
+            {"checked_in": false, "created_at": 1704240000, "email": "pending@example.com", "status": "invitation-pending", "user_id": "00000000-0000-0000-0000-000000000033", "username": "pending", "checked_in_at": null, "amount_minor": null, "company": null, "currency_code": null, "discount_code": null, "event_purchase_id": null, "name": "Pending Invite", "photo_url": null, "refund_request_status": null, "ticket_title": null, "title": null},
+            {"checked_in": false, "created_at": 1704326400, "email": "rejected@example.com", "status": "invitation-rejected", "user_id": "00000000-0000-0000-0000-000000000034", "username": "rejected", "checked_in_at": null, "amount_minor": null, "company": null, "currency_code": null, "discount_code": null, "event_purchase_id": null, "name": "Rejected Invite", "photo_url": null, "refund_request_status": null, "ticket_title": null, "title": null}
         ]'::jsonb,
-        'total', 2
+        'total', 4
     ),
     'Should return full attendee list when pagination is omitted'
 );
@@ -221,7 +234,7 @@ select is(
     )::jsonb,
     jsonb_build_object(
         'attendees', '[
-            {"checked_in": true, "created_at": 1704240000, "user_id": "00000000-0000-0000-0000-000000000032", "username": "bob", "checked_in_at": 1704294000, "amount_minor": 4000, "company": null, "currency_code": "USD", "discount_code": null, "event_purchase_id": "00000000-0000-0000-0000-000000000072", "name": null, "photo_url": "https://e/u2.png", "refund_request_status": "pending", "ticket_title": "VIP", "title": null}
+            {"checked_in": true, "created_at": 1704240000, "email": "bob@example.com", "status": "confirmed", "user_id": "00000000-0000-0000-0000-000000000032", "username": "bob", "checked_in_at": 1704294000, "amount_minor": 4000, "company": null, "currency_code": "USD", "discount_code": null, "event_purchase_id": "00000000-0000-0000-0000-000000000072", "name": null, "photo_url": "https://e/u2.png", "refund_request_status": "pending", "ticket_title": "VIP", "title": null}
         ]'::jsonb,
         'total', 1
     ),

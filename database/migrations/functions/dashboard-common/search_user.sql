@@ -11,6 +11,7 @@ returns jsonb as $$
             u.photo_url
         from "user" u
         where u.email_verified = true
+        and u.registration_status = 'registered'
         and p_query <> ''
         and (
             u.username ilike replace(replace(p_query, '%', '\%'), '_', '\_') || '%' escape '\'

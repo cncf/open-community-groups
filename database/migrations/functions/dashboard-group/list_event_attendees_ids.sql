@@ -7,5 +7,6 @@ returns uuid[] as $$
     join event e using (event_id)
     where ea.event_id = p_event_id
     and e.group_id = p_group_id
+    and ea.status = 'confirmed'
     and u.email_verified = true;
 $$ language sql;

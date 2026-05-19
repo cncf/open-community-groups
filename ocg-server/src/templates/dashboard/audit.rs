@@ -101,6 +101,8 @@ const COMMUNITY_SCOPES: &[AuditScope] = &[AuditScope::Community];
 const COMMUNITY_GROUP_SCOPES: &[AuditScope] = &[AuditScope::Community, AuditScope::Group];
 /// Scopes for group-only audit actions.
 const GROUP_SCOPES: &[AuditScope] = &[AuditScope::Group];
+/// Scopes for shared group and user audit actions.
+const GROUP_USER_SCOPES: &[AuditScope] = &[AuditScope::Group, AuditScope::User];
 /// Scopes for user-only audit actions.
 const USER_SCOPES: &[AuditScope] = &[AuditScope::User];
 
@@ -150,6 +152,26 @@ const AUDIT_ACTION_DEFINITIONS: &[AuditActionDefinition] = &[
         label: "Event attendee checked in",
         scopes: GROUP_SCOPES,
         value: "event_attendee_checked_in",
+    },
+    AuditActionDefinition {
+        label: "Event attendee invitation accepted",
+        scopes: GROUP_USER_SCOPES,
+        value: "event_attendee_invitation_accepted",
+    },
+    AuditActionDefinition {
+        label: "Event attendee invitation canceled",
+        scopes: GROUP_SCOPES,
+        value: "event_attendee_invitation_canceled",
+    },
+    AuditActionDefinition {
+        label: "Event attendee invitation rejected",
+        scopes: GROUP_USER_SCOPES,
+        value: "event_attendee_invitation_rejected",
+    },
+    AuditActionDefinition {
+        label: "Event attendee invitation sent",
+        scopes: GROUP_SCOPES,
+        value: "event_attendee_invitation_sent",
     },
     AuditActionDefinition {
         label: "Event canceled",

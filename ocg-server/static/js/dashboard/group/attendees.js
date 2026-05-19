@@ -1,6 +1,7 @@
 import { createNotificationModal } from "/static/js/dashboard/group/notificationModal.js";
 import { initializeQrCodeModal } from "/static/js/dashboard/group/qr-code-modal.js";
-import { showErrorAlert } from "/static/js/common/alerts.js";
+import "/static/js/common/user-search-field.js";
+import { handleHtmxResponse, showErrorAlert } from "/static/js/common/alerts.js";
 import { isSuccessfulXHRStatus, toggleModalVisibility } from "/static/js/common/common.js";
 import { queryElementById } from "/static/js/common/dom.js";
 import { ocgFetch } from "/static/js/common/fetch.js";
@@ -12,6 +13,7 @@ const refundModalId = "attendee-refund-modal";
 const refundApproveButtonId = "attendee-refund-approve";
 const refundRejectButtonId = "attendee-refund-reject";
 const attendeeActionsDropdownSelector = "[data-attendee-actions-dropdown]";
+const invitationModalId = "attendee-invitation-modal";
 
 const resolveAttendeesRoot = (root = document) => {
   if (root instanceof Element && root.id === "attendees-content") {
@@ -61,6 +63,50 @@ const closeRefundModal = (root = document) => {
   if (modal && !modal.classList.contains("hidden")) {
     toggleModalVisibility(refundModalId);
   }
+};
+
+const closeInvitationModal = (root = document) => {
+  const modal = queryElementById(root, invitationModalId);
+  if (modal && !modal.classList.contains("hidden")) {
+    toggleModalVisibility(invitationModalId);
+  }
+};
+
+const updateInvitationSubmitState = (root) => {
+  const form = queryElementById(root, "attendee-invitation-form");
+  const submit = queryElementById(root, "submit-attendee-invitation");
+  if (!form || !submit) return;
+
+  const mode = form.dataset.invitationMode || "user";
+  const userId = queryElementById(root, "attendee-invitation-user-id")?.value || "";
+  const email = queryElementById(root, "attendee-invitation-email")?.value.trim() || "";
+  submit.disabled = mode === "user" ? userId === "" : email === "";
+};
+
+const setInvitationMode = (root, mode) => {
+  const form = queryElementById(root, "attendee-invitation-form");
+  const userPanel = root.querySelector?.('[data-attendee-invitation-panel="user"]');
+  const emailPanel = root.querySelector?.('[data-attendee-invitation-panel="email"]');
+  const userInput = queryElementById(root, "attendee-invitation-user-id");
+  const emailInput = queryElementById(root, "attendee-invitation-email");
+  const selectedUser = queryElementById(root, "attendee-invitation-selected-user");
+  if (!form || !userPanel || !emailPanel || !userInput || !emailInput) return;
+
+  form.dataset.invitationMode = mode;
+  userPanel.classList.toggle("hidden", mode !== "user");
+  emailPanel.classList.toggle("hidden", mode !== "email");
+  userInput.disabled = mode !== "user";
+  emailInput.disabled = mode !== "email";
+  userInput.value = "";
+  emailInput.value = "";
+  if (selectedUser) selectedUser.textContent = "";
+
+  root.querySelectorAll("[data-attendee-invitation-mode]").forEach((button) => {
+    const active = button.dataset.attendeeInvitationMode === mode;
+    button.classList.toggle("btn-primary", active);
+    button.classList.toggle("btn-tertiary", !active);
+  });
+  updateInvitationSubmitState(root);
 };
 
 /**
@@ -342,6 +388,83 @@ const initializeRefundReviewModal = (root = document) => {
   });
 };
 
+const initializeInvitationModal = (root = document) => {
+  if (!(root instanceof Element) || root.dataset.attendeeInvitationReady === "true") {
+    return;
+  }
+
+  root.dataset.attendeeInvitationReady = "true";
+
+  root.addEventListener("click", (event) => {
+    const target = event.target instanceof Element ? event.target : null;
+    if (target?.closest("#open-attendee-invitation-modal")) {
+      event.stopPropagation();
+      setInvitationMode(root, "user");
+      toggleModalVisibility(invitationModalId);
+      return;
+    }
+
+    const modeButton = target?.closest("[data-attendee-invitation-mode]");
+    if (modeButton instanceof HTMLElement && root.contains(modeButton)) {
+      event.preventDefault();
+      setInvitationMode(root, modeButton.dataset.attendeeInvitationMode || "user");
+      return;
+    }
+
+    if (
+      target?.closest(
+        "#close-attendee-invitation-modal, #cancel-attendee-invitation, #overlay-attendee-invitation-modal",
+      )
+    ) {
+      event.stopPropagation();
+      closeInvitationModal(root);
+    }
+  });
+
+  root.addEventListener("user-selected", (event) => {
+    const user = event.detail?.user;
+    const input = queryElementById(root, "attendee-invitation-user-id");
+    const selected = queryElementById(root, "attendee-invitation-selected-user");
+    if (!user || !input) return;
+
+    input.value = user.user_id || "";
+    if (selected) {
+      selected.textContent = `Selected: ${user.name || user.username}`;
+    }
+    updateInvitationSubmitState(root);
+  });
+
+  root.addEventListener("input", (event) => {
+    const target = event.target;
+    if (target instanceof HTMLInputElement && target.id === "attendee-invitation-email") {
+      updateInvitationSubmitState(root);
+    }
+  });
+
+  root.addEventListener("htmx:afterRequest", (event) => {
+    const requestTarget = event.target;
+    if (!(requestTarget instanceof HTMLFormElement) || requestTarget.id !== "attendee-invitation-form") {
+      return;
+    }
+
+    const ok = handleHtmxResponse({
+      xhr: event.detail?.xhr,
+      successMessage: "Invitation sent.",
+      errorMessage: "Something went wrong sending this invitation. Please try again later.",
+    });
+    if (ok) {
+      closeInvitationModal(root);
+      setInvitationMode(root, "user");
+    }
+  });
+
+  root.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      closeInvitationModal(root);
+    }
+  });
+};
+
 const initializeAttendeesFeatures = (root = document) => {
   const attendeesRoot = resolveAttendeesRoot(root);
   if (!attendeesRoot) {
@@ -349,6 +472,7 @@ const initializeAttendeesFeatures = (root = document) => {
   }
 
   initializeAttendeeActionsMenu(attendeesRoot);
+  initializeInvitationModal(attendeesRoot);
   initializeAttendeeNotification(attendeesRoot);
   initializeQrCodeModal(attendeesRoot);
   initializeRefundReviewModal(attendeesRoot);

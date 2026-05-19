@@ -38,7 +38,8 @@ begin
     else
         select count(*) into v_attendee_count
         from event_attendee
-        where event_id = p_event_id;
+        where event_id = p_event_id
+        and status = 'confirmed';
 
         v_available_slots := greatest(v_capacity - v_attendee_count, 0);
     end if;
@@ -75,7 +76,9 @@ begin
         -- Insert the promoted user as an attendee (tolerate concurrent duplicate inserts)
         insert into event_attendee (event_id, user_id)
         values (p_event_id, v_waitlist_entry.user_id)
-        on conflict (event_id, user_id) do nothing;
+        on conflict (event_id, user_id) do update
+        set status = 'confirmed'
+        where event_attendee.status = 'invitation-canceled';
 
         -- Record only users successfully moved into attendees during this execution
         if found then

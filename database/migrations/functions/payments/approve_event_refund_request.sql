@@ -42,7 +42,8 @@ begin
     -- Remove the attendee so the refunded purchase no longer occupies a seat
     delete from event_attendee
     where event_id = p_event_id
-    and user_id = p_user_id;
+    and user_id = p_user_id
+    and status = 'confirmed';
 
     -- Mark the purchase itself as refunded
     update event_purchase

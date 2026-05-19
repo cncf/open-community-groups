@@ -61,7 +61,8 @@ begin
     -- Remove the user from confirmed attendees first
     delete from event_attendee
     where event_id = p_event_id
-    and user_id = p_user_id;
+    and user_id = p_user_id
+    and status = 'confirmed';
 
     if found then
         -- If the user had a free ticket purchase, delegate the refund transition

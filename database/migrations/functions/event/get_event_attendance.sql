@@ -31,6 +31,7 @@ create or replace function get_event_attendance(
                     from event_attendee ea
                     where ea.event_id = p_event_id
                     and ea.user_id = p_user_id
+                    and ea.status = 'confirmed'
                     and exists (select 1 from scoped_event)
                 ),
                 false
@@ -41,6 +42,7 @@ create or replace function get_event_attendance(
                     from event_attendee ea
                     where ea.event_id = p_event_id
                     and ea.user_id = p_user_id
+                    and ea.status = 'confirmed'
                     and exists (select 1 from scoped_event)
                 ) then 'attendee'
                 when exists (

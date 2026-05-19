@@ -156,7 +156,8 @@ select indexes_are('event_attendee', array[
     'event_attendee_pkey',
     'event_attendee_event_id_idx',
     'event_attendee_user_id_idx',
-    'event_attendee_event_id_created_at_idx'
+    'event_attendee_event_id_created_at_idx',
+    'event_attendee_event_id_status_created_at_idx'
 ]);
 
 -- Test: event_category indexes should match expected

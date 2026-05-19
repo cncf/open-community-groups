@@ -300,12 +300,15 @@ The dashboard separates confirmed attendees from people waiting for a seat or or
 
 Organizer behavior:
 
-- `Attendees` shows confirmed attendees who can be checked in.
+- `Attendees` shows confirmed attendees who can be checked in, plus organizer-created event
+  invitations while they are pending or rejected.
 - `Requests` appears for invitation-review events and shows accepted, pending, and rejected
   invitation requests. Pending requests can be accepted or rejected from this tab.
 - `Waitlist` shows people in FIFO order based on when they joined.
 - Canceling an event notifies attendees, speakers, and waitlisted users.
 - Accepting or rejecting an invitation request is written to the audit log.
+- Sending, canceling, accepting, or rejecting an organizer-created event invitation is written to
+  the audit log.
 
 Capacity behavior:
 
@@ -320,10 +323,16 @@ Capacity behavior:
   immediately promotes everyone still on the waitlist.
 - Promotion notifications are best-effort; the seat change still succeeds even if notification
   enqueue fails.
+- Organizer-created manual invitations bypass capacity when the invitee accepts. Use them when an
+  organizer intentionally wants to admit someone even if the event is full.
 
 Member-facing behavior:
 
-- Accepting an invitation sends a confirmation notification with calendar attachment.
+- Accepting an invitation-review request sends a confirmation notification with calendar
+  attachment.
+- Accepting an organizer-created event invitation from
+  [User Dashboard -> Invitations](/dashboard/user?tab=invitations ':ignore') confirms attendance
+  and sends the normal event confirmation with calendar attachment.
 - Joining the waitlist sends a waitlist confirmation notification.
 - Leaving the waitlist sends a waitlist removal notification.
 - Promotion sends a confirmation notification with calendar attachment.
@@ -378,11 +387,18 @@ This tab supports delivery-day execution:
 - Review attendee list and RSVP timing.
 - Run manual check-in.
 - Generate check-in QR code for on-site flow.
+- Invite attendees to free RSVP events.
 - Send attendee-wide operational emails.
 - Download the attendee list as CSV.
 
 Manual check-in bypasses attendee self-check-in timing windows, but the person must already be
 registered as an attendee and the event must still be published or active.
+
+`Invite` is available for free RSVP events when you have event write access. You can select a
+registered platform user or enter an email address. For email invitations, the address must match
+the invitee's LF account primary email because they must log in with LF SSO to accept. Pending
+invitations show in the attendee table and can be canceled from the row actions menu. Rejected
+invitations remain visible and cannot be sent again for the same event and user.
 
 `Download CSV` is available from the attendee actions menu and exports attendee name, company,
 and title.

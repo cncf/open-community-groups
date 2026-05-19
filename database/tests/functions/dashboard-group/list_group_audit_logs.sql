@@ -17,6 +17,10 @@ select plan(4);
 \set audit4ID '00000000-0000-0000-0000-000000000104'
 \set audit5ID '00000000-0000-0000-0000-000000000106'
 \set audit6ID '00000000-0000-0000-0000-000000000107'
+\set audit7ID '00000000-0000-0000-0000-000000000108'
+\set audit8ID '00000000-0000-0000-0000-000000000109'
+\set audit9ID '00000000-0000-0000-0000-000000000110'
+\set audit10ID '00000000-0000-0000-0000-000000000111'
 \set communityID '00000000-0000-0000-0000-000000000001'
 \set groupCategoryID '00000000-0000-0000-0000-000000000021'
 \set groupID '00000000-0000-0000-0000-000000000031'
@@ -128,6 +132,54 @@ insert into audit_log (
         'user'
     ),
     (
+        :'audit7ID',
+        'event_attendee_invitation_accepted',
+        :'targetUserID',
+        'sara',
+        :'communityID',
+        '2024-03-02 13:00:00+00',
+        '{"event_id": "00000000-0000-0000-0000-000000000053"}',
+        :'groupID',
+        :'targetUserID',
+        'user'
+    ),
+    (
+        :'audit8ID',
+        'event_attendee_invitation_rejected',
+        :'targetUserID',
+        'sara',
+        :'communityID',
+        '2024-03-02 14:00:00+00',
+        '{"event_id": "00000000-0000-0000-0000-000000000054"}',
+        :'groupID',
+        :'targetUserID',
+        'user'
+    ),
+    (
+        :'audit9ID',
+        'event_attendee_invitation_sent',
+        :'actor2ID',
+        'bob',
+        :'communityID',
+        '2024-03-02 15:00:00+00',
+        '{"event_id": "00000000-0000-0000-0000-000000000055"}',
+        :'groupID',
+        :'targetUserID',
+        'user'
+    ),
+    (
+        :'audit10ID',
+        'event_attendee_invitation_canceled',
+        :'actor1ID',
+        'alice',
+        :'communityID',
+        '2024-03-02 16:00:00+00',
+        '{"event_id": "00000000-0000-0000-0000-000000000056"}',
+        :'groupID',
+        :'targetUserID',
+        'user'
+    ),
+    (
         :'audit3ID',
         'event_added',
         :'actor1ID',
@@ -188,6 +240,46 @@ select is(
                 "resource_type": "group"
             },
             {
+                "action": "event_attendee_invitation_canceled",
+                "actor_username": "alice",
+                "audit_log_id": "00000000-0000-0000-0000-000000000111",
+                "created_at": 1709395200,
+                "details": {"event_id": "00000000-0000-0000-0000-000000000056"},
+                "resource_id": "00000000-0000-0000-0000-000000000041",
+                "resource_name": "Sara",
+                "resource_type": "user"
+            },
+            {
+                "action": "event_attendee_invitation_sent",
+                "actor_username": "bob",
+                "audit_log_id": "00000000-0000-0000-0000-000000000110",
+                "created_at": 1709391600,
+                "details": {"event_id": "00000000-0000-0000-0000-000000000055"},
+                "resource_id": "00000000-0000-0000-0000-000000000041",
+                "resource_name": "Sara",
+                "resource_type": "user"
+            },
+            {
+                "action": "event_attendee_invitation_rejected",
+                "actor_username": "sara",
+                "audit_log_id": "00000000-0000-0000-0000-000000000109",
+                "created_at": 1709388000,
+                "details": {"event_id": "00000000-0000-0000-0000-000000000054"},
+                "resource_id": "00000000-0000-0000-0000-000000000041",
+                "resource_name": "Sara",
+                "resource_type": "user"
+            },
+            {
+                "action": "event_attendee_invitation_accepted",
+                "actor_username": "sara",
+                "audit_log_id": "00000000-0000-0000-0000-000000000108",
+                "created_at": 1709384400,
+                "details": {"event_id": "00000000-0000-0000-0000-000000000053"},
+                "resource_id": "00000000-0000-0000-0000-000000000041",
+                "resource_name": "Sara",
+                "resource_type": "user"
+            },
+            {
                 "action": "event_invitation_request_rejected",
                 "actor_username": "alice",
                 "audit_log_id": "00000000-0000-0000-0000-000000000107",
@@ -229,7 +321,7 @@ select is(
             }
         ]'::jsonb,
         'total',
-        5
+        9
     ),
     'Should return only group dashboard actions for the selected group'
 );
@@ -281,7 +373,7 @@ select is(
             }
         ]'::jsonb,
         'total',
-        4
+        8
     ),
     'Should return group audit logs in ascending order with pagination'
 );

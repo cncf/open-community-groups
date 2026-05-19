@@ -28,10 +28,10 @@ use crate::{
     db::DynDB,
     templates::notifications::{
         CfsSubmissionUpdated, CommunityTeamInvitation, EmailVerification, EventCanceled, EventCustom,
-        EventPublished, EventRefundApproved, EventRefundRejected, EventRefundRequested, EventReminder,
-        EventRescheduled, EventSeriesCanceled, EventSeriesPublished, EventWaitlistJoined, EventWaitlistLeft,
-        EventWaitlistPromoted, EventWelcome, GroupCustom, GroupTeamInvitation, GroupWelcome,
-        SessionProposalCoSpeakerInvitation, SpeakerSeriesWelcome, SpeakerWelcome,
+        EventInvitation, EventPublished, EventRefundApproved, EventRefundRejected, EventRefundRequested,
+        EventReminder, EventRescheduled, EventSeriesCanceled, EventSeriesPublished, EventWaitlistJoined,
+        EventWaitlistLeft, EventWaitlistPromoted, EventWelcome, GroupCustom, GroupTeamInvitation,
+        GroupWelcome, SessionProposalCoSpeakerInvitation, SpeakerSeriesWelcome, SpeakerWelcome,
     },
 };
 
@@ -346,6 +346,12 @@ impl DeliveryWorker {
                 let body = template.render()?;
                 (subject, body)
             }
+            NotificationKind::EventInvitation => {
+                let subject = "You have been invited to an event".to_string();
+                let template: EventInvitation = serde_json::from_value(template_data)?;
+                let body = template.render()?;
+                (subject, body)
+            }
             NotificationKind::EventPublished => {
                 let subject = "New event published".to_string();
                 let template: EventPublished = serde_json::from_value(template_data)?;
@@ -654,6 +660,8 @@ pub(crate) enum NotificationKind {
     EventCanceled,
     /// Notification for a custom event message.
     EventCustom,
+    /// Notification for an organizer-created event invitation.
+    EventInvitation,
     /// Notification for an event published.
     EventPublished,
     /// Notification for an approved refund.

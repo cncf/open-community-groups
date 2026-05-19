@@ -167,7 +167,9 @@ begin
     -- Complete the purchase and add the attendee when it is still fulfillable
     insert into event_attendee (event_id, user_id)
     values (v_event_id, v_user_id)
-    on conflict (event_id, user_id) do nothing;
+    on conflict (event_id, user_id) do update
+    set status = 'confirmed'
+    where event_attendee.status = 'invitation-canceled';
 
     -- Persist the completed purchase state after the attendee is recorded
     update event_purchase

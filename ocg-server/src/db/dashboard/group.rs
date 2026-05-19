@@ -85,6 +85,15 @@ pub(crate) trait DBDashboardGroup {
     /// Cancels an event (sets canceled=true).
     async fn cancel_event(&self, actor_user_id: Uuid, group_id: Uuid, event_id: Uuid) -> Result<()>;
 
+    /// Cancels a pending organizer-created event invitation.
+    async fn cancel_event_attendee_invitation(
+        &self,
+        actor_user_id: Uuid,
+        group_id: Uuid,
+        event_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<()>;
+
     /// Cancels event series events atomically.
     async fn cancel_event_series_events(
         &self,
@@ -139,6 +148,16 @@ pub(crate) trait DBDashboardGroup {
 
     /// Retrieves analytics statistics for a group.
     async fn get_group_stats(&self, community_id: Uuid, group_id: Uuid) -> Result<GroupDashboardStats>;
+
+    /// Creates an organizer-created event invitation.
+    async fn invite_event_attendee(
+        &self,
+        actor_user_id: Uuid,
+        group_id: Uuid,
+        event_id: Uuid,
+        user_id: Option<Uuid>,
+        email: Option<String>,
+    ) -> Result<Uuid>;
 
     /// Lists reviewer-available CFS submission statuses.
     async fn list_cfs_submission_statuses_for_review(&self) -> Result<Vec<CfsSubmissionStatus>>;
@@ -447,6 +466,22 @@ impl DBDashboardGroup for PgDB {
         .await
     }
 
+    /// [`DBDashboardGroup::cancel_event_attendee_invitation`]
+    #[instrument(skip(self), err)]
+    async fn cancel_event_attendee_invitation(
+        &self,
+        actor_user_id: Uuid,
+        group_id: Uuid,
+        event_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<()> {
+        self.execute(
+            "select cancel_event_attendee_invitation($1::uuid, $2::uuid, $3::uuid, $4::uuid)",
+            &[&actor_user_id, &group_id, &event_id, &user_id],
+        )
+        .await
+    }
+
     /// [`DBDashboardGroup::cancel_event_series_events`]
     #[instrument(skip(self), err)]
     async fn cancel_event_series_events(
@@ -586,6 +621,23 @@ impl DBDashboardGroup for PgDB {
 
         let db = self.pool.get().await?;
         inner(db, community_id, group_id).await
+    }
+
+    /// [`DBDashboardGroup::invite_event_attendee`]
+    #[instrument(skip(self, email), err)]
+    async fn invite_event_attendee(
+        &self,
+        actor_user_id: Uuid,
+        group_id: Uuid,
+        event_id: Uuid,
+        user_id: Option<Uuid>,
+        email: Option<String>,
+    ) -> Result<Uuid> {
+        self.fetch_scalar_one(
+            "select invite_event_attendee($1::uuid, $2::uuid, $3::uuid, $4::uuid, $5::text)::uuid",
+            &[&actor_user_id, &group_id, &event_id, &user_id, &email],
+        )
+        .await
     }
 
     /// [`DBDashboardGroup::list_cfs_submission_statuses_for_review`]

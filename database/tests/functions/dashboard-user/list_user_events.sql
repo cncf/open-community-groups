@@ -26,6 +26,7 @@ select plan(4);
 \set eventInactiveGroupID '00000000-0000-0000-0000-000000000106'
 \set eventNoStartsAtID '00000000-0000-0000-0000-000000000107'
 \set eventPastID '00000000-0000-0000-0000-000000000108'
+\set eventPendingInvitationID '00000000-0000-0000-0000-000000000111'
 \set eventUnpublishedID '00000000-0000-0000-0000-000000000109'
 \set eventDeletedGroupID '00000000-0000-0000-0000-000000000110'
 
@@ -194,6 +195,20 @@ insert into event (
         'UTC'
     ),
     (
+        :'eventPendingInvitationID',
+        false,
+        false,
+        'Event Pending Invitation',
+        :'eventCategoryID',
+        'virtual',
+        :'groupID',
+        'Event Pending Invitation',
+        true,
+        'event-pending-invitation',
+        '2099-01-13 12:00:00+00',
+        'UTC'
+    ),
+    (
         :'eventUnpublishedID',
         false,
         false,
@@ -228,16 +243,17 @@ insert into session (session_id, event_id, name, session_kind_id, starts_at) val
     (:'sessionCID', :'eventCID', 'Session C', 'virtual', '2099-01-12 11:00:00+00');
 
 -- User participation
-insert into event_attendee (event_id, user_id) values
-    (:'eventAID', :'userID'),
-    (:'eventBID', :'userID'),
-    (:'eventCanceledID', :'userID'),
-    (:'eventDeletedGroupID', :'userID'),
-    (:'eventDeletedID', :'userID'),
-    (:'eventInactiveGroupID', :'userID'),
-    (:'eventNoStartsAtID', :'userID'),
-    (:'eventPastID', :'userID'),
-    (:'eventUnpublishedID', :'userID');
+insert into event_attendee (event_id, user_id, status) values
+    (:'eventAID', :'userID', 'confirmed'),
+    (:'eventBID', :'userID', 'confirmed'),
+    (:'eventCanceledID', :'userID', 'confirmed'),
+    (:'eventDeletedGroupID', :'userID', 'confirmed'),
+    (:'eventDeletedID', :'userID', 'confirmed'),
+    (:'eventInactiveGroupID', :'userID', 'confirmed'),
+    (:'eventNoStartsAtID', :'userID', 'confirmed'),
+    (:'eventPastID', :'userID', 'confirmed'),
+    (:'eventPendingInvitationID', :'userID', 'invitation-pending'),
+    (:'eventUnpublishedID', :'userID', 'confirmed');
 
 insert into event_host (event_id, user_id) values
     (:'eventAID', :'userID');
