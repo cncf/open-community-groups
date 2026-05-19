@@ -14,7 +14,7 @@ use axum::{
     extract::{FromRef, Request, State as AxumState},
     http::{
         HeaderName, HeaderValue, StatusCode, Uri,
-        header::{CACHE_CONTROL, CONTENT_TYPE, HOST},
+        header::{CACHE_CONTROL, CONTENT_TYPE, HOST, VARY},
     },
     middleware::{self, Next},
     response::{IntoResponse, Redirect},
@@ -75,9 +75,23 @@ const CACHE_CONTROL_STATIC_DEVELOPMENT: &str = "max-age=0";
 #[cfg(any(not(debug_assertions), test))]
 const CACHE_CONTROL_STATIC_IMAGES: &str = "max-age=604800";
 
+/// Current application commit SHA embedded at build time.
+pub(crate) const COMMIT_SHA: &str = env!("OCG_COMMIT_SHA");
+
+/// Header carrying the loaded or current application commit SHA.
+pub(crate) const COMMIT_SHA_HEADER: &str = "x-ocg-commit-sha";
+
+/// Header used to request an application-level page refresh for `ocgFetch`.
+const OCG_REFRESH_HEADER: &str = "x-ocg-refresh";
+
 /// Headers for public shared-cache responses without additional headers.
-pub(crate) const PUBLIC_SHARED_CACHE_HEADERS: [(HeaderName, &str); 1] =
-    [(CACHE_CONTROL, CACHE_CONTROL_PUBLIC_SHARED)];
+pub(crate) const PUBLIC_SHARED_CACHE_HEADERS: [(HeaderName, &str); 2] = [
+    (CACHE_CONTROL, CACHE_CONTROL_PUBLIC_SHARED),
+    (VARY, PUBLIC_SHARED_CACHE_VARY),
+];
+
+/// Vary header value for public shared-cache responses.
+pub(crate) const PUBLIC_SHARED_CACHE_VARY: &str = "x-ocg-commit-sha, hx-request, x-ocg-fetch";
 
 /// Static file embedder using rust-embed.
 ///
@@ -293,7 +307,8 @@ pub(crate) async fn setup(
             CACHE_CONTROL,
             HeaderValue::from_static(CACHE_CONTROL_PRIVATE_NO_STORE),
         ))
-        .layer(middleware::from_fn_with_state(state.clone(), redirect_old_hosts));
+        .layer(middleware::from_fn_with_state(state.clone(), redirect_old_hosts))
+        .layer(middleware::from_fn(refresh_stale_clients));
 
     Ok(router.with_state(state))
 }
@@ -390,6 +405,68 @@ async fn redirect_old_hosts(
         }
     }
     next.run(request).await.into_response()
+}
+
+/// Middleware that refreshes dynamic clients loaded from an older application commit.
+async fn refresh_stale_clients(request: Request, next: Next) -> impl IntoResponse {
+    let is_htmx = header_value_is_true(request.headers(), "hx-request");
+    let is_ocg_fetch = header_value_is_true(request.headers(), "x-ocg-fetch");
+
+    if (is_htmx || is_ocg_fetch) && request_has_stale_commit_sha(request.headers()) {
+        return stale_client_refresh_response(is_htmx, is_ocg_fetch);
+    }
+
+    let mut response = next.run(request).await.into_response();
+    insert_commit_sha_header(response.headers_mut());
+
+    response
+}
+
+/// Returns whether a request header has the string value `true`.
+fn header_value_is_true(headers: &axum::http::HeaderMap, header_name: &str) -> bool {
+    headers
+        .get(header_name)
+        .and_then(|value| value.to_str().ok())
+        .is_some_and(|value| value.eq_ignore_ascii_case("true"))
+}
+
+/// Inserts the current commit SHA response header.
+fn insert_commit_sha_header(headers: &mut axum::http::HeaderMap) {
+    headers.insert(
+        HeaderName::from_static(COMMIT_SHA_HEADER),
+        HeaderValue::from_static(COMMIT_SHA),
+    );
+}
+
+/// Returns whether the request came from a page loaded with an older commit.
+fn request_has_stale_commit_sha(headers: &axum::http::HeaderMap) -> bool {
+    headers
+        .get(COMMIT_SHA_HEADER)
+        .and_then(|value| value.to_str().ok())
+        .is_some_and(|value| value != COMMIT_SHA)
+}
+
+/// Builds the refresh response returned to stale dynamic clients.
+fn stale_client_refresh_response(is_htmx: bool, is_ocg_fetch: bool) -> axum::response::Response {
+    let mut response = StatusCode::NO_CONTENT.into_response();
+    let headers = response.headers_mut();
+    headers.insert(CACHE_CONTROL, HeaderValue::from_static(CACHE_CONTROL_NO_STORE));
+    insert_commit_sha_header(headers);
+
+    if is_htmx {
+        headers.insert(
+            HeaderName::from_static("hx-refresh"),
+            HeaderValue::from_static("true"),
+        );
+    }
+    if is_ocg_fetch {
+        headers.insert(
+            HeaderName::from_static(OCG_REFRESH_HEADER),
+            HeaderValue::from_static("true"),
+        );
+    }
+
+    response
 }
 
 // Helpers.

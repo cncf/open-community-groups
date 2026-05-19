@@ -10,6 +10,60 @@ use crate::{db::mock::MockDB, handlers::tests::*, services::notifications::MockN
 use super::*;
 
 #[tokio::test]
+async fn test_current_commit_htmx_request_runs_handler() {
+    // Setup router with commit SHA middleware
+    let router = Router::new()
+        .route("/", get(|| async { "fresh fragment" }))
+        .layer(middleware::from_fn(refresh_stale_clients));
+
+    // Send request with current commit SHA
+    let request = Request::builder()
+        .uri("/")
+        .header("HX-Request", "true")
+        .header(COMMIT_SHA_HEADER, COMMIT_SHA)
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_eq!(parts.status, StatusCode::OK);
+    assert_eq!(
+        parts.headers.get(COMMIT_SHA_HEADER).unwrap(),
+        &HeaderValue::from_static(COMMIT_SHA)
+    );
+    assert_eq!(String::from_utf8(bytes.to_vec()).unwrap(), "fresh fragment");
+}
+
+#[tokio::test]
+async fn test_current_commit_ocg_fetch_request_runs_handler() {
+    // Setup router with commit SHA middleware
+    let router = Router::new()
+        .route("/", get(|| async { "fresh json" }))
+        .layer(middleware::from_fn(refresh_stale_clients));
+
+    // Send request with current commit SHA
+    let request = Request::builder()
+        .uri("/")
+        .header("X-OCG-Fetch", "true")
+        .header(COMMIT_SHA_HEADER, COMMIT_SHA)
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_eq!(parts.status, StatusCode::OK);
+    assert_eq!(
+        parts.headers.get(COMMIT_SHA_HEADER).unwrap(),
+        &HeaderValue::from_static(COMMIT_SHA)
+    );
+    assert_eq!(String::from_utf8(bytes.to_vec()).unwrap(), "fresh json");
+}
+
+#[tokio::test]
 async fn test_default_response_cache_header_is_private_no_store() {
     // Setup database mock
     let mut db = MockDB::new();
@@ -34,6 +88,10 @@ async fn test_default_response_cache_header_is_private_no_store() {
     assert_eq!(
         response.headers().get(CACHE_CONTROL).unwrap(),
         &HeaderValue::from_static(CACHE_CONTROL_PRIVATE_NO_STORE)
+    );
+    assert_eq!(
+        response.headers().get(COMMIT_SHA_HEADER).unwrap(),
+        &HeaderValue::from_static(COMMIT_SHA)
     );
 }
 
@@ -129,9 +187,11 @@ async fn test_favicon_route_surfaces_db_errors_as_internal_server_error() {
 
 #[tokio::test]
 async fn test_health_check_returns_ok() {
+    // Run handler
     let response = health_check().await.into_response();
     let (parts, body) = response.into_parts();
 
+    // Check response matches expectations
     assert_eq!(parts.status, StatusCode::OK);
     assert!(to_bytes(body, usize::MAX).await.unwrap().is_empty());
 }
@@ -210,6 +270,7 @@ async fn test_payments_webhook_route_is_not_mounted_without_payments_config() {
 
 #[tokio::test]
 async fn test_redirect_old_hosts_redirects_matching_host() {
+    // Setup router with redirect host configuration
     let server_cfg = HttpServerConfig {
         base_url: "https://example.com".to_string(),
         redirect_hosts: Some(vec!["old.example.com".to_string()]),
@@ -223,6 +284,7 @@ async fn test_redirect_old_hosts_redirects_matching_host() {
         ))
         .with_state(server_cfg);
 
+    // Send request from old host
     let request = Request::builder()
         .uri("/some/path?query=value")
         .header(HOST, "old.example.com:8080")
@@ -230,6 +292,7 @@ async fn test_redirect_old_hosts_redirects_matching_host() {
         .unwrap();
     let response = router.oneshot(request).await.unwrap();
 
+    // Check response matches expectations
     assert_eq!(response.status(), StatusCode::PERMANENT_REDIRECT);
     assert_eq!(
         response.headers().get(LOCATION).unwrap(),
@@ -238,22 +301,81 @@ async fn test_redirect_old_hosts_redirects_matching_host() {
 }
 
 #[tokio::test]
+async fn test_stale_hx_request_refreshes_without_running_handler() {
+    // Setup router with commit SHA middleware
+    let router = Router::new()
+        .route("/", get(|| async { "stale fragment" }))
+        .layer(middleware::from_fn(refresh_stale_clients));
+
+    // Send stale HTMX request
+    let request = Request::builder()
+        .uri("/")
+        .header("HX-Request", "true")
+        .header(COMMIT_SHA_HEADER, "older-commit")
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+
+    // Check response matches expectations
+    assert_eq!(parts.status, StatusCode::NO_CONTENT);
+    assert_eq!(
+        parts.headers.get(CACHE_CONTROL).unwrap(),
+        &HeaderValue::from_static(CACHE_CONTROL_NO_STORE)
+    );
+    assert_eq!(parts.headers.get("HX-Refresh").unwrap(), "true");
+    assert_eq!(
+        parts.headers.get(COMMIT_SHA_HEADER).unwrap(),
+        &HeaderValue::from_static(COMMIT_SHA)
+    );
+    assert!(to_bytes(body, usize::MAX).await.unwrap().is_empty());
+}
+
+#[tokio::test]
+async fn test_stale_ocg_fetch_request_refreshes_without_running_handler() {
+    // Setup router with commit SHA middleware
+    let router = Router::new()
+        .route("/", get(|| async { "stale json" }))
+        .layer(middleware::from_fn(refresh_stale_clients));
+
+    // Send stale OCG fetch request
+    let request = Request::builder()
+        .uri("/")
+        .header("X-OCG-Fetch", "true")
+        .header(COMMIT_SHA_HEADER, "older-commit")
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+
+    // Check response matches expectations
+    assert_eq!(parts.status, StatusCode::NO_CONTENT);
+    assert_eq!(parts.headers.get("X-OCG-Refresh").unwrap(), "true");
+    assert!(parts.headers.get("HX-Refresh").is_none());
+    assert!(to_bytes(body, usize::MAX).await.unwrap().is_empty());
+}
+
+#[tokio::test]
 async fn test_static_handler_missing_asset_returns_not_found() {
+    // Run handler
     let uri = Uri::from_static("/static/does/not/exist.txt");
     let response = static_handler(uri).await.into_response();
     let (parts, body) = response.into_parts();
 
+    // Check response matches expectations
     assert_eq!(parts.status, StatusCode::NOT_FOUND);
     assert!(to_bytes(body, usize::MAX).await.unwrap().is_empty());
 }
 
 #[tokio::test]
 async fn test_static_handler_serves_existing_asset() {
+    // Run handler
     let uri = Uri::from_static("/static/images/icons/arrow_left.svg");
     let response = static_handler(uri).await.into_response();
     let (parts, body) = response.into_parts();
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
+    // Check response matches expectations
     assert_eq!(parts.status, StatusCode::OK);
     assert_eq!(
         parts.headers.get(CONTENT_TYPE).unwrap(),
@@ -268,12 +390,14 @@ async fn test_static_handler_serves_existing_asset() {
 
 #[tokio::test]
 async fn test_static_handler_serves_hashed_css_asset_with_immutable_cache() {
+    // Run handler
     let path = static_path_with_prefix_and_suffix("css/", ".css");
     let uri = Uri::try_from(format!("/static/{path}")).unwrap();
     let response = static_handler(uri).await.into_response();
     let (parts, body) = response.into_parts();
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
+    // Check response matches expectations
     assert_eq!(parts.status, StatusCode::OK);
     assert_eq!(
         parts.headers.get(CONTENT_TYPE).unwrap(),
@@ -288,12 +412,14 @@ async fn test_static_handler_serves_hashed_css_asset_with_immutable_cache() {
 
 #[tokio::test]
 async fn test_static_handler_serves_hashed_js_asset_with_immutable_cache() {
+    // Run handler
     let path = static_path_with_prefix_and_suffix("js/", ".js");
     let uri = Uri::try_from(format!("/static/{path}")).unwrap();
     let response = static_handler(uri).await.into_response();
     let (parts, body) = response.into_parts();
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
+    // Check response matches expectations
     assert_eq!(parts.status, StatusCode::OK);
     assert_eq!(
         parts.headers.get(CONTENT_TYPE).unwrap(),
@@ -308,11 +434,13 @@ async fn test_static_handler_serves_hashed_js_asset_with_immutable_cache() {
 
 #[tokio::test]
 async fn test_static_handler_serves_vendor_asset_with_immutable_cache() {
+    // Run handler
     let uri = Uri::from_static("/static/vendor/js/htmx.v2.0.7.min.js");
     let response = static_handler(uri).await.into_response();
     let (parts, body) = response.into_parts();
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
+    // Check response matches expectations
     assert_eq!(parts.status, StatusCode::OK);
     assert_eq!(
         parts.headers.get(CONTENT_TYPE).unwrap(),

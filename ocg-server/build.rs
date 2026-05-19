@@ -1,6 +1,6 @@
 use std::{
     collections::BTreeMap,
-    fs,
+    env, fs,
     path::{Path, PathBuf},
     process::Command,
 };
@@ -8,6 +8,9 @@ use std::{
 use anyhow::{Result, bail};
 use sha2::{Digest, Sha256};
 use which::which;
+
+/// Environment variable that may provide the current commit SHA.
+const COMMIT_SHA_ENV_VAR: &str = "OCG_COMMIT_SHA";
 
 /// Path to the documentation source directory.
 const DOCS_PATH: &str = "../docs";
@@ -49,6 +52,8 @@ fn main() -> Result<()> {
     println!("cargo:rerun-if-changed={DOCS_PATH}");
     println!("cargo:rerun-if-changed=static");
     println!("cargo:rerun-if-changed=templates");
+    println!("cargo:rerun-if-env-changed={COMMIT_SHA_ENV_VAR}");
+    println!("cargo:rustc-env=OCG_COMMIT_SHA={}", commit_sha());
 
     // Check if required external tools are available
     if which("tailwindcss").is_err() {
@@ -97,6 +102,19 @@ fn main() -> Result<()> {
     copy_dir(Path::new(DOCS_PATH), Path::new(DOCS_STATIC_DIST_PATH))?;
 
     Ok(())
+}
+
+/// Returns the commit SHA for the current build.
+fn commit_sha() -> String {
+    if let Some(sha) = env::var(COMMIT_SHA_ENV_VAR)
+        .ok()
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+    {
+        return sha;
+    }
+
+    "unknown".to_string()
 }
 
 /// Writes content-hashed static assets and returns their final path manifest.

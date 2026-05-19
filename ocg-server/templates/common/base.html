@@ -9,6 +9,7 @@
     <title>Open Community Groups</title>
     <meta name="description" content="{{ site_settings.title }}">
     <meta name="keywords" content="community, groups, events">
+    <meta name="ocg-commit-sha" content="{{ crate::router::COMMIT_SHA }}">
 
     {#- OG tags #}
     <meta property="og:type" content="website">
@@ -64,12 +65,22 @@
     <script src="/static/vendor/js/easymde.v2.20.0.min.js"></script>
     <script type="module">
       import {
+        consumePendingDeploymentRefreshAlert,
+        DEPLOYMENT_REFRESH_MESSAGE
+      } from "/static/js/common/deployment-version.js";
+      import {
+        showInfoAlert
+      } from "/static/js/common/alerts.js";
+      import {
         registerHtmxNoEmptyValuesExtensions,
         registerHtmxResponseHandlers
       } from "/static/js/common/htmx-extensions.js";
 
       registerHtmxNoEmptyValuesExtensions(window.htmx);
       registerHtmxResponseHandlers(document);
+      if (consumePendingDeploymentRefreshAlert()) {
+        showInfoAlert(DEPLOYMENT_REFRESH_MESSAGE);
+      }
     </script>
     <script type="module" src="/static/js/common/form-validation.js"></script>
     <script type="module" src="/static/js/event/attendance.js"></script>

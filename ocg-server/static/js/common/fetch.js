@@ -1,3 +1,5 @@
+import { addLoadedCommitShaHeader, reloadIfDeploymentChanged } from "/static/js/common/deployment-version.js";
+
 /**
  * Fetches a resource and follows server-provided browser redirects.
  *
@@ -9,12 +11,17 @@ export const ocgFetch = async (input, init = {}) => {
   const headers = new Headers(init.headers || {});
   if (isSameOriginRequest(input)) {
     headers.set("X-OCG-Fetch", "true");
+    addLoadedCommitShaHeader(headers);
   }
 
   const response = await fetch(input, {
     ...init,
     headers,
   });
+  if (reloadIfDeploymentChanged(response.headers)) {
+    return waitForDeploymentReload();
+  }
+
   const redirectUrl = response.headers?.get?.("X-OCG-Redirect");
   if (redirectUrl) {
     window.location.assign(redirectUrl);
@@ -42,3 +49,9 @@ const isSameOriginRequest = (input) => {
     return false;
   }
 };
+
+/**
+ * Keeps caller catch/finally handlers from rendering stale UI during reload.
+ * @returns {Promise<void>} Promise that stays pending until navigation replaces the page.
+ */
+const waitForDeploymentReload = () => new Promise(() => {});

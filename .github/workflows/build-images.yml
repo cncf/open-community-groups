@@ -89,6 +89,7 @@ jobs:
           OCIR_REPOSITORY: ${{ steps.get-ocir-repository-server.outputs.repo_path }}
         run: |
           docker build \
+            --build-arg OCG_COMMIT_SHA=$GITHUB_SHA \
             -f ocg-server/Dockerfile \
             -t $OCIR_REPOSITORY:$GITHUB_SHA \
             .

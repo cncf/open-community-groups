@@ -105,9 +105,15 @@ pub(crate) fn trim_public_gallery_images(photos_urls: &mut Option<Vec<String>>) 
 
 #[cfg(test)]
 mod helpers_tests {
-    use axum::http::{HeaderMap, HeaderValue, header::CACHE_CONTROL};
+    use axum::http::{
+        HeaderMap, HeaderValue,
+        header::{CACHE_CONTROL, VARY},
+    };
 
-    use crate::{config::HttpServerConfig, router::CACHE_CONTROL_PUBLIC_SHARED};
+    use crate::{
+        config::HttpServerConfig,
+        router::{CACHE_CONTROL_PUBLIC_SHARED, PUBLIC_SHARED_CACHE_VARY},
+    };
 
     use super::*;
 
@@ -130,6 +136,7 @@ mod helpers_tests {
         let headers = extend_public_shared_cache_headers(&[("HX-Push-Url", "/explore")]).unwrap();
 
         assert_eq!(headers.get(CACHE_CONTROL).unwrap(), CACHE_CONTROL_PUBLIC_SHARED);
+        assert_eq!(headers.get(VARY).unwrap(), PUBLIC_SHARED_CACHE_VARY);
         assert_eq!(headers.get("HX-Push-Url").unwrap(), "/explore");
     }
 
