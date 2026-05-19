@@ -1214,6 +1214,7 @@ select is(
         )::jsonb - 'community' - 'created_at' - 'event_id' - 'organizers' - 'group' - 'legacy_hosts' - 'legacy_speakers' - 'cfs_labels'
     )),
     '{
+        "attendee_count": 0,
         "canceled": false,
         "category_name": "Workshop",
         "description": "Updated description",
@@ -1826,6 +1827,7 @@ select is(
         )::jsonb - 'community' - 'created_at' - 'event_id' - 'organizers' - 'group' - 'legacy_hosts' - 'legacy_speakers' - 'sessions' - 'cfs_labels'
     )),
     '{
+        "attendee_count": 0,
         "canceled": false,
         "category_name": "Conference",
         "description": "Fully updated description",
