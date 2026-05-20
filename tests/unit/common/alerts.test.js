@@ -24,22 +24,38 @@ describe("alerts", () => {
   });
 
   it("renders success, error, info, and server error alerts", () => {
+    // Trigger each alert helper covered by this scenario.
     showSuccessAlert("Saved");
     showErrorAlert("Failed");
     showInfoAlert("Heads up");
     showServerErrorAlert("Validation failed", "Missing field");
 
+    // Check each helper passes the expected SweetAlert options.
     expect(env.current.swal.calls).to.have.length(4);
-    expect(env.current.swal.calls[0]).to.include({ text: "Saved", icon: "success", timer: 5000 });
-    expect(env.current.swal.calls[1]).to.include({ text: "Failed", icon: "error", timer: 30000 });
-    expect(env.current.swal.calls[2]).to.include({ text: "Heads up", icon: "info", timer: 10000 });
+    expect(env.current.swal.calls[0]).to.include({
+      text: "Saved",
+      icon: "success",
+      timer: 5000,
+    });
+    expect(env.current.swal.calls[1]).to.include({
+      text: "Failed",
+      icon: "error",
+      timer: 30000,
+    });
+    expect(env.current.swal.calls[2]).to.include({
+      text: "Heads up",
+      icon: "info",
+      timer: 10000,
+    });
     expect(env.current.swal.calls[3].html).to.include("Validation failed");
     expect(env.current.swal.calls[3].html).to.include("Missing field");
   });
 
   it("supports persistent and html error alerts", () => {
+    // Show a persistent HTML error alert.
     showErrorAlert("<strong>Broken</strong>", true, true);
 
+    // Check the HTML error stays persistent without a timer.
     expect(env.current.swal.calls).to.have.length(1);
     expect(env.current.swal.calls[0].html).to.equal("<strong>Broken</strong>");
     expect("timer" in env.current.swal.calls[0]).to.equal(false);
@@ -63,6 +79,7 @@ describe("alerts", () => {
   });
 
   it("handles successful, forbidden, validation, and missing xhr responses", () => {
+    // Check a successful response shows the success alert.
     expect(
       handleHtmxResponse({
         xhr: { status: 204 },
@@ -71,6 +88,7 @@ describe("alerts", () => {
       }),
     ).to.equal(true);
 
+    // Check forbidden responses use the permission alert copy.
     expect(
       handleHtmxResponse({
         xhr: { status: 403, responseText: "Forbidden" },
@@ -79,6 +97,7 @@ describe("alerts", () => {
       }),
     ).to.equal(false);
 
+    // Check validation responses include the server message.
     expect(
       handleHtmxResponse({
         xhr: { status: 422, responseText: "Slug already taken" },
@@ -87,6 +106,7 @@ describe("alerts", () => {
       }),
     ).to.equal(false);
 
+    // Check missing xhr responses fall back to the provided error message.
     expect(
       handleHtmxResponse({
         xhr: null,
@@ -95,8 +115,12 @@ describe("alerts", () => {
       }),
     ).to.equal(false);
 
+    // Check each response triggers the expected alert and scroll behavior.
     expect(env.current.swal.calls).to.have.length(4);
-    expect(env.current.swal.calls[0]).to.include({ text: "Updated", icon: "success" });
+    expect(env.current.swal.calls[0]).to.include({
+      text: "Updated",
+      icon: "success",
+    });
     expect(env.current.swal.calls[1].text).to.equal(
       "Delete failed. It looks like you don't have permission to perform this operation.",
     );
@@ -111,15 +135,19 @@ describe("alerts", () => {
   });
 
   it("resolves confirm actions from the swal result", async () => {
+    // Mock a declined SweetAlert confirmation.
     env.current.swal.setNextResult({ isConfirmed: false });
 
+    // Capture the declined confirmation result.
     const declined = await confirmAction({
       message: "Delete entry?",
       confirmText: "Yes",
     });
 
+    // Mock an accepted SweetAlert confirmation.
     env.current.swal.setNextResult({ isConfirmed: true });
 
+    // Capture the accepted HTML confirmation result.
     const confirmed = await confirmAction({
       message: "<strong>Delete entry?</strong>",
       confirmText: "Delete",
@@ -127,6 +155,7 @@ describe("alerts", () => {
       withHtml: true,
     });
 
+    // Check both confirmation results and their SweetAlert options.
     expect(declined).to.equal(false);
     expect(confirmed).to.equal(true);
     expect(env.current.swal.calls[0]).to.include({
@@ -135,49 +164,74 @@ describe("alerts", () => {
       confirmButtonText: "Yes",
       cancelButtonText: "No",
     });
-    expect(env.current.swal.calls[1].html).to.equal("<strong>Delete entry?</strong>");
+    expect(env.current.swal.calls[1].html).to.equal(
+      "<strong>Delete entry?</strong>",
+    );
     expect(env.current.swal.calls[1].confirmButtonText).to.equal("Delete");
     expect(env.current.swal.calls[1].cancelButtonText).to.equal("Cancel");
   });
 
   it("uses shared stylesheet classes for alert layout", () => {
+    // Collect the shared options.
     const options = getCommonAlertOptions();
 
+    // Check all alert buttons use the shared stylesheet classes.
     expect(options.customClass.popup).to.equal("ocg-swal-popup");
     expect(options.customClass.actions).to.equal("ocg-swal-actions");
-    expect(options.customClass.confirmButton).to.equal("btn-primary ocg-swal-button");
-    expect(options.customClass.denyButton).to.equal("btn-primary-outline ocg-swal-button");
-    expect(options.customClass.cancelButton).to.equal("btn-primary-outline ocg-swal-button");
+    expect(options.customClass.confirmButton).to.equal(
+      "btn-primary ocg-swal-button",
+    );
+    expect(options.customClass.denyButton).to.equal(
+      "btn-primary-outline ocg-swal-button",
+    );
+    expect(options.customClass.cancelButton).to.equal(
+      "btn-primary-outline ocg-swal-button",
+    );
   });
 
   it("uses shared alert layout for recurring series confirmations", async () => {
+    // Mock the recurring-series choice in SweetAlert.
     env.current.swal.setNextResult({ isConfirmed: false, isDenied: true });
 
+    // Capture the recurring-series confirmation result.
     const result = await confirmSeriesAction({
       message: "Publish this series?",
       confirmText: "Only this event",
       denyText: "All in series",
     });
 
+    // Check the recurring choice keeps the shared alert layout.
     expect(result).to.equal("series");
-    expect(env.current.swal.calls[0].customClass.popup).to.equal("ocg-swal-popup");
-    expect(env.current.swal.calls[0].customClass.actions).to.equal("ocg-swal-actions");
+    expect(env.current.swal.calls[0].customClass.popup).to.equal(
+      "ocg-swal-popup",
+    );
+    expect(env.current.swal.calls[0].customClass.actions).to.equal(
+      "ocg-swal-actions",
+    );
   });
 
   it("triggers htmx confirmed events after confirmation", async () => {
+    // Mock an accepted confirmation before showing the alert.
     env.current.swal.setNextResult({ isConfirmed: true });
 
+    // Wait for queued UI work.
     showConfirmAlert("Proceed?", "save-button", "Yes");
     await waitForMicrotask();
 
-    expect(env.current.htmx.triggerCalls).to.deep.equal([["#save-button", "confirmed"]]);
+    // Check accepted confirmation triggers the HTMX confirmed event.
+    expect(env.current.htmx.triggerCalls).to.deep.equal([
+      ["#save-button", "confirmed"],
+    ]);
 
+    // Reset HTMX calls and mock a declined confirmation.
     env.current.htmx.triggerCalls.length = 0;
     env.current.swal.setNextResult({ isConfirmed: false });
 
+    // Wait for queued UI work.
     showConfirmAlert("Proceed?", "save-button", "Yes");
     await waitForMicrotask();
 
+    // Check declined confirmation does not trigger HTMX.
     expect(env.current.htmx.triggerCalls).to.deep.equal([]);
   });
 });

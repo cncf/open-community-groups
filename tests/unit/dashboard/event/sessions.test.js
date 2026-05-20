@@ -2,7 +2,10 @@ import { expect } from "@open-wc/testing";
 
 import "/static/js/dashboard/event/sessions.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
-import { mountLitComponent, useMountedElementsCleanup } from "/tests/unit/test-utils/lit.js";
+import {
+  mountLitComponent,
+  useMountedElementsCleanup,
+} from "/tests/unit/test-utils/lit.js";
 
 describe("sessions-section", () => {
   const originalHtmx = globalThis.htmx;
@@ -28,11 +31,13 @@ describe("sessions-section", () => {
     globalThis.htmx = originalHtmx;
   });
 
+  // Render the fixture to check it covers the current behavior.
   const renderSessionsSection = async (properties = {}) => {
     return mountLitComponent("sessions-section", properties);
   };
 
   it("parses and initializes session payloads from server attributes", async () => {
+    // Render the fixture to check it parses and initializes session payloads from server.
     const element = await renderSessionsSection({
       timezone: "America/New_York",
       sessions: JSON.stringify({
@@ -52,11 +57,14 @@ describe("sessions-section", () => {
           },
         ],
       }),
-      sessionKinds: JSON.stringify([{ session_kind_id: "talk", display_name: "Talk" }]),
+      sessionKinds: JSON.stringify([
+        { session_kind_id: "talk", display_name: "Talk" },
+      ]),
       approvedSubmissions: JSON.stringify([{ cfs_submission_id: 10 }]),
       meetingMaxParticipants: JSON.stringify({ zoom: 100 }),
     });
 
+    // Confirm it parses and initializes session payloads from server attributes.
     expect(element.sessions).to.have.length(2);
     expect(element.sessions[0]).to.include({
       id: 0,
@@ -71,12 +79,17 @@ describe("sessions-section", () => {
       starts_at: "2025-01-01T19:00",
       ends_at: "2025-01-01T20:00",
     });
-    expect(element.sessionKinds).to.deep.equal([{ session_kind_id: "talk", display_name: "Talk" }]);
-    expect(element.approvedSubmissions).to.deep.equal([{ cfs_submission_id: 10 }]);
+    expect(element.sessionKinds).to.deep.equal([
+      { session_kind_id: "talk", display_name: "Talk" },
+    ]);
+    expect(element.approvedSubmissions).to.deep.equal([
+      { cfs_submission_id: 10 },
+    ]);
     expect(element.meetingMaxParticipants).to.deep.equal({ zoom: 100 });
   });
 
   it("falls back safely when server attributes contain invalid payloads", async () => {
+    // Render the fixture to check it falls back safely when server attributes contain.
     const element = await renderSessionsSection({
       sessions: "{invalid",
       sessionKinds: "{invalid",
@@ -84,6 +97,7 @@ describe("sessions-section", () => {
       meetingMaxParticipants: "[invalid",
     });
 
+    // Confirm it falls back safely when server attributes contain invalid payloads.
     expect(element.sessions).to.deep.equal([]);
     expect(element.sessionKinds).to.deep.equal([]);
     expect(element.approvedSubmissions).to.deep.equal([]);
@@ -91,33 +105,61 @@ describe("sessions-section", () => {
   });
 
   it("computes event days, groups sessions, and isolates out-of-range entries", async () => {
+    // Render the fixture to check it computes event days, groups sessions, and isolates.
     const element = await renderSessionsSection({
       eventStartsAt: "2025-01-31T09:00",
       eventEndsAt: "2025-02-02T17:00",
     });
 
+    // Exercise the flow to check it computes event days, groups sessions, and isolates.
     element.sessions = [
-      { id: 4, name: "Day two afternoon", starts_at: "2025-02-01T15:00", ends_at: "2025-02-01T16:00" },
-      { id: 2, name: "Day one opening", starts_at: "2025-01-31T09:00", ends_at: "2025-01-31T10:00" },
-      { id: 3, name: "Day two morning", starts_at: "2025-02-01T09:00", ends_at: "2025-02-01T10:00" },
-      { id: 5, name: "Outside range", starts_at: "2025-02-03T09:00", ends_at: "2025-02-03T10:00" },
+      {
+        id: 4,
+        name: "Day two afternoon",
+        starts_at: "2025-02-01T15:00",
+        ends_at: "2025-02-01T16:00",
+      },
+      {
+        id: 2,
+        name: "Day one opening",
+        starts_at: "2025-01-31T09:00",
+        ends_at: "2025-01-31T10:00",
+      },
+      {
+        id: 3,
+        name: "Day two morning",
+        starts_at: "2025-02-01T09:00",
+        ends_at: "2025-02-01T10:00",
+      },
+      {
+        id: 5,
+        name: "Outside range",
+        starts_at: "2025-02-03T09:00",
+        ends_at: "2025-02-03T10:00",
+      },
     ];
 
+    // Prepare days to check it computes event days, groups sessions, and isolates.
     const days = element._computeEventDays();
     const grouped = element._groupSessionsByDay();
     const outOfRange = element._getOutOfRangeSessions(days);
 
+    // Confirm it computes event days, groups sessions, and isolates out-of-range entries.
     expect(days).to.deep.equal(["2025-01-31", "2025-02-01", "2025-02-02"]);
-    expect(grouped.get("2025-01-31").map((session) => session.name)).to.deep.equal(["Day one opening"]);
-    expect(grouped.get("2025-02-01").map((session) => session.name)).to.deep.equal([
-      "Day two morning",
-      "Day two afternoon",
-    ]);
+    expect(
+      grouped.get("2025-01-31").map((session) => session.name),
+    ).to.deep.equal(["Day one opening"]);
+    expect(
+      grouped.get("2025-02-01").map((session) => session.name),
+    ).to.deep.equal(["Day two morning", "Day two afternoon"]);
     expect(grouped.get("2025-02-02")).to.deep.equal([]);
-    expect(outOfRange.map((session) => session.name)).to.deep.equal(["Outside range"]);
+    expect(outOfRange.map((session) => session.name)).to.deep.equal([
+      "Outside range",
+    ]);
   });
 
   it("renders hidden inputs for automatic meetings and speaker payloads", async () => {
+    // Render the fixture to check it renders hidden inputs for automatic meetings.
     const element = await renderSessionsSection({
       sessions: [
         {
@@ -159,37 +201,69 @@ describe("sessions-section", () => {
       ],
     });
 
+    // Wait for render before checking it renders hidden inputs for automatic meetings.
     await element.updateComplete;
 
-    expect(element.querySelector('input[name="sessions[0][description]"]')?.value).to.equal("");
-    expect(element.querySelector('input[name="sessions[0][meeting_join_instructions]"]')?.value).to.equal("");
-    expect(element.querySelector('input[name="sessions[0][meeting_join_url]"]')?.value).to.equal("");
-    expect(element.querySelector('input[name="sessions[0][meeting_recording_published]"]')?.value).to.equal(
-      "false",
-    );
-    expect(element.querySelector('input[name="sessions[0][meeting_recording_url]"]')?.value).to.equal(
-      "https://recording.example",
-    );
-    expect(element.querySelector('input[name="sessions[0][meeting_provider_id]"]')?.value).to.equal("zoom");
-    expect(element.querySelector('input[name="sessions[0][speakers][0][user_id]"]')).to.equal(null);
+    // Confirm it renders hidden inputs for automatic meetings and speaker payloads.
+    expect(
+      element.querySelector('input[name="sessions[0][description]"]')?.value,
+    ).to.equal("");
+    expect(
+      element.querySelector(
+        'input[name="sessions[0][meeting_join_instructions]"]',
+      )?.value,
+    ).to.equal("");
+    expect(
+      element.querySelector('input[name="sessions[0][meeting_join_url]"]')
+        ?.value,
+    ).to.equal("");
+    expect(
+      element.querySelector(
+        'input[name="sessions[0][meeting_recording_published]"]',
+      )?.value,
+    ).to.equal("false");
+    expect(
+      element.querySelector('input[name="sessions[0][meeting_recording_url]"]')
+        ?.value,
+    ).to.equal("https://recording.example");
+    expect(
+      element.querySelector('input[name="sessions[0][meeting_provider_id]"]')
+        ?.value,
+    ).to.equal("zoom");
+    expect(
+      element.querySelector('input[name="sessions[0][speakers][0][user_id]"]'),
+    ).to.equal(null);
 
-    expect(element.querySelector('input[name="sessions[1][description]"]')?.value).to.equal(
-      "Keep this description",
-    );
-    expect(element.querySelector('input[name="sessions[1][meeting_join_instructions]"]')?.value).to.equal(
-      "Manual instructions",
-    );
-    expect(element.querySelector('input[name="sessions[1][meeting_recording_published]"]')?.value).to.equal(
-      "true",
-    );
-    expect(element.querySelector('input[name="sessions[1][meeting_provider_id]"]')?.value).to.equal("teams");
-    expect(element.querySelector('input[name="sessions[1][speakers][0][user_id]"]')?.value).to.equal(
-      "speaker-2",
-    );
-    expect(element.querySelector('input[name="sessions[1][speakers][0][featured]"]')?.value).to.equal("true");
+    // Confirm it renders hidden inputs for automatic meetings and speaker payloads.
+    expect(
+      element.querySelector('input[name="sessions[1][description]"]')?.value,
+    ).to.equal("Keep this description");
+    expect(
+      element.querySelector(
+        'input[name="sessions[1][meeting_join_instructions]"]',
+      )?.value,
+    ).to.equal("Manual instructions");
+    expect(
+      element.querySelector(
+        'input[name="sessions[1][meeting_recording_published]"]',
+      )?.value,
+    ).to.equal("true");
+    expect(
+      element.querySelector('input[name="sessions[1][meeting_provider_id]"]')
+        ?.value,
+    ).to.equal("teams");
+    expect(
+      element.querySelector('input[name="sessions[1][speakers][0][user_id]"]')
+        ?.value,
+    ).to.equal("speaker-2");
+    expect(
+      element.querySelector('input[name="sessions[1][speakers][0][featured]"]')
+        ?.value,
+    ).to.equal("true");
   });
 
   it("renders multiple raw provider recording URLs as read-only fields", async () => {
+    // Render the fixture to check it renders multiple raw provider recording URLs.
     const element = await mountLitComponent("session-item", {
       data: {
         id: 1,
@@ -209,8 +283,12 @@ describe("sessions-section", () => {
       sessionKinds: [{ session_kind_id: "virtual", display_name: "Virtual" }],
     });
 
-    const rawRecordingInputs = [...element.querySelectorAll('input[readonly][type="url"]')];
+    // Prepare raw recording inputs to check it renders multiple raw provider recording.
+    const rawRecordingInputs = [
+      ...element.querySelectorAll('input[readonly][type="url"]'),
+    ];
 
+    // Confirm it renders multiple raw provider recording URLs as read-only fields.
     expect(rawRecordingInputs.map((input) => input.value)).to.deep.equal([
       "https://zoom.us/rec/share/session-main",
       "https://zoom.us/rec/share/session-late",
@@ -221,12 +299,14 @@ describe("sessions-section", () => {
   });
 
   it("adds new sessions with the next numeric id and updates existing ones in place", async () => {
+    // Render the fixture to check it adds new sessions with the next numeric id.
     const element = await renderSessionsSection();
     element.sessions = [
       { id: 2, name: "Opening", starts_at: "2025-05-10T09:00" },
       { id: 7, name: "Panel", starts_at: "2025-05-10T10:00" },
     ];
 
+    // Run component methods to check it adds new sessions with the next numeric id.
     element._handleSessionSaved({
       detail: {
         isNew: true,
@@ -234,20 +314,29 @@ describe("sessions-section", () => {
       },
     });
 
-    expect(element.sessions.map((session) => session.id)).to.deep.equal([2, 7, 8]);
+    // Confirm it adds new sessions with the next numeric id and updates existing ones.
+    expect(element.sessions.map((session) => session.id)).to.deep.equal([
+      2, 7, 8,
+    ]);
     expect(element.sessions.at(-1)).to.include({
       id: 8,
       name: "Workshop",
       starts_at: "2025-05-10T11:00",
     });
 
+    // Run component methods to check it adds new sessions with the next numeric id.
     element._handleSessionSaved({
       detail: {
         isNew: false,
-        session: { id: 7, name: "Updated panel", starts_at: "2025-05-10T10:30" },
+        session: {
+          id: 7,
+          name: "Updated panel",
+          starts_at: "2025-05-10T10:30",
+        },
       },
     });
 
+    // Confirm it adds new sessions with the next numeric id and updates existing ones.
     expect(element.sessions).to.deep.equal([
       { id: 2, name: "Opening", starts_at: "2025-05-10T09:00" },
       { id: 7, name: "Updated panel", starts_at: "2025-05-10T10:30" },
@@ -256,9 +345,11 @@ describe("sessions-section", () => {
   });
 
   it("starts session ids at zero when adding the first saved session", async () => {
+    // Render the fixture to check it starts session ids at zero when adding the first.
     const element = await renderSessionsSection();
     element.sessions = [];
 
+    // Run component methods to check it starts session ids at zero when adding the first.
     element._handleSessionSaved({
       detail: {
         isNew: true,
@@ -266,15 +357,21 @@ describe("sessions-section", () => {
       },
     });
 
-    expect(element.sessions).to.deep.equal([{ id: 0, name: "First session", starts_at: "2025-05-10T09:00" }]);
+    // Confirm it starts session ids at zero when adding the first saved session.
+    expect(element.sessions).to.deep.equal([
+      { id: 0, name: "First session", starts_at: "2025-05-10T09:00" },
+    ]);
   });
 
   it("registers htmx cleanup that removes empty session buckets", async () => {
+    // Render the fixture to check it registers HTMX cleanup that removes empty session.
     await renderSessionsSection();
 
+    // Confirm it registers HTMX cleanup that removes empty session buckets.
     expect(htmxOnCalls).to.have.length(1);
     expect(htmxOnCalls[0].eventName).to.equal("htmx:configRequest");
 
+    // Prepare params to check it registers HTMX cleanup that removes empty session.
     const params = {
       "sessions[0][name]": "",
       "sessions[0][meeting_requested]": "false",
@@ -283,12 +380,14 @@ describe("sessions-section", () => {
       "sessions[1][meeting_requested]": "false",
     };
 
+    // Exercise the flow to check it registers HTMX cleanup that removes empty session.
     htmxOnCalls[0].handler({
       detail: {
         parameters: params,
       },
     });
 
+    // Confirm it registers HTMX cleanup that removes empty session buckets.
     expect(params).to.deep.equal({
       "sessions[1][name]": "Closing keynote",
       "sessions[1][meeting_requested]": "false",
@@ -296,8 +395,10 @@ describe("sessions-section", () => {
   });
 
   it("keeps session buckets that still contain non-empty array values during htmx cleanup", async () => {
+    // Render the fixture to check it keeps session buckets that still contain non-empty.
     await renderSessionsSection();
 
+    // Prepare params to check it keeps session buckets that still contain non-empty.
     const params = {
       "sessions[0][name]": "",
       "sessions[0][meeting_requested]": "false",
@@ -306,12 +407,14 @@ describe("sessions-section", () => {
       "sessions[1][meeting_requested]": "false",
     };
 
+    // Exercise the flow to check it keeps session buckets that still contain non-empty.
     htmxOnCalls[0].handler({
       detail: {
         parameters: params,
       },
     });
 
+    // Confirm it keeps session buckets that still contain non-empty array values during.
     expect(params).to.deep.equal({
       "sessions[0][name]": "",
       "sessions[0][meeting_requested]": "false",

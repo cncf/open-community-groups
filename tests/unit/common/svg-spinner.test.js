@@ -8,15 +8,19 @@ describe("svg-spinner", () => {
   });
 
   it("renders the default loading state", async () => {
+    // Create the svg-spinner fixture element.
     const element = document.createElement("svg-spinner");
     document.body.append(element);
 
+    // Let the component finish rendering.
     await element.updateComplete;
 
+    // Collect the status, paths, and screen reader label elements.
     const status = element.querySelector('[role="status"]');
     const paths = element.querySelectorAll("path");
     const screenReaderLabel = element.querySelector(".sr-only");
 
+    // The rendered text shows the scenario data.
     expect(status?.getAttribute("aria-label")).to.equal("Loading...");
     expect(status?.className).to.include("size-5");
     expect(paths[0]?.getAttribute("fill")).to.equal("#e5e7eb");
@@ -25,6 +29,7 @@ describe("svg-spinner", () => {
   });
 
   it("applies explicit size, label, and colors", async () => {
+    // Create the svg-spinner fixture element.
     const element = document.createElement("svg-spinner");
     element.size = "size-8";
     element.label = "Fetching data";
@@ -32,12 +37,15 @@ describe("svg-spinner", () => {
     element.backgroundColor = "#abcdef";
     document.body.append(element);
 
+    // Let the component finish rendering.
     await element.updateComplete;
 
+    // Collect the status, paths, and screen reader label elements.
     const status = element.querySelector('[role="status"]');
     const paths = element.querySelectorAll("path");
     const screenReaderLabel = element.querySelector(".sr-only");
 
+    // The rendered text shows the scenario data.
     expect(status?.getAttribute("aria-label")).to.equal("Fetching data");
     expect(status?.className).to.include("size-8");
     expect(paths[0]?.getAttribute("fill")).to.equal("#abcdef");

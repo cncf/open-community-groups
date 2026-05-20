@@ -1,7 +1,15 @@
 import { expect } from "@open-wc/testing";
 
-import { waitForAnimationFrames, waitForMicrotask } from "/tests/unit/test-utils/async.js";
-import { mockScrollTo, resetDom, setLocationPath, trackAddedEventListeners } from "/tests/unit/test-utils/dom.js";
+import {
+  waitForAnimationFrames,
+  waitForMicrotask,
+} from "/tests/unit/test-utils/async.js";
+import {
+  mockScrollTo,
+  resetDom,
+  setLocationPath,
+  trackAddedEventListeners,
+} from "/tests/unit/test-utils/dom.js";
 import { dispatchHtmxAfterSwap } from "/tests/unit/test-utils/htmx.js";
 import { mockFetch } from "/tests/unit/test-utils/network.js";
 
@@ -22,18 +30,25 @@ describe("site docs shell", () => {
     'script[src="/static/vendor/js/docsify-copy-code.v3.0.2.min.js"]',
   ].join(", ");
 
+  // Clean up docs head state.
   const cleanupDocsHead = () => {
-    document.head.querySelectorAll(docsHeadSelector).forEach((node) => node.remove());
+    document.head
+      .querySelectorAll(docsHeadSelector)
+      .forEach((node) => node.remove());
   };
 
-  const importDocsShell = () => import(`/static/js/site/docs-shell.js?test=${Date.now()}-${Math.random()}`);
+  // Prepare import docs shell to check it covers the current behavior.
+  const importDocsShell = () =>
+    import(`/static/js/site/docs-shell.js?test=${Date.now()}-${Math.random()}`);
 
+  // Schedule script load for the test.
   const scheduleScriptLoad = (...nodes) => {
     nodes.flat().forEach((node) => {
       if (!(node instanceof HTMLScriptElement)) {
         return;
       }
 
+      // Exercise the flow to check it covers the current behavior.
       queueMicrotask(() => {
         node.dataset.loaded = "1";
         node.dispatchEvent(new Event("load"));
@@ -54,6 +69,7 @@ describe("site docs shell", () => {
       },
     };
 
+    // Exercise the flow to check it covers the current behavior.
     originalAppendChild = document.head.appendChild.bind(document.head);
     originalAppend = document.head.append.bind(document.head);
     originalInsertBefore = document.head.insertBefore.bind(document.head);
@@ -88,18 +104,22 @@ describe("site docs shell", () => {
   });
 
   it("loads safely when the docs root is not present", async () => {
+    // Load the page module after setup.
     await importDocsShell();
 
+    // Confirm it loads safely when the docs root is not present.
     expect(document.querySelector(".ocg-docs-root")).to.equal(null);
   });
 
   it("renders a fallback error when docs assets fail to load", async () => {
+    // Build the DOM fixture to check it renders a fallback error when docs assets fail.
     document.body.innerHTML = `
       <div class="ocg-docs-root">
         <div id="ocg-docs-app"></div>
       </div>
     `;
 
+    // Configure browser state to check it renders a fallback error when docs assets fail.
     fetchMock.setImpl(async () => ({
       ok: false,
       status: 500,
@@ -108,16 +128,21 @@ describe("site docs shell", () => {
       },
     }));
 
+    // Load the page module after setup.
     await importDocsShell();
     await waitForMicrotask();
     await waitForAnimationFrames(2);
 
-    expect(document.querySelector("#ocg-docs-app [role='alert']")?.textContent).to.equal(
+    // Confirm it renders a fallback error when docs assets fail to load.
+    expect(
+      document.querySelector("#ocg-docs-app [role='alert']")?.textContent,
+    ).to.equal(
       "We could not load the documentation. Please refresh and try again.",
     );
   });
 
   it("rewrites app links, mirrors body classes, and enhances markdown tables after mount", async () => {
+    // Build the DOM fixture to check it rewrites app links, mirrors body classes.
     document.body.innerHTML = `
       <div class="ocg-docs-root">
         <div id="ocg-docs-app">
@@ -143,6 +168,7 @@ describe("site docs shell", () => {
     `;
     document.body.classList.add("close");
 
+    // Configure browser state to check it rewrites app links, mirrors body classes.
     fetchMock.setImpl(async () => ({
       ok: true,
       async text() {
@@ -150,14 +176,17 @@ describe("site docs shell", () => {
       },
     }));
 
+    // Load the page module after setup.
     await importDocsShell();
     await waitForMicrotask();
     await waitForAnimationFrames(3);
 
+    // Read the ocg docs root element to check it rewrites app links, mirrors body.
     const docsRoot = document.querySelector(".ocg-docs-root");
     const docsLink = document.getElementById("docs-link");
     const tableCell = document.querySelector("tbody td");
 
+    // Confirm it rewrites app links, mirrors body classes, and enhances markdown tables.
     expect(window.$docsify?.basePath).to.equal("/static/docs/");
     expect(docsRoot?.classList.contains("close")).to.equal(true);
     expect(docsLink?.getAttribute("href")).to.equal("/dashboard/groups");
@@ -166,19 +195,23 @@ describe("site docs shell", () => {
     expect(tableCell?.getAttribute("data-label")).to.equal("City");
     expect(processCalls).to.have.length(1);
 
+    // Update fixture state to check it rewrites app links, mirrors body classes.
     document.body.classList.remove("close");
     await waitForMicrotask();
 
+    // Confirm it rewrites app links, mirrors body classes, and enhances markdown tables.
     expect(docsRoot?.classList.contains("close")).to.equal(false);
   });
 
   it("removes injected docs styles and scripts during head cleanup", async () => {
+    // Build the DOM fixture to check it removes injected docs styles and scripts during.
     document.body.innerHTML = `
       <div class="ocg-docs-root">
         <div id="ocg-docs-app"></div>
       </div>
     `;
 
+    // Configure browser state to check it removes injected docs styles and scripts.
     fetchMock.setImpl(async () => ({
       ok: true,
       async text() {
@@ -186,18 +219,23 @@ describe("site docs shell", () => {
       },
     }));
 
+    // Load the page module after setup.
     await importDocsShell();
     await waitForMicrotask();
     await waitForAnimationFrames(3);
 
+    // Confirm it removes injected docs styles and scripts during head cleanup.
     expect(document.head.querySelectorAll(docsHeadSelector).length).to.equal(5);
 
+    // Exercise the flow to check it removes injected docs styles and scripts during head.
     cleanupDocsHead();
 
+    // Confirm it removes injected docs styles and scripts during head cleanup.
     expect(document.head.querySelectorAll(docsHeadSelector).length).to.equal(0);
   });
 
   it("updates the docs hash, scrolls to the section, and syncs the active sidebar item", async () => {
+    // Exercise the flow to check it updates the docs hash, scrolls to the section.
     setLocationPath("/docs");
     window.location.hash = "#/guide";
     document.body.innerHTML = `
@@ -222,6 +260,7 @@ describe("site docs shell", () => {
       </div>
     `;
 
+    // Read the section a element to check it updates the docs hash, scrolls.
     document.getElementById("section-a").getBoundingClientRect = () => ({
       top: 120,
       bottom: 160,
@@ -234,6 +273,7 @@ describe("site docs shell", () => {
       toJSON() {},
     });
 
+    // Configure browser state to check it updates the docs hash, scrolls to the section.
     fetchMock.setImpl(async () => ({
       ok: true,
       async text() {
@@ -241,10 +281,12 @@ describe("site docs shell", () => {
       },
     }));
 
+    // Load the page module after setup.
     await importDocsShell();
     await waitForMicrotask();
     await waitForAnimationFrames(3);
 
+    // Dispatch the event event to check it updates the docs hash, scrolls to the section.
     document.getElementById("section-link")?.dispatchEvent(
       new MouseEvent("click", {
         bubbles: true,
@@ -254,16 +296,22 @@ describe("site docs shell", () => {
     );
     await waitForAnimationFrames(3);
 
+    // Confirm it updates the docs hash, scrolls to the section, and syncs the active.
     expect(window.location.hash).to.equal("#/guide?id=section-a");
     expect(scrollToMock.calls.at(-1)).to.deep.equal({
       behavior: "auto",
       top: 90,
     });
-    expect(document.getElementById("guide-item")?.classList.contains("collapse")).to.equal(false);
-    expect(document.getElementById("section-item")?.classList.contains("active")).to.equal(true);
+    expect(
+      document.getElementById("guide-item")?.classList.contains("collapse"),
+    ).to.equal(false);
+    expect(
+      document.getElementById("section-item")?.classList.contains("active"),
+    ).to.equal(true);
   });
 
   it("cleans up and remounts docs lifecycle on swap and page events", async () => {
+    // Build the DOM fixture to check it cleans up and remounts docs lifecycle on swap.
     document.body.innerHTML = `
       <div class="ocg-docs-root">
         <div id="ocg-docs-app">
@@ -274,6 +322,7 @@ describe("site docs shell", () => {
       </div>
     `;
 
+    // Configure browser state to check it cleans up and remounts docs lifecycle on swap.
     fetchMock.setImpl(async () => ({
       ok: true,
       async text() {
@@ -281,16 +330,20 @@ describe("site docs shell", () => {
       },
     }));
 
+    // Load the page module after setup.
     await importDocsShell();
     await waitForMicrotask();
     await waitForAnimationFrames(3);
 
+    // Confirm it cleans up and remounts docs lifecycle on swap and page events.
     expect(document.head.querySelectorAll(docsHeadSelector).length).to.equal(5);
 
+    // Build the DOM fixture to check it cleans up and remounts docs lifecycle on swap.
     document.body.innerHTML = "";
     dispatchHtmxAfterSwap();
     await waitForMicrotask();
 
+    // Build the DOM fixture to check it cleans up and remounts docs lifecycle on swap.
     document.body.innerHTML = `
       <div class="ocg-docs-root">
         <div id="ocg-docs-app">
@@ -304,8 +357,11 @@ describe("site docs shell", () => {
     await waitForMicrotask();
     await waitForAnimationFrames(3);
 
+    // Confirm it cleans up and remounts docs lifecycle on swap and page events.
     expect(document.head.querySelectorAll(docsHeadSelector).length).to.equal(5);
     expect(window.$docsify?.basePath).to.equal("/static/docs/");
-    expect(document.getElementById("remounted-link")?.getAttribute("hx-boost")).to.equal("true");
+    expect(
+      document.getElementById("remounted-link")?.getAttribute("hx-boost"),
+    ).to.equal("true");
   });
 });

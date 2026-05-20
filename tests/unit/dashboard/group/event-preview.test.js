@@ -9,6 +9,7 @@ import { waitForMicrotask } from "/tests/unit/test-utils/async.js";
 import { useDashboardTestEnv } from "/tests/unit/test-utils/env.js";
 import { mockFetch } from "/tests/unit/test-utils/network.js";
 
+// Mount preview page for the test.
 const mountPreviewPage = ({ testEvent = false } = {}) => {
   document.body.innerHTML = `
     <div id="dashboard-content"
@@ -91,7 +92,9 @@ const mountPreviewPage = ({ testEvent = false } = {}) => {
     },
   ];
   const sessionsSection = pageRoot.querySelector("sessions-section");
-  sessionsSection.sessionKinds = [{ display_name: "Talk", session_kind_id: "talk" }];
+  sessionsSection.sessionKinds = [
+    { display_name: "Talk", session_kind_id: "talk" },
+  ];
   sessionsSection.sessions = [
     {
       kind: "talk",
@@ -110,22 +113,29 @@ describe("event preview", () => {
   });
 
   it("builds a preview payload from current form state and display context", () => {
+    // Prepare page root to check it builds a preview payload from current form state.
     const pageRoot = mountPreviewPage();
 
+    // Prepare payload to check it builds a preview payload from current form state.
     const payload = buildEventPreviewPayload(pageRoot);
     const context = JSON.parse(payload.get("preview_context"));
 
+    // Confirm it builds a preview payload from current form state and display context.
     expect(payload.get("name")).to.equal("Draft Event");
     expect(payload.get("capacity")).to.equal(null);
     expect(payload.get("meetup_url")).to.equal(null);
     expect(payload.get("luma_url")).to.equal(null);
     expect(payload.get("payment_currency_code")).to.equal(null);
     expect(payload.get("ticket_types[0][title]")).to.equal(null);
-    expect(payload.get("ticket_types[0][price_windows][0][price]")).to.equal(null);
+    expect(payload.get("ticket_types[0][price_windows][0][price]")).to.equal(
+      null,
+    );
     expect(payload.get("toggle_registration_required")).to.equal(null);
     expect(payload.get("starts_at")).to.equal("2026-06-01T18:30:00");
     expect(payload.get("timezone")).to.equal("PDT");
-    expect(payload.get("sessions[0][starts_at]")).to.equal("2026-06-01T19:00:00");
+    expect(payload.get("sessions[0][starts_at]")).to.equal(
+      "2026-06-01T19:00:00",
+    );
     expect(context.kind_label).to.equal("Hybrid");
     expect(context.category_label).to.equal("Meetup");
     expect(context.community.display_name).to.equal("Test Community");
@@ -138,6 +148,7 @@ describe("event preview", () => {
   });
 
   it("posts the preview payload and opens the returned modal", async () => {
+    // Prepare page root to check it posts the preview payload and opens the returned.
     const pageRoot = mountPreviewPage();
     const fetchMock = mockFetch({
       impl: async () =>
@@ -158,9 +169,13 @@ describe("event preview", () => {
         ),
     });
 
+    // Exercise the flow to check it posts the preview payload and opens the returned.
     try {
-      expect(pageRoot.querySelector("#event-preview-modal-root")).to.equal(null);
+      expect(pageRoot.querySelector("#event-preview-modal-root")).to.equal(
+        null,
+      );
 
+      // Exercise the flow to check it posts the preview payload and opens the returned.
       initializeEventPreview({
         pageRoot,
       });
@@ -168,24 +183,29 @@ describe("event preview", () => {
       await waitForMicrotask();
       await waitForMicrotask();
 
+      // Confirm it posts the preview payload and opens the returned modal.
       expect(fetchMock.calls).to.have.length(1);
       expect(fetchMock.calls[0][0]).to.equal("/dashboard/group/events/preview");
       expect(fetchMock.calls[0][1].method).to.equal("POST");
       expect(fetchMock.calls[0][1].body.get("name")).to.equal("Draft Event");
       expect(document.querySelector("#event-preview-modal")).to.not.equal(null);
-      expect(document.querySelector('[title="Meetup"]')?.getAttribute("href")).to.equal(
-        "https://meetup.example/events/draft",
-      );
-      expect(document.querySelector('[title="Luma"]')?.getAttribute("href")).to.equal(
-        "https://luma.example/draft",
-      );
-      const socialContainers = [...document.querySelectorAll("[data-event-preview-social-links]")];
+      expect(
+        document.querySelector('[title="Meetup"]')?.getAttribute("href"),
+      ).to.equal("https://meetup.example/events/draft");
+      expect(
+        document.querySelector('[title="Luma"]')?.getAttribute("href"),
+      ).to.equal("https://luma.example/draft");
+      const socialContainers = [
+        ...document.querySelectorAll("[data-event-preview-social-links]"),
+      ];
       expect(socialContainers[0].classList.contains("hidden")).to.equal(true);
       expect(socialContainers[1].classList.contains("hidden")).to.equal(false);
       expect(document.body.dataset.modalOpenCount).to.equal("1");
 
+      // Trigger the user interaction to check it posts the preview payload and opens.
       document.querySelector("[data-event-preview-close]").click();
 
+      // Confirm it posts the preview payload and opens the returned modal.
       expect(document.querySelector("#event-preview-modal")).to.equal(null);
       expect(document.body.dataset.modalOpenCount).to.equal("0");
     } finally {
@@ -194,9 +214,11 @@ describe("event preview", () => {
   });
 
   it("shows the test badge in the preview modal when test event is enabled", () => {
+    // Prepare page root to check it shows the test badge in the preview modal when test.
     const pageRoot = mountPreviewPage({ testEvent: true });
     const modalRoot = document.getElementById("event-preview-modal-root");
 
+    // Exercise the flow to check it shows the test badge in the preview modal when test.
     openEventPreviewModal(
       modalRoot,
       `<div id="event-preview-modal">
@@ -210,10 +232,14 @@ describe("event preview", () => {
       pageRoot,
     );
 
-    const testBadge = modalRoot.querySelector("[data-event-preview-test-badge]");
+    // Read the DOM to check it shows the test badge in the preview modal when test event.
+    const testBadge = modalRoot.querySelector(
+      "[data-event-preview-test-badge]",
+    );
     expect(testBadge.classList.contains("hidden")).to.equal(false);
     expect(testBadge.textContent.trim()).to.equal("Test");
 
+    // Trigger the user interaction to check it shows the test badge in the preview modal.
     modalRoot.querySelector("[data-event-preview-close]").click();
   });
 });

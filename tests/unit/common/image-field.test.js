@@ -2,7 +2,10 @@ import { expect } from "@open-wc/testing";
 
 import "/static/js/common/image-field.js";
 import { useDashboardTestEnv } from "/tests/unit/test-utils/env.js";
-import { mountLitComponent, useMountedElementsCleanup } from "/tests/unit/test-utils/lit.js";
+import {
+  mountLitComponent,
+  useMountedElementsCleanup,
+} from "/tests/unit/test-utils/lit.js";
 import { mockFetch } from "/tests/unit/test-utils/network.js";
 
 describe("image-field", () => {
@@ -20,6 +23,7 @@ describe("image-field", () => {
   });
 
   it("uploads an image and emits the new value", async () => {
+    // Mock the fetch response.
     fetchMock.setImpl(async () => ({
       status: 201,
       async json() {
@@ -27,19 +31,25 @@ describe("image-field", () => {
       },
     }));
 
+    // Render the image-field fixture.
     const element = await mountLitComponent("image-field", {
       label: "Banner",
       name: "banner_image",
     });
     const values = [];
 
+    // Listen for the emitted event.
     element.addEventListener("image-change", (event) => {
       values.push(event.detail.value);
     });
 
-    await element._uploadFile(new File(["data"], "banner.png", { type: "image/png" }));
+    // Upload the selected file and wait for the hidden input to update.
+    await element._uploadFile(
+      new File(["data"], "banner.png", { type: "image/png" }),
+    );
     await element.updateComplete;
 
+    // Uploads an image and emits the new value.
     expect(values).to.deep.equal(["https://example.com/image.png"]);
     expect(element.value).to.equal("https://example.com/image.png");
     expect(element.querySelector('input[name="banner_image"]').value).to.equal(
@@ -48,13 +58,16 @@ describe("image-field", () => {
   });
 
   it("clears the image value when remove is triggered", async () => {
+    // Render the image-field fixture.
     const element = await mountLitComponent("image-field", {
       value: "https://example.com/image.png",
     });
 
+    // Remove the current image and wait for the hidden input to update.
     element._handleRemove();
     await element.updateComplete;
 
+    // The image value is cleared after removal.
     expect(element.value).to.equal("");
   });
 

@@ -14,6 +14,7 @@ describe("site stats", () => {
     initCalls = [];
     resizeCalls = [];
 
+    // Exercise the flow to check it covers the current behavior.
     globalThis.echarts = {
       getInstanceByDom() {
         return null;
@@ -31,8 +32,15 @@ describe("site stats", () => {
       },
     };
 
-    document.documentElement.style.setProperty("--color-primary-500", "#0f766e");
-    document.documentElement.style.setProperty("--color-primary-700", "#115e59");
+    // Exercise the flow to check it covers the current behavior.
+    document.documentElement.style.setProperty(
+      "--color-primary-500",
+      "#0f766e",
+    );
+    document.documentElement.style.setProperty(
+      "--color-primary-700",
+      "#115e59",
+    );
     document.documentElement.style.setProperty("--color-stone-400", "#78716c");
     window.matchMedia = () => ({
       matches: false,
@@ -40,6 +48,7 @@ describe("site stats", () => {
       removeEventListener() {},
     });
 
+    // Exercise the flow to check it covers the current behavior.
     [
       "groups-running-chart",
       "groups-monthly-chart",
@@ -67,9 +76,13 @@ describe("site stats", () => {
   });
 
   it("renders charts for each stats section and registers resize handling", async () => {
+    // Exercise the flow to check it renders charts for each stats section and registers.
     await initSiteStatsCharts({
       groups: {
-        running_total: [[1, 2], [2, 3]],
+        running_total: [
+          [1, 2],
+          [2, 3],
+        ],
         per_month: [
           ["2025-01", 1],
           ["2025-02", 2],
@@ -85,32 +98,67 @@ describe("site stats", () => {
           ["2025-12", 12],
         ],
       },
-      members: { running_total: [[1, 2], [2, 4]], per_month: [["2025-01", 3]] },
-      events: { running_total: [[1, 1], [2, 2]], per_month: [["2025-01", 1]] },
-      attendees: { running_total: [[1, 1], [2, 5]], per_month: [["2025-01", 4]] },
+      members: {
+        running_total: [
+          [1, 2],
+          [2, 4],
+        ],
+        per_month: [["2025-01", 3]],
+      },
+      events: {
+        running_total: [
+          [1, 1],
+          [2, 2],
+        ],
+        per_month: [["2025-01", 1]],
+      },
+      attendees: {
+        running_total: [
+          [1, 1],
+          [2, 5],
+        ],
+        per_month: [["2025-01", 4]],
+      },
     });
 
+    // Confirm it renders charts for each stats section and registers resize handling.
     expect(initCalls).to.have.length(8);
 
-    const groupsRunningOption = initCalls.find(({ element }) => element.id === "groups-running-chart")?.option;
-    const groupsMonthlyOption = initCalls.find(({ element }) => element.id === "groups-monthly-chart")?.option;
+    // Prepare groups running option to check it renders charts for each stats section.
+    const groupsRunningOption = initCalls.find(
+      ({ element }) => element.id === "groups-running-chart",
+    )?.option;
+    const groupsMonthlyOption = initCalls.find(
+      ({ element }) => element.id === "groups-monthly-chart",
+    )?.option;
 
+    // Confirm it renders charts for each stats section and registers resize handling.
     expect(groupsRunningOption.baseOption.legend).to.include({
       bottom: 10,
       left: "center",
       itemGap: 12,
     });
-    expect(groupsRunningOption.baseOption.legend.textStyle.fontFamily).to.include("Inter");
-    expect(groupsRunningOption.baseOption.legend.textStyle.color).to.not.equal("");
+    expect(
+      groupsRunningOption.baseOption.legend.textStyle.fontFamily,
+    ).to.include("Inter");
+    expect(groupsRunningOption.baseOption.legend.textStyle.color).to.not.equal(
+      "",
+    );
     expect(groupsRunningOption.xAxis.splitNumber).to.equal(3);
-    expect(groupsRunningOption.xAxis.axisLabel.formatter).to.equal("{yyyy}-{MM}");
+    expect(groupsRunningOption.xAxis.axisLabel.formatter).to.equal(
+      "{yyyy}-{MM}",
+    );
     expect(groupsMonthlyOption.xAxis.axisLabel.interval).to.equal(1);
-    expect(groupsMonthlyOption.xAxis.axisLabel.formatter("Jan'25")).to.equal("Jan'25");
+    expect(groupsMonthlyOption.xAxis.axisLabel.formatter("Jan'25")).to.equal(
+      "Jan'25",
+    );
     expect(groupsMonthlyOption.legend.bottom).to.equal(10);
 
+    // Dispatch the event event to check it renders charts for each stats section.
     window.dispatchEvent(new Event("resize"));
     await new Promise((resolve) => setTimeout(resolve, 250));
 
+    // Confirm it renders charts for each stats section and registers resize handling.
     expect(resizeCalls).to.include("groups-running-chart");
     expect(resizeCalls).to.include("attendees-monthly-chart");
   });

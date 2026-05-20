@@ -1,7 +1,10 @@
 import { expect } from "@open-wc/testing";
 
 import "/static/js/common/breadcrumb-nav.js";
-import { mountLitComponent, useMountedElementsCleanup } from "/tests/unit/test-utils/lit.js";
+import {
+  mountLitComponent,
+  useMountedElementsCleanup,
+} from "/tests/unit/test-utils/lit.js";
 
 describe("breadcrumb-nav", () => {
   useMountedElementsCleanup("breadcrumb-nav");
@@ -13,24 +16,33 @@ describe("breadcrumb-nav", () => {
   ];
 
   it("renders nothing when no items are provided", async () => {
+    // Render the empty breadcrumb navigation fixture.
     const element = await mountLitComponent("breadcrumb-nav");
 
+    // Check the component leaves the light DOM empty without items.
     expect(element.children.length).to.equal(0);
   });
 
   it("parses json items and renders the current breadcrumb label", async () => {
+    // Render breadcrumb items from JSON attributes with banner images.
     const element = await mountLitComponent("breadcrumb-nav", {
       items: JSON.stringify(breadcrumbItems),
       bannerUrl: "/img/banner-desktop.png",
       bannerMobileUrl: "/img/banner-mobile.png",
     });
 
+    // Check the current label and responsive banners are rendered.
     expect(element.textContent).to.include("CNCF Madrid");
-    expect(element.querySelector('img[src="/img/banner-desktop.png"]')).to.not.equal(null);
-    expect(element.querySelector('img[src="/img/banner-mobile.png"]')).to.not.equal(null);
+    expect(
+      element.querySelector('img[src="/img/banner-desktop.png"]'),
+    ).to.not.equal(null);
+    expect(
+      element.querySelector('img[src="/img/banner-mobile.png"]'),
+    ).to.not.equal(null);
   });
 
   it("falls back to the last breadcrumb item when none is marked current", async () => {
+    // Render breadcrumb items without an explicit current item.
     const element = await mountLitComponent("breadcrumb-nav", {
       items: [
         { label: "Home", href: "/", icon: "home" },
@@ -39,11 +51,16 @@ describe("breadcrumb-nav", () => {
       ],
     });
 
-    expect(element._getCurrentItem()).to.deep.equal({ label: "KubeCon", icon: "date" });
+    // Check the last item becomes the current breadcrumb.
+    expect(element._getCurrentItem()).to.deep.equal({
+      label: "KubeCon",
+      icon: "date",
+    });
     expect(element.textContent).to.include("KubeCon");
   });
 
   it("renders breadcrumb items without hrefs as plain text", async () => {
+    // Render breadcrumb items that do not include hrefs.
     const element = await mountLitComponent("breadcrumb-nav", {
       items: [
         { label: "Home", icon: "home" },
@@ -52,40 +69,56 @@ describe("breadcrumb-nav", () => {
       ],
     });
 
+    // Check non-link breadcrumbs render as plain text with the current marker.
     expect(element.querySelector("ol a")).to.equal(null);
-    expect(element.querySelector('li[aria-current="page"]').textContent).to.include("KubeCon");
+    expect(
+      element.querySelector('li[aria-current="page"]').textContent,
+    ).to.include("KubeCon");
   });
 
   it("closes the mobile dropdown on outside clicks and escape", async () => {
-    const element = await mountLitComponent("breadcrumb-nav", { items: breadcrumbItems });
+    // Render the breadcrumb navigation with a mobile dropdown trigger.
+    const element = await mountLitComponent("breadcrumb-nav", {
+      items: breadcrumbItems,
+    });
 
+    // Track focus calls on the dropdown trigger.
     const trigger = element.querySelector("[data-breadcrumb-trigger]");
     let focused = false;
     trigger.focus = () => {
       focused = true;
     };
 
+    // Close the dropdown from an outside document click.
     element._isOpen = true;
     element._handleDocumentClick({ target: document.body });
     expect(element._isOpen).to.equal(false);
 
+    // Send the keyboard event.
     element._isOpen = true;
     element._handleKeydown({ key: "Escape" });
 
+    // The dropdown closes and focus returns to the trigger.
     expect(element._isOpen).to.equal(false);
     expect(focused).to.equal(true);
   });
 
   it("keeps the dropdown open when clicking the trigger or the dropdown itself", async () => {
-    const element = await mountLitComponent("breadcrumb-nav", { items: breadcrumbItems });
+    // Render the breadcrumb navigation with trigger and dropdown content.
+    const element = await mountLitComponent("breadcrumb-nav", {
+      items: breadcrumbItems,
+    });
 
+    // Collect the elements that should not count as outside clicks.
     const trigger = element.querySelector("[data-breadcrumb-trigger]");
     const dropdown = element.querySelector("[data-breadcrumb-dropdown]");
 
+    // Keep the dropdown open when the document click starts from the trigger.
     element._isOpen = true;
     element._handleDocumentClick({ target: trigger });
     expect(element._isOpen).to.equal(true);
 
+    // Keep the dropdown open when the document click starts inside the menu.
     element._handleDocumentClick({ target: dropdown });
     expect(element._isOpen).to.equal(true);
   });

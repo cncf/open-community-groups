@@ -15,7 +15,9 @@ describe("community explore calendar", () => {
     Calendar._instance = null;
     fetchMock = mockFetch();
     replaceStateCalls = [];
-    document.head.querySelectorAll('script[src*="fullcalendar"]').forEach((node) => node.remove());
+    document.head
+      .querySelectorAll('script[src*="fullcalendar"]')
+      .forEach((node) => node.remove());
     document.body.innerHTML = `
       <div id="main-loading-calendar" class="hidden"></div>
       <div id="loading-calendar" class="hidden"></div>
@@ -37,6 +39,7 @@ describe("community explore calendar", () => {
       return originalReplaceState(...args);
     };
 
+    // Mock FullCalendar so script loading creates an inspectable calendar instance.
     globalThis.FullCalendar = {
       Calendar: class {
         constructor(element, config) {
@@ -47,6 +50,7 @@ describe("community explore calendar", () => {
           this.viewDate = new Date("2026-04-01T00:00:00Z");
         }
 
+        // Render is a no-op because tests inspect the captured calendar state directly.
         render() {}
         getDate() {
           return this.viewDate;
@@ -69,7 +73,9 @@ describe("community explore calendar", () => {
     Calendar._instance = null;
     fetchMock.restore();
     window.history.replaceState = originalReplaceState;
-    document.head.querySelectorAll('script[src*="fullcalendar"]').forEach((node) => node.remove());
+    document.head
+      .querySelectorAll('script[src*="fullcalendar"]')
+      .forEach((node) => node.remove());
     if (originalFullCalendar) {
       globalThis.FullCalendar = originalFullCalendar;
     } else {
@@ -78,6 +84,7 @@ describe("community explore calendar", () => {
   });
 
   it("loads the calendar script, skips malformed events, and renders the valid ones", () => {
+    // Create a calendar with one valid event and one malformed event.
     const calendar = new Calendar({
       events: [
         {
@@ -96,29 +103,44 @@ describe("community explore calendar", () => {
       ],
     });
 
+    // Finish the script load.
     document.head.querySelector('script[src*="fullcalendar"]')?.onload();
 
+    // Only valid calendar events are rendered from the loaded script.
     expect(calendar.fullCalendar.events).to.have.length(1);
     expect(calendar.fullCalendar.events[0]).to.include({
       title: "Meetup",
       className: "cursor-pointer opacity-40",
       borderColor: "#0094ff",
     });
-    expect(calendar.fullCalendar.events[0].extendedProps.event.slug).to.equal("meetup");
-    expect(document.getElementById("calendar-date").textContent).to.equal("April 2026");
-    expect(document.getElementById("calendar-box")?.classList.contains("opacity-30")).to.equal(false);
-    expect(document.querySelector(".no-results-default")?.classList.contains("hidden")).to.equal(true);
+    expect(calendar.fullCalendar.events[0].extendedProps.event.slug).to.equal(
+      "meetup",
+    );
+    expect(document.getElementById("calendar-date").textContent).to.equal(
+      "April 2026",
+    );
+    expect(
+      document.getElementById("calendar-box")?.classList.contains("opacity-30"),
+    ).to.equal(false);
+    expect(
+      document
+        .querySelector(".no-results-default")
+        ?.classList.contains("hidden"),
+    ).to.equal(true);
   });
 
   it("opens event popovers upward on the last calendar row", () => {
+    // Create the calendar and finish loading the FullCalendar script.
     const calendar = new Calendar({ events: [] });
     document.head.querySelector('script[src*="fullcalendar"]')?.onload();
 
+    // Build a last-row event element for the popover hook.
     const eventElement = document.createElement("a");
     const eventParent = document.createElement("div");
     eventElement.fcSeg = { firstCol: 2, row: 4 };
     eventParent.appendChild(eventElement);
 
+    // Mount the event popover through FullCalendar's eventDidMount hook.
     calendar.fullCalendar.config.eventDidMount({
       el: eventElement,
       event: {
@@ -131,6 +153,7 @@ describe("community explore calendar", () => {
       },
     });
 
+    // Last-row popovers align upward from the event element.
     expect(JSON.parse(eventParent.dataset.popoverAlign)).to.include({
       id: "popover-last-row-event",
       horizontal: "left",
@@ -139,6 +162,7 @@ describe("community explore calendar", () => {
   });
 
   it("fetches month data, syncs date inputs and url, and shows the empty placeholder", async () => {
+    // Mock the fetch response.
     fetchMock.setImpl(async () => ({
       ok: true,
       async json() {
@@ -146,23 +170,36 @@ describe("community explore calendar", () => {
       },
     }));
 
+    // Create the calendar and finish loading the FullCalendar script.
     const calendar = new Calendar({ events: [] });
     document.head.querySelector('script[src*="fullcalendar"]')?.onload();
 
+    // Refresh the calendar and verify the rendered events.
     await calendar.refresh();
 
+    // Refreshing an empty month syncs inputs, URL, and placeholder.
     expect(fetchMock.calls).to.have.length(1);
     expect(fetchMock.calls[0][0]).to.include("/explore/events/search?");
     expect(fetchMock.calls[0][0]).to.include("view_mode=calendar");
     expect(fetchMock.calls[0][0]).to.include("date_from=2026-04-01");
     expect(fetchMock.calls[0][0]).to.include("date_to=2026-04-30");
-    expect(document.querySelector('input[name="date_from"]')?.value).to.equal("2026-04-01");
-    expect(document.querySelector('input[name="date_to"]')?.value).to.equal("2026-04-30");
+    expect(document.querySelector('input[name="date_from"]')?.value).to.equal(
+      "2026-04-01",
+    );
+    expect(document.querySelector('input[name="date_to"]')?.value).to.equal(
+      "2026-04-30",
+    );
     expect(window.location.search).to.include("view_mode=calendar");
     expect(window.location.search).to.include("date_from=2026-04-01");
     expect(window.location.search).to.include("date_to=2026-04-30");
     expect(replaceStateCalls).to.have.length.greaterThan(0);
-    expect(document.getElementById("calendar-box")?.classList.contains("opacity-30")).to.equal(true);
-    expect(document.querySelector(".no-results-default")?.classList.contains("hidden")).to.equal(false);
+    expect(
+      document.getElementById("calendar-box")?.classList.contains("opacity-30"),
+    ).to.equal(true);
+    expect(
+      document
+        .querySelector(".no-results-default")
+        ?.classList.contains("hidden"),
+    ).to.equal(false);
   });
 });

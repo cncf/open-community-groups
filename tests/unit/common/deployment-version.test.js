@@ -12,6 +12,7 @@ import {
 } from "/static/js/common/deployment-version.js";
 import { mockSwal } from "/tests/unit/test-utils/globals.js";
 
+// Set the loaded commit SHA meta tag for deployment checks.
 const setLoadedCommitSha = (commitSha) => {
   document.head.innerHTML = `<meta name="ocg-commit-sha" content="${commitSha}">`;
 };
@@ -53,15 +54,18 @@ describe("deployment version", () => {
   });
 
   it("stores and consumes a one-shot alert marker when the server requests a refresh", () => {
+    // Count reloads requested by the deployment refresh handler.
     let reloads = 0;
     setDeploymentReloadHandler(() => {
       reloads += 1;
     });
 
+    // Process the explicit refresh header from the server.
     const changed = reloadIfDeploymentChanged(
       new Headers({ [REFRESH_HEADER]: "true" }),
     );
 
+    // Commit-sha refresh stores and consumes the reload alert marker.
     expect(changed).to.equal(true);
     expect(reloads).to.equal(1);
     expect(DEPLOYMENT_REFRESH_MESSAGE).to.equal(
@@ -72,16 +76,19 @@ describe("deployment version", () => {
   });
 
   it("stores and consumes a one-shot alert marker when a response comes from a newer commit", () => {
+    // Store the current page commit SHA before reading the response.
     setLoadedCommitSha("abc123");
     let reloads = 0;
     setDeploymentReloadHandler(() => {
       reloads += 1;
     });
 
+    // Process a response from a different commit SHA.
     const changed = reloadIfDeploymentChanged(
       new Headers({ [COMMIT_SHA_HEADER]: "def456" }),
     );
 
+    // Cross-version responses store and consume the reload alert marker.
     expect(changed).to.equal(true);
     expect(reloads).to.equal(1);
     expect(consumePendingDeploymentRefreshAlert()).to.equal(true);

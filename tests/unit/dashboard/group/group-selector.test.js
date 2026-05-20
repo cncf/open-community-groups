@@ -13,11 +13,14 @@ describe("group-selector", () => {
   });
 
   afterEach(() => {
-    document.querySelectorAll("group-selector").forEach((element) => element.remove());
+    document
+      .querySelectorAll("group-selector")
+      .forEach((element) => element.remove());
     resetDom();
     htmx.restore();
   });
 
+  // Render the fixture to check it covers the current behavior.
   const renderSelector = async ({ groups, selectedGroupId = "" }) => {
     const element = document.createElement("group-selector");
     element.groups = groups;
@@ -28,6 +31,7 @@ describe("group-selector", () => {
   };
 
   it("renders the selected group and its deactivated warning", async () => {
+    // Render the fixture to check it renders the selected group and its deactivated.
     const element = await renderSelector({
       groups: [
         { group_id: "1", name: "Platform Team", active: false },
@@ -36,14 +40,17 @@ describe("group-selector", () => {
       selectedGroupId: "1",
     });
 
+    // Read the DOM to check it renders the selected group and its deactivated warning.
     const button = element.querySelector("#group-selector-button");
     const warning = element.querySelector(".text-orange-700");
 
+    // Confirm it renders the selected group and its deactivated warning.
     expect(button?.textContent).to.include("Platform Team");
     expect(warning?.textContent).to.include("This group has been deactivated");
   });
 
   it("filters groups from the current query", async () => {
+    // Render the fixture to check it filters groups from the current query.
     const element = await renderSelector({
       groups: [
         { group_id: "1", name: "Platform Team", active: true },
@@ -52,13 +59,18 @@ describe("group-selector", () => {
       ],
     });
 
+    // Run component methods to check it filters groups from the current query.
     element._query = "cloud";
     await element.updateComplete;
 
-    expect(element._filteredGroups).to.deep.equal([{ group_id: "2", name: "Cloud Native", active: true }]);
+    // Confirm it filters groups from the current query.
+    expect(element._filteredGroups).to.deep.equal([
+      { group_id: "2", name: "Cloud Native", active: true },
+    ]);
   });
 
   it("persists the selected group when an option handler runs", async () => {
+    // Render the fixture to check it persists the selected group when an option handler.
     const element = await renderSelector({
       groups: [
         { group_id: "1", name: "Platform Team", active: true },
@@ -67,6 +79,7 @@ describe("group-selector", () => {
       selectedGroupId: "1",
     });
 
+    // Prepare prevented to check it persists the selected group when an option handler.
     let prevented = false;
     await element._handleGroupClick(
       {
@@ -78,6 +91,7 @@ describe("group-selector", () => {
     );
     await element.updateComplete;
 
+    // Confirm it persists the selected group when an option handler runs.
     expect(htmx.ajaxCalls).to.deep.equal([
       [
         "PUT",

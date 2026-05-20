@@ -10,12 +10,15 @@ describe("user-chip", () => {
   });
 
   it("renders nothing when no user is provided", async () => {
+    // Render the user-chip fixture.
     const element = await mountLitComponent("user-chip");
 
+    // Renders nothing when no user is provided.
     expect(element.children.length).to.equal(0);
   });
 
   it("parses a json user payload and renders the display name", async () => {
+    // Render the user-chip fixture.
     const element = await mountLitComponent("user-chip", {
       user: JSON.stringify({
         name: "Ada Lovelace",
@@ -25,12 +28,16 @@ describe("user-chip", () => {
       }),
     });
 
+    // Parsed a json user payload and renders the display name.
     expect(element.textContent).to.include("Ada Lovelace");
     expect(element.textContent).to.include("Mathematician");
-    expect(element.querySelector("logo-image")?.getAttribute("placeholder")).to.equal("AL");
+    expect(
+      element.querySelector("logo-image")?.getAttribute("placeholder"),
+    ).to.equal("AL");
   });
 
   it("dispatches the user modal event on click when display-modal is enabled", async () => {
+    // Render the user-chip fixture.
     const element = await mountLitComponent("user-chip", {
       user: {
         name: "Grace Hopper",
@@ -46,13 +53,16 @@ describe("user-chip", () => {
       bioIsHtml: true,
     });
 
+    // Set up dispatches the user modal event on click when display-modal is enabled.
     let eventDetail = null;
     element.addEventListener("open-user-modal", (event) => {
       eventDetail = event.detail;
     });
 
+    // Click the control and verify the resulting state.
     element.querySelector('[role="button"]')?.click();
 
+    // Dispatches the user modal event on click when display-modal is enabled.
     expect(eventDetail).to.deep.equal({
       name: "Grace Hopper",
       username: "grace",
@@ -72,6 +82,7 @@ describe("user-chip", () => {
   });
 
   it("opens the modal from keyboard interactions when clickable", async () => {
+    // Render the user-chip fixture.
     const element = await mountLitComponent("user-chip", {
       user: {
         name: "Margaret Hamilton",
@@ -80,20 +91,29 @@ describe("user-chip", () => {
       displayModal: true,
     });
 
+    // List the fixture values.
     const openedBy = [];
 
+    // Listen for the emitted event.
     element.addEventListener("open-user-modal", () => {
       openedBy.push("opened");
     });
 
+    // Collect the card element.
     const card = element.querySelector('[role="button"]');
-    card.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
-    card.dispatchEvent(new KeyboardEvent("keydown", { key: " ", bubbles: true }));
+    card.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
+    );
+    card.dispatchEvent(
+      new KeyboardEvent("keydown", { key: " ", bubbles: true }),
+    );
 
+    // Opened the modal from keyboard interactions when clickable.
     expect(openedBy).to.deep.equal(["opened", "opened"]);
   });
 
   it("renders the compact featured variant", async () => {
+    // Render the user-chip fixture.
     const element = await mountLitComponent("user-chip", {
       user: {
         name: "Radia Perlman",
@@ -103,8 +123,10 @@ describe("user-chip", () => {
       featured: true,
     });
 
+    // Set up renders the compact featured variant.
     const card = element.firstElementChild;
 
+    // The rendered text shows the scenario data.
     expect(card?.className).to.include("bg-amber-50/50");
     expect(element.querySelector(".icon-star")).to.not.equal(null);
     expect(element.textContent).to.include("Radia Perlman");
