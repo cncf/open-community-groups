@@ -6,11 +6,7 @@ import {
   navigateToPath,
 } from "../../utils.js";
 
-/**
- * Formats a date as YYYY-MM-DD using UTC components.
- * @param {Date} date - Month date to format
- * @returns {string} Formatted date string
- */
+// Format a date as YYYY-MM-DD using UTC components.
 const formatDate = (date) => {
   const year = date.getUTCFullYear();
   const month = String(date.getUTCMonth() + 1).padStart(2, "0");
@@ -19,63 +15,33 @@ const formatDate = (date) => {
   return `${year}-${month}-${day}`;
 };
 
-/**
- * Returns the first day of the UTC month.
- * @param {Date} date - Month date to normalize
- * @returns {Date} Month start date
- */
+// Return the first day of the UTC month.
 const getMonthStart = (date) =>
   new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1));
 
-/**
- * Returns the last day of the UTC month.
- * @param {Date} date - Month date to normalize
- * @returns {Date} Month end date
- */
+// Return the last day of the UTC month.
 const getMonthEnd = (date) =>
   new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0));
 
-/**
- * Adds months to a UTC month date.
- * @param {Date} date - Base month date
- * @param {number} delta - Number of months to add
- * @returns {Date} Shifted month date
- */
+// Add months to a UTC month date.
 const addMonths = (date, delta) =>
   new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + delta, 1));
 
-/**
- * Returns a stable key for a UTC month.
- * @param {Date} date - Month date to convert
- * @returns {string} YYYY-MM key
- */
+// Return a stable key for a UTC month.
 const getMonthKey = (date) => formatDate(getMonthStart(date)).slice(0, 7);
 
-/**
- * Returns the inclusive date range for a UTC month.
- * @param {Date} date - Month date to convert
- * @returns {{ first: string; last: string }} Month range
- */
+// Return the inclusive date range for a UTC month.
 const getMonthRange = (date) => ({
   first: formatDate(getMonthStart(date)),
   last: formatDate(getMonthEnd(date)),
 });
 
-/**
- * Returns the distance in whole months between two UTC month dates.
- * @param {Date} from - Start month
- * @param {Date} to - End month
- * @returns {number} Month distance
- */
+// Return the distance in whole months between two UTC month dates.
 const getMonthDistance = (from, to) =>
   (to.getUTCFullYear() - from.getUTCFullYear()) * 12 +
   (to.getUTCMonth() - from.getUTCMonth());
 
-/**
- * Finds a populated month with an adjacent empty month for navigation coverage.
- * @param {Page} page - Page fixture
- * @returns {Promise<{ emptyMonth: Date; populatedMonth: Date; direction: "next" | "previous" } | null>}
- */
+// Find a populated month with an adjacent empty month for navigation coverage.
 const findCalendarNavigationScenario = async (page) => {
   const data = await page.evaluate(async (communityName) => {
     const params = new URLSearchParams();

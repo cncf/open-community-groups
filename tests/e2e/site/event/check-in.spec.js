@@ -14,7 +14,7 @@ import {
   waitForAttendanceState,
 } from "../../utils.js";
 
-/** Navigates to the public attendee check-in page. */
+// Navigate to the public attendee check-in page.
 const navigateToCheckInPage = async (page) => {
   await navigateToPath(
     page,
@@ -22,7 +22,7 @@ const navigateToCheckInPage = async (page) => {
   );
 };
 
-/** Registers the current user as an attendee for the test event. */
+// Register the current user as an attendee for the test event.
 const attendEvent = async (page) => {
   const attendButton = getAttendButton(page);
   await expect(attendButton).toBeVisible();
@@ -42,7 +42,7 @@ const attendEvent = async (page) => {
   await expect(getLeaveButton(page)).toBeVisible();
 };
 
-/** Cancels attendance to return the event to a reusable test state. */
+// Cancel attendance to return the event to a reusable test state.
 const leaveEvent = async (page) => {
   const leaveButton = getLeaveButton(page);
   await expect(leaveButton).toBeVisible();

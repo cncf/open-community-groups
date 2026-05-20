@@ -92,6 +92,7 @@ test.describe("user dashboard profile view", () => {
   test("user can update and restore profile details", async ({ page }) => {
     test.setTimeout(60_000);
 
+    // Select the requested timezone only when it differs from the current value.
     const setTimezoneIfNeeded = async (timezone) => {
       const timezoneInput = page.locator(
         'timezone-selector[name="timezone"] input[name="timezone"]',
@@ -104,6 +105,7 @@ test.describe("user dashboard profile view", () => {
       await selectTimezone(page, timezone);
     };
 
+    // Save profile detail values and verify the success feedback.
     const saveProfileDetails = async (values) => {
       await navigateToPath(page, ACCOUNT_PATH);
 
@@ -177,6 +179,7 @@ test.describe("user dashboard profile view", () => {
       ]);
     };
 
+    // Verify profile detail values after saving or restoring them.
     const expectProfileDetails = async (values) => {
       await navigateToPath(page, ACCOUNT_PATH);
 

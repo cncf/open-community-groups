@@ -63,6 +63,7 @@ test.describe("group dashboard waitlist tab", () => {
   test("organizer can enable waitlist for an event and then restore it", async ({
     organizerGroupPage,
   }) => {
+    // Open the seeded alpha event editor from the events list.
     const openAlphaEventEditor = async () => {
       await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
 
@@ -90,6 +91,7 @@ test.describe("group dashboard waitlist tab", () => {
       ]);
     };
 
+    // Submit the next waitlist value and verify it persisted.
     const submitWaitlistValue = async (nextValue) => {
       await organizerGroupPage
         .locator('button[data-section="details"]')

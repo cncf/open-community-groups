@@ -13,14 +13,14 @@ import {
 
 const USER_DASHBOARD_EVENTS_PATH = "/dashboard/user?tab=events";
 
-/** Returns the configured psql executable path for E2E DB access. */
+// Return the configured psql executable path for E2E DB access.
 const getPsqlPath = () => {
   const pgBin = process.env.OCG_PG_BIN;
 
   return pgBin ? `${pgBin}/psql` : "psql";
 };
 
-/** Normalizes a simple YAML scalar value from server config. */
+// Normalize a simple YAML scalar value from server config.
 const parseYamlScalar = (value) => {
   const trimmedValue = value.trim();
 
@@ -34,7 +34,7 @@ const parseYamlScalar = (value) => {
   return trimmedValue;
 };
 
-/** Reads DB settings from the local server config when env vars are unset. */
+// Read DB settings from the local server config when env vars are unset.
 const readServerDbConfig = () => {
   const configDir =
     process.env.OCG_CONFIG || path.join(process.env.HOME || "", ".config/ocg");
@@ -102,7 +102,7 @@ const readServerDbConfig = () => {
   return dbConfig;
 };
 
-/** Resolves the DB connection used by the email verification helper. */
+// Resolve the DB connection used by the email verification helper.
 const getDbConfig = () => {
   const serverDbConfig = readServerDbConfig();
 
@@ -121,7 +121,7 @@ const getDbConfig = () => {
 
 const emailVerificationDbConfig = getDbConfig();
 
-/** Reads the email verification code for a newly created user from the E2E DB. */
+// Read the email verification code for a newly created user from the E2E DB.
 const readEmailVerificationCode = (email) => {
   const escapedEmail = email.replace(/'/g, "''");
   const sql = `
@@ -158,7 +158,7 @@ const readEmailVerificationCode = (email) => {
   return output || null;
 };
 
-/** Waits until sign-up persistence creates an email verification code. */
+// Wait until sign-up persistence creates an email verification code.
 const waitForEmailVerificationCode = async (email) => {
   const timeoutAt = Date.now() + 10_000;
 
@@ -175,7 +175,7 @@ const waitForEmailVerificationCode = async (email) => {
   throw new Error(`Timed out waiting for verification code for ${email}`);
 };
 
-/** Completes the sign-up form using email and password credentials. */
+// Complete the sign-up form using email and password credentials.
 const signUpWithEmail = async (page, user) => {
   await navigateToPath(page, "/sign-up");
 
@@ -194,7 +194,7 @@ const signUpWithEmail = async (page, user) => {
   await expect(page.getByRole("heading", { name: "Log In" })).toBeVisible();
 };
 
-/** Logs in using email username and password credentials. */
+// Log in using email username and password credentials.
 const logInWithEmail = async (page, user) => {
   await expect(page.getByRole("heading", { name: "Log In" })).toBeVisible();
   await page.getByLabel("Username").fill(user.username);

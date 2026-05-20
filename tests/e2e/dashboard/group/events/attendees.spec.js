@@ -21,6 +21,7 @@ import {
   ATTENDEE_NOTIFICATION_SUBJECT,
 } from "../helpers.js";
 
+// Open the attendees tab for a specific event and return its content.
 const openAttendeesTab = async (page, eventName, eventId) => {
   await navigateToPath(page, "/dashboard/group?tab=events");
 

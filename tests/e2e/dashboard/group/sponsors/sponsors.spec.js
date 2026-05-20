@@ -31,6 +31,7 @@ test.describe("group dashboard sponsors view", () => {
     });
     let featuredUpdateRequests = 0;
 
+    // Count featured-update requests while the cancel dialog is open.
     const requestListener = (request) => {
       if (
         request.method() === "PUT" &&

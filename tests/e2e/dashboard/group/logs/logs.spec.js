@@ -77,6 +77,8 @@ test.describe("group dashboard logs view", () => {
     });
     const firstDetailsButton = detailsButtons.nth(0);
     const secondDetailsButton = detailsButtons.nth(1);
+
+    // Resolve the popover controlled by a details button.
     const getDetailsPopover = async (detailsButton) => {
       const popoverId = await detailsButton.getAttribute("aria-controls");
 

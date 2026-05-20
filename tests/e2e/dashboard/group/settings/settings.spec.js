@@ -12,6 +12,7 @@ test.describe("group dashboard settings view", () => {
   }) => {
     const settingsPath = "/dashboard/group?tab=settings";
 
+    // Read current group settings values before updating them.
     const readSettingsFormValues = async () => {
       await navigateToPath(organizerGroupPage, settingsPath);
 
@@ -44,6 +45,7 @@ test.describe("group dashboard settings view", () => {
       };
     };
 
+    // Submit group settings values and wait for persistence.
     const submitSettings = async ({
       categoryId,
       description,

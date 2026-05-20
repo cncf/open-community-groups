@@ -9,6 +9,7 @@ test.describe("community dashboard settings view", () => {
   }) => {
     const settingsPath = "/dashboard/community?tab=settings";
 
+    // Read current community settings values before updating them.
     const readSettingsFormValues = async () => {
       await navigateToPath(adminCommunityPage, settingsPath);
 
@@ -43,6 +44,7 @@ test.describe("community dashboard settings view", () => {
       };
     };
 
+    // Submit community settings values and verify they persist.
     const submitSettings = async ({
       bannerMobileUrl,
       bannerUrl,

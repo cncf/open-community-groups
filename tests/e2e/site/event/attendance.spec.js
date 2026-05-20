@@ -16,7 +16,7 @@ import {
   waitForAttendanceState,
 } from "../../utils.js";
 
-/** Cancels attendance when the current user is already registered. */
+// Cancel attendance when the current user is already registered.
 const cancelAttendance = async (page, eventId) => {
   const leaveButton = getLeaveButton(page);
   await expect(leaveButton).toBeVisible();
@@ -41,15 +41,19 @@ const cancelAttendance = async (page, eventId) => {
   await expect(getAttendButton(page)).toBeVisible();
 };
 
+// Return the ticket selection modal.
 const getTicketModal = (page) =>
   page.locator('[data-attendance-role="ticket-modal"]');
 
+// Return the checkout action inside the ticket modal.
 const getCheckoutButton = (page) =>
   page.locator('[data-attendance-role="checkout-btn"]');
 
+// Return the refund action for a paid attendee.
 const getRefundButton = (page) =>
   page.locator('[data-attendance-role="refund-btn"]');
 
+// Return the sign-in action shown to anonymous users.
 const getSignInButton = (page) =>
   page.locator('[data-attendance-role="signin-btn"]');
 
