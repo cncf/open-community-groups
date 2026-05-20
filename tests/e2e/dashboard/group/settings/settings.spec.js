@@ -1,0 +1,216 @@
+import { expect, test } from "../../../fixtures.js";
+
+import { fillMarkdownEditor } from "../../form-helpers.js";
+import {
+  navigateToPath,
+  TEST_PAYMENT_GROUP_RECIPIENT,
+} from "../../../utils.js";
+
+test.describe("group dashboard settings view", () => {
+  test("organizer can update and restore group settings", async ({
+    organizerGroupPage,
+  }) => {
+    const settingsPath = "/dashboard/group?tab=settings";
+
+    const readSettingsFormValues = async () => {
+      await navigateToPath(organizerGroupPage, settingsPath);
+
+      const settingsForm = organizerGroupPage.locator("#groups-form");
+      await expect(settingsForm).toBeVisible();
+
+      const descriptionEditor = organizerGroupPage.locator(
+        "markdown-editor#description",
+      );
+      const description =
+        (await descriptionEditor.getAttribute("content")) ??
+        (await descriptionEditor
+          .locator('textarea[name="description"]')
+          .first()
+          .inputValue());
+      const regionId = await organizerGroupPage
+        .locator("#region_id")
+        .inputValue();
+
+      return {
+        categoryId: await organizerGroupPage
+          .locator("#category_id")
+          .inputValue(),
+        description,
+        name: await organizerGroupPage.locator("#name").inputValue(),
+        regionId,
+        websiteUrl: await organizerGroupPage
+          .locator("#website_url")
+          .inputValue(),
+      };
+    };
+
+    const submitSettings = async ({
+      categoryId,
+      description,
+      name,
+      regionId,
+      websiteUrl,
+    }) => {
+      await navigateToPath(organizerGroupPage, settingsPath);
+      await organizerGroupPage.locator("#category_id").selectOption(categoryId);
+      await organizerGroupPage.locator("#region_id").selectOption(regionId);
+      await organizerGroupPage.locator("#name").fill(name);
+      await fillMarkdownEditor(organizerGroupPage, "description", description);
+      await organizerGroupPage.locator("#website_url").fill(websiteUrl);
+
+      await Promise.all([
+        organizerGroupPage.waitForResponse(
+          (response) =>
+            response.request().method() === "PUT" &&
+            response.url().includes("/dashboard/group/settings/update") &&
+            response.ok(),
+        ),
+        organizerGroupPage
+          .getByRole("button", { name: "Update Group" })
+          .click(),
+      ]);
+    };
+
+    const originalFormValues = await readSettingsFormValues();
+    const updatedValues = {
+      ...originalFormValues,
+      categoryId: originalFormValues.categoryId,
+      description:
+        "Updated primary meetup details for group settings coverage.",
+      name: `${originalFormValues.name} Updated`,
+      regionId: originalFormValues.regionId,
+    };
+
+    await submitSettings(updatedValues);
+
+    await expect(organizerGroupPage.locator("#category_id")).toHaveValue(
+      updatedValues.categoryId,
+    );
+    await expect(organizerGroupPage.locator("#region_id")).toHaveValue(
+      updatedValues.regionId,
+    );
+    await expect(organizerGroupPage.locator("#name")).toHaveValue(
+      updatedValues.name,
+    );
+    await expect(
+      organizerGroupPage.locator("markdown-editor#description"),
+    ).toHaveAttribute("content", updatedValues.description);
+    await expect(organizerGroupPage.locator("#website_url")).toHaveValue(
+      updatedValues.websiteUrl,
+    );
+
+    await submitSettings(originalFormValues);
+
+    await expect(organizerGroupPage.locator("#category_id")).toHaveValue(
+      originalFormValues.categoryId,
+    );
+    await expect(organizerGroupPage.locator("#region_id")).toHaveValue(
+      originalFormValues.regionId,
+    );
+    await expect(organizerGroupPage.locator("#name")).toHaveValue(
+      originalFormValues.name,
+    );
+    await expect(
+      organizerGroupPage.locator("markdown-editor#description"),
+    ).toHaveAttribute("content", originalFormValues.description);
+    await expect(organizerGroupPage.locator("#website_url")).toHaveValue(
+      originalFormValues.websiteUrl,
+    );
+  });
+
+  test("viewer sees read-only controls on group settings", async ({
+    groupViewerPage,
+  }) => {
+    await navigateToPath(groupViewerPage, "/dashboard/group?tab=settings");
+
+    const dashboardContent = groupViewerPage.locator("#dashboard-content");
+    await expect(
+      dashboardContent.getByText("Group Details", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      dashboardContent.getByText("Your role cannot update group settings.", {
+        exact: true,
+      }),
+    ).toBeVisible();
+    await expect(dashboardContent.locator(".inert-form")).toHaveAttribute(
+      "inert",
+      "",
+    );
+    const updateGroupButton = dashboardContent.getByRole("button", {
+      name: "Update Group",
+    });
+
+    if ((await updateGroupButton.count()) > 0) {
+      await expect(updateGroupButton).toBeDisabled();
+      await expect(updateGroupButton).toHaveAttribute(
+        "title",
+        "Your role cannot update group settings.",
+      );
+    }
+
+    const paymentRecipientInput = dashboardContent.locator(
+      "#payment_recipient_recipient_id",
+    );
+
+    if ((await paymentRecipientInput.count()) > 0) {
+      await expect(paymentRecipientInput).toHaveValue(
+        TEST_PAYMENT_GROUP_RECIPIENT,
+      );
+      return;
+    }
+
+    await expect(paymentRecipientInput).toHaveCount(0);
+  });
+
+  test("organizer can update and restore the Stripe recipient", async ({
+    organizerGroupPage,
+  }) => {
+    const settingsPath = "/dashboard/group?tab=settings";
+    const paymentRecipientInput = organizerGroupPage.locator(
+      "#payment_recipient_recipient_id",
+    );
+    const updatedRecipient = "  acct_e2e_alpha_updated  ";
+
+    await navigateToPath(organizerGroupPage, settingsPath);
+    test.skip(
+      (await paymentRecipientInput.count()) === 0,
+      "Payments are disabled in this environment.",
+    );
+    await expect(
+      organizerGroupPage.getByText("Payments", { exact: true }),
+    ).toBeVisible();
+    await expect(paymentRecipientInput).toHaveValue(
+      TEST_PAYMENT_GROUP_RECIPIENT,
+    );
+
+    await paymentRecipientInput.fill(updatedRecipient);
+
+    await Promise.all([
+      organizerGroupPage.waitForResponse(
+        (response) =>
+          response.request().method() === "PUT" &&
+          response.url().includes("/dashboard/group/settings/update") &&
+          response.ok(),
+      ),
+      organizerGroupPage.getByRole("button", { name: "Update Group" }).click(),
+    ]);
+
+    await expect(paymentRecipientInput).toHaveValue("acct_e2e_alpha_updated");
+
+    await paymentRecipientInput.fill(TEST_PAYMENT_GROUP_RECIPIENT);
+
+    await Promise.all([
+      organizerGroupPage.waitForResponse(
+        (response) =>
+          response.request().method() === "PUT" &&
+          response.url().includes("/dashboard/group/settings/update") &&
+          response.ok(),
+      ),
+      organizerGroupPage.getByRole("button", { name: "Update Group" }).click(),
+    ]);
+
+    await expect(paymentRecipientInput).toHaveValue(
+      TEST_PAYMENT_GROUP_RECIPIENT,
+    );
+  });
+});

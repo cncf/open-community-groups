@@ -222,8 +222,8 @@ e2e-server-watch:
 
 # Run the Playwright e2e test suite.
 e2e-tests:
-    cd tests/e2e && OCG_E2E_MEETINGS_ENABLED=true OCG_E2E_PAYMENTS_ENABLED=true npx playwright test --config playwright.config.ts
+    cd tests/e2e && OCG_E2E_MEETINGS_ENABLED=true OCG_E2E_PAYMENTS_ENABLED=true npx playwright test --config playwright.config.js
 
 # Update Playwright visual snapshots for the e2e suite.
 e2e-update-snapshots:
-    cd tests/e2e && npx playwright test --config playwright.config.ts --grep @visual --project=chromium-deep --project=chromium-mobile-deep --update-snapshots
+    cd tests/e2e && npx playwright test --config playwright.config.js --grep @visual --project=chromium-deep --project=chromium-mobile-deep --update-snapshots

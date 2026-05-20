@@ -58,13 +58,13 @@ just e2e-tests
 just e2e-update-snapshots
 
 # Run a specific Playwright project
-cd tests/e2e; npx playwright test --config playwright.config.ts --project=chromium-smoke
+cd tests/e2e; npx playwright test --config playwright.config.js --project=chromium-smoke
 
 # Open the Playwright UI
-cd tests/e2e; npx playwright test --config playwright.config.ts --ui
+cd tests/e2e; npx playwright test --config playwright.config.js --ui
 
 # Run with a visible browser
-cd tests/e2e; npx playwright test --config playwright.config.ts --headed
+cd tests/e2e; npx playwright test --config playwright.config.js --headed
 ```
 
 ## Configuration
