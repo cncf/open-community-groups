@@ -12,6 +12,7 @@ test.describe("event page call for speakers", () => {
   test("public event page renders the call for speakers section for an open event", async ({
     page,
   }) => {
+    // Load the event page with an open call for speakers.
     await navigateToEvent(
       page,
       TEST_COMMUNITY_NAME,
@@ -19,6 +20,7 @@ test.describe("event page call for speakers", () => {
       CFS_EVENT_SLUG,
     );
 
+    // Verify the call for speakers section describes the open submission.
     await expect(
       page.getByText("Call for Speakers", { exact: true }),
     ).toBeVisible();
@@ -31,6 +33,7 @@ test.describe("event page call for speakers", () => {
   test("anonymous users are prompted to sign in before opening the submission flow", async ({
     page,
   }) => {
+    // Load the CFS event as a guest.
     await navigateToEvent(
       page,
       TEST_COMMUNITY_NAME,
@@ -38,8 +41,10 @@ test.describe("event page call for speakers", () => {
       CFS_EVENT_SLUG,
     );
 
+    // Request proposal submission from the public event page.
     await page.getByRole("button", { name: "Submit session proposal" }).click();
 
+    // Verify guests are prompted to sign in before submitting proposals.
     await expect(
       page.getByText(
         "You need to sign in to submit a proposal for this event.",
@@ -51,6 +56,7 @@ test.describe("event page call for speakers", () => {
   test("logged in users without proposals see a link to manage session proposals", async ({
     adminCommunityPage,
   }) => {
+    // Load the CFS event as a logged-in user without proposals.
     await navigateToEvent(
       adminCommunityPage,
       TEST_COMMUNITY_NAME,
@@ -58,10 +64,12 @@ test.describe("event page call for speakers", () => {
       CFS_EVENT_SLUG,
     );
 
+    // Open the proposal submission modal.
     await adminCommunityPage
       .getByRole("button", { name: "Submit session proposal" })
       .click();
 
+    // Target the empty proposal modal and manage link.
     const modal = adminCommunityPage.getByRole("dialog", {
       name: "Submit a proposal",
     });
@@ -69,6 +77,7 @@ test.describe("event page call for speakers", () => {
       name: "Manage session proposals",
     });
 
+    // Verify members without proposals can reach proposal management.
     await expect(
       modal.getByText(
         "It looks like you haven't created any session proposals yet.",
@@ -83,6 +92,7 @@ test.describe("event page call for speakers", () => {
   test("the submit proposal modal distinguishes eligible and already-submitted proposals", async ({
     member1Page,
   }) => {
+    // Load the CFS event as a member with proposal options.
     await navigateToEvent(
       member1Page,
       TEST_COMMUNITY_NAME,
@@ -90,10 +100,12 @@ test.describe("event page call for speakers", () => {
       CFS_EVENT_SLUG,
     );
 
+    // Open the proposal submission modal.
     await member1Page
       .getByRole("button", { name: "Submit session proposal" })
       .click();
 
+    // Verify the proposal modal separates eligible and submitted proposals.
     await expect(
       member1Page.getByRole("dialog", { name: "Submit a proposal" }),
     ).toBeVisible();

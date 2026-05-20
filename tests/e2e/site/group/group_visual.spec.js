@@ -11,14 +11,14 @@ import {
 
 test.describe("group page visual regression @visual", () => {
   test("matches desktop snapshot", async ({ page }, testInfo) => {
-    // Load the group page.
+    // Load the group page for the desktop snapshot.
     await navigateToGroup(
       page,
       TEST_COMMUNITY_NAME,
       TEST_GROUP_SLUGS.community1.alpha,
     );
 
-    // Verify visual readiness.
+    // Verify desktop group content is ready.
     await expect(
       page.getByRole("heading", { level: 1, name: TEST_GROUP_NAMES.alpha }),
     ).toBeVisible();
@@ -29,7 +29,7 @@ test.describe("group page visual regression @visual", () => {
       page.getByText("Upcoming Events", { exact: true }),
     ).toBeVisible();
 
-    // Capture the group intro.
+    // Capture the desktop intro section snapshot.
     await expectRegionScreenshot(
       page,
       getIntroSection(page),
@@ -39,14 +39,14 @@ test.describe("group page visual regression @visual", () => {
   });
 
   test("matches mobile snapshot @mobile", async ({ page }, testInfo) => {
-    // Load the group page.
+    // Load the group page for the mobile snapshot.
     await navigateToGroup(
       page,
       TEST_COMMUNITY_NAME,
       TEST_GROUP_SLUGS.community1.alpha,
     );
 
-    // Verify visual readiness.
+    // Verify mobile group content is ready.
     await expect(
       page.getByRole("heading", { level: 1, name: TEST_GROUP_NAMES.alpha }),
     ).toBeVisible();
@@ -57,7 +57,7 @@ test.describe("group page visual regression @visual", () => {
       page.getByText("Upcoming Events", { exact: true }),
     ).toBeVisible();
 
-    // Capture the mobile group intro.
+    // Capture the mobile intro section snapshot.
     await expectRegionScreenshot(
       page,
       getIntroSection(page),

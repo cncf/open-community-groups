@@ -12,7 +12,7 @@ import {
 
 test.describe("event page visual regression @visual", () => {
   test("matches desktop snapshot", async ({ page }, testInfo) => {
-    // Load the event page.
+    // Load the event page for the desktop snapshot.
     await navigateToEvent(
       page,
       TEST_COMMUNITY_NAME,
@@ -20,7 +20,7 @@ test.describe("event page visual regression @visual", () => {
       TEST_EVENT_SLUGS.alpha[0],
     );
 
-    // Verify visual readiness.
+    // Verify desktop event content is ready.
     await expect(
       page.getByRole("heading", { level: 1, name: TEST_EVENT_NAMES.alpha[0] }),
     ).toBeVisible();
@@ -28,7 +28,7 @@ test.describe("event page visual regression @visual", () => {
       page.getByText("About this event", { exact: true }),
     ).toBeVisible();
 
-    // Capture the event intro.
+    // Capture the desktop event intro snapshot.
     await expectRegionScreenshot(
       page,
       getIntroSection(page),
@@ -38,7 +38,7 @@ test.describe("event page visual regression @visual", () => {
   });
 
   test("matches mobile snapshot @mobile", async ({ page }, testInfo) => {
-    // Load the event page.
+    // Load the event page for the mobile snapshot.
     await navigateToEvent(
       page,
       TEST_COMMUNITY_NAME,
@@ -46,7 +46,7 @@ test.describe("event page visual regression @visual", () => {
       TEST_EVENT_SLUGS.alpha[0],
     );
 
-    // Verify visual readiness.
+    // Verify mobile event content is ready.
     await expect(
       page.getByRole("heading", { level: 1, name: TEST_EVENT_NAMES.alpha[0] }),
     ).toBeVisible();
@@ -54,7 +54,7 @@ test.describe("event page visual regression @visual", () => {
       page.getByText("About this event", { exact: true }),
     ).toBeVisible();
 
-    // Capture the mobile event intro.
+    // Capture the mobile event intro snapshot.
     await expectRegionScreenshot(
       page,
       getIntroSection(page),

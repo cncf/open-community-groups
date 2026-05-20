@@ -84,6 +84,7 @@ const findCalendarNavigationScenario = async (page) => {
     params.set("date_from", "1900-01-01");
     params.set("date_to", "2100-12-31");
 
+    // Fetch the full calendar data set for the selected community.
     const response = await fetch(
       `/explore/events/search?${params.toString()}`,
       {
@@ -98,6 +99,7 @@ const findCalendarNavigationScenario = async (page) => {
     return response.json();
   }, TEST_COMMUNITY_NAME);
 
+  // Build the set of months that currently have events.
   const populatedMonths = new Set(
     data.events.map((event) => getMonthKey(new Date(event.starts_at * 1000))),
   );
@@ -138,11 +140,13 @@ test.describe("site explore events page", () => {
   test("supports kind filtering and switching to calendar view", async ({
     page,
   }) => {
+    // Load the events explore page with the community filter applied.
     await navigateToPath(
       page,
       `/explore?entity=events&community[0]=${TEST_COMMUNITY_NAME}`,
     );
 
+    // Verify events render before applying filters.
     await expect(page.getByPlaceholder("Search events")).toBeVisible();
     await expect(
       page.getByText(TEST_EVENT_NAMES.alpha[0], { exact: true }),
@@ -151,6 +155,7 @@ test.describe("site explore events page", () => {
       page.getByText(TEST_EVENT_NAMES.alpha[1], { exact: true }),
     ).toBeVisible();
 
+    // Apply the in-person filter and wait for the event list to narrow.
     const inPersonFilter = page
       .locator('input[name="kind[]"][value="in-person"]')
       .first();
@@ -163,6 +168,7 @@ test.describe("site explore events page", () => {
       input.dispatchEvent(new Event("change", { bubbles: true }));
     });
 
+    // Verify only matching in-person events remain visible.
     await expect(
       page.getByText(TEST_EVENT_NAMES.alpha[0], { exact: true }),
     ).toBeVisible();
@@ -170,6 +176,7 @@ test.describe("site explore events page", () => {
       page.getByText(TEST_EVENT_NAMES.alpha[1], { exact: true }),
     ).toHaveCount(0);
 
+    // Switch to the calendar view and wait for the results to refresh.
     await Promise.all([
       page.waitForResponse(
         (response) =>
@@ -181,6 +188,7 @@ test.describe("site explore events page", () => {
       page.locator('label[for="calendar"]').click(),
     ]);
 
+    // Verify calendar controls appear after switching views.
     await expect(page.locator("#calendar-box")).toBeVisible();
     await expect(page.locator("#calendar-date")).toBeVisible();
     await expect(page.locator("#current-month-btn")).toBeVisible();
@@ -190,14 +198,17 @@ test.describe("site explore events page", () => {
   test("shows a filtered empty state when no events match the search", async ({
     page,
   }) => {
+    // Load the events explore page for an empty search result.
     await navigateToPath(
       page,
       `/explore?entity=events&community[0]=${TEST_COMMUNITY_NAME}`,
     );
 
+    // Submit a search query that has no matching events.
     const searchInput = page.getByPlaceholder("Search events");
     await expect(searchInput).toBeVisible();
 
+    // Submit the unmatched search query and wait for filtered results.
     await Promise.all([
       page.waitForResponse(
         (response) =>
@@ -215,6 +226,7 @@ test.describe("site explore events page", () => {
       ".no-results-filtered:not(.hidden)",
     );
 
+    // Verify the filtered empty state explains the missing matches.
     await expect(filteredEmptyState).toBeVisible();
     await expect(
       filteredEmptyState.getByText("No events found", { exact: true }),
@@ -225,6 +237,7 @@ test.describe("site explore events page", () => {
       ),
     ).toBeVisible();
 
+    // Switch to calendar view and wait for the empty state to refresh.
     await Promise.all([
       page.waitForResponse(
         (response) =>
@@ -236,6 +249,7 @@ test.describe("site explore events page", () => {
       page.locator('label[for="calendar"]').click(),
     ]);
 
+    // Verify calendar mode keeps the filtered empty state visible.
     await expect(page.locator("#calendar-box")).toBeVisible();
     await expect(
       page.locator(".no-results-filtered:not(.hidden)"),
@@ -248,6 +262,7 @@ test.describe("site explore events page", () => {
   test("hides the empty state after navigating from an empty month to one with events", async ({
     page,
   }) => {
+    // Load events data to find adjacent calendar months.
     await navigateToPath(
       page,
       `/explore?entity=events&community[0]=${TEST_COMMUNITY_NAME}`,
@@ -259,14 +274,17 @@ test.describe("site explore events page", () => {
     const { emptyMonth, populatedMonth, direction } = scenario;
     const emptyRange = getMonthRange(emptyMonth);
 
+    // Load the calendar on the empty adjacent month.
     await navigateToPath(
       page,
       `/explore?entity=events&community[0]=${TEST_COMMUNITY_NAME}` +
         `&view_mode=calendar&date_from=${emptyRange.first}&date_to=${emptyRange.last}`,
     );
 
+    // Verify the calendar starts on an empty month.
     await expect(page.locator("#calendar-box")).toBeVisible();
 
+    // Target empty-state, navigation, and event locators for the calendar.
     const defaultEmptyState = page.locator(".no-results-default:not(.hidden)");
     const navigationButton =
       direction === "next"
@@ -282,7 +300,9 @@ test.describe("site explore events page", () => {
     const monthSteps = Math.abs(getMonthDistance(emptyMonth, populatedMonth));
     expect(monthSteps).toBeGreaterThan(0);
 
+    // Navigate month by month until events appear.
     for (let step = 0; step < monthSteps; step += 1) {
+      // Navigate toward the populated month and wait for calendar data.
       await Promise.all([
         page.waitForResponse(
           (response) =>
@@ -294,6 +314,7 @@ test.describe("site explore events page", () => {
       ]);
     }
 
+    // Verify empty fallback content clears after landing on a populated month.
     const populatedRange = getMonthRange(populatedMonth);
     await expect(page.locator(".no-results-filtered:not(.hidden)")).toHaveCount(
       0,
@@ -325,6 +346,7 @@ test.describe("site explore events page", () => {
   test("shows the empty state after navigating from a populated month to an empty one", async ({
     page,
   }) => {
+    // Load events data to find adjacent calendar months.
     await navigateToPath(
       page,
       `/explore?entity=events&community[0]=${TEST_COMMUNITY_NAME}`,
@@ -336,12 +358,14 @@ test.describe("site explore events page", () => {
     const { emptyMonth, populatedMonth } = scenario;
     const populatedRange = getMonthRange(populatedMonth);
 
+    // Load the calendar on the populated adjacent month.
     await navigateToPath(
       page,
       `/explore?entity=events&community[0]=${TEST_COMMUNITY_NAME}` +
         `&view_mode=calendar&date_from=${populatedRange.first}&date_to=${populatedRange.last}`,
     );
 
+    // Verify the calendar starts on a populated month.
     await expect(page.locator("#calendar-box")).toBeVisible();
 
     const calendarEvents = page.locator(".fc-daygrid-event");
@@ -361,7 +385,9 @@ test.describe("site explore events page", () => {
         ? page.locator("#next-month-btn")
         : page.locator("#prev-month-btn");
 
+    // Navigate month by month until the calendar has no events.
     for (let step = 0; step < Math.abs(monthDistance); step += 1) {
+      // Navigate toward the empty month and wait for calendar data.
       await Promise.all([
         page.waitForResponse(
           (response) =>
@@ -373,6 +399,7 @@ test.describe("site explore events page", () => {
       ]);
     }
 
+    // Verify the default empty state appears for the empty month.
     const emptyRange = getMonthRange(emptyMonth);
     const defaultEmptyState = page.locator(".no-results-default:not(.hidden)");
     await expect(defaultEmptyState).toBeVisible();

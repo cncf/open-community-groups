@@ -15,13 +15,16 @@ test.describe("community dashboard groups view", () => {
   test("admin can deactivate and reactivate a group from the list", async ({
     adminCommunityPage,
   }) => {
+    // Load the groups list before changing seeded group status.
     await navigateToPath(adminCommunityPage, "/dashboard/community?tab=groups");
 
+    // Target the dashboard content after the HTMX tab loads.
     const dashboardContent = adminCommunityPage.locator("#dashboard-content");
     await expect(
       dashboardContent.getByText("Groups", { exact: true }),
     ).toBeVisible();
 
+    // Verify the seeded group starts active before changing status.
     let betaGroupRow = dashboardContent.locator("tr", {
       hasText: "Inactive Local Chapter",
     });
@@ -30,6 +33,7 @@ test.describe("community dashboard groups view", () => {
       betaGroupRow.getByText("Inactive", { exact: true }),
     ).toHaveCount(0);
 
+    // Define a helper for opening the seeded group actions menu.
     const openActionsMenu = async () => {
       await dashboardContent
         .locator(
@@ -38,8 +42,10 @@ test.describe("community dashboard groups view", () => {
         .click();
     };
 
+    // Open the actions menu before deactivating the group.
     await openActionsMenu();
 
+    // Deactivate the seeded group from the actions menu.
     const deactivateButton = dashboardContent.locator(
       `#deactivate-group-${TEST_GROUP_IDS.community1.beta}`,
     );
@@ -49,6 +55,7 @@ test.describe("community dashboard groups view", () => {
       "Are you sure you wish to deactivate this group?",
     );
 
+    // Confirm deactivation and wait for the server response.
     await Promise.all([
       adminCommunityPage.waitForResponse(
         (response) =>
@@ -63,6 +70,7 @@ test.describe("community dashboard groups view", () => {
       adminCommunityPage.getByRole("button", { name: "Yes" }).click(),
     ]);
 
+    // Verify the row reflects the deactivated state.
     betaGroupRow = dashboardContent.locator("tr", {
       hasText: "Inactive Local Chapter",
     });
@@ -73,8 +81,10 @@ test.describe("community dashboard groups view", () => {
       }),
     ).toBeDisabled();
 
+    // Reopen the actions menu before restoring the seeded group.
     await openActionsMenu();
 
+    // Reactivate the seeded group from the actions menu.
     const activateButton = dashboardContent.locator(
       `#activate-group-${TEST_GROUP_IDS.community1.beta}`,
     );
@@ -84,6 +94,7 @@ test.describe("community dashboard groups view", () => {
       "Are you sure you wish to activate this group?",
     );
 
+    // Confirm reactivation and wait for the server response.
     await Promise.all([
       adminCommunityPage.waitForResponse(
         (response) =>
@@ -98,6 +109,7 @@ test.describe("community dashboard groups view", () => {
       adminCommunityPage.getByRole("button", { name: "Yes" }).click(),
     ]);
 
+    // Verify the row returns to the original active state.
     betaGroupRow = dashboardContent.locator("tr", {
       hasText: "Inactive Local Chapter",
     });
@@ -114,20 +126,25 @@ test.describe("community dashboard groups view", () => {
   test("admin can add and delete a community group", async ({
     adminCommunityPage,
   }) => {
+    // Create a unique group name for the temporary group flow.
     const groupName = `E2E Community Group ${Date.now()}`;
 
+    // Load the groups list before creating a temporary group.
     await navigateToPath(adminCommunityPage, "/dashboard/community?tab=groups");
 
+    // Target the dashboard content after the HTMX tab loads.
     const dashboardContent = adminCommunityPage.locator("#dashboard-content");
     await expect(
       dashboardContent.getByText("Groups", { exact: true }),
     ).toBeVisible();
 
+    // Open the group form from the dashboard list.
     await dashboardContent.getByRole("button", { name: "Add Group" }).click();
     await expect(
       dashboardContent.getByText("Group Details", { exact: true }),
     ).toBeVisible();
 
+    // Fill the required group details for creation.
     await adminCommunityPage.getByLabel("Name").fill(groupName);
     await adminCommunityPage
       .getByLabel("Category")
@@ -144,6 +161,7 @@ test.describe("community dashboard groups view", () => {
       "A community group created and removed by the e2e suite.",
     );
 
+    // Create the temporary group and wait for the POST response.
     await Promise.all([
       adminCommunityPage.waitForResponse(
         (response) =>
@@ -154,15 +172,18 @@ test.describe("community dashboard groups view", () => {
       adminCommunityPage.getByRole("button", { name: "Create Group" }).click(),
     ]);
 
+    // Verify the newly-created group appears in the dashboard list.
     const groupRow = dashboardContent.locator("tr", { hasText: groupName });
     await expect(groupRow).toBeVisible();
 
+    // Open the actions menu before deleting the temporary group.
     await groupRow
       .getByRole("button", {
         name: `Open actions menu for group ${groupName}`,
       })
       .click();
 
+    // Open the delete confirmation for the temporary group.
     const deleteButton = groupRow.locator('button[id^="delete-group-"]');
     await expect(deleteButton).toBeVisible();
     await deleteButton.click();
@@ -170,6 +191,7 @@ test.describe("community dashboard groups view", () => {
       "Are you sure you wish to delete this group?",
     );
 
+    // Confirm deletion and wait for the server response.
     await Promise.all([
       adminCommunityPage.waitForResponse(
         (response) =>
@@ -181,6 +203,7 @@ test.describe("community dashboard groups view", () => {
       adminCommunityPage.getByRole("button", { name: "Yes" }).click(),
     ]);
 
+    // Verify the deleted group is removed from the dashboard list.
     await expect(
       dashboardContent.locator("tr", { hasText: groupName }),
     ).toHaveCount(0);
@@ -189,6 +212,7 @@ test.describe("community dashboard groups view", () => {
   test("admin can create, update, and delete a community group with images and rich fields", async ({
     adminCommunityPage,
   }) => {
+    // Define rich group values for the create and update flow.
     const initialValues = {
       bannerMobilePath: TEST_UPLOAD_ASSET_PATHS.bannerMobile,
       bannerPath: TEST_UPLOAD_ASSET_PATHS.banner,
@@ -268,6 +292,7 @@ test.describe("community dashboard groups view", () => {
       youtubeUrl: "https://youtube.com/@e2e-community-group-updated",
     };
 
+    // Fill every rich field used by the create and update flows.
     const fillGroupForm = async (values) => {
       await adminCommunityPage.locator("#name").fill(values.name);
       await adminCommunityPage
@@ -337,6 +362,7 @@ test.describe("community dashboard groups view", () => {
       );
     };
 
+    // Define a helper for opening the edit form from a group row.
     const openGroupUpdateForm = async (groupRow) => {
       const updateButton = groupRow.locator('button[hx-get*="/update"]');
       await expect(updateButton).toBeVisible();
@@ -352,20 +378,25 @@ test.describe("community dashboard groups view", () => {
       });
     };
 
+    // Load the groups list before opening the rich group form.
     await navigateToPath(adminCommunityPage, "/dashboard/community?tab=groups");
 
+    // Target the dashboard content after the HTMX tab loads.
     const dashboardContent = adminCommunityPage.locator("#dashboard-content");
     await expect(
       dashboardContent.getByText("Groups", { exact: true }),
     ).toBeVisible();
 
+    // Open the group form from the dashboard list.
     await dashboardContent.getByRole("button", { name: "Add Group" }).click();
     await expect(
       dashboardContent.getByText("Group Details", { exact: true }),
     ).toBeVisible();
 
+    // Fill the form with the initial rich values.
     await fillGroupForm(initialValues);
 
+    // Submit the group and wait for the created response.
     await Promise.all([
       adminCommunityPage.waitForResponse(
         (response) =>
@@ -376,14 +407,17 @@ test.describe("community dashboard groups view", () => {
       adminCommunityPage.getByRole("button", { name: "Create Group" }).click(),
     ]);
 
+    // Verify the initial temporary group appears in the dashboard list.
     let groupRow = dashboardContent.locator("tr", {
       hasText: initialValues.name,
     });
     await expect(groupRow).toBeVisible();
 
+    // Update the group with the second set of rich values.
     await openGroupUpdateForm(groupRow);
     await fillGroupForm(updatedValues);
 
+    // Submit the update and wait for the server response.
     await Promise.all([
       adminCommunityPage.waitForResponse(
         (response) =>
@@ -395,9 +429,11 @@ test.describe("community dashboard groups view", () => {
       adminCommunityPage.getByRole("button", { name: "Update Group" }).click(),
     ]);
 
+    // Verify the updated group name appears in the dashboard list.
     groupRow = dashboardContent.locator("tr", { hasText: updatedValues.name });
     await expect(groupRow).toBeVisible();
 
+    // Reopen the form and verify the rich values persisted.
     await openGroupUpdateForm(groupRow);
     await expect(adminCommunityPage.locator("#name")).toHaveValue(
       updatedValues.name,
@@ -459,16 +495,19 @@ test.describe("community dashboard groups view", () => {
       ),
     ).toHaveValue(updatedValues.extraLinks[0].value);
 
+    // Return to the groups list before deleting the temporary group.
     await navigateToPath(adminCommunityPage, "/dashboard/community?tab=groups");
     groupRow = dashboardContent.locator("tr", { hasText: updatedValues.name });
     await expect(groupRow).toBeVisible();
 
+    // Open the actions menu for the updated temporary group.
     await groupRow
       .getByRole("button", {
         name: `Open actions menu for group ${updatedValues.name}`,
       })
       .click();
 
+    // Open the delete confirmation for the temporary group.
     const deleteButton = groupRow.locator('button[id^="delete-group-"]');
     await expect(deleteButton).toBeVisible();
     await deleteButton.click();
@@ -476,6 +515,7 @@ test.describe("community dashboard groups view", () => {
       "Are you sure you wish to delete this group?",
     );
 
+    // Confirm deletion and wait for the server response.
     await Promise.all([
       adminCommunityPage.waitForResponse(
         (response) =>
@@ -487,6 +527,7 @@ test.describe("community dashboard groups view", () => {
       adminCommunityPage.getByRole("button", { name: "Yes" }).click(),
     ]);
 
+    // Verify the deleted group is removed from the dashboard list.
     await expect(
       dashboardContent.locator("tr", { hasText: updatedValues.name }),
     ).toHaveCount(0);
@@ -495,16 +536,22 @@ test.describe("community dashboard groups view", () => {
   test("admin can search community groups and clear the filter", async ({
     adminCommunityPage,
   }) => {
+    // Load the groups list before applying search filters.
     await navigateToPath(adminCommunityPage, "/dashboard/community?tab=groups");
 
+    // Target the dashboard content after the HTMX tab loads.
     const dashboardContent = adminCommunityPage.locator("#dashboard-content");
     await expect(
       dashboardContent.getByText("Groups", { exact: true }),
     ).toBeVisible();
 
+    // Target the search input used to submit dashboard filters.
     const searchInput = dashboardContent.getByPlaceholder("Search groups");
+
+    // Enter a query expected to match a seeded group.
     await searchInput.fill("Observability");
 
+    // Submit the matching search and wait for filtered results.
     await Promise.all([
       adminCommunityPage.waitForResponse(
         (response) =>
@@ -517,6 +564,7 @@ test.describe("community dashboard groups view", () => {
       searchInput.press("Enter"),
     ]);
 
+    // Verify the matching result and durable search URL.
     await expect(adminCommunityPage).toHaveURL(
       /tab=groups.*ts_query=Observability/,
     );
@@ -527,10 +575,14 @@ test.describe("community dashboard groups view", () => {
       dashboardContent.locator("tr", { hasText: "Platform Ops Meetup" }),
     ).toHaveCount(0);
 
+    // Target the search form for programmatic submission.
     const searchForm = dashboardContent.locator("#groups-search-form");
+
+    // Enter a query expected to return no groups.
     await searchInput.fill("");
     await searchInput.fill("zzzzzzzzzzzz");
 
+    // Submit the empty-result search and wait for the response.
     await Promise.all([
       adminCommunityPage.waitForResponse(
         (response) =>
@@ -547,6 +599,7 @@ test.describe("community dashboard groups view", () => {
       }),
     ]);
 
+    // Verify the empty result message is shown.
     await expect(
       dashboardContent
         .locator("div.text-xl.lg\\:text-2xl.mb-4:visible")
@@ -554,12 +607,16 @@ test.describe("community dashboard groups view", () => {
         .first(),
     ).toBeVisible();
 
+    // Target the clear-filter control shown for empty results.
     const clearFilterButton = dashboardContent.locator(
       'button[hx-get="/dashboard/community/groups"]',
     );
     await expect(clearFilterButton).toBeVisible();
+
+    // Click the clear-filter control to reset the list.
     await clearFilterButton.click();
 
+    // Verify clearing removes the empty state and restores seeded rows.
     await expect(adminCommunityPage).toHaveURL(
       /\/dashboard\/community\?tab=groups(?:&limit=50&offset=0)?$/,
     );
@@ -582,15 +639,19 @@ test.describe("community dashboard groups view", () => {
   test("viewer sees read-only controls on community groups", async ({
     communityViewerPage,
   }) => {
+    // Load the groups list as a read-only community viewer.
     await navigateToPath(
       communityViewerPage,
       "/dashboard/community?tab=groups",
     );
 
+    // Target the dashboard content after the HTMX tab loads.
     const dashboardContent = communityViewerPage.locator("#dashboard-content");
     await expect(
       dashboardContent.getByText("Groups", { exact: true }),
     ).toBeVisible();
+
+    // Verify the list actions expose disabled read-only controls.
     await expect(
       dashboardContent.getByRole("button", { name: "Add Group" }),
     ).toBeDisabled();
@@ -598,11 +659,13 @@ test.describe("community dashboard groups view", () => {
       dashboardContent.getByRole("button", { name: "Add Group" }),
     ).toHaveAttribute("title", "Your role cannot add groups.");
 
+    // Locate the seeded group row used for read-only action checks.
     const betaGroupRow = dashboardContent.locator("tr", {
       hasText: "Inactive Local Chapter",
     });
     await expect(betaGroupRow).toBeVisible();
 
+    // Verify row actions stay disabled for the viewer role.
     const actionsButton = betaGroupRow.getByRole("button", {
       name: "Open actions menu for group Inactive Local Chapter",
     });
@@ -612,6 +675,7 @@ test.describe("community dashboard groups view", () => {
       "Your role cannot activate, deactivate, or delete groups.",
     );
 
+    // Open details and verify the form remains read-only.
     await Promise.all([
       communityViewerPage.waitForResponse(
         (response) =>
@@ -630,6 +694,7 @@ test.describe("community dashboard groups view", () => {
         .click(),
     ]);
 
+    // Verify the details form communicates the read-only state.
     await expect(
       dashboardContent.getByText("Group Details", { exact: true }),
     ).toBeVisible();

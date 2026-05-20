@@ -10,6 +10,7 @@ test.describe("site explore groups page", () => {
   test("supports searching groups and switching to map view", async ({
     page,
   }) => {
+    // Load the groups explore page with the community filter applied.
     await navigateToPath(
       page,
       `/explore?entity=groups&community[0]=${TEST_COMMUNITY_NAME}`,
@@ -17,6 +18,7 @@ test.describe("site explore groups page", () => {
 
     const searchInput = page.getByPlaceholder("Search groups");
 
+    // Verify groups render before applying search.
     await expect(searchInput).toBeVisible();
     await expect(
       page.getByText(TEST_GROUP_NAMES.alpha, { exact: true }),
@@ -25,6 +27,7 @@ test.describe("site explore groups page", () => {
       page.getByText(TEST_GROUP_NAMES.gamma, { exact: true }),
     ).toBeVisible();
 
+    // Submit a group search and wait for the results to refresh.
     await Promise.all([
       page.waitForResponse(
         (response) =>
@@ -36,6 +39,7 @@ test.describe("site explore groups page", () => {
       searchInput.fill("Observability").then(() => searchInput.press("Enter")),
     ]);
 
+    // Verify the search narrows the list to the matching group.
     await expect(
       page.getByText(TEST_GROUP_NAMES.gamma, { exact: true }),
     ).toBeVisible();
@@ -43,6 +47,7 @@ test.describe("site explore groups page", () => {
       page.getByText(TEST_GROUP_NAMES.alpha, { exact: true }),
     ).toHaveCount(0);
 
+    // Switch to the map view and wait for list controls to refresh.
     await Promise.all([
       page.waitForResponse(
         (response) =>
@@ -54,6 +59,7 @@ test.describe("site explore groups page", () => {
       page.locator('label[for="map"]').click(),
     ]);
 
+    // Verify map mode renders the map and hides sorting controls.
     await expect(page.locator("#map-box")).toBeVisible();
     await expect(page.locator("#map-box.leaflet-container")).toBeVisible();
     await expect(page.locator("#sort_selector")).toHaveCount(0);
@@ -62,14 +68,17 @@ test.describe("site explore groups page", () => {
   test("shows an empty state when no groups match the search", async ({
     page,
   }) => {
+    // Load the groups explore page with the community filter applied.
     await navigateToPath(
       page,
       `/explore?entity=groups&community[0]=${TEST_COMMUNITY_NAME}`,
     );
 
+    // Submit a group search that has no matches.
     const searchInput = page.getByPlaceholder("Search groups");
     await expect(searchInput).toBeVisible();
 
+    // Submit the unmatched search query and wait for filtered results.
     await Promise.all([
       page.waitForResponse(
         (response) =>
@@ -83,6 +92,7 @@ test.describe("site explore groups page", () => {
         .then(() => searchInput.press("Enter")),
     ]);
 
+    // Verify the filtered empty state explains the missing matches.
     await expect(page.getByText("We're sorry!", { exact: true })).toBeVisible();
     await expect(
       page.getByText(

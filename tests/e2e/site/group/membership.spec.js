@@ -34,10 +34,12 @@ const leaveGroup = async (page) => {
   const leaveButton = getLeaveButton(page);
   await expect(leaveButton).toBeVisible();
 
+  // Request membership removal before confirming the dialog.
   await leaveButton.click();
   const confirmButton = page.getByRole("button", { name: "Yes" });
   await expect(confirmButton).toBeVisible();
 
+  // Confirm the leave action and wait for membership to be removed.
   await Promise.all([
     page.waitForResponse(
       (response) =>
@@ -48,6 +50,7 @@ const leaveGroup = async (page) => {
     confirmButton.click(),
   ]);
 
+  // Verify the join action returns after leaving.
   await expect(getJoinButton(page)).toBeVisible();
 };
 
@@ -55,12 +58,14 @@ test.describe("group membership", () => {
   test("member can join and leave a group from the public page", async ({
     member2Page,
   }) => {
+    // Load the group page and resolve the current membership state.
     await navigateToGroup(
       member2Page,
       TEST_COMMUNITY_NAME,
       TEST_GROUP_SLUGS.community1.alpha,
     );
 
+    // Verify the group page is ready before joining.
     await expect(
       member2Page.getByRole("heading", {
         level: 1,
@@ -68,15 +73,18 @@ test.describe("group membership", () => {
       }),
     ).toBeVisible();
 
+    // Resolve existing membership before starting the join flow.
     await waitForMembershipState(member2Page);
 
     if (await getLeaveButton(member2Page).isVisible()) {
       await leaveGroup(member2Page);
     }
 
+    // Target the public join action.
     const joinButton = getJoinButton(member2Page);
     await expect(joinButton).toBeVisible();
 
+    // Join the group and wait for the membership record to be created.
     await Promise.all([
       member2Page.waitForResponse(
         (response) =>
@@ -87,8 +95,10 @@ test.describe("group membership", () => {
       joinButton.click(),
     ]);
 
+    // Verify the member can now leave the group.
     await expect(getLeaveButton(member2Page)).toBeVisible();
 
+    // Restore the reusable membership state.
     await leaveGroup(member2Page);
   });
 });

@@ -9,15 +9,15 @@ import {
 
 test.describe("site home page visual regression @visual", () => {
   test("matches desktop snapshot", async ({ page }, testInfo) => {
-    // Load the page.
+    // Load the public home page for the desktop snapshot.
     await navigateToSiteHome(page);
 
-    // Verify visual readiness.
+    // Verify desktop home content is ready.
     await expect(
       page.getByRole("heading", { level: 1, name: TEST_SITE_TITLE }),
     ).toBeVisible();
 
-    // Capture the jumbotron.
+    // Capture the desktop jumbotron snapshot.
     await expectRegionScreenshot(
       page,
       getHomeJumbotronContent(page),
@@ -27,15 +27,15 @@ test.describe("site home page visual regression @visual", () => {
   });
 
   test("matches mobile snapshot @mobile", async ({ page }, testInfo) => {
-    // Load the page.
+    // Load the public home page for the mobile snapshot.
     await navigateToSiteHome(page);
 
-    // Verify visual readiness.
+    // Verify mobile home content is ready.
     await expect(
       page.getByRole("heading", { level: 1, name: TEST_SITE_TITLE }),
     ).toBeVisible();
 
-    // Capture the mobile jumbotron.
+    // Capture the mobile jumbotron snapshot.
     await expectRegionScreenshot(
       page,
       getHomeJumbotronContent(page),
