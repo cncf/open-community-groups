@@ -2,7 +2,11 @@ import { createNotificationModal } from "/static/js/dashboard/group/notification
 import { initializeQrCodeModal } from "/static/js/dashboard/group/qr-code-modal.js";
 import "/static/js/common/user-search-field.js";
 import { handleHtmxResponse, showErrorAlert } from "/static/js/common/alerts.js";
-import { isSuccessfulXHRStatus, toggleModalVisibility } from "/static/js/common/common.js";
+import {
+  computeUserInitials,
+  isSuccessfulXHRStatus,
+  toggleModalVisibility,
+} from "/static/js/common/common.js";
 import { queryElementById } from "/static/js/common/dom.js";
 import { ocgFetch } from "/static/js/common/fetch.js";
 
@@ -78,6 +82,57 @@ const closeInvitationModal = (root = document) => {
 };
 
 /**
+ * Clear the selected invitation user display.
+ * @param {Document|Element} root Query root.
+ * @returns {void}
+ */
+const clearInvitationSelectedUser = (root) => {
+  const input = queryElementById(root, "attendee-invitation-user-id");
+  const selectedUser = queryElementById(root, "attendee-invitation-selected-user");
+  if (input) input.value = "";
+  selectedUser?.replaceChildren();
+  updateInvitationSubmitState(root);
+};
+
+/**
+ * Render the selected invitation user with the shared user chip style.
+ * @param {Document|Element} root Query root.
+ * @param {Object} user Selected user.
+ * @returns {void}
+ */
+const renderInvitationSelectedUser = (root, user) => {
+  const selectedUser = queryElementById(root, "attendee-invitation-selected-user");
+  if (!selectedUser) return;
+
+  const pill = document.createElement("div");
+  pill.className = "inline-flex items-center gap-2 bg-stone-100 rounded-full ps-1 pe-1 py-1";
+
+  const avatar = document.createElement("logo-image");
+  avatar.setAttribute("image-url", user.photo_url || "");
+  avatar.setAttribute("placeholder", computeUserInitials(user.name, user.username, 2));
+  avatar.setAttribute("size", "size-[24px]");
+  avatar.setAttribute("font-size", "text-xs");
+  avatar.setAttribute("hide-border", "true");
+
+  const label = document.createElement("span");
+  label.className = "text-sm text-stone-700 pe-2";
+  label.textContent = user.name || user.username;
+
+  const removeButton = document.createElement("button");
+  removeButton.type = "button";
+  removeButton.className = "p-1 hover:bg-stone-200 rounded-full transition-colors";
+  removeButton.title = "Remove user";
+  removeButton.setAttribute("data-attendee-invitation-clear-user", "");
+
+  const removeIcon = document.createElement("div");
+  removeIcon.className = "svg-icon size-3 icon-close bg-stone-600";
+
+  removeButton.append(removeIcon);
+  pill.append(avatar, label, removeButton);
+  selectedUser.replaceChildren(pill);
+};
+
+/**
  * Enable the invitation submit button only when the active mode is valid.
  * @param {Document|Element} root Query root.
  * @returns {void}
@@ -115,12 +170,12 @@ const setInvitationMode = (root, mode) => {
   emailInput.disabled = mode !== "email";
   userInput.value = "";
   emailInput.value = "";
-  if (selectedUser) selectedUser.textContent = "";
+  selectedUser?.replaceChildren();
 
   root.querySelectorAll("[data-attendee-invitation-mode]").forEach((button) => {
     const active = button.dataset.attendeeInvitationMode === mode;
-    button.classList.toggle("btn-primary", active);
-    button.classList.toggle("btn-tertiary", !active);
+    button.dataset.active = active ? "true" : "false";
+    button.setAttribute("aria-selected", active ? "true" : "false");
   });
   updateInvitationSubmitState(root);
 };
@@ -431,6 +486,13 @@ const initializeInvitationModal = (root = document) => {
       return;
     }
 
+    const clearUserButton = target?.closest("[data-attendee-invitation-clear-user]");
+    if (clearUserButton instanceof HTMLElement && root.contains(clearUserButton)) {
+      event.preventDefault();
+      clearInvitationSelectedUser(root);
+      return;
+    }
+
     if (
       target?.closest(
         "#close-attendee-invitation-modal, #cancel-attendee-invitation, #overlay-attendee-invitation-modal",
@@ -448,9 +510,7 @@ const initializeInvitationModal = (root = document) => {
     if (!user || !input) return;
 
     input.value = user.user_id || "";
-    if (selected) {
-      selected.textContent = `Selected: ${user.name || user.username}`;
-    }
+    if (selected) renderInvitationSelectedUser(root, user);
     updateInvitationSubmitState(root);
   });
 

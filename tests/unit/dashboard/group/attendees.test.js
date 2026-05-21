@@ -34,17 +34,50 @@ describe("dashboard group attendees", () => {
       <button id="cancel-attendee-invitation" type="button">Cancel</button>
       <div id="overlay-attendee-invitation-modal"></div>
       <form id="attendee-invitation-form">
-        <button type="button" class="btn-primary" data-attendee-invitation-mode="user">
-          Registered user
-        </button>
-        <button type="button" class="btn-tertiary" data-attendee-invitation-mode="email">
-          Email
-        </button>
-        <div data-attendee-invitation-panel="user">
+        <ul role="tablist" aria-label="Attendee invitation methods">
+          <li>
+            <button
+              id="attendee-invitation-user-tab"
+              type="button"
+              role="tab"
+              aria-controls="attendee-invitation-user-panel"
+              aria-selected="true"
+              data-active="true"
+              data-attendee-invitation-mode="user"
+            >
+              Registered user
+            </button>
+          </li>
+          <li>
+            <button
+              id="attendee-invitation-email-tab"
+              type="button"
+              role="tab"
+              aria-controls="attendee-invitation-email-panel"
+              aria-selected="false"
+              data-active="false"
+              data-attendee-invitation-mode="email"
+            >
+              Email
+            </button>
+          </li>
+        </ul>
+        <div
+          id="attendee-invitation-user-panel"
+          role="tabpanel"
+          aria-labelledby="attendee-invitation-user-tab"
+          data-attendee-invitation-panel="user"
+        >
           <input type="hidden" name="user_id" id="attendee-invitation-user-id" />
           <div id="attendee-invitation-selected-user"></div>
         </div>
-        <div data-attendee-invitation-panel="email" class="hidden">
+        <div
+          id="attendee-invitation-email-panel"
+          role="tabpanel"
+          aria-labelledby="attendee-invitation-email-tab"
+          data-attendee-invitation-panel="email"
+          class="hidden"
+        >
           <input type="email" id="attendee-invitation-email" name="email" disabled />
         </div>
         <button id="submit-attendee-invitation" type="submit" disabled>Send invitation</button>
@@ -419,6 +452,15 @@ describe("dashboard group attendees", () => {
     document.getElementById("open-attendee-invitation-modal")?.click();
     document.querySelector('[data-attendee-invitation-mode="email"]')?.click();
 
+    expect(document.getElementById("attendee-invitation-email-tab")?.dataset.active).to.equal("true");
+    expect(document.getElementById("attendee-invitation-email-tab")?.getAttribute("aria-selected")).to.equal(
+      "true",
+    );
+    expect(document.getElementById("attendee-invitation-user-tab")?.dataset.active).to.equal("false");
+    expect(document.getElementById("attendee-invitation-user-tab")?.getAttribute("aria-selected")).to.equal(
+      "false",
+    );
+
     const initialSubmit = document.getElementById("submit-attendee-invitation");
     const initialEmailInput = document.getElementById("attendee-invitation-email");
     initialEmailInput.value = "first@example.com";
@@ -446,6 +488,50 @@ describe("dashboard group attendees", () => {
       icon: "success",
     });
     expect(refreshedModal.classList.contains("hidden")).to.equal(true);
+  });
+
+  it("renders selected invitation users with the shared user pill style", () => {
+    document.body.innerHTML = `
+      <div id="attendees-content">
+        ${attendeeInvitationMarkup()}
+      </div>
+    `;
+
+    const attendeesRoot = document.getElementById("attendees-content");
+    dispatchHtmxLoad(attendeesRoot);
+
+    attendeesRoot.dispatchEvent(
+      new CustomEvent("user-selected", {
+        bubbles: true,
+        detail: {
+          user: {
+            user_id: "user-1",
+            username: "e2e-admin-one",
+            name: "E2E Admin One",
+            photo_url: "/static/images/e2e/admin.png",
+          },
+        },
+      }),
+    );
+
+    const selectedUser = document.getElementById("attendee-invitation-selected-user");
+    const userInput = document.getElementById("attendee-invitation-user-id");
+    const submitButton = document.getElementById("submit-attendee-invitation");
+    const pill = selectedUser.querySelector(".inline-flex.rounded-full");
+
+    expect(userInput.value).to.equal("user-1");
+    expect(pill).to.exist;
+    expect(selectedUser.textContent).to.contain("E2E Admin One");
+    expect(selectedUser.textContent).not.to.contain("Selected:");
+    expect(pill.querySelector("logo-image")).to.exist;
+    expect(pill.querySelector("[data-attendee-invitation-clear-user]")).to.exist;
+    expect(submitButton.disabled).to.equal(false);
+
+    pill.querySelector("[data-attendee-invitation-clear-user]")?.click();
+
+    expect(userInput.value).to.equal("");
+    expect(selectedUser.children).to.have.length(0);
+    expect(submitButton.disabled).to.equal(true);
   });
 
   it("keeps the check-in toggle disabled after a successful check-in", async () => {

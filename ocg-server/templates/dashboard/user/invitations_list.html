@@ -22,7 +22,7 @@ description = "Manage invitations to join communities.") -}}
         {% if community_invitations.is_empty() -%}
           <tr class="bg-white border-b border-stone-200">
             {# No invitations -#}
-            <td class="px-8 py-16 text-center" colspan="4">
+            <td class="px-8 py-12 text-center" colspan="4">
               {% include "dashboard/placeholders/user_community_invitations_table.html" -%}
             </td>
           </tr>
@@ -82,87 +82,13 @@ description = "Manage invitations to join communities.") -}}
 </div>
 {# End Community Invitations -#}
 
-{# Event Invitations -#}
-{{ dashboard::form_title(title = "Event Invitations",
-description = "Manage invitations to attend events.") -}}
-
-<div class="mt-10">
-  <div class="relative overflow-visible">
-    <table class="table-auto w-full text-xs lg:text-sm text-left text-stone-500 mb-10">
-      <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
-        <tr>
-          <th scope="col" class="px-3 xl:px-5 py-3 w-auto lg:w-2/5 xl:w-1/3">Event</th>
-          <th scope="col" class="px-3 xl:px-5 py-3">Group</th>
-          <th scope="col" class="px-3 xl:px-5 py-3">Starts</th>
-          <th scope="col" class="px-3 xl:px-5 py-3">Created</th>
-          <th scope="col" class="px-3 xl:px-5 py-3 w-[112px]">
-            <span class="sr-only">Actions</span>
-          </th>
-        </tr>
-      </thead>
-      <tbody>
-        {% if event_invitations.is_empty() -%}
-          <tr class="bg-white border-b border-stone-200">
-            <td class="px-8 py-16 text-center" colspan="5">
-              {% include "dashboard/placeholders/user_events_table.html" -%}
-            </td>
-          </tr>
-        {% else -%}
-          {% for invitation in event_invitations -%}
-            <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
-              <td class="px-3 xl:px-5 py-4 font-medium text-stone-900 max-w-0">
-                <div class="max-w-full text-black truncate">{{ invitation.event_name }}</div>
-                <div class="text-xs text-stone-600 truncate">{{ invitation.community_display_name }}</div>
-              </td>
-              <td class="px-3 xl:px-5 py-4 whitespace-nowrap">{{ invitation.group_name }}</td>
-              <td class="px-3 xl:px-5 py-4 whitespace-nowrap">
-                {% if let Some(starts_at) = &invitation.starts_at -%}
-                  {{ starts_at.with_timezone(invitation.timezone).format(DATE_FORMAT_2) }}
-                {% else -%}
-                  -
-                {% endif -%}
-              </td>
-              <td class="px-3 xl:px-5 py-4 whitespace-nowrap">{{ invitation.created_at.format(DATE_FORMAT_2) }}</td>
-              <td class="px-3 xl:px-5 py-4 w-[112px]">
-                <div class="flex items-center justify-end gap-2">
-                  <button hx-put="/dashboard/user/invitations/event/{{ invitation.event_id }}/accept"
-                          hx-indicator="#dashboard-spinner"
-                          hx-disabled-elt="this"
-                          class="btn-tertiary p-2"
-                          title="Approve">
-                    <div class="svg-icon size-3 md:size-4 icon-check"></div>
-                  </button>
-                  <button id="reject-event-{{ invitation.event_id }}"
-                          hx-put="/dashboard/user/invitations/event/{{ invitation.event_id }}/reject"
-                          hx-indicator="#dashboard-spinner"
-                          hx-trigger="confirmed"
-                          hx-disabled-elt="this"
-                          data-confirm-action
-                          data-confirm-message="Are you sure you would like to reject this invitation?"
-                          data-confirm-text="Yes"
-                          data-error-message="Something went wrong rejecting this invitation. Please try again later."
-                          class="btn-tertiary p-2 reject-modal"
-                          title="Reject">
-                    <div class="svg-icon size-2.5 md:size-3.5 icon-cancel"></div>
-                  </button>
-                </div>
-              </td>
-            </tr>
-          {% endfor -%}
-        {% endif -%}
-      </tbody>
-    </table>
-  </div>
-</div>
-{# End Event Invitations -#}
-
 {# Groups Invitations -#}
 {{ dashboard::form_title(title = "Group Invitations",
 description = "Manage invitations to join groups.") -}}
 
 <div class="mt-10">
   <div class="relative overflow-visible">
-    <table class="table-auto w-full text-xs lg:text-sm text-left text-stone-500">
+    <table class="table-auto w-full text-xs lg:text-sm text-left text-stone-500 mb-10">
       <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
         <tr>
           <th scope="col" class="px-3 xl:px-5 py-3 w-auto lg:w-2/5 xl:w-1/3">Group</th>
@@ -177,7 +103,7 @@ description = "Manage invitations to join groups.") -}}
         {% if group_invitations.is_empty() -%}
           <tr class="bg-white border-b border-stone-200">
             {# No invitations -#}
-            <td class="px-8 py-16 text-center" colspan="4">
+            <td class="px-8 py-12 text-center" colspan="4">
               {% include "dashboard/placeholders/user_group_invitations_table.html" -%}
             </td>
           </tr>
@@ -236,3 +162,77 @@ description = "Manage invitations to join groups.") -}}
   </div>
 </div>
 {# End Groups Invitations -#}
+
+{# Event Invitations -#}
+{{ dashboard::form_title(title = "Event Invitations",
+description = "Manage invitations to attend events.") -}}
+
+<div class="mt-10">
+  <div class="relative overflow-visible">
+    <table class="table-auto w-full text-xs lg:text-sm text-left text-stone-500">
+      <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
+        <tr>
+          <th scope="col" class="px-3 xl:px-5 py-3 w-auto lg:w-2/5 xl:w-1/3">Event</th>
+          <th scope="col" class="px-3 xl:px-5 py-3">Group</th>
+          <th scope="col" class="px-3 xl:px-5 py-3">Starts</th>
+          <th scope="col" class="px-3 xl:px-5 py-3">Created</th>
+          <th scope="col" class="px-3 xl:px-5 py-3 w-[112px]">
+            <span class="sr-only">Actions</span>
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if event_invitations.is_empty() -%}
+          <tr class="bg-white border-b border-stone-200">
+            <td class="px-8 py-12 text-center" colspan="5">
+              {% include "dashboard/placeholders/user_events_table.html" -%}
+            </td>
+          </tr>
+        {% else -%}
+          {% for invitation in event_invitations -%}
+            <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
+              <td class="px-3 xl:px-5 py-4 font-medium text-stone-900 max-w-0">
+                <div class="max-w-full text-black truncate">{{ invitation.event_name }}</div>
+                <div class="text-xs text-stone-600 truncate">{{ invitation.community_display_name }}</div>
+              </td>
+              <td class="px-3 xl:px-5 py-4 whitespace-nowrap">{{ invitation.group_name }}</td>
+              <td class="px-3 xl:px-5 py-4 whitespace-nowrap">
+                {% if let Some(starts_at) = &invitation.starts_at -%}
+                  {{ starts_at.with_timezone(invitation.timezone).format(DATE_FORMAT_2) }}
+                {% else -%}
+                  -
+                {% endif -%}
+              </td>
+              <td class="px-3 xl:px-5 py-4 whitespace-nowrap">{{ invitation.created_at.format(DATE_FORMAT_2) }}</td>
+              <td class="px-3 xl:px-5 py-4 w-[112px]">
+                <div class="flex items-center justify-end gap-2">
+                  <button hx-put="/dashboard/user/invitations/event/{{ invitation.event_id }}/accept"
+                          hx-indicator="#dashboard-spinner"
+                          hx-disabled-elt="this"
+                          class="btn-tertiary p-2"
+                          title="Approve">
+                    <div class="svg-icon size-3 md:size-4 icon-check"></div>
+                  </button>
+                  <button id="reject-event-{{ invitation.event_id }}"
+                          hx-put="/dashboard/user/invitations/event/{{ invitation.event_id }}/reject"
+                          hx-indicator="#dashboard-spinner"
+                          hx-trigger="confirmed"
+                          hx-disabled-elt="this"
+                          data-confirm-action
+                          data-confirm-message="Are you sure you would like to reject this invitation?"
+                          data-confirm-text="Yes"
+                          data-error-message="Something went wrong rejecting this invitation. Please try again later."
+                          class="btn-tertiary p-2 reject-modal"
+                          title="Reject">
+                    <div class="svg-icon size-2.5 md:size-3.5 icon-cancel"></div>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          {% endfor -%}
+        {% endif -%}
+      </tbody>
+    </table>
+  </div>
+</div>
+{# End Event Invitations -#}
