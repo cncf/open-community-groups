@@ -65,6 +65,11 @@ const closeRefundModal = (root = document) => {
   }
 };
 
+/**
+ * Hide the attendee invitation modal if it is currently visible.
+ * @param {Document|Element} [root=document] Query root.
+ * @returns {void}
+ */
 const closeInvitationModal = (root = document) => {
   const modal = queryElementById(root, invitationModalId);
   if (modal && !modal.classList.contains("hidden")) {
@@ -72,6 +77,11 @@ const closeInvitationModal = (root = document) => {
   }
 };
 
+/**
+ * Enable the invitation submit button only when the active mode is valid.
+ * @param {Document|Element} root Query root.
+ * @returns {void}
+ */
 const updateInvitationSubmitState = (root) => {
   const form = queryElementById(root, "attendee-invitation-form");
   const submit = queryElementById(root, "submit-attendee-invitation");
@@ -83,6 +93,12 @@ const updateInvitationSubmitState = (root) => {
   submit.disabled = mode === "user" ? userId === "" : email === "";
 };
 
+/**
+ * Switch the attendee invitation form between user search and email entry.
+ * @param {Document|Element} root Query root.
+ * @param {string} mode Invitation mode.
+ * @returns {void}
+ */
 const setInvitationMode = (root, mode) => {
   const form = queryElementById(root, "attendee-invitation-form");
   const userPanel = root.querySelector?.('[data-attendee-invitation-panel="user"]');
@@ -388,6 +404,10 @@ const initializeRefundReviewModal = (root = document) => {
   });
 };
 
+/**
+ * Initialize attendee invitation modal controls and response handling.
+ * @param {Document|Element} [root=document] Query root.
+ */
 const initializeInvitationModal = (root = document) => {
   if (!(root instanceof Element) || root.dataset.attendeeInvitationReady === "true") {
     return;
