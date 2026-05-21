@@ -63,7 +63,7 @@ pub(crate) struct CreateCheckoutSessionInput {
     pub event_id: Uuid,
     /// Event slug used in return URLs.
     pub event_slug: String,
-    /// Group slug used in return URLs.
+    /// Generated group slug used in return URLs.
     pub group_slug: String,
     /// Purchase identifier tracked by OCG.
     pub purchase_id: Uuid,
@@ -76,6 +76,15 @@ pub(crate) struct CreateCheckoutSessionInput {
 
     /// Discount code applied to the purchase.
     pub discount_code: Option<String>,
+    /// Admin-managed group slug used in return URLs.
+    pub group_slug_pretty: Option<String>,
+}
+
+impl CreateCheckoutSessionInput {
+    /// Returns the group slug to use in public URLs.
+    pub fn public_group_slug(&self) -> &str {
+        self.group_slug_pretty.as_deref().unwrap_or(&self.group_slug)
+    }
 }
 
 /// Supported webhook events normalized across providers.

@@ -19,6 +19,7 @@ declare
     v_existing_purchase_status text;
     v_final_amount_minor bigint;
     v_group_slug text;
+    v_group_slug_pretty text;
     v_hold_expires_at timestamptz := current_timestamp + interval '15 minutes';
     v_normalized_discount_code text := upper(nullif(btrim(p_discount_code), ''));
     v_purchase_id uuid;
@@ -40,11 +41,13 @@ begin
         c.name,
         e.slug,
         g.slug,
+        g.slug_pretty,
         g.payment_recipient
     into
         v_community_name,
         v_event_slug,
         v_group_slug,
+        v_group_slug_pretty,
         v_recipient
     from event e
     join "group" g on g.group_id = e.group_id
@@ -77,6 +80,7 @@ begin
                     'event_id', p_event_id,
                     'event_slug', v_event_slug,
                     'group_slug', v_group_slug,
+                    'group_slug_pretty', v_group_slug_pretty,
                     'recipient', v_recipient
                 );
         end if;
@@ -148,6 +152,7 @@ begin
             'event_id', p_event_id,
             'event_slug', v_event_slug,
             'group_slug', v_group_slug,
+            'group_slug_pretty', v_group_slug_pretty,
             'recipient', v_recipient
         );
 end;

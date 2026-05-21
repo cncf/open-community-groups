@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(240);
+select plan(242);
 
 -- ============================================================================
 -- TESTS
@@ -240,6 +240,7 @@ select has_function('check_group_category_community');
 select has_function('check_group_region_community');
 select has_function('check_session_cfs_submission_approved');
 select has_function('check_session_within_event_bounds');
+select has_function('validate_group_slug_pretty');
 
 -- Test: check expected triggers exist
 select has_trigger('audit_log', 'audit_log_mutation_guard');
@@ -252,6 +253,7 @@ select has_trigger('event_ticket_type', 'event_ticketing_consistency_on_event_ti
 select has_trigger('event_waitlist', 'event_waitlist_attendee_check');
 select has_trigger('group', 'group_category_community_check');
 select has_trigger('group', 'group_region_community_check');
+select has_trigger('group', 'group_slug_pretty_validate');
 select has_trigger('session', 'session_cfs_submission_approved_check');
 select has_trigger('session', 'session_within_event_bounds_check');
 

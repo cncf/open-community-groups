@@ -27,6 +27,9 @@ pub struct GroupMinimal {
     pub name: String,
     /// URL-friendly identifier for this group.
     pub slug: String,
+
+    /// Admin-managed URL-friendly identifier for this group.
+    pub slug_pretty: Option<String>,
 }
 
 /// Summary group information.
@@ -73,6 +76,8 @@ pub struct GroupSummary {
     pub popover_html: Option<String>,
     /// Geographic region this group belongs to.
     pub region: Option<GroupRegion>,
+    /// Admin-managed URL-friendly identifier for this group.
+    pub slug_pretty: Option<String>,
     /// State or province where the group is located.
     pub state: Option<String>,
 }
@@ -87,6 +92,11 @@ impl GroupSummary {
             .state(self.state.as_deref());
 
         build_location(&parts, max_len)
+    }
+
+    /// Returns the slug to use in public URLs.
+    pub fn public_slug(&self) -> &str {
+        self.slug_pretty.as_deref().unwrap_or(&self.slug)
     }
 }
 
@@ -158,6 +168,8 @@ pub struct GroupFull {
     pub region: Option<GroupRegion>,
     /// Slack workspace URL.
     pub slack_url: Option<String>,
+    /// Admin-managed URL slug of the group.
+    pub slug_pretty: Option<String>,
     /// State/province where the group is based.
     pub state: Option<String>,
     /// Tags associated with the group.
@@ -182,6 +194,11 @@ impl GroupFull {
             .state(self.state.as_deref());
 
         build_location(&parts, max_len)
+    }
+
+    /// Returns the slug to use in public URLs.
+    pub fn public_slug(&self) -> &str {
+        self.slug_pretty.as_deref().unwrap_or(&self.slug)
     }
 }
 

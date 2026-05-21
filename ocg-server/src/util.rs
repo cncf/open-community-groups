@@ -123,7 +123,10 @@ pub(crate) fn build_event_page_link(base_url: &str, event: &EventSummary) -> Str
     let base = base_url.strip_suffix('/').unwrap_or(base_url);
     format!(
         "{}/{}/group/{}/event/{}",
-        base, event.community_name, event.group_slug, event.slug
+        base,
+        event.community_name,
+        event.public_group_slug(),
+        event.slug
     )
 }
 
@@ -303,6 +306,7 @@ mod tests {
             description_short: Some("Short description".to_string()),
             ends_at: Some(Utc.with_ymd_and_hms(2026, 1, 12, 21, 0, 0).unwrap()),
             event_series_id: None,
+            group_slug_pretty: None,
             latitude: Some(37.78),
             longitude: Some(-122.42),
             meeting_join_instructions: None,

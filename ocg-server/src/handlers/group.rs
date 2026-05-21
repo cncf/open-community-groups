@@ -5,7 +5,7 @@ use axum::{
     Json,
     extract::{Path, State},
     http::{HeaderMap, StatusCode, Uri},
-    response::{Html, IntoResponse},
+    response::{Html, IntoResponse, Redirect},
 };
 use serde_json::json;
 use tracing::instrument;
@@ -24,7 +24,7 @@ use crate::{
         group::{self, Page},
         notifications::GroupWelcome,
     },
-    types::event::EventKind,
+    types::{event::EventKind, group::GroupFull},
 };
 
 use super::{error::HandlerError, extractors::CommunityId};
@@ -61,6 +61,12 @@ pub(crate) async fn page(
         return not_found::render(site_settings);
     };
 
+    // Redirect generated group slugs to their pretty URL
+    if should_redirect_to_pretty_group_slug(&group, &group_slug) {
+        let url = public_group_url(&community_name, group.public_slug(), &uri);
+        return Ok(Redirect::temporary(&url).into_response());
+    }
+
     // Trim gallery media
     trim_public_gallery_images(&mut group.photos_urls);
 
@@ -87,6 +93,24 @@ pub(crate) async fn page(
     Ok((PUBLIC_SHARED_CACHE_HEADERS, Html(template.render()?)).into_response())
 }
 
+// Helpers.
+
+/// Builds a public group URL with the original query string, if present.
+fn public_group_url(community_name: &str, group_slug: &str, uri: &Uri) -> String {
+    let mut url = format!("/{community_name}/group/{group_slug}");
+    if let Some(query) = uri.query() {
+        url.push('?');
+        url.push_str(query);
+    }
+
+    url
+}
+
+/// Returns whether a public group request should redirect to a pretty group slug.
+fn should_redirect_to_pretty_group_slug(group: &GroupFull, group_slug: &str) -> bool {
+    group.slug_pretty.is_some() && group_slug == group.slug
+}
+
 // Actions handlers.
 
 /// Handler for joining a group.
@@ -109,7 +133,12 @@ pub(crate) async fn join_group(
     )?;
     let base_url = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
     let template_data = GroupWelcome {
-        link: format!("{}/{}/group/{}", base_url, group.community_name, group.slug),
+        link: format!(
+            "{}/{}/group/{}",
+            base_url,
+            group.community_name,
+            group.public_slug()
+        ),
         group,
         theme: site_settings.theme,
     };

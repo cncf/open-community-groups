@@ -219,6 +219,7 @@ fn sample_event_summary(event_id: Uuid) -> EventSummary {
         description_short: None,
         ends_at: None,
         event_series_id: None,
+        group_slug_pretty: None,
         latitude: None,
         longitude: None,
         meeting_join_instructions: None,

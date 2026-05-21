@@ -5,7 +5,7 @@ returns json as $$
     from event e
     join "group" g using (group_id)
     where g.community_id = p_community_id
-    and g.slug = p_group_slug
+    and (g.slug = p_group_slug or g.slug_pretty = p_group_slug)
     and e.slug = p_event_slug
     and e.deleted = false
     and g.active = true

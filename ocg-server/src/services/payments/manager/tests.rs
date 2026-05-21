@@ -394,6 +394,7 @@ async fn get_or_create_checkout_redirect_url_creates_session_and_persists_it() {
                 && input.event_id == event_id
                 && input.event_slug == "event"
                 && input.group_slug == "group"
+                && input.group_slug_pretty.as_deref() == Some("pretty-group")
                 && input.purchase_id == event_purchase_id
                 && input.recipient
                     == GroupPaymentRecipient {
@@ -416,20 +417,21 @@ async fn get_or_create_checkout_redirect_url_creates_session_and_persists_it() {
         .times(2)
         .return_const(PaymentProvider::Stripe);
 
+    // Prepare checkout data with a pretty group slug
+    let mut prepared_checkout = sample_prepared_event_checkout(
+        event_id,
+        event_purchase_id,
+        event_ticket_type_id,
+        None,
+        Some("SPRING".to_string()),
+        recipient,
+    );
+    prepared_checkout.group_slug_pretty = Some("pretty-group".to_string());
+
     // Run the checkout session workflow
     let manager = sample_payments_manager(db, MockNotificationsManager::new(), Some(payments_provider));
     let redirect_url = manager
-        .get_or_create_checkout_redirect_url(
-            &sample_prepared_event_checkout(
-                event_id,
-                event_purchase_id,
-                event_ticket_type_id,
-                None,
-                Some("SPRING".to_string()),
-                recipient,
-            ),
-            user_id,
-        )
+        .get_or_create_checkout_redirect_url(&prepared_checkout, user_id)
         .await
         .expect("checkout session to be created");
 
@@ -1332,6 +1334,7 @@ fn sample_event_summary(event_id: Uuid) -> EventSummary {
         description_short: None,
         ends_at: None,
         event_series_id: None,
+        group_slug_pretty: None,
         latitude: None,
         longitude: None,
         meeting_join_instructions: None,
@@ -1411,6 +1414,8 @@ fn sample_prepared_event_checkout(
             discount_code,
         ),
         recipient,
+
+        group_slug_pretty: None,
     }
 }
 

@@ -55,10 +55,10 @@ values
     ('00000000-0000-0000-0000-000000000063', 'Conferences', :'community2ID', 3);
 
 -- Group
-insert into "group" (group_id, name, slug, description, community_id, group_category_id, active)
+insert into "group" (group_id, name, slug, slug_pretty, description, community_id, group_category_id, active)
 values
-    (:'group1ID', 'Alpha Group', 'alpha-group', 'First group', :'community2ID', :'category1ID', true),
-    (:'group2ID', 'Beta Group', 'beta-group', 'Second group', :'community2ID', :'category2ID', true);
+    (:'group1ID', 'Alpha Group', 'alpha-group', 'alpha-group-pretty', 'First group', :'community2ID', :'category1ID', true),
+    (:'group2ID', 'Beta Group', 'beta-group', null, 'Second group', :'community2ID', :'category2ID', true);
 
 -- ============================================================================
 -- TESTS
@@ -140,7 +140,7 @@ select is(
             {"name": "Business", "value": "business"}
         ],
         "groups": [
-            {"name": "Alpha Group", "value": "alpha-group"},
+            {"name": "Alpha Group", "value": "alpha-group-pretty"},
             {"name": "Beta Group", "value": "beta-group"}
         ],
         "region": [

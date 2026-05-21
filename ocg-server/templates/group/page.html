@@ -115,7 +115,7 @@
                   <div class="svg-icon size-4 icon-vertical-dots"></div>
                 </summary>
                 <div class="absolute left-4 z-20 mt-2 w-56 max-w-[calc(100vw-2rem)] overflow-hidden rounded-lg border border-stone-200 bg-white py-1 shadow-lg sm:left-auto sm:right-0 sm:w-max sm:min-w-48">
-                  <share-modal trigger-variant="menu-item" title="{{ group.name }}" url="/{{ group.community.name }}/group/{{ group.slug }}">
+                  <share-modal trigger-variant="menu-item" title="{{ group.name }}" url="/{{ group.community.name }}/group/{{ group.public_slug() }}">
                   </share-modal>
                 </div>
               </details>
@@ -136,7 +136,7 @@
                 <div class="flex items-center justify-between mb-4 min-h-[25px]">
                   <div class="text-base/3 uppercase font-semibold text-stone-400">Next event</div>
                   {% if let Some(next_event_card) = &next_event -%}
-                    <a href="/{{ group.community.name }}/group/{{ next_event_card.event.group_slug }}/event/{{ next_event_card.event.slug }}"
+                    <a href="/{{ group.community.name }}/group/{{ next_event_card.event.public_group_slug() }}/event/{{ next_event_card.event.slug }}"
                        class="btn-secondary-anchor btn-mini"
                        hx-boost="true"
                        hx-target="body">See details</a>
@@ -281,7 +281,7 @@
 
       {# Next events section -#}
       {% if !upcoming_events.is_empty() -%}
-        {% let upcoming_events_link = "/explore?entity=events&group[0]=".to_owned() + &group.slug + "&community[0]=" + &group.community.name -%}
+        {% let upcoming_events_link = "/explore?entity=events&group[0]=".to_owned() + group.public_slug() + "&community[0]=" + &group.community.name -%}
         <div>
           <div class="flex items-center justify-between pb-6 sm:pb-8 lg:pb-12">
             <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 lg:py-2">Upcoming Events</div>
@@ -317,7 +317,7 @@
       {% if !past_events.is_empty() -%}
         {% let past_events_date_option = Some(chrono::Utc::now() - chrono::Duration::days(1)) -%}
         {% let past_events_date_to = past_events_date_option|display_some_datetime_tz("%Y-%m-%d", chrono_tz::UTC) -%}
-        {% let past_events_link = "/explore?entity=events&group[0]=".to_owned() + &group.slug + "&community[0]=" + &group.community.name + "&date_from=1900-01-01&sort_direction=desc" + "&date_to=" + &past_events_date_to -%}
+        {% let past_events_link = "/explore?entity=events&group[0]=".to_owned() + group.public_slug() + "&community[0]=" + &group.community.name + "&date_from=1900-01-01&sort_direction=desc" + "&date_to=" + &past_events_date_to -%}
         <div>
           <div class="flex items-center justify-between pb-6 sm:pb-8 lg:pb-12">
             <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 lg:py-2">Past Events</div>

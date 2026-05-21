@@ -92,6 +92,7 @@ begin
         end,
         region_id = case when p_group->>'region_id' <> '' then (p_group->>'region_id')::uuid else null end,
         slack_url = nullif(p_group->>'slack_url', ''),
+        slug_pretty = nullif(btrim(p_group->>'slug_pretty'), ''),
         state = nullif(p_group->>'state', ''),
         tags = case
             when p_group ? 'tags' and jsonb_typeof(p_group->'tags') != 'null' then

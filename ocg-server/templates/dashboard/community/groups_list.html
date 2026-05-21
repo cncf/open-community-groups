@@ -190,7 +190,7 @@
                 {# View group button -#}
                 <div>
                   {% if group.active -%}
-                    <a href="/{{ group.community_name }}/group/{{ group.slug }}"
+                    <a href="/{{ group.community_name }}/group/{{ group.public_slug() }}"
                        target="_blank"
                        rel="noopener noreferrer"
                        class="btn-tertiary-anchor p-2 inline-flex items-center justify-center"

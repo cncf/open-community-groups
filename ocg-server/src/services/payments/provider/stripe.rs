@@ -144,7 +144,9 @@ impl StripeProvider {
         let base_url = input.base_url.trim_end_matches('/');
         format!(
             "{base_url}/{}/group/{}/event/{}?payment={outcome}",
-            input.community_name, input.group_slug, input.event_slug
+            input.community_name,
+            input.public_group_slug(),
+            input.event_slug
         )
     }
 

@@ -21,7 +21,9 @@ fn build_checkout_session_form_fields_populates_checkout_metadata() {
 
     assert_eq!(
         form_fields.get("cancel_url"),
-        Some(&"https://ocg.example.org/community/group/group/event/event?payment=canceled".to_string())
+        Some(
+            &"https://ocg.example.org/community/group/pretty-group/event/event?payment=canceled".to_string()
+        )
     );
     assert_eq!(
         form_fields.get("client_reference_id"),
@@ -45,7 +47,7 @@ fn build_checkout_session_form_fields_populates_checkout_metadata() {
     );
     assert_eq!(
         form_fields.get("success_url"),
-        Some(&"https://ocg.example.org/community/group/group/event/event?payment=success".to_string())
+        Some(&"https://ocg.example.org/community/group/pretty-group/event/event?payment=success".to_string())
     );
 }
 
@@ -273,6 +275,7 @@ fn sample_checkout_session_input() -> CreateCheckoutSessionInput {
         user_id: Uuid::new_v4(),
 
         discount_code: Some("EARLYBIRD".to_string()),
+        group_slug_pretty: Some("pretty-group".to_string()),
     }
 }
 

@@ -25,6 +25,7 @@ begin
             e.starts_at,
             g.group_id,
             g.slug as group_slug,
+            g.slug_pretty as group_slug_pretty,
             s.theme
         from event e
         join "group" g using (group_id)
@@ -89,7 +90,7 @@ begin
                             '%s/%s/group/%s/event/%s',
                             v_base_url,
                             v_event.community_name,
-                            v_event.group_slug,
+                            coalesce(v_event.group_slug_pretty, v_event.group_slug),
                             v_event.event_slug
                         ),
                         'theme', v_event.theme

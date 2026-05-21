@@ -35,6 +35,7 @@ returns json as $$
         'description_short', e.description_short,
         'ends_at', floor(extract(epoch from e.ends_at)),
         'event_series_id', e.event_series_id,
+        'group_slug_pretty', g.slug_pretty,
         'latitude', st_y(e.location::geometry),
         'logo_url', coalesce(e.logo_url, g.logo_url, c.logo_url),
         'longitude', st_x(e.location::geometry),

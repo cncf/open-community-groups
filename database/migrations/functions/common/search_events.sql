@@ -44,7 +44,9 @@ begin
     if p_filters ? 'group' and jsonb_array_length(p_filters->'group') > 0 then
         select coalesce(array_agg(g.group_id), array[]::uuid[]) into v_group_ids
         from jsonb_array_elements_text(p_filters->'group') e
-        join "group" g on g.slug = e;
+        join "group" g on (g.slug = e or g.slug_pretty = e)
+        where v_community_ids is null
+        or g.community_id = any(v_community_ids);
     end if;
     if p_filters ? 'group_category' then
         select array_agg(lower(e::text)) into v_group_category

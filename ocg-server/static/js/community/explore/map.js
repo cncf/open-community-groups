@@ -302,9 +302,9 @@ export class Map {
       marker.on("click", () => {
         let url;
         if (this.entity === "events") {
-          url = `/${item.community_name}/group/${item.group_slug}/event/${item.slug}`;
+          url = `/${item.community_name}/group/${item.group_slug_pretty || item.group_slug}/event/${item.slug}`;
         } else if (this.entity === "groups") {
-          url = `/${item.community_name}/group/${item.slug}`;
+          url = `/${item.community_name}/group/${item.slug_pretty || item.slug}`;
         }
         navigateWithHtmx(url);
       });

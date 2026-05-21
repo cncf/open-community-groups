@@ -13,7 +13,7 @@ create or replace function get_group_past_events(
         from event e
         join "group" g using (group_id)
         where g.community_id = p_community_id
-        and g.slug = p_group_slug
+        and (g.slug = p_group_slug or g.slug_pretty = p_group_slug)
         and g.active = true
         and e.published = true
         and e.test_event = false

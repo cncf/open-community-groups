@@ -5,7 +5,7 @@ use axum::{
     Json,
     extract::{Path, State},
     http::{HeaderMap, HeaderValue, StatusCode, Uri, header::CACHE_CONTROL},
-    response::{Html, IntoResponse},
+    response::{Html, IntoResponse, Redirect},
 };
 use garde::Validate;
 use serde::{Deserialize, Serialize};
@@ -75,6 +75,12 @@ pub(crate) async fn page(
     let Some(mut event) = event else {
         return not_found::render(site_settings);
     };
+
+    // Redirect generated group slugs to their pretty URL
+    if should_redirect_to_pretty_group_slug(&event, &group_slug) {
+        let url = public_event_url(&community_name, event.group.public_slug(), &event.slug, &uri);
+        return Ok(Redirect::temporary(&url).into_response());
+    }
 
     // Trim gallery media
     trim_public_gallery_images(&mut event.photos_urls);
@@ -182,7 +188,29 @@ pub(crate) async fn availability(
     let mut headers = HeaderMap::new();
     headers.insert(CACHE_CONTROL, HeaderValue::from_static(CACHE_CONTROL_NO_STORE));
 
-    Ok((headers, Json(EventAvailability::from_event(&event))))
+    Ok((headers, Json(EventAvailability::from_event(&event))).into_response())
+}
+
+// URL helpers.
+
+/// Builds a public event URL with the original query string, if present.
+fn public_event_url(community_name: &str, group_slug: &str, event_slug: &str, uri: &Uri) -> String {
+    let mut url = format!("/{community_name}/group/{group_slug}/event/{event_slug}");
+    if let Some(query) = uri.query() {
+        url.push('?');
+        url.push_str(query);
+    }
+
+    url
+}
+
+/// Returns whether a public event request should canonicalize to a pretty group slug.
+fn should_redirect_to_pretty_group_slug(event: &EventFull, group_slug: &str) -> bool {
+    event
+        .group
+        .slug_pretty
+        .as_deref()
+        .is_some_and(|_| group_slug == event.group.slug)
 }
 
 // Actions handlers.

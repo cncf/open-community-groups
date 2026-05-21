@@ -46,7 +46,7 @@ pub struct EventSummary {
     pub group_category_name: String,
     /// Name of the group hosting this event.
     pub group_name: String,
-    /// URL-friendly identifier for the group hosting this event.
+    /// Generated URL-friendly identifier for the group hosting this event.
     pub group_slug: String,
     /// Whether this event has active related events in the same series.
     #[serde(default)]
@@ -86,6 +86,8 @@ pub struct EventSummary {
     pub ends_at: Option<DateTime<Utc>>,
     /// Linked event series identifier, when the event was created as recurring.
     pub event_series_id: Option<Uuid>,
+    /// Admin-managed URL-friendly identifier for the group hosting this event.
+    pub group_slug_pretty: Option<String>,
     /// Latitude of the event's location.
     pub latitude: Option<f64>,
     /// Longitude of the event's location.
@@ -179,6 +181,11 @@ impl EventSummary {
             .state(self.venue_state.as_deref());
 
         build_location(&parts, max_len)
+    }
+
+    /// Returns the group slug to use in public URLs.
+    pub fn public_group_slug(&self) -> &str {
+        self.group_slug_pretty.as_deref().unwrap_or(&self.group_slug)
     }
 }
 
@@ -518,6 +525,7 @@ impl From<&EventFull> for EventSummary {
             description_short: event.description_short.clone(),
             ends_at: event.ends_at,
             event_series_id: event.event_series_id,
+            group_slug_pretty: event.group.slug_pretty.clone(),
             latitude: event.latitude,
             longitude: event.longitude,
             meeting_join_instructions: event.meeting_join_instructions.clone(),
@@ -887,6 +895,8 @@ mod tests {
                 group_id,
                 name: "Group Name".to_string(),
                 slug: "group-slug".to_string(),
+
+                slug_pretty: Some("pretty-group-slug".to_string()),
                 ..Default::default()
             },
             has_related_events: true,
@@ -917,6 +927,7 @@ mod tests {
         assert_eq!(summary.group_category_name, "Technology");
         assert_eq!(summary.group_name, "Group Name");
         assert_eq!(summary.group_slug, "group-slug");
+        assert_eq!(summary.group_slug_pretty.as_deref(), Some("pretty-group-slug"));
         assert!(summary.has_related_events);
         assert_eq!(summary.kind, EventKind::Hybrid);
         assert_eq!(summary.logo_url, "https://example.com/logo.png");
@@ -1425,6 +1436,7 @@ mod tests {
             description_short: None,
             ends_at: None,
             event_series_id: None,
+            group_slug_pretty: None,
             latitude: None,
             longitude: None,
             meeting_join_instructions: None,

@@ -107,6 +107,7 @@ insert into "group" (
     community_id,
     name,
     slug,
+    slug_pretty,
     description,
     group_category_id,
     logo_url
@@ -115,6 +116,7 @@ insert into "group" (
     :'communityID',
     'Test Group',
     'test-group',
+    'test-group-pretty',
     'Group used for reminder tests',
     :'groupCategoryID',
     'https://example.com/group-logo.png'
@@ -440,7 +442,7 @@ select is(
         where n.kind = 'event-reminder'
         limit 1
     ),
-    'https://example.test/test-community/group/test-group/event/due-event',
+    'https://example.test/test-community/group/test-group-pretty/event/due-event',
     'Should build reminder link using the provided base URL'
 );
 

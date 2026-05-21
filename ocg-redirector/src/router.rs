@@ -9,6 +9,7 @@ use axum::{
     response::{IntoResponse, Redirect},
     routing::get,
 };
+use tokio::sync::RwLock;
 use tower_http::trace::TraceLayer;
 use tracing::instrument;
 
@@ -22,7 +23,7 @@ pub(crate) struct State {
     /// Redirect host suffix used to extract the community name.
     pub redirect_host_suffix: Arc<str>,
     /// Redirects keyed by community name and normalized legacy path.
-    pub redirects: Arc<Redirects>,
+    pub redirects: Arc<RwLock<Redirects>>,
 }
 
 /// Redirect communities keyed by community name.
@@ -39,13 +40,13 @@ pub(crate) struct CommunityRedirects {
 
 /// Configures and returns the application router.
 #[instrument(skip_all)]
-pub(crate) fn setup(redirects: Redirects, server_cfg: &HttpServerConfig) -> Router {
+pub(crate) fn setup(redirects: Arc<RwLock<Redirects>>, server_cfg: &HttpServerConfig) -> Router {
     let state = State {
         base_redirect_url: Arc::<str>::from(server_cfg.base_redirect_url.trim_end_matches('/')),
         redirect_host_suffix: Arc::<str>::from(normalize_redirect_host_suffix(
             &server_cfg.redirect_host_suffix(),
         )),
-        redirects: Arc::new(redirects),
+        redirects,
     };
 
     let router = Router::new()
@@ -72,36 +73,32 @@ async fn redirect(AxumState(state): AxumState<State>, headers: HeaderMap, uri: U
         return StatusCode::NOT_FOUND.into_response();
     };
 
-    // Load redirect settings for known communities
-    let Some(community_redirects) = state.redirects.get(&community_name) else {
-        return StatusCode::NOT_FOUND.into_response();
-    };
-
     // Normalize the request path for lookups
     let legacy_path = normalize_legacy_path(uri.path());
 
-    // Redirect root requests to the community page
-    if legacy_path == "/" {
-        return Redirect::permanent(&community_redirect_target(
-            &state.base_redirect_url,
-            &community_name,
-        ))
-        .into_response();
-    }
+    // Resolve the target while borrowing the shared redirect map
+    let redirect_target = {
+        let redirects = state.redirects.read().await;
+        let Some(community_redirects) = redirects.get(&community_name) else {
+            return StatusCode::NOT_FOUND.into_response();
+        };
 
-    // Redirect to the preloaded mapping when present
-    if let Some(new_path) = community_redirects.redirects.get(&legacy_path) {
-        return Redirect::permanent(&format!("{}{new_path}", state.base_redirect_url)).into_response();
-    }
-
-    // Fall back to the legacy site when the community still needs one
-    let fallback_target = if let Some(base_legacy_url) = &community_redirects.base_legacy_url {
-        legacy_redirect_target(base_legacy_url, &uri)
-    } else {
-        community_redirect_target(&state.base_redirect_url, &community_name)
+        // Redirect root requests to the community page
+        if legacy_path == "/" {
+            community_redirect_target(&state.base_redirect_url, &community_name)
+        // Redirect known legacy paths to their canonical target
+        } else if let Some(new_path) = community_redirects.redirects.get(&legacy_path) {
+            format!("{}{new_path}", state.base_redirect_url)
+        // Fall back to the legacy site when the community still needs one
+        } else if let Some(base_legacy_url) = &community_redirects.base_legacy_url {
+            legacy_redirect_target(base_legacy_url, &uri)
+        // Redirect unmatched paths to the community page when no legacy fallback is configured
+        } else {
+            community_redirect_target(&state.base_redirect_url, &community_name)
+        }
     };
 
-    Redirect::permanent(&fallback_target).into_response()
+    Redirect::permanent(&redirect_target).into_response()
 }
 
 // Helpers.
@@ -399,13 +396,11 @@ mod tests {
             addr: "127.0.0.1:9001".to_string(),
             base_redirect_url: "https://ocg.example/".to_string(),
         };
-        let router = setup(
-            test_community_redirects(HashMap::from([(
-                "/legacy-group".to_string(),
-                "/community/group/group".to_string(),
-            )])),
-            &server_cfg,
-        );
+        let redirects = test_community_redirects(HashMap::from([(
+            "/legacy-group".to_string(),
+            "/community/group/group".to_string(),
+        )]));
+        let router = setup(Arc::new(RwLock::new(redirects)), &server_cfg);
         let response = router.oneshot(test_request("/legacy-group")).await.unwrap();
 
         assert_eq!(response.status(), StatusCode::PERMANENT_REDIRECT);
@@ -462,6 +457,6 @@ mod tests {
             base_redirect_url: "https://ocg.example".to_string(),
         };
 
-        setup(redirects, &server_cfg)
+        setup(Arc::new(RwLock::new(redirects)), &server_cfg)
     }
 }
