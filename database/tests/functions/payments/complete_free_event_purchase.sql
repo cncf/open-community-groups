@@ -213,10 +213,16 @@ select results_eq(
                 from event_attendee
                 where event_id = '72000000-0000-0000-0000-000000000003'::uuid
                 and user_id = '72000000-0000-0000-0000-000000000012'::uuid
+            ),
+            (
+                select manually_invited
+                from event_attendee
+                where event_id = '72000000-0000-0000-0000-000000000003'::uuid
+                and user_id = '72000000-0000-0000-0000-000000000012'::uuid
             )
     $$,
-    $$ values (true, true, 'completed'::text, 1::int) $$,
-    'Should persist the completed purchase fields and add the attendee'
+    $$ values (true, true, 'completed'::text, 1::int, false) $$,
+    'Should persist the completed purchase fields and add a non-manually invited attendee'
 );
 
 -- Should reject expired purchase holds

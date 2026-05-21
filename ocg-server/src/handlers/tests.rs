@@ -109,6 +109,7 @@ pub(crate) fn sample_attendee() -> Attendee {
         discount_code: None,
         email: "attendee@example.test".to_string(),
         event_purchase_id: None,
+        manually_invited: false,
         status: "confirmed".to_string(),
         user_id: Uuid::new_v4(),
         username: "attendee".to_string(),

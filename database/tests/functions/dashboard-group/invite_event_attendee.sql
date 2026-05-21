@@ -84,10 +84,15 @@ select is(
     'Should return registered invitee id'
 );
 
-select is(
-    (select status from event_attendee where event_id = :'eventID' and user_id = :'registeredUserID'),
-    'invitation-pending',
-    'Should create a pending invitation for a registered user'
+select results_eq(
+    $$
+        select status, manually_invited
+        from event_attendee
+        where event_id = '00000000-0000-0000-0000-000000000005'::uuid
+        and user_id = '00000000-0000-0000-0000-000000000007'::uuid
+    $$,
+    $$ values ('invitation-pending'::text, true) $$,
+    'Should create a pending manual invitation for a registered user'
 );
 
 -- Should pre-register an email invitee and keep them out of normal registration state.
@@ -111,6 +116,7 @@ select results_eq(
         select
             ea.checked_in,
             ea.checked_in_at is null,
+            ea.manually_invited,
             ea.status,
             u.email,
             u.registration_status
@@ -122,6 +128,7 @@ select results_eq(
     $$
         values (
             false,
+            true,
             true,
             'invitation-pending',
             'new@example.com',

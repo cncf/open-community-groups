@@ -25,7 +25,9 @@ begin
 
     -- Only pending invitations can be canceled
     update event_attendee
-    set status = 'invitation-canceled'
+    set
+        manually_invited = false,
+        status = 'invitation-canceled'
     where event_id = p_event_id
     and user_id = p_user_id
     and status = 'invitation-pending';

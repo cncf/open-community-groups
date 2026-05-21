@@ -7,6 +7,7 @@ alter table "user"
 
 -- Track attendee invitation lifecycle alongside confirmed attendance.
 alter table event_attendee
+    add column manually_invited boolean not null default false,
     add column status text not null default 'confirmed'
         check (
             status in (

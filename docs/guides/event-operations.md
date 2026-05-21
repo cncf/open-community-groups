@@ -401,7 +401,7 @@ invitations show in the attendee table and can be canceled from the row actions 
 invitations remain visible and cannot be sent again for the same event and user.
 
 `Download CSV` is available from the attendee actions menu and exports attendee name, company,
-and title.
+title, and whether the confirmed attendee was manually invited.
 
 `Send email` in this tab sends operational updates to attendees who receive optional
 notifications. The email form includes a required `Subject`, defaults it to

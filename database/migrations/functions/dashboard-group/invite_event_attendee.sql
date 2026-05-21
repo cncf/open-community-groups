@@ -120,12 +120,13 @@ begin
             checked_in = false,
             checked_in_at = null,
             created_at = current_timestamp,
+            manually_invited = true,
             status = 'invitation-pending'
         where event_id = p_event_id
         and user_id = v_target_user_id;
     else
-        insert into event_attendee (event_id, user_id, status)
-        values (p_event_id, v_target_user_id, 'invitation-pending');
+        insert into event_attendee (event_id, user_id, manually_invited, status)
+        values (p_event_id, v_target_user_id, true, 'invitation-pending');
     end if;
 
     -- Track the invitation

@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(10);
+select plan(12);
 
 -- ============================================================================
 -- VARIABLES
@@ -173,6 +173,7 @@ values
 insert into event_invitation_request (event_id, user_id)
 values
     (:'eventID', :'requesterID'),
+    (:'eventID', :'requester2ID'),
     (:'eventFullID', :'requesterID'),
     (:'eventUnpublishedID', :'requesterID'),
     (:'eventInactiveGroupID', :'requesterID'),
@@ -182,6 +183,10 @@ values
 -- Existing attendee that fills the second event
 insert into event_attendee (event_id, user_id)
 values (:'eventFullID', :'requester2ID');
+
+-- Existing canceled manual invitation row for attendee upsert reuse
+insert into event_attendee (event_id, user_id, manually_invited, status)
+values (:'eventID', :'requester2ID', false, 'invitation-canceled');
 
 -- ============================================================================
 -- TESTS
@@ -219,8 +224,33 @@ select ok(
         from event_attendee
         where event_id = :'eventID'::uuid
         and user_id = :'requesterID'::uuid
+        and manually_invited = false
     ),
-    'Should create a confirmed attendee row'
+    'Should create a confirmed attendee row that is not manually invited'
+);
+
+-- Should reuse a canceled manual invitation row without marking it manually invited
+select lives_ok(
+    format(
+        'select accept_event_invitation_request(%L::uuid,%L::uuid,%L::uuid,%L::uuid)',
+        :'actorID', :'groupID', :'eventID', :'requester2ID'
+    ),
+    'Should accept a request with a canceled manual invitation row'
+);
+
+select results_eq(
+    format(
+        $$
+            select status, manually_invited
+            from event_attendee
+            where event_id = %L::uuid
+            and user_id = %L::uuid
+        $$,
+        :'eventID',
+        :'requester2ID'
+    ),
+    $$ values ('confirmed'::text, false) $$,
+    'Should keep reused canceled invitation request attendees not manually invited'
 );
 
 -- Should track the acceptance in the audit log

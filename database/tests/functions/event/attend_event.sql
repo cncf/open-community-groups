@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(29);
+select plan(31);
 
 -- ============================================================================
 -- VARIABLES
@@ -99,12 +99,12 @@ values
     (:'eventFullWaitlist', :'user1ID', 'confirmed');
 
 -- Existing organizer invitation decisions
-insert into event_attendee (event_id, user_id, status)
+insert into event_attendee (event_id, user_id, manually_invited, status)
 values
-    (:'eventOK', :'user3ID', 'invitation-canceled'),
-    (:'eventFullWaitlist', :'user3ID', 'invitation-canceled'),
-    (:'eventFullNoWaitlist', :'user5ID', 'invitation-pending'),
-    (:'eventFullNoWaitlist', :'user6ID', 'invitation-rejected');
+    (:'eventOK', :'user3ID', false, 'invitation-canceled'),
+    (:'eventFullWaitlist', :'user3ID', false, 'invitation-canceled'),
+    (:'eventFullNoWaitlist', :'user5ID', true, 'invitation-pending'),
+    (:'eventFullNoWaitlist', :'user6ID', true, 'invitation-rejected');
 
 -- Event invitation requests
 insert into event_invitation_request (event_id, user_id, created_at, status, reviewed_at, reviewed_by)
@@ -129,8 +129,9 @@ select ok(
         select 1
         from event_attendee
         where event_id = :'eventOK'::uuid and user_id = :'user1ID'::uuid
+        and manually_invited = false
     ),
-    'Creates event_attendee row after confirmed RSVP'
+    'Creates non-manually invited event_attendee row after confirmed RSVP'
 );
 
 -- Should allow attendance for a capacity-limited event with an open seat
@@ -178,6 +179,16 @@ select is(
     'Converts the pending organizer invitation into confirmed attendance'
 );
 
+select ok(
+    (
+        select manually_invited
+        from event_attendee
+        where event_id = :'eventFullNoWaitlist'::uuid
+        and user_id = :'user5ID'::uuid
+    ),
+    'Keeps accepted organizer invitations marked as manually invited'
+);
+
 -- Should confirm a rejected organizer invitation even when the event is full
 select is(
     attend_event(:'communityID'::uuid, :'eventFullNoWaitlist'::uuid, :'user6ID'::uuid),
@@ -212,6 +223,16 @@ select is(
     ),
     'confirmed',
     'Converts the canceled organizer invitation into confirmed attendance'
+);
+
+select ok(
+    not (
+        select manually_invited
+        from event_attendee
+        where event_id = :'eventOK'::uuid
+        and user_id = :'user3ID'::uuid
+    ),
+    'Clears manually invited when a canceled invitation is reused by a normal RSVP'
 );
 
 -- Should place the user on the waitlist when the event is full and waitlist is enabled

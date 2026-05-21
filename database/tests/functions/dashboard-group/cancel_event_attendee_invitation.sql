@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(5);
+select plan(6);
 
 -- ============================================================================
 -- VARIABLES
@@ -58,8 +58,8 @@ insert into event (
 values (:'eventID', 'Free Event', 'free-event', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', true);
 
 -- Event invitation
-insert into event_attendee (event_id, user_id, status)
-values (:'eventID', :'invitedUserID', 'invitation-pending');
+insert into event_attendee (event_id, user_id, manually_invited, status)
+values (:'eventID', :'invitedUserID', true, 'invitation-pending');
 
 -- ============================================================================
 -- TESTS
@@ -80,6 +80,11 @@ select is(
     (select status from event_attendee where event_id = :'eventID' and user_id = :'invitedUserID'),
     'invitation-canceled',
     'Should persist canceled invitation status'
+);
+
+select ok(
+    not (select manually_invited from event_attendee where event_id = :'eventID' and user_id = :'invitedUserID'),
+    'Should clear the manual invitation flag when canceling'
 );
 
 -- Should create the expected audit row.

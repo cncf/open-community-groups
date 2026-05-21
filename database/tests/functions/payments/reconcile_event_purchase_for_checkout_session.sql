@@ -302,10 +302,11 @@ select results_eq(
             (select hold_expires_at is null from event_purchase where event_purchase_id = '79000000-0000-0000-0000-000000000012'::uuid),
             (select provider_payment_reference from event_purchase where event_purchase_id = '79000000-0000-0000-0000-000000000012'::uuid),
             (select status from event_purchase where event_purchase_id = '79000000-0000-0000-0000-000000000012'::uuid),
-            (select count(*)::int from event_attendee where event_id = '79000000-0000-0000-0000-000000000004'::uuid and user_id = '79000000-0000-0000-0000-000000000017'::uuid)
+            (select count(*)::int from event_attendee where event_id = '79000000-0000-0000-0000-000000000004'::uuid and user_id = '79000000-0000-0000-0000-000000000017'::uuid),
+            (select manually_invited from event_attendee where event_id = '79000000-0000-0000-0000-000000000004'::uuid and user_id = '79000000-0000-0000-0000-000000000017'::uuid)
     $$,
-    $$ values (true, true, 'pi_complete'::text, 'completed'::text, 1::int) $$,
-    'Should persist the completed purchase fields and add the attendee'
+    $$ values (true, true, 'pi_complete'::text, 'completed'::text, 1::int, false) $$,
+    'Should persist the completed purchase fields and add a non-manually invited attendee'
 );
 
 -- Should require refund for expired local holds

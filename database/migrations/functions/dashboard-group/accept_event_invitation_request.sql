@@ -60,7 +60,7 @@ begin
         end if;
     end if;
 
-    -- Mark the request accepted and create the confirmed attendee
+    -- Mark the request accepted
     update event_invitation_request
     set
         reviewed_at = current_timestamp,
@@ -70,6 +70,9 @@ begin
     and user_id = p_user_id
     and status = 'pending';
 
+    -- Add the confirmed attendee
+    -- The conflict branch reuses canceled manual invitation rows because
+    -- event_attendee is keyed by event and user.
     insert into event_attendee (event_id, user_id)
     values (p_event_id, p_user_id)
     on conflict (event_id, user_id) do update

@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(10);
+select plan(11);
 
 -- ============================================================================
 -- VARIABLES
@@ -181,6 +181,21 @@ select is(
         :'user4ID'
     )::jsonb,
     'Moves promoted users into attendees and leaves the remaining waitlist intact'
+);
+
+select is(
+    (
+        select jsonb_object_agg(user_id, manually_invited order by user_id)
+        from event_attendee
+        where event_id = :'eventLimitedID'::uuid
+    ),
+    format(
+        '{"%s":false,"%s":false,"%s":false}',
+        :'user1ID',
+        :'user2ID',
+        :'user3ID'
+    )::jsonb,
+    'Should keep promoted waitlist attendees not manually invited'
 );
 
 -- Should respect an explicit slots cap even when more seats are available

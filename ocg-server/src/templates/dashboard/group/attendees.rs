@@ -52,6 +52,8 @@ pub struct Attendee {
     pub created_at: DateTime<Utc>,
     /// Email address for invitation placeholders and registered users.
     pub email: String,
+    /// Whether the attendee was manually invited by an organizer.
+    pub manually_invited: bool,
     /// Event attendee status.
     pub status: String,
     /// User id.

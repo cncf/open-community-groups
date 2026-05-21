@@ -465,10 +465,12 @@ insert into event_attendee (
 
 insert into event_attendee (
     event_id,
+    manually_invited,
     status,
     user_id
 ) values (
     '00000000-0000-0000-0000-00000000c031',
+    true,
     'invitation-pending',
     '00000000-0000-0000-0000-00000000c044'
 );

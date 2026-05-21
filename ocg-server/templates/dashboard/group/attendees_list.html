@@ -163,7 +163,10 @@
             {# RSVP Date -#}
             <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap w-40">
               {% if attendee.status == "confirmed" -%}
-                {{ attendee.created_at.format("%b %d, %Y") }}
+                <div>{{ attendee.created_at.format("%b %d, %Y") }}</div>
+                {% if attendee.manually_invited -%}
+                  <div class="text-xs text-stone-600">Invited</div>
+                {% endif -%}
               {% else if attendee.status == "invitation-pending" -%}
                 <div class="font-medium text-yellow-800">Invitation pending</div>
                 <div class="text-xs text-stone-600">{{ attendee.created_at.format("%b %d, %Y") }}</div>

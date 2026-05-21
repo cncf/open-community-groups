@@ -15,6 +15,7 @@ returns json as $$
                 ea.checked_in,
                 extract(epoch from ea.created_at)::bigint as created_at,
                 u.email,
+                ea.manually_invited,
                 ea.status,
                 u.user_id,
                 u.username,

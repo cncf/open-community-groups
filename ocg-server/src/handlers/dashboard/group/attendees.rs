@@ -468,7 +468,7 @@ pub(crate) async fn download_csv(
         .terminator(csv::Terminator::Any(b'\n'))
         .from_writer(vec![]);
     writer
-        .write_record(["Name", "Company", "Title"])
+        .write_record(["Name", "Company", "Title", "Invited"])
         .map_err(anyhow::Error::from)?;
     for attendee in search_attendees_results
         .attendees
@@ -480,6 +480,7 @@ pub(crate) async fn download_csv(
                 attendee.name.as_deref().unwrap_or(&attendee.username),
                 attendee.company.as_deref().unwrap_or_default(),
                 attendee.title.as_deref().unwrap_or_default(),
+                if attendee.manually_invited { "Yes" } else { "No" },
             ])
             .map_err(anyhow::Error::from)?;
     }

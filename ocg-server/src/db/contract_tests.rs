@@ -356,6 +356,7 @@ async fn db_contracts_search_event_attendees_deserializes() -> Result<()> {
     assert_eq!(output.attendees[0].username, "contract-attendee");
     assert!(output.attendees[0].checked_in);
     assert_eq!(output.attendees[1].email, "pre-registered.contract@example.com");
+    assert!(output.attendees[1].manually_invited);
     assert_eq!(output.attendees[1].name, None);
     assert_eq!(output.attendees[1].status, "invitation-pending");
     assert_eq!(output.attendees[1].user_id, pre_registered_id());

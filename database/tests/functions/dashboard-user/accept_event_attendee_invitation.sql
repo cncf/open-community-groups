@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(4);
+select plan(5);
 
 -- ============================================================================
 -- VARIABLES
@@ -58,8 +58,8 @@ insert into event (
 values (:'eventID', 'Free Event', 'free-event', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', 0, 'USD', true, current_timestamp + interval '1 day');
 
 -- Event invitations
-insert into event_attendee (event_id, user_id, status)
-values (:'eventID', :'invitedUserID', 'invitation-pending');
+insert into event_attendee (event_id, user_id, manually_invited, status)
+values (:'eventID', :'invitedUserID', true, 'invitation-pending');
 
 -- ============================================================================
 -- TESTS
@@ -76,6 +76,11 @@ select is(
     (select status from event_attendee where event_id = :'eventID' and user_id = :'invitedUserID'),
     'confirmed',
     'Should confirm the attendee even when capacity is full'
+);
+
+select ok(
+    (select manually_invited from event_attendee where event_id = :'eventID' and user_id = :'invitedUserID'),
+    'Should keep the attendee marked as manually invited'
 );
 
 -- Should reject accepting non-pending invitations.

@@ -369,6 +369,7 @@ async fn test_download_csv_success() {
     let mut attendee = sample_attendee();
     attendee.name = Some("Doe, Jane".to_string());
     attendee.company = Some("Example \"Cloud\"".to_string());
+    attendee.manually_invited = true;
     attendee.title = Some("Principal\nEngineer".to_string());
     let mut attendee_without_name = sample_attendee();
     attendee_without_name.name = None;
@@ -449,7 +450,7 @@ async fn test_download_csv_success() {
     );
     assert_eq!(
         String::from_utf8(bytes.to_vec()).unwrap(),
-        "Name,Company,Title\n\"Doe, Jane\",\"Example \"\"Cloud\"\"\",\"Principal\nEngineer\"\nanonymous-attendee,,\n",
+        "Name,Company,Title,Invited\n\"Doe, Jane\",\"Example \"\"Cloud\"\"\",\"Principal\nEngineer\",Yes\nanonymous-attendee,,,No\n",
     );
 }
 
@@ -961,7 +962,8 @@ async fn test_list_page_success() {
         Some(community_id),
         Some(group_id),
     );
-    let attendee = sample_attendee();
+    let mut attendee = sample_attendee();
+    attendee.manually_invited = true;
     let event = sample_event_summary(event_id, group_id);
     let output = crate::templates::dashboard::group::attendees::AttendeesOutput {
         attendees: vec![attendee.clone()],
@@ -1031,6 +1033,7 @@ async fn test_list_page_success() {
     let body = std::str::from_utf8(&bytes).unwrap();
     assert!(body.contains("name=\"subject\""));
     assert!(body.contains("value=\"Test Group: Sample Event\""));
+    assert!(body.contains("Invited"));
 }
 
 #[tokio::test]
