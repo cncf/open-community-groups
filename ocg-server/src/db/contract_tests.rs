@@ -350,6 +350,7 @@ async fn db_contracts_search_event_attendees_deserializes() -> Result<()> {
     };
     let output = db.search_event_attendees(group_id(), &filters).await?;
 
+    assert_eq!(output.notification_recipient_total, 1);
     assert_eq!(output.total, 2);
     assert_eq!(output.attendees.len(), 2);
     assert_eq!(output.attendees[0].user_id, attendee_id());

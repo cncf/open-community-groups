@@ -71,13 +71,13 @@ begin
     and status = 'pending';
 
     -- Add the confirmed attendee
-    -- The conflict branch reuses canceled manual invitation rows because
-    -- event_attendee is keyed by event and user.
+    -- The conflict branch reuses pending or canceled manual invitation rows
+    -- because event_attendee is keyed by event and user.
     insert into event_attendee (event_id, user_id)
     values (p_event_id, p_user_id)
     on conflict (event_id, user_id) do update
     set status = 'confirmed'
-    where event_attendee.status = 'invitation-canceled';
+    where event_attendee.status in ('invitation-canceled', 'invitation-pending');
 
     -- Track the organizer decision
     perform insert_audit_log(

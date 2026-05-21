@@ -62,11 +62,17 @@ returns json as $$
             offset (select offset_value from filters)
             limit (select limit_value from filters)
         ),
-        -- Count total attendees before pagination
+        -- Count visible rows and eligible notification recipients
         totals as (
-            select count(*)::int as total
+            select
+                count(*)::int as total,
+                count(*) filter (
+                    where ea.status = 'confirmed'
+                    and u.email_verified = true
+                )::int as notification_recipient_total
             from event_attendee ea
             join event e on e.event_id = ea.event_id
+            join "user" u on u.user_id = ea.user_id
             where e.group_id = p_group_id
             and ea.event_id = (select event_id from filters)
             and ea.status in ('confirmed', 'invitation-pending', 'invitation-rejected')
@@ -79,6 +85,7 @@ returns json as $$
     -- Build final payload
     select json_build_object(
         'attendees', attendees_json.attendees,
+        'notification_recipient_total', totals.notification_recipient_total,
         'total', totals.total
     )
     from attendees_json, totals;

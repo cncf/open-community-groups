@@ -89,6 +89,7 @@ pub(crate) async fn list_page(
         can_manage_events,
         event,
         navigation_links,
+        notification_recipient_total: search_attendees_results.notification_recipient_total,
         total: search_attendees_results.total,
         limit: page_filters.limit,
         offset: page_filters.offset,
@@ -402,9 +403,13 @@ pub(crate) async fn send_event_custom_notification(
         db.list_event_attendees_ids(group_id, event_id),
     )?;
 
-    // If there are no attendees, nothing to do
+    // Reject empty recipient sets so stale pages cannot report a false success
     if event_attendees_ids.is_empty() {
-        return Ok(StatusCode::NO_CONTENT.into_response());
+        return Ok((
+            StatusCode::BAD_REQUEST,
+            "No confirmed attendees with verified email addresses.",
+        )
+            .into_response());
     }
 
     // Enqueue notification

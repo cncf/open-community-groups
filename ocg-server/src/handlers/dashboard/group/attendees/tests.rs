@@ -390,6 +390,7 @@ async fn test_download_csv_success() {
             pending_invitation,
             rejected_invitation,
         ],
+        notification_recipient_total: 2,
         total: 4,
     };
 
@@ -967,6 +968,7 @@ async fn test_list_page_success() {
     let event = sample_event_summary(event_id, group_id);
     let output = crate::templates::dashboard::group::attendees::AttendeesOutput {
         attendees: vec![attendee.clone()],
+        notification_recipient_total: 1,
         total: 1,
     };
 
@@ -1056,6 +1058,7 @@ async fn test_list_page_with_pagination_params() {
     let event = sample_event_summary(event_id, group_id);
     let output = crate::templates::dashboard::group::attendees::AttendeesOutput {
         attendees: vec![attendee.clone()],
+        notification_recipient_total: 0,
         total: 1,
     };
 
@@ -1121,7 +1124,8 @@ async fn test_list_page_with_pagination_params() {
         parts.headers.get(CONTENT_TYPE).unwrap(),
         &HeaderValue::from_static("text/html; charset=utf-8"),
     );
-    assert!(!bytes.is_empty());
+    let body = std::str::from_utf8(&bytes).unwrap();
+    assert!(body.contains("No confirmed attendees with verified email addresses."));
 }
 
 #[tokio::test]
@@ -1542,7 +1546,7 @@ async fn test_send_event_custom_notification_success() {
 }
 
 #[tokio::test]
-async fn test_send_event_custom_notification_no_attendees() {
+async fn test_send_event_custom_notification_no_recipients() {
     // Setup identifiers and data structures
     let event_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
@@ -1611,6 +1615,9 @@ async fn test_send_event_custom_notification_no_attendees() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert!(bytes.is_empty());
+    assert_eq!(parts.status, StatusCode::BAD_REQUEST);
+    assert_eq!(
+        String::from_utf8(bytes.to_vec()).unwrap(),
+        "No confirmed attendees with verified email addresses."
+    );
 }

@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(12);
+select plan(14);
 
 -- ============================================================================
 -- VARIABLES
@@ -18,11 +18,13 @@ select plan(12);
 \set eventID '00000000-0000-0000-0000-000000000041'
 \set eventInactiveGroupID '00000000-0000-0000-0000-000000000045'
 \set eventPastID '00000000-0000-0000-0000-000000000047'
+\set eventPendingInvitationID '00000000-0000-0000-0000-000000000048'
 \set eventUnpublishedID '00000000-0000-0000-0000-000000000044'
 \set groupID '00000000-0000-0000-0000-000000000021'
 \set inactiveGroupID '00000000-0000-0000-0000-000000000022'
 \set requesterID '00000000-0000-0000-0000-000000000032'
 \set requester2ID '00000000-0000-0000-0000-000000000033'
+\set requester3ID '00000000-0000-0000-0000-000000000034'
 
 -- ============================================================================
 -- SEED DATA
@@ -53,7 +55,8 @@ insert into "user" (user_id, auth_hash, email, username)
 values
     (:'actorID', 'h', 'actor@test.com', 'actor'),
     (:'requesterID', 'h', 'requester@test.com', 'requester'),
-    (:'requester2ID', 'h', 'requester2@test.com', 'requester2');
+    (:'requester2ID', 'h', 'requester2@test.com', 'requester2'),
+    (:'requester3ID', 'h', 'requester3@test.com', 'requester3');
 
 -- Groups
 insert into "group" (group_id, community_id, group_category_id, name, slug, active)
@@ -167,6 +170,21 @@ values
         true,
         current_timestamp - interval '2 hours',
         current_timestamp - interval '1 hour'
+    ),
+    (
+        :'eventPendingInvitationID',
+        'Pending Invitation Event',
+        'pending-invitation-event',
+        'd',
+        'UTC',
+        :'eventCategoryID',
+        'in-person',
+        :'groupID',
+        true,
+        null,
+        true,
+        null,
+        null
     );
 
 -- Invitation requests
@@ -178,7 +196,8 @@ values
     (:'eventUnpublishedID', :'requesterID'),
     (:'eventInactiveGroupID', :'requesterID'),
     (:'eventApprovalDisabledID', :'requesterID'),
-    (:'eventPastID', :'requesterID');
+    (:'eventPastID', :'requesterID'),
+    (:'eventPendingInvitationID', :'requester3ID');
 
 -- Existing attendee that fills the second event
 insert into event_attendee (event_id, user_id)
@@ -187,6 +206,10 @@ values (:'eventFullID', :'requester2ID');
 -- Existing canceled manual invitation row for attendee upsert reuse
 insert into event_attendee (event_id, user_id, manually_invited, status)
 values (:'eventID', :'requester2ID', false, 'invitation-canceled');
+
+-- Existing pending manual invitation row for attendee upsert reuse
+insert into event_attendee (event_id, user_id, manually_invited, status)
+values (:'eventPendingInvitationID', :'requester3ID', true, 'invitation-pending');
 
 -- ============================================================================
 -- TESTS
@@ -251,6 +274,30 @@ select results_eq(
     ),
     $$ values ('confirmed'::text, false) $$,
     'Should keep reused canceled invitation request attendees not manually invited'
+);
+
+-- Should confirm an existing pending manual invitation row
+select lives_ok(
+    format(
+        'select accept_event_invitation_request(%L::uuid,%L::uuid,%L::uuid,%L::uuid)',
+        :'actorID', :'groupID', :'eventPendingInvitationID', :'requester3ID'
+    ),
+    'Should accept a request with a pending manual invitation row'
+);
+
+select results_eq(
+    format(
+        $$
+            select status, manually_invited
+            from event_attendee
+            where event_id = %L::uuid
+            and user_id = %L::uuid
+        $$,
+        :'eventPendingInvitationID',
+        :'requester3ID'
+    ),
+    $$ values ('confirmed'::text, true) $$,
+    'Should keep reused pending invitation request attendees manually invited'
 );
 
 -- Should track the acceptance in the audit log
