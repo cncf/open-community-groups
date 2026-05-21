@@ -185,7 +185,7 @@ description = "Manage invitations to attend events.") -}}
         {% if event_invitations.is_empty() -%}
           <tr class="bg-white border-b border-stone-200">
             <td class="px-8 py-12 text-center" colspan="5">
-              {% include "dashboard/placeholders/user_events_table.html" -%}
+              {% include "dashboard/placeholders/user_event_invitations_table.html" -%}
             </td>
           </tr>
         {% else -%}
