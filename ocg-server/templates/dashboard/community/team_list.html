@@ -61,9 +61,7 @@
                       {{ member.name.as_deref() |assigned_or(member.username) }}
                     </div>
                     {% if !member.accepted -%}
-                      <div class="text-nowrap bg-yellow-100 text-yellow-800 text-xs px-2.5 py-0.5 rounded-full tracking-wide">
-                        Invitation sent
-                      </div>
+                      {{ badges::invitation_badge(label = "Invitation sent") -}}
                     {% endif -%}
                   </div>
                   {% if member.name.is_some() -%}
