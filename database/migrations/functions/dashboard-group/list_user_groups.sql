@@ -29,12 +29,14 @@ returns json as $$
         select
             ug.community_id,
             c.name as community_name,
-            json_build_object(
+            json_strip_nulls(json_build_object(
                 'active', g.active,
                 'group_id', g.group_id,
                 'name', g.name,
-                'slug', g.slug
-            ) as group_json
+                'slug', g.slug,
+
+                'slug_pretty', g.slug_pretty
+            )) as group_json
         from user_groups ug
         join community c using (community_id)
         join "group" g using (group_id)

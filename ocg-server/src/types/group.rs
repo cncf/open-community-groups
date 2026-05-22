@@ -32,6 +32,13 @@ pub struct GroupMinimal {
     pub slug_pretty: Option<String>,
 }
 
+impl GroupMinimal {
+    /// Returns the slug to use in public URLs.
+    pub fn public_slug(&self) -> &str {
+        self.slug_pretty.as_deref().unwrap_or(&self.slug)
+    }
+}
+
 /// Summary group information.
 #[skip_serializing_none]
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]

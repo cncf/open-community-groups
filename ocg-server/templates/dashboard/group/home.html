@@ -55,7 +55,7 @@
       </group-selector>
       {% if !selected_community_groups().is_empty() -%}
         {% let current_selection = current_selection_details() -%}
-        {% let group_public_url = "/".to_owned() + &current_selection.0.name + "/group/" + current_selection.1.slug_pretty.as_deref().unwrap_or(&current_selection.1.slug) -%}
+        {% let group_public_url = "/".to_owned() + &current_selection.0.name + "/group/" + current_selection.1.public_slug() -%}
         <div class="mt-6 grid gap-y-0.5">
           {{ dashboard::menu_item(name = "Settings", icon = "gears", is_active = content.is_settings() , href = "/dashboard/group?tab=settings") -}}
           {{ dashboard::menu_item(name = "Team", icon = "team", is_active = content.is_team() , href = "/dashboard/group?tab=team") -}}
@@ -117,7 +117,7 @@
        data-community-banner-url="{{ current_selection.0.banner_url }}"
        data-community-banner-mobile-url="{{ current_selection.0.banner_mobile_url }}"
        data-group-name="{{ current_selection.1.name }}"
-       data-group-slug="{{ current_selection.1.slug_pretty.as_deref().unwrap_or(&current_selection.1.slug) }}"
+       data-group-slug="{{ current_selection.1.public_slug() }}"
        hx-get="/dashboard/group/{%- if content.is_team() -%}team{%- else if content.is_settings() -%}settings{%- else if content.is_sponsors() -%}sponsors{%- else if content.is_logs() -%}logs{%- else -%}events{%- endif -%}"
        hx-trigger="refresh-group-dashboard-table"
        hx-swap="innerHTML show:window:top"
