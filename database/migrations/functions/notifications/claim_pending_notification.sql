@@ -15,7 +15,7 @@ returns table (
         join "user" u using (user_id)
         where n.delivery_status = 'pending'
         and (
-            u.email_verified = true
+            (u.registration_status = 'registered' and u.email_verified = true)
             or n.kind = 'email-verification'
             or (n.kind = 'event-invitation' and u.registration_status = 'pre-registered')
         )
