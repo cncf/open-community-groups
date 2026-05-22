@@ -697,7 +697,9 @@ export class ReviewSubmissionModal extends LitWrapper {
           </div>
         </div>
 
-        <div class="border-t border-stone-200 pt-5">${this._renderDetailsLabels()}</div>
+        ${this.labels.length > 0
+          ? html`<div class="border-t border-stone-200 pt-5">${this._renderDetailsLabels()}</div>`
+          : ""}
       </section>
     `;
   }

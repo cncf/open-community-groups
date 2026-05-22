@@ -124,6 +124,16 @@ describe("review-submission-modal", () => {
     expect(element._submission.cfs_submission_id).to.equal(12);
   });
 
+  it("does not render the labels divider when no labels are available", async () => {
+    const element = await renderModal();
+
+    element.open(buildSubmission({ labels: [] }));
+    await element.updateComplete;
+
+    expect(element.querySelector("#cfs-submission-labels")).to.equal(null);
+    expect(element.querySelector("#cfs-submission-tabpanel-details > .border-t")).to.equal(null);
+  });
+
   it("tracks pending changes while keeping label order snapshots stable", async () => {
     const element = await renderModal();
 
