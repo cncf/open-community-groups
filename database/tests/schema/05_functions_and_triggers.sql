@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(239);
+select plan(240);
 
 -- ============================================================================
 -- TESTS
@@ -15,8 +15,9 @@ select has_function('accept_event_attendee_invitation');
 select has_function('accept_event_invitation_request');
 select has_function('accept_group_team_invitation');
 select has_function('accept_session_proposal_co_speaker_invitation');
-select has_function('activate_pre_registered_user');
 select has_function('activate_group');
+select has_function('activate_pre_registered_user_email_password');
+select has_function('activate_pre_registered_user_external_provider');
 select has_function('add_cfs_submission');
 select has_function('add_community_team_member');
 select has_function('add_event');

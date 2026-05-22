@@ -244,7 +244,7 @@ impl AuthnBackend {
             if user.registration_status == "pre-registered" {
                 return self
                     .db
-                    .activate_pre_registered_user(&user.user_id, user_summary)
+                    .activate_pre_registered_user_external_provider(&user.user_id, user_summary)
                     .await;
             }
 

@@ -1395,6 +1395,13 @@ async fn test_sign_up_success() {
         .returning(move |_| Ok(Some(session_record.clone())));
     let site_settings = sample_site_settings();
     let site_settings_for_notifications = site_settings.clone();
+    db.expect_activate_pre_registered_user_email_password()
+        .times(1)
+        .withf(move |summary| {
+            summary.email == "test@example.test"
+                && !matches!(summary.password.as_deref(), Some("secret-password"))
+        })
+        .returning(|_| Ok(None));
     db.expect_sign_up_user()
         .times(1)
         .withf(move |summary, verify| {
@@ -1471,6 +1478,104 @@ async fn test_sign_up_success() {
 }
 
 #[tokio::test]
+async fn test_sign_up_activates_pre_registered_user() {
+    // Setup identifiers and data structures
+    let session_id = session::Id::default();
+    let session_record = sample_empty_session_record(session_id);
+    let email_verification_code = Uuid::new_v4();
+    let user = sample_auth_user(Uuid::new_v4(), "hash");
+    let user_for_notifications = user.clone();
+    let user_for_db = user;
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    let site_settings = sample_site_settings();
+    let site_settings_for_notifications = site_settings.clone();
+    db.expect_activate_pre_registered_user_email_password()
+        .times(1)
+        .withf(move |summary| {
+            summary.email == "invited@example.test"
+                && summary.name == "Invited User"
+                && summary.username == "invited-user"
+                && !matches!(summary.password.as_deref(), Some("secret-password"))
+        })
+        .returning({
+            let user = user_for_db;
+            move |_| Ok(Some((user.clone(), email_verification_code)))
+        });
+    db.expect_sign_up_user().times(0);
+    db.expect_get_site_settings()
+        .times(1)
+        .returning(move || Ok(site_settings.clone()));
+    db.expect_update_session()
+        .times(1)
+        .withf(move |record| {
+            message_matches(
+                record,
+                "Please verify your email to complete the sign up process.",
+            )
+        })
+        .returning(|_| Ok(()));
+
+    // Setup notifications manager mock
+    let mut nm = MockNotificationsManager::new();
+    nm.expect_enqueue()
+        .times(1)
+        .withf(move |notification| {
+            matches!(&notification.kind, NotificationKind::EmailVerification)
+                && notification.recipients == vec![user_for_notifications.user_id]
+                && notification.template_data.as_ref().is_some_and(|value| {
+                    serde_json::from_value::<EmailVerificationTemplate>(value.clone()).is_ok_and(|template| {
+                        template.link == format!("https://app.example/verify-email/{email_verification_code}")
+                            && template.theme.primary_color
+                                == site_settings_for_notifications.theme.primary_color
+                    })
+                })
+        })
+        .returning(|_| Box::pin(async { Ok(()) }));
+
+    // Setup router
+    let server_cfg = HttpServerConfig {
+        base_url: "https://app.example".to_string(),
+        login: LoginOptions {
+            email: true,
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+    let router = TestRouterBuilder::new(db, nm)
+        .with_server_cfg(server_cfg)
+        .build()
+        .await;
+
+    // Setup request
+    let form =
+        "email=invited%40example.test&name=Invited+User&username=invited-user&password=secret-password";
+    let request = Request::builder()
+        .method("POST")
+        .uri("/sign-up?next_url=%2Fdashboard%2Fuser%3Ftab%3Dinvitations")
+        .header(COOKIE, format!("id={session_id}"))
+        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+        .body(Body::from(form))
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_eq!(parts.status, StatusCode::SEE_OTHER);
+    assert_eq!(
+        parts.headers.get(LOCATION).unwrap(),
+        &HeaderValue::from_static("/log-in?next_url=%2Fdashboard%2Fuser%3Ftab%3Dinvitations"),
+    );
+    assert!(bytes.is_empty());
+}
+
+#[tokio::test]
 async fn test_sign_up_missing_password() {
     // Setup identifiers and data structures
     let session_id = session::Id::default();
@@ -1482,6 +1587,7 @@ async fn test_sign_up_missing_password() {
         .times(1)
         .withf(move |id| *id == session_id)
         .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_activate_pre_registered_user_email_password().times(0);
     db.expect_sign_up_user().times(0);
 
     // Setup notifications manager mock
@@ -1526,6 +1632,9 @@ async fn test_sign_up_db_error() {
         .times(1)
         .withf(move |id| *id == session_id)
         .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_activate_pre_registered_user_email_password()
+        .times(1)
+        .returning(|_| Ok(None));
     db.expect_sign_up_user()
         .times(1)
         .returning(|_, _| Err(anyhow!("db error")));
@@ -1585,6 +1694,7 @@ async fn test_sign_up_validation_error() {
         .times(1)
         .withf(move |id| *id == session_id)
         .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_activate_pre_registered_user_email_password().times(0);
     db.expect_sign_up_user().times(0);
     db.expect_update_session()
         .times(1)

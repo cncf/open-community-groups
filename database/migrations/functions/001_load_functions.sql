@@ -1,5 +1,6 @@
 {{ template "auth/get_user_by_id.sql" }} -- Do not sort alphabetically, has dependency
-{{ template "auth/activate_pre_registered_user.sql" }}
+{{ template "auth/activate_pre_registered_user_email_password.sql" }}
+{{ template "auth/activate_pre_registered_user_external_provider.sql" }}
 {{ template "auth/get_user_by_email.sql" }}
 {{ template "auth/get_user_by_email_for_external_auth.sql" }}
 {{ template "auth/get_user_by_id_verified.sql" }}

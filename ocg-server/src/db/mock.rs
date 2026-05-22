@@ -16,7 +16,11 @@ mock! {
 
     #[async_trait]
     impl crate::db::auth::DBAuth for DB {
-        async fn activate_pre_registered_user(
+        async fn activate_pre_registered_user_email_password(
+            &self,
+            user_summary: &crate::auth::UserSummary,
+        ) -> Result<Option<(crate::auth::User, Uuid)>>;
+        async fn activate_pre_registered_user_external_provider(
             &self,
             user_id: &Uuid,
             user_summary: &crate::auth::UserSummary,

@@ -18,8 +18,18 @@ use crate::{
 /// Trait for database operations related to authentication and authorization.
 #[async_trait]
 pub(crate) trait DBAuth {
+    /// Activates a pre-registered user using password signup details.
+    async fn activate_pre_registered_user_email_password(
+        &self,
+        user_summary: &UserSummary,
+    ) -> Result<Option<(User, Uuid)>>;
+
     /// Activates a pre-registered user using externally verified identity details.
-    async fn activate_pre_registered_user(&self, user_id: &Uuid, user_summary: &UserSummary) -> Result<User>;
+    async fn activate_pre_registered_user_external_provider(
+        &self,
+        user_id: &Uuid,
+        user_summary: &UserSummary,
+    ) -> Result<User>;
 
     /// Creates a new session in the database.
     async fn create_session(&self, record: &session::Record) -> Result<()>;
@@ -90,9 +100,36 @@ pub(crate) trait DBAuth {
 #[async_trait]
 impl DBAuth for PgDB {
     #[instrument(skip(self, user_summary), err)]
-    async fn activate_pre_registered_user(&self, user_id: &Uuid, user_summary: &UserSummary) -> Result<User> {
+    async fn activate_pre_registered_user_email_password(
+        &self,
+        user_summary: &UserSummary,
+    ) -> Result<Option<(User, Uuid)>> {
+        let db = self.pool.get().await?;
+        let row = db
+            .query_opt(
+                "select * from activate_pre_registered_user_email_password($1::jsonb);",
+                &[&Json(user_summary)],
+            )
+            .await?;
+
+        let Some(row) = row else {
+            return Ok(None);
+        };
+
+        let user = row.try_get::<_, Json<User>>(0)?.0;
+        let verification_code = row.get(1);
+
+        Ok(Some((user, verification_code)))
+    }
+
+    #[instrument(skip(self, user_summary), err)]
+    async fn activate_pre_registered_user_external_provider(
+        &self,
+        user_id: &Uuid,
+        user_summary: &UserSummary,
+    ) -> Result<User> {
         self.fetch_json_one(
-            "select activate_pre_registered_user($1::uuid, $2::jsonb);",
+            "select activate_pre_registered_user_external_provider($1::uuid, $2::jsonb);",
             &[user_id, &Json(user_summary)],
         )
         .await

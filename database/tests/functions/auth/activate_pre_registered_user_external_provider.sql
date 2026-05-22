@@ -37,7 +37,7 @@ insert into "user" (
 
 -- Should activate a pre-registered user and resolve username collisions.
 select is(
-    activate_pre_registered_user(
+    activate_pre_registered_user_external_provider(
         :'userID',
         '{
             "name": "Alice Invited",
@@ -75,7 +75,7 @@ select results_eq(
 
 -- Should reject users that are already registered.
 select throws_ok(
-    $$ select activate_pre_registered_user(
+    $$ select activate_pre_registered_user_external_provider(
         '00000000-0000-0000-0000-000000000102'::uuid,
         '{"name": "Registered User", "provider": {}, "username": "registered-user"}'::jsonb
     ) $$,
@@ -85,7 +85,7 @@ select throws_ok(
 
 -- Should reject missing pre-registered users.
 select throws_ok(
-    $$ select activate_pre_registered_user(
+    $$ select activate_pre_registered_user_external_provider(
         '00000000-0000-0000-0000-999999999999'::uuid,
         '{"name": "Missing User", "provider": {}, "username": "missing"}'::jsonb
     ) $$,

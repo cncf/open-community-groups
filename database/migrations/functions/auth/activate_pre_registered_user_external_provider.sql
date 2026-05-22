@@ -1,5 +1,5 @@
 -- Activates a pre-registered user after verified external-provider login.
-create or replace function activate_pre_registered_user(
+create or replace function activate_pre_registered_user_external_provider(
     p_user_id uuid,
     p_user jsonb
 )

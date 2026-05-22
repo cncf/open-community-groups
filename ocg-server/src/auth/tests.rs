@@ -429,7 +429,7 @@ async fn get_or_sign_up_external_user_activates_pre_registered_user() {
         .times(1)
         .withf(|email| email == "user@example.com")
         .returning(move |_| Ok(Some(pre_registered_user.clone())));
-    db.expect_activate_pre_registered_user()
+    db.expect_activate_pre_registered_user_external_provider()
         .times(1)
         .withf(move |user_id, summary| {
             *user_id == pre_registered_user_id
