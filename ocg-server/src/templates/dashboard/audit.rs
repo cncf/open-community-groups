@@ -149,6 +149,11 @@ const AUDIT_ACTION_DEFINITIONS: &[AuditActionDefinition] = &[
         value: "event_added",
     },
     AuditActionDefinition {
+        label: "Event attendance canceled",
+        scopes: GROUP_SCOPES,
+        value: "event_attendee_attendance_canceled",
+    },
+    AuditActionDefinition {
         label: "Event attendee checked in",
         scopes: GROUP_SCOPES,
         value: "event_attendee_checked_in",

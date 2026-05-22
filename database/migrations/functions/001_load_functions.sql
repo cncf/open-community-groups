@@ -84,6 +84,7 @@
 {{ template "dashboard-group/add_event_series.sql" }}
 {{ template "dashboard-group/add_group_sponsor.sql" }}
 {{ template "dashboard-group/add_group_team_member.sql" }}
+{{ template "dashboard-group/cancel_event_attendee_attendance.sql" }}
 {{ template "dashboard-group/cancel_event_attendee_invitation.sql" }}
 {{ template "dashboard-group/cancel_event.sql" }}
 {{ template "dashboard-group/cancel_event_series_events.sql" }}

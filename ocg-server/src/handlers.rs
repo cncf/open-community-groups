@@ -28,6 +28,8 @@ pub(crate) mod group;
 pub(crate) mod images;
 /// Meetings handlers.
 pub(crate) mod meetings;
+/// Handler-layer notification helpers.
+pub(crate) mod notifications;
 /// Payments handlers.
 pub(crate) mod payments;
 /// Global site handlers.

@@ -22,7 +22,7 @@ use crate::{
     services::notifications::{DynNotificationsManager, NewNotification, NotificationKind},
     templates::dashboard::user::invitations,
     templates::notifications::EventWelcome,
-    util::{build_event_calendar_attachment, build_event_page_link},
+    util::{build_event_calendar_attachment, build_event_page_link, build_user_dashboard_events_link},
 };
 
 #[cfg(test)]
@@ -92,10 +92,13 @@ pub(crate) async fn accept_event_attendee_invitation(
         }
     };
     let base_url = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
+    let link = build_event_page_link(base_url, &event);
     let template_data = EventWelcome {
-        link: build_event_page_link(base_url, &event),
         event,
+        link,
         theme: site_settings.theme,
+
+        dashboard_link: Some(build_user_dashboard_events_link(base_url)),
     };
     let notification = NewNotification {
         attachments: vec![build_event_calendar_attachment(base_url, &template_data.event)],

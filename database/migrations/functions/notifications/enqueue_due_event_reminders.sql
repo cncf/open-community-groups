@@ -2,10 +2,13 @@
 create or replace function enqueue_due_event_reminders(p_base_url text)
 returns int as $$
 declare
+    v_attendee_recipients uuid[];
     v_base_url text;
     v_event record;
-    v_recipients uuid[];
+    v_recipient_count int;
     v_reminders_enqueued int := 0;
+    v_speaker_only_recipients uuid[];
+    v_template_data jsonb;
 begin
     -- Ensure only one worker enqueues due reminders per transaction window
     if not pg_try_advisory_xact_lock(hashtextextended('ocg:event-reminder-enqueue', 0)) then
@@ -52,53 +55,74 @@ begin
         order by e.starts_at asc, e.event_id asc
         for update of e skip locked
     loop
-        -- Collect verified attendees and speakers to notify
-        select coalesce(array_agg(recipient.user_id order by recipient.user_id), '{}')
-        into v_recipients
-        from (
-            -- Attendees
-            select ea.user_id
-            from event_attendee ea
-            join "user" u using (user_id)
-            where ea.event_id = v_event.event_id
+        -- Collect verified attendees who should see attendance cancellation copy
+        select coalesce(array_agg(ea.user_id order by ea.user_id), '{}')
+        into v_attendee_recipients
+        from event_attendee ea
+        join "user" u using (user_id)
+        where ea.event_id = v_event.event_id
+        and ea.status = 'confirmed'
+        and u.email_verified = true;
+
+        -- Collect verified speaker-only users who cannot cancel attendance
+        select coalesce(array_agg(es.user_id order by es.user_id), '{}')
+        into v_speaker_only_recipients
+        from event_speaker es
+        join "user" u using (user_id)
+        left join event_attendee ea
+            on ea.event_id = es.event_id
+            and ea.user_id = es.user_id
             and ea.status = 'confirmed'
-            and u.email_verified = true
+        where es.event_id = v_event.event_id
+        and ea.user_id is null
+        and u.email_verified = true;
 
-            union
-
-            -- Speakers
-            select es.user_id
-            from event_speaker es
-            join "user" u using (user_id)
-            where es.event_id = v_event.event_id
-            and u.email_verified = true
-        ) recipient;
+        -- Count recipient groups before building notification data
+        v_recipient_count :=
+            cardinality(v_attendee_recipients) + cardinality(v_speaker_only_recipients);
 
         -- Enqueue reminder notifications when recipients exist
-        if coalesce(array_length(v_recipients, 1), 0) > 0 then
-            perform enqueue_notification(
-                'event-reminder',
-                jsonb_strip_nulls(
-                    jsonb_build_object(
-                        'event',
-                            get_event_summary(
-                                v_event.community_id,
-                                v_event.group_id,
-                                v_event.event_id
-                            )::jsonb,
-                        'link', format(
-                            '%s/%s/group/%s/event/%s',
-                            v_base_url,
-                            v_event.community_name,
-                            coalesce(v_event.group_slug_pretty, v_event.group_slug),
-                            v_event.event_slug
-                        ),
-                        'theme', v_event.theme
-                    )
-                ),
-                '[]'::jsonb,
-                v_recipients
+        if v_recipient_count > 0 then
+            -- Build base template data shared by all reminder recipients
+            v_template_data := jsonb_strip_nulls(
+                jsonb_build_object(
+                    'event',
+                        get_event_summary(
+                            v_event.community_id,
+                            v_event.group_id,
+                            v_event.event_id
+                        )::jsonb,
+                    'link', format(
+                        '%s/%s/group/%s/event/%s',
+                        v_base_url,
+                        v_event.community_name,
+                        coalesce(v_event.group_slug_pretty, v_event.group_slug),
+                        v_event.event_slug
+                    ),
+                    'dashboard_link', format('%s/dashboard/user?tab=events', v_base_url),
+                    'theme', v_event.theme
+                )
             );
+
+            -- Enqueue attendee reminders with attendance cancellation copy enabled
+            if cardinality(v_attendee_recipients) > 0 then
+                perform enqueue_notification(
+                    'event-reminder',
+                    v_template_data || jsonb_build_object('show_attendance_cancellation_copy', true),
+                    '[]'::jsonb,
+                    v_attendee_recipients
+                );
+            end if;
+
+            -- Enqueue speaker-only reminders without attendance cancellation copy
+            if cardinality(v_speaker_only_recipients) > 0 then
+                perform enqueue_notification(
+                    'event-reminder',
+                    v_template_data || jsonb_build_object('show_attendance_cancellation_copy', false),
+                    '[]'::jsonb,
+                    v_speaker_only_recipients
+                );
+            end if;
 
             -- Mark the current start time as evaluated and reminders as sent
             update event set
@@ -106,7 +130,8 @@ begin
                 event_reminder_sent_at = now()
             where event_id = v_event.event_id;
 
-            v_reminders_enqueued := v_reminders_enqueued + array_length(v_recipients, 1);
+            -- Track notifications created for both reminder recipient groups
+            v_reminders_enqueued := v_reminders_enqueued + v_recipient_count;
         else
             -- Mark the current start time as evaluated when there are no recipients
             update event set

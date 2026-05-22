@@ -50,6 +50,21 @@
   </div>
 
   {{ email::button(link = link, text = "View event", color = theme.primary_color) }}
+
+  {% if let Some(dashboard_link) = &dashboard_link -%}
+    <p class="default mt-30 mb-15"
+       style="margin-top: 30px;
+              margin-bottom: 15px">
+      {% if show_attendance_cancellation_copy -%}
+        If you can no longer attend, you can cancel your attendance from the My
+        Events section in your dashboard.
+      {% else -%}
+        You can review this event from the My Events section in your dashboard.
+      {% endif -%}
+    </p>
+
+    {{ email::button(link = dashboard_link, text = "Open My Events", color = theme.primary_color) }}
+  {% endif -%}
 {% endblock content -%}
 
 {% block footer -%}

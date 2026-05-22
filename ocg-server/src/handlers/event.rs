@@ -20,6 +20,7 @@ use crate::{
     db::{DynDB, payments::PrepareEventCheckoutPurchaseInput},
     handlers::{
         extractors::{CurrentUser, ValidatedForm, ValidatedFormQs},
+        notifications::try_enqueue_attendance_canceled_notification,
         request_matches_site,
         site::not_found,
         trim_public_gallery_images,
@@ -39,7 +40,7 @@ use crate::{
         event::{EventAttendanceStatus, EventFull, EventSummary},
         payments::{EventPurchaseStatus, EventTicketType, PreparedEventCheckout},
     },
-    util::{build_event_calendar_attachment, build_event_page_link},
+    util::{build_event_calendar_attachment, build_event_page_link, build_user_dashboard_events_link},
     validation::{
         MAX_LEN_DESCRIPTION_SHORT, MAX_LEN_EVENT_LABELS_PER_SUBMISSION, MAX_LEN_S, trimmed_non_empty_opt,
     },
@@ -267,9 +268,11 @@ pub(crate) async fn attend_event(
             // Confirm the RSVP with the event details and calendar attachment
             let calendar_ics = build_event_calendar_attachment(base_url, &event);
             let template_data = EventWelcome {
-                link: link.clone(),
                 event: event.clone(),
+                link: link.clone(),
                 theme: site_settings.theme.clone(),
+
+                dashboard_link: Some(build_user_dashboard_events_link(base_url)),
             };
             let notification = NewNotification {
                 attachments: vec![calendar_ics],
@@ -411,22 +414,36 @@ pub(crate) async fn leave_event(
     let base_url = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
     let link = build_event_page_link(base_url, &event);
 
-    // Only send a leave notification when the user exits the waitlist
-    if leave_result.left_status == EventAttendanceStatus::Waitlisted {
-        let template_data = EventWaitlistLeft {
-            event: event.clone(),
-            link: link.clone(),
-            theme: site_settings.theme.clone(),
-        };
-        let notification = NewNotification {
-            attachments: vec![],
-            kind: NotificationKind::EventWaitlistLeft,
-            recipients: vec![user.user_id],
-            template_data: Some(to_value(&template_data)?),
-        };
-        if let Err(err) = notifications_manager.enqueue(&notification).await {
-            warn!(error = %err, "failed to enqueue event waitlist leave notification");
+    // Confirm attendee cancellation and waitlist exits
+    match leave_result.left_status {
+        EventAttendanceStatus::Attendee => {
+            try_enqueue_attendance_canceled_notification(
+                &event,
+                &notifications_manager,
+                user.user_id,
+                &server_cfg,
+                &site_settings,
+            )
+            .await;
         }
+        EventAttendanceStatus::Waitlisted => {
+            let template_data = EventWaitlistLeft {
+                event: event.clone(),
+                link: link.clone(),
+                theme: site_settings.theme.clone(),
+            };
+            let notification = NewNotification {
+                attachments: vec![],
+                kind: NotificationKind::EventWaitlistLeft,
+                recipients: vec![user.user_id],
+                template_data: Some(to_value(&template_data)?),
+            };
+            if let Err(err) = notifications_manager.enqueue(&notification).await {
+                warn!(error = %err, "failed to enqueue event waitlist leave notification");
+            }
+        }
+        EventAttendanceStatus::PendingApproval => {}
+        _ => unreachable!("leave_event cannot return this left status"),
     }
 
     // Notify users promoted off the waitlist after a spot opens up

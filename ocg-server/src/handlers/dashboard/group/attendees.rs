@@ -22,6 +22,7 @@ use crate::{
     handlers::{
         error::HandlerError,
         extractors::{CurrentUser, SelectedCommunityId, SelectedGroupId, ValidatedForm},
+        notifications::enqueue_attendance_canceled_notification,
     },
     router::serde_qs_config,
     services::{
@@ -30,10 +31,10 @@ use crate::{
     },
     templates::{
         dashboard::group::attendees::{self, AttendeesFilters, AttendeesPaginationFilters},
-        notifications::{EventCustom, EventInvitation, EventWelcome},
+        notifications::{EventCustom, EventInvitation, EventWaitlistPromoted, EventWelcome},
     },
     types::{pagination::NavigationLinks, permissions::GroupPermission},
-    util::{build_event_calendar_attachment, build_event_page_link},
+    util::{build_event_calendar_attachment, build_event_page_link, build_user_dashboard_events_link},
     validation::{
         MAX_LEN_DESCRIPTION_SHORT, MAX_LEN_M, MAX_LEN_NOTIFICATION_BODY, trimmed_non_empty,
         trimmed_non_empty_opt,
@@ -142,6 +143,8 @@ pub(crate) async fn accept_invitation_request(
         event,
         link,
         theme: site_settings.theme,
+
+        dashboard_link: Some(build_user_dashboard_events_link(base_url)),
     };
     let notification = NewNotification {
         attachments: vec![calendar_ics],
@@ -185,6 +188,79 @@ pub(crate) async fn approve_refund_request(
             review_note: review.review_note.clone(),
         })
         .await?;
+
+    Ok((
+        StatusCode::NO_CONTENT,
+        [("HX-Trigger", "refresh-event-attendees")],
+    )
+        .into_response())
+}
+
+/// Cancels a confirmed attendee's event attendance.
+#[instrument(skip_all, err)]
+#[allow(clippy::too_many_arguments)]
+pub(crate) async fn cancel_event_attendee_attendance(
+    CurrentUser(user): CurrentUser,
+    SelectedCommunityId(community_id): SelectedCommunityId,
+    SelectedGroupId(group_id): SelectedGroupId,
+    State(db): State<DynDB>,
+    State(notifications_manager): State<DynNotificationsManager>,
+    State(server_cfg): State<HttpServerConfig>,
+    Path((event_id, user_id)): Path<(Uuid, Uuid)>,
+) -> Result<impl IntoResponse, HandlerError> {
+    // Cancel the attendee and collect any waitlist promotions
+    let cancel_result = db
+        .cancel_event_attendee_attendance(user.user_id, group_id, event_id, user_id)
+        .await?;
+
+    // Load notification context after cancellation succeeds
+    let (site_settings, event) = match tokio::try_join!(
+        db.get_site_settings(),
+        db.get_event_summary_by_id(community_id, event_id)
+    ) {
+        Ok(context) => context,
+        Err(err) => {
+            warn!(error = %err, "failed to load event attendance cancellation notification context");
+            return Ok((
+                StatusCode::NO_CONTENT,
+                [("HX-Trigger", "refresh-event-attendees")],
+            )
+                .into_response());
+        }
+    };
+
+    // Confirm the canceled attendance to the attendee
+    if let Err(err) = enqueue_attendance_canceled_notification(
+        &event,
+        &notifications_manager,
+        user_id,
+        &server_cfg,
+        &site_settings,
+    )
+    .await
+    {
+        warn!(error = %err, "failed to enqueue event attendance cancellation notification");
+    }
+
+    // Notify users promoted off the waitlist after a spot opens up
+    if !cancel_result.promoted_user_ids.is_empty() && !event.test_event {
+        let base_url = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
+        let calendar_ics = build_event_calendar_attachment(base_url, &event);
+        let template_data = EventWaitlistPromoted {
+            event: event.clone(),
+            link: build_event_page_link(base_url, &event),
+            theme: site_settings.theme,
+        };
+        let notification = NewNotification {
+            attachments: vec![calendar_ics],
+            kind: NotificationKind::EventWaitlistPromoted,
+            recipients: cancel_result.promoted_user_ids,
+            template_data: Some(serde_json::to_value(&template_data)?),
+        };
+        if let Err(err) = notifications_manager.enqueue(&notification).await {
+            warn!(error = %err, "failed to enqueue waitlist promotion notification");
+        }
+    }
 
     Ok((
         StatusCode::NO_CONTENT,

@@ -39,6 +39,9 @@ pub(crate) struct ListPage {
 #[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct UserEvent {
+    /// Whether the user can cancel attendance from this row.
+    #[serde(default)]
+    pub can_cancel_attendance: bool,
     /// Event summary data.
     pub event: EventSummary,
     /// Roles the user has in the event.

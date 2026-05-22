@@ -144,6 +144,16 @@ returns json as $$
             select coalesce(
                 json_agg(
                     json_build_object(
+                        'can_cancel_attendance',
+                        event_rows_page.roles = array['Attendee'::text]
+                        and not exists (
+                            select 1
+                            from event_purchase ep
+                            where ep.event_id = event_rows_page.event_id
+                            and ep.user_id = p_user_id
+                            and ep.status in ('completed', 'refund-requested')
+                            and ep.amount_minor > 0
+                        ),
                         'event',
                         get_event_summary(
                             event_rows_page.community_id,

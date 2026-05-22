@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(4);
+select plan(5);
 
 -- ============================================================================
 -- VARIABLES
@@ -17,6 +17,7 @@ select plan(4);
 \set groupInactiveID '00000000-0000-0000-0000-000000000033'
 \set userEmptyID '00000000-0000-0000-0000-000000000099'
 \set userID '00000000-0000-0000-0000-000000000081'
+\set userPaidID '00000000-0000-0000-0000-000000000082'
 
 \set eventAID '00000000-0000-0000-0000-000000000101'
 \set eventBID '00000000-0000-0000-0000-000000000102'
@@ -27,6 +28,10 @@ select plan(4);
 \set eventNoStartsAtID '00000000-0000-0000-0000-000000000107'
 \set eventPastID '00000000-0000-0000-0000-000000000108'
 \set eventPendingInvitationID '00000000-0000-0000-0000-000000000111'
+\set eventPaidID '00000000-0000-0000-0000-000000000112'
+\set eventPaidPriceWindowID '00000000-0000-0000-0000-000000000115'
+\set eventPaidPurchaseID '00000000-0000-0000-0000-000000000113'
+\set eventPaidTicketTypeID '00000000-0000-0000-0000-000000000114'
 \set eventUnpublishedID '00000000-0000-0000-0000-000000000109'
 \set eventDeletedGroupID '00000000-0000-0000-0000-000000000110'
 
@@ -65,7 +70,8 @@ insert into "group" (group_id, active, community_id, deleted, group_category_id,
 
 -- User
 insert into "user" (user_id, auth_hash, email, email_verified, username, name) values
-    (:'userID', 'auth-hash', 'alice@example.com', true, 'alice', 'Alice');
+    (:'userID', 'auth-hash', 'alice@example.com', true, 'alice', 'Alice'),
+    (:'userPaidID', 'paid-auth-hash', 'paid@example.com', true, 'paid', 'Paid User');
 
 -- Events
 insert into event (
@@ -235,12 +241,55 @@ insert into event (
         'event-deleted-group',
         '2099-01-17 10:00:00+00',
         'UTC'
+    ),
+    (
+        :'eventPaidID',
+        false,
+        false,
+        'Event Paid',
+        :'eventCategoryID',
+        'in-person',
+        :'groupID',
+        'Event Paid',
+        true,
+        'event-paid',
+        '2099-01-18 10:00:00+00',
+        'UTC'
     );
+
+update event
+set payment_currency_code = 'USD'
+where event_id = :'eventPaidID'::uuid;
 
 -- Sessions for speaker role tests
 insert into session (session_id, event_id, name, session_kind_id, starts_at) values
     (:'sessionAID', :'eventAID', 'Session A', 'virtual', '2099-01-10 11:00:00+00'),
     (:'sessionCID', :'eventCID', 'Session C', 'virtual', '2099-01-12 11:00:00+00');
+
+-- Event ticket types
+insert into event_ticket_type (
+    event_ticket_type_id,
+    event_id,
+    "order",
+    seats_total,
+    title
+) values (
+    :'eventPaidTicketTypeID',
+    :'eventPaidID',
+    1,
+    1,
+    'Paid admission'
+);
+
+insert into event_ticket_price_window (
+    event_ticket_price_window_id,
+    amount_minor,
+    event_ticket_type_id
+) values (
+    :'eventPaidPriceWindowID',
+    1500,
+    :'eventPaidTicketTypeID'
+);
 
 -- User participation
 insert into event_attendee (event_id, user_id, status) values
@@ -252,6 +301,7 @@ insert into event_attendee (event_id, user_id, status) values
     (:'eventInactiveGroupID', :'userID', 'confirmed'),
     (:'eventNoStartsAtID', :'userID', 'confirmed'),
     (:'eventPastID', :'userID', 'confirmed'),
+    (:'eventPaidID', :'userPaidID', 'confirmed'),
     (:'eventPendingInvitationID', :'userID', 'invitation-pending'),
     (:'eventUnpublishedID', :'userID', 'confirmed');
 
@@ -265,6 +315,26 @@ insert into session_speaker (session_id, user_id, featured) values
     (:'sessionAID', :'userID', false),
     (:'sessionCID', :'userID', true);
 
+insert into event_purchase (
+    event_purchase_id,
+    amount_minor,
+    currency_code,
+    event_id,
+    event_ticket_type_id,
+    status,
+    ticket_title,
+    user_id
+) values (
+    :'eventPaidPurchaseID',
+    1500,
+    'USD',
+    :'eventPaidID',
+    :'eventPaidTicketTypeID',
+    'completed',
+    'Paid admission',
+    :'userPaidID'
+);
+
 -- ============================================================================
 -- TESTS
 -- ============================================================================
@@ -276,18 +346,24 @@ select is(
         'events',
         jsonb_build_array(
             jsonb_build_object(
+                'can_cancel_attendance',
+                false,
                 'event',
                 get_event_summary(:'communityID'::uuid, :'groupID'::uuid, :'eventAID'::uuid)::jsonb,
                 'roles',
                 jsonb_build_array('Attendee', 'Host', 'Speaker')
             ),
             jsonb_build_object(
+                'can_cancel_attendance',
+                true,
                 'event',
                 get_event_summary(:'communityID'::uuid, :'groupID'::uuid, :'eventBID'::uuid)::jsonb,
                 'roles',
                 jsonb_build_array('Attendee')
             ),
             jsonb_build_object(
+                'can_cancel_attendance',
+                false,
                 'event',
                 get_event_summary(:'communityID'::uuid, :'groupID'::uuid, :'eventCID'::uuid)::jsonb,
                 'roles',
@@ -319,6 +395,8 @@ select is(
         'events',
         jsonb_build_array(
             jsonb_build_object(
+                'can_cancel_attendance',
+                true,
                 'event',
                 get_event_summary(:'communityID'::uuid, :'groupID'::uuid, :'eventBID'::uuid)::jsonb,
                 'roles',
@@ -329,6 +407,27 @@ select is(
         3
     ),
     'Should paginate events and keep total count'
+);
+
+-- Should not allow paid attendee-only events to be canceled from My Events
+select is(
+    list_user_events(:'userPaidID'::uuid, '{"limit": 10, "offset": 0}'::jsonb)::jsonb,
+    jsonb_build_object(
+        'events',
+        jsonb_build_array(
+            jsonb_build_object(
+                'can_cancel_attendance',
+                false,
+                'event',
+                get_event_summary(:'communityID'::uuid, :'groupID'::uuid, :'eventPaidID'::uuid)::jsonb,
+                'roles',
+                jsonb_build_array('Attendee')
+            )
+        ),
+        'total',
+        1
+    ),
+    'Should not allow paid attendee-only events to be canceled from My Events'
 );
 
 -- Should return empty result for users without events

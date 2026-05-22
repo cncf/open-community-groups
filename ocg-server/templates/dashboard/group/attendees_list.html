@@ -258,7 +258,8 @@
             <td class="px-3 xl:px-5 py-4 w-[72px] text-right">
               <div class="relative inline-flex justify-end">
                 {% if can_manage_events
-                  && (attendee.status == "invitation-pending"
+                  && (attendee.status == "confirmed"
+                  || attendee.status == "invitation-pending"
                   || attendee.refund_request_status == Some(crate::types::payments::EventRefundRequestStatus::Pending)
                   || attendee.refund_request_status == Some(crate::types::payments::EventRefundRequestStatus::Approving)) -%}
                   <details data-attendee-row-actions-menu class="group relative">
@@ -286,6 +287,26 @@
                                     type="button">
                               <div class="svg-icon size-4 icon-cancel shrink-0 bg-stone-500"></div>
                               <span>Cancel invitation</span>
+                            </button>
+                          </li>
+                        {% endif -%}
+                        {% if attendee.status == "confirmed" -%}
+                          <li>
+                            <button id="cancel-attendance-{{ attendee.user_id }}"
+                                    {% if !self::is_paid_attendee(attendee.amount_minor) && !event.canceled && !event.is_past() -%}
+                                      hx-delete="/dashboard/group/events/{{ event.event_id }}/attendees/{{ attendee.user_id }}/attendance" hx-indicator="#dashboard-spinner" hx-trigger="confirmed" hx-disabled-elt="this" data-confirm-action data-confirm-message="Are you sure you want to cancel this attendance?" data-confirm-text="Yes" data-success-message="Attendance canceled." data-error-message="Something went wrong canceling this attendance. Please try again later."
+                                    {% else if self::is_paid_attendee(attendee.amount_minor) -%}
+                                      disabled title="Paid attendee attendance cannot be canceled from attendee actions."
+                                    {% else if event.canceled -%}
+                                      disabled title="Canceled event attendance cannot be canceled."
+                                    {% else -%}
+                                      disabled title="Past event attendance cannot be canceled."
+                                    {% endif -%}
+                                    role="menuitem"
+                                    class="flex items-center w-full px-4 py-2 hover:bg-stone-100 hover:text-stone-900 transition-colors gap-3 text-left disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white disabled:hover:text-stone-700"
+                                    type="button">
+                              <div class="svg-icon size-4 icon-cancel shrink-0 bg-stone-500"></div>
+                              <span>Cancel attendance</span>
                             </button>
                           </li>
                         {% endif -%}

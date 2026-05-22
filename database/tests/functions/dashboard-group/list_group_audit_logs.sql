@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(4);
+select plan(5);
 
 -- ============================================================================
 -- VARIABLES
@@ -21,6 +21,7 @@ select plan(4);
 \set audit8ID '00000000-0000-0000-0000-000000000109'
 \set audit9ID '00000000-0000-0000-0000-000000000110'
 \set audit10ID '00000000-0000-0000-0000-000000000111'
+\set audit11ID '00000000-0000-0000-0000-000000000112'
 \set communityID '00000000-0000-0000-0000-000000000001'
 \set groupCategoryID '00000000-0000-0000-0000-000000000021'
 \set groupID '00000000-0000-0000-0000-000000000031'
@@ -180,6 +181,18 @@ insert into audit_log (
         'user'
     ),
     (
+        :'audit11ID',
+        'event_attendee_attendance_canceled',
+        :'actor1ID',
+        'alice',
+        :'communityID',
+        '2024-03-02 16:30:00+00',
+        '{"event_id": "00000000-0000-0000-0000-000000000057"}',
+        :'groupID',
+        :'targetUserID',
+        'user'
+    ),
+    (
         :'audit3ID',
         'event_added',
         :'actor1ID',
@@ -238,6 +251,16 @@ select is(
                 "resource_id": "00000000-0000-0000-0000-000000000031",
                 "resource_name": "Platform",
                 "resource_type": "group"
+            },
+            {
+                "action": "event_attendee_attendance_canceled",
+                "actor_username": "alice",
+                "audit_log_id": "00000000-0000-0000-0000-000000000112",
+                "created_at": 1709397000,
+                "details": {"event_id": "00000000-0000-0000-0000-000000000057"},
+                "resource_id": "00000000-0000-0000-0000-000000000041",
+                "resource_name": "Sara",
+                "resource_type": "user"
             },
             {
                 "action": "event_attendee_invitation_canceled",
@@ -321,7 +344,7 @@ select is(
             }
         ]'::jsonb,
         'total',
-        9
+        10
     ),
     'Should return only group dashboard actions for the selected group'
 );
@@ -352,6 +375,32 @@ select is(
     'Should filter group audit logs by actor and action'
 );
 
+-- Should filter group audit logs by attendee attendance cancellation action
+select is(
+    list_group_audit_logs(
+        :'groupID'::uuid,
+        '{"action": "event_attendee_attendance_canceled", "limit": 50, "offset": 0, "sort": "created-desc"}'::jsonb
+    )::jsonb,
+    jsonb_build_object(
+        'logs',
+        '[
+            {
+                "action": "event_attendee_attendance_canceled",
+                "actor_username": "alice",
+                "audit_log_id": "00000000-0000-0000-0000-000000000112",
+                "created_at": 1709397000,
+                "details": {"event_id": "00000000-0000-0000-0000-000000000057"},
+                "resource_id": "00000000-0000-0000-0000-000000000041",
+                "resource_name": "Sara",
+                "resource_type": "user"
+            }
+        ]'::jsonb,
+        'total',
+        1
+    ),
+    'Should filter group audit logs by attendee attendance cancellation action'
+);
+
 -- Should return group audit logs in ascending order with pagination
 select is(
     list_group_audit_logs(
@@ -373,7 +422,7 @@ select is(
             }
         ]'::jsonb,
         'total',
-        8
+        9
     ),
     'Should return group audit logs in ascending order with pagination'
 );

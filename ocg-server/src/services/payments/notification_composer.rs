@@ -12,8 +12,11 @@ use crate::{
     templates::notifications::{
         EventRefundApproved, EventRefundRejected, EventRefundRequested, EventWelcome,
     },
-    util::{build_event_calendar_attachment, build_event_page_link},
+    util::{build_event_calendar_attachment, build_event_page_link, build_user_dashboard_events_link},
 };
+
+#[cfg(test)]
+mod tests;
 
 /// Composes and enqueues notifications for payments workflows.
 #[derive(Clone)]
@@ -22,9 +25,6 @@ pub(super) struct PaymentsNotificationComposer {
     notifications_manager: DynNotificationsManager,
     server_cfg: HttpServerConfig,
 }
-
-#[cfg(test)]
-mod tests;
 
 impl PaymentsNotificationComposer {
     /// Create a new payments notification composer.
@@ -68,25 +68,43 @@ impl PaymentsNotificationComposer {
         .map_err(Into::into)
     }
 
-    /// Enqueue the attendee welcome notification for a completed checkout.
+    /// Enqueue the attendee welcome notification for a completed provider checkout.
     pub(super) async fn enqueue_checkout_completed_notification(
         &self,
         completed_purchase: CompletedEventPurchase,
     ) {
-        self.enqueue_event_welcome_notification(
+        self.enqueue_event_welcome_notification_with_self_service(
             completed_purchase.community_id,
             completed_purchase.event_id,
             completed_purchase.user_id,
+            EventWelcomeSelfService::EventPageRefund,
         )
         .await;
     }
 
-    /// Enqueue the attendee welcome notification after a successful ticket purchase.
+    /// Enqueue the attendee welcome notification with dashboard cancellation guidance.
     pub(super) async fn enqueue_event_welcome_notification(
         &self,
         community_id: Uuid,
         event_id: Uuid,
         user_id: Uuid,
+    ) {
+        self.enqueue_event_welcome_notification_with_self_service(
+            community_id,
+            event_id,
+            user_id,
+            EventWelcomeSelfService::DashboardCancellation,
+        )
+        .await;
+    }
+
+    /// Enqueue the attendee welcome notification with context-specific self-service guidance.
+    async fn enqueue_event_welcome_notification_with_self_service(
+        &self,
+        community_id: Uuid,
+        event_id: Uuid,
+        user_id: Uuid,
+        self_service: EventWelcomeSelfService,
     ) {
         // Skip notification delivery when the event context cannot be loaded
         let Some((event, site_settings)) = self
@@ -98,6 +116,12 @@ impl PaymentsNotificationComposer {
 
         // Build the attendee-facing welcome notification and calendar attachment
         let base_url = self.base_url();
+        let dashboard_link = match self_service {
+            EventWelcomeSelfService::DashboardCancellation => {
+                Some(build_user_dashboard_events_link(base_url))
+            }
+            EventWelcomeSelfService::EventPageRefund => None,
+        };
         let link = build_event_page_link(base_url, &event);
         let notification = NewNotification {
             attachments: vec![build_event_calendar_attachment(base_url, &event)],
@@ -107,6 +131,8 @@ impl PaymentsNotificationComposer {
                 event,
                 link,
                 theme: site_settings.theme,
+
+                dashboard_link,
             })
             .ok(),
         };
@@ -216,4 +242,13 @@ impl PaymentsNotificationComposer {
             }
         }
     }
+}
+
+/// Self-service guidance shown in event welcome notifications.
+#[derive(Debug, Clone, Copy)]
+enum EventWelcomeSelfService {
+    /// Attendees can cancel from the My Events dashboard.
+    DashboardCancellation,
+    /// Attendees currently manage paid ticket refunds from the event page.
+    EventPageRefund,
 }

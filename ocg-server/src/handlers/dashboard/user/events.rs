@@ -2,19 +2,28 @@
 
 use askama::Template;
 use axum::{
-    extract::{RawQuery, State},
-    http::HeaderName,
+    extract::{Path, RawQuery, State},
+    http::{HeaderName, StatusCode},
     response::{Html, IntoResponse},
 };
-use tracing::instrument;
+use serde_json::to_value;
+use tracing::{instrument, warn};
 use uuid::Uuid;
 
 use crate::{
+    config::HttpServerConfig,
     db::DynDB,
-    handlers::{error::HandlerError, extractors::CurrentUser},
+    handlers::{
+        error::HandlerError, extractors::CurrentUser, notifications::enqueue_attendance_canceled_notification,
+    },
     router::serde_qs_config,
-    templates::dashboard::user::events,
-    types::pagination::{self, NavigationLinks},
+    services::notifications::{DynNotificationsManager, NewNotification, NotificationKind},
+    templates::{dashboard::user::events, notifications::EventWaitlistPromoted},
+    types::{
+        event::EventAttendanceStatus,
+        pagination::{self, NavigationLinks},
+    },
+    util::{build_event_calendar_attachment, build_event_page_link},
 };
 
 #[cfg(test)]
@@ -42,6 +51,85 @@ pub(crate) async fn list_page(
     let headers = [(HeaderName::from_static("hx-push-url"), url)];
 
     Ok((headers, Html(template.render()?)))
+}
+
+// Actions handlers.
+
+/// Cancels the current user's event attendance from the dashboard.
+#[instrument(skip_all, err)]
+pub(crate) async fn cancel_attendance(
+    CurrentUser(user): CurrentUser,
+    State(db): State<DynDB>,
+    State(notifications_manager): State<DynNotificationsManager>,
+    State(server_cfg): State<HttpServerConfig>,
+    Path((community_name, event_id)): Path<(String, Uuid)>,
+) -> Result<impl IntoResponse, HandlerError> {
+    // Resolve the community from the dashboard route
+    let community_id = db
+        .get_community_id_by_name(&community_name)
+        .await?
+        .ok_or(HandlerError::NotFound)?;
+
+    // Validate the row still represents active attendee attendance
+    let attendance = db.get_event_attendance(community_id, event_id, user.user_id).await?;
+    if attendance.status != EventAttendanceStatus::Attendee {
+        return Err(anyhow::anyhow!("only attendee attendance can be canceled from My Events").into());
+    }
+
+    // Cancel the user's attendance and collect any waitlist promotions
+    let leave_result = db.leave_event(community_id, event_id, user.user_id).await?;
+
+    // Load notification context after cancellation succeeds
+    let (site_settings, event) = match tokio::try_join!(
+        db.get_site_settings(),
+        db.get_event_summary_by_id(community_id, event_id)
+    ) {
+        Ok(context) => context,
+        Err(err) => {
+            warn!(error = %err, "failed to load user dashboard attendance cancellation notification context");
+            return Ok((
+                StatusCode::NO_CONTENT,
+                [("HX-Trigger", "refresh-user-dashboard-content")],
+            ));
+        }
+    };
+
+    // Confirm the canceled attendance to the user
+    if let Err(err) = enqueue_attendance_canceled_notification(
+        &event,
+        &notifications_manager,
+        user.user_id,
+        &server_cfg,
+        &site_settings,
+    )
+    .await
+    {
+        warn!(error = %err, "failed to enqueue event attendance cancellation notification");
+    }
+
+    // Notify users promoted off the waitlist after a spot opens up
+    if !leave_result.promoted_user_ids.is_empty() && !event.test_event {
+        let base_url = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
+        let template_data = EventWaitlistPromoted {
+            event: event.clone(),
+            link: build_event_page_link(base_url, &event),
+            theme: site_settings.theme,
+        };
+        let notification = NewNotification {
+            attachments: vec![build_event_calendar_attachment(base_url, &event)],
+            kind: NotificationKind::EventWaitlistPromoted,
+            recipients: leave_result.promoted_user_ids,
+            template_data: Some(to_value(&template_data)?),
+        };
+        if let Err(err) = notifications_manager.enqueue(&notification).await {
+            warn!(error = %err, "failed to enqueue waitlist promotion notification");
+        }
+    }
+
+    Ok((
+        StatusCode::NO_CONTENT,
+        [("HX-Trigger", "refresh-user-dashboard-content")],
+    ))
 }
 
 // Helpers.

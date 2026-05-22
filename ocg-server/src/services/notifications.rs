@@ -27,11 +27,12 @@ use crate::{
     config::EmailConfig,
     db::DynDB,
     templates::notifications::{
-        CfsSubmissionUpdated, CommunityTeamInvitation, EmailVerification, EventCanceled, EventCustom,
-        EventInvitation, EventPublished, EventRefundApproved, EventRefundRejected, EventRefundRequested,
-        EventReminder, EventRescheduled, EventSeriesCanceled, EventSeriesPublished, EventWaitlistJoined,
-        EventWaitlistLeft, EventWaitlistPromoted, EventWelcome, GroupCustom, GroupTeamInvitation,
-        GroupWelcome, SessionProposalCoSpeakerInvitation, SpeakerSeriesWelcome, SpeakerWelcome,
+        CfsSubmissionUpdated, CommunityTeamInvitation, EmailVerification, EventAttendanceCanceled,
+        EventCanceled, EventCustom, EventInvitation, EventPublished, EventRefundApproved,
+        EventRefundRejected, EventRefundRequested, EventReminder, EventRescheduled, EventSeriesCanceled,
+        EventSeriesPublished, EventWaitlistJoined, EventWaitlistLeft, EventWaitlistPromoted, EventWelcome,
+        GroupCustom, GroupTeamInvitation, GroupWelcome, SessionProposalCoSpeakerInvitation,
+        SpeakerSeriesWelcome, SpeakerWelcome,
     },
 };
 
@@ -331,6 +332,12 @@ impl DeliveryWorker {
             NotificationKind::EmailVerification => {
                 let subject = "Verify your email address".to_string();
                 let template: EmailVerification = serde_json::from_value(template_data)?;
+                let body = template.render()?;
+                (subject, body)
+            }
+            NotificationKind::EventAttendanceCanceled => {
+                let subject = "Attendance canceled".to_string();
+                let template: EventAttendanceCanceled = serde_json::from_value(template_data)?;
                 let body = template.render()?;
                 (subject, body)
             }
@@ -656,6 +663,8 @@ pub(crate) enum NotificationKind {
     CommunityTeamInvitation,
     /// Notification for email verification.
     EmailVerification,
+    /// Notification for a canceled event attendance.
+    EventAttendanceCanceled,
     /// Notification for an event canceled.
     EventCanceled,
     /// Notification for a custom event message.
