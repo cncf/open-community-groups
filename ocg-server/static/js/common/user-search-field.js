@@ -4,6 +4,8 @@ import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import "/static/js/common/logo-image.js";
 import { computeUserInitials } from "/static/js/common/common.js";
 
+const emailAddressPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 /**
  * UserSearchField component for searching and selecting users.
  *
@@ -24,7 +26,11 @@ export class UserSearchField extends LitWrapper {
    *   "community")
    * @property {string} label - Label text used in placeholders and messages
    * @property {string} legend - Helper text displayed under the input
+   * @property {string} inputId - Input ID used by external labels
    * @property {string} placeholderText - Custom placeholder for search input
+   * @property {boolean} emailActionEnabled - Show an email action for valid email queries
+   * @property {string} emailActionText - Supporting text for the email action row
+   * @property {boolean} persistQueryOnOutside - Keep the query when focus leaves
    * @property {number} searchDelay - Debounce delay for search (milliseconds)
    * @property {Array} excludeUsernames - Usernames to filter out from results
    * @property {boolean} _isSearching - Internal loading indicator state
@@ -38,12 +44,16 @@ export class UserSearchField extends LitWrapper {
     label: { type: String },
     legend: { type: String },
     inputClass: { type: String, attribute: "input-class" },
+    inputId: { type: String, attribute: "input-id" },
     placeholderText: { type: String, attribute: "placeholder-text" },
+    emailActionEnabled: { type: Boolean, attribute: "email-action-enabled" },
+    emailActionText: { type: String, attribute: "email-action-text" },
     searchDelay: { type: Number, attribute: "search-delay" },
     disabledUserIds: { type: Array, attribute: false },
     excludeUsernames: { type: Array, attribute: false },
     wrapperClass: { type: String, attribute: "wrapper-class" },
     disabled: { type: Boolean },
+    persistQueryOnOutside: { type: Boolean, attribute: "persist-query-on-outside" },
     _isSearching: { type: Boolean },
     _searchResults: { type: Array },
     _searchQuery: { type: String },
@@ -56,11 +66,15 @@ export class UserSearchField extends LitWrapper {
     this.label = "";
     this.legend = "";
     this.inputClass = "";
+    this.inputId = "search-input";
     this.placeholderText = "";
-    this.searchDelay = 300;
+    this.emailActionEnabled = false;
+    this.emailActionText = "Invite by email";
+    this.searchDelay = 400;
     this.disabledUserIds = [];
     this.excludeUsernames = [];
     this.disabled = false;
+    this.persistQueryOnOutside = false;
 
     this._isSearching = false;
     this._searchResults = [];
@@ -93,16 +107,70 @@ export class UserSearchField extends LitWrapper {
   focusInput() {
     if (this.disabled) return;
     this.updateComplete.then(() => {
-      const input = this.renderRoot?.querySelector?.("#search-input");
+      const input = this.renderRoot?.querySelector?.("[data-user-search-input]");
       if (input) input.focus();
     });
   }
 
   /**
    * Clears the current query and results and restores the focus to the input.
+   * @param {Object} [options] Clear behavior options.
+   * @param {boolean} [options.emitChange=true] Whether to emit the query event.
+   * @param {boolean} [options.refocus=true] Whether to focus the input.
+   * @returns {void}
+   */
+  clearSearch({ emitChange = true, refocus = true } = {}) {
+    this._clearSearch({ emitChange, refocus });
+  }
+
+  /**
+   * Emits the current search query for parent forms that derive values from it.
+   * @param {string} query - Current search query.
    * @private
    */
-  _clearSearch() {
+  _emitSearchQueryChanged(query) {
+    this.dispatchEvent(
+      new CustomEvent("user-search-query-changed", {
+        detail: { query },
+        bubbles: true,
+      }),
+    );
+  }
+
+  /**
+   * Checks whether the current query can be shown as an email action.
+   * @returns {boolean} True when the email action row should be rendered.
+   * @private
+   */
+  _hasEmailAction() {
+    return this.emailActionEnabled && emailAddressPattern.test(this._searchQuery);
+  }
+
+  /**
+   * Emits the email action event for parent components that need it.
+   * @private
+   */
+  _selectEmailAction() {
+    if (!this._hasEmailAction()) return;
+    const email = this._searchQuery;
+    this._emitSearchQueryChanged(email);
+    this.dispatchEvent(
+      new CustomEvent("email-action-selected", {
+        detail: { email },
+        bubbles: true,
+      }),
+    );
+    this._clearSearch({ emitChange: false, refocus: false });
+  }
+
+  /**
+   * Clears the current query and results and restores the focus to the input.
+   * @param {Object} [options] Clear behavior options.
+   * @param {boolean} [options.emitChange=true] Whether to emit the query event.
+   * @param {boolean} [options.refocus=true] Whether to focus the input.
+   * @private
+   */
+  _clearSearch({ emitChange = true, refocus = true } = {}) {
     if (this.disabled) return;
     this._searchQuery = "";
     this._searchResults = [];
@@ -110,7 +178,12 @@ export class UserSearchField extends LitWrapper {
     if (this._searchTimeoutId) {
       clearTimeout(this._searchTimeoutId);
     }
-    this.focusInput();
+    if (emitChange) {
+      this._emitSearchQueryChanged("");
+    }
+    if (refocus) {
+      this.focusInput();
+    }
   }
 
   /**
@@ -122,6 +195,7 @@ export class UserSearchField extends LitWrapper {
     if (this.disabled) return;
     const query = event.target.value.trim();
     this._searchQuery = query;
+    this._emitSearchQueryChanged(query);
 
     if (this._searchTimeoutId) clearTimeout(this._searchTimeoutId);
 
@@ -177,8 +251,8 @@ export class UserSearchField extends LitWrapper {
         bubbles: true,
       }),
     );
-    // Reset input after selection
-    this._clearSearch();
+    // Reset input after selection.
+    this._clearSearch({ emitChange: false });
   }
 
   /**
@@ -189,6 +263,7 @@ export class UserSearchField extends LitWrapper {
   _handleOutsidePointer(event) {
     if (this.disabled) return;
     if (this.contains(event.target)) return;
+    if (this.persistQueryOnOutside) return;
     this._clearSearch();
   }
 
@@ -237,10 +312,35 @@ export class UserSearchField extends LitWrapper {
   }
 
   /**
+   * Renders the valid-email action row.
+   * @returns {TemplateResult} Email action row template.
+   * @private
+   */
+  _renderEmailAction() {
+    return html`
+      <button
+        type="button"
+        class="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-stone-50"
+        aria-label=${`${this.emailActionText} ${this._searchQuery}`}
+        @click=${() => this._selectEmailAction()}
+      >
+        <div class="svg-icon size-4 bg-stone-500 icon-email shrink-0"></div>
+        <span class="flex-1 min-w-0 text-sm">
+          <span class="font-medium text-stone-900">${this._searchQuery}</span>
+          <span class="text-stone-600">${this.emailActionText}</span>
+        </span>
+        <div class="svg-icon size-5 bg-stone-500 icon-add-circle shrink-0" aria-hidden="true"></div>
+      </button>
+    `;
+  }
+
+  /**
    * Renders the full component (input, legend and dropdown results).
    * @returns {TemplateResult} Component template
    */
   render() {
+    const hasEmailAction = this._hasEmailAction();
+
     return html`
       <div class="relative ${this.wrapperClass || ""}">
         <!-- Left search icon -->
@@ -249,7 +349,8 @@ export class UserSearchField extends LitWrapper {
         </div>
 
         <input
-          id="search-input"
+          id=${this.inputId}
+          data-user-search-input
           type="text"
           class="input-primary peer ps-9 ${this.inputClass || ""} ${this.disabled
             ? "bg-stone-100 cursor-not-allowed"
@@ -270,7 +371,7 @@ export class UserSearchField extends LitWrapper {
           <button
             type="button"
             class="cursor-pointer mt-0.5"
-            @click=${this._clearSearch}
+            @click=${() => this._clearSearch()}
             ?disabled=${this.disabled}
           >
             <div class="svg-icon size-5 bg-stone-400 hover:bg-stone-700 icon-close"></div>
@@ -299,19 +400,23 @@ export class UserSearchField extends LitWrapper {
                         </div>
                       </div>
                     `
-                  : this._searchResults.length === 0
-                    ? html`
-                        <div class="p-4 text-center text-stone-500">
-                          <p class="text-sm">No ${this.label || "users"} found for "${this._searchQuery}"</p>
-                        </div>
-                      `
-                    : html`<div class="py-1">
-                        ${repeat(
-                          this._searchResults,
-                          (u) => u.username,
-                          (u) => this._renderResult(u),
-                        )}
-                      </div>`}
+                  : this._searchResults.length === 0 && hasEmailAction
+                    ? this._renderEmailAction()
+                    : this._searchResults.length === 0
+                      ? html`
+                          <div class="p-4 text-center text-stone-500">
+                            <p class="text-sm">
+                              No ${this.label || "users"} found for "${this._searchQuery}"
+                            </p>
+                          </div>
+                        `
+                      : html`<div class="py-1">
+                          ${repeat(
+                            this._searchResults,
+                            (u) => u.username,
+                            (u) => this._renderResult(u),
+                          )}
+                        </div>`}
               </div>
             `
           : ""}

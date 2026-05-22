@@ -18,6 +18,7 @@ const refundApproveButtonId = "attendee-refund-approve";
 const refundRejectButtonId = "attendee-refund-reject";
 const attendeeActionsDropdownSelector = "[data-attendee-actions-dropdown]";
 const invitationModalId = "attendee-invitation-modal";
+const invitationEmailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const resolveAttendeesRoot = (root = document) => {
   if (root instanceof Element && root.id === "attendees-content") {
@@ -82,15 +83,73 @@ const closeInvitationModal = (root = document) => {
 };
 
 /**
+ * Validate an attendee invitation email candidate.
+ * @param {string} email Email candidate.
+ * @returns {boolean} True when the email can be submitted.
+ */
+const isValidInvitationEmail = (email) => invitationEmailPattern.test(email.trim());
+
+/**
+ * Resolve the invitation search field from the current modal.
+ * @param {Document|Element} root Query root.
+ * @returns {Element|null} Search field element.
+ */
+const getInvitationSearchField = (root) =>
+  root.querySelector?.("user-search-field[data-attendee-invitation-search]") || null;
+
+/**
+ * Set which invitation field should be submitted.
+ * @param {Document|Element} root Query root.
+ * @param {"user"|"email"|""} field Active submission field.
+ * @returns {void}
+ */
+const setInvitationSubmissionField = (root, field) => {
+  const userInput = queryElementById(root, "attendee-invitation-user-id");
+  const emailInput = queryElementById(root, "attendee-invitation-email");
+
+  if (userInput) userInput.disabled = field !== "user";
+  if (emailInput) emailInput.disabled = field !== "email";
+};
+
+/**
  * Clear the selected invitation user display.
  * @param {Document|Element} root Query root.
  * @returns {void}
  */
 const clearInvitationSelectedUser = (root) => {
-  const input = queryElementById(root, "attendee-invitation-user-id");
+  const userInput = queryElementById(root, "attendee-invitation-user-id");
+  const emailInput = queryElementById(root, "attendee-invitation-email");
   const selectedUser = queryElementById(root, "attendee-invitation-selected-user");
-  if (input) input.value = "";
+  const searchField = getInvitationSearchField(root);
+
+  if (userInput) userInput.value = "";
+  if (emailInput) emailInput.value = "";
+  setInvitationSubmissionField(root, "");
   selectedUser?.replaceChildren();
+  if (typeof searchField?.clearSearch === "function") {
+    searchField.clearSearch({ refocus: false });
+  }
+  updateInvitationSubmitState(root);
+};
+
+/**
+ * Reset the attendee invitation form to its empty state.
+ * @param {Document|Element} root Query root.
+ * @returns {void}
+ */
+const resetInvitationForm = (root) => {
+  const userInput = queryElementById(root, "attendee-invitation-user-id");
+  const emailInput = queryElementById(root, "attendee-invitation-email");
+  const selectedUser = queryElementById(root, "attendee-invitation-selected-user");
+  const searchField = getInvitationSearchField(root);
+
+  if (userInput) userInput.value = "";
+  if (emailInput) emailInput.value = "";
+  setInvitationSubmissionField(root, "");
+  selectedUser?.replaceChildren();
+  if (typeof searchField?.clearSearch === "function") {
+    searchField.clearSearch({ refocus: false });
+  }
   updateInvitationSubmitState(root);
 };
 
@@ -133,7 +192,46 @@ const renderInvitationSelectedUser = (root, user) => {
 };
 
 /**
- * Enable the invitation submit button only when the active mode is valid.
+ * Render the selected invitation email with the shared chip style.
+ * @param {Document|Element} root Query root.
+ * @param {string} email Selected email.
+ * @returns {void}
+ */
+const renderInvitationSelectedEmail = (root, email) => {
+  const selectedUser = queryElementById(root, "attendee-invitation-selected-user");
+  if (!selectedUser) return;
+
+  const pill = document.createElement("div");
+  pill.className = "inline-flex items-center gap-2 bg-stone-100 rounded-full ps-1 pe-1 py-1";
+
+  const iconBox = document.createElement("span");
+  iconBox.className =
+    "inline-flex size-[24px] shrink-0 items-center justify-center rounded-full bg-stone-200";
+
+  const icon = document.createElement("div");
+  icon.className = "svg-icon size-3.5 icon-email bg-stone-600";
+
+  const label = document.createElement("span");
+  label.className = "text-sm text-stone-700 pe-2";
+  label.textContent = email;
+
+  const removeButton = document.createElement("button");
+  removeButton.type = "button";
+  removeButton.className = "p-1 hover:bg-stone-200 rounded-full transition-colors";
+  removeButton.title = "Remove email";
+  removeButton.setAttribute("data-attendee-invitation-clear-user", "");
+
+  const removeIcon = document.createElement("div");
+  removeIcon.className = "svg-icon size-3 icon-close bg-stone-600";
+
+  removeButton.append(removeIcon);
+  iconBox.append(icon);
+  pill.append(iconBox, label, removeButton);
+  selectedUser.replaceChildren(pill);
+};
+
+/**
+ * Enable the invitation submit button when a user or valid email is present.
  * @param {Document|Element} root Query root.
  * @returns {void}
  */
@@ -142,41 +240,51 @@ const updateInvitationSubmitState = (root) => {
   const submit = queryElementById(root, "submit-attendee-invitation");
   if (!form || !submit) return;
 
-  const mode = form.dataset.invitationMode || "user";
   const userId = queryElementById(root, "attendee-invitation-user-id")?.value || "";
   const email = queryElementById(root, "attendee-invitation-email")?.value.trim() || "";
-  submit.disabled = mode === "user" ? userId === "" : email === "";
+  submit.disabled = userId === "" && !isValidInvitationEmail(email);
 };
 
 /**
- * Switch the attendee invitation form between user search and email entry.
+ * Update hidden invitation fields from the current search query.
  * @param {Document|Element} root Query root.
- * @param {string} mode Invitation mode.
+ * @param {string} query Search query.
  * @returns {void}
  */
-const setInvitationMode = (root, mode) => {
-  const form = queryElementById(root, "attendee-invitation-form");
-  const userPanel = root.querySelector?.('[data-attendee-invitation-panel="user"]');
-  const emailPanel = root.querySelector?.('[data-attendee-invitation-panel="email"]');
+const updateInvitationQuery = (root, query) => {
   const userInput = queryElementById(root, "attendee-invitation-user-id");
   const emailInput = queryElementById(root, "attendee-invitation-email");
   const selectedUser = queryElementById(root, "attendee-invitation-selected-user");
-  if (!form || !userPanel || !emailPanel || !userInput || !emailInput) return;
+  if (!userInput || !emailInput) return;
 
-  form.dataset.invitationMode = mode;
-  userPanel.classList.toggle("hidden", mode !== "user");
-  emailPanel.classList.toggle("hidden", mode !== "email");
-  userInput.disabled = mode !== "user";
-  emailInput.disabled = mode !== "email";
+  const email = query.trim();
   userInput.value = "";
-  emailInput.value = "";
+  if (isValidInvitationEmail(email)) {
+    emailInput.value = email;
+    setInvitationSubmissionField(root, "email");
+  } else {
+    emailInput.value = "";
+    setInvitationSubmissionField(root, "");
+  }
   selectedUser?.replaceChildren();
+  updateInvitationSubmitState(root);
+};
 
-  root.querySelectorAll("[data-attendee-invitation-mode]").forEach((button) => {
-    const active = button.dataset.attendeeInvitationMode === mode;
-    button.dataset.active = active ? "true" : "false";
-    button.setAttribute("aria-selected", active ? "true" : "false");
-  });
+/**
+ * Select an email from the invitation dropdown.
+ * @param {Document|Element} root Query root.
+ * @param {string} email Selected email.
+ * @returns {void}
+ */
+const selectInvitationEmail = (root, email) => {
+  const userInput = queryElementById(root, "attendee-invitation-user-id");
+  const emailInput = queryElementById(root, "attendee-invitation-email");
+  if (!emailInput || !isValidInvitationEmail(email)) return;
+
+  if (userInput) userInput.value = "";
+  emailInput.value = email.trim();
+  setInvitationSubmissionField(root, "email");
+  renderInvitationSelectedEmail(root, email.trim());
   updateInvitationSubmitState(root);
 };
 
@@ -474,15 +582,9 @@ const initializeInvitationModal = (root = document) => {
     const target = event.target instanceof Element ? event.target : null;
     if (target?.closest("#open-attendee-invitation-modal")) {
       event.stopPropagation();
-      setInvitationMode(root, "user");
+      resetInvitationForm(root);
       toggleModalVisibility(invitationModalId);
-      return;
-    }
-
-    const modeButton = target?.closest("[data-attendee-invitation-mode]");
-    if (modeButton instanceof HTMLElement && root.contains(modeButton)) {
-      event.preventDefault();
-      setInvitationMode(root, modeButton.dataset.attendeeInvitationMode || "user");
+      getInvitationSearchField(root)?.focusInput?.();
       return;
     }
 
@@ -506,18 +608,40 @@ const initializeInvitationModal = (root = document) => {
   root.addEventListener("user-selected", (event) => {
     const user = event.detail?.user;
     const input = queryElementById(root, "attendee-invitation-user-id");
+    const emailInput = queryElementById(root, "attendee-invitation-email");
     const selected = queryElementById(root, "attendee-invitation-selected-user");
     if (!user || !input) return;
 
     input.value = user.user_id || "";
+    if (emailInput) emailInput.value = "";
+    setInvitationSubmissionField(root, "user");
     if (selected) renderInvitationSelectedUser(root, user);
     updateInvitationSubmitState(root);
   });
 
+  root.addEventListener("user-search-query-changed", (event) => {
+    const target = event.target;
+    if (target instanceof Element && target.matches("user-search-field[data-attendee-invitation-search]")) {
+      updateInvitationQuery(root, event.detail?.query || "");
+    }
+  });
+
+  root.addEventListener("email-action-selected", (event) => {
+    const target = event.target;
+    if (target instanceof Element && target.matches("user-search-field[data-attendee-invitation-search]")) {
+      selectInvitationEmail(root, event.detail?.email || "");
+    }
+  });
+
   root.addEventListener("input", (event) => {
     const target = event.target;
-    if (target instanceof HTMLInputElement && target.id === "attendee-invitation-email") {
-      updateInvitationSubmitState(root);
+    const searchField =
+      target instanceof HTMLInputElement
+        ? target.closest("user-search-field[data-attendee-invitation-search]")
+        : null;
+
+    if (searchField) {
+      updateInvitationQuery(root, target.value);
     }
   });
 
@@ -534,7 +658,7 @@ const initializeInvitationModal = (root = document) => {
     });
     if (ok) {
       closeInvitationModal(root);
-      setInvitationMode(root, "user");
+      resetInvitationForm(root);
     }
   });
 

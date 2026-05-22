@@ -34,52 +34,17 @@ describe("dashboard group attendees", () => {
       <button id="cancel-attendee-invitation" type="button">Cancel</button>
       <div id="overlay-attendee-invitation-modal"></div>
       <form id="attendee-invitation-form">
-        <ul role="tablist" aria-label="Attendee invitation methods">
-          <li>
-            <button
-              id="attendee-invitation-user-tab"
-              type="button"
-              role="tab"
-              aria-controls="attendee-invitation-user-panel"
-              aria-selected="true"
-              data-active="true"
-              data-attendee-invitation-mode="user"
-            >
-              Registered user
-            </button>
-          </li>
-          <li>
-            <button
-              id="attendee-invitation-email-tab"
-              type="button"
-              role="tab"
-              aria-controls="attendee-invitation-email-panel"
-              aria-selected="false"
-              data-active="false"
-              data-attendee-invitation-mode="email"
-            >
-              Email
-            </button>
-          </li>
-        </ul>
-        <div
-          id="attendee-invitation-user-panel"
-          role="tabpanel"
-          aria-labelledby="attendee-invitation-user-tab"
-          data-attendee-invitation-panel="user"
-        >
-          <input type="hidden" name="user_id" id="attendee-invitation-user-id" />
-          <div id="attendee-invitation-selected-user"></div>
-        </div>
-        <div
-          id="attendee-invitation-email-panel"
-          role="tabpanel"
-          aria-labelledby="attendee-invitation-email-tab"
-          data-attendee-invitation-panel="email"
-          class="hidden"
-        >
-          <input type="email" id="attendee-invitation-email" name="email" disabled />
-        </div>
+        <label for="attendee-invitation-search-input">Search by name, username, or email</label>
+        <user-search-field
+          input-id="attendee-invitation-search-input"
+          email-action-enabled
+          email-action-text="Invite by email"
+          persist-query-on-outside
+          data-attendee-invitation-search
+        ></user-search-field>
+        <input type="hidden" name="user_id" id="attendee-invitation-user-id" disabled />
+        <input type="hidden" name="email" id="attendee-invitation-email" disabled />
+        <div id="attendee-invitation-selected-user"></div>
         <button id="submit-attendee-invitation" type="submit" disabled>Send invitation</button>
       </form>
     </div>
@@ -450,35 +415,44 @@ describe("dashboard group attendees", () => {
     dispatchHtmxLoad(attendeesRoot);
 
     document.getElementById("open-attendee-invitation-modal")?.click();
-    document.querySelector('[data-attendee-invitation-mode="email"]')?.click();
-
-    expect(document.getElementById("attendee-invitation-email-tab")?.dataset.active).to.equal("true");
-    expect(document.getElementById("attendee-invitation-email-tab")?.getAttribute("aria-selected")).to.equal(
-      "true",
-    );
-    expect(document.getElementById("attendee-invitation-user-tab")?.dataset.active).to.equal("false");
-    expect(document.getElementById("attendee-invitation-user-tab")?.getAttribute("aria-selected")).to.equal(
-      "false",
-    );
 
     const initialSubmit = document.getElementById("submit-attendee-invitation");
+    const initialSearchField = document.querySelector("[data-attendee-invitation-search]");
     const initialEmailInput = document.getElementById("attendee-invitation-email");
-    initialEmailInput.value = "first@example.com";
-    initialEmailInput.dispatchEvent(new Event("input", { bubbles: true }));
+    initialSearchField.dispatchEvent(
+      new CustomEvent("user-search-query-changed", {
+        bubbles: true,
+        detail: { query: "first" },
+      }),
+    );
+    expect(initialSubmit.disabled).to.equal(true);
+
+    initialSearchField.dispatchEvent(
+      new CustomEvent("user-search-query-changed", {
+        bubbles: true,
+        detail: { query: "first@example.com" },
+      }),
+    );
+    expect(initialEmailInput.value).to.equal("first@example.com");
     expect(initialSubmit.disabled).to.equal(false);
 
     attendeesRoot.innerHTML = attendeeInvitationMarkup();
     dispatchHtmxLoad(attendeesRoot);
 
     document.getElementById("open-attendee-invitation-modal")?.click();
-    document.querySelector('[data-attendee-invitation-mode="email"]')?.click();
 
     const refreshedModal = document.getElementById("attendee-invitation-modal");
     const refreshedSubmit = document.getElementById("submit-attendee-invitation");
+    const refreshedSearchField = document.querySelector("[data-attendee-invitation-search]");
     const refreshedEmailInput = document.getElementById("attendee-invitation-email");
-    refreshedEmailInput.value = "second@example.com";
-    refreshedEmailInput.dispatchEvent(new Event("input", { bubbles: true }));
+    refreshedSearchField.dispatchEvent(
+      new CustomEvent("user-search-query-changed", {
+        bubbles: true,
+        detail: { query: "second@example.com" },
+      }),
+    );
 
+    expect(refreshedEmailInput.value).to.equal("second@example.com");
     expect(refreshedSubmit.disabled).to.equal(false);
 
     dispatchHtmxAfterRequest(document.getElementById("attendee-invitation-form"), { status: 201 });
@@ -488,6 +462,66 @@ describe("dashboard group attendees", () => {
       icon: "success",
     });
     expect(refreshedModal.classList.contains("hidden")).to.equal(true);
+  });
+
+  it("enables attendee invitation for a typed email when no user matches", async () => {
+    fetchMock.setImpl(async () => ({
+      ok: true,
+      async json() {
+        return [];
+      },
+    }));
+
+    document.body.innerHTML = `
+      <div id="attendees-content">
+        ${attendeeInvitationMarkup()}
+      </div>
+    `;
+
+    const attendeesRoot = document.getElementById("attendees-content");
+    dispatchHtmxLoad(attendeesRoot);
+
+    document.getElementById("open-attendee-invitation-modal")?.click();
+
+    const searchField = document.querySelector("[data-attendee-invitation-search]");
+    await searchField.updateComplete;
+    searchField.searchDelay = 0;
+
+    const searchInput = searchField.querySelector("[data-user-search-input]");
+    const userInput = document.getElementById("attendee-invitation-user-id");
+    const emailInput = document.getElementById("attendee-invitation-email");
+    const submitButton = document.getElementById("submit-attendee-invitation");
+
+    searchInput.value = "invitee+test3@example.com";
+    searchInput.dispatchEvent(new Event("input", { bubbles: true }));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await searchField.updateComplete;
+
+    expect(emailInput.value).to.equal("invitee+test3@example.com");
+    expect(userInput.disabled).to.equal(true);
+    expect(emailInput.disabled).to.equal(false);
+    expect(searchField.textContent).to.contain("invitee+test3@example.com");
+    expect(searchField.textContent).to.contain("Invite by email");
+    expect(searchField.textContent).not.to.contain("No users found");
+    expect(submitButton.disabled).to.equal(false);
+
+    searchField.querySelector("button[aria-label='Invite by email invitee+test3@example.com']")?.click();
+    await waitForMicrotask();
+
+    const selectedUser = document.getElementById("attendee-invitation-selected-user");
+
+    expect(emailInput.value).to.equal("invitee+test3@example.com");
+    expect(userInput.disabled).to.equal(true);
+    expect(emailInput.disabled).to.equal(false);
+    expect(new FormData(document.getElementById("attendee-invitation-form")).has("user_id")).to.equal(false);
+    expect(new FormData(document.getElementById("attendee-invitation-form")).get("email")).to.equal(
+      "invitee+test3@example.com",
+    );
+    expect(searchField.textContent).not.to.contain("Invite by email");
+    expect(selectedUser.textContent).to.contain("invitee+test3@example.com");
+    expect(selectedUser.querySelector(".icon-email")).to.exist;
+    expect(selectedUser.querySelector(".size-\\[24px\\].rounded-full .icon-email")).to.exist;
+    expect(submitButton.disabled).to.equal(false);
   });
 
   it("renders selected invitation users with the shared user pill style", () => {
@@ -516,10 +550,17 @@ describe("dashboard group attendees", () => {
 
     const selectedUser = document.getElementById("attendee-invitation-selected-user");
     const userInput = document.getElementById("attendee-invitation-user-id");
+    const emailInput = document.getElementById("attendee-invitation-email");
     const submitButton = document.getElementById("submit-attendee-invitation");
     const pill = selectedUser.querySelector(".inline-flex.rounded-full");
 
     expect(userInput.value).to.equal("user-1");
+    expect(userInput.disabled).to.equal(false);
+    expect(emailInput.disabled).to.equal(true);
+    expect(new FormData(document.getElementById("attendee-invitation-form")).get("user_id")).to.equal(
+      "user-1",
+    );
+    expect(new FormData(document.getElementById("attendee-invitation-form")).has("email")).to.equal(false);
     expect(pill).to.exist;
     expect(selectedUser.textContent).to.contain("E2E Admin One");
     expect(selectedUser.textContent).not.to.contain("Selected:");
@@ -530,6 +571,8 @@ describe("dashboard group attendees", () => {
     pill.querySelector("[data-attendee-invitation-clear-user]")?.click();
 
     expect(userInput.value).to.equal("");
+    expect(userInput.disabled).to.equal(true);
+    expect(emailInput.disabled).to.equal(true);
     expect(selectedUser.children).to.have.length(0);
     expect(submitButton.disabled).to.equal(true);
   });
