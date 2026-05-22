@@ -80,6 +80,49 @@ describe("dashboard group attendees", () => {
     expect(dropdown.classList.contains("hidden")).to.equal(true);
   });
 
+  it("toggles attendee row action menus for pending invitations", () => {
+    document.body.innerHTML = `
+      <div id="attendees-content">
+        <details data-attendee-row-actions-menu>
+          <summary>
+            More
+          </summary>
+          <div>
+            <button
+              id="cancel-invitation-user-1"
+              type="button"
+              hx-put="/dashboard/group/events/event-42/attendees/user-1/invitation/cancel"
+              data-confirm-action
+            >
+              Cancel invitation
+            </button>
+          </div>
+        </details>
+      </div>
+    `;
+
+    initializeAttendeesUi();
+
+    const menu = document.querySelector("[data-attendee-row-actions-menu]");
+    const trigger = menu.querySelector("summary");
+    const cancelButton = document.getElementById("cancel-invitation-user-1");
+
+    trigger.click();
+    expect(menu.open).to.equal(true);
+    expect(cancelButton.getAttribute("hx-put")).to.equal(
+      "/dashboard/group/events/event-42/attendees/user-1/invitation/cancel",
+    );
+
+    cancelButton.click();
+    expect(menu.open).to.equal(false);
+
+    trigger.click();
+    expect(menu.open).to.equal(true);
+
+    document.body.click();
+    expect(menu.open).to.equal(false);
+  });
+
   it("updates the attendee notification endpoint before opening the modal", () => {
     document.body.innerHTML = `
       <button

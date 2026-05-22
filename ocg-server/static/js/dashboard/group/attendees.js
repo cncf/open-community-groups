@@ -17,6 +17,7 @@ const refundModalId = "attendee-refund-modal";
 const refundApproveButtonId = "attendee-refund-approve";
 const refundRejectButtonId = "attendee-refund-reject";
 const attendeeActionsDropdownSelector = "[data-attendee-actions-dropdown]";
+const attendeeRowActionsMenuSelector = "[data-attendee-row-actions-menu]";
 const invitationModalId = "attendee-invitation-modal";
 const invitationEmailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -327,6 +328,20 @@ const closeAttendeeActionsDropdown = (root = document) => {
 };
 
 /**
+ * Close attendee row action menus.
+ * @param {Document|Element} [root=document] Query root.
+ * @param {HTMLDetailsElement|null} [exceptMenu=null] Menu to keep open.
+ * @returns {void}
+ */
+const closeAttendeeRowActionMenus = (root = document, exceptMenu = null) => {
+  root.querySelectorAll?.(`${attendeeRowActionsMenuSelector}[open]`).forEach((menu) => {
+    if (menu instanceof HTMLDetailsElement && menu !== exceptMenu) {
+      menu.open = false;
+    }
+  });
+};
+
+/**
  * Toggle the attendee actions dropdown.
  * @param {Document|Element} [root=document] Query root.
  * @returns {void}
@@ -438,9 +453,27 @@ const initializeAttendeeActionsMenu = (root = document) => {
 
   root.addEventListener("click", (event) => {
     const target = event.target instanceof Element ? event.target : null;
+
+    const rowSummary = target?.closest(`${attendeeRowActionsMenuSelector} summary`);
+    const rowMenu = rowSummary?.closest(attendeeRowActionsMenuSelector);
+    if (rowMenu instanceof HTMLDetailsElement && root.contains(rowMenu)) {
+      closeAttendeeActionsDropdown(root);
+      closeAttendeeRowActionMenus(root, rowMenu);
+      return;
+    }
+
+    const rowMenuItem = target?.closest(
+      `${attendeeRowActionsMenuSelector} button, ${attendeeRowActionsMenuSelector} a`,
+    );
+    if (rowMenuItem instanceof HTMLElement && root.contains(rowMenuItem)) {
+      closeAttendeeRowActionMenus(root);
+      return;
+    }
+
     const trigger = target?.closest("#attendee-actions-button");
     if (trigger instanceof HTMLElement && root.contains(trigger)) {
       event.stopPropagation();
+      closeAttendeeRowActionMenus(root);
       toggleAttendeeActionsDropdown(root);
       return;
     }
@@ -454,18 +487,30 @@ const initializeAttendeeActionsMenu = (root = document) => {
     if (!target?.closest(attendeeActionsDropdownSelector)) {
       closeAttendeeActionsDropdown(root);
     }
+
+    if (!target?.closest(attendeeRowActionsMenuSelector)) {
+      closeAttendeeRowActionMenus(root);
+    }
   });
 
   document.addEventListener("click", (event) => {
     const target = event.target instanceof Element ? event.target : null;
     if (target && !root.contains(target)) {
       closeAttendeeActionsDropdown(root);
+      closeAttendeeRowActionMenus(root);
     }
   });
 
   root.addEventListener("keydown", (event) => {
     if (event.key === "Escape") {
+      const openRowMenu = root.querySelector(`${attendeeRowActionsMenuSelector}[open]`);
+      const rowSummary = openRowMenu?.querySelector("summary");
       closeAttendeeActionsDropdown(root);
+      closeAttendeeRowActionMenus(root);
+      if (rowSummary instanceof HTMLElement) {
+        rowSummary.focus();
+        return;
+      }
       queryElementById(root, "attendee-actions-button")?.focus();
     }
   });

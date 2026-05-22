@@ -273,23 +273,37 @@
 
             {# Actions -#}
             <td class="px-3 xl:px-5 py-4 w-[72px] text-right">
-              <div>
+              <div class="relative inline-flex justify-end">
                 {% if attendee.status == "invitation-pending" && can_manage_events -%}
-                  <button id="cancel-invitation-{{ attendee.user_id }}"
-                          hx-put="/dashboard/group/events/{{ event.event_id }}/attendees/{{ attendee.user_id }}/invitation/cancel"
-                          hx-indicator="#dashboard-spinner"
-                          hx-trigger="confirmed"
-                          hx-disabled-elt="this"
-                          data-confirm-action
-                          data-confirm-message="Are you sure you would like to cancel this invitation?"
-                          data-confirm-text="Yes"
-                          data-success-message="Invitation canceled."
-                          data-error-message="Something went wrong canceling this invitation. Please try again later."
-                          class="btn-tertiary p-2"
-                          title="Cancel invitation"
-                          aria-label="Cancel invitation">
-                    <div class="svg-icon size-4 icon-trash"></div>
-                  </button>
+                  <details data-attendee-row-actions-menu class="group relative">
+                    <summary class="btn-actions btn-tertiary flex cursor-pointer list-none items-center justify-center p-2 group-open:bg-stone-50 [&::-webkit-details-marker]:hidden"
+                             aria-label="Open attendee invitation actions"
+                             title="Open attendee invitation actions">
+                      <div class="svg-icon size-4 icon-vertical-dots"></div>
+                    </summary>
+                    <div class="dropdown absolute z-10 end-0 top-8 w-[220px] bg-white divide-y divide-stone-100 rounded-lg shadow border border-stone-200">
+                      <ul class="py-2 text-sm text-stone-700" role="menu">
+                        <li>
+                          <button id="cancel-invitation-{{ attendee.user_id }}"
+                                  hx-put="/dashboard/group/events/{{ event.event_id }}/attendees/{{ attendee.user_id }}/invitation/cancel"
+                                  hx-indicator="#dashboard-spinner"
+                                  hx-trigger="confirmed"
+                                  hx-disabled-elt="this"
+                                  data-confirm-action
+                                  data-confirm-message="Are you sure you would like to cancel this invitation?"
+                                  data-confirm-text="Yes"
+                                  data-success-message="Invitation canceled."
+                                  data-error-message="Something went wrong canceling this invitation. Please try again later."
+                                  role="menuitem"
+                                  class="flex items-center w-full px-4 py-2 hover:bg-stone-100 hover:text-stone-900 transition-colors gap-3 text-left"
+                                  type="button">
+                            <div class="svg-icon size-4 icon-cancel shrink-0 bg-stone-500"></div>
+                            <span>Cancel invitation</span>
+                          </button>
+                        </li>
+                      </ul>
+                    </div>
+                  </details>
                 {% endif -%}
               </div>
             </td>
