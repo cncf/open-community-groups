@@ -353,7 +353,10 @@ test.describe("group dashboard attendees tab", () => {
     ).toBeDisabled();
     await expect(
       attendeesContent.getByRole("button", { name: "Send email" }),
-    ).toHaveAttribute("title", "No attendees to send emails to.");
+    ).toHaveAttribute(
+      "title",
+      "No confirmed attendees with verified email addresses.",
+    );
   });
 
   test("organizer can download attendees as CSV from the attendees tab", async ({
@@ -395,7 +398,7 @@ test.describe("group dashboard attendees tab", () => {
     );
     const csvContents = await readFile(downloadPath, "utf8");
     expect(csvContents).toContain(
-      "Name,Company,Title\nE2E Organizer One,,\n",
+      "Name,Company,Title,Invited\nE2E Organizer One,,,No\n",
     );
   });
 
