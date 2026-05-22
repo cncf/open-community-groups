@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(233);
+select plan(240);
 
 -- ============================================================================
 -- TESTS
@@ -11,10 +11,13 @@ select plan(233);
 
 -- Test: check expected functions exist
 select has_function('accept_community_team_invitation');
+select has_function('accept_event_attendee_invitation');
 select has_function('accept_event_invitation_request');
 select has_function('accept_group_team_invitation');
 select has_function('accept_session_proposal_co_speaker_invitation');
 select has_function('activate_group');
+select has_function('activate_pre_registered_user_email_password');
+select has_function('activate_pre_registered_user_external_provider');
 select has_function('add_cfs_submission');
 select has_function('add_community_team_member');
 select has_function('add_event');
@@ -36,6 +39,7 @@ select has_function('begin_event_refund_approval');
 select has_function('cancel_event');
 select has_function('cancel_event_checkout');
 select has_function('cancel_event_series_events');
+select has_function('cancel_event_attendee_invitation');
 select has_function('check_in_event');
 select has_function('claim_meeting_for_auto_end');
 select has_function('claim_meeting_out_of_sync');
@@ -91,6 +95,7 @@ select has_function('get_site_settings');
 select has_function('get_site_stats');
 select has_function('get_site_upcoming_events');
 select has_function('get_user_by_email');
+select has_function('get_user_by_email_for_external_auth');
 select has_function('get_user_by_id');
 select has_function('get_user_by_id_verified');
 select has_function('get_user_by_username');
@@ -136,6 +141,7 @@ select has_function('list_session_proposal_levels');
 select has_function('list_user_audit_logs');
 select has_function('list_user_cfs_submissions');
 select has_function('list_user_community_team_invitations');
+select has_function('list_user_event_invitations');
 select has_function('list_user_communities');
 select has_function('list_user_events');
 select has_function('list_user_group_team_invitations');
@@ -163,6 +169,7 @@ select has_function('reconcile_event_purchase_for_checkout_session');
 select has_function('record_automatic_refund_for_event_purchase');
 select has_function('refund_free_event_purchase');
 select has_function('reject_community_team_invitation');
+select has_function('reject_event_attendee_invitation');
 select has_function('reject_event_invitation_request');
 select has_function('reject_event_refund_request');
 select has_function('reject_group_team_invitation');

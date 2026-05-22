@@ -87,6 +87,22 @@ insert into "user" (
         'https://example.com/waitlist'
     );
 
+insert into "user" (
+    auth_hash,
+    email,
+    email_verified,
+    registration_status,
+    user_id,
+    username
+) values (
+    'contract_hash_pre_registered',
+    'pre-registered.contract@example.com',
+    false,
+    'pre-registered',
+    '00000000-0000-0000-0000-00000000c044',
+    'invited-5cd4f396e5e9cc2d07ebc0a5'
+);
+
 -- ============================================================================
 -- REGIONS
 -- ============================================================================
@@ -447,6 +463,18 @@ insert into event_attendee (
     '00000000-0000-0000-0000-00000000c042'
 );
 
+insert into event_attendee (
+    event_id,
+    manually_invited,
+    status,
+    user_id
+) values (
+    '00000000-0000-0000-0000-00000000c031',
+    true,
+    'invitation-pending',
+    '00000000-0000-0000-0000-00000000c044'
+);
+
 -- ============================================================================
 -- EVENT WAITLIST
 -- ============================================================================
@@ -633,6 +661,28 @@ insert into audit_log (
     '00000000-0000-0000-0000-00000000c021',
     '00000000-0000-0000-0000-00000000c021',
     'group'
+);
+
+insert into audit_log (
+    action,
+    actor_user_id,
+    actor_username,
+    audit_log_id,
+    community_id,
+    created_at,
+    details,
+    resource_id,
+    resource_type
+) values (
+    'event_attendee_invitation_rejected',
+    '00000000-0000-0000-0000-00000000c042',
+    'contract-attendee',
+    '00000000-0000-0000-0000-00000000c092',
+    '00000000-0000-0000-0000-00000000c001',
+    '2024-01-10 10:00:00+00',
+    '{"event_name":"Future Contract Event"}'::jsonb,
+    '00000000-0000-0000-0000-00000000c031',
+    'event'
 );
 
 commit;

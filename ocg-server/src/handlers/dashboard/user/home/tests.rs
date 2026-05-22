@@ -135,6 +135,7 @@ async fn test_page_invitations_tab_success() {
     let auth_hash = "hash".to_string();
     let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
     let community_invitations = vec![sample_community_invitation(community_id)];
+    let event_invitations = vec![sample_event_invitation(Uuid::new_v4())];
     let group_invitations = vec![sample_group_invitation(group_id)];
 
     // Setup database mock
@@ -151,6 +152,10 @@ async fn test_page_invitations_tab_success() {
         .times(1)
         .withf(move |uid| *uid == user_id)
         .returning(move |_| Ok(community_invitations.clone()));
+    db.expect_list_user_event_invitations()
+        .times(1)
+        .withf(move |uid| *uid == user_id)
+        .returning(move |_| Ok(event_invitations.clone()));
     db.expect_list_user_group_team_invitations()
         .times(1)
         .withf(move |uid| *uid == user_id)

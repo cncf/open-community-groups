@@ -33,7 +33,8 @@ begin
     if p_existing_event_id is not null and v_capacity is not null then
         select count(*) into v_attendee_count
         from event_attendee
-        where event_id = p_existing_event_id;
+        where event_id = p_existing_event_id
+        and status = 'confirmed';
 
         if v_capacity < v_attendee_count then
             raise exception 'event capacity (%) cannot be less than current number of attendees (%)',

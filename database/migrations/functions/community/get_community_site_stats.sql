@@ -39,6 +39,7 @@ returns json as $$
             join event e using (event_id)
             join "group" g using (group_id)
             where community_id = p_community_id
+            and ea.status = 'confirmed'
             and g.active = true
             and g.deleted = false
             and e.canceled = false

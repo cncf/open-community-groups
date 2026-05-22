@@ -20,6 +20,7 @@ returns json as $$
             join event e using (event_id)
             join "group" g using (group_id)
             where ea.user_id = p_user_id
+            and ea.status = 'confirmed'
             and e.canceled = false
             and e.deleted = false
             and e.published = true

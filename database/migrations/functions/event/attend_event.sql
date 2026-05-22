@@ -8,6 +8,7 @@ declare
     v_attendee_approval_required boolean;
     v_attendee_count int;
     v_capacity int;
+    v_group_id uuid;
     v_invitation_request_status text;
     v_waitlist_enabled boolean;
 begin
@@ -15,10 +16,12 @@ begin
     select
         e.attendee_approval_required,
         e.capacity,
+        e.group_id,
         e.waitlist_enabled
     into
         v_attendee_approval_required,
         v_capacity,
+        v_group_id,
         v_waitlist_enabled
     from event e
     join "group" g on g.group_id = e.group_id
@@ -37,12 +40,35 @@ begin
         raise exception 'event not found or inactive';
     end if;
 
-    -- Ensure the user is not already attending or waitlisted
+    -- Convert organizer-created invitation rows into attendance
+    update event_attendee
+    set status = 'confirmed'
+    where event_id = p_event_id
+    and user_id = p_user_id
+    and status in ('invitation-pending', 'invitation-rejected');
+
+    if found then
+        perform insert_audit_log(
+            'event_attendee_invitation_accepted',
+            p_user_id,
+            'user',
+            p_user_id,
+            p_community_id,
+            v_group_id,
+            p_event_id,
+            jsonb_build_object('event_id', p_event_id, 'user_id', p_user_id)
+        );
+
+        return 'attendee';
+    end if;
+
+    -- Ensure the user is not already attending
     if exists (
         select 1
         from event_attendee ea
         where ea.event_id = p_event_id
         and ea.user_id = p_user_id
+        and ea.status = 'confirmed'
     ) then
         raise exception 'user is already attending this event';
     end if;
@@ -61,7 +87,8 @@ begin
             if v_capacity is not null then
                 select count(*) into v_attendee_count
                 from event_attendee
-                where event_id = p_event_id;
+                where event_id = p_event_id
+                and status = 'confirmed';
 
                 if v_attendee_count >= v_capacity then
                     raise exception 'event has reached capacity';
@@ -71,7 +98,9 @@ begin
             -- Recreate the attendee row for an already accepted requester
             insert into event_attendee (event_id, user_id)
             values (p_event_id, p_user_id)
-            on conflict (event_id, user_id) do nothing;
+            on conflict (event_id, user_id) do update
+            set status = 'confirmed'
+            where event_attendee.status = 'invitation-canceled';
 
             return 'attendee';
         end if;
@@ -107,10 +136,17 @@ begin
     if v_capacity is not null then
         select count(*) into v_attendee_count
         from event_attendee
-        where event_id = p_event_id;
+        where event_id = p_event_id
+        and status = 'confirmed';
 
         if v_attendee_count >= v_capacity then
             if v_waitlist_enabled then
+                -- Remove stale canceled invitations before moving the user into the waitlist
+                delete from event_attendee
+                where event_id = p_event_id
+                and user_id = p_user_id
+                and status = 'invitation-canceled';
+
                 begin
                     insert into event_waitlist (event_id, user_id)
                     values (p_event_id, p_user_id);
@@ -125,13 +161,16 @@ begin
         end if;
     end if;
 
-    -- Add user as event attendee
-    begin
-        insert into event_attendee (event_id, user_id)
-        values (p_event_id, p_user_id);
-    exception when unique_violation then
+    -- Add user as event attendee, reusing canceled organizer invitations
+    insert into event_attendee (event_id, user_id)
+    values (p_event_id, p_user_id)
+    on conflict (event_id, user_id) do update
+    set status = 'confirmed'
+    where event_attendee.status = 'invitation-canceled';
+
+    if not found then
         raise exception 'user is already attending this event';
-    end;
+    end if;
 
     return 'attendee';
 end;

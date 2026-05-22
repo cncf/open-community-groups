@@ -70,6 +70,7 @@ returns json as $$
     left join (
         select event_id, count(*)::int as attendee_count
         from event_attendee
+        where status = 'confirmed'
         group by event_id
     ) ea on ea.event_id = e.event_id
     left join (

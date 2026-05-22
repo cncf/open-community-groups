@@ -254,6 +254,7 @@ select results_eq(
         ('email-verification', false),
         ('event-canceled', false),
         ('event-custom', true),
+        ('event-invitation', false),
         ('event-published', true),
         ('event-refund-approved', false),
         ('event-refund-rejected', false),

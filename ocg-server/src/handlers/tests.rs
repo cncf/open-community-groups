@@ -61,7 +61,7 @@ use crate::{
                 waitlist::WaitlistEntry,
             },
             user::{
-                invitations::{CommunityTeamInvitation, GroupTeamInvitation},
+                invitations::{CommunityTeamInvitation, EventInvitation, GroupTeamInvitation},
                 session_proposals::{
                     PendingCoSpeakerInvitation, SessionProposal as UserSessionProposal,
                     SessionProposalLevel as UserSessionProposalLevel,
@@ -107,7 +107,10 @@ pub(crate) fn sample_attendee() -> Attendee {
         created_at: Utc.with_ymd_and_hms(2024, 1, 1, 12, 0, 0).unwrap(),
         currency_code: None,
         discount_code: None,
+        email: "attendee@example.test".to_string(),
         event_purchase_id: None,
+        manually_invited: false,
+        status: "confirmed".to_string(),
         user_id: Uuid::new_v4(),
         username: "attendee".to_string(),
 
@@ -147,6 +150,7 @@ pub(crate) fn sample_auth_user(user_id: Uuid, auth_hash: &str) -> AuthUser {
         email_verified: true,
         name: "Test User".to_string(),
         optional_notifications_enabled: true,
+        registration_status: "registered".to_string(),
         user_id,
         username: "test-user".to_string(),
 
@@ -443,6 +447,21 @@ pub(crate) fn sample_event_full(community_id: Uuid, event_id: Uuid, group_id: Uu
         waitlist_count: 0,
         waitlist_enabled: false,
         ..Default::default()
+    }
+}
+
+/// Sample event invitation used in dashboard user invitation tests.
+pub(crate) fn sample_event_invitation(event_id: Uuid) -> EventInvitation {
+    EventInvitation {
+        community_display_name: "Test Community".to_string(),
+        community_name: "test-community".to_string(),
+        event_id,
+        event_name: "Test Event".to_string(),
+        group_name: "Test Group".to_string(),
+        timezone: UTC,
+
+        created_at: Utc.with_ymd_and_hms(2024, 1, 1, 12, 0, 0).unwrap(),
+        starts_at: Some(Utc.with_ymd_and_hms(2024, 2, 1, 12, 0, 0).unwrap()),
     }
 }
 

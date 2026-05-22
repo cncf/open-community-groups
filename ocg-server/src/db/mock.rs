@@ -16,6 +16,15 @@ mock! {
 
     #[async_trait]
     impl crate::db::auth::DBAuth for DB {
+        async fn activate_pre_registered_user_email_password(
+            &self,
+            user_summary: &crate::auth::UserSummary,
+        ) -> Result<Option<(crate::auth::User, Uuid)>>;
+        async fn activate_pre_registered_user_external_provider(
+            &self,
+            user_id: &Uuid,
+            user_summary: &crate::auth::UserSummary,
+        ) -> Result<crate::auth::User>;
         async fn create_session(
             &self,
             record: &axum_login::tower_sessions::session::Record,
@@ -28,7 +37,7 @@ mock! {
             &self,
             session_id: &axum_login::tower_sessions::session::Id,
         ) -> Result<Option<axum_login::tower_sessions::session::Record>>;
-        async fn get_user_by_email(
+        async fn get_user_by_email_for_external_auth(
             &self,
             email: &str,
         ) -> Result<Option<crate::auth::User>>;
@@ -326,6 +335,13 @@ mock! {
             role: &crate::types::group::GroupRole,
         ) -> Result<()>;
         async fn cancel_event(&self, actor_user_id: Uuid, group_id: Uuid, event_id: Uuid) -> Result<()>;
+        async fn cancel_event_attendee_invitation(
+            &self,
+            actor_user_id: Uuid,
+            group_id: Uuid,
+            event_id: Uuid,
+            user_id: Uuid,
+        ) -> Result<()>;
         async fn cancel_event_series_events(
             &self,
             actor_user_id: Uuid,
@@ -351,13 +367,6 @@ mock! {
             group_id: Uuid,
             user_id: Uuid,
         ) -> Result<()>;
-        async fn manual_check_in_event(
-            &self,
-            actor_user_id: Uuid,
-            community_id: Uuid,
-            event_id: Uuid,
-            user_id: Uuid,
-        ) -> Result<()>;
         async fn get_cfs_submission_notification_data(
             &self,
             event_id: Uuid,
@@ -378,6 +387,14 @@ mock! {
             community_id: Uuid,
             group_id: Uuid,
         ) -> Result<crate::templates::dashboard::group::analytics::GroupDashboardStats>;
+        async fn invite_event_attendee(
+            &self,
+            actor_user_id: Uuid,
+            group_id: Uuid,
+            event_id: Uuid,
+            user_id: Option<Uuid>,
+            email: Option<String>,
+        ) -> Result<Uuid>;
         async fn list_cfs_submission_statuses_for_review(
             &self,
         ) -> Result<Vec<crate::templates::dashboard::group::events::CfsSubmissionStatus>>;
@@ -459,6 +476,13 @@ mock! {
             &self,
             user_id: &Uuid,
         ) -> Result<Vec<crate::templates::dashboard::group::home::UserGroupsByCommunity>>;
+        async fn manual_check_in_event(
+            &self,
+            actor_user_id: Uuid,
+            community_id: Uuid,
+            event_id: Uuid,
+            user_id: Uuid,
+        ) -> Result<()>;
         async fn publish_event(
             &self,
             actor_user_id: Uuid,
@@ -544,6 +568,11 @@ mock! {
             actor_user_id: Uuid,
             community_id: Uuid,
         ) -> Result<()>;
+        async fn accept_event_attendee_invitation(
+            &self,
+            actor_user_id: Uuid,
+            event_id: Uuid,
+        ) -> Result<Uuid>;
         async fn accept_group_team_invitation(
             &self,
             actor_user_id: Uuid,
@@ -568,6 +597,11 @@ mock! {
             &self,
             actor_user_id: Uuid,
             community_id: Uuid,
+        ) -> Result<()>;
+        async fn reject_event_attendee_invitation(
+            &self,
+            actor_user_id: Uuid,
+            event_id: Uuid,
         ) -> Result<()>;
         async fn reject_group_team_invitation(
             &self,
@@ -597,6 +631,12 @@ mock! {
             user_id: Uuid,
         ) -> Result<Vec<
             crate::templates::dashboard::user::invitations::CommunityTeamInvitation,
+        >>;
+        async fn list_user_event_invitations(
+            &self,
+            user_id: Uuid,
+        ) -> Result<Vec<
+            crate::templates::dashboard::user::invitations::EventInvitation,
         >>;
         async fn list_user_events(
             &self,

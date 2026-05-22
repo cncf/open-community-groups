@@ -31,6 +31,8 @@ pub(crate) struct ListPage {
     pub event: EventSummary,
     /// Pagination navigation links.
     pub navigation_links: pagination::NavigationLinks,
+    /// Number of attendees eligible to receive custom email notifications.
+    pub notification_recipient_total: usize,
     /// Total number of attendees for the selected event.
     pub total: usize,
 
@@ -50,6 +52,12 @@ pub struct Attendee {
     /// RSVP creation time.
     #[serde(with = "chrono::serde::ts_seconds")]
     pub created_at: DateTime<Utc>,
+    /// Email address for invitation placeholders and registered users.
+    pub email: String,
+    /// Whether the attendee was manually invited by an organizer.
+    pub manually_invited: bool,
+    /// Event attendee status.
+    pub status: String,
     /// User id.
     pub user_id: Uuid,
     /// Username.
@@ -119,6 +127,8 @@ crate::impl_pagination_and_raw_query!(AttendeesPaginationFilters, limit, offset)
 pub(crate) struct AttendeesOutput {
     /// List of attendees for the selected event.
     pub attendees: Vec<Attendee>,
+    /// Number of attendees eligible to receive custom email notifications.
+    pub notification_recipient_total: usize,
     /// Total number of attendees for the selected event.
     pub total: usize,
 }

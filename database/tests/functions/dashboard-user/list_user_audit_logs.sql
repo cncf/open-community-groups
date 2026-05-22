@@ -14,6 +14,8 @@ select plan(3);
 \set audit1ID '00000000-0000-0000-0000-000000000101'
 \set audit2ID '00000000-0000-0000-0000-000000000102'
 \set audit3ID '00000000-0000-0000-0000-000000000103'
+\set audit4ID '00000000-0000-0000-0000-000000000104'
+\set audit5ID '00000000-0000-0000-0000-000000000105'
 \set sessionProposalID '00000000-0000-0000-0000-000000000021'
 \set submissionID '00000000-0000-0000-0000-000000000031'
 \set sessionProposalLevelID 'beginner'
@@ -79,6 +81,26 @@ insert into audit_log (
         'user'
     ),
     (
+        :'audit4ID',
+        'event_attendee_invitation_accepted',
+        :'actorID',
+        'alice',
+        '2024-04-01 12:00:00+00',
+        '{"event_id": "00000000-0000-0000-0000-000000000041"}',
+        :'actorID',
+        'user'
+    ),
+    (
+        :'audit5ID',
+        'event_attendee_invitation_rejected',
+        :'actorID',
+        'alice',
+        '2024-04-01 13:00:00+00',
+        '{"event_id": "00000000-0000-0000-0000-000000000042"}',
+        :'actorID',
+        'user'
+    ),
+    (
         :'audit3ID',
         'submission_withdrawn',
         :'otherActorID',
@@ -113,6 +135,26 @@ select is(
                 "resource_type": "user"
             },
             {
+                "action": "event_attendee_invitation_rejected",
+                "actor_username": "alice",
+                "audit_log_id": "00000000-0000-0000-0000-000000000105",
+                "created_at": 1711976400,
+                "details": {"event_id": "00000000-0000-0000-0000-000000000042"},
+                "resource_id": "00000000-0000-0000-0000-000000000011",
+                "resource_name": "Alice",
+                "resource_type": "user"
+            },
+            {
+                "action": "event_attendee_invitation_accepted",
+                "actor_username": "alice",
+                "audit_log_id": "00000000-0000-0000-0000-000000000104",
+                "created_at": 1711972800,
+                "details": {"event_id": "00000000-0000-0000-0000-000000000041"},
+                "resource_id": "00000000-0000-0000-0000-000000000011",
+                "resource_name": "Alice",
+                "resource_type": "user"
+            },
+            {
                 "action": "session_proposal_added",
                 "actor_username": "alice",
                 "audit_log_id": "00000000-0000-0000-0000-000000000101",
@@ -124,7 +166,7 @@ select is(
             }
         ]'::jsonb,
         'total',
-        2
+        4
     ),
     'Should return only actor-owned user dashboard actions'
 );
@@ -176,7 +218,7 @@ select is(
             }
         ]'::jsonb,
         'total',
-        2
+        4
     ),
     'Should return user audit logs in ascending order with pagination'
 );

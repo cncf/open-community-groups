@@ -52,14 +52,15 @@ begin
     if v_capacity is not null then
         select count(*) into v_attendee_count
         from event_attendee
-        where event_id = p_event_id;
+        where event_id = p_event_id
+        and status = 'confirmed';
 
         if v_attendee_count >= v_capacity then
             raise exception 'event has reached capacity';
         end if;
     end if;
 
-    -- Mark the request accepted and create the confirmed attendee
+    -- Mark the request accepted
     update event_invitation_request
     set
         reviewed_at = current_timestamp,
@@ -69,9 +70,14 @@ begin
     and user_id = p_user_id
     and status = 'pending';
 
+    -- Add the confirmed attendee
+    -- The conflict branch reuses pending or canceled manual invitation rows
+    -- because event_attendee is keyed by event and user.
     insert into event_attendee (event_id, user_id)
     values (p_event_id, p_user_id)
-    on conflict (event_id, user_id) do nothing;
+    on conflict (event_id, user_id) do update
+    set status = 'confirmed'
+    where event_attendee.status in ('invitation-canceled', 'invitation-pending');
 
     -- Track the organizer decision
     perform insert_audit_log(

@@ -3,13 +3,14 @@
 -- ============================================================================
 
 begin;
-select plan(5);
+select plan(6);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
 \set userNoPasswordID '00000000-0000-0000-0000-000000000121'
+\set userPreRegisteredID '00000000-0000-0000-0000-000000000124'
 \set userUnverifiedID '00000000-0000-0000-0000-000000000122'
 \set userWithPasswordID '00000000-0000-0000-0000-000000000123'
 
@@ -66,6 +67,25 @@ insert into "user" (
     'unverified-user'
 );
 
+-- Pre-registered user with password
+insert into "user" (
+    auth_hash,
+    email,
+    email_verified,
+    password,
+    registration_status,
+    user_id,
+    username
+) values (
+    'pre_registered_hash',
+    'pre-registered@example.com',
+    true,
+    'hidden_password',
+    'pre-registered',
+    :'userPreRegisteredID',
+    'pre-registered-user'
+);
+
 -- ============================================================================
 -- TESTS
 -- ============================================================================
@@ -96,6 +116,13 @@ select is(
     get_user_by_username('unverified-user')::jsonb,
     null::jsonb,
     'Should return null for unverified user'
+);
+
+-- Should return null for pre-registered user
+select is(
+    get_user_by_username('pre-registered-user')::jsonb,
+    null::jsonb,
+    'Should return null for pre-registered user'
 );
 
 -- Should return null when username does not exist

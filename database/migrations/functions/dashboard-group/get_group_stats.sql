@@ -71,6 +71,7 @@ attendees as (
         timezone('UTC', date_trunc('month', ea.created_at at time zone 'UTC')) as created_month
     from event_attendee ea
     join events e on e.event_id = ea.event_id
+    where ea.status = 'confirmed'
 ),
 event_views_data as (
     select

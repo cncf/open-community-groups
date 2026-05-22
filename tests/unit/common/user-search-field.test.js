@@ -48,9 +48,13 @@ describe("user-search-field", () => {
   it("emits the selected user and clears the search state", async () => {
     const element = await mountLitComponent("user-search-field");
     const received = [];
+    const queries = [];
 
     element.addEventListener("user-selected", (event) => {
       received.push(event.detail.user);
+    });
+    element.addEventListener("user-search-query-changed", (event) => {
+      queries.push(event.detail.query);
     });
 
     element._searchQuery = "ada";
@@ -58,8 +62,58 @@ describe("user-search-field", () => {
     element._selectUser({ user_id: "1", username: "ada" });
 
     expect(received).to.deep.equal([{ user_id: "1", username: "ada" }]);
+    expect(queries).to.deep.equal([]);
     expect(element._searchQuery).to.equal("");
     expect(element._searchResults).to.deep.equal([]);
+  });
+
+  it("emits query changes while typing and clearing", async () => {
+    const element = await mountLitComponent("user-search-field");
+    const queries = [];
+
+    element.addEventListener("user-search-query-changed", (event) => {
+      queries.push(event.detail.query);
+    });
+
+    element._handleSearchInput({ target: { value: "ada@example.com" } });
+    element.clearSearch({ refocus: false });
+
+    expect(queries).to.deep.equal(["ada@example.com", ""]);
+  });
+
+  it("renders an opt-in email action for valid email queries with no matches", async () => {
+    const element = await mountLitComponent("user-search-field", {
+      emailActionEnabled: true,
+      emailActionText: "Invite by email",
+    });
+    const selectedEmails = [];
+
+    element.addEventListener("email-action-selected", (event) => {
+      selectedEmails.push(event.detail.email);
+    });
+
+    element._searchQuery = "ada@example.com";
+    element._searchResults = [];
+    await element.updateComplete;
+
+    expect(element.textContent).to.contain("ada@example.com");
+    expect(element.textContent).to.contain("Invite by email");
+    expect(element.textContent).not.to.contain("No users found");
+    expect(element.querySelector(".icon-add-circle")).to.exist;
+
+    element.querySelector("button[aria-label='Invite by email ada@example.com']")?.click();
+
+    expect(selectedEmails).to.deep.equal(["ada@example.com"]);
+  });
+
+  it("keeps the default no-results message when the email action is not enabled", async () => {
+    const element = await mountLitComponent("user-search-field");
+
+    element._searchQuery = "ada@example.com";
+    element._searchResults = [];
+    await element.updateComplete;
+
+    expect(element.textContent).to.contain('No users found for "ada@example.com"');
   });
 
   it("clears stale results after a failed search request", async () => {
@@ -152,6 +206,21 @@ describe("user-search-field", () => {
     expect(element._isSearching).to.equal(false);
   });
 
+  it("can keep the query when clicking outside the component", async () => {
+    const element = await mountLitComponent("user-search-field", {
+      persistQueryOnOutside: true,
+    });
+
+    element._searchQuery = "ada@example.com";
+    element._searchResults = [];
+
+    element._handleOutsidePointer({
+      target: document.body,
+    });
+
+    expect(element._searchQuery).to.equal("ada@example.com");
+  });
+
   it("clears pending debounce timers and removes the outside-pointer listener on disconnect", async () => {
     const originalDocumentRemoveEventListener = document.removeEventListener.bind(document);
     const removedListeners = [];
@@ -174,7 +243,9 @@ describe("user-search-field", () => {
 
       expect(clearedTimerIds).to.deep.equal([123]);
       expect(
-        removedListeners.some(({ type, listener }) => type === "pointerdown" && listener === outsidePointerHandler),
+        removedListeners.some(
+          ({ type, listener }) => type === "pointerdown" && listener === outsidePointerHandler,
+        ),
       ).to.equal(true);
     } finally {
       document.removeEventListener = originalDocumentRemoveEventListener;

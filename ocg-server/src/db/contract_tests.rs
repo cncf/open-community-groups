@@ -6,7 +6,14 @@ use tokio_postgres::NoTls;
 use uuid::Uuid;
 
 use crate::{
-    db::{PgDB, common::DBCommon, dashboard::group::DBDashboardGroup, event::DBEvent, meetings::DBMeetings},
+    db::{
+        PgDB,
+        auth::DBAuth,
+        common::DBCommon,
+        dashboard::{group::DBDashboardGroup, user::DBDashboardUser},
+        event::DBEvent,
+        meetings::DBMeetings,
+    },
     services::meetings::MeetingProvider,
     templates::dashboard::{
         audit::AuditLogFilters,
@@ -180,6 +187,22 @@ async fn db_contracts_get_group_summary_deserializes() -> Result<()> {
 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
+async fn db_contracts_get_user_by_email_for_external_auth_pre_registered_deserializes() -> Result<()> {
+    let db = contract_tests_db()?;
+    let user = db
+        .get_user_by_email_for_external_auth("PRE-REGISTERED.CONTRACT@example.com")
+        .await?
+        .expect("contract pre-registered user should exist");
+
+    assert_eq!(user.user_id, pre_registered_id());
+    assert_eq!(user.name, "");
+    assert_eq!(user.registration_status, "pre-registered");
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
 async fn db_contracts_list_group_audit_logs_deserializes() -> Result<()> {
     let db = contract_tests_db()?;
     let filters = AuditLogFilters {
@@ -198,6 +221,30 @@ async fn db_contracts_list_group_audit_logs_deserializes() -> Result<()> {
         Some("contract-organizer")
     );
     assert_eq!(output.logs[0].resource_id, group_id());
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_list_user_audit_logs_deserializes() -> Result<()> {
+    let db = contract_tests_db()?;
+    let filters = AuditLogFilters {
+        limit: Some(10),
+        offset: Some(0),
+
+        ..Default::default()
+    };
+    let output = db.list_user_audit_logs(attendee_id(), &filters).await?;
+
+    assert_eq!(output.total, 1);
+    assert_eq!(output.logs.len(), 1);
+    assert_eq!(output.logs[0].action, "event_attendee_invitation_rejected");
+    assert_eq!(
+        output.logs[0].actor_username.as_deref(),
+        Some("contract-attendee")
+    );
+    assert_eq!(output.logs[0].resource_id, event_id());
 
     Ok(())
 }
@@ -280,6 +327,19 @@ async fn db_contracts_list_group_team_members_deserializes() -> Result<()> {
 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
+async fn db_contracts_list_user_event_invitations_deserializes() -> Result<()> {
+    let db = contract_tests_db()?;
+    let invitations = db.list_user_event_invitations(pre_registered_id()).await?;
+
+    assert_eq!(invitations.len(), 1);
+    assert_eq!(invitations[0].event_id, event_id());
+    assert_eq!(invitations[0].event_name, "Future Contract Event");
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
 async fn db_contracts_search_event_attendees_deserializes() -> Result<()> {
     let db = contract_tests_db()?;
     let filters = AttendeesFilters {
@@ -290,11 +350,17 @@ async fn db_contracts_search_event_attendees_deserializes() -> Result<()> {
     };
     let output = db.search_event_attendees(group_id(), &filters).await?;
 
-    assert_eq!(output.total, 1);
-    assert_eq!(output.attendees.len(), 1);
+    assert_eq!(output.notification_recipient_total, 1);
+    assert_eq!(output.total, 2);
+    assert_eq!(output.attendees.len(), 2);
     assert_eq!(output.attendees[0].user_id, attendee_id());
     assert_eq!(output.attendees[0].username, "contract-attendee");
     assert!(output.attendees[0].checked_in);
+    assert_eq!(output.attendees[1].email, "pre-registered.contract@example.com");
+    assert!(output.attendees[1].manually_invited);
+    assert_eq!(output.attendees[1].name, None);
+    assert_eq!(output.attendees[1].status, "invitation-pending");
+    assert_eq!(output.attendees[1].user_id, pre_registered_id());
 
     Ok(())
 }
@@ -397,6 +463,7 @@ const EVENT_ID: &str = "00000000-0000-0000-0000-00000000c031";
 const GROUP_ID: &str = "00000000-0000-0000-0000-00000000c021";
 const GROUP_SPONSOR_ID: &str = "00000000-0000-0000-0000-00000000c061";
 const ORGANIZER_ID: &str = "00000000-0000-0000-0000-00000000c041";
+const PRE_REGISTERED_ID: &str = "00000000-0000-0000-0000-00000000c044";
 const SYNC_EVENT_ID: &str = "00000000-0000-0000-0000-00000000c0a1";
 const WAITLIST_ID: &str = "00000000-0000-0000-0000-00000000c043";
 
@@ -455,6 +522,10 @@ fn organizer_id() -> Uuid {
 
 fn parse_uuid(value: &str) -> Uuid {
     Uuid::parse_str(value).expect("contract fixture UUID should be valid")
+}
+
+fn pre_registered_id() -> Uuid {
+    parse_uuid(PRE_REGISTERED_ID)
 }
 
 fn sync_event_id() -> Uuid {

@@ -36,6 +36,7 @@ begin
         from event_attendee
         where event_id = p_event_id
         and user_id = p_user_id
+        and status = 'confirmed'
     ) then
         raise exception 'user is already attending this ticketed event';
     end if;

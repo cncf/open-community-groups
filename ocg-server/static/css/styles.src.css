@@ -694,6 +694,7 @@ input:placeholder-shown {
 .icon-pencil { --icon-url: url('/static/images/icons/pencil.svg'); }
 .icon-pending-invitation { --icon-url: url('/static/images/icons/pending_invitation.svg'); }
 .icon-people { --icon-url: url('/static/images/icons/people.svg'); }
+.icon-add-circle { --icon-url: url('/static/images/icons/add_circle.svg'); }
 .icon-plus-top { --icon-url: url('/static/images/icons/plus_top.svg'); }
 .icon-plus-bottom { --icon-url: url('/static/images/icons/plus_bottom.svg'); }
 .icon-power { --icon-url: url('/static/images/icons/power.svg'); }

@@ -353,7 +353,10 @@ test.describe("group dashboard attendees tab", () => {
     ).toBeDisabled();
     await expect(
       attendeesContent.getByRole("button", { name: "Send email" }),
-    ).toHaveAttribute("title", "No attendees to send emails to.");
+    ).toHaveAttribute(
+      "title",
+      "No confirmed attendees with verified email addresses.",
+    );
   });
 
   test("organizer can download attendees as CSV from the attendees tab", async ({
@@ -395,14 +398,14 @@ test.describe("group dashboard attendees tab", () => {
     );
     const csvContents = await readFile(downloadPath, "utf8");
     expect(csvContents).toContain(
-      "Name,Company,Title\nE2E Organizer One,,\n",
+      "Name,Company,Title,Invited\nE2E Organizer One,,,No\n",
     );
   });
 
   test.describe("payment-enabled attendee refund flows", () => {
     test.skip(!E2E_PAYMENTS_ENABLED, "Payments are disabled in this environment.");
 
-    test("organizer can review a pending refund request from the attendees tab", async ({
+    test("organizer can act on a pending refund request from the attendee row menu", async ({
       organizerGroupPage,
     }) => {
       const attendeesContent = await openAttendeesTab(
@@ -413,23 +416,22 @@ test.describe("group dashboard attendees tab", () => {
       const attendeeRow = attendeesContent.locator("tr", {
         hasText: "E2E Member One",
       });
+      const rowActionsMenu = attendeeRow.locator("[data-attendee-row-actions-menu]");
 
-      await attendeeRow.locator("[data-refund-review-trigger]").click();
-
-      const refundModal = organizerGroupPage.locator("#attendee-refund-modal");
-      await expect(refundModal).toBeVisible();
-      await expect(refundModal.locator("#attendee-refund-ticket")).toHaveText("VIP pass");
-      await expect(refundModal.locator("#attendee-refund-amount")).toHaveText("USD 40.00");
-      await expect(refundModal.locator("#attendee-refund-name")).toHaveText("E2E Member One");
-      await expect(refundModal.locator("#attendee-refund-approve")).toContainText(
-        "Approve refund",
+      await expect(attendeeRow.getByText("Refund requested", { exact: true })).toBeVisible();
+      await expect(rowActionsMenu).toBeVisible();
+      await rowActionsMenu.locator("summary").click();
+      await expect(rowActionsMenu.getByRole("menuitem", { name: "Approve refund" })).toHaveAttribute(
+        "hx-put",
+        /\/refund\/approve$/,
       );
-      await expect(refundModal.locator("#attendee-refund-reject")).toContainText(
-        "Reject refund",
+      await expect(rowActionsMenu.getByRole("menuitem", { name: "Reject refund" })).toHaveAttribute(
+        "hx-put",
+        /\/refund\/reject$/,
       );
     });
 
-    test("organizer sees retry refund finalization for processing refunds", async ({
+    test("organizer sees retry refund finalization for processing refunds in the row menu", async ({
       organizerGroupPage,
     }) => {
       const attendeesContent = await openAttendeesTab(
@@ -440,18 +442,47 @@ test.describe("group dashboard attendees tab", () => {
       const attendeeRow = attendeesContent.locator("tr", {
         hasText: "E2E Member Two",
       });
+      const rowActionsMenu = attendeeRow.locator("[data-attendee-row-actions-menu]");
 
-      await attendeeRow.locator("[data-refund-review-trigger]").click();
+      await expect(attendeeRow.getByText("Refund processing", { exact: true })).toBeVisible();
+      await expect(rowActionsMenu).toBeVisible();
+      await rowActionsMenu.locator("summary").click();
+      await expect(
+        rowActionsMenu.getByRole("menuitem", { name: "Retry refund finalization" }),
+      ).toHaveAttribute("hx-put", /\/refund\/approve$/);
+      await expect(rowActionsMenu.getByRole("menuitem", { name: "Reject refund" })).toHaveCount(0);
+    });
 
-      const refundModal = organizerGroupPage.locator("#attendee-refund-modal");
-      await expect(refundModal).toBeVisible();
-      await expect(refundModal.locator("#attendee-refund-ticket")).toHaveText("VIP pass");
-      await expect(refundModal.locator("#attendee-refund-amount")).toHaveText("USD 50.00");
-      await expect(refundModal.locator("#attendee-refund-name")).toHaveText("E2E Member Two");
-      await expect(refundModal.locator("#attendee-refund-approve")).toContainText(
-        "Retry refund finalization",
+    test("organizer sees rejected refunds as a read-only attendee badge", async ({
+      organizerGroupPage,
+    }) => {
+      const attendeesContent = await openAttendeesTab(
+        organizerGroupPage,
+        TEST_PAYMENT_EVENT_NAMES.refunds,
+        TEST_PAYMENT_EVENT_IDS.refunds,
       );
-      await expect(refundModal.locator("#attendee-refund-reject")).toBeHidden();
+      const attendeeRow = attendeesContent.locator("tr", {
+        hasText: "E2E Pending One",
+      });
+
+      await expect(attendeeRow.getByText("Refund rejected", { exact: true })).toBeVisible();
+      await expect(attendeeRow.locator("[data-attendee-row-actions-menu]")).toHaveCount(0);
+    });
+
+    test("organizer sees approved refunds as a read-only attendee badge", async ({
+      organizerGroupPage,
+    }) => {
+      const attendeesContent = await openAttendeesTab(
+        organizerGroupPage,
+        TEST_PAYMENT_EVENT_NAMES.refunds,
+        TEST_PAYMENT_EVENT_IDS.refunds,
+      );
+      const attendeeRow = attendeesContent.locator("tr", {
+        hasText: "E2E Group Viewer One",
+      });
+
+      await expect(attendeeRow.getByText("Refund approved", { exact: true })).toBeVisible();
+      await expect(attendeeRow.locator("[data-attendee-row-actions-menu]")).toHaveCount(0);
     });
 
     test("viewer cannot review or approve attendee refunds", async ({

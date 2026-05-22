@@ -131,7 +131,7 @@
                           <li>
                             <button type="button"
                                     class="cursor-pointer w-full text-start px-4 py-2 hover:bg-stone-100"
-                                    hx-put="/dashboard/group/events/{{ event.event_id }}/attendees/{{ request.user_id }}/invitation/accept"
+                                    hx-put="/dashboard/group/events/{{ event.event_id }}/attendees/{{ request.user_id }}/invitation-request/accept"
                                     hx-indicator="#dashboard-spinner"
                                     hx-disabled-elt="this"
                                     data-invitation-request-action
@@ -147,7 +147,7 @@
                             <button id="reject-invitation-request-{{ request.user_id }}"
                                     type="button"
                                     class="cursor-pointer w-full text-start px-4 py-2 hover:bg-stone-100"
-                                    hx-put="/dashboard/group/events/{{ event.event_id }}/attendees/{{ request.user_id }}/invitation/reject"
+                                    hx-put="/dashboard/group/events/{{ event.event_id }}/attendees/{{ request.user_id }}/invitation-request/reject"
                                     hx-indicator="#dashboard-spinner"
                                     hx-disabled-elt="this"
                                     hx-trigger="confirmed"

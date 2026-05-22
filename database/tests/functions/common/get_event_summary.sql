@@ -21,6 +21,7 @@ select plan(7);
 \set eventSeriesID '00000000-0000-0000-0000-000000000035'
 \set groupID '00000000-0000-0000-0000-000000000021'
 \set groupNoLogoID '00000000-0000-0000-0000-000000000022'
+\set pendingInviteID '00000000-0000-0000-0000-000000000046'
 \set ticketPriceWindowID '00000000-0000-0000-0000-000000000045'
 \set ticketTypeID '00000000-0000-0000-0000-000000000044'
 \set waitlistUserID '00000000-0000-0000-0000-000000000043'
@@ -118,6 +119,13 @@ insert into "user" (
     :'waitlistUserID',
     'waitlist@example.com',
     'waitlist-user',
+    true,
+    'attendee-hash',
+    '2024-01-01 00:00:00+00'
+), (
+    :'pendingInviteID',
+    'pending@example.com',
+    'pending-invite',
     true,
     'attendee-hash',
     '2024-01-01 00:00:00+00'
@@ -329,10 +337,11 @@ values (
 );
 
 -- Event Attendees
-insert into event_attendee (event_id, user_id)
+insert into event_attendee (event_id, user_id, status)
 values
-    (:'eventID', :'attendee1ID'),
-    (:'eventID', :'attendee2ID');
+    (:'eventID', :'attendee1ID', 'confirmed'),
+    (:'eventID', :'attendee2ID', 'confirmed'),
+    (:'eventID', :'pendingInviteID', 'invitation-pending');
 
 -- Event Waitlist
 insert into event_waitlist (event_id, user_id)

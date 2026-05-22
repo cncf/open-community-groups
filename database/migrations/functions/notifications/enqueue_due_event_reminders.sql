@@ -60,6 +60,7 @@ begin
             from event_attendee ea
             join "user" u using (user_id)
             where ea.event_id = v_event.event_id
+            and ea.status = 'confirmed'
             and u.email_verified = true
 
             union

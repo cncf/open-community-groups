@@ -21,6 +21,8 @@ returns json as $$
             and al.action = any(array[
                 'community_team_invitation_accepted',
                 'community_team_invitation_rejected',
+                'event_attendee_invitation_accepted',
+                'event_attendee_invitation_rejected',
                 'group_team_invitation_accepted',
                 'group_team_invitation_rejected',
                 'session_proposal_added',

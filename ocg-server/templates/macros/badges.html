@@ -44,6 +44,26 @@
 {% endmacro status_badge -%}
 {# End status badge -#}
 
+{# Invitation badge -#}
+{% macro invitation_badge(label, tone = "pending", with_border = false, extra_styles = None) -%}
+  {% let extra_styles_ = extra_styles.unwrap_or("") -%}
+
+  {% if tone == "success" -%}
+    <span class="text-nowrap bg-green-100 text-green-800 text-xs px-2.5 py-0.5 rounded-full tracking-wide
+                 {% if with_border %}border border-green-800{% endif %}
+                 {{ extra_styles_ }}">{{ label }}</span>
+  {% else if tone == "danger" -%}
+    <span class="text-nowrap bg-red-100 text-red-800 text-xs px-2.5 py-0.5 rounded-full tracking-wide
+                 {% if with_border %}border border-red-800{% endif %}
+                 {{ extra_styles_ }}">{{ label }}</span>
+  {% else -%}
+    <span class="text-nowrap bg-yellow-100 text-yellow-800 text-xs px-2.5 py-0.5 rounded-full tracking-wide
+                 {% if with_border %}border border-yellow-800{% endif %}
+                 {{ extra_styles_ }}">{{ label }}</span>
+  {% endif -%}
+{% endmacro invitation_badge -%}
+{# End invitation badge -#}
+
 {# Submission status badge -#}
 {% macro submission_status_badge(status_id, label, extra_styles = None) -%}
   {% let extra_styles_ = extra_styles.unwrap_or("") -%}

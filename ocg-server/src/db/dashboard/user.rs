@@ -12,7 +12,7 @@ use crate::{
         audit::{AuditLogFilters, AuditLogsOutput},
         user::{
             events::{UserEventsFilters, UserEventsOutput},
-            invitations::{CommunityTeamInvitation, GroupTeamInvitation},
+            invitations::{CommunityTeamInvitation, EventInvitation, GroupTeamInvitation},
             session_proposals::{
                 PendingCoSpeakerInvitation, SessionProposalInput, SessionProposalLevel,
                 SessionProposalsFilters, SessionProposalsOutput,
@@ -27,6 +27,9 @@ use crate::{
 pub(crate) trait DBDashboardUser {
     /// Accepts a pending community team invitation.
     async fn accept_community_team_invitation(&self, actor_user_id: Uuid, community_id: Uuid) -> Result<()>;
+
+    /// Accepts a pending organizer-created event invitation.
+    async fn accept_event_attendee_invitation(&self, actor_user_id: Uuid, event_id: Uuid) -> Result<Uuid>;
 
     /// Accepts a pending group team invitation.
     async fn accept_group_team_invitation(&self, actor_user_id: Uuid, group_id: Uuid) -> Result<()>;
@@ -78,6 +81,9 @@ pub(crate) trait DBDashboardUser {
         user_id: Uuid,
     ) -> Result<Vec<CommunityTeamInvitation>>;
 
+    /// Lists all pending organizer-created event invitations for the user.
+    async fn list_user_event_invitations(&self, user_id: Uuid) -> Result<Vec<EventInvitation>>;
+
     /// Lists upcoming events where the user participates.
     async fn list_user_events(&self, user_id: Uuid, filters: &UserEventsFilters) -> Result<UserEventsOutput>;
 
@@ -99,6 +105,9 @@ pub(crate) trait DBDashboardUser {
 
     /// Rejects a pending community team invitation.
     async fn reject_community_team_invitation(&self, actor_user_id: Uuid, community_id: Uuid) -> Result<()>;
+
+    /// Rejects a pending organizer-created event invitation.
+    async fn reject_event_attendee_invitation(&self, actor_user_id: Uuid, event_id: Uuid) -> Result<()>;
 
     /// Rejects a pending group team invitation.
     async fn reject_group_team_invitation(&self, actor_user_id: Uuid, group_id: Uuid) -> Result<()>;
@@ -133,6 +142,16 @@ impl DBDashboardUser for PgDB {
         self.execute(
             "select accept_community_team_invitation($1::uuid, $2::uuid)",
             &[&actor_user_id, &community_id],
+        )
+        .await
+    }
+
+    /// [`DBDashboardUser::accept_event_attendee_invitation`]
+    #[instrument(skip(self), err)]
+    async fn accept_event_attendee_invitation(&self, actor_user_id: Uuid, event_id: Uuid) -> Result<Uuid> {
+        self.fetch_scalar_one(
+            "select accept_event_attendee_invitation($1::uuid, $2::uuid)::uuid",
+            &[&actor_user_id, &event_id],
         )
         .await
     }
@@ -258,6 +277,13 @@ impl DBDashboardUser for PgDB {
         .await
     }
 
+    /// [`DBDashboardUser::list_user_event_invitations`]
+    #[instrument(skip(self), err)]
+    async fn list_user_event_invitations(&self, user_id: Uuid) -> Result<Vec<EventInvitation>> {
+        self.fetch_json_one("select list_user_event_invitations($1::uuid)", &[&user_id])
+            .await
+    }
+
     /// [`DBDashboardUser::list_user_events`]
     #[instrument(skip(self, filters), err)]
     async fn list_user_events(&self, user_id: Uuid, filters: &UserEventsFilters) -> Result<UserEventsOutput> {
@@ -308,6 +334,16 @@ impl DBDashboardUser for PgDB {
         self.execute(
             "select reject_community_team_invitation($1::uuid, $2::uuid)",
             &[&actor_user_id, &community_id],
+        )
+        .await
+    }
+
+    /// [`DBDashboardUser::reject_event_attendee_invitation`]
+    #[instrument(skip(self), err)]
+    async fn reject_event_attendee_invitation(&self, actor_user_id: Uuid, event_id: Uuid) -> Result<()> {
+        self.execute(
+            "select reject_event_attendee_invitation($1::uuid, $2::uuid)",
+            &[&actor_user_id, &event_id],
         )
         .await
     }

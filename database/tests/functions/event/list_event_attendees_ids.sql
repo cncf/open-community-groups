@@ -18,6 +18,7 @@ select plan(4);
 \set user0ID '00000000-0000-0000-0000-000000000050'
 \set user1ID '00000000-0000-0000-0000-000000000051'
 \set user2ID '00000000-0000-0000-0000-000000000052'
+\set user3ID '00000000-0000-0000-0000-000000000053'
 
 -- ============================================================================
 -- SEED DATA
@@ -39,11 +40,12 @@ values (:'eventCategoryID', 'General', :'communityID');
 insert into "group" (group_id, community_id, group_category_id, name, slug)
 values (:'groupID', :'communityID', :'categoryID', 'G1', 'g1');
 
--- Users (u1 verified, u2 unverified)
+-- Users
 insert into "user" (user_id, auth_hash, email, username, email_verified, name)
 values
     (:'user1ID', gen_random_bytes(32), 'u1@example.com', 'u1', true, 'U1'),
-    (:'user2ID', gen_random_bytes(32), 'u2@example.com', 'u2', false, 'U2');
+    (:'user2ID', gen_random_bytes(32), 'u2@example.com', 'u2', false, 'U2'),
+    (:'user3ID', gen_random_bytes(32), 'u3@example.com', 'u3', true, 'U3');
 
 -- Event
 insert into event (
@@ -61,19 +63,22 @@ insert into event (
     :'eventCategoryID', 'in-person', :'groupID', true
 );
 
--- Event attendees (include verified and unverified users)
-insert into event_attendee (event_id, user_id)
-values (:'eventID', :'user1ID'), (:'eventID', :'user2ID');
+-- Event attendees
+insert into event_attendee (event_id, user_id, status)
+values
+    (:'eventID', :'user1ID', 'confirmed'),
+    (:'eventID', :'user2ID', 'confirmed'),
+    (:'eventID', :'user3ID', 'invitation-pending');
 
 -- ============================================================================
 -- TESTS
 -- ============================================================================
 
--- Should return only verified users
+-- Should return only verified confirmed attendees
 select is(
     list_event_attendees_ids(:'groupID'::uuid, :'eventID'::uuid),
     array[:'user1ID'::uuid],
-    'Returns verified attendees only'
+    'Returns verified confirmed attendees only'
 );
 
 -- Should return attendees ordered by user_id asc

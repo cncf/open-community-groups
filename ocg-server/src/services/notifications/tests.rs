@@ -482,6 +482,29 @@ fn test_delivery_worker_prepare_content_event_custom_legacy_template_data() {
 }
 
 #[test]
+fn test_delivery_worker_prepare_content_event_invitation() {
+    // Setup notification
+    let notification = Notification {
+        attachments: vec![],
+        email: "user@example.test".to_string(),
+        kind: NotificationKind::EventInvitation,
+        notification_id: Uuid::new_v4(),
+        template_data: Some(sample_event_invitation_template_data()),
+    };
+
+    // Prepare content
+    let (subject, body) = DeliveryWorker::prepare_content(&notification).unwrap();
+
+    // Check content matches expectations
+    assert_eq!(subject, "You have been invited to an event");
+    assert!(body.contains("Invitation Event"));
+    assert!(body.contains("Review invitation"));
+    assert!(body.contains("LF SSO"));
+    assert!(body.contains("primary email configured on your LF account"));
+    assert!(body.contains("https://example.test/dashboard/user?tab=invitations"));
+}
+
+#[test]
 fn test_delivery_worker_prepare_content_event_published() {
     // Setup notification
     let notification = Notification {
@@ -954,6 +977,33 @@ fn sample_event_custom_legacy_template_data() -> serde_json::Value {
     object.remove("subject");
     object.insert("title".to_string(), json!("Custom event title"));
     payload
+}
+
+/// Sample template payload for event invitation notifications.
+fn sample_event_invitation_template_data() -> serde_json::Value {
+    json!({
+        "event": {
+            "canceled": false,
+            "community_display_name": "Test Community",
+            "community_name": "test-community",
+            "event_id": "11111111-1111-1111-1111-111111111111",
+            "group_category_name": "Community",
+            "group_name": "Notification Group",
+            "group_slug": "notification-group",
+            "kind": "virtual",
+            "logo_url": "https://example.com/logo.png",
+            "name": "Invitation Event",
+            "published": true,
+            "slug": "invitation-event",
+            "timezone": "UTC",
+            "waitlist_count": 0,
+            "waitlist_enabled": false
+        },
+        "link": "https://example.test/dashboard/user?tab=invitations",
+        "theme": {
+            "primary_color": "#000000"
+        }
+    })
 }
 
 /// Sample legacy payload for event reminder notifications without waitlist data.

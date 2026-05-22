@@ -1,8 +1,16 @@
 {% import "macros/pagination.html" as pagination -%}
+{% let refresh_limit = limit.unwrap_or(crate::templates::dashboard::DASHBOARD_PAGINATION_LIMIT) -%}
+{% let refresh_offset = offset.unwrap_or(0) -%}
+
+<div id="waitlist-refresh"
+     hx-get="/dashboard/group/events/{{ event.event_id }}/waitlist?limit={{ refresh_limit }}&offset={{ refresh_offset }}"
+     hx-trigger="refresh-event-waitlist from:body"
+     hx-target="#waitlist-content"
+     hx-swap="innerHTML"></div>
 
 <div class="flex flex-col lg:flex-row lg:items-center justify-between my-5">
   <div class="text-sm text-stone-600 mb-4 lg:mb-0">
-    {{ pagination::range_display(offset = offset.unwrap_or(0) , count = waitlist.len(), total = total, label = "waitlist entry") }}
+    {{ pagination::range_display(offset = refresh_offset , count = waitlist.len() , total = total, label = "waitlist entry") }}
   </div>
 </div>
 
@@ -56,7 +64,7 @@
                 </div>
               </div>
             </td>
-            <td class="px-3 xl:px-5 py-4">{{ offset.unwrap_or(0) + loop.index }}</td>
+            <td class="px-3 xl:px-5 py-4">{{ refresh_offset + loop.index }}</td>
             <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap w-40">
               {{ entry.created_at.format("%b %d, %Y") }}
             </td>

@@ -241,6 +241,18 @@ Invitation-review event operations include:
 - Accepting a request creates a confirmed attendee if capacity allows.
 - Rejecting a request records the decision without creating an attendee.
 
+Organizer-created event invitations are managed from the event `Attendees` tab:
+
+- Organizers with `group.events.write` can invite a registered platform user or enter an email
+  address for someone who has not registered yet.
+- Email invitations are for LF SSO accounts. The invited email must match the invitee's LF account
+  primary email, or the invitee will not be able to accept.
+- Manual invitations are available for free RSVP events only, not ticketed events.
+- Pending invitations appear in the attendee table with invitation status and can be canceled
+  before the invitee accepts.
+- If an invitee rejects the invitation, the attendee row stays rejected and the same user cannot be
+  invited to that event again.
+
 ![Add event flow](../screenshots/dashboard-group-add-event.png)
 
 For complete mechanics, continue to:

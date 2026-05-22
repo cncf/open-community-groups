@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(20);
+select plan(31);
 
 -- ============================================================================
 -- VARIABLES
@@ -27,6 +27,8 @@ select plan(20);
 \set user2ID '00000000-0000-0000-0000-000000000032'
 \set user3ID '00000000-0000-0000-0000-000000000033'
 \set user4ID '00000000-0000-0000-0000-000000000034'
+\set user5ID '00000000-0000-0000-0000-000000000035'
+\set user6ID '00000000-0000-0000-0000-000000000036'
 
 -- ============================================================================
 -- SEED DATA
@@ -50,7 +52,9 @@ values
     (:'user1ID', 'h', 'u1@test.com', 'u1'),
     (:'user2ID', 'h', 'u2@test.com', 'u2'),
     (:'user3ID', 'h', 'u3@test.com', 'u3'),
-    (:'user4ID', 'h', 'u4@test.com', 'u4');
+    (:'user4ID', 'h', 'u4@test.com', 'u4'),
+    (:'user5ID', 'h', 'u5@test.com', 'u5'),
+    (:'user6ID', 'h', 'u6@test.com', 'u6');
 
 -- Groups
 insert into "group" (group_id, community_id, group_category_id, name, slug, active, deleted)
@@ -89,10 +93,18 @@ values
     (:'eventInviteOnly', 'Invite Only', 'invite-only', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', true, false, false, null, null, 1, false, true);
 
 -- Event attendees
-insert into event_attendee (event_id, user_id)
+insert into event_attendee (event_id, user_id, status)
 values
-    (:'eventFullNoWaitlist', :'user1ID'),
-    (:'eventFullWaitlist', :'user1ID');
+    (:'eventFullNoWaitlist', :'user1ID', 'confirmed'),
+    (:'eventFullWaitlist', :'user1ID', 'confirmed');
+
+-- Existing organizer invitation decisions
+insert into event_attendee (event_id, user_id, manually_invited, status)
+values
+    (:'eventOK', :'user3ID', false, 'invitation-canceled'),
+    (:'eventFullWaitlist', :'user3ID', false, 'invitation-canceled'),
+    (:'eventFullNoWaitlist', :'user5ID', true, 'invitation-pending'),
+    (:'eventFullNoWaitlist', :'user6ID', true, 'invitation-rejected');
 
 -- Event invitation requests
 insert into event_invitation_request (event_id, user_id, created_at, status, reviewed_at, reviewed_by)
@@ -117,8 +129,9 @@ select ok(
         select 1
         from event_attendee
         where event_id = :'eventOK'::uuid and user_id = :'user1ID'::uuid
+        and manually_invited = false
     ),
-    'Creates event_attendee row after confirmed RSVP'
+    'Creates non-manually invited event_attendee row after confirmed RSVP'
 );
 
 -- Should allow attendance for a capacity-limited event with an open seat
@@ -148,6 +161,80 @@ select throws_ok(
     'Rejects duplicate RSVP for a confirmed attendee'
 );
 
+-- Should confirm a pending organizer invitation even when the event is full
+select is(
+    attend_event(:'communityID'::uuid, :'eventFullNoWaitlist'::uuid, :'user5ID'::uuid),
+    'attendee',
+    'Returns attendee when accepting a pending organizer invitation'
+);
+
+select is(
+    (
+        select status
+        from event_attendee
+        where event_id = :'eventFullNoWaitlist'::uuid
+        and user_id = :'user5ID'::uuid
+    ),
+    'confirmed',
+    'Converts the pending organizer invitation into confirmed attendance'
+);
+
+select ok(
+    (
+        select manually_invited
+        from event_attendee
+        where event_id = :'eventFullNoWaitlist'::uuid
+        and user_id = :'user5ID'::uuid
+    ),
+    'Keeps accepted organizer invitations marked as manually invited'
+);
+
+-- Should confirm a rejected organizer invitation even when the event is full
+select is(
+    attend_event(:'communityID'::uuid, :'eventFullNoWaitlist'::uuid, :'user6ID'::uuid),
+    'attendee',
+    'Returns attendee when reversing a rejected organizer invitation'
+);
+
+select is(
+    (
+        select status
+        from event_attendee
+        where event_id = :'eventFullNoWaitlist'::uuid
+        and user_id = :'user6ID'::uuid
+    ),
+    'confirmed',
+    'Converts the rejected organizer invitation into confirmed attendance'
+);
+
+-- Should allow RSVP after an organizer invitation was canceled
+select is(
+    attend_event(:'communityID'::uuid, :'eventOK'::uuid, :'user3ID'::uuid),
+    'attendee',
+    'Returns attendee after a canceled organizer invitation'
+);
+
+select is(
+    (
+        select status
+        from event_attendee
+        where event_id = :'eventOK'::uuid
+        and user_id = :'user3ID'::uuid
+    ),
+    'confirmed',
+    'Converts the canceled organizer invitation into confirmed attendance'
+);
+
+select ok(
+    not (
+        select manually_invited
+        from event_attendee
+        where event_id = :'eventOK'::uuid
+        and user_id = :'user3ID'::uuid
+    ),
+    'Clears manually invited when a canceled invitation is reused by a normal RSVP'
+);
+
 -- Should place the user on the waitlist when the event is full and waitlist is enabled
 select is(
     attend_event(:'communityID'::uuid, :'eventFullWaitlist'::uuid, :'user2ID'::uuid),
@@ -163,6 +250,33 @@ select ok(
         where event_id = :'eventFullWaitlist'::uuid and user_id = :'user2ID'::uuid
     ),
     'Creates event_waitlist row after joining the waitlist'
+);
+
+-- Should allow waitlist join after an organizer invitation was canceled
+select is(
+    attend_event(:'communityID'::uuid, :'eventFullWaitlist'::uuid, :'user3ID'::uuid),
+    'waitlisted',
+    'Returns waitlisted after a canceled organizer invitation for a full event'
+);
+
+select ok(
+    not exists(
+        select 1
+        from event_attendee
+        where event_id = :'eventFullWaitlist'::uuid
+        and user_id = :'user3ID'::uuid
+    ),
+    'Removes the canceled organizer invitation row before waitlisting'
+);
+
+select ok(
+    exists(
+        select 1
+        from event_waitlist
+        where event_id = :'eventFullWaitlist'::uuid
+        and user_id = :'user3ID'::uuid
+    ),
+    'Creates waitlist row after a canceled organizer invitation'
 );
 
 -- Should recreate attendance when an accepted request no longer has an attendee row

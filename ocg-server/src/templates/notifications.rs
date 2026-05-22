@@ -75,6 +75,18 @@ pub(crate) struct EventCustom {
     pub theme: Theme,
 }
 
+/// Template for event invitation notification.
+#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[template(path = "notifications/event_invitation.html")]
+pub(crate) struct EventInvitation {
+    /// Event summary data.
+    pub event: EventSummary,
+    /// Link to manage invitations in the dashboard.
+    pub link: String,
+    /// Theme configuration for the community.
+    pub theme: Theme,
+}
+
 /// Template for event published notification.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "notifications/event_published.html")]

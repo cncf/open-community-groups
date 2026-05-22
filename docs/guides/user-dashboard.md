@@ -84,25 +84,32 @@ Notification preferences:
 
 ## Invitations: Unlock Organizer Access
 
-When a community or group invites you to help run operations, the invitation
-appears here. Accepting an invitation updates your access and can add new
-dashboard options in your user menu.
+When a community or group invites you to help run operations, or an organizer
+invites you to attend an event, the invitation appears here. Accepting an
+invitation updates your access or confirms your event attendance.
 
 Invitation statuses:
 
 - Community and group team invites: Invitation sent, accepted, rejected.
+- Event invitations: Invitation sent, accepted, rejected.
 - Pending team invites do not grant dashboard access until accepted.
 - Invitation rows include the role that will be assigned on acceptance.
+- Pending event invitations do not make you an attendee until accepted.
 
 When someone invites you to a team, you receive an in-app and email invitation with a direct path
 to accept or decline.
+
+When someone invites you to an event by email, sign in with LF SSO using the LF account whose
+primary email matches the invited address. If the email on your LF account is different, OCG
+cannot connect the invitation to your login and you will not be able to accept it.
 
 Typical post-accept behavior:
 
 1. Access is granted to the related scope.
 2. The assigned community/group role becomes active for permission checks.
-3. Pending invitation state clears.
-4. A refresh or re-login may be needed before navigation updates.
+3. Event invitations become confirmed attendance and send the normal event confirmation.
+4. Pending invitation state clears.
+5. A refresh or re-login may be needed before navigation updates.
 
 If organizer dashboards still do not appear, see
 [Choose Your Dashboard](../getting-started/choose-dashboard.md) and

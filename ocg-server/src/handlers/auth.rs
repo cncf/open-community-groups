@@ -352,8 +352,13 @@ pub(crate) async fn sign_up(
     // Generate password hash
     user_summary.password = Some(password_auth::generate_hash(&password));
 
-    // Sign up the user
-    let Ok((user, email_verification_code)) = db.sign_up_user(&user_summary, false).await else {
+    // Sign up the user, reusing pre-registered invitation placeholders when present
+    let sign_up_result = match db.activate_pre_registered_user_email_password(&user_summary).await {
+        Ok(Some((user, verification_code))) => Ok((user, Some(verification_code))),
+        Ok(None) => db.sign_up_user(&user_summary, false).await,
+        Err(err) => Err(err),
+    };
+    let Ok((user, email_verification_code)) = sign_up_result else {
         // Redirect to the sign up page on error
         messages.error("Something went wrong while signing up. Please try again later.");
         return Ok(Redirect::to(SIGN_UP_URL).into_response());

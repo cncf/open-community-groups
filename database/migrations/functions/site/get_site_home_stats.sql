@@ -27,6 +27,7 @@ returns json as $$
             join event e using (event_id)
             join "group" g using (group_id)
             where g.active = true
+            and ea.status = 'confirmed'
             and g.deleted = false
             and e.canceled = false
             and e.deleted = false

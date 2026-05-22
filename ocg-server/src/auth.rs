@@ -236,7 +236,18 @@ impl AuthnBackend {
 
     /// Get an existing external-auth user or sign them up.
     async fn get_or_sign_up_external_user(&self, user_summary: &UserSummary) -> Result<User> {
-        if let Some(mut user) = self.db.get_user_by_email(&user_summary.email).await? {
+        if let Some(mut user) = self
+            .db
+            .get_user_by_email_for_external_auth(&user_summary.email)
+            .await?
+        {
+            if user.registration_status == "pre-registered" {
+                return self
+                    .db
+                    .activate_pre_registered_user_external_provider(&user.user_id, user_summary)
+                    .await;
+            }
+
             if let Some(provider) = user_summary.provider.clone() {
                 let mut merged_provider = user.provider.clone().unwrap_or_default();
                 merged_provider.merge(provider.clone());
@@ -428,6 +439,9 @@ pub(crate) struct User {
     pub name: String,
     /// Whether the user receives optional notifications.
     pub optional_notifications_enabled: bool,
+    /// Registration state for placeholder and regular users.
+    #[serde(default = "default_registration_status")]
+    pub registration_status: String,
     /// User's username.
     pub username: String,
 
@@ -641,4 +655,9 @@ struct GitHubUserEmail {
     primary: bool,
     /// Whether this email is verified.
     verified: bool,
+}
+
+/// Default persisted registration status for regular users.
+fn default_registration_status() -> String {
+    "registered".to_string()
 }

@@ -302,7 +302,7 @@ async fn get_or_sign_up_external_user_merges_provider_into_existing_user() {
     let incoming_provider = sample_linuxfoundation_user_provider();
     let user_summary = sample_external_user_summary(Some(incoming_provider.clone()));
 
-    db.expect_get_user_by_email()
+    db.expect_get_user_by_email_for_external_auth()
         .times(1)
         .withf(|email| email == "user@example.com")
         .returning(move |_| Ok(Some(existing_user.clone())));
@@ -340,7 +340,7 @@ async fn get_or_sign_up_external_user_sets_provider_for_existing_user_without_pr
     let incoming_provider = sample_user_provider();
     let user_summary = sample_external_user_summary(Some(incoming_provider.clone()));
 
-    db.expect_get_user_by_email()
+    db.expect_get_user_by_email_for_external_auth()
         .times(1)
         .withf(|email| email == "user@example.com")
         .returning(move |_| Ok(Some(existing_user.clone())));
@@ -366,7 +366,7 @@ async fn get_or_sign_up_external_user_skips_provider_update_when_unchanged() {
     let existing_user = sample_user();
     let user_summary = sample_external_user_summary(Some(sample_user_provider()));
 
-    db.expect_get_user_by_email()
+    db.expect_get_user_by_email_for_external_auth()
         .times(1)
         .withf(|email| email == "user@example.com")
         .returning(move |_| Ok(Some(existing_user.clone())));
@@ -390,7 +390,7 @@ async fn get_or_sign_up_external_user_signs_up_new_user() {
     let user_summary = sample_external_user_summary(Some(provider.clone()));
     let signed_up_user = sample_user();
 
-    db.expect_get_user_by_email()
+    db.expect_get_user_by_email_for_external_auth()
         .times(1)
         .withf(|email| email == "user@example.com")
         .returning(|_| Ok(None));
@@ -416,13 +416,47 @@ async fn get_or_sign_up_external_user_signs_up_new_user() {
 }
 
 #[tokio::test]
+async fn get_or_sign_up_external_user_activates_pre_registered_user() {
+    // Setup database mock
+    let mut db = MockDB::new();
+    let mut pre_registered_user = sample_user();
+    pre_registered_user.registration_status = "pre-registered".to_string();
+    let pre_registered_user_id = pre_registered_user.user_id;
+    let activated_user = sample_user();
+    let user_summary = sample_external_user_summary(Some(sample_linuxfoundation_user_provider()));
+
+    db.expect_get_user_by_email_for_external_auth()
+        .times(1)
+        .withf(|email| email == "user@example.com")
+        .returning(move |_| Ok(Some(pre_registered_user.clone())));
+    db.expect_activate_pre_registered_user_external_provider()
+        .times(1)
+        .withf(move |user_id, summary| {
+            *user_id == pre_registered_user_id
+                && summary.email == "user@example.com"
+                && summary.provider == Some(sample_linuxfoundation_user_provider())
+        })
+        .returning(move |_, _| Ok(activated_user.clone()));
+    db.expect_update_user_provider().times(0);
+    db.expect_sign_up_user().times(0);
+    let db: DynDB = Arc::new(db);
+
+    // Execute helper
+    let backend = authn_backend(db).await;
+    let user = backend.get_or_sign_up_external_user(&user_summary).await.unwrap();
+
+    // Check result
+    assert_eq!(user.registration_status, "registered");
+}
+
+#[tokio::test]
 async fn get_or_sign_up_external_user_skips_provider_update_when_missing() {
     // Setup database mock
     let mut db = MockDB::new();
     let existing_user = sample_user();
     let user_summary = sample_external_user_summary(None);
 
-    db.expect_get_user_by_email()
+    db.expect_get_user_by_email_for_external_auth()
         .times(1)
         .withf(|email| email == "user@example.com")
         .returning(move |_| Ok(Some(existing_user.clone())));
@@ -779,6 +813,7 @@ fn sample_user() -> User {
         name: "Test User".to_string(),
         optional_notifications_enabled: true,
         provider: Some(sample_user_provider()),
+        registration_status: "registered".to_string(),
         username: "test-user".to_string(),
         ..User::default()
     }
