@@ -206,7 +206,7 @@
 
                   {# View event button -#}
                   <div>
-                    {% if event.published || event.canceled -%}
+                    {% if event.published -%}
                       <a href="/{{ event.community_name }}/group/{{ event.public_group_slug() }}/event/{{ event.slug }}"
                          target="_blank"
                          rel="noopener noreferrer"
@@ -479,7 +479,7 @@
 
                   {# View event button -#}
                   <div>
-                    {% if event.published || event.canceled -%}
+                    {% if event.published -%}
                       <a href="/{{ event.community_name }}/group/{{ event.public_group_slug() }}/event/{{ event.slug }}"
                          target="_blank"
                          rel="noopener noreferrer"
