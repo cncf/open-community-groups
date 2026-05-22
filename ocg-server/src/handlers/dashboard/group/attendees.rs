@@ -292,7 +292,11 @@ pub(crate) async fn invite_event_attendee(
         Ok(context) => context,
         Err(err) => {
             warn!(error = %err, "failed to load event invitation notification context");
-            return Ok((StatusCode::CREATED, [("HX-Trigger", "refresh-event-attendees")]).into_response());
+            return Ok((
+                StatusCode::CREATED,
+                [("HX-Trigger", "refresh-event-attendees, refresh-event-waitlist")],
+            )
+                .into_response());
         }
     };
     let template_data = EventInvitation {
@@ -313,7 +317,11 @@ pub(crate) async fn invite_event_attendee(
         warn!(error = %err, "failed to enqueue event invitation notification");
     }
 
-    Ok((StatusCode::CREATED, [("HX-Trigger", "refresh-event-attendees")]).into_response())
+    Ok((
+        StatusCode::CREATED,
+        [("HX-Trigger", "refresh-event-attendees, refresh-event-waitlist")],
+    )
+        .into_response())
 }
 
 /// Manually checks in a user for an event, bypassing the check-in window validation.

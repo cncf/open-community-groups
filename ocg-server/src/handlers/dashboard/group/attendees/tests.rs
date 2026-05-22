@@ -761,7 +761,9 @@ async fn test_invite_event_attendee_returns_created_and_sends_notification() {
     assert_eq!(parts.status, StatusCode::CREATED);
     assert_eq!(
         parts.headers.get("HX-Trigger"),
-        Some(&HeaderValue::from_static("refresh-event-attendees"))
+        Some(&HeaderValue::from_static(
+            "refresh-event-attendees, refresh-event-waitlist"
+        ))
     );
     assert!(bytes.is_empty());
 }
@@ -842,7 +844,9 @@ async fn test_invite_event_attendee_returns_created_when_notification_context_fa
     assert_eq!(parts.status, StatusCode::CREATED);
     assert_eq!(
         parts.headers.get("HX-Trigger"),
-        Some(&HeaderValue::from_static("refresh-event-attendees"))
+        Some(&HeaderValue::from_static(
+            "refresh-event-attendees, refresh-event-waitlist"
+        ))
     );
     assert!(bytes.is_empty());
 }
@@ -942,7 +946,9 @@ async fn test_invite_event_attendee_returns_created_when_notification_enqueue_fa
     assert_eq!(parts.status, StatusCode::CREATED);
     assert_eq!(
         parts.headers.get("HX-Trigger"),
-        Some(&HeaderValue::from_static("refresh-event-attendees"))
+        Some(&HeaderValue::from_static(
+            "refresh-event-attendees, refresh-event-waitlist"
+        ))
     );
     assert!(bytes.is_empty());
 }

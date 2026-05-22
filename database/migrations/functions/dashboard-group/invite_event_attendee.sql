@@ -94,6 +94,9 @@ begin
         end if;
     end if;
 
+    -- Serialize movement between waitlist and attendee invitation state
+    perform pg_advisory_xact_lock(hashtext(p_event_id::text), hashtext(v_target_user_id::text));
+
     -- Reject statuses that should not be invited again
     select ea.status
     into v_existing_status
@@ -112,6 +115,11 @@ begin
     if v_existing_status = 'invitation-rejected' then
         raise exception 'user rejected an invitation for this event';
     end if;
+
+    -- Remove waitlist membership before creating the invitation row
+    delete from event_waitlist
+    where event_id = p_event_id
+    and user_id = v_target_user_id;
 
     -- Reuse canceled rows so organizers can correct mistakes
     if v_existing_status = 'invitation-canceled' then

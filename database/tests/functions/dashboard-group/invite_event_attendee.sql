@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(9);
+select plan(12);
 
 -- ============================================================================
 -- VARIABLES
@@ -19,6 +19,7 @@ select plan(9);
 \set rejectedUserID '00000000-0000-0000-0000-000000000010'
 \set ticketedEventID '00000000-0000-0000-0000-000000000008'
 \set ticketTypeID '00000000-0000-0000-0000-000000000009'
+\set waitlistedUserID '00000000-0000-0000-0000-000000000011'
 
 -- ============================================================================
 -- SEED DATA
@@ -45,7 +46,8 @@ insert into "user" (auth_hash, email, email_verified, name, user_id, username)
 values
     ('hash-actor', 'actor@example.com', true, 'Actor', :'actorID', 'actor'),
     ('hash-registered', 'registered@example.com', true, 'Registered', :'registeredUserID', 'registered'),
-    ('hash-rejected', 'rejected@example.com', true, 'Rejected', :'rejectedUserID', 'rejected');
+    ('hash-rejected', 'rejected@example.com', true, 'Rejected', :'rejectedUserID', 'rejected'),
+    ('hash-waitlisted', 'waitlisted@example.com', true, 'Waitlisted', :'waitlistedUserID', 'waitlisted');
 
 -- Events
 insert into event (
@@ -73,6 +75,10 @@ values (:'ticketTypeID', :'ticketedEventID', 1, 100, 'General');
 insert into event_attendee (event_id, user_id, status)
 values (:'eventID', :'rejectedUserID', 'invitation-rejected');
 
+-- Existing waitlist entries
+insert into event_waitlist (event_id, user_id)
+values (:'eventID', :'waitlistedUserID');
+
 -- ============================================================================
 -- TESTS
 -- ============================================================================
@@ -93,6 +99,35 @@ select results_eq(
     $$,
     $$ values ('invitation-pending'::text, true) $$,
     'Should create a pending manual invitation for a registered user'
+);
+
+-- Should invite a waitlisted user and remove them from the waitlist.
+select is(
+    invite_event_attendee(:'actorID', :'groupID', :'eventID', :'waitlistedUserID', null),
+    :'waitlistedUserID'::uuid,
+    'Should return waitlisted invitee id'
+);
+
+select results_eq(
+    $$
+        select status, manually_invited
+        from event_attendee
+        where event_id = '00000000-0000-0000-0000-000000000005'::uuid
+        and user_id = '00000000-0000-0000-0000-000000000011'::uuid
+    $$,
+    $$ values ('invitation-pending'::text, true) $$,
+    'Should create a pending manual invitation for a waitlisted user'
+);
+
+select is(
+    (
+        select count(*)
+        from event_waitlist
+        where event_id = :'eventID'::uuid
+        and user_id = :'waitlistedUserID'::uuid
+    ),
+    0::bigint,
+    'Should remove the invited user from the waitlist'
 );
 
 -- Should pre-register an email invitee and keep them out of normal registration state.
