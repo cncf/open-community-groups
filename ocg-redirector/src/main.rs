@@ -6,14 +6,14 @@
 #![warn(clippy::all, clippy::pedantic)]
 #![allow(clippy::struct_field_names)]
 
-use std::path::PathBuf;
+use std::{path::PathBuf, sync::Arc, time::Duration};
 
 use anyhow::{Context, Result};
 use clap::Parser;
 use deadpool_postgres::Runtime;
 use openssl::ssl::{SslConnector, SslMethod, SslVerifyMode};
 use postgres_openssl::MakeTlsConnector;
-use tokio::{net::TcpListener, signal};
+use tokio::{net::TcpListener, signal, sync::RwLock, time};
 use tracing::{error, info};
 use tracing_subscriber::EnvFilter;
 
@@ -28,6 +28,9 @@ mod config;
 mod db;
 /// HTTP router configuration and setup.
 mod router;
+
+/// How often redirect mappings are refreshed from the database.
+const REDIRECT_REFRESH_INTERVAL: Duration = Duration::from_hours(1);
 
 /// Command-line arguments for the application.
 #[derive(Debug, Parser)]
@@ -94,7 +97,8 @@ fn setup_db(cfg: &Config) -> Result<PgDB> {
 /// Build the router and serve HTTP requests until shutdown.
 async fn run_server(db: PgDB, server_cfg: &HttpServerConfig) -> Result<()> {
     // Load redirects before building the router
-    let redirects = db.load_redirects().await?;
+    let redirects = Arc::new(RwLock::new(db.load_redirects().await?));
+    spawn_redirect_refresh(db, redirects.clone());
 
     // Build the router before binding the TCP listener
     let router = router::setup(redirects, server_cfg);
@@ -115,6 +119,25 @@ async fn run_server(db: PgDB, server_cfg: &HttpServerConfig) -> Result<()> {
     info!("server stopped");
 
     Ok(())
+}
+
+/// Spawns the periodic redirect map refresh task.
+fn spawn_redirect_refresh(db: PgDB, redirects: Arc<RwLock<router::Redirects>>) {
+    let _redirect_refresh_handle = tokio::spawn(async move {
+        loop {
+            time::sleep(REDIRECT_REFRESH_INTERVAL).await;
+
+            match db.load_redirects().await {
+                Ok(refreshed_redirects) => {
+                    *redirects.write().await = refreshed_redirects;
+                    info!("redirect mappings refreshed");
+                }
+                Err(err) => {
+                    error!(?err, "failed to refresh redirect mappings");
+                }
+            }
+        }
+    });
 }
 
 /// Returns a future that completes when the program receives a shutdown signal.

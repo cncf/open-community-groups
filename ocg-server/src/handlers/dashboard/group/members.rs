@@ -101,7 +101,12 @@ pub(crate) async fn send_group_custom_notification(
 
     // Enqueue notification
     let base_url = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
-    let link = format!("{}/{}/group/{}", base_url, group.community_name, group.slug);
+    let link = format!(
+        "{}/{}/group/{}",
+        base_url,
+        group.community_name,
+        group.public_slug()
+    );
     let template_data = GroupCustom {
         body: notification.body.clone(),
         group,

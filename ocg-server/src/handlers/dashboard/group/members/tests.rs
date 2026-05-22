@@ -276,8 +276,13 @@ async fn test_send_group_custom_notification_success() {
     );
     let site_settings = sample_site_settings();
     let site_settings_for_notifications = site_settings.clone();
-    let group_summary = sample_group_summary(group_id);
-    let expected_link = format!("/{}/group/{}", group_summary.community_name, group_summary.slug);
+    let mut group_summary = sample_group_summary(group_id);
+    group_summary.slug_pretty = Some("pretty-group".to_string());
+    let expected_link = format!(
+        "/{}/group/{}",
+        group_summary.community_name,
+        group_summary.public_slug()
+    );
     let group_for_notifications = group_summary.clone();
     let group_for_db = group_summary.clone();
     let notification_body = "Hello, group members!";

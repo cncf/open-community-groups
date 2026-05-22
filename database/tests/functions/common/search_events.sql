@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(17);
+select plan(18);
 
 -- ============================================================================
 -- VARIABLES
@@ -66,15 +66,15 @@ values
     (:'category2ID', 'Technology', :'community2ID');
 
 -- Group
-insert into "group" (group_id, name, slug, community_id, group_category_id, city, state, country_code, country_name, logo_url, location)
+insert into "group" (group_id, name, slug, slug_pretty, community_id, group_category_id, city, state, country_code, country_name, logo_url, location)
 values
-    (:'group1ID', 'Test Group', 'test-group', :'community1ID', :'category1ID',
+    (:'group1ID', 'Test Group', 'test-group', 'test-group-pretty', :'community1ID', :'category1ID',
      'San Francisco', 'CA', 'US', 'United States', 'https://example.com/group-logo.png',
      ST_GeogFromText('POINT(-122.4194 37.7749)')),
-    (:'group2ID', 'Cloud Group', 'cloud-group', :'community1ID', :'category1ID',
+    (:'group2ID', 'Cloud Group', 'cloud-group', null, :'community1ID', :'category1ID',
      'New York', 'NY', 'US', 'United States', 'https://example.com/cloud-group.png',
      ST_GeogFromText('POINT(-73.935242 40.73061)')),
-    (:'group3ID', 'Other Group', 'other-group', :'community2ID', :'category2ID',
+    (:'group3ID', 'Other Group', 'other-group', null, :'community2ID', :'category2ID',
      'Chicago', 'IL', 'US', 'United States', 'https://example.com/other-group.png',
      ST_GeogFromText('POINT(-87.6298 41.8781)'));
 
@@ -376,6 +376,24 @@ select is(
         get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event3ID'::uuid)::jsonb
     ),
     'Should filter events by group'
+);
+
+-- Should filter events by group pretty slug
+select is(
+    (select search_events(
+        jsonb_build_object(
+            'community', jsonb_build_array('test-community'),
+            'group', jsonb_build_array('test-group-pretty'),
+            'limit', 10,
+            'offset', 0
+        )
+    )::jsonb->'events'),
+    jsonb_build_array(
+        get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event1ID'::uuid)::jsonb,
+        get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb,
+        get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event3ID'::uuid)::jsonb
+    ),
+    'Should filter events by group pretty slug'
 );
 
 -- Should return bbox covering all event locations (or group locations if event location is not set)

@@ -16,6 +16,23 @@ begin
         -- Generate a candidate slug for the new group
         v_slug := generate_slug(7);
 
+        -- Retry generated slugs that match an existing pretty slug
+        if exists (
+            select 1
+            from "group" g
+            where g.community_id = p_community_id
+            and (
+                g.slug = v_slug
+                or g.slug_pretty = v_slug
+            )
+        ) then
+            v_retries := v_retries + 1;
+            if v_retries >= v_max_retries then
+                raise exception 'failed to generate unique slug after % attempts', v_max_retries;
+            end if;
+            continue;
+        end if;
+
         begin
             insert into "group" (
                 community_id,

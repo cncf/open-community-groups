@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(48);
+select plan(49);
 
 -- ============================================================================
 -- TESTS
@@ -159,6 +159,7 @@ select has_check('event_ticket_price_window', 'event_ticket_price_window_window_
 
 -- Test: group table expected constraints exist
 select has_check('group', 'group_check');
+select has_check('group', 'group_slug_pretty_chk');
 
 -- Test: session table expected constraints exist
 select has_check('session', 'session_check');

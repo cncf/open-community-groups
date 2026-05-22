@@ -75,21 +75,22 @@ insert into "group" (
     group_category_id,
     name,
     slug,
+    slug_pretty,
     description,
     active,
     deleted,
     legacy_url
 ) values
-    (:'activeGroupID', :'activeCommunityID', :'activeGroupCategoryID', 'Active Group', 'active-group', 'A group with a unique legacy URL', true, false, 'https://legacy.example.org/groups/active?source=legacy'),
-    (:'activeGroupSlashID', :'activeCommunityID', :'activeGroupCategoryID', 'Active Group Slash', 'active-group-slash', 'A group with a trailing-slash legacy URL', true, false, 'https://legacy.example.org/groups/active-slash/'),
-    (:'activeGroupNullLegacyID', :'activeCommunityID', :'activeGroupCategoryID', 'Active Group Null Legacy', 'active-group-null-legacy', 'A group without a legacy URL', true, false, null),
-    (:'deletedGroupID', :'activeCommunityID', :'activeGroupCategoryID', 'Deleted Group', 'deleted-group', 'A deleted group with a legacy URL', false, true, 'https://legacy.example.org/deleted-group'),
-    (:'duplicateGroupID', :'duplicateCommunityID', :'duplicateGroupCategoryID', 'Duplicate Group', 'duplicate-group', 'A group sharing a legacy URL', true, false, 'https://legacy.example.org/group-duplicate'),
-    (:'duplicateGroupOnlyID', :'duplicateCommunityID', :'duplicateGroupCategoryID', 'Duplicate Group Only', 'duplicate-group-only', 'Another group sharing the same legacy URL', true, false, 'https://legacy.example.org/group-duplicate'),
-    (:'inactiveGroupID', :'inactiveCommunityID', :'inactiveGroupCategoryID', 'Inactive Group', 'inactive-group', 'A group under an inactive community', true, false, 'https://legacy.example.org/inactive-group'),
-    (:'rootGroupID', :'activeCommunityID', :'activeGroupCategoryID', 'Root Group', 'root-group', 'A group using the site root as legacy URL', true, false, 'https://legacy.example.org'),
-    (:'scopedDuplicateGroupID', :'duplicateCommunityID', :'duplicateGroupCategoryID', 'Scoped Duplicate Group', 'scoped-duplicate-group', 'A group sharing a legacy URL path across communities', true, false, 'https://legacy-duplicate.example.org/groups/active'),
-    (:'sharedPathGroupID', :'activeCommunityID', :'activeGroupCategoryID', 'Shared Path Group', 'shared-path-group', 'A group sharing a path with an event', true, false, 'https://legacy.example.org/shared-path');
+    (:'activeGroupID', :'activeCommunityID', :'activeGroupCategoryID', 'Active Group', 'active-group', 'active-pretty', 'A group with a unique legacy URL', true, false, 'https://legacy.example.org/groups/active?source=legacy'),
+    (:'activeGroupSlashID', :'activeCommunityID', :'activeGroupCategoryID', 'Active Group Slash', 'active-group-slash', null, 'A group with a trailing-slash legacy URL', true, false, 'https://legacy.example.org/groups/active-slash/'),
+    (:'activeGroupNullLegacyID', :'activeCommunityID', :'activeGroupCategoryID', 'Active Group Null Legacy', 'active-group-null-legacy', null, 'A group without a legacy URL', true, false, null),
+    (:'deletedGroupID', :'activeCommunityID', :'activeGroupCategoryID', 'Deleted Group', 'deleted-group', null, 'A deleted group with a legacy URL', false, true, 'https://legacy.example.org/deleted-group'),
+    (:'duplicateGroupID', :'duplicateCommunityID', :'duplicateGroupCategoryID', 'Duplicate Group', 'duplicate-group', null, 'A group sharing a legacy URL', true, false, 'https://legacy.example.org/group-duplicate'),
+    (:'duplicateGroupOnlyID', :'duplicateCommunityID', :'duplicateGroupCategoryID', 'Duplicate Group Only', 'duplicate-group-only', null, 'Another group sharing the same legacy URL', true, false, 'https://legacy.example.org/group-duplicate'),
+    (:'inactiveGroupID', :'inactiveCommunityID', :'inactiveGroupCategoryID', 'Inactive Group', 'inactive-group', null, 'A group under an inactive community', true, false, 'https://legacy.example.org/inactive-group'),
+    (:'rootGroupID', :'activeCommunityID', :'activeGroupCategoryID', 'Root Group', 'root-group', null, 'A group using the site root as legacy URL', true, false, 'https://legacy.example.org'),
+    (:'scopedDuplicateGroupID', :'duplicateCommunityID', :'duplicateGroupCategoryID', 'Scoped Duplicate Group', 'scoped-duplicate-group', null, 'A group sharing a legacy URL path across communities', true, false, 'https://legacy-duplicate.example.org/groups/active'),
+    (:'sharedPathGroupID', :'activeCommunityID', :'activeGroupCategoryID', 'Shared Path Group', 'shared-path-group', null, 'A group sharing a path with an event', true, false, 'https://legacy.example.org/shared-path');
 
 -- Events
 insert into event (

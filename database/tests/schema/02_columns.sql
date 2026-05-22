@@ -525,6 +525,7 @@ select columns_are('group', array[
     'photos_urls',
     'region_id',
     'slack_url',
+    'slug_pretty',
     'state',
     'tags',
     'twitter_url',

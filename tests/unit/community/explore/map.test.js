@@ -135,6 +135,7 @@ describe("community explore map", () => {
         [
           {
             slug: "malaga-js",
+            slug_pretty: "malaga-javascript",
             community_name: "spain",
             latitude: 36.7213,
             longitude: -4.4214,
@@ -159,7 +160,7 @@ describe("community explore map", () => {
 
       markerAdds[0].handlers.click();
 
-      expect(clickedUrls).to.deep.equal(["/spain/group/malaga-js"]);
+      expect(clickedUrls).to.deep.equal(["/spain/group/malaga-javascript"]);
     } finally {
       HTMLAnchorElement.prototype.click = originalAnchorClick;
     }
@@ -182,6 +183,7 @@ describe("community explore map", () => {
           {
             slug: "open-source-day",
             group_slug: "malaga-js",
+            group_slug_pretty: "malaga-javascript",
             community_name: "spain",
             latitude: 36.72,
             longitude: -4.42,
@@ -195,7 +197,7 @@ describe("community explore map", () => {
 
       markerAdds[0].handlers.click();
 
-      expect(clickedUrls).to.deep.equal(["/spain/group/malaga-js/event/open-source-day"]);
+      expect(clickedUrls).to.deep.equal(["/spain/group/malaga-javascript/event/open-source-day"]);
     } finally {
       HTMLAnchorElement.prototype.click = originalAnchorClick;
     }

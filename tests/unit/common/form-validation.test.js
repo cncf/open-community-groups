@@ -6,6 +6,7 @@ import {
   parseLocalDate,
   validateCfsWindow,
   validateEventDates,
+  validateGroupPrettySlugField,
   validateSessionDateBounds,
 } from "/static/js/common/form-validation.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
@@ -24,6 +25,29 @@ describe("form validation helpers", () => {
     expect(parseLocalDate("2025-03-25T10:00")).to.be.instanceOf(Date);
     expect(parseLocalDate("")).to.equal(null);
     expect(parseLocalDate("invalid")).to.equal(null);
+  });
+
+  it("validates optional group pretty slugs before submit", () => {
+    const input = document.createElement("input");
+    input.dataset.groupGeneratedSlug = "generated-slug";
+    stubValidityUi(input);
+
+    input.value = "";
+    expect(validateGroupPrettySlugField(input)).to.equal(true);
+
+    input.value = " pretty-group ";
+    expect(validateGroupPrettySlugField(input)).to.equal(true);
+    expect(input.value).to.equal("pretty-group");
+
+    input.value = "Pretty_Group";
+    expect(validateGroupPrettySlugField(input)).to.equal(false);
+    expect(input.validationMessage).to.equal(
+      "Use lowercase ASCII letters, numbers, and single hyphens only. Start and end with a letter or number.",
+    );
+
+    input.value = "generated-slug";
+    expect(validateGroupPrettySlugField(input)).to.equal(false);
+    expect(input.validationMessage).to.equal("Pretty URL slug must be different from the generated slug.");
   });
 
   it("validates event start and end dates", () => {

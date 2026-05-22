@@ -76,14 +76,15 @@ insert into "user" (user_id, auth_hash, email, email_verified, username) values
     (:'underMinimumUserID', 'hash-12', 'under-minimum@example.com', true, 'under-minimum-user');
 
 -- Group
-insert into "group" (group_id, community_id, group_category_id, name, payment_recipient, slug)
+insert into "group" (group_id, community_id, group_category_id, name, payment_recipient, slug, slug_pretty)
 values (
     :'groupID',
     :'communityID',
     :'groupCategoryID',
     'Prepare Group',
     jsonb_build_object('provider', 'stripe', 'recipient_id', 'acct_prepare'),
-    'prepare-group'
+    'prepare-group',
+    'prepare-group-pretty'
 );
 
 -- Events
@@ -323,10 +324,11 @@ select results_eq(
             checkout->>'community_name',
             checkout->>'event_slug',
             checkout->>'group_slug',
+            checkout->>'group_slug_pretty',
             checkout->'recipient'->>'recipient_id'
         from prepared_checkout
     $$,
-    $$ values ('prepare-community'::text, 'main-event'::text, 'prepare-group'::text, 'acct_prepare'::text) $$,
+    $$ values ('prepare-community'::text, 'main-event'::text, 'prepare-group'::text, 'prepare-group-pretty'::text, 'acct_prepare'::text) $$,
     'Should return the checkout route and recipient context alongside the purchase'
 );
 
@@ -417,6 +419,7 @@ select is(
         'event_purchase_id', :'completedPurchaseID'::uuid,
         'event_ticket_type_id', :'ticketTypeAID'::uuid,
         'group_slug', 'prepare-group',
+        'group_slug_pretty', 'prepare-group-pretty',
         'recipient', jsonb_build_object('provider', 'stripe', 'recipient_id', 'acct_prepare'),
         'status', 'completed',
         'ticket_title', 'General admission'

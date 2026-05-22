@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(2);
+select plan(3);
 
 -- ============================================================================
 -- VARIABLES
@@ -217,6 +217,14 @@ select is(
 select ok(
     get_group_full_by_slug(:'communityID'::uuid, 'non-existing-group') is null,
     'Should return null with non-existing group slug'
+);
+
+-- Should resolve group by pretty slug
+update "group" set slug_pretty = 'kubernetes-nyc' where group_id = :'groupID';
+select is(
+    get_group_full_by_slug(:'communityID'::uuid, 'kubernetes-nyc')::jsonb->>'group_id',
+    :'groupID',
+    'Should resolve group by pretty slug'
 );
 
 -- ============================================================================

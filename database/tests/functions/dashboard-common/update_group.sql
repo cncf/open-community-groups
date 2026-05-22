@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(18);
+select plan(20);
 
 -- ============================================================================
 -- VARIABLES
@@ -258,6 +258,7 @@ select lives_ok(
             "description_short": "Updated brief description",
             "city": "New York",
             "state": "NY",
+            "slug_pretty": "updated-group",
             "country_code": "US",
             "country_name": "United States",
             "website_url": "https://updated.example.com",
@@ -277,6 +278,7 @@ select is(
     '{
         "name": "Updated Group",
         "slug": "abc1234",
+        "slug_pretty": "updated-group",
         "category": {
             "group_category_id": "00000000-0000-0000-0000-000000000012",
             "name": "Business",
@@ -309,6 +311,40 @@ select is(
     'Should update all provided fields and return expected structure'
 );
 
+-- Should clear pretty slug when provided as an empty string
+select lives_ok(
+    $$select update_group(
+        null::uuid,
+        '00000000-0000-0000-0000-000000000001'::uuid,
+        '00000000-0000-0000-0000-000000000021'::uuid,
+        '{
+            "name": "Updated Group",
+            "category_id": "00000000-0000-0000-0000-000000000012",
+            "description": "Updated description",
+            "slug_pretty": ""
+        }'::jsonb
+    )$$,
+    'Should clear pretty slug when provided as an empty string'
+);
+
+-- Should reject pretty slugs with invalid characters
+select throws_ok(
+    $$select update_group(
+        null::uuid,
+        '00000000-0000-0000-0000-000000000001'::uuid,
+        '00000000-0000-0000-0000-000000000021'::uuid,
+        '{
+            "name": "Updated Group",
+            "category_id": "00000000-0000-0000-0000-000000000012",
+            "description": "Updated description",
+            "slug_pretty": "Updated Group"
+        }'::jsonb
+    )$$,
+    'P0001',
+    'Pretty slug must use lowercase ASCII letters, numbers, and hyphens only',
+    'Should reject pretty slugs with invalid characters'
+);
+
 -- Should create the expected audit row
 select results_eq(
     $$
@@ -323,17 +359,27 @@ select results_eq(
         from audit_log
     $$,
     $$
-        values (
-            'group_updated',
-            null::uuid,
-            null::text,
-            '00000000-0000-0000-0000-000000000001'::uuid,
-            '00000000-0000-0000-0000-000000000021'::uuid,
-            'group',
-            '00000000-0000-0000-0000-000000000021'::uuid
-        )
+        values
+            (
+                'group_updated',
+                null::uuid,
+                null::text,
+                '00000000-0000-0000-0000-000000000001'::uuid,
+                '00000000-0000-0000-0000-000000000021'::uuid,
+                'group',
+                '00000000-0000-0000-0000-000000000021'::uuid
+            ),
+            (
+                'group_updated',
+                null::uuid,
+                null::text,
+                '00000000-0000-0000-0000-000000000001'::uuid,
+                '00000000-0000-0000-0000-000000000021'::uuid,
+                'group',
+                '00000000-0000-0000-0000-000000000021'::uuid
+            )
     $$,
-    'Should create the expected audit row'
+    'Should create the expected audit rows'
 );
 
 -- Should throw error when updating deleted group

@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(3);
+select plan(4);
 
 -- ============================================================================
 -- VARIABLES
@@ -141,6 +141,17 @@ select is(
     ),
     jsonb_build_array(:'event2ID', :'event5ID'),
     'Should order tied future events by event ID'
+);
+
+-- Should resolve upcoming events by pretty slug
+update "group" set slug_pretty = 'test-group-pretty' where group_id = :'group1ID';
+select is(
+    get_group_upcoming_events(:'community1ID'::uuid, 'test-group-pretty', array['virtual'], 10)::jsonb,
+    jsonb_build_array(
+        get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb,
+        get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event5ID'::uuid)::jsonb
+    ),
+    'Should resolve upcoming events by pretty slug'
 );
 
 -- ============================================================================

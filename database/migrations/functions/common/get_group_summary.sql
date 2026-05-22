@@ -39,6 +39,7 @@ returns json as $$
                 'order', r.order
             )
         else null end,
+        'slug_pretty', g.slug_pretty,
         'state', g.state
     )) as json_data
     from "group" g

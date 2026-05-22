@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(5);
+select plan(6);
 
 -- ============================================================================
 -- VARIABLES
@@ -11,6 +11,7 @@ select plan(5);
 
 \set categoryID '00000000-0000-0000-0000-000000000011'
 \set communityID '00000000-0000-0000-0000-000000000001'
+\set groupPrettySlugID '00000000-0000-0000-0000-000000000013'
 \set regionID '00000000-0000-0000-0000-000000000012'
 
 -- ============================================================================
@@ -43,6 +44,10 @@ values (:'regionID', 'North America', :'communityID');
 -- Group Category
 insert into group_category (group_category_id, name, community_id)
 values (:'categoryID', 'Technology', :'communityID');
+
+-- Existing group with a pretty slug in the generated-slug space
+insert into "group" (group_id, community_id, group_category_id, name, slug, slug_pretty)
+values (:'groupPrettySlugID', :'communityID', :'categoryID', 'Pretty Slug Collision Group', 'existing-slug', 'abc2345');
 
 -- ============================================================================
 -- TESTS
@@ -251,6 +256,35 @@ begin
 end $$;
 
 select pass('Should convert empty strings to null for nullable fields');
+
+-- Should retry generated slugs matching existing pretty slugs
+create temporary sequence add_group_slug_test_seq;
+
+create or replace function generate_slug(p_length int default 7)
+returns text as $$
+begin
+    if nextval('add_group_slug_test_seq') = 1 then
+        return 'abc2345';
+    end if;
+
+    return 'def6789';
+end;
+$$ language plpgsql;
+
+select is(
+    (
+        select get_group_full(
+            :'communityID'::uuid,
+            add_group(
+                null::uuid,
+                :'communityID'::uuid,
+                '{"name": "Pretty Slug Retry Group", "category_id": "00000000-0000-0000-0000-000000000011", "description": "Testing pretty slug retry", "description_short": "Brief"}'::jsonb
+            )
+        )::jsonb->>'slug'
+    ),
+    'def6789',
+    'Should retry generated slugs matching existing pretty slugs'
+);
 
 -- ============================================================================
 -- CLEANUP

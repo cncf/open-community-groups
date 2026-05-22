@@ -424,7 +424,10 @@ pub(crate) async fn send_event_custom_notification(
     let base_url = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
     let link = format!(
         "{}/{}/group/{}/event/{}",
-        base_url, event.community_name, event.group_slug, event.slug
+        base_url,
+        event.community_name,
+        event.public_group_slug(),
+        event.slug
     );
     let template_data = EventCustom {
         body: notification.body.clone(),

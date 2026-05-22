@@ -205,6 +205,7 @@ impl PgPaymentsManager {
                 user_id,
 
                 discount_code: prepared_checkout.purchase.discount_code.clone(),
+                group_slug_pretty: prepared_checkout.group_slug_pretty.clone(),
             })
             .await?;
 

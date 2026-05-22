@@ -73,16 +73,17 @@ insert into "group" (
     group_category_id,
     name,
     slug,
+    slug_pretty,
     created_at,
     city,
     country_code,
     country_name
 ) values
-    (:'group1ID', :'community1ID', :'category1ID', 'Group A', 'abc1234', '2024-01-01 10:00:00+00', 'Test City', 'US', 'United States'),
-    (:'group2ID', :'community1ID', :'category1ID', 'Group B', 'def5678', '2024-01-02 10:00:00+00', 'Test City', 'US', 'United States'),
-    (:'group3ID', :'community1ID', :'category1ID', 'Group C', 'ghi9abc', '2024-01-03 10:00:00+00', 'Test City', 'US', 'United States'),
-    (:'group4ID', :'community1ID', :'category1ID', 'Group D (Deleted)', 'jkl2def', '2024-01-04 10:00:00+00', 'Test City', 'US', 'United States'),
-    (:'group5ID', :'community2ID', :'category2ID', 'NYC DevOps Meetup', 'mno3ghi', '2024-01-05 10:00:00+00', 'New York', 'US', 'United States');
+    (:'group1ID', :'community1ID', :'category1ID', 'Group A', 'abc1234', 'group-a', '2024-01-01 10:00:00+00', 'Test City', 'US', 'United States'),
+    (:'group2ID', :'community1ID', :'category1ID', 'Group B', 'def5678', null, '2024-01-02 10:00:00+00', 'Test City', 'US', 'United States'),
+    (:'group3ID', :'community1ID', :'category1ID', 'Group C', 'ghi9abc', null, '2024-01-03 10:00:00+00', 'Test City', 'US', 'United States'),
+    (:'group4ID', :'community1ID', :'category1ID', 'Group D (Deleted)', 'jkl2def', null, '2024-01-04 10:00:00+00', 'Test City', 'US', 'United States'),
+    (:'group5ID', :'community2ID', :'category2ID', 'NYC DevOps Meetup', 'mno3ghi', null, '2024-01-05 10:00:00+00', 'New York', 'US', 'United States');
 
 -- Mark group4 as deleted (must also set active = false per check constraint)
 update "group" set deleted = true, active = false where group_id = :'group4ID';
@@ -134,7 +135,8 @@ select is(
                     "active": true,
                     "group_id": "00000000-0000-0000-0000-000000000031",
                     "name": "Group A",
-                    "slug": "abc1234"
+                    "slug": "abc1234",
+                    "slug_pretty": "group-a"
                 },
                 {
                     "active": true,
@@ -166,7 +168,8 @@ select is(
                     "active": true,
                     "group_id": "00000000-0000-0000-0000-000000000031",
                     "name": "Group A",
-                    "slug": "abc1234"
+                    "slug": "abc1234",
+                    "slug_pretty": "group-a"
                 },
                 {
                     "active": true,
@@ -204,7 +207,8 @@ select is(
                     "active": true,
                     "group_id": "00000000-0000-0000-0000-000000000031",
                     "name": "Group A",
-                    "slug": "abc1234"
+                    "slug": "abc1234",
+                    "slug_pretty": "group-a"
                 },
                 {
                     "active": true,
@@ -242,7 +246,8 @@ select is(
                     "active": true,
                     "group_id": "00000000-0000-0000-0000-000000000031",
                     "name": "Group A",
-                    "slug": "abc1234"
+                    "slug": "abc1234",
+                    "slug_pretty": "group-a"
                 }
             ]
         },

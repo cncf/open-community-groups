@@ -3,7 +3,7 @@
 
 {# Events update form -#}
 {% let event_read_only = event.canceled || !can_manage_events -%}
-{% let event_public_url = "/".to_owned() + &event.community.name + "/group/" + &event.group.slug + "/event/" + &event.slug -%}
+{% let event_public_url = "/".to_owned() + &event.community.name + "/group/" + event.group.public_slug() + "/event/" + &event.slug -%}
 {% let event_public_url_enabled = event.published || event.canceled -%}
 <div id="event-update-page"
      class="space-y-12"
@@ -20,7 +20,7 @@
      data-community-banner-url="{{ event.community.banner_url }}"
      data-community-banner-mobile-url="{{ event.community.banner_mobile_url }}"
      data-group-name="{{ event.group.name }}"
-     data-group-slug="{{ event.group.slug }}"
+     data-group-slug="{{ event.group.public_slug() }}"
      data-group-logo-url="{{ event.group.logo_url }}"
      data-group-banner-url="{%- if let Some(banner_url) = &event.group.banner_url -%}{{ banner_url }}{%- endif -%}"
      data-group-banner-mobile-url="{%- if let Some(banner_mobile_url) = &event.group.banner_mobile_url -%}{{ banner_mobile_url }}{%- endif -%}">

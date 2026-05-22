@@ -4,7 +4,7 @@
 {% import "macros/cards.html" as cards -%}
 
 {% block href -%}
-  {{- "/" -}}{{- event.community_name -}}/group/{{- event.group_slug -}}/event/{{- event.slug -}}
+  {{- "/" -}}{{- event.community_name -}}/group/{{- event.public_group_slug() -}}/event/{{- event.slug -}}
 {%- endblock href %}
 
 {% block anchor_attributes -%}

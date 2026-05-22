@@ -53,6 +53,7 @@ returns json as $$
             )
         else null end,
         'slack_url', g.slack_url,
+        'slug_pretty', g.slug_pretty,
         'state', g.state,
         'tags', g.tags,
         'twitter_url', g.twitter_url,

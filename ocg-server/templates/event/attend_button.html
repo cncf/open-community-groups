@@ -6,7 +6,7 @@
      data-canceled="{{ event.canceled }}"
      data-is-ticketed="{{ event.is_ticketed() }}"
      data-ticket-purchase-available="{{ event.has_sellable_ticket_types() }}"
-     data-availability-url="/{{ event.community.name }}/group/{{ event.group.slug }}/event/{{ event.slug }}/availability"
+     data-availability-url="/{{ event.community.name }}/group/{{ event.group.public_slug() }}/event/{{ event.slug }}/availability"
      data-attendee-approval-required="{{ event.attendee_approval_required }}"
      {% if let Some(starts_at) = &event.starts_at %}data-starts="{{ starts_at.to_rfc3339() }}"{% endif %}
      data-waitlist-enabled="{{ event.waitlist_enabled }}"
@@ -342,7 +342,7 @@
         <div class="svg-icon size-4 icon-vertical-dots"></div>
       </summary>
       <div class="absolute left-4 z-20 mt-2 w-56 max-w-[calc(100vw-2rem)] overflow-hidden rounded-lg border border-stone-200 bg-white py-1 shadow-lg sm:left-auto sm:right-0 sm:w-max sm:min-w-48">
-        <share-modal trigger-variant="menu-item" title="{{ event.group.name }} · {{ event.name }}" url="/{{ event.community.name }}/group/{{ event.group.slug }}/event/{{ event.slug }}">
+        <share-modal trigger-variant="menu-item" title="{{ event.group.name }} · {{ event.name }}" url="/{{ event.community.name }}/group/{{ event.group.public_slug() }}/event/{{ event.slug }}">
         </share-modal>
         {% if let Some(meeting_join_url) = &event.meeting_join_url %}
           <a id="join-meeting-menu-btn-{{ attendance_instance }}"

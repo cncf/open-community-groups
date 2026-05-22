@@ -500,6 +500,7 @@ pub(crate) fn sample_event_summary(event_id: Uuid, _group_id: Uuid) -> EventSumm
         description_short: Some("A brief summary of the sample event".to_string()),
         ends_at: Some(starts_at + chrono::Duration::hours(2)),
         event_series_id: None,
+        group_slug_pretty: None,
         latitude: Some(42.3601),
         longitude: Some(-71.0589),
         meeting_join_instructions: None,
@@ -666,6 +667,8 @@ pub(crate) fn sample_group_minimal(group_id: Uuid) -> GroupMinimal {
         group_id,
         name: "Test Group".to_string(),
         slug: "test-group".to_string(),
+
+        slug_pretty: None,
     }
 }
 
@@ -767,6 +770,7 @@ pub(crate) fn sample_group_summary(group_id: Uuid) -> GroupSummary {
         longitude: Some(-122.0),
         popover_html: None,
         region: Some(sample_group_region()),
+        slug_pretty: None,
         state: Some("CA".to_string()),
     }
 }

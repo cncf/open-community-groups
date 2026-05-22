@@ -51,6 +51,32 @@
 
           <div class="hidden lg:flex col-span-3"></div>
 
+          {# Pretty URL slug -#}
+          <div class="col-span-full lg:col-span-3">
+            <label for="slug_pretty" class="form-label">Pretty URL slug</label>
+            <div class="mt-2">
+              <input type="text"
+                     name="slug_pretty"
+                     id="slug_pretty"
+                     maxlength="{{ crate::validation::MAX_LEN_GROUP_PRETTY_SLUG }}"
+                     pattern="(?!.*--)[a-z0-9](?:[a-z0-9-]{0,48}[a-z0-9])?"
+                     class="input-primary"
+                     autocomplete="off"
+                     autocorrect="off"
+                     autocapitalize="off"
+                     spellcheck="false"
+                     data-group-generated-slug="{{ group.slug }}"
+                     value="{%- if let Some(slug_pretty) = &group.slug_pretty -%}{{ slug_pretty }}{%- endif -%}"
+                     title="Use lowercase ASCII letters, numbers, and single hyphens only. Start and end with a letter or number. Must be unique within the community and different from the generated slug.">
+            </div>
+            <p class="form-legend">
+              Optional public URL slug for nicer group links. Use lowercase ASCII letters, numbers, and single hyphens only. Start and end with a letter or number. Maximum {{ crate::validation::MAX_LEN_GROUP_PRETTY_SLUG }} characters. Must be unique within the community and different from the generated slug. Existing generated slug URLs will still work.
+            </p>
+          </div>
+          {# End pretty URL slug -#}
+
+          <div class="hidden lg:flex col-span-3"></div>
+
           {# Group category -#}
           <div class="col-span-full lg:col-span-3">
             <label for="category_id" class="form-label">

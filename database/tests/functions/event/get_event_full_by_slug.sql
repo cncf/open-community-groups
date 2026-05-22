@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(6);
+select plan(7);
 
 -- ============================================================================
 -- VARIABLES
@@ -342,6 +342,14 @@ select is(
     )::jsonb,
     get_event_full(:'communityID'::uuid, :'groupID'::uuid, :'eventPaidID'::uuid)::jsonb,
     'Should return the same paid-event payload as get_event_full'
+);
+
+-- Should resolve event by group pretty slug
+update "group" set slug_pretty = 'test-group-pretty' where group_id = :'groupID';
+select is(
+    get_event_full_by_slug(:'communityID'::uuid, 'test-group-pretty', 'def5678')::jsonb,
+    get_event_full(:'communityID'::uuid, :'groupID'::uuid, :'eventID'::uuid)::jsonb,
+    'Should resolve event by group pretty slug'
 );
 
 -- ============================================================================

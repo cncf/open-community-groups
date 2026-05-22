@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(7);
+select plan(8);
 
 -- ============================================================================
 -- VARIABLES
@@ -445,6 +445,21 @@ select is(
     )::jsonb,
     'Should include payment currency and normalized ticket types in event summaries'
 );
+
+-- Should include pretty group slug when available
+update "group" set slug_pretty = 'seattle-kubernetes' where group_id = :'groupID';
+select is(
+    (
+        get_event_summary(
+            :'communityID'::uuid,
+            :'groupID'::uuid,
+            :'eventID'::uuid
+        )::jsonb
+    )->>'group_slug_pretty',
+    'seattle-kubernetes',
+    'Should include pretty group slug when available'
+);
+update "group" set slug_pretty = null where group_id = :'groupID';
 
 -- Should use group logo when event has no logo
 select is(

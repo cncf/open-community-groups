@@ -3,7 +3,7 @@
 {% import "macros/cards.html" as cards -%}
 
 {% block href -%}
-  {{- "/" -}}{{- group.community_name -}}/group/{{- group.slug -}}
+  {{- "/" -}}{{- group.community_name -}}/group/{{- group.public_slug() -}}
 {%- endblock href %}
 
 {% block logo -%}

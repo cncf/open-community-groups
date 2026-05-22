@@ -68,6 +68,9 @@ pub const MAX_LEN_EVENT_LABELS_PER_EVENT: usize = 200;
 /// Maximum number of labels allowed per submission.
 pub const MAX_LEN_EVENT_LABELS_PER_SUBMISSION: usize = 10;
 
+/// Maximum length for group pretty slugs.
+pub const MAX_LEN_GROUP_PRETTY_SLUG: usize = 50;
+
 /// Maximum length for link labels in custom link maps.
 pub const MAX_LEN_LINK_LABEL: usize = 80;
 
@@ -209,6 +212,59 @@ pub fn valid_cfs_label_color(value: &impl AsRef<str>, _ctx: &()) -> garde::Resul
     if !CFS_LABEL_COLORS.contains(&value.as_ref()) {
         return Err(garde::Error::new("invalid cfs label color"));
     }
+    Ok(())
+}
+
+/// Validates an optional group pretty slug.
+pub fn valid_group_pretty_slug(value: &Option<String>, _ctx: &()) -> garde::Result {
+    // Normalize optional form input
+    let Some(value) = value.as_deref() else {
+        return Ok(());
+    };
+    let value = value.trim();
+
+    // Allow empty values so the database can clear the pretty slug
+    if value.is_empty() {
+        return Ok(());
+    }
+
+    // Enforce the public URL length limit
+    if value.len() > MAX_LEN_GROUP_PRETTY_SLUG {
+        return Err(garde::Error::new("Pretty slug must be 50 characters or fewer"));
+    }
+
+    // Enforce strict ASCII URL characters
+    if !value
+        .bytes()
+        .all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'-')
+    {
+        return Err(garde::Error::new(
+            "Pretty slug must use lowercase ASCII letters, numbers, and hyphens only",
+        ));
+    }
+
+    // Enforce alphanumeric URL boundaries
+    if !value
+        .as_bytes()
+        .first()
+        .is_some_and(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit())
+        || !value
+            .as_bytes()
+            .last()
+            .is_some_and(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit())
+    {
+        return Err(garde::Error::new(
+            "Pretty slug must start and end with a lowercase ASCII letter or number",
+        ));
+    }
+
+    // Reject visually confusing duplicate separators
+    if value.contains("--") {
+        return Err(garde::Error::new(
+            "Pretty slug cannot contain consecutive hyphens",
+        ));
+    }
+
     Ok(())
 }
 
@@ -452,6 +508,24 @@ mod tests {
         assert!(trimmed_non_empty(&"hello", &()).is_ok());
         assert!(trimmed_non_empty(&"  hello  ", &()).is_ok());
         assert!(trimmed_non_empty(&"a", &()).is_ok());
+    }
+
+    #[test]
+    fn test_valid_group_pretty_slug_invalid() {
+        assert!(valid_group_pretty_slug(&Some("Pretty-Group".to_string()), &()).is_err());
+        assert!(valid_group_pretty_slug(&Some("pretty_group".to_string()), &()).is_err());
+        assert!(valid_group_pretty_slug(&Some("-pretty-group".to_string()), &()).is_err());
+        assert!(valid_group_pretty_slug(&Some("pretty-group-".to_string()), &()).is_err());
+        assert!(valid_group_pretty_slug(&Some("pretty--group".to_string()), &()).is_err());
+        assert!(valid_group_pretty_slug(&Some("a".repeat(MAX_LEN_GROUP_PRETTY_SLUG + 1)), &()).is_err());
+    }
+
+    #[test]
+    fn test_valid_group_pretty_slug_valid() {
+        assert!(valid_group_pretty_slug(&None, &()).is_ok());
+        assert!(valid_group_pretty_slug(&Some(String::new()), &()).is_ok());
+        assert!(valid_group_pretty_slug(&Some("pretty-group-2026".to_string()), &()).is_ok());
+        assert!(valid_group_pretty_slug(&Some("a".repeat(MAX_LEN_GROUP_PRETTY_SLUG)), &()).is_ok());
     }
 
     #[test]

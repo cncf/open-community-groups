@@ -230,6 +230,7 @@ select indexes_are('event_cfs_label', array[
 select indexes_are('group', array[
     'group_pkey',
     'group_slug_community_id_key',
+    'group_slug_pretty_community_id_key',
     'group_community_id_idx',
     'group_group_category_id_idx',
     'group_region_id_idx',

@@ -268,13 +268,16 @@ pub struct PreparedEventCheckout {
     pub event_id: Uuid,
     /// Event slug used in attendee-facing routes.
     pub event_slug: String,
-    /// Group slug used in attendee-facing routes.
+    /// Generated group slug used in attendee-facing routes.
     pub group_slug: String,
     /// Prepared purchase summary for the attendee.
     #[serde(flatten)]
     pub purchase: EventPurchaseSummary,
     /// Recipient account configured for the event's group.
     pub recipient: GroupPaymentRecipient,
+
+    /// Admin-managed group slug used in attendee-facing routes.
+    pub group_slug_pretty: Option<String>,
 }
 
 // Helpers.

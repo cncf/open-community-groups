@@ -86,6 +86,7 @@ You can manage:
 - Name, category, and descriptions.
 - Branding assets.
 - Location search and map coordinates.
+- Optional pretty URL slug for public group links.
 - Social links.
 - Optional tags, photo gallery, and extra links.
 
@@ -97,6 +98,18 @@ Brand inheritance model in this scope:
 
 - If a group logo is not set, OCG falls back to the community logo.
 - If a group banner or mobile banner is not set, OCG falls back to the community banner.
+
+Pretty URL slugs are optional. When set, OCG uses the pretty slug in generated
+group and event links, while the generated group slug continues to work.
+
+Pretty URL slug rules:
+
+- Use lowercase ASCII letters, numbers, and hyphens only.
+- Start and end with a letter or number.
+- Do not use consecutive hyphens.
+- Use 50 characters or fewer.
+- Use a value that is unique within the community and different from the
+  generated slug.
 
 Field requirements and limits are shown inline in the settings form while editing.
 

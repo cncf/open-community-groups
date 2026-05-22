@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(1);
+select plan(2);
 
 -- ============================================================================
 -- VARIABLES
@@ -87,6 +87,16 @@ select is(
         get_event_summary(:'communityID'::uuid, :'groupID'::uuid, :'event1ID'::uuid)::jsonb
     ),
     'Should return published non-test past events ordered by date DESC as JSON'
+);
+
+-- Should resolve past events by pretty slug
+update "group" set slug_pretty = 'test-group-pretty' where group_id = :'groupID';
+select is(
+    get_group_past_events(:'communityID'::uuid, 'test-group-pretty', array['in-person', 'virtual', 'hybrid'], 10)::jsonb,
+    jsonb_build_array(
+        get_event_summary(:'communityID'::uuid, :'groupID'::uuid, :'event1ID'::uuid)::jsonb
+    ),
+    'Should resolve past events by pretty slug'
 );
 
 -- ============================================================================

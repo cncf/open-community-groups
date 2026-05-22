@@ -72,7 +72,9 @@ returns json as $$
                 'value', slug
             )), '[]')
             from (
-                select g.name, g.slug
+                select
+                    g.name,
+                    coalesce(g.slug_pretty, g.slug) as slug
                 from "group" g
                 join community c using (community_id)
                 where c.name = p_community_name
