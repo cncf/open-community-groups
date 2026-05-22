@@ -17,6 +17,10 @@ import { trimmedNonEmpty, passwordsMatch } from "/static/js/common/validators.js
 
 const FIELD_SELECTOR =
   'input:not([type="hidden"]):not([type="file"]):not([type="checkbox"]):not([type="radio"]), textarea';
+const GROUP_PRETTY_SLUG_PATTERN = /^(?!.*--)[a-z0-9](?:[a-z0-9-]{0,48}[a-z0-9])?$/;
+const GROUP_PRETTY_SLUG_MESSAGE =
+  "Use lowercase ASCII letters, numbers, and single hyphens only. Start and end with a letter or number.";
+const GROUP_PRETTY_SLUG_UNCHANGED_MESSAGE = "Pretty URL slug must be different from the generated slug.";
 
 // -----------------------------------------------------------------------------
 // Helper Functions
@@ -271,6 +275,55 @@ const wireRequiredInputs = (form) => {
 };
 
 /**
+ * Checks if a field is the optional group pretty slug field.
+ * @param {HTMLElement} field - The form field element
+ * @returns {boolean} True if field has group pretty slug validation data
+ */
+const isGroupPrettySlugField = (field) =>
+  field instanceof HTMLInputElement && field.dataset.groupGeneratedSlug !== undefined;
+
+/**
+ * Validates an optional group pretty slug before the form reaches the server.
+ * @param {HTMLInputElement} field - The group pretty slug input
+ * @returns {boolean} True if valid
+ */
+export const validateGroupPrettySlugField = (field) => {
+  field.setCustomValidity("");
+  normalizeField(field);
+
+  if (!field.value) {
+    return true;
+  }
+
+  if (!GROUP_PRETTY_SLUG_PATTERN.test(field.value)) {
+    field.setCustomValidity(GROUP_PRETTY_SLUG_MESSAGE);
+    field.reportValidity();
+    return false;
+  }
+
+  const generatedSlug = field.dataset.groupGeneratedSlug?.trim();
+  if (generatedSlug && field.value === generatedSlug) {
+    field.setCustomValidity(GROUP_PRETTY_SLUG_UNCHANGED_MESSAGE);
+    field.reportValidity();
+    return false;
+  }
+
+  return true;
+};
+
+/**
+ * Clears group pretty slug validity while editing.
+ * @param {HTMLFormElement} form - The form element
+ */
+const wireGroupPrettySlugInputs = (form) => {
+  form.querySelectorAll("[data-group-generated-slug]").forEach((field) => {
+    field.addEventListener("input", () => {
+      field.setCustomValidity("");
+    });
+  });
+};
+
+/**
  * Validates all fields in a form.
  * @param {HTMLFormElement} form - The form element
  * @returns {boolean} True if all fields are valid
@@ -280,6 +333,10 @@ const validateForm = (form) => {
 
   for (const field of fields) {
     if (field.disabled) continue;
+
+    if (isGroupPrettySlugField(field) && !validateGroupPrettySlugField(field)) {
+      return false;
+    }
 
     if (!field.required) {
       normalizeField(field);
@@ -661,6 +718,7 @@ const wireForm = (form) => {
 
   wirePasswordInputs(form);
   wireRequiredInputs(form);
+  wireGroupPrettySlugInputs(form);
 
   form.addEventListener("submit", (event) => {
     if (!validateForm(form)) {
