@@ -270,7 +270,7 @@ export class BreadcrumbNav extends LitWrapper {
 
             <!-- Desktop breadcrumb -->
             <ol
-              class="hidden sm:flex sm:items-center gap-2 text-sm text-stone-500"
+              class="hidden sm:flex sm:items-center gap-2 text-sm text-stone-500 px-1"
               style="--breadcrumb-count: ${breadcrumbCount};"
             >
               ${this.items.map((item, index) => this._renderDesktopItem(item, index))}
