@@ -335,6 +335,13 @@ mock! {
             role: &crate::types::group::GroupRole,
         ) -> Result<()>;
         async fn cancel_event(&self, actor_user_id: Uuid, group_id: Uuid, event_id: Uuid) -> Result<()>;
+        async fn cancel_event_attendee_attendance(
+            &self,
+            actor_user_id: Uuid,
+            group_id: Uuid,
+            event_id: Uuid,
+            user_id: Uuid,
+        ) -> Result<crate::types::event::EventLeaveOutcome>;
         async fn cancel_event_attendee_invitation(
             &self,
             actor_user_id: Uuid,

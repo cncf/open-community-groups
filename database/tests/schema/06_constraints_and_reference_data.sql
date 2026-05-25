@@ -253,6 +253,7 @@ select results_eq(
         ('cfs-submission-updated', false),
         ('community-team-invitation', false),
         ('email-verification', false),
+        ('event-attendance-canceled', false),
         ('event-canceled', false),
         ('event-custom', true),
         ('event-invitation', false),

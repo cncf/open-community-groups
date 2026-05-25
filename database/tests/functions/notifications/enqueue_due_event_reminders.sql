@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(14);
+select plan(17);
 
 -- ============================================================================
 -- VARIABLES
@@ -444,6 +444,45 @@ select is(
     ),
     'https://example.test/test-community/group/test-group-pretty/event/due-event',
     'Should build reminder link using the provided base URL'
+);
+
+-- Should build dashboard link using the provided base URL
+select is(
+    (
+        select ntd.data->>'dashboard_link'
+        from notification n
+        join notification_template_data ntd using (notification_template_data_id)
+        where n.kind = 'event-reminder'
+        limit 1
+    ),
+    'https://example.test/dashboard/user?tab=events',
+    'Should build dashboard link using the provided base URL'
+);
+
+-- Should show attendance cancellation copy for attendee recipients
+select is(
+    (
+        select ntd.data->>'show_attendance_cancellation_copy'
+        from notification n
+        join notification_template_data ntd using (notification_template_data_id)
+        where n.kind = 'event-reminder'
+        and n.user_id = :'userVerifiedAttendeeID'::uuid
+    ),
+    'true',
+    'Should show attendance cancellation copy for attendee recipients'
+);
+
+-- Should prevent speaker-only recipients from seeing cancellation reminder copy
+select is(
+    (
+        select ntd.data->>'show_attendance_cancellation_copy'
+        from notification n
+        join notification_template_data ntd using (notification_template_data_id)
+        where n.kind = 'event-reminder'
+        and n.user_id = :'userVerifiedSpeakerID'::uuid
+    ),
+    'false',
+    'Should prevent speaker-only recipients from seeing cancellation reminder copy'
 );
 
 -- Should include waitlist fields in reminder template data

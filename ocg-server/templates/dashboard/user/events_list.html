@@ -19,17 +19,20 @@ description = "Upcoming events where you'll participate.") -}}
         <th scope="col" class="hidden 2xl:table-cell px-3 xl:px-5 py-3">Location</th>
         <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3 w-40">Date</th>
         <th scope="col" class="px-3 xl:px-5 py-3 w-64">Role</th>
+        <th scope="col" class="px-3 xl:px-5 py-3 w-[72px]">
+          <span class="sr-only">Actions</span>
+        </th>
       </tr>
     </thead>
     <tbody>
       {% if events.is_empty() -%}
         <tr class="bg-white border-b border-stone-200">
-          <td class="xl:hidden px-8 py-20 text-center" colspan="2">
+          <td class="xl:hidden px-8 py-20 text-center" colspan="3">
             {% include "dashboard/placeholders/user_events_table.html" -%}
           </td>
           <td class="hidden xl:table-cell 2xl:hidden px-8 py-20 text-center"
-              colspan="3">{% include "dashboard/placeholders/user_events_table.html" -%}</td>
-          <td class="hidden 2xl:table-cell px-8 py-20 text-center" colspan="4">
+              colspan="4">{% include "dashboard/placeholders/user_events_table.html" -%}</td>
+          <td class="hidden 2xl:table-cell px-8 py-20 text-center" colspan="5">
             {% include "dashboard/placeholders/user_events_table.html" -%}
           </td>
         </tr>
@@ -96,6 +99,34 @@ description = "Upcoming events where you'll participate.") -}}
                   {{ badges::common_badge(content = role, extra_styles = Some("px-2.5 py-0.5") ) -}}
                 {% endfor -%}
               </div>
+            </td>
+
+            <td class="px-3 xl:px-5 py-4 w-[72px] text-right">
+              <details class="group relative inline-flex justify-end">
+                <summary class="btn-actions btn-tertiary flex cursor-pointer list-none items-center justify-center p-2 group-open:bg-stone-50 [&::-webkit-details-marker]:hidden"
+                         aria-label="Open event actions"
+                         title="Open event actions">
+                  <div class="svg-icon size-4 icon-vertical-dots"></div>
+                </summary>
+                <div class="dropdown absolute z-10 end-0 top-8 w-[220px] bg-white divide-y divide-stone-100 rounded-lg shadow border border-stone-200">
+                  <ul class="py-2 text-sm text-stone-700" role="menu">
+                    <li>
+                      <button id="cancel-attendance-{{ item.event.event_id }}"
+                              {% if item.can_cancel_attendance -%}
+                                hx-delete="/dashboard/user/events/{{ item.event.community_name }}/{{ item.event.event_id }}/attendance" hx-indicator="#dashboard-spinner" hx-trigger="confirmed" hx-disabled-elt="this" data-confirm-action data-confirm-message="Are you sure you want to cancel your attendance?" data-confirm-text="Yes" data-success-message="You have successfully canceled your attendance." data-error-message="Something went wrong canceling your attendance. Please try again later."
+                              {% else -%}
+                                disabled title="Only attendee attendance can be canceled."
+                              {% endif -%}
+                              role="menuitem"
+                              class="flex items-center w-full px-4 py-2 hover:bg-stone-100 hover:text-stone-900 transition-colors gap-3 text-left disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white disabled:hover:text-stone-700"
+                              type="button">
+                        <div class="svg-icon size-4 icon-cancel shrink-0 bg-stone-500"></div>
+                        <span>Cancel attendance</span>
+                      </button>
+                    </li>
+                  </ul>
+                </div>
+              </details>
             </td>
           </tr>
         {% endfor -%}

@@ -439,6 +439,28 @@ fn test_delivery_worker_prepare_content_email_verification() {
 }
 
 #[test]
+fn test_delivery_worker_prepare_content_event_attendance_canceled() {
+    // Setup notification
+    let notification = Notification {
+        attachments: vec![],
+        email: "user@example.test".to_string(),
+        kind: NotificationKind::EventAttendanceCanceled,
+        notification_id: Uuid::new_v4(),
+        template_data: Some(sample_event_attendance_canceled_template_data()),
+    };
+
+    // Prepare content
+    let (subject, body) = DeliveryWorker::prepare_content(&notification).unwrap();
+
+    // Check content matches expectations
+    assert_eq!(subject, "Attendance canceled");
+    assert!(body.contains("Your attendance for"));
+    assert!(body.contains("Reminder Event"));
+    assert!(body.contains("Open My Events"));
+    assert!(body.contains("https://example.test/dashboard/user?tab=events"));
+}
+
+#[test]
 fn test_delivery_worker_prepare_content_event_custom() {
     // Setup notification
     let notification = Notification {
@@ -543,6 +565,7 @@ fn test_delivery_worker_prepare_content_event_reminder() {
     assert_eq!(subject, "Reminder: Reminder Event starts in 24 hours");
     assert!(body.contains("Reminder Event"));
     assert!(body.contains("Use your registration name when joining."));
+    assert!(body.contains("If you can no longer attend"));
     assert!(body.contains("You received this email notification because you're attending or speaking at"));
     assert!(body.contains("Reminder Event"));
     assert!(body.contains("Notification Group"));
@@ -550,6 +573,7 @@ fn test_delivery_worker_prepare_content_event_reminder() {
     assert!(
         body.contains("https://example.test/test-community/group/notification-group/event/reminder-event")
     );
+    assert!(body.contains("https://example.test/dashboard/user?tab=events"));
 }
 
 #[test]
@@ -572,6 +596,29 @@ fn test_delivery_worker_prepare_content_event_reminder_legacy_template_data() {
     assert!(
         body.contains("https://example.test/test-community/group/notification-group/event/reminder-event")
     );
+}
+
+#[test]
+fn test_delivery_worker_prepare_content_event_reminder_speaker_only() {
+    // Setup notification
+    let mut template_data = sample_event_reminder_template_data();
+    template_data["show_attendance_cancellation_copy"] = json!(false);
+    let notification = Notification {
+        attachments: vec![],
+        email: "user@example.test".to_string(),
+        kind: NotificationKind::EventReminder,
+        notification_id: Uuid::new_v4(),
+        template_data: Some(template_data),
+    };
+
+    // Prepare content
+    let (subject, body) = DeliveryWorker::prepare_content(&notification).unwrap();
+
+    // Check content matches expectations
+    assert_eq!(subject, "Reminder: Reminder Event starts in 24 hours");
+    assert!(body.contains("You can review this event from the My Events section"));
+    assert!(!body.contains("If you can no longer attend"));
+    assert!(body.contains("https://example.test/dashboard/user?tab=events"));
 }
 
 #[test]
@@ -700,6 +747,49 @@ fn test_delivery_worker_prepare_content_event_waitlist_promoted() {
     assert!(body.contains("you are now registered"));
     assert!(body.contains("Use the waiting room display name from your ticket."));
     assert!(body.contains("Waitlist Event"));
+}
+
+#[test]
+fn test_delivery_worker_prepare_content_event_welcome_omits_dashboard_cancellation_guidance() {
+    // Setup notification
+    let notification = Notification {
+        attachments: vec![],
+        email: "user@example.test".to_string(),
+        kind: NotificationKind::EventWelcome,
+        notification_id: Uuid::new_v4(),
+        template_data: Some(sample_event_welcome_template_data(None)),
+    };
+
+    // Prepare content
+    let (subject, body) = DeliveryWorker::prepare_content(&notification).unwrap();
+
+    // Check content matches expectations
+    assert_eq!(subject, "Welcome to the event");
+    assert!(!body.contains("cancel your attendance from the My"));
+    assert!(!body.contains("Open My Events"));
+}
+
+#[test]
+fn test_delivery_worker_prepare_content_event_welcome_renders_dashboard_cancellation_guidance() {
+    // Setup notification
+    let notification = Notification {
+        attachments: vec![],
+        email: "user@example.test".to_string(),
+        kind: NotificationKind::EventWelcome,
+        notification_id: Uuid::new_v4(),
+        template_data: Some(sample_event_welcome_template_data(Some(
+            "https://example.test/dashboard/user?tab=events",
+        ))),
+    };
+
+    // Prepare content
+    let (subject, body) = DeliveryWorker::prepare_content(&notification).unwrap();
+
+    // Check content matches expectations
+    assert_eq!(subject, "Welcome to the event");
+    assert!(body.contains("cancel your attendance from the My"));
+    assert!(body.contains("Open My Events"));
+    assert!(body.contains("https://example.test/dashboard/user?tab=events"));
 }
 
 #[test]
@@ -941,6 +1031,36 @@ fn sample_email_verification_template_data() -> serde_json::Value {
     })
 }
 
+/// Sample template payload for event attendance cancellation notifications.
+fn sample_event_attendance_canceled_template_data() -> serde_json::Value {
+    json!({
+        "dashboard_link": "https://example.test/dashboard/user?tab=events",
+        "event": {
+            "canceled": false,
+            "community_display_name": "Test Community",
+            "community_name": "test-community",
+            "event_id": "11111111-1111-1111-1111-111111111111",
+            "group_category_name": "Community",
+            "group_name": "Notification Group",
+            "group_slug": "notification-group",
+            "kind": "hybrid",
+            "logo_url": "https://example.com/logo.png",
+            "name": "Reminder Event",
+            "published": true,
+            "slug": "reminder-event",
+            "starts_at": 1_914_724_800,
+            "timezone": "UTC",
+            "venue_name": "Conference Hall",
+            "waitlist_count": 0,
+            "waitlist_enabled": false
+        },
+        "link": "https://example.test/test-community/group/notification-group/event/reminder-event",
+        "theme": {
+            "primary_color": "#000000"
+        }
+    })
+}
+
 /// Sample template payload for custom event notifications.
 fn sample_event_custom_template_data() -> serde_json::Value {
     json!({
@@ -1027,6 +1147,7 @@ fn sample_event_reminder_legacy_template_data() -> serde_json::Value {
             "venue_name": "Conference Hall"
         },
         "link": "https://example.test/test-community/group/notification-group/event/reminder-event",
+        "show_attendance_cancellation_copy": true,
         "theme": {
             "primary_color": "#000000"
         }
@@ -1036,6 +1157,7 @@ fn sample_event_reminder_legacy_template_data() -> serde_json::Value {
 /// Sample template payload for event reminder notifications.
 fn sample_event_reminder_template_data() -> serde_json::Value {
     json!({
+        "show_attendance_cancellation_copy": true,
         "event": {
             "canceled": false,
             "community_display_name": "Test Community",
@@ -1056,6 +1178,7 @@ fn sample_event_reminder_template_data() -> serde_json::Value {
             "waitlist_count": 0,
             "waitlist_enabled": false
         },
+        "dashboard_link": "https://example.test/dashboard/user?tab=events",
         "link": "https://example.test/test-community/group/notification-group/event/reminder-event",
         "theme": {
             "primary_color": "#000000"
@@ -1150,6 +1273,38 @@ fn sample_event_waitlist_template_data() -> serde_json::Value {
             "primary_color": "#000000"
         }
     })
+}
+
+/// Sample template payload for event welcome notifications.
+fn sample_event_welcome_template_data(dashboard_link: Option<&str>) -> serde_json::Value {
+    let mut payload = json!({
+        "event": {
+            "canceled": false,
+            "community_display_name": "Test Community",
+            "community_name": "test-community",
+            "event_id": "11111111-1111-1111-1111-111111111111",
+            "group_category_name": "Community",
+            "group_name": "Notification Group",
+            "group_slug": "notification-group",
+            "kind": "hybrid",
+            "logo_url": "https://example.com/logo.png",
+            "name": "Welcome Event",
+            "published": true,
+            "slug": "welcome-event",
+            "starts_at": 1_914_724_800,
+            "timezone": "UTC",
+            "venue_name": "Conference Hall",
+            "waitlist_count": 0,
+            "waitlist_enabled": false
+        },
+        "link": "https://example.test/test-community/group/notification-group/event/welcome-event",
+        "theme": {
+            "primary_color": "#000000"
+        }
+    });
+    let object = payload.as_object_mut().expect("event welcome payload is an object");
+    object.insert("dashboard_link".to_string(), json!(dashboard_link));
+    payload
 }
 
 /// Sample template payload for custom group notifications.

@@ -46,6 +46,20 @@ pub(crate) struct EmailVerification {
     pub theme: Theme,
 }
 
+/// Template for event attendance canceled notification.
+#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[template(path = "notifications/event_attendance_canceled.html")]
+pub(crate) struct EventAttendanceCanceled {
+    /// Link to the user dashboard events page.
+    pub dashboard_link: String,
+    /// Event summary data.
+    pub event: EventSummary,
+    /// Link to the event page.
+    pub link: String,
+    /// Theme configuration for the community.
+    pub theme: Theme,
+}
+
 /// Template for event canceled notification.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "notifications/event_canceled.html")]
@@ -152,8 +166,14 @@ pub(crate) struct EventReminder {
     pub event: EventSummary,
     /// Link to the event page.
     pub link: String,
+    /// Whether to show attendance cancellation copy.
+    pub show_attendance_cancellation_copy: bool,
     /// Theme configuration for the community.
     pub theme: Theme,
+
+    /// Link to the user dashboard events page.
+    #[serde(default)]
+    pub dashboard_link: Option<String>,
 }
 
 /// Template for event rescheduled notification.
@@ -238,12 +258,16 @@ pub(crate) struct EventWaitlistPromoted {
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "notifications/event_welcome.html")]
 pub(crate) struct EventWelcome {
-    /// Link to the event page.
-    pub link: String,
     /// Event summary data.
     pub event: EventSummary,
+    /// Link to the event page.
+    pub link: String,
     /// Theme configuration for the community.
     pub theme: Theme,
+
+    /// Link to the user dashboard events page.
+    #[serde(default)]
+    pub dashboard_link: Option<String>,
 }
 
 /// Template for group custom notification.

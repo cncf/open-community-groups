@@ -32,7 +32,10 @@ use crate::{
         },
     },
     types::{
-        event::{EventCategory, EventKindSummary as EventKind, SessionKindSummary as SessionKind},
+        event::{
+            EventCategory, EventKindSummary as EventKind, EventLeaveOutcome,
+            SessionKindSummary as SessionKind,
+        },
         group::{GroupRole, GroupRoleSummary, GroupSponsor},
         payments::{GroupPaymentRecipient, PaymentProvider},
     },
@@ -84,6 +87,15 @@ pub(crate) trait DBDashboardGroup {
 
     /// Cancels an event (sets canceled=true).
     async fn cancel_event(&self, actor_user_id: Uuid, group_id: Uuid, event_id: Uuid) -> Result<()>;
+
+    /// Cancels a confirmed event attendee from the group dashboard.
+    async fn cancel_event_attendee_attendance(
+        &self,
+        actor_user_id: Uuid,
+        group_id: Uuid,
+        event_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<EventLeaveOutcome>;
 
     /// Cancels a pending organizer-created event invitation.
     async fn cancel_event_attendee_invitation(
@@ -462,6 +474,22 @@ impl DBDashboardGroup for PgDB {
         self.execute(
             "select cancel_event($1::uuid, $2::uuid, $3::uuid)",
             &[&actor_user_id, &group_id, &event_id],
+        )
+        .await
+    }
+
+    /// [`DBDashboardGroup::cancel_event_attendee_attendance`]
+    #[instrument(skip(self), err)]
+    async fn cancel_event_attendee_attendance(
+        &self,
+        actor_user_id: Uuid,
+        group_id: Uuid,
+        event_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<EventLeaveOutcome> {
+        self.fetch_json_one(
+            "select cancel_event_attendee_attendance($1::uuid, $2::uuid, $3::uuid, $4::uuid)",
+            &[&actor_user_id, &group_id, &event_id, &user_id],
         )
         .await
     }

@@ -135,6 +135,12 @@ pub(crate) struct AttendeesOutput {
 
 // Helpers.
 
+/// Returns true when the attendee has a paid event purchase.
+#[allow(clippy::ref_option)]
+pub(crate) fn is_paid_attendee(amount_minor: &Option<i64>) -> bool {
+    matches!(*amount_minor, Some(amount_minor) if amount_minor > 0)
+}
+
 /// Format an attendee payment amount for display.
 #[allow(clippy::ref_option)]
 pub(crate) fn format_payment_amount(

@@ -5,7 +5,7 @@ use uuid::Uuid;
 
 use crate::{
     config::HttpServerConfig,
-    db::mock::MockDB,
+    db::{mock::MockDB, payments::CompletedEventPurchase},
     services::notifications::{MockNotificationsManager, NotificationKind},
     templates::notifications::{
         EventRefundApproved, EventRefundRejected, EventRefundRequested, EventWelcome,
@@ -56,6 +56,57 @@ async fn build_refund_request_template_data_returns_expected_payload() {
 }
 
 #[tokio::test]
+async fn enqueue_checkout_completed_notification_omits_dashboard_cancel_guidance() {
+    // Setup identifiers and data structures
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let event = sample_event_summary(event_id);
+    let site_settings = SiteSettings::default();
+    let user_id = Uuid::new_v4();
+    let expected_template_data = to_value(&EventWelcome {
+        event: sample_event_summary(event_id),
+        link: "/community/group/group/event/event".to_string(),
+        theme: SiteSettings::default().theme,
+
+        dashboard_link: None,
+    })
+    .unwrap();
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_event_summary_by_id()
+        .times(1)
+        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .returning(move |_, _| Ok(event.clone()));
+    db.expect_get_site_settings()
+        .times(1)
+        .returning(move || Ok(site_settings.clone()));
+
+    // Setup notifications manager mock
+    let mut notifications_manager = MockNotificationsManager::new();
+    notifications_manager
+        .expect_enqueue()
+        .times(1)
+        .withf(move |notification| {
+            notification.attachments.len() == 1
+                && matches!(notification.kind, NotificationKind::EventWelcome)
+                && notification.recipients == vec![user_id]
+                && notification.template_data.as_ref() == Some(&expected_template_data)
+        })
+        .returning(|_| Box::pin(async { Ok(()) }));
+
+    // Enqueue the checkout completed welcome notification
+    let composer = sample_notification_composer(db, notifications_manager);
+    composer
+        .enqueue_checkout_completed_notification(CompletedEventPurchase {
+            community_id,
+            event_id,
+            user_id,
+        })
+        .await;
+}
+
+#[tokio::test]
 async fn enqueue_event_welcome_notification_enqueues_expected_payload() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
@@ -67,6 +118,8 @@ async fn enqueue_event_welcome_notification_enqueues_expected_payload() {
         event: sample_event_summary(event_id),
         link: "/community/group/group/event/event".to_string(),
         theme: SiteSettings::default().theme,
+
+        dashboard_link: Some("/dashboard/user?tab=events".to_string()),
     })
     .unwrap();
 

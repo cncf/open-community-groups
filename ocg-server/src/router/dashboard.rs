@@ -262,6 +262,10 @@ pub(super) fn setup_group_dashboard_router(state: &State) -> Router<State> {
             post(dashboard::group::attendees::invite_event_attendee),
         )
         .route(
+            "/events/{event_id}/attendees/{user_id}/attendance",
+            delete(dashboard::group::attendees::cancel_event_attendee_attendance),
+        )
+        .route(
             "/events/{event_id}/attendees/{user_id}/check-in",
             post(dashboard::group::attendees::manual_check_in),
         )
@@ -372,6 +376,10 @@ pub(super) fn setup_user_dashboard_router() -> Router<State> {
     Router::new()
         .route("/", get(dashboard::user::home::page))
         .route("/events", get(dashboard::user::events::list_page))
+        .route(
+            "/events/{community_name}/{event_id}/attendance",
+            delete(dashboard::user::events::cancel_attendance),
+        )
         .route("/invitations", get(dashboard::user::invitations::list_page))
         .route(
             "/invitations/community/{community_id}/accept",

@@ -20,7 +20,9 @@ use crate::{
         notifications::{MockNotificationsManager, NotificationKind},
         payments::MockPaymentsManager,
     },
-    templates::notifications::{EventWaitlistJoined, EventWaitlistLeft, EventWaitlistPromoted, EventWelcome},
+    templates::notifications::{
+        EventAttendanceCanceled, EventWaitlistJoined, EventWaitlistLeft, EventWaitlistPromoted, EventWelcome,
+    },
     types::{
         event::{EventAttendanceInfo, EventAttendanceStatus, EventLeaveOutcome},
         payments::{EventPurchaseStatus, EventTicketCurrentPrice, EventTicketType, PreparedEventCheckout},
@@ -1158,7 +1160,20 @@ async fn test_leave_event_success() {
         .returning(|| Ok(sample_site_settings()));
 
     // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
+    let mut nm = MockNotificationsManager::new();
+    nm.expect_enqueue()
+        .times(1)
+        .withf(move |notification| {
+            matches!(notification.kind, NotificationKind::EventAttendanceCanceled)
+                && notification.recipients == vec![user_id]
+                && notification.template_data.as_ref().is_some_and(|value| {
+                    from_value::<EventAttendanceCanceled>(value.clone()).is_ok_and(|template| {
+                        template.dashboard_link == "/dashboard/user?tab=events"
+                            && template.link == "/test-community/group/def5678/event/ghi9abc"
+                    })
+                })
+        })
+        .returning(|_| Box::pin(async { Ok(()) }));
 
     // Setup router and send request
     let router = TestRouterBuilder::new(db, nm).build().await;
@@ -1301,6 +1316,19 @@ async fn test_leave_event_promotes_waitlisted_users_and_enqueues_notification() 
 
     // Setup notifications manager mock
     let mut nm = MockNotificationsManager::new();
+    nm.expect_enqueue()
+        .times(1)
+        .withf(move |notification| {
+            matches!(notification.kind, NotificationKind::EventAttendanceCanceled)
+                && notification.recipients == vec![user_id]
+                && notification.template_data.as_ref().is_some_and(|value| {
+                    from_value::<EventAttendanceCanceled>(value.clone()).is_ok_and(|template| {
+                        template.dashboard_link == "/dashboard/user?tab=events"
+                            && template.link == "/test-community/group/def5678/event/ghi9abc"
+                    })
+                })
+        })
+        .returning(|_| Box::pin(async { Ok(()) }));
     nm.expect_enqueue()
         .times(1)
         .withf(move |notification| {

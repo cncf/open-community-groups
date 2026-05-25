@@ -130,6 +130,12 @@ pub(crate) fn build_event_page_link(base_url: &str, event: &EventSummary) -> Str
     )
 }
 
+/// Build the user dashboard events link.
+pub(crate) fn build_user_dashboard_events_link(base_url: &str) -> String {
+    let base = base_url.strip_suffix('/').unwrap_or(base_url);
+    format!("{base}/dashboard/user?tab=events")
+}
+
 /// Computes the SHA-256 hash of the provided bytes and returns a hex string.
 pub(crate) fn compute_hash(bytes: &[u8]) -> String {
     let mut hasher = Sha256::new();

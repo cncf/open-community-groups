@@ -1,0 +1,42 @@
+import { expect } from "@open-wc/testing";
+
+const loadTemplate = async () => {
+  const response = await fetch("/ocg-server/templates/dashboard/group/attendees_list.html");
+
+  expect(response.ok).to.equal(true);
+
+  return response.text();
+};
+
+const normalizeWhitespace = (value) => value.replace(/\s+/g, " ").trim();
+
+describe("dashboard group attendees list template", () => {
+  it("renders cancel attendance as a confirmed delete action for eligible attendees", async () => {
+    const template = normalizeWhitespace(await loadTemplate());
+
+    expect(template).to.include('attendee.status == "confirmed"');
+    expect(template).to.include('id="cancel-attendance-{{ attendee.user_id }}"');
+    expect(template).to.include(
+      'hx-delete="/dashboard/group/events/{{ event.event_id }}/attendees/{{ attendee.user_id }}/attendance"',
+    );
+    expect(template).to.include('hx-trigger="confirmed"');
+    expect(template).to.include('hx-disabled-elt="this"');
+    expect(template).to.include("data-confirm-action");
+    expect(template).to.include('data-confirm-message="Are you sure you want to cancel this attendance?"');
+    expect(template).to.include('data-success-message="Attendance canceled."');
+    expect(template).to.include(
+      'data-error-message="Something went wrong canceling this attendance. Please try again later."',
+    );
+  });
+
+  it("keeps cancel attendance disabled for unsupported attendee states", async () => {
+    const template = normalizeWhitespace(await loadTemplate());
+
+    expect(template).to.include("!self::is_paid_attendee(attendee.amount_minor)");
+    expect(template).to.include("!event.canceled");
+    expect(template).to.include("!event.is_past()");
+    expect(template).to.include('title="Paid attendee attendance cannot be canceled from attendee actions."');
+    expect(template).to.include('title="Canceled event attendance cannot be canceled."');
+    expect(template).to.include('title="Past event attendance cannot be canceled."');
+  });
+});
