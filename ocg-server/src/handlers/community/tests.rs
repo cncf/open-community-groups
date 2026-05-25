@@ -21,6 +21,11 @@ use crate::{
 async fn test_page_success() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
+    let mut community = sample_community_full(community_id);
+    community.description = "Community preview description".to_string();
+    community.display_name = "Test Community".to_string();
+    community.name = "test-community".to_string();
+    community.og_image_url = Some("/images/community-og.png".to_string());
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -31,7 +36,7 @@ async fn test_page_success() {
     db.expect_get_community_full()
         .times(1)
         .withf(move |id| *id == community_id)
-        .returning(move |_| Ok(sample_community_full(community_id)));
+        .returning(move |_| Ok(community.clone()));
     db.expect_get_community_recently_added_groups()
         .times(1)
         .withf(move |id| *id == community_id)
@@ -56,7 +61,10 @@ async fn test_page_success() {
     let nm = MockNotificationsManager::new();
 
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
+    let router = TestRouterBuilder::new(db, nm)
+        .with_server_cfg(sample_tracking_server_cfg())
+        .build()
+        .await;
     let request = Request::builder()
         .method("GET")
         .uri("/test-community")
@@ -76,7 +84,18 @@ async fn test_page_success() {
         parts.headers.get(CACHE_CONTROL).unwrap(),
         &HeaderValue::from_static(CACHE_CONTROL_PUBLIC_SHARED)
     );
-    assert!(!bytes.is_empty());
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
+    assert!(body.contains("<title>Test Community | Open Community Groups</title>"));
+    assert!(body.contains(r#"<link rel="canonical" href="https://example.test/test-community">"#));
+    assert!(body.contains(r#"<meta property="og:url" content="https://example.test/test-community">"#));
+    assert!(
+        body.contains(
+            r#"<meta property="og:image" content="https://example.test/images/og/community-og.png">"#
+        )
+    );
+    assert!(body.contains(
+        r#"<meta name="twitter:image" content="https://example.test/images/og/community-og.png">"#
+    ));
 }
 
 #[tokio::test]

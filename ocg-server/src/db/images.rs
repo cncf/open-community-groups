@@ -13,6 +13,9 @@ pub(crate) trait DBImages {
     /// Retrieves an image by file name.
     async fn get_image(&self, file_name: &str) -> Result<Option<Image>>;
 
+    /// Returns whether the file is referenced as a public Open Graph image.
+    async fn is_open_graph_image(&self, file_name: &str) -> Result<bool>;
+
     /// Saves the provided image.
     async fn save_image(&self, user_id: Uuid, file_name: &str, data: &[u8], content_type: &str)
     -> Result<()>;
@@ -39,6 +42,14 @@ impl DBImages for PgDB {
             });
 
         Ok(image)
+    }
+
+    #[instrument(skip(self), err)]
+    async fn is_open_graph_image(&self, file_name: &str) -> Result<bool> {
+        let image_url = format!("/images/{file_name}");
+
+        self.fetch_scalar_one("select is_open_graph_image($1::text)", &[&image_url])
+            .await
     }
 
     #[instrument(skip(self, data, content_type), err)]

@@ -20,8 +20,11 @@ use unicode_segmentation::UnicodeSegmentation;
 
 /// Removes all emoji characters from a string.
 #[askama::filter_fn]
-pub(crate) fn demoji(s: &str, _: &dyn askama::Values) -> askama::Result<String> {
-    Ok(s.graphemes(true).filter(|gc| emojis::get(gc).is_none()).collect())
+pub(crate) fn demoji<S: AsRef<str>>(s: S, _: &dyn askama::Values) -> askama::Result<String> {
+    Ok(s.as_ref()
+        .graphemes(true)
+        .filter(|gc| emojis::get(gc).is_none())
+        .collect())
 }
 
 /// Display the formatted datetime in the provided timezone if present, otherwise

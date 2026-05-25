@@ -98,6 +98,8 @@ Brand inheritance model in this scope:
 
 - If a group logo is not set, OCG falls back to the community logo.
 - If a group banner or mobile banner is not set, OCG falls back to the community banner.
+- If a group Open Graph image is not set, group and event link previews fall
+  back to the community Open Graph image.
 
 Pretty URL slugs are optional. When set, OCG uses the pretty slug in generated
 group and event links, while the generated group slug continues to work.

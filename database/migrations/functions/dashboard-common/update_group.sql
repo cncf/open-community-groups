@@ -81,6 +81,7 @@ begin
             else null
         end,
         logo_url = nullif(p_group->>'logo_url', ''),
+        og_image_url = nullif(p_group->>'og_image_url', ''),
         payment_recipient = case
             when p_group ? 'payment_recipient' then v_new_payment_recipient
             else payment_recipient

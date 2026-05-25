@@ -25,6 +25,7 @@
 {{ template "common/get_event_summary.sql" }}
 {{ template "common/get_group_full.sql" }}
 {{ template "common/insert_audit_log.sql" }}
+{{ template "common/is_open_graph_image.sql" }}
 {{ template "common/list_event_cfs_labels.sql" }}
 {{ template "common/list_redirect_communities.sql" }}
 {{ template "common/list_redirects.sql" }}

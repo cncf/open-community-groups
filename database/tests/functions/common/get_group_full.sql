@@ -32,6 +32,7 @@ insert into community (
     display_name,
     description,
     logo_url,
+    og_image_url,
     banner_mobile_url,
     banner_url
 ) values (
@@ -40,6 +41,7 @@ insert into community (
     'Cloud Native Seattle',
     'A vibrant community for cloud native technologies and practices in Seattle',
     'https://example.com/logo.png',
+    'https://example.com/community-og.png',
     'https://example.com/banner_mobile.png',
     'https://example.com/banner.png'
 );
@@ -91,6 +93,7 @@ insert into "group" (
     flickr_url,
     wechat_url,
     photos_urls,
+    og_image_url,
     extra_links,
     payment_recipient,
     created_at
@@ -124,6 +127,7 @@ insert into "group" (
     'https://flickr.com/seattlek8s',
     'https://wechat.com/seattlek8s',
     array['https://example.com/photo1.jpg', 'https://example.com/photo2.jpg'],
+    'https://example.com/group-og.png',
     jsonb '[{"name": "Discord", "url": "https://discord.gg/seattlek8s"}, {"name": "Forum", "url": "https://forum.seattlek8s.com"}]',
     jsonb_build_object('provider', 'stripe', 'recipient_id', 'acct_test_group'),
     '2024-01-15 10:00:00+00'
@@ -211,6 +215,7 @@ select is(
         "linkedin_url": "https://linkedin.com/company/seattlek8s",
         "logo_url": "https://example.com/group-logo.png",
         "longitude": -74.006,
+        "og_image_url": "https://example.com/group-og.png",
         "payment_recipient": {
             "provider": "stripe",
             "recipient_id": "acct_test_group"
@@ -234,7 +239,8 @@ select is(
             "community_id": "00000000-0000-0000-0000-000000000001",
             "display_name": "Cloud Native Seattle",
             "logo_url": "https://example.com/logo.png",
-            "name": "cloud-native-seattle"
+            "name": "cloud-native-seattle",
+            "og_image_url": "https://example.com/community-og.png"
         },
         "organizers": [
             {

@@ -119,7 +119,14 @@
       </image-field>
     </div>
     {# End Banner Mobile URL -#}
+
+    {# Open Graph image URL -#}
+    <div class="col-span-full">
+      <image-field label="Open Graph Image" name="og_image_url" image-kind="banner" value="{%- if let Some(og_image_url) = &community.og_image_url -%}{{ og_image_url }}{%- endif -%}" help-prefix-text="Size required 1200 x 630 px. Format must be PNG, JPEG, or WebP." target="open_graph" legend="Used for community, group, and event link previews when a more specific image isn't provided.">
+    </image-field>
   </div>
+  {# End Open Graph image URL -#}
+</div>
 </div>
 {# End branding section -#}
 

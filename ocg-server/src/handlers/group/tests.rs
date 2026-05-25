@@ -231,6 +231,12 @@ async fn test_page_success() {
     let event_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let mut group = sample_group_full(community_id, group_id);
+    group.community.display_name = "Test Community".to_string();
+    group.community.name = "test-community".to_string();
+    group.description_short = Some("Group preview description".to_string());
+    group.name = "Test Group".to_string();
+    group.og_image_url = Some("/images/group-og.png".to_string());
+    group.slug_pretty = Some("pretty-group".to_string());
     let mut hidden_sponsor = sample_group_sponsor();
     hidden_sponsor.featured = false;
     hidden_sponsor.name = "Hidden Sponsor".to_string();
@@ -250,13 +256,13 @@ async fn test_page_success() {
         .returning(|| Ok(sample_site_settings()));
     db.expect_get_group_full_by_slug()
         .times(1)
-        .withf(move |id, slug| *id == community_id && slug == "test-group")
+        .withf(move |id, slug| *id == community_id && slug == "pretty-group")
         .returning(move |_, _| Ok(Some(group.clone())));
     db.expect_get_group_upcoming_events()
         .times(1)
         .withf(move |id, slug, kinds, limit| {
             *id == community_id
-                && slug == "test-group"
+                && slug == "pretty-group"
                 && kinds == &vec![EventKind::InPerson, EventKind::Virtual, EventKind::Hybrid]
                 && *limit == 9
         })
@@ -265,7 +271,7 @@ async fn test_page_success() {
         .times(1)
         .withf(move |id, slug, kinds, limit| {
             *id == community_id
-                && slug == "test-group"
+                && slug == "pretty-group"
                 && kinds == &vec![EventKind::InPerson, EventKind::Virtual, EventKind::Hybrid]
                 && *limit == 9
         })
@@ -275,10 +281,13 @@ async fn test_page_success() {
     let nm = MockNotificationsManager::new();
 
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
+    let router = TestRouterBuilder::new(db, nm)
+        .with_server_cfg(sample_tracking_server_cfg())
+        .build()
+        .await;
     let request = Request::builder()
         .method("GET")
-        .uri("/test-community/group/test-group")
+        .uri("/test-community/group/pretty-group")
         .body(Body::empty())
         .unwrap();
     let response = router.oneshot(request).await.unwrap();
@@ -295,7 +304,22 @@ async fn test_page_success() {
         parts.headers.get(CACHE_CONTROL).unwrap(),
         &HeaderValue::from_static(CACHE_CONTROL_PUBLIC_SHARED)
     );
-    assert!(!bytes.is_empty());
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
+    assert!(body.contains("<title>Test Group | Test Community</title>"));
+    assert!(
+        body.contains(
+            r#"<link rel="canonical" href="https://example.test/test-community/group/pretty-group">"#
+        )
+    );
+    assert!(body.contains(
+        r#"<meta property="og:url" content="https://example.test/test-community/group/pretty-group">"#
+    ));
+    assert!(
+        body.contains(r#"<meta property="og:image" content="https://example.test/images/og/group-og.png">"#)
+    );
+    assert!(
+        body.contains(r#"<meta name="twitter:image" content="https://example.test/images/og/group-og.png">"#)
+    );
 }
 
 #[tokio::test]

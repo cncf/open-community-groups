@@ -31,6 +31,7 @@ returns json as $$
         'latitude', st_y(g.location::geometry),
         'logo_url', coalesce(g.logo_url, c.logo_url),
         'longitude', st_x(g.location::geometry),
+        'og_image_url', g.og_image_url,
         'region', case when r.region_id is not null then
             json_build_object(
                 'region_id', r.region_id,

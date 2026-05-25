@@ -14,6 +14,12 @@ use uuid::Uuid;
 pub(crate) use db::DbImageStorage;
 pub(crate) use s3::S3ImageStorage;
 
+/// Required height for Open Graph preview images.
+pub(crate) const OPEN_GRAPH_IMAGE_HEIGHT: u32 = 630;
+
+/// Required width for Open Graph preview images.
+pub(crate) const OPEN_GRAPH_IMAGE_WIDTH: u32 = 1200;
+
 /// Trait representing the capabilities required from an image storage provider.
 #[async_trait]
 #[cfg_attr(test, automock)]

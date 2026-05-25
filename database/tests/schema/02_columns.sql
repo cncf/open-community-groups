@@ -521,6 +521,7 @@ select columns_are('group', array[
     'linkedin_url',
     'location',
     'logo_url',
+    'og_image_url',
     'payment_recipient',
     'photos_urls',
     'region_id',

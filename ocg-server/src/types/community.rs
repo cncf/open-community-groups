@@ -105,4 +105,7 @@ pub struct CommunitySummary {
     pub logo_url: String,
     /// Unique identifier used in URLs and database references.
     pub name: String,
+
+    /// URL to the Open Graph image used for link previews.
+    pub og_image_url: Option<String>,
 }

@@ -151,6 +151,9 @@ pub(crate) struct Group {
     /// URL to the group logo.
     #[garde(custom(image_url_opt))]
     pub logo_url: Option<String>,
+    /// URL to the group's Open Graph image.
+    #[garde(custom(image_url_opt))]
+    pub og_image_url: Option<String>,
     /// Payments recipient configuration for the group.
     #[garde(skip)]
     pub payment_recipient: Option<GroupPaymentRecipient>,

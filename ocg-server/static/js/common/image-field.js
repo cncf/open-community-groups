@@ -26,7 +26,7 @@ export class ImageField extends LitWrapper {
    * @property {string} imageKind - Determines which styling preset (avatar/banner) to apply.
    * @property {string} previewBgClass - Optional utility class to override the preview background (e.g., "bg-stone-900").
    * @property {string} helpPrefixText - Optional text shown before the built-in helper copy.
-   * @property {string} target - Image target for dimension validation ("banner", "banner_mobile", "logo").
+   * @property {string} target - Image target for dimension validation ("banner", "banner_mobile", "logo", "open_graph").
    * @property {string} legend - Optional legend text displayed under the image preview area.
    */
   static properties = {

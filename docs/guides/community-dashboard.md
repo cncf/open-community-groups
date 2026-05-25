@@ -103,7 +103,7 @@ Common use cases:
 
 - Keeping display name and description up to date.
 - Restricting group team management to community admins and groups managers when policy requires it.
-- Maintaining logo/banner assets for consistent presentation.
+- Maintaining logo, banner, and Open Graph preview assets for consistent presentation.
 - Managing social links, optional ad placements, gallery images, tags, and extra links.
 
 Field requirements, character limits, and list limits are shown inline in the settings UI.

@@ -3,6 +3,48 @@
 {% import "macros/social.html" as social -%}
 {% import "macros/ui.html" as ui -%}
 
+{% block head_title -%}
+  <title>{{ self.preview_title() |demoji }}</title>
+{% endblock head_title -%}
+
+{% block head_description -%}
+  <meta name="description" content="{{ community.description|demoji }}">
+{% endblock head_description -%}
+
+{% block canonical_link -%}
+  <link rel="canonical" href="{{ self.canonical_url() }}">
+{% endblock canonical_link -%}
+
+{% block open_graph_meta -%}
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="{{ self.preview_title() |demoji }}">
+  <meta property="og:url" content="{{ self.canonical_url() }}">
+  <meta property="og:description"
+        content="{{ community.description|demoji }}">
+  {% if let Some(og_image_url) = self.open_graph_image_url() -%}
+    <meta property="og:image" content="{{ og_image_url }}">
+    <meta property="og:image:width"
+          content="{{ crate::services::images::OPEN_GRAPH_IMAGE_WIDTH }}">
+    <meta property="og:image:height"
+          content="{{ crate::services::images::OPEN_GRAPH_IMAGE_HEIGHT }}">
+    <meta property="og:image:alt" content="{{ community.display_name|demoji }}">
+  {% endif -%}
+{% endblock open_graph_meta -%}
+
+{% block twitter_meta -%}
+  {% if self.open_graph_image_url().is_some() -%}
+    <meta name="twitter:card" content="summary_large_image">
+  {% else -%}
+    <meta name="twitter:card" content="summary">
+  {% endif -%}
+  <meta name="twitter:title" content="{{ self.preview_title() |demoji }}">
+  <meta name="twitter:description"
+        content="{{ community.description|demoji }}">
+  {% if let Some(og_image_url) = self.open_graph_image_url() -%}
+    <meta name="twitter:image" content="{{ og_image_url }}">
+  {% endif -%}
+{% endblock twitter_meta -%}
+
 {% block scripts -%}
   <script type="module" src="/static/js/common/breadcrumb-nav.js"></script>
   <script type="module" src="/static/js/common/images-gallery.js"></script>

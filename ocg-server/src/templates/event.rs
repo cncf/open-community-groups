@@ -7,7 +7,12 @@ use serde_with::skip_serializing_none;
 use uuid::Uuid;
 
 use crate::{
-    templates::{PageId, auth::User, filters, helpers::user_initials},
+    templates::{
+        PageId,
+        auth::User,
+        filters,
+        helpers::{self, user_initials},
+    },
     types::{
         event::{EventCfsLabel, EventFull, EventKind, EventSummary},
         site::SiteSettings,
@@ -21,6 +26,8 @@ use crate::{
 #[derive(Debug, Clone, Template)]
 #[template(path = "event/page.html")]
 pub(crate) struct Page {
+    /// Configured public base URL.
+    pub base_url: String,
     /// Detailed information about the event.
     pub event: EventFull,
     /// Identifier for the current page.
@@ -31,6 +38,46 @@ pub(crate) struct Page {
     pub site_settings: SiteSettings,
     /// Authenticated user information.
     pub user: User,
+}
+
+impl Page {
+    /// Returns the canonical public URL for the event page.
+    pub(crate) fn canonical_url(&self) -> String {
+        helpers::absolute_url(
+            &self.base_url,
+            &format!(
+                "/{}/group/{}/event/{}",
+                self.event.community.name,
+                self.event.group.public_slug(),
+                self.event.slug
+            ),
+        )
+    }
+
+    /// Returns the Open Graph image URL for the event page.
+    pub(crate) fn open_graph_image_url(&self) -> Option<String> {
+        self.event
+            .group
+            .og_image_url
+            .as_deref()
+            .or(self.event.community.og_image_url.as_deref())
+            .map(|image_url| helpers::open_graph_image_url(&self.base_url, image_url))
+    }
+
+    /// Returns the preview title for the event page.
+    pub(crate) fn preview_title(&self) -> String {
+        if let Some(starts_at) = self.event.starts_at {
+            let starts_at = starts_at.with_timezone(&self.event.timezone);
+            format!(
+                "{} -- {} | {}",
+                self.event.name,
+                starts_at.format("%B %-d"),
+                self.event.group.name
+            )
+        } else {
+            format!("{} | {}", self.event.name, self.event.group.name)
+        }
+    }
 }
 
 /// Event check-in page template.
@@ -107,4 +154,53 @@ pub(crate) struct SessionProposal {
     /// Proposal last update time.
     #[serde(default, with = "chrono::serde::ts_seconds_option")]
     pub updated_at: Option<DateTime<Utc>>,
+}
+
+#[cfg(test)]
+mod tests {
+    use chrono::{DateTime, TimeZone, Utc};
+    use chrono_tz::{America::Los_Angeles, Tz};
+
+    use crate::types::group::GroupSummary;
+
+    use super::*;
+
+    #[test]
+    fn test_preview_title_uses_event_date_in_event_timezone() {
+        let page = sample_page(
+            Some(Utc.with_ymd_and_hms(2030, 3, 6, 7, 30, 0).unwrap()),
+            Los_Angeles,
+        );
+
+        assert_eq!(page.preview_title(), "Test Event -- March 5 | Test Group");
+    }
+
+    #[test]
+    fn test_preview_title_without_start_date_uses_event_and_group_names() {
+        let page = sample_page(None, chrono_tz::UTC);
+
+        assert_eq!(page.preview_title(), "Test Event | Test Group");
+    }
+
+    // Helpers.
+
+    fn sample_page(starts_at: Option<DateTime<Utc>>, timezone: Tz) -> Page {
+        Page {
+            base_url: "https://example.test".to_string(),
+            event: EventFull {
+                group: GroupSummary {
+                    name: "Test Group".to_string(),
+                    ..Default::default()
+                },
+                name: "Test Event".to_string(),
+                starts_at,
+                timezone,
+                ..Default::default()
+            },
+            page_id: PageId::Event,
+            path: "/test-community/group/test-group/event/test-event".to_string(),
+            site_settings: SiteSettings::default(),
+            user: User::default(),
+        }
+    }
 }

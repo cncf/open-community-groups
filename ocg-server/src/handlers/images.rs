@@ -20,8 +20,9 @@ use tracing::instrument;
 
 use crate::{
     config::HttpServerConfig,
+    db::DynDB,
     handlers::{error::HandlerError, extractors::CurrentUser, request_matches_site},
-    services::images::{DynImageStorage, NewImage},
+    services::images::{DynImageStorage, NewImage, OPEN_GRAPH_IMAGE_HEIGHT, OPEN_GRAPH_IMAGE_WIDTH},
     util::compute_hash,
 };
 
@@ -49,21 +50,22 @@ pub(crate) async fn serve(
         return Ok(StatusCode::FORBIDDEN.into_response());
     }
 
-    // Retrieve image from storage
-    let Some(image) = image_storage.get(&file_name).await? else {
+    Ok(serve_image(&image_storage, &file_name).await?.into_response())
+}
+
+/// Serves images that are currently configured for public Open Graph previews.
+#[instrument(skip_all, err)]
+pub(crate) async fn serve_open_graph(
+    State(db): State<DynDB>,
+    State(image_storage): State<DynImageStorage>,
+    Path(file_name): Path<String>,
+) -> Result<impl IntoResponse, HandlerError> {
+    // Confirm the image is currently configured for public preview use
+    if !db.is_open_graph_image(&file_name).await? {
         return Ok(StatusCode::NOT_FOUND.into_response());
-    };
+    }
 
-    // Prepare headers and body
-    let mut response_headers = HeaderMap::new();
-    response_headers.insert(CACHE_CONTROL, HeaderValue::from_static(CACHE_CONTROL_IMMUTABLE));
-    response_headers.insert(
-        CONTENT_TYPE,
-        HeaderValue::from_str(&image.content_type).map_err(|err| HandlerError::Other(err.into()))?,
-    );
-    let body = Body::from(image.bytes);
-
-    Ok((StatusCode::OK, response_headers, body).into_response())
+    Ok(serve_image(&image_storage, &file_name).await?.into_response())
 }
 
 /// Handles authenticated image uploads.
@@ -125,12 +127,23 @@ pub(crate) async fn upload(
             .into_response());
     }
 
-    // Validate dimensions if target is specified and image is not SVG
-    if let Some(target) = target
-        && !matches!(format, SupportedImageFormat::Svg)
-        && let Err(e) = validate_image_dimensions(data.as_ref(), target)
-    {
-        return Ok((StatusCode::UNPROCESSABLE_ENTITY, e.to_string()).into_response());
+    // Validate target-specific image requirements
+    if let Some(target) = target {
+        // Validate Open Graph image format
+        if matches!(target, ImageTarget::OpenGraph) && !format.is_open_graph_supported() {
+            return Ok((
+                StatusCode::UNPROCESSABLE_ENTITY,
+                "Open Graph images must be PNG, JPEG, or WebP",
+            )
+                .into_response());
+        }
+
+        // Validate target dimensions when the format supports dimension checks
+        if !matches!(format, SupportedImageFormat::Svg)
+            && let Err(e) = validate_image_dimensions(data.as_ref(), target)
+        {
+            return Ok((StatusCode::UNPROCESSABLE_ENTITY, e.to_string()).into_response());
+        }
     }
 
     // Compute file hash
@@ -311,6 +324,30 @@ fn mime_type(format: &SupportedImageFormat) -> &'static str {
     }
 }
 
+/// Loads an image from storage and returns an immutable public response.
+async fn serve_image(
+    image_storage: &DynImageStorage,
+    file_name: &str,
+) -> Result<impl IntoResponse, HandlerError> {
+    // Load the image bytes and content type from storage
+    let Some(image) = image_storage.get(file_name).await? else {
+        return Ok(StatusCode::NOT_FOUND.into_response());
+    };
+
+    // Prepare immutable cache and content headers
+    let mut response_headers = HeaderMap::new();
+    response_headers.insert(CACHE_CONTROL, HeaderValue::from_static(CACHE_CONTROL_IMMUTABLE));
+    response_headers.insert(
+        CONTENT_TYPE,
+        HeaderValue::from_str(&image.content_type).map_err(|err| HandlerError::Other(err.into()))?,
+    );
+
+    // Build the image response body
+    let body = Body::from(image.bytes);
+
+    Ok((StatusCode::OK, response_headers, body).into_response())
+}
+
 /// Validates image dimensions match the target requirements.
 fn validate_image_dimensions(bytes: &[u8], target: ImageTarget) -> Result<()> {
     let (expected_width, expected_height) = target.dimensions();
@@ -336,6 +373,7 @@ enum ImageTarget {
     Banner,
     BannerMobile,
     Logo,
+    OpenGraph,
 }
 
 impl ImageTarget {
@@ -345,6 +383,7 @@ impl ImageTarget {
             ImageTarget::Banner => (2428, 192),
             ImageTarget::BannerMobile => (1220, 192),
             ImageTarget::Logo => (360, 360),
+            ImageTarget::OpenGraph => (OPEN_GRAPH_IMAGE_WIDTH, OPEN_GRAPH_IMAGE_HEIGHT),
         }
     }
 }
@@ -357,6 +396,7 @@ impl FromStr for ImageTarget {
             "banner" => Ok(ImageTarget::Banner),
             "banner_mobile" => Ok(ImageTarget::BannerMobile),
             "logo" => Ok(ImageTarget::Logo),
+            "open_graph" => Ok(ImageTarget::OpenGraph),
             _ => Err(anyhow!("unknown image target: {s}")),
         }
     }
@@ -370,4 +410,11 @@ enum SupportedImageFormat {
     Svg,
     Tiff,
     Webp,
+}
+
+impl SupportedImageFormat {
+    /// Returns whether the image format is supported for Open Graph previews.
+    fn is_open_graph_supported(&self) -> bool {
+        matches!(self, Self::Jpeg | Self::Png | Self::Webp)
+    }
 }
