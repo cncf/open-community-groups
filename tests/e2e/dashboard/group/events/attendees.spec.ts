@@ -453,7 +453,7 @@ test.describe("group dashboard attendees tab", () => {
       await expect(rowActionsMenu.getByRole("menuitem", { name: "Reject refund" })).toHaveCount(0);
     });
 
-    test("organizer sees rejected refunds as a read-only attendee badge", async ({
+    test("organizer sees rejected refunds with disabled attendance cancellation", async ({
       organizerGroupPage,
     }) => {
       const attendeesContent = await openAttendeesTab(
@@ -464,12 +464,22 @@ test.describe("group dashboard attendees tab", () => {
       const attendeeRow = attendeesContent.locator("tr", {
         hasText: "E2E Pending One",
       });
+      const rowActionsMenu = attendeeRow.locator("[data-attendee-row-actions-menu]");
 
       await expect(attendeeRow.getByText("Refund rejected", { exact: true })).toBeVisible();
-      await expect(attendeeRow.locator("[data-attendee-row-actions-menu]")).toHaveCount(0);
+      await expect(rowActionsMenu).toBeVisible();
+      await rowActionsMenu.locator("summary").click();
+      const cancelAttendance = rowActionsMenu.getByRole("menuitem", {
+        name: "Cancel attendance",
+      });
+      await expect(cancelAttendance).toBeDisabled();
+      await expect(cancelAttendance).toHaveAttribute(
+        "title",
+        "Paid attendee attendance cannot be canceled from attendee actions.",
+      );
     });
 
-    test("organizer sees approved refunds as a read-only attendee badge", async ({
+    test("organizer sees approved refunds with disabled attendance cancellation", async ({
       organizerGroupPage,
     }) => {
       const attendeesContent = await openAttendeesTab(
@@ -480,9 +490,19 @@ test.describe("group dashboard attendees tab", () => {
       const attendeeRow = attendeesContent.locator("tr", {
         hasText: "E2E Group Viewer One",
       });
+      const rowActionsMenu = attendeeRow.locator("[data-attendee-row-actions-menu]");
 
       await expect(attendeeRow.getByText("Refund approved", { exact: true })).toBeVisible();
-      await expect(attendeeRow.locator("[data-attendee-row-actions-menu]")).toHaveCount(0);
+      await expect(rowActionsMenu).toBeVisible();
+      await rowActionsMenu.locator("summary").click();
+      const cancelAttendance = rowActionsMenu.getByRole("menuitem", {
+        name: "Cancel attendance",
+      });
+      await expect(cancelAttendance).toBeDisabled();
+      await expect(cancelAttendance).toHaveAttribute(
+        "title",
+        "Paid attendee attendance cannot be canceled from attendee actions.",
+      );
     });
 
     test("viewer cannot review or approve attendee refunds", async ({
