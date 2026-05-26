@@ -5,7 +5,8 @@ create or replace function prepare_event_checkout_purchase(
     p_event_ticket_type_id uuid,
     p_user_id uuid,
     p_discount_code text,
-    p_configured_provider text
+    p_configured_provider text,
+    p_registration_answers jsonb default null
 )
 returns jsonb as $$
 declare
@@ -24,6 +25,7 @@ declare
     v_normalized_discount_code text := upper(nullif(btrim(p_discount_code), ''));
     v_purchase_id uuid;
     v_recipient jsonb;
+    v_registration_questions jsonb;
     v_ticket_title text;
 begin
     -- Expire stale pending purchases for the event before reserving a new one
@@ -40,12 +42,14 @@ begin
     select
         c.name,
         e.slug,
+        e.registration_questions,
         g.slug,
         g.slug_pretty,
         g.payment_recipient
     into
         v_community_name,
         v_event_slug,
+        v_registration_questions,
         v_group_slug,
         v_group_slug_pretty,
         v_recipient
@@ -74,6 +78,20 @@ begin
     if found then
         if v_existing_purchase_status <> 'pending'
            or v_existing_purchase_matches_selection then
+            -- Refresh questionnaire answers before returning a reused pending checkout
+            if jsonb_array_length(coalesce(v_registration_questions, '[]'::jsonb)) > 0
+               and v_existing_purchase_status = 'pending' then
+                perform validate_questionnaire_answers_payload(v_registration_questions, p_registration_answers);
+
+                insert into event_attendee (event_id, user_id, registration_answers, status)
+                values (p_event_id, p_user_id, p_registration_answers, 'registration-questions-pending')
+                on conflict (event_id, user_id) do update
+                set
+                    registration_answers = p_registration_answers,
+                    status = 'registration-questions-pending'
+                where event_attendee.status = 'registration-questions-pending';
+            end if;
+
             return prepare_event_checkout_get_purchase_summary(v_existing_purchase_id)
                 || jsonb_build_object(
                     'community_name', v_community_name,
@@ -110,6 +128,19 @@ begin
     -- Release any replaced pending selection before creating the new hold
     if v_existing_purchase_id is not null and v_existing_purchase_status = 'pending' then
         perform prepare_event_checkout_expire_previous_hold(v_existing_purchase_id);
+    end if;
+
+    -- Persist questionnaire answers before checkout starts so completion can confirm the row
+    if jsonb_array_length(coalesce(v_registration_questions, '[]'::jsonb)) > 0 then
+        perform validate_questionnaire_answers_payload(v_registration_questions, p_registration_answers);
+
+        insert into event_attendee (event_id, user_id, registration_answers, status)
+        values (p_event_id, p_user_id, p_registration_answers, 'registration-questions-pending')
+        on conflict (event_id, user_id) do update
+        set
+            registration_answers = p_registration_answers,
+            status = 'registration-questions-pending'
+        where event_attendee.status = 'registration-questions-pending';
     end if;
 
     -- Reserve the chosen discount usage for the new pending purchase

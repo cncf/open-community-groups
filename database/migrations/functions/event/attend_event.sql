@@ -2,7 +2,8 @@
 create or replace function attend_event(
     p_community_id uuid,
     p_event_id uuid,
-    p_user_id uuid
+    p_user_id uuid,
+    p_registration_answers jsonb default null
 ) returns text as $$
 declare
     v_attendee_approval_required boolean;
@@ -10,6 +11,8 @@ declare
     v_capacity int;
     v_group_id uuid;
     v_invitation_request_status text;
+    v_registration_answers jsonb;
+    v_registration_questions jsonb;
     v_waitlist_enabled boolean;
 begin
     -- Check if event exists in the community, is active and can be attended
@@ -17,11 +20,13 @@ begin
         e.attendee_approval_required,
         e.capacity,
         e.group_id,
+        e.registration_questions,
         e.waitlist_enabled
     into
         v_attendee_approval_required,
         v_capacity,
         v_group_id,
+        v_registration_questions,
         v_waitlist_enabled
     from event e
     join "group" g on g.group_id = e.group_id
@@ -40,12 +45,20 @@ begin
         raise exception 'event not found or inactive';
     end if;
 
+    -- Validate registration answers against the event's question definitions
+    if jsonb_array_length(coalesce(v_registration_questions, '[]'::jsonb)) > 0 then
+        perform validate_questionnaire_answers_payload(v_registration_questions, p_registration_answers);
+        v_registration_answers := p_registration_answers;
+    end if;
+
     -- Convert organizer-created invitation rows into attendance
     update event_attendee
-    set status = 'confirmed'
+    set
+        registration_answers = v_registration_answers,
+        status = 'confirmed'
     where event_id = p_event_id
     and user_id = p_user_id
-    and status in ('invitation-pending', 'invitation-rejected');
+    and status in ('invitation-pending', 'invitation-rejected', 'registration-questions-pending');
 
     if found then
         perform insert_audit_log(
@@ -88,7 +101,7 @@ begin
                 select count(*) into v_attendee_count
                 from event_attendee
                 where event_id = p_event_id
-                and status = 'confirmed';
+                and status in ('confirmed', 'registration-questions-pending');
 
                 if v_attendee_count >= v_capacity then
                     raise exception 'event has reached capacity';
@@ -116,8 +129,8 @@ begin
         end if;
 
         -- Create a new request instead of confirming attendance immediately
-        insert into event_invitation_request (event_id, user_id)
-        values (p_event_id, p_user_id);
+        insert into event_invitation_request (event_id, user_id, registration_answers)
+        values (p_event_id, p_user_id, v_registration_answers);
 
         return 'pending-approval';
     end if;
@@ -137,7 +150,7 @@ begin
         select count(*) into v_attendee_count
         from event_attendee
         where event_id = p_event_id
-        and status = 'confirmed';
+        and status in ('confirmed', 'registration-questions-pending');
 
         if v_attendee_count >= v_capacity then
             if v_waitlist_enabled then
@@ -162,11 +175,13 @@ begin
     end if;
 
     -- Add user as event attendee, reusing canceled organizer invitations
-    insert into event_attendee (event_id, user_id)
-    values (p_event_id, p_user_id)
+    insert into event_attendee (event_id, user_id, registration_answers)
+    values (p_event_id, p_user_id, v_registration_answers)
     on conflict (event_id, user_id) do update
-    set status = 'confirmed'
-    where event_attendee.status = 'invitation-canceled';
+    set
+        registration_answers = v_registration_answers,
+        status = 'confirmed'
+    where event_attendee.status in ('invitation-canceled', 'registration-questions-pending');
 
     if not found then
         raise exception 'user is already attending this event';

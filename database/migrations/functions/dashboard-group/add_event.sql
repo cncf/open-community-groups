@@ -33,6 +33,9 @@ declare
     v_ticket_types jsonb := nullif(p_event->'ticket_types', 'null'::jsonb);
     v_ticket_capacity int := get_event_ticket_capacity(nullif(p_event->'ticket_types', 'null'::jsonb));
 begin
+    -- Validate registration questions before writing the event
+    perform validate_questionnaire_questions_payload(coalesce(p_event->'registration_questions', '[]'::jsonb));
+
     -- Determine effective capacity based on ticket types or event capacity
     v_effective_capacity := coalesce(v_ticket_capacity, (p_event->>'capacity')::int);
 
@@ -130,6 +133,7 @@ begin
                 payment_currency_code,
                 photos_urls,
                 registration_required,
+                registration_questions,
                 starts_at,
                 tags,
                 venue_address,
@@ -185,6 +189,7 @@ begin
                 v_payment_currency_code,
                 case when p_event->'photos_urls' is not null then array(select jsonb_array_elements_text(p_event->'photos_urls')) else null end,
                 (p_event->>'registration_required')::boolean,
+                coalesce(p_event->'registration_questions', '[]'::jsonb),
                 (p_event->>'starts_at')::timestamp at time zone (p_event->>'timezone'),
                 case when p_event->'tags' is not null then array(select jsonb_array_elements_text(p_event->'tags')) else null end,
                 nullif(p_event->>'venue_address', ''),

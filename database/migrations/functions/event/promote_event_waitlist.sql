@@ -9,6 +9,8 @@ declare
     v_available_slots int;
     v_capacity int;
     v_promoted_user_ids uuid[] := '{}';
+    v_registration_questions jsonb;
+    v_has_registration_questions boolean;
     v_waitlist_entry record;
     v_waitlist_count int;
 begin
@@ -17,9 +19,13 @@ begin
         return array[]::uuid[];
     end if;
 
-    -- Lock event row and load capacity configuration
-    select e.capacity
-    into v_capacity
+    -- Lock event row and load capacity and registration question configuration
+    select
+        e.capacity,
+        e.registration_questions
+    into
+        v_capacity,
+        v_registration_questions
     from event e
     where e.event_id = p_event_id
     for update of e;
@@ -27,6 +33,9 @@ begin
     if not found then
         return array[]::uuid[];
     end if;
+
+    -- Route promoted attendees through the questions flow when any registration questions exist
+    v_has_registration_questions := jsonb_array_length(coalesce(v_registration_questions, '[]'::jsonb)) > 0;
 
     -- Compute how many seats can be filled from the waitlist
     if v_capacity is null then
@@ -39,7 +48,7 @@ begin
         select count(*) into v_attendee_count
         from event_attendee
         where event_id = p_event_id
-        and status = 'confirmed';
+        and status in ('confirmed', 'registration-questions-pending');
 
         v_available_slots := greatest(v_capacity - v_attendee_count, 0);
     end if;
@@ -74,10 +83,14 @@ begin
         end if;
 
         -- Insert the promoted user as an attendee (tolerate concurrent duplicate inserts)
-        insert into event_attendee (event_id, user_id)
-        values (p_event_id, v_waitlist_entry.user_id)
+        insert into event_attendee (event_id, user_id, status)
+        values (
+            p_event_id,
+            v_waitlist_entry.user_id,
+            case when v_has_registration_questions then 'registration-questions-pending' else 'confirmed' end
+        )
         on conflict (event_id, user_id) do update
-        set status = 'confirmed'
+        set status = case when v_has_registration_questions then 'registration-questions-pending' else 'confirmed' end
         where event_attendee.status = 'invitation-canceled';
 
         -- Record only users successfully moved into attendees during this execution

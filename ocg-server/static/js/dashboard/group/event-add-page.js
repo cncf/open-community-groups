@@ -1,5 +1,6 @@
 import { initializeSessionsRemovalWarning } from "/static/js/dashboard/group/event-form-helpers.js";
 import { initializeEventPreview } from "/static/js/dashboard/group/event-preview.js";
+import "/static/js/dashboard/group/questions-editor.js";
 import {
   attachEventSaveAfterRequest,
   attachEventSaveBeforeRequestValidation,

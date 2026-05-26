@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(31);
+select plan(38);
 
 -- ============================================================================
 -- VARIABLES
@@ -20,9 +20,17 @@ select plan(31);
 \set eventInactiveGroup '00000000-0000-0000-0000-000000000045'
 \set eventOK '00000000-0000-0000-0000-000000000041'
 \set eventPast '00000000-0000-0000-0000-000000000046'
+\set eventQuestionsApprovalID '90400000-0000-0000-0000-000000000042'
+\set eventQuestionsID '90400000-0000-0000-0000-000000000041'
 \set eventUnpublished '00000000-0000-0000-0000-000000000042'
 \set groupID '00000000-0000-0000-0000-000000000021'
 \set inactiveGroupID '00000000-0000-0000-0000-000000000022'
+\set questionsAttendeeUserID '90400000-0000-0000-0000-000000000031'
+\set questionsCategoryID '90400000-0000-0000-0000-000000000011'
+\set questionsCommunityID '90400000-0000-0000-0000-000000000001'
+\set questionsEventCategoryID '90400000-0000-0000-0000-000000000012'
+\set questionsGroupID '90400000-0000-0000-0000-000000000021'
+\set questionsRequestUserID '90400000-0000-0000-0000-000000000034'
 \set user1ID '00000000-0000-0000-0000-000000000031'
 \set user2ID '00000000-0000-0000-0000-000000000032'
 \set user3ID '00000000-0000-0000-0000-000000000033'
@@ -38,13 +46,25 @@ select plan(31);
 insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
 values (:'communityID', 'test-community', 'Test Community', 'Desc', 'https://example.com/logo.png', 'https://example.com/banner_mobile.png', 'https://example.com/banner.png');
 
+-- Community for registration-question attendance tests
+insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
+values (:'questionsCommunityID', 'attend-questions-community', 'Attend Questions Community', 'Desc', 'https://example.com/logo.png', 'https://example.com/banner-mobile.png', 'https://example.com/banner.png');
+
 -- Group category
 insert into group_category (group_category_id, name, community_id)
 values (:'categoryID', 'Technology', :'communityID');
 
+-- Group category for registration-question attendance tests
+insert into group_category (group_category_id, name, community_id)
+values (:'questionsCategoryID', 'Technology', :'questionsCommunityID');
+
 -- Event category
 insert into event_category (event_category_id, name, community_id)
 values (:'eventCategoryID', 'General', :'communityID');
+
+-- Event category for registration-question attendance tests
+insert into event_category (event_category_id, name, community_id)
+values (:'questionsEventCategoryID', 'General', :'questionsCommunityID');
 
 -- Users
 insert into "user" (user_id, auth_hash, email, username)
@@ -56,11 +76,21 @@ values
     (:'user5ID', 'h', 'u5@test.com', 'u5'),
     (:'user6ID', 'h', 'u6@test.com', 'u6');
 
+-- Users that submit registration answers while attending
+insert into "user" (user_id, auth_hash, email, email_verified, name, registration_status, username)
+values
+    (:'questionsAttendeeUserID', 'rq-hash-1', 'rq-attend@example.com', true, 'Attendee', 'registered', 'rq-attendee'),
+    (:'questionsRequestUserID', 'rq-hash-2', 'rq-request@example.com', true, 'Requester', 'registered', 'rq-requester');
+
 -- Groups
 insert into "group" (group_id, community_id, group_category_id, name, slug, active, deleted)
 values
     (:'groupID', :'communityID', :'categoryID', 'Active Group', 'active-group', true, false),
     (:'inactiveGroupID', :'communityID', :'categoryID', 'Inactive Group', 'inactive-group', false, false);
+
+-- Group for registration-question attendance tests
+insert into "group" (group_id, community_id, group_category_id, name, slug)
+values (:'questionsGroupID', :'questionsCommunityID', :'questionsCategoryID', 'Attend Questions Group', 'attend-questions-group');
 
 -- Events
 insert into event (
@@ -91,6 +121,48 @@ values
     (:'eventFullNoWaitlist', 'Full No Waitlist', 'full-no-waitlist', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', true, false, false, null, null, 2, false, false),
     (:'eventFullWaitlist', 'Full Waitlist', 'full-waitlist', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', true, false, false, null, null, 1, true, false),
     (:'eventInviteOnly', 'Invite Only', 'invite-only', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', true, false, false, null, null, 1, false, true);
+
+-- Events requiring registration answers during attendance
+insert into event (
+    event_id,
+    group_id,
+    name,
+    slug,
+    description,
+    timezone,
+    event_category_id,
+    event_kind_id,
+    published,
+    starts_at,
+    attendee_approval_required,
+    registration_questions
+) values (
+    :'eventQuestionsID',
+    :'questionsGroupID',
+    'Questions Event',
+    'questions-event',
+    'Desc',
+    'UTC',
+    :'questionsEventCategoryID',
+    'in-person',
+    true,
+    '2030-01-01 10:00:00+00',
+    false,
+    '[{"id": "90400000-0000-0000-0000-000000000101", "kind": "free-text", "prompt": "Note", "required": true, "options": []}]'::jsonb
+), (
+    :'eventQuestionsApprovalID',
+    :'questionsGroupID',
+    'Approval Questions Event',
+    'approval-questions-event',
+    'Desc',
+    'UTC',
+    :'questionsEventCategoryID',
+    'in-person',
+    true,
+    '2030-01-02 10:00:00+00',
+    true,
+    '[{"id": "90400000-0000-0000-0000-000000000101", "kind": "free-text", "prompt": "Note", "required": true, "options": []}]'::jsonb
+);
 
 -- Event attendees
 insert into event_attendee (event_id, user_id, status)
@@ -132,6 +204,29 @@ select ok(
         and manually_invited = false
     ),
     'Creates non-manually invited event_attendee row after confirmed RSVP'
+);
+
+-- Should discard submitted answers when the event has no registration questions
+select is(
+    attend_event(
+        :'communityID'::uuid,
+        :'eventOK'::uuid,
+        :'user4ID'::uuid,
+        '{"answers": [{"question_id": "00000000-0000-0000-0000-000000009999", "value": "No question"}]}'::jsonb
+    ),
+    'attendee',
+    'Returns attendee when questionless event receives ignored answers'
+);
+
+select is(
+    (
+        select registration_answers
+        from event_attendee
+        where event_id = :'eventOK'::uuid
+        and user_id = :'user4ID'::uuid
+    ),
+    null::jsonb,
+    'Does not store answers for a questionless event'
 );
 
 -- Should allow attendance for a capacity-limited event with an open seat
@@ -403,6 +498,64 @@ select throws_ok(
     ),
     'event not found or inactive',
     'Rejects events from inactive groups'
+);
+
+-- Should require answers when attending an event with questions
+select throws_ok(
+    format(
+        'select attend_event(%L::uuid,%L::uuid,%L::uuid)',
+        :'questionsCommunityID', :'eventQuestionsID', :'questionsAttendeeUserID'
+    ),
+    'questionnaire answers are required',
+    'Should require answers when attending an event with questions'
+);
+
+-- Should attend with valid registration answers
+select is(
+    attend_event(
+        :'questionsCommunityID'::uuid,
+        :'eventQuestionsID'::uuid,
+        :'questionsAttendeeUserID'::uuid,
+        '{"answers": [{"question_id": "90400000-0000-0000-0000-000000000101", "value": "Attendee answer"}]}'::jsonb
+    ),
+    'attendee',
+    'Should attend with valid registration answers'
+);
+
+-- Should store answers submitted while attending
+select is(
+    (
+        select registration_answers
+        from event_attendee
+        where event_id = :'eventQuestionsID'::uuid
+        and user_id = :'questionsAttendeeUserID'::uuid
+    ),
+    '{"answers": [{"question_id": "90400000-0000-0000-0000-000000000101", "value": "Attendee answer"}]}'::jsonb,
+    'Should store answers submitted while attending'
+);
+
+-- Should keep approval-required attendance pending and store answers on the request
+select is(
+    attend_event(
+        :'questionsCommunityID'::uuid,
+        :'eventQuestionsApprovalID'::uuid,
+        :'questionsRequestUserID'::uuid,
+        '{"answers": [{"question_id": "90400000-0000-0000-0000-000000000101", "value": "Request answer"}]}'::jsonb
+    ),
+    'pending-approval',
+    'Should keep approval-required attendance pending and store answers on the request'
+);
+
+-- Should store answers on pending invitation requests
+select is(
+    (
+        select registration_answers
+        from event_invitation_request
+        where event_id = :'eventQuestionsApprovalID'::uuid
+        and user_id = :'questionsRequestUserID'::uuid
+    ),
+    '{"answers": [{"question_id": "90400000-0000-0000-0000-000000000101", "value": "Request answer"}]}'::jsonb,
+    'Should store answers on pending invitation requests'
 );
 
 -- ============================================================================

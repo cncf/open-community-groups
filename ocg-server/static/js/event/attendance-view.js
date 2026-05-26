@@ -757,6 +757,21 @@ export const openTicketModal = (container) => {
 };
 
 /**
+ * Opens the event questions modal.
+ * @param {HTMLElement} container - Attendance container element
+ */
+export const openQuestionsModal = (container) => {
+  const questionsModal = getAttendanceControl(container, "registration-modal");
+  if (!(questionsModal instanceof HTMLElement) || !questionsModal.id) {
+    return;
+  }
+
+  if (questionsModal.classList.contains("hidden")) {
+    toggleModalVisibility(questionsModal.id);
+  }
+};
+
+/**
  * Closes the ticket purchase modal if it is open.
  * @param {HTMLElement} container - Attendance container element
  */
@@ -767,6 +782,23 @@ export const closeTicketModal = (container) => {
   }
 
   toggleModalVisibility(ticketModal.id);
+};
+
+/**
+ * Closes the event questions modal if it is open.
+ * @param {HTMLElement} container - Attendance container element
+ */
+export const closeQuestionsModal = (container) => {
+  const questionsModal = getAttendanceControl(container, "registration-modal");
+  if (
+    !(questionsModal instanceof HTMLElement) ||
+    !questionsModal.id ||
+    questionsModal.classList.contains("hidden")
+  ) {
+    return;
+  }
+
+  toggleModalVisibility(questionsModal.id);
 };
 
 /**

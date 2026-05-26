@@ -16,8 +16,13 @@
     <strong>Open Community Groups</strong>.
     <br />
     <br />
-    Use the link below to review and accept or reject the invitation from your
-    dashboard.
+    {% if has_registration_questions -%}
+      Use the link below to open My Events, answer the registration questions,
+      and complete your registration.
+    {% else -%}
+      Use the link below to review and accept or reject the invitation from your
+      dashboard.
+    {% endif -%}
     <br />
     <br />
     When logging in with LF SSO, make sure the invited email address matches
@@ -25,7 +30,11 @@
     match, you will not be able to accept this invitation.
   </p>
 
-  {{ email::button(link = link, text = "Review invitation", color = theme.primary_color) }}
+  {% if has_registration_questions -%}
+    {{ email::button(link = link, text = "Open My Events", color = theme.primary_color) }}
+  {% else -%}
+    {{ email::button(link = link, text = "Review invitation", color = theme.primary_color) }}
+  {% endif -%}
 {% endblock content -%}
 
 {% block footer -%}

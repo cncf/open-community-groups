@@ -39,4 +39,16 @@ describe("dashboard group attendees list template", () => {
     expect(template).to.include('title="Canceled event attendance cannot be canceled."');
     expect(template).to.include('title="Past event attendance cannot be canceled."');
   });
+
+  it("renders cancel invitation for manual question-pending invitations", async () => {
+    const template = normalizeWhitespace(await loadTemplate());
+
+    expect(template).to.include(
+      'attendee.status == "registration-questions-pending" && attendee.manually_invited',
+    );
+    expect(template).to.include('id="cancel-invitation-{{ attendee.user_id }}"');
+    expect(template).to.include(
+      'hx-put="/dashboard/group/events/{{ event.event_id }}/attendees/{{ attendee.user_id }}/invitation/cancel"',
+    );
+  });
 });

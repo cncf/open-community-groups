@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(6);
+select plan(10);
 
 -- ============================================================================
 -- VARIABLES
@@ -16,6 +16,8 @@ select plan(6);
 \set eventID '00000000-0000-0000-0000-000000000005'
 \set groupID '00000000-0000-0000-0000-000000000006'
 \set invitedUserID '00000000-0000-0000-0000-000000000007'
+\set questionsInvitedUserID '00000000-0000-0000-0000-000000000008'
+\set questionsRegisteredUserID '00000000-0000-0000-0000-000000000009'
 
 -- ============================================================================
 -- SEED DATA
@@ -41,7 +43,23 @@ values (:'groupID', :'communityID', :'categoryID', 'G1', 'g1');
 insert into "user" (auth_hash, email, email_verified, name, user_id, username)
 values
     ('hash-actor', 'actor@example.com', true, 'Actor', :'actorID', 'actor'),
-    ('hash-invited', 'invited@example.com', true, 'Invited', :'invitedUserID', 'invited');
+    ('hash-invited', 'invited@example.com', true, 'Invited', :'invitedUserID', 'invited'),
+    (
+        'hash-questions-invited',
+        'questions-invited@example.com',
+        true,
+        'Questions Invited',
+        :'questionsInvitedUserID',
+        'questions-invited'
+    ),
+    (
+        'hash-questions-registered',
+        'questions-registered@example.com',
+        true,
+        'Questions Registered',
+        :'questionsRegisteredUserID',
+        'questions-registered'
+    );
 
 -- Event
 insert into event (
@@ -59,7 +77,10 @@ values (:'eventID', 'Free Event', 'free-event', 'd', 'UTC', :'eventCategoryID', 
 
 -- Event invitation
 insert into event_attendee (event_id, user_id, manually_invited, status)
-values (:'eventID', :'invitedUserID', true, 'invitation-pending');
+values
+    (:'eventID', :'invitedUserID', true, 'invitation-pending'),
+    (:'eventID', :'questionsInvitedUserID', true, 'registration-questions-pending'),
+    (:'eventID', :'questionsRegisteredUserID', false, 'registration-questions-pending');
 
 -- ============================================================================
 -- TESTS
@@ -114,6 +135,40 @@ select results_eq(
         )
     $$,
     'Should create the expected audit row'
+);
+
+-- Should cancel manually invited attendees pending registration questions.
+select lives_ok(
+    $$ select cancel_event_attendee_invitation(
+        '00000000-0000-0000-0000-000000000001',
+        '00000000-0000-0000-0000-000000000006',
+        '00000000-0000-0000-0000-000000000005',
+        '00000000-0000-0000-0000-000000000008'
+    ) $$,
+    'Should cancel a manually invited attendee pending registration questions'
+);
+
+select is(
+    (select status from event_attendee where event_id = :'eventID' and user_id = :'questionsInvitedUserID'),
+    'invitation-canceled',
+    'Should persist canceled invitation status for registration questions pending invitations'
+);
+
+select ok(
+    not (select manually_invited from event_attendee where event_id = :'eventID' and user_id = :'questionsInvitedUserID'),
+    'Should clear the manual invitation flag for registration questions pending invitations'
+);
+
+-- Should reject canceling non-manual pending question registrations.
+select throws_ok(
+    $$ select cancel_event_attendee_invitation(
+        '00000000-0000-0000-0000-000000000001',
+        '00000000-0000-0000-0000-000000000006',
+        '00000000-0000-0000-0000-000000000005',
+        '00000000-0000-0000-0000-000000000009'
+    ) $$,
+    'pending event invitation not found',
+    'Should reject canceling non-manual pending question registrations'
 );
 
 -- Should reject canceling non-pending invitations.

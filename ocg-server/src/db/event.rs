@@ -2,13 +2,17 @@
 
 use anyhow::Result;
 use async_trait::async_trait;
+use tokio_postgres::types::Json;
 use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
     db::PgDB,
     templates::event::SessionProposal,
-    types::event::{EventAttendanceInfo, EventAttendanceStatus, EventFull, EventLeaveOutcome, EventSummary},
+    types::{
+        event::{EventAttendanceInfo, EventAttendanceStatus, EventFull, EventLeaveOutcome, EventSummary},
+        questionnaire::{QuestionnaireAnswers, QuestionnaireQuestion},
+    },
 };
 
 /// Database trait defining all data access operations for event page.
@@ -30,6 +34,7 @@ pub(crate) trait DBEvent {
         community_id: Uuid,
         event_id: Uuid,
         user_id: Uuid,
+        registration_answers: Option<QuestionnaireAnswers>,
     ) -> Result<EventAttendanceStatus>;
 
     /// Marks an attendee as checked in for an event.
@@ -59,6 +64,13 @@ pub(crate) trait DBEvent {
         group_slug: &str,
         event_slug: &str,
     ) -> Result<Option<EventFull>>;
+
+    /// Retrieves registration questions configured for an event.
+    async fn get_event_registration_questions(
+        &self,
+        community_id: Uuid,
+        event_id: Uuid,
+    ) -> Result<Vec<QuestionnaireQuestion>>;
 
     /// Retrieves summary event information by its identifier.
     async fn get_event_summary_by_id(&self, community_id: Uuid, event_id: Uuid) -> Result<EventSummary>;
@@ -114,11 +126,17 @@ impl DBEvent for PgDB {
         community_id: Uuid,
         event_id: Uuid,
         user_id: Uuid,
+        registration_answers: Option<QuestionnaireAnswers>,
     ) -> Result<EventAttendanceStatus> {
         let status: String = self
             .fetch_scalar_one(
-                "select attend_event($1::uuid, $2::uuid, $3::uuid)::text",
-                &[&community_id, &event_id, &user_id],
+                "select attend_event($1::uuid, $2::uuid, $3::uuid, $4::jsonb)::text",
+                &[
+                    &community_id,
+                    &event_id,
+                    &user_id,
+                    &registration_answers.as_ref().map(Json),
+                ],
             )
             .await?;
 
@@ -179,6 +197,20 @@ impl DBEvent for PgDB {
         self.fetch_json_opt(
             "select get_event_full_by_slug($1::uuid, $2::text, $3::text)",
             &[&community_id, &group_slug, &event_slug],
+        )
+        .await
+    }
+
+    /// [`DBEvent::get_event_registration_questions`]
+    #[instrument(skip(self), err)]
+    async fn get_event_registration_questions(
+        &self,
+        community_id: Uuid,
+        event_id: Uuid,
+    ) -> Result<Vec<QuestionnaireQuestion>> {
+        self.fetch_json_one(
+            "select get_event_registration_questions($1::uuid, $2::uuid)",
+            &[&community_id, &event_id],
         )
         .await
     }

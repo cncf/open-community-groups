@@ -147,6 +147,10 @@ insert into event_purchase (
     :'userID'
 );
 
+-- Pending attendee row with registration answers created during checkout
+insert into event_attendee (event_id, user_id, status)
+values (:'eventID', :'userID', 'registration-questions-pending');
+
 -- ============================================================================
 -- TESTS
 -- ============================================================================
@@ -163,10 +167,16 @@ select results_eq(
         select
             (select hold_expires_at <= current_timestamp from event_purchase where event_purchase_id = '79210000-0000-0000-0000-000000000009'::uuid),
             (select status from event_purchase where event_purchase_id = '79210000-0000-0000-0000-000000000009'::uuid),
-            (select available::text from event_discount_code where event_discount_code_id = '79210000-0000-0000-0000-000000000002'::uuid)
+            (select available::text from event_discount_code where event_discount_code_id = '79210000-0000-0000-0000-000000000002'::uuid),
+            (
+                select count(*)::int
+                from event_attendee
+                where event_id = '79210000-0000-0000-0000-000000000004'::uuid
+                and user_id = '79210000-0000-0000-0000-000000000010'::uuid
+            )
     $$,
-    $$ values (true, 'expired'::text, '1'::text) $$,
-    'Should restore the reserved discount inventory'
+    $$ values (true, 'expired'::text, '1'::text, 0::int) $$,
+    'Should restore the reserved discount inventory and release the registration hold'
 );
 
 -- ============================================================================

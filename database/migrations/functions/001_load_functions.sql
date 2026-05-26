@@ -21,8 +21,12 @@
 {{ template "common/list_event_discount_codes.sql" }} -- Dependency for get_event_full and payments
 {{ template "common/list_event_ticket_types.sql" }} -- Dependency for get_event_full and payments
 {{ template "common/get_group_summary.sql" }} -- Do not sort alphabetically, has dependency
+{{ template "common/questionnaire_answers_exist_for_event.sql" }} -- Do not sort alphabetically, dependency for get_event_full and update_event
+{{ template "common/validate_questionnaire_questions_payload.sql" }} -- Do not sort alphabetically, dependency for add/update_event and validate_questionnaire_answers_payload
+{{ template "common/validate_questionnaire_answers_payload.sql" }} -- Do not sort alphabetically, dependency for attend_event, submit_event_registration_answers and prepare_event_checkout_purchase
 {{ template "common/get_event_full.sql" }}
 {{ template "common/get_event_summary.sql" }}
+{{ template "common/get_event_registration_questions.sql" }} -- Do not sort alphabetically, dependency for dashboard-user/list_user_events
 {{ template "common/get_group_full.sql" }}
 {{ template "common/insert_audit_log.sql" }}
 {{ template "common/is_open_graph_image.sql" }}
@@ -31,6 +35,7 @@
 {{ template "common/list_redirects.sql" }}
 {{ template "common/search_events.sql" }}
 {{ template "common/search_groups.sql" }}
+
 {{ template "community/get_community_id_by_name.sql" }}
 {{ template "community/get_community_name_by_id.sql" }}
 {{ template "community/get_community_recently_added_groups.sql" }}
@@ -157,6 +162,7 @@
 {{ template "dashboard-user/reject_group_team_invitation.sql" }}
 {{ template "dashboard-user/reject_session_proposal_co_speaker_invitation.sql" }}
 {{ template "dashboard-user/resubmit_cfs_submission.sql" }}
+{{ template "dashboard-user/submit_event_registration_answers.sql" }}
 {{ template "dashboard-user/update_session_proposal.sql" }}
 {{ template "dashboard-user/withdraw_cfs_submission.sql" }}
 
@@ -169,6 +175,7 @@
 {{ template "event/get_event_summary_by_id.sql" }}
 {{ template "event/is_event_check_in_window_open.sql" }}
 {{ template "payments/release_event_discount_code_availability.sql" }} -- Dependency for event and payments flows
+{{ template "payments/release_event_checkout_attendee_hold.sql" }} -- Dependency for checkout expiration flows
 {{ template "payments/refund_free_event_purchase.sql" }} -- Dependency for leave_event
 {{ template "event/leave_event.sql" }}
 {{ template "event/list_user_session_proposals_for_cfs_event.sql" }}

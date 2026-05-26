@@ -39,6 +39,7 @@ use crate::{
     types::{
         event::{EventAttendanceStatus, EventFull, EventSummary},
         payments::{EventPurchaseStatus, EventTicketType, PreparedEventCheckout},
+        questionnaire::{OptionalQuestionnaireAnswersForm, QuestionnaireAnswers, QuestionnaireQuestion},
     },
     util::{build_event_calendar_attachment, build_event_page_link, build_user_dashboard_events_link},
     validation::{
@@ -227,6 +228,7 @@ pub(crate) async fn attend_event(
     State(server_cfg): State<HttpServerConfig>,
     CommunityId(community_id): CommunityId,
     Path((_, event_id)): Path<(String, Uuid)>,
+    ValidatedForm(input): ValidatedForm<OptionalQuestionnaireAnswersForm>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Validate that the event is still attendee-visible before checking ticketing
     ensure_attendee_event_is_active(&db, community_id, event_id).await?;
@@ -237,8 +239,14 @@ pub(crate) async fn attend_event(
         return Err(anyhow::anyhow!("ticketed events must be purchased before attending").into());
     }
 
+    // Get registration questions and validate answers
+    let registration_questions = db.get_event_registration_questions(community_id, event_id).await?;
+    validate_registration_answers(input.registration_answers.as_ref(), &registration_questions)?;
+
     // Attend event
-    let attend_result = db.attend_event(community_id, event_id, user.user_id).await?;
+    let attend_result = db
+        .attend_event(community_id, event_id, user.user_id, input.registration_answers)
+        .await?;
     let response = (
         StatusCode::OK,
         Json(json!({
@@ -287,6 +295,7 @@ pub(crate) async fn attend_event(
         EventAttendanceStatus::InvitationApproved
         | EventAttendanceStatus::PendingApproval
         | EventAttendanceStatus::PendingPayment
+        | EventAttendanceStatus::RegistrationQuestionsPending
         | EventAttendanceStatus::Rejected => Ok(()),
         EventAttendanceStatus::Waitlisted => {
             // Let the user know they were added to the waitlist
@@ -453,6 +462,7 @@ pub(crate) async fn leave_event(
         let calendar_ics = build_event_calendar_attachment(base_url, &event);
         let template_data = EventWaitlistPromoted {
             event: event.clone(),
+            has_registration_questions: event.has_registration_questions,
             link: link.clone(),
             theme: site_settings.theme.clone(),
         };
@@ -510,8 +520,17 @@ pub(crate) async fn start_checkout(
     Path((_, event_id)): Path<(String, Uuid)>,
     ValidatedForm(input): ValidatedForm<CheckoutInput>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Load the event and reserve a purchase hold for the attendee
+    // Load the event
     load_checkoutable_event(&db, community_id, event_id).await?;
+
+    // Get registration questions and validate answers
+    let registration_questions = db.get_event_registration_questions(community_id, event_id).await?;
+    validate_registration_answers(
+        input.registration_answers.registration_answers.as_ref(),
+        &registration_questions,
+    )?;
+
+    // Reserve a purchase hold for the attendee
     let prepared_checkout = create_checkout_hold(
         &db,
         community_id,
@@ -649,6 +668,10 @@ pub(crate) struct CheckoutInput {
     /// Ticket type selected by the attendee.
     #[garde(skip)]
     event_ticket_type_id: Option<Uuid>,
+    /// Questionnaire answers encoded as JSON.
+    #[serde(default, flatten)]
+    #[garde(dive)]
+    registration_answers: OptionalQuestionnaireAnswersForm,
 }
 
 /// Public event availability returned to hydrate cached event pages.
@@ -780,6 +803,7 @@ async fn create_checkout_hold(
             discount_code: input.discount_code.clone(),
             event_id,
             event_ticket_type_id,
+            registration_answers: input.registration_answers.registration_answers.clone(),
             user_id,
         },
     )
@@ -840,4 +864,20 @@ async fn load_checkoutable_event(
     }
 
     Ok(event)
+}
+
+/// Validates submitted registration answers against the event questionnaire.
+fn validate_registration_answers(
+    registration_answers: Option<&QuestionnaireAnswers>,
+    registration_questions: &[QuestionnaireQuestion],
+) -> Result<(), HandlerError> {
+    match registration_answers {
+        Some(answers) => answers
+            .validate_against_questions(registration_questions)
+            .map_err(HandlerError::Database),
+        None if registration_questions.is_empty() => Ok(()),
+        None => Err(HandlerError::Database(
+            "questionnaire answers are required".to_string(),
+        )),
+    }
 }

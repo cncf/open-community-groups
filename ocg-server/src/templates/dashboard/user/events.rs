@@ -10,6 +10,7 @@ use crate::{
     types::{
         event::EventSummary,
         pagination::{self, Pagination, ToRawQuery},
+        questionnaire::{QuestionnaireAnswers, QuestionnaireQuestion},
     },
     validation::MAX_PAGINATION_LIMIT,
 };
@@ -42,8 +43,19 @@ pub(crate) struct UserEvent {
     /// Whether the user can cancel attendance from this row.
     #[serde(default)]
     pub can_cancel_attendance: bool,
+    /// Whether the user must complete registration questions for this event.
+    #[serde(default)]
+    pub can_complete_registration_questions: bool,
     /// Event summary data.
     pub event: EventSummary,
+    /// Existing registration answers submitted by the user.
+    pub registration_answers: Option<QuestionnaireAnswers>,
+    /// Registration questions configured for the event.
+    #[serde(default)]
+    pub registration_questions: Vec<QuestionnaireQuestion>,
+    /// Whether the attendee row is waiting for registration questions.
+    #[serde(default)]
+    pub registration_questions_pending: bool,
     /// Roles the user has in the event.
     pub roles: Vec<String>,
 }

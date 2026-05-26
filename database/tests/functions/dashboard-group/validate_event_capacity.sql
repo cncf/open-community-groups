@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(6);
+select plan(7);
 
 -- ============================================================================
 -- VARIABLES
@@ -12,8 +12,11 @@ select plan(6);
 \set communityID '00000000-0000-0000-0000-000000000001'
 \set eventCategoryID '00000000-0000-0000-0000-000000000011'
 \set eventID '00000000-0000-0000-0000-000000000021'
+\set eventQuestionsID '90400000-0000-0000-0000-000000000043'
 \set groupCategoryID '00000000-0000-0000-0000-000000000031'
 \set groupID '00000000-0000-0000-0000-000000000041'
+\set questionsSeatedUserID '90400000-0000-0000-0000-000000000036'
+\set questionsWaitlistUserID '90400000-0000-0000-0000-000000000032'
 \set user1ID '00000000-0000-0000-0000-000000000051'
 \set user2ID '00000000-0000-0000-0000-000000000052'
 \set user3ID '00000000-0000-0000-0000-000000000053'
@@ -46,7 +49,9 @@ insert into "user" (user_id, auth_hash, email, username, email_verified, name) v
     (:'user2ID', gen_random_bytes(32), 'user2@example.com', 'user2', true, 'User 2'),
     (:'user3ID', gen_random_bytes(32), 'user3@example.com', 'user3', true, 'User 3'),
     (:'user4ID', gen_random_bytes(32), 'user4@example.com', 'user4', true, 'User 4'),
-    (:'user5ID', gen_random_bytes(32), 'user5@example.com', 'user5', true, 'User 5');
+    (:'user5ID', gen_random_bytes(32), 'user5@example.com', 'user5', true, 'User 5'),
+    (:'questionsSeatedUserID', gen_random_bytes(32), 'rq-seated@example.com', 'rq-seated', true, 'RQ Seated'),
+    (:'questionsWaitlistUserID', gen_random_bytes(32), 'rq-waitlist@example.com', 'rq-waitlist', true, 'RQ Waitlist');
 
 -- Event
 insert into event (
@@ -75,13 +80,40 @@ insert into event (
     '2030-01-01 11:00:00+00'
 );
 
+-- Event with pending registration-question attendee used for capacity counting
+insert into event (
+    event_id,
+    group_id,
+    name,
+    slug,
+    description,
+    timezone,
+    event_category_id,
+    event_kind_id,
+    capacity,
+    starts_at
+) values (
+    :'eventQuestionsID',
+    :'groupID',
+    'Waitlist Questions Event',
+    'waitlist-questions-event',
+    'd',
+    'UTC',
+    :'eventCategoryID',
+    'virtual',
+    2,
+    '2030-01-03 10:00:00+00'
+);
+
 -- Event attendees
 insert into event_attendee (event_id, user_id, status) values
     (:'eventID', :'user1ID', 'confirmed'),
     (:'eventID', :'user2ID', 'confirmed'),
     (:'eventID', :'user3ID', 'confirmed'),
     (:'eventID', :'user4ID', 'invitation-pending'),
-    (:'eventID', :'user5ID', 'invitation-rejected');
+    (:'eventID', :'user5ID', 'invitation-rejected'),
+    (:'eventQuestionsID', :'questionsSeatedUserID', 'confirmed'),
+    (:'eventQuestionsID', :'questionsWaitlistUserID', 'registration-questions-pending');
 
 -- ============================================================================
 -- TESTS
@@ -152,6 +184,16 @@ select lives_ok(
         :'eventID'
     ),
     'Should accept update capacity equal to the current attendee count'
+);
+
+-- Should count pending registration rows as attendees during capacity validation
+select throws_ok(
+    format(
+        $$select validate_event_capacity('{"capacity": 0}'::jsonb, null::jsonb, '%s'::uuid)$$,
+        :'eventQuestionsID'
+    ),
+    'event capacity (0) cannot be less than current number of attendees (2)',
+    'Should count pending registration rows as attendees during capacity validation'
 );
 
 -- ============================================================================

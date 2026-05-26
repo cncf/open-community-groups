@@ -1016,6 +1016,10 @@ async fn test_list_page_success() {
         .times(1)
         .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
         .returning(move |_, _, _| Ok(event.clone()));
+    db.expect_get_event_registration_questions()
+        .times(1)
+        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .returning(|_, _| Ok(vec![]));
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
@@ -1106,6 +1110,10 @@ async fn test_list_page_with_pagination_params() {
         .times(1)
         .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
         .returning(move |_, _, _| Ok(event.clone()));
+    db.expect_get_event_registration_questions()
+        .times(1)
+        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .returning(|_, _| Ok(vec![]));
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();

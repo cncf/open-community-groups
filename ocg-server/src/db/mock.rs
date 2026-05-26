@@ -677,6 +677,13 @@ mock! {
             actor_user_id: Uuid,
             cfs_submission_id: Uuid,
         ) -> Result<()>;
+        async fn submit_event_registration_answers(
+            &self,
+            actor_user_id: Uuid,
+            community_id: Uuid,
+            event_id: Uuid,
+            registration_answers: &crate::types::questionnaire::QuestionnaireAnswers,
+        ) -> Result<bool>;
         async fn update_session_proposal(
             &self,
             actor_user_id: Uuid,
@@ -705,6 +712,7 @@ mock! {
             community_id: Uuid,
             event_id: Uuid,
             user_id: Uuid,
+            registration_answers: Option<crate::types::questionnaire::QuestionnaireAnswers>,
         ) -> Result<crate::types::event::EventAttendanceStatus>;
         async fn check_in_event(
             &self,
@@ -724,6 +732,11 @@ mock! {
             group_slug: &str,
             event_slug: &str,
         ) -> Result<Option<crate::types::event::EventFull>>;
+        async fn get_event_registration_questions(
+            &self,
+            community_id: Uuid,
+            event_id: Uuid,
+        ) -> Result<Vec<crate::types::questionnaire::QuestionnaireQuestion>>;
         async fn get_event_summary_by_id(
             &self,
             community_id: Uuid,

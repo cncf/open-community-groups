@@ -290,6 +290,7 @@ class EventSelector extends LitWrapper {
       setEventReminderEnabled,
       setGalleryImages,
       setTags,
+      setRegistrationQuestions,
       setRegistrationRequired,
       setPaymentCurrencyCode,
       setTicketTypes,
@@ -310,6 +311,7 @@ class EventSelector extends LitWrapper {
     setTextValue("capacity", details.capacity);
     setEventReminderEnabled(details.event_reminder_enabled !== false);
     setRegistrationRequired(details.registration_required === true);
+    setRegistrationQuestions(details.registration_questions);
     // Clear mutually exclusive enrollment state before dependent sync runs
     setAttendeeApprovalRequired(false);
     setWaitlistEnabled(false);

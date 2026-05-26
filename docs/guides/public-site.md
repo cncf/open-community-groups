@@ -94,6 +94,8 @@ Helpful details:
 - RSVP actions are available only before the event start time.
 - Canceling RSVP is immediate through `Cancel attendance`.
 - After RSVP, OCG sends a confirmation message with a calendar file attached.
+- If organizers configured registration questions, clicking `Attend event` or `Buy ticket` opens
+  a question form first. Required answers must be completed before registration can continue.
 - Some events use invitation review. In that case, `Attend event` becomes
   `Request invitation`, and meeting access/check-in are available only after an
   organizer accepts the request.
@@ -111,6 +113,8 @@ When an event has a capacity limit, the button behavior depends on organizer set
 - If a seat opens because someone leaves, capacity increases, or organizers remove the capacity
   limit, OCG can promote you automatically and send a promotion notification.
 - If organizers remove the capacity limit entirely, everyone still on the waitlist is promoted.
+- If a waitlist promotion or organizer invitation requires registration questions, finish them from
+  `My Events` before your registration is complete.
 
 For invitation-review events:
 

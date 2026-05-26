@@ -15,9 +15,11 @@ returns json as $$
             'created_at', floor(extract(epoch from e.created_at)),
             'description', e.description,
             'event_id', e.event_id,
+            'has_registration_questions', jsonb_array_length(coalesce(e.registration_questions, '[]'::jsonb)) > 0,
             'kind', e.event_kind_id,
             'name', e.name,
             'published', e.published,
+            'registration_questions', e.registration_questions,
             'slug', e.slug,
             'test_event', e.test_event,
             'timezone', e.timezone
@@ -172,6 +174,8 @@ returns json as $$
                 where gt.group_id = g.group_id
                 and gt.accepted = true
             ),
+            -- Lock registration questions once answers have been submitted
+            'registration_questions_locked', questionnaire_answers_exist_for_event(e.event_id),
             -- Include remaining capacity when event capacity is set
             'remaining_capacity',
                 case
@@ -330,7 +334,7 @@ returns json as $$
     left join (
         select event_id, count(*)::int as attendee_count
         from event_attendee
-        where status = 'confirmed'
+        where status in ('confirmed', 'registration-questions-pending')
         group by event_id
     ) ea on ea.event_id = e.event_id
     left join (

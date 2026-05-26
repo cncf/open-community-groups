@@ -24,8 +24,10 @@ import {
   JOIN_WAITLIST_LABEL,
   LEAVE_WAITLIST_LABEL,
   REQUEST_INVITATION_LABEL,
+  closeQuestionsModal,
   closeTicketModal,
   initializeAttendanceContainer,
+  openQuestionsModal,
   openTicketModal,
   renderMeetingDetails,
   restoreCheckoutModalControls,
@@ -47,6 +49,8 @@ const PAYMENT_RETURN_PARAM = "payment";
 const PAYMENT_RETURN_POLL_ATTEMPTS = 8;
 const PAYMENT_RETURN_POLL_INTERVAL_MS = 2000;
 const PRIMARY_REQUEST_ROLES = new Set(["attend-btn", "checkout-cancel-btn", "leave-btn", "refund-btn"]);
+const QUESTIONS_CONTINUE_ACTION_ATTEND = "attend";
+const QUESTIONS_CONTINUE_ACTION_TICKET = "ticket";
 const TICKET_PRICE_BADGE_CLASSES = [
   "inline-flex",
   "w-fit",
@@ -545,6 +549,137 @@ const parseJsonResponse = (xhr) => {
 };
 
 /**
+ * Returns true when the attendance container has unanswered event questions.
+ * @param {HTMLElement} container - Attendance container element
+ * @returns {boolean} Whether answers must be collected before continuing
+ */
+const shouldCollectQuestionAnswers = (container) =>
+  getAttendanceControl(container, "registration-modal") instanceof HTMLElement &&
+  container.dataset.questionAnswersReady !== "true";
+
+/**
+ * Stores answer JSON in all hidden answer inputs in the attendance container.
+ * @param {HTMLElement} container - Attendance container element
+ * @param {object} answersPayload - Normalized answers payload
+ */
+const setQuestionAnswersPayload = (container, answersPayload) => {
+  const value = JSON.stringify(answersPayload);
+  container.querySelectorAll('[data-attendance-role$="registration-answers-input"]').forEach((input) => {
+    if (input instanceof HTMLInputElement) {
+      input.value = value;
+    }
+  });
+  container.dataset.questionAnswersReady = "true";
+};
+
+/**
+ * Applies custom validity to the first answer control in a fieldset.
+ * @param {HTMLFieldSetElement} fieldset - Question fieldset
+ * @param {string} message - Validation message
+ */
+const setQuestionValidity = (fieldset, message) => {
+  const firstControl = fieldset.querySelector("[data-registration-answer]");
+  if (
+    firstControl instanceof HTMLInputElement ||
+    firstControl instanceof HTMLTextAreaElement ||
+    firstControl instanceof HTMLSelectElement
+  ) {
+    firstControl.setCustomValidity(message);
+  }
+};
+
+/**
+ * Clears custom validity from every question control.
+ * @param {HTMLFormElement} form - Questions form
+ */
+const clearQuestionValidity = (form) => {
+  form.querySelectorAll("[data-registration-answer]").forEach((control) => {
+    if (
+      control instanceof HTMLInputElement ||
+      control instanceof HTMLTextAreaElement ||
+      control instanceof HTMLSelectElement
+    ) {
+      control.setCustomValidity("");
+    }
+  });
+};
+
+/**
+ * Collects and validates event question answers.
+ * @param {HTMLElement} container - Attendance container element
+ * @returns {{answers: {question_id: string, value: string|string[]}[]}|null} Answers payload, or null when invalid
+ */
+const collectQuestionAnswers = (container) => {
+  const form = getAttendanceControl(container, "registration-form");
+  if (!(form instanceof HTMLFormElement)) {
+    return { answers: [] };
+  }
+
+  clearQuestionValidity(form);
+  const answers = [];
+
+  form.querySelectorAll("[data-question-id]").forEach((fieldset) => {
+    if (!(fieldset instanceof HTMLFieldSetElement)) {
+      return;
+    }
+
+    const questionId = fieldset.dataset.questionId;
+    const kind = fieldset.dataset.questionKind;
+    const required = fieldset.dataset.questionRequired === "true";
+    if (!questionId || !kind) {
+      return;
+    }
+
+    if (kind === "free-text") {
+      const input = fieldset.querySelector("[data-registration-answer]");
+      if (!(input instanceof HTMLTextAreaElement)) {
+        return;
+      }
+
+      const value = input.value.trim();
+      if (value || required) {
+        answers.push({ question_id: questionId, value });
+      }
+      return;
+    }
+
+    if (kind === "single-select") {
+      const selected = fieldset.querySelector("[data-registration-answer]:checked");
+      if (selected instanceof HTMLInputElement) {
+        answers.push({ question_id: questionId, value: selected.value });
+      }
+      return;
+    }
+
+    const values = Array.from(fieldset.querySelectorAll("[data-registration-answer]:checked"))
+      .filter((input) => input instanceof HTMLInputElement)
+      .map((input) => input.value);
+    if (values.length > 0 || required) {
+      answers.push({ question_id: questionId, value: values });
+    }
+    if (required && values.length === 0) {
+      setQuestionValidity(fieldset, "Select at least one option.");
+    }
+  });
+
+  if (!form.reportValidity()) {
+    return null;
+  }
+
+  return { answers };
+};
+
+/**
+ * Opens questions before continuing with attendance or ticket checkout.
+ * @param {HTMLElement} container - Attendance container element
+ * @param {"attend"|"ticket"} continueAction - Action to resume after questions
+ */
+const requestQuestionAnswers = (container, continueAction) => {
+  container.dataset.questionsContinueAction = continueAction;
+  openQuestionsModal(container);
+};
+
+/**
  * Loads the current attendance status for the event page.
  * @returns {Promise<Object|null>} Attendance payload or null if unavailable
  */
@@ -736,6 +871,46 @@ const handleCheckoutConfigRequest = (event) => {
   delete params.discount_code;
   if (event.detail?.unfilteredParameters && typeof event.detail.unfilteredParameters === "object") {
     delete event.detail.unfilteredParameters.discount_code;
+  }
+};
+
+/**
+ * Handles the questions modal submit flow.
+ * @param {Event} event - Submit event
+ */
+const handleAttendanceSubmit = (event) => {
+  const target = event.target;
+  if (!(target instanceof HTMLFormElement) || target.dataset.attendanceRole !== "registration-form") {
+    return;
+  }
+
+  event.preventDefault();
+  const container = getAttendanceContainer(target);
+  if (!container) {
+    return;
+  }
+
+  const answersPayload = collectQuestionAnswers(container);
+  if (!answersPayload) {
+    return;
+  }
+
+  setQuestionAnswersPayload(container, answersPayload);
+  closeQuestionsModal(container);
+
+  const continueAction = container.dataset.questionsContinueAction;
+  delete container.dataset.questionsContinueAction;
+
+  if (continueAction === QUESTIONS_CONTINUE_ACTION_TICKET) {
+    openTicketModal(container);
+    return;
+  }
+
+  if (continueAction === QUESTIONS_CONTINUE_ACTION_ATTEND) {
+    const attendButton = getAttendanceControl(container, "attend-btn");
+    if (attendButton instanceof HTMLButtonElement) {
+      attendButton.click();
+    }
   }
 };
 
@@ -942,6 +1117,15 @@ const handleAttendanceClick = (event) => {
     return;
   }
 
+  if (attendButton instanceof HTMLButtonElement && shouldCollectQuestionAnswers(container)) {
+    event.preventDefault();
+    const continueAction = getAttendanceMeta(container).isTicketed
+      ? QUESTIONS_CONTINUE_ACTION_TICKET
+      : QUESTIONS_CONTINUE_ACTION_ATTEND;
+    requestQuestionAnswers(container, continueAction);
+    return;
+  }
+
   if (attendButton instanceof HTMLButtonElement && getAttendanceMeta(container).isTicketed) {
     event.preventDefault();
     openTicketModal(container);
@@ -989,6 +1173,15 @@ const handleAttendanceClick = (event) => {
   if (closeTicketModalTrigger) {
     restoreCheckoutModalControls(container);
     closeTicketModal(container);
+    return;
+  }
+
+  const closeQuestionsModalTrigger = target.closest(
+    '[data-attendance-role="registration-modal-close"], [data-attendance-role="registration-modal-cancel"], [data-attendance-role="registration-modal-overlay"]',
+  );
+  if (closeQuestionsModalTrigger) {
+    delete container.dataset.questionsContinueAction;
+    closeQuestionsModal(container);
   }
 };
 
@@ -1010,6 +1203,12 @@ const handleAttendanceKeydown = (event) => {
     if (ticketModal && !ticketModal.classList.contains("hidden")) {
       restoreCheckoutModalControls(container);
       closeTicketModal(container);
+    }
+
+    const questionsModal = getAttendanceControl(container, "registration-modal");
+    if (questionsModal && !questionsModal.classList.contains("hidden")) {
+      delete container.dataset.questionsContinueAction;
+      closeQuestionsModal(container);
     }
   });
 };
@@ -1039,6 +1238,7 @@ const initializeAttendance = (root = document) => {
     document.addEventListener("htmx:beforeRequest", handleBeforeRequest);
     document.addEventListener("htmx:afterRequest", handleAfterRequest);
     document.addEventListener("click", handleAttendanceClick);
+    document.addEventListener("submit", handleAttendanceSubmit);
     document.addEventListener("keydown", handleAttendanceKeydown);
   }
 

@@ -20,6 +20,7 @@ use crate::{
             submissions::{CfsSubmissionsFilters, CfsSubmissionsOutput},
         },
     },
+    types::questionnaire::QuestionnaireAnswers,
 };
 
 /// Database trait for user dashboard operations.
@@ -121,6 +122,15 @@ pub(crate) trait DBDashboardUser {
 
     /// Resubmits a CFS submission for the user.
     async fn resubmit_cfs_submission(&self, actor_user_id: Uuid, cfs_submission_id: Uuid) -> Result<()>;
+
+    /// Submits registration question answers for a user's event and returns whether it became confirmed.
+    async fn submit_event_registration_answers(
+        &self,
+        actor_user_id: Uuid,
+        community_id: Uuid,
+        event_id: Uuid,
+        registration_answers: &QuestionnaireAnswers,
+    ) -> Result<bool>;
 
     /// Updates a session proposal for the user.
     async fn update_session_proposal(
@@ -378,6 +388,27 @@ impl DBDashboardUser for PgDB {
         self.execute(
             "select resubmit_cfs_submission($1::uuid, $2::uuid)",
             &[&actor_user_id, &cfs_submission_id],
+        )
+        .await
+    }
+
+    /// [`DBDashboardUser::submit_event_registration_answers`]
+    #[instrument(skip(self, registration_answers), err)]
+    async fn submit_event_registration_answers(
+        &self,
+        actor_user_id: Uuid,
+        community_id: Uuid,
+        event_id: Uuid,
+        registration_answers: &QuestionnaireAnswers,
+    ) -> Result<bool> {
+        self.fetch_scalar_one(
+            "select submit_event_registration_answers($1::uuid, $2::uuid, $3::uuid, $4::jsonb)",
+            &[
+                &actor_user_id,
+                &community_id,
+                &event_id,
+                &Json(registration_answers),
+            ],
         )
         .await
     }

@@ -297,6 +297,7 @@ mod tests {
             group_category_name: "Community".to_string(),
             group_name: "Test Group".to_string(),
             group_slug: "test-group".to_string(),
+            has_registration_questions: false,
             has_related_events: false,
             kind: EventKind::InPerson,
             logo_url: "https://example.test/logo.png".to_string(),

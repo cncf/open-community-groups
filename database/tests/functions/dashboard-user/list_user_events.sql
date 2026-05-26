@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(5);
+select plan(8);
 
 -- ============================================================================
 -- VARIABLES
@@ -15,6 +15,8 @@ select plan(5);
 \set groupDeletedID '00000000-0000-0000-0000-000000000031'
 \set groupID '00000000-0000-0000-0000-000000000032'
 \set groupInactiveID '00000000-0000-0000-0000-000000000033'
+\set questionsAttendeeUserID '90400000-0000-0000-0000-000000000031'
+\set questionsInvitedUserID '90400000-0000-0000-0000-000000000033'
 \set userEmptyID '00000000-0000-0000-0000-000000000099'
 \set userID '00000000-0000-0000-0000-000000000081'
 \set userPaidID '00000000-0000-0000-0000-000000000082'
@@ -32,6 +34,7 @@ select plan(5);
 \set eventPaidPriceWindowID '00000000-0000-0000-0000-000000000115'
 \set eventPaidPurchaseID '00000000-0000-0000-0000-000000000113'
 \set eventPaidTicketTypeID '00000000-0000-0000-0000-000000000114'
+\set eventQuestionsID '90400000-0000-0000-0000-000000000041'
 \set eventUnpublishedID '00000000-0000-0000-0000-000000000109'
 \set eventDeletedGroupID '00000000-0000-0000-0000-000000000110'
 
@@ -71,7 +74,9 @@ insert into "group" (group_id, active, community_id, deleted, group_category_id,
 -- User
 insert into "user" (user_id, auth_hash, email, email_verified, username, name) values
     (:'userID', 'auth-hash', 'alice@example.com', true, 'alice', 'Alice'),
-    (:'userPaidID', 'paid-auth-hash', 'paid@example.com', true, 'paid', 'Paid User');
+    (:'userPaidID', 'paid-auth-hash', 'paid@example.com', true, 'paid', 'Paid User'),
+    (:'questionsAttendeeUserID', 'h', 'rq-attendee@test.com', true, 'rq-attendee', 'RQ Attendee'),
+    (:'questionsInvitedUserID', 'h', 'rq-invited@test.com', true, 'rq-invited', 'RQ Invited');
 
 -- Events
 insert into event (
@@ -181,7 +186,7 @@ insert into event (
         'virtual',
         :'groupID',
         'Event No Start',
-        true,
+        false,
         'event-no-start',
         null,
         'UTC'
@@ -257,6 +262,33 @@ insert into event (
         'UTC'
     );
 
+-- Event with registration questions shown in user event lists
+insert into event (
+    event_id,
+    group_id,
+    name,
+    slug,
+    description,
+    timezone,
+    event_category_id,
+    event_kind_id,
+    published,
+    starts_at,
+    registration_questions
+) values (
+    :'eventQuestionsID',
+    :'groupID',
+    'Questions Event',
+    'questions-event',
+    'd',
+    'UTC',
+    :'eventCategoryID',
+    'in-person',
+    true,
+    now() + interval '1 day',
+    '[{"id": "90400000-0000-0000-0000-000000000101", "kind": "free-text", "prompt": "Note", "required": true, "options": []}]'::jsonb
+);
+
 update event
 set payment_currency_code = 'USD'
 where event_id = :'eventPaidID'::uuid;
@@ -305,6 +337,18 @@ insert into event_attendee (event_id, user_id, status) values
     (:'eventPendingInvitationID', :'userID', 'invitation-pending'),
     (:'eventUnpublishedID', :'userID', 'confirmed');
 
+-- User event rows for registration-question states
+insert into event_attendee (event_id, user_id, manually_invited, status, registration_answers)
+values
+    (:'eventQuestionsID', :'questionsInvitedUserID', true, 'registration-questions-pending', null),
+    (
+        :'eventQuestionsID',
+        :'questionsAttendeeUserID',
+        false,
+        'confirmed',
+        '{"answers": [{"question_id": "90400000-0000-0000-0000-000000000101", "value": "Attendee answer"}]}'::jsonb
+    );
+
 insert into event_host (event_id, user_id) values
     (:'eventAID', :'userID');
 
@@ -348,24 +392,48 @@ select is(
             jsonb_build_object(
                 'can_cancel_attendance',
                 false,
+                'can_complete_registration_questions',
+                false,
                 'event',
                 get_event_summary(:'communityID'::uuid, :'groupID'::uuid, :'eventAID'::uuid)::jsonb,
+                'registration_answers',
+                null,
+                'registration_questions',
+                get_event_registration_questions(:'communityID'::uuid, :'eventAID'::uuid)::jsonb,
+                'registration_questions_pending',
+                false,
                 'roles',
                 jsonb_build_array('Attendee', 'Host', 'Speaker')
             ),
             jsonb_build_object(
                 'can_cancel_attendance',
                 true,
+                'can_complete_registration_questions',
+                false,
                 'event',
                 get_event_summary(:'communityID'::uuid, :'groupID'::uuid, :'eventBID'::uuid)::jsonb,
+                'registration_answers',
+                null,
+                'registration_questions',
+                get_event_registration_questions(:'communityID'::uuid, :'eventBID'::uuid)::jsonb,
+                'registration_questions_pending',
+                false,
                 'roles',
                 jsonb_build_array('Attendee')
             ),
             jsonb_build_object(
                 'can_cancel_attendance',
                 false,
+                'can_complete_registration_questions',
+                false,
                 'event',
                 get_event_summary(:'communityID'::uuid, :'groupID'::uuid, :'eventCID'::uuid)::jsonb,
+                'registration_answers',
+                null,
+                'registration_questions',
+                get_event_registration_questions(:'communityID'::uuid, :'eventCID'::uuid)::jsonb,
+                'registration_questions_pending',
+                false,
                 'roles',
                 jsonb_build_array('Speaker')
             )
@@ -397,8 +465,16 @@ select is(
             jsonb_build_object(
                 'can_cancel_attendance',
                 true,
+                'can_complete_registration_questions',
+                false,
                 'event',
                 get_event_summary(:'communityID'::uuid, :'groupID'::uuid, :'eventBID'::uuid)::jsonb,
+                'registration_answers',
+                null,
+                'registration_questions',
+                get_event_registration_questions(:'communityID'::uuid, :'eventBID'::uuid)::jsonb,
+                'registration_questions_pending',
+                false,
                 'roles',
                 jsonb_build_array('Attendee')
             )
@@ -418,8 +494,16 @@ select is(
             jsonb_build_object(
                 'can_cancel_attendance',
                 false,
+                'can_complete_registration_questions',
+                false,
                 'event',
                 get_event_summary(:'communityID'::uuid, :'groupID'::uuid, :'eventPaidID'::uuid)::jsonb,
+                'registration_answers',
+                null,
+                'registration_questions',
+                get_event_registration_questions(:'communityID'::uuid, :'eventPaidID'::uuid)::jsonb,
+                'registration_questions_pending',
+                false,
                 'roles',
                 jsonb_build_array('Attendee')
             )
@@ -440,6 +524,27 @@ select is(
         0
     ),
     'Should return empty result for users without events'
+);
+
+-- Should include pending registration events in the user dashboard
+select is(
+    list_user_events(:'questionsInvitedUserID'::uuid, '{"limit": 10, "offset": 0}'::jsonb)::jsonb #>> '{events,0,registration_questions_pending}',
+    'true',
+    'Should include pending registration events in the user dashboard'
+);
+
+-- Should allow pending users to complete registration questions from the user dashboard
+select is(
+    list_user_events(:'questionsInvitedUserID'::uuid, '{"limit": 10, "offset": 0}'::jsonb)::jsonb #>> '{events,0,can_complete_registration_questions}',
+    'true',
+    'Should allow pending users to complete registration questions from the user dashboard'
+);
+
+-- Should allow confirmed attendees to edit answers before the event starts
+select is(
+    list_user_events(:'questionsAttendeeUserID'::uuid, '{"limit": 10, "offset": 0}'::jsonb)::jsonb #>> '{events,0,can_complete_registration_questions}',
+    'true',
+    'Should allow confirmed attendees to edit answers before the event starts'
 );
 
 -- ============================================================================

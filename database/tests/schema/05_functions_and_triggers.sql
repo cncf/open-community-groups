@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(243);
+select plan(248);
 
 -- ============================================================================
 -- TESTS
@@ -78,6 +78,7 @@ select has_function('get_event_attendance');
 select has_function('get_event_full');
 select has_function('get_event_full_by_slug');
 select has_function('get_event_meeting_sync_state_hash');
+select has_function('get_event_registration_questions');
 select has_function('get_event_summary');
 select has_function('get_event_summary_dashboard');
 select has_function('get_event_summary_by_id');
@@ -166,6 +167,7 @@ select has_function('prepare_event_checkout_purchase');
 select has_function('prevent_audit_log_mutation');
 select has_function('publish_event');
 select has_function('publish_event_series_events');
+select has_function('questionnaire_answers_exist_for_event');
 select has_function('reconcile_event_purchase_for_checkout_session');
 select has_function('record_automatic_refund_for_event_purchase');
 select has_function('refund_free_event_purchase');
@@ -190,6 +192,7 @@ select has_function('search_user');
 select has_function('set_meeting_auto_end_check_outcome');
 select has_function('set_meeting_error');
 select has_function('sign_up_user');
+select has_function('submit_event_registration_answers');
 select has_function('sync_event_cfs_labels');
 select has_function('sync_event_discount_codes');
 select has_function('sync_event_sessions');
@@ -227,6 +230,8 @@ select has_function('validate_event_series_action_event_ids');
 select has_function('validate_event_ticket_types_payload');
 select has_function('validate_event_ticketing_payload');
 select has_function('validate_payment_currency_code');
+select has_function('validate_questionnaire_answers_payload');
+select has_function('validate_questionnaire_questions_payload');
 select has_function('validate_update_event_dates');
 select has_function('verify_email');
 select has_function('withdraw_cfs_submission');

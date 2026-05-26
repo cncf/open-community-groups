@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(64);
+select plan(65);
 
 -- ============================================================================
 -- TESTS
@@ -158,7 +158,8 @@ select indexes_are('event_attendee', array[
     'event_attendee_event_id_idx',
     'event_attendee_user_id_idx',
     'event_attendee_event_id_created_at_idx',
-    'event_attendee_event_id_status_created_at_idx'
+    'event_attendee_event_id_status_created_at_idx',
+    'event_attendee_event_id_registration_answers_idx'
 ]);
 
 -- Test: event_category indexes should match expected
@@ -182,6 +183,14 @@ select indexes_are('event_host', array[
     'event_host_pkey',
     'event_host_event_id_idx',
     'event_host_user_id_idx'
+]);
+
+-- Test: event_invitation_request indexes should match expected
+select indexes_are('event_invitation_request', array[
+    'event_invitation_request_pkey',
+    'event_invitation_request_event_id_status_created_at_idx',
+    'event_invitation_request_user_id_idx',
+    'event_invitation_request_event_id_registration_answers_idx'
 ]);
 
 -- Test: event_kind indexes should match expected

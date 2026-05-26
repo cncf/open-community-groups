@@ -105,6 +105,9 @@ begin
             perform release_event_discount_code_availability(v_event_discount_code_id);
         end if;
 
+        -- Release the pending attendee row created for checkout answers
+        perform release_event_checkout_attendee_hold(v_event_id, v_user_id);
+
         return jsonb_build_object(
             'amount_minor', v_amount_minor,
             'event_purchase_id', v_purchase_id,
@@ -156,6 +159,9 @@ begin
             perform release_event_discount_code_availability(v_event_discount_code_id);
         end if;
 
+        -- Release the pending attendee row created for checkout answers
+        perform release_event_checkout_attendee_hold(v_event_id, v_user_id);
+
         return jsonb_build_object(
             'amount_minor', v_amount_minor,
             'event_purchase_id', v_purchase_id,
@@ -169,7 +175,7 @@ begin
     values (v_event_id, v_user_id)
     on conflict (event_id, user_id) do update
     set status = 'confirmed'
-    where event_attendee.status = 'invitation-canceled';
+    where event_attendee.status in ('invitation-canceled', 'registration-questions-pending');
 
     -- Persist the completed purchase state after the attendee is recorded
     update event_purchase

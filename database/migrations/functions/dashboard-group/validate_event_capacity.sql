@@ -34,7 +34,7 @@ begin
         select count(*) into v_attendee_count
         from event_attendee
         where event_id = p_existing_event_id
-        and status = 'confirmed';
+        and status in ('confirmed', 'registration-questions-pending');
 
         if v_capacity < v_attendee_count then
             raise exception 'event capacity (%) cannot be less than current number of attendees (%)',

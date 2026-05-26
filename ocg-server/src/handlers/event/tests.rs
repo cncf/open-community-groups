@@ -27,6 +27,7 @@ use crate::{
     types::{
         event::{EventAttendanceInfo, EventAttendanceStatus, EventLeaveOutcome},
         payments::{EventPurchaseStatus, EventTicketCurrentPrice, EventTicketType, PreparedEventCheckout},
+        questionnaire::{QuestionnaireQuestion, QuestionnaireQuestionKind},
     },
 };
 
@@ -626,10 +627,16 @@ async fn test_attend_event_success() {
         .times(1)
         .withf(move |cid, eid| *cid == community_id && *eid == event_id)
         .returning(|_, _| Ok(()));
+    db.expect_get_event_registration_questions()
+        .times(1)
+        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .returning(|_, _| Ok(vec![]));
     db.expect_attend_event()
         .times(1)
-        .withf(move |id, eid, uid| *id == community_id && *eid == event_id && *uid == user_id)
-        .returning(|_, _, _| Ok(EventAttendanceStatus::Attendee));
+        .withf(move |id, eid, uid, answers| {
+            *id == community_id && *eid == event_id && *uid == user_id && answers.is_none()
+        })
+        .returning(|_, _, _, _| Ok(EventAttendanceStatus::Attendee));
     db.expect_get_event_summary_by_id()
         .times(2)
         .withf(move |cid, eid| *cid == community_id && *eid == event_id)
@@ -658,7 +665,109 @@ async fn test_attend_event_success() {
         .method("POST")
         .uri(format!("/test-community/event/{event_id}/attend"))
         .header(COOKIE, format!("id={session_id}"))
+        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
         .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_eq!(parts.status, StatusCode::OK);
+    let body: serde_json::Value = from_slice(&bytes).unwrap();
+    assert_eq!(body, json!({ "status": "attendee" }));
+}
+
+#[tokio::test]
+async fn test_attend_event_success_with_registration_answers() {
+    // Setup identifiers and data structures
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let question_id = Uuid::new_v4();
+    let event_summary = sample_event_summary(event_id, group_id);
+    let registration_questions = vec![QuestionnaireQuestion {
+        id: question_id,
+        kind: QuestionnaireQuestionKind::FreeText,
+        prompt: "Dietary restrictions?".to_string(),
+        required: true,
+
+        options: vec![],
+    }];
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
+    let answers_json = json!({
+        "answers": [
+            {
+                "question_id": question_id,
+                "value": "Vegetarian"
+            }
+        ]
+    });
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_get_community_id_by_name()
+        .times(1)
+        .withf(|name| name == "test-community")
+        .returning(move |_| Ok(Some(community_id)));
+    db.expect_ensure_event_is_active()
+        .times(1)
+        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .returning(|_, _| Ok(()));
+    db.expect_get_event_registration_questions()
+        .times(1)
+        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .returning(move |_, _| Ok(registration_questions.clone()));
+    let expected_answers = answers_json.clone();
+    db.expect_attend_event()
+        .times(1)
+        .withf(move |id, eid, uid, answers| {
+            *id == community_id
+                && *eid == event_id
+                && *uid == user_id
+                && answers.as_ref().and_then(|value| serde_json::to_value(value).ok())
+                    == Some(expected_answers.clone())
+        })
+        .returning(|_, _, _, _| Ok(EventAttendanceStatus::Attendee));
+    db.expect_get_event_summary_by_id()
+        .times(2)
+        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .returning(move |_, _| Ok(event_summary.clone()));
+    db.expect_get_site_settings()
+        .times(1)
+        .returning(|| Ok(sample_site_settings()));
+
+    // Setup notifications manager mock
+    let mut nm = MockNotificationsManager::new();
+    nm.expect_enqueue()
+        .times(1)
+        .withf(move |notification| {
+            matches!(notification.kind, NotificationKind::EventWelcome)
+                && notification.recipients == vec![user_id]
+        })
+        .returning(|_| Box::pin(async { Ok(()) }));
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let form_body =
+        serde_urlencoded::to_string([("registration_answers", answers_json.to_string())]).unwrap();
+    let request = Request::builder()
+        .method("POST")
+        .uri(format!("/test-community/event/{event_id}/attend"))
+        .header(COOKIE, format!("id={session_id}"))
+        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+        .body(Body::from(form_body))
         .unwrap();
     let response = router.oneshot(request).await.unwrap();
     let (parts, body) = response.into_parts();
@@ -700,10 +809,16 @@ async fn test_attend_event_waitlist_success() {
         .times(1)
         .withf(move |cid, eid| *cid == community_id && *eid == event_id)
         .returning(|_, _| Ok(()));
+    db.expect_get_event_registration_questions()
+        .times(1)
+        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .returning(|_, _| Ok(vec![]));
     db.expect_attend_event()
         .times(1)
-        .withf(move |id, eid, uid| *id == community_id && *eid == event_id && *uid == user_id)
-        .returning(|_, _, _| Ok(EventAttendanceStatus::Waitlisted));
+        .withf(move |id, eid, uid, answers| {
+            *id == community_id && *eid == event_id && *uid == user_id && answers.is_none()
+        })
+        .returning(|_, _, _, _| Ok(EventAttendanceStatus::Waitlisted));
     db.expect_get_event_summary_by_id()
         .times(2)
         .withf(move |cid, eid| *cid == community_id && *eid == event_id)
@@ -732,6 +847,7 @@ async fn test_attend_event_waitlist_success() {
         .method("POST")
         .uri(format!("/test-community/event/{event_id}/attend"))
         .header(COOKIE, format!("id={session_id}"))
+        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
         .body(Body::empty())
         .unwrap();
     let response = router.oneshot(request).await.unwrap();
@@ -774,10 +890,16 @@ async fn test_attend_event_success_when_notification_context_load_fails() {
         .times(1)
         .withf(move |cid, eid| *cid == community_id && *eid == event_id)
         .returning(|_, _| Ok(()));
+    db.expect_get_event_registration_questions()
+        .times(1)
+        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .returning(|_, _| Ok(vec![]));
     db.expect_attend_event()
         .times(1)
-        .withf(move |id, eid, uid| *id == community_id && *eid == event_id && *uid == user_id)
-        .returning(|_, _, _| Ok(EventAttendanceStatus::Attendee));
+        .withf(move |id, eid, uid, answers| {
+            *id == community_id && *eid == event_id && *uid == user_id && answers.is_none()
+        })
+        .returning(|_, _, _, _| Ok(EventAttendanceStatus::Attendee));
     db.expect_get_event_summary_by_id()
         .times(1)
         .withf(move |cid, eid| *cid == community_id && *eid == event_id)
@@ -799,6 +921,7 @@ async fn test_attend_event_success_when_notification_context_load_fails() {
         .method("POST")
         .uri(format!("/test-community/event/{event_id}/attend"))
         .header(COOKIE, format!("id={session_id}"))
+        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
         .body(Body::empty())
         .unwrap();
     let response = router.oneshot(request).await.unwrap();
@@ -851,6 +974,7 @@ async fn test_attend_event_returns_inactive_error_before_ticketed_check() {
         .method("POST")
         .uri(format!("/test-community/event/{event_id}/attend"))
         .header(COOKIE, format!("id={session_id}"))
+        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
         .body(Body::empty())
         .unwrap();
     let response = router.oneshot(request).await.unwrap();
@@ -1642,6 +1766,10 @@ async fn test_start_checkout_rejects_refund_requested_purchase() {
         .times(1)
         .withf(move |cid, eid| *cid == community_id && *eid == event_id)
         .returning(move |_, _| Ok(event_summary.clone()));
+    db.expect_get_event_registration_questions()
+        .times(1)
+        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .returning(|_, _| Ok(vec![]));
     db.expect_prepare_event_checkout_purchase()
         .times(1)
         .withf(move |cid, input| {
@@ -1872,6 +2000,10 @@ async fn test_start_checkout_rejects_missing_ticket_type() {
         .times(1)
         .withf(move |cid, eid| *cid == community_id && *eid == event_id)
         .returning(move |_, _| Ok(event_summary.clone()));
+    db.expect_get_event_registration_questions()
+        .times(1)
+        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .returning(|_, _| Ok(vec![]));
     db.expect_prepare_event_checkout_purchase().times(0);
 
     // Setup notifications manager mock

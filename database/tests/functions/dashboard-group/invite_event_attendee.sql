@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(12);
+select plan(14);
 
 -- ============================================================================
 -- VARIABLES
@@ -14,7 +14,9 @@ select plan(12);
 \set communityID '00000000-0000-0000-0000-000000000003'
 \set eventCategoryID '00000000-0000-0000-0000-000000000004'
 \set eventID '00000000-0000-0000-0000-000000000005'
+\set eventQuestionsID '90400000-0000-0000-0000-000000000041'
 \set groupID '00000000-0000-0000-0000-000000000006'
+\set questionsInvitedUserID '90400000-0000-0000-0000-000000000033'
 \set registeredUserID '00000000-0000-0000-0000-000000000007'
 \set rejectedUserID '00000000-0000-0000-0000-000000000010'
 \set ticketedEventID '00000000-0000-0000-0000-000000000008'
@@ -47,7 +49,8 @@ values
     ('hash-actor', 'actor@example.com', true, 'Actor', :'actorID', 'actor'),
     ('hash-registered', 'registered@example.com', true, 'Registered', :'registeredUserID', 'registered'),
     ('hash-rejected', 'rejected@example.com', true, 'Rejected', :'rejectedUserID', 'rejected'),
-    ('hash-waitlisted', 'waitlisted@example.com', true, 'Waitlisted', :'waitlistedUserID', 'waitlisted');
+    ('hash-waitlisted', 'waitlisted@example.com', true, 'Waitlisted', :'waitlistedUserID', 'waitlisted'),
+    ('hash-rq-invited', 'rq-invited@example.com', true, 'RQ Invited', :'questionsInvitedUserID', 'rq-invited');
 
 -- Events
 insert into event (
@@ -66,6 +69,36 @@ insert into event (
 values
     (:'eventID', 'Free Event', 'free-event', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', 'USD', true, current_timestamp + interval '1 day'),
     (:'ticketedEventID', 'Ticketed Event', 'ticketed-event', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', 'USD', true, current_timestamp + interval '1 day');
+
+-- Event with registration questions before confirmation
+insert into event (
+    event_id,
+    name,
+    slug,
+    description,
+    timezone,
+    event_category_id,
+    event_kind_id,
+    group_id,
+    payment_currency_code,
+    published,
+    starts_at,
+    registration_questions
+)
+values (
+    :'eventQuestionsID',
+    'Questions Event',
+    'questions-event',
+    'd',
+    'UTC',
+    :'eventCategoryID',
+    'in-person',
+    :'groupID',
+    'USD',
+    true,
+    current_timestamp + interval '1 day',
+    '[{"id": "90400000-0000-0000-0000-000000000101", "kind": "free-text", "prompt": "Note", "required": true, "options": []}]'::jsonb
+);
 
 -- Ticket types
 insert into event_ticket_type (event_ticket_type_id, event_id, "order", seats_total, title)
@@ -221,6 +254,25 @@ select throws_ok(
     'P0001',
     'manual invitations are not available for ticketed events',
     'Should reject invitations for ticketed events'
+);
+
+-- Should invite users into registration-questions-pending when registration questions exist
+select is(
+    invite_event_attendee(:'actorID'::uuid, :'groupID'::uuid, :'eventQuestionsID'::uuid, :'questionsInvitedUserID'::uuid, null),
+    :'questionsInvitedUserID'::uuid,
+    'Should invite users into registration-questions-pending when registration questions exist'
+);
+
+-- Should store the pending registration status for invited users
+select is(
+    (
+        select status
+        from event_attendee
+        where event_id = :'eventQuestionsID'::uuid
+        and user_id = :'questionsInvitedUserID'::uuid
+    ),
+    'registration-questions-pending',
+    'Should store the pending registration status for invited users'
 );
 
 -- ============================================================================

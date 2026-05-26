@@ -6,7 +6,9 @@ create or replace function cancel_event_checkout(
 )
 returns void as $$
 declare
+    v_event_id uuid;
     v_event_discount_code_id uuid;
+    v_user_id uuid;
 begin
     -- Expire the attendee's active pending purchase for this event
     update event_purchase ep
@@ -22,11 +24,23 @@ begin
     and ep.user_id = p_user_id
     and ep.status = 'pending'
     and ep.hold_expires_at > current_timestamp
-    returning ep.event_discount_code_id into v_event_discount_code_id;
+    returning
+        ep.event_discount_code_id,
+        ep.event_id,
+        ep.user_id
+    into
+        v_event_discount_code_id,
+        v_event_id,
+        v_user_id;
 
     -- Restore any reserved discount usage released by the canceled checkout
     if v_event_discount_code_id is not null then
         perform release_event_discount_code_availability(v_event_discount_code_id);
+    end if;
+
+    -- Release the pending attendee row created for checkout answers
+    if v_event_id is not null then
+        perform release_event_checkout_attendee_hold(v_event_id, v_user_id);
     end if;
 end;
 $$ language plpgsql;

@@ -13,6 +13,7 @@ use crate::{
         event::EventSummary,
         pagination::{self, Pagination, ToRawQuery},
         payments::{EventRefundRequestStatus, format_amount_minor},
+        questionnaire::{QuestionnaireAnswers, QuestionnaireQuestion},
     },
     validation::MAX_PAGINATION_LIMIT,
 };
@@ -33,6 +34,8 @@ pub(crate) struct ListPage {
     pub navigation_links: pagination::NavigationLinks,
     /// Number of attendees eligible to receive custom email notifications.
     pub notification_recipient_total: usize,
+    /// Registration questions configured for the event.
+    pub registration_questions: Vec<QuestionnaireQuestion>,
     /// Total number of attendees for the selected event.
     pub total: usize,
 
@@ -56,6 +59,8 @@ pub struct Attendee {
     pub email: String,
     /// Whether the attendee was manually invited by an organizer.
     pub manually_invited: bool,
+    /// Registration answers submitted by the attendee.
+    pub registration_answers: Option<QuestionnaireAnswers>,
     /// Event attendee status.
     pub status: String,
     /// User id.

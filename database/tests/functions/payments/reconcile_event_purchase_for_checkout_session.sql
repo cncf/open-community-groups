@@ -77,8 +77,10 @@ insert into event (
     timezone,
     starts_at,
     published,
-    published_at
+    published_at,
+    registration_questions
 ) values (
+    -- Event with pending registration answers created during checkout
     false,
     :'activeEventID',
     :'eventCategoryID',
@@ -90,7 +92,8 @@ insert into event (
     'UTC',
     now() + interval '1 day',
     true,
-    now()
+    now(),
+    '[{"id": "79000000-0000-0000-0000-000000000101", "kind": "free-text", "prompt": "Note", "required": true, "options": []}]'::jsonb
 ), (
     false,
     :'startedEventID',
@@ -103,7 +106,8 @@ insert into event (
     'UTC',
     now() - interval '1 hour',
     true,
-    now()
+    now(),
+    '[]'::jsonb
 ), (
     true,
     :'canceledEventID',
@@ -116,7 +120,8 @@ insert into event (
     'UTC',
     now() + interval '1 day',
     false,
-    null
+    null,
+    '[]'::jsonb
 );
 
 -- Ticket types
@@ -271,6 +276,34 @@ insert into event_purchase (
     :'user5ID'
 );
 
+-- Pending attendee row with registration answers created during checkout
+insert into event_attendee (event_id, user_id, registration_answers, status)
+values
+    (
+        :'activeEventID',
+        :'user1ID',
+        '{"answers": [{"question_id": "79000000-0000-0000-0000-000000000101", "value": "Paid checkout answer"}]}'::jsonb,
+        'registration-questions-pending'
+    ),
+    (
+        :'activeEventID',
+        :'user2ID',
+        '{"answers": [{"question_id": "79000000-0000-0000-0000-000000000101", "value": "Expired checkout answer"}]}'::jsonb,
+        'registration-questions-pending'
+    ),
+    (
+        :'canceledEventID',
+        :'user3ID',
+        null,
+        'registration-questions-pending'
+    ),
+    (
+        :'startedEventID',
+        :'user6ID',
+        null,
+        'registration-questions-pending'
+    );
+
 -- ============================================================================
 -- TESTS
 -- ============================================================================
@@ -298,15 +331,64 @@ select is(
 select results_eq(
     $$
         select
-            (select completed_at is not null from event_purchase where event_purchase_id = '79000000-0000-0000-0000-000000000012'::uuid),
-            (select hold_expires_at is null from event_purchase where event_purchase_id = '79000000-0000-0000-0000-000000000012'::uuid),
-            (select provider_payment_reference from event_purchase where event_purchase_id = '79000000-0000-0000-0000-000000000012'::uuid),
-            (select status from event_purchase where event_purchase_id = '79000000-0000-0000-0000-000000000012'::uuid),
-            (select count(*)::int from event_attendee where event_id = '79000000-0000-0000-0000-000000000004'::uuid and user_id = '79000000-0000-0000-0000-000000000017'::uuid),
-            (select manually_invited from event_attendee where event_id = '79000000-0000-0000-0000-000000000004'::uuid and user_id = '79000000-0000-0000-0000-000000000017'::uuid)
+            (
+                select completed_at is not null
+                from event_purchase
+                where event_purchase_id = '79000000-0000-0000-0000-000000000012'::uuid
+            ),
+            (
+                select hold_expires_at is null
+                from event_purchase
+                where event_purchase_id = '79000000-0000-0000-0000-000000000012'::uuid
+            ),
+            (
+                select provider_payment_reference
+                from event_purchase
+                where event_purchase_id = '79000000-0000-0000-0000-000000000012'::uuid
+            ),
+            (
+                select status
+                from event_purchase
+                where event_purchase_id = '79000000-0000-0000-0000-000000000012'::uuid
+            ),
+            (
+                select count(*)::int
+                from event_attendee
+                where event_id = '79000000-0000-0000-0000-000000000004'::uuid
+                and user_id = '79000000-0000-0000-0000-000000000017'::uuid
+            ),
+            (
+                select manually_invited
+                from event_attendee
+                where event_id = '79000000-0000-0000-0000-000000000004'::uuid
+                and user_id = '79000000-0000-0000-0000-000000000017'::uuid
+            ),
+            (
+                select status
+                from event_attendee
+                where event_id = '79000000-0000-0000-0000-000000000004'::uuid
+                and user_id = '79000000-0000-0000-0000-000000000017'::uuid
+            ),
+            (
+                select registration_answers
+                from event_attendee
+                where event_id = '79000000-0000-0000-0000-000000000004'::uuid
+                and user_id = '79000000-0000-0000-0000-000000000017'::uuid
+            )
     $$,
-    $$ values (true, true, 'pi_complete'::text, 'completed'::text, 1::int, false) $$,
-    'Should persist the completed purchase fields and add a non-manually invited attendee'
+    $$
+        values (
+            true,
+            true,
+            'pi_complete'::text,
+            'completed'::text,
+            1::int,
+            false,
+            'confirmed'::text,
+            '{"answers": [{"question_id": "79000000-0000-0000-0000-000000000101", "value": "Paid checkout answer"}]}'::jsonb
+        )
+    $$,
+    'Should persist the completed purchase fields and confirm a non-manually invited attendee'
 );
 
 -- Should require refund for expired local holds
@@ -328,10 +410,16 @@ select results_eq(
             (select hold_expires_at is null from event_purchase where event_purchase_id = '79000000-0000-0000-0000-000000000013'::uuid),
             (select provider_payment_reference from event_purchase where event_purchase_id = '79000000-0000-0000-0000-000000000013'::uuid),
             (select status from event_purchase where event_purchase_id = '79000000-0000-0000-0000-000000000013'::uuid),
-            (select available from event_discount_code where event_discount_code_id = '79000000-0000-0000-0000-000000000002'::uuid)
+            (select available from event_discount_code where event_discount_code_id = '79000000-0000-0000-0000-000000000002'::uuid),
+            (
+                select count(*)::int
+                from event_attendee
+                where event_id = '79000000-0000-0000-0000-000000000004'::uuid
+                and user_id = '79000000-0000-0000-0000-000000000018'::uuid
+            )
     $$,
-    $$ values (true, 'pi_expired'::text, 'refund-pending'::text, 1::int) $$,
-    'Should persist the refund-pending purchase fields and restore discount availability'
+    $$ values (true, 'pi_expired'::text, 'refund-pending'::text, 1::int, 0::int) $$,
+    'Should persist the refund-pending purchase fields, release registration hold, and restore discount availability'
 );
 
 -- Should keep requiring refund for refund-pending purchases after the refund handoff
@@ -385,28 +473,60 @@ select is(
 select results_eq(
     $$
         select
-            hold_expires_at is null,
-            provider_payment_reference,
-            status
-        from event_purchase
-        where event_purchase_id = '79000000-0000-0000-0000-000000000014'::uuid
+            (
+                select hold_expires_at is null
+                from event_purchase
+                where event_purchase_id = '79000000-0000-0000-0000-000000000014'::uuid
+            ),
+            (
+                select provider_payment_reference
+                from event_purchase
+                where event_purchase_id = '79000000-0000-0000-0000-000000000014'::uuid
+            ),
+            (
+                select status
+                from event_purchase
+                where event_purchase_id = '79000000-0000-0000-0000-000000000014'::uuid
+            ),
+            (
+                select count(*)::int
+                from event_attendee
+                where event_id = '79000000-0000-0000-0000-000000000005'::uuid
+                and user_id = '79000000-0000-0000-0000-000000000019'::uuid
+            )
     $$,
-    $$ values (true, 'pi_canceled'::text, 'refund-pending'::text) $$,
-    'Should persist the canceled purchase fields when refunding'
+    $$ values (true, 'pi_canceled'::text, 'refund-pending'::text, 0::int) $$,
+    'Should persist the canceled purchase fields and release registration hold when refunding'
 );
 
 -- Should persist the started purchase fields when refunding
 select results_eq(
     $$
         select
-            hold_expires_at is null,
-            provider_payment_reference,
-            status
-        from event_purchase
-        where event_purchase_id = '79000000-0000-0000-0000-000000000022'::uuid
+            (
+                select hold_expires_at is null
+                from event_purchase
+                where event_purchase_id = '79000000-0000-0000-0000-000000000022'::uuid
+            ),
+            (
+                select provider_payment_reference
+                from event_purchase
+                where event_purchase_id = '79000000-0000-0000-0000-000000000022'::uuid
+            ),
+            (
+                select status
+                from event_purchase
+                where event_purchase_id = '79000000-0000-0000-0000-000000000022'::uuid
+            ),
+            (
+                select count(*)::int
+                from event_attendee
+                where event_id = '79000000-0000-0000-0000-000000000023'::uuid
+                and user_id = '79000000-0000-0000-0000-000000000025'::uuid
+            )
     $$,
-    $$ values (true, 'pi_started'::text, 'refund-pending'::text) $$,
-    'Should persist the started purchase fields when refunding'
+    $$ values (true, 'pi_started'::text, 'refund-pending'::text, 0::int) $$,
+    'Should persist the started purchase fields and release registration hold when refunding'
 );
 
 -- Should reject refund-required paths without a provider payment reference

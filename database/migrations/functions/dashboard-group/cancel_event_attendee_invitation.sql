@@ -23,14 +23,15 @@ begin
         raise exception 'event not found';
     end if;
 
-    -- Only pending invitations can be canceled
+    -- Only manually-created pending invitations can be canceled
     update event_attendee
     set
         manually_invited = false,
         status = 'invitation-canceled'
     where event_id = p_event_id
     and user_id = p_user_id
-    and status = 'invitation-pending';
+    and manually_invited = true
+    and status in ('invitation-pending', 'registration-questions-pending');
 
     if not found then
         raise exception 'pending event invitation not found';

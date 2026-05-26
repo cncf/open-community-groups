@@ -15,6 +15,7 @@ returns json as $$
         'group_category_name', gc.name,
         'group_name', g.name,
         'group_slug', g.slug,
+        'has_registration_questions', jsonb_array_length(coalesce(e.registration_questions, '[]'::jsonb)) > 0,
         'has_related_events', exists (
             select 1
             from event related_event
@@ -71,7 +72,7 @@ returns json as $$
     left join (
         select event_id, count(*)::int as attendee_count
         from event_attendee
-        where status = 'confirmed'
+        where status in ('confirmed', 'registration-questions-pending')
         group by event_id
     ) ea on ea.event_id = e.event_id
     left join (

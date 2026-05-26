@@ -744,7 +744,7 @@ fn test_delivery_worker_prepare_content_event_waitlist_promoted() {
 
     // Check content matches expectations
     assert_eq!(subject, "You moved off the waiting list");
-    assert!(body.contains("you are now registered"));
+    assert!(body.contains("You are now registered"));
     assert!(body.contains("Use the waiting room display name from your ticket."));
     assert!(body.contains("Waitlist Event"));
 }
@@ -1119,6 +1119,7 @@ fn sample_event_invitation_template_data() -> serde_json::Value {
             "waitlist_count": 0,
             "waitlist_enabled": false
         },
+        "has_registration_questions": false,
         "link": "https://example.test/dashboard/user?tab=invitations",
         "theme": {
             "primary_color": "#000000"
@@ -1268,6 +1269,7 @@ fn sample_event_waitlist_template_data() -> serde_json::Value {
             "waitlist_count": 3,
             "waitlist_enabled": true
         },
+        "has_registration_questions": false,
         "link": "https://example.test/test-community/group/notification-group/event/waitlist-event",
         "theme": {
             "primary_color": "#000000"

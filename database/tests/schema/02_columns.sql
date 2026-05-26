@@ -237,6 +237,7 @@ select columns_are('event', array[
     'photos_urls',
     'published_at',
     'published_by',
+    'registration_questions',
     'registration_required',
     'starts_at',
     'tags',
@@ -281,6 +282,7 @@ select columns_are('event_invitation_request', array[
     'created_at',
     'status',
 
+    'registration_answers',
     'reviewed_at',
     'reviewed_by'
 ]);
@@ -290,10 +292,12 @@ select columns_are('event_attendee', array[
     'event_id',
     'user_id',
     'checked_in',
+    'created_at',
     'manually_invited',
     'status',
+
     'checked_in_at',
-    'created_at'
+    'registration_answers'
 ]);
 
 -- Test: event_category columns should match expected

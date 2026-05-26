@@ -29,6 +29,7 @@ declare
     v_new_starts_at timestamptz;
     v_payment_currency_code text;
     v_promoted_user_ids uuid[] := array[]::uuid[];
+    v_registration_questions jsonb;
     v_ticket_capacity int;
     v_ticket_types jsonb;
     v_timezone text := p_event->>'timezone';
@@ -100,12 +101,32 @@ begin
         else nullif(v_event_before->>'payment_currency_code', '')
     end;
 
+    -- Resolve registration question defaults
+    v_registration_questions := case
+        when p_event ? 'registration_questions'
+        then coalesce(p_event->'registration_questions', '[]'::jsonb)
+        else coalesce(v_event_before->'registration_questions', '[]'::jsonb)
+    end;
+
+    -- Validate registration questions and prevent changing definitions once answers exist
+    perform validate_questionnaire_questions_payload(v_registration_questions);
+
+    if v_registration_questions <> coalesce(v_event_before->'registration_questions', '[]'::jsonb)
+       and questionnaire_answers_exist_for_event(p_event_id) then
+        raise exception 'registration questions cannot be changed after attendees have submitted answers';
+    end if;
+
     -- Load current event state required by registration and ticketing guards
     v_has_existing_attendees := exists(
         select 1
         from event_attendee
         where event_id = p_event_id
-        and status in ('confirmed', 'invitation-pending', 'invitation-rejected')
+        and status in (
+            'confirmed',
+            'invitation-pending',
+            'invitation-rejected',
+            'registration-questions-pending'
+        )
     );
     v_has_pending_invitation_requests := exists(
         select 1
@@ -261,6 +282,7 @@ begin
         payment_currency_code = v_payment_currency_code,
         photos_urls = v_event_photos_urls,
         registration_required = (p_event->>'registration_required')::boolean,
+        registration_questions = v_registration_questions,
         starts_at = v_new_starts_at,
         tags = v_event_tags,
         venue_address = nullif(p_event->>'venue_address', ''),

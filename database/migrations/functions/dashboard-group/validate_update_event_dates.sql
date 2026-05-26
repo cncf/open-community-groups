@@ -27,6 +27,12 @@ begin
         v_new_starts_at := (p_event->>'starts_at')::timestamp at time zone v_timezone;
     end if;
 
+    -- Published events must keep the start date required by publish_event
+    if (p_event_before->>'published')::boolean = true
+       and v_new_starts_at is null then
+        raise exception 'published event must have a start date';
+    end if;
+
     -- Detect whether the current event snapshot is already in the past
     v_is_past_event := coalesce(
         v_event_before_ends_at,

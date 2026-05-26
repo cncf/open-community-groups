@@ -86,7 +86,7 @@ begin
     values (v_event_id, v_user_id)
     on conflict (event_id, user_id) do update
     set status = 'confirmed'
-    where event_attendee.status = 'invitation-canceled';
+    where event_attendee.status in ('invitation-canceled', 'registration-questions-pending');
 
     update event_purchase
     set

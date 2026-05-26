@@ -30,10 +30,12 @@ use crate::{
         payments::{ApproveRefundRequestInput, DynPaymentsManager, RejectRefundRequestInput},
     },
     templates::{
-        dashboard::group::attendees::{self, AttendeesFilters, AttendeesPaginationFilters},
+        dashboard::group::attendees::{self, Attendee, AttendeesFilters, AttendeesPaginationFilters},
         notifications::{EventCustom, EventInvitation, EventWaitlistPromoted, EventWelcome},
     },
-    types::{pagination::NavigationLinks, permissions::GroupPermission},
+    types::{
+        pagination::NavigationLinks, permissions::GroupPermission, questionnaire::QuestionnaireQuestion,
+    },
     util::{build_event_calendar_attachment, build_event_page_link, build_user_dashboard_events_link},
     validation::{
         MAX_LEN_DESCRIPTION_SHORT, MAX_LEN_M, MAX_LEN_NOTIFICATION_BODY, trimmed_non_empty,
@@ -67,7 +69,7 @@ pub(crate) async fn list_page(
         limit: page_filters.limit,
         offset: page_filters.offset,
     };
-    let (can_manage_events, event, search_attendees_results) = tokio::try_join!(
+    let (can_manage_events, event, registration_questions, search_attendees_results) = tokio::try_join!(
         db.user_has_group_permission(
             &community_id,
             &group_id,
@@ -75,6 +77,7 @@ pub(crate) async fn list_page(
             GroupPermission::EventsWrite
         ),
         db.get_event_summary(community_id, group_id, event_id),
+        db.get_event_registration_questions(community_id, event_id),
         db.search_event_attendees(group_id, &search_filters)
     )?;
 
@@ -91,6 +94,7 @@ pub(crate) async fn list_page(
         event,
         navigation_links,
         notification_recipient_total: search_attendees_results.notification_recipient_total,
+        registration_questions,
         total: search_attendees_results.total,
         limit: page_filters.limit,
         offset: page_filters.offset,
@@ -248,6 +252,7 @@ pub(crate) async fn cancel_event_attendee_attendance(
         let calendar_ics = build_event_calendar_attachment(base_url, &event);
         let template_data = EventWaitlistPromoted {
             event: event.clone(),
+            has_registration_questions: event.has_registration_questions,
             link: build_event_page_link(base_url, &event),
             theme: site_settings.theme,
         };
@@ -375,12 +380,16 @@ pub(crate) async fn invite_event_attendee(
                 .into_response());
         }
     };
+    let base_url = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
+    let link = if event.has_registration_questions {
+        build_user_dashboard_events_link(base_url)
+    } else {
+        format!("{base_url}/dashboard/user?tab=invitations")
+    };
     let template_data = EventInvitation {
+        has_registration_questions: event.has_registration_questions,
         event,
-        link: format!(
-            "{}/dashboard/user?tab=invitations",
-            server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url)
-        ),
+        link,
         theme: site_settings.theme,
     };
     let notification = NewNotification {
@@ -555,29 +564,45 @@ pub(crate) async fn download_csv(
         db.search_event_attendees(group_id, &search_filters)
     )?;
 
-    // Prepare CSV response
-    let mut writer = csv::WriterBuilder::new()
-        .terminator(csv::Terminator::Any(b'\n'))
-        .from_writer(vec![]);
-    writer
-        .write_record(["Name", "Company", "Title", "Invited"])
-        .map_err(anyhow::Error::from)?;
-    for attendee in search_attendees_results
-        .attendees
-        .iter()
-        .filter(|attendee| attendee.status == ATTENDEE_STATUS_CONFIRMED)
-    {
-        writer
-            .write_record([
-                attendee.name.as_deref().unwrap_or(&attendee.username),
-                attendee.company.as_deref().unwrap_or_default(),
-                attendee.title.as_deref().unwrap_or_default(),
-                if attendee.manually_invited { "Yes" } else { "No" },
-            ])
-            .map_err(anyhow::Error::from)?;
-    }
-    let csv = writer.into_inner().map_err(anyhow::Error::from)?;
+    // Build CSV payload without registration question answers
+    let csv = build_attendees_csv(&search_attendees_results.attendees, None)?;
     let file_name = format!("event-{}-attendees.csv", event.slug);
+
+    Ok((
+        [
+            (CONTENT_TYPE, "text/csv; charset=utf-8".to_string()),
+            (
+                CONTENT_DISPOSITION,
+                format!("attachment; filename=\"{file_name}\""),
+            ),
+        ],
+        csv,
+    ))
+}
+
+/// Downloads a CSV file with attendees and their registration question answers.
+#[instrument(skip_all, err)]
+pub(crate) async fn download_csv_with_answers(
+    SelectedCommunityId(community_id): SelectedCommunityId,
+    SelectedGroupId(group_id): SelectedGroupId,
+    State(db): State<DynDB>,
+    Path(event_id): Path<Uuid>,
+) -> Result<impl IntoResponse, HandlerError> {
+    // Fetch event summary, registration questions, and all attendee rows
+    let search_filters = AttendeesFilters {
+        event_id,
+        limit: None,
+        offset: None,
+    };
+    let (event, registration_questions, search_attendees_results) = tokio::try_join!(
+        db.get_event_summary(community_id, group_id, event_id),
+        db.get_event_registration_questions(community_id, event_id),
+        db.search_event_attendees(group_id, &search_filters)
+    )?;
+
+    // Build CSV payload that also includes registration question answers
+    let csv = build_attendees_csv(&search_attendees_results.attendees, Some(&registration_questions))?;
+    let file_name = format!("event-{}-attendees-with-answers.csv", event.slug);
 
     Ok((
         [
@@ -622,4 +647,52 @@ pub(crate) struct RefundReviewInput {
     /// Optional note captured when reviewing a request.
     #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_DESCRIPTION_SHORT))]
     pub review_note: Option<String>,
+}
+
+// Helpers.
+
+/// Builds the CSV payload for confirmed attendees, optionally appending one
+/// column per registration question with the attendee's answer.
+fn build_attendees_csv(
+    attendees: &[Attendee],
+    registration_questions: Option<&[QuestionnaireQuestion]>,
+) -> Result<Vec<u8>, HandlerError> {
+    let mut writer = csv::WriterBuilder::new()
+        .terminator(csv::Terminator::Any(b'\n'))
+        .from_writer(vec![]);
+
+    // Write header row
+    let mut headers = vec![
+        "Name".to_string(),
+        "Company".to_string(),
+        "Title".to_string(),
+        "Invited".to_string(),
+    ];
+    if let Some(questions) = registration_questions {
+        headers.extend(questions.iter().map(|question| question.prompt.clone()));
+    }
+    writer.write_record(headers).map_err(anyhow::Error::from)?;
+
+    // Write one row per confirmed attendee
+    for attendee in attendees
+        .iter()
+        .filter(|attendee| attendee.status == ATTENDEE_STATUS_CONFIRMED)
+    {
+        let mut row = vec![
+            attendee.name.as_deref().unwrap_or(&attendee.username).to_string(),
+            attendee.company.clone().unwrap_or_default(),
+            attendee.title.clone().unwrap_or_default(),
+            if attendee.manually_invited { "Yes" } else { "No" }.to_string(),
+        ];
+        if let Some(questions) = registration_questions {
+            row.extend(
+                questions
+                    .iter()
+                    .map(|question| question.format_answer(attendee.registration_answers.as_ref())),
+            );
+        }
+        writer.write_record(row).map_err(anyhow::Error::from)?;
+    }
+
+    writer.into_inner().map_err(|err| anyhow::Error::from(err).into())
 }

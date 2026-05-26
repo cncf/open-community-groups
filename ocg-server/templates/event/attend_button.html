@@ -134,6 +134,89 @@
     </button>
   {% endif -%}
 
+  {% if !event.registration_questions.is_empty() -%}
+    <div id="questions-modal-{{ attendance_instance }}"
+         data-attendance-role="registration-modal"
+         role="dialog"
+         aria-modal="true"
+         aria-labelledby="registration-questions-title-{{ attendance_instance }}"
+         class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 justify-center items-center w-full md:inset-0 h-full max-h-full flex z-[1000]">
+      <div data-attendance-role="registration-modal-overlay"
+           class="modal-overlay absolute w-full h-full bg-stone-950 opacity-[0.35]"></div>
+      <div class="modal-panel p-4 max-w-2xl">
+        <div class="modal-card rounded-lg">
+          <div class="flex items-center justify-between p-4 md:p-5 border-b border-stone-200 rounded-t">
+            <div>
+              <h3 id="registration-questions-title-{{ attendance_instance }}"
+                  class="text-xl font-semibold text-stone-900">Registration questions</h3>
+              <p class="mt-1 text-sm text-stone-600">Answer these questions to complete your registration.</p>
+            </div>
+            <button data-attendance-role="registration-modal-close"
+                    type="button"
+                    class="group text-stone-400 bg-transparent hover:bg-stone-200 hover:text-stone-900 transition-colors rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center">
+              <div class="svg-icon w-5 h-5 bg-stone-500 group-hover:bg-stone-900 transition-colors icon-close"></div>
+              <span class="sr-only">Close modal</span>
+            </button>
+          </div>
+          <form data-attendance-role="registration-form"
+                class="modal-body p-4 md:p-6 space-y-5">
+            {% for question in event.registration_questions -%}
+              <fieldset data-question-id="{{ question.id }}"
+                        data-question-kind="{{ question.kind.to_string() }}"
+                        data-question-required="{{ question.required }}"
+                        class="space-y-2">
+                <legend class="form-label">
+                  {{ question.prompt }}
+                  {% if question.required %}<span class="asterisk">*</span>{% endif %}
+                </legend>
+                {% if question.kind.to_string() == "free-text" -%}
+                  <textarea class="input-primary min-h-24"
+                            data-registration-answer
+                            {% if question.required %}
+                              required
+                            {% endif %}></textarea>
+                {% else if question.kind.to_string() == "single-select" -%}
+                  <div class="space-y-2">
+                    {% for option in question.options -%}
+                      <label class="flex items-center gap-2 text-sm text-stone-700">
+                        <input type="radio"
+                               name="registration-question-{{ question.id }}"
+                               value="{{ option.id }}"
+                               data-registration-answer
+                               {% if question.required %}required{% endif %}>
+                        <span>{{ option.label }}</span>
+                      </label>
+                    {% endfor -%}
+                  </div>
+                {% else -%}
+                  <div class="space-y-2">
+                    {% for option in question.options -%}
+                      <label class="flex items-center gap-2 text-sm text-stone-700">
+                        <input type="checkbox" value="{{ option.id }}" data-registration-answer>
+                        <span>{{ option.label }}</span>
+                      </label>
+                    {% endfor -%}
+                  </div>
+                {% endif -%}
+              </fieldset>
+            {% endfor -%}
+            <input type="hidden"
+                   data-attendance-role="registration-answers-input"
+                   name="registration_answers">
+            <div class="flex flex-col gap-3 border-t border-stone-200 pt-4 md:flex-row md:justify-end">
+              <button data-attendance-role="registration-modal-cancel"
+                      type="button"
+                      class="btn-primary-outline">Cancel</button>
+              <button data-attendance-role="registration-modal-submit"
+                      type="submit"
+                      class="btn-primary">Continue</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  {% endif -%}
+
   {% if event.is_ticketed() -%}
     <div id="ticket-modal-{{ attendance_instance }}"
          data-attendance-role="ticket-modal"
@@ -169,6 +252,9 @@
                     hx-swap="none"
                     hx-ext="no-empty-vals"
                     class="space-y-6">
+                <input type="hidden"
+                       data-attendance-role="checkout-registration-answers-input"
+                       name="registration_answers">
                 <div data-attendance-role="ticket-modal-form" class="space-y-4">
                   <div class="min-w-0">
                     <div class="form-label">Ticket type</div>

@@ -97,7 +97,16 @@
                role="menuitem"
                class="flex items-center w-full px-4 py-2 hover:bg-stone-100 hover:text-stone-900 transition-colors gap-3">
               <div class="svg-icon size-4 icon-csv shrink-0 bg-stone-500"></div>
-              <span>Download CSV</span>
+              <span>Attendees list CSV</span>
+            </a>
+          </li>
+          <li>
+            <a href="/dashboard/group/events/{{ event.event_id }}/attendees-with-answers.csv"
+               download
+               role="menuitem"
+               class="flex items-center w-full px-4 py-2 hover:bg-stone-100 hover:text-stone-900 transition-colors gap-3">
+              <div class="svg-icon size-4 icon-csv shrink-0 bg-stone-500"></div>
+              <span>Attendees + answers CSV</span>
             </a>
           </li>
         </ul>
@@ -259,7 +268,9 @@
               <div class="relative inline-flex justify-end">
                 {% if can_manage_events
                   && (attendee.status == "confirmed"
+                  || (attendee.registration_answers.is_some() && !registration_questions.is_empty())
                   || attendee.status == "invitation-pending"
+                  || (attendee.status == "registration-questions-pending" && attendee.manually_invited)
                   || attendee.refund_request_status == Some(crate::types::payments::EventRefundRequestStatus::Pending)
                   || attendee.refund_request_status == Some(crate::types::payments::EventRefundRequestStatus::Approving)) -%}
                   <details data-attendee-row-actions-menu class="group relative">
@@ -270,7 +281,38 @@
                     </summary>
                     <div class="dropdown absolute z-10 end-0 top-8 w-[220px] bg-white divide-y divide-stone-100 rounded-lg shadow border border-stone-200">
                       <ul class="py-2 text-sm text-stone-700" role="menu">
-                        {% if attendee.status == "invitation-pending" -%}
+                        {% if attendee.registration_answers.is_some() && !registration_questions.is_empty() -%}
+                          <li>
+                            <button type="button"
+                                    data-attendee-answers-open
+                                    data-attendee-answers-source="attendee-answers-{{ attendee.user_id }}"
+                                    data-attendee-name="{{ attendee.name|assigned_or(attendee.username) }}"
+                                    role="menuitem"
+                                    class="flex items-center w-full px-4 py-2 hover:bg-stone-100 hover:text-stone-900 transition-colors gap-3 text-left">
+                              <div class="svg-icon size-4 icon-question shrink-0 bg-stone-500"></div>
+                              <span>View answers</span>
+                            </button>
+                            <div id="attendee-answers-{{ attendee.user_id }}" hidden>
+                              <dl class="space-y-4">
+                                {% for question in registration_questions -%}
+                                  <div>
+                                    <dt class="text-sm font-medium text-stone-900">{{ question.prompt }}</dt>
+                                    <dd class="mt-1 whitespace-pre-wrap text-sm text-stone-600">
+                                      {% let answer = question.format_answer(attendee.registration_answers.as_ref()) -%}
+                                      {% if answer.is_empty() -%}
+                                        -
+                                      {% else -%}
+                                        {{ answer }}
+                                      {% endif -%}
+                                    </dd>
+                                  </div>
+                                {% endfor -%}
+                              </dl>
+                            </div>
+                          </li>
+                        {% endif -%}
+                        {% if attendee.status == "invitation-pending"
+                          || (attendee.status == "registration-questions-pending" && attendee.manually_invited) -%}
                           <li>
                             <button id="cancel-invitation-{{ attendee.user_id }}"
                                     hx-put="/dashboard/group/events/{{ event.event_id }}/attendees/{{ attendee.user_id }}/invitation/cancel"
@@ -374,6 +416,40 @@
   {{ pagination::navigation_links(links = navigation_links, hx_target = "#attendees-content", hx_indicator = "#dashboard-spinner") }}
 {% endif -%}
 {# End pagination -#}
+
+{# Attendee answers modal -#}
+<div id="attendee-answers-modal"
+     role="dialog"
+     aria-modal="true"
+     aria-labelledby="attendee-answers-modal-title"
+     class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 h-full max-h-full flex z-[1000]">
+  <div id="overlay-attendee-answers-modal"
+       class="modal-overlay absolute w-full h-full bg-stone-950 opacity-[0.35]"></div>
+  <div class="modal-panel p-4 max-w-2xl">
+    <div class="modal-card rounded-lg">
+      <div class="flex items-start justify-between p-4 md:p-5 border-b border-stone-200 rounded-t">
+        <div>
+          <h3 id="attendee-answers-modal-title"
+              class="text-xl font-semibold text-stone-900">Registration answers</h3>
+          <div id="attendee-answers-name" class="mt-1 text-sm text-stone-600"></div>
+        </div>
+        <button id="close-attendee-answers-modal"
+                type="button"
+                class="group text-stone-400 bg-transparent hover:bg-stone-200 hover:text-stone-900 transition-colors rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center">
+          <div class="svg-icon w-5 h-5 bg-stone-500 group-hover:bg-stone-900 transition-colors icon-close"></div>
+          <span class="sr-only">Close modal</span>
+        </button>
+      </div>
+      <div id="attendee-answers-content" class="modal-body p-4 md:p-6"></div>
+      <div class="flex items-center justify-end border-t border-stone-200 p-4 md:p-5">
+        <button id="cancel-attendee-answers-modal"
+                type="button"
+                class="btn-primary-outline">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+{# End attendee answers modal -#}
 
 {# Refund review modal -#}
 <div id="attendee-refund-modal"

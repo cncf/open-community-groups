@@ -3,13 +3,17 @@
 use anyhow::Result;
 use async_trait::async_trait;
 use serde::Deserialize;
+use tokio_postgres::types::Json;
 use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
     db::PgDB,
     services::payments::CheckoutSession,
-    types::payments::{EventPurchaseSummary, PaymentProvider, PreparedEventCheckout},
+    types::{
+        payments::{EventPurchaseSummary, PaymentProvider, PreparedEventCheckout},
+        questionnaire::QuestionnaireAnswers,
+    },
 };
 
 /// Database operations for payments.
@@ -242,7 +246,8 @@ impl DBPayments for PgDB {
                 $3::uuid,
                 $4::uuid,
                 $5::text,
-                $6::text
+                $6::text,
+                $7::jsonb
             )
             ",
             &[
@@ -252,6 +257,7 @@ impl DBPayments for PgDB {
                 &input.user_id,
                 &input.discount_code,
                 &input.configured_provider.map(|provider| provider.to_string()),
+                &input.registration_answers.as_ref().map(Json),
             ],
         )
         .await
@@ -451,6 +457,8 @@ pub(crate) struct PrepareEventCheckoutPurchaseInput {
     pub configured_provider: Option<PaymentProvider>,
     /// Discount code provided by the attendee.
     pub discount_code: Option<String>,
+    /// Registration answers provided before checkout starts.
+    pub registration_answers: Option<QuestionnaireAnswers>,
 }
 
 /// Data for a provider purchase that must be refunded.

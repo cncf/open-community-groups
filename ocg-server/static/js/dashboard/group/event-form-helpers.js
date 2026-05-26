@@ -97,6 +97,33 @@ const setRegistrationRequired = (isRequired) => {
 };
 
 /**
+ * Replaces registration questions in the editor.
+ * @param {*} questions Registration questions payload
+ */
+const setRegistrationQuestions = (questions) => {
+  const editor = document.querySelector("questions-editor");
+  if (!editor) {
+    return;
+  }
+
+  const cloneWithFreshIds = (Array.isArray(questions) ? questions : []).map((question) => ({
+    id: crypto.randomUUID(),
+    kind: question?.kind || "free-text",
+    options: Array.isArray(question?.options)
+      ? question.options.map((option) => ({
+          id: crypto.randomUUID(),
+          label: option?.label || "",
+        }))
+      : [],
+    prompt: question?.prompt || "",
+    required: question?.required === true,
+  }));
+
+  editor.questions = cloneWithFreshIds;
+  editor.requestUpdate?.();
+};
+
+/**
  * Sets attendee approval toggle and hidden input.
  * @param {boolean} isRequired Whether attendee approval is required
  */
@@ -463,6 +490,7 @@ export {
   setHosts,
   setPaymentCurrencyCode,
   setRegistrationRequired,
+  setRegistrationQuestions,
   setSessions,
   setSponsors,
   setTags,
