@@ -79,17 +79,13 @@ begin
         if v_existing_purchase_status <> 'pending'
            or v_existing_purchase_matches_selection then
             -- Refresh questionnaire answers before returning a reused pending checkout
-            if jsonb_array_length(coalesce(v_registration_questions, '[]'::jsonb)) > 0
-               and v_existing_purchase_status = 'pending' then
-                perform validate_questionnaire_answers_payload(v_registration_questions, p_registration_answers);
-
-                insert into event_attendee (event_id, user_id, registration_answers, status)
-                values (p_event_id, p_user_id, p_registration_answers, 'registration-questions-pending')
-                on conflict (event_id, user_id) do update
-                set
-                    registration_answers = p_registration_answers,
-                    status = 'registration-questions-pending'
-                where event_attendee.status = 'registration-questions-pending';
+            if v_existing_purchase_status = 'pending' then
+                perform upsert_pending_registration_answers(
+                    p_event_id,
+                    p_user_id,
+                    v_registration_questions,
+                    p_registration_answers
+                );
             end if;
 
             return prepare_event_checkout_get_purchase_summary(v_existing_purchase_id)
@@ -131,17 +127,12 @@ begin
     end if;
 
     -- Persist questionnaire answers before checkout starts so completion can confirm the row
-    if jsonb_array_length(coalesce(v_registration_questions, '[]'::jsonb)) > 0 then
-        perform validate_questionnaire_answers_payload(v_registration_questions, p_registration_answers);
-
-        insert into event_attendee (event_id, user_id, registration_answers, status)
-        values (p_event_id, p_user_id, p_registration_answers, 'registration-questions-pending')
-        on conflict (event_id, user_id) do update
-        set
-            registration_answers = p_registration_answers,
-            status = 'registration-questions-pending'
-        where event_attendee.status = 'registration-questions-pending';
-    end if;
+    perform upsert_pending_registration_answers(
+        p_event_id,
+        p_user_id,
+        v_registration_questions,
+        p_registration_answers
+    );
 
     -- Reserve the chosen discount usage for the new pending purchase
     if v_event_discount_code_id is not null then

@@ -266,13 +266,14 @@
             {# Actions -#}
             <td class="px-3 xl:px-5 py-4 w-[72px] text-right">
               <div class="relative inline-flex justify-end">
-                {% if can_manage_events
+                {% if (attendee.registration_answers.is_some() && !registration_questions.is_empty())
+                  || (can_manage_events
                   && (attendee.status == "confirmed"
                   || (attendee.registration_answers.is_some() && !registration_questions.is_empty())
                   || attendee.status == "invitation-pending"
                   || (attendee.status == "registration-questions-pending" && attendee.manually_invited)
                   || attendee.refund_request_status == Some(crate::types::payments::EventRefundRequestStatus::Pending)
-                  || attendee.refund_request_status == Some(crate::types::payments::EventRefundRequestStatus::Approving)) -%}
+                  || attendee.refund_request_status == Some(crate::types::payments::EventRefundRequestStatus::Approving))) -%}
                   <details data-attendee-row-actions-menu class="group relative">
                     <summary class="btn-actions btn-tertiary flex cursor-pointer list-none items-center justify-center p-2 group-open:bg-stone-50 [&::-webkit-details-marker]:hidden"
                              aria-label="Open attendee actions"
@@ -311,8 +312,9 @@
                             </div>
                           </li>
                         {% endif -%}
-                        {% if attendee.status == "invitation-pending"
-                          || (attendee.status == "registration-questions-pending" && attendee.manually_invited) -%}
+                        {% if can_manage_events
+                          && (attendee.status == "invitation-pending"
+                          || (attendee.status == "registration-questions-pending" && attendee.manually_invited)) -%}
                           <li>
                             <button id="cancel-invitation-{{ attendee.user_id }}"
                                     hx-put="/dashboard/group/events/{{ event.event_id }}/attendees/{{ attendee.user_id }}/invitation/cancel"
@@ -332,7 +334,7 @@
                             </button>
                           </li>
                         {% endif -%}
-                        {% if attendee.status == "confirmed" -%}
+                        {% if can_manage_events && attendee.status == "confirmed" -%}
                           <li>
                             <button id="cancel-attendance-{{ attendee.user_id }}"
                                     {% if !self::is_paid_attendee(attendee.amount_minor) && !event.canceled && !event.is_past() -%}
@@ -352,7 +354,8 @@
                             </button>
                           </li>
                         {% endif -%}
-                        {% if attendee.refund_request_status == Some(crate::types::payments::EventRefundRequestStatus::Pending) -%}
+                        {% if can_manage_events
+                          && attendee.refund_request_status == Some(crate::types::payments::EventRefundRequestStatus::Pending) -%}
                           <li>
                             <button id="approve-refund-{{ attendee.user_id }}"
                                     hx-put="/dashboard/group/events/{{ event.event_id }}/attendees/{{ attendee.user_id }}/refund/approve"
@@ -382,7 +385,8 @@
                               <span>Reject refund</span>
                             </button>
                           </li>
-                        {% else if attendee.refund_request_status == Some(crate::types::payments::EventRefundRequestStatus::Approving) -%}
+                        {% else if can_manage_events
+                          && attendee.refund_request_status == Some(crate::types::payments::EventRefundRequestStatus::Approving) -%}
                           <li>
                             <button id="retry-refund-{{ attendee.user_id }}"
                                     hx-put="/dashboard/group/events/{{ event.event_id }}/attendees/{{ attendee.user_id }}/refund/approve"

@@ -7,7 +7,7 @@ use axum::{
     http::{HeaderMap, HeaderValue, StatusCode, Uri, header::CACHE_CONTROL},
     response::{Html, IntoResponse, Redirect},
 };
-use garde::Validate;
+use garde::{Error as ValidationError, Path as ValidationPath, Report, Validate};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, to_value};
 use tracing::{instrument, warn};
@@ -874,10 +874,18 @@ fn validate_registration_answers(
     match registration_answers {
         Some(answers) => answers
             .validate_against_questions(registration_questions)
-            .map_err(HandlerError::Database),
+            .map_err(validation_error),
         None if registration_questions.is_empty() => Ok(()),
-        None => Err(HandlerError::Database(
-            "questionnaire answers are required".to_string(),
-        )),
+        None => Err(validation_error("questionnaire answers are required")),
     }
+}
+
+/// Builds a validation error for registration answer checks.
+fn validation_error(message: impl Into<String>) -> HandlerError {
+    let mut report = Report::new();
+    report.append(
+        ValidationPath::new("registration_answers"),
+        ValidationError::new(message.into()),
+    );
+    HandlerError::Validation(report)
 }

@@ -43,6 +43,12 @@ begin
         raise exception 'event does not have registration questions';
     end if;
 
+    -- Block answer edits once the event has started
+    if v_starts_at is not null
+       and current_timestamp >= v_starts_at then
+        raise exception 'registration answers can only be submitted before the event starts';
+    end if;
+
     -- Validate submitted answers against the event questionnaire
     perform validate_questionnaire_answers_payload(v_registration_questions, p_registration_answers);
 
@@ -53,7 +59,7 @@ begin
         where ett.event_id = p_event_id
     ) into v_has_ticket_types;
 
-    -- Lock the attendee row before applying the edit cutoff
+    -- Lock the attendee row before storing answers
     select ea.status
     into v_previous_status
     from event_attendee ea
@@ -64,12 +70,6 @@ begin
 
     if not found then
         raise exception 'event registration not found';
-    end if;
-
-    -- Block answer edits once the event has started
-    if v_starts_at is not null
-       and current_timestamp >= v_starts_at then
-        raise exception 'registration answers can only be submitted before the event starts';
     end if;
 
     -- Store answers and confirm pending non-ticketed registrations

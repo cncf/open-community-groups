@@ -35,6 +35,7 @@ pub(crate) struct ListPage {
     /// Number of attendees eligible to receive custom email notifications.
     pub notification_recipient_total: usize,
     /// Registration questions configured for the event.
+    #[serde(default)]
     pub registration_questions: Vec<QuestionnaireQuestion>,
     /// Total number of attendees for the selected event.
     pub total: usize,
@@ -59,8 +60,6 @@ pub struct Attendee {
     pub email: String,
     /// Whether the attendee was manually invited by an organizer.
     pub manually_invited: bool,
-    /// Registration answers submitted by the attendee.
-    pub registration_answers: Option<QuestionnaireAnswers>,
     /// Event attendee status.
     pub status: String,
     /// User id.
@@ -87,6 +86,8 @@ pub struct Attendee {
     pub photo_url: Option<String>,
     /// Refund request status for the attendee purchase.
     pub refund_request_status: Option<EventRefundRequestStatus>,
+    /// Registration answers submitted by the attendee, when configured.
+    pub registration_answers: Option<QuestionnaireAnswers>,
     /// Ticket title for the attendee purchase.
     pub ticket_title: Option<String>,
     /// Title held by the user.

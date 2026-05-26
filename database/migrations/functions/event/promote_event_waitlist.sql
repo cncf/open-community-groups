@@ -45,6 +45,7 @@ begin
 
         v_available_slots := v_waitlist_count;
     else
+        -- Treat pending registration question rows as occupied seats
         select count(*) into v_attendee_count
         from event_attendee
         where event_id = p_event_id
@@ -82,7 +83,7 @@ begin
             continue;
         end if;
 
-        -- Insert the promoted user as an attendee (tolerate concurrent duplicate inserts)
+        -- Insert the promoted user as an attendee or refresh an existing pending question row
         insert into event_attendee (event_id, user_id, status)
         values (
             p_event_id,
@@ -91,7 +92,7 @@ begin
         )
         on conflict (event_id, user_id) do update
         set status = case when v_has_registration_questions then 'registration-questions-pending' else 'confirmed' end
-        where event_attendee.status = 'invitation-canceled';
+        where event_attendee.status in ('invitation-canceled', 'registration-questions-pending');
 
         -- Record only users successfully moved into attendees during this execution
         if found then

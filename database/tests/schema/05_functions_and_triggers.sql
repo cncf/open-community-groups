@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(248);
+select plan(249);
 
 -- ============================================================================
 -- TESTS
@@ -220,6 +220,7 @@ select has_function('update_session_proposal');
 select has_function('update_user_details');
 select has_function('update_user_password');
 select has_function('update_user_provider');
+select has_function('upsert_pending_registration_answers');
 select has_function('user_has_community_permission');
 select has_function('user_has_group_permission');
 select has_function('validate_event_capacity');

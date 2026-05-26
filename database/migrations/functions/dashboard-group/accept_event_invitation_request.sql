@@ -52,6 +52,7 @@ begin
 
     -- Enforce event capacity against already accepted attendees
     if v_capacity is not null then
+        -- Treat pending registration question rows as occupied seats
         select count(*) into v_attendee_count
         from event_attendee
         where event_id = p_event_id

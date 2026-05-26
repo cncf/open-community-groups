@@ -271,6 +271,7 @@ insert into event (
     published,
     published_at,
     registration_required,
+    registration_questions,
     slug,
     starts_at,
     tags,
@@ -306,6 +307,7 @@ insert into event (
         true,
         '2024-01-03 10:00:00+00',
         true,
+        '[{"id": "00000000-0000-0000-0000-00000000c071", "kind": "single-select", "prompt": "Meal preference", "required": true, "options": [{"id": "00000000-0000-0000-0000-00000000c072", "label": "Vegetarian"}]}]'::jsonb,
         'future-contract-event',
         '2099-05-20 17:00:00+00',
         array['rust', 'contract'],
@@ -341,6 +343,7 @@ insert into event (
         true,
         '2024-01-05 10:00:00+00',
         true,
+        '[]'::jsonb,
         'past-contract-event',
         '2000-05-20 17:00:00+00',
         array['rust', 'contract'],
@@ -455,11 +458,13 @@ insert into event_attendee (
     checked_in,
     checked_in_at,
     event_id,
+    registration_answers,
     user_id
 ) values (
     true,
     '2099-05-20 17:30:00+00',
     '00000000-0000-0000-0000-00000000c031',
+    '{"answers": [{"question_id": "00000000-0000-0000-0000-00000000c071", "value": "00000000-0000-0000-0000-00000000c072"}]}'::jsonb,
     '00000000-0000-0000-0000-00000000c042'
 );
 

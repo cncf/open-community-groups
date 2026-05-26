@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(11);
+select plan(12);
 
 -- ============================================================================
 -- VARIABLES
@@ -264,6 +264,20 @@ select throws_ok(
     $$,
     'registration answers can only be submitted before the event starts',
     'Should reject confirmed attendee updates after the event starts'
+);
+
+-- Should reject started events before validating answers
+select throws_ok(
+    $$
+        select submit_event_registration_answers(
+            '90200000-0000-0000-0000-000000000033'::uuid,
+            '90200000-0000-0000-0000-000000000001'::uuid,
+            '90200000-0000-0000-0000-000000000042'::uuid,
+            '{"answers": []}'::jsonb
+        )
+    $$,
+    'registration answers can only be submitted before the event starts',
+    'Should reject started events before validating answers'
 );
 
 -- Should reject events without registration questions

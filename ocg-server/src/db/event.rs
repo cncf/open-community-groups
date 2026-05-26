@@ -120,7 +120,7 @@ impl DBEvent for PgDB {
     }
 
     /// [`DBEvent::attend_event`]
-    #[instrument(skip(self), err)]
+    #[instrument(skip(self, registration_answers), err)]
     async fn attend_event(
         &self,
         community_id: Uuid,

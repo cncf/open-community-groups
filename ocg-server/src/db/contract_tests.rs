@@ -22,11 +22,13 @@ use crate::{
             invitation_requests::InvitationRequestsFilters, members::GroupMembersFilters,
             sponsors::GroupSponsorsFilters, team::GroupTeamFilters, waitlist::WaitlistFilters,
         },
+        user::events::UserEventsFilters,
     },
     types::{
         event::{EventAttendanceStatus, EventInvitationRequestStatus, EventKind},
         group::GroupRole,
         payments::PaymentProvider,
+        questionnaire::QuestionnaireAnswerValue,
         search::{SearchEventsFilters, SearchGroupsFilters},
     },
 };
@@ -87,7 +89,11 @@ async fn db_contracts_get_event_full_deserializes() -> Result<()> {
     let event = db.get_event_full(community_id(), group_id(), event_id()).await?;
 
     assert_eq!(event.event_id, event_id());
+    assert!(event.has_registration_questions);
     assert_eq!(event.luma_url.as_deref(), Some("https://luma.com/contract-event"));
+    assert_eq!(event.registration_questions.len(), 1);
+    assert_eq!(event.registration_questions[0].prompt, "Meal preference");
+    assert!(event.registration_questions_locked);
     assert_eq!(event.sessions.len(), 1);
     assert_eq!(event.sponsors.len(), 1);
     assert_eq!(
@@ -105,8 +111,25 @@ async fn db_contracts_get_event_summary_deserializes() -> Result<()> {
     let event = db.get_event_summary(community_id(), group_id(), event_id()).await?;
 
     assert_eq!(event.event_id, event_id());
+    assert!(event.has_registration_questions);
     assert_eq!(event.kind, EventKind::Hybrid);
     assert_eq!(event.waitlist_count, 1);
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_get_event_registration_questions_deserializes() -> Result<()> {
+    let db = contract_tests_db()?;
+    let questions = db
+        .get_event_registration_questions(community_id(), event_id())
+        .await?;
+
+    assert_eq!(questions.len(), 1);
+    assert_eq!(questions[0].prompt, "Meal preference");
+    assert_eq!(questions[0].options.len(), 1);
+    assert_eq!(questions[0].options[0].label, "Vegetarian");
 
     Ok(())
 }
@@ -327,6 +350,37 @@ async fn db_contracts_list_group_team_members_deserializes() -> Result<()> {
 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
+async fn db_contracts_list_user_events_deserializes() -> Result<()> {
+    let db = contract_tests_db()?;
+    let filters = UserEventsFilters {
+        limit: Some(10),
+        offset: Some(0),
+    };
+    let output = db.list_user_events(attendee_id(), &filters).await?;
+
+    assert_eq!(output.total, 1);
+    assert_eq!(output.events.len(), 1);
+    assert!(output.events[0].can_complete_registration_questions);
+    assert!(output.events[0].event.has_registration_questions);
+    assert_eq!(output.events[0].registration_questions.len(), 1);
+    assert!(!output.events[0].registration_questions_pending);
+    let answers = output.events[0]
+        .registration_answers
+        .as_ref()
+        .expect("contract event should include registration answers");
+    assert_eq!(answers.answers.len(), 1);
+    match &answers.answers[0].value {
+        QuestionnaireAnswerValue::One(value) => {
+            assert_eq!(value, "00000000-0000-0000-0000-00000000c072");
+        }
+        QuestionnaireAnswerValue::Many(_) => panic!("expected single-select answer"),
+    }
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
 async fn db_contracts_list_user_event_invitations_deserializes() -> Result<()> {
     let db = contract_tests_db()?;
     let invitations = db.list_user_event_invitations(pre_registered_id()).await?;
@@ -356,6 +410,7 @@ async fn db_contracts_search_event_attendees_deserializes() -> Result<()> {
     assert_eq!(output.attendees[0].user_id, attendee_id());
     assert_eq!(output.attendees[0].username, "contract-attendee");
     assert!(output.attendees[0].checked_in);
+    assert!(output.attendees[0].registration_answers.is_some());
     assert_eq!(output.attendees[1].email, "pre-registered.contract@example.com");
     assert!(output.attendees[1].manually_invited);
     assert_eq!(output.attendees[1].name, None);

@@ -332,6 +332,7 @@ returns json as $$
     join event_category ec using (event_category_id)
     left join meeting m_event on m_event.event_id = e.event_id
     left join (
+        -- Treat pending registration question rows as occupied seats
         select event_id, count(*)::int as attendee_count
         from event_attendee
         where status in ('confirmed', 'registration-questions-pending')

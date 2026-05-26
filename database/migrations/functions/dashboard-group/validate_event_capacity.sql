@@ -31,6 +31,7 @@ begin
 
     -- Validate event capacity against attendee count for existing events
     if p_existing_event_id is not null and v_capacity is not null then
+        -- Treat pending registration question rows as occupied seats
         select count(*) into v_attendee_count
         from event_attendee
         where event_id = p_existing_event_id

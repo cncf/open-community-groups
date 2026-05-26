@@ -162,6 +162,7 @@ pub(crate) async fn submit_registration_answers(
         .submit_event_registration_answers(user.user_id, community_id, event_id, &input.registration_answers)
         .await?;
 
+    // Notify only when registration transitioned from pending to confirmed
     if !became_confirmed {
         return Ok((
             StatusCode::NO_CONTENT,

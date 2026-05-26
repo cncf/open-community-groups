@@ -148,6 +148,7 @@ impl QuestionnaireQuestion {
                 Uuid::parse_str(value)
                     .ok()
                     .and_then(|option_id| self.option_label(option_id))
+                    .map(str::to_string)
                     .unwrap_or_default()
             }
             (QuestionnaireQuestionKind::MultiSelect, QuestionnaireAnswerValue::Many(values)) => values
@@ -179,11 +180,11 @@ impl QuestionnaireQuestion {
     }
 
     /// Returns the display label for a selectable option.
-    fn option_label(&self, option_id: Uuid) -> Option<String> {
+    fn option_label(&self, option_id: Uuid) -> Option<&str> {
         self.options
             .iter()
             .find(|option| option.id == option_id)
-            .map(|option| option.label.clone())
+            .map(|option| option.label.as_str())
     }
 
     /// Validates the submitted answer for this question.
@@ -259,6 +260,13 @@ pub(crate) struct OptionalQuestionnaireAnswersForm {
     pub registration_answers: Option<QuestionnaireAnswers>,
 }
 
+/// Form-only answer payload that requires the top-level answers field.
+#[derive(Deserialize)]
+struct QuestionnaireAnswersFormPayload {
+    /// Answers keyed by question identifier.
+    answers: Vec<QuestionnaireAnswer>,
+}
+
 /// Form payload with required encoded questionnaire answers.
 #[derive(Debug, Deserialize, Validate)]
 pub(crate) struct RequiredQuestionnaireAnswersForm {
@@ -278,7 +286,12 @@ where
     D: Deserializer<'de>,
 {
     let value = Option::<String>::deserialize(deserializer)?;
-    parse_optional_questionnaire_answers(value.as_deref()).map_err(D::Error::custom)
+    value
+        .as_deref()
+        .filter(|value| !value.trim().is_empty())
+        .map(parse_questionnaire_answers)
+        .transpose()
+        .map_err(D::Error::custom)
 }
 
 /// Deserializes a required JSON-encoded questionnaire answers form field.
@@ -289,37 +302,21 @@ where
     D: Deserializer<'de>,
 {
     let value = String::deserialize(deserializer)?;
-    parse_required_questionnaire_answers(&value).map_err(D::Error::custom)
-}
-
-/// Parses optional questionnaire answers from a hidden form field value.
-fn parse_optional_questionnaire_answers(value: Option<&str>) -> Result<Option<QuestionnaireAnswers>, String> {
-    value
-        .filter(|value| !value.trim().is_empty())
-        .map(parse_questionnaire_answers)
-        .transpose()
-}
-
-/// Parses required questionnaire answers from a hidden form field value.
-fn parse_required_questionnaire_answers(value: &str) -> Result<QuestionnaireAnswers, String> {
     if value.trim().is_empty() {
-        return Err("questionnaire answers are required".to_string());
+        return Err(D::Error::custom("questionnaire answers are required"));
     }
 
-    parse_questionnaire_answers(value)
+    parse_questionnaire_answers(&value).map_err(D::Error::custom)
 }
 
 /// Parses questionnaire answers and requires the top-level answers array.
 fn parse_questionnaire_answers(value: &str) -> Result<QuestionnaireAnswers, String> {
-    let json: serde_json::Value = serde_json::from_str(value).map_err(|err| err.to_string())?;
-    if !json
-        .get("answers")
-        .is_some_and(|answers| matches!(answers, serde_json::Value::Array(_)))
-    {
-        return Err("questionnaire answers must contain an answers array".to_string());
-    }
+    let payload: QuestionnaireAnswersFormPayload =
+        serde_json::from_str(value).map_err(|err| err.to_string())?;
 
-    serde_json::from_value(json).map_err(|err| err.to_string())
+    Ok(QuestionnaireAnswers {
+        answers: payload.answers,
+    })
 }
 
 /// Validates a decoded questionnaire answers payload.
