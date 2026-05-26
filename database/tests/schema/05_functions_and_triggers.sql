@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(249);
+select plan(250);
 
 -- ============================================================================
 -- TESTS
@@ -78,6 +78,7 @@ select has_function('get_event_attendance');
 select has_function('get_event_full');
 select has_function('get_event_full_by_slug');
 select has_function('get_event_meeting_sync_state_hash');
+select has_function('get_event_occupied_seat_count');
 select has_function('get_event_registration_questions');
 select has_function('get_event_summary');
 select has_function('get_event_summary_dashboard');

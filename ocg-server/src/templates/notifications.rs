@@ -256,6 +256,10 @@ pub(crate) struct EventWaitlistPromoted {
     pub link: String,
     /// Theme configuration for the community.
     pub theme: Theme,
+
+    /// Link to the user dashboard events page.
+    #[serde(default)]
+    pub dashboard_link: Option<String>,
 }
 
 /// Template for event welcome notification.

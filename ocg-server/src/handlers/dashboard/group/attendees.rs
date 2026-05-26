@@ -255,6 +255,7 @@ pub(crate) async fn cancel_event_attendee_attendance(
             has_registration_questions: event.has_registration_questions,
             link: build_event_page_link(base_url, &event),
             theme: site_settings.theme,
+            dashboard_link: Some(build_user_dashboard_events_link(base_url)),
         };
         let notification = NewNotification {
             attachments: vec![calendar_ics],

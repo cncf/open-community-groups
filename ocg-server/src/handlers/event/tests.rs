@@ -1500,7 +1500,8 @@ async fn test_leave_event_promotes_waitlisted_users_and_enqueues_notification() 
                 && notification.attachments[0].file_name == "event-ghi9abc.ics"
                 && notification.template_data.as_ref().is_some_and(|value| {
                     from_value::<EventWaitlistPromoted>(value.clone()).is_ok_and(|template| {
-                        template.link == "/test-community/group/def5678/event/ghi9abc"
+                        template.dashboard_link.as_deref() == Some("/dashboard/user?tab=events")
+                            && template.link == "/test-community/group/def5678/event/ghi9abc"
                             && template.theme.primary_color
                                 == site_settings_for_notification.theme.primary_color
                     })

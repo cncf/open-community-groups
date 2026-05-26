@@ -98,11 +98,7 @@ begin
         if v_invitation_request_status = 'accepted' then
             -- Enforce capacity before recreating attendance from an accepted request
             if v_capacity is not null then
-                -- Treat pending registration question rows as occupied seats
-                select count(*) into v_attendee_count
-                from event_attendee
-                where event_id = p_event_id
-                and status in ('confirmed', 'registration-questions-pending');
+                select get_event_occupied_seat_count(p_event_id) into v_attendee_count;
 
                 if v_attendee_count >= v_capacity then
                     raise exception 'event has reached capacity';
@@ -148,11 +144,7 @@ begin
 
     -- Check if event has capacity for more attendees
     if v_capacity is not null then
-        -- Treat pending registration question rows as occupied seats
-        select count(*) into v_attendee_count
-        from event_attendee
-        where event_id = p_event_id
-        and status in ('confirmed', 'registration-questions-pending');
+        select get_event_occupied_seat_count(p_event_id) into v_attendee_count;
 
         if v_attendee_count >= v_capacity then
             if v_waitlist_enabled then

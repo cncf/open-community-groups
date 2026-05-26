@@ -45,7 +45,7 @@ use crate::{
         payments::GroupPaymentRecipient,
         permissions::GroupPermission,
     },
-    util::{build_event_calendar_attachment, build_event_page_link},
+    util::{build_event_calendar_attachment, build_event_page_link, build_user_dashboard_events_link},
 };
 
 mod recurrence;
@@ -568,6 +568,7 @@ pub(crate) async fn update(
                     has_registration_questions: event.has_registration_questions,
                     link,
                     theme: site_settings.theme,
+                    dashboard_link: Some(build_user_dashboard_events_link(base_url)),
                 };
                 let notification = NewNotification {
                     attachments: vec![calendar_ics],

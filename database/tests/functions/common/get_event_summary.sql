@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(10);
+select plan(11);
 
 -- ============================================================================
 -- VARIABLES
@@ -20,9 +20,11 @@ select plan(10);
 \set eventPaidID '00000000-0000-0000-0000-000000000034'
 \set eventQuestionsID '90400000-0000-0000-0000-000000000043'
 \set eventSeriesID '00000000-0000-0000-0000-000000000035'
+\set expiredCheckoutUserID '90400000-0000-0000-0000-000000000037'
 \set groupID '00000000-0000-0000-0000-000000000021'
 \set groupNoLogoID '00000000-0000-0000-0000-000000000022'
 \set pendingInviteID '00000000-0000-0000-0000-000000000046'
+\set activeCheckoutUserID '90400000-0000-0000-0000-000000000038'
 \set questionsSeatedUserID '90400000-0000-0000-0000-000000000036'
 \set questionsWaitlistUserID '90400000-0000-0000-0000-000000000032'
 \set ticketPriceWindowID '00000000-0000-0000-0000-000000000045'
@@ -131,6 +133,20 @@ insert into "user" (
     'pending-invite',
     true,
     'attendee-hash',
+    '2024-01-01 00:00:00+00'
+), (
+    :'expiredCheckoutUserID',
+    'rq-expired-checkout@test.com',
+    'rq-expired-checkout',
+    true,
+    'h',
+    '2024-01-01 00:00:00+00'
+), (
+    :'activeCheckoutUserID',
+    'rq-active-checkout@test.com',
+    'rq-active-checkout',
+    true,
+    'h',
     '2024-01-01 00:00:00+00'
 ), (
     :'questionsSeatedUserID',
@@ -390,8 +406,40 @@ values
     (:'eventID', :'attendee1ID', 'confirmed'),
     (:'eventID', :'attendee2ID', 'confirmed'),
     (:'eventID', :'pendingInviteID', 'invitation-pending'),
+    (:'eventPaidID', :'activeCheckoutUserID', 'registration-questions-pending'),
+    (:'eventPaidID', :'expiredCheckoutUserID', 'registration-questions-pending'),
     (:'eventQuestionsID', :'questionsSeatedUserID', 'confirmed'),
     (:'eventQuestionsID', :'questionsWaitlistUserID', 'registration-questions-pending');
+
+-- Event purchases for pending registration capacity checks
+insert into event_purchase (
+    amount_minor,
+    currency_code,
+    event_id,
+    event_ticket_type_id,
+    hold_expires_at,
+    status,
+    ticket_title,
+    user_id
+) values (
+    3000,
+    'USD',
+    :'eventPaidID',
+    :'ticketTypeID',
+    current_timestamp + interval '10 minutes',
+    'pending',
+    'General admission',
+    :'activeCheckoutUserID'
+), (
+    3000,
+    'USD',
+    :'eventPaidID',
+    :'ticketTypeID',
+    current_timestamp - interval '10 minutes',
+    'pending',
+    'General admission',
+    :'expiredCheckoutUserID'
+);
 
 -- Event Waitlist
 insert into event_waitlist (event_id, user_id)
@@ -498,7 +546,7 @@ select is(
                             "event_ticket_price_window_id": "%s"
                         }
                     ],
-                    "remaining_seats": 20,
+                    "remaining_seats": 19,
                     "seats_total": 20,
                     "sold_out": false,
                     "title": "General admission"
@@ -582,6 +630,13 @@ select is(
     get_event_summary(:'communityID'::uuid, :'groupID'::uuid, :'eventQuestionsID'::uuid)::jsonb->>'remaining_capacity',
     '0',
     'Should count pending registration rows in event capacity summaries'
+);
+
+-- Should exclude expired checkout holds from event capacity summaries
+select is(
+    get_event_summary(:'communityID'::uuid, :'groupID'::uuid, :'eventPaidID'::uuid)::jsonb->>'remaining_capacity',
+    '19',
+    'Should exclude expired checkout holds from event capacity summaries'
 );
 
 -- ============================================================================

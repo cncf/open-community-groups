@@ -2749,7 +2749,8 @@ async fn test_update_promotes_waitlist_and_sends_reschedule_notification() {
                 && notification.recipients == vec![promoted_user_id]
                 && notification.template_data.as_ref().is_some_and(|value| {
                     from_value::<EventWaitlistPromoted>(value.clone()).is_ok_and(|template| {
-                        template.link == "/test-community/group/def5678/event/ghi9abc"
+                        template.dashboard_link.as_deref() == Some("/dashboard/user?tab=events")
+                            && template.link == "/test-community/group/def5678/event/ghi9abc"
                             && template.theme.primary_color
                                 == site_settings_for_promotion_notification.theme.primary_color
                     })
@@ -2868,7 +2869,8 @@ async fn test_update_promotion_notification_failure_is_ignored() {
                 && notification.attachments[0].file_name == "event-ghi9abc.ics"
                 && notification.template_data.as_ref().is_some_and(|value| {
                     from_value::<EventWaitlistPromoted>(value.clone()).is_ok_and(|template| {
-                        template.link == "/test-community/group/def5678/event/ghi9abc"
+                        template.dashboard_link.as_deref() == Some("/dashboard/user?tab=events")
+                            && template.link == "/test-community/group/def5678/event/ghi9abc"
                             && template.theme.primary_color
                                 == site_settings_for_notification.theme.primary_color
                     })

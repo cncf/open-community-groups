@@ -465,6 +465,7 @@ pub(crate) async fn leave_event(
             has_registration_questions: event.has_registration_questions,
             link: link.clone(),
             theme: site_settings.theme.clone(),
+            dashboard_link: Some(build_user_dashboard_events_link(base_url)),
         };
         let notification = NewNotification {
             attachments: vec![calendar_ics],

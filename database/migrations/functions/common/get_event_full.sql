@@ -331,13 +331,7 @@ returns json as $$
     join community c on c.community_id = g.community_id
     join event_category ec using (event_category_id)
     left join meeting m_event on m_event.event_id = e.event_id
-    left join (
-        -- Treat pending registration question rows as occupied seats
-        select event_id, count(*)::int as attendee_count
-        from event_attendee
-        where status in ('confirmed', 'registration-questions-pending')
-        group by event_id
-    ) ea on ea.event_id = e.event_id
+    cross join lateral get_event_occupied_seat_count(e.event_id) as ea(attendee_count)
     left join (
         select event_id, count(*)::int as waitlist_count
         from event_waitlist

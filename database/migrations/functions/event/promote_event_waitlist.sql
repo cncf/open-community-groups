@@ -45,11 +45,7 @@ begin
 
         v_available_slots := v_waitlist_count;
     else
-        -- Treat pending registration question rows as occupied seats
-        select count(*) into v_attendee_count
-        from event_attendee
-        where event_id = p_event_id
-        and status in ('confirmed', 'registration-questions-pending');
+        select get_event_occupied_seat_count(p_event_id) into v_attendee_count;
 
         v_available_slots := greatest(v_capacity - v_attendee_count, 0);
     end if;

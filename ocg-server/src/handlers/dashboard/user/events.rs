@@ -29,7 +29,7 @@ use crate::{
         pagination::{self, NavigationLinks},
         questionnaire::RequiredQuestionnaireAnswersForm,
     },
-    util::{build_event_calendar_attachment, build_event_page_link},
+    util::{build_event_calendar_attachment, build_event_page_link, build_user_dashboard_events_link},
 };
 
 #[cfg(test)]
@@ -123,6 +123,7 @@ pub(crate) async fn cancel_attendance(
             has_registration_questions: event.has_registration_questions,
             link: build_event_page_link(base_url, &event),
             theme: site_settings.theme,
+            dashboard_link: Some(build_user_dashboard_events_link(base_url)),
         };
         let notification = NewNotification {
             attachments: vec![build_event_calendar_attachment(base_url, &event)],
