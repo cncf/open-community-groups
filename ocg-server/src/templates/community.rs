@@ -21,6 +21,9 @@ use crate::{
     },
 };
 
+/// Link preview description for community pages.
+pub(crate) const PREVIEW_DESCRIPTION: &str = "Open Community Groups, where Open Source communities thrive.";
+
 // Pages and sections templates.
 
 /// Template for the community page.
@@ -65,7 +68,7 @@ impl Page {
 
     /// Returns the preview title for the community page.
     pub(crate) fn preview_title(&self) -> String {
-        format!("{} | Open Community Groups", self.community.display_name)
+        format!("{} community", self.community.display_name)
     }
 }
 

@@ -296,6 +296,7 @@ async fn test_page_success() {
     let group_id = Uuid::new_v4();
     let mut event = sample_event_full(community_id, event_id, group_id);
     event.community.name = "test-community".to_string();
+    event.community.display_name = "Test Community".to_string();
     event.group.name = "Test Group".to_string();
     event.group.og_image_url = Some("/images/group-og.png".to_string());
     event.group.slug_pretty = Some("pretty-group".to_string());
@@ -348,16 +349,27 @@ async fn test_page_success() {
         &HeaderValue::from_static(CACHE_CONTROL_PUBLIC_SHARED)
     );
     let body = String::from_utf8(bytes.to_vec()).unwrap();
-    assert!(body.contains("<title>Test Event -- March 5 | Test Group</title>"));
+    assert!(body.contains("<title>Test Event - March 5</title>"));
+    assert!(body.contains(
+        r#"<meta name="description" content="Test Group in Test Community community. Open Community Groups, where Open Source communities thrive.">"#
+    ));
     assert!(body.contains(
         r#"<link rel="canonical" href="https://example.test/test-community/group/pretty-group/event/test-event">"#
     ));
+    assert!(body.contains(r#"<meta property="og:title" content="Test Event - March 5">"#));
     assert!(body.contains(
         r#"<meta property="og:url" content="https://example.test/test-community/group/pretty-group/event/test-event">"#
+    ));
+    assert!(body.contains(
+        r#"<meta property="og:description" content="Test Group in Test Community community. Open Community Groups, where Open Source communities thrive.">"#
     ));
     assert!(
         body.contains(r#"<meta property="og:image" content="https://example.test/images/og/group-og.png">"#)
     );
+    assert!(body.contains(r#"<meta name="twitter:title" content="Test Event - March 5">"#));
+    assert!(body.contains(
+        r#"<meta name="twitter:description" content="Test Group in Test Community community. Open Community Groups, where Open Source communities thrive.">"#
+    ));
     assert!(
         body.contains(r#"<meta name="twitter:image" content="https://example.test/images/og/group-og.png">"#)
     );

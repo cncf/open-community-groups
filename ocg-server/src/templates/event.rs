@@ -64,18 +64,21 @@ impl Page {
             .map(|image_url| helpers::open_graph_image_url(&self.base_url, image_url))
     }
 
+    /// Returns the preview description for the event page.
+    pub(crate) fn preview_description(&self) -> String {
+        format!(
+            "{} in {} community. Open Community Groups, where Open Source communities thrive.",
+            self.event.group.name, self.event.community.display_name
+        )
+    }
+
     /// Returns the preview title for the event page.
     pub(crate) fn preview_title(&self) -> String {
         if let Some(starts_at) = self.event.starts_at {
             let starts_at = starts_at.with_timezone(&self.event.timezone);
-            format!(
-                "{} -- {} | {}",
-                self.event.name,
-                starts_at.format("%B %-d"),
-                self.event.group.name
-            )
+            format!("{} - {}", self.event.name, starts_at.format("%B %-d"))
         } else {
-            format!("{} | {}", self.event.name, self.event.group.name)
+            self.event.name.clone()
         }
     }
 }
@@ -161,7 +164,7 @@ mod tests {
     use chrono::{DateTime, TimeZone, Utc};
     use chrono_tz::{America::Los_Angeles, Tz};
 
-    use crate::types::group::GroupSummary;
+    use crate::types::{community::CommunitySummary, group::GroupSummary};
 
     use super::*;
 
@@ -172,14 +175,24 @@ mod tests {
             Los_Angeles,
         );
 
-        assert_eq!(page.preview_title(), "Test Event -- March 5 | Test Group");
+        assert_eq!(page.preview_title(), "Test Event - March 5");
     }
 
     #[test]
-    fn test_preview_title_without_start_date_uses_event_and_group_names() {
+    fn test_preview_title_without_start_date_uses_event_name() {
         let page = sample_page(None, chrono_tz::UTC);
 
-        assert_eq!(page.preview_title(), "Test Event | Test Group");
+        assert_eq!(page.preview_title(), "Test Event");
+    }
+
+    #[test]
+    fn test_preview_description_uses_group_and_community_names() {
+        let page = sample_page(None, chrono_tz::UTC);
+
+        assert_eq!(
+            page.preview_description(),
+            "Test Group in Test Community community. Open Community Groups, where Open Source communities thrive."
+        );
     }
 
     // Helpers.
@@ -188,6 +201,10 @@ mod tests {
         Page {
             base_url: "https://example.test".to_string(),
             event: EventFull {
+                community: CommunitySummary {
+                    display_name: "Test Community".to_string(),
+                    ..Default::default()
+                },
                 group: GroupSummary {
                     name: "Test Group".to_string(),
                     ..Default::default()

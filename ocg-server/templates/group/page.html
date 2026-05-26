@@ -10,7 +10,7 @@
 {% endblock head_title -%}
 
 {% block head_description -%}
-  <meta name="description" content="{{ meta::preview_description() }}">
+  <meta name="description" content="{{ self.preview_description() |demoji }}">
 {% endblock head_description -%}
 
 {% block canonical_link -%}
@@ -19,6 +19,7 @@
 
 {% block open_graph_meta -%}
   {{ meta::open_graph(title = self.preview_title() ,
+  description = self.preview_description(),
   url = self.canonical_url(),
   image_url = self.open_graph_image_url(),
   image_alt = &group.name) -}}
@@ -26,6 +27,7 @@
 
 {% block twitter_meta -%}
   {{ meta::twitter(title = self.preview_title() ,
+  description = self.preview_description(),
   image_url = self.open_graph_image_url()) -}}
 {% endblock twitter_meta -%}
 

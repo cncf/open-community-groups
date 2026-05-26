@@ -63,9 +63,17 @@ impl Page {
             .map(|image_url| helpers::open_graph_image_url(&self.base_url, image_url))
     }
 
+    /// Returns the preview description for the group page.
+    pub(crate) fn preview_description(&self) -> String {
+        format!(
+            "{} community in Open Community Groups, where Open Source communities thrive.",
+            self.group.community.display_name
+        )
+    }
+
     /// Returns the preview title for the group page.
     pub(crate) fn preview_title(&self) -> String {
-        format!("{} | {}", self.group.name, self.group.community.display_name)
+        self.group.name.clone()
     }
 }
 

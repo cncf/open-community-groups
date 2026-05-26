@@ -85,14 +85,24 @@ async fn test_page_success() {
         &HeaderValue::from_static(CACHE_CONTROL_PUBLIC_SHARED)
     );
     let body = String::from_utf8(bytes.to_vec()).unwrap();
-    assert!(body.contains("<title>Test Community | Open Community Groups</title>"));
+    assert!(body.contains("<title>Test Community community</title>"));
+    assert!(body.contains(r#"<meta name="description""#));
+    assert!(body.contains(r#"content="Open Community Groups, where Open Source communities thrive.">"#));
     assert!(body.contains(r#"<link rel="canonical" href="https://example.test/test-community">"#));
+    assert!(body.contains(r#"<meta property="og:title" content="Test Community community">"#));
     assert!(body.contains(r#"<meta property="og:url" content="https://example.test/test-community">"#));
+    assert!(body.contains(
+        r#"<meta property="og:description" content="Open Community Groups, where Open Source communities thrive.">"#
+    ));
     assert!(
         body.contains(
             r#"<meta property="og:image" content="https://example.test/images/og/community-og.png">"#
         )
     );
+    assert!(body.contains(r#"<meta name="twitter:title" content="Test Community community">"#));
+    assert!(body.contains(
+        r#"<meta name="twitter:description" content="Open Community Groups, where Open Source communities thrive.">"#
+    ));
     assert!(body.contains(
         r#"<meta name="twitter:image" content="https://example.test/images/og/community-og.png">"#
     ));
