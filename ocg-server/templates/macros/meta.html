@@ -1,13 +1,13 @@
+{% macro preview_description() -%}
+  Open Community Groups, where open source communities thrive.
+{% endmacro preview_description -%}
+
 {# Open Graph meta tags -#}
-{% macro open_graph(title, url, description, image_url, image_alt) -%}
+{% macro open_graph(title, url, image_url, image_alt) -%}
   <meta property="og:type" content="website">
   <meta property="og:title" content="{{ title|demoji }}">
   <meta property="og:url" content="{{ url }}">
-  {% if let Some(description) = description -%}
-    <meta property="og:description" content="{{ description|demoji }}">
-  {% else -%}
-    <meta property="og:description" content="{{ title|demoji }}">
-  {% endif -%}
+  <meta property="og:description" content="{{ preview_description() }}">
   {% if let Some(og_image_url) = image_url -%}
     <meta property="og:image" content="{{ og_image_url }}">
     <meta property="og:image:width"
@@ -20,18 +20,14 @@
 {# End Open Graph meta tags -#}
 
 {# Twitter meta tags -#}
-{% macro twitter(title, description, image_url) -%}
+{% macro twitter(title, image_url) -%}
   {% if image_url.is_some() -%}
     <meta name="twitter:card" content="summary_large_image">
   {% else -%}
     <meta name="twitter:card" content="summary">
   {% endif -%}
   <meta name="twitter:title" content="{{ title|demoji }}">
-  {% if let Some(description) = description -%}
-    <meta name="twitter:description" content="{{ description|demoji }}">
-  {% else -%}
-    <meta name="twitter:description" content="{{ title|demoji }}">
-  {% endif -%}
+  <meta name="twitter:description" content="{{ preview_description() }}">
   {% if let Some(og_image_url) = image_url -%}
     <meta name="twitter:image" content="{{ og_image_url }}">
   {% endif -%}

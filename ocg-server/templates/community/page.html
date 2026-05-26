@@ -9,7 +9,7 @@
 {% endblock head_title -%}
 
 {% block head_description -%}
-  <meta name="description" content="{{ community.description|demoji }}">
+  <meta name="description" content="{{ meta::preview_description() }}">
 {% endblock head_description -%}
 
 {% block canonical_link -%}
@@ -19,14 +19,12 @@
 {% block open_graph_meta -%}
   {{ meta::open_graph(title = self.preview_title() ,
   url = self.canonical_url(),
-  description = Some(&community.description),
   image_url = self.open_graph_image_url(),
   image_alt = &community.display_name) -}}
 {% endblock open_graph_meta -%}
 
 {% block twitter_meta -%}
   {{ meta::twitter(title = self.preview_title() ,
-  description = Some(&community.description),
   image_url = self.open_graph_image_url()) -}}
 {% endblock twitter_meta -%}
 

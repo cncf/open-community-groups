@@ -10,11 +10,7 @@
 {% endblock head_title -%}
 
 {% block head_description -%}
-  {% if let Some(description_short) = &group.description_short -%}
-    <meta name="description" content="{{ description_short|demoji }}">
-  {% else -%}
-    <meta name="description" content="{{ self.preview_title() |demoji }}">
-  {% endif -%}
+  <meta name="description" content="{{ meta::preview_description() }}">
 {% endblock head_description -%}
 
 {% block canonical_link -%}
@@ -24,14 +20,12 @@
 {% block open_graph_meta -%}
   {{ meta::open_graph(title = self.preview_title() ,
   url = self.canonical_url(),
-  description = group.description_short.as_ref(),
   image_url = self.open_graph_image_url(),
   image_alt = &group.name) -}}
 {% endblock open_graph_meta -%}
 
 {% block twitter_meta -%}
   {{ meta::twitter(title = self.preview_title() ,
-  description = group.description_short.as_ref(),
   image_url = self.open_graph_image_url()) -}}
 {% endblock twitter_meta -%}
 
