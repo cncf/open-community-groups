@@ -56,6 +56,7 @@ insert into community (
     display_name,
     description,
     logo_url,
+    og_image_url,
     banner_mobile_url,
     banner_url
 ) values (
@@ -64,6 +65,7 @@ insert into community (
     'Cloud Native Seattle',
     'A vibrant community for cloud native technologies and practices in Seattle',
     'https://example.com/logo.png',
+    'https://example.com/community-og.png',
     'https://example.com/banner_mobile.png',
     'https://example.com/banner.png'
 );
@@ -91,7 +93,8 @@ insert into "group" (
     country_name,
     location,
 
-    logo_url
+    logo_url,
+    og_image_url
 ) values (
     :'groupID',
     'Seattle Kubernetes Meetup',
@@ -106,7 +109,8 @@ insert into "group" (
     'United States',
     ST_SetSRID(ST_MakePoint(-73.935242, 40.730610), 4326),  -- New York coordinates
 
-    'https://example.com/group-logo.png'
+    'https://example.com/group-logo.png',
+    'https://example.com/group-og.png'
 );
 
 -- Group (inactive)
@@ -875,7 +879,8 @@ select is(
             "community_id": "00000000-0000-0000-0000-000000000001",
             "display_name": "Cloud Native Seattle",
             "logo_url": "https://example.com/logo.png",
-            "name": "cloud-native-seattle"
+            "name": "cloud-native-seattle",
+            "og_image_url": "https://example.com/community-og.png"
         },
         "group": {
             "city": "New York",
@@ -894,6 +899,7 @@ select is(
             "latitude": 40.73061,
             "logo_url": "https://example.com/group-logo.png",
             "longitude": -73.935242,
+            "og_image_url": "https://example.com/group-og.png",
             "created_at": 1709287200,
             "country_code": "US",
             "country_name": "United States"

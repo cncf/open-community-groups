@@ -63,7 +63,8 @@ select indexes_are('community', array[
     'community_pkey',
     'community_community_site_layout_id_idx',
     'community_display_name_key',
-    'community_name_key'
+    'community_name_key',
+    'community_og_image_url_idx'
 ]);
 
 -- Test: community_redirect_settings indexes should match expected
@@ -238,6 +239,7 @@ select indexes_are('group', array[
     'group_location_idx',
     'group_search_idx',
     'group_tsdoc_idx',
+    'group_og_image_url_idx',
     'group_active_created_at_idx',
     'group_community_active_created_at_idx'
 ]);

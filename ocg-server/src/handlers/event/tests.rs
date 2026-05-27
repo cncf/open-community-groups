@@ -7,6 +7,7 @@ use axum::{
     },
 };
 use axum_login::tower_sessions::session;
+use chrono::TimeZone;
 use serde_json::{from_slice, from_value, json};
 use tower::ServiceExt;
 use uuid::Uuid;
@@ -293,6 +294,16 @@ async fn test_page_success() {
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
+    let mut event = sample_event_full(community_id, event_id, group_id);
+    event.community.name = "test-community".to_string();
+    event.community.display_name = "Test Community".to_string();
+    event.group.name = "Test Group".to_string();
+    event.group.og_image_url = Some("/images/group-og.png".to_string());
+    event.group.slug_pretty = Some("pretty-group".to_string());
+    event.name = "Test Event".to_string();
+    event.slug = "test-event".to_string();
+    event.starts_at = Some(chrono::Utc.with_ymd_and_hms(2030, 3, 5, 18, 0, 0).unwrap());
+    event.timezone = chrono_tz::UTC;
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -306,18 +317,21 @@ async fn test_page_success() {
     db.expect_get_event_full_by_slug()
         .times(1)
         .withf(move |id, group_slug, event_slug| {
-            *id == community_id && group_slug == "test-group" && event_slug == "test-event"
+            *id == community_id && group_slug == "pretty-group" && event_slug == "test-event"
         })
-        .returning(move |_, _, _| Ok(Some(sample_event_full(community_id, event_id, group_id))));
+        .returning(move |_, _, _| Ok(Some(event.clone())));
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
 
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
+    let router = TestRouterBuilder::new(db, nm)
+        .with_server_cfg(sample_tracking_server_cfg())
+        .build()
+        .await;
     let request = Request::builder()
         .method("GET")
-        .uri("/test-community/group/test-group/event/test-event")
+        .uri("/test-community/group/pretty-group/event/test-event")
         .body(Body::empty())
         .unwrap();
     let response = router.oneshot(request).await.unwrap();
@@ -334,7 +348,31 @@ async fn test_page_success() {
         parts.headers.get(CACHE_CONTROL).unwrap(),
         &HeaderValue::from_static(CACHE_CONTROL_PUBLIC_SHARED)
     );
-    assert!(!bytes.is_empty());
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
+    assert!(body.contains("<title>Test Event - March 5</title>"));
+    assert!(body.contains(
+        r#"<meta name="description" content="Test Group in Test Community community. Open Community Groups, where Open Source communities thrive.">"#
+    ));
+    assert!(body.contains(
+        r#"<link rel="canonical" href="https://example.test/test-community/group/pretty-group/event/test-event">"#
+    ));
+    assert!(body.contains(r#"<meta property="og:title" content="Test Event - March 5">"#));
+    assert!(body.contains(
+        r#"<meta property="og:url" content="https://example.test/test-community/group/pretty-group/event/test-event">"#
+    ));
+    assert!(body.contains(
+        r#"<meta property="og:description" content="Test Group in Test Community community. Open Community Groups, where Open Source communities thrive.">"#
+    ));
+    assert!(
+        body.contains(r#"<meta property="og:image" content="https://example.test/images/og/group-og.png">"#)
+    );
+    assert!(body.contains(r#"<meta name="twitter:title" content="Test Event - March 5">"#));
+    assert!(body.contains(
+        r#"<meta name="twitter:description" content="Test Group in Test Community community. Open Community Groups, where Open Source communities thrive.">"#
+    ));
+    assert!(
+        body.contains(r#"<meta name="twitter:image" content="https://example.test/images/og/group-og.png">"#)
+    );
 }
 
 #[tokio::test]

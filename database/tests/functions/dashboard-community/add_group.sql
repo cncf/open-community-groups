@@ -155,6 +155,7 @@ select is(
                 "instagram_url": "https://instagram.com/testgroup",
                 "flickr_url": "https://flickr.com/testgroup",
                 "wechat_url": "https://wechat.com/testgroup",
+                "og_image_url": "https://example.com/group-og.png",
                 "tags": ["technology", "community", "open-source"],
                 "photos_urls": ["https://example.com/photo1.jpg", "https://example.com/photo2.jpg"],
                 "extra_links": [{"name": "blog", "url": "https://blog.example.com"}, {"name": "docs", "url": "https://docs.example.com"}]
@@ -193,6 +194,7 @@ select is(
         "instagram_url": "https://instagram.com/testgroup",
         "flickr_url": "https://flickr.com/testgroup",
         "wechat_url": "https://wechat.com/testgroup",
+        "og_image_url": "https://example.com/group-og.png",
         "tags": ["technology", "community", "open-source"],
         "photos_urls": ["https://example.com/photo1.jpg", "https://example.com/photo2.jpg"],
         "extra_links": [{"name": "blog", "url": "https://blog.example.com"}, {"name": "docs", "url": "https://docs.example.com"}],
@@ -233,7 +235,8 @@ begin
             "youtube_url": "",
             "instagram_url": "",
             "flickr_url": "",
-            "wechat_url": ""
+            "wechat_url": "",
+            "og_image_url": ""
         }'::jsonb
     );
 
@@ -249,6 +252,7 @@ begin
        or v_group_record.state is not null
        or v_group_record.region_id is not null
        or v_group_record.logo_url is not null
+       or v_group_record.og_image_url is not null
        or v_group_record.website_url is not null
     then
         raise exception 'Empty strings should be converted to null';

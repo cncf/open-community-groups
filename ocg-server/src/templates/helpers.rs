@@ -8,6 +8,32 @@ pub(crate) const DATE_FORMAT: &str = "%Y-%m-%dT%H:%M";
 /// The date format used in templates (YYYY-MM-DD).
 pub(crate) const DATE_FORMAT_2: &str = "%Y-%m-%d";
 
+/// Builds an absolute URL from a configured base URL and path.
+pub(crate) fn absolute_url(base_url: &str, path: &str) -> String {
+    let base_url = base_url.strip_suffix('/').unwrap_or(base_url);
+    if path.starts_with('/') {
+        format!("{base_url}{path}")
+    } else {
+        format!("{base_url}/{path}")
+    }
+}
+
+/// Builds the public URL for a configured Open Graph image.
+pub(crate) fn open_graph_image_url(base_url: &str, image_url: &str) -> String {
+    // Route uploaded images through the public Open Graph image endpoint
+    if let Some(file_name) = image_url.strip_prefix("/images/") {
+        return absolute_url(base_url, &format!("/images/og/{file_name}"));
+    }
+
+    // Convert other local paths into absolute URLs
+    if image_url.starts_with('/') {
+        return absolute_url(base_url, image_url);
+    }
+
+    // Keep already-absolute external URLs unchanged
+    image_url.to_string()
+}
+
 /// Generates initials from a name and username.
 pub(crate) fn user_initials(name: Option<&str>, username: &str) -> String {
     // Helper to split a string into words based on whitespace and non-alphabetic chars

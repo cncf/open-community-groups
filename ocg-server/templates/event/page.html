@@ -1,8 +1,35 @@
 {% extends "common/base.html" -%}
+{% import "macros/meta.html" as meta -%}
 {% import "macros/ui.html" as ui -%}
 {% import "macros/badges.html" as badges -%}
 {% import "macros/maps.html" as maps -%}
 {% import "macros/social.html" as social -%}
+
+{% block head_title -%}
+  <title>{{ self.preview_title() |demoji }}</title>
+{% endblock head_title -%}
+
+{% block head_description -%}
+  <meta name="description" content="{{ self.preview_description() |demoji }}">
+{% endblock head_description -%}
+
+{% block canonical_link -%}
+  <link rel="canonical" href="{{ self.canonical_url() }}">
+{% endblock canonical_link -%}
+
+{% block open_graph_meta -%}
+  {{ meta::open_graph(title = self.preview_title() ,
+  description = self.preview_description(),
+  url = self.canonical_url(),
+  image_url = self.open_graph_image_url(),
+  image_alt = &event.group.name) -}}
+{% endblock open_graph_meta -%}
+
+{% block twitter_meta -%}
+  {{ meta::twitter(title = self.preview_title() ,
+  description = self.preview_description(),
+  image_url = self.open_graph_image_url()) -}}
+{% endblock twitter_meta -%}
 
 {% block scripts -%}
   <script type="module" src="/static/js/common/breadcrumb-nav.js"></script>

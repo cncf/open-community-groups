@@ -56,6 +56,7 @@ begin
                 linkedin_url,
                 location,
                 logo_url,
+                og_image_url,
                 photos_urls,
                 region_id,
                 slack_url,
@@ -91,6 +92,7 @@ begin
                     else null
                 end,
                 nullif(p_group->>'logo_url', ''),
+                nullif(p_group->>'og_image_url', ''),
                 case when p_group->'photos_urls' is not null then array(select jsonb_array_elements_text(p_group->'photos_urls')) else null end,
                 case when p_group->>'region_id' <> '' then (p_group->>'region_id')::uuid else null end,
                 nullif(p_group->>'slack_url', ''),

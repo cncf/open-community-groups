@@ -266,7 +266,8 @@ select lives_ok(
             "facebook_url": "https://facebook.com/updated",
             "twitter_url": "https://twitter.com/updated",
             "tags": ["updated", "test"],
-            "logo_url": "https://example.com/updated-logo.png"
+            "logo_url": "https://example.com/updated-logo.png",
+            "og_image_url": "https://example.com/updated-og.png"
         }'::jsonb
     )$$,
     'Should update all provided fields correctly'
@@ -305,6 +306,7 @@ select is(
         "twitter_url": "https://twitter.com/updated",
         "tags": ["updated", "test"],
         "logo_url": "https://example.com/updated-logo.png",
+        "og_image_url": "https://example.com/updated-og.png",
         "organizers": [],
         "sponsors": []
     }'::jsonb,

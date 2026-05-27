@@ -11,6 +11,13 @@ const IMAGE_KIND = {
   LOGO: "logo",
 };
 
+const IMAGE_TARGET = {
+  OPEN_GRAPH: "open_graph",
+};
+
+const DEFAULT_ACCEPTED_FORMATS = ".svg,.png,.jpg,.jpeg,.gif,.webp,.tif,.tiff";
+const OPEN_GRAPH_ACCEPTED_FORMATS = ".png,.jpg,.jpeg,.webp";
+
 /**
  * ImageField renders upload controls with drag-and-drop support and a preview.
  * Keeps banner and avatar variants aligned with the rest of the dashboard form.
@@ -26,7 +33,7 @@ export class ImageField extends LitWrapper {
    * @property {string} imageKind - Determines which styling preset (avatar/banner) to apply.
    * @property {string} previewBgClass - Optional utility class to override the preview background (e.g., "bg-stone-900").
    * @property {string} helpPrefixText - Optional text shown before the built-in helper copy.
-   * @property {string} target - Image target for dimension validation ("banner", "banner_mobile", "logo").
+   * @property {string} target - Image target for dimension validation ("banner", "banner_mobile", "logo", "open_graph").
    * @property {string} legend - Optional legend text displayed under the image preview area.
    */
   static properties = {
@@ -269,12 +276,16 @@ export class ImageField extends LitWrapper {
     const valueInputId = this._valueInputId;
     const bannerLikeKinds = [IMAGE_KIND.BANNER];
     const isWide = bannerLikeKinds.includes(this.imageKind);
+    const isOpenGraphTarget = this.target === IMAGE_TARGET.OPEN_GRAPH;
     const removeDisabled = !this._hasImage || this._isUploading;
     const helpPrefixText = (this.helpPrefixText || "").trim();
-    const helpText = isWide
-      ? "Maximum size: 1MB. Supported formats: SVG, PNG, JPEG, GIF, WEBP and TIFF."
-      : "Images must be 360 x 360 px (square). Maximum size: 1MB. Supported formats: SVG, PNG, JPEG, GIF, WEBP and TIFF.";
+    const helpText = isOpenGraphTarget
+      ? "Maximum size: 1MB."
+      : isWide
+        ? "Maximum size: 1MB. Supported formats: SVG, PNG, JPEG, GIF, WEBP and TIFF."
+        : "Images must be 360 x 360 px (square). Maximum size: 1MB. Supported formats: SVG, PNG, JPEG, GIF, WEBP and TIFF.";
     const combinedHelpText = helpPrefixText.length > 0 ? `${helpPrefixText} ${helpText}` : helpText;
+    const acceptedFormats = isOpenGraphTarget ? OPEN_GRAPH_ACCEPTED_FORMATS : DEFAULT_ACCEPTED_FORMATS;
 
     return html`
       <label for=${this._fileInputId} class="form-label">
@@ -324,7 +335,7 @@ export class ImageField extends LitWrapper {
                 type="file"
                 id=${this._fileInputId}
                 class="hidden"
-                accept=".svg,.png,.jpg,.jpeg,.gif,.webp,.tif,.tiff"
+                accept=${acceptedFormats}
                 @change=${this._handleFileChange}
                 ?disabled=${this._isUploading}
               />

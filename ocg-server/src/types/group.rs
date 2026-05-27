@@ -79,6 +79,8 @@ pub struct GroupSummary {
     pub latitude: Option<f64>,
     /// Longitude for map display.
     pub longitude: Option<f64>,
+    /// URL to the group's Open Graph image used for link previews.
+    pub og_image_url: Option<String>,
     /// Pre-rendered HTML for map popovers.
     pub popover_html: Option<String>,
     /// Geographic region this group belongs to.
@@ -167,6 +169,8 @@ pub struct GroupFull {
     pub linkedin_url: Option<String>,
     /// Longitude for map display.
     pub longitude: Option<f64>,
+    /// URL to the group's Open Graph image used for link previews.
+    pub og_image_url: Option<String>,
     /// Payments recipient configuration for the group.
     pub payment_recipient: Option<GroupPaymentRecipient>,
     /// Gallery of photo URLs.

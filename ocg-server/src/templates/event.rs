@@ -7,7 +7,12 @@ use serde_with::skip_serializing_none;
 use uuid::Uuid;
 
 use crate::{
-    templates::{PageId, auth::User, filters, helpers::user_initials},
+    templates::{
+        PageId,
+        auth::User,
+        filters,
+        helpers::{self, user_initials},
+    },
     types::{
         event::{EventCfsLabel, EventFull, EventKind, EventSummary},
         site::SiteSettings,
@@ -21,6 +26,8 @@ use crate::{
 #[derive(Debug, Clone, Template)]
 #[template(path = "event/page.html")]
 pub(crate) struct Page {
+    /// Configured public base URL.
+    pub base_url: String,
     /// Detailed information about the event.
     pub event: EventFull,
     /// Identifier for the current page.
@@ -31,6 +38,49 @@ pub(crate) struct Page {
     pub site_settings: SiteSettings,
     /// Authenticated user information.
     pub user: User,
+}
+
+impl Page {
+    /// Returns the canonical public URL for the event page.
+    pub(crate) fn canonical_url(&self) -> String {
+        helpers::absolute_url(
+            &self.base_url,
+            &format!(
+                "/{}/group/{}/event/{}",
+                self.event.community.name,
+                self.event.group.public_slug(),
+                self.event.slug
+            ),
+        )
+    }
+
+    /// Returns the Open Graph image URL for the event page.
+    pub(crate) fn open_graph_image_url(&self) -> Option<String> {
+        self.event
+            .group
+            .og_image_url
+            .as_deref()
+            .or(self.event.community.og_image_url.as_deref())
+            .map(|image_url| helpers::open_graph_image_url(&self.base_url, image_url))
+    }
+
+    /// Returns the preview description for the event page.
+    pub(crate) fn preview_description(&self) -> String {
+        format!(
+            "{} in {} community. Open Community Groups, where Open Source communities thrive.",
+            self.event.group.name, self.event.community.display_name
+        )
+    }
+
+    /// Returns the preview title for the event page.
+    pub(crate) fn preview_title(&self) -> String {
+        if let Some(starts_at) = self.event.starts_at {
+            let starts_at = starts_at.with_timezone(&self.event.timezone);
+            format!("{} - {}", self.event.name, starts_at.format("%B %-d"))
+        } else {
+            self.event.name.clone()
+        }
+    }
 }
 
 /// Event check-in page template.
@@ -107,4 +157,67 @@ pub(crate) struct SessionProposal {
     /// Proposal last update time.
     #[serde(default, with = "chrono::serde::ts_seconds_option")]
     pub updated_at: Option<DateTime<Utc>>,
+}
+
+#[cfg(test)]
+mod tests {
+    use chrono::{DateTime, TimeZone, Utc};
+    use chrono_tz::{America::Los_Angeles, Tz};
+
+    use crate::types::{community::CommunitySummary, group::GroupSummary};
+
+    use super::*;
+
+    #[test]
+    fn test_preview_title_uses_event_date_in_event_timezone() {
+        let page = sample_page(
+            Some(Utc.with_ymd_and_hms(2030, 3, 6, 7, 30, 0).unwrap()),
+            Los_Angeles,
+        );
+
+        assert_eq!(page.preview_title(), "Test Event - March 5");
+    }
+
+    #[test]
+    fn test_preview_title_without_start_date_uses_event_name() {
+        let page = sample_page(None, chrono_tz::UTC);
+
+        assert_eq!(page.preview_title(), "Test Event");
+    }
+
+    #[test]
+    fn test_preview_description_uses_group_and_community_names() {
+        let page = sample_page(None, chrono_tz::UTC);
+
+        assert_eq!(
+            page.preview_description(),
+            "Test Group in Test Community community. Open Community Groups, where Open Source communities thrive."
+        );
+    }
+
+    // Helpers.
+
+    fn sample_page(starts_at: Option<DateTime<Utc>>, timezone: Tz) -> Page {
+        Page {
+            base_url: "https://example.test".to_string(),
+            event: EventFull {
+                community: CommunitySummary {
+                    display_name: "Test Community".to_string(),
+                    ..Default::default()
+                },
+                group: GroupSummary {
+                    name: "Test Group".to_string(),
+                    ..Default::default()
+                },
+                name: "Test Event".to_string(),
+                starts_at,
+                timezone,
+                ..Default::default()
+            },
+            page_id: PageId::Event,
+            path: "/test-community/group/test-group/event/test-event".to_string(),
+            site_settings: SiteSettings::default(),
+            user: User::default(),
+        }
+    }
 }

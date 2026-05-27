@@ -1,7 +1,35 @@
 {% extends "common/base.html" -%}
+{% import "macros/meta.html" as meta -%}
 {% import "macros/search.html" as search -%}
 {% import "macros/social.html" as social -%}
 {% import "macros/ui.html" as ui -%}
+
+{% block head_title -%}
+  <title>{{ self.preview_title() |demoji }}</title>
+{% endblock head_title -%}
+
+{% block head_description -%}
+  <meta name="description"
+        content="{{ crate::templates::community::PREVIEW_DESCRIPTION }}">
+{% endblock head_description -%}
+
+{% block canonical_link -%}
+  <link rel="canonical" href="{{ self.canonical_url() }}">
+{% endblock canonical_link -%}
+
+{% block open_graph_meta -%}
+  {{ meta::open_graph(title = self.preview_title() ,
+  description = crate::templates::community::PREVIEW_DESCRIPTION,
+  url = self.canonical_url(),
+  image_url = self.open_graph_image_url(),
+  image_alt = &community.display_name) -}}
+{% endblock open_graph_meta -%}
+
+{% block twitter_meta -%}
+  {{ meta::twitter(title = self.preview_title() ,
+  description = crate::templates::community::PREVIEW_DESCRIPTION,
+  image_url = self.open_graph_image_url()) -}}
+{% endblock twitter_meta -%}
 
 {% block scripts -%}
   <script type="module" src="/static/js/common/breadcrumb-nav.js"></script>

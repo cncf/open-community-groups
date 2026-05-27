@@ -82,6 +82,9 @@ pub(crate) struct CommunityUpdate {
     /// Instructions for creating new groups.
     #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_DESCRIPTION))]
     pub new_group_details: Option<String>,
+    /// URL to the community's Open Graph image.
+    #[garde(custom(image_url_opt))]
+    pub og_image_url: Option<String>,
     /// Collection of photo URLs for community galleries or slideshows.
     #[garde(custom(image_url_vec))]
     pub photos_urls: Option<Vec<String>>,

@@ -15,6 +15,7 @@ use uuid::Uuid;
 
 use crate::{
     activity_tracker::{Activity, DynActivityTracker},
+    config::HttpServerConfig,
     db::DynDB,
     handlers::{error::HandlerError, request_matches_site, site::not_found, trim_public_gallery_images},
     router::PUBLIC_SHARED_CACHE_HEADERS,
@@ -31,6 +32,7 @@ mod tests;
 #[instrument(skip_all, err)]
 pub(crate) async fn page(
     State(db): State<DynDB>,
+    State(server_cfg): State<HttpServerConfig>,
     Path(community_name): Path<String>,
     uri: Uri,
 ) -> Result<impl IntoResponse, HandlerError> {
@@ -53,6 +55,7 @@ pub(crate) async fn page(
     )?;
     trim_public_gallery_images(&mut community.photos_urls);
     let template = community::Page {
+        base_url: server_cfg.base_url,
         community,
         page_id: PageId::Community,
         path: uri.path().to_string(),

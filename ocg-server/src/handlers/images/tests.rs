@@ -8,6 +8,7 @@ use axum::{
     routing::get,
 };
 use axum_login::tower_sessions::session;
+use image::{ImageFormat, RgbaImage};
 use serde_json::Value;
 use tower::ServiceExt;
 use uuid::Uuid;
@@ -161,6 +162,95 @@ async fn test_serve_allows_missing_referer_when_checks_disabled() {
 }
 
 #[tokio::test]
+async fn test_serve_open_graph_returns_not_found_for_unreferenced_image() {
+    // Setup mocks
+    let mut db = MockDB::new();
+    db.expect_is_open_graph_image()
+        .times(1)
+        .withf(|file_name| file_name == "foo.png")
+        .returning(|_| Ok(false));
+
+    let mut storage = MockImageStorage::new();
+    storage.expect_get().never();
+
+    // Setup router and send request without referer
+    let router = Router::new()
+        .route("/images/og/{file_name}", get(serve_open_graph))
+        .with_state(test_state_with_server_cfg(
+            Arc::new(db),
+            Arc::new(storage),
+            Arc::new(MockNotificationsManager::new()),
+            &sample_tracking_server_cfg(),
+        ));
+    let response = router
+        .oneshot(
+            Request::builder()
+                .uri("/images/og/foo.png")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    // Check response matches expectations
+    assert_eq!(response.status(), StatusCode::NOT_FOUND);
+}
+
+#[tokio::test]
+async fn test_serve_open_graph_returns_referenced_image_without_referer() {
+    // Setup mocks
+    let mut db = MockDB::new();
+    db.expect_is_open_graph_image()
+        .times(1)
+        .withf(|file_name| file_name == "foo.png")
+        .returning(|_| Ok(true));
+
+    let mut storage = MockImageStorage::new();
+    storage
+        .expect_get()
+        .times(1)
+        .withf(|file_name| file_name == "foo.png")
+        .returning(|_| {
+            let image = Image {
+                bytes: PNG_BYTES.to_vec(),
+                content_type: "image/png".to_string(),
+            };
+            Box::pin(async move { Ok(Some(image)) })
+        });
+
+    // Setup router and send request without referer
+    let router = Router::new()
+        .route("/images/og/{file_name}", get(serve_open_graph))
+        .with_state(test_state_with_server_cfg(
+            Arc::new(db),
+            Arc::new(storage),
+            Arc::new(MockNotificationsManager::new()),
+            &sample_tracking_server_cfg(),
+        ));
+    let response = router
+        .oneshot(
+            Request::builder()
+                .uri("/images/og/foo.png")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    // Check response matches expectations
+    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(
+        response
+            .headers()
+            .get(CACHE_CONTROL)
+            .and_then(|value| value.to_str().ok()),
+        Some(CACHE_CONTROL_IMMUTABLE)
+    );
+    let bytes = to_bytes(response.into_body(), usize::MAX).await.unwrap();
+    assert_eq!(bytes.as_ref(), PNG_BYTES);
+}
+
+#[tokio::test]
 async fn test_serve_rejects_mismatched_referer() {
     // Setup mocks
     let mut storage = MockImageStorage::new();
@@ -281,6 +371,77 @@ async fn test_serve_returns_not_found_for_missing_image() {
 
     // Check response matches expectations
     assert_eq!(response.status(), StatusCode::NOT_FOUND);
+}
+
+#[tokio::test]
+async fn test_upload_accepts_exact_open_graph_dimensions() {
+    // Setup identifiers and data structures
+    let png_bytes = open_graph_png_bytes();
+    let expected_hash = compute_hash(&png_bytes);
+    let expected_file_name = format!("{expected_hash}.png");
+    let boundary = "X-BOUNDARY";
+    let body = build_multipart_body_with_target(boundary, "open_graph", &png_bytes);
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+
+    // Setup image storage mock
+    let expected_file_name_for_mock = expected_file_name.clone();
+    let expected_bytes = png_bytes.clone();
+    let mut storage = MockImageStorage::new();
+    storage
+        .expect_save()
+        .times(1)
+        .withf(move |image| {
+            image.file_name == expected_file_name_for_mock
+                && image.content_type == "image/png"
+                && image.bytes == expected_bytes
+                && image.user_id == user_id
+        })
+        .returning(|_| Box::pin(async { Ok(()) }));
+
+    // Setup router and send request
+    let server_cfg = HttpServerConfig {
+        base_url: "https://example.test".to_string(),
+        ..HttpServerConfig::default()
+    };
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .with_image_storage(storage)
+        .with_server_cfg(server_cfg)
+        .build()
+        .await;
+    let request = Request::builder()
+        .method("POST")
+        .uri("/images")
+        .header(HOST, "example.test")
+        .header(COOKIE, format!("id={session_id}"))
+        .header(CONTENT_TYPE, format!("multipart/form-data; boundary={boundary}"))
+        .header(REFERER, "https://example.test/dashboard")
+        .body(Body::from(body))
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let status = response.status();
+    let bytes = to_bytes(response.into_body(), usize::MAX).await.unwrap();
+    let value: Value = serde_json::from_slice(&bytes).unwrap();
+
+    // Check response matches expectations
+    assert_eq!(status, StatusCode::CREATED);
+    assert_eq!(
+        value.get("url"),
+        Some(&Value::String(format!("/images/{expected_file_name}")))
+    );
 }
 
 #[tokio::test]
@@ -406,6 +567,62 @@ async fn test_upload_rejects_missing_referer() {
 }
 
 #[tokio::test]
+async fn test_upload_rejects_wrong_open_graph_dimensions() {
+    // Setup identifiers and data structures
+    let boundary = "X-BOUNDARY";
+    let body = build_multipart_body_with_target(boundary, "open_graph", PNG_BYTES);
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+
+    // Setup image storage mock
+    let mut storage = MockImageStorage::new();
+    storage.expect_save().never();
+
+    // Setup router and send request
+    let server_cfg = HttpServerConfig {
+        base_url: "https://example.test".to_string(),
+        ..HttpServerConfig::default()
+    };
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .with_image_storage(storage)
+        .with_server_cfg(server_cfg)
+        .build()
+        .await;
+    let request = Request::builder()
+        .method("POST")
+        .uri("/images")
+        .header(HOST, "example.test")
+        .header(COOKIE, format!("id={session_id}"))
+        .header(CONTENT_TYPE, format!("multipart/form-data; boundary={boundary}"))
+        .header(REFERER, "https://example.test/dashboard")
+        .body(Body::from(body))
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let status = response.status();
+    let bytes = to_bytes(response.into_body(), usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(
+        std::str::from_utf8(bytes.as_ref()).unwrap(),
+        "image dimensions 1x1 do not match required 1200x630"
+    );
+}
+
+#[tokio::test]
 async fn test_upload_stores_image_and_returns_url() {
     // Setup identifiers and data structures
     let expected_hash = compute_hash(PNG_BYTES);
@@ -487,7 +704,21 @@ fn test_validate_image_dimensions_rejects_wrong_dimensions() {
 // Helpers
 
 fn build_multipart_body(boundary: &str, bytes: &[u8]) -> Vec<u8> {
+    build_multipart_body_with_target_opt(boundary, None, bytes)
+}
+
+fn build_multipart_body_with_target(boundary: &str, target: &str, bytes: &[u8]) -> Vec<u8> {
+    build_multipart_body_with_target_opt(boundary, Some(target), bytes)
+}
+
+fn build_multipart_body_with_target_opt(boundary: &str, target: Option<&str>, bytes: &[u8]) -> Vec<u8> {
     let mut body = Vec::new();
+    if let Some(target) = target {
+        body.extend_from_slice(
+            format!("--{boundary}\r\nContent-Disposition: form-data; name=\"target\"\r\n\r\n{target}\r\n")
+                .as_bytes(),
+        );
+    }
     body.extend_from_slice(
         format!(
             "--{boundary}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"example.png\"\r\nContent-Type: image/png\r\n\r\n"
@@ -497,4 +728,13 @@ fn build_multipart_body(boundary: &str, bytes: &[u8]) -> Vec<u8> {
     body.extend_from_slice(bytes);
     body.extend_from_slice(format!("\r\n--{boundary}--\r\n").as_bytes());
     body
+}
+
+fn open_graph_png_bytes() -> Vec<u8> {
+    let image = RgbaImage::new(OPEN_GRAPH_IMAGE_WIDTH, OPEN_GRAPH_IMAGE_HEIGHT);
+    let mut bytes = Vec::new();
+    image
+        .write_to(&mut std::io::Cursor::new(&mut bytes), ImageFormat::Png)
+        .unwrap();
+    bytes
 }

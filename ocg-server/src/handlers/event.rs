@@ -57,6 +57,7 @@ mod tests;
 #[instrument(skip_all)]
 pub(crate) async fn page(
     State(db): State<DynDB>,
+    State(server_cfg): State<HttpServerConfig>,
     Path((community_name, group_slug, event_slug)): Path<(String, String, String)>,
     uri: Uri,
 ) -> Result<impl IntoResponse, HandlerError> {
@@ -88,6 +89,7 @@ pub(crate) async fn page(
 
     // Prepare template
     let template = Page {
+        base_url: server_cfg.base_url,
         event,
         page_id: PageId::Event,
         path: uri.path().to_string(),

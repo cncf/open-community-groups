@@ -42,7 +42,9 @@ describe("image-field", () => {
 
     expect(values).to.deep.equal(["https://example.com/image.png"]);
     expect(element.value).to.equal("https://example.com/image.png");
-    expect(element.querySelector('input[name="banner_image"]').value).to.equal("https://example.com/image.png");
+    expect(element.querySelector('input[name="banner_image"]').value).to.equal(
+      "https://example.com/image.png",
+    );
   });
 
   it("clears the image value when remove is triggered", async () => {
@@ -54,5 +56,36 @@ describe("image-field", () => {
     await element.updateComplete;
 
     expect(element.value).to.equal("");
+  });
+
+  it("does not show the generic supported formats text for Open Graph images", async () => {
+    const element = await mountLitComponent("image-field", {
+      helpPrefixText: "Size required 1200 x 630 px. Format must be PNG, JPEG, or WebP.",
+      imageKind: "banner",
+      target: "open_graph",
+    });
+
+    const helpText = element.querySelector(".form-legend").textContent.trim();
+    const fileInput = element.querySelector('input[type="file"]');
+
+    expect(helpText).to.equal(
+      "Size required 1200 x 630 px. Format must be PNG, JPEG, or WebP. Maximum size: 1MB.",
+    );
+    expect(helpText).not.to.include("Supported formats");
+    expect(fileInput.accept).to.equal(".png,.jpg,.jpeg,.webp");
+  });
+
+  it("shows the generic supported formats text for banner images", async () => {
+    const element = await mountLitComponent("image-field", {
+      helpPrefixText: "Size required 2428 x 192 px.",
+      imageKind: "banner",
+      target: "banner",
+    });
+
+    const helpText = element.querySelector(".form-legend").textContent.trim();
+    const fileInput = element.querySelector('input[type="file"]');
+
+    expect(helpText).to.include("Supported formats: SVG, PNG, JPEG, GIF, WEBP and TIFF.");
+    expect(fileInput.accept).to.equal(".svg,.png,.jpg,.jpeg,.gif,.webp,.tif,.tiff");
   });
 });

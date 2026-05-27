@@ -803,6 +803,14 @@ mock! {
 
     #[async_trait]
     impl crate::db::images::DBImages for DB {
+        async fn get_image(
+            &self,
+            file_name: &str,
+        ) -> Result<Option<crate::services::images::Image>>;
+        async fn is_open_graph_image(
+            &self,
+            file_name: &str,
+        ) -> Result<bool>;
         async fn save_image(
             &self,
             user_id: Uuid,
@@ -810,10 +818,6 @@ mock! {
             data: &[u8],
             content_type: &str,
         ) -> Result<()>;
-        async fn get_image(
-            &self,
-            file_name: &str,
-        ) -> Result<Option<crate::services::images::Image>>;
     }
 
     #[async_trait]

@@ -196,6 +196,7 @@ pub(crate) fn sample_community_summary(community_id: Uuid) -> CommunitySummary {
         display_name: "Test".to_string(),
         logo_url: "/static/images/placeholder_cncf.png".to_string(),
         name: "test".to_string(),
+        og_image_url: None,
     }
 }
 
@@ -768,6 +769,7 @@ pub(crate) fn sample_group_summary(group_id: Uuid) -> GroupSummary {
         description_short: Some("An example summary for the sample group".to_string()),
         latitude: Some(37.0),
         longitude: Some(-122.0),
+        og_image_url: None,
         popover_html: None,
         region: Some(sample_group_region()),
         slug_pretty: None,
@@ -1095,6 +1097,7 @@ pub(crate) fn sample_user_communities(community_id: Uuid) -> Vec<CommunitySummar
         display_name: "Test Community".to_string(),
         logo_url: "https://example.com/logo.png".to_string(),
         name: "test-community".to_string(),
+        og_image_url: None,
     }]
 }
 
@@ -1111,6 +1114,7 @@ pub(crate) fn sample_user_groups_by_community(
             display_name: "Test Community".to_string(),
             logo_url: "https://example.com/logo.png".to_string(),
             name: "test-community".to_string(),
+            og_image_url: None,
         },
         groups: vec![sample_group_minimal(group_id)],
     }]

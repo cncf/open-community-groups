@@ -35,11 +35,12 @@ insert into community (
     display_name,
     description,
     logo_url,
+    og_image_url,
     banner_mobile_url,
     banner_url
 ) values
-    (:'community1ID', 'cloud-native-seattle', 'Cloud Native Seattle', 'A vibrant community for cloud native technologies and practices in Seattle', 'https://example.com/logo.png', 'https://example.com/banner_mobile.png', 'https://example.com/banner.png'),
-    (:'community2ID', 'devops-nyc', 'DevOps NYC', 'DevOps practitioners in New York City', 'https://example.com/logo2.png', 'https://example.com/banner_mobile2.png', 'https://example.com/banner2.png');
+    (:'community1ID', 'cloud-native-seattle', 'Cloud Native Seattle', 'A vibrant community for cloud native technologies and practices in Seattle', 'https://example.com/logo.png', 'https://example.com/community-og.png', 'https://example.com/banner_mobile.png', 'https://example.com/banner.png'),
+    (:'community2ID', 'devops-nyc', 'DevOps NYC', 'DevOps practitioners in New York City', 'https://example.com/logo2.png', 'https://example.com/community-og2.png', 'https://example.com/banner_mobile2.png', 'https://example.com/banner2.png');
 
 -- User
 insert into "user" (
@@ -128,7 +129,8 @@ select is(
                 "community_id": "00000000-0000-0000-0000-000000000001",
                 "display_name": "Cloud Native Seattle",
                 "logo_url": "https://example.com/logo.png",
-                "name": "cloud-native-seattle"
+                "name": "cloud-native-seattle",
+                "og_image_url": "https://example.com/community-og.png"
             },
             "groups": [
                 {
@@ -161,7 +163,8 @@ select is(
                 "community_id": "00000000-0000-0000-0000-000000000001",
                 "display_name": "Cloud Native Seattle",
                 "logo_url": "https://example.com/logo.png",
-                "name": "cloud-native-seattle"
+                "name": "cloud-native-seattle",
+                "og_image_url": "https://example.com/community-og.png"
             },
             "groups": [
                 {
@@ -200,7 +203,8 @@ select is(
                 "community_id": "00000000-0000-0000-0000-000000000001",
                 "display_name": "Cloud Native Seattle",
                 "logo_url": "https://example.com/logo.png",
-                "name": "cloud-native-seattle"
+                "name": "cloud-native-seattle",
+                "og_image_url": "https://example.com/community-og.png"
             },
             "groups": [
                 {
@@ -239,7 +243,8 @@ select is(
                 "community_id": "00000000-0000-0000-0000-000000000001",
                 "display_name": "Cloud Native Seattle",
                 "logo_url": "https://example.com/logo.png",
-                "name": "cloud-native-seattle"
+                "name": "cloud-native-seattle",
+                "og_image_url": "https://example.com/community-og.png"
             },
             "groups": [
                 {
@@ -258,7 +263,8 @@ select is(
                 "community_id": "00000000-0000-0000-0000-000000000002",
                 "display_name": "DevOps NYC",
                 "logo_url": "https://example.com/logo2.png",
-                "name": "devops-nyc"
+                "name": "devops-nyc",
+                "og_image_url": "https://example.com/community-og2.png"
             },
             "groups": [
                 {

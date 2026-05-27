@@ -244,6 +244,7 @@ pub(crate) async fn setup(
         .route("/explore/groups/search", get(site::explore::search_groups))
         .route("/favicon.ico", get(favicon))
         .route("/health-check", get(health_check))
+        .route("/images/og/{file_name}", get(images::serve_open_graph))
         .route("/images/{file_name}", get(images::serve))
         .route("/log-in", get(auth::log_in_page))
         .route("/stats", get(site::stats::page))

@@ -7,7 +7,12 @@ use askama::Template;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    templates::{PageId, auth::User, filters, helpers::user_initials},
+    templates::{
+        PageId,
+        auth::User,
+        filters,
+        helpers::{self, user_initials},
+    },
     types::{
         community::CommunityFull,
         event::{EventKind, EventSummary},
@@ -16,12 +21,17 @@ use crate::{
     },
 };
 
+/// Link preview description for community pages.
+pub(crate) const PREVIEW_DESCRIPTION: &str = "Open Community Groups, where Open Source communities thrive.";
+
 // Pages and sections templates.
 
 /// Template for the community page.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "community/page.html")]
 pub(crate) struct Page {
+    /// Configured public base URL.
+    pub base_url: String,
     /// Community information.
     pub community: CommunityFull,
     /// Identifier for the current page.
@@ -40,6 +50,26 @@ pub(crate) struct Page {
     pub upcoming_virtual_events: Vec<EventCard>,
     /// Authenticated user information.
     pub user: User,
+}
+
+impl Page {
+    /// Returns the canonical public URL for the community page.
+    pub(crate) fn canonical_url(&self) -> String {
+        helpers::absolute_url(&self.base_url, &format!("/{}", self.community.name))
+    }
+
+    /// Returns the Open Graph image URL for the community page.
+    pub(crate) fn open_graph_image_url(&self) -> Option<String> {
+        self.community
+            .og_image_url
+            .as_deref()
+            .map(|image_url| helpers::open_graph_image_url(&self.base_url, image_url))
+    }
+
+    /// Returns the preview title for the community page.
+    pub(crate) fn preview_title(&self) -> String {
+        format!("{} community", self.community.display_name)
+    }
 }
 
 /// Event card template for home page display.

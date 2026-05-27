@@ -1,0 +1,31 @@
+{# Open Graph meta tags -#}
+{% macro open_graph(title, description, url, image_url, image_alt) -%}
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="{{ title|demoji }}">
+  <meta property="og:url" content="{{ url }}">
+  <meta property="og:description" content="{{ description|demoji }}">
+  {% if let Some(og_image_url) = image_url -%}
+    <meta property="og:image" content="{{ og_image_url }}">
+    <meta property="og:image:width"
+          content="{{ crate::services::images::OPEN_GRAPH_IMAGE_WIDTH }}">
+    <meta property="og:image:height"
+          content="{{ crate::services::images::OPEN_GRAPH_IMAGE_HEIGHT }}">
+    <meta property="og:image:alt" content="{{ image_alt|demoji }}">
+  {% endif -%}
+{% endmacro open_graph -%}
+{# End Open Graph meta tags -#}
+
+{# Twitter meta tags -#}
+{% macro twitter(title, description, image_url) -%}
+  {% if image_url.is_some() -%}
+    <meta name="twitter:card" content="summary_large_image">
+  {% else -%}
+    <meta name="twitter:card" content="summary">
+  {% endif -%}
+  <meta name="twitter:title" content="{{ title|demoji }}">
+  <meta name="twitter:description" content="{{ description|demoji }}">
+  {% if let Some(og_image_url) = image_url -%}
+    <meta name="twitter:image" content="{{ og_image_url }}">
+  {% endif -%}
+{% endmacro twitter -%}
+{# End Twitter meta tags -#}
