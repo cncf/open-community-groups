@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(7);
+select plan(9);
 
 -- ============================================================================
 -- VARIABLES
@@ -12,6 +12,7 @@ select plan(7);
 \set communityID '00000000-0000-0000-0000-000000000001'
 \set eventCategoryID '00000000-0000-0000-0000-000000000011'
 \set eventID '00000000-0000-0000-0000-000000000021'
+\set eventManualOverCapacityID '90400000-0000-0000-0000-000000000044'
 \set eventQuestionsID '90400000-0000-0000-0000-000000000043'
 \set groupCategoryID '00000000-0000-0000-0000-000000000031'
 \set groupID '00000000-0000-0000-0000-000000000041'
@@ -105,6 +106,31 @@ insert into event (
     '2030-01-03 10:00:00+00'
 );
 
+-- Event over capacity because of a confirmed manual invitation
+insert into event (
+    event_id,
+    group_id,
+    name,
+    slug,
+    description,
+    timezone,
+    event_category_id,
+    event_kind_id,
+    capacity,
+    starts_at
+) values (
+    :'eventManualOverCapacityID',
+    :'groupID',
+    'Manual Over Capacity Event',
+    'manual-over-capacity-event',
+    'Event used for manual invitation capacity validation tests',
+    'UTC',
+    :'eventCategoryID',
+    'virtual',
+    2,
+    '2030-01-04 10:00:00+00'
+);
+
 -- Event attendees
 insert into event_attendee (event_id, user_id, status) values
     (:'eventID', :'user1ID', 'confirmed'),
@@ -114,6 +140,13 @@ insert into event_attendee (event_id, user_id, status) values
     (:'eventID', :'user5ID', 'invitation-rejected'),
     (:'eventQuestionsID', :'questionsSeatedUserID', 'confirmed'),
     (:'eventQuestionsID', :'questionsWaitlistUserID', 'registration-questions-pending');
+
+-- Over-capacity event attendees with one organizer-controlled manual seat
+insert into event_attendee (event_id, user_id, manually_invited, status) values
+    (:'eventManualOverCapacityID', :'user1ID', false, 'confirmed'),
+    (:'eventManualOverCapacityID', :'user2ID', false, 'confirmed'),
+    (:'eventManualOverCapacityID', :'user3ID', true, 'confirmed'),
+    (:'eventManualOverCapacityID', :'user4ID', true, 'invitation-pending');
 
 -- ============================================================================
 -- TESTS
@@ -194,6 +227,25 @@ select throws_ok(
     ),
     'event capacity (0) cannot be less than current number of attendees (2)',
     'Should count pending registration rows as attendees during capacity validation'
+);
+
+-- Should allow manual invitation seats above event capacity
+select lives_ok(
+    format(
+        $$select validate_event_capacity('{"capacity": 2}'::jsonb, null::jsonb, '%s'::uuid)$$,
+        :'eventManualOverCapacityID'
+    ),
+    'Should allow manual invitation seats above event capacity'
+);
+
+-- Should reject capacity below non-manual occupied seats
+select throws_ok(
+    format(
+        $$select validate_event_capacity('{"capacity": 1}'::jsonb, null::jsonb, '%s'::uuid)$$,
+        :'eventManualOverCapacityID'
+    ),
+    'event capacity (1) cannot be less than current number of attendees (3)',
+    'Should reject capacity below non-manual occupied seats'
 );
 
 -- ============================================================================
