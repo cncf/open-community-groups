@@ -27,7 +27,10 @@ use crate::{
     types::{
         event::{EventAttendanceInfo, EventAttendanceStatus, EventLeaveOutcome},
         payments::{EventPurchaseStatus, EventTicketCurrentPrice, EventTicketType, PreparedEventCheckout},
-        questionnaire::{QuestionnaireQuestion, QuestionnaireQuestionKind},
+        questionnaire::{
+            QuestionnaireAnswer, QuestionnaireAnswerValue, QuestionnaireAnswers, QuestionnaireQuestion,
+            QuestionnaireQuestionKind,
+        },
     },
 };
 
@@ -1715,6 +1718,7 @@ async fn test_request_refund_returns_internal_server_error_when_payments_manager
 }
 
 #[tokio::test]
+#[allow(clippy::too_many_lines)]
 async fn test_start_checkout_rejects_refund_requested_purchase() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
@@ -1722,9 +1726,25 @@ async fn test_start_checkout_rejects_refund_requested_purchase() {
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
+    let question_id = Uuid::new_v4();
     let ticket_type_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
     let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
+    let registration_answers = QuestionnaireAnswers {
+        answers: vec![QuestionnaireAnswer {
+            question_id,
+            value: QuestionnaireAnswerValue::One("Vegetarian".to_string()),
+        }],
+    };
+    let registration_answers_json = serde_json::to_value(&registration_answers).unwrap();
+    let registration_questions = vec![QuestionnaireQuestion {
+        id: question_id,
+        kind: QuestionnaireQuestionKind::FreeText,
+        prompt: "Dietary restrictions?".to_string(),
+        required: true,
+
+        options: vec![],
+    }];
     let mut event_summary = sample_event_summary(event_id, group_id);
     event_summary.payment_currency_code = Some("USD".to_string());
     event_summary.ticket_types = Some(vec![EventTicketType {
@@ -1770,13 +1790,19 @@ async fn test_start_checkout_rejects_refund_requested_purchase() {
     db.expect_get_event_registration_questions()
         .times(1)
         .withf(move |cid, eid| *cid == community_id && *eid == event_id)
-        .returning(|_, _| Ok(vec![]));
+        .returning(move |_, _| Ok(registration_questions.clone()));
+    let expected_registration_answers = registration_answers_json.clone();
     db.expect_prepare_event_checkout_purchase()
         .times(1)
         .withf(move |cid, input| {
             *cid == community_id
                 && input.event_id == event_id
                 && input.event_ticket_type_id == ticket_type_id
+                && input
+                    .registration_answers
+                    .as_ref()
+                    .and_then(|answers| serde_json::to_value(answers).ok())
+                    == Some(expected_registration_answers.clone())
                 && input.user_id == user_id
         })
         .returning(move |_, _| {
@@ -1799,12 +1825,17 @@ async fn test_start_checkout_rejects_refund_requested_purchase() {
 
     // Setup router and send request
     let router = TestRouterBuilder::new(db, nm).build().await;
+    let form_body = serde_urlencoded::to_string([
+        ("event_ticket_type_id", ticket_type_id.to_string()),
+        ("registration_answers", registration_answers_json.to_string()),
+    ])
+    .unwrap();
     let request = Request::builder()
         .method("POST")
         .uri(format!("/test-community/event/{event_id}/checkout"))
         .header(COOKIE, format!("id={session_id}"))
         .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .body(Body::from(format!("event_ticket_type_id={ticket_type_id}")))
+        .body(Body::from(form_body))
         .unwrap();
     let response = router.oneshot(request).await.unwrap();
     let (parts, body) = response.into_parts();
