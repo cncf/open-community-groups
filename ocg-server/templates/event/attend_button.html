@@ -145,7 +145,7 @@
            class="modal-overlay absolute w-full h-full bg-stone-950 opacity-[0.35]"></div>
       <div class="modal-panel p-4 max-w-2xl">
         <div class="modal-card rounded-lg">
-          <div class="flex items-center justify-between p-4 md:p-5 border-b border-stone-200 rounded-t">
+          <div class="flex items-start justify-between p-4 md:p-5 border-b border-stone-200 rounded-t">
             <div>
               <h3 id="registration-questions-title-{{ attendance_instance }}"
                   class="text-xl font-semibold text-stone-900">Registration questions</h3>
@@ -182,6 +182,7 @@
                         <input type="radio"
                                name="registration-question-{{ question.id }}"
                                value="{{ option.id }}"
+                               class="radio-primary"
                                data-registration-answer
                                {% if question.required %}required{% endif %}>
                         <span>{{ option.label }}</span>
@@ -192,7 +193,10 @@
                   <div class="space-y-2">
                     {% for option in question.options -%}
                       <label class="flex items-center gap-2 text-sm text-stone-700">
-                        <input type="checkbox" value="{{ option.id }}" data-registration-answer>
+                        <input type="checkbox"
+                               value="{{ option.id }}"
+                               class="checkbox-primary"
+                               data-registration-answer>
                         <span>{{ option.label }}</span>
                       </label>
                     {% endfor -%}

@@ -9,15 +9,37 @@ const QUESTION_TYPES = [
 
 const newId = () => crypto.randomUUID();
 
+/**
+ * Returns selectable options only for question types that support them.
+ * @param {object|null|undefined} question Registration question payload
+ * @returns {object[]} Question options, or an empty list for free text
+ */
+const normalizeQuestionOptions = (question) => {
+  if (question?.kind === "free-text" || !Array.isArray(question?.options)) {
+    return [];
+  }
+
+  return question.options;
+};
+
+/**
+ * Normalizes registration questions loaded from template attributes or JS.
+ * @param {*} questions Registration question payload
+ * @returns {object[]} Normalized question list
+ */
 const normalizeQuestions = (questions) =>
   (Array.isArray(questions) ? questions : []).map((question) => ({
     id: question?.id || newId(),
     kind: question?.kind || "free-text",
-    options: Array.isArray(question?.options) ? question.options : [],
+    options: normalizeQuestionOptions(question),
     prompt: question?.prompt || "",
     required: question?.required === true,
   }));
 
+/**
+ * Renders the event registration questions editor and its form payload fields.
+ * @extends LitWrapper
+ */
 class QuestionsEditor extends LitWrapper {
   static properties = {
     disabled: { type: Boolean, reflect: true },
@@ -41,9 +63,23 @@ class QuestionsEditor extends LitWrapper {
     super();
     this.disabled = false;
     this.name = "questions";
-    this.questions = [];
+    this._questions = [];
   }
 
+  get questions() {
+    return this._questions;
+  }
+
+  set questions(value) {
+    const previousQuestions = this._questions;
+    this._questions = normalizeQuestions(value);
+    this.requestUpdate("questions", previousQuestions);
+  }
+
+  /**
+   * Adds a blank free-text question.
+   * @returns {void}
+   */
   _addQuestion() {
     this.questions = [
       ...this.questions,
@@ -57,12 +93,23 @@ class QuestionsEditor extends LitWrapper {
     ];
   }
 
+  /**
+   * Adds a blank option to a selectable question.
+   * @param {number} questionIndex Question index
+   * @returns {void}
+   */
   _addOption(questionIndex) {
     this._updateQuestion(questionIndex, {
       options: [...this.questions[questionIndex].options, { id: newId(), label: "" }],
     });
   }
 
+  /**
+   * Removes one option from a selectable question.
+   * @param {number} questionIndex Question index
+   * @param {number} optionIndex Option index
+   * @returns {void}
+   */
   _removeOption(questionIndex, optionIndex) {
     const question = this.questions[questionIndex];
     this._updateQuestion(questionIndex, {
@@ -70,10 +117,22 @@ class QuestionsEditor extends LitWrapper {
     });
   }
 
+  /**
+   * Removes a question from the editor.
+   * @param {number} questionIndex Question index
+   * @returns {void}
+   */
   _removeQuestion(questionIndex) {
     this.questions = this.questions.filter((_, index) => index !== questionIndex);
   }
 
+  /**
+   * Updates the visible label for one selectable option.
+   * @param {number} questionIndex Question index
+   * @param {number} optionIndex Option index
+   * @param {string} label Option label
+   * @returns {void}
+   */
   _updateOption(questionIndex, optionIndex, label) {
     const question = this.questions[questionIndex];
     const options = question.options.map((option, index) =>
@@ -82,6 +141,12 @@ class QuestionsEditor extends LitWrapper {
     this._updateQuestion(questionIndex, { options });
   }
 
+  /**
+   * Updates a question while keeping options aligned with the selected type.
+   * @param {number} questionIndex Question index
+   * @param {object} changes Question changes
+   * @returns {void}
+   */
   _updateQuestion(questionIndex, changes) {
     this.questions = this.questions.map((question, index) => {
       if (index !== questionIndex) {
@@ -98,6 +163,10 @@ class QuestionsEditor extends LitWrapper {
     });
   }
 
+  /**
+   * Renders the complete editor.
+   * @returns {unknown} Lit template
+   */
   render() {
     return html`
       ${this._renderHiddenFields()}
@@ -115,6 +184,10 @@ class QuestionsEditor extends LitWrapper {
     `;
   }
 
+  /**
+   * Renders hidden inputs using the serde_qs payload structure.
+   * @returns {unknown} Lit template
+   */
   _renderHiddenFields() {
     return html`
       <input type="hidden" name="${this.name}_present" value="true" />
@@ -141,6 +214,12 @@ class QuestionsEditor extends LitWrapper {
     `;
   }
 
+  /**
+   * Renders a question card.
+   * @param {object} question Question state
+   * @param {number} questionIndex Question index
+   * @returns {unknown} Lit template
+   */
   _renderQuestion(question, questionIndex) {
     return html`
       <div class="rounded-md border border-stone-200 bg-white p-4">
@@ -197,6 +276,12 @@ class QuestionsEditor extends LitWrapper {
     `;
   }
 
+  /**
+   * Renders option controls for a selectable question.
+   * @param {object} question Question state
+   * @param {number} questionIndex Question index
+   * @returns {unknown} Lit template
+   */
   _renderOptions(question, questionIndex) {
     return html`
       <div class="mt-4 space-y-3 border-t border-stone-100 pt-4">
@@ -208,6 +293,7 @@ class QuestionsEditor extends LitWrapper {
                 type="text"
                 maxlength="120"
                 placeholder="Option"
+                aria-label=${`Option ${optionIndex + 1}`}
                 .value=${option.label}
                 ?disabled=${this.disabled}
                 @input=${(event) => this._updateOption(questionIndex, optionIndex, event.target.value)}

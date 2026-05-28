@@ -1,6 +1,13 @@
 import { handleHtmxResponse } from "/static/js/common/alerts.js";
 import { isSuccessfulXHRStatus, toggleModalVisibility } from "/static/js/common/common.js";
 
+const DATA_KEY = "userEventQuestionsReady";
+
+/**
+ * Finds the question modal targeted by an open trigger.
+ * @param {HTMLElement|null} trigger Modal open trigger
+ * @returns {HTMLElement|null} Target modal
+ */
 const getModal = (trigger) => {
   const modalId = trigger?.dataset?.userEventQuestionsModal;
   return modalId ? document.getElementById(modalId) : null;
@@ -141,7 +148,16 @@ const handleKeydown = (event) => {
   });
 };
 
-document.addEventListener("click", handleClick);
-document.addEventListener("submit", handleSubmit, true);
-document.addEventListener("htmx:afterRequest", handleAfterRequest);
-document.addEventListener("keydown", handleKeydown);
+const initializeUserEventQuestions = () => {
+  if (document.documentElement.dataset[DATA_KEY] === "true") {
+    return;
+  }
+
+  document.documentElement.dataset[DATA_KEY] = "true";
+  document.addEventListener("click", handleClick);
+  document.addEventListener("submit", handleSubmit, true);
+  document.addEventListener("htmx:afterRequest", handleAfterRequest);
+  document.addEventListener("keydown", handleKeydown);
+};
+
+initializeUserEventQuestions();

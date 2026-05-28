@@ -203,6 +203,7 @@ description = "Upcoming events where you'll participate.") -}}
                         <input type="radio"
                                name="question-{{ item.event.event_id }}-{{ question.id }}"
                                value="{{ option.id }}"
+                               class="radio-primary"
                                data-question-answer
                                {% if question.is_option_selected(item.registration_answers.as_ref(), option.id) %}checked{% endif %}
                                {% if question.required %}required{% endif %}>
@@ -216,6 +217,7 @@ description = "Upcoming events where you'll participate.") -}}
                       <label class="flex items-center gap-2 text-sm text-stone-700">
                         <input type="checkbox"
                                value="{{ option.id }}"
+                               class="checkbox-primary"
                                data-question-answer
                                {% if question.is_option_selected(item.registration_answers.as_ref(), option.id) %}checked{% endif %}>
                         <span>{{ option.label }}</span>
