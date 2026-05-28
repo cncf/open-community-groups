@@ -50,12 +50,15 @@ describe("alerts", () => {
 
     expect(env.current.swal.calls).to.have.length(1);
     expect(env.current.swal.calls[0]).to.include({
-      icon: "error",
       showConfirmButton: false,
       allowOutsideClick: false,
       allowEscapeKey: false,
+      position: "center",
+      backdrop: true,
     });
-    expect(env.current.swal.calls[0].html).to.include("A new version has been released.");
+    expect(env.current.swal.calls[0].iconHtml).to.include("icon-network");
+    expect(env.current.swal.calls[0].html).to.include("We're deploying an update right now.");
+    expect(env.current.swal.calls[0].html).to.include("This page will reload automatically");
     expect("timer" in env.current.swal.calls[0]).to.equal(false);
   });
 
