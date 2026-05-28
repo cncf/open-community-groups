@@ -141,7 +141,7 @@ describe("ocgFetch", () => {
     expect(reloads).to.equal(1);
   });
 
-  it("returns the response when deployment refresh is suppressed by the cooldown", async () => {
+  it("leaves callers pending when deployment refresh enters retry mode", async () => {
     Date.now = () => 1_000;
     let reloads = 0;
     setDeploymentReloadHandler(() => {
@@ -159,9 +159,11 @@ describe("ocgFetch", () => {
       status: 204,
     }));
 
-    const response = await ocgFetch("/test");
+    const settledState = await getSettledStateAfterCurrentTask(
+      ocgFetch("/test"),
+    );
 
-    expect(response.status).to.equal(204);
+    expect(settledState).to.equal("pending");
     expect(reloads).to.equal(1);
   });
 });
