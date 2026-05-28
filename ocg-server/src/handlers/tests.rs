@@ -5,7 +5,10 @@ use std::{
     sync::Arc,
 };
 
-use axum::Router;
+use axum::{
+    Router,
+    http::{HeaderValue, StatusCode, header::CONTENT_TYPE, response::Parts},
+};
 use axum_login::tower_sessions::session;
 use chrono::{TimeZone, Utc};
 use chrono_tz::UTC;
@@ -85,10 +88,13 @@ use crate::{
             GroupSponsor, GroupSummary,
         },
         payments::{EventPurchaseStatus, EventPurchaseSummary},
+        permissions::{CommunityPermission, GroupPermission},
         site::{SiteSettings, Theme},
         user::{User as TemplateUser, UserSummary},
     },
 };
+
+// Helpers.
 
 /// Helper to check the flash message stored in the session record.
 pub(crate) fn message_matches(record: &session::Record, expected_message: &str) -> bool {
@@ -102,6 +108,156 @@ pub(crate) fn message_matches(record: &session::Record, expected_message: &str) 
         .and_then(|message| message.as_str())
         == Some(expected_message)
 }
+
+// Expectations helpers.
+
+/// Assert an empty HTMX location response with the expected status.
+pub(crate) fn assert_empty_hx_location_response(
+    parts: &Parts,
+    bytes: &[u8],
+    status: StatusCode,
+    location: &'static str,
+) {
+    assert_empty_response(parts, bytes, status);
+    assert_eq!(
+        parts.headers.get("HX-Location"),
+        Some(&HeaderValue::from_static(location)),
+    );
+}
+
+/// Assert an empty HTMX redirect response with the expected status.
+pub(crate) fn assert_empty_hx_redirect_response(
+    parts: &Parts,
+    bytes: &[u8],
+    status: StatusCode,
+    redirect: &'static str,
+) {
+    assert_empty_response(parts, bytes, status);
+    assert_eq!(
+        parts.headers.get("HX-Redirect"),
+        Some(&HeaderValue::from_static(redirect)),
+    );
+}
+
+/// Assert an empty HTMX trigger response with the expected status.
+pub(crate) fn assert_empty_hx_trigger_response(
+    parts: &Parts,
+    bytes: &[u8],
+    status: StatusCode,
+    trigger: &'static str,
+) {
+    assert_empty_response(parts, bytes, status);
+    assert_eq!(
+        parts.headers.get("HX-Trigger"),
+        Some(&HeaderValue::from_static(trigger)),
+    );
+}
+
+/// Assert an empty response with the expected status.
+pub(crate) fn assert_empty_response(parts: &Parts, bytes: &[u8], status: StatusCode) {
+    assert_eq!(parts.status, status);
+    assert!(bytes.is_empty());
+}
+
+/// Assert an HTML response with the expected status.
+pub(crate) fn assert_html_response(parts: &Parts, bytes: &[u8], status: StatusCode) {
+    assert_eq!(parts.status, status);
+    assert_eq!(
+        parts.headers.get(CONTENT_TYPE),
+        Some(&HeaderValue::from_static("text/html; charset=utf-8")),
+    );
+    assert!(!bytes.is_empty());
+}
+
+/// Assert a non-empty response with the expected status.
+pub(crate) fn assert_non_empty_response(parts: &Parts, bytes: &[u8], status: StatusCode) {
+    assert_eq!(parts.status, status);
+    assert!(!bytes.is_empty());
+}
+
+/// Expect an authenticated session scoped to a community.
+pub(crate) fn expect_authenticated_community_session(
+    db: &mut MockDB,
+    session_id: session::Id,
+    user_id: Uuid,
+    community_id: Uuid,
+) {
+    let auth_hash = "hash".to_string();
+    let session_record =
+        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+}
+
+/// Expect an authenticated session scoped to a group.
+pub(crate) fn expect_authenticated_group_session(
+    db: &mut MockDB,
+    session_id: session::Id,
+    user_id: Uuid,
+    community_id: Uuid,
+    group_id: Uuid,
+) {
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(
+        session_id,
+        user_id,
+        &auth_hash,
+        Some(community_id),
+        Some(group_id),
+    );
+
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+}
+
+/// Expect a successful community permission check.
+pub(crate) fn expect_community_permission(
+    db: &mut MockDB,
+    community_id: Uuid,
+    user_id: Uuid,
+    expected_permission: CommunityPermission,
+) {
+    db.expect_user_has_community_permission()
+        .times(1)
+        .withf(move |cid, uid, permission| {
+            *cid == community_id && *uid == user_id && permission == expected_permission
+        })
+        .returning(|_, _, _| Ok(true));
+}
+
+/// Expect a successful group permission check.
+pub(crate) fn expect_group_permission(
+    db: &mut MockDB,
+    community_id: Uuid,
+    group_id: Uuid,
+    user_id: Uuid,
+    expected_permission: GroupPermission,
+) {
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == expected_permission
+        })
+        .returning(|_, _, _, _| Ok(true));
+}
+
+// Sample data helpers.
 
 /// Sample attendee used in dashboard group home tests.
 pub(crate) fn sample_attendee() -> Attendee {

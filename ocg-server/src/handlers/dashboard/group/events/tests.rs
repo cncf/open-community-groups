@@ -145,12 +145,7 @@ async fn test_add_page_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/html; charset=utf-8"),
-    );
-    assert!(!bytes.is_empty());
+    assert_html_response(&parts, &bytes, StatusCode::OK);
 }
 
 #[tokio::test]
@@ -237,11 +232,7 @@ async fn test_list_page_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/html; charset=utf-8"),
-    );
+    assert_html_response(&parts, &bytes, StatusCode::OK);
     let body = String::from_utf8(bytes.to_vec()).unwrap();
     assert!(body.contains("aria-label=\"Open event details: Sample Event\""));
     assert!(body.contains(">Test</span>"));
@@ -384,12 +375,7 @@ async fn test_update_page_hides_clear_ticketing_when_event_has_ticket_purchases(
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/html; charset=utf-8"),
-    );
-    assert!(!bytes.is_empty());
+    assert_html_response(&parts, &bytes, StatusCode::OK);
 }
 
 #[tokio::test]
@@ -518,12 +504,7 @@ async fn test_update_page_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/html; charset=utf-8"),
-    );
-    assert!(!bytes.is_empty());
+    assert_html_response(&parts, &bytes, StatusCode::OK);
 }
 
 #[tokio::test]
@@ -660,11 +641,7 @@ async fn test_preview_uses_submitted_payload_without_event_db_calls() {
     let body = String::from_utf8(bytes.to_vec()).unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/html; charset=utf-8"),
-    );
+    assert_html_response(&parts, &bytes, StatusCode::OK);
     assert!(body.contains("Event preview"));
     assert!(body.contains("Missing event name"));
     assert!(body.contains("Missing start date"));
@@ -748,12 +725,12 @@ async fn test_add_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::CREATED);
-    assert_eq!(
-        parts.headers.get("HX-Trigger").unwrap(),
-        &HeaderValue::from_static("refresh-group-dashboard-table"),
+    assert_empty_hx_trigger_response(
+        &parts,
+        &bytes,
+        StatusCode::CREATED,
+        "refresh-group-dashboard-table",
     );
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
@@ -842,12 +819,12 @@ async fn test_add_recurring_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::CREATED);
-    assert_eq!(
-        parts.headers.get("HX-Trigger").unwrap(),
-        &HeaderValue::from_static("refresh-group-dashboard-table"),
+    assert_empty_hx_trigger_response(
+        &parts,
+        &bytes,
+        StatusCode::CREATED,
+        "refresh-group-dashboard-table",
     );
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
@@ -1144,12 +1121,12 @@ async fn test_cancel_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert_eq!(
-        parts.headers.get("HX-Location").unwrap(),
-        &HeaderValue::from_static(r#"{"path":"/dashboard/group?tab=events", "target":"body"}"#,),
+    assert_empty_hx_location_response(
+        &parts,
+        &bytes,
+        StatusCode::NO_CONTENT,
+        r#"{"path":"/dashboard/group?tab=events", "target":"body"}"#,
     );
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
@@ -1217,12 +1194,12 @@ async fn test_cancel_test_event_no_notification() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert_eq!(
-        parts.headers.get("HX-Location").unwrap(),
-        &HeaderValue::from_static(r#"{"path":"/dashboard/group?tab=events", "target":"body"}"#,),
+    assert_empty_hx_location_response(
+        &parts,
+        &bytes,
+        StatusCode::NO_CONTENT,
+        r#"{"path":"/dashboard/group?tab=events", "target":"body"}"#,
     );
-    assert!(bytes.is_empty());
 }
 
 #[allow(clippy::too_many_lines)]
@@ -1314,12 +1291,12 @@ async fn test_cancel_series_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert_eq!(
-        parts.headers.get("HX-Location").unwrap(),
-        &HeaderValue::from_static(r#"{"path":"/dashboard/group?tab=events", "target":"body"}"#,),
+    assert_empty_hx_location_response(
+        &parts,
+        &bytes,
+        StatusCode::NO_CONTENT,
+        r#"{"path":"/dashboard/group?tab=events", "target":"body"}"#,
     );
-    assert!(bytes.is_empty());
 }
 
 #[allow(clippy::too_many_lines)]
@@ -1590,12 +1567,12 @@ async fn test_publish_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert_eq!(
-        parts.headers.get("HX-Trigger").unwrap(),
-        &HeaderValue::from_static("refresh-group-dashboard-table"),
+    assert_empty_hx_trigger_response(
+        &parts,
+        &bytes,
+        StatusCode::NO_CONTENT,
+        "refresh-group-dashboard-table",
     );
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
@@ -1666,12 +1643,12 @@ async fn test_publish_test_event_no_notification() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert_eq!(
-        parts.headers.get("HX-Trigger").unwrap(),
-        &HeaderValue::from_static("refresh-group-dashboard-table"),
+    assert_empty_hx_trigger_response(
+        &parts,
+        &bytes,
+        StatusCode::NO_CONTENT,
+        "refresh-group-dashboard-table",
     );
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
@@ -1765,12 +1742,12 @@ async fn test_publish_series_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert_eq!(
-        parts.headers.get("HX-Trigger").unwrap(),
-        &HeaderValue::from_static("refresh-group-dashboard-table"),
+    assert_empty_hx_trigger_response(
+        &parts,
+        &bytes,
+        StatusCode::NO_CONTENT,
+        "refresh-group-dashboard-table",
     );
-    assert!(bytes.is_empty());
 }
 
 #[allow(clippy::too_many_lines)]
@@ -1988,12 +1965,12 @@ async fn test_publish_already_published_no_notification() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert_eq!(
-        parts.headers.get("HX-Trigger").unwrap(),
-        &HeaderValue::from_static("refresh-group-dashboard-table"),
+    assert_empty_hx_trigger_response(
+        &parts,
+        &bytes,
+        StatusCode::NO_CONTENT,
+        "refresh-group-dashboard-table",
     );
-    assert!(bytes.is_empty());
 }
 
 #[allow(clippy::too_many_lines)]
@@ -2103,12 +2080,12 @@ async fn test_publish_speakers_only() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert_eq!(
-        parts.headers.get("HX-Trigger").unwrap(),
-        &HeaderValue::from_static("refresh-group-dashboard-table"),
+    assert_empty_hx_trigger_response(
+        &parts,
+        &bytes,
+        StatusCode::NO_CONTENT,
+        "refresh-group-dashboard-table",
     );
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
@@ -2168,12 +2145,12 @@ async fn test_delete_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert_eq!(
-        parts.headers.get("HX-Trigger").unwrap(),
-        &HeaderValue::from_static("refresh-group-dashboard-table"),
+    assert_empty_hx_trigger_response(
+        &parts,
+        &bytes,
+        StatusCode::NO_CONTENT,
+        "refresh-group-dashboard-table",
     );
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
@@ -2245,12 +2222,12 @@ async fn test_delete_series_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert_eq!(
-        parts.headers.get("HX-Trigger").unwrap(),
-        &HeaderValue::from_static("refresh-group-dashboard-table"),
+    assert_empty_hx_trigger_response(
+        &parts,
+        &bytes,
+        StatusCode::NO_CONTENT,
+        "refresh-group-dashboard-table",
     );
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
@@ -2310,12 +2287,12 @@ async fn test_unpublish_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert_eq!(
-        parts.headers.get("HX-Trigger").unwrap(),
-        &HeaderValue::from_static("refresh-group-dashboard-table"),
+    assert_empty_hx_trigger_response(
+        &parts,
+        &bytes,
+        StatusCode::NO_CONTENT,
+        "refresh-group-dashboard-table",
     );
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
@@ -2387,12 +2364,12 @@ async fn test_unpublish_series_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert_eq!(
-        parts.headers.get("HX-Trigger").unwrap(),
-        &HeaderValue::from_static("refresh-group-dashboard-table"),
+    assert_empty_hx_trigger_response(
+        &parts,
+        &bytes,
+        StatusCode::NO_CONTENT,
+        "refresh-group-dashboard-table",
     );
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
@@ -2521,12 +2498,12 @@ async fn test_update_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert_eq!(
-        parts.headers.get("HX-Trigger").unwrap(),
-        &HeaderValue::from_static("refresh-group-dashboard-table"),
+    assert_empty_hx_trigger_response(
+        &parts,
+        &bytes,
+        StatusCode::NO_CONTENT,
+        "refresh-group-dashboard-table",
     );
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
@@ -2827,12 +2804,12 @@ async fn test_update_promotes_waitlist_and_sends_reschedule_notification() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert_eq!(
-        parts.headers.get("HX-Trigger").unwrap(),
-        &HeaderValue::from_static("refresh-group-dashboard-table"),
+    assert_empty_hx_trigger_response(
+        &parts,
+        &bytes,
+        StatusCode::NO_CONTENT,
+        "refresh-group-dashboard-table",
     );
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
@@ -2932,12 +2909,12 @@ async fn test_update_promotion_notification_failure_is_ignored() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert_eq!(
-        parts.headers.get("HX-Trigger").unwrap(),
-        &HeaderValue::from_static("refresh-group-dashboard-table"),
+    assert_empty_hx_trigger_response(
+        &parts,
+        &bytes,
+        StatusCode::NO_CONTENT,
+        "refresh-group-dashboard-table",
     );
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
@@ -3027,12 +3004,12 @@ async fn test_update_promotion_notification_context_failure_is_ignored() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert_eq!(
-        parts.headers.get("HX-Trigger").unwrap(),
-        &HeaderValue::from_static("refresh-group-dashboard-table"),
+    assert_empty_hx_trigger_response(
+        &parts,
+        &bytes,
+        StatusCode::NO_CONTENT,
+        "refresh-group-dashboard-table",
     );
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
@@ -3123,12 +3100,12 @@ async fn test_update_no_notification_when_shift_too_small() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert_eq!(
-        parts.headers.get("HX-Trigger").unwrap(),
-        &HeaderValue::from_static("refresh-group-dashboard-table"),
+    assert_empty_hx_trigger_response(
+        &parts,
+        &bytes,
+        StatusCode::NO_CONTENT,
+        "refresh-group-dashboard-table",
     );
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
@@ -3223,12 +3200,12 @@ async fn test_update_no_notification_when_unpublished() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert_eq!(
-        parts.headers.get("HX-Trigger").unwrap(),
-        &HeaderValue::from_static("refresh-group-dashboard-table"),
+    assert_empty_hx_trigger_response(
+        &parts,
+        &bytes,
+        StatusCode::NO_CONTENT,
+        "refresh-group-dashboard-table",
     );
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
@@ -3314,10 +3291,10 @@ async fn test_update_past_event_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert_eq!(
-        parts.headers.get("HX-Trigger").unwrap(),
-        &HeaderValue::from_static("refresh-group-dashboard-table"),
+    assert_empty_hx_trigger_response(
+        &parts,
+        &bytes,
+        StatusCode::NO_CONTENT,
+        "refresh-group-dashboard-table",
     );
-    assert!(bytes.is_empty());
 }

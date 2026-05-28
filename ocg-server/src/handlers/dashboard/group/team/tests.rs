@@ -1,7 +1,7 @@
 use axum::{
     body::{Body, to_bytes},
     http::{
-        HeaderValue, Request, StatusCode,
+        Request, StatusCode,
         header::{CONTENT_TYPE, COOKIE},
     },
 };
@@ -100,12 +100,7 @@ async fn test_list_page_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/html; charset=utf-8"),
-    );
-    assert!(!bytes.is_empty());
+    assert_html_response(&parts, &bytes, StatusCode::OK);
     let body = String::from_utf8(bytes.to_vec()).unwrap();
     assert!(body.contains("At least one accepted admin is required."));
 }
@@ -186,12 +181,7 @@ async fn test_list_page_with_pagination_params() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/html; charset=utf-8"),
-    );
-    assert!(!bytes.is_empty());
+    assert_html_response(&parts, &bytes, StatusCode::OK);
     let body = String::from_utf8(bytes.to_vec()).unwrap();
     assert!(!body.contains("At least one accepted admin is required."));
 }
@@ -387,12 +377,12 @@ async fn test_add_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::CREATED);
-    assert_eq!(
-        parts.headers.get("HX-Trigger").unwrap(),
-        &HeaderValue::from_static("refresh-group-dashboard-table"),
+    assert_empty_hx_trigger_response(
+        &parts,
+        &bytes,
+        StatusCode::CREATED,
+        "refresh-group-dashboard-table",
     );
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
@@ -460,8 +450,7 @@ async fn test_add_forbidden_when_group_team_management_is_restricted() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::FORBIDDEN);
-    assert!(bytes.is_empty());
+    assert_empty_response(&parts, &bytes, StatusCode::FORBIDDEN);
 }
 
 #[tokio::test]
@@ -523,12 +512,12 @@ async fn test_delete_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert_eq!(
-        parts.headers.get("HX-Trigger").unwrap(),
-        &HeaderValue::from_static("refresh-group-dashboard-table"),
+    assert_empty_hx_trigger_response(
+        &parts,
+        &bytes,
+        StatusCode::NO_CONTENT,
+        "refresh-group-dashboard-table",
     );
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
@@ -599,12 +588,12 @@ async fn test_delete_current_user_with_inherited_read_stays_logged_in() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert_eq!(
-        parts.headers.get("HX-Trigger").unwrap(),
-        &HeaderValue::from_static("refresh-group-dashboard-table"),
+    assert_empty_hx_trigger_response(
+        &parts,
+        &bytes,
+        StatusCode::NO_CONTENT,
+        "refresh-group-dashboard-table",
     );
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
@@ -679,12 +668,7 @@ async fn test_delete_current_user_logs_out() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get("HX-Redirect").unwrap(),
-        &HeaderValue::from_static(LOG_IN_URL),
-    );
-    assert!(bytes.is_empty());
+    assert_empty_hx_redirect_response(&parts, &bytes, StatusCode::OK, LOG_IN_URL);
 }
 
 #[tokio::test]
@@ -750,8 +734,7 @@ async fn test_delete_forbidden_when_group_team_management_is_restricted() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::FORBIDDEN);
-    assert!(bytes.is_empty());
+    assert_empty_response(&parts, &bytes, StatusCode::FORBIDDEN);
 }
 
 #[tokio::test]
@@ -821,12 +804,12 @@ async fn test_update_role_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert_eq!(
-        parts.headers.get("HX-Trigger").unwrap(),
-        &HeaderValue::from_static("refresh-group-dashboard-table"),
+    assert_empty_hx_trigger_response(
+        &parts,
+        &bytes,
+        StatusCode::NO_CONTENT,
+        "refresh-group-dashboard-table",
     );
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
@@ -894,6 +877,5 @@ async fn test_update_role_forbidden_when_group_team_management_is_restricted() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::FORBIDDEN);
-    assert!(bytes.is_empty());
+    assert_empty_response(&parts, &bytes, StatusCode::FORBIDDEN);
 }

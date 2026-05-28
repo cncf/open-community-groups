@@ -119,14 +119,12 @@ async fn test_accept_invitation_request_returns_no_content_and_sends_welcome() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert_eq!(
-        parts.headers.get("HX-Trigger"),
-        Some(&HeaderValue::from_static(
-            "refresh-event-attendees, refresh-event-invitation-requests"
-        ))
+    assert_empty_hx_trigger_response(
+        &parts,
+        &bytes,
+        StatusCode::NO_CONTENT,
+        "refresh-event-attendees, refresh-event-invitation-requests",
     );
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
@@ -204,12 +202,12 @@ async fn test_approve_refund_request_returns_no_content_when_payments_manager_su
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert_eq!(
-        parts.headers.get("HX-Trigger"),
-        Some(&HeaderValue::from_static("refresh-event-attendees"))
+    assert_empty_hx_trigger_response(
+        &parts,
+        &bytes,
+        StatusCode::NO_CONTENT,
+        "refresh-event-attendees",
     );
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
@@ -287,8 +285,7 @@ async fn test_approve_refund_request_returns_internal_server_error_when_payments
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
-    assert!(bytes.is_empty());
+    assert_empty_response(&parts, &bytes, StatusCode::INTERNAL_SERVER_ERROR);
 }
 
 #[tokio::test]
@@ -410,12 +407,12 @@ async fn test_cancel_event_attendee_attendance_promotes_waitlist_and_enqueues_no
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert_eq!(
-        parts.headers.get("HX-Trigger"),
-        Some(&HeaderValue::from_static("refresh-event-attendees"))
+    assert_empty_hx_trigger_response(
+        &parts,
+        &bytes,
+        StatusCode::NO_CONTENT,
+        "refresh-event-attendees",
     );
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
@@ -480,12 +477,12 @@ async fn test_cancel_event_attendee_invitation_returns_no_content() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert_eq!(
-        parts.headers.get("HX-Trigger"),
-        Some(&HeaderValue::from_static("refresh-event-attendees"))
+    assert_empty_hx_trigger_response(
+        &parts,
+        &bytes,
+        StatusCode::NO_CONTENT,
+        "refresh-event-attendees",
     );
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
@@ -1073,14 +1070,12 @@ async fn test_invite_event_attendee_returns_created_and_sends_notification() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::CREATED);
-    assert_eq!(
-        parts.headers.get("HX-Trigger"),
-        Some(&HeaderValue::from_static(
-            "refresh-event-attendees, refresh-event-waitlist"
-        ))
+    assert_empty_hx_trigger_response(
+        &parts,
+        &bytes,
+        StatusCode::CREATED,
+        "refresh-event-attendees, refresh-event-waitlist",
     );
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
@@ -1158,14 +1153,12 @@ async fn test_invite_event_attendee_returns_created_when_notification_context_fa
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::CREATED);
-    assert_eq!(
-        parts.headers.get("HX-Trigger"),
-        Some(&HeaderValue::from_static(
-            "refresh-event-attendees, refresh-event-waitlist"
-        ))
+    assert_empty_hx_trigger_response(
+        &parts,
+        &bytes,
+        StatusCode::CREATED,
+        "refresh-event-attendees, refresh-event-waitlist",
     );
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
@@ -1262,14 +1255,12 @@ async fn test_invite_event_attendee_returns_created_when_notification_enqueue_fa
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::CREATED);
-    assert_eq!(
-        parts.headers.get("HX-Trigger"),
-        Some(&HeaderValue::from_static(
-            "refresh-event-attendees, refresh-event-waitlist"
-        ))
+    assert_empty_hx_trigger_response(
+        &parts,
+        &bytes,
+        StatusCode::CREATED,
+        "refresh-event-attendees, refresh-event-waitlist",
     );
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
@@ -1359,11 +1350,7 @@ async fn test_list_page_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/html; charset=utf-8"),
-    );
+    assert_html_response(&parts, &bytes, StatusCode::OK);
     let body = std::str::from_utf8(&bytes).unwrap();
     assert!(body.contains("name=\"subject\""));
     assert!(body.contains("value=\"Test Group: Sample Event\""));
@@ -1458,11 +1445,7 @@ async fn test_list_page_with_pagination_params() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/html; charset=utf-8"),
-    );
+    assert_html_response(&parts, &bytes, StatusCode::OK);
     let body = std::str::from_utf8(&bytes).unwrap();
     assert!(body.contains("No confirmed attendees with verified email addresses."));
 }
@@ -1537,8 +1520,7 @@ async fn test_manual_check_in_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert!(bytes.is_empty());
+    assert_empty_response(&parts, &bytes, StatusCode::NO_CONTENT);
 }
 
 #[tokio::test]
@@ -1607,8 +1589,7 @@ async fn test_list_page_db_error() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
-    assert!(bytes.is_empty());
+    assert_empty_response(&parts, &bytes, StatusCode::INTERNAL_SERVER_ERROR);
 }
 
 #[tokio::test]
@@ -1673,14 +1654,12 @@ async fn test_reject_invitation_request_returns_no_content() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert_eq!(
-        parts.headers.get("HX-Trigger"),
-        Some(&HeaderValue::from_static(
-            "refresh-event-invitation-requests"
-        ))
+    assert_empty_hx_trigger_response(
+        &parts,
+        &bytes,
+        StatusCode::NO_CONTENT,
+        "refresh-event-invitation-requests",
     );
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
@@ -1758,12 +1737,12 @@ async fn test_reject_refund_request_returns_no_content_when_payments_manager_suc
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert_eq!(
-        parts.headers.get("HX-Trigger"),
-        Some(&HeaderValue::from_static("refresh-event-attendees"))
+    assert_empty_hx_trigger_response(
+        &parts,
+        &bytes,
+        StatusCode::NO_CONTENT,
+        "refresh-event-attendees",
     );
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
@@ -1888,8 +1867,7 @@ async fn test_send_event_custom_notification_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert!(bytes.is_empty());
+    assert_empty_response(&parts, &bytes, StatusCode::NO_CONTENT);
 }
 
 #[tokio::test]

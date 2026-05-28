@@ -149,34 +149,17 @@ async fn test_add_page_success() {
     let community_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record =
-        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_community_permission()
-        .times(1)
-        .withf(move |cid, uid, permission| {
-            *cid == community_id && *uid == user_id && permission == CommunityPermission::Read
-        })
-        .returning(|_, _, _| Ok(true));
-    db.expect_user_has_community_permission()
-        .times(1)
-        .withf(move |cid, uid, permission| {
-            *cid == community_id
-                && *uid == user_id
-                && permission == CommunityPermission::TaxonomyWrite
-        })
-        .returning(|_, _, _| Ok(true));
+    expect_authenticated_community_session(&mut db, session_id, user_id, community_id);
+    expect_community_permission(&mut db, community_id, user_id, CommunityPermission::Read);
+    expect_community_permission(
+        &mut db,
+        community_id,
+        user_id,
+        CommunityPermission::TaxonomyWrite,
+    );
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
@@ -209,9 +192,6 @@ async fn test_add_success() {
     let community_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record =
-        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
     let form = EventCategoryInput {
         name: "Conference".to_string(),
     };
@@ -220,22 +200,13 @@ async fn test_add_success() {
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_community_permission()
-        .times(1)
-        .withf(move |cid, uid, permission| {
-            *cid == community_id
-                && *uid == user_id
-                && permission == CommunityPermission::TaxonomyWrite
-        })
-        .returning(|_, _, _| Ok(true));
+    expect_authenticated_community_session(&mut db, session_id, user_id, community_id);
+    expect_community_permission(
+        &mut db,
+        community_id,
+        user_id,
+        CommunityPermission::TaxonomyWrite,
+    );
     db.expect_add_event_category()
         .times(1)
         .withf(move |uid, cid, category| {
@@ -261,12 +232,12 @@ async fn test_add_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::CREATED);
-    assert_eq!(
-        parts.headers.get("HX-Trigger").unwrap(),
-        &HeaderValue::from_static("refresh-community-dashboard-table"),
+    assert_empty_hx_trigger_response(
+        &parts,
+        &bytes,
+        StatusCode::CREATED,
+        "refresh-community-dashboard-table",
     );
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
@@ -322,28 +293,16 @@ async fn test_delete_success() {
     let event_category_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record =
-        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_community_permission()
-        .times(1)
-        .withf(move |cid, uid, permission| {
-            *cid == community_id
-                && *uid == user_id
-                && permission == CommunityPermission::TaxonomyWrite
-        })
-        .returning(|_, _, _| Ok(true));
+    expect_authenticated_community_session(&mut db, session_id, user_id, community_id);
+    expect_community_permission(
+        &mut db,
+        community_id,
+        user_id,
+        CommunityPermission::TaxonomyWrite,
+    );
     db.expect_delete_event_category()
         .times(1)
         .withf(move |uid, cid, ecid| {
@@ -370,12 +329,12 @@ async fn test_delete_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert_eq!(
-        parts.headers.get("HX-Trigger").unwrap(),
-        &HeaderValue::from_static("refresh-community-dashboard-table"),
+    assert_empty_hx_trigger_response(
+        &parts,
+        &bytes,
+        StatusCode::NO_CONTENT,
+        "refresh-community-dashboard-table",
     );
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
@@ -426,35 +385,18 @@ async fn test_list_page_success() {
     let community_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record =
-        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
     let categories = vec![sample_event_category()];
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_community_permission()
-        .times(1)
-        .withf(move |cid, uid, permission| {
-            *cid == community_id && *uid == user_id && permission == CommunityPermission::Read
-        })
-        .returning(|_, _, _| Ok(true));
-    db.expect_user_has_community_permission()
-        .times(1)
-        .withf(move |cid, uid, permission| {
-            *cid == community_id
-                && *uid == user_id
-                && permission == CommunityPermission::TaxonomyWrite
-        })
-        .returning(|_, _, _| Ok(true));
+    expect_authenticated_community_session(&mut db, session_id, user_id, community_id);
+    expect_community_permission(&mut db, community_id, user_id, CommunityPermission::Read);
+    expect_community_permission(
+        &mut db,
+        community_id,
+        user_id,
+        CommunityPermission::TaxonomyWrite,
+    );
     db.expect_list_event_categories()
         .times(1)
         .withf(move |cid| *cid == community_id)
@@ -632,35 +574,18 @@ async fn test_update_page_not_found() {
     let event_category_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record =
-        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
     let categories = vec![sample_event_category()];
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_community_permission()
-        .times(1)
-        .withf(move |cid, uid, permission| {
-            *cid == community_id && *uid == user_id && permission == CommunityPermission::Read
-        })
-        .returning(|_, _, _| Ok(true));
-    db.expect_user_has_community_permission()
-        .times(1)
-        .withf(move |cid, uid, permission| {
-            *cid == community_id
-                && *uid == user_id
-                && permission == CommunityPermission::TaxonomyWrite
-        })
-        .returning(|_, _, _| Ok(true));
+    expect_authenticated_community_session(&mut db, session_id, user_id, community_id);
+    expect_community_permission(&mut db, community_id, user_id, CommunityPermission::Read);
+    expect_community_permission(
+        &mut db,
+        community_id,
+        user_id,
+        CommunityPermission::TaxonomyWrite,
+    );
     db.expect_list_event_categories()
         .times(1)
         .withf(move |cid| *cid == community_id)
@@ -696,37 +621,20 @@ async fn test_update_page_success() {
     let event_category_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record =
-        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
     let mut category = sample_event_category();
     category.event_category_id = event_category_id;
     let categories = vec![category];
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_community_permission()
-        .times(1)
-        .withf(move |cid, uid, permission| {
-            *cid == community_id && *uid == user_id && permission == CommunityPermission::Read
-        })
-        .returning(|_, _, _| Ok(true));
-    db.expect_user_has_community_permission()
-        .times(1)
-        .withf(move |cid, uid, permission| {
-            *cid == community_id
-                && *uid == user_id
-                && permission == CommunityPermission::TaxonomyWrite
-        })
-        .returning(|_, _, _| Ok(true));
+    expect_authenticated_community_session(&mut db, session_id, user_id, community_id);
+    expect_community_permission(&mut db, community_id, user_id, CommunityPermission::Read);
+    expect_community_permission(
+        &mut db,
+        community_id,
+        user_id,
+        CommunityPermission::TaxonomyWrite,
+    );
     db.expect_list_event_categories()
         .times(1)
         .withf(move |cid| *cid == community_id)
@@ -766,9 +674,6 @@ async fn test_update_success() {
     let event_category_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record =
-        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
     let form = EventCategoryInput {
         name: "Meetup".to_string(),
     };
@@ -777,22 +682,13 @@ async fn test_update_success() {
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_community_permission()
-        .times(1)
-        .withf(move |cid, uid, permission| {
-            *cid == community_id
-                && *uid == user_id
-                && permission == CommunityPermission::TaxonomyWrite
-        })
-        .returning(|_, _, _| Ok(true));
+    expect_authenticated_community_session(&mut db, session_id, user_id, community_id);
+    expect_community_permission(
+        &mut db,
+        community_id,
+        user_id,
+        CommunityPermission::TaxonomyWrite,
+    );
     db.expect_update_event_category()
         .times(1)
         .withf(move |uid, cid, ecid, category| {
@@ -823,46 +719,10 @@ async fn test_update_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert_eq!(
-        parts.headers.get("HX-Trigger").unwrap(),
-        &HeaderValue::from_static("refresh-community-dashboard-table"),
+    assert_empty_hx_trigger_response(
+        &parts,
+        &bytes,
+        StatusCode::NO_CONTENT,
+        "refresh-community-dashboard-table",
     );
-    assert!(bytes.is_empty());
-}
-
-// Helpers.
-
-fn expect_authenticated_community_session(
-    db: &mut MockDB,
-    session_id: session::Id,
-    user_id: Uuid,
-    community_id: Uuid,
-) {
-    let auth_hash = "hash".to_string();
-    let session_record =
-        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
-
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-}
-
-fn expect_community_permission(
-    db: &mut MockDB,
-    community_id: Uuid,
-    user_id: Uuid,
-    expected_permission: CommunityPermission,
-) {
-    db.expect_user_has_community_permission()
-        .times(1)
-        .withf(move |cid, uid, permission| {
-            *cid == community_id && *uid == user_id && permission == expected_permission
-        })
-        .returning(|_, _, _| Ok(true));
 }

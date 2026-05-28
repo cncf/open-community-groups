@@ -1,6 +1,6 @@
 use axum::{
     body::{Body, to_bytes},
-    http::{HeaderValue, Request, StatusCode, header::COOKIE},
+    http::{Request, StatusCode, header::COOKIE},
 };
 use axum_login::tower_sessions::session;
 use serde_json::json;
@@ -79,12 +79,7 @@ async fn test_select_community_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert_eq!(
-        parts.headers.get("HX-Trigger").unwrap(),
-        &HeaderValue::from_static("refresh-body"),
-    );
-    assert!(bytes.is_empty());
+    assert_empty_hx_trigger_response(&parts, &bytes, StatusCode::NO_CONTENT, "refresh-body");
 }
 
 #[tokio::test]
@@ -146,10 +141,5 @@ async fn test_select_community_without_groups() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert_eq!(
-        parts.headers.get("HX-Trigger").unwrap(),
-        &HeaderValue::from_static("refresh-body"),
-    );
-    assert!(bytes.is_empty());
+    assert_empty_hx_trigger_response(&parts, &bytes, StatusCode::NO_CONTENT, "refresh-body");
 }
