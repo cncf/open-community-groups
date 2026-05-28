@@ -4,6 +4,9 @@ export const REFRESH_HEADER = "X-OCG-Refresh";
 
 const COMMIT_SHA_META_SELECTOR = 'meta[name="ocg-commit-sha"]';
 const DEPLOYMENT_REFRESH_ALERT_STORAGE_KEY = "ocg.deploymentRefreshAlert";
+const DEPLOYMENT_LAST_AUTO_REFRESH_STORAGE_KEY = "ocg.deploymentLastAutoRefreshAt";
+// Match the public HTML cache window so stale pages do not refresh-loop after deploy.
+const DEPLOYMENT_AUTO_REFRESH_COOLDOWN_MS = 5 * 60 * 1000;
 
 let reloadRequested = false;
 let reloadHandler = () => window.location.reload();
@@ -52,10 +55,10 @@ export const consumePendingDeploymentRefreshAlert = () => {
 };
 
 /**
- * Reloads the page once when response headers indicate a deployment mismatch.
+ * Handles deployment refresh signals from response headers.
  * @param {XMLHttpRequest|Headers|object|null|undefined} headersSource Response headers source.
  * @param {Document} root Document used to read the loaded commit SHA.
- * @returns {boolean} Whether a reload is needed or already in progress.
+ * @returns {boolean} Whether a refresh signal was handled or a reload is pending.
  */
 export const reloadIfDeploymentChanged = (headersSource, root = document) => {
   if (reloadRequested) {
@@ -68,18 +71,26 @@ export const reloadIfDeploymentChanged = (headersSource, root = document) => {
     return false;
   }
 
+  if (wasDeploymentAutoRefreshRecent()) {
+    return true;
+  }
+
   requestDeploymentReload();
   return true;
 };
 
 /**
  * Resets deployment reload state for isolated unit tests.
+ * @param {{clearRefreshHistory?: boolean}} options Reset options.
  * @returns {void}
  */
-export const resetDeploymentReloadState = () => {
+export const resetDeploymentReloadState = ({ clearRefreshHistory = true } = {}) => {
   reloadRequested = false;
   reloadHandler = () => window.location.reload();
   sessionStorageRemoveItem(DEPLOYMENT_REFRESH_ALERT_STORAGE_KEY);
+  if (clearRefreshHistory) {
+    sessionStorageRemoveItem(DEPLOYMENT_LAST_AUTO_REFRESH_STORAGE_KEY);
+  }
 };
 
 /**
@@ -122,6 +133,19 @@ const isCommitShaMismatch = (responseCommitSha, loadedCommitSha) =>
   Boolean(responseCommitSha && loadedCommitSha && responseCommitSha !== loadedCommitSha);
 
 /**
+ * Returns whether an automatic deployment refresh happened within the cache window.
+ * @returns {boolean} Whether automatic refreshes should be suppressed.
+ */
+const wasDeploymentAutoRefreshRecent = () => {
+  const lastAutoRefreshAt = Number(sessionStorageGetItem(DEPLOYMENT_LAST_AUTO_REFRESH_STORAGE_KEY));
+  return (
+    Number.isFinite(lastAutoRefreshAt) &&
+    lastAutoRefreshAt > 0 &&
+    Date.now() - lastAutoRefreshAt < DEPLOYMENT_AUTO_REFRESH_COOLDOWN_MS
+  );
+};
+
+/**
  * Requests a full page reload once.
  * @returns {void}
  */
@@ -131,6 +155,7 @@ const requestDeploymentReload = () => {
   }
 
   reloadRequested = true;
+  sessionStorageSetItem(DEPLOYMENT_LAST_AUTO_REFRESH_STORAGE_KEY, Date.now().toString());
   sessionStorageSetItem(DEPLOYMENT_REFRESH_ALERT_STORAGE_KEY, "true");
   reloadHandler();
 };
