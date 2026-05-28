@@ -1,4 +1,8 @@
-import { addLoadedCommitShaHeader, reloadIfDeploymentChanged } from "/static/js/common/deployment-version.js";
+import {
+  addLoadedCommitShaHeader,
+  isDeploymentReloadRequested,
+  reloadIfDeploymentChanged,
+} from "/static/js/common/deployment-version.js";
 
 /**
  * Fetches a resource and follows server-provided browser redirects.
@@ -19,7 +23,10 @@ export const ocgFetch = async (input, init = {}) => {
     headers,
   });
   if (reloadIfDeploymentChanged(response.headers)) {
-    return waitForDeploymentReload();
+    if (isDeploymentReloadRequested()) {
+      return waitForDeploymentReload();
+    }
+    return response;
   }
 
   const redirectUrl = response.headers?.get?.("X-OCG-Redirect");

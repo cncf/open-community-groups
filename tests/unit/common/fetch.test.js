@@ -4,6 +4,7 @@ import { ocgFetch } from "/static/js/common/fetch.js";
 import {
   COMMIT_SHA_HEADER,
   REFRESH_HEADER,
+  reloadIfDeploymentChanged,
   resetDeploymentReloadState,
   setDeploymentReloadHandler,
 } from "/static/js/common/deployment-version.js";
@@ -25,6 +26,7 @@ const getSettledStateAfterCurrentTask = (promise) =>
   ]);
 
 describe("ocgFetch", () => {
+  const originalDateNow = Date.now;
   let fetchMock;
 
   beforeEach(() => {
@@ -33,6 +35,7 @@ describe("ocgFetch", () => {
   });
 
   afterEach(() => {
+    Date.now = originalDateNow;
     document.head.innerHTML = "";
     fetchMock.restore();
     resetDeploymentReloadState();
@@ -110,7 +113,9 @@ describe("ocgFetch", () => {
       status: 204,
     }));
 
-    const settledState = await getSettledStateAfterCurrentTask(ocgFetch("/test"));
+    const settledState = await getSettledStateAfterCurrentTask(
+      ocgFetch("/test"),
+    );
 
     expect(settledState).to.equal("pending");
     expect(reloads).to.equal(1);
@@ -128,7 +133,35 @@ describe("ocgFetch", () => {
       status: 200,
     }));
 
-    const settledState = await getSettledStateAfterCurrentTask(ocgFetch("/test"));
+    const settledState = await getSettledStateAfterCurrentTask(
+      ocgFetch("/test"),
+    );
+
+    expect(settledState).to.equal("pending");
+    expect(reloads).to.equal(1);
+  });
+
+  it("leaves callers pending when deployment refresh enters retry mode", async () => {
+    Date.now = () => 1_000;
+    let reloads = 0;
+    setDeploymentReloadHandler(() => {
+      reloads += 1;
+    });
+    reloadIfDeploymentChanged(new Headers({ [REFRESH_HEADER]: "true" }));
+    resetDeploymentReloadState({ clearRefreshHistory: false });
+    setDeploymentReloadHandler(() => {
+      reloads += 1;
+    });
+    Date.now = () => 1_000 + 4 * 60 * 1000;
+    fetchMock.setImpl(async () => ({
+      headers: new Headers({ [REFRESH_HEADER]: "true" }),
+      ok: true,
+      status: 204,
+    }));
+
+    const settledState = await getSettledStateAfterCurrentTask(
+      ocgFetch("/test"),
+    );
 
     expect(settledState).to.equal("pending");
     expect(reloads).to.equal(1);

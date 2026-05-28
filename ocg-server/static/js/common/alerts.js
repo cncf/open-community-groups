@@ -63,6 +63,48 @@ export const showErrorAlert = (message, withHtml = false, persist = false) => {
 };
 
 /**
+ * Displays the deployment refresh retry alert while cached HTML expires.
+ * @returns {void}
+ */
+export const showDeploymentRefreshRetryAlert = () => {
+  const commonOptions = getCommonAlertOptions();
+  const spinnerClass = [
+    "inline-block",
+    "size-6",
+    "rounded-full",
+    "border-2",
+    "border-stone-300",
+    "border-t-primary-500",
+    "animate-spin",
+  ].join(" ");
+  const message = `<div class="flex flex-col items-center gap-6 text-center">
+    <p class="text-lg font-semibold text-stone-900">We're deploying an update right now.</p>
+    <p>This page will reload automatically as soon as it's ready. Thanks for your patience.</p>
+    <div class="flex items-center justify-center">
+      <span class="${spinnerClass}"></span>
+    </div>
+  </div>`;
+  const alertOptions = {
+    ...commonOptions,
+    html: message,
+    iconHtml: `<span class="svg-icon size-16 bg-primary-500 icon-network" aria-hidden="true"></span>`,
+    showConfirmButton: false,
+    allowOutsideClick: false,
+    allowEscapeKey: false,
+    customClass: {
+      ...commonOptions.customClass,
+      icon: "border-0!",
+    },
+    position: "center",
+    backdrop: true,
+  };
+
+  if (globalThis.Swal?.fire) {
+    Swal.fire(alertOptions);
+  }
+};
+
+/**
  * Displays a server error with a warning box when available (e.g., 422 errors).
  * @param {string} baseMessage - Fallback human message.
  * @param {string} serverError - Raw server response text (optional).

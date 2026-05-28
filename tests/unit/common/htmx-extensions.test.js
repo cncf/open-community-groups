@@ -23,7 +23,10 @@ const setLoadedCommitSha = (commitSha) => {
 };
 
 describe("htmx extensions", () => {
+  const originalDateNow = Date.now;
+
   afterEach(() => {
+    Date.now = originalDateNow;
     document.head.innerHTML = "";
     resetDeploymentReloadState();
   });
@@ -36,7 +39,10 @@ describe("htmx extensions", () => {
 
     registerHtmxNoEmptyValuesExtensions(htmxMock);
 
-    expect(Array.from(extensions.keys())).to.deep.equal(["no-empty-vals", "no-empty-vals-keep-zero"]);
+    expect(Array.from(extensions.keys())).to.deep.equal([
+      "no-empty-vals",
+      "no-empty-vals-keep-zero",
+    ]);
   });
 
   it('drops empty strings and "0" for the default no-empty-vals extension', () => {
@@ -48,7 +54,9 @@ describe("htmx extensions", () => {
 
     extension.encodeParameters(null, parameters, null);
 
-    expect(formDataToEntries(parameters)).to.deep.equal([["name", "Spring meetup"]]);
+    expect(formDataToEntries(parameters)).to.deep.equal([
+      ["name", "Spring meetup"],
+    ]);
   });
 
   it('keeps "0" while still trimming and removing blank values for the keep-zero extension', () => {
@@ -117,7 +125,8 @@ describe("htmx extensions", () => {
         shouldSwap: false,
         xhr: {
           status: 404,
-          getResponseHeader: (name) => (name === "X-OCG-Not-Found" ? "true" : null),
+          getResponseHeader: (name) =>
+            name === "X-OCG-Not-Found" ? "true" : null,
         },
       },
     };
@@ -173,7 +182,8 @@ describe("htmx extensions", () => {
       cancelable: true,
       detail: {
         xhr: {
-          getResponseHeader: (name) => (name === REFRESH_HEADER ? "true" : null),
+          getResponseHeader: (name) =>
+            name === REFRESH_HEADER ? "true" : null,
         },
       },
     });
@@ -183,6 +193,46 @@ describe("htmx extensions", () => {
     expect(event.defaultPrevented).to.equal(true);
     expect(reloads).to.equal(1);
     expect(consumePendingDeploymentRefreshAlert()).to.equal(true);
+  });
+
+  it("owns htmx refresh headers without reloading during the refresh cooldown", () => {
+    Date.now = () => 1_000;
+    let reloads = 0;
+    setDeploymentReloadHandler(() => {
+      reloads += 1;
+    });
+
+    handleCommitShaBeforeOnLoad(
+      new CustomEvent("htmx:beforeOnLoad", {
+        cancelable: true,
+        detail: {
+          xhr: {
+            getResponseHeader: (name) =>
+              name === REFRESH_HEADER ? "true" : null,
+          },
+        },
+      }),
+    );
+    resetDeploymentReloadState({ clearRefreshHistory: false });
+    setDeploymentReloadHandler(() => {
+      reloads += 1;
+    });
+    Date.now = () => 1_000 + 4 * 60 * 1000;
+    const event = new CustomEvent("htmx:beforeOnLoad", {
+      cancelable: true,
+      detail: {
+        xhr: {
+          getResponseHeader: (name) =>
+            name === REFRESH_HEADER ? "true" : null,
+        },
+      },
+    });
+
+    handleCommitShaBeforeOnLoad(event);
+
+    expect(event.defaultPrevented).to.equal(true);
+    expect(reloads).to.equal(1);
+    expect(consumePendingDeploymentRefreshAlert()).to.equal(false);
   });
 
   it("cancels the swap and reloads when an htmx response comes from a newer commit", () => {
@@ -195,7 +245,8 @@ describe("htmx extensions", () => {
       detail: {
         shouldSwap: true,
         xhr: {
-          getResponseHeader: (name) => (name === COMMIT_SHA_HEADER ? "def456" : null),
+          getResponseHeader: (name) =>
+            name === COMMIT_SHA_HEADER ? "def456" : null,
         },
       },
     };
@@ -216,7 +267,8 @@ describe("htmx extensions", () => {
       detail: {
         shouldSwap: true,
         xhr: {
-          getResponseHeader: (name) => (name === COMMIT_SHA_HEADER ? "def456" : null),
+          getResponseHeader: (name) =>
+            name === COMMIT_SHA_HEADER ? "def456" : null,
         },
       },
     });
@@ -242,7 +294,8 @@ describe("htmx extensions", () => {
       detail: {
         shouldSwap: true,
         xhr: {
-          getResponseHeader: (name) => (name === COMMIT_SHA_HEADER ? "def456" : null),
+          getResponseHeader: (name) =>
+            name === COMMIT_SHA_HEADER ? "def456" : null,
         },
       },
     });
@@ -252,7 +305,8 @@ describe("htmx extensions", () => {
         shouldSwap: false,
         xhr: {
           status: 404,
-          getResponseHeader: (name) => (name === "X-OCG-Not-Found" ? "true" : null),
+          getResponseHeader: (name) =>
+            name === "X-OCG-Not-Found" ? "true" : null,
         },
       },
     };

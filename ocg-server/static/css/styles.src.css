@@ -94,11 +94,19 @@
   }
 
   .ocg-swal-popup {
-    @apply pb-10! pt-5! px-6! rounded-lg! max-w-[calc(100%-2rem)]! md:max-w-[560px]! shadow-lg!;
+    @apply py-8! px-6! rounded-lg! max-w-[calc(100%-2rem)]! md:max-w-[560px]! shadow-lg!;
+  }
+
+  .ocg-swal-popup > .swal2-icon {
+    @apply mt-0! mb-5!;
+  }
+
+  .ocg-swal-popup > .swal2-html-container {
+    @apply my-0!;
   }
 
   .ocg-swal-actions {
-    @apply w-full! px-0! gap-4! flex-wrap! justify-center!;
+    @apply w-full! mt-5! mb-0! px-0! gap-4! flex-wrap! justify-center!;
   }
 
   .ocg-swal-button {
@@ -690,6 +698,7 @@ input:placeholder-shown {
 .icon-megaphone { --icon-url: url('/static/images/icons/megaphone.svg'); }
 .icon-members { --icon-url: url('/static/images/icons/members.svg'); }
 .icon-meeting { --icon-url: url('/static/images/icons/meeting.svg'); }
+.icon-network { --icon-url: url('/static/images/icons/network.svg'); }
 .icon-next { --icon-url: url('/static/images/icons/next.svg'); }
 .icon-pencil { --icon-url: url('/static/images/icons/pencil.svg'); }
 .icon-pending-invitation { --icon-url: url('/static/images/icons/pending_invitation.svg'); }
