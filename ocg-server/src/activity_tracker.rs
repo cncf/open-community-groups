@@ -24,8 +24,9 @@ use uuid::Uuid;
 use crate::db::activity_tracker::DynDBActivityTracker;
 
 /// Format used to represent the date in the tracker.
-static DATE_FORMAT: LazyLock<Vec<FormatItem<'static>>> =
-    LazyLock::new(|| format_description::parse("[year]-[month]-[day]").expect("format to be valid"));
+static DATE_FORMAT: LazyLock<Vec<FormatItem<'static>>> = LazyLock::new(|| {
+    format_description::parse("[year]-[month]-[day]").expect("format to be valid")
+});
 
 /// How often activities will be written to the database.
 #[cfg(not(test))]
@@ -250,7 +251,9 @@ impl Batches {
 
     /// Returns whether there is no pending data.
     fn is_empty(&self) -> bool {
-        self.community_views.is_empty() && self.event_views.is_empty() && self.group_views.is_empty()
+        self.community_views.is_empty()
+            && self.event_views.is_empty()
+            && self.group_views.is_empty()
     }
 }
 
@@ -334,27 +337,39 @@ mod tests {
             .await
             .unwrap();
         tracker
-            .track(Activity::EventView { event_id: *EVENT1_ID })
+            .track(Activity::EventView {
+                event_id: *EVENT1_ID,
+            })
             .await
             .unwrap();
         tracker
-            .track(Activity::EventView { event_id: *EVENT1_ID })
+            .track(Activity::EventView {
+                event_id: *EVENT1_ID,
+            })
             .await
             .unwrap();
         tracker
-            .track(Activity::EventView { event_id: *EVENT2_ID })
+            .track(Activity::EventView {
+                event_id: *EVENT2_ID,
+            })
             .await
             .unwrap();
         tracker
-            .track(Activity::GroupView { group_id: *GROUP1_ID })
+            .track(Activity::GroupView {
+                group_id: *GROUP1_ID,
+            })
             .await
             .unwrap();
         tracker
-            .track(Activity::GroupView { group_id: *GROUP1_ID })
+            .track(Activity::GroupView {
+                group_id: *GROUP1_ID,
+            })
             .await
             .unwrap();
         tracker
-            .track(Activity::GroupView { group_id: *GROUP2_ID })
+            .track(Activity::GroupView {
+                group_id: *GROUP2_ID,
+            })
             .await
             .unwrap();
 
@@ -398,11 +413,15 @@ mod tests {
             .await
             .unwrap();
         tracker
-            .track(Activity::EventView { event_id: *EVENT1_ID })
+            .track(Activity::EventView {
+                event_id: *EVENT1_ID,
+            })
             .await
             .unwrap();
         tracker
-            .track(Activity::GroupView { group_id: *GROUP1_ID })
+            .track(Activity::GroupView {
+                group_id: *GROUP1_ID,
+            })
             .await
             .unwrap();
 
@@ -451,11 +470,15 @@ mod tests {
             .await
             .unwrap();
         activities_tx
-            .send(Activity::EventView { event_id: *EVENT1_ID })
+            .send(Activity::EventView {
+                event_id: *EVENT1_ID,
+            })
             .await
             .unwrap();
         activities_tx
-            .send(Activity::GroupView { group_id: *GROUP1_ID })
+            .send(Activity::GroupView {
+                group_id: *GROUP1_ID,
+            })
             .await
             .unwrap();
 

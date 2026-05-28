@@ -14,7 +14,9 @@ use crate::{
     db::{dashboard::user::SessionProposalCoSpeakerUser, mock::MockDB},
     handlers::tests::*,
     services::notifications::{MockNotificationsManager, NotificationKind},
-    templates::dashboard::{DASHBOARD_PAGINATION_LIMIT, user::session_proposals::SessionProposalsOutput},
+    templates::dashboard::{
+        DASHBOARD_PAGINATION_LIMIT, user::session_proposals::SessionProposalsOutput,
+    },
 };
 
 #[tokio::test]
@@ -52,7 +54,9 @@ async fn test_list_page_success() {
     db.expect_list_user_session_proposals()
         .times(1)
         .withf(move |uid, filters| {
-            *uid == user_id && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT) && filters.offset == Some(0)
+            *uid == user_id
+                && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
+                && filters.offset == Some(0)
         })
         .returning(move |_, _| Ok(output.clone()));
 
@@ -108,7 +112,9 @@ async fn test_list_page_db_error() {
     db.expect_list_user_session_proposals()
         .times(1)
         .withf(move |uid, filters| {
-            *uid == user_id && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT) && filters.offset == Some(0)
+            *uid == user_id
+                && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
+                && filters.offset == Some(0)
         })
         .returning(|_, _| Err(anyhow!("db error")));
 
@@ -225,7 +231,9 @@ async fn test_add_success() {
         .returning(|_, _| Ok(Uuid::new_v4()));
     db.expect_update_session()
         .times(1)
-        .withf(move |record| record.id == session_id && message_matches(record, "Session proposal added."))
+        .withf(move |record| {
+            record.id == session_id && message_matches(record, "Session proposal added.")
+        })
         .returning(|_| Ok(()));
 
     // Setup notifications manager mock
@@ -299,7 +307,9 @@ async fn test_add_success_with_co_speaker_notification() {
         .returning(|| Ok(sample_site_settings()));
     db.expect_update_session()
         .times(1)
-        .withf(move |record| record.id == session_id && message_matches(record, "Session proposal added."))
+        .withf(move |record| {
+            record.id == session_id && message_matches(record, "Session proposal added.")
+        })
         .returning(|_| Ok(()));
 
     // Setup notifications manager mock
@@ -420,7 +430,9 @@ async fn test_delete_success() {
         .returning(|_, _| Ok(()));
     db.expect_update_session()
         .times(1)
-        .withf(move |record| record.id == session_id && message_matches(record, "Session proposal deleted."))
+        .withf(move |record| {
+            record.id == session_id && message_matches(record, "Session proposal deleted.")
+        })
         .returning(|_| Ok(()));
 
     // Setup notifications manager mock
@@ -430,7 +442,9 @@ async fn test_delete_success() {
     let router = TestRouterBuilder::new(db, nm).build().await;
     let request = Request::builder()
         .method("DELETE")
-        .uri(format!("/dashboard/user/session-proposals/{session_proposal_id}"))
+        .uri(format!(
+            "/dashboard/user/session-proposals/{session_proposal_id}"
+        ))
         .header(COOKIE, format!("id={session_id}"))
         .body(Body::empty())
         .unwrap();
@@ -478,7 +492,9 @@ async fn test_delete_db_error() {
     let router = TestRouterBuilder::new(db, nm).build().await;
     let request = Request::builder()
         .method("DELETE")
-        .uri(format!("/dashboard/user/session-proposals/{session_proposal_id}"))
+        .uri(format!(
+            "/dashboard/user/session-proposals/{session_proposal_id}"
+        ))
         .header(COOKIE, format!("id={session_id}"))
         .body(Body::empty())
         .unwrap();
@@ -594,7 +610,9 @@ async fn test_update_success() {
         .returning(|_, _, _| Ok(()));
     db.expect_update_session()
         .times(1)
-        .withf(move |record| record.id == session_id && message_matches(record, "Session proposal updated."))
+        .withf(move |record| {
+            record.id == session_id && message_matches(record, "Session proposal updated.")
+        })
         .returning(|_| Ok(()));
 
     // Setup notifications manager mock
@@ -604,7 +622,9 @@ async fn test_update_success() {
     let router = TestRouterBuilder::new(db, nm).build().await;
     let request = Request::builder()
         .method("PUT")
-        .uri(format!("/dashboard/user/session-proposals/{session_proposal_id}"))
+        .uri(format!(
+            "/dashboard/user/session-proposals/{session_proposal_id}"
+        ))
         .header(COOKIE, format!("id={session_id}"))
         .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
         .body(Body::from(form_data))
@@ -677,7 +697,9 @@ async fn test_update_success_with_co_speaker_notification() {
         .returning(|| Ok(sample_site_settings()));
     db.expect_update_session()
         .times(1)
-        .withf(move |record| record.id == session_id && message_matches(record, "Session proposal updated."))
+        .withf(move |record| {
+            record.id == session_id && message_matches(record, "Session proposal updated.")
+        })
         .returning(|_| Ok(()));
 
     // Setup notifications manager mock
@@ -698,7 +720,9 @@ async fn test_update_success_with_co_speaker_notification() {
     let router = TestRouterBuilder::new(db, nm).build().await;
     let request = Request::builder()
         .method("PUT")
-        .uri(format!("/dashboard/user/session-proposals/{session_proposal_id}"))
+        .uri(format!(
+            "/dashboard/user/session-proposals/{session_proposal_id}"
+        ))
         .header(COOKIE, format!("id={session_id}"))
         .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
         .body(Body::from(form_data))
@@ -769,7 +793,9 @@ async fn test_update_db_error() {
     let router = TestRouterBuilder::new(db, nm).build().await;
     let request = Request::builder()
         .method("PUT")
-        .uri(format!("/dashboard/user/session-proposals/{session_proposal_id}"))
+        .uri(format!(
+            "/dashboard/user/session-proposals/{session_proposal_id}"
+        ))
         .header(COOKIE, format!("id={session_id}"))
         .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
         .body(Body::from(form_data))

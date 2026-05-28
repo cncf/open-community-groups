@@ -47,7 +47,10 @@ async fn test_add_page_success() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id && *gid == group_id && *uid == user_id && permission == GroupPermission::Read
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::Read
         })
         .returning(|_, _, _, _| Ok(true));
     db.expect_user_has_group_permission()
@@ -120,7 +123,10 @@ async fn test_list_page_success() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id && *gid == group_id && *uid == user_id && permission == GroupPermission::Read
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::Read
         })
         .returning(|_, _, _, _| Ok(true));
     db.expect_user_has_group_permission()
@@ -200,7 +206,10 @@ async fn test_list_page_with_pagination_params() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id && *gid == group_id && *uid == user_id && permission == GroupPermission::Read
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::Read
         })
         .returning(|_, _, _, _| Ok(true));
     db.expect_user_has_group_permission()
@@ -275,7 +284,10 @@ async fn test_update_page_success() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id && *gid == group_id && *uid == user_id && permission == GroupPermission::Read
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::Read
         })
         .returning(|_, _, _, _| Ok(true));
     db.expect_user_has_group_permission()
@@ -299,7 +311,9 @@ async fn test_update_page_success() {
     let router = TestRouterBuilder::new(db, nm).build().await;
     let request = Request::builder()
         .method("GET")
-        .uri(format!("/dashboard/group/sponsors/{group_sponsor_id}/update"))
+        .uri(format!(
+            "/dashboard/group/sponsors/{group_sponsor_id}/update"
+        ))
         .header(COOKIE, format!("id={session_id}"))
         .body(Body::empty())
         .unwrap();
@@ -439,7 +453,9 @@ async fn test_delete_success() {
     let router = TestRouterBuilder::new(db, nm).build().await;
     let request = Request::builder()
         .method("DELETE")
-        .uri(format!("/dashboard/group/sponsors/{group_sponsor_id}/delete"))
+        .uri(format!(
+            "/dashboard/group/sponsors/{group_sponsor_id}/delete"
+        ))
         .header(COOKIE, format!("id={session_id}"))
         .body(Body::empty())
         .unwrap();
@@ -512,7 +528,9 @@ async fn test_update_success() {
     let router = TestRouterBuilder::new(db, nm).build().await;
     let request = Request::builder()
         .method("PUT")
-        .uri(format!("/dashboard/group/sponsors/{group_sponsor_id}/update"))
+        .uri(format!(
+            "/dashboard/group/sponsors/{group_sponsor_id}/update"
+        ))
         .header(COOKIE, format!("id={session_id}"))
         .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
         .body(Body::from(body))
@@ -571,7 +589,10 @@ async fn test_update_featured_success() {
     db.expect_update_group_sponsor_featured()
         .times(1)
         .withf(move |actor_user_id, id, sponsor_id, featured| {
-            *actor_user_id == user_id && *id == group_id && *sponsor_id == group_sponsor_id && !*featured
+            *actor_user_id == user_id
+                && *id == group_id
+                && *sponsor_id == group_sponsor_id
+                && !*featured
         })
         .returning(move |_, _, _, _| Ok(()));
 
@@ -582,7 +603,9 @@ async fn test_update_featured_success() {
     let router = TestRouterBuilder::new(db, nm).build().await;
     let request = Request::builder()
         .method("PUT")
-        .uri(format!("/dashboard/group/sponsors/{group_sponsor_id}/featured"))
+        .uri(format!(
+            "/dashboard/group/sponsors/{group_sponsor_id}/featured"
+        ))
         .header(COOKIE, format!("id={session_id}"))
         .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
         .body(Body::from(body))

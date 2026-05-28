@@ -8,11 +8,14 @@ use uuid::Uuid;
 use crate::{
     config::HttpServerConfig,
     db::{DynDB, payments::CompletedEventPurchase},
-    services::notifications::{DynNotificationsManager, NewNotification, NotificationKind},
-    templates::notifications::{
-        EventRefundApproved, EventRefundRejected, EventRefundRequested, EventWelcome,
+    services::notifications::{
+        DynNotificationsManager, NewNotification,
+        helpers::{
+            build_event_refund_approved_notification, build_event_refund_rejected_notification,
+            build_event_welcome_notification,
+        },
     },
-    util::{build_event_calendar_attachment, build_event_page_link, build_user_dashboard_events_link},
+    templates::notifications::EventRefundRequested,
 };
 
 #[cfg(test)]
@@ -115,26 +118,20 @@ impl PaymentsNotificationComposer {
         };
 
         // Build the attendee-facing welcome notification and calendar attachment
-        let base_url = self.base_url();
-        let dashboard_link = match self_service {
-            EventWelcomeSelfService::DashboardCancellation => {
-                Some(build_user_dashboard_events_link(base_url))
+        let include_dashboard_link =
+            matches!(self_service, EventWelcomeSelfService::DashboardCancellation);
+        let notification = match build_event_welcome_notification(
+            &event,
+            user_id,
+            &self.server_cfg,
+            &site_settings,
+            include_dashboard_link,
+        ) {
+            Ok(notification) => notification,
+            Err(err) => {
+                warn!(error = %err, "failed to build event welcome notification");
+                return;
             }
-            EventWelcomeSelfService::EventPageRefund => None,
-        };
-        let link = build_event_page_link(base_url, &event);
-        let notification = NewNotification {
-            attachments: vec![build_event_calendar_attachment(base_url, &event)],
-            kind: NotificationKind::EventWelcome,
-            recipients: vec![user_id],
-            template_data: serde_json::to_value(&EventWelcome {
-                event,
-                link,
-                theme: site_settings.theme,
-
-                dashboard_link,
-            })
-            .ok(),
         };
 
         self.enqueue_notification(&notification, "event welcome").await;
@@ -156,17 +153,17 @@ impl PaymentsNotificationComposer {
         };
 
         // Build the attendee-facing refund approval notification
-        let link = build_event_page_link(self.base_url(), &event);
-        let notification = NewNotification {
-            attachments: vec![],
-            kind: NotificationKind::EventRefundApproved,
-            recipients: vec![user_id],
-            template_data: serde_json::to_value(&EventRefundApproved {
-                event,
-                link,
-                theme: site_settings.theme,
-            })
-            .ok(),
+        let notification = match build_event_refund_approved_notification(
+            &event,
+            user_id,
+            &self.server_cfg,
+            &site_settings,
+        ) {
+            Ok(notification) => notification,
+            Err(err) => {
+                warn!(error = %err, "failed to build refund approval notification");
+                return;
+            }
         };
 
         self.enqueue_notification(&notification, "refund approval").await;
@@ -188,28 +185,20 @@ impl PaymentsNotificationComposer {
         };
 
         // Build the attendee-facing refund rejection notification
-        let link = build_event_page_link(self.base_url(), &event);
-        let notification = NewNotification {
-            attachments: vec![],
-            kind: NotificationKind::EventRefundRejected,
-            recipients: vec![user_id],
-            template_data: serde_json::to_value(&EventRefundRejected {
-                event,
-                link,
-                theme: site_settings.theme,
-            })
-            .ok(),
+        let notification = match build_event_refund_rejected_notification(
+            &event,
+            user_id,
+            &self.server_cfg,
+            &site_settings,
+        ) {
+            Ok(notification) => notification,
+            Err(err) => {
+                warn!(error = %err, "failed to build refund rejection notification");
+                return;
+            }
         };
 
         self.enqueue_notification(&notification, "refund rejection").await;
-    }
-
-    /// Returns the configured base URL without a trailing slash.
-    fn base_url(&self) -> &str {
-        self.server_cfg
-            .base_url
-            .strip_suffix('/')
-            .unwrap_or(&self.server_cfg.base_url)
     }
 
     /// Enqueues a notification and logs failures without interrupting the caller.

@@ -5,7 +5,9 @@ use axum::{
 };
 use tower::ServiceExt;
 
-use crate::{db::mock::MockDB, handlers::tests::*, services::notifications::MockNotificationsManager};
+use crate::{
+    db::mock::MockDB, handlers::tests::*, services::notifications::MockNotificationsManager,
+};
 
 use super::*;
 

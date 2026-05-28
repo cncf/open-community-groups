@@ -82,8 +82,10 @@ pub(crate) async fn add(
         .await?;
 
     // Enqueue invitation email notification
-    let (community, site_settings) =
-        tokio::try_join!(db.get_community_summary(community_id), db.get_site_settings())?;
+    let (community, site_settings) = tokio::try_join!(
+        db.get_community_summary(community_id),
+        db.get_site_settings()
+    )?;
     let template_data = CommunityTeamInvitation {
         community_name: community.display_name,
         link: format!(

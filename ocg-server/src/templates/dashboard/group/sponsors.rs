@@ -12,7 +12,9 @@ use crate::{
         group::GroupSponsor,
         pagination::{self, Pagination, ToRawQuery},
     },
-    validation::{MAX_LEN_ENTITY_NAME, MAX_LEN_L, MAX_PAGINATION_LIMIT, image_url, trimmed_non_empty},
+    validation::{
+        MAX_LEN_ENTITY_NAME, MAX_LEN_L, MAX_PAGINATION_LIMIT, image_url, trimmed_non_empty,
+    },
 };
 
 // Pages templates.

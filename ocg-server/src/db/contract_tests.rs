@@ -63,7 +63,10 @@ async fn db_contracts_claim_meeting_out_of_sync_deserializes() -> Result<()> {
     assert_eq!(meeting.provider, MeetingProvider::Zoom);
     assert!(meeting.sync_claimed_at.is_some());
     assert!(meeting.sync_state_hash.is_some());
-    assert_eq!(meeting.topic.as_deref(), Some("Contract Meeting Sync Event"));
+    assert_eq!(
+        meeting.topic.as_deref(),
+        Some("Contract Meeting Sync Event")
+    );
 
     Ok(())
 }
@@ -90,7 +93,10 @@ async fn db_contracts_get_event_full_deserializes() -> Result<()> {
 
     assert_eq!(event.event_id, event_id());
     assert!(event.has_registration_questions);
-    assert_eq!(event.luma_url.as_deref(), Some("https://luma.com/contract-event"));
+    assert_eq!(
+        event.luma_url.as_deref(),
+        Some("https://luma.com/contract-event")
+    );
     assert_eq!(event.registration_questions.len(), 1);
     assert_eq!(event.registration_questions[0].prompt, "Meal preference");
     assert!(event.registration_questions_locked);
@@ -210,7 +216,8 @@ async fn db_contracts_get_group_summary_deserializes() -> Result<()> {
 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
-async fn db_contracts_get_user_by_email_for_external_auth_pre_registered_deserializes() -> Result<()> {
+async fn db_contracts_get_user_by_email_for_external_auth_pre_registered_deserializes() -> Result<()>
+{
     let db = contract_tests_db()?;
     let user = db
         .get_user_by_email_for_external_auth("PRE-REGISTERED.CONTRACT@example.com")
@@ -411,7 +418,10 @@ async fn db_contracts_search_event_attendees_deserializes() -> Result<()> {
     assert_eq!(output.attendees[0].username, "contract-attendee");
     assert!(output.attendees[0].checked_in);
     assert!(output.attendees[0].registration_answers.is_some());
-    assert_eq!(output.attendees[1].email, "pre-registered.contract@example.com");
+    assert_eq!(
+        output.attendees[1].email,
+        "pre-registered.contract@example.com"
+    );
     assert!(output.attendees[1].manually_invited);
     assert_eq!(output.attendees[1].name, None);
     assert_eq!(output.attendees[1].status, "invitation-pending");
@@ -540,7 +550,10 @@ fn contract_tests_db() -> Result<PgDB> {
         .context("OCG_DB_PORT must be a valid port number")?;
 
     let mut cfg = DbConfig::new();
-    cfg.dbname = Some(env_or_default("OCG_DB_NAME_TESTS_CONTRACT", "ocg_tests_contract"));
+    cfg.dbname = Some(env_or_default(
+        "OCG_DB_NAME_TESTS_CONTRACT",
+        "ocg_tests_contract",
+    ));
     cfg.host = Some(env_or_default("OCG_DB_HOST", "localhost"));
     cfg.port = Some(port);
     cfg.user = Some(env_or_default("OCG_DB_USER", "postgres"));

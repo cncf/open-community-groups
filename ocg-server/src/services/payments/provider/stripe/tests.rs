@@ -22,7 +22,8 @@ fn build_checkout_session_form_fields_populates_checkout_metadata() {
     assert_eq!(
         form_fields.get("cancel_url"),
         Some(
-            &"https://ocg.example.org/community/group/pretty-group/event/event?payment=canceled".to_string()
+            &"https://ocg.example.org/community/group/pretty-group/event/event?payment=canceled"
+                .to_string()
         )
     );
     assert_eq!(
@@ -47,7 +48,10 @@ fn build_checkout_session_form_fields_populates_checkout_metadata() {
     );
     assert_eq!(
         form_fields.get("success_url"),
-        Some(&"https://ocg.example.org/community/group/pretty-group/event/event?payment=success".to_string())
+        Some(
+            &"https://ocg.example.org/community/group/pretty-group/event/event?payment=success"
+                .to_string()
+        )
     );
 }
 
@@ -99,7 +103,8 @@ fn verify_and_parse_webhook_accepts_any_matching_v1_signature() {
     let provider = sample_stripe_provider();
     let body = r#"{"type":"checkout.session.completed","data":{"object":{"id":"cs_test_123","payment_intent":"pi_test_123"}}}"#;
     let timestamp = Utc::now().timestamp();
-    let expected_signature = StripeProvider::compute_signature("whsec_test", &format!("{timestamp}.{body}"));
+    let expected_signature =
+        StripeProvider::compute_signature("whsec_test", &format!("{timestamp}.{body}"));
     let rotated_signature =
         StripeProvider::compute_signature("whsec_rotated", &format!("{timestamp}.{body}"));
     let signature_header = format!("t={timestamp},v1={expected_signature},v1={rotated_signature}");
@@ -123,8 +128,7 @@ fn verify_and_parse_webhook_accepts_any_matching_v1_signature() {
 fn verify_and_parse_webhook_maps_checkout_session_expired_events() {
     // Setup provider and webhook payload
     let provider = sample_stripe_provider();
-    let body =
-        r#"{"type":"checkout.session.expired","data":{"object":{"id":"cs_test_123","payment_intent":null}}}"#;
+    let body = r#"{"type":"checkout.session.expired","data":{"object":{"id":"cs_test_123","payment_intent":null}}}"#;
     let signature_header = sample_signature_header(body, Utc::now().timestamp());
 
     // Verify and parse the webhook payload
@@ -170,7 +174,10 @@ fn verify_and_parse_webhook_rejects_missing_object_data() {
         .expect_err("webhook without object data to be rejected");
 
     // Check the returned error matches expectations
-    assert_eq!(err.to_string(), "Stripe webhook payload is missing object data");
+    assert_eq!(
+        err.to_string(),
+        "Stripe webhook payload is missing object data"
+    );
 }
 
 #[test]
@@ -194,8 +201,10 @@ fn verify_and_parse_webhook_rejects_missing_timestamp() {
     // Setup provider and webhook payload
     let provider = sample_stripe_provider();
     let body = r#"{"type":"checkout.session.completed","data":{"object":{"id":"cs_test_123","payment_intent":"pi_test_123"}}}"#;
-    let signature =
-        StripeProvider::compute_signature("whsec_test", &format!("{}.{body}", Utc::now().timestamp()));
+    let signature = StripeProvider::compute_signature(
+        "whsec_test",
+        &format!("{}.{body}", Utc::now().timestamp()),
+    );
     let signature_header = format!("v1={signature}");
 
     // Verify and parse the webhook payload
@@ -211,9 +220,9 @@ fn verify_and_parse_webhook_rejects_missing_timestamp() {
 fn verify_and_parse_webhook_rejects_stale_signature() {
     // Setup provider and stale webhook payload
     let provider = sample_stripe_provider();
-    let body =
-        r#"{"type":"checkout.session.expired","data":{"object":{"id":"cs_test_123","payment_intent":null}}}"#;
-    let signature_header = sample_signature_header(body, (Utc::now() - TimeDelta::minutes(10)).timestamp());
+    let body = r#"{"type":"checkout.session.expired","data":{"object":{"id":"cs_test_123","payment_intent":null}}}"#;
+    let signature_header =
+        sample_signature_header(body, (Utc::now() - TimeDelta::minutes(10)).timestamp());
 
     // Verify and parse the webhook payload
     let err = provider

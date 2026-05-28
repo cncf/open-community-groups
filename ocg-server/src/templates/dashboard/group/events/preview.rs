@@ -69,7 +69,9 @@ impl Event {
                 starts_at.format("%b %-e, %Y %-I:%M %p"),
                 ends_at.format("%b %-e, %Y %-I:%M %p")
             ),
-            (Some(starts_at), None) => format!("Opens {}", starts_at.format("%b %-e, %Y %-I:%M %p")),
+            (Some(starts_at), None) => {
+                format!("Opens {}", starts_at.format("%b %-e, %Y %-I:%M %p"))
+            }
             (None, Some(ends_at)) => format!("Closes {}", ends_at.format("%b %-e, %Y %-I:%M %p")),
             (None, None) => "Missing CFS window".to_string(),
         }
@@ -537,7 +539,11 @@ fn build_location(input: &Input) -> Option<String> {
 }
 
 /// Builds the missing-fields summary shown in the preview.
-fn build_missing_fields(input: &Input, context: &Context, venue_label: Option<&str>) -> Vec<String> {
+fn build_missing_fields(
+    input: &Input,
+    context: &Context,
+    venue_label: Option<&str>,
+) -> Vec<String> {
     let mut missing = Vec::new();
 
     // Check core publishing and display fields
@@ -547,7 +553,12 @@ fn build_missing_fields(input: &Input, context: &Context, venue_label: Option<&s
     if first_text([context.kind_label.as_deref(), input.kind_id.as_deref()]).is_none() {
         missing.push("Event type".to_string());
     }
-    if first_text([context.category_label.as_deref(), input.category_id.as_deref()]).is_none() {
+    if first_text([
+        context.category_label.as_deref(),
+        input.category_id.as_deref(),
+    ])
+    .is_none()
+    {
         missing.push("Category".to_string());
     }
     if normalize_text(input.timezone.clone()).is_none() {
@@ -562,7 +573,9 @@ fn build_missing_fields(input: &Input, context: &Context, venue_label: Option<&s
 
     // Check venue details for in-person or hybrid events
     match normalize_text(input.kind_id.clone()).as_deref() {
-        Some("in-person" | "hybrid") if venue_label.is_none() => missing.push("Venue details".to_string()),
+        Some("in-person" | "hybrid") if venue_label.is_none() => {
+            missing.push("Venue details".to_string())
+        }
         _ => {}
     }
 
@@ -658,7 +671,11 @@ where
 /// Normalizes optional text by trimming whitespace and dropping empty strings.
 fn normalize_text<T: AsRef<str>>(value: Option<T>) -> Option<String> {
     let trimmed = value?.as_ref().trim().to_string();
-    if trimmed.is_empty() { None } else { Some(trimmed) }
+    if trimmed.is_empty() {
+        None
+    } else {
+        Some(trimmed)
+    }
 }
 
 /// Returns true when a submitted option-style value means enabled.
@@ -707,7 +724,11 @@ fn session_has_content(input: &InputSession, context: &ContextSession) -> bool {
 }
 
 /// Formats a time label for preview datetime strings.
-fn session_time_label(starts_at: Option<&str>, ends_at: Option<&str>, timezone: Option<&str>) -> String {
+fn session_time_label(
+    starts_at: Option<&str>,
+    ends_at: Option<&str>,
+    timezone: Option<&str>,
+) -> String {
     // Parse submitted session bounds and optional timezone
     let starts_at = parse_datetime(starts_at);
     let ends_at = parse_datetime(ends_at);

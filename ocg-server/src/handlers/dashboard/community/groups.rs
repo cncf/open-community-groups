@@ -70,7 +70,11 @@ pub(crate) async fn add_page(
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
     let (can_manage_groups, categories, regions) = tokio::try_join!(
-        db.user_has_community_permission(&community_id, &user.user_id, CommunityPermission::GroupsWrite),
+        db.user_has_community_permission(
+            &community_id,
+            &user.user_id,
+            CommunityPermission::GroupsWrite
+        ),
         db.list_group_categories(community_id),
         db.list_regions(community_id)
     )?;
@@ -93,7 +97,11 @@ pub(crate) async fn update_page(
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
     let (can_manage_groups, group, categories, regions) = tokio::try_join!(
-        db.user_has_community_permission(&community_id, &user.user_id, CommunityPermission::GroupsWrite),
+        db.user_has_community_permission(
+            &community_id,
+            &user.user_id,
+            CommunityPermission::GroupsWrite
+        ),
         db.get_group_full(community_id, group_id),
         db.list_group_categories(community_id),
         db.list_regions(community_id)
@@ -188,7 +196,9 @@ pub(crate) async fn delete(
             .iter()
             .find(|c| c.community.community_id == community_id);
 
-        if let Some(first_group_id) = community_groups.and_then(|c| c.groups.first()).map(|g| g.group_id) {
+        if let Some(first_group_id) =
+            community_groups.and_then(|c| c.groups.first()).map(|g| g.group_id)
+        {
             session.insert(SELECTED_GROUP_ID_KEY, first_group_id).await?;
         } else {
             session.remove::<Uuid>(SELECTED_GROUP_ID_KEY).await?;

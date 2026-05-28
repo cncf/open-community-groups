@@ -5,11 +5,14 @@ use async_trait::async_trait;
 use crate::{
     config::MeetingsZoomConfig,
     services::meetings::zoom::client::{
-        CreateMeetingRequest, UpdateMeetingRequest, ZOOM_MEETING_NOT_FOUND, ZoomClient, ZoomClientError,
+        CreateMeetingRequest, UpdateMeetingRequest, ZOOM_MEETING_NOT_FOUND, ZoomClient,
+        ZoomClientError,
     },
 };
 
-use super::{Meeting, MeetingEndResult, MeetingProviderError, MeetingProviderMeeting, MeetingsProvider};
+use super::{
+    Meeting, MeetingEndResult, MeetingProviderError, MeetingProviderMeeting, MeetingsProvider,
+};
 
 pub(crate) mod client;
 
@@ -34,10 +37,9 @@ impl MeetingsProvider for ZoomMeetingsProvider {
         &self,
         meeting: &Meeting,
     ) -> Result<MeetingProviderMeeting, MeetingProviderError> {
-        let host_user_id = meeting
-            .provider_host_user_id
-            .as_deref()
-            .ok_or_else(|| MeetingProviderError::Client("missing provider host user id".to_string()))?;
+        let host_user_id = meeting.provider_host_user_id.as_deref().ok_or_else(|| {
+            MeetingProviderError::Client("missing provider host user id".to_string())
+        })?;
         let req = CreateMeetingRequest::try_from(meeting).map_err(MeetingProviderError::from)?;
         let zoom_meeting = self
             .client
@@ -68,7 +70,10 @@ impl MeetingsProvider for ZoomMeetingsProvider {
     }
 
     /// End a meeting in Zoom after checking it is still running.
-    async fn end_meeting(&self, provider_meeting_id: &str) -> Result<MeetingEndResult, MeetingProviderError> {
+    async fn end_meeting(
+        &self,
+        provider_meeting_id: &str,
+    ) -> Result<MeetingEndResult, MeetingProviderError> {
         let meeting_id: i64 = provider_meeting_id
             .parse()
             .map_err(|e: std::num::ParseIntError| MeetingProviderError::Client(e.to_string()))?;

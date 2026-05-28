@@ -10,7 +10,9 @@ use crate::{
     db::PgDB,
     templates::event::SessionProposal,
     types::{
-        event::{EventAttendanceInfo, EventAttendanceStatus, EventFull, EventLeaveOutcome, EventSummary},
+        event::{
+            EventAttendanceInfo, EventAttendanceStatus, EventFull, EventLeaveOutcome, EventSummary,
+        },
         questionnaire::{QuestionnaireAnswers, QuestionnaireQuestion},
     },
 };
@@ -73,10 +75,18 @@ pub(crate) trait DBEvent {
     ) -> Result<Vec<QuestionnaireQuestion>>;
 
     /// Retrieves summary event information by its identifier.
-    async fn get_event_summary_by_id(&self, community_id: Uuid, event_id: Uuid) -> Result<EventSummary>;
+    async fn get_event_summary_by_id(
+        &self,
+        community_id: Uuid,
+        event_id: Uuid,
+    ) -> Result<EventSummary>;
 
     /// Checks if the check-in window is open for an event.
-    async fn is_event_check_in_window_open(&self, community_id: Uuid, event_id: Uuid) -> Result<bool>;
+    async fn is_event_check_in_window_open(
+        &self,
+        community_id: Uuid,
+        event_id: Uuid,
+    ) -> Result<bool>;
 
     /// Removes a user from an event and returns the leave outcome.
     async fn leave_event(
@@ -140,9 +150,9 @@ impl DBEvent for PgDB {
             )
             .await?;
 
-        status
-            .parse()
-            .map_err(|_| anyhow::anyhow!("unknown attendance status returned by database: {status}"))
+        status.parse().map_err(|_| {
+            anyhow::anyhow!("unknown attendance status returned by database: {status}")
+        })
     }
 
     /// [`DBEvent::check_in_event`]
@@ -217,7 +227,11 @@ impl DBEvent for PgDB {
 
     /// [`DBEvent::get_event_summary_by_id`]
     #[instrument(skip(self), err)]
-    async fn get_event_summary_by_id(&self, community_id: Uuid, event_id: Uuid) -> Result<EventSummary> {
+    async fn get_event_summary_by_id(
+        &self,
+        community_id: Uuid,
+        event_id: Uuid,
+    ) -> Result<EventSummary> {
         self.fetch_json_one(
             "select get_event_summary_by_id($1::uuid, $2::uuid)",
             &[&community_id, &event_id],
@@ -227,7 +241,11 @@ impl DBEvent for PgDB {
 
     /// [`DBEvent::is_event_check_in_window_open`]
     #[instrument(skip(self), err)]
-    async fn is_event_check_in_window_open(&self, community_id: Uuid, event_id: Uuid) -> Result<bool> {
+    async fn is_event_check_in_window_open(
+        &self,
+        community_id: Uuid,
+        event_id: Uuid,
+    ) -> Result<bool> {
         self.fetch_scalar_one(
             "select is_event_check_in_window_open($1::uuid, $2::uuid)",
             &[&community_id, &event_id],

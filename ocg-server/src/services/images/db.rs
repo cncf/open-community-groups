@@ -39,7 +39,12 @@ impl ImageStorage for DbImageStorage {
 
         // Save the image to the database
         self.db
-            .save_image(image.user_id, image.file_name, image.bytes, image.content_type)
+            .save_image(
+                image.user_id,
+                image.file_name,
+                image.bytes,
+                image.content_type,
+            )
             .await
     }
 }

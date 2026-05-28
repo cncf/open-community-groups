@@ -22,7 +22,8 @@ async fn test_update_page_success() {
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+    let session_record =
+        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
     let community = sample_community_full(community_id);
 
     // Setup database mock
@@ -44,7 +45,9 @@ async fn test_update_page_success() {
     db.expect_user_has_community_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == community_id && *uid == user_id && permission == CommunityPermission::SettingsWrite
+            *cid == community_id
+                && *uid == user_id
+                && permission == CommunityPermission::SettingsWrite
         })
         .returning(|_, _, _| Ok(true));
     db.expect_get_community_full()
@@ -84,7 +87,8 @@ async fn test_update_page_db_error() {
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+    let session_record =
+        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -105,7 +109,9 @@ async fn test_update_page_db_error() {
     db.expect_user_has_community_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == community_id && *uid == user_id && permission == CommunityPermission::SettingsWrite
+            *cid == community_id
+                && *uid == user_id
+                && permission == CommunityPermission::SettingsWrite
         })
         .returning(|_, _, _| Ok(true));
     db.expect_get_community_full()
@@ -141,7 +147,8 @@ async fn test_update_success() {
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+    let session_record =
+        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
     let update = sample_community_update();
     let expected_display_name = update.display_name.clone();
     let body = serde_qs::to_string(&update).unwrap();
@@ -159,7 +166,9 @@ async fn test_update_success() {
     db.expect_user_has_community_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == community_id && *uid == user_id && permission == CommunityPermission::SettingsWrite
+            *cid == community_id
+                && *uid == user_id
+                && permission == CommunityPermission::SettingsWrite
         })
         .returning(|_, _, _| Ok(true));
     db.expect_update_community()
@@ -202,7 +211,8 @@ async fn test_update_invalid_payload() {
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+    let session_record =
+        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -217,7 +227,9 @@ async fn test_update_invalid_payload() {
     db.expect_user_has_community_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == community_id && *uid == user_id && permission == CommunityPermission::SettingsWrite
+            *cid == community_id
+                && *uid == user_id
+                && permission == CommunityPermission::SettingsWrite
         })
         .returning(|_, _, _| Ok(true));
 
@@ -250,7 +262,8 @@ async fn test_update_db_error() {
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+    let session_record =
+        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
     let update = sample_community_update();
     let body = serde_qs::to_string(&update).unwrap();
 
@@ -267,7 +280,9 @@ async fn test_update_db_error() {
     db.expect_user_has_community_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == community_id && *uid == user_id && permission == CommunityPermission::SettingsWrite
+            *cid == community_id
+                && *uid == user_id
+                && permission == CommunityPermission::SettingsWrite
         })
         .returning(|_, _, _| Ok(true));
     db.expect_update_community()

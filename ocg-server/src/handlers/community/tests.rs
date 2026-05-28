@@ -43,11 +43,15 @@ async fn test_page_success() {
         .returning(|_| Ok(vec![]));
     db.expect_get_community_upcoming_events()
         .times(1)
-        .withf(move |id, kinds| *id == community_id && kinds == &vec![EventKind::InPerson, EventKind::Hybrid])
+        .withf(move |id, kinds| {
+            *id == community_id && kinds == &vec![EventKind::InPerson, EventKind::Hybrid]
+        })
         .returning(|_, _| Ok(vec![]));
     db.expect_get_community_upcoming_events()
         .times(1)
-        .withf(move |id, kinds| *id == community_id && kinds == &vec![EventKind::Virtual, EventKind::Hybrid])
+        .withf(move |id, kinds| {
+            *id == community_id && kinds == &vec![EventKind::Virtual, EventKind::Hybrid]
+        })
         .returning(|_, _| Ok(vec![]));
     db.expect_get_community_site_stats()
         .times(1)
@@ -87,18 +91,20 @@ async fn test_page_success() {
     let body = String::from_utf8(bytes.to_vec()).unwrap();
     assert!(body.contains("<title>Test Community community</title>"));
     assert!(body.contains(r#"<meta name="description""#));
-    assert!(body.contains(r#"content="Open Community Groups, where Open Source communities thrive.">"#));
+    assert!(
+        body.contains(r#"content="Open Community Groups, where Open Source communities thrive.">"#)
+    );
     assert!(body.contains(r#"<link rel="canonical" href="https://example.test/test-community">"#));
     assert!(body.contains(r#"<meta property="og:title" content="Test Community community">"#));
-    assert!(body.contains(r#"<meta property="og:url" content="https://example.test/test-community">"#));
+    assert!(
+        body.contains(r#"<meta property="og:url" content="https://example.test/test-community">"#)
+    );
     assert!(body.contains(
         r#"<meta property="og:description" content="Open Community Groups, where Open Source communities thrive.">"#
     ));
-    assert!(
-        body.contains(
-            r#"<meta property="og:image" content="https://example.test/images/og/community-og.png">"#
-        )
-    );
+    assert!(body.contains(
+        r#"<meta property="og:image" content="https://example.test/images/og/community-og.png">"#
+    ));
     assert!(body.contains(r#"<meta name="twitter:title" content="Test Community community">"#));
     assert!(body.contains(
         r#"<meta name="twitter:description" content="Open Community Groups, where Open Source communities thrive.">"#
@@ -170,11 +176,15 @@ async fn test_page_db_error() {
         .returning(|_| Ok(vec![]));
     db.expect_get_community_upcoming_events()
         .times(1)
-        .withf(move |id, kinds| *id == community_id && kinds == &vec![EventKind::InPerson, EventKind::Hybrid])
+        .withf(move |id, kinds| {
+            *id == community_id && kinds == &vec![EventKind::InPerson, EventKind::Hybrid]
+        })
         .returning(|_, _| Ok(vec![]));
     db.expect_get_community_upcoming_events()
         .times(1)
-        .withf(move |id, kinds| *id == community_id && kinds == &vec![EventKind::Virtual, EventKind::Hybrid])
+        .withf(move |id, kinds| {
+            *id == community_id && kinds == &vec![EventKind::Virtual, EventKind::Hybrid]
+        })
         .returning(|_, _| Ok(vec![]));
     db.expect_get_community_site_stats()
         .times(1)

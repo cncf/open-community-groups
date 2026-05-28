@@ -59,12 +59,16 @@ async fn test_list_page_success() {
         .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
     db.expect_user_has_group_permission()
         .times(1)
-        .withf(move |cid, gid, uid, _permission| *cid == community_id && *gid == group_id && *uid == user_id)
+        .withf(move |cid, gid, uid, _permission| {
+            *cid == community_id && *gid == group_id && *uid == user_id
+        })
         .returning(|_, _, _, _| Ok(true));
     db.expect_list_group_team_members()
         .times(1)
         .withf(move |id, filters| {
-            *id == group_id && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT) && filters.offset == Some(0)
+            *id == group_id
+                && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
+                && filters.offset == Some(0)
         })
         .returning(move |_, _| Ok(output.clone()));
     db.expect_list_group_roles()
@@ -143,11 +147,15 @@ async fn test_list_page_with_pagination_params() {
         .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
     db.expect_user_has_group_permission()
         .times(1)
-        .withf(move |cid, gid, uid, _permission| *cid == community_id && *gid == group_id && *uid == user_id)
+        .withf(move |cid, gid, uid, _permission| {
+            *cid == community_id && *gid == group_id && *uid == user_id
+        })
         .returning(|_, _, _, _| Ok(true));
     db.expect_list_group_team_members()
         .times(1)
-        .withf(move |id, filters| *id == group_id && filters.limit == Some(5) && filters.offset == Some(10))
+        .withf(move |id, filters| {
+            *id == group_id && filters.limit == Some(5) && filters.offset == Some(10)
+        })
         .returning(move |_, _| Ok(output.clone()));
     db.expect_list_group_roles()
         .times(1)
@@ -227,13 +235,18 @@ async fn test_list_page_shows_restricted_policy_tooltip_when_team_write_is_block
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id && *gid == group_id && *uid == user_id && permission == GroupPermission::Read
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::Read
         })
         .returning(|_, _, _, _| Ok(true));
     db.expect_list_group_team_members()
         .times(1)
         .withf(move |id, filters| {
-            *id == group_id && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT) && filters.offset == Some(0)
+            *id == group_id
+                && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
+                && filters.offset == Some(0)
         })
         .returning(move |_, _| Ok(output.clone()));
     db.expect_list_group_roles()
@@ -271,10 +284,12 @@ async fn test_list_page_shows_restricted_policy_tooltip_when_team_write_is_block
     // Check response matches expectations
     assert_eq!(parts.status, StatusCode::OK);
     let body = String::from_utf8(bytes.to_vec()).unwrap();
-    let expected_tooltip =
-        askama::filters::escape(GROUP_TEAM_MANAGEMENT_RESTRICTED_TOOLTIP, askama::filters::Html)
-            .unwrap()
-            .to_string();
+    let expected_tooltip = askama::filters::escape(
+        GROUP_TEAM_MANAGEMENT_RESTRICTED_TOOLTIP,
+        askama::filters::Html,
+    )
+    .unwrap()
+    .to_string();
     assert!(body.contains(&expected_tooltip));
 }
 
@@ -326,7 +341,10 @@ async fn test_add_success() {
     db.expect_add_group_team_member()
         .times(1)
         .withf(move |actor_user_id, id, uid, role| {
-            *actor_user_id == user_id && *id == group_id && *uid == new_member_id && role == &GroupRole::Admin
+            *actor_user_id == user_id
+                && *id == group_id
+                && *uid == new_member_id
+                && role == &GroupRole::Admin
         })
         .returning(move |_, _, _, _| Ok(()));
     db.expect_get_group_summary()
@@ -417,7 +435,10 @@ async fn test_add_forbidden_when_group_team_management_is_restricted() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id && *gid == group_id && *uid == user_id && permission == GroupPermission::Read
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::Read
         })
         .returning(move |_, _, _, _| Ok(true));
     db.expect_add_group_team_member().times(0);
@@ -547,12 +568,17 @@ async fn test_delete_current_user_with_inherited_read_stays_logged_in() {
         .returning(move |_, _, _, _| Ok(true));
     db.expect_delete_group_team_member()
         .times(1)
-        .withf(move |actor_user_id, id, uid| *actor_user_id == user_id && *id == group_id && *uid == user_id)
+        .withf(move |actor_user_id, id, uid| {
+            *actor_user_id == user_id && *id == group_id && *uid == user_id
+        })
         .returning(move |_, _, _| Ok(()));
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id && *gid == group_id && *uid == user_id && permission == GroupPermission::Read
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::Read
         })
         .returning(move |_, _, _, _| Ok(true));
 
@@ -618,12 +644,17 @@ async fn test_delete_current_user_logs_out() {
         .returning(move |_, _, _, _| Ok(true));
     db.expect_delete_group_team_member()
         .times(1)
-        .withf(move |actor_user_id, id, uid| *actor_user_id == user_id && *id == group_id && *uid == user_id)
+        .withf(move |actor_user_id, id, uid| {
+            *actor_user_id == user_id && *id == group_id && *uid == user_id
+        })
         .returning(move |_, _, _| Ok(()));
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id && *gid == group_id && *uid == user_id && permission == GroupPermission::Read
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::Read
         })
         .returning(move |_, _, _, _| Ok(false));
     db.expect_delete_session()
@@ -695,7 +726,10 @@ async fn test_delete_forbidden_when_group_team_management_is_restricted() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id && *gid == group_id && *uid == user_id && permission == GroupPermission::Read
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::Read
         })
         .returning(move |_, _, _, _| Ok(true));
     db.expect_delete_group_team_member().times(0);
@@ -763,7 +797,10 @@ async fn test_update_role_success() {
     db.expect_update_group_team_member_role()
         .times(1)
         .withf(move |actor_user_id, id, uid, role| {
-            *actor_user_id == user_id && *id == group_id && *uid == member_id && role == &GroupRole::Admin
+            *actor_user_id == user_id
+                && *id == group_id
+                && *uid == member_id
+                && role == &GroupRole::Admin
         })
         .returning(move |_, _, _, _| Ok(()));
 
@@ -832,7 +869,10 @@ async fn test_update_role_forbidden_when_group_team_management_is_restricted() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id && *gid == group_id && *uid == user_id && permission == GroupPermission::Read
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::Read
         })
         .returning(move |_, _, _, _| Ok(true));
     db.expect_update_group_team_member_role().times(0);

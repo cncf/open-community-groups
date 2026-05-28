@@ -29,7 +29,8 @@ async fn test_list_page_success() {
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+    let session_record =
+        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
     let members = vec![
         sample_community_team_member(true),
         sample_community_team_member(false),
@@ -113,7 +114,8 @@ async fn test_list_page_with_pagination_params() {
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+    let session_record =
+        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
     let members = vec![
         sample_community_team_member(true),
         sample_community_team_member(true),
@@ -195,7 +197,8 @@ async fn test_list_page_db_error() {
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+    let session_record =
+        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -251,7 +254,8 @@ async fn test_add_success() {
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+    let session_record =
+        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
     let community = sample_community_summary(community_id);
     let community_for_db = community.clone();
     let site_settings = sample_site_settings();
@@ -303,14 +307,13 @@ async fn test_add_success() {
             matches!(notification.kind, NotificationKind::CommunityTeamInvitation)
                 && notification.recipients == vec![new_member_id]
                 && notification.template_data.as_ref().is_some_and(|data| {
-                    serde_json::from_value::<CommunityTeamInvitationTemplate>(data.clone()).is_ok_and(
-                        |template| {
+                    serde_json::from_value::<CommunityTeamInvitationTemplate>(data.clone())
+                        .is_ok_and(|template| {
                             template.community_name == community.display_name
                                 && template.link == "/dashboard/user?tab=invitations"
                                 && template.theme.primary_color
                                     == site_settings_for_assertions.theme.primary_color
-                        },
-                    )
+                        })
                 })
         })
         .returning(|_| Box::pin(async { Ok(()) }));
@@ -346,7 +349,8 @@ async fn test_add_db_error() {
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+    let session_record =
+        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
     let new_member_form = NewTeamMember {
         role: CommunityRole::Admin,
         user_id: new_member_id,
@@ -409,7 +413,8 @@ async fn test_delete_success() {
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+    let session_record =
+        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -466,7 +471,8 @@ async fn test_delete_current_user_logs_out() {
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+    let session_record =
+        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
 
     // Setup database mock
     let mut db = MockDB::new();

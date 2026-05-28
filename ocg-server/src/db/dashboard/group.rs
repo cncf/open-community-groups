@@ -18,7 +18,9 @@ use crate::{
         group::{
             analytics::GroupDashboardStats,
             attendees::{AttendeesFilters, AttendeesOutput},
-            events::{ApprovedSubmissionSummary, CfsSubmissionStatus, EventsListFilters, GroupEvents},
+            events::{
+                ApprovedSubmissionSummary, CfsSubmissionStatus, EventsListFilters, GroupEvents,
+            },
             home::UserGroupsByCommunity,
             invitation_requests::{InvitationRequestsFilters, InvitationRequestsOutput},
             members::{GroupMembersFilters, GroupMembersOutput},
@@ -73,8 +75,12 @@ pub(crate) trait DBDashboardGroup {
     ) -> Result<Vec<Uuid>>;
 
     /// Adds a new sponsor to the database.
-    async fn add_group_sponsor(&self, actor_user_id: Uuid, group_id: Uuid, sponsor: &Sponsor)
-    -> Result<Uuid>;
+    async fn add_group_sponsor(
+        &self,
+        actor_user_id: Uuid,
+        group_id: Uuid,
+        sponsor: &Sponsor,
+    ) -> Result<Uuid>;
 
     /// Adds a user to the group team (pending by default).
     async fn add_group_team_member(
@@ -86,7 +92,8 @@ pub(crate) trait DBDashboardGroup {
     ) -> Result<()>;
 
     /// Cancels an event (sets canceled=true).
-    async fn cancel_event(&self, actor_user_id: Uuid, group_id: Uuid, event_id: Uuid) -> Result<()>;
+    async fn cancel_event(&self, actor_user_id: Uuid, group_id: Uuid, event_id: Uuid)
+    -> Result<()>;
 
     /// Cancels a confirmed event attendee from the group dashboard.
     async fn cancel_event_attendee_attendance(
@@ -115,7 +122,8 @@ pub(crate) trait DBDashboardGroup {
     ) -> Result<()>;
 
     /// Deletes an event (soft delete by setting deleted=true and `deleted_at`).
-    async fn delete_event(&self, actor_user_id: Uuid, group_id: Uuid, event_id: Uuid) -> Result<()>;
+    async fn delete_event(&self, actor_user_id: Uuid, group_id: Uuid, event_id: Uuid)
+    -> Result<()>;
 
     /// Deletes event series events atomically.
     async fn delete_event_series_events(
@@ -156,10 +164,18 @@ pub(crate) trait DBDashboardGroup {
     ) -> Result<Option<GroupPaymentRecipient>>;
 
     /// Gets a single sponsor from the database.
-    async fn get_group_sponsor(&self, group_id: Uuid, group_sponsor_id: Uuid) -> Result<GroupSponsor>;
+    async fn get_group_sponsor(
+        &self,
+        group_id: Uuid,
+        group_sponsor_id: Uuid,
+    ) -> Result<GroupSponsor>;
 
     /// Retrieves analytics statistics for a group.
-    async fn get_group_stats(&self, community_id: Uuid, group_id: Uuid) -> Result<GroupDashboardStats>;
+    async fn get_group_stats(
+        &self,
+        community_id: Uuid,
+        group_id: Uuid,
+    ) -> Result<GroupDashboardStats>;
 
     /// Creates an organizer-created event invitation.
     async fn invite_event_attendee(
@@ -204,7 +220,11 @@ pub(crate) trait DBDashboardGroup {
     async fn list_event_kinds(&self) -> Result<Vec<EventKind>>;
 
     /// Lists active event identifiers from the same event series.
-    async fn list_event_series_event_ids(&self, group_id: Uuid, event_id: Uuid) -> Result<Vec<Uuid>>;
+    async fn list_event_series_event_ids(
+        &self,
+        group_id: Uuid,
+        event_id: Uuid,
+    ) -> Result<Vec<Uuid>>;
 
     /// Lists publishable event identifiers from the same event series.
     async fn list_event_series_publishable_event_ids(
@@ -217,7 +237,11 @@ pub(crate) trait DBDashboardGroup {
     async fn list_event_waitlist_ids(&self, group_id: Uuid, event_id: Uuid) -> Result<Vec<Uuid>>;
 
     /// Lists all events for a group for management.
-    async fn list_group_events(&self, group_id: Uuid, filters: &EventsListFilters) -> Result<GroupEvents>;
+    async fn list_group_events(
+        &self,
+        group_id: Uuid,
+        filters: &EventsListFilters,
+    ) -> Result<GroupEvents>;
 
     /// Lists all group members.
     async fn list_group_members(
@@ -318,7 +342,12 @@ pub(crate) trait DBDashboardGroup {
     ) -> Result<WaitlistOutput>;
 
     /// Unpublishes an event (sets published=false and clears publication metadata).
-    async fn unpublish_event(&self, actor_user_id: Uuid, group_id: Uuid, event_id: Uuid) -> Result<()>;
+    async fn unpublish_event(
+        &self,
+        actor_user_id: Uuid,
+        group_id: Uuid,
+        event_id: Uuid,
+    ) -> Result<()>;
 
     /// Unpublishes event series events atomically.
     async fn unpublish_event_series_events(
@@ -470,7 +499,12 @@ impl DBDashboardGroup for PgDB {
 
     /// [`DBDashboardGroup::cancel_event`]
     #[instrument(skip(self), err)]
-    async fn cancel_event(&self, actor_user_id: Uuid, group_id: Uuid, event_id: Uuid) -> Result<()> {
+    async fn cancel_event(
+        &self,
+        actor_user_id: Uuid,
+        group_id: Uuid,
+        event_id: Uuid,
+    ) -> Result<()> {
         self.execute(
             "select cancel_event($1::uuid, $2::uuid, $3::uuid)",
             &[&actor_user_id, &group_id, &event_id],
@@ -527,7 +561,12 @@ impl DBDashboardGroup for PgDB {
 
     /// [`DBDashboardGroup::delete_event`]
     #[instrument(skip(self), err)]
-    async fn delete_event(&self, actor_user_id: Uuid, group_id: Uuid, event_id: Uuid) -> Result<()> {
+    async fn delete_event(
+        &self,
+        actor_user_id: Uuid,
+        group_id: Uuid,
+        event_id: Uuid,
+    ) -> Result<()> {
         self.execute(
             "select delete_event($1::uuid, $2::uuid, $3::uuid)",
             &[&actor_user_id, &group_id, &event_id],
@@ -617,7 +656,11 @@ impl DBDashboardGroup for PgDB {
 
     /// [`DBDashboardGroup::get_group_sponsor`]
     #[instrument(skip(self), err)]
-    async fn get_group_sponsor(&self, group_id: Uuid, group_sponsor_id: Uuid) -> Result<GroupSponsor> {
+    async fn get_group_sponsor(
+        &self,
+        group_id: Uuid,
+        group_sponsor_id: Uuid,
+    ) -> Result<GroupSponsor> {
         self.fetch_json_one(
             "select get_group_sponsor($1::uuid, $2::uuid)",
             &[&group_sponsor_id, &group_id],
@@ -627,7 +670,11 @@ impl DBDashboardGroup for PgDB {
 
     /// [`DBDashboardGroup::get_group_stats`]
     #[instrument(skip(self), err)]
-    async fn get_group_stats(&self, community_id: Uuid, group_id: Uuid) -> Result<GroupDashboardStats> {
+    async fn get_group_stats(
+        &self,
+        community_id: Uuid,
+        group_id: Uuid,
+    ) -> Result<GroupDashboardStats> {
         #[cached(
             time = 3600,
             key = "(Uuid, Uuid)",
@@ -635,7 +682,11 @@ impl DBDashboardGroup for PgDB {
             sync_writes = "by_key",
             result = true
         )]
-        async fn inner(db: Client, community_id: Uuid, group_id: Uuid) -> Result<GroupDashboardStats> {
+        async fn inner(
+            db: Client,
+            community_id: Uuid,
+            group_id: Uuid,
+        ) -> Result<GroupDashboardStats> {
             let row = db
                 .query_one(
                     "select get_group_stats($1::uuid, $2::uuid)",
@@ -756,7 +807,11 @@ impl DBDashboardGroup for PgDB {
 
     /// [`DBDashboardGroup::list_event_series_event_ids`]
     #[instrument(skip(self), err)]
-    async fn list_event_series_event_ids(&self, group_id: Uuid, event_id: Uuid) -> Result<Vec<Uuid>> {
+    async fn list_event_series_event_ids(
+        &self,
+        group_id: Uuid,
+        event_id: Uuid,
+    ) -> Result<Vec<Uuid>> {
         self.fetch_scalar_one(
             "select list_event_series_event_ids($1::uuid, $2::uuid)",
             &[&group_id, &event_id],
@@ -790,7 +845,11 @@ impl DBDashboardGroup for PgDB {
 
     /// [`DBDashboardGroup::list_group_events`]
     #[instrument(skip(self), err)]
-    async fn list_group_events(&self, group_id: Uuid, filters: &EventsListFilters) -> Result<GroupEvents> {
+    async fn list_group_events(
+        &self,
+        group_id: Uuid,
+        filters: &EventsListFilters,
+    ) -> Result<GroupEvents> {
         self.fetch_json_one(
             "select list_group_events($1::uuid, $2::jsonb)",
             &[&group_id, &Json(filters)],
@@ -1043,7 +1102,12 @@ impl DBDashboardGroup for PgDB {
 
     /// [`DBDashboardGroup::unpublish_event`]
     #[instrument(skip(self), err)]
-    async fn unpublish_event(&self, actor_user_id: Uuid, group_id: Uuid, event_id: Uuid) -> Result<()> {
+    async fn unpublish_event(
+        &self,
+        actor_user_id: Uuid,
+        group_id: Uuid,
+        event_id: Uuid,
+    ) -> Result<()> {
         self.execute(
             "select unpublish_event($1::uuid, $2::uuid, $3::uuid)",
             &[&actor_user_id, &group_id, &event_id],
@@ -1077,7 +1141,12 @@ impl DBDashboardGroup for PgDB {
     ) -> Result<bool> {
         self.fetch_scalar_one(
             "select update_cfs_submission($1::uuid, $2::uuid, $3::uuid, $4::jsonb)::bool",
-            &[&reviewer_id, &event_id, &cfs_submission_id, &Json(submission)],
+            &[
+                &reviewer_id,
+                &event_id,
+                &cfs_submission_id,
+                &Json(submission),
+            ],
         )
         .await
     }

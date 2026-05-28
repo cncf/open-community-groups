@@ -55,7 +55,10 @@ pub(crate) fn build_event_calendar_attachment(base_url: &str, event: &EventSumma
         ical_event.append_property(Property::new("GEO", format!("{lat:.6};{lon:.6}")));
 
         // Apple structured location
-        let mut apple_loc = Property::new("X-APPLE-STRUCTURED-LOCATION", format!("geo:{lat:.6},{lon:.6}"));
+        let mut apple_loc = Property::new(
+            "X-APPLE-STRUCTURED-LOCATION",
+            format!("geo:{lat:.6},{lon:.6}"),
+        );
         apple_loc
             .append_parameter(("VALUE", "URI"))
             .append_parameter(("X-APPLE-RADIUS", "100"))
@@ -106,7 +109,9 @@ fn build_event_calendar_description(event: &EventSummary) -> String {
     }
 
     // Meeting URL if available
-    if let Some(meeting_join_url) = event.meeting_join_url.as_deref().filter(|url| !url.trim().is_empty()) {
+    if let Some(meeting_join_url) =
+        event.meeting_join_url.as_deref().filter(|url| !url.trim().is_empty())
+    {
         description.push(format!("Meeting link: {meeting_join_url}"));
     }
 
@@ -199,22 +204,28 @@ mod tests {
         assert!(unfolded.contains("DTSTAMP:"));
         assert!(unfolded.contains("DTSTART;TZID=America/Los_Angeles:20260112T110000"));
         assert!(unfolded.contains("GEO:37.780000;-122.420000"));
-        assert!(
-            unfolded.contains("LOCATION:Test Venue\\, 123 Main St\\, San Francisco\\, CA\\, United States")
-        );
+        assert!(unfolded.contains(
+            "LOCATION:Test Venue\\, 123 Main St\\, San Francisco\\, CA\\, United States"
+        ));
         assert!(unfolded.contains("NAME:Test Group - Test Event"));
         assert!(unfolded.contains("STATUS:CONFIRMED"));
         assert!(unfolded.contains("SUMMARY:Test Event"));
         assert!(unfolded.contains("UID:00000000-0000-0000-0000-000000000001"));
         assert!(
-            unfolded.contains("URL:https://example.test/test-community/group/test-group/event/test-event")
+            unfolded.contains(
+                "URL:https://example.test/test-community/group/test-group/event/test-event"
+            )
         );
         assert!(unfolded.contains("X-APPLE-STRUCTURED-LOCATION;VALUE=URI"));
-        assert!(unfolded.contains("X-ADDRESS=\"Test Venue, 123 Main St, San Francisco, CA, United States\""));
-        assert!(unfolded.contains("X-APPLE-RADIUS=100"));
         assert!(
-            unfolded.contains("X-APPLE-TITLE=\"Test Venue, 123 Main St, San Francisco, CA, United States\"")
+            unfolded.contains(
+                "X-ADDRESS=\"Test Venue, 123 Main St, San Francisco, CA, United States\""
+            )
         );
+        assert!(unfolded.contains("X-APPLE-RADIUS=100"));
+        assert!(unfolded.contains(
+            "X-APPLE-TITLE=\"Test Venue, 123 Main St, San Francisco, CA, United States\""
+        ));
     }
 
     #[test]
@@ -235,22 +246,28 @@ mod tests {
         assert!(unfolded.contains("DTSTAMP:"));
         assert!(unfolded.contains("DTSTART;TZID=America/Los_Angeles:20260112T110000"));
         assert!(unfolded.contains("GEO:37.780000;-122.420000"));
-        assert!(
-            unfolded.contains("LOCATION:Test Venue\\, 123 Main St\\, San Francisco\\, CA\\, United States")
-        );
+        assert!(unfolded.contains(
+            "LOCATION:Test Venue\\, 123 Main St\\, San Francisco\\, CA\\, United States"
+        ));
         assert!(unfolded.contains("NAME:Test Group - Test Event"));
         assert!(unfolded.contains("STATUS:CANCELLED"));
         assert!(unfolded.contains("SUMMARY:Test Event"));
         assert!(
-            unfolded.contains("URL:https://example.test/test-community/group/test-group/event/test-event")
+            unfolded.contains(
+                "URL:https://example.test/test-community/group/test-group/event/test-event"
+            )
         );
         assert!(unfolded.contains("UID:00000000-0000-0000-0000-000000000001"));
         assert!(unfolded.contains("X-APPLE-STRUCTURED-LOCATION;VALUE=URI"));
-        assert!(unfolded.contains("X-ADDRESS=\"Test Venue, 123 Main St, San Francisco, CA, United States\""));
-        assert!(unfolded.contains("X-APPLE-RADIUS=100"));
         assert!(
-            unfolded.contains("X-APPLE-TITLE=\"Test Venue, 123 Main St, San Francisco, CA, United States\"")
+            unfolded.contains(
+                "X-ADDRESS=\"Test Venue, 123 Main St, San Francisco, CA, United States\""
+            )
         );
+        assert!(unfolded.contains("X-APPLE-RADIUS=100"));
+        assert!(unfolded.contains(
+            "X-APPLE-TITLE=\"Test Venue, 123 Main St, San Francisco, CA, United States\""
+        ));
     }
 
     #[test]

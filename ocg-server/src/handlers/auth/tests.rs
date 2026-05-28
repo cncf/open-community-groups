@@ -231,7 +231,8 @@ async fn test_user_menu_section_success() {
 }
 
 #[tokio::test]
-async fn test_dashboard_community_redirects_to_user_invitations_when_context_is_missing_and_unavailable() {
+async fn test_dashboard_community_redirects_to_user_invitations_when_context_is_missing_and_unavailable()
+ {
     // Setup identifiers and data structures
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
@@ -281,7 +282,8 @@ async fn test_dashboard_community_redirects_to_user_invitations_when_context_is_
 }
 
 #[tokio::test]
-async fn test_dashboard_group_redirects_to_user_invitations_when_context_is_missing_and_unavailable() {
+async fn test_dashboard_group_redirects_to_user_invitations_when_context_is_missing_and_unavailable()
+ {
     // Setup identifiers and data structures
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
@@ -473,7 +475,12 @@ async fn test_log_in_validation_error() {
     db.expect_get_user_by_username().times(0);
     db.expect_update_session()
         .times(1)
-        .withf(|record| message_matches(record, "username: value cannot be empty or whitespace-only\n"))
+        .withf(|record| {
+            message_matches(
+                record,
+                "username: value cannot be empty or whitespace-only\n",
+            )
+        })
         .returning(|_| Ok(()));
 
     // Setup notifications manager mock
@@ -868,7 +875,10 @@ async fn test_oauth2_callback_returns_error_when_provider_is_not_configured() {
     db.expect_update_session()
         .times(1)
         .withf(move |record| {
-            message_matches(record, "OAuth2 authorization failed: oauth2 provider not found")
+            message_matches(
+                record,
+                "OAuth2 authorization failed: oauth2 provider not found",
+            )
         })
         .returning(|_| Ok(()));
 
@@ -919,7 +929,8 @@ async fn test_oauth2_redirect_success() {
         .set_auth_uri(AuthUrl::new("https://oauth.example/authorize".to_string()).unwrap())
         .set_token_uri(TokenUrl::new("https://oauth.example/token".to_string()).unwrap())
         .set_redirect_uri(
-            RedirectUrl::new("https://app.example/log-in/oauth2/github/callback".to_string()).unwrap(),
+            RedirectUrl::new("https://app.example/log-in/oauth2/github/callback".to_string())
+                .unwrap(),
         );
     let provider = OAuth2ProviderDetails {
         client,
@@ -1322,7 +1333,9 @@ async fn test_oidc_redirect_success() {
         oidc::IssuerUrl::new("https://issuer.example".to_string()).unwrap(),
         oidc::AuthUrl::new("https://issuer.example/authorize".to_string()).unwrap(),
         oidc::JsonWebKeySetUrl::new("https://issuer.example/jwks".to_string()).unwrap(),
-        vec![oidc::ResponseTypes::new(vec![oidc::core::CoreResponseType::Code])],
+        vec![oidc::ResponseTypes::new(vec![
+            oidc::core::CoreResponseType::Code,
+        ])],
         vec![oidc::core::CoreSubjectIdentifierType::Public],
         vec![oidc::core::CoreJwsSigningAlgorithm::RsaSsaPkcs1V15Sha256],
         oidc::EmptyAdditionalProviderMetadata::default(),
@@ -1334,7 +1347,8 @@ async fn test_oidc_redirect_success() {
         Some(oidc::ClientSecret::new("client-secret".to_string())),
     )
     .set_redirect_uri(
-        oidc::RedirectUrl::new("https://app.example/log-in/oidc/provider/callback".to_string()).unwrap(),
+        oidc::RedirectUrl::new("https://app.example/log-in/oidc/provider/callback".to_string())
+            .unwrap(),
     );
     let provider = OidcProviderDetails {
         client,
@@ -1432,11 +1446,16 @@ async fn test_sign_up_success() {
             matches!(&notification.kind, NotificationKind::EmailVerification)
                 && notification.recipients == vec![user_for_notifications.user_id]
                 && notification.template_data.as_ref().is_some_and(|value| {
-                    serde_json::from_value::<EmailVerificationTemplate>(value.clone()).is_ok_and(|template| {
-                        template.link == format!("https://app.example/verify-email/{email_verification_code}")
-                            && template.theme.primary_color
-                                == site_settings_for_notifications.theme.primary_color
-                    })
+                    serde_json::from_value::<EmailVerificationTemplate>(value.clone()).is_ok_and(
+                        |template| {
+                            template.link
+                                == format!(
+                                    "https://app.example/verify-email/{email_verification_code}"
+                                )
+                                && template.theme.primary_color
+                                    == site_settings_for_notifications.theme.primary_color
+                        },
+                    )
                 })
         })
         .returning(|_| Box::pin(async { Ok(()) }));
@@ -1456,7 +1475,8 @@ async fn test_sign_up_success() {
         .await;
 
     // Setup request
-    let form = "email=test%40example.test&name=Test+User&username=test-user&password=secret-password";
+    let form =
+        "email=test%40example.test&name=Test+User&username=test-user&password=secret-password";
     let request = Request::builder()
         .method("POST")
         .uri("/sign-up?next_url=%2Fwelcome")
@@ -1529,11 +1549,16 @@ async fn test_sign_up_activates_pre_registered_user() {
             matches!(&notification.kind, NotificationKind::EmailVerification)
                 && notification.recipients == vec![user_for_notifications.user_id]
                 && notification.template_data.as_ref().is_some_and(|value| {
-                    serde_json::from_value::<EmailVerificationTemplate>(value.clone()).is_ok_and(|template| {
-                        template.link == format!("https://app.example/verify-email/{email_verification_code}")
-                            && template.theme.primary_color
-                                == site_settings_for_notifications.theme.primary_color
-                    })
+                    serde_json::from_value::<EmailVerificationTemplate>(value.clone()).is_ok_and(
+                        |template| {
+                            template.link
+                                == format!(
+                                    "https://app.example/verify-email/{email_verification_code}"
+                                )
+                                && template.theme.primary_color
+                                    == site_settings_for_notifications.theme.primary_color
+                        },
+                    )
                 })
         })
         .returning(|_| Box::pin(async { Ok(()) }));
@@ -1553,8 +1578,7 @@ async fn test_sign_up_activates_pre_registered_user() {
         .await;
 
     // Setup request
-    let form =
-        "email=invited%40example.test&name=Invited+User&username=invited-user&password=secret-password";
+    let form = "email=invited%40example.test&name=Invited+User&username=invited-user&password=secret-password";
     let request = Request::builder()
         .method("POST")
         .uri("/sign-up?next_url=%2Fdashboard%2Fuser%3Ftab%3Dinvitations")
@@ -1862,7 +1886,9 @@ async fn test_update_user_details_returns_error_on_db_failure() {
     db.expect_update_user_details()
         .times(1)
         .withf(move |uid, details| {
-            *uid == user_id && !details.optional_notifications_enabled && details.name == "Updated User"
+            *uid == user_id
+                && !details.optional_notifications_enabled
+                && details.name == "Updated User"
         })
         .returning(|_, _| Err(anyhow!("db error")));
 
@@ -2283,7 +2309,8 @@ async fn test_user_has_community_dashboard_permission_allows_request() {
     let user_id = Uuid::new_v4();
     let community_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+    let session_record =
+        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -2348,7 +2375,8 @@ async fn test_user_has_community_dashboard_permission_returns_error_on_db_failur
     let user_id = Uuid::new_v4();
     let community_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+    let session_record =
+        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -2407,7 +2435,8 @@ async fn test_user_has_community_dashboard_permission_returns_error_on_db_failur
 }
 
 #[tokio::test]
-async fn test_user_has_community_dashboard_permission_redirects_when_context_is_missing_and_unavailable() {
+async fn test_user_has_community_dashboard_permission_redirects_when_context_is_missing_and_unavailable()
+ {
     // Setup identifiers and data structures
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
@@ -2504,7 +2533,9 @@ async fn test_user_has_community_dashboard_permission_repairs_missing_context() 
     db.expect_user_has_community_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == accessible_community_id && *uid == user_id && permission == CommunityPermission::Read
+            *cid == accessible_community_id
+                && *uid == user_id
+                && permission == CommunityPermission::Read
         })
         .returning(|_, _, _| Ok(true));
     db.expect_update_session()
@@ -2586,7 +2617,9 @@ async fn test_user_has_community_dashboard_permission_logs_out_when_selected_com
     db.expect_user_has_community_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == inaccessible_community_id && *uid == user_id && permission == CommunityPermission::Read
+            *cid == inaccessible_community_id
+                && *uid == user_id
+                && permission == CommunityPermission::Read
         })
         .returning(|_, _, _| Ok(false));
     db.expect_list_user_communities().times(0);
@@ -2638,7 +2671,8 @@ async fn test_user_has_community_dashboard_permission_logs_out_when_selected_com
 }
 
 #[tokio::test]
-async fn test_user_has_community_dashboard_permission_hx_redirects_when_selected_context_is_stale() {
+async fn test_user_has_community_dashboard_permission_hx_redirects_when_selected_context_is_stale()
+{
     // Setup identifiers and data structures
     let inaccessible_community_id = Uuid::new_v4();
     let stale_group_id = Uuid::new_v4();
@@ -2666,7 +2700,9 @@ async fn test_user_has_community_dashboard_permission_hx_redirects_when_selected
     db.expect_user_has_community_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == inaccessible_community_id && *uid == user_id && permission == CommunityPermission::Read
+            *cid == inaccessible_community_id
+                && *uid == user_id
+                && permission == CommunityPermission::Read
         })
         .returning(|_, _, _| Ok(false));
     db.expect_list_user_communities().times(0);
@@ -2719,7 +2755,8 @@ async fn test_user_has_community_dashboard_permission_hx_redirects_when_selected
 }
 
 #[tokio::test]
-async fn test_user_has_community_dashboard_permission_fetch_redirects_when_selected_context_is_stale() {
+async fn test_user_has_community_dashboard_permission_fetch_redirects_when_selected_context_is_stale()
+ {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
     let stale_group_id = Uuid::new_v4();
@@ -2837,7 +2874,10 @@ async fn test_user_has_path_community_permission_select_route_allows_request() {
     );
     let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
     let router = Router::new()
-        .route("/{community_id}/protected", get(|| async { StatusCode::OK }))
+        .route(
+            "/{community_id}/protected",
+            get(|| async { StatusCode::OK }),
+        )
         .layer(middleware::from_fn_with_state(
             (db.clone(), CommunityPermission::Read),
             user_has_path_community_permission,
@@ -2899,7 +2939,10 @@ async fn test_user_has_path_community_permission_select_route_forbidden_without_
     );
     let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
     let router = Router::new()
-        .route("/{community_id}/protected", get(|| async { StatusCode::OK }))
+        .route(
+            "/{community_id}/protected",
+            get(|| async { StatusCode::OK }),
+        )
         .layer(middleware::from_fn_with_state(
             (db.clone(), CommunityPermission::Read),
             user_has_path_community_permission,
@@ -2961,7 +3004,10 @@ async fn test_user_has_path_community_permission_select_route_returns_error_on_d
     );
     let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
     let router = Router::new()
-        .route("/{community_id}/protected", get(|| async { StatusCode::OK }))
+        .route(
+            "/{community_id}/protected",
+            get(|| async { StatusCode::OK }),
+        )
         .layer(middleware::from_fn_with_state(
             (db.clone(), CommunityPermission::Read),
             user_has_path_community_permission,
@@ -3263,7 +3309,10 @@ async fn test_user_has_path_community_permission_protected_route_forbidden_when_
     );
     let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
     let router = Router::new()
-        .route("/{community_id}/protected", get(|| async { StatusCode::OK }))
+        .route(
+            "/{community_id}/protected",
+            get(|| async { StatusCode::OK }),
+        )
         .layer(middleware::from_fn_with_state(
             (db.clone(), CommunityPermission::Read),
             user_has_path_community_permission,
@@ -3295,7 +3344,8 @@ async fn test_user_has_path_group_permission_allows_request() {
     let community_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+    let session_record =
+        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -3313,7 +3363,9 @@ async fn test_user_has_path_group_permission_allows_request() {
         .returning(|_, _| Ok(true));
     db.expect_user_has_group_permission()
         .times(1)
-        .withf(move |cid, gid, uid, _permission| *cid == community_id && *gid == group_id && *uid == user_id)
+        .withf(move |cid, gid, uid, _permission| {
+            *cid == community_id && *gid == group_id && *uid == user_id
+        })
         .returning(|_, _, _, _| Ok(true));
 
     // Setup router
@@ -3360,7 +3412,8 @@ async fn test_user_has_path_group_permission_forbidden_without_permission() {
     let community_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+    let session_record =
+        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -3378,7 +3431,9 @@ async fn test_user_has_path_group_permission_forbidden_without_permission() {
         .returning(|_, _| Ok(true));
     db.expect_user_has_group_permission()
         .times(1)
-        .withf(move |cid, gid, uid, _permission| *cid == community_id && *gid == group_id && *uid == user_id)
+        .withf(move |cid, gid, uid, _permission| {
+            *cid == community_id && *gid == group_id && *uid == user_id
+        })
         .returning(|_, _, _, _| Ok(false));
 
     // Setup router
@@ -3425,7 +3480,8 @@ async fn test_user_has_path_group_permission_forbidden_when_group_is_outside_sel
     let community_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+    let session_record =
+        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -3487,7 +3543,8 @@ async fn test_user_has_path_group_permission_returns_error_on_db_failure() {
     let community_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+    let session_record =
+        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -3505,7 +3562,9 @@ async fn test_user_has_path_group_permission_returns_error_on_db_failure() {
         .returning(|_, _| Ok(true));
     db.expect_user_has_group_permission()
         .times(1)
-        .withf(move |cid, gid, uid, _permission| *cid == community_id && *gid == group_id && *uid == user_id)
+        .withf(move |cid, gid, uid, _permission| {
+            *cid == community_id && *gid == group_id && *uid == user_id
+        })
         .returning(|_, _, _, _| Err(anyhow!("db error")));
 
     // Setup router
@@ -3670,7 +3729,8 @@ async fn test_user_has_selected_community_permission_allows_request() {
     let user_id = Uuid::new_v4();
     let community_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+    let session_record =
+        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -3732,7 +3792,8 @@ async fn test_user_has_selected_community_permission_forbidden_without_permissio
     let user_id = Uuid::new_v4();
     let community_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+    let session_record =
+        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -3800,7 +3861,8 @@ async fn test_user_has_selected_community_permission_returns_error_on_db_failure
     let user_id = Uuid::new_v4();
     let community_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+    let session_record =
+        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -3856,7 +3918,8 @@ async fn test_user_has_selected_community_permission_returns_error_on_db_failure
 }
 
 #[tokio::test]
-async fn test_user_has_selected_community_permission_redirects_when_context_is_missing_and_unavailable() {
+async fn test_user_has_selected_community_permission_redirects_when_context_is_missing_and_unavailable()
+ {
     // Setup identifiers and data structures
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
@@ -3953,7 +4016,9 @@ async fn test_user_has_selected_community_permission_repairs_missing_context() {
     db.expect_user_has_community_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == accessible_community_id && *uid == user_id && permission == CommunityPermission::Read
+            *cid == accessible_community_id
+                && *uid == user_id
+                && permission == CommunityPermission::Read
         })
         .returning(|_, _, _| Ok(true));
     db.expect_update_session()
@@ -4090,7 +4155,9 @@ async fn test_user_has_selected_group_permission_allows_request() {
         .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
     db.expect_user_has_group_permission()
         .times(1)
-        .withf(move |cid, gid, uid, _permission| *cid == community_id && *gid == group_id && *uid == user_id)
+        .withf(move |cid, gid, uid, _permission| {
+            *cid == community_id && *gid == group_id && *uid == user_id
+        })
         .returning(|_, _, _, _| Ok(true));
 
     // Setup router
@@ -4161,7 +4228,10 @@ async fn test_user_has_selected_group_permission_forbidden_without_permission() 
             *cid == community_id
                 && *gid == group_id
                 && *uid == user_id
-                && matches!(permission, GroupPermission::Read | GroupPermission::TeamWrite)
+                && matches!(
+                    permission,
+                    GroupPermission::Read | GroupPermission::TeamWrite
+                )
         })
         .returning(|_, _, _, permission| Ok(permission == GroupPermission::Read));
     db.expect_delete_session().times(0);
@@ -4478,7 +4548,9 @@ async fn test_user_has_selected_group_permission_returns_error_on_db_failure() {
         .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
     db.expect_user_has_group_permission()
         .times(1)
-        .withf(move |cid, gid, uid, _permission| *cid == community_id && *gid == group_id && *uid == user_id)
+        .withf(move |cid, gid, uid, _permission| {
+            *cid == community_id && *gid == group_id && *uid == user_id
+        })
         .returning(|_, _, _, _| Err(anyhow!("db error")));
 
     // Setup router
@@ -4518,13 +4590,15 @@ async fn test_user_has_selected_group_permission_returns_error_on_db_failure() {
 }
 
 #[tokio::test]
-async fn test_user_has_selected_group_permission_redirects_when_context_is_missing_and_unavailable() {
+async fn test_user_has_selected_group_permission_redirects_when_context_is_missing_and_unavailable()
+{
     // Setup identifiers and data structures
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let community_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+    let session_record =
+        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -4611,7 +4685,10 @@ async fn test_user_has_selected_group_permission_repairs_missing_context() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id && *gid == group_id && *uid == user_id && permission == GroupPermission::Read
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::Read
         })
         .returning(|_, _, _, _| Ok(true));
     db.expect_update_session()

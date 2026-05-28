@@ -309,11 +309,9 @@ async fn test_page_success() {
     assert!(body.contains(
         r#"<meta name="description" content="Test Community community in Open Community Groups, where Open Source communities thrive.">"#
     ));
-    assert!(
-        body.contains(
-            r#"<link rel="canonical" href="https://example.test/test-community/group/pretty-group">"#
-        )
-    );
+    assert!(body.contains(
+        r#"<link rel="canonical" href="https://example.test/test-community/group/pretty-group">"#
+    ));
     assert!(body.contains(r#"<meta property="og:title" content="Test Group">"#));
     assert!(body.contains(
         r#"<meta property="og:url" content="https://example.test/test-community/group/pretty-group">"#
@@ -321,16 +319,16 @@ async fn test_page_success() {
     assert!(body.contains(
         r#"<meta property="og:description" content="Test Community community in Open Community Groups, where Open Source communities thrive.">"#
     ));
-    assert!(
-        body.contains(r#"<meta property="og:image" content="https://example.test/images/og/group-og.png">"#)
-    );
+    assert!(body.contains(
+        r#"<meta property="og:image" content="https://example.test/images/og/group-og.png">"#
+    ));
     assert!(body.contains(r#"<meta name="twitter:title" content="Test Group">"#));
     assert!(body.contains(
         r#"<meta name="twitter:description" content="Test Community community in Open Community Groups, where Open Source communities thrive.">"#
     ));
-    assert!(
-        body.contains(r#"<meta name="twitter:image" content="https://example.test/images/og/group-og.png">"#)
-    );
+    assert!(body.contains(
+        r#"<meta name="twitter:image" content="https://example.test/images/og/group-og.png">"#
+    ));
 }
 
 #[tokio::test]

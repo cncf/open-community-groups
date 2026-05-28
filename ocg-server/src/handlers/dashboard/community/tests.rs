@@ -95,7 +95,8 @@ async fn test_select_community_without_groups() {
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, Some(stale_group_id));
+    let session_record =
+        sample_session_record(session_id, user_id, &auth_hash, None, Some(stale_group_id));
 
     // Setup database mock
     let mut db = MockDB::new();

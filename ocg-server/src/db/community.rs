@@ -26,7 +26,10 @@ pub(crate) trait DBCommunity {
     async fn get_community_name_by_id(&self, community_id: Uuid) -> Result<Option<String>>;
 
     /// Retrieves the most recently added groups in the community.
-    async fn get_community_recently_added_groups(&self, community_id: Uuid) -> Result<Vec<GroupSummary>>;
+    async fn get_community_recently_added_groups(
+        &self,
+        community_id: Uuid,
+    ) -> Result<Vec<GroupSummary>>;
 
     /// Retrieves statistical data for the community page.
     async fn get_community_site_stats(&self, community_id: Uuid) -> Result<community::Stats>;
@@ -79,7 +82,10 @@ impl DBCommunity for PgDB {
         )]
         async fn inner(db: Client, community_id: Uuid) -> Result<Option<String>> {
             let name = db
-                .query_opt("select get_community_name_by_id($1::uuid)", &[&community_id])
+                .query_opt(
+                    "select get_community_name_by_id($1::uuid)",
+                    &[&community_id],
+                )
                 .await?
                 .and_then(|row| row.get(0));
 
@@ -92,7 +98,10 @@ impl DBCommunity for PgDB {
 
     /// [`DB::get_community_recently_added_groups`]
     #[instrument(skip(self), err)]
-    async fn get_community_recently_added_groups(&self, community_id: Uuid) -> Result<Vec<GroupSummary>> {
+    async fn get_community_recently_added_groups(
+        &self,
+        community_id: Uuid,
+    ) -> Result<Vec<GroupSummary>> {
         self.fetch_json_one(
             "select get_community_recently_added_groups($1::uuid)",
             &[&community_id],
@@ -103,8 +112,11 @@ impl DBCommunity for PgDB {
     /// [`DB::get_community_site_stats`]
     #[instrument(skip(self), err)]
     async fn get_community_site_stats(&self, community_id: Uuid) -> Result<community::Stats> {
-        self.fetch_json_one("select get_community_site_stats($1::uuid)", &[&community_id])
-            .await
+        self.fetch_json_one(
+            "select get_community_site_stats($1::uuid)",
+            &[&community_id],
+        )
+        .await
     }
 
     /// [`DB::get_community_upcoming_events`]

@@ -25,10 +25,10 @@ use crate::{
     },
     validation::{
         MAX_LEN_COUNTRY_CODE, MAX_LEN_DESCRIPTION, MAX_LEN_DESCRIPTION_SHORT, MAX_LEN_ENTITY_NAME,
-        MAX_LEN_EVENT_LABELS_PER_EVENT, MAX_LEN_L, MAX_LEN_S, MAX_LEN_TIMEZONE, MAX_PAGINATION_LIMIT,
-        MAX_RECURRING_ADDITIONAL_OCCURRENCES, email_vec, image_url_opt, trimmed_non_empty,
-        trimmed_non_empty_opt, trimmed_non_empty_tag_vec, trimmed_non_empty_vec, valid_latitude,
-        valid_longitude,
+        MAX_LEN_EVENT_LABELS_PER_EVENT, MAX_LEN_L, MAX_LEN_S, MAX_LEN_TIMEZONE,
+        MAX_PAGINATION_LIMIT, MAX_RECURRING_ADDITIONAL_OCCURRENCES, email_vec, image_url_opt,
+        trimmed_non_empty, trimmed_non_empty_opt, trimmed_non_empty_tag_vec, trimmed_non_empty_vec,
+        valid_latitude, valid_longitude,
     },
 };
 
@@ -606,7 +606,9 @@ pub(crate) struct PaginatedEvents {
 }
 
 /// Tab selection for the events list.
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, strum::Display, strum::EnumString)]
+#[derive(
+    Debug, Clone, Default, PartialEq, Serialize, Deserialize, strum::Display, strum::EnumString,
+)]
 #[serde(rename_all = "lowercase")]
 #[strum(serialize_all = "kebab-case")]
 pub(crate) enum EventsTab {
@@ -776,7 +778,10 @@ registration_questions[0][options][0][label]=Vegetarian",
         assert!(event.registration_questions_present.is_some());
         assert_eq!(event.registration_questions.len(), 1);
         assert_eq!(event.registration_questions[0].prompt, "Meal preference");
-        assert_eq!(event.registration_questions[0].options[0].label, "Vegetarian");
+        assert_eq!(
+            event.registration_questions[0].options[0].label,
+            "Vegetarian"
+        );
     }
 
     #[test]
@@ -866,8 +871,10 @@ registration_questions[0][options][0][label]=Vegetarian",
         );
         assert_eq!(payload["ticket_types"][0]["title"], "General admission");
         assert!(
-            uuid::Uuid::parse_str(payload["ticket_types"][0]["event_ticket_type_id"].as_str().unwrap())
-                .is_ok()
+            uuid::Uuid::parse_str(
+                payload["ticket_types"][0]["event_ticket_type_id"].as_str().unwrap()
+            )
+            .is_ok()
         );
         assert!(
             uuid::Uuid::parse_str(

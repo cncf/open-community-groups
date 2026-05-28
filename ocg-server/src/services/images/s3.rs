@@ -82,7 +82,10 @@ impl ImageStorage for S3ImageStorage {
                         .essence_str()
                         .to_string()
                 });
-                Ok(Some(Image { bytes, content_type }))
+                Ok(Some(Image {
+                    bytes,
+                    content_type,
+                }))
             }
             Err(err) => {
                 if let S3SdkError::ServiceError(service_err) = &err

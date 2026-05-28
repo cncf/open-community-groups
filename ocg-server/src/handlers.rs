@@ -28,8 +28,6 @@ pub(crate) mod group;
 pub(crate) mod images;
 /// Meetings handlers.
 pub(crate) mod meetings;
-/// Handler-layer notification helpers.
-pub(crate) mod notifications;
 /// Payments handlers.
 pub(crate) mod payments;
 /// Global site handlers.
@@ -42,7 +40,9 @@ pub(crate) mod tests;
 pub(crate) const MAX_PUBLIC_GALLERY_IMAGES: usize = 50;
 
 /// Extends public shared-cache headers with additional dynamic headers.
-pub(crate) fn extend_public_shared_cache_headers(extra_headers: &[(&str, &str)]) -> Result<HeaderMap> {
+pub(crate) fn extend_public_shared_cache_headers(
+    extra_headers: &[(&str, &str)],
+) -> Result<HeaderMap> {
     let mut headers = HeaderMap::new();
 
     // Add shared public cache headers first
@@ -59,7 +59,10 @@ pub(crate) fn extend_public_shared_cache_headers(extra_headers: &[(&str, &str)])
 }
 
 /// Checks whether the request comes from the configured site hostname.
-pub(crate) fn request_matches_site(server_cfg: &HttpServerConfig, headers: &HeaderMap) -> Result<bool> {
+pub(crate) fn request_matches_site(
+    server_cfg: &HttpServerConfig,
+    headers: &HeaderMap,
+) -> Result<bool> {
     // Check if referer checks are disabled
     if server_cfg.disable_referer_checks {
         return Ok(true);
@@ -137,7 +140,10 @@ mod helpers_tests {
     fn test_extend_public_shared_cache_headers_sets_cache_and_extra_headers() {
         let headers = extend_public_shared_cache_headers(&[("HX-Push-Url", "/explore")]).unwrap();
 
-        assert_eq!(headers.get(CACHE_CONTROL).unwrap(), CACHE_CONTROL_PUBLIC_SHARED);
+        assert_eq!(
+            headers.get(CACHE_CONTROL).unwrap(),
+            CACHE_CONTROL_PUBLIC_SHARED
+        );
         assert_eq!(headers.get(VARY).unwrap(), PUBLIC_SHARED_CACHE_VARY);
         assert_eq!(headers.get("HX-Push-Url").unwrap(), "/explore");
     }
@@ -153,7 +159,10 @@ mod helpers_tests {
     fn test_request_matches_site_falls_back_to_referer() {
         let server_cfg = sample_server_cfg("https://example.test", false);
         let mut headers = HeaderMap::new();
-        headers.insert(REFERER, HeaderValue::from_static("https://example.test/page"));
+        headers.insert(
+            REFERER,
+            HeaderValue::from_static("https://example.test/page"),
+        );
 
         assert!(request_matches_site(&server_cfg, &headers).unwrap());
     }
@@ -172,7 +181,10 @@ mod helpers_tests {
         let server_cfg = sample_server_cfg("https://example.test", false);
         let mut headers = HeaderMap::new();
         headers.insert(ORIGIN, HeaderValue::from_static("https://evil.test"));
-        headers.insert(REFERER, HeaderValue::from_static("https://example.test/page"));
+        headers.insert(
+            REFERER,
+            HeaderValue::from_static("https://example.test/page"),
+        );
 
         assert!(!request_matches_site(&server_cfg, &headers).unwrap());
     }
@@ -215,7 +227,10 @@ mod helpers_tests {
 
         trim_public_gallery_images(&mut photos_urls);
 
-        assert_eq!(photos_urls, Some(vec![sample_photo_url(0), sample_photo_url(1)]));
+        assert_eq!(
+            photos_urls,
+            Some(vec![sample_photo_url(0), sample_photo_url(1)])
+        );
     }
 
     #[test]

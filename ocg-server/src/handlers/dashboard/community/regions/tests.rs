@@ -23,7 +23,8 @@ async fn test_list_page_success() {
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+    let session_record =
+        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
     let regions = vec![sample_group_region()];
 
     // Setup database mock
@@ -45,7 +46,9 @@ async fn test_list_page_success() {
     db.expect_user_has_community_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == community_id && *uid == user_id && permission == CommunityPermission::TaxonomyWrite
+            *cid == community_id
+                && *uid == user_id
+                && permission == CommunityPermission::TaxonomyWrite
         })
         .returning(|_, _, _| Ok(true));
     db.expect_list_regions()
@@ -85,7 +88,8 @@ async fn test_add_page_success() {
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+    let session_record =
+        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -106,7 +110,9 @@ async fn test_add_page_success() {
     db.expect_user_has_community_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == community_id && *uid == user_id && permission == CommunityPermission::TaxonomyWrite
+            *cid == community_id
+                && *uid == user_id
+                && permission == CommunityPermission::TaxonomyWrite
         })
         .returning(|_, _, _| Ok(true));
 
@@ -143,7 +149,8 @@ async fn test_update_page_not_found() {
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+    let session_record =
+        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
     let regions = vec![sample_group_region()];
 
     // Setup database mock
@@ -165,7 +172,9 @@ async fn test_update_page_not_found() {
     db.expect_user_has_community_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == community_id && *uid == user_id && permission == CommunityPermission::TaxonomyWrite
+            *cid == community_id
+                && *uid == user_id
+                && permission == CommunityPermission::TaxonomyWrite
         })
         .returning(|_, _, _| Ok(true));
     db.expect_list_regions()
@@ -202,7 +211,8 @@ async fn test_update_page_success() {
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+    let session_record =
+        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
     let mut region = sample_group_region();
     region.region_id = region_id;
     let regions = vec![region];
@@ -226,7 +236,9 @@ async fn test_update_page_success() {
     db.expect_user_has_community_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == community_id && *uid == user_id && permission == CommunityPermission::TaxonomyWrite
+            *cid == community_id
+                && *uid == user_id
+                && permission == CommunityPermission::TaxonomyWrite
         })
         .returning(|_, _, _| Ok(true));
     db.expect_list_regions()
@@ -266,7 +278,8 @@ async fn test_add_success() {
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+    let session_record =
+        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
     let form = RegionInput {
         name: "North America".to_string(),
     };
@@ -286,7 +299,9 @@ async fn test_add_success() {
     db.expect_user_has_community_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == community_id && *uid == user_id && permission == CommunityPermission::TaxonomyWrite
+            *cid == community_id
+                && *uid == user_id
+                && permission == CommunityPermission::TaxonomyWrite
         })
         .returning(|_, _, _| Ok(true));
     db.expect_add_region()
@@ -330,7 +345,8 @@ async fn test_delete_success() {
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+    let session_record =
+        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -345,7 +361,9 @@ async fn test_delete_success() {
     db.expect_user_has_community_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == community_id && *uid == user_id && permission == CommunityPermission::TaxonomyWrite
+            *cid == community_id
+                && *uid == user_id
+                && permission == CommunityPermission::TaxonomyWrite
         })
         .returning(|_, _, _| Ok(true));
     db.expect_delete_region()
@@ -386,7 +404,8 @@ async fn test_update_success() {
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+    let session_record =
+        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
     let form = RegionInput {
         name: "South America".to_string(),
     };
@@ -406,13 +425,18 @@ async fn test_update_success() {
     db.expect_user_has_community_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == community_id && *uid == user_id && permission == CommunityPermission::TaxonomyWrite
+            *cid == community_id
+                && *uid == user_id
+                && permission == CommunityPermission::TaxonomyWrite
         })
         .returning(|_, _, _| Ok(true));
     db.expect_update_region()
         .times(1)
         .withf(move |uid, cid, rid, region| {
-            *uid == user_id && *cid == community_id && *rid == region_id && region.name == expected_name
+            *uid == user_id
+                && *cid == community_id
+                && *rid == region_id
+                && region.name == expected_name
         })
         .returning(|_, _, _, _| Ok(()));
 

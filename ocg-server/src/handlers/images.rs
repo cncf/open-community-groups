@@ -22,7 +22,9 @@ use crate::{
     config::HttpServerConfig,
     db::DynDB,
     handlers::{error::HandlerError, extractors::CurrentUser, request_matches_site},
-    services::images::{DynImageStorage, NewImage, OPEN_GRAPH_IMAGE_HEIGHT, OPEN_GRAPH_IMAGE_WIDTH},
+    services::images::{
+        DynImageStorage, NewImage, OPEN_GRAPH_IMAGE_HEIGHT, OPEN_GRAPH_IMAGE_WIDTH,
+    },
     util::compute_hash,
 };
 
@@ -250,7 +252,8 @@ fn is_svg(bytes: &[u8], extension: &str) -> bool {
 
                     // Verify SVG namespace is present
                     let has_svg_namespace = e.attributes().filter_map(Result::ok).any(|attr| {
-                        (attr.key.as_ref() == b"xmlns" || attr.key.local_name().as_ref() == b"xmlns")
+                        (attr.key.as_ref() == b"xmlns"
+                            || attr.key.local_name().as_ref() == b"xmlns")
                             && attr.value.as_ref() == SVG_NAMESPACE
                     });
 
@@ -336,10 +339,14 @@ async fn serve_image(
 
     // Prepare immutable cache and content headers
     let mut response_headers = HeaderMap::new();
-    response_headers.insert(CACHE_CONTROL, HeaderValue::from_static(CACHE_CONTROL_IMMUTABLE));
+    response_headers.insert(
+        CACHE_CONTROL,
+        HeaderValue::from_static(CACHE_CONTROL_IMMUTABLE),
+    );
     response_headers.insert(
         CONTENT_TYPE,
-        HeaderValue::from_str(&image.content_type).map_err(|err| HandlerError::Other(err.into()))?,
+        HeaderValue::from_str(&image.content_type)
+            .map_err(|err| HandlerError::Other(err.into()))?,
     );
 
     // Build the image response body

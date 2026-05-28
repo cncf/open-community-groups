@@ -29,7 +29,12 @@ pub(crate) trait DBCommon {
     async fn get_community_summary(&self, community_id: Uuid) -> Result<CommunitySummary>;
 
     /// Gets full event details.
-    async fn get_event_full(&self, community_id: Uuid, group_id: Uuid, event_id: Uuid) -> Result<EventFull>;
+    async fn get_event_full(
+        &self,
+        community_id: Uuid,
+        group_id: Uuid,
+        event_id: Uuid,
+    ) -> Result<EventFull>;
 
     /// Gets summary event details.
     async fn get_event_summary(
@@ -76,7 +81,12 @@ impl DBCommon for PgDB {
 
     /// [`DBCommon::get_event_full`]
     #[instrument(skip(self), err)]
-    async fn get_event_full(&self, community_id: Uuid, group_id: Uuid, event_id: Uuid) -> Result<EventFull> {
+    async fn get_event_full(
+        &self,
+        community_id: Uuid,
+        group_id: Uuid,
+        event_id: Uuid,
+    ) -> Result<EventFull> {
         self.fetch_json_one(
             "select get_event_full($1::uuid, $2::uuid, $3::uuid)",
             &[&community_id, &group_id, &event_id],

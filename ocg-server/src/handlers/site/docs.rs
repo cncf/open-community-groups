@@ -22,7 +22,10 @@ mod tests;
 
 /// Handler that renders the documentation page.
 #[instrument(skip_all, err)]
-pub(crate) async fn page(State(db): State<DynDB>, uri: Uri) -> Result<impl IntoResponse, HandlerError> {
+pub(crate) async fn page(
+    State(db): State<DynDB>,
+    uri: Uri,
+) -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
     let site_settings = db.get_site_settings().await?;
     let template = docs::Page {

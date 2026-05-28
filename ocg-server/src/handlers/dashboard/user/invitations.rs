@@ -19,10 +19,8 @@ use crate::{
         error::HandlerError,
         extractors::CurrentUser,
     },
-    services::notifications::{DynNotificationsManager, NewNotification, NotificationKind},
+    services::notifications::{DynNotificationsManager, helpers::build_event_welcome_notification},
     templates::dashboard::user::invitations,
-    templates::notifications::EventWelcome,
-    util::{build_event_calendar_attachment, build_event_page_link, build_user_dashboard_events_link},
 };
 
 #[cfg(test)]
@@ -91,23 +89,16 @@ pub(crate) async fn accept_event_attendee_invitation(
             return Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-body")]).into_response());
         }
     };
-    let base_url = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
-    let link = build_event_page_link(base_url, &event);
-    let template_data = EventWelcome {
-        event,
-        link,
-        theme: site_settings.theme,
-
-        dashboard_link: Some(build_user_dashboard_events_link(base_url)),
-    };
-    let notification = NewNotification {
-        attachments: vec![build_event_calendar_attachment(base_url, &template_data.event)],
-        kind: NotificationKind::EventWelcome,
-        recipients: vec![user.user_id],
-        template_data: Some(serde_json::to_value(&template_data)?),
-    };
-    if let Err(err) = notifications_manager.enqueue(&notification).await {
-        warn!(error = %err, "failed to enqueue event invitation welcome notification");
+    match build_event_welcome_notification(&event, user.user_id, &server_cfg, &site_settings, true)
+    {
+        Ok(notification) => {
+            if let Err(err) = notifications_manager.enqueue(&notification).await {
+                warn!(error = %err, "failed to enqueue event invitation welcome notification");
+            }
+        }
+        Err(err) => {
+            warn!(error = %err, "failed to build event invitation welcome notification");
+        }
     }
 
     Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-body")]).into_response())

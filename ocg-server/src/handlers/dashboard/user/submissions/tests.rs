@@ -49,7 +49,9 @@ async fn test_list_page_success() {
     db.expect_list_user_cfs_submissions()
         .times(1)
         .withf(move |uid, filters| {
-            *uid == user_id && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT) && filters.offset == Some(0)
+            *uid == user_id
+                && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
+                && filters.offset == Some(0)
         })
         .returning(move |_, _| Ok(output.clone()));
 
@@ -101,7 +103,9 @@ async fn test_list_page_with_pagination_params() {
         .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
     db.expect_list_user_cfs_submissions()
         .times(1)
-        .withf(move |uid, filters| *uid == user_id && filters.limit == Some(5) && filters.offset == Some(10))
+        .withf(move |uid, filters| {
+            *uid == user_id && filters.limit == Some(5) && filters.offset == Some(10)
+        })
         .returning(move |_, _| Ok(output.clone()));
 
     // Setup notifications manager mock
@@ -149,7 +153,9 @@ async fn test_list_page_db_error() {
     db.expect_list_user_cfs_submissions()
         .times(1)
         .withf(move |uid, filters| {
-            *uid == user_id && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT) && filters.offset == Some(0)
+            *uid == user_id
+                && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
+                && filters.offset == Some(0)
         })
         .returning(|_, _| Err(anyhow!("db error")));
 
@@ -198,7 +204,9 @@ async fn test_resubmit_success() {
         .returning(|_, _| Ok(()));
     db.expect_update_session()
         .times(1)
-        .withf(move |record| record.id == session_id && message_matches(record, "Submission resubmitted."))
+        .withf(move |record| {
+            record.id == session_id && message_matches(record, "Submission resubmitted.")
+        })
         .returning(|_| Ok(()));
 
     // Setup notifications manager mock
@@ -252,7 +260,9 @@ async fn test_withdraw_success() {
         .returning(|_, _| Ok(()));
     db.expect_update_session()
         .times(1)
-        .withf(move |record| record.id == session_id && message_matches(record, "Submission withdrawn."))
+        .withf(move |record| {
+            record.id == session_id && message_matches(record, "Submission withdrawn.")
+        })
         .returning(|_| Ok(()));
 
     // Setup notifications manager mock

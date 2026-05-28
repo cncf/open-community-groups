@@ -28,7 +28,10 @@ impl FromRequestParts<router::State> for CommunityId {
     type Rejection = (StatusCode, &'static str);
 
     #[instrument(skip_all, err(Debug))]
-    async fn from_request_parts(parts: &mut Parts, state: &router::State) -> Result<Self, Self::Rejection> {
+    async fn from_request_parts(
+        parts: &mut Parts,
+        state: &router::State,
+    ) -> Result<Self, Self::Rejection> {
         // Extract community name from path parameter
         let path_params: Path<HashMap<String, String>> = Path::from_request_parts(parts, state)
             .await
@@ -41,14 +44,15 @@ impl FromRequestParts<router::State> for CommunityId {
         if community_name.is_empty() {
             return Err((StatusCode::NOT_FOUND, "community not found"));
         }
-        let Some(community_id) = state
-            .db
-            .get_community_id_by_name(community_name)
-            .await
-            .map_err(|err| {
-                error!(?err, "error looking up community id");
-                (StatusCode::INTERNAL_SERVER_ERROR, "")
-            })?
+        let Some(community_id) =
+            state
+                .db
+                .get_community_id_by_name(community_name)
+                .await
+                .map_err(|err| {
+                    error!(?err, "error looking up community id");
+                    (StatusCode::INTERNAL_SERVER_ERROR, "")
+                })?
         else {
             return Err((StatusCode::NOT_FOUND, "community not found"));
         };
@@ -64,7 +68,10 @@ impl FromRequestParts<router::State> for CurrentUser {
     type Rejection = (StatusCode, &'static str);
 
     #[instrument(skip_all, err(Debug))]
-    async fn from_request_parts(parts: &mut Parts, state: &router::State) -> Result<Self, Self::Rejection> {
+    async fn from_request_parts(
+        parts: &mut Parts,
+        state: &router::State,
+    ) -> Result<Self, Self::Rejection> {
         let Ok(auth_session) = AuthSession::from_request_parts(parts, state).await else {
             return Err((StatusCode::UNAUTHORIZED, "user not logged in"));
         };
@@ -83,7 +90,10 @@ impl FromRequestParts<router::State> for OAuth2 {
     type Rejection = (StatusCode, &'static str);
 
     #[instrument(skip_all, err(Debug))]
-    async fn from_request_parts(parts: &mut Parts, state: &router::State) -> Result<Self, Self::Rejection> {
+    async fn from_request_parts(
+        parts: &mut Parts,
+        state: &router::State,
+    ) -> Result<Self, Self::Rejection> {
         let Ok(provider) = Path::<OAuth2Provider>::from_request_parts(parts, state).await else {
             return Err((StatusCode::BAD_REQUEST, "missing oauth2 provider"));
         };
@@ -104,7 +114,10 @@ impl FromRequestParts<router::State> for Oidc {
     type Rejection = (StatusCode, &'static str);
 
     #[instrument(skip_all, err(Debug))]
-    async fn from_request_parts(parts: &mut Parts, state: &router::State) -> Result<Self, Self::Rejection> {
+    async fn from_request_parts(
+        parts: &mut Parts,
+        state: &router::State,
+    ) -> Result<Self, Self::Rejection> {
         let Ok(provider) = Path::<OidcProvider>::from_request_parts(parts, state).await else {
             return Err((StatusCode::BAD_REQUEST, "missing oidc provider"));
         };
@@ -127,7 +140,10 @@ impl FromRequestParts<router::State> for SelectedCommunityId {
     type Rejection = (StatusCode, &'static str);
 
     #[instrument(skip_all, err(Debug))]
-    async fn from_request_parts(parts: &mut Parts, _state: &router::State) -> Result<Self, Self::Rejection> {
+    async fn from_request_parts(
+        parts: &mut Parts,
+        _state: &router::State,
+    ) -> Result<Self, Self::Rejection> {
         parts.extensions.get::<SelectedCommunityId>().copied().ok_or((
             StatusCode::INTERNAL_SERVER_ERROR,
             "missing selected community context",
@@ -144,7 +160,10 @@ impl FromRequestParts<router::State> for SelectedGroupId {
     type Rejection = (StatusCode, &'static str);
 
     #[instrument(skip_all, err(Debug))]
-    async fn from_request_parts(parts: &mut Parts, _state: &router::State) -> Result<Self, Self::Rejection> {
+    async fn from_request_parts(
+        parts: &mut Parts,
+        _state: &router::State,
+    ) -> Result<Self, Self::Rejection> {
         parts.extensions.get::<SelectedGroupId>().copied().ok_or((
             StatusCode::INTERNAL_SERVER_ERROR,
             "missing selected group context",

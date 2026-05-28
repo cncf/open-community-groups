@@ -17,7 +17,9 @@ use crate::{
     activity_tracker::{Activity, DynActivityTracker},
     config::HttpServerConfig,
     db::DynDB,
-    handlers::{error::HandlerError, request_matches_site, site::not_found, trim_public_gallery_images},
+    handlers::{
+        error::HandlerError, request_matches_site, site::not_found, trim_public_gallery_images,
+    },
     router::PUBLIC_SHARED_CACHE_HEADERS,
     templates::{PageId, auth::User, community},
     types::event::EventKind,
@@ -46,10 +48,19 @@ pub(crate) async fn page(
     };
 
     // Prepare template
-    let (mut community, recently_added_groups, upcoming_in_person_events, upcoming_virtual_events, stats) = tokio::try_join!(
+    let (
+        mut community,
+        recently_added_groups,
+        upcoming_in_person_events,
+        upcoming_virtual_events,
+        stats,
+    ) = tokio::try_join!(
         db.get_community_full(community_id),
         db.get_community_recently_added_groups(community_id),
-        db.get_community_upcoming_events(community_id, vec![EventKind::InPerson, EventKind::Hybrid]),
+        db.get_community_upcoming_events(
+            community_id,
+            vec![EventKind::InPerson, EventKind::Hybrid]
+        ),
         db.get_community_upcoming_events(community_id, vec![EventKind::Virtual, EventKind::Hybrid]),
         db.get_community_site_stats(community_id),
     )?;

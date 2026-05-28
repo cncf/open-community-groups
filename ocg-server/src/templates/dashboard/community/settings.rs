@@ -10,8 +10,8 @@ use serde_with::skip_serializing_none;
 use crate::{
     types::community::CommunityFull,
     validation::{
-        MAX_LEN_DESCRIPTION, MAX_LEN_DISPLAY_NAME, MAX_LEN_L, image_url, image_url_opt, image_url_vec,
-        trimmed_non_empty, trimmed_non_empty_opt, url_map_values,
+        MAX_LEN_DESCRIPTION, MAX_LEN_DISPLAY_NAME, MAX_LEN_L, image_url, image_url_opt,
+        image_url_vec, trimmed_non_empty, trimmed_non_empty_opt, url_map_values,
     },
 };
 

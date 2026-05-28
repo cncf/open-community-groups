@@ -463,7 +463,8 @@ pub(crate) struct AuditLogEntry {
 
 impl From<AuditLogRecord> for AuditLogEntry {
     fn from(record: AuditLogRecord) -> Self {
-        let resource_display_name = record.resource_name.unwrap_or_else(|| record.resource_id.to_string());
+        let resource_display_name =
+            record.resource_name.unwrap_or_else(|| record.resource_id.to_string());
         let details = record
             .details
             .into_iter()

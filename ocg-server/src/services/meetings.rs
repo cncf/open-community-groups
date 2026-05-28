@@ -57,14 +57,19 @@ const PAUSE_ON_SYNC_NONE: Duration = Duration::from_secs(30);
 #[cfg_attr(test, automock)]
 pub(crate) trait MeetingsProvider {
     /// Create a meeting.
-    async fn create_meeting(&self, meeting: &Meeting)
-    -> Result<MeetingProviderMeeting, MeetingProviderError>;
+    async fn create_meeting(
+        &self,
+        meeting: &Meeting,
+    ) -> Result<MeetingProviderMeeting, MeetingProviderError>;
 
     /// Delete a meeting.
     async fn delete_meeting(&self, provider_meeting_id: &str) -> Result<(), MeetingProviderError>;
 
     /// End a meeting.
-    async fn end_meeting(&self, provider_meeting_id: &str) -> Result<MeetingEndResult, MeetingProviderError>;
+    async fn end_meeting(
+        &self,
+        provider_meeting_id: &str,
+    ) -> Result<MeetingEndResult, MeetingProviderError>;
 
     /// Get meeting details.
     async fn get_meeting(
@@ -119,9 +124,15 @@ impl std::fmt::Display for MeetingProviderError {
             Self::Client(msg) => write!(f, "provider client error: {msg}"),
             Self::Network(msg) => write!(f, "provider network error: {msg}"),
             Self::NotFound => write!(f, "meeting not found"),
-            Self::NoSlotsAvailable => write!(f, "no meeting slots available for automatic creation"),
+            Self::NoSlotsAvailable => {
+                write!(f, "no meeting slots available for automatic creation")
+            }
             Self::RateLimit { retry_after } => {
-                write!(f, "rate limit exceeded (retry after {}s)", retry_after.as_secs())
+                write!(
+                    f,
+                    "rate limit exceeded (retry after {}s)",
+                    retry_after.as_secs()
+                )
             }
             Self::Server(msg) => write!(f, "provider server error: {msg}"),
             Self::Token(msg) => write!(f, "provider token error: {msg}"),
@@ -248,7 +259,9 @@ impl MeetingsAutoEndWorker {
     #[instrument(skip(self), err)]
     async fn auto_end_meeting(&self) -> Result<bool, SyncError> {
         // Claim an overdue meeting candidate before provider side effects
-        let Some(candidate) = self.db.claim_meeting_for_auto_end().await.map_err(SyncError::Other)? else {
+        let Some(candidate) =
+            self.db.claim_meeting_for_auto_end().await.map_err(SyncError::Other)?
+        else {
             return Ok(false);
         };
 
@@ -261,7 +274,10 @@ impl MeetingsAutoEndWorker {
             );
 
             self.db
-                .set_meeting_auto_end_check_outcome(candidate.meeting_id, MeetingAutoEndCheckOutcome::Error)
+                .set_meeting_auto_end_check_outcome(
+                    candidate.meeting_id,
+                    MeetingAutoEndCheckOutcome::Error,
+                )
                 .await
                 .map_err(SyncError::Other)?;
             return Ok(true);
@@ -269,7 +285,9 @@ impl MeetingsAutoEndWorker {
 
         // End meeting and map provider outcome to a stored check outcome
         let check_outcome = match provider.end_meeting(&candidate.provider_meeting_id).await {
-            Ok(MeetingEndResult::AlreadyNotRunning) => MeetingAutoEndCheckOutcome::AlreadyNotRunning,
+            Ok(MeetingEndResult::AlreadyNotRunning) => {
+                MeetingAutoEndCheckOutcome::AlreadyNotRunning
+            }
             Ok(MeetingEndResult::Ended) => MeetingAutoEndCheckOutcome::AutoEnded,
             Err(MeetingProviderError::NotFound) => MeetingAutoEndCheckOutcome::NotFound,
             Err(err) if err.is_retryable() => {
@@ -395,7 +413,8 @@ impl MeetingsSyncWorker {
     #[instrument(skip(self), err)]
     async fn sync_meeting(&mut self) -> Result<bool, SyncError> {
         // Claim an out-of-sync meeting before provider side effects
-        let Some(meeting) = self.db.claim_meeting_out_of_sync().await.map_err(SyncError::Other)? else {
+        let Some(meeting) = self.db.claim_meeting_out_of_sync().await.map_err(SyncError::Other)?
+        else {
             return Ok(false);
         };
 
@@ -493,10 +512,9 @@ impl MeetingsSyncWorker {
         provider: &DynMeetingsProvider,
     ) -> Result<(), SyncError> {
         // Get provider meeting ID
-        let provider_meeting_id = meeting
-            .provider_meeting_id
-            .as_ref()
-            .ok_or_else(|| SyncError::Other(anyhow::anyhow!("missing provider_meeting_id for update")))?;
+        let provider_meeting_id = meeting.provider_meeting_id.as_ref().ok_or_else(|| {
+            SyncError::Other(anyhow::anyhow!("missing provider_meeting_id for update"))
+        })?;
 
         // Call provider to update meeting
         provider.update_meeting(provider_meeting_id, meeting).await?;
@@ -629,7 +647,18 @@ impl Meeting {
 
 /// Meeting provider options.
 #[derive(
-    AsRefStr, Clone, Copy, Debug, Default, Deserialize, Display, EnumString, Eq, Hash, PartialEq, Serialize,
+    AsRefStr,
+    Clone,
+    Copy,
+    Debug,
+    Default,
+    Deserialize,
+    Display,
+    EnumString,
+    Eq,
+    Hash,
+    PartialEq,
+    Serialize,
 )]
 #[serde(rename_all = "lowercase")]
 #[strum(serialize_all = "lowercase")]

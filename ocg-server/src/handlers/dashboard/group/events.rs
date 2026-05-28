@@ -26,7 +26,14 @@ use crate::{
     router::serde_qs_config,
     services::{
         meetings::MeetingProvider,
-        notifications::{DynNotificationsManager, NewNotification, NotificationKind},
+        notifications::{
+            DynNotificationsManager, NewNotification, NotificationKind,
+            helpers::{
+                build_event_canceled_notification, build_event_published_notification,
+                build_event_rescheduled_notification, build_event_waitlist_promoted_notification,
+                build_speaker_welcome_notification, should_send_waitlist_promoted_notification,
+            },
+        },
     },
     templates::{
         dashboard::group::{
@@ -34,9 +41,8 @@ use crate::{
             sponsors::GroupSponsorsFilters,
         },
         notifications::{
-            EventCanceled, EventPublished, EventRescheduled, EventSeriesCanceled,
-            EventSeriesNotificationItem, EventSeriesPublished, EventWaitlistPromoted, SpeakerSeriesWelcome,
-            SpeakerWelcome,
+            EventSeriesCanceled, EventSeriesNotificationItem, EventSeriesPublished,
+            SpeakerSeriesWelcome,
         },
     },
     types::{
@@ -45,7 +51,7 @@ use crate::{
         payments::GroupPaymentRecipient,
         permissions::GroupPermission,
     },
-    util::{build_event_calendar_attachment, build_event_page_link, build_user_dashboard_events_link},
+    util::build_event_page_link,
 };
 
 mod recurrence;
@@ -158,7 +164,9 @@ pub(crate) async fn preview(
     let input: events::preview::Input = serde_qs_de
         .deserialize_str(&body)
         .map_err(|err| HandlerError::Deserialization(err.to_string()))?;
-    let template = events::preview::Page { event: input.into() };
+    let template = events::preview::Page {
+        event: input.into(),
+    };
 
     Ok(Html(template.render()?))
 }
@@ -266,8 +274,9 @@ pub(crate) async fn add(
     }
 
     // Create either a single event or a linked recurring event series
-    if let Some(recurring_event_payloads) = RecurringEventPayloads::from_event(&event, &event_payload)
-        .map_err(|err| HandlerError::Deserialization(err.to_string()))?
+    if let Some(recurring_event_payloads) =
+        RecurringEventPayloads::from_event(&event, &event_payload)
+            .map_err(|err| HandlerError::Deserialization(err.to_string()))?
     {
         db.add_event_series(
             user.user_id,
@@ -278,8 +287,13 @@ pub(crate) async fn add(
         )
         .await?;
     } else {
-        db.add_event(user.user_id, group_id, &event_payload, &cfg_max_participants)
-            .await?;
+        db.add_event(
+            user.user_id,
+            group_id,
+            &event_payload,
+            &cfg_max_participants,
+        )
+        .await?;
     }
 
     Ok((
@@ -334,7 +348,8 @@ pub(crate) async fn cancel(
     match (query.scope, events_to_notify.as_slice()) {
         // Multiple notifiable events
         (EventActionScope::Series, [_, _, ..]) => {
-            let event_ids: Vec<Uuid> = events_to_notify.iter().map(|event| event.event_id).collect();
+            let event_ids: Vec<Uuid> =
+                events_to_notify.iter().map(|event| event.event_id).collect();
             notify_events_canceled(
                 &db,
                 &notifications_manager,
@@ -414,7 +429,9 @@ pub(crate) async fn publish(
     // Resolve action scope and target event ids
     let query = parse_event_action_query(raw_query.as_deref())?;
     let event_ids = match query.scope {
-        EventActionScope::Series => db.list_event_series_publishable_event_ids(group_id, event_id).await?,
+        EventActionScope::Series => {
+            db.list_event_series_publishable_event_ids(group_id, event_id).await?
+        }
         EventActionScope::This => vec![event_id],
     };
     let configured_provider = payments_cfg.as_ref().map(PaymentsConfig::provider);
@@ -450,7 +467,8 @@ pub(crate) async fn publish(
     match (query.scope, events_to_notify.as_slice()) {
         // Multiple notifiable events
         (EventActionScope::Series, [_, _, ..]) => {
-            let event_ids: Vec<Uuid> = events_to_notify.iter().map(|event| event.event_id).collect();
+            let event_ids: Vec<Uuid> =
+                events_to_notify.iter().map(|event| event.event_id).collect();
             notify_events_published(
                 &db,
                 &notifications_manager,
@@ -558,26 +576,24 @@ pub(crate) async fn update(
             db.get_site_settings(),
             db.get_event_summary(community_id, group_id, event_id)
         ) {
-            Ok((site_settings, event)) if !event.test_event => {
+            Ok((site_settings, event))
+                if should_send_waitlist_promoted_notification(&event, &promoted_user_ids) =>
+            {
                 // Build and enqueue the waitlist promotion notification
-                let base_url = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
-                let link = build_event_page_link(base_url, &event);
-                let calendar_ics = build_event_calendar_attachment(base_url, &event);
-                let template_data = EventWaitlistPromoted {
-                    event: event.clone(),
-                    has_registration_questions: event.has_registration_questions,
-                    link,
-                    theme: site_settings.theme,
-                    dashboard_link: Some(build_user_dashboard_events_link(base_url)),
-                };
-                let notification = NewNotification {
-                    attachments: vec![calendar_ics],
-                    kind: NotificationKind::EventWaitlistPromoted,
-                    recipients: promoted_user_ids,
-                    template_data: Some(serde_json::to_value(&template_data)?),
-                };
-                if let Err(err) = notifications_manager.enqueue(&notification).await {
-                    warn!(error = %err, "failed to enqueue waitlist promotion notification");
+                match build_event_waitlist_promoted_notification(
+                    &event,
+                    promoted_user_ids,
+                    &server_cfg,
+                    &site_settings,
+                ) {
+                    Ok(notification) => {
+                        if let Err(err) = notifications_manager.enqueue(&notification).await {
+                            warn!(error = %err, "failed to enqueue waitlist promotion notification");
+                        }
+                    }
+                    Err(err) => {
+                        warn!(error = %err, "failed to build waitlist promotion notification");
+                    }
                 }
             }
             Ok(_) => {}
@@ -616,21 +632,13 @@ pub(crate) async fn update(
 
             if !recipients.is_empty() {
                 let site_settings = db.get_site_settings().await?;
-                let base = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
                 let event_summary = EventSummary::from(&event_full);
-                let link = build_event_page_link(base, &event_summary);
-                let calendar_ics = build_event_calendar_attachment(base, &event_summary);
-                let template_data = EventRescheduled {
-                    event: event_summary,
-                    link,
-                    theme: site_settings.theme,
-                };
-                let notification = NewNotification {
-                    attachments: vec![calendar_ics],
-                    kind: NotificationKind::EventRescheduled,
+                let notification = build_event_rescheduled_notification(
+                    &event_summary,
                     recipients,
-                    template_data: Some(serde_json::to_value(&template_data)?),
-                };
+                    &server_cfg,
+                    &site_settings,
+                )?;
                 notifications_manager.enqueue(&notification).await?;
             }
         }
@@ -682,7 +690,9 @@ fn build_event_payload(event: &Event) -> Result<serde_json::Value, HandlerError>
 }
 
 /// Builds a `HashMap` of meeting provider to max participants from config.
-fn build_meetings_max_participants(meetings_cfg: Option<&MeetingsConfig>) -> HashMap<MeetingProvider, i32> {
+fn build_meetings_max_participants(
+    meetings_cfg: Option<&MeetingsConfig>,
+) -> HashMap<MeetingProvider, i32> {
     let mut map = HashMap::new();
     if let Some(cfg) = meetings_cfg
         && let Some(zoom) = &cfg.zoom
@@ -778,7 +788,12 @@ pub(crate) async fn prepare_list_page(
     // Fetch group's past and upcoming events
     let filters: EventsListFilters = serde_qs_config().deserialize_str(raw_query)?;
     let (can_manage_events, events) = tokio::try_join!(
-        db.user_has_group_permission(&community_id, &group_id, &user_id, GroupPermission::EventsWrite),
+        db.user_has_group_permission(
+            &community_id,
+            &group_id,
+            &user_id,
+            GroupPermission::EventsWrite
+        ),
         db.list_group_events(group_id, &filters)
     )?;
 
@@ -787,8 +802,12 @@ pub(crate) async fn prepare_list_page(
     past_filters.events_tab = Some(EventsTab::Past);
     let mut upcoming_filters = filters.clone();
     upcoming_filters.events_tab = Some(EventsTab::Upcoming);
-    let past_navigation_links =
-        NavigationLinks::from_filters(&past_filters, events.past.total, DASHBOARD_URL, PARTIAL_URL)?;
+    let past_navigation_links = NavigationLinks::from_filters(
+        &past_filters,
+        events.past.total,
+        DASHBOARD_URL,
+        PARTIAL_URL,
+    )?;
     let upcoming_navigation_links = NavigationLinks::from_filters(
         &upcoming_filters,
         events.upcoming.total,
@@ -814,7 +833,10 @@ pub(crate) async fn prepare_list_page(
 // Notifications helpers.
 
 /// Builds one aggregate notification item from full event data.
-fn event_series_notification_item(base_url: &str, event_full: &EventFull) -> EventSeriesNotificationItem {
+fn event_series_notification_item(
+    base_url: &str,
+    event_full: &EventFull,
+) -> EventSeriesNotificationItem {
     let event = EventSummary::from(event_full);
     let link = build_event_page_link(base_url, &event);
 
@@ -889,21 +911,9 @@ async fn notify_event_canceled(
 
     // Build and enqueue the cancellation notification
     let site_settings = db.get_site_settings().await?;
-    let base_url = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
     let event_summary = EventSummary::from(&event_full);
-    let link = build_event_page_link(base_url, &event_summary);
-    let calendar_ics = build_event_calendar_attachment(base_url, &event_summary);
-    let template_data = EventCanceled {
-        event: event_summary,
-        link,
-        theme: site_settings.theme,
-    };
-    let notification = NewNotification {
-        attachments: vec![calendar_ics],
-        kind: NotificationKind::EventCanceled,
-        recipients,
-        template_data: Some(serde_json::to_value(&template_data)?),
-    };
+    let notification =
+        build_event_canceled_notification(&event_summary, recipients, server_cfg, &site_settings)?;
     notifications_manager.enqueue(&notification).await?;
 
     Ok(())
@@ -953,40 +963,27 @@ async fn notify_event_published(
 
     // Prepare common notification data
     let site_settings = db.get_site_settings().await?;
-    let base_url = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
     let event_summary = EventSummary::from(&event_full);
-    let link = build_event_page_link(base_url, &event_summary);
-    let calendar_ics = build_event_calendar_attachment(base_url, &event_summary);
 
     // Notify group members about the published event
     if has_members {
-        let template_data = EventPublished {
-            event: event_summary.clone(),
-            link: link.clone(),
-            theme: site_settings.theme.clone(),
-        };
-        let notification = NewNotification {
-            attachments: vec![calendar_ics.clone()],
-            kind: NotificationKind::EventPublished,
+        let notification = build_event_published_notification(
+            &event_summary,
             recipients,
-            template_data: Some(serde_json::to_value(&template_data)?),
-        };
+            server_cfg,
+            &site_settings,
+        )?;
         notifications_manager.enqueue(&notification).await?;
     }
 
     // Notify speakers about being added to the event
     if has_speakers {
-        let template_data = SpeakerWelcome {
-            event: event_summary,
-            link,
-            theme: site_settings.theme,
-        };
-        let notification = NewNotification {
-            attachments: vec![calendar_ics],
-            kind: NotificationKind::SpeakerWelcome,
-            recipients: speaker_ids,
-            template_data: Some(serde_json::to_value(&template_data)?),
-        };
+        let notification = build_speaker_welcome_notification(
+            &event_summary,
+            speaker_ids,
+            server_cfg,
+            &site_settings,
+        )?;
         notifications_manager.enqueue(&notification).await?;
     }
 
@@ -1041,7 +1038,8 @@ async fn notify_events_canceled(
     // Build and enqueue grouped cancellation notifications
     let site_settings = db.get_site_settings().await?;
     for group in group_recipients_by_events(recipient_events) {
-        let Some(group_name) = group.events.first().map(|event| event.event.group_name.clone()) else {
+        let Some(group_name) = group.events.first().map(|event| event.event.group_name.clone())
+        else {
             continue;
         };
         let template_data = EventSeriesCanceled {
@@ -1124,7 +1122,8 @@ async fn notify_events_published(
         else {
             continue;
         };
-        let Some(group_name) = group.events.first().map(|event| event.event.group_name.clone()) else {
+        let Some(group_name) = group.events.first().map(|event| event.event.group_name.clone())
+        else {
             continue;
         };
         let template_data = EventSeriesPublished {
@@ -1145,7 +1144,8 @@ async fn notify_events_published(
 
     // Notify speakers about being added to the event series
     for group in group_recipients_by_events(speaker_events) {
-        let Some(group_name) = group.events.first().map(|event| event.event.group_name.clone()) else {
+        let Some(group_name) = group.events.first().map(|event| event.event.group_name.clone())
+        else {
             continue;
         };
         let template_data = SpeakerSeriesWelcome {

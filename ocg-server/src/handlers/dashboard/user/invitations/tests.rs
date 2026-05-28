@@ -246,7 +246,9 @@ async fn test_accept_event_attendee_invitation_success() {
         .returning(move |_, _| Ok(event.clone()));
     db.expect_update_session()
         .times(1)
-        .withf(move |record| record.id == session_id && message_matches(record, "Event invitation accepted."))
+        .withf(move |record| {
+            record.id == session_id && message_matches(record, "Event invitation accepted.")
+        })
         .returning(|_| Ok(()));
 
     // Setup notifications manager mock
@@ -274,7 +276,9 @@ async fn test_accept_event_attendee_invitation_success() {
         .await;
     let request = Request::builder()
         .method("PUT")
-        .uri(format!("/dashboard/user/invitations/event/{event_id}/accept"))
+        .uri(format!(
+            "/dashboard/user/invitations/event/{event_id}/accept"
+        ))
         .header(COOKIE, format!("id={session_id}"))
         .body(Body::empty())
         .unwrap();
@@ -324,7 +328,9 @@ async fn test_accept_event_attendee_invitation_succeeds_when_notification_contex
         .returning(|_, _| Err(anyhow!("event summary error")));
     db.expect_update_session()
         .times(1)
-        .withf(move |record| record.id == session_id && message_matches(record, "Event invitation accepted."))
+        .withf(move |record| {
+            record.id == session_id && message_matches(record, "Event invitation accepted.")
+        })
         .returning(|_| Ok(()));
 
     // Setup notifications manager mock
@@ -335,7 +341,9 @@ async fn test_accept_event_attendee_invitation_succeeds_when_notification_contex
     let router = TestRouterBuilder::new(db, nm).build().await;
     let request = Request::builder()
         .method("PUT")
-        .uri(format!("/dashboard/user/invitations/event/{event_id}/accept"))
+        .uri(format!(
+            "/dashboard/user/invitations/event/{event_id}/accept"
+        ))
         .header(COOKIE, format!("id={session_id}"))
         .body(Body::empty())
         .unwrap();
@@ -404,7 +412,9 @@ async fn test_accept_group_team_invitation_success() {
     let router = TestRouterBuilder::new(db, nm).build().await;
     let request = Request::builder()
         .method("PUT")
-        .uri(format!("/dashboard/user/invitations/group/{group_id}/accept"))
+        .uri(format!(
+            "/dashboard/user/invitations/group/{group_id}/accept"
+        ))
         .header(COOKIE, format!("id={session_id}"))
         .body(Body::empty())
         .unwrap();
@@ -446,7 +456,9 @@ async fn test_reject_community_team_invitation_success() {
         .returning(|_, _| Ok(()));
     db.expect_update_session()
         .times(1)
-        .withf(move |record| record.id == session_id && message_matches(record, "Team invitation rejected."))
+        .withf(move |record| {
+            record.id == session_id && message_matches(record, "Team invitation rejected.")
+        })
         .returning(|_| Ok(()));
 
     // Setup notifications manager mock
@@ -500,7 +512,9 @@ async fn test_reject_event_attendee_invitation_success() {
         .returning(|_, _| Ok(()));
     db.expect_update_session()
         .times(1)
-        .withf(move |record| record.id == session_id && message_matches(record, "Event invitation rejected."))
+        .withf(move |record| {
+            record.id == session_id && message_matches(record, "Event invitation rejected.")
+        })
         .returning(|_| Ok(()));
 
     // Setup notifications manager mock
@@ -510,7 +524,9 @@ async fn test_reject_event_attendee_invitation_success() {
     let router = TestRouterBuilder::new(db, nm).build().await;
     let request = Request::builder()
         .method("PUT")
-        .uri(format!("/dashboard/user/invitations/event/{event_id}/reject"))
+        .uri(format!(
+            "/dashboard/user/invitations/event/{event_id}/reject"
+        ))
         .header(COOKIE, format!("id={session_id}"))
         .body(Body::empty())
         .unwrap();
@@ -552,7 +568,9 @@ async fn test_reject_group_team_invitation_success() {
         .returning(|_, _| Ok(()));
     db.expect_update_session()
         .times(1)
-        .withf(move |record| record.id == session_id && message_matches(record, "Team invitation rejected."))
+        .withf(move |record| {
+            record.id == session_id && message_matches(record, "Team invitation rejected.")
+        })
         .returning(|_| Ok(()));
 
     // Setup notifications manager mock
@@ -562,7 +580,9 @@ async fn test_reject_group_team_invitation_success() {
     let router = TestRouterBuilder::new(db, nm).build().await;
     let request = Request::builder()
         .method("PUT")
-        .uri(format!("/dashboard/user/invitations/group/{group_id}/reject"))
+        .uri(format!(
+            "/dashboard/user/invitations/group/{group_id}/reject"
+        ))
         .header(COOKIE, format!("id={session_id}"))
         .body(Body::empty())
         .unwrap();

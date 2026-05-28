@@ -56,7 +56,9 @@ async fn test_list_page_success() {
     db.expect_list_user_events()
         .times(1)
         .withf(move |uid, filters| {
-            *uid == user_id && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT) && filters.offset == Some(0)
+            *uid == user_id
+                && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
+                && filters.offset == Some(0)
         })
         .returning(move |_, _| Ok(output.clone()));
 
@@ -108,7 +110,9 @@ async fn test_list_page_with_pagination_params() {
         .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
     db.expect_list_user_events()
         .times(1)
-        .withf(move |uid, filters| *uid == user_id && filters.limit == Some(5) && filters.offset == Some(10))
+        .withf(move |uid, filters| {
+            *uid == user_id && filters.limit == Some(5) && filters.offset == Some(10)
+        })
         .returning(move |_, _| Ok(output.clone()));
 
     // Setup notifications manager mock.
@@ -156,7 +160,9 @@ async fn test_list_page_db_error() {
     db.expect_list_user_events()
         .times(1)
         .withf(move |uid, filters| {
-            *uid == user_id && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT) && filters.offset == Some(0)
+            *uid == user_id
+                && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
+                && filters.offset == Some(0)
         })
         .returning(|_, _| Err(anyhow!("db error")));
 
@@ -315,7 +321,8 @@ async fn test_submit_registration_answers_success() {
             }
         ]
     });
-    let form_body = serde_urlencoded::to_string([("registration_answers", answers.to_string())]).unwrap();
+    let form_body =
+        serde_urlencoded::to_string([("registration_answers", answers.to_string())]).unwrap();
 
     // Setup database mock.
     let mut db = MockDB::new();
@@ -408,7 +415,8 @@ async fn test_submit_registration_answers_update_skips_welcome_notification() {
             }
         ]
     });
-    let form_body = serde_urlencoded::to_string([("registration_answers", answers.to_string())]).unwrap();
+    let form_body =
+        serde_urlencoded::to_string([("registration_answers", answers.to_string())]).unwrap();
 
     // Setup database mock.
     let mut db = MockDB::new();

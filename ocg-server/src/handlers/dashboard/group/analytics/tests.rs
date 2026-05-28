@@ -10,7 +10,9 @@ use axum_login::tower_sessions::session;
 use tower::ServiceExt;
 use uuid::Uuid;
 
-use crate::{db::mock::MockDB, handlers::tests::*, services::notifications::MockNotificationsManager};
+use crate::{
+    db::mock::MockDB, handlers::tests::*, services::notifications::MockNotificationsManager,
+};
 
 #[tokio::test]
 async fn test_page_db_error() {
@@ -40,7 +42,9 @@ async fn test_page_db_error() {
         .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
     db.expect_user_has_group_permission()
         .times(1)
-        .withf(move |cid, gid, uid, _permission| *cid == community_id && *gid == group_id && *uid == user_id)
+        .withf(move |cid, gid, uid, _permission| {
+            *cid == community_id && *gid == group_id && *uid == user_id
+        })
         .returning(|_, _, _, _| Ok(true));
     db.expect_get_group_stats()
         .times(1)
@@ -96,7 +100,9 @@ async fn test_page_success() {
         .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
     db.expect_user_has_group_permission()
         .times(1)
-        .withf(move |cid, gid, uid, _permission| *cid == community_id && *gid == group_id && *uid == user_id)
+        .withf(move |cid, gid, uid, _permission| {
+            *cid == community_id && *gid == group_id && *uid == user_id
+        })
         .returning(|_, _, _, _| Ok(true));
     db.expect_get_group_stats()
         .times(1)

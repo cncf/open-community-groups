@@ -74,7 +74,10 @@ pub(crate) async fn zoom_event(
 }
 
 /// Handles recording.completed event by updating the recording URL.
-async fn handle_recording_completed(db: &DynDB, payload: &ZoomWebhookPayload) -> axum::response::Response {
+async fn handle_recording_completed(
+    db: &DynDB,
+    payload: &ZoomWebhookPayload,
+) -> axum::response::Response {
     // Extract recording details from payload
     let Some(object) = payload.payload.as_ref().and_then(|p| p.object.as_ref()) else {
         warn!("recording.completed missing object");
@@ -128,7 +131,8 @@ fn handle_url_validation(
 fn compute_hmac(message: &str, secret: &str) -> String {
     type HmacSha256 = Hmac<Sha256>;
 
-    let mut mac = HmacSha256::new_from_slice(secret.as_bytes()).expect("HMAC can take key of any size");
+    let mut mac =
+        HmacSha256::new_from_slice(secret.as_bytes()).expect("HMAC can take key of any size");
     mac.update(message.as_bytes());
     hex::encode(mac.finalize().into_bytes())
 }

@@ -262,7 +262,8 @@ fn hashed_static_asset_path(plain_path: &str, hash: &str) -> String {
 
 /// Returns the dist filesystem path for a static asset public path.
 fn static_dist_path(asset_path: &str) -> Result<PathBuf> {
-    Ok(Path::new(STATIC_DIST_PATH).join(Path::new(asset_path).strip_prefix(format!("/{STATIC_PATH}/"))?))
+    Ok(Path::new(STATIC_DIST_PATH)
+        .join(Path::new(asset_path).strip_prefix(format!("/{STATIC_PATH}/"))?))
 }
 
 /// Calculate sha256 hash of content.

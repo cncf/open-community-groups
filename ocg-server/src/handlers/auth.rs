@@ -22,13 +22,16 @@ use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
-    auth::{self, AuthSession, Credentials, OAuth2Credentials, OidcCredentials, PasswordCredentials},
+    auth::{
+        self, AuthSession, Credentials, OAuth2Credentials, OidcCredentials, PasswordCredentials,
+    },
     config::{HttpServerConfig, OAuth2Provider, OidcProvider},
     db::DynDB,
     handlers::{
         error::HandlerError,
         extractors::{
-            CurrentUser, OAuth2, Oidc, SelectedCommunityId, SelectedGroupId, ValidatedForm, ValidatedFormQs,
+            CurrentUser, OAuth2, Oidc, SelectedCommunityId, SelectedGroupId, ValidatedForm,
+            ValidatedFormQs,
         },
     },
     services::notifications::{DynNotificationsManager, NewNotification, NotificationKind},
@@ -100,8 +103,8 @@ pub(crate) async fn log_in_page(
     let site_settings = db.get_site_settings().await?;
 
     // Sanitize and encode the next url (if any)
-    let next_url =
-        sanitize_next_url(query.get("next_url").map(String::as_str)).map(|value| encode_next_url(&value));
+    let next_url = sanitize_next_url(query.get("next_url").map(String::as_str))
+        .map(|value| encode_next_url(&value));
 
     // Prepare template
     let template = templates::auth::LogInPage {
@@ -136,8 +139,8 @@ pub(crate) async fn sign_up_page(
     let site_settings = db.get_site_settings().await?;
 
     // Sanitize and encode the next url (if any)
-    let next_url =
-        sanitize_next_url(query.get("next_url").map(String::as_str)).map(|value| encode_next_url(&value));
+    let next_url = sanitize_next_url(query.get("next_url").map(String::as_str))
+        .map(|value| encode_next_url(&value));
 
     // Prepare template
     let template = templates::auth::SignUpPage {
@@ -156,7 +159,9 @@ pub(crate) async fn sign_up_page(
 
 /// Handler for rendering the user menu section.
 #[instrument(skip_all, err)]
-pub(crate) async fn user_menu_section(auth_session: AuthSession) -> Result<impl IntoResponse, HandlerError> {
+pub(crate) async fn user_menu_section(
+    auth_session: AuthSession,
+) -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
     let template = templates::auth::UserMenuSection {
         user: User::from_session(auth_session).await?,
@@ -197,7 +202,8 @@ pub(crate) async fn log_in(
         .await
         .map_err(|e| HandlerError::Auth(e.to_string()))?
     else {
-        messages.error("Invalid credentials. Please make sure you have verified your email address.");
+        messages
+            .error("Invalid credentials. Please make sure you have verified your email address.");
         let log_in_url = get_log_in_url(next_url.as_deref());
         return Ok(Redirect::to(&log_in_url));
     };
@@ -217,7 +223,9 @@ pub(crate) async fn log_in(
 
 /// Handler that logs the user out.
 #[instrument(skip_all)]
-pub(crate) async fn log_out(mut auth_session: AuthSession) -> Result<impl IntoResponse, HandlerError> {
+pub(crate) async fn log_out(
+    mut auth_session: AuthSession,
+) -> Result<impl IntoResponse, HandlerError> {
     auth_session
         .logout()
         .await
@@ -442,7 +450,8 @@ pub(crate) async fn verify_email(
     if db.verify_email(&code).await.is_ok() {
         messages.success("Email verified successfully. You can now log in using your credentials.");
     } else {
-        messages.error("Error verifying email (please note that links are only valid for 24 hours).");
+        messages
+            .error("Error verifying email (please note that links are only valid for 24 hours).");
     }
     Ok(Redirect::to(LOG_IN_URL))
 }
@@ -515,7 +524,8 @@ where
     const OAUTH2_AUTHORIZATION_FAILED: &str = "OAuth2 authorization failed";
 
     // Verify oauth2 csrf state
-    let Some(state_in_session) = session.remove::<oauth2::CsrfToken>(OAUTH2_CSRF_STATE_KEY).await? else {
+    let Some(state_in_session) = session.remove::<oauth2::CsrfToken>(OAUTH2_CSRF_STATE_KEY).await?
+    else {
         on_error(OAUTH2_AUTHORIZATION_FAILED.to_string());
         return Ok(Redirect::to(LOG_IN_URL));
     };
@@ -571,7 +581,8 @@ where
     const OIDC_AUTHORIZATION_FAILED: &str = "OpenID Connect authorization failed";
 
     // Verify oauth2 csrf state
-    let Some(state_in_session) = session.remove::<oauth2::CsrfToken>(OAUTH2_CSRF_STATE_KEY).await? else {
+    let Some(state_in_session) = session.remove::<oauth2::CsrfToken>(OAUTH2_CSRF_STATE_KEY).await?
+    else {
         on_error(OIDC_AUTHORIZATION_FAILED.to_string());
         return Ok(Redirect::to(LOG_IN_URL));
     };
@@ -671,11 +682,13 @@ pub(crate) async fn user_has_community_dashboard_permission(
     // Resolve selected community from session context, repairing it if needed
     let community_id = match get_selected_community_id_optional(&session).await {
         Ok(Some(community_id)) => community_id,
-        Ok(None) => match select_first_accessible_community_for_dashboard(&db, &session, &user_id).await {
-            Ok(Some(community_id)) => community_id,
-            Ok(None) => return Redirect::to(USER_DASHBOARD_INVITATIONS_URL).into_response(),
-            Err(error) => return error.into_response(),
-        },
+        Ok(None) => {
+            match select_first_accessible_community_for_dashboard(&db, &session, &user_id).await {
+                Ok(Some(community_id)) => community_id,
+                Ok(None) => return Redirect::to(USER_DASHBOARD_INVITATIONS_URL).into_response(),
+                Err(error) => return error.into_response(),
+            }
+        }
         Err(response) => return response,
     };
 
@@ -687,7 +700,8 @@ pub(crate) async fn user_has_community_dashboard_permission(
         return StatusCode::INTERNAL_SERVER_ERROR.into_response();
     };
     if !has_read_permission {
-        return match log_out_for_stale_dashboard_context(&mut auth_session, request.headers()).await {
+        return match log_out_for_stale_dashboard_context(&mut auth_session, request.headers()).await
+        {
             Ok(response) => response,
             Err(error) => error.into_response(),
         };
@@ -750,7 +764,9 @@ pub(crate) async fn user_has_path_group_permission(
     };
 
     // Ensure the path group belongs to the selected community before checking permissions
-    let Ok(group_belongs_to_community) = db.group_belongs_to_community(&community_id, &group_id).await else {
+    let Ok(group_belongs_to_community) =
+        db.group_belongs_to_community(&community_id, &group_id).await
+    else {
         return StatusCode::INTERNAL_SERVER_ERROR.into_response();
     };
     if !group_belongs_to_community {
@@ -789,11 +805,13 @@ pub(crate) async fn user_has_selected_community_permission(
     // Resolve selected community from session context, repairing it if needed
     let community_id = match get_selected_community_id_optional(&session).await {
         Ok(Some(community_id)) => community_id,
-        Ok(None) => match select_first_accessible_community_for_dashboard(&db, &session, &user_id).await {
-            Ok(Some(community_id)) => community_id,
-            Ok(None) => return Redirect::to(USER_DASHBOARD_INVITATIONS_URL).into_response(),
-            Err(error) => return error.into_response(),
-        },
+        Ok(None) => {
+            match select_first_accessible_community_for_dashboard(&db, &session, &user_id).await {
+                Ok(Some(community_id)) => community_id,
+                Ok(None) => return Redirect::to(USER_DASHBOARD_INVITATIONS_URL).into_response(),
+                Err(error) => return error.into_response(),
+            }
+        }
         Err(response) => return response,
     };
 
@@ -819,7 +837,8 @@ pub(crate) async fn user_has_selected_community_permission(
         }
 
         // Missing base Read access means the selected community became stale
-        return match log_out_for_stale_dashboard_context(&mut auth_session, request.headers()).await {
+        return match log_out_for_stale_dashboard_context(&mut auth_session, request.headers()).await
+        {
             Ok(response) => response,
             Err(error) => error.into_response(),
         };
@@ -847,15 +866,22 @@ pub(crate) async fn user_has_selected_group_permission(
     };
 
     // Resolve selected community and group from session context, repairing them if needed
-    let (community_id, group_id) = match get_selected_community_and_group_ids_optional(&session).await {
+    let (community_id, group_id) = match get_selected_community_and_group_ids_optional(&session)
+        .await
+    {
         Ok(Some(ids)) => ids,
         Ok(None) => {
             let selected_community_id = match get_selected_community_id_optional(&session).await {
                 Ok(selected_community_id) => selected_community_id,
                 Err(response) => return response,
             };
-            match select_first_accessible_group_for_dashboard(&db, &session, &user_id, selected_community_id)
-                .await
+            match select_first_accessible_group_for_dashboard(
+                &db,
+                &session,
+                &user_id,
+                selected_community_id,
+            )
+            .await
             {
                 Ok(Some(ids)) => ids,
                 Ok(None) => return Redirect::to(USER_DASHBOARD_INVITATIONS_URL).into_response(),
@@ -876,7 +902,12 @@ pub(crate) async fn user_has_selected_group_permission(
         // Missing write permission is a normal 403 when base Read still works
         if permission != GroupPermission::Read {
             let Ok(has_read_permission) = db
-                .user_has_group_permission(&community_id, &group_id, &user_id, GroupPermission::Read)
+                .user_has_group_permission(
+                    &community_id,
+                    &group_id,
+                    &user_id,
+                    GroupPermission::Read,
+                )
                 .await
             else {
                 return StatusCode::INTERNAL_SERVER_ERROR.into_response();
@@ -888,7 +919,8 @@ pub(crate) async fn user_has_selected_group_permission(
         }
 
         // Missing base Read access means the selected group became stale
-        return match log_out_for_stale_dashboard_context(&mut auth_session, request.headers()).await {
+        return match log_out_for_stale_dashboard_context(&mut auth_session, request.headers()).await
+        {
             Ok(response) => response,
             Err(error) => error.into_response(),
         };
@@ -1095,7 +1127,10 @@ pub(crate) async fn select_first_community_and_group(
     let groups_by_community = db.list_user_groups(user_id).await?;
     if let Some(first_community) = groups_by_community.first() {
         session
-            .insert(SELECTED_COMMUNITY_ID_KEY, first_community.community.community_id)
+            .insert(
+                SELECTED_COMMUNITY_ID_KEY,
+                first_community.community.community_id,
+            )
             .await?;
         if let Some(first_group) = first_community.groups.first() {
             session.insert(SELECTED_GROUP_ID_KEY, first_group.group_id).await?;

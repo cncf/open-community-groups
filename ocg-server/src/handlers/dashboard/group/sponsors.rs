@@ -214,7 +214,12 @@ pub(crate) async fn prepare_list_page(
     // Fetch sponsors
     let filters: GroupSponsorsFilters = serde_qs_config().deserialize_str(raw_query)?;
     let (can_manage_sponsors, results) = tokio::try_join!(
-        db.user_has_group_permission(&community_id, &group_id, &user_id, GroupPermission::SponsorsWrite),
+        db.user_has_group_permission(
+            &community_id,
+            &group_id,
+            &user_id,
+            GroupPermission::SponsorsWrite
+        ),
         db.list_group_sponsors(group_id, &filters, false)
     )?;
 

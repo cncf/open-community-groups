@@ -94,7 +94,9 @@ async fn test_page_events_tab_success() {
     db.expect_list_user_events()
         .times(1)
         .withf(move |uid, filters| {
-            *uid == user_id && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT) && filters.offset == Some(0)
+            *uid == user_id
+                && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
+                && filters.offset == Some(0)
         })
         .returning(move |_, _| Ok(events_output.clone()));
     db.expect_get_site_settings()
@@ -276,7 +278,9 @@ async fn test_page_session_proposals_tab_success() {
     db.expect_list_user_session_proposals()
         .times(1)
         .withf(move |uid, filters| {
-            *uid == user_id && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT) && filters.offset == Some(0)
+            *uid == user_id
+                && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
+                && filters.offset == Some(0)
         })
         .returning(move |_, _| Ok(session_proposals_output.clone()));
     db.expect_get_site_settings()
@@ -332,7 +336,9 @@ async fn test_page_submissions_tab_success() {
     db.expect_list_user_cfs_submissions()
         .times(1)
         .withf(move |uid, filters| {
-            *uid == user_id && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT) && filters.offset == Some(0)
+            *uid == user_id
+                && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
+                && filters.offset == Some(0)
         })
         .returning(move |_, _| Ok(submissions_output.clone()));
     db.expect_get_site_settings()

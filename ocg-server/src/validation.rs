@@ -16,8 +16,8 @@ use reqwest::Url;
 
 /// Allowed CFS label colors.
 pub const CFS_LABEL_COLORS: [&str; 10] = [
-    "#FFD866", "#FC9867", "#FF6188", "#AB9DF2", "#78DCE8", "#A9DC76", "#A88F6A", "#9DA5B4", "#FF9EBB",
-    "#6272A4",
+    "#FFD866", "#FC9867", "#FF6188", "#AB9DF2", "#78DCE8", "#A9DC76", "#A88F6A", "#9DA5B4",
+    "#FF9EBB", "#6272A4",
 ];
 
 // Maximum length constants for validation.
@@ -149,7 +149,9 @@ pub fn image_url_vec(value: &Option<Vec<String>>, _ctx: &()) -> garde::Result {
 /// Returns an error if the string is empty or contains only whitespace.
 pub fn trimmed_non_empty(value: &impl AsRef<str>, _ctx: &()) -> garde::Result {
     if value.as_ref().trim().is_empty() {
-        return Err(garde::Error::new("value cannot be empty or whitespace-only"));
+        return Err(garde::Error::new(
+            "value cannot be empty or whitespace-only",
+        ));
     }
     Ok(())
 }
@@ -162,7 +164,9 @@ pub fn trimmed_non_empty_opt(value: &Option<String>, _ctx: &()) -> garde::Result
     if let Some(s) = value
         && s.trim().is_empty()
     {
-        return Err(garde::Error::new("value cannot be empty or whitespace-only"));
+        return Err(garde::Error::new(
+            "value cannot be empty or whitespace-only",
+        ));
     }
     Ok(())
 }
@@ -192,7 +196,9 @@ pub fn url_map_values(value: &Option<BTreeMap<String, String>>, _ctx: &()) -> ga
                 )));
             }
             if url.trim().is_empty() {
-                return Err(garde::Error::new(format!("URL for '{key}' cannot be empty")));
+                return Err(garde::Error::new(format!(
+                    "URL for '{key}' cannot be empty"
+                )));
             }
             if url.len() > MAX_LEN_L {
                 return Err(garde::Error::new(format!(
@@ -230,7 +236,9 @@ pub fn valid_group_pretty_slug(value: &Option<String>, _ctx: &()) -> garde::Resu
 
     // Enforce the public URL length limit
     if value.len() > MAX_LEN_GROUP_PRETTY_SLUG {
-        return Err(garde::Error::new("Pretty slug must be 50 characters or fewer"));
+        return Err(garde::Error::new(
+            "Pretty slug must be 50 characters or fewer",
+        ));
     }
 
     // Enforce strict ASCII URL characters
@@ -315,7 +323,9 @@ fn validate_trimmed_non_empty_vec(value: &Option<Vec<String>>, max_len: usize) -
         }
         for s in vec {
             if s.trim().is_empty() {
-                return Err(garde::Error::new("value cannot be empty or whitespace-only"));
+                return Err(garde::Error::new(
+                    "value cannot be empty or whitespace-only",
+                ));
             }
             if s.len() > max_len {
                 return Err(garde::Error::new(format!(
@@ -364,7 +374,10 @@ mod tests {
         assert!(email_vec(&Some(vec!["user@example.com".to_string()]), &()).is_ok());
         assert!(
             email_vec(
-                &Some(vec!["user@example.com".to_string(), "other@test.org".to_string()]),
+                &Some(vec![
+                    "user@example.com".to_string(),
+                    "other@test.org".to_string()
+                ]),
                 &()
             )
             .is_ok()
@@ -438,7 +451,10 @@ mod tests {
         // One valid, one invalid
         assert!(
             image_url_vec(
-                &Some(vec!["/valid/image.png".to_string(), "not-a-url".to_string()]),
+                &Some(vec![
+                    "/valid/image.png".to_string(),
+                    "not-a-url".to_string()
+                ]),
                 &()
             )
             .is_err()
@@ -459,7 +475,13 @@ mod tests {
     #[test]
     fn test_image_url_vec_valid() {
         // Absolute URLs
-        assert!(image_url_vec(&Some(vec!["https://example.com/image.png".to_string()]), &()).is_ok());
+        assert!(
+            image_url_vec(
+                &Some(vec!["https://example.com/image.png".to_string()]),
+                &()
+            )
+            .is_ok()
+        );
         // Relative URLs
         assert!(image_url_vec(&Some(vec!["/images/logo.png".to_string()]), &()).is_ok());
         // Mix of absolute and relative
@@ -517,7 +539,9 @@ mod tests {
         assert!(valid_group_pretty_slug(&Some("-pretty-group".to_string()), &()).is_err());
         assert!(valid_group_pretty_slug(&Some("pretty-group-".to_string()), &()).is_err());
         assert!(valid_group_pretty_slug(&Some("pretty--group".to_string()), &()).is_err());
-        assert!(valid_group_pretty_slug(&Some("a".repeat(MAX_LEN_GROUP_PRETTY_SLUG + 1)), &()).is_err());
+        assert!(
+            valid_group_pretty_slug(&Some("a".repeat(MAX_LEN_GROUP_PRETTY_SLUG + 1)), &()).is_err()
+        );
     }
 
     #[test]
@@ -531,17 +555,24 @@ mod tests {
     #[test]
     fn test_validate_trimmed_non_empty_vec_invalid() {
         assert!(validate_trimmed_non_empty_vec(&Some(vec![String::new()]), MAX_LEN_TAG).is_err());
-        assert!(validate_trimmed_non_empty_vec(&Some(vec!["   ".to_string()]), MAX_LEN_TAG).is_err());
         assert!(
-            validate_trimmed_non_empty_vec(&Some(vec!["valid".to_string(), "   ".to_string()]), MAX_LEN_TAG)
-                .is_err()
+            validate_trimmed_non_empty_vec(&Some(vec!["   ".to_string()]), MAX_LEN_TAG).is_err()
+        );
+        assert!(
+            validate_trimmed_non_empty_vec(
+                &Some(vec!["valid".to_string(), "   ".to_string()]),
+                MAX_LEN_TAG
+            )
+            .is_err()
         );
     }
 
     #[test]
     fn test_validate_trimmed_non_empty_vec_length_exceeded() {
         let long_tag = "a".repeat(MAX_LEN_TAG + 1);
-        assert!(validate_trimmed_non_empty_vec(&Some(vec![long_tag.clone()]), MAX_LEN_TAG).is_err());
+        assert!(
+            validate_trimmed_non_empty_vec(&Some(vec![long_tag.clone()]), MAX_LEN_TAG).is_err()
+        );
         assert!(validate_trimmed_non_empty_vec(&Some(vec![long_tag]), MAX_LEN_M).is_ok());
     }
 
@@ -558,11 +589,19 @@ mod tests {
 
     #[test]
     fn test_validate_trimmed_non_empty_vec_valid() {
-        assert!(validate_trimmed_non_empty_vec(&Some(vec!["hello".to_string()]), MAX_LEN_M).is_ok());
         assert!(
-            validate_trimmed_non_empty_vec(&Some(vec!["a".to_string(), "b".to_string()]), MAX_LEN_M).is_ok()
+            validate_trimmed_non_empty_vec(&Some(vec!["hello".to_string()]), MAX_LEN_M).is_ok()
         );
-        assert!(validate_trimmed_non_empty_vec(&Some(vec!["  hello  ".to_string()]), MAX_LEN_M).is_ok());
+        assert!(
+            validate_trimmed_non_empty_vec(
+                &Some(vec!["a".to_string(), "b".to_string()]),
+                MAX_LEN_M
+            )
+            .is_ok()
+        );
+        assert!(
+            validate_trimmed_non_empty_vec(&Some(vec!["  hello  ".to_string()]), MAX_LEN_M).is_ok()
+        );
         // Empty vec is valid (no invalid elements)
         assert!(validate_trimmed_non_empty_vec(&Some(vec![]), MAX_LEN_M).is_ok());
     }
@@ -623,7 +662,10 @@ mod tests {
 
         let mut map = BTreeMap::new();
         map.insert("website".to_string(), "https://example.com".to_string());
-        map.insert("docs".to_string(), "https://docs.example.com/path".to_string());
+        map.insert(
+            "docs".to_string(),
+            "https://docs.example.com/path".to_string(),
+        );
         assert!(url_map_values(&Some(map), &()).is_ok());
 
         // Empty map is valid

@@ -55,7 +55,8 @@ use crate::{
                 settings::GroupUpdate,
                 sponsors::Sponsor,
                 submissions::{
-                    CfsSessionProposal as GroupCfsSessionProposal, CfsSubmission as GroupCfsSubmission,
+                    CfsSessionProposal as GroupCfsSessionProposal,
+                    CfsSubmission as GroupCfsSubmission,
                 },
                 team::GroupTeamMember,
                 waitlist::WaitlistEntry,
@@ -67,7 +68,8 @@ use crate::{
                     SessionProposalLevel as UserSessionProposalLevel,
                 },
                 submissions::{
-                    CfsSessionProposal as UserCfsSessionProposal, CfsSubmission as UserCfsSubmission,
+                    CfsSessionProposal as UserCfsSessionProposal,
+                    CfsSubmission as UserCfsSubmission,
                 },
             },
         },
@@ -75,10 +77,12 @@ use crate::{
     },
     types::{
         community::{CommunityFull, CommunityRole, CommunityRoleSummary, CommunitySummary},
-        event::{EventCategory, EventFull, EventKind, EventKindSummary, EventSummary, SessionKindSummary},
+        event::{
+            EventCategory, EventFull, EventKind, EventKindSummary, EventSummary, SessionKindSummary,
+        },
         group::{
-            GroupCategory, GroupFull, GroupMinimal, GroupRegion, GroupRole, GroupRoleSummary, GroupSponsor,
-            GroupSummary,
+            GroupCategory, GroupFull, GroupMinimal, GroupRegion, GroupRole, GroupRoleSummary,
+            GroupSponsor, GroupSummary,
         },
         payments::{EventPurchaseStatus, EventPurchaseSummary},
         site::{SiteSettings, Theme},
@@ -273,7 +277,10 @@ pub(crate) fn sample_community_stats() -> CommunityDashboardStats {
         },
         groups: GroupsStats {
             per_month: vec![("2024-01".to_string(), 2)],
-            per_month_by_category: HashMap::from([("dev".to_string(), vec![("2024-01".to_string(), 2)])]),
+            per_month_by_category: HashMap::from([(
+                "dev".to_string(),
+                vec![("2024-01".to_string(), 2)],
+            )]),
             per_month_by_region: HashMap::new(),
             running_total: vec![(1, 2)],
             running_total_by_category: HashMap::new(),
@@ -544,7 +551,9 @@ pub(crate) fn sample_group_category() -> GroupCategory {
 }
 
 /// Sample CFS session proposal used in group dashboard tests.
-pub(crate) fn sample_group_cfs_session_proposal(session_proposal_id: Uuid) -> GroupCfsSessionProposal {
+pub(crate) fn sample_group_cfs_session_proposal(
+    session_proposal_id: Uuid,
+) -> GroupCfsSessionProposal {
     GroupCfsSessionProposal {
         session_proposal_id,
         title: "Proposal title".to_string(),
@@ -583,7 +592,10 @@ pub(crate) fn sample_group_cfs_submission(
 }
 
 /// Sample CFS submission status used in group dashboard tests.
-pub(crate) fn sample_group_cfs_submission_status(status_id: &str, display_name: &str) -> CfsSubmissionStatus {
+pub(crate) fn sample_group_cfs_submission_status(
+    status_id: &str,
+    display_name: &str,
+) -> CfsSubmissionStatus {
     CfsSubmissionStatus {
         cfs_submission_status_id: status_id.to_string(),
         display_name: display_name.to_string(),
@@ -805,7 +817,9 @@ pub(crate) fn sample_group_update() -> GroupUpdate {
 }
 
 /// Sample pending co-speaker invitation used in user dashboard tests.
-pub(crate) fn sample_pending_co_speaker_invitation(session_proposal_id: Uuid) -> PendingCoSpeakerInvitation {
+pub(crate) fn sample_pending_co_speaker_invitation(
+    session_proposal_id: Uuid,
+) -> PendingCoSpeakerInvitation {
     PendingCoSpeakerInvitation {
         session_proposal: UserSessionProposal {
             created_at: Utc.with_ymd_and_hms(2024, 1, 3, 12, 0, 0).unwrap(),
@@ -1055,7 +1069,9 @@ pub(crate) fn sample_tracking_server_cfg() -> HttpServerConfig {
 }
 
 /// Sample CFS session proposal used in user dashboard tests.
-pub(crate) fn sample_user_cfs_session_proposal(session_proposal_id: Uuid) -> UserCfsSessionProposal {
+pub(crate) fn sample_user_cfs_session_proposal(
+    session_proposal_id: Uuid,
+) -> UserCfsSessionProposal {
     UserCfsSessionProposal {
         session_proposal_id,
         title: "Proposal title".to_string(),
@@ -1183,7 +1199,10 @@ pub(crate) fn sample_zoom_meetings_cfg(secret: &str) -> MeetingsConfig {
 }
 
 /// Checks if the session record contains the selected group ID.
-pub(crate) fn session_record_contains_selected_group(record: &session::Record, group_id: Uuid) -> bool {
+pub(crate) fn session_record_contains_selected_group(
+    record: &session::Record,
+    group_id: Uuid,
+) -> bool {
     record
         .data
         .get(SELECTED_GROUP_ID_KEY)
@@ -1256,7 +1275,8 @@ impl TestRouterBuilder {
     /// Builds the application router with the configured options.
     pub(crate) async fn build(self) -> Router {
         let db: DynDB = Arc::new(self.db);
-        let activity_tracker: DynActivityTracker = Arc::new(self.activity_tracker.unwrap_or_default());
+        let activity_tracker: DynActivityTracker =
+            Arc::new(self.activity_tracker.unwrap_or_default());
         let is: DynImageStorage = Arc::new(self.image_storage.unwrap_or_default());
         let nm: DynNotificationsManager = Arc::new(self.nm);
         let server_cfg = self.server_cfg.unwrap_or_default();

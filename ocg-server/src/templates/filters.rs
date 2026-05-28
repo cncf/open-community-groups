@@ -101,7 +101,10 @@ mod tests {
         );
 
         // Complex emojis (multi-codepoint)
-        assert_eq!(demoji::default().execute("👨‍👩‍👧‍👦Family", values).unwrap(), "Family");
+        assert_eq!(
+            demoji::default().execute("👨‍👩‍👧‍👦Family", values).unwrap(),
+            "Family"
+        );
     }
 
     #[test]

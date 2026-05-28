@@ -17,8 +17,11 @@ use crate::{
 #[async_trait]
 pub(crate) trait DBGroup {
     /// Retrieves group information.
-    async fn get_group_full_by_slug(&self, community_id: Uuid, group_slug: &str)
-    -> Result<Option<GroupFull>>;
+    async fn get_group_full_by_slug(
+        &self,
+        community_id: Uuid,
+        group_slug: &str,
+    ) -> Result<Option<GroupFull>>;
 
     /// Retrieves past events for a specific group.
     async fn get_group_past_events(
@@ -39,7 +42,12 @@ pub(crate) trait DBGroup {
     ) -> Result<Vec<EventSummary>>;
 
     /// Checks if a user is a member of a group.
-    async fn is_group_member(&self, community_id: Uuid, group_id: Uuid, user_id: Uuid) -> Result<bool>;
+    async fn is_group_member(
+        &self,
+        community_id: Uuid,
+        group_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<bool>;
 
     /// Adds a user as a member of a group.
     async fn join_group(&self, community_id: Uuid, group_id: Uuid, user_id: Uuid) -> Result<()>;
@@ -100,7 +108,12 @@ impl DBGroup for PgDB {
 
     /// [`DB::is_group_member`]
     #[instrument(skip(self), err)]
-    async fn is_group_member(&self, community_id: Uuid, group_id: Uuid, user_id: Uuid) -> Result<bool> {
+    async fn is_group_member(
+        &self,
+        community_id: Uuid,
+        group_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<bool> {
         self.fetch_scalar_one(
             "select is_group_member($1::uuid, $2::uuid, $3::uuid)",
             &[&community_id, &group_id, &user_id],

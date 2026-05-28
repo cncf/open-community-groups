@@ -72,9 +72,13 @@ async fn test_webhook_returns_unauthorized_when_signature_header_is_missing() {
     let payments_manager: DynPaymentsManager = Arc::new(payments_manager);
 
     // Send request without the provider's required signature header
-    let response = webhook(State(payments_manager), HeaderMap::new(), "payload".to_string())
-        .await
-        .into_response();
+    let response = webhook(
+        State(payments_manager),
+        HeaderMap::new(),
+        "payload".to_string(),
+    )
+    .await
+    .into_response();
 
     // Check response matches expectations
     assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
@@ -116,7 +120,9 @@ async fn test_webhook_returns_server_error_when_payments_manager_fails() {
             headers.get("stripe-signature") == Some(&HeaderValue::from_static("sig_test"))
                 && body == "payload"
         })
-        .returning(|_, _| Box::pin(async { Err(HandleWebhookError::Unexpected(anyhow::anyhow!("boom"))) }));
+        .returning(|_, _| {
+            Box::pin(async { Err(HandleWebhookError::Unexpected(anyhow::anyhow!("boom"))) })
+        });
     let payments_manager: DynPaymentsManager = Arc::new(payments_manager);
 
     // Setup headers and send request

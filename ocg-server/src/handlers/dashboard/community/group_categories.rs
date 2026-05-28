@@ -34,7 +34,11 @@ pub(crate) async fn list_page(
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
     let (can_manage_taxonomy, categories) = tokio::try_join!(
-        db.user_has_community_permission(&community_id, &user.user_id, CommunityPermission::TaxonomyWrite),
+        db.user_has_community_permission(
+            &community_id,
+            &user.user_id,
+            CommunityPermission::TaxonomyWrite
+        ),
         db.list_group_categories(community_id)
     )?;
     let template = group_categories::ListPage {
@@ -54,9 +58,15 @@ pub(crate) async fn add_page(
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
     let can_manage_taxonomy = db
-        .user_has_community_permission(&community_id, &user.user_id, CommunityPermission::TaxonomyWrite)
+        .user_has_community_permission(
+            &community_id,
+            &user.user_id,
+            CommunityPermission::TaxonomyWrite,
+        )
         .await?;
-    let template = group_categories::AddPage { can_manage_taxonomy };
+    let template = group_categories::AddPage {
+        can_manage_taxonomy,
+    };
 
     Ok(Html(template.render()?))
 }
@@ -71,14 +81,20 @@ pub(crate) async fn update_page(
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
     let (can_manage_taxonomy, categories) = tokio::try_join!(
-        db.user_has_community_permission(&community_id, &user.user_id, CommunityPermission::TaxonomyWrite),
+        db.user_has_community_permission(
+            &community_id,
+            &user.user_id,
+            CommunityPermission::TaxonomyWrite
+        ),
         db.list_group_categories(community_id)
     )?;
     let Some(category) = categories
         .into_iter()
         .find(|category| category.group_category_id == group_category_id)
     else {
-        return Err(HandlerError::Database("group category not found".to_string()));
+        return Err(HandlerError::Database(
+            "group category not found".to_string(),
+        ));
     };
     let template = group_categories::UpdatePage {
         can_manage_taxonomy,
@@ -133,8 +149,13 @@ pub(crate) async fn update(
     Path(group_category_id): Path<Uuid>,
     ValidatedForm(group_category): ValidatedForm<GroupCategoryInput>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    db.update_group_category(user.user_id, community_id, group_category_id, &group_category)
-        .await?;
+    db.update_group_category(
+        user.user_id,
+        community_id,
+        group_category_id,
+        &group_category,
+    )
+    .await?;
 
     Ok((
         StatusCode::NO_CONTENT,

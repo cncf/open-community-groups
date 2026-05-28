@@ -37,7 +37,8 @@ use crate::{
         community, event, group, images, meetings, payments, site,
     },
     services::{
-        images::DynImageStorage, notifications::DynNotificationsManager, payments::DynPaymentsManager,
+        images::DynImageStorage, notifications::DynNotificationsManager,
+        payments::DynPaymentsManager,
     },
 };
 
@@ -178,7 +179,10 @@ pub(crate) async fn setup(
             "/{community}/check-in/{event_id}",
             get(event::check_in_page).post(event::check_in),
         )
-        .route("/{community}/event/{event_id}/attend", post(event::attend_event))
+        .route(
+            "/{community}/event/{event_id}/attend",
+            post(event::attend_event),
+        )
         .route(
             "/{community}/event/{event_id}/checkout",
             delete(event::cancel_checkout).post(event::start_checkout),
@@ -187,7 +191,10 @@ pub(crate) async fn setup(
             "/{community}/event/{event_id}/attendance",
             get(event::attendance_status),
         )
-        .route("/{community}/event/{event_id}/leave", delete(event::leave_event))
+        .route(
+            "/{community}/event/{event_id}/leave",
+            delete(event::leave_event),
+        )
         .route(
             "/{community}/event/{event_id}/refund-request",
             post(event::request_refund),
@@ -196,8 +203,14 @@ pub(crate) async fn setup(
             "/{community}/event/{event_id}/cfs-submissions",
             post(event::submit_cfs_submission),
         )
-        .route("/{community}/group/{group_id}/join", post(group::join_group))
-        .route("/{community}/group/{group_id}/leave", delete(group::leave_group))
+        .route(
+            "/{community}/group/{group_id}/join",
+            post(group::join_group),
+        )
+        .route(
+            "/{community}/group/{group_id}/leave",
+            delete(group::leave_group),
+        )
         .route(
             "/{community}/group/{group_id}/membership",
             get(group::membership_status),
@@ -227,15 +240,24 @@ pub(crate) async fn setup(
             "/apple-touch-icon-precomposed.png",
             get(|| async { StatusCode::NOT_FOUND }),
         )
-        .route("/apple-touch-icon.png", get(|| async { StatusCode::NOT_FOUND }))
+        .route(
+            "/apple-touch-icon.png",
+            get(|| async { StatusCode::NOT_FOUND }),
+        )
         .route("/docs", get(site::docs::page))
         .route("/explore", get(site::explore::page))
-        .route("/explore/events-section", get(site::explore::events_section))
+        .route(
+            "/explore/events-section",
+            get(site::explore::events_section),
+        )
         .route(
             "/explore/events-results-section",
             get(site::explore::events_results_section),
         )
-        .route("/explore/groups-section", get(site::explore::groups_section))
+        .route(
+            "/explore/groups-section",
+            get(site::explore::groups_section),
+        )
         .route(
             "/explore/groups-results-section",
             get(site::explore::groups_results_section),
@@ -251,7 +273,10 @@ pub(crate) async fn setup(
         // Community-prefixed public routes
         .route("/{community}", get(community::page))
         .route("/{community}/group/{group_slug}", get(group::page))
-        .route("/{community}/event/{event_id}/cfs-modal", get(event::cfs_modal))
+        .route(
+            "/{community}/event/{event_id}/cfs-modal",
+            get(event::cfs_modal),
+        )
         .route(
             "/{community}/group/{group_slug}/event/{event_slug}/availability",
             get(event::availability),
@@ -261,7 +286,10 @@ pub(crate) async fn setup(
             get(event::page),
         )
         // Page view tracking routes
-        .route("/communities/{community_id}/views", post(community::track_view))
+        .route(
+            "/communities/{community_id}/views",
+            post(community::track_view),
+        )
         .route("/events/{event_id}/views", post(event::track_view))
         .route("/groups/{group_id}/views", post(group::track_view))
         .fallback(site::not_found::page);
@@ -276,7 +304,10 @@ pub(crate) async fn setup(
     if server_cfg.login.github {
         router = router
             .route("/log-in/oauth2/{provider}", get(auth::oauth2_redirect))
-            .route("/log-in/oauth2/{provider}/callback", get(auth::oauth2_callback));
+            .route(
+                "/log-in/oauth2/{provider}/callback",
+                get(auth::oauth2_callback),
+            );
     }
     if server_cfg.login.linuxfoundation {
         router = router
@@ -308,7 +339,10 @@ pub(crate) async fn setup(
             CACHE_CONTROL,
             HeaderValue::from_static(CACHE_CONTROL_PRIVATE_NO_STORE),
         ))
-        .layer(middleware::from_fn_with_state(state.clone(), redirect_old_hosts))
+        .layer(middleware::from_fn_with_state(
+            state.clone(),
+            redirect_old_hosts,
+        ))
         .layer(middleware::from_fn(refresh_stale_clients));
 
     Ok(router.with_state(state))
@@ -451,7 +485,10 @@ fn request_has_stale_commit_sha(headers: &axum::http::HeaderMap) -> bool {
 fn stale_client_refresh_response(is_htmx: bool, is_ocg_fetch: bool) -> axum::response::Response {
     let mut response = StatusCode::NO_CONTENT.into_response();
     let headers = response.headers_mut();
-    headers.insert(CACHE_CONTROL, HeaderValue::from_static(CACHE_CONTROL_NO_STORE));
+    headers.insert(
+        CACHE_CONTROL,
+        HeaderValue::from_static(CACHE_CONTROL_NO_STORE),
+    );
     insert_commit_sha_header(headers);
 
     if is_htmx {

@@ -42,7 +42,8 @@ const PARTIAL_URL: &str = "/dashboard/group/team";
 // Tooltip text for disabled group team management controls.
 const GROUP_TEAM_MANAGEMENT_RESTRICTED_TOOLTIP: &str =
     "Only community admins and groups managers can manage this group's team.";
-const GROUP_TEAM_MANAGEMENT_INSUFFICIENT_ROLE_TOOLTIP: &str = "Your role cannot manage this group's team.";
+const GROUP_TEAM_MANAGEMENT_INSUFFICIENT_ROLE_TOOLTIP: &str =
+    "Your role cannot manage this group's team.";
 
 // Pages handlers.
 
@@ -138,7 +139,12 @@ pub(crate) async fn delete(
     // so only log out when selected group read access is actually gone
     if user_id == user.user_id {
         let has_read_permission = db
-            .user_has_group_permission(&community_id, &group_id, &user.user_id, GroupPermission::Read)
+            .user_has_group_permission(
+                &community_id,
+                &group_id,
+                &user.user_id,
+                GroupPermission::Read,
+            )
             .await?;
 
         if !has_read_permission {
@@ -207,7 +213,12 @@ pub(crate) async fn prepare_list_page(
     let (results, roles, can_manage_team) = tokio::try_join!(
         db.list_group_team_members(group_id, &filters),
         db.list_group_roles(),
-        db.user_has_group_permission(&community_id, &group_id, &user_id, GroupPermission::TeamWrite)
+        db.user_has_group_permission(
+            &community_id,
+            &group_id,
+            &user_id,
+            GroupPermission::TeamWrite
+        )
     )?;
 
     // Prepare template

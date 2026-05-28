@@ -37,7 +37,10 @@ impl PaymentsWebhookReconciler {
     }
 
     /// Handle a verified payments webhook event.
-    pub(super) async fn handle_webhook_event(&self, webhook_event: PaymentsWebhookEvent) -> Result<()> {
+    pub(super) async fn handle_webhook_event(
+        &self,
+        webhook_event: PaymentsWebhookEvent,
+    ) -> Result<()> {
         match webhook_event {
             PaymentsWebhookEvent::CheckoutCompleted {
                 provider_payment_reference,
@@ -46,9 +49,9 @@ impl PaymentsWebhookReconciler {
                 self.handle_completed_checkout(provider_payment_reference, &provider_session_id)
                     .await
             }
-            PaymentsWebhookEvent::CheckoutExpired { provider_session_id } => {
-                self.expire_checkout_session(&provider_session_id).await
-            }
+            PaymentsWebhookEvent::CheckoutExpired {
+                provider_session_id,
+            } => self.expire_checkout_session(&provider_session_id).await,
         }
     }
 

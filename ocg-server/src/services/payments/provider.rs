@@ -24,7 +24,10 @@ use self::stripe::StripeProvider;
 #[cfg_attr(test, automock)]
 pub(crate) trait PaymentsProvider {
     /// Creates a checkout session for a paid event purchase.
-    async fn create_checkout_session(&self, input: &CreateCheckoutSessionInput) -> Result<CheckoutSession>;
+    async fn create_checkout_session(
+        &self,
+        input: &CreateCheckoutSessionInput,
+    ) -> Result<CheckoutSession>;
 
     /// Returns the configured provider.
     fn provider(&self) -> PaymentProvider;
@@ -33,7 +36,11 @@ pub(crate) trait PaymentsProvider {
     async fn refund_payment(&self, input: &RefundPaymentInput) -> Result<RefundPaymentResult>;
 
     /// Verifies and parses a webhook payload.
-    fn verify_and_parse_webhook(&self, headers: &HeaderMap, body: &str) -> Result<PaymentsWebhookEvent>;
+    fn verify_and_parse_webhook(
+        &self,
+        headers: &HeaderMap,
+        body: &str,
+    ) -> Result<PaymentsWebhookEvent>;
 }
 
 /// Shared payments provider trait object.
@@ -120,7 +127,9 @@ pub(crate) struct RefundPaymentResult {
 /// Builds a payments provider from configuration.
 pub(crate) fn build_payments_provider(cfg: Option<&PaymentsConfig>) -> Option<DynPaymentsProvider> {
     match cfg {
-        Some(PaymentsConfig::Stripe(stripe_cfg)) => Some(Arc::new(StripeProvider::new(stripe_cfg.clone()))),
+        Some(PaymentsConfig::Stripe(stripe_cfg)) => {
+            Some(Arc::new(StripeProvider::new(stripe_cfg.clone())))
+        }
         None => None,
     }
 }

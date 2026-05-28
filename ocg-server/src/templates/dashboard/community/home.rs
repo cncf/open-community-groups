@@ -11,7 +11,9 @@ use crate::{
         auth::User,
         dashboard::{
             audit,
-            community::{analytics, event_categories, group_categories, groups, regions, settings, team},
+            community::{
+                analytics, event_categories, group_categories, groups, regions, settings, team,
+            },
         },
         filters,
         helpers::user_initials,
@@ -120,7 +122,9 @@ impl std::fmt::Display for Content {
 }
 
 /// Tab selection for the community dashboard home page.
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, strum::Display, strum::EnumString)]
+#[derive(
+    Debug, Clone, Default, PartialEq, Serialize, Deserialize, strum::Display, strum::EnumString,
+)]
 #[serde(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
 pub(crate) enum Tab {

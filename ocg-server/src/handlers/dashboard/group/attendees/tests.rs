@@ -28,8 +28,8 @@ use crate::{
         event::{EventAttendanceStatus, EventLeaveOutcome},
         permissions::GroupPermission,
         questionnaire::{
-            QuestionnaireAnswer, QuestionnaireAnswerValue, QuestionnaireAnswers, QuestionnaireOption,
-            QuestionnaireQuestion, QuestionnaireQuestionKind,
+            QuestionnaireAnswer, QuestionnaireAnswerValue, QuestionnaireAnswers,
+            QuestionnaireOption, QuestionnaireQuestion, QuestionnaireQuestionKind,
         },
     },
 };
@@ -363,7 +363,8 @@ async fn test_cancel_event_attendee_attendance_promotes_waitlist_and_enqueues_no
                 && notification.template_data.as_ref().is_some_and(|value| {
                     from_value::<EventAttendanceCanceled>(value.clone()).is_ok_and(|template| {
                         template.dashboard_link == "https://ocg.test/dashboard/user?tab=events"
-                            && template.link == "https://ocg.test/test-community/group/def5678/event/ghi9abc"
+                            && template.link
+                                == "https://ocg.test/test-community/group/def5678/event/ghi9abc"
                     })
                 })
         })
@@ -380,7 +381,8 @@ async fn test_cancel_event_attendee_attendance_promotes_waitlist_and_enqueues_no
                         template.dashboard_link.as_deref()
                             == Some("https://ocg.test/dashboard/user?tab=events")
                             && template.has_registration_questions
-                            && template.link == "https://ocg.test/test-community/group/def5678/event/ghi9abc"
+                            && template.link
+                                == "https://ocg.test/test-community/group/def5678/event/ghi9abc"
                             && template.theme.primary_color == primary_color
                     })
                 })
@@ -543,7 +545,10 @@ async fn test_download_csv_success() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id && *gid == group_id && *uid == user_id && permission == GroupPermission::Read
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::Read
         })
         .returning(|_, _, _, _| Ok(true));
     db.expect_search_event_attendees()
@@ -695,7 +700,10 @@ async fn test_download_csv_with_answers_success() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id && *gid == group_id && *uid == user_id && permission == GroupPermission::Read
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::Read
         })
         .returning(|_, _, _, _| Ok(true));
     db.expect_search_event_attendees()
@@ -741,7 +749,9 @@ async fn test_download_csv_with_answers_success() {
     );
     assert_eq!(
         parts.headers.get(CONTENT_DISPOSITION).unwrap(),
-        &HeaderValue::from_static("attachment; filename=\"event-ghi9abc-attendees-with-answers.csv\""),
+        &HeaderValue::from_static(
+            "attachment; filename=\"event-ghi9abc-attendees-with-answers.csv\""
+        ),
     );
     assert_eq!(
         String::from_utf8(bytes.to_vec()).unwrap(),
@@ -780,7 +790,10 @@ async fn test_generate_check_in_qr_code_success() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id && *gid == group_id && *uid == user_id && permission == GroupPermission::Read
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::Read
         })
         .returning(|_, _, _, _| Ok(true));
     db.expect_get_community_name_by_id()
@@ -878,7 +891,9 @@ async fn test_invite_event_attendee_returns_bad_request_when_target_conflicts() 
     let router = TestRouterBuilder::new(db, nm).build().await;
     let request = Request::builder()
         .method("POST")
-        .uri(format!("/dashboard/group/events/{event_id}/attendees/invite"))
+        .uri(format!(
+            "/dashboard/group/events/{event_id}/attendees/invite"
+        ))
         .header(COOKIE, format!("id={session_id}"))
         .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
         .body(Body::from(format!(
@@ -943,7 +958,9 @@ async fn test_invite_event_attendee_returns_bad_request_when_target_missing() {
     let router = TestRouterBuilder::new(db, nm).build().await;
     let request = Request::builder()
         .method("POST")
-        .uri(format!("/dashboard/group/events/{event_id}/attendees/invite"))
+        .uri(format!(
+            "/dashboard/group/events/{event_id}/attendees/invite"
+        ))
         .header(COOKIE, format!("id={session_id}"))
         .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
         .body(Body::from(""))
@@ -1044,7 +1061,9 @@ async fn test_invite_event_attendee_returns_created_and_sends_notification() {
         .await;
     let request = Request::builder()
         .method("POST")
-        .uri(format!("/dashboard/group/events/{event_id}/attendees/invite"))
+        .uri(format!(
+            "/dashboard/group/events/{event_id}/attendees/invite"
+        ))
         .header(COOKIE, format!("id={session_id}"))
         .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
         .body(Body::from("email=%20Invitee%40Example.com%20"))
@@ -1127,7 +1146,9 @@ async fn test_invite_event_attendee_returns_created_when_notification_context_fa
     let router = TestRouterBuilder::new(db, nm).build().await;
     let request = Request::builder()
         .method("POST")
-        .uri(format!("/dashboard/group/events/{event_id}/attendees/invite"))
+        .uri(format!(
+            "/dashboard/group/events/{event_id}/attendees/invite"
+        ))
         .header(COOKIE, format!("id={session_id}"))
         .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
         .body(Body::from(format!("user_id={invited_user_id}")))
@@ -1229,7 +1250,9 @@ async fn test_invite_event_attendee_returns_created_when_notification_enqueue_fa
         .await;
     let request = Request::builder()
         .method("POST")
-        .uri(format!("/dashboard/group/events/{event_id}/attendees/invite"))
+        .uri(format!(
+            "/dashboard/group/events/{event_id}/attendees/invite"
+        ))
         .header(COOKIE, format!("id={session_id}"))
         .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
         .body(Body::from(format!("user_id={invited_user_id}")))
@@ -1287,7 +1310,10 @@ async fn test_list_page_success() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id && *gid == group_id && *uid == user_id && permission == GroupPermission::Read
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::Read
         })
         .returning(|_, _, _, _| Ok(true));
     db.expect_user_has_group_permission()
@@ -1381,7 +1407,10 @@ async fn test_list_page_with_pagination_params() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id && *gid == group_id && *uid == user_id && permission == GroupPermission::Read
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::Read
         })
         .returning(|_, _, _, _| Ok(true));
     db.expect_user_has_group_permission()
@@ -1483,7 +1512,10 @@ async fn test_manual_check_in_success() {
     db.expect_manual_check_in_event()
         .times(1)
         .withf(move |actor_uid, cid, eid, uid| {
-            *actor_uid == user_id && *cid == community_id && *eid == event_id && *uid == target_user_id
+            *actor_uid == user_id
+                && *cid == community_id
+                && *eid == event_id
+                && *uid == target_user_id
         })
         .returning(|_, _, _, _| Ok(()));
 
@@ -1539,7 +1571,10 @@ async fn test_list_page_db_error() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id && *gid == group_id && *uid == user_id && permission == GroupPermission::Read
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::Read
         })
         .returning(|_, _, _, _| Ok(true));
     db.expect_user_has_group_permission()
@@ -1641,7 +1676,9 @@ async fn test_reject_invitation_request_returns_no_content() {
     assert_eq!(parts.status, StatusCode::NO_CONTENT);
     assert_eq!(
         parts.headers.get("HX-Trigger"),
-        Some(&HeaderValue::from_static("refresh-event-invitation-requests"))
+        Some(&HeaderValue::from_static(
+            "refresh-event-invitation-requests"
+        ))
     );
     assert!(bytes.is_empty());
 }

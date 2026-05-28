@@ -11,7 +11,9 @@ use chrono::NaiveDate;
 use tower::ServiceExt;
 use uuid::Uuid;
 
-use crate::{db::mock::MockDB, handlers::tests::*, services::notifications::MockNotificationsManager};
+use crate::{
+    db::mock::MockDB, handlers::tests::*, services::notifications::MockNotificationsManager,
+};
 
 #[tokio::test]
 async fn test_list_page_db_error() {
@@ -33,7 +35,9 @@ async fn test_list_page_db_error() {
         .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
     db.expect_list_user_audit_logs()
         .times(1)
-        .withf(move |id, filters| *id == user_id && filters.limit == Some(50) && filters.offset == Some(0))
+        .withf(move |id, filters| {
+            *id == user_id && filters.limit == Some(50) && filters.offset == Some(0)
+        })
         .returning(|_, _| Err(anyhow!("db error")));
 
     // Setup notifications manager mock

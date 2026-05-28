@@ -34,7 +34,11 @@ pub(crate) async fn list_page(
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
     let (can_manage_taxonomy, categories) = tokio::try_join!(
-        db.user_has_community_permission(&community_id, &user.user_id, CommunityPermission::TaxonomyWrite),
+        db.user_has_community_permission(
+            &community_id,
+            &user.user_id,
+            CommunityPermission::TaxonomyWrite
+        ),
         db.list_event_categories(community_id)
     )?;
     let template = event_categories::ListPage {
@@ -54,9 +58,15 @@ pub(crate) async fn add_page(
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
     let can_manage_taxonomy = db
-        .user_has_community_permission(&community_id, &user.user_id, CommunityPermission::TaxonomyWrite)
+        .user_has_community_permission(
+            &community_id,
+            &user.user_id,
+            CommunityPermission::TaxonomyWrite,
+        )
         .await?;
-    let template = event_categories::AddPage { can_manage_taxonomy };
+    let template = event_categories::AddPage {
+        can_manage_taxonomy,
+    };
 
     Ok(Html(template.render()?))
 }
@@ -71,14 +81,20 @@ pub(crate) async fn update_page(
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
     let (can_manage_taxonomy, categories) = tokio::try_join!(
-        db.user_has_community_permission(&community_id, &user.user_id, CommunityPermission::TaxonomyWrite),
+        db.user_has_community_permission(
+            &community_id,
+            &user.user_id,
+            CommunityPermission::TaxonomyWrite
+        ),
         db.list_event_categories(community_id)
     )?;
     let Some(category) = categories
         .into_iter()
         .find(|category| category.event_category_id == event_category_id)
     else {
-        return Err(HandlerError::Database("event category not found".to_string()));
+        return Err(HandlerError::Database(
+            "event category not found".to_string(),
+        ));
     };
     let template = event_categories::UpdatePage {
         can_manage_taxonomy,
@@ -133,8 +149,13 @@ pub(crate) async fn update(
     Path(event_category_id): Path<Uuid>,
     ValidatedForm(event_category): ValidatedForm<EventCategoryInput>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    db.update_event_category(user.user_id, community_id, event_category_id, &event_category)
-        .await?;
+    db.update_event_category(
+        user.user_id,
+        community_id,
+        event_category_id,
+        &event_category,
+    )
+    .await?;
 
     Ok((
         StatusCode::NO_CONTENT,
