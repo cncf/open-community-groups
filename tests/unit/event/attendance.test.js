@@ -22,6 +22,7 @@ const renderAttendanceDom = ({
   canceled = "false",
   availabilityUrl = "",
   attendeeApprovalRequired = "false",
+  includeRegistrationQuestions = false,
 } = {}) => {
   document.body.innerHTML = `
     <div
@@ -72,6 +73,31 @@ const renderAttendanceDom = ({
         <div class="svg-icon icon-refund" data-attendance-icon></div>
         <span data-attendance-label>Request refund</span>
       </button>
+      ${
+        includeRegistrationQuestions
+          ? `
+      <div
+        id="questions-modal"
+        data-attendance-role="registration-modal"
+        class="hidden"
+      >
+        <form data-attendance-role="registration-form">
+          <fieldset
+            data-question-id="question-1"
+            data-question-kind="free-text"
+            data-question-required="true"
+          >
+            <textarea data-registration-answer required></textarea>
+          </fieldset>
+          <input
+            type="hidden"
+            data-attendance-role="registration-answers-input"
+            name="registration_answers"
+          >
+        </form>
+      </div>`
+          : ""
+      }
     </div>
     <div data-meeting-details class="hidden">
       <a data-join-link-always class="hidden"></a>
@@ -108,6 +134,7 @@ const renderAttendanceDom = ({
     attendButton: document.querySelector('[data-attendance-role="attend-btn"]'),
     leaveButton: document.querySelector('[data-attendance-role="leave-btn"]'),
     refundButton: document.querySelector('[data-attendance-role="refund-btn"]'),
+    questionsModal: document.querySelector('[data-attendance-role="registration-modal"]'),
     meetingDetails: Array.from(document.querySelectorAll("[data-meeting-details]")),
     alwaysJoinLink: document.querySelector("[data-join-link-always]"),
     liveJoinLink: document.querySelector("[data-join-link]"),
@@ -300,6 +327,25 @@ describe("event attendance", () => {
       text: "You have joined the waiting list for this event.",
       icon: "info",
     });
+  });
+
+  it("blocks the attend request until registration questions are answered", () => {
+    const { attendButton, container, loadingButton, questionsModal } = renderAttendanceDom({
+      includeRegistrationQuestions: true,
+    });
+    const event = new CustomEvent("htmx:beforeRequest", {
+      bubbles: true,
+      cancelable: true,
+    });
+
+    attendButton.classList.remove("hidden");
+    attendButton.dispatchEvent(event);
+
+    expect(event.defaultPrevented).to.equal(true);
+    expect(container.dataset.questionsContinueAction).to.equal("attend");
+    expect(questionsModal.classList.contains("hidden")).to.equal(false);
+    expect(attendButton.classList.contains("hidden")).to.equal(false);
+    expect(loadingButton.classList.contains("hidden")).to.equal(true);
   });
 
   it("shows sign-in info for waitlists and confirms leaving the waitlist", async () => {

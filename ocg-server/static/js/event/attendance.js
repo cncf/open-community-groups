@@ -895,6 +895,26 @@ const handleCheckoutBeforeRequest = (target) => {
 };
 
 /**
+ * Blocks attend requests until required registration questions are answered.
+ * @param {Event} event - htmx:beforeRequest event
+ * @param {HTMLElement} target - Event target
+ * @param {HTMLElement} container - Attendance container element
+ * @returns {boolean} True when the request was blocked
+ */
+const blockAttendRequestForQuestions = (event, target, container) => {
+  if (target.dataset.attendanceRole !== "attend-btn" || !shouldCollectQuestionAnswers(container)) {
+    return false;
+  }
+
+  event.preventDefault();
+  const continueAction = getAttendanceMeta(container).isTicketed
+    ? QUESTIONS_CONTINUE_ACTION_TICKET
+    : QUESTIONS_CONTINUE_ACTION_ATTEND;
+  requestQuestionAnswers(container, continueAction);
+  return true;
+};
+
+/**
  * Handles checkout form afterRequest state.
  * @param {Event} event - htmx:afterRequest event
  */
@@ -951,6 +971,10 @@ const handleBeforeRequest = (event) => {
 
   const container = getAttendanceContainer(target);
   if (!container) {
+    return;
+  }
+
+  if (blockAttendRequestForQuestions(event, target, container)) {
     return;
   }
 
