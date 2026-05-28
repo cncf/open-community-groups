@@ -6,6 +6,7 @@ import {
 } from "/static/js/common/alerts.js";
 import { isSuccessfulXHRStatus } from "/static/js/common/common.js";
 import { ocgFetch } from "/static/js/common/fetch.js";
+import { collectQuestionAnswers as collectQuestionAnswersFromForm } from "/static/js/common/question-answers.js";
 
 import {
   ATTENDANCE_CONTAINER_SELECTOR,
@@ -573,41 +574,9 @@ const setQuestionAnswersPayload = (container, answersPayload) => {
 };
 
 /**
- * Applies custom validity to the first answer control in a fieldset.
- * @param {HTMLFieldSetElement} fieldset - Question fieldset
- * @param {string} message - Validation message
- */
-const setQuestionValidity = (fieldset, message) => {
-  const firstControl = fieldset.querySelector("[data-registration-answer]");
-  if (
-    firstControl instanceof HTMLInputElement ||
-    firstControl instanceof HTMLTextAreaElement ||
-    firstControl instanceof HTMLSelectElement
-  ) {
-    firstControl.setCustomValidity(message);
-  }
-};
-
-/**
- * Clears custom validity from every question control.
- * @param {HTMLFormElement} form - Questions form
- */
-const clearQuestionValidity = (form) => {
-  form.querySelectorAll("[data-registration-answer]").forEach((control) => {
-    if (
-      control instanceof HTMLInputElement ||
-      control instanceof HTMLTextAreaElement ||
-      control instanceof HTMLSelectElement
-    ) {
-      control.setCustomValidity("");
-    }
-  });
-};
-
-/**
  * Collects and validates event question answers.
  * @param {HTMLElement} container - Attendance container element
- * @returns {{answers: {question_id: string, value: string|string[]}[]}|null} Answers payload, or null when invalid
+ * @returns {object|null} Answers payload, or null when invalid
  */
 const collectQuestionAnswers = (container) => {
   const form = getAttendanceControl(container, "registration-form");
@@ -615,58 +584,9 @@ const collectQuestionAnswers = (container) => {
     return { answers: [] };
   }
 
-  clearQuestionValidity(form);
-  const answers = [];
-
-  form.querySelectorAll("[data-question-id]").forEach((fieldset) => {
-    if (!(fieldset instanceof HTMLFieldSetElement)) {
-      return;
-    }
-
-    const questionId = fieldset.dataset.questionId;
-    const kind = fieldset.dataset.questionKind;
-    const required = fieldset.dataset.questionRequired === "true";
-    if (!questionId || !kind) {
-      return;
-    }
-
-    if (kind === "free-text") {
-      const input = fieldset.querySelector("[data-registration-answer]");
-      if (!(input instanceof HTMLTextAreaElement)) {
-        return;
-      }
-
-      const value = input.value.trim();
-      if (value || required) {
-        answers.push({ question_id: questionId, value });
-      }
-      return;
-    }
-
-    if (kind === "single-select") {
-      const selected = fieldset.querySelector("[data-registration-answer]:checked");
-      if (selected instanceof HTMLInputElement) {
-        answers.push({ question_id: questionId, value: selected.value });
-      }
-      return;
-    }
-
-    const values = Array.from(fieldset.querySelectorAll("[data-registration-answer]:checked"))
-      .filter((input) => input instanceof HTMLInputElement)
-      .map((input) => input.value);
-    if (values.length > 0 || required) {
-      answers.push({ question_id: questionId, value: values });
-    }
-    if (required && values.length === 0) {
-      setQuestionValidity(fieldset, "Select at least one option.");
-    }
+  return collectQuestionAnswersFromForm(form, {
+    answerSelector: "[data-registration-answer]",
   });
-
-  if (!form.reportValidity()) {
-    return null;
-  }
-
-  return { answers };
 };
 
 /**
