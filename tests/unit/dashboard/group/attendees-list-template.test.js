@@ -44,6 +44,9 @@ describe("dashboard group attendees list template", () => {
     const template = normalizeWhitespace(await loadTemplate());
 
     expect(template).to.include(
+      'attendee.status == "registration-questions-pending") && attendee.name.is_none()',
+    );
+    expect(template).to.include(
       'attendee.status == "registration-questions-pending" && attendee.manually_invited',
     );
     expect(template).to.include('id="cancel-invitation-{{ attendee.user_id }}"');

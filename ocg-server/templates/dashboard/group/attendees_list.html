@@ -160,7 +160,7 @@
                 <div class="min-w-0">
                   <div class="flex items-center space-x-3 mb-1 min-w-0">
                     <div class="font-medium text-stone-900 truncate min-w-0">
-                      {% if attendee.status == "invitation-pending" && attendee.name.is_none() -%}
+                      {% if (attendee.status == "invitation-pending" || attendee.status == "registration-questions-pending") && attendee.name.is_none() -%}
                         {{ attendee.email }}
                       {% else -%}
                         {{ attendee.name|assigned_or(attendee.username) }}
