@@ -13,7 +13,7 @@ use crate::{
         event::{EventInvitationRequestStatus, EventSummary},
         pagination::{self, Pagination, ToRawQuery},
     },
-    validation::MAX_PAGINATION_LIMIT,
+    validation::{MAX_LEN_M, MAX_PAGINATION_LIMIT, trimmed_non_empty_opt},
 };
 
 // Pages templates.
@@ -36,6 +36,8 @@ pub(crate) struct ListPage {
     pub offset: Option<usize>,
     /// Total number of invitation requests for the selected event.
     pub total: usize,
+    /// Optional search query to filter invitation requests.
+    pub ts_query: Option<String>,
 }
 
 // Types.
@@ -82,6 +84,9 @@ pub(crate) struct InvitationRequestsFilters {
     #[serde(default = "dashboard::default_offset")]
     #[garde(skip)]
     pub offset: Option<usize>,
+    /// Optional search query to filter invitation requests.
+    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_M))]
+    pub ts_query: Option<String>,
 }
 
 /// Filter parameters for invitation request pagination URLs.
@@ -96,6 +101,9 @@ pub(crate) struct InvitationRequestsPaginationFilters {
     #[serde(default = "dashboard::default_offset")]
     #[garde(skip)]
     pub offset: Option<usize>,
+    /// Optional search query preserved across pagination.
+    #[garde(skip)]
+    pub ts_query: Option<String>,
 }
 
 crate::impl_pagination_and_raw_query!(InvitationRequestsPaginationFilters, limit, offset);

@@ -27,6 +27,12 @@ returns json as $$
             join "user" u on u.user_id = eir.user_id
             where e.group_id = p_group_id
             and eir.event_id = (select event_id from filters)
+            and (
+                not (p_filters ? 'ts_query')
+                or lower(coalesce(u.name, '')) ilike '%' || escape_ilike_pattern(lower(p_filters->>'ts_query')) || '%'
+                or lower(u.username) ilike '%' || escape_ilike_pattern(lower(p_filters->>'ts_query')) || '%'
+                or lower(coalesce(u.company, '')) ilike '%' || escape_ilike_pattern(lower(p_filters->>'ts_query')) || '%'
+            )
             order by
                 case eir.status
                     when 'pending' then 0
@@ -43,8 +49,15 @@ returns json as $$
             select count(*)::int as total
             from event_invitation_request eir
             join event e on e.event_id = eir.event_id
+            join "user" u on u.user_id = eir.user_id
             where e.group_id = p_group_id
             and eir.event_id = (select event_id from filters)
+            and (
+                not (p_filters ? 'ts_query')
+                or lower(coalesce(u.name, '')) ilike '%' || escape_ilike_pattern(lower(p_filters->>'ts_query')) || '%'
+                or lower(u.username) ilike '%' || escape_ilike_pattern(lower(p_filters->>'ts_query')) || '%'
+                or lower(coalesce(u.company, '')) ilike '%' || escape_ilike_pattern(lower(p_filters->>'ts_query')) || '%'
+            )
         ),
         -- Render invitation requests as JSON
         invitation_requests_json as (

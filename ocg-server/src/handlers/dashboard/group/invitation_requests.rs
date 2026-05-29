@@ -43,6 +43,7 @@ pub(crate) async fn list_page(
         event_id,
         limit: page_filters.limit,
         offset: page_filters.offset,
+        ts_query: page_filters.ts_query.clone(),
     };
     let (can_manage_events, event, search_results) = tokio::try_join!(
         db.user_has_group_permission(
@@ -70,6 +71,7 @@ pub(crate) async fn list_page(
         navigation_links,
         offset: page_filters.offset,
         total: search_results.total,
+        ts_query: page_filters.ts_query.clone(),
     };
 
     Ok(Html(template.render()?))

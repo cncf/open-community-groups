@@ -66,6 +66,7 @@ pub(crate) async fn list_page(
         event_id,
         limit: page_filters.limit,
         offset: page_filters.offset,
+        ts_query: page_filters.ts_query.clone(),
     };
     let (can_manage_events, event, search_attendees_results) = tokio::try_join!(
         db.user_has_group_permission(
@@ -94,6 +95,7 @@ pub(crate) async fn list_page(
         total: search_attendees_results.total,
         limit: page_filters.limit,
         offset: page_filters.offset,
+        ts_query: page_filters.ts_query.clone(),
     };
 
     Ok(Html(template.render()?))
@@ -549,6 +551,7 @@ pub(crate) async fn download_csv(
         event_id,
         limit: None,
         offset: None,
+        ts_query: None,
     };
     let (event, search_attendees_results) = tokio::try_join!(
         db.get_event_summary(community_id, group_id, event_id),

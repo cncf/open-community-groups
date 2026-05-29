@@ -14,7 +14,7 @@ use crate::{
         pagination::{self, Pagination, ToRawQuery},
         payments::{EventRefundRequestStatus, format_amount_minor},
     },
-    validation::MAX_PAGINATION_LIMIT,
+    validation::{MAX_LEN_M, MAX_PAGINATION_LIMIT, trimmed_non_empty_opt},
 };
 
 // Pages templates.
@@ -40,6 +40,8 @@ pub(crate) struct ListPage {
     pub limit: Option<usize>,
     /// Pagination offset for results.
     pub offset: Option<usize>,
+    /// Optional search query to filter attendees.
+    pub ts_query: Option<String>,
 }
 
 // Types.
@@ -104,6 +106,9 @@ pub(crate) struct AttendeesFilters {
     #[serde(default = "dashboard::default_offset")]
     #[garde(skip)]
     pub offset: Option<usize>,
+    /// Optional search query to filter attendees.
+    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_M))]
+    pub ts_query: Option<String>,
 }
 
 /// Filter parameters for attendee pagination URLs.
@@ -118,6 +123,9 @@ pub(crate) struct AttendeesPaginationFilters {
     #[serde(default = "dashboard::default_offset")]
     #[garde(skip)]
     pub offset: Option<usize>,
+    /// Optional search query preserved across pagination.
+    #[garde(skip)]
+    pub ts_query: Option<String>,
 }
 
 crate::impl_pagination_and_raw_query!(AttendeesPaginationFilters, limit, offset);

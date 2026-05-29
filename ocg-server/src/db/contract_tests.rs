@@ -347,6 +347,7 @@ async fn db_contracts_search_event_attendees_deserializes() -> Result<()> {
 
         limit: Some(10),
         offset: Some(0),
+        ts_query: None,
     };
     let output = db.search_event_attendees(group_id(), &filters).await?;
 
@@ -398,6 +399,7 @@ async fn db_contracts_search_event_invitation_requests_deserializes() -> Result<
 
         limit: Some(10),
         offset: Some(0),
+        ts_query: None,
     };
     let output = db.search_event_invitation_requests(group_id(), &filters).await?;
 

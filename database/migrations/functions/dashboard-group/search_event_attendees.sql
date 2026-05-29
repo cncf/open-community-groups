@@ -58,6 +58,13 @@ returns json as $$
             where e.group_id = p_group_id
             and ea.event_id = (select event_id from filters)
             and ea.status in ('confirmed', 'invitation-pending', 'invitation-rejected')
+            and (
+                not (p_filters ? 'ts_query')
+                or lower(coalesce(u.name, '')) ilike '%' || escape_ilike_pattern(lower(p_filters->>'ts_query')) || '%'
+                or lower(u.username) ilike '%' || escape_ilike_pattern(lower(p_filters->>'ts_query')) || '%'
+                or lower(u.email) ilike '%' || escape_ilike_pattern(lower(p_filters->>'ts_query')) || '%'
+                or lower(coalesce(u.company, '')) ilike '%' || escape_ilike_pattern(lower(p_filters->>'ts_query')) || '%'
+            )
             order by coalesce(lower(u.name), lower(u.username)) asc, u.user_id asc
             offset (select offset_value from filters)
             limit (select limit_value from filters)
@@ -76,6 +83,13 @@ returns json as $$
             where e.group_id = p_group_id
             and ea.event_id = (select event_id from filters)
             and ea.status in ('confirmed', 'invitation-pending', 'invitation-rejected')
+            and (
+                not (p_filters ? 'ts_query')
+                or lower(coalesce(u.name, '')) ilike '%' || escape_ilike_pattern(lower(p_filters->>'ts_query')) || '%'
+                or lower(u.username) ilike '%' || escape_ilike_pattern(lower(p_filters->>'ts_query')) || '%'
+                or lower(u.email) ilike '%' || escape_ilike_pattern(lower(p_filters->>'ts_query')) || '%'
+                or lower(coalesce(u.company, '')) ilike '%' || escape_ilike_pattern(lower(p_filters->>'ts_query')) || '%'
+            )
         ),
         -- Render attendees as JSON
         attendees_json as (
