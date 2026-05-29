@@ -783,12 +783,16 @@ async fn test_attend_event_success_with_registration_answers() {
 }
 
 #[tokio::test]
-async fn test_attend_event_waitlist_success() {
+async fn test_attend_event_waitlist_success_without_registration_answers() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
-    let event_summary = sample_event_summary(event_id, group_id);
+    let mut event_summary = sample_event_summary(event_id, group_id);
+    event_summary.capacity = Some(1);
+    event_summary.has_registration_questions = true;
+    event_summary.remaining_capacity = Some(0);
+    event_summary.waitlist_enabled = true;
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
@@ -812,10 +816,7 @@ async fn test_attend_event_waitlist_success() {
         .times(1)
         .withf(move |cid, eid| *cid == community_id && *eid == event_id)
         .returning(|_, _| Ok(()));
-    db.expect_get_event_registration_questions()
-        .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
-        .returning(|_, _| Ok(vec![]));
+    db.expect_get_event_registration_questions().times(0);
     db.expect_attend_event()
         .times(1)
         .withf(move |id, eid, uid, answers| {

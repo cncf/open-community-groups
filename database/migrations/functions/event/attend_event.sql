@@ -8,8 +8,10 @@ create or replace function attend_event(
 declare
     v_attendee_approval_required boolean;
     v_attendee_count int;
+    v_attendee_status text;
     v_capacity int;
     v_group_id uuid;
+    v_has_registration_questions boolean;
     v_invitation_request_status text;
     v_registration_answers jsonb;
     v_registration_questions jsonb;
@@ -45,22 +47,34 @@ begin
         raise exception 'event not found or inactive';
     end if;
 
-    -- Validate registration answers against the event's question definitions
-    if jsonb_array_length(coalesce(v_registration_questions, '[]'::jsonb)) > 0 then
-        perform validate_questionnaire_answers_payload(v_registration_questions, p_registration_answers);
-        v_registration_answers := p_registration_answers;
-    end if;
+    -- Track question requirements so waitlist joins can skip answer validation
+    -- until promotion, while attendee and invitation paths still enforce answers.
+    v_has_registration_questions := jsonb_array_length(coalesce(v_registration_questions, '[]'::jsonb)) > 0;
 
-    -- Convert organizer-created invitation rows into attendance
-    update event_attendee
-    set
-        registration_answers = v_registration_answers,
-        status = 'confirmed'
-    where event_id = p_event_id
-    and user_id = p_user_id
-    and status in ('invitation-pending', 'invitation-rejected', 'registration-questions-pending');
+    -- Lock organizer-created invitation rows before converting them into attendance.
+    select ea.status into v_attendee_status
+    from event_attendee ea
+    where ea.event_id = p_event_id
+    and ea.user_id = p_user_id
+    and ea.status in ('invitation-pending', 'invitation-rejected', 'registration-questions-pending')
+    for update of ea;
 
     if found then
+        -- Invitation acceptance confirms attendance, so validate answers here.
+        if v_has_registration_questions then
+            perform validate_questionnaire_answers_payload(v_registration_questions, p_registration_answers);
+            v_registration_answers := p_registration_answers;
+        end if;
+
+        -- Preserve the locked invitation row while updating only the status we read.
+        update event_attendee
+        set
+            registration_answers = v_registration_answers,
+            status = 'confirmed'
+        where event_id = p_event_id
+        and user_id = p_user_id
+        and status = v_attendee_status;
+
         perform insert_audit_log(
             'event_attendee_invitation_accepted',
             p_user_id,
@@ -94,6 +108,13 @@ begin
 
     -- Route approval-required events through the invitation request flow
     if v_attendee_approval_required then
+        -- Approval requests and accepted-request rejoins are attendee paths,
+        -- so required registration answers must be present before proceeding.
+        if v_has_registration_questions then
+            perform validate_questionnaire_answers_payload(v_registration_questions, p_registration_answers);
+            v_registration_answers := p_registration_answers;
+        end if;
+
         -- Existing approved requests can recreate attendance after cancellation
         if v_invitation_request_status = 'accepted' then
             -- Enforce capacity before recreating attendance from an accepted request
@@ -166,6 +187,12 @@ begin
 
             raise exception 'event has reached capacity';
         end if;
+    end if;
+
+    -- Validate registration answers before creating confirmed attendance
+    if v_has_registration_questions then
+        perform validate_questionnaire_answers_payload(v_registration_questions, p_registration_answers);
+        v_registration_answers := p_registration_answers;
     end if;
 
     -- Add user as event attendee, reusing canceled organizer invitations

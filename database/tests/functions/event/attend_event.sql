@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(38);
+select plan(40);
 
 -- ============================================================================
 -- VARIABLES
@@ -21,6 +21,7 @@ select plan(38);
 \set eventOK '00000000-0000-0000-0000-000000000041'
 \set eventPast '00000000-0000-0000-0000-000000000046'
 \set eventQuestionsApprovalID '90400000-0000-0000-0000-000000000042'
+\set eventQuestionsFullWaitlistID '90400000-0000-0000-0000-000000000043'
 \set eventQuestionsID '90400000-0000-0000-0000-000000000041'
 \set eventUnpublished '00000000-0000-0000-0000-000000000042'
 \set groupID '00000000-0000-0000-0000-000000000021'
@@ -31,6 +32,8 @@ select plan(38);
 \set questionsEventCategoryID '90400000-0000-0000-0000-000000000012'
 \set questionsGroupID '90400000-0000-0000-0000-000000000021'
 \set questionsRequestUserID '90400000-0000-0000-0000-000000000034'
+\set questionsSeatUserID '90400000-0000-0000-0000-000000000033'
+\set questionsWaitlistUserID '90400000-0000-0000-0000-000000000032'
 \set user1ID '00000000-0000-0000-0000-000000000031'
 \set user2ID '00000000-0000-0000-0000-000000000032'
 \set user3ID '00000000-0000-0000-0000-000000000033'
@@ -80,7 +83,9 @@ values
 insert into "user" (user_id, auth_hash, email, email_verified, name, registration_status, username)
 values
     (:'questionsAttendeeUserID', 'rq-hash-1', 'rq-attend@example.com', true, 'Attendee', 'registered', 'rq-attendee'),
-    (:'questionsRequestUserID', 'rq-hash-2', 'rq-request@example.com', true, 'Requester', 'registered', 'rq-requester');
+    (:'questionsWaitlistUserID', 'rq-hash-2', 'rq-waitlist@example.com', true, 'Waitlist User', 'registered', 'rq-waitlist'),
+    (:'questionsSeatUserID', 'rq-hash-3', 'rq-seat@example.com', true, 'Seat Holder', 'registered', 'rq-seat'),
+    (:'questionsRequestUserID', 'rq-hash-4', 'rq-request@example.com', true, 'Requester', 'registered', 'rq-requester');
 
 -- Groups
 insert into "group" (group_id, community_id, group_category_id, name, slug, active, deleted)
@@ -134,6 +139,8 @@ insert into event (
     event_kind_id,
     published,
     starts_at,
+    capacity,
+    waitlist_enabled,
     attendee_approval_required,
     registration_questions
 ) values (
@@ -147,6 +154,8 @@ insert into event (
     'in-person',
     true,
     '2030-01-01 10:00:00+00',
+    null,
+    false,
     false,
     '[{"id": "90400000-0000-0000-0000-000000000101", "kind": "free-text", "prompt": "Note", "required": true, "options": []}]'::jsonb
 ), (
@@ -160,7 +169,24 @@ insert into event (
     'in-person',
     true,
     '2030-01-02 10:00:00+00',
+    null,
+    false,
     true,
+    '[{"id": "90400000-0000-0000-0000-000000000101", "kind": "free-text", "prompt": "Note", "required": true, "options": []}]'::jsonb
+), (
+    :'eventQuestionsFullWaitlistID',
+    :'questionsGroupID',
+    'Questions Full Waitlist Event',
+    'questions-full-waitlist-event',
+    'Desc',
+    'UTC',
+    :'questionsEventCategoryID',
+    'in-person',
+    true,
+    '2030-01-03 10:00:00+00',
+    1,
+    true,
+    false,
     '[{"id": "90400000-0000-0000-0000-000000000101", "kind": "free-text", "prompt": "Note", "required": true, "options": []}]'::jsonb
 );
 
@@ -168,7 +194,8 @@ insert into event (
 insert into event_attendee (event_id, user_id, status)
 values
     (:'eventFullNoWaitlist', :'user1ID', 'confirmed'),
-    (:'eventFullWaitlist', :'user1ID', 'confirmed');
+    (:'eventFullWaitlist', :'user1ID', 'confirmed'),
+    (:'eventQuestionsFullWaitlistID', :'questionsSeatUserID', 'confirmed');
 
 -- Existing organizer invitation decisions
 insert into event_attendee (event_id, user_id, manually_invited, status)
@@ -372,6 +399,39 @@ select ok(
         and user_id = :'user3ID'::uuid
     ),
     'Creates waitlist row after a canceled organizer invitation'
+);
+
+-- Should allow waitlist joins without registration answers when questions exist
+select is(
+    attend_event(
+        :'questionsCommunityID'::uuid,
+        :'eventQuestionsFullWaitlistID'::uuid,
+        :'questionsWaitlistUserID'::uuid
+    ),
+    'waitlisted',
+    'Should allow waitlist joins without registration answers when questions exist'
+);
+
+-- Should create only a waitlist row for answerless waitlist joins
+select is(
+    (
+        select jsonb_build_object(
+            'attendee_exists', exists(
+                select 1
+                from event_attendee
+                where event_id = :'eventQuestionsFullWaitlistID'::uuid
+                and user_id = :'questionsWaitlistUserID'::uuid
+            ),
+            'waitlist_exists', exists(
+                select 1
+                from event_waitlist
+                where event_id = :'eventQuestionsFullWaitlistID'::uuid
+                and user_id = :'questionsWaitlistUserID'::uuid
+            )
+        )
+    ),
+    '{"attendee_exists":false,"waitlist_exists":true}'::jsonb,
+    'Should create only a waitlist row when joining a question-enabled waitlist without answers'
 );
 
 -- Should recreate attendance when an accepted request no longer has an attendee row

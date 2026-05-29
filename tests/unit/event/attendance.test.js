@@ -348,6 +348,27 @@ describe("event attendance", () => {
     expect(loadingButton.classList.contains("hidden")).to.equal(true);
   });
 
+  it("allows waitlist joins before registration questions are answered", () => {
+    const { attendButton, loadingButton, questionsModal } = renderAttendanceDom({
+      capacity: "10",
+      includeRegistrationQuestions: true,
+      remainingCapacity: "0",
+      waitlistEnabled: "true",
+    });
+    const event = new CustomEvent("htmx:beforeRequest", {
+      bubbles: true,
+      cancelable: true,
+    });
+
+    attendButton.classList.remove("hidden");
+    attendButton.dispatchEvent(event);
+
+    expect(event.defaultPrevented).to.equal(false);
+    expect(questionsModal.classList.contains("hidden")).to.equal(true);
+    expect(attendButton.classList.contains("hidden")).to.equal(true);
+    expect(loadingButton.classList.contains("hidden")).to.equal(false);
+  });
+
   it("shows sign-in info for waitlists and confirms leaving the waitlist", async () => {
     const { signinButton, leaveButton } = renderAttendanceDom();
 

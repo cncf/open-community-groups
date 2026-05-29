@@ -559,6 +559,14 @@ const shouldCollectQuestionAnswers = (container) =>
   container.dataset.questionAnswersReady !== "true";
 
 /**
+ * Returns true when the primary attendance action will join the waitlist.
+ * @param {object} meta - Attendance metadata
+ * @returns {boolean} Whether the action is a waitlist join
+ */
+const isWaitlistJoinAction = (meta) =>
+  !meta.isTicketed && !meta.attendeeApprovalRequired && meta.isSoldOut && meta.waitlistEnabled;
+
+/**
  * Stores answer JSON in all hidden answer inputs in the attendance container.
  * @param {HTMLElement} container - Attendance container element
  * @param {object} answersPayload - Normalized answers payload
@@ -902,12 +910,17 @@ const handleCheckoutBeforeRequest = (target) => {
  * @returns {boolean} True when the request was blocked
  */
 const blockAttendRequestForQuestions = (event, target, container) => {
-  if (target.dataset.attendanceRole !== "attend-btn" || !shouldCollectQuestionAnswers(container)) {
+  const meta = getAttendanceMeta(container);
+  if (
+    target.dataset.attendanceRole !== "attend-btn" ||
+    isWaitlistJoinAction(meta) ||
+    !shouldCollectQuestionAnswers(container)
+  ) {
     return false;
   }
 
   event.preventDefault();
-  const continueAction = getAttendanceMeta(container).isTicketed
+  const continueAction = meta.isTicketed
     ? QUESTIONS_CONTINUE_ACTION_TICKET
     : QUESTIONS_CONTINUE_ACTION_ATTEND;
   requestQuestionAnswers(container, continueAction);

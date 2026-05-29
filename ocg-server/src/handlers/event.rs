@@ -239,9 +239,14 @@ pub(crate) async fn attend_event(
         return Err(anyhow::anyhow!("ticketed events must be purchased before attending").into());
     }
 
-    // Get registration questions and validate answers
-    let registration_questions = db.get_event_registration_questions(community_id, event_id).await?;
-    validate_registration_answers(input.registration_answers.as_ref(), &registration_questions)?;
+    // Users joining a waitlist answer registration questions only after promotion.
+    let waitlist_join_without_answers =
+        !event.attendee_approval_required && event.waitlist_enabled && event.remaining_capacity == Some(0);
+    if !waitlist_join_without_answers {
+        // Get registration questions and validate answers
+        let registration_questions = db.get_event_registration_questions(community_id, event_id).await?;
+        validate_registration_answers(input.registration_answers.as_ref(), &registration_questions)?;
+    }
 
     // Attend event
     let attend_result = db
