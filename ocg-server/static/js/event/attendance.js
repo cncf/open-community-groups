@@ -1004,7 +1004,9 @@ const handleCheckoutAfterRequest = (event) => {
 
   if (!ok) {
     restoreCheckoutModalControls(container);
-    closeTicketModal(container);
+    if (xhr?.status !== 422) {
+      closeTicketModal(container);
+    }
     return;
   }
 

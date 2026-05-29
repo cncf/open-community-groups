@@ -95,6 +95,7 @@
             <a href="/dashboard/group/events/{{ event.event_id }}/attendees.csv"
                download
                role="menuitem"
+               aria-label="Download CSV"
                class="flex items-center w-full px-4 py-2 hover:bg-stone-100 hover:text-stone-900 transition-colors gap-3">
               <div class="svg-icon size-4 icon-csv shrink-0 bg-stone-500"></div>
               <span>Attendees list CSV</span>
@@ -207,7 +208,9 @@
 
             {# Payment -#}
             <td class="px-3 xl:px-5 py-4 align-middle">
-              {% if attendee.status != "confirmed" -%}
+              {% if attendee.status == "registration-questions-pending" && event.is_ticketed() -%}
+                {{ badges::invitation_badge(label = "Pending checkout", with_border = true) -}}
+              {% else if attendee.status != "confirmed" -%}
                 <div class="text-stone-500">-</div>
               {% else if attendee.ticket_title.is_some() || attendee.amount_minor.is_some() || attendee.event_purchase_id.is_some() -%}
                 <div class="mx-auto flex max-w-[260px] flex-col gap-2">
