@@ -695,6 +695,37 @@ describe("event attendance paid modal", () => {
     });
   });
 
+  it("closes the ticket modal when checkout fails", async () => {
+    const {
+      checker,
+      attendButton,
+      ticketModal,
+      ticketTypeOptions,
+      checkoutForm,
+      checkoutButtonSpinner,
+      checkoutButtonLabel,
+    } = renderPaidAttendanceDom();
+    await initializeAttendanceDom();
+
+    dispatchHtmxAfterRequest(checker, {
+      responseText: JSON.stringify({ status: "guest" }),
+    });
+
+    attendButton.click();
+    ticketTypeOptions[0].checked = true;
+    ticketTypeOptions[0].dispatchEvent(new Event("change", { bubbles: true }));
+
+    dispatchHtmxBeforeRequest(checkoutForm);
+    dispatchHtmxAfterRequest(checkoutForm, {
+      status: 500,
+      responseText: "checkout failed",
+    });
+
+    expect(ticketModal.classList.contains("hidden")).to.equal(true);
+    expect(checkoutButtonSpinner.classList.contains("hidden")).to.equal(true);
+    expect(checkoutButtonLabel.classList.contains("invisible")).to.equal(false);
+  });
+
   it("closes the ticket modal from the overlay and cancel button", async () => {
     const { checker, attendButton, ticketModal, ticketModalOverlay, ticketModalCancel } =
       renderPaidAttendanceDom();

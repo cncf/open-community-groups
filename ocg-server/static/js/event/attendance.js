@@ -965,6 +965,7 @@ const handleCheckoutAfterRequest = (event) => {
 
   if (!ok) {
     restoreCheckoutModalControls(container);
+    closeTicketModal(container);
     return;
   }
 
