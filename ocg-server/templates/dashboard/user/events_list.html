@@ -96,7 +96,11 @@ description = "Upcoming events where you'll participate.") -}}
             <td class="px-3 xl:px-5 py-4 w-64">
               <div class="flex flex-wrap gap-1.5">
                 {% for role in item.roles -%}
-                  {{ badges::common_badge(content = role, extra_styles = Some("px-2.5 py-0.5") ) -}}
+                  {% if role == "Registration pending" -%}
+                    {{ badges::status_badge(label = role, extra_styles = Some("uppercase") ) -}}
+                  {% else -%}
+                    {{ badges::common_badge(content = role, extra_styles = Some("px-2.5 py-0.5") ) -}}
+                  {% endif -%}
                 {% endfor -%}
               </div>
             </td>

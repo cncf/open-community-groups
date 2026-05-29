@@ -24,9 +24,7 @@ describe("dashboard user events list template", () => {
     expect(template).to.include('hx-disabled-elt="this"');
     expect(template).to.include("data-confirm-action");
     expect(template).to.include('data-confirm-message="Are you sure you want to cancel your attendance?"');
-    expect(template).to.include(
-      'data-success-message="You have successfully canceled your attendance."',
-    );
+    expect(template).to.include('data-success-message="You have successfully canceled your attendance."');
     expect(template).to.include(
       'data-error-message="Something went wrong canceling your attendance. Please try again later."',
     );
@@ -39,5 +37,17 @@ describe("dashboard user events list template", () => {
     expect(template).to.include('title="Only attendee attendance can be canceled."');
     expect(template).to.include('<span class="sr-only">Actions</span>');
     expect(template).to.include('aria-label="Open event actions"');
+  });
+
+  it("renders registration pending with the warning status badge style", async () => {
+    const template = normalizeWhitespace(await loadTemplate());
+
+    expect(template).to.include('{% if role == "Registration pending" -%}');
+    expect(template).to.include(
+      '{{ badges::status_badge(label = role, extra_styles = Some("uppercase") ) -}}',
+    );
+    expect(template).to.include(
+      '{{ badges::common_badge(content = role, extra_styles = Some("px-2.5 py-0.5") ) -}}',
+    );
   });
 });
