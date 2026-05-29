@@ -82,9 +82,7 @@ const PRIMARY_ACTION_CONFIG = {
         showInfoAlert("You have joined the waiting list for this event.");
       } else if (response?.status === "pending-approval") {
         showInfoAlert("Your invitation request has been sent to the organizers.");
-      } else if (response?.status === "pending-payment") {
-        showInfoAlert("Your checkout is ready. Redirecting you to Stripe now.");
-      } else {
+      } else if (response?.status !== "pending-payment") {
         showInfoAlert("You have successfully registered for this event.");
       }
 
@@ -973,14 +971,11 @@ const handleCheckoutAfterRequest = (event) => {
   closeTicketModal(container);
 
   if (response?.redirect_url) {
-    showInfoAlert("Your checkout is ready. Redirecting you to Stripe now.");
     window.location.assign(response.redirect_url);
     return;
   }
 
-  if (response?.status === "pending-payment") {
-    showInfoAlert("Your checkout is ready. Redirecting you to Stripe now.");
-  } else {
+  if (response?.status !== "pending-payment") {
     showInfoAlert("You have successfully registered for this event.");
   }
 

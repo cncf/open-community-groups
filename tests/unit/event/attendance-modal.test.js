@@ -18,6 +18,7 @@ const renderPaidAttendanceDom = ({
   includeButtonPriceBadge = true,
   markButtonPriceBadge = true,
   availabilityUrl = "",
+  includeRegistrationQuestions = false,
 } = {}) => {
   document.body.innerHTML = `
     <div
@@ -62,6 +63,34 @@ const renderPaidAttendanceDom = ({
         }
         <span data-attendance-label>Buy ticket</span>
       </button>
+      ${
+        includeRegistrationQuestions
+          ? `
+      <div
+        id="questions-modal"
+        data-attendance-role="registration-modal"
+        class="hidden"
+      >
+        <div data-attendance-role="registration-modal-overlay"></div>
+        <button data-attendance-role="registration-modal-close" type="button">Close</button>
+        <form data-attendance-role="registration-form">
+          <fieldset
+            data-question-id="question-1"
+            data-question-kind="free-text"
+            data-question-required="true"
+          >
+            <textarea data-registration-answer required></textarea>
+          </fieldset>
+          <input
+            data-attendance-role="registration-answers-input"
+            name="registration_answers"
+            type="hidden"
+          />
+          <button data-attendance-role="registration-modal-submit" type="submit">Continue</button>
+        </form>
+      </div>`
+          : ""
+      }
       <div
         id="ticket-modal"
         data-attendance-role="ticket-modal"
@@ -71,6 +100,11 @@ const renderPaidAttendanceDom = ({
         <button data-attendance-role="ticket-modal-close" type="button">Close</button>
         <button data-attendance-role="ticket-modal-cancel" type="button">Cancel</button>
         <form data-attendance-role="checkout-form">
+          <input
+            data-attendance-role="checkout-registration-answers-input"
+            name="registration_answers"
+            type="hidden"
+          />
           <div data-attendance-role="ticket-modal-form">
             <div data-attendance-role="ticket-type-list">
               <label data-attendance-role="ticket-type-card">
@@ -175,8 +209,15 @@ const renderPaidAttendanceDom = ({
     actionsMenu: document.querySelector('[data-attendance-role="actions-menu"]'),
     checkoutCancelButton: document.querySelector('[data-attendance-role="checkout-cancel-btn"]'),
     checkoutResumeButton: document.querySelector('[data-attendance-role="checkout-resume-btn"]'),
+    questionsModal: document.querySelector('[data-attendance-role="registration-modal"]'),
+    registrationForm: document.querySelector('[data-attendance-role="registration-form"]'),
+    registrationAnswer: document.querySelector("[data-registration-answer]"),
+    registrationAnswersInput: document.querySelector('[data-attendance-role="registration-answers-input"]'),
     ticketModal: document.querySelector('[data-attendance-role="ticket-modal"]'),
     checkoutForm: document.querySelector('[data-attendance-role="checkout-form"]'),
+    checkoutRegistrationAnswersInput: document.querySelector(
+      '[data-attendance-role="checkout-registration-answers-input"]',
+    ),
     ticketModalForm: document.querySelector('[data-attendance-role="ticket-modal-form"]'),
     ticketTypeOptions: document.querySelectorAll('[data-attendance-role="ticket-type-option"]'),
     ticketTypeTitles: () =>
@@ -254,6 +295,40 @@ describe("event attendance paid modal", () => {
 
     expect(checkoutButton.disabled).to.equal(false);
     expect(checkoutButton.hasAttribute("title")).to.equal(false);
+  });
+
+  it("opens ticket selection after registration questions without showing a checkout alert", async () => {
+    const {
+      checker,
+      attendButton,
+      questionsModal,
+      registrationForm,
+      registrationAnswer,
+      registrationAnswersInput,
+      checkoutRegistrationAnswersInput,
+      ticketModal,
+    } = renderPaidAttendanceDom({ includeRegistrationQuestions: true });
+    await initializeAttendanceDom();
+
+    dispatchHtmxAfterRequest(checker, {
+      responseText: JSON.stringify({ status: "guest" }),
+    });
+
+    attendButton.click();
+
+    expect(questionsModal.classList.contains("hidden")).to.equal(false);
+    expect(ticketModal.classList.contains("hidden")).to.equal(true);
+
+    registrationAnswer.value = "Vegetarian lunch";
+    registrationForm.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+
+    expect(questionsModal.classList.contains("hidden")).to.equal(true);
+    expect(ticketModal.classList.contains("hidden")).to.equal(false);
+    expect(env.current.swal.calls).to.have.length(0);
+    expect(JSON.parse(registrationAnswersInput.value)).to.deep.equal({
+      answers: [{ question_id: "question-1", value: "Vegetarian lunch" }],
+    });
+    expect(checkoutRegistrationAnswersInput.value).to.equal(registrationAnswersInput.value);
   });
 
   it("keeps the paid button flow working when button price badges are omitted", async () => {
@@ -693,6 +768,26 @@ describe("event attendance paid modal", () => {
       text: "You have successfully registered for this event.",
       icon: "info",
     });
+  });
+
+  it("does not show a checkout alert when payment remains pending", async () => {
+    const { checker, attendButton, ticketModal, ticketTypeOptions, checkoutForm } = renderPaidAttendanceDom();
+    await initializeAttendanceDom();
+
+    dispatchHtmxAfterRequest(checker, {
+      responseText: JSON.stringify({ status: "guest" }),
+    });
+
+    attendButton.click();
+    ticketTypeOptions[0].checked = true;
+    ticketTypeOptions[0].dispatchEvent(new Event("change", { bubbles: true }));
+
+    dispatchHtmxAfterRequest(checkoutForm, {
+      responseText: JSON.stringify({ status: "pending-payment" }),
+    });
+
+    expect(ticketModal.classList.contains("hidden")).to.equal(true);
+    expect(env.current.swal.calls).to.have.length(0);
   });
 
   it("closes the ticket modal when checkout fails", async () => {
