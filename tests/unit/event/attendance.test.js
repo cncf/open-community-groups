@@ -361,6 +361,11 @@ describe("event attendance", () => {
     });
 
     attendButton.classList.remove("hidden");
+    attendButton.click();
+
+    expect(questionsModal.classList.contains("hidden")).to.equal(true);
+    expect(attendButton.classList.contains("hidden")).to.equal(false);
+
     attendButton.dispatchEvent(event);
 
     expect(event.defaultPrevented).to.equal(false);

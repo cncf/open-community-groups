@@ -1074,16 +1074,22 @@ const handleAttendanceClick = (event) => {
     return;
   }
 
-  if (attendButton instanceof HTMLButtonElement && shouldCollectQuestionAnswers(container)) {
+  const meta = getAttendanceMeta(container);
+
+  if (
+    attendButton instanceof HTMLButtonElement &&
+    shouldCollectQuestionAnswers(container) &&
+    !isWaitlistJoinAction(meta)
+  ) {
     event.preventDefault();
-    const continueAction = getAttendanceMeta(container).isTicketed
+    const continueAction = meta.isTicketed
       ? QUESTIONS_CONTINUE_ACTION_TICKET
       : QUESTIONS_CONTINUE_ACTION_ATTEND;
     requestQuestionAnswers(container, continueAction);
     return;
   }
 
-  if (attendButton instanceof HTMLButtonElement && getAttendanceMeta(container).isTicketed) {
+  if (attendButton instanceof HTMLButtonElement && meta.isTicketed) {
     event.preventDefault();
     openTicketModal(container);
     return;
