@@ -245,7 +245,10 @@ class QuestionsEditor extends LitWrapper {
               ?disabled=${this.disabled}
               @change=${(event) => this._updateQuestion(questionIndex, { kind: event.target.value })}
             >
-              ${QUESTION_TYPES.map(([value, label]) => html`<option value=${value}>${label}</option>`)}
+              ${QUESTION_TYPES.map(
+                ([value, label]) =>
+                  html`<option value=${value} ?selected=${question.kind === value}>${label}</option>`,
+              )}
             </select>
           </div>
           <div class="flex items-end gap-3">

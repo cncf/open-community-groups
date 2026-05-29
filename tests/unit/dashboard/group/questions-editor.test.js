@@ -1,7 +1,11 @@
 import { expect } from "@open-wc/testing";
 
 import "/static/js/dashboard/group/questions-editor.js";
-import { mountLitComponent, useMountedElementsCleanup } from "/tests/unit/test-utils/lit.js";
+import {
+  mountLitComponent,
+  mountLitComponentWithAttributes,
+  useMountedElementsCleanup,
+} from "/tests/unit/test-utils/lit.js";
 
 describe("questions-editor", () => {
   useMountedElementsCleanup("questions-editor");
@@ -66,6 +70,43 @@ describe("questions-editor", () => {
     });
 
     expect(element.querySelector('input[name="registration_questions[0][options][0][id]"]')).to.equal(null);
+  });
+
+  it("renders selected question types from the questions attribute", async () => {
+    const element = await mountLitComponentWithAttributes("questions-editor", {
+      attributes: {
+        questions: JSON.stringify([
+          {
+            id: "00000000-0000-0000-0000-000000000101",
+            kind: "single-select",
+            options: [
+              {
+                id: "00000000-0000-0000-0000-000000000201",
+                label: "Vegetarian",
+              },
+            ],
+            prompt: "Meal preference",
+            required: true,
+          },
+          {
+            id: "00000000-0000-0000-0000-000000000102",
+            kind: "multi-select",
+            options: [
+              {
+                id: "00000000-0000-0000-0000-000000000202",
+                label: "Rust",
+              },
+            ],
+            prompt: "Topics",
+            required: false,
+          },
+        ]),
+      },
+    });
+
+    const selects = [...element.querySelectorAll("select")];
+
+    expect(selects.map((select) => select.value)).to.deep.equal(["single-select", "multi-select"]);
   });
 
   it("normalizes questions assigned after render", async () => {
