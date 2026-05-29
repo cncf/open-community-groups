@@ -3,6 +3,7 @@ import { isSuccessfulXHRStatus, toggleModalVisibility } from "/static/js/common/
 import { collectQuestionAnswers, setQuestionAnswersInputValue } from "/static/js/common/question-answers.js";
 
 const DATA_KEY = "userEventQuestionsReady";
+const ACTIONS_DROPDOWN_SELECTOR = "[data-user-event-actions-dropdown]";
 
 /**
  * Finds the question modal targeted by an open trigger.
@@ -20,8 +21,22 @@ const closeModal = (modal) => {
   }
 };
 
+const closeActionDropdowns = (exceptDropdown = null) => {
+  document.querySelectorAll(`${ACTIONS_DROPDOWN_SELECTOR}[open]`).forEach((dropdown) => {
+    if (dropdown !== exceptDropdown) {
+      dropdown.open = false;
+    }
+  });
+};
+
 const handleClick = (event) => {
   const target = event.target instanceof Element ? event.target : null;
+  const actionsSummary = target?.closest(`${ACTIONS_DROPDOWN_SELECTOR} > summary`);
+  const actionsDropdown = actionsSummary?.closest(ACTIONS_DROPDOWN_SELECTOR);
+  if (actionsDropdown instanceof HTMLDetailsElement && !actionsDropdown.open) {
+    closeActionDropdowns(actionsDropdown);
+  }
+
   const trigger = target?.closest("[data-user-event-questions-open]");
   if (trigger instanceof HTMLElement) {
     const modal = getModal(trigger);
