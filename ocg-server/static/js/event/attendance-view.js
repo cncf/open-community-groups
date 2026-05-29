@@ -588,13 +588,13 @@ export const showRejectedInvitationState = (container, meta) => {
  * @param {{resume_checkout_url?: string}} response - Attendance response
  */
 export const showPendingPaymentState = (container, meta, response) => {
-  const { actionsMenu, checkoutCancelButton, checkoutResumeButton } = getPrimaryControls(container);
+  const { actionsMenu, attendButton, checkoutCancelButton } = getPrimaryControls(container);
 
   resetPrimaryControls(container);
   setControlPriceBadgesHidden(container, true);
   renderControl(actionsMenu);
   renderControl(
-    checkoutResumeButton,
+    attendButton,
     withEventActionState(meta, {
       icon: "icon-ticket",
       label: COMPLETE_PAYMENT_LABEL,

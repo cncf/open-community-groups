@@ -53,6 +53,7 @@ const PAYMENT_RETURN_POLL_INTERVAL_MS = 2000;
 const PRIMARY_REQUEST_ROLES = new Set(["attend-btn", "checkout-cancel-btn", "leave-btn", "refund-btn"]);
 const QUESTIONS_CONTINUE_ACTION_ATTEND = "attend";
 const QUESTIONS_CONTINUE_ACTION_TICKET = "ticket";
+const PENDING_ATTENDANCE_CHECK_RESPONSE = "__ocgPendingAttendanceCheckResponse";
 const TICKET_PRICE_BADGE_CLASSES = [
   "inline-flex",
   "w-fit",
@@ -401,6 +402,37 @@ const renderTicketAvailabilities = (container, ticketTypes = []) => {
 };
 
 /**
+ * Keeps the latest attendance status response while public availability loads.
+ * @param {HTMLElement} container - Attendance container element
+ * @param {Event} event - HTMX afterRequest event
+ */
+const storePendingAttendanceCheckResponse = (container, event) => {
+  const xhr = event.detail?.xhr;
+  container[PENDING_ATTENDANCE_CHECK_RESPONSE] = xhr
+    ? {
+        responseText: xhr.responseText,
+        status: xhr.status,
+      }
+    : null;
+};
+
+/**
+ * Renders a stored attendance status response after availability is hydrated.
+ * @param {HTMLElement} container - Attendance container element
+ * @returns {boolean} Whether a pending response was rendered
+ */
+const replayPendingAttendanceCheckResponse = (container) => {
+  if (!(PENDING_ATTENDANCE_CHECK_RESPONSE in container)) {
+    return false;
+  }
+
+  const xhr = container[PENDING_ATTENDANCE_CHECK_RESPONSE];
+  delete container[PENDING_ATTENDANCE_CHECK_RESPONSE];
+  renderAttendanceCheckResponse(container, { detail: { xhr } });
+  return true;
+};
+
+/**
  * Applies a fresh public availability payload to the event page.
  * @param {HTMLElement} container - Attendance container element
  * @param {Object} availability - Public availability payload
@@ -412,6 +444,10 @@ const applyAvailability = (container, availability, options = {}) => {
   renderAvailabilityRibbon(availability);
   renderTicketAvailabilities(container, availability.ticket_types || []);
   container.dataset.availabilityHydrated = "true";
+
+  if (replayPendingAttendanceCheckResponse(container)) {
+    return;
+  }
 
   if (options.rerenderAttendance) {
     document.body.dispatchEvent(new Event("attendance-changed"));
@@ -426,6 +462,10 @@ const applyAvailability = (container, availability, options = {}) => {
 const handleAvailabilityRefreshFailure = (container, options = {}) => {
   if (container?.dataset?.availabilityHydrated === "false") {
     container.dataset.availabilityHydrated = "true";
+  }
+
+  if (replayPendingAttendanceCheckResponse(container)) {
+    return;
   }
 
   if (options.rerenderAttendance) {
@@ -721,6 +761,7 @@ const reconcilePaymentReturn = async () => {
  */
 const renderAttendanceCheckResponse = (container, event) => {
   if (container.dataset.availabilityHydrated === "false") {
+    storePendingAttendanceCheckResponse(container, event);
     return;
   }
 

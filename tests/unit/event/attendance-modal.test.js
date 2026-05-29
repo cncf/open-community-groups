@@ -646,12 +646,10 @@ describe("event attendance paid modal", () => {
       }),
     });
 
-    expect(attendButton.classList.contains("hidden")).to.equal(true);
-    expect(checkoutResumeButton.querySelector("[data-attendance-label]")?.textContent).to.equal(
-      "Complete payment",
-    );
-    expect(checkoutResumeButton.classList.contains("hidden")).to.equal(false);
-    expect(checkoutResumeButton.dataset.resumeUrl).to.equal("https://example.test/checkout/resume");
+    expect(attendButton.classList.contains("hidden")).to.equal(false);
+    expect(attendButton.querySelector("[data-attendance-label]")?.textContent).to.equal("Complete payment");
+    expect(attendButton.dataset.resumeUrl).to.equal("https://example.test/checkout/resume");
+    expect(checkoutResumeButton.classList.contains("hidden")).to.equal(true);
     expect(attendButton.querySelector(".ticket-price-badge")?.hidden).to.equal(true);
     expect(attendButton.querySelector(".ticket-price-badge")?.classList.contains("hidden")).to.equal(true);
     expect(attendButton.querySelector(".ticket-price-badge")?.style.display).to.equal("none");
@@ -659,6 +657,64 @@ describe("event attendance paid modal", () => {
     expect(actionsMenu.classList.contains("hidden")).to.equal(false);
     expect(checkoutCancelButton.classList.contains("hidden")).to.equal(false);
     expect(ticketModal.classList.contains("hidden")).to.equal(true);
+  });
+
+  it("renders pending payment when attendance status returns before availability", async () => {
+    let resolveAvailability;
+    const availabilityResponse = new Promise((resolve) => {
+      resolveAvailability = resolve;
+    });
+    const fetchMock = mockFetch({
+      impl: async () => availabilityResponse,
+    });
+    const { actionsMenu, checker, checkoutCancelButton, checkoutResumeButton, container, attendButton } =
+      renderPaidAttendanceDom({
+        availabilityUrl: "/events/test-event/availability",
+      });
+
+    try {
+      await initializeAttendanceDom();
+      await waitForMicrotask();
+
+      expect(container.dataset.availabilityHydrated).to.equal("false");
+
+      dispatchHtmxAfterRequest(checker, {
+        responseText: JSON.stringify({
+          status: "pending-payment",
+          resume_checkout_url: "https://example.test/checkout/resume",
+        }),
+      });
+
+      expect(checkoutResumeButton.classList.contains("hidden")).to.equal(true);
+
+      resolveAvailability({
+        ok: true,
+        json: async () => ({
+          attendee_approval_required: false,
+          capacity: 10,
+          canceled: false,
+          has_sellable_ticket_types: true,
+          is_live: false,
+          is_past: false,
+          is_ticketed: true,
+          remaining_capacity: 5,
+          ticket_types: [],
+          waitlist_count: 0,
+          waitlist_enabled: false,
+        }),
+      });
+      await waitForMicrotask();
+
+      expect(container.dataset.availabilityHydrated).to.equal("true");
+      expect(attendButton.classList.contains("hidden")).to.equal(false);
+      expect(attendButton.querySelector("[data-attendance-label]")?.textContent).to.equal("Complete payment");
+      expect(attendButton.dataset.resumeUrl).to.equal("https://example.test/checkout/resume");
+      expect(actionsMenu.classList.contains("hidden")).to.equal(false);
+      expect(checkoutResumeButton.classList.contains("hidden")).to.equal(true);
+      expect(checkoutCancelButton.classList.contains("hidden")).to.equal(false);
+    } finally {
+      fetchMock.restore();
+    }
   });
 
   it("closes the event actions menu when clicking outside", async () => {
