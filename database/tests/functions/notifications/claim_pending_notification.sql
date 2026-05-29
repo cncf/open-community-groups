@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(13);
+select plan(15);
 
 -- ============================================================================
 -- VARIABLES
@@ -206,10 +206,32 @@ insert into notification_attachment (attachment_id, notification_id) values
 -- TESTS
 -- ============================================================================
 
+-- Should return NULL when the delivery rate limit has been exhausted
+select is(
+    (select notification_id from claim_pending_notification(1, 60)),
+    null::uuid,
+    'Returns NULL when delivery rate limit is exhausted'
+);
+
+-- Should not claim a pending notification while rate limited
+select is(
+    (
+        select delivery_status
+        from notification
+        where notification_id = :'notificationEmailVerificationID'
+    ),
+    'pending',
+    'Leaves pending notification unclaimed when delivery rate limit is exhausted'
+);
+
+update notification
+set delivery_claimed_at = '2025-01-01 00:00:00+00'
+where notification_id = :'notificationAlreadyClaimedID';
+
 -- Skipped before the first claim: processing, processed, unverified-user, and pre-registered rows
 -- Should skip non-deliverable rows and claim the first eligible notification
 select is(
-    (select row_to_json(r)::jsonb from claim_pending_notification() r),
+    (select row_to_json(r)::jsonb from claim_pending_notification(1, 60) r),
     jsonb_build_object(
         'attachment_ids', null,
         'email', 'verified@example.com',

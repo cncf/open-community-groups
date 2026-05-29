@@ -382,6 +382,7 @@ select indexes_are('meeting_provider', array[
 -- Test: notification indexes should match expected
 select indexes_are('notification', array[
     'notification_pkey',
+    'notification_delivery_claimed_at_idx',
     'notification_kind_idx',
     'notification_not_processed_idx',
     'notification_user_id_idx'
