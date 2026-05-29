@@ -231,6 +231,7 @@ class QuestionsEditor extends LitWrapper {
               class="input-primary mt-2"
               type="text"
               maxlength="500"
+              required
               .value=${question.prompt}
               ?disabled=${this.disabled}
               @input=${(event) => this._updateQuestion(questionIndex, { prompt: event.target.value })}
@@ -297,6 +298,7 @@ class QuestionsEditor extends LitWrapper {
                 maxlength="120"
                 placeholder="Option"
                 aria-label=${`Option ${optionIndex + 1}`}
+                required
                 .value=${option.label}
                 ?disabled=${this.disabled}
                 @input=${(event) => this._updateOption(questionIndex, optionIndex, event.target.value)}

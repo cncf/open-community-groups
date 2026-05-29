@@ -72,6 +72,29 @@ describe("questions-editor", () => {
     expect(element.querySelector('input[name="registration_questions[0][options][0][id]"]')).to.equal(null);
   });
 
+  it("marks question prompts and selectable options as required", async () => {
+    const element = await mountLitComponent("questions-editor", {
+      name: "registration_questions",
+      questions: [
+        {
+          id: "00000000-0000-0000-0000-000000000101",
+          kind: "single-select",
+          options: [
+            {
+              id: "00000000-0000-0000-0000-000000000201",
+              label: "",
+            },
+          ],
+          prompt: "",
+          required: false,
+        },
+      ],
+    });
+
+    expect(element.querySelector("#question-00000000-0000-0000-0000-000000000101")?.required).to.equal(true);
+    expect(element.querySelector('input[aria-label="Option 1"]')?.required).to.equal(true);
+  });
+
   it("renders selected question types from the questions attribute", async () => {
     const element = await mountLitComponentWithAttributes("questions-editor", {
       attributes: {
