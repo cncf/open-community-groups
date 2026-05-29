@@ -40,6 +40,7 @@ import {
   showPendingApprovalAttendanceState,
   showPendingPaymentState,
   showPrimaryRequestLoading,
+  showRegistrationQuestionsPendingState,
   showRejectedInvitationState,
   showSignedOutAttendanceState,
   showWaitlistedAttendanceState,
@@ -567,6 +568,14 @@ const isWaitlistJoinAction = (meta) =>
   !meta.isTicketed && !meta.attendeeApprovalRequired && meta.isSoldOut && meta.waitlistEnabled;
 
 /**
+ * Returns true when the attendee must complete promoted waitlist questions.
+ * @param {HTMLElement|null} button - Primary attend button
+ * @returns {boolean} Whether the button is completing pending questions
+ */
+const isCompletingRegistrationQuestions = (button) =>
+  button instanceof HTMLButtonElement && button.dataset.registrationQuestionsPending === "true";
+
+/**
  * Stores answer JSON in all hidden answer inputs in the attendance container.
  * @param {HTMLElement} container - Attendance container element
  * @param {object} answersPayload - Normalized answers payload
@@ -738,6 +747,11 @@ const renderAttendanceCheckResponse = (container, event) => {
 
   if (response.status === "pending-payment") {
     showPendingPaymentState(container, meta, response);
+    return;
+  }
+
+  if (response.status === "registration-questions-pending") {
+    showRegistrationQuestionsPendingState(container, meta);
     return;
   }
 
@@ -913,7 +927,7 @@ const blockAttendRequestForQuestions = (event, target, container) => {
   const meta = getAttendanceMeta(container);
   if (
     target.dataset.attendanceRole !== "attend-btn" ||
-    isWaitlistJoinAction(meta) ||
+    (isWaitlistJoinAction(meta) && !isCompletingRegistrationQuestions(target)) ||
     !shouldCollectQuestionAnswers(container)
   ) {
     return false;
@@ -1075,11 +1089,12 @@ const handleAttendanceClick = (event) => {
   }
 
   const meta = getAttendanceMeta(container);
+  const completingRegistrationQuestions = isCompletingRegistrationQuestions(attendButton);
 
   if (
     attendButton instanceof HTMLButtonElement &&
     shouldCollectQuestionAnswers(container) &&
-    !isWaitlistJoinAction(meta)
+    (!isWaitlistJoinAction(meta) || completingRegistrationQuestions)
   ) {
     event.preventDefault();
     const continueAction = meta.isTicketed

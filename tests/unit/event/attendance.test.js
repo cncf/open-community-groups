@@ -374,6 +374,55 @@ describe("event attendance", () => {
     expect(loadingButton.classList.contains("hidden")).to.equal(false);
   });
 
+  it("opens registration questions for promoted waitlist attendees", () => {
+    const { attendButton, checker, container, loadingButton, questionsModal } = renderAttendanceDom({
+      capacity: "10",
+      includeRegistrationQuestions: true,
+      remainingCapacity: "0",
+      waitlistEnabled: "true",
+    });
+
+    dispatchHtmxAfterRequest(checker, {
+      responseText: JSON.stringify({ status: "registration-questions-pending" }),
+    });
+
+    expect(attendButton.classList.contains("hidden")).to.equal(false);
+    expect(attendButton.querySelector("[data-attendance-label]")?.textContent).to.equal(
+      "Complete registration",
+    );
+    expect(
+      attendButton.querySelector("[data-attendance-icon]")?.classList.contains("icon-list-check"),
+    ).to.equal(true);
+
+    attendButton.click();
+
+    expect(container.dataset.questionsContinueAction).to.equal("attend");
+    expect(questionsModal.classList.contains("hidden")).to.equal(false);
+    expect(attendButton.classList.contains("hidden")).to.equal(false);
+    expect(loadingButton.classList.contains("hidden")).to.equal(true);
+  });
+
+  it("blocks promoted waitlist completion until registration questions are answered", () => {
+    const { attendButton, checker, questionsModal } = renderAttendanceDom({
+      capacity: "10",
+      includeRegistrationQuestions: true,
+      remainingCapacity: "0",
+      waitlistEnabled: "true",
+    });
+    const event = new CustomEvent("htmx:beforeRequest", {
+      bubbles: true,
+      cancelable: true,
+    });
+
+    dispatchHtmxAfterRequest(checker, {
+      responseText: JSON.stringify({ status: "registration-questions-pending" }),
+    });
+    attendButton.dispatchEvent(event);
+
+    expect(event.defaultPrevented).to.equal(true);
+    expect(questionsModal.classList.contains("hidden")).to.equal(false);
+  });
+
   it("shows sign-in info for waitlists and confirms leaving the waitlist", async () => {
     const { signinButton, leaveButton } = renderAttendanceDom();
 

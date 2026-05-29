@@ -15,6 +15,7 @@ export const BUY_TICKET_LABEL = "Buy ticket";
 export const TICKETS_UNAVAILABLE_LABEL = "Tickets unavailable";
 export const JOIN_WAITLIST_LABEL = "Join waiting list";
 export const REQUEST_INVITATION_LABEL = "Request invitation";
+export const COMPLETE_REGISTRATION_LABEL = "Complete registration";
 export const COMPLETE_PAYMENT_LABEL = "Complete payment";
 export const CANCEL_ATTENDANCE_LABEL = "Cancel attendance";
 export const CANCEL_CHECKOUT_LABEL = "Cancel checkout";
@@ -29,6 +30,7 @@ export const REFUND_UNAVAILABLE_LABEL = "Refund unavailable";
 
 const ATTEND_EVENT_ICON = "icon-user-plus";
 const CANCEL_ACTION_ICON = "icon-cancel";
+const QUESTIONS_TAB_ICON = "icon-list-check";
 const REQUEST_INVITATION_ICON = "icon-request-invitation";
 const CANCELED_EVENT_TITLE = "This event has been canceled.";
 const NO_CAPACITY_TITLE = "This event has no attendee capacity.";
@@ -368,6 +370,7 @@ export const resetPrimaryControls = (container) => {
 
   if (attendButton instanceof HTMLButtonElement) {
     delete attendButton.dataset.resumeUrl;
+    delete attendButton.dataset.registrationQuestionsPending;
   }
   if (checkoutResumeButton instanceof HTMLButtonElement) {
     delete checkoutResumeButton.dataset.resumeUrl;
@@ -457,6 +460,28 @@ const showPrimaryAttendanceState = (container, meta, controlName, state, isAtten
  */
 export const showGuestAttendanceState = (container, meta) => {
   showPrimaryAttendanceState(container, meta, "attendButton", getAttendState(meta));
+};
+
+/**
+ * Shows the state for attendees promoted from the waitlist who need answers.
+ * @param {HTMLElement} container - Attendance container element
+ * @param {{canceled: boolean, isPastEvent: boolean}} meta - Attendance metadata
+ */
+export const showRegistrationQuestionsPendingState = (container, meta) => {
+  showPrimaryAttendanceState(
+    container,
+    meta,
+    "attendButton",
+    withEventActionState(meta, {
+      icon: QUESTIONS_TAB_ICON,
+      label: COMPLETE_REGISTRATION_LABEL,
+    }),
+  );
+
+  const { attendButton } = getPrimaryControls(container);
+  if (attendButton instanceof HTMLButtonElement) {
+    attendButton.dataset.registrationQuestionsPending = "true";
+  }
 };
 
 /**
