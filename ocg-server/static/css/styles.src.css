@@ -663,6 +663,7 @@ input:placeholder-shown {
 .icon-csv { --icon-url: url('/static/images/icons/csv.svg'); }
 .icon-date { --icon-url: url('/static/images/icons/date.svg'); }
 .icon-docs { --icon-url: url('/static/images/icons/docs.svg'); }
+.icon-drag { --icon-url: url('/static/images/icons/drag.svg'); }
 .icon-email { --icon-url: url('/static/images/icons/email.svg'); }
 .icon-event { --icon-url: url('/static/images/icons/event.svg'); }
 .icon-events { --icon-url: url('/static/images/icons/events.svg'); }

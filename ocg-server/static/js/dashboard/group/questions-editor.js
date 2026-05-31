@@ -316,6 +316,10 @@ class QuestionsEditor extends LitWrapper {
    * @returns {void}
    */
   _moveQuestion(questionIndex, direction) {
+    if (this.disabled) {
+      return;
+    }
+
     const targetIndex = questionIndex + direction;
     if (targetIndex < 0 || targetIndex >= this.questions.length) {
       return;
@@ -331,7 +335,7 @@ class QuestionsEditor extends LitWrapper {
    * @returns {void}
    */
   _reorderQuestions(sourceIndex, targetIndex) {
-    if (sourceIndex === targetIndex) {
+    if (this.disabled || sourceIndex === targetIndex) {
       return;
     }
 
@@ -358,6 +362,11 @@ class QuestionsEditor extends LitWrapper {
    * @returns {void}
    */
   _handleQuestionDragStart(event, questionIndex) {
+    if (this.disabled || this.questions.length <= 1) {
+      event.preventDefault();
+      return;
+    }
+
     this._draggedQuestionIndex = questionIndex;
     this._dragOverQuestionIndex = questionIndex;
     if (event.dataTransfer) {
@@ -374,6 +383,10 @@ class QuestionsEditor extends LitWrapper {
    * @returns {void}
    */
   _handleQuestionDragOver(event, questionIndex) {
+    if (this.disabled) {
+      return;
+    }
+
     event.preventDefault();
     if (this._draggedQuestionIndex === null) {
       return;
@@ -400,6 +413,10 @@ class QuestionsEditor extends LitWrapper {
    * @returns {void}
    */
   _handleQuestionDrop(event, questionIndex) {
+    if (this.disabled) {
+      return;
+    }
+
     event.preventDefault();
     if (this._draggedQuestionIndex === null) {
       return;
@@ -416,6 +433,10 @@ class QuestionsEditor extends LitWrapper {
    * @returns {void}
    */
   _handleQuestionHandleKeydown(event, questionIndex) {
+    if (this.disabled) {
+      return;
+    }
+
     if (event.key === "ArrowUp") {
       event.preventDefault();
       this._moveQuestion(questionIndex, -1);
@@ -501,12 +522,10 @@ class QuestionsEditor extends LitWrapper {
   render() {
     return html`
       ${this._renderHiddenFields()}
-      <div class="w-full max-w-5xl space-y-4">
+      <div class="w-full space-y-8">
         ${this.questions.length > 0 && !this.disabled ? this._renderQuestionEditingWarning() : ""}
         <div class="space-y-5">
-          <div
-            class="flex flex-col gap-4 border-b border-stone-200 pb-5 md:flex-row md:items-center md:justify-between"
-          >
+          <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div class="text-sm font-semibold text-stone-700">
               ${this.questions.length} ${this.questions.length === 1 ? "question" : "questions"}
               <span class="mx-2 text-stone-400">•</span>
@@ -586,13 +605,11 @@ class QuestionsEditor extends LitWrapper {
    * @returns {unknown} Lit template
    */
   _renderEmptyState() {
-    return html`
-      <div
-        class="rounded-md border border-dashed border-stone-200 bg-stone-50 px-4 py-8 text-center text-sm text-stone-500"
-      >
-        No registration questions yet.
-      </div>
-    `;
+    const message = this.disabled
+      ? "No registration questions were added for this event."
+      : 'No registration questions yet. Click "Add question" to create one.';
+
+    return html`<div class="py-8 text-center text-sm italic text-stone-400">${message}</div>`;
   }
 
   /**
@@ -605,84 +622,86 @@ class QuestionsEditor extends LitWrapper {
     return html`
       <div
         class=${[
-          "rounded-md border border-stone-200 bg-white p-4",
-          this._dragOverQuestionIndex === questionIndex &&
-          this._draggedQuestionIndex !== null &&
-          this._draggedQuestionIndex !== questionIndex
-            ? "ring-2 ring-primary-300"
-            : "",
+          "flex items-start gap-2",
           this._draggedQuestionIndex === questionIndex ? "opacity-70" : "",
         ].join(" ")}
         @dragover=${(event) => this._handleQuestionDragOver(event, questionIndex)}
         @dragleave=${() => this._handleQuestionDragLeave(questionIndex)}
         @drop=${(event) => this._handleQuestionDrop(event, questionIndex)}
       >
-        <div class="flex items-start gap-4">
-          <button
-            type="button"
-            class="inline-flex size-8 shrink-0 cursor-grab items-center justify-center rounded-md transition-colors enabled:hover:bg-stone-100 active:cursor-grabbing disabled:cursor-not-allowed disabled:opacity-50"
-            draggable="true"
-            ?disabled=${this.disabled || this.questions.length <= 1}
-            @dragstart=${(event) => this._handleQuestionDragStart(event, questionIndex)}
-            @dragend=${() => this._clearQuestionDragState()}
-            @keydown=${(event) => this._handleQuestionHandleKeydown(event, questionIndex)}
-            aria-label="Reorder question"
-            title="Drag to reorder"
-          >
-            <div class="svg-icon size-4 icon-vertical-dots bg-stone-500"></div>
-          </button>
-          <div
-            class="flex size-9 shrink-0 items-center justify-center rounded-full bg-stone-100 text-sm font-semibold text-stone-900"
-          >
-            ${questionIndex + 1}
-          </div>
-          <div class="min-w-0 flex-1">
-            <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-              <div class="min-w-0">
-                <div class="font-semibold text-stone-900">${question.prompt || "Untitled question"}</div>
-                <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-stone-600">
-                  <span
-                    class="custom-badge shrink-0 border-stone-300 bg-stone-100 px-2 py-0.5 text-stone-700 normal-case"
+        <button
+          type="button"
+          class="mt-4 inline-flex size-8 shrink-0 cursor-grab items-center justify-center rounded-md transition-colors enabled:hover:bg-stone-100 active:cursor-grabbing disabled:cursor-not-allowed disabled:opacity-50"
+          draggable=${this.disabled || this.questions.length <= 1 ? "false" : "true"}
+          ?disabled=${this.disabled || this.questions.length <= 1}
+          @dragstart=${(event) => this._handleQuestionDragStart(event, questionIndex)}
+          @dragend=${() => this._clearQuestionDragState()}
+          @keydown=${(event) => this._handleQuestionHandleKeydown(event, questionIndex)}
+          aria-label="Reorder question"
+          title="Drag to reorder"
+        >
+          <div class="svg-icon size-4 icon-drag bg-stone-500"></div>
+        </button>
+        <div
+          class=${[
+            "min-w-0 flex-1 rounded-md border border-stone-200 bg-white p-4",
+            this._dragOverQuestionIndex === questionIndex &&
+            this._draggedQuestionIndex !== null &&
+            this._draggedQuestionIndex !== questionIndex
+              ? "ring-2 ring-primary-300"
+              : "",
+          ].join(" ")}
+        >
+          <div class="flex items-start gap-4">
+            <div
+              class="flex size-6 shrink-0 items-center justify-center rounded-full bg-stone-100 text-xs font-semibold leading-6 text-stone-900"
+            >
+              ${questionIndex + 1}
+            </div>
+            <div class="min-w-0 flex-1">
+              <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                <div class="min-w-0">
+                  <div class="font-semibold text-stone-900">${question.prompt || "Untitled question"}</div>
+                  <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-stone-600">
+                    <span class="text-stone-500">${this._getQuestionTypeLabel(question.kind)}</span>
+                    ${question.required
+                      ? html`
+                          <span class="text-stone-400">•</span>
+                          <span class="font-medium text-stone-700">Required</span>
+                        `
+                      : ""}
+                  </div>
+                </div>
+
+                <div class="flex shrink-0 items-center gap-1">
+                  <button
+                    type="button"
+                    class="rounded-full p-2 transition-colors hover:bg-stone-100 ${this.disabled
+                      ? "cursor-not-allowed opacity-60"
+                      : ""}"
+                    ?disabled=${this.disabled}
+                    @click=${() => this._openQuestionModal(questionIndex)}
+                    aria-label="Edit question"
+                    title="Edit"
                   >
-                    ${this._getQuestionTypeLabel(question.kind)}
-                  </span>
-                  ${question.required
-                    ? html`
-                        <span class="text-stone-400">•</span>
-                        <span class="font-medium text-stone-700">Required</span>
-                      `
-                    : ""}
+                    <div class="svg-icon size-4 icon-pencil bg-stone-600"></div>
+                  </button>
+                  <button
+                    type="button"
+                    class="rounded-full p-2 transition-colors hover:bg-stone-100 ${this.disabled
+                      ? "cursor-not-allowed opacity-60"
+                      : ""}"
+                    ?disabled=${this.disabled}
+                    @click=${() => this._removeQuestion(questionIndex)}
+                    aria-label="Delete question"
+                    title="Delete"
+                  >
+                    <div class="svg-icon size-4 icon-trash bg-stone-600"></div>
+                  </button>
                 </div>
               </div>
-
-              <div class="flex shrink-0 items-center gap-1">
-                <button
-                  type="button"
-                  class="rounded-full p-2 transition-colors hover:bg-stone-100 ${this.disabled
-                    ? "cursor-not-allowed opacity-60"
-                    : ""}"
-                  ?disabled=${this.disabled}
-                  @click=${() => this._openQuestionModal(questionIndex)}
-                  aria-label="Edit question"
-                  title="Edit"
-                >
-                  <div class="svg-icon size-4 icon-pencil bg-stone-600"></div>
-                </button>
-                <button
-                  type="button"
-                  class="rounded-full p-2 transition-colors hover:bg-stone-100 ${this.disabled
-                    ? "cursor-not-allowed opacity-60"
-                    : ""}"
-                  ?disabled=${this.disabled}
-                  @click=${() => this._removeQuestion(questionIndex)}
-                  aria-label="Delete question"
-                  title="Delete"
-                >
-                  <div class="svg-icon size-4 icon-trash bg-stone-600"></div>
-                </button>
-              </div>
+              ${question.options.length > 0 ? this._renderOptionPreview(question.options) : ""}
             </div>
-            ${question.options.length > 0 ? this._renderOptionPreview(question.options) : ""}
           </div>
         </div>
       </div>
@@ -695,29 +714,18 @@ class QuestionsEditor extends LitWrapper {
    * @returns {unknown} Lit template
    */
   _renderOptionPreview(options) {
-    const visibleOptions = options.slice(0, 3);
-    const hiddenCount = options.length - visibleOptions.length;
-
     return html`
-      <div class="mt-4 flex flex-wrap gap-2">
-        ${visibleOptions.map(
+      <div class="mt-4 flex min-w-0 flex-wrap gap-2">
+        ${options.map(
           (option) => html`
             <span
-              class="rounded-md border border-stone-200 bg-white px-3 py-1.5 text-sm font-medium text-stone-700"
+              class="inline-block max-w-full truncate rounded-full border border-stone-200 bg-stone-50 px-3 py-1 text-sm font-medium text-stone-700"
+              title=${option.label || "Untitled option"}
             >
               ${option.label || "Untitled option"}
             </span>
           `,
         )}
-        ${hiddenCount > 0
-          ? html`
-              <span
-                class="rounded-md border border-stone-200 bg-white px-3 py-1.5 text-sm font-medium text-stone-700"
-              >
-                +${hiddenCount}
-              </span>
-            `
-          : ""}
       </div>
     `;
   }
@@ -741,7 +749,7 @@ class QuestionsEditor extends LitWrapper {
           class="absolute inset-0 bg-stone-950 opacity-35"
           @click=${() => this._closeQuestionModal()}
         ></div>
-        <div class="modal-panel max-w-2xl p-4">
+        <div class="modal-panel max-w-6xl p-4">
           <div class="modal-card rounded-lg">
             <div class="flex shrink-0 items-center justify-between border-b border-stone-200 p-5">
               <h3 id="question-modal-title" class="text-xl font-semibold text-stone-900">
@@ -846,7 +854,18 @@ class QuestionsEditor extends LitWrapper {
   _renderDraftOptions() {
     return html`
       <div class="space-y-3">
-        <div class="form-label">Options</div>
+        <div class="flex items-center justify-between gap-3">
+          <div class="form-label">Options</div>
+          <button
+            type="button"
+            class="btn-primary-outline btn-mini inline-flex items-center justify-center gap-2"
+            ?disabled=${!this._isModalOpen}
+            @click=${() => this._addDraftOption()}
+          >
+            <div class="svg-icon size-3 icon-add-circle"></div>
+            Add option
+          </button>
+        </div>
         ${this._draftQuestion.options.map(
           (option, optionIndex) => html`
             <div
@@ -874,7 +893,7 @@ class QuestionsEditor extends LitWrapper {
                 aria-label="Reorder option"
                 title="Drag to reorder"
               >
-                <div class="svg-icon size-4 icon-vertical-dots bg-stone-500"></div>
+                <div class="svg-icon size-4 icon-drag bg-stone-500"></div>
               </button>
               <input
                 class="input-primary"
@@ -901,15 +920,6 @@ class QuestionsEditor extends LitWrapper {
             </div>
           `,
         )}
-        <button
-          type="button"
-          class="btn-primary-outline btn-mini inline-flex items-center justify-center gap-2"
-          ?disabled=${!this._isModalOpen}
-          @click=${() => this._addDraftOption()}
-        >
-          <div class="svg-icon size-3 icon-add-circle"></div>
-          Add option
-        </button>
       </div>
     `;
   }

@@ -60,7 +60,8 @@ describe("dashboard group attendees list template", () => {
 
     expect(template).to.include('aria-describedby="attendee-answers-subtitle"');
     expect(template).to.include('id="attendee-answers-subtitle"');
-    expect(template).to.include('<ol class="divide-y divide-stone-200">');
+    expect(template).to.include('<ol class="space-y-3">');
+    expect(template).to.include('<li class="rounded-md border border-stone-200 bg-white p-4">');
     expect(template).to.include("{{ loop.index }}");
     expect(template).to.include("No answer provided");
     expect(template).to.include("text-sm italic text-stone-500");

@@ -278,6 +278,44 @@ describe("questions-editor", () => {
     );
   });
 
+  it("does not reorder questions when the editor is disabled", async () => {
+    const element = await mountLitComponent("questions-editor", {
+      disabled: true,
+      name: "registration_questions",
+      questions: [
+        {
+          id: "00000000-0000-0000-0000-000000000101",
+          kind: "free-text",
+          options: [],
+          prompt: "First question",
+          required: false,
+        },
+        {
+          id: "00000000-0000-0000-0000-000000000102",
+          kind: "free-text",
+          options: [],
+          prompt: "Second question",
+          required: true,
+        },
+      ],
+    });
+
+    const reorderButton = element.querySelector('button[aria-label="Reorder question"]');
+
+    expect(reorderButton.disabled).to.equal(true);
+    expect(reorderButton.getAttribute("draggable")).to.equal("false");
+
+    reorderButton.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown" }));
+    await element.updateComplete;
+
+    expect(element.querySelector('input[name="registration_questions[0][prompt]"]')?.value).to.equal(
+      "First question",
+    );
+    expect(element.querySelector('input[name="registration_questions[1][prompt]"]')?.value).to.equal(
+      "Second question",
+    );
+  });
+
   it("shows an editable warning when questions have been added", async () => {
     const element = await mountLitComponent("questions-editor", {
       name: "registration_questions",
