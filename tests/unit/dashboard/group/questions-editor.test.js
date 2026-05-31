@@ -95,6 +95,38 @@ describe("questions-editor", () => {
     expect(element.querySelector('input[aria-label="Option 1"]')?.required).to.equal(true);
   });
 
+  it("keeps one option available for selectable questions", async () => {
+    const element = await mountLitComponent("questions-editor", {
+      name: "registration_questions",
+      questions: [
+        {
+          id: "00000000-0000-0000-0000-000000000101",
+          kind: "single-select",
+          options: [
+            {
+              id: "00000000-0000-0000-0000-000000000201",
+              label: "Vegetarian",
+            },
+          ],
+          prompt: "Meal preference",
+          required: false,
+        },
+      ],
+    });
+
+    const removeButton = element.querySelector('button[aria-label="Remove option"]');
+
+    expect(removeButton.disabled).to.equal(true);
+
+    removeButton.click();
+    await element.updateComplete;
+
+    expect(element.querySelectorAll('input[aria-label^="Option"]').length).to.equal(1);
+    expect(element.querySelector('input[name="registration_questions[0][options][0][label]"]')?.value).to.equal(
+      "Vegetarian",
+    );
+  });
+
   it("shows an editable warning when questions have been added", async () => {
     const element = await mountLitComponent("questions-editor", {
       name: "registration_questions",

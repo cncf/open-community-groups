@@ -68,6 +68,33 @@ describe("question answer helpers", () => {
     });
   });
 
+  it("validates required free-text answers after trimming whitespace", () => {
+    document.body.innerHTML = `
+      <form id="questions-form">
+        <fieldset data-question-id="question-text"
+                  data-question-kind="free-text"
+                  data-question-required="true">
+          <textarea data-answer required>   </textarea>
+        </fieldset>
+      </form>
+    `;
+
+    const form = document.getElementById("questions-form");
+    const input = form.querySelector("[data-answer]");
+    const payload = collectQuestionAnswers(form, { answerSelector: "[data-answer]" });
+
+    expect(payload).to.equal(null);
+    expect(input.validationMessage).to.equal("Answer this question.");
+
+    input.value = "Accessibility needs";
+    const nextPayload = collectQuestionAnswers(form, { answerSelector: "[data-answer]" });
+
+    expect(input.validationMessage).to.equal("");
+    expect(nextPayload).to.deep.equal({
+      answers: [{ question_id: "question-text", value: "Accessibility needs" }],
+    });
+  });
+
   it("serializes answer payloads into hidden inputs", () => {
     document.body.innerHTML = `
       <form id="questions-form">

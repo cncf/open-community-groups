@@ -112,6 +112,10 @@ class QuestionsEditor extends LitWrapper {
    */
   _removeOption(questionIndex, optionIndex) {
     const question = this.questions[questionIndex];
+    if (question.options.length <= 1) {
+      return;
+    }
+
     this._updateQuestion(questionIndex, {
       options: question.options.filter((_, index) => index !== optionIndex),
     });
@@ -324,7 +328,7 @@ class QuestionsEditor extends LitWrapper {
               <button
                 type="button"
                 class="btn-tertiary"
-                ?disabled=${this.disabled}
+                ?disabled=${this.disabled || question.options.length <= 1}
                 @click=${() => this._removeOption(questionIndex, optionIndex)}
                 aria-label="Remove option"
                 title="Remove option"

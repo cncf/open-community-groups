@@ -1,3 +1,4 @@
+const DEFAULT_FREE_TEXT_MESSAGE = "Answer this question.";
 const DEFAULT_MULTI_SELECT_MESSAGE = "Select at least one option.";
 
 const isAnswerControl = (control) =>
@@ -55,6 +56,9 @@ export const collectQuestionAnswers = (form, { answerSelector }) => {
       }
 
       const value = input.value.trim();
+      if (required && !value) {
+        input.setCustomValidity(DEFAULT_FREE_TEXT_MESSAGE);
+      }
       if (value || required) {
         answers.push({ question_id: questionId, value });
       }
