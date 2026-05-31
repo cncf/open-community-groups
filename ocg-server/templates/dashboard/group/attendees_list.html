@@ -297,21 +297,38 @@
                               <span>View answers</span>
                             </button>
                             <div id="attendee-answers-{{ attendee.user_id }}" hidden>
-                              <dl class="space-y-4">
+                              <ol class="divide-y divide-stone-200">
                                 {% for question in registration_questions -%}
-                                  <div>
-                                    <dt class="text-sm font-medium text-stone-900">{{ question.prompt }}</dt>
-                                    <dd class="mt-1 whitespace-pre-wrap text-sm text-stone-600">
+                                  <li class="flex gap-4 py-6">
+                                    <div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-stone-100 text-sm font-semibold text-stone-700">
+                                      {{ loop.index }}
+                                    </div>
+                                    <div class="min-w-0 flex-1">
+                                      <h4 class="min-h-10 content-center text-base font-semibold text-stone-900">{{ question.prompt }}</h4>
                                       {% let answer = question.format_answer(attendee.registration_answers.as_ref()) -%}
                                       {% if answer.is_empty() -%}
-                                        -
+                                        <div class="mt-3 text-sm italic text-stone-500">No answer provided</div>
+                                      {% else if question.kind.to_string() == "free-text" -%}
+                                        <div class="mt-3 rounded-lg bg-stone-50 px-4 py-3 text-sm leading-6 text-stone-700 whitespace-pre-wrap">
+                                          {{- answer -}}
+                                        </div>
                                       {% else -%}
-                                        {{ answer }}
+                                        <div class="mt-3 flex flex-wrap gap-2">
+                                          {% if question.kind.to_string() == "single-select" -%}
+                                            <span class="inline-flex rounded-full border border-stone-200 bg-stone-50 px-3 py-1 text-sm font-medium text-stone-700">{{ answer }}</span>
+                                          {% else -%}
+                                            {% for option in question.options -%}
+                                              {% if question.is_option_selected(attendee.registration_answers.as_ref(), option.id) -%}
+                                                <span class="inline-flex rounded-full border border-stone-200 bg-stone-50 px-3 py-1 text-sm font-medium text-stone-700">{{ option.label }}</span>
+                                              {% endif -%}
+                                            {% endfor -%}
+                                          {% endif -%}
+                                        </div>
                                       {% endif -%}
-                                    </dd>
-                                  </div>
+                                    </div>
+                                  </li>
                                 {% endfor -%}
-                              </dl>
+                              </ol>
                             </div>
                           </li>
                         {% endif -%}
@@ -429,6 +446,7 @@
      role="dialog"
      aria-modal="true"
      aria-labelledby="attendee-answers-modal-title"
+     aria-describedby="attendee-answers-subtitle"
      class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 h-full max-h-full flex z-[1000]">
   <div id="overlay-attendee-answers-modal"
        class="modal-overlay absolute w-full h-full bg-stone-950 opacity-[0.35]"></div>
@@ -438,7 +456,9 @@
         <div>
           <h3 id="attendee-answers-modal-title"
               class="text-xl font-semibold text-stone-900">Registration answers</h3>
-          <div id="attendee-answers-name" class="mt-1 text-sm text-stone-600"></div>
+          <div id="attendee-answers-subtitle" class="mt-1 text-sm text-stone-600">
+            <span id="attendee-answers-name"></span>
+          </div>
         </div>
         <button id="close-attendee-answers-modal"
                 type="button"

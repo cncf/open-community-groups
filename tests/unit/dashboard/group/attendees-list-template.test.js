@@ -54,4 +54,21 @@ describe("dashboard group attendees list template", () => {
       'hx-put="/dashboard/group/events/{{ event.event_id }}/attendees/{{ attendee.user_id }}/invitation/cancel"',
     );
   });
+
+  it("renders registration answers in the review modal layout", async () => {
+    const template = normalizeWhitespace(await loadTemplate());
+
+    expect(template).to.include('aria-describedby="attendee-answers-subtitle"');
+    expect(template).to.include('id="attendee-answers-subtitle"');
+    expect(template).to.include('<ol class="divide-y divide-stone-200">');
+    expect(template).to.include("{{ loop.index }}");
+    expect(template).to.include("No answer provided");
+    expect(template).to.include("text-sm italic text-stone-500");
+    expect(template).not.to.include(">Free text<");
+    expect(template).not.to.include(">Single select<");
+    expect(template).not.to.include(">Multi select<");
+    expect(template).to.include(
+      "question.is_option_selected(attendee.registration_answers.as_ref(), option.id)",
+    );
+  });
 });
