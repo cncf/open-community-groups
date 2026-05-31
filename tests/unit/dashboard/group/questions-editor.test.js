@@ -95,6 +95,47 @@ describe("questions-editor", () => {
     expect(element.querySelector('input[aria-label="Option 1"]')?.required).to.equal(true);
   });
 
+  it("shows an editable warning when questions have been added", async () => {
+    const element = await mountLitComponent("questions-editor", {
+      name: "registration_questions",
+      questions: [
+        {
+          id: "00000000-0000-0000-0000-000000000101",
+          kind: "free-text",
+          options: [],
+          prompt: "Accessibility needs",
+          required: false,
+        },
+      ],
+    });
+
+    expect(element.textContent).to.include(
+      "Questionnaire questions cannot be edited after an attendee has submitted answers.",
+    );
+    expect(element.querySelector("[data-question-editing-warning]")?.classList.contains("w-full")).to.equal(
+      true,
+    );
+  });
+
+  it("does not show the editable warning when questions are locked", async () => {
+    const element = await mountLitComponent("questions-editor", {
+      disabled: true,
+      questions: [
+        {
+          id: "00000000-0000-0000-0000-000000000101",
+          kind: "free-text",
+          options: [],
+          prompt: "Accessibility needs",
+          required: false,
+        },
+      ],
+    });
+
+    expect(element.textContent).not.to.include(
+      "Questionnaire questions cannot be edited after an attendee has submitted answers.",
+    );
+  });
+
   it("renders selected question types from the questions attribute", async () => {
     const element = await mountLitComponentWithAttributes("questions-editor", {
       attributes: {

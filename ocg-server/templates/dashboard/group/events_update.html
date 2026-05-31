@@ -571,7 +571,7 @@
           Registration questions are read-only because attendees have submitted answers.
         </div>
       {% endif -%}
-      <div class="mt-10 max-w-5xl">
+      <div class="mt-10">
         <questions-editor name="registration_questions" questions="{{ event.registration_questions|json }}"
         {% if event.registration_questions_locked %}disabled{% endif %}
         ></questions-editor>

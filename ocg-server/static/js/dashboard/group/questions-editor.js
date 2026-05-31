@@ -170,16 +170,34 @@ class QuestionsEditor extends LitWrapper {
   render() {
     return html`
       ${this._renderHiddenFields()}
-      <div class="space-y-4">
-        ${this.questions.map((question, questionIndex) => this._renderQuestion(question, questionIndex))}
-        <button
-          type="button"
-          class="btn-primary-outline"
-          ?disabled=${this.disabled}
-          @click=${this._addQuestion}
-        >
-          Add question
-        </button>
+      <div class="w-full space-y-4">
+        ${this.questions.length > 0 && !this.disabled ? this._renderQuestionEditingWarning() : ""}
+        <div class="max-w-5xl space-y-4">
+          ${this.questions.map((question, questionIndex) => this._renderQuestion(question, questionIndex))}
+          <button
+            type="button"
+            class="btn-primary-outline"
+            ?disabled=${this.disabled}
+            @click=${this._addQuestion}
+          >
+            Add question
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
+  /**
+   * Renders the warning shown while registration questions can still be edited.
+   * @returns {unknown} Lit template
+   */
+  _renderQuestionEditingWarning() {
+    return html`
+      <div
+        data-question-editing-warning
+        class="w-full rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+      >
+        Questionnaire questions cannot be edited after an attendee has submitted answers.
       </div>
     `;
   }
