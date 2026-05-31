@@ -10,6 +10,24 @@ import {
 describe("questions-editor", () => {
   useMountedElementsCleanup("questions-editor");
 
+  const clickButton = async (element, label) => {
+    const button = [...element.querySelectorAll("button")]
+      .reverse()
+      .find((candidate) => candidate.textContent.trim() === label && !candidate.disabled);
+
+    button.click();
+    await element.updateComplete;
+    return button;
+  };
+
+  const clickButtonByLabel = async (element, label) => {
+    const button = element.querySelector(`button[aria-label="${label}"]:not(:disabled)`);
+
+    button.click();
+    await element.updateComplete;
+    return button;
+  };
+
   it("renders serde_qs hidden inputs for registration questions", async () => {
     const element = await mountLitComponent("questions-editor", {
       name: "registration_questions",
@@ -91,7 +109,9 @@ describe("questions-editor", () => {
       ],
     });
 
-    expect(element.querySelector("#question-00000000-0000-0000-0000-000000000101")?.required).to.equal(true);
+    await clickButtonByLabel(element, "Edit question");
+
+    expect(element.querySelector("#question-prompt-draft")?.required).to.equal(true);
     expect(element.querySelector('input[aria-label="Option 1"]')?.required).to.equal(true);
   });
 
@@ -114,6 +134,8 @@ describe("questions-editor", () => {
       ],
     });
 
+    await clickButtonByLabel(element, "Edit question");
+
     const removeButton = element.querySelector('button[aria-label="Remove option"]');
 
     expect(removeButton.disabled).to.equal(true);
@@ -122,8 +144,137 @@ describe("questions-editor", () => {
     await element.updateComplete;
 
     expect(element.querySelectorAll('input[aria-label^="Option"]').length).to.equal(1);
-    expect(element.querySelector('input[name="registration_questions[0][options][0][label]"]')?.value).to.equal(
-      "Vegetarian",
+    expect(
+      element.querySelector('input[name="registration_questions[0][options][0][label]"]')?.value,
+    ).to.equal("Vegetarian");
+  });
+
+  it("adds questions through the modal editor", async () => {
+    const element = await mountLitComponent("questions-editor", {
+      name: "registration_questions",
+    });
+
+    await clickButton(element, "Add question");
+
+    element.querySelector("#question-prompt-draft").value = "Company name";
+    element.querySelector("#question-prompt-draft").dispatchEvent(new Event("input"));
+
+    await clickButton(element, "Add question");
+
+    expect(element.textContent).to.include("Company name");
+    expect(element.textContent).to.include("1 question");
+    expect(element.querySelector('input[name="registration_questions[0][prompt]"]')?.value).to.equal(
+      "Company name",
+    );
+  });
+
+  it("edits selectable questions through the modal editor", async () => {
+    const element = await mountLitComponent("questions-editor", {
+      name: "registration_questions",
+      questions: [
+        {
+          id: "00000000-0000-0000-0000-000000000101",
+          kind: "single-select",
+          options: [
+            {
+              id: "00000000-0000-0000-0000-000000000201",
+              label: "Vegetarian",
+            },
+          ],
+          prompt: "Meal preference",
+          required: false,
+        },
+      ],
+    });
+
+    await clickButtonByLabel(element, "Edit question");
+
+    element.querySelector("#question-prompt-draft").value = "Dietary restrictions";
+    element.querySelector("#question-prompt-draft").dispatchEvent(new Event("input"));
+    element.querySelector('input[aria-label="Option 1"]').value = "Vegan";
+    element.querySelector('input[aria-label="Option 1"]').dispatchEvent(new Event("input"));
+
+    await clickButton(element, "Save question");
+
+    expect(element.textContent).to.include("Dietary restrictions");
+    expect(element.textContent).to.include("Vegan");
+    expect(element.querySelector('input[name="registration_questions[0][prompt]"]')?.value).to.equal(
+      "Dietary restrictions",
+    );
+    expect(
+      element.querySelector('input[name="registration_questions[0][options][0][label]"]')?.value,
+    ).to.equal("Vegan");
+  });
+
+  it("reorders selectable question options through the modal editor", async () => {
+    const element = await mountLitComponent("questions-editor", {
+      name: "registration_questions",
+      questions: [
+        {
+          id: "00000000-0000-0000-0000-000000000101",
+          kind: "single-select",
+          options: [
+            {
+              id: "00000000-0000-0000-0000-000000000201",
+              label: "Vegetarian",
+            },
+            {
+              id: "00000000-0000-0000-0000-000000000202",
+              label: "Vegan",
+            },
+          ],
+          prompt: "Meal preference",
+          required: false,
+        },
+      ],
+    });
+
+    await clickButtonByLabel(element, "Edit question");
+    element
+      .querySelector('button[aria-label="Reorder option"]')
+      .dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown" }));
+    await element.updateComplete;
+    await clickButton(element, "Save question");
+
+    expect(
+      element.querySelector('input[name="registration_questions[0][options][0][label]"]')?.value,
+    ).to.equal("Vegan");
+    expect(
+      element.querySelector('input[name="registration_questions[0][options][1][label]"]')?.value,
+    ).to.equal("Vegetarian");
+  });
+
+  it("reorders questions from the question card handle", async () => {
+    const element = await mountLitComponent("questions-editor", {
+      name: "registration_questions",
+      questions: [
+        {
+          id: "00000000-0000-0000-0000-000000000101",
+          kind: "free-text",
+          options: [],
+          prompt: "First question",
+          required: false,
+        },
+        {
+          id: "00000000-0000-0000-0000-000000000102",
+          kind: "free-text",
+          options: [],
+          prompt: "Second question",
+          required: true,
+        },
+      ],
+    });
+
+    element
+      .querySelector('button[aria-label="Reorder question"]')
+      .dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown" }));
+    await element.updateComplete;
+
+    expect(element.querySelector('input[name="registration_questions[0][prompt]"]')?.value).to.equal(
+      "Second question",
+    );
+    expect(element.querySelector('input[name="registration_questions[1][prompt]"]')?.value).to.equal(
+      "First question",
     );
   });
 
@@ -200,9 +351,8 @@ describe("questions-editor", () => {
       },
     });
 
-    const selects = [...element.querySelectorAll("select")];
-
-    expect(selects.map((select) => select.value)).to.deep.equal(["single-select", "multi-select"]);
+    expect(element.textContent).to.include("Single select");
+    expect(element.textContent).to.include("Multi select");
   });
 
   it("normalizes questions assigned after render", async () => {
