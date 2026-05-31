@@ -37,6 +37,10 @@ const handleClick = (event) => {
     closeActionDropdowns(actionsDropdown);
   }
 
+  if (!target?.closest(ACTIONS_DROPDOWN_SELECTOR)) {
+    closeActionDropdowns();
+  }
+
   const trigger = target?.closest("[data-user-event-questions-open]");
   if (trigger instanceof HTMLElement) {
     const modal = getModal(trigger);

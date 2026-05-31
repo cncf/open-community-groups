@@ -28,4 +28,20 @@ describe("dashboard user events", () => {
     expect(dropdowns[0].open).to.equal(false);
     expect(dropdowns[1].open).to.equal(true);
   });
+
+  it("closes open action dropdowns when clicking outside", () => {
+    document.body.innerHTML = `
+      <details data-user-event-actions-dropdown open>
+        <summary>Actions</summary>
+        <button type="button">Action</button>
+      </details>
+      <button type="button" id="outside-button">Outside</button>
+    `;
+
+    const dropdown = document.querySelector("[data-user-event-actions-dropdown]");
+
+    document.getElementById("outside-button").click();
+
+    expect(dropdown.open).to.equal(false);
+  });
 });
