@@ -15,7 +15,9 @@ use crate::{
     activity_tracker::{Activity, DynActivityTracker},
     config::HttpServerConfig,
     db::DynDB,
-    handlers::{extractors::CurrentUser, request_matches_site, site::not_found, trim_public_gallery_images},
+    handlers::{
+        extractors::CurrentUser, request_matches_site, site::not_found, trim_public_gallery_images,
+    },
     router::PUBLIC_SHARED_CACHE_HEADERS,
     services::notifications::{DynNotificationsManager, NewNotification, NotificationKind},
     templates::{

@@ -156,7 +156,10 @@ impl ZoomClient {
 
     /// Get a meeting by ID.
     #[instrument(skip(self), err)]
-    pub(crate) async fn get_meeting(&self, meeting_id: i64) -> Result<ZoomMeeting, ZoomClientError> {
+    pub(crate) async fn get_meeting(
+        &self,
+        meeting_id: i64,
+    ) -> Result<ZoomMeeting, ZoomClientError> {
         trace!("zoom client: get meeting");
 
         let token = self
@@ -236,7 +239,11 @@ impl ZoomClient {
             .await?;
         if !response.status().is_success() {
             let error: ZoomClientErrorResponse = response.json().await.unwrap_or_default();
-            return Err(anyhow!("zoom token error: {} - {}", error.code, error.message));
+            return Err(anyhow!(
+                "zoom token error: {} - {}",
+                error.code,
+                error.message
+            ));
         }
 
         // Parse the token response
@@ -409,8 +416,12 @@ pub(crate) enum ZoomClientError {
 impl std::fmt::Display for ZoomClientError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Client { code, message } => write!(f, "zoom client client error: {code} - {message}"),
-            Self::InvalidDuration { minutes } => write!(f, "invalid meeting duration: {minutes} minutes"),
+            Self::Client { code, message } => {
+                write!(f, "zoom client client error: {code} - {message}")
+            }
+            Self::InvalidDuration { minutes } => {
+                write!(f, "invalid meeting duration: {minutes} minutes")
+            }
             Self::Network(msg) => write!(f, "zoom client network error: {msg}"),
             Self::RateLimit { retry_after } => {
                 write!(
@@ -419,7 +430,9 @@ impl std::fmt::Display for ZoomClientError {
                     retry_after.as_secs()
                 )
             }
-            Self::Server { code, message } => write!(f, "zoom client server error: {code} - {message}"),
+            Self::Server { code, message } => {
+                write!(f, "zoom client server error: {code} - {message}")
+            }
             Self::Token(msg) => write!(f, "zoom client token error: {msg}"),
         }
     }
@@ -466,7 +479,9 @@ impl ZoomClientError {
         // Determine error type based on status code
         if status == reqwest::StatusCode::TOO_MANY_REQUESTS {
             Self::RateLimit { retry_after }
-        } else if status == reqwest::StatusCode::UNAUTHORIZED || status == reqwest::StatusCode::FORBIDDEN {
+        } else if status == reqwest::StatusCode::UNAUTHORIZED
+            || status == reqwest::StatusCode::FORBIDDEN
+        {
             // Auth errors are retryable (token may have expired)
             Self::Token(format!("{} - {}", error.code, error.message))
         } else if status.is_client_error() {

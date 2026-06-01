@@ -34,7 +34,11 @@ pub(crate) async fn list_page(
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
     let (can_manage_taxonomy, regions) = tokio::try_join!(
-        db.user_has_community_permission(&community_id, &user.user_id, CommunityPermission::TaxonomyWrite),
+        db.user_has_community_permission(
+            &community_id,
+            &user.user_id,
+            CommunityPermission::TaxonomyWrite
+        ),
         db.list_regions(community_id)
     )?;
     let template = regions::ListPage {
@@ -54,9 +58,15 @@ pub(crate) async fn add_page(
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
     let can_manage_taxonomy = db
-        .user_has_community_permission(&community_id, &user.user_id, CommunityPermission::TaxonomyWrite)
+        .user_has_community_permission(
+            &community_id,
+            &user.user_id,
+            CommunityPermission::TaxonomyWrite,
+        )
         .await?;
-    let template = regions::AddPage { can_manage_taxonomy };
+    let template = regions::AddPage {
+        can_manage_taxonomy,
+    };
 
     Ok(Html(template.render()?))
 }
@@ -71,7 +81,11 @@ pub(crate) async fn update_page(
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
     let (can_manage_taxonomy, regions) = tokio::try_join!(
-        db.user_has_community_permission(&community_id, &user.user_id, CommunityPermission::TaxonomyWrite),
+        db.user_has_community_permission(
+            &community_id,
+            &user.user_id,
+            CommunityPermission::TaxonomyWrite
+        ),
         db.list_regions(community_id)
     )?;
     let Some(region) = regions.into_iter().find(|region| region.region_id == region_id) else {

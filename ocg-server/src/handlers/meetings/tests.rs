@@ -318,7 +318,10 @@ async fn test_zoom_event_validates_url() {
     let response_json = serde_json::from_slice::<Value>(&bytes).unwrap();
     assert_eq!(parts.status, StatusCode::OK);
     assert_eq!(response_json["plainToken"], plain_token);
-    assert_eq!(response_json["encryptedToken"], compute_hmac(plain_token, secret));
+    assert_eq!(
+        response_json["encryptedToken"],
+        compute_hmac(plain_token, secret)
+    );
 }
 
 // Helpers

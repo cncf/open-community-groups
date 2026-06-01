@@ -22,14 +22,17 @@ use crate::{
         payments::MockPaymentsManager,
     },
     templates::notifications::{
-        EventAttendanceCanceled, EventWaitlistJoined, EventWaitlistLeft, EventWaitlistPromoted, EventWelcome,
+        EventAttendanceCanceled, EventWaitlistJoined, EventWaitlistLeft, EventWaitlistPromoted,
+        EventWelcome,
     },
     types::{
         event::{EventAttendanceInfo, EventAttendanceStatus, EventLeaveOutcome},
-        payments::{EventPurchaseStatus, EventTicketCurrentPrice, EventTicketType, PreparedEventCheckout},
+        payments::{
+            EventPurchaseStatus, EventTicketCurrentPrice, EventTicketType, PreparedEventCheckout,
+        },
         questionnaire::{
-            QuestionnaireAnswer, QuestionnaireAnswerValue, QuestionnaireAnswers, QuestionnaireQuestion,
-            QuestionnaireQuestionKind,
+            QuestionnaireAnswer, QuestionnaireAnswerValue, QuestionnaireAnswers,
+            QuestionnaireQuestion, QuestionnaireQuestionKind,
         },
     },
 };
@@ -288,7 +291,9 @@ async fn test_page_temporarily_redirects_generated_group_slug_to_pretty_slug() {
     assert_eq!(response.status(), StatusCode::TEMPORARY_REDIRECT);
     assert_eq!(
         response.headers().get(LOCATION).unwrap(),
-        &HeaderValue::from_static("/test-community/group/pretty-group/event/test-event?utm_source=test")
+        &HeaderValue::from_static(
+            "/test-community/group/pretty-group/event/test-event?utm_source=test"
+        )
     );
 }
 
@@ -367,16 +372,16 @@ async fn test_page_success() {
     assert!(body.contains(
         r#"<meta property="og:description" content="Test Group in Test Community community. Open Community Groups, where Open Source communities thrive.">"#
     ));
-    assert!(
-        body.contains(r#"<meta property="og:image" content="https://example.test/images/og/group-og.png">"#)
-    );
+    assert!(body.contains(
+        r#"<meta property="og:image" content="https://example.test/images/og/group-og.png">"#
+    ));
     assert!(body.contains(r#"<meta name="twitter:title" content="Test Event - March 5">"#));
     assert!(body.contains(
         r#"<meta name="twitter:description" content="Test Group in Test Community community. Open Community Groups, where Open Source communities thrive.">"#
     ));
-    assert!(
-        body.contains(r#"<meta name="twitter:image" content="https://example.test/images/og/group-og.png">"#)
-    );
+    assert!(body.contains(
+        r#"<meta name="twitter:image" content="https://example.test/images/og/group-og.png">"#
+    ));
 }
 
 #[tokio::test]
@@ -656,8 +661,9 @@ async fn test_attend_event_success() {
             matches!(notification.kind, NotificationKind::EventWelcome)
                 && notification.recipients == vec![user_id]
                 && notification.template_data.as_ref().is_some_and(|value| {
-                    from_value::<EventWelcome>(value.clone())
-                        .is_ok_and(|template| template.link == "/test-community/group/def5678/event/ghi9abc")
+                    from_value::<EventWelcome>(value.clone()).is_ok_and(|template| {
+                        template.link == "/test-community/group/def5678/event/ghi9abc"
+                    })
                 })
         })
         .returning(|_| Box::pin(async { Ok(()) }));
@@ -839,8 +845,9 @@ async fn test_attend_event_waitlist_success_without_registration_answers() {
             matches!(notification.kind, NotificationKind::EventWaitlistJoined)
                 && notification.recipients == vec![user_id]
                 && notification.template_data.as_ref().is_some_and(|value| {
-                    from_value::<EventWaitlistJoined>(value.clone())
-                        .is_ok_and(|template| template.link == "/test-community/group/def5678/event/ghi9abc")
+                    from_value::<EventWaitlistJoined>(value.clone()).is_ok_and(|template| {
+                        template.link == "/test-community/group/def5678/event/ghi9abc"
+                    })
                 })
         })
         .returning(|_| Box::pin(async { Ok(()) }));
@@ -1410,8 +1417,9 @@ async fn test_leave_waitlist_success() {
             matches!(notification.kind, NotificationKind::EventWaitlistLeft)
                 && notification.recipients == vec![user_id]
                 && notification.template_data.as_ref().is_some_and(|value| {
-                    from_value::<EventWaitlistLeft>(value.clone())
-                        .is_ok_and(|template| template.link == "/test-community/group/def5678/event/ghi9abc")
+                    from_value::<EventWaitlistLeft>(value.clone()).is_ok_and(|template| {
+                        template.link == "/test-community/group/def5678/event/ghi9abc"
+                    })
                 })
         })
         .returning(|_| Box::pin(async { Ok(()) }));
@@ -1828,7 +1836,10 @@ async fn test_start_checkout_rejects_refund_requested_purchase() {
     let router = TestRouterBuilder::new(db, nm).build().await;
     let form_body = serde_urlencoded::to_string([
         ("event_ticket_type_id", ticket_type_id.to_string()),
-        ("registration_answers", registration_answers_json.to_string()),
+        (
+            "registration_answers",
+            registration_answers_json.to_string(),
+        ),
     ])
     .unwrap();
     let request = Request::builder()

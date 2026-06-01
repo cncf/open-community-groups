@@ -53,7 +53,11 @@ pub(crate) trait DBAuth {
     async fn get_user_password(&self, user_id: &Uuid) -> Result<Option<String>>;
 
     /// Checks whether a group belongs to a community.
-    async fn group_belongs_to_community(&self, community_id: &Uuid, group_id: &Uuid) -> Result<bool>;
+    async fn group_belongs_to_community(
+        &self,
+        community_id: &Uuid,
+        group_id: &Uuid,
+    ) -> Result<bool>;
 
     /// Registers a new user in the database.
     async fn sign_up_user(
@@ -149,7 +153,11 @@ impl DBAuth for PgDB {
                 $3::timestamptz
             );
             ",
-            &[&record.id.to_string(), &Json(&record.data), &record.expiry_date],
+            &[
+                &record.id.to_string(),
+                &Json(&record.data),
+                &record.expiry_date,
+            ],
         )
         .await
     }
@@ -187,8 +195,11 @@ impl DBAuth for PgDB {
 
     #[instrument(skip(self, email), err)]
     async fn get_user_by_email_for_external_auth(&self, email: &str) -> Result<Option<User>> {
-        self.fetch_json_opt("select get_user_by_email_for_external_auth($1::text);", &[&email])
-            .await
+        self.fetch_json_opt(
+            "select get_user_by_email_for_external_auth($1::text);",
+            &[&email],
+        )
+        .await
     }
 
     #[instrument(skip(self, user_id), err)]
@@ -213,7 +224,11 @@ impl DBAuth for PgDB {
     }
 
     #[instrument(skip(self), err)]
-    async fn group_belongs_to_community(&self, community_id: &Uuid, group_id: &Uuid) -> Result<bool> {
+    async fn group_belongs_to_community(
+        &self,
+        community_id: &Uuid,
+        group_id: &Uuid,
+    ) -> Result<bool> {
         self.fetch_scalar_one(
             r#"
             select exists (
@@ -259,7 +274,11 @@ impl DBAuth for PgDB {
                 expires_at = $3::timestamptz
             where auth_session_id = $1::text;
             ",
-            &[&record.id.to_string(), &Json(&record.data), &record.expiry_date],
+            &[
+                &record.id.to_string(),
+                &Json(&record.data),
+                &record.expiry_date,
+            ],
         )
         .await
     }

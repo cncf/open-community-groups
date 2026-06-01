@@ -28,10 +28,11 @@ use crate::{
 use super::*;
 
 const PNG_BYTES: &[u8] = &[
-    0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52, 0x00,
-    0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x06, 0x00, 0x00, 0x00, 0x1F, 0x15, 0xC4, 0x89, 0x00,
-    0x00, 0x00, 0x0A, 0x49, 0x44, 0x41, 0x54, 0x78, 0x9C, 0x63, 0x00, 0x01, 0x00, 0x00, 0x05, 0x00, 0x01,
-    0x0D, 0x0A, 0x2D, 0xB4, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82,
+    0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52,
+    0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x06, 0x00, 0x00, 0x00, 0x1F, 0x15, 0xC4,
+    0x89, 0x00, 0x00, 0x00, 0x0A, 0x49, 0x44, 0x41, 0x54, 0x78, 0x9C, 0x63, 0x00, 0x01, 0x00, 0x00,
+    0x05, 0x00, 0x01, 0x0D, 0x0A, 0x2D, 0xB4, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE,
+    0x42, 0x60, 0x82,
 ];
 
 #[test]
@@ -257,15 +258,14 @@ async fn test_serve_rejects_mismatched_referer() {
     storage.expect_get().never();
 
     // Setup router and send request
-    let router =
-        Router::new()
-            .route("/images/{file_name}", get(serve))
-            .with_state(test_state_with_server_cfg(
-                Arc::new(MockDB::new()),
-                Arc::new(storage),
-                Arc::new(MockNotificationsManager::new()),
-                &sample_tracking_server_cfg(),
-            ));
+    let router = Router::new().route("/images/{file_name}", get(serve)).with_state(
+        test_state_with_server_cfg(
+            Arc::new(MockDB::new()),
+            Arc::new(storage),
+            Arc::new(MockNotificationsManager::new()),
+            &sample_tracking_server_cfg(),
+        ),
+    );
     let response = router
         .oneshot(
             Request::builder()
@@ -298,15 +298,14 @@ async fn test_serve_returns_bytes_with_headers() {
         });
 
     // Setup router and send request
-    let router =
-        Router::new()
-            .route("/images/{file_name}", get(serve))
-            .with_state(test_state_with_server_cfg(
-                Arc::new(MockDB::new()),
-                Arc::new(storage),
-                Arc::new(MockNotificationsManager::new()),
-                &sample_tracking_server_cfg(),
-            ));
+    let router = Router::new().route("/images/{file_name}", get(serve)).with_state(
+        test_state_with_server_cfg(
+            Arc::new(MockDB::new()),
+            Arc::new(storage),
+            Arc::new(MockNotificationsManager::new()),
+            &sample_tracking_server_cfg(),
+        ),
+    );
     let response = router
         .oneshot(
             Request::builder()
@@ -349,15 +348,14 @@ async fn test_serve_returns_not_found_for_missing_image() {
         .returning(|_| Box::pin(async { Ok(None) }));
 
     // Setup router and send request
-    let router =
-        Router::new()
-            .route("/images/{file_name}", get(serve))
-            .with_state(test_state_with_server_cfg(
-                Arc::new(MockDB::new()),
-                Arc::new(storage),
-                Arc::new(MockNotificationsManager::new()),
-                &sample_tracking_server_cfg(),
-            ));
+    let router = Router::new().route("/images/{file_name}", get(serve)).with_state(
+        test_state_with_server_cfg(
+            Arc::new(MockDB::new()),
+            Arc::new(storage),
+            Arc::new(MockNotificationsManager::new()),
+            &sample_tracking_server_cfg(),
+        ),
+    );
     let response = router
         .oneshot(
             Request::builder()
@@ -427,7 +425,10 @@ async fn test_upload_accepts_exact_open_graph_dimensions() {
         .uri("/images")
         .header(HOST, "example.test")
         .header(COOKIE, format!("id={session_id}"))
-        .header(CONTENT_TYPE, format!("multipart/form-data; boundary={boundary}"))
+        .header(
+            CONTENT_TYPE,
+            format!("multipart/form-data; boundary={boundary}"),
+        )
         .header(REFERER, "https://example.test/dashboard")
         .body(Body::from(body))
         .unwrap();
@@ -499,7 +500,10 @@ async fn test_upload_allows_missing_referer_when_checks_disabled() {
         .uri("/images")
         .header(HOST, "example.test")
         .header(COOKIE, format!("id={session_id}"))
-        .header(CONTENT_TYPE, format!("multipart/form-data; boundary={boundary}"))
+        .header(
+            CONTENT_TYPE,
+            format!("multipart/form-data; boundary={boundary}"),
+        )
         .body(Body::from(body))
         .unwrap();
     let response = router.oneshot(request).await.unwrap();
@@ -557,7 +561,10 @@ async fn test_upload_rejects_missing_referer() {
         .uri("/images")
         .header(HOST, "example.test")
         .header(COOKIE, format!("id={session_id}"))
-        .header(CONTENT_TYPE, format!("multipart/form-data; boundary={boundary}"))
+        .header(
+            CONTENT_TYPE,
+            format!("multipart/form-data; boundary={boundary}"),
+        )
         .body(Body::from(body))
         .unwrap();
     let response = router.oneshot(request).await.unwrap();
@@ -606,7 +613,10 @@ async fn test_upload_rejects_wrong_open_graph_dimensions() {
         .uri("/images")
         .header(HOST, "example.test")
         .header(COOKIE, format!("id={session_id}"))
-        .header(CONTENT_TYPE, format!("multipart/form-data; boundary={boundary}"))
+        .header(
+            CONTENT_TYPE,
+            format!("multipart/form-data; boundary={boundary}"),
+        )
         .header(REFERER, "https://example.test/dashboard")
         .body(Body::from(body))
         .unwrap();
@@ -674,7 +684,10 @@ async fn test_upload_stores_image_and_returns_url() {
         .uri("/images")
         .header(HOST, "example.test")
         .header(COOKIE, format!("id={session_id}"))
-        .header(CONTENT_TYPE, format!("multipart/form-data; boundary={boundary}"))
+        .header(
+            CONTENT_TYPE,
+            format!("multipart/form-data; boundary={boundary}"),
+        )
         .header(REFERER, "https://example.test/dashboard")
         .body(Body::from(body))
         .unwrap();
@@ -711,7 +724,11 @@ fn build_multipart_body_with_target(boundary: &str, target: &str, bytes: &[u8]) 
     build_multipart_body_with_target_opt(boundary, Some(target), bytes)
 }
 
-fn build_multipart_body_with_target_opt(boundary: &str, target: Option<&str>, bytes: &[u8]) -> Vec<u8> {
+fn build_multipart_body_with_target_opt(
+    boundary: &str,
+    target: Option<&str>,
+    bytes: &[u8],
+) -> Vec<u8> {
     let mut body = Vec::new();
     if let Some(target) = target {
         body.extend_from_slice(

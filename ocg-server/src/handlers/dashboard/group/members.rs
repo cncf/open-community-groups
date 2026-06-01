@@ -163,7 +163,12 @@ pub(crate) async fn prepare_list_page(
     // Fetch group members
     let filters: GroupMembersFilters = serde_qs_config().deserialize_str(raw_query)?;
     let (can_manage_members, group, results) = tokio::try_join!(
-        db.user_has_group_permission(&community_id, &group_id, &user_id, GroupPermission::MembersWrite),
+        db.user_has_group_permission(
+            &community_id,
+            &group_id,
+            &user_id,
+            GroupPermission::MembersWrite
+        ),
         db.get_group_summary(community_id, group_id),
         db.list_group_members(group_id, &filters)
     )?;

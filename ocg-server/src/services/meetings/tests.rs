@@ -11,8 +11,8 @@ use crate::{
 
 use super::{
     DynMeetingsProvider, Meeting, MeetingAutoEndCheckOutcome, MeetingEndResult, MeetingProvider,
-    MeetingProviderError, MeetingProviderMeeting, MeetingsAutoEndWorker, MeetingsClaimRecoveryWorker,
-    MeetingsSyncWorker, MockMeetingsProvider, SyncAction, SyncError,
+    MeetingProviderError, MeetingProviderMeeting, MeetingsAutoEndWorker,
+    MeetingsClaimRecoveryWorker, MeetingsSyncWorker, MockMeetingsProvider, SyncAction, SyncError,
 };
 
 // MeetingProviderError tests.
@@ -153,7 +153,9 @@ async fn test_worker_auto_end_meeting_auto_ended() {
     });
     db.expect_set_meeting_auto_end_check_outcome()
         .times(1)
-        .withf(move |mid, outcome| *mid == meeting_id && *outcome == MeetingAutoEndCheckOutcome::AutoEnded)
+        .withf(move |mid, outcome| {
+            *mid == meeting_id && *outcome == MeetingAutoEndCheckOutcome::AutoEnded
+        })
         .returning(|_, _| Ok(()));
     let db: DynDB = Arc::new(db);
 
@@ -189,7 +191,9 @@ async fn test_worker_auto_end_meeting_not_found_records_not_found_outcome() {
     });
     db.expect_set_meeting_auto_end_check_outcome()
         .times(1)
-        .withf(move |mid, outcome| *mid == meeting_id && *outcome == MeetingAutoEndCheckOutcome::NotFound)
+        .withf(move |mid, outcome| {
+            *mid == meeting_id && *outcome == MeetingAutoEndCheckOutcome::NotFound
+        })
         .returning(|_, _| Ok(()));
     let db: DynDB = Arc::new(db);
 
@@ -245,7 +249,9 @@ async fn test_worker_auto_end_meeting_provider_not_configured_records_error_outc
     });
     db.expect_set_meeting_auto_end_check_outcome()
         .times(1)
-        .withf(move |mid, outcome| *mid == meeting_id && *outcome == MeetingAutoEndCheckOutcome::Error)
+        .withf(move |mid, outcome| {
+            *mid == meeting_id && *outcome == MeetingAutoEndCheckOutcome::Error
+        })
         .returning(|_, _| Ok(()));
     let db: DynDB = Arc::new(db);
 
@@ -281,9 +287,9 @@ async fn test_worker_auto_end_meeting_retryable_error_releases_claim() {
 
     // Setup meetings provider mock
     let mut mp = MockMeetingsProvider::new();
-    mp.expect_end_meeting()
-        .times(1)
-        .returning(|_| Box::pin(async { Err(MeetingProviderError::Network("timeout".to_string())) }));
+    mp.expect_end_meeting().times(1).returning(|_| {
+        Box::pin(async { Err(MeetingProviderError::Network("timeout".to_string())) })
+    });
     let mp: DynMeetingsProvider = Arc::new(mp);
 
     // Setup worker and auto-end meeting
@@ -442,7 +448,8 @@ async fn test_worker_sync_meeting_updates_existing_meeting() {
     db.expect_update_meeting()
         .times(1)
         .withf(move |m| {
-            m.meeting_id == Some(meeting_id) && m.join_url == Some("https://zoom.us/j/456".to_string())
+            m.meeting_id == Some(meeting_id)
+                && m.join_url == Some("https://zoom.us/j/456".to_string())
         })
         .returning(|_| Ok(()));
     let db: DynDB = Arc::new(db);
@@ -601,9 +608,9 @@ async fn test_worker_sync_meeting_retryable_error_releases_claim() {
 
     // Setup meetings provider mock
     let mut mp = MockMeetingsProvider::new();
-    mp.expect_create_meeting()
-        .times(1)
-        .returning(|_| Box::pin(async { Err(MeetingProviderError::Network("timeout".to_string())) }));
+    mp.expect_create_meeting().times(1).returning(|_| {
+        Box::pin(async { Err(MeetingProviderError::Network("timeout".to_string())) })
+    });
     let mp: DynMeetingsProvider = Arc::new(mp);
 
     // Setup worker and sync meeting
@@ -640,14 +647,20 @@ async fn test_worker_sync_meeting_non_retryable_error_records_error() {
         .returning(|_, _, _, _, _| Ok(Some("host@example.com".to_string())));
     db.expect_set_meeting_error()
         .times(1)
-        .withf(move |m, err| m.meeting_id == Some(meeting_id) && err.contains("invalid meeting data"))
+        .withf(move |m, err| {
+            m.meeting_id == Some(meeting_id) && err.contains("invalid meeting data")
+        })
         .returning(|_, _| Ok(()));
     let db: DynDB = Arc::new(db);
 
     // Setup meetings provider mock
     let mut mp = MockMeetingsProvider::new();
     mp.expect_create_meeting().times(1).returning(|_| {
-        Box::pin(async { Err(MeetingProviderError::Client("invalid meeting data".to_string())) })
+        Box::pin(async {
+            Err(MeetingProviderError::Client(
+                "invalid meeting data".to_string(),
+            ))
+        })
     });
     let mp: DynMeetingsProvider = Arc::new(mp);
 
@@ -682,7 +695,9 @@ async fn test_worker_sync_meeting_no_slots_available_records_error() {
         .returning(|_, _, _, _, _| Ok(None));
     db.expect_set_meeting_error()
         .times(1)
-        .withf(move |m, err| m.meeting_id == Some(meeting_id) && err.contains("no meeting slots available"))
+        .withf(move |m, err| {
+            m.meeting_id == Some(meeting_id) && err.contains("no meeting slots available")
+        })
         .returning(|_, _| Ok(()));
     let db: DynDB = Arc::new(db);
 
@@ -751,7 +766,9 @@ async fn test_worker_sync_meeting_provider_not_configured_records_error() {
         .returning(move || Ok(Some(meeting.clone())));
     db.expect_set_meeting_error()
         .times(1)
-        .withf(move |m, err| m.meeting_id == Some(meeting_id) && err.contains("provider not configured"))
+        .withf(move |m, err| {
+            m.meeting_id == Some(meeting_id) && err.contains("provider not configured")
+        })
         .returning(|_, _| Ok(()));
     let db: DynDB = Arc::new(db);
 

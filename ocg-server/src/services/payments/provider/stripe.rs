@@ -20,8 +20,8 @@ use crate::{
 };
 
 use super::{
-    CheckoutSession, CreateCheckoutSessionInput, PaymentsProvider, PaymentsWebhookEvent, RefundPaymentInput,
-    RefundPaymentResult,
+    CheckoutSession, CreateCheckoutSessionInput, PaymentsProvider, PaymentsWebhookEvent,
+    RefundPaymentInput, RefundPaymentResult,
 };
 
 #[cfg(test)]
@@ -63,7 +63,10 @@ impl StripeProvider {
                 "cancel_url".to_string(),
                 Self::event_return_url(input, "canceled"),
             ),
-            ("client_reference_id".to_string(), input.purchase_id.to_string()),
+            (
+                "client_reference_id".to_string(),
+                input.purchase_id.to_string(),
+            ),
             (
                 "line_items[0][price_data][currency]".to_string(),
                 Self::normalized_currency_code(&input.currency_code),
@@ -101,7 +104,8 @@ impl StripeProvider {
         ];
 
         // Add the payment methods currently supported by OCG
-        for (index, payment_method_type) in STRIPE_CHECKOUT_PAYMENT_METHOD_TYPES.iter().enumerate() {
+        for (index, payment_method_type) in STRIPE_CHECKOUT_PAYMENT_METHOD_TYPES.iter().enumerate()
+        {
             form_fields.push((
                 format!("payment_method_types[{index}]"),
                 (*payment_method_type).to_string(),
@@ -133,8 +137,8 @@ impl StripeProvider {
     fn compute_signature(secret: &str, payload: &str) -> String {
         type HmacSha256 = Hmac<Sha256>;
 
-        let mut mac =
-            HmacSha256::new_from_slice(secret.as_bytes()).expect("HMAC accepts arbitrary key sizes");
+        let mut mac = HmacSha256::new_from_slice(secret.as_bytes())
+            .expect("HMAC accepts arbitrary key sizes");
         mac.update(payload.as_bytes());
         hex::encode(mac.finalize().into_bytes())
     }
@@ -210,7 +214,10 @@ impl StripeProvider {
 impl PaymentsProvider for StripeProvider {
     /// [`PaymentsProvider::create_checkout_session`].
     #[instrument(skip(self, input), err)]
-    async fn create_checkout_session(&self, input: &CreateCheckoutSessionInput) -> Result<CheckoutSession> {
+    async fn create_checkout_session(
+        &self,
+        input: &CreateCheckoutSessionInput,
+    ) -> Result<CheckoutSession> {
         // Reject invalid or unsupported checkout requests before contacting Stripe
         if input.amount_minor <= 0 {
             bail!("Stripe checkout requires a positive amount");
@@ -292,7 +299,10 @@ impl PaymentsProvider for StripeProvider {
             .post(format!("{}/refunds", Self::api_base_url()))
             .basic_auth(&self.cfg.secret_key, Some(""))
             .header("content-type", "application/x-www-form-urlencoded")
-            .header("idempotency-key", Self::refund_idempotency_key(input.purchase_id))
+            .header(
+                "idempotency-key",
+                Self::refund_idempotency_key(input.purchase_id),
+            )
             .body(serde_urlencoded::to_string(&form_fields)?)
             .send()
             .await
@@ -320,9 +330,14 @@ impl PaymentsProvider for StripeProvider {
     }
 
     /// [`PaymentsProvider::verify_and_parse_webhook`].
-    fn verify_and_parse_webhook(&self, headers: &HeaderMap, body: &str) -> Result<PaymentsWebhookEvent> {
+    fn verify_and_parse_webhook(
+        &self,
+        headers: &HeaderMap,
+        body: &str,
+    ) -> Result<PaymentsWebhookEvent> {
         // Require Stripe's signature header before attempting webhook verification
-        let Some(signature_header) = headers.get("stripe-signature").and_then(|value| value.to_str().ok())
+        let Some(signature_header) =
+            headers.get("stripe-signature").and_then(|value| value.to_str().ok())
         else {
             bail!("missing Stripe webhook signature header");
         };

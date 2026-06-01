@@ -16,6 +16,53 @@ use crate::{
 };
 
 #[tokio::test]
+async fn test_list_page_db_error() {
+    // Setup identifiers and data structures
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_list_user_cfs_submissions()
+        .times(1)
+        .withf(move |uid, filters| {
+            *uid == user_id
+                && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
+                && filters.offset == Some(0)
+        })
+        .returning(|_, _| Err(anyhow!("db error")));
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("GET")
+        .uri("/dashboard/user/submissions")
+        .header(COOKIE, format!("id={session_id}"))
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
+    assert!(bytes.is_empty());
+}
+
+#[tokio::test]
 async fn test_list_page_success() {
     // Setup identifiers and data structures
     let session_id = session::Id::default();
@@ -49,7 +96,9 @@ async fn test_list_page_success() {
     db.expect_list_user_cfs_submissions()
         .times(1)
         .withf(move |uid, filters| {
-            *uid == user_id && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT) && filters.offset == Some(0)
+            *uid == user_id
+                && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
+                && filters.offset == Some(0)
         })
         .returning(move |_, _| Ok(output.clone()));
 
@@ -101,7 +150,9 @@ async fn test_list_page_with_pagination_params() {
         .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
     db.expect_list_user_cfs_submissions()
         .times(1)
-        .withf(move |uid, filters| *uid == user_id && filters.limit == Some(5) && filters.offset == Some(10))
+        .withf(move |uid, filters| {
+            *uid == user_id && filters.limit == Some(5) && filters.offset == Some(10)
+        })
         .returning(move |_, _| Ok(output.clone()));
 
     // Setup notifications manager mock
@@ -129,8 +180,9 @@ async fn test_list_page_with_pagination_params() {
 }
 
 #[tokio::test]
-async fn test_list_page_db_error() {
+async fn test_resubmit_db_error() {
     // Setup identifiers and data structures
+    let cfs_submission_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
@@ -146,12 +198,11 @@ async fn test_list_page_db_error() {
         .times(1)
         .withf(move |id| *id == user_id)
         .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_list_user_cfs_submissions()
+    db.expect_resubmit_cfs_submission()
         .times(1)
-        .withf(move |uid, filters| {
-            *uid == user_id && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT) && filters.offset == Some(0)
-        })
+        .withf(move |uid, submission_id| *uid == user_id && *submission_id == cfs_submission_id)
         .returning(|_, _| Err(anyhow!("db error")));
+    db.expect_update_session().times(0);
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
@@ -159,8 +210,10 @@ async fn test_list_page_db_error() {
     // Setup router and send request
     let router = TestRouterBuilder::new(db, nm).build().await;
     let request = Request::builder()
-        .method("GET")
-        .uri("/dashboard/user/submissions")
+        .method("PUT")
+        .uri(format!(
+            "/dashboard/user/submissions/{cfs_submission_id}/resubmit"
+        ))
         .header(COOKIE, format!("id={session_id}"))
         .body(Body::empty())
         .unwrap();
@@ -198,7 +251,9 @@ async fn test_resubmit_success() {
         .returning(|_, _| Ok(()));
     db.expect_update_session()
         .times(1)
-        .withf(move |record| record.id == session_id && message_matches(record, "Submission resubmitted."))
+        .withf(move |record| {
+            record.id == session_id && message_matches(record, "Submission resubmitted.")
+        })
         .returning(|_| Ok(()));
 
     // Setup notifications manager mock
@@ -219,11 +274,58 @@ async fn test_resubmit_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert_eq!(
-        parts.headers.get("HX-Trigger").unwrap(),
-        &HeaderValue::from_static("refresh-user-dashboard-content"),
+    assert_empty_hx_trigger_response(
+        &parts,
+        &bytes,
+        StatusCode::NO_CONTENT,
+        "refresh-user-dashboard-content",
     );
+}
+
+#[tokio::test]
+async fn test_withdraw_db_error() {
+    // Setup identifiers and data structures
+    let cfs_submission_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_withdraw_cfs_submission()
+        .times(1)
+        .withf(move |uid, submission_id| *uid == user_id && *submission_id == cfs_submission_id)
+        .returning(|_, _| Err(anyhow!("db error")));
+    db.expect_update_session().times(0);
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("PUT")
+        .uri(format!(
+            "/dashboard/user/submissions/{cfs_submission_id}/withdraw"
+        ))
+        .header(COOKIE, format!("id={session_id}"))
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
     assert!(bytes.is_empty());
 }
 
@@ -252,7 +354,9 @@ async fn test_withdraw_success() {
         .returning(|_, _| Ok(()));
     db.expect_update_session()
         .times(1)
-        .withf(move |record| record.id == session_id && message_matches(record, "Submission withdrawn."))
+        .withf(move |record| {
+            record.id == session_id && message_matches(record, "Submission withdrawn.")
+        })
         .returning(|_| Ok(()));
 
     // Setup notifications manager mock
@@ -273,10 +377,10 @@ async fn test_withdraw_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert_eq!(
-        parts.headers.get("HX-Trigger").unwrap(),
-        &HeaderValue::from_static("refresh-user-dashboard-content"),
+    assert_empty_hx_trigger_response(
+        &parts,
+        &bytes,
+        StatusCode::NO_CONTENT,
+        "refresh-user-dashboard-content",
     );
-    assert!(bytes.is_empty());
 }

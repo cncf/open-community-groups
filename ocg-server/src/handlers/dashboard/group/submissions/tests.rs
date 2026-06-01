@@ -39,14 +39,15 @@ async fn test_list_page_success() {
     let cfs_submission_id = Uuid::new_v4();
     let speaker_id = Uuid::new_v4();
     let event = sample_event_summary(event_id, group_id);
-    let submissions_output = crate::templates::dashboard::group::submissions::CfsSubmissionsOutput {
-        submissions: vec![sample_group_cfs_submission(
-            cfs_submission_id,
-            session_proposal_id,
-            speaker_id,
-        )],
-        total: 1,
-    };
+    let submissions_output =
+        crate::templates::dashboard::group::submissions::CfsSubmissionsOutput {
+            submissions: vec![sample_group_cfs_submission(
+                cfs_submission_id,
+                session_proposal_id,
+                speaker_id,
+            )],
+            total: 1,
+        };
     let statuses = vec![sample_group_cfs_submission_status("submitted", "Submitted")];
 
     // Setup database mock
@@ -62,7 +63,10 @@ async fn test_list_page_success() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id && *gid == group_id && *uid == user_id && permission == GroupPermission::Read
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::Read
         })
         .returning(|_, _, _, _| Ok(true));
     db.expect_user_has_group_permission()
@@ -88,7 +92,9 @@ async fn test_list_page_success() {
     db.expect_list_event_cfs_submissions()
         .times(1)
         .withf(move |eid, filters| {
-            *eid == event_id && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT) && filters.offset == Some(0)
+            *eid == event_id
+                && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
+                && filters.offset == Some(0)
         })
         .returning(move |_, _| Ok(submissions_output.clone()));
 
@@ -133,10 +139,11 @@ async fn test_list_page_with_pagination_params() {
         Some(group_id),
     );
     let event = sample_event_summary(event_id, group_id);
-    let submissions_output = crate::templates::dashboard::group::submissions::CfsSubmissionsOutput {
-        submissions: vec![],
-        total: 0,
-    };
+    let submissions_output =
+        crate::templates::dashboard::group::submissions::CfsSubmissionsOutput {
+            submissions: vec![],
+            total: 0,
+        };
     let statuses = vec![sample_group_cfs_submission_status("submitted", "Submitted")];
 
     // Setup database mock
@@ -152,7 +159,10 @@ async fn test_list_page_with_pagination_params() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id && *gid == group_id && *uid == user_id && permission == GroupPermission::Read
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::Read
         })
         .returning(|_, _, _, _| Ok(true));
     db.expect_user_has_group_permission()
@@ -177,7 +187,9 @@ async fn test_list_page_with_pagination_params() {
         .returning(move || Ok(statuses.clone()));
     db.expect_list_event_cfs_submissions()
         .times(1)
-        .withf(move |eid, filters| *eid == event_id && filters.limit == Some(5) && filters.offset == Some(10))
+        .withf(move |eid, filters| {
+            *eid == event_id && filters.limit == Some(5) && filters.offset == Some(10)
+        })
         .returning(move |_, _| Ok(submissions_output.clone()));
 
     // Setup notifications manager mock
@@ -236,7 +248,10 @@ async fn test_list_page_db_error() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id && *gid == group_id && *uid == user_id && permission == GroupPermission::Read
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::Read
         })
         .returning(|_, _, _, _| Ok(true));
     db.expect_user_has_group_permission()
@@ -301,13 +316,14 @@ async fn test_update_success() {
         rating_stars: None,
     };
     let form_data = serde_qs::to_string(&update).unwrap();
-    let notification_data = crate::templates::dashboard::group::submissions::CfsSubmissionNotificationData {
-        status_id: update.status_id.clone(),
-        status_name: "Approved".to_string(),
-        user_id: notification_user_id,
+    let notification_data =
+        crate::templates::dashboard::group::submissions::CfsSubmissionNotificationData {
+            status_id: update.status_id.clone(),
+            status_name: "Approved".to_string(),
+            user_id: notification_user_id,
 
-        action_required_message: update.action_required_message.clone(),
-    };
+            action_required_message: update.action_required_message.clone(),
+        };
     let site_settings = sample_site_settings();
     let expected_link = "/dashboard/user?tab=submissions".to_string();
     let theme_primary_color = site_settings.theme.primary_color.clone();
@@ -343,7 +359,8 @@ async fn test_update_success() {
                 && *sid == cfs_submission_id
                 && submission.status_id == "approved"
                 && submission.label_ids.is_empty()
-                && submission.action_required_message.as_deref() == Some("Please update your slides.")
+                && submission.action_required_message.as_deref()
+                    == Some("Please update your slides.")
         })
         .returning(|_, _, _, _| Ok(true));
     db.expect_get_cfs_submission_notification_data()
@@ -363,7 +380,8 @@ async fn test_update_success() {
                 && notification.recipients == vec![notification_user_id]
                 && notification.template_data.as_ref().is_some_and(|value| {
                     from_value::<CfsSubmissionUpdated>(value.clone()).is_ok_and(|template| {
-                        template.action_required_message.as_deref() == Some("Please update your slides.")
+                        template.action_required_message.as_deref()
+                            == Some("Please update your slides.")
                             && template.event.event_id == event_id
                             && template.link == expected_link
                             && template.status_name == "Approved"

@@ -23,7 +23,8 @@ async fn test_list_page_db_error() {
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+    let session_record =
+        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -75,7 +76,8 @@ async fn test_list_page_success() {
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+    let session_record =
+        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
     let output = sample_audit_logs_output();
 
     // Setup database mock

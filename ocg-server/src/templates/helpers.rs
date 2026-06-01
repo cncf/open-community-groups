@@ -107,7 +107,10 @@ mod tests {
         assert_eq!(user_initials(Some("  Bob Johnson  "), ""), "BJ");
 
         // Multiple middle names -> still first and last
-        assert_eq!(user_initials(Some("Alexander Graham Bell Hamilton"), ""), "AH");
+        assert_eq!(
+            user_initials(Some("Alexander Graham Bell Hamilton"), ""),
+            "AH"
+        );
 
         // Hyphenated names -> treat as separate words
         assert_eq!(user_initials(Some("Mary-Jane Watson-Parker"), ""), "MP");

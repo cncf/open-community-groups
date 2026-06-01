@@ -181,7 +181,8 @@ impl DBMeetings for PgDB {
             )
             .await?;
 
-        usize::try_from(count).map_err(|_| anyhow::anyhow!("stale auto-end claim count cannot be negative"))
+        usize::try_from(count)
+            .map_err(|_| anyhow::anyhow!("stale auto-end claim count cannot be negative"))
     }
 
     #[instrument(skip(self), err)]
@@ -196,7 +197,8 @@ impl DBMeetings for PgDB {
             )
             .await?;
 
-        usize::try_from(count).map_err(|_| anyhow::anyhow!("stale sync claim count cannot be negative"))
+        usize::try_from(count)
+            .map_err(|_| anyhow::anyhow!("stale sync claim count cannot be negative"))
     }
 
     #[instrument(skip(self), err)]

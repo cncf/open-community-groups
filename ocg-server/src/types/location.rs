@@ -152,7 +152,10 @@ mod tests {
             .country_code(Some(country_code.as_str()))
             .country_name(Some(country_name.as_str()));
 
-        assert_eq!(build_location(&parts, 100), Some("United States".to_string()));
+        assert_eq!(
+            build_location(&parts, 100),
+            Some("United States".to_string())
+        );
     }
 
     #[test]

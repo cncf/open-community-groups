@@ -45,7 +45,10 @@ pub(crate) trait DBSite {
     async fn get_site_stats(&self) -> Result<SiteStats>;
 
     /// Retrieves upcoming events across all communities.
-    async fn get_site_upcoming_events(&self, event_kinds: Vec<EventKind>) -> Result<Vec<EventSummary>>;
+    async fn get_site_upcoming_events(
+        &self,
+        event_kinds: Vec<EventKind>,
+    ) -> Result<Vec<EventSummary>>;
 
     /// Lists all active communities.
     async fn list_communities(&self) -> Result<Vec<CommunitySummary>>;
@@ -104,10 +107,16 @@ impl DBSite for PgDB {
     }
 
     #[instrument(skip(self), err)]
-    async fn get_site_upcoming_events(&self, event_kinds: Vec<EventKind>) -> Result<Vec<EventSummary>> {
+    async fn get_site_upcoming_events(
+        &self,
+        event_kinds: Vec<EventKind>,
+    ) -> Result<Vec<EventSummary>> {
         let event_kinds = event_kinds.into_iter().map(|k| k.to_string()).collect::<Vec<_>>();
-        self.fetch_json_one("select get_site_upcoming_events($1::text[])", &[&event_kinds])
-            .await
+        self.fetch_json_one(
+            "select get_site_upcoming_events($1::text[])",
+            &[&event_kinds],
+        )
+        .await
     }
 
     #[instrument(skip(self), err)]

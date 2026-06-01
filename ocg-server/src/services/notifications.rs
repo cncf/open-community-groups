@@ -12,7 +12,8 @@ use lettre::{
         header::{ContentDisposition, ContentType},
     },
     transport::smtp::{
-        AsyncSmtpTransportBuilder, Error as SmtpError, SUBMISSIONS_PORT, authentication::Credentials,
+        AsyncSmtpTransportBuilder, Error as SmtpError, SUBMISSIONS_PORT,
+        authentication::Credentials,
     },
 };
 #[cfg(test)]
@@ -29,12 +30,14 @@ use crate::{
     templates::notifications::{
         CfsSubmissionUpdated, CommunityTeamInvitation, EmailVerification, EventAttendanceCanceled,
         EventCanceled, EventCustom, EventInvitation, EventPublished, EventRefundApproved,
-        EventRefundRejected, EventRefundRequested, EventReminder, EventRescheduled, EventSeriesCanceled,
-        EventSeriesPublished, EventWaitlistJoined, EventWaitlistLeft, EventWaitlistPromoted, EventWelcome,
-        GroupCustom, GroupTeamInvitation, GroupWelcome, SessionProposalCoSpeakerInvitation,
-        SpeakerSeriesWelcome, SpeakerWelcome,
+        EventRefundRejected, EventRefundRequested, EventReminder, EventRescheduled,
+        EventSeriesCanceled, EventSeriesPublished, EventWaitlistJoined, EventWaitlistLeft,
+        EventWaitlistPromoted, EventWelcome, GroupCustom, GroupTeamInvitation, GroupWelcome,
+        SessionProposalCoSpeakerInvitation, SpeakerSeriesWelcome, SpeakerWelcome,
     },
 };
+
+pub(crate) mod helpers;
 
 #[cfg(test)]
 mod tests;
@@ -451,7 +454,8 @@ impl DeliveryWorker {
             }
             NotificationKind::SessionProposalCoSpeakerInvitation => {
                 let subject = "Session proposal co-speaker invitation".to_string();
-                let template: SessionProposalCoSpeakerInvitation = serde_json::from_value(template_data)?;
+                let template: SessionProposalCoSpeakerInvitation =
+                    serde_json::from_value(template_data)?;
                 let body = template.render()?;
                 (subject, body)
             }
@@ -529,7 +533,10 @@ impl DeliveryWorker {
         loop {
             match self.send_email(to_address, subject, body.clone(), attachments).await {
                 Ok(()) => return Ok(()),
-                Err(err) if attempt < DELIVERY_SEND_MAX_ATTEMPTS && is_retryable_delivery_error(&err) => {
+                Err(err)
+                    if attempt < DELIVERY_SEND_MAX_ATTEMPTS
+                        && is_retryable_delivery_error(&err) =>
+                {
                     warn!(
                         %to_address,
                         attempt,

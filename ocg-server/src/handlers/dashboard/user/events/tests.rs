@@ -21,166 +21,6 @@ use crate::{
 };
 
 #[tokio::test]
-async fn test_list_page_success() {
-    // Setup identifiers and data structures.
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
-    let event_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let output = crate::templates::dashboard::user::events::UserEventsOutput {
-        events: vec![crate::templates::dashboard::user::events::UserEvent {
-            can_cancel_attendance: false,
-            can_complete_registration_questions: false,
-            event: sample_event_summary(event_id, group_id),
-            registration_answers: None,
-            registration_questions: vec![],
-            registration_questions_pending: false,
-            resume_checkout_url: None,
-            roles: vec!["Attendee".to_string(), "Host".to_string()],
-        }],
-        total: 1,
-    };
-
-    // Setup database mock.
-    let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_list_user_events()
-        .times(1)
-        .withf(move |uid, filters| {
-            *uid == user_id && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT) && filters.offset == Some(0)
-        })
-        .returning(move |_, _| Ok(output.clone()));
-
-    // Setup notifications manager mock.
-    let nm = MockNotificationsManager::new();
-
-    // Setup router and send request.
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("GET")
-        .uri("/dashboard/user/events")
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-    // Check response matches expectations.
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/html; charset=utf-8"),
-    );
-    assert!(!bytes.is_empty());
-}
-
-#[tokio::test]
-async fn test_list_page_with_pagination_params() {
-    // Setup identifiers and data structures.
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
-    let output = crate::templates::dashboard::user::events::UserEventsOutput {
-        events: vec![],
-        total: 0,
-    };
-
-    // Setup database mock.
-    let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_list_user_events()
-        .times(1)
-        .withf(move |uid, filters| *uid == user_id && filters.limit == Some(5) && filters.offset == Some(10))
-        .returning(move |_, _| Ok(output.clone()));
-
-    // Setup notifications manager mock.
-    let nm = MockNotificationsManager::new();
-
-    // Setup router and send request.
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("GET")
-        .uri("/dashboard/user/events?limit=5&offset=10")
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-    // Check response matches expectations.
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/html; charset=utf-8"),
-    );
-    assert!(!bytes.is_empty());
-}
-
-#[tokio::test]
-async fn test_list_page_db_error() {
-    // Setup identifiers and data structures.
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
-
-    // Setup database mock.
-    let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_list_user_events()
-        .times(1)
-        .withf(move |uid, filters| {
-            *uid == user_id && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT) && filters.offset == Some(0)
-        })
-        .returning(|_, _| Err(anyhow!("db error")));
-
-    // Setup notifications manager mock.
-    let nm = MockNotificationsManager::new();
-
-    // Setup router and send request.
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("GET")
-        .uri("/dashboard/user/events")
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-    // Check response matches expectations.
-    assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
-    assert!(bytes.is_empty());
-}
-
-#[tokio::test]
 async fn test_cancel_attendance_promotes_waitlisted_users_and_enqueues_notification() {
     // Setup identifiers and data structures.
     let community_id = Uuid::new_v4();
@@ -295,6 +135,281 @@ async fn test_cancel_attendance_promotes_waitlisted_users_and_enqueues_notificat
 }
 
 #[tokio::test]
+async fn test_cancel_attendance_rejects_non_attendee_status() {
+    // Setup identifiers and data structures.
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
+
+    // Setup database mock.
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_get_community_id_by_name()
+        .times(1)
+        .withf(|name| name == "test-community")
+        .returning(move |_| Ok(Some(community_id)));
+    db.expect_get_event_attendance()
+        .times(1)
+        .withf(move |cid, eid, uid| *cid == community_id && *eid == event_id && *uid == user_id)
+        .returning(|_, _, _| {
+            Ok(EventAttendanceInfo {
+                is_checked_in: false,
+                status: EventAttendanceStatus::Waitlisted,
+
+                purchase_amount_minor: None,
+                refund_request_status: None,
+                resume_checkout_url: None,
+            })
+        });
+    db.expect_leave_event().times(0);
+
+    // Setup notifications manager mock.
+    let mut nm = MockNotificationsManager::new();
+    nm.expect_enqueue().times(0);
+
+    // Setup router and send request.
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("DELETE")
+        .uri(format!(
+            "/dashboard/user/events/test-community/{event_id}/attendance"
+        ))
+        .header(COOKIE, format!("id={session_id}"))
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations.
+    assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
+    assert!(bytes.is_empty());
+}
+
+#[tokio::test]
+async fn test_cancel_attendance_returns_not_found_when_community_is_unknown() {
+    // Setup identifiers and data structures.
+    let event_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
+
+    // Setup database mock.
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_get_community_id_by_name()
+        .times(1)
+        .withf(|name| name == "missing-community")
+        .returning(|_| Ok(None));
+
+    // Setup notifications manager mock.
+    let mut nm = MockNotificationsManager::new();
+    nm.expect_enqueue().times(0);
+
+    // Setup router and send request.
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("DELETE")
+        .uri(format!(
+            "/dashboard/user/events/missing-community/{event_id}/attendance"
+        ))
+        .header(COOKIE, format!("id={session_id}"))
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations.
+    assert_eq!(parts.status, StatusCode::NOT_FOUND);
+    assert!(bytes.is_empty());
+}
+
+#[tokio::test]
+async fn test_list_page_db_error() {
+    // Setup identifiers and data structures.
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
+
+    // Setup database mock.
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_list_user_events()
+        .times(1)
+        .withf(move |uid, filters| {
+            *uid == user_id
+                && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
+                && filters.offset == Some(0)
+        })
+        .returning(|_, _| Err(anyhow!("db error")));
+
+    // Setup notifications manager mock.
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send request.
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("GET")
+        .uri("/dashboard/user/events")
+        .header(COOKIE, format!("id={session_id}"))
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations.
+    assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
+    assert!(bytes.is_empty());
+}
+
+#[tokio::test]
+async fn test_list_page_success() {
+    // Setup identifiers and data structures.
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let output = crate::templates::dashboard::user::events::UserEventsOutput {
+        events: vec![crate::templates::dashboard::user::events::UserEvent {
+            can_cancel_attendance: false,
+            can_complete_registration_questions: false,
+            event: sample_event_summary(event_id, group_id),
+            registration_answers: None,
+            registration_questions: vec![],
+            registration_questions_pending: false,
+            resume_checkout_url: None,
+            roles: vec!["Attendee".to_string(), "Host".to_string()],
+        }],
+        total: 1,
+    };
+
+    // Setup database mock.
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_list_user_events()
+        .times(1)
+        .withf(move |uid, filters| {
+            *uid == user_id
+                && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
+                && filters.offset == Some(0)
+        })
+        .returning(move |_, _| Ok(output.clone()));
+
+    // Setup notifications manager mock.
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send request.
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("GET")
+        .uri("/dashboard/user/events")
+        .header(COOKIE, format!("id={session_id}"))
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations.
+    assert_eq!(parts.status, StatusCode::OK);
+    assert_eq!(
+        parts.headers.get(CONTENT_TYPE).unwrap(),
+        &HeaderValue::from_static("text/html; charset=utf-8"),
+    );
+    assert!(!bytes.is_empty());
+}
+
+#[tokio::test]
+async fn test_list_page_with_pagination_params() {
+    // Setup identifiers and data structures.
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
+    let output = crate::templates::dashboard::user::events::UserEventsOutput {
+        events: vec![],
+        total: 0,
+    };
+
+    // Setup database mock.
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_list_user_events()
+        .times(1)
+        .withf(move |uid, filters| {
+            *uid == user_id && filters.limit == Some(5) && filters.offset == Some(10)
+        })
+        .returning(move |_, _| Ok(output.clone()));
+
+    // Setup notifications manager mock.
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send request.
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("GET")
+        .uri("/dashboard/user/events?limit=5&offset=10")
+        .header(COOKIE, format!("id={session_id}"))
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations.
+    assert_eq!(parts.status, StatusCode::OK);
+    assert_eq!(
+        parts.headers.get(CONTENT_TYPE).unwrap(),
+        &HeaderValue::from_static("text/html; charset=utf-8"),
+    );
+    assert!(!bytes.is_empty());
+}
+
+#[tokio::test]
 async fn test_submit_registration_answers_success() {
     // Setup identifiers and data structures.
     let community_id = Uuid::new_v4();
@@ -315,7 +430,8 @@ async fn test_submit_registration_answers_success() {
             }
         ]
     });
-    let form_body = serde_urlencoded::to_string([("registration_answers", answers.to_string())]).unwrap();
+    let form_body =
+        serde_urlencoded::to_string([("registration_answers", answers.to_string())]).unwrap();
 
     // Setup database mock.
     let mut db = MockDB::new();
@@ -408,7 +524,8 @@ async fn test_submit_registration_answers_update_skips_welcome_notification() {
             }
         ]
     });
-    let form_body = serde_urlencoded::to_string([("registration_answers", answers.to_string())]).unwrap();
+    let form_body =
+        serde_urlencoded::to_string([("registration_answers", answers.to_string())]).unwrap();
 
     // Setup database mock.
     let mut db = MockDB::new();

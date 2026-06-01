@@ -6,7 +6,6 @@ use axum::{
     http::{HeaderName, StatusCode},
     response::{Html, IntoResponse},
 };
-use serde_json::to_value;
 use tracing::{instrument, warn};
 use uuid::Uuid;
 
@@ -16,20 +15,22 @@ use crate::{
     handlers::{
         error::HandlerError,
         extractors::{CurrentUser, ValidatedForm},
-        notifications::enqueue_attendance_canceled_notification,
     },
     router::serde_qs_config,
-    services::notifications::{DynNotificationsManager, NewNotification, NotificationKind},
-    templates::{
-        dashboard::user::events,
-        notifications::{EventWaitlistPromoted, EventWelcome},
+    services::notifications::{
+        DynNotificationsManager,
+        helpers::{
+            build_event_attendance_canceled_notification,
+            build_event_waitlist_promoted_notification, build_event_welcome_notification,
+            should_send_waitlist_promoted_notification,
+        },
     },
+    templates::dashboard::user::events,
     types::{
         event::EventAttendanceStatus,
         pagination::{self, NavigationLinks},
         questionnaire::RequiredQuestionnaireAnswersForm,
     },
-    util::{build_event_calendar_attachment, build_event_page_link, build_user_dashboard_events_link},
 };
 
 #[cfg(test)]
@@ -81,7 +82,9 @@ pub(crate) async fn cancel_attendance(
     // Validate the row still represents active attendee attendance
     let attendance = db.get_event_attendance(community_id, event_id, user.user_id).await?;
     if attendance.status != EventAttendanceStatus::Attendee {
-        return Err(anyhow::anyhow!("only attendee attendance can be canceled from My Events").into());
+        return Err(
+            anyhow::anyhow!("only attendee attendance can be canceled from My Events").into(),
+        );
     }
 
     // Cancel the user's attendance and collect any waitlist promotions
@@ -103,36 +106,38 @@ pub(crate) async fn cancel_attendance(
     };
 
     // Confirm the canceled attendance to the user
-    if let Err(err) = enqueue_attendance_canceled_notification(
+    match build_event_attendance_canceled_notification(
         &event,
-        &notifications_manager,
         user.user_id,
         &server_cfg,
         &site_settings,
-    )
-    .await
-    {
-        warn!(error = %err, "failed to enqueue event attendance cancellation notification");
+    ) {
+        Ok(notification) => {
+            if let Err(err) = notifications_manager.enqueue(&notification).await {
+                warn!(error = %err, "failed to enqueue event attendance cancellation notification");
+            }
+        }
+        Err(err) => {
+            warn!(error = %err, "failed to build event attendance cancellation notification");
+        }
     }
 
     // Notify users promoted off the waitlist after a spot opens up
-    if !leave_result.promoted_user_ids.is_empty() && !event.test_event {
-        let base_url = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
-        let template_data = EventWaitlistPromoted {
-            event: event.clone(),
-            has_registration_questions: event.has_registration_questions,
-            link: build_event_page_link(base_url, &event),
-            theme: site_settings.theme,
-            dashboard_link: Some(build_user_dashboard_events_link(base_url)),
-        };
-        let notification = NewNotification {
-            attachments: vec![build_event_calendar_attachment(base_url, &event)],
-            kind: NotificationKind::EventWaitlistPromoted,
-            recipients: leave_result.promoted_user_ids,
-            template_data: Some(to_value(&template_data)?),
-        };
-        if let Err(err) = notifications_manager.enqueue(&notification).await {
-            warn!(error = %err, "failed to enqueue waitlist promotion notification");
+    if should_send_waitlist_promoted_notification(&event, &leave_result.promoted_user_ids) {
+        match build_event_waitlist_promoted_notification(
+            &event,
+            leave_result.promoted_user_ids,
+            &server_cfg,
+            &site_settings,
+        ) {
+            Ok(notification) => {
+                if let Err(err) = notifications_manager.enqueue(&notification).await {
+                    warn!(error = %err, "failed to enqueue waitlist promotion notification");
+                }
+            }
+            Err(err) => {
+                warn!(error = %err, "failed to build waitlist promotion notification");
+            }
         }
     }
 
@@ -160,7 +165,12 @@ pub(crate) async fn submit_registration_answers(
 
     // Persist answers and detect first-time registration completion
     let became_confirmed = db
-        .submit_event_registration_answers(user.user_id, community_id, event_id, &input.registration_answers)
+        .submit_event_registration_answers(
+            user.user_id,
+            community_id,
+            event_id,
+            &input.registration_answers,
+        )
         .await?;
 
     // Notify only when registration transitioned from pending to confirmed
@@ -187,24 +197,16 @@ pub(crate) async fn submit_registration_answers(
                 .into_response());
         }
     };
-    let base_url = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
-    let calendar_ics = build_event_calendar_attachment(base_url, &event);
-    let link = build_event_page_link(base_url, &event);
-    let template_data = EventWelcome {
-        event,
-        link,
-        theme: site_settings.theme,
-
-        dashboard_link: None,
-    };
-    let notification = NewNotification {
-        attachments: vec![calendar_ics],
-        kind: NotificationKind::EventWelcome,
-        recipients: vec![user.user_id],
-        template_data: Some(to_value(&template_data)?),
-    };
-    if let Err(err) = notifications_manager.enqueue(&notification).await {
-        warn!(error = %err, "failed to enqueue event welcome notification after questionnaire answers");
+    match build_event_welcome_notification(&event, user.user_id, &server_cfg, &site_settings, false)
+    {
+        Ok(notification) => {
+            if let Err(err) = notifications_manager.enqueue(&notification).await {
+                warn!(error = %err, "failed to enqueue event welcome notification after questionnaire answers");
+            }
+        }
+        Err(err) => {
+            warn!(error = %err, "failed to build event welcome notification after questionnaire answers");
+        }
     }
 
     Ok((

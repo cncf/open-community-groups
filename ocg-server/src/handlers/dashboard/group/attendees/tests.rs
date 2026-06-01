@@ -28,8 +28,8 @@ use crate::{
         event::{EventAttendanceStatus, EventLeaveOutcome},
         permissions::GroupPermission,
         questionnaire::{
-            QuestionnaireAnswer, QuestionnaireAnswerValue, QuestionnaireAnswers, QuestionnaireOption,
-            QuestionnaireQuestion, QuestionnaireQuestionKind,
+            QuestionnaireAnswer, QuestionnaireAnswerValue, QuestionnaireAnswers,
+            QuestionnaireOption, QuestionnaireQuestion, QuestionnaireQuestionKind,
         },
     },
 };
@@ -119,14 +119,12 @@ async fn test_accept_invitation_request_returns_no_content_and_sends_welcome() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert_eq!(
-        parts.headers.get("HX-Trigger"),
-        Some(&HeaderValue::from_static(
-            "refresh-event-attendees, refresh-event-invitation-requests"
-        ))
+    assert_empty_hx_trigger_response(
+        &parts,
+        &bytes,
+        StatusCode::NO_CONTENT,
+        "refresh-event-attendees, refresh-event-invitation-requests",
     );
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
@@ -204,12 +202,12 @@ async fn test_approve_refund_request_returns_no_content_when_payments_manager_su
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert_eq!(
-        parts.headers.get("HX-Trigger"),
-        Some(&HeaderValue::from_static("refresh-event-attendees"))
+    assert_empty_hx_trigger_response(
+        &parts,
+        &bytes,
+        StatusCode::NO_CONTENT,
+        "refresh-event-attendees",
     );
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
@@ -287,8 +285,7 @@ async fn test_approve_refund_request_returns_internal_server_error_when_payments
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
-    assert!(bytes.is_empty());
+    assert_empty_response(&parts, &bytes, StatusCode::INTERNAL_SERVER_ERROR);
 }
 
 #[tokio::test]
@@ -363,7 +360,8 @@ async fn test_cancel_event_attendee_attendance_promotes_waitlist_and_enqueues_no
                 && notification.template_data.as_ref().is_some_and(|value| {
                     from_value::<EventAttendanceCanceled>(value.clone()).is_ok_and(|template| {
                         template.dashboard_link == "https://ocg.test/dashboard/user?tab=events"
-                            && template.link == "https://ocg.test/test-community/group/def5678/event/ghi9abc"
+                            && template.link
+                                == "https://ocg.test/test-community/group/def5678/event/ghi9abc"
                     })
                 })
         })
@@ -380,7 +378,8 @@ async fn test_cancel_event_attendee_attendance_promotes_waitlist_and_enqueues_no
                         template.dashboard_link.as_deref()
                             == Some("https://ocg.test/dashboard/user?tab=events")
                             && template.has_registration_questions
-                            && template.link == "https://ocg.test/test-community/group/def5678/event/ghi9abc"
+                            && template.link
+                                == "https://ocg.test/test-community/group/def5678/event/ghi9abc"
                             && template.theme.primary_color == primary_color
                     })
                 })
@@ -408,12 +407,12 @@ async fn test_cancel_event_attendee_attendance_promotes_waitlist_and_enqueues_no
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert_eq!(
-        parts.headers.get("HX-Trigger"),
-        Some(&HeaderValue::from_static("refresh-event-attendees"))
+    assert_empty_hx_trigger_response(
+        &parts,
+        &bytes,
+        StatusCode::NO_CONTENT,
+        "refresh-event-attendees",
     );
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
@@ -478,12 +477,12 @@ async fn test_cancel_event_attendee_invitation_returns_no_content() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert_eq!(
-        parts.headers.get("HX-Trigger"),
-        Some(&HeaderValue::from_static("refresh-event-attendees"))
+    assert_empty_hx_trigger_response(
+        &parts,
+        &bytes,
+        StatusCode::NO_CONTENT,
+        "refresh-event-attendees",
     );
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
@@ -543,7 +542,10 @@ async fn test_download_csv_success() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id && *gid == group_id && *uid == user_id && permission == GroupPermission::Read
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::Read
         })
         .returning(|_, _, _, _| Ok(true));
     db.expect_search_event_attendees()
@@ -695,7 +697,10 @@ async fn test_download_csv_with_answers_success() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id && *gid == group_id && *uid == user_id && permission == GroupPermission::Read
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::Read
         })
         .returning(|_, _, _, _| Ok(true));
     db.expect_search_event_attendees()
@@ -741,7 +746,9 @@ async fn test_download_csv_with_answers_success() {
     );
     assert_eq!(
         parts.headers.get(CONTENT_DISPOSITION).unwrap(),
-        &HeaderValue::from_static("attachment; filename=\"event-ghi9abc-attendees-with-answers.csv\""),
+        &HeaderValue::from_static(
+            "attachment; filename=\"event-ghi9abc-attendees-with-answers.csv\""
+        ),
     );
     assert_eq!(
         String::from_utf8(bytes.to_vec()).unwrap(),
@@ -780,7 +787,10 @@ async fn test_generate_check_in_qr_code_success() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id && *gid == group_id && *uid == user_id && permission == GroupPermission::Read
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::Read
         })
         .returning(|_, _, _, _| Ok(true));
     db.expect_get_community_name_by_id()
@@ -878,7 +888,9 @@ async fn test_invite_event_attendee_returns_bad_request_when_target_conflicts() 
     let router = TestRouterBuilder::new(db, nm).build().await;
     let request = Request::builder()
         .method("POST")
-        .uri(format!("/dashboard/group/events/{event_id}/attendees/invite"))
+        .uri(format!(
+            "/dashboard/group/events/{event_id}/attendees/invite"
+        ))
         .header(COOKIE, format!("id={session_id}"))
         .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
         .body(Body::from(format!(
@@ -943,7 +955,9 @@ async fn test_invite_event_attendee_returns_bad_request_when_target_missing() {
     let router = TestRouterBuilder::new(db, nm).build().await;
     let request = Request::builder()
         .method("POST")
-        .uri(format!("/dashboard/group/events/{event_id}/attendees/invite"))
+        .uri(format!(
+            "/dashboard/group/events/{event_id}/attendees/invite"
+        ))
         .header(COOKIE, format!("id={session_id}"))
         .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
         .body(Body::from(""))
@@ -1044,7 +1058,9 @@ async fn test_invite_event_attendee_returns_created_and_sends_notification() {
         .await;
     let request = Request::builder()
         .method("POST")
-        .uri(format!("/dashboard/group/events/{event_id}/attendees/invite"))
+        .uri(format!(
+            "/dashboard/group/events/{event_id}/attendees/invite"
+        ))
         .header(COOKIE, format!("id={session_id}"))
         .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
         .body(Body::from("email=%20Invitee%40Example.com%20"))
@@ -1054,14 +1070,12 @@ async fn test_invite_event_attendee_returns_created_and_sends_notification() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::CREATED);
-    assert_eq!(
-        parts.headers.get("HX-Trigger"),
-        Some(&HeaderValue::from_static(
-            "refresh-event-attendees, refresh-event-waitlist"
-        ))
+    assert_empty_hx_trigger_response(
+        &parts,
+        &bytes,
+        StatusCode::CREATED,
+        "refresh-event-attendees, refresh-event-waitlist",
     );
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
@@ -1127,7 +1141,9 @@ async fn test_invite_event_attendee_returns_created_when_notification_context_fa
     let router = TestRouterBuilder::new(db, nm).build().await;
     let request = Request::builder()
         .method("POST")
-        .uri(format!("/dashboard/group/events/{event_id}/attendees/invite"))
+        .uri(format!(
+            "/dashboard/group/events/{event_id}/attendees/invite"
+        ))
         .header(COOKIE, format!("id={session_id}"))
         .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
         .body(Body::from(format!("user_id={invited_user_id}")))
@@ -1137,14 +1153,12 @@ async fn test_invite_event_attendee_returns_created_when_notification_context_fa
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::CREATED);
-    assert_eq!(
-        parts.headers.get("HX-Trigger"),
-        Some(&HeaderValue::from_static(
-            "refresh-event-attendees, refresh-event-waitlist"
-        ))
+    assert_empty_hx_trigger_response(
+        &parts,
+        &bytes,
+        StatusCode::CREATED,
+        "refresh-event-attendees, refresh-event-waitlist",
     );
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
@@ -1229,7 +1243,9 @@ async fn test_invite_event_attendee_returns_created_when_notification_enqueue_fa
         .await;
     let request = Request::builder()
         .method("POST")
-        .uri(format!("/dashboard/group/events/{event_id}/attendees/invite"))
+        .uri(format!(
+            "/dashboard/group/events/{event_id}/attendees/invite"
+        ))
         .header(COOKIE, format!("id={session_id}"))
         .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
         .body(Body::from(format!("user_id={invited_user_id}")))
@@ -1239,14 +1255,12 @@ async fn test_invite_event_attendee_returns_created_when_notification_enqueue_fa
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::CREATED);
-    assert_eq!(
-        parts.headers.get("HX-Trigger"),
-        Some(&HeaderValue::from_static(
-            "refresh-event-attendees, refresh-event-waitlist"
-        ))
+    assert_empty_hx_trigger_response(
+        &parts,
+        &bytes,
+        StatusCode::CREATED,
+        "refresh-event-attendees, refresh-event-waitlist",
     );
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
@@ -1287,7 +1301,10 @@ async fn test_list_page_success() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id && *gid == group_id && *uid == user_id && permission == GroupPermission::Read
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::Read
         })
         .returning(|_, _, _, _| Ok(true));
     db.expect_user_has_group_permission()
@@ -1333,11 +1350,7 @@ async fn test_list_page_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/html; charset=utf-8"),
-    );
+    assert_html_response(&parts, &bytes, StatusCode::OK);
     let body = std::str::from_utf8(&bytes).unwrap();
     assert!(body.contains("name=\"subject\""));
     assert!(body.contains("value=\"Test Group: Sample Event\""));
@@ -1381,7 +1394,10 @@ async fn test_list_page_with_pagination_params() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id && *gid == group_id && *uid == user_id && permission == GroupPermission::Read
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::Read
         })
         .returning(|_, _, _, _| Ok(true));
     db.expect_user_has_group_permission()
@@ -1429,11 +1445,7 @@ async fn test_list_page_with_pagination_params() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/html; charset=utf-8"),
-    );
+    assert_html_response(&parts, &bytes, StatusCode::OK);
     let body = std::str::from_utf8(&bytes).unwrap();
     assert!(body.contains("No confirmed attendees with verified email addresses."));
 }
@@ -1483,7 +1495,10 @@ async fn test_manual_check_in_success() {
     db.expect_manual_check_in_event()
         .times(1)
         .withf(move |actor_uid, cid, eid, uid| {
-            *actor_uid == user_id && *cid == community_id && *eid == event_id && *uid == target_user_id
+            *actor_uid == user_id
+                && *cid == community_id
+                && *eid == event_id
+                && *uid == target_user_id
         })
         .returning(|_, _, _, _| Ok(()));
 
@@ -1505,8 +1520,7 @@ async fn test_manual_check_in_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert!(bytes.is_empty());
+    assert_empty_response(&parts, &bytes, StatusCode::NO_CONTENT);
 }
 
 #[tokio::test]
@@ -1539,7 +1553,10 @@ async fn test_list_page_db_error() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id && *gid == group_id && *uid == user_id && permission == GroupPermission::Read
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::Read
         })
         .returning(|_, _, _, _| Ok(true));
     db.expect_user_has_group_permission()
@@ -1572,8 +1589,7 @@ async fn test_list_page_db_error() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
-    assert!(bytes.is_empty());
+    assert_empty_response(&parts, &bytes, StatusCode::INTERNAL_SERVER_ERROR);
 }
 
 #[tokio::test]
@@ -1638,12 +1654,12 @@ async fn test_reject_invitation_request_returns_no_content() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert_eq!(
-        parts.headers.get("HX-Trigger"),
-        Some(&HeaderValue::from_static("refresh-event-invitation-requests"))
+    assert_empty_hx_trigger_response(
+        &parts,
+        &bytes,
+        StatusCode::NO_CONTENT,
+        "refresh-event-invitation-requests",
     );
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
@@ -1721,12 +1737,12 @@ async fn test_reject_refund_request_returns_no_content_when_payments_manager_suc
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert_eq!(
-        parts.headers.get("HX-Trigger"),
-        Some(&HeaderValue::from_static("refresh-event-attendees"))
+    assert_empty_hx_trigger_response(
+        &parts,
+        &bytes,
+        StatusCode::NO_CONTENT,
+        "refresh-event-attendees",
     );
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
@@ -1851,8 +1867,7 @@ async fn test_send_event_custom_notification_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert!(bytes.is_empty());
+    assert_empty_response(&parts, &bytes, StatusCode::NO_CONTENT);
 }
 
 #[tokio::test]

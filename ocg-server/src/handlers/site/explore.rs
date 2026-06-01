@@ -25,7 +25,9 @@ use crate::{
     templates::{
         PageId,
         auth::User,
-        site::explore::{self, render_calendar_event_popover, render_event_popover, render_group_popover},
+        site::explore::{
+            self, render_calendar_event_popover, render_event_popover, render_group_popover,
+        },
     },
     types::{
         pagination::{self, NavigationLinks},
@@ -102,8 +104,10 @@ pub(crate) async fn events_section(
 
     // Prepare response headers
     let url = pagination::build_url("/explore?entity=events", &filters)?;
-    let headers =
-        search_response_headers_with_extra(filters.uses_viewer_location(), &[("HX-Push-Url", url.as_str())])?;
+    let headers = search_response_headers_with_extra(
+        filters.uses_viewer_location(),
+        &[("HX-Push-Url", url.as_str())],
+    )?;
 
     Ok((headers, Html(template.render()?)))
 }
@@ -121,15 +125,20 @@ pub(crate) async fn events_results_section(
 
     // Prepare response headers
     let url = pagination::build_url("/explore?entity=events", &filters)?;
-    let headers =
-        search_response_headers_with_extra(filters.uses_viewer_location(), &[("HX-Push-Url", url.as_str())])?;
+    let headers = search_response_headers_with_extra(
+        filters.uses_viewer_location(),
+        &[("HX-Push-Url", url.as_str())],
+    )?;
 
     Ok((headers, Html(template.render()?)))
 }
 
 /// Prepares the events section template.
 #[instrument(skip(db), err)]
-async fn prepare_events_section(db: &DynDB, filters: &SearchEventsFilters) -> Result<explore::EventsSection> {
+async fn prepare_events_section(
+    db: &DynDB,
+    filters: &SearchEventsFilters,
+) -> Result<explore::EventsSection> {
     // Pass community_name to get_filters_options only when exactly one is selected
     let community_name = if filters.community.len() == 1 {
         Some(filters.community[0].clone())
@@ -206,8 +215,10 @@ pub(crate) async fn groups_section(
 
     // Prepare response headers
     let url = pagination::build_url("/explore?entity=groups", &filters)?;
-    let headers =
-        search_response_headers_with_extra(filters.uses_viewer_location(), &[("HX-Push-Url", url.as_str())])?;
+    let headers = search_response_headers_with_extra(
+        filters.uses_viewer_location(),
+        &[("HX-Push-Url", url.as_str())],
+    )?;
 
     Ok((headers, Html(template.render()?)))
 }
@@ -225,15 +236,20 @@ pub(crate) async fn groups_results_section(
 
     // Prepare response headers
     let url = pagination::build_url("/explore?entity=groups", &filters)?;
-    let headers =
-        search_response_headers_with_extra(filters.uses_viewer_location(), &[("HX-Push-Url", url.as_str())])?;
+    let headers = search_response_headers_with_extra(
+        filters.uses_viewer_location(),
+        &[("HX-Push-Url", url.as_str())],
+    )?;
 
     Ok((headers, Html(template.render()?)))
 }
 
 /// Prepares groups section template.
 #[instrument(skip(db), err)]
-async fn prepare_groups_section(db: &DynDB, filters: &SearchGroupsFilters) -> Result<explore::GroupsSection> {
+async fn prepare_groups_section(
+    db: &DynDB,
+    filters: &SearchGroupsFilters,
+) -> Result<explore::GroupsSection> {
     // Pass community_name to get_filters_options only when exactly one is selected
     let community_name = if filters.community.len() == 1 {
         Some(filters.community[0].clone())
@@ -358,7 +374,10 @@ fn search_response_headers_with_extra(
 
     // Disable storage for location-sensitive search responses
     let mut headers = HeaderMap::new();
-    headers.insert(CACHE_CONTROL, HeaderValue::from_static(CACHE_CONTROL_NO_STORE));
+    headers.insert(
+        CACHE_CONTROL,
+        HeaderValue::from_static(CACHE_CONTROL_NO_STORE),
+    );
 
     // Add dynamic response headers
     for (key, value) in extra_headers {

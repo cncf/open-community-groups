@@ -12,9 +12,9 @@ use crate::{
 };
 
 use super::{
-    Attachment, DELIVERY_PROCESSING_TIMEOUT, DeliveryRecoveryWorker, DeliveryWorker, DynEmailSender,
-    EnqueueWorker, LettreEmailSender, MockEmailSender, NewNotification, Notification, NotificationKind,
-    NotificationsManager, PgNotificationsManager,
+    Attachment, DELIVERY_PROCESSING_TIMEOUT, DeliveryRecoveryWorker, DeliveryWorker,
+    DynEmailSender, EnqueueWorker, LettreEmailSender, MockEmailSender, NewNotification,
+    Notification, NotificationKind, NotificationsManager, PgNotificationsManager,
 };
 
 #[tokio::test]
@@ -566,13 +566,17 @@ fn test_delivery_worker_prepare_content_event_reminder() {
     assert!(body.contains("Reminder Event"));
     assert!(body.contains("Use your registration name when joining."));
     assert!(body.contains("If you can no longer attend"));
-    assert!(body.contains("You received this email notification because you're attending or speaking at"));
+    assert!(
+        body.contains(
+            "You received this email notification because you're attending or speaking at"
+        )
+    );
     assert!(body.contains("Reminder Event"));
     assert!(body.contains("Notification Group"));
     assert!(body.contains("Test Community community"));
-    assert!(
-        body.contains("https://example.test/test-community/group/notification-group/event/reminder-event")
-    );
+    assert!(body.contains(
+        "https://example.test/test-community/group/notification-group/event/reminder-event"
+    ));
     assert!(body.contains("https://example.test/dashboard/user?tab=events"));
 }
 
@@ -593,9 +597,9 @@ fn test_delivery_worker_prepare_content_event_reminder_legacy_template_data() {
     // Check content matches expectations
     assert_eq!(subject, "Reminder: Reminder Event starts in 24 hours");
     assert!(body.contains("Reminder Event"));
-    assert!(
-        body.contains("https://example.test/test-community/group/notification-group/event/reminder-event")
-    );
+    assert!(body.contains(
+        "https://example.test/test-community/group/notification-group/event/reminder-event"
+    ));
 }
 
 #[test]
@@ -769,9 +773,9 @@ fn test_delivery_worker_prepare_content_event_waitlist_promoted_with_registratio
     assert_eq!(subject, "You moved off the waiting list");
     assert!(body.contains("Open My Events"));
     assert!(body.contains("https://example.test/dashboard/user?tab=events"));
-    assert!(
-        !body.contains("https://example.test/test-community/group/notification-group/event/waitlist-event")
-    );
+    assert!(!body.contains(
+        "https://example.test/test-community/group/notification-group/event/waitlist-event"
+    ));
     assert!(body.contains("Waitlist Event"));
 }
 

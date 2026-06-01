@@ -45,12 +45,17 @@ async fn test_list_page_db_error() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id && *gid == group_id && *uid == user_id && permission == GroupPermission::Read
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::Read
         })
         .returning(|_, _, _, _| Ok(true));
     db.expect_list_group_audit_logs()
         .times(1)
-        .withf(move |id, filters| *id == group_id && filters.limit == Some(50) && filters.offset == Some(0))
+        .withf(move |id, filters| {
+            *id == group_id && filters.limit == Some(50) && filters.offset == Some(0)
+        })
         .returning(|_, _| Err(anyhow!("db error")));
 
     // Setup notifications manager mock
@@ -103,7 +108,10 @@ async fn test_list_page_success() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id && *gid == group_id && *uid == user_id && permission == GroupPermission::Read
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::Read
         })
         .returning(|_, _, _, _| Ok(true));
     db.expect_list_group_audit_logs()

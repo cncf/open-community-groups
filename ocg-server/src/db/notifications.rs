@@ -33,7 +33,8 @@ pub(crate) trait DBNotifications {
     async fn get_notification_attachment(&self, attachment_id: Uuid) -> Result<Attachment>;
 
     /// Marks stale claimed notifications with an unknown delivery outcome.
-    async fn mark_stale_processing_notifications_unknown(&self, timeout: Duration) -> Result<usize>;
+    async fn mark_stale_processing_notifications_unknown(&self, timeout: Duration)
+    -> Result<usize>;
 
     /// Tracks a custom notification after it's been successfully enqueued.
     async fn track_custom_notification(
@@ -47,7 +48,11 @@ pub(crate) trait DBNotifications {
     ) -> Result<()>;
 
     /// Updates a notification after a delivery attempt.
-    async fn update_notification(&self, notification: &Notification, error: Option<String>) -> Result<()>;
+    async fn update_notification(
+        &self,
+        notification: &Notification,
+        error: Option<String>,
+    ) -> Result<()>;
 }
 
 #[async_trait]
@@ -114,8 +119,8 @@ impl DBNotifications for PgDB {
             )
             .await?
             .get::<_, i32>(0);
-        let count =
-            usize::try_from(count).map_err(|_| anyhow!("enqueued reminders count cannot be negative"))?;
+        let count = usize::try_from(count)
+            .map_err(|_| anyhow!("enqueued reminders count cannot be negative"))?;
 
         Ok(count)
     }
@@ -197,7 +202,10 @@ impl DBNotifications for PgDB {
     }
 
     #[instrument(skip(self), err)]
-    async fn mark_stale_processing_notifications_unknown(&self, timeout: Duration) -> Result<usize> {
+    async fn mark_stale_processing_notifications_unknown(
+        &self,
+        timeout: Duration,
+    ) -> Result<usize> {
         // Convert timeout to the database integer type
         let timeout_seconds = i64::try_from(timeout.as_secs())
             .map_err(|_| anyhow!("processing timeout cannot exceed i64::MAX seconds"))?;
@@ -225,8 +233,8 @@ impl DBNotifications for PgDB {
         body: &str,
     ) -> Result<()> {
         // Convert recipient count to the database integer type
-        let recipient_count =
-            i32::try_from(recipient_count).map_err(|_| anyhow!("recipient count cannot exceed i32::MAX"))?;
+        let recipient_count = i32::try_from(recipient_count)
+            .map_err(|_| anyhow!("recipient count cannot exceed i32::MAX"))?;
 
         // Store the custom notification and corresponding audit entry
         self.execute(
@@ -255,7 +263,11 @@ impl DBNotifications for PgDB {
     /// Updates the notification record after processing, marking it as processed and
     /// recording any error.
     #[instrument(skip(self, notification), err)]
-    async fn update_notification(&self, notification: &Notification, error: Option<String>) -> Result<()> {
+    async fn update_notification(
+        &self,
+        notification: &Notification,
+        error: Option<String>,
+    ) -> Result<()> {
         // Mark the claimed notification as processed
         let db = self.pool.get().await?;
         db.execute(

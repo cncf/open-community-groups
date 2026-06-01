@@ -65,17 +65,21 @@ pub(crate) async fn page(
             let (_, template) = events::prepare_list_page(&db, user.user_id, raw_query).await?;
             Content::Events(template)
         }
-        Tab::Invitations => Content::Invitations(invitations::prepare_list_page(&db, user.user_id).await?),
+        Tab::Invitations => {
+            Content::Invitations(invitations::prepare_list_page(&db, user.user_id).await?)
+        }
         Tab::Logs => {
             let (_, template) = logs::prepare_list_page(&db, user.user_id, raw_query).await?;
             Content::Logs(template)
         }
         Tab::SessionProposals => {
-            let (_, template) = session_proposals::prepare_list_page(&db, user.user_id, raw_query).await?;
+            let (_, template) =
+                session_proposals::prepare_list_page(&db, user.user_id, raw_query).await?;
             Content::SessionProposals(template)
         }
         Tab::Submissions => {
-            let (_, template) = submissions::prepare_list_page(&db, user.user_id, raw_query).await?;
+            let (_, template) =
+                submissions::prepare_list_page(&db, user.user_id, raw_query).await?;
             Content::Submissions(template)
         }
     };

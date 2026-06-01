@@ -16,7 +16,16 @@ pub enum EventDiscountType {
 
 /// Status of a purchase recorded by the platform.
 #[derive(
-    Clone, Copy, Debug, Default, Eq, PartialEq, Serialize, Deserialize, strum::Display, strum::EnumString,
+    Clone,
+    Copy,
+    Debug,
+    Default,
+    Eq,
+    PartialEq,
+    Serialize,
+    Deserialize,
+    strum::Display,
+    strum::EnumString,
 )]
 #[serde(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
@@ -32,7 +41,16 @@ pub enum EventPurchaseStatus {
 
 /// Status of an attendee refund request.
 #[derive(
-    Clone, Copy, Debug, Default, Eq, PartialEq, Serialize, Deserialize, strum::Display, strum::EnumString,
+    Clone,
+    Copy,
+    Debug,
+    Default,
+    Eq,
+    PartialEq,
+    Serialize,
+    Deserialize,
+    strum::Display,
+    strum::EnumString,
 )]
 #[serde(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
@@ -54,7 +72,16 @@ pub enum PaymentMode {
 
 /// Supported payments providers.
 #[derive(
-    Clone, Copy, Debug, Default, Eq, PartialEq, Serialize, Deserialize, strum::Display, strum::EnumString,
+    Clone,
+    Copy,
+    Debug,
+    Default,
+    Eq,
+    PartialEq,
+    Serialize,
+    Deserialize,
+    strum::Display,
+    strum::EnumString,
 )]
 #[serde(rename_all = "snake_case")]
 #[strum(serialize_all = "snake_case")]
@@ -310,8 +337,8 @@ fn uses_zero_decimal_minor_units(currency_code: &str) -> bool {
 
 // ISO currency codes that are displayed without a fractional component
 const ZERO_DECIMAL_CURRENCY_CODES: [&str; 16] = [
-    "BIF", "CLP", "DJF", "GNF", "JPY", "KMF", "KRW", "MGA", "PYG", "RWF", "UGX", "VND", "VUV", "XAF", "XOF",
-    "XPF",
+    "BIF", "CLP", "DJF", "GNF", "JPY", "KMF", "KRW", "MGA", "PYG", "RWF", "UGX", "VND", "VUV",
+    "XAF", "XOF", "XPF",
 ];
 
 #[cfg(test)]

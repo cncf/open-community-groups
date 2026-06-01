@@ -67,9 +67,14 @@ async fn health_check() -> impl IntoResponse {
 
 /// Redirects the request to the canonical location or the community fallback.
 #[instrument(skip_all)]
-async fn redirect(AxumState(state): AxumState<State>, headers: HeaderMap, uri: Uri) -> impl IntoResponse {
+async fn redirect(
+    AxumState(state): AxumState<State>,
+    headers: HeaderMap,
+    uri: Uri,
+) -> impl IntoResponse {
     // Resolve the community from the redirector hostname
-    let Some(community_name) = community_name_from_headers(&headers, &state.redirect_host_suffix) else {
+    let Some(community_name) = community_name_from_headers(&headers, &state.redirect_host_suffix)
+    else {
         return StatusCode::NOT_FOUND.into_response();
     };
 
@@ -189,7 +194,10 @@ mod tests {
             Some("active-community".to_string())
         );
         assert_eq!(
-            community_name_from_host("ACTIVE-COMMUNITY.REDIRECTS.EXAMPLE:443", "redirects.example"),
+            community_name_from_host(
+                "ACTIVE-COMMUNITY.REDIRECTS.EXAMPLE:443",
+                "redirects.example"
+            ),
             Some("active-community".to_string())
         );
         assert_eq!(
@@ -205,7 +213,10 @@ mod tests {
             None
         );
         assert_eq!(
-            community_name_from_host("nested.active-community.redirects.example", "redirects.example"),
+            community_name_from_host(
+                "nested.active-community.redirects.example",
+                "redirects.example"
+            ),
             None
         );
         assert_eq!(
@@ -286,10 +297,12 @@ mod tests {
 
     #[tokio::test]
     async fn test_redirects_root_to_community_page() {
-        let router = test_router(test_community_redirects_with_legacy_fallback(HashMap::from([(
-            "/".to_string(),
-            "/active-community/group/root-group".to_string(),
-        )])));
+        let router = test_router(test_community_redirects_with_legacy_fallback(
+            HashMap::from([(
+                "/".to_string(),
+                "/active-community/group/root-group".to_string(),
+            )]),
+        ));
         let response = router.oneshot(test_request("/")).await.unwrap();
 
         assert_eq!(response.status(), StatusCode::PERMANENT_REDIRECT);
@@ -418,7 +431,9 @@ mod tests {
     }
 
     /// Builds test redirects for the active community with a legacy fallback.
-    fn test_community_redirects_with_legacy_fallback(redirects: HashMap<String, String>) -> Redirects {
+    fn test_community_redirects_with_legacy_fallback(
+        redirects: HashMap<String, String>,
+    ) -> Redirects {
         HashMap::from([(
             "active-community".to_string(),
             CommunityRedirects {

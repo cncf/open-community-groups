@@ -15,7 +15,8 @@ use crate::{
     types::site::SiteSettings,
     validation::{
         MAX_LEN_BIO, MAX_LEN_DISPLAY_NAME, MAX_LEN_L, MAX_LEN_M, MAX_LEN_S, MAX_LEN_TIMEZONE,
-        MIN_PASSWORD_LEN, image_url_opt, trimmed_non_empty, trimmed_non_empty_opt, trimmed_non_empty_tag_vec,
+        MIN_PASSWORD_LEN, image_url_opt, trimmed_non_empty, trimmed_non_empty_opt,
+        trimmed_non_empty_tag_vec,
     },
 };
 

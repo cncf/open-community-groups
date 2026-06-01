@@ -97,7 +97,10 @@ impl tower_sessions::SessionStore for SessionStore {
     }
 
     /// Load a session record by session ID from the database.
-    async fn load(&self, session_id: &session::Id) -> session_store::Result<Option<session::Record>> {
+    async fn load(
+        &self,
+        session_id: &session::Id,
+    ) -> session_store::Result<Option<session::Record>> {
         self.db
             .get_session(session_id)
             .await
@@ -270,11 +273,12 @@ impl AuthnBackend {
         let mut providers: OAuth2Providers = HashMap::new();
 
         for (provider, cfg) in oauth2_cfg {
-            let client = oauth2::basic::BasicClient::new(oauth2::ClientId::new(cfg.client_id.clone()))
-                .set_client_secret(oauth2::ClientSecret::new(cfg.client_secret.clone()))
-                .set_auth_uri(oauth2::AuthUrl::new(cfg.auth_url.clone())?)
-                .set_token_uri(oauth2::TokenUrl::new(cfg.token_url.clone())?)
-                .set_redirect_uri(oauth2::RedirectUrl::new(cfg.redirect_uri.clone())?);
+            let client =
+                oauth2::basic::BasicClient::new(oauth2::ClientId::new(cfg.client_id.clone()))
+                    .set_client_secret(oauth2::ClientSecret::new(cfg.client_secret.clone()))
+                    .set_auth_uri(oauth2::AuthUrl::new(cfg.auth_url.clone())?)
+                    .set_token_uri(oauth2::TokenUrl::new(cfg.token_url.clone())?)
+                    .set_redirect_uri(oauth2::RedirectUrl::new(cfg.redirect_uri.clone())?);
 
             providers.insert(
                 provider.clone(),
@@ -323,16 +327,24 @@ impl axum_login::AuthnBackend for AuthnBackend {
     type Error = AuthError;
 
     /// Authenticate a user using the provided credentials.
-    async fn authenticate(&self, creds: Self::Credentials) -> Result<Option<Self::User>, Self::Error> {
+    async fn authenticate(
+        &self,
+        creds: Self::Credentials,
+    ) -> Result<Option<Self::User>, Self::Error> {
         match creds {
             Credentials::OAuth2(creds) => self.authenticate_oauth2(creds).await.map_err(AuthError),
             Credentials::Oidc(creds) => self.authenticate_oidc(creds).await.map_err(AuthError),
-            Credentials::Password(creds) => self.authenticate_password(creds).await.map_err(AuthError),
+            Credentials::Password(creds) => {
+                self.authenticate_password(creds).await.map_err(AuthError)
+            }
         }
     }
 
     /// Retrieve a user by user ID from the database.
-    async fn get_user(&self, user_id: &axum_login::UserId<Self>) -> Result<Option<Self::User>, Self::Error> {
+    async fn get_user(
+        &self,
+        user_id: &axum_login::UserId<Self>,
+    ) -> Result<Option<Self::User>, Self::Error> {
         self.db.get_user_by_id(user_id).await.map_err(AuthError)
     }
 }
@@ -539,7 +551,10 @@ impl UserSummary {
         // Setup headers for GitHub API requests.
         let mut headers = HeaderMap::new();
         headers.insert(USER_AGENT, "open-community-groups".parse()?);
-        headers.insert(AUTHORIZATION, format!("Bearer {access_token}").as_str().parse()?);
+        headers.insert(
+            AUTHORIZATION,
+            format!("Bearer {access_token}").as_str().parse()?,
+        );
 
         // Get user profile from GitHub.
         let profile = reqwest::Client::new()
@@ -586,12 +601,15 @@ impl UserSummary {
 
         let email = claims.email().ok_or_else(|| anyhow!("email missing"))?.to_string();
         let name = get_localized_claim(claims.name()).ok_or_else(|| anyhow!("name missing"))?;
-        let username = get_localized_claim(claims.nickname()).ok_or_else(|| anyhow!("nickname missing"))?;
+        let username =
+            get_localized_claim(claims.nickname()).ok_or_else(|| anyhow!("nickname missing"))?;
 
         Ok(Self {
             email,
             name: name.to_string(),
-            provider: Some(UserProvider::from_linuxfoundation_username(username.to_string())),
+            provider: Some(UserProvider::from_linuxfoundation_username(
+                username.to_string(),
+            )),
             username: username.to_string(),
             has_password: Some(false),
             password: None,

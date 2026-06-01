@@ -119,7 +119,9 @@ async fn test_events_section_with_single_community() {
     let mut db = MockDB::new();
     db.expect_get_filters_options()
         .times(1)
-        .withf(|c, e| c == &Some("test-community".to_string()) && e == &Some(explore::Entity::Events))
+        .withf(|c, e| {
+            c == &Some("test-community".to_string()) && e == &Some(explore::Entity::Events)
+        })
         .returning(|_, _| Ok(sample_filters_options()));
     db.expect_search_events()
         .times(1)
@@ -243,7 +245,9 @@ async fn test_groups_section_with_single_community() {
     let mut db = MockDB::new();
     db.expect_get_filters_options()
         .times(1)
-        .withf(|c, e| c == &Some("test-community".to_string()) && e == &Some(explore::Entity::Groups))
+        .withf(|c, e| {
+            c == &Some("test-community".to_string()) && e == &Some(explore::Entity::Groups)
+        })
         .returning(|_, _| Ok(sample_filters_options()));
     db.expect_search_groups()
         .times(1)

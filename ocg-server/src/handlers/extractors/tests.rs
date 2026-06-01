@@ -375,7 +375,10 @@ async fn test_oauth2_extractor_missing_oauth2_provider() {
 
     // Setup router
     let router = Router::new()
-        .route("/log-in/oauth2", get(|_oauth2: OAuth2| async { StatusCode::OK }))
+        .route(
+            "/log-in/oauth2",
+            get(|_oauth2: OAuth2| async { StatusCode::OK }),
+        )
         .with_state(test_state(db, is, nm));
 
     // Send request
@@ -600,9 +603,10 @@ async fn test_selected_community_id_extractor_success() {
     let state = test_state(db, is, nm);
 
     // Check extraction matches expectations
-    let SelectedCommunityId(extracted) = SelectedCommunityId::from_request_parts(&mut parts, &state)
-        .await
-        .expect("extractor should succeed");
+    let SelectedCommunityId(extracted) =
+        SelectedCommunityId::from_request_parts(&mut parts, &state)
+            .await
+            .expect("extractor should succeed");
     assert_eq!(extracted, community_id);
 }
 
@@ -704,9 +708,9 @@ async fn test_validated_form_validation_error() {
     let router = Router::new()
         .route(
             "/test",
-            axum::routing::post(
-                |ValidatedForm(_form): ValidatedForm<TestForm>| async move { StatusCode::OK },
-            ),
+            axum::routing::post(|ValidatedForm(_form): ValidatedForm<TestForm>| async move {
+                StatusCode::OK
+            }),
         )
         .with_state(state);
 
@@ -737,11 +741,16 @@ async fn test_validated_form_qs_success() {
     let router = Router::new()
         .route(
             "/test",
-            axum::routing::post(|ValidatedFormQs(form): ValidatedFormQs<TestFormQs>| async move {
-                assert_eq!(form.name, "test name");
-                assert_eq!(form.tags, Some(vec!["tag1".to_string(), "tag2".to_string()]));
-                StatusCode::OK
-            }),
+            axum::routing::post(
+                |ValidatedFormQs(form): ValidatedFormQs<TestFormQs>| async move {
+                    assert_eq!(form.name, "test name");
+                    assert_eq!(
+                        form.tags,
+                        Some(vec!["tag1".to_string(), "tag2".to_string()])
+                    );
+                    StatusCode::OK
+                },
+            ),
         )
         .with_state(state);
 
@@ -772,9 +781,9 @@ async fn test_validated_form_qs_validation_error() {
     let router = Router::new()
         .route(
             "/test",
-            axum::routing::post(|ValidatedFormQs(_form): ValidatedFormQs<TestFormQs>| async move {
-                StatusCode::OK
-            }),
+            axum::routing::post(
+                |ValidatedFormQs(_form): ValidatedFormQs<TestFormQs>| async move { StatusCode::OK },
+            ),
         )
         .with_state(state);
 

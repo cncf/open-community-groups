@@ -1,6 +1,6 @@
 use axum::{
     body::{Body, to_bytes},
-    http::{HeaderValue, Request, StatusCode, header::COOKIE},
+    http::{Request, StatusCode, header::COOKIE},
 };
 use axum_login::tower_sessions::session;
 use serde_json::json;
@@ -79,12 +79,7 @@ async fn test_select_community_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert_eq!(
-        parts.headers.get("HX-Trigger").unwrap(),
-        &HeaderValue::from_static("refresh-body"),
-    );
-    assert!(bytes.is_empty());
+    assert_empty_hx_trigger_response(&parts, &bytes, StatusCode::NO_CONTENT, "refresh-body");
 }
 
 #[tokio::test]
@@ -95,7 +90,8 @@ async fn test_select_community_without_groups() {
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, Some(stale_group_id));
+    let session_record =
+        sample_session_record(session_id, user_id, &auth_hash, None, Some(stale_group_id));
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -145,10 +141,5 @@ async fn test_select_community_without_groups() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert_eq!(
-        parts.headers.get("HX-Trigger").unwrap(),
-        &HeaderValue::from_static("refresh-body"),
-    );
-    assert!(bytes.is_empty());
+    assert_empty_hx_trigger_response(&parts, &bytes, StatusCode::NO_CONTENT, "refresh-body");
 }

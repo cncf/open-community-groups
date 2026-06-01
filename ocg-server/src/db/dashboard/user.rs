@@ -27,13 +27,22 @@ use crate::{
 #[async_trait]
 pub(crate) trait DBDashboardUser {
     /// Accepts a pending community team invitation.
-    async fn accept_community_team_invitation(&self, actor_user_id: Uuid, community_id: Uuid) -> Result<()>;
+    async fn accept_community_team_invitation(
+        &self,
+        actor_user_id: Uuid,
+        community_id: Uuid,
+    ) -> Result<()>;
 
     /// Accepts a pending organizer-created event invitation.
-    async fn accept_event_attendee_invitation(&self, actor_user_id: Uuid, event_id: Uuid) -> Result<Uuid>;
+    async fn accept_event_attendee_invitation(
+        &self,
+        actor_user_id: Uuid,
+        event_id: Uuid,
+    ) -> Result<Uuid>;
 
     /// Accepts a pending group team invitation.
-    async fn accept_group_team_invitation(&self, actor_user_id: Uuid, group_id: Uuid) -> Result<()>;
+    async fn accept_group_team_invitation(&self, actor_user_id: Uuid, group_id: Uuid)
+    -> Result<()>;
 
     /// Accepts a pending co-speaker invitation for a session proposal.
     async fn accept_session_proposal_co_speaker_invitation(
@@ -50,7 +59,11 @@ pub(crate) trait DBDashboardUser {
     ) -> Result<Uuid>;
 
     /// Deletes a session proposal for the user.
-    async fn delete_session_proposal(&self, actor_user_id: Uuid, session_proposal_id: Uuid) -> Result<()>;
+    async fn delete_session_proposal(
+        &self,
+        actor_user_id: Uuid,
+        session_proposal_id: Uuid,
+    ) -> Result<()>;
 
     /// Gets the co-speaker user id for one of the user's session proposals.
     async fn get_session_proposal_co_speaker_user_id(
@@ -86,10 +99,17 @@ pub(crate) trait DBDashboardUser {
     async fn list_user_event_invitations(&self, user_id: Uuid) -> Result<Vec<EventInvitation>>;
 
     /// Lists upcoming events where the user participates.
-    async fn list_user_events(&self, user_id: Uuid, filters: &UserEventsFilters) -> Result<UserEventsOutput>;
+    async fn list_user_events(
+        &self,
+        user_id: Uuid,
+        filters: &UserEventsFilters,
+    ) -> Result<UserEventsOutput>;
 
     /// Lists all pending group team invitations for the user.
-    async fn list_user_group_team_invitations(&self, user_id: Uuid) -> Result<Vec<GroupTeamInvitation>>;
+    async fn list_user_group_team_invitations(
+        &self,
+        user_id: Uuid,
+    ) -> Result<Vec<GroupTeamInvitation>>;
 
     /// Lists pending co-speaker invitations for the user.
     async fn list_user_pending_session_proposal_co_speaker_invitations(
@@ -105,13 +125,22 @@ pub(crate) trait DBDashboardUser {
     ) -> Result<SessionProposalsOutput>;
 
     /// Rejects a pending community team invitation.
-    async fn reject_community_team_invitation(&self, actor_user_id: Uuid, community_id: Uuid) -> Result<()>;
+    async fn reject_community_team_invitation(
+        &self,
+        actor_user_id: Uuid,
+        community_id: Uuid,
+    ) -> Result<()>;
 
     /// Rejects a pending organizer-created event invitation.
-    async fn reject_event_attendee_invitation(&self, actor_user_id: Uuid, event_id: Uuid) -> Result<()>;
+    async fn reject_event_attendee_invitation(
+        &self,
+        actor_user_id: Uuid,
+        event_id: Uuid,
+    ) -> Result<()>;
 
     /// Rejects a pending group team invitation.
-    async fn reject_group_team_invitation(&self, actor_user_id: Uuid, group_id: Uuid) -> Result<()>;
+    async fn reject_group_team_invitation(&self, actor_user_id: Uuid, group_id: Uuid)
+    -> Result<()>;
 
     /// Rejects a pending co-speaker invitation for a session proposal.
     async fn reject_session_proposal_co_speaker_invitation(
@@ -121,7 +150,11 @@ pub(crate) trait DBDashboardUser {
     ) -> Result<()>;
 
     /// Resubmits a CFS submission for the user.
-    async fn resubmit_cfs_submission(&self, actor_user_id: Uuid, cfs_submission_id: Uuid) -> Result<()>;
+    async fn resubmit_cfs_submission(
+        &self,
+        actor_user_id: Uuid,
+        cfs_submission_id: Uuid,
+    ) -> Result<()>;
 
     /// Submits registration question answers for a user's event and returns whether it became confirmed.
     async fn submit_event_registration_answers(
@@ -141,14 +174,22 @@ pub(crate) trait DBDashboardUser {
     ) -> Result<()>;
 
     /// Withdraws a CFS submission for the user.
-    async fn withdraw_cfs_submission(&self, actor_user_id: Uuid, cfs_submission_id: Uuid) -> Result<()>;
+    async fn withdraw_cfs_submission(
+        &self,
+        actor_user_id: Uuid,
+        cfs_submission_id: Uuid,
+    ) -> Result<()>;
 }
 
 #[async_trait]
 impl DBDashboardUser for PgDB {
     /// [`DBDashboardUser::accept_community_team_invitation`]
     #[instrument(skip(self), err)]
-    async fn accept_community_team_invitation(&self, actor_user_id: Uuid, community_id: Uuid) -> Result<()> {
+    async fn accept_community_team_invitation(
+        &self,
+        actor_user_id: Uuid,
+        community_id: Uuid,
+    ) -> Result<()> {
         self.execute(
             "select accept_community_team_invitation($1::uuid, $2::uuid)",
             &[&actor_user_id, &community_id],
@@ -158,7 +199,11 @@ impl DBDashboardUser for PgDB {
 
     /// [`DBDashboardUser::accept_event_attendee_invitation`]
     #[instrument(skip(self), err)]
-    async fn accept_event_attendee_invitation(&self, actor_user_id: Uuid, event_id: Uuid) -> Result<Uuid> {
+    async fn accept_event_attendee_invitation(
+        &self,
+        actor_user_id: Uuid,
+        event_id: Uuid,
+    ) -> Result<Uuid> {
         self.fetch_scalar_one(
             "select accept_event_attendee_invitation($1::uuid, $2::uuid)::uuid",
             &[&actor_user_id, &event_id],
@@ -168,7 +213,11 @@ impl DBDashboardUser for PgDB {
 
     /// [`DBDashboardUser::accept_group_team_invitation`]
     #[instrument(skip(self), err)]
-    async fn accept_group_team_invitation(&self, actor_user_id: Uuid, group_id: Uuid) -> Result<()> {
+    async fn accept_group_team_invitation(
+        &self,
+        actor_user_id: Uuid,
+        group_id: Uuid,
+    ) -> Result<()> {
         self.execute(
             "select accept_group_team_invitation($1::uuid, $2::uuid)",
             &[&actor_user_id, &group_id],
@@ -206,7 +255,11 @@ impl DBDashboardUser for PgDB {
 
     /// [`DBDashboardUser::delete_session_proposal`]
     #[instrument(skip(self), err)]
-    async fn delete_session_proposal(&self, actor_user_id: Uuid, session_proposal_id: Uuid) -> Result<()> {
+    async fn delete_session_proposal(
+        &self,
+        actor_user_id: Uuid,
+        session_proposal_id: Uuid,
+    ) -> Result<()> {
         self.execute(
             "select delete_session_proposal($1::uuid, $2::uuid)",
             &[&actor_user_id, &session_proposal_id],
@@ -296,7 +349,11 @@ impl DBDashboardUser for PgDB {
 
     /// [`DBDashboardUser::list_user_events`]
     #[instrument(skip(self, filters), err)]
-    async fn list_user_events(&self, user_id: Uuid, filters: &UserEventsFilters) -> Result<UserEventsOutput> {
+    async fn list_user_events(
+        &self,
+        user_id: Uuid,
+        filters: &UserEventsFilters,
+    ) -> Result<UserEventsOutput> {
         self.fetch_json_one(
             "select list_user_events($1::uuid, $2::jsonb)",
             &[&user_id, &Json(filters)],
@@ -306,9 +363,15 @@ impl DBDashboardUser for PgDB {
 
     /// [`DBDashboardUser::list_user_group_team_invitations`]
     #[instrument(skip(self), err)]
-    async fn list_user_group_team_invitations(&self, user_id: Uuid) -> Result<Vec<GroupTeamInvitation>> {
-        self.fetch_json_one("select list_user_group_team_invitations($1::uuid)", &[&user_id])
-            .await
+    async fn list_user_group_team_invitations(
+        &self,
+        user_id: Uuid,
+    ) -> Result<Vec<GroupTeamInvitation>> {
+        self.fetch_json_one(
+            "select list_user_group_team_invitations($1::uuid)",
+            &[&user_id],
+        )
+        .await
     }
 
     /// [`DBDashboardUser::list_user_pending_session_proposal_co_speaker_invitations`]
@@ -340,7 +403,11 @@ impl DBDashboardUser for PgDB {
 
     /// [`DBDashboardUser::reject_community_team_invitation`]
     #[instrument(skip(self), err)]
-    async fn reject_community_team_invitation(&self, actor_user_id: Uuid, community_id: Uuid) -> Result<()> {
+    async fn reject_community_team_invitation(
+        &self,
+        actor_user_id: Uuid,
+        community_id: Uuid,
+    ) -> Result<()> {
         self.execute(
             "select reject_community_team_invitation($1::uuid, $2::uuid)",
             &[&actor_user_id, &community_id],
@@ -350,7 +417,11 @@ impl DBDashboardUser for PgDB {
 
     /// [`DBDashboardUser::reject_event_attendee_invitation`]
     #[instrument(skip(self), err)]
-    async fn reject_event_attendee_invitation(&self, actor_user_id: Uuid, event_id: Uuid) -> Result<()> {
+    async fn reject_event_attendee_invitation(
+        &self,
+        actor_user_id: Uuid,
+        event_id: Uuid,
+    ) -> Result<()> {
         self.execute(
             "select reject_event_attendee_invitation($1::uuid, $2::uuid)",
             &[&actor_user_id, &event_id],
@@ -360,7 +431,11 @@ impl DBDashboardUser for PgDB {
 
     /// [`DBDashboardUser::reject_group_team_invitation`]
     #[instrument(skip(self), err)]
-    async fn reject_group_team_invitation(&self, actor_user_id: Uuid, group_id: Uuid) -> Result<()> {
+    async fn reject_group_team_invitation(
+        &self,
+        actor_user_id: Uuid,
+        group_id: Uuid,
+    ) -> Result<()> {
         self.execute(
             "select reject_group_team_invitation($1::uuid, $2::uuid)",
             &[&actor_user_id, &group_id],
@@ -384,7 +459,11 @@ impl DBDashboardUser for PgDB {
 
     /// [`DBDashboardUser::resubmit_cfs_submission`]
     #[instrument(skip(self), err)]
-    async fn resubmit_cfs_submission(&self, actor_user_id: Uuid, cfs_submission_id: Uuid) -> Result<()> {
+    async fn resubmit_cfs_submission(
+        &self,
+        actor_user_id: Uuid,
+        cfs_submission_id: Uuid,
+    ) -> Result<()> {
         self.execute(
             "select resubmit_cfs_submission($1::uuid, $2::uuid)",
             &[&actor_user_id, &cfs_submission_id],
@@ -423,14 +502,22 @@ impl DBDashboardUser for PgDB {
     ) -> Result<()> {
         self.execute(
             "select update_session_proposal($1::uuid, $2::uuid, $3::jsonb)",
-            &[&actor_user_id, &session_proposal_id, &Json(session_proposal)],
+            &[
+                &actor_user_id,
+                &session_proposal_id,
+                &Json(session_proposal),
+            ],
         )
         .await
     }
 
     /// [`DBDashboardUser::withdraw_cfs_submission`]
     #[instrument(skip(self), err)]
-    async fn withdraw_cfs_submission(&self, actor_user_id: Uuid, cfs_submission_id: Uuid) -> Result<()> {
+    async fn withdraw_cfs_submission(
+        &self,
+        actor_user_id: Uuid,
+        cfs_submission_id: Uuid,
+    ) -> Result<()> {
         self.execute(
             "select withdraw_cfs_submission($1::uuid, $2::uuid)",
             &[&actor_user_id, &cfs_submission_id],

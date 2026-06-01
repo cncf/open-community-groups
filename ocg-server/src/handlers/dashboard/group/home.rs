@@ -95,7 +95,8 @@ pub(crate) async fn page(
         }
         Tab::Logs => {
             let (_, template) =
-                logs::prepare_list_page(&db, group_id, raw_query.as_deref().unwrap_or_default()).await?;
+                logs::prepare_list_page(&db, group_id, raw_query.as_deref().unwrap_or_default())
+                    .await?;
             Content::Logs(template)
         }
         Tab::Settings => {

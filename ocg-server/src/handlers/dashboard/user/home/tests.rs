@@ -1,10 +1,7 @@
 use anyhow::anyhow;
 use axum::{
     body::{Body, to_bytes},
-    http::{
-        HeaderValue, Request, StatusCode,
-        header::{CONTENT_TYPE, COOKIE},
-    },
+    http::{Request, StatusCode, header::COOKIE},
 };
 use axum_login::tower_sessions::session;
 use tower::ServiceExt;
@@ -61,12 +58,7 @@ async fn test_page_account_tab_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/html; charset=utf-8"),
-    );
-    assert!(!bytes.is_empty());
+    assert_html_response(&parts, &bytes, StatusCode::OK);
 }
 
 #[tokio::test]
@@ -94,7 +86,9 @@ async fn test_page_events_tab_success() {
     db.expect_list_user_events()
         .times(1)
         .withf(move |uid, filters| {
-            *uid == user_id && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT) && filters.offset == Some(0)
+            *uid == user_id
+                && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
+                && filters.offset == Some(0)
         })
         .returning(move |_, _| Ok(events_output.clone()));
     db.expect_get_site_settings()
@@ -117,12 +111,7 @@ async fn test_page_events_tab_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/html; charset=utf-8"),
-    );
-    assert!(!bytes.is_empty());
+    assert_html_response(&parts, &bytes, StatusCode::OK);
 }
 
 #[tokio::test]
@@ -180,12 +169,7 @@ async fn test_page_invitations_tab_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/html; charset=utf-8"),
-    );
-    assert!(!bytes.is_empty());
+    assert_html_response(&parts, &bytes, StatusCode::OK);
 }
 
 #[tokio::test]
@@ -236,12 +220,7 @@ async fn test_page_logs_tab_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/html; charset=utf-8"),
-    );
-    assert!(!bytes.is_empty());
+    assert_html_response(&parts, &bytes, StatusCode::OK);
 }
 
 #[tokio::test]
@@ -276,7 +255,9 @@ async fn test_page_session_proposals_tab_success() {
     db.expect_list_user_session_proposals()
         .times(1)
         .withf(move |uid, filters| {
-            *uid == user_id && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT) && filters.offset == Some(0)
+            *uid == user_id
+                && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
+                && filters.offset == Some(0)
         })
         .returning(move |_, _| Ok(session_proposals_output.clone()));
     db.expect_get_site_settings()
@@ -299,12 +280,7 @@ async fn test_page_session_proposals_tab_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/html; charset=utf-8"),
-    );
-    assert!(!bytes.is_empty());
+    assert_html_response(&parts, &bytes, StatusCode::OK);
 }
 
 #[tokio::test]
@@ -332,7 +308,9 @@ async fn test_page_submissions_tab_success() {
     db.expect_list_user_cfs_submissions()
         .times(1)
         .withf(move |uid, filters| {
-            *uid == user_id && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT) && filters.offset == Some(0)
+            *uid == user_id
+                && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
+                && filters.offset == Some(0)
         })
         .returning(move |_, _| Ok(submissions_output.clone()));
     db.expect_get_site_settings()
@@ -355,12 +333,7 @@ async fn test_page_submissions_tab_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/html; charset=utf-8"),
-    );
-    assert!(!bytes.is_empty());
+    assert_html_response(&parts, &bytes, StatusCode::OK);
 }
 
 #[tokio::test]
@@ -402,6 +375,5 @@ async fn test_page_db_error() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
-    assert!(bytes.is_empty());
+    assert_empty_response(&parts, &bytes, StatusCode::INTERNAL_SERVER_ERROR);
 }

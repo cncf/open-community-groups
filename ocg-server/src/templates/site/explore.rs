@@ -174,7 +174,9 @@ pub(crate) struct GroupCard {
 ///
 /// The explore page can display either events or groups. This enum determines which
 /// section is shown.
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, strum::Display, strum::EnumString)]
+#[derive(
+    Debug, Clone, Default, PartialEq, Serialize, Deserialize, strum::Display, strum::EnumString,
+)]
 #[strum(serialize_all = "kebab-case")]
 pub(crate) enum Entity {
     /// Explore events (default).
@@ -228,7 +230,9 @@ pub(crate) struct FilterOption {
 /// Render popover HTML for calendar view for an event.
 #[instrument(skip_all, err)]
 pub(crate) fn render_calendar_event_popover(event: &EventSummary) -> Result<String> {
-    let calendar_event = CalendarEventCard { event: event.clone() };
+    let calendar_event = CalendarEventCard {
+        event: event.clone(),
+    };
     let cfg = MinifyCfg::new();
     Ok(String::from_utf8(minify(
         calendar_event.render()?.as_bytes(),
@@ -239,15 +243,25 @@ pub(crate) fn render_calendar_event_popover(event: &EventSummary) -> Result<Stri
 /// Render popover HTML for map and calendar views for an event.
 #[instrument(skip_all, err)]
 pub(crate) fn render_event_popover(event: &EventSummary) -> Result<String> {
-    let home_event = HomeEventCard { event: event.clone() };
+    let home_event = HomeEventCard {
+        event: event.clone(),
+    };
     let cfg = MinifyCfg::new();
-    Ok(String::from_utf8(minify(home_event.render()?.as_bytes(), &cfg))?)
+    Ok(String::from_utf8(minify(
+        home_event.render()?.as_bytes(),
+        &cfg,
+    ))?)
 }
 
 /// Render popover HTML for map views for a group.
 #[instrument(skip_all, err)]
 pub(crate) fn render_group_popover(group: &GroupSummary) -> Result<String> {
-    let home_group = HomeGroupCard { group: group.clone() };
+    let home_group = HomeGroupCard {
+        group: group.clone(),
+    };
     let cfg = MinifyCfg::new();
-    Ok(String::from_utf8(minify(home_group.render()?.as_bytes(), &cfg))?)
+    Ok(String::from_utf8(minify(
+        home_group.render()?.as_bytes(),
+        &cfg,
+    ))?)
 }

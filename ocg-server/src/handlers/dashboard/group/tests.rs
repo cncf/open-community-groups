@@ -1,6 +1,6 @@
 use axum::{
     body::{Body, to_bytes},
-    http::{HeaderValue, Request, StatusCode, header::COOKIE},
+    http::{Request, StatusCode, header::COOKIE},
 };
 use axum_login::tower_sessions::session;
 use serde_json::json;
@@ -120,12 +120,7 @@ async fn test_select_community_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert_eq!(
-        parts.headers.get("HX-Trigger").unwrap(),
-        &HeaderValue::from_static("refresh-body"),
-    );
-    assert!(bytes.is_empty());
+    assert_empty_hx_trigger_response(&parts, &bytes, StatusCode::NO_CONTENT, "refresh-body");
 }
 
 #[tokio::test]
@@ -136,7 +131,8 @@ async fn test_select_group_success() {
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+    let session_record =
+        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -154,7 +150,9 @@ async fn test_select_group_success() {
         .returning(|_, _| Ok(true));
     db.expect_user_has_group_permission()
         .times(1)
-        .withf(move |cid, gid, uid, _permission| *cid == community_id && *gid == group_id && *uid == user_id)
+        .withf(move |cid, gid, uid, _permission| {
+            *cid == community_id && *gid == group_id && *uid == user_id
+        })
         .returning(|_, _, _, _| Ok(true));
     db.expect_update_session()
         .times(1)
@@ -183,10 +181,5 @@ async fn test_select_group_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert_eq!(
-        parts.headers.get("HX-Trigger").unwrap(),
-        &HeaderValue::from_static("refresh-body"),
-    );
-    assert!(bytes.is_empty());
+    assert_empty_hx_trigger_response(&parts, &bytes, StatusCode::NO_CONTENT, "refresh-body");
 }

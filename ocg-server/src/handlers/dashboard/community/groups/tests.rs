@@ -2,7 +2,7 @@ use anyhow::anyhow;
 use axum::{
     body::{Body, to_bytes},
     http::{
-        HeaderValue, Request, StatusCode,
+        Request, StatusCode,
         header::{CONTENT_TYPE, COOKIE, HOST},
     },
 };
@@ -27,7 +27,8 @@ async fn test_list_page_success() {
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+    let session_record =
+        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
     let ts_query = "rust".to_string();
     let groups_output = SearchGroupsOutput {
         groups: vec![sample_group_summary(group_id)],
@@ -53,7 +54,9 @@ async fn test_list_page_success() {
     db.expect_user_has_community_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == community_id && *uid == user_id && permission == CommunityPermission::GroupsWrite
+            *cid == community_id
+                && *uid == user_id
+                && permission == CommunityPermission::GroupsWrite
         })
         .returning(|_, _, _| Ok(true));
     db.expect_get_community_name_by_id()
@@ -91,12 +94,7 @@ async fn test_list_page_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/html; charset=utf-8"),
-    );
-    assert!(!bytes.is_empty());
+    assert_html_response(&parts, &bytes, StatusCode::OK);
 }
 
 #[tokio::test]
@@ -106,7 +104,8 @@ async fn test_list_page_db_error() {
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+    let session_record =
+        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -127,7 +126,9 @@ async fn test_list_page_db_error() {
     db.expect_user_has_community_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == community_id && *uid == user_id && permission == CommunityPermission::GroupsWrite
+            *cid == community_id
+                && *uid == user_id
+                && permission == CommunityPermission::GroupsWrite
         })
         .returning(|_, _, _| Ok(true));
     db.expect_get_community_name_by_id()
@@ -160,8 +161,7 @@ async fn test_list_page_db_error() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
-    assert!(bytes.is_empty());
+    assert_empty_response(&parts, &bytes, StatusCode::INTERNAL_SERVER_ERROR);
 }
 
 #[tokio::test]
@@ -171,7 +171,8 @@ async fn test_add_page_success() {
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+    let session_record =
+        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
     let categories = vec![sample_group_category()];
     let regions = vec![sample_group_region()];
 
@@ -194,7 +195,9 @@ async fn test_add_page_success() {
     db.expect_user_has_community_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == community_id && *uid == user_id && permission == CommunityPermission::GroupsWrite
+            *cid == community_id
+                && *uid == user_id
+                && permission == CommunityPermission::GroupsWrite
         })
         .returning(|_, _, _| Ok(true));
     db.expect_list_group_categories()
@@ -223,12 +226,7 @@ async fn test_add_page_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/html; charset=utf-8"),
-    );
-    assert!(!bytes.is_empty());
+    assert_html_response(&parts, &bytes, StatusCode::OK);
 }
 
 #[tokio::test]
@@ -238,7 +236,8 @@ async fn test_add_page_db_error() {
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+    let session_record =
+        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -259,7 +258,9 @@ async fn test_add_page_db_error() {
     db.expect_user_has_community_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == community_id && *uid == user_id && permission == CommunityPermission::GroupsWrite
+            *cid == community_id
+                && *uid == user_id
+                && permission == CommunityPermission::GroupsWrite
         })
         .returning(|_, _, _| Ok(true));
     db.expect_list_group_categories()
@@ -284,8 +285,7 @@ async fn test_add_page_db_error() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
-    assert!(bytes.is_empty());
+    assert_empty_response(&parts, &bytes, StatusCode::INTERNAL_SERVER_ERROR);
 }
 
 #[tokio::test]
@@ -296,7 +296,8 @@ async fn test_update_page_success() {
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+    let session_record =
+        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
     let categories = vec![sample_group_category()];
     let regions = vec![sample_group_region()];
     let group_full = sample_group_full(community_id, group_id);
@@ -320,7 +321,9 @@ async fn test_update_page_success() {
     db.expect_user_has_community_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == community_id && *uid == user_id && permission == CommunityPermission::GroupsWrite
+            *cid == community_id
+                && *uid == user_id
+                && permission == CommunityPermission::GroupsWrite
         })
         .returning(|_, _, _| Ok(true));
     db.expect_get_group_full()
@@ -353,12 +356,7 @@ async fn test_update_page_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/html; charset=utf-8"),
-    );
-    assert!(!bytes.is_empty());
+    assert_html_response(&parts, &bytes, StatusCode::OK);
 }
 
 #[tokio::test]
@@ -369,7 +367,8 @@ async fn test_update_page_db_error() {
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+    let session_record =
+        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -390,7 +389,9 @@ async fn test_update_page_db_error() {
     db.expect_user_has_community_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == community_id && *uid == user_id && permission == CommunityPermission::GroupsWrite
+            *cid == community_id
+                && *uid == user_id
+                && permission == CommunityPermission::GroupsWrite
         })
         .returning(|_, _, _| Ok(true));
     db.expect_get_group_full()
@@ -415,8 +416,7 @@ async fn test_update_page_db_error() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
-    assert!(bytes.is_empty());
+    assert_empty_response(&parts, &bytes, StatusCode::INTERNAL_SERVER_ERROR);
 }
 
 #[tokio::test]
@@ -428,7 +428,8 @@ async fn test_add_success_auto_selects_group() {
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+    let session_record =
+        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
     let body = serde_qs::to_string(&sample_group_form(category_id)).unwrap();
 
     // Setup database mock
@@ -444,7 +445,9 @@ async fn test_add_success_auto_selects_group() {
     db.expect_user_has_community_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == community_id && *uid == user_id && permission == CommunityPermission::GroupsWrite
+            *cid == community_id
+                && *uid == user_id
+                && permission == CommunityPermission::GroupsWrite
         })
         .returning(|_, _, _| Ok(true));
     db.expect_add_group()
@@ -486,12 +489,12 @@ async fn test_add_success_auto_selects_group() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::CREATED);
-    assert_eq!(
-        parts.headers.get("HX-Trigger").unwrap(),
-        &HeaderValue::from_static("refresh-community-dashboard-table"),
+    assert_empty_hx_trigger_response(
+        &parts,
+        &bytes,
+        StatusCode::CREATED,
+        "refresh-community-dashboard-table",
     );
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
@@ -525,7 +528,9 @@ async fn test_add_success_keeps_existing_group_selection() {
     db.expect_user_has_community_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == community_id && *uid == user_id && permission == CommunityPermission::GroupsWrite
+            *cid == community_id
+                && *uid == user_id
+                && permission == CommunityPermission::GroupsWrite
         })
         .returning(|_, _, _| Ok(true));
     db.expect_add_group()
@@ -553,12 +558,12 @@ async fn test_add_success_keeps_existing_group_selection() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::CREATED);
-    assert_eq!(
-        parts.headers.get("HX-Trigger").unwrap(),
-        &HeaderValue::from_static("refresh-community-dashboard-table"),
+    assert_empty_hx_trigger_response(
+        &parts,
+        &bytes,
+        StatusCode::CREATED,
+        "refresh-community-dashboard-table",
     );
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
@@ -568,7 +573,8 @@ async fn test_add_invalid_payload() {
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+    let session_record =
+        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -583,7 +589,9 @@ async fn test_add_invalid_payload() {
     db.expect_user_has_community_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == community_id && *uid == user_id && permission == CommunityPermission::GroupsWrite
+            *cid == community_id
+                && *uid == user_id
+                && permission == CommunityPermission::GroupsWrite
         })
         .returning(|_, _, _| Ok(true));
 
@@ -605,8 +613,7 @@ async fn test_add_invalid_payload() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
-    assert!(!bytes.is_empty());
+    assert_non_empty_response(&parts, &bytes, StatusCode::UNPROCESSABLE_ENTITY);
 }
 
 #[tokio::test]
@@ -617,7 +624,8 @@ async fn test_add_db_error() {
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+    let session_record =
+        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
     let body = serde_qs::to_string(&sample_group_form(category_id)).unwrap();
 
     // Setup database mock
@@ -633,7 +641,9 @@ async fn test_add_db_error() {
     db.expect_user_has_community_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == community_id && *uid == user_id && permission == CommunityPermission::GroupsWrite
+            *cid == community_id
+                && *uid == user_id
+                && permission == CommunityPermission::GroupsWrite
         })
         .returning(|_, _, _| Ok(true));
     db.expect_add_group()
@@ -661,8 +671,7 @@ async fn test_add_db_error() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
-    assert!(bytes.is_empty());
+    assert_empty_response(&parts, &bytes, StatusCode::INTERNAL_SERVER_ERROR);
 }
 
 #[tokio::test]
@@ -674,7 +683,8 @@ async fn test_update_success() {
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+    let session_record =
+        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
     let body = serde_qs::to_string(&sample_group_form(category_id)).unwrap();
 
     // Setup database mock
@@ -690,13 +700,18 @@ async fn test_update_success() {
     db.expect_user_has_community_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == community_id && *uid == user_id && permission == CommunityPermission::GroupsWrite
+            *cid == community_id
+                && *uid == user_id
+                && permission == CommunityPermission::GroupsWrite
         })
         .returning(|_, _, _| Ok(true));
     db.expect_update_group()
         .times(1)
         .withf(move |uid, cid, gid, group| {
-            *uid == user_id && *cid == community_id && *gid == group_id && group.category_id == category_id
+            *uid == user_id
+                && *cid == community_id
+                && *gid == group_id
+                && group.category_id == category_id
         })
         .returning(|_, _, _, _| Ok(()));
 
@@ -718,12 +733,12 @@ async fn test_update_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert_eq!(
-        parts.headers.get("HX-Trigger").unwrap(),
-        &HeaderValue::from_static("refresh-community-dashboard-table"),
+    assert_empty_hx_trigger_response(
+        &parts,
+        &bytes,
+        StatusCode::NO_CONTENT,
+        "refresh-community-dashboard-table",
     );
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
@@ -734,7 +749,8 @@ async fn test_update_invalid_payload() {
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+    let session_record =
+        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -749,7 +765,9 @@ async fn test_update_invalid_payload() {
     db.expect_user_has_community_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == community_id && *uid == user_id && permission == CommunityPermission::GroupsWrite
+            *cid == community_id
+                && *uid == user_id
+                && permission == CommunityPermission::GroupsWrite
         })
         .returning(|_, _, _| Ok(true));
 
@@ -771,8 +789,7 @@ async fn test_update_invalid_payload() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
-    assert!(!bytes.is_empty());
+    assert_non_empty_response(&parts, &bytes, StatusCode::UNPROCESSABLE_ENTITY);
 }
 
 #[tokio::test]
@@ -784,7 +801,8 @@ async fn test_update_db_error() {
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+    let session_record =
+        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
     let body = serde_qs::to_string(&sample_group_form(category_id)).unwrap();
 
     // Setup database mock
@@ -800,13 +818,18 @@ async fn test_update_db_error() {
     db.expect_user_has_community_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == community_id && *uid == user_id && permission == CommunityPermission::GroupsWrite
+            *cid == community_id
+                && *uid == user_id
+                && permission == CommunityPermission::GroupsWrite
         })
         .returning(|_, _, _| Ok(true));
     db.expect_update_group()
         .times(1)
         .withf(move |uid, cid, gid, group| {
-            *uid == user_id && *cid == community_id && *gid == group_id && group.category_id == category_id
+            *uid == user_id
+                && *cid == community_id
+                && *gid == group_id
+                && group.category_id == category_id
         })
         .returning(move |_, _, _, _| Err(anyhow!("db error")));
 
@@ -828,8 +851,7 @@ async fn test_update_db_error() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
-    assert!(bytes.is_empty());
+    assert_empty_response(&parts, &bytes, StatusCode::INTERNAL_SERVER_ERROR);
 }
 
 #[tokio::test]
@@ -840,7 +862,8 @@ async fn test_activate_success() {
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+    let session_record =
+        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -855,7 +878,9 @@ async fn test_activate_success() {
     db.expect_user_has_community_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == community_id && *uid == user_id && permission == CommunityPermission::GroupsWrite
+            *cid == community_id
+                && *uid == user_id
+                && permission == CommunityPermission::GroupsWrite
         })
         .returning(|_, _, _| Ok(true));
     db.expect_activate_group()
@@ -880,12 +905,12 @@ async fn test_activate_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert_eq!(
-        parts.headers.get("HX-Trigger").unwrap(),
-        &HeaderValue::from_static("refresh-community-dashboard-table"),
+    assert_empty_hx_trigger_response(
+        &parts,
+        &bytes,
+        StatusCode::NO_CONTENT,
+        "refresh-community-dashboard-table",
     );
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
@@ -896,7 +921,8 @@ async fn test_deactivate_success() {
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+    let session_record =
+        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -911,7 +937,9 @@ async fn test_deactivate_success() {
     db.expect_user_has_community_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == community_id && *uid == user_id && permission == CommunityPermission::GroupsWrite
+            *cid == community_id
+                && *uid == user_id
+                && permission == CommunityPermission::GroupsWrite
         })
         .returning(|_, _, _| Ok(true));
     db.expect_deactivate_group()
@@ -936,12 +964,12 @@ async fn test_deactivate_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert_eq!(
-        parts.headers.get("HX-Trigger").unwrap(),
-        &HeaderValue::from_static("refresh-community-dashboard-table"),
+    assert_empty_hx_trigger_response(
+        &parts,
+        &bytes,
+        StatusCode::NO_CONTENT,
+        "refresh-community-dashboard-table",
     );
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
@@ -974,7 +1002,9 @@ async fn test_delete_non_selected_group() {
     db.expect_user_has_community_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == community_id && *uid == user_id && permission == CommunityPermission::GroupsWrite
+            *cid == community_id
+                && *uid == user_id
+                && permission == CommunityPermission::GroupsWrite
         })
         .returning(|_, _, _| Ok(true));
     db.expect_delete_group()
@@ -999,12 +1029,12 @@ async fn test_delete_non_selected_group() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert_eq!(
-        parts.headers.get("HX-Trigger").unwrap(),
-        &HeaderValue::from_static("refresh-community-dashboard-table"),
+    assert_empty_hx_trigger_response(
+        &parts,
+        &bytes,
+        StatusCode::NO_CONTENT,
+        "refresh-community-dashboard-table",
     );
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
@@ -1036,7 +1066,9 @@ async fn test_delete_selected_group_updates_selection() {
     db.expect_user_has_community_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == community_id && *uid == user_id && permission == CommunityPermission::GroupsWrite
+            *cid == community_id
+                && *uid == user_id
+                && permission == CommunityPermission::GroupsWrite
         })
         .returning(|_, _, _| Ok(true));
     db.expect_delete_group()
@@ -1075,12 +1107,12 @@ async fn test_delete_selected_group_updates_selection() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert_eq!(
-        parts.headers.get("HX-Trigger").unwrap(),
-        &HeaderValue::from_static("refresh-community-dashboard-table"),
+    assert_empty_hx_trigger_response(
+        &parts,
+        &bytes,
+        StatusCode::NO_CONTENT,
+        "refresh-community-dashboard-table",
     );
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
@@ -1112,7 +1144,9 @@ async fn test_delete_selected_group_without_fallback_clears_selection() {
     db.expect_user_has_community_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == community_id && *uid == user_id && permission == CommunityPermission::GroupsWrite
+            *cid == community_id
+                && *uid == user_id
+                && permission == CommunityPermission::GroupsWrite
         })
         .returning(|_, _, _| Ok(true));
     db.expect_delete_group()
@@ -1125,7 +1159,9 @@ async fn test_delete_selected_group_without_fallback_clears_selection() {
         .returning(|_| Ok(vec![]));
     db.expect_update_session()
         .times(1)
-        .withf(move |record| record.id == session_id && !record.data.contains_key(SELECTED_GROUP_ID_KEY))
+        .withf(move |record| {
+            record.id == session_id && !record.data.contains_key(SELECTED_GROUP_ID_KEY)
+        })
         .returning(|_| Ok(()));
 
     // Setup notifications manager mock
@@ -1145,10 +1181,10 @@ async fn test_delete_selected_group_without_fallback_clears_selection() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert_eq!(
-        parts.headers.get("HX-Trigger").unwrap(),
-        &HeaderValue::from_static("refresh-community-dashboard-table"),
+    assert_empty_hx_trigger_response(
+        &parts,
+        &bytes,
+        StatusCode::NO_CONTENT,
+        "refresh-community-dashboard-table",
     );
-    assert!(bytes.is_empty());
 }

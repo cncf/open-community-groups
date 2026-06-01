@@ -1,9 +1,6 @@
 use axum::{
     body::{Body, to_bytes},
-    http::{
-        HeaderValue, Request, StatusCode,
-        header::{CONTENT_TYPE, COOKIE},
-    },
+    http::{Request, StatusCode, header::COOKIE},
 };
 use axum_login::tower_sessions::session;
 use tower::ServiceExt;
@@ -45,7 +42,10 @@ async fn test_page_analytics_tab_success() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id && *gid == group_id && *uid == user_id && permission == GroupPermission::Read
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::Read
         })
         .returning(|_, _, _, _| Ok(true));
     db.expect_list_user_groups()
@@ -76,12 +76,7 @@ async fn test_page_analytics_tab_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/html; charset=utf-8"),
-    );
-    assert!(!bytes.is_empty());
+    assert_html_response(&parts, &bytes, StatusCode::OK);
 }
 
 #[tokio::test]
@@ -116,7 +111,10 @@ async fn test_page_events_tab_success() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id && *gid == group_id && *uid == user_id && permission == GroupPermission::Read
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::Read
         })
         .returning(|_, _, _, _| Ok(true));
     db.expect_user_has_group_permission()
@@ -161,12 +159,7 @@ async fn test_page_events_tab_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/html; charset=utf-8"),
-    );
-    assert!(!bytes.is_empty());
+    assert_html_response(&parts, &bytes, StatusCode::OK);
 }
 
 #[tokio::test]
@@ -200,7 +193,10 @@ async fn test_page_logs_tab_success() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id && *gid == group_id && *uid == user_id && permission == GroupPermission::Read
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::Read
         })
         .returning(|_, _, _, _| Ok(true));
     db.expect_list_user_groups()
@@ -236,12 +232,7 @@ async fn test_page_logs_tab_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/html; charset=utf-8"),
-    );
-    assert!(!bytes.is_empty());
+    assert_html_response(&parts, &bytes, StatusCode::OK);
 }
 
 #[tokio::test]
@@ -280,7 +271,10 @@ async fn test_page_members_tab_success() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id && *gid == group_id && *uid == user_id && permission == GroupPermission::Read
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::Read
         })
         .returning(|_, _, _, _| Ok(true));
     db.expect_user_has_group_permission()
@@ -299,7 +293,9 @@ async fn test_page_members_tab_success() {
     db.expect_list_group_members()
         .times(1)
         .withf(move |id, filters| {
-            *id == group_id && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT) && filters.offset == Some(0)
+            *id == group_id
+                && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
+                && filters.offset == Some(0)
         })
         .returning(move |_, _| Ok(output.clone()));
     db.expect_get_group_summary()
@@ -326,11 +322,7 @@ async fn test_page_members_tab_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/html; charset=utf-8"),
-    );
+    assert_html_response(&parts, &bytes, StatusCode::OK);
     let body = std::str::from_utf8(&bytes).unwrap();
     assert!(body.contains("name=\"subject\""));
     assert!(body.contains("value=\"Test Group\""));
@@ -369,7 +361,10 @@ async fn test_page_settings_tab_success() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id && *gid == group_id && *uid == user_id && permission == GroupPermission::Read
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::Read
         })
         .returning(|_, _, _, _| Ok(true));
     db.expect_user_has_group_permission()
@@ -417,12 +412,7 @@ async fn test_page_settings_tab_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/html; charset=utf-8"),
-    );
-    assert!(!bytes.is_empty());
+    assert_html_response(&parts, &bytes, StatusCode::OK);
 }
 
 #[tokio::test]
@@ -460,7 +450,10 @@ async fn test_page_sponsors_tab_success() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id && *gid == group_id && *uid == user_id && permission == GroupPermission::Read
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::Read
         })
         .returning(|_, _, _, _| Ok(true));
     db.expect_user_has_group_permission()
@@ -505,12 +498,7 @@ async fn test_page_sponsors_tab_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/html; charset=utf-8"),
-    );
-    assert!(!bytes.is_empty());
+    assert_html_response(&parts, &bytes, StatusCode::OK);
 }
 
 #[tokio::test]
@@ -552,7 +540,10 @@ async fn test_page_team_tab_success() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id && *gid == group_id && *uid == user_id && permission == GroupPermission::Read
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::Read
         })
         .returning(|_, _, _, _| Ok(true));
     db.expect_user_has_group_permission()
@@ -571,7 +562,9 @@ async fn test_page_team_tab_success() {
     db.expect_list_group_team_members()
         .times(1)
         .withf(move |id, filters| {
-            *id == group_id && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT) && filters.offset == Some(0)
+            *id == group_id
+                && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
+                && filters.offset == Some(0)
         })
         .returning(move |_, _| Ok(output.clone()));
     db.expect_list_group_roles()
@@ -597,10 +590,5 @@ async fn test_page_team_tab_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/html; charset=utf-8"),
-    );
-    assert!(!bytes.is_empty());
+    assert_html_response(&parts, &bytes, StatusCode::OK);
 }

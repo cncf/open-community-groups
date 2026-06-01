@@ -33,7 +33,11 @@ pub(crate) async fn update_page(
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
     let (can_manage_settings, community) = tokio::try_join!(
-        db.user_has_community_permission(&community_id, &user.user_id, CommunityPermission::SettingsWrite),
+        db.user_has_community_permission(
+            &community_id,
+            &user.user_id,
+            CommunityPermission::SettingsWrite
+        ),
         db.get_community_full(community_id)
     )?;
     let template = settings::UpdatePage {

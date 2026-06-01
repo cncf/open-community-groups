@@ -10,7 +10,8 @@ use uuid::Uuid;
 
 use crate::{
     config::{
-        OAuth2Config, OAuth2Provider, OAuth2ProviderConfig, OidcConfig, OidcProvider, OidcProviderConfig,
+        OAuth2Config, OAuth2Provider, OAuth2ProviderConfig, OidcConfig, OidcProvider,
+        OidcProviderConfig,
     },
     db::{DynDB, mock::MockDB},
     types::user::{GitHubUserProvider, LinuxFoundationUserProvider, UserProvider},
@@ -308,7 +309,9 @@ async fn get_or_sign_up_external_user_merges_provider_into_existing_user() {
         .returning(move |_| Ok(Some(existing_user.clone())));
     db.expect_update_user_provider()
         .times(1)
-        .withf(move |user_id, provider| *user_id == existing_user_id && provider == &incoming_provider)
+        .withf(move |user_id, provider| {
+            *user_id == existing_user_id && provider == &incoming_provider
+        })
         .returning(|_, _| Ok(()));
     db.expect_sign_up_user().times(0);
     let db: DynDB = Arc::new(db);
@@ -346,7 +349,9 @@ async fn get_or_sign_up_external_user_sets_provider_for_existing_user_without_pr
         .returning(move |_| Ok(Some(existing_user.clone())));
     db.expect_update_user_provider()
         .times(1)
-        .withf(move |user_id, provider| *user_id == existing_user_id && provider == &incoming_provider)
+        .withf(move |user_id, provider| {
+            *user_id == existing_user_id && provider == &incoming_provider
+        })
         .returning(|_, _| Ok(()));
     db.expect_sign_up_user().times(0);
     let db: DynDB = Arc::new(db);
@@ -675,7 +680,12 @@ fn user_summary_from_oidc_id_token_claims_rejects_missing_email() {
 #[test]
 fn user_summary_from_oidc_id_token_claims_rejects_missing_name() {
     // Setup invalid claims
-    let claims = sample_oidc_claims(Some("user@example.com"), Some(true), None, Some("test-user"));
+    let claims = sample_oidc_claims(
+        Some("user@example.com"),
+        Some(true),
+        None,
+        Some("test-user"),
+    );
 
     // Execute conversion
     let result = UserSummary::from_oidc_id_token_claims(&claims);
@@ -688,7 +698,12 @@ fn user_summary_from_oidc_id_token_claims_rejects_missing_name() {
 #[test]
 fn user_summary_from_oidc_id_token_claims_rejects_missing_nickname() {
     // Setup invalid claims
-    let claims = sample_oidc_claims(Some("user@example.com"), Some(true), Some("Test User"), None);
+    let claims = sample_oidc_claims(
+        Some("user@example.com"),
+        Some(true),
+        Some("Test User"),
+        None,
+    );
 
     // Execute conversion
     let result = UserSummary::from_oidc_id_token_claims(&claims);
@@ -778,8 +793,9 @@ fn sample_oidc_claims(
     standard_claims =
         standard_claims.set_email(email.map(|value| oidc::EndUserEmail::new(value.to_string())));
     standard_claims = standard_claims.set_email_verified(email_verified);
-    standard_claims = standard_claims
-        .set_name(name.map(|value| LocalizedClaim::from(oidc::EndUserName::new(value.to_string()))));
+    standard_claims = standard_claims.set_name(
+        name.map(|value| LocalizedClaim::from(oidc::EndUserName::new(value.to_string()))),
+    );
     standard_claims = standard_claims.set_nickname(
         nickname.map(|value| LocalizedClaim::from(oidc::EndUserNickname::new(value.to_string()))),
     );
@@ -800,7 +816,11 @@ fn sample_oidc_provider_config() -> OidcProviderConfig {
         client_secret: "client-secret".to_string(),
         issuer_url: "https://issuer.example.com".to_string(),
         redirect_uri: "https://example.com/oidc/callback".to_string(),
-        scopes: vec!["openid".to_string(), "email".to_string(), "profile".to_string()],
+        scopes: vec![
+            "openid".to_string(),
+            "email".to_string(),
+            "profile".to_string(),
+        ],
     }
 }
 

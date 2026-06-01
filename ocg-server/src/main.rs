@@ -20,13 +20,19 @@ use tracing::{error, info};
 use tracing_subscriber::EnvFilter;
 
 use crate::{
-    config::{Config, HttpServerConfig, ImageStorageConfig, LogFormat, MeetingsConfig, PaymentsConfig},
+    config::{
+        Config, HttpServerConfig, ImageStorageConfig, LogFormat, MeetingsConfig, PaymentsConfig,
+    },
     db::PgDB,
     services::{
         images::{DbImageStorage, DynImageStorage, S3ImageStorage},
-        meetings::{DynMeetingsProvider, MeetingProvider, MeetingsManager, zoom::ZoomMeetingsProvider},
+        meetings::{
+            DynMeetingsProvider, MeetingProvider, MeetingsManager, zoom::ZoomMeetingsProvider,
+        },
         notifications::{DynEmailSender, LettreEmailSender, PgNotificationsManager},
-        payments::{DynPaymentsManager, DynPaymentsProvider, PgPaymentsManager, build_payments_provider},
+        payments::{
+            DynPaymentsManager, DynPaymentsProvider, PgPaymentsManager, build_payments_provider,
+        },
     },
 };
 
@@ -237,7 +243,10 @@ fn setup_payments_manager(
 }
 
 /// Configure the activity tracker and start its workers.
-fn setup_activity_tracker(db: Arc<PgDB>, background_tasks: &BackgroundTasks) -> Arc<ActivityTrackerDB> {
+fn setup_activity_tracker(
+    db: Arc<PgDB>,
+    background_tasks: &BackgroundTasks,
+) -> Arc<ActivityTrackerDB> {
     Arc::new(ActivityTrackerDB::new(
         db,
         &background_tasks.task_tracker,

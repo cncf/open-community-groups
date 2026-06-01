@@ -23,8 +23,13 @@ async fn test_search_user_success() {
     let session_user_id = Uuid::new_v4();
     let search_user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
-    let session_record =
-        sample_session_record(session_id, session_user_id, &auth_hash, Some(community_id), None);
+    let session_record = sample_session_record(
+        session_id,
+        session_user_id,
+        &auth_hash,
+        Some(community_id),
+        None,
+    );
     let expected_users = vec![sample_dashboard_user(search_user_id)];
     let expected_body = to_value(&expected_users).unwrap();
 
@@ -41,7 +46,9 @@ async fn test_search_user_success() {
     db.expect_user_has_community_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == community_id && *uid == session_user_id && permission == CommunityPermission::TeamWrite
+            *cid == community_id
+                && *uid == session_user_id
+                && permission == CommunityPermission::TeamWrite
         })
         .returning(|_, _, _| Ok(true));
     db.expect_search_user()
@@ -82,8 +89,13 @@ async fn test_search_user_missing_query() {
     let session_id = session::Id::default();
     let session_user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
-    let session_record =
-        sample_session_record(session_id, session_user_id, &auth_hash, Some(community_id), None);
+    let session_record = sample_session_record(
+        session_id,
+        session_user_id,
+        &auth_hash,
+        Some(community_id),
+        None,
+    );
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -98,7 +110,9 @@ async fn test_search_user_missing_query() {
     db.expect_user_has_community_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == community_id && *uid == session_user_id && permission == CommunityPermission::TeamWrite
+            *cid == community_id
+                && *uid == session_user_id
+                && permission == CommunityPermission::TeamWrite
         })
         .returning(|_, _, _| Ok(true));
 

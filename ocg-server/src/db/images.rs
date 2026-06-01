@@ -17,8 +17,13 @@ pub(crate) trait DBImages {
     async fn is_open_graph_image(&self, file_name: &str) -> Result<bool>;
 
     /// Saves the provided image.
-    async fn save_image(&self, user_id: Uuid, file_name: &str, data: &[u8], content_type: &str)
-    -> Result<()>;
+    async fn save_image(
+        &self,
+        user_id: Uuid,
+        file_name: &str,
+        data: &[u8],
+        content_type: &str,
+    ) -> Result<()>;
 }
 
 #[async_trait]

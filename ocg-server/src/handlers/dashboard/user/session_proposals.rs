@@ -163,7 +163,9 @@ pub(crate) async fn update(
         .get_session_proposal_co_speaker_user_id(user.user_id, session_proposal_id)
         .await?;
     let Some(previous_session_proposal) = previous_session_proposal else {
-        return Err(HandlerError::Database("session proposal not found".to_string()));
+        return Err(HandlerError::Database(
+            "session proposal not found".to_string(),
+        ));
     };
     let previous_co_speaker_user_id = previous_session_proposal.co_speaker_user_id;
 
@@ -252,7 +254,8 @@ pub(crate) async fn prepare_list_page(
     HandlerError,
 > {
     // Fetch pending invitations, session proposal levels, and session proposals
-    let filters: session_proposals::SessionProposalsFilters = serde_qs_config().deserialize_str(raw_query)?;
+    let filters: session_proposals::SessionProposalsFilters =
+        serde_qs_config().deserialize_str(raw_query)?;
     let (pending_co_speaker_invitations, session_proposal_levels, session_proposals_output) = tokio::try_join!(
         db.list_user_pending_session_proposal_co_speaker_invitations(user_id),
         db.list_session_proposal_levels(),

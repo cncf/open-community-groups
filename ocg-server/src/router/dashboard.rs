@@ -31,8 +31,12 @@ pub(super) fn setup_community_dashboard_router(state: &State) -> Router<State> {
             auth::user_has_selected_community_permission,
         )
     };
-    let check_community_dashboard_permission =
-        || middleware::from_fn_with_state(state.db.clone(), auth::user_has_community_dashboard_permission);
+    let check_community_dashboard_permission = || {
+        middleware::from_fn_with_state(
+            state.db.clone(),
+            auth::user_has_community_dashboard_permission,
+        )
+    };
 
     // Read-only community dashboard endpoints
     let dashboard_read = Router::new()
@@ -79,7 +83,9 @@ pub(super) fn setup_community_dashboard_router(state: &State) -> Router<State> {
             "/regions/{region_id}/update",
             get(dashboard::community::regions::update_page),
         )
-        .route_layer(check_selected_community_permission(CommunityPermission::Read));
+        .route_layer(check_selected_community_permission(
+            CommunityPermission::Read,
+        ));
 
     // Community groups management endpoints
     let groups_management = Router::new()
@@ -106,7 +112,10 @@ pub(super) fn setup_community_dashboard_router(state: &State) -> Router<State> {
 
     // Community settings management endpoints
     let settings_management = Router::new()
-        .route("/settings/update", put(dashboard::community::settings::update))
+        .route(
+            "/settings/update",
+            put(dashboard::community::settings::update),
+        )
         .route_layer(check_selected_community_permission(
             CommunityPermission::SettingsWrite,
         ));
@@ -170,7 +179,8 @@ pub(super) fn setup_community_dashboard_router(state: &State) -> Router<State> {
     Router::new()
         .route(
             "/",
-            get(dashboard::community::home::page).route_layer(check_community_dashboard_permission()),
+            get(dashboard::community::home::page)
+                .route_layer(check_community_dashboard_permission()),
         )
         .merge(dashboard_read)
         .merge(groups_management)
@@ -247,7 +257,10 @@ pub(super) fn setup_group_dashboard_router(state: &State) -> Router<State> {
         )
         .route("/logs", get(dashboard::group::logs::list_page))
         .route("/members", get(dashboard::group::members::list_page))
-        .route("/settings/update", get(dashboard::group::settings::update_page))
+        .route(
+            "/settings/update",
+            get(dashboard::group::settings::update_page),
+        )
         .route("/sponsors", get(dashboard::group::sponsors::list_page))
         .route("/sponsors/add", get(dashboard::group::sponsors::add_page))
         .route(
@@ -293,7 +306,10 @@ pub(super) fn setup_group_dashboard_router(state: &State) -> Router<State> {
             "/events/{event_id}/attendees/{user_id}/refund/reject",
             put(dashboard::group::attendees::reject_refund_request),
         )
-        .route("/events/{event_id}/cancel", put(dashboard::group::events::cancel))
+        .route(
+            "/events/{event_id}/cancel",
+            put(dashboard::group::events::cancel),
+        )
         .route(
             "/events/{event_id}/delete",
             delete(dashboard::group::events::delete),
@@ -310,13 +326,18 @@ pub(super) fn setup_group_dashboard_router(state: &State) -> Router<State> {
             "/events/{event_id}/unpublish",
             put(dashboard::group::events::unpublish),
         )
-        .route("/events/{event_id}/update", put(dashboard::group::events::update))
+        .route(
+            "/events/{event_id}/update",
+            put(dashboard::group::events::update),
+        )
         .route(
             "/notifications/{event_id}",
             post(dashboard::group::attendees::send_event_custom_notification),
         )
         .route("/users/search", get(common::search_user))
-        .route_layer(check_selected_group_permission(GroupPermission::EventsWrite));
+        .route_layer(check_selected_group_permission(
+            GroupPermission::EventsWrite,
+        ));
 
     // Group member management endpoints
     let members_management = Router::new()
@@ -324,12 +345,16 @@ pub(super) fn setup_group_dashboard_router(state: &State) -> Router<State> {
             "/notifications",
             post(dashboard::group::members::send_group_custom_notification),
         )
-        .route_layer(check_selected_group_permission(GroupPermission::MembersWrite));
+        .route_layer(check_selected_group_permission(
+            GroupPermission::MembersWrite,
+        ));
 
     // Group settings management endpoints
     let settings_management = Router::new()
         .route("/settings/update", put(dashboard::group::settings::update))
-        .route_layer(check_selected_group_permission(GroupPermission::SettingsWrite));
+        .route_layer(check_selected_group_permission(
+            GroupPermission::SettingsWrite,
+        ));
 
     // Group sponsor management endpoints
     let sponsors_management = Router::new()
@@ -346,13 +371,21 @@ pub(super) fn setup_group_dashboard_router(state: &State) -> Router<State> {
             "/sponsors/{group_sponsor_id}/update",
             put(dashboard::group::sponsors::update),
         )
-        .route_layer(check_selected_group_permission(GroupPermission::SponsorsWrite));
+        .route_layer(check_selected_group_permission(
+            GroupPermission::SponsorsWrite,
+        ));
 
     // Group team management endpoints
     let team_management = Router::new()
         .route("/team/add", post(dashboard::group::team::add))
-        .route("/team/{user_id}/delete", delete(dashboard::group::team::delete))
-        .route("/team/{user_id}/role", put(dashboard::group::team::update_role))
+        .route(
+            "/team/{user_id}/delete",
+            delete(dashboard::group::team::delete),
+        )
+        .route(
+            "/team/{user_id}/role",
+            put(dashboard::group::team::update_role),
+        )
         .route_layer(check_selected_group_permission(GroupPermission::TeamWrite));
 
     // Setup router
@@ -416,7 +449,8 @@ pub(super) fn setup_user_dashboard_router() -> Router<State> {
         .route("/logs", get(dashboard::user::logs::list_page))
         .route(
             "/session-proposals",
-            get(dashboard::user::session_proposals::list_page).post(dashboard::user::session_proposals::add),
+            get(dashboard::user::session_proposals::list_page)
+                .post(dashboard::user::session_proposals::add),
         )
         .route(
             "/session-proposals/{session_proposal_id}",

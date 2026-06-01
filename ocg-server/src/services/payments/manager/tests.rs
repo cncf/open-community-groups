@@ -15,7 +15,9 @@ use crate::{
     },
     services::{
         notifications::{MockNotificationsManager, NotificationKind},
-        payments::{CheckoutSession, MockPaymentsProvider, PaymentsWebhookEvent, RefundPaymentResult},
+        payments::{
+            CheckoutSession, MockPaymentsProvider, PaymentsWebhookEvent, RefundPaymentResult,
+        },
     },
     templates::notifications::EventRefundRequested,
     types::{
@@ -429,7 +431,8 @@ async fn get_or_create_checkout_redirect_url_creates_session_and_persists_it() {
     prepared_checkout.group_slug_pretty = Some("pretty-group".to_string());
 
     // Run the checkout session workflow
-    let manager = sample_payments_manager(db, MockNotificationsManager::new(), Some(payments_provider));
+    let manager =
+        sample_payments_manager(db, MockNotificationsManager::new(), Some(payments_provider));
     let redirect_url = manager
         .get_or_create_checkout_redirect_url(&prepared_checkout, user_id)
         .await
@@ -496,7 +499,8 @@ async fn get_or_create_checkout_redirect_url_returns_canonical_url_after_racing_
         .return_const(PaymentProvider::Stripe);
 
     // Run the checkout session workflow
-    let manager = sample_payments_manager(db, MockNotificationsManager::new(), Some(payments_provider));
+    let manager =
+        sample_payments_manager(db, MockNotificationsManager::new(), Some(payments_provider));
     let redirect_url = manager
         .get_or_create_checkout_redirect_url(
             &sample_prepared_event_checkout(
@@ -517,7 +521,8 @@ async fn get_or_create_checkout_redirect_url_returns_canonical_url_after_racing_
 }
 
 #[tokio::test]
-async fn get_or_create_checkout_redirect_url_returns_error_when_checkout_url_is_missing_after_creation() {
+async fn get_or_create_checkout_redirect_url_returns_error_when_checkout_url_is_missing_after_creation()
+ {
     // Setup identifiers and data structures
     let event_purchase_id = Uuid::new_v4();
     let event_ticket_type_id = Uuid::new_v4();
@@ -562,7 +567,8 @@ async fn get_or_create_checkout_redirect_url_returns_error_when_checkout_url_is_
         .return_const(PaymentProvider::Stripe);
 
     // Run the checkout session workflow
-    let manager = sample_payments_manager(db, MockNotificationsManager::new(), Some(payments_provider));
+    let manager =
+        sample_payments_manager(db, MockNotificationsManager::new(), Some(payments_provider));
     let err = manager
         .get_or_create_checkout_redirect_url(
             &sample_prepared_event_checkout(
@@ -678,11 +684,13 @@ async fn handle_webhook_completes_checkout_and_enqueues_welcome_notification() {
                 && provider_payment_reference == &Some("pi_test_123".to_string())
         })
         .returning(move |_, _, _| {
-            Ok(ReconcileEventPurchaseResult::Completed(CompletedEventPurchase {
-                community_id,
-                event_id,
-                user_id,
-            }))
+            Ok(ReconcileEventPurchaseResult::Completed(
+                CompletedEventPurchase {
+                    community_id,
+                    event_id,
+                    user_id,
+                },
+            ))
         });
 
     // Setup notifications manager mock
@@ -731,7 +739,9 @@ async fn handle_webhook_expires_checkout_session() {
     db.expect_get_site_settings().times(0);
     db.expect_expire_event_purchase_for_checkout_session()
         .times(1)
-        .withf(|provider, session_id| *provider == PaymentProvider::Stripe && session_id == "cs_test_123")
+        .withf(|provider, session_id| {
+            *provider == PaymentProvider::Stripe && session_id == "cs_test_123"
+        })
         .returning(|_, _| Ok(()));
 
     // Setup payments provider mock
@@ -751,7 +761,8 @@ async fn handle_webhook_expires_checkout_session() {
         });
 
     // Run the webhook workflow
-    let manager = sample_payments_manager(db, MockNotificationsManager::new(), Some(payments_provider));
+    let manager =
+        sample_payments_manager(db, MockNotificationsManager::new(), Some(payments_provider));
     let headers = sample_webhook_headers();
     let result = manager.handle_webhook(&headers, "payload").await;
 
@@ -1195,7 +1206,8 @@ async fn reject_refund_request_persists_rejection_and_enqueues_notification() {
         .returning(|_| Box::pin(async { Ok(()) }));
 
     // Run the refund rejection workflow
-    let manager = sample_payments_manager(db, notifications_manager, Some(MockPaymentsProvider::new()));
+    let manager =
+        sample_payments_manager(db, notifications_manager, Some(MockPaymentsProvider::new()));
     let result = manager
         .reject_refund_request(&RejectRefundRequestInput {
             actor_user_id,
@@ -1383,8 +1395,8 @@ fn sample_payments_manager(
     payments_provider: Option<MockPaymentsProvider>,
 ) -> PgPaymentsManager {
     // Promote the mock provider into the shared trait object used by the manager
-    let payments_provider =
-        payments_provider.map(|payments_provider| Arc::new(payments_provider) as DynPaymentsProvider);
+    let payments_provider = payments_provider
+        .map(|payments_provider| Arc::new(payments_provider) as DynPaymentsProvider);
 
     PgPaymentsManager::new(
         Arc::new(db),

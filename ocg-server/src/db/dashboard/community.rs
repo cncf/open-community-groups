@@ -32,7 +32,12 @@ use crate::{
 #[async_trait]
 pub(crate) trait DBDashboardCommunity {
     /// Activates a group (sets active=true).
-    async fn activate_group(&self, actor_user_id: Uuid, community_id: Uuid, group_id: Uuid) -> Result<()>;
+    async fn activate_group(
+        &self,
+        actor_user_id: Uuid,
+        community_id: Uuid,
+        group_id: Uuid,
+    ) -> Result<()>;
 
     /// Adds a user to the community team.
     async fn add_community_team_member(
@@ -44,7 +49,12 @@ pub(crate) trait DBDashboardCommunity {
     ) -> Result<()>;
 
     /// Adds a new group to the database.
-    async fn add_group(&self, actor_user_id: Uuid, community_id: Uuid, group: &Group) -> Result<Uuid>;
+    async fn add_group(
+        &self,
+        actor_user_id: Uuid,
+        community_id: Uuid,
+        group: &Group,
+    ) -> Result<Uuid>;
 
     /// Adds a new event category to the database.
     async fn add_event_category(
@@ -63,11 +73,20 @@ pub(crate) trait DBDashboardCommunity {
     ) -> Result<Uuid>;
 
     /// Adds a new region to the database.
-    async fn add_region(&self, actor_user_id: Uuid, community_id: Uuid, region: &RegionInput)
-    -> Result<Uuid>;
+    async fn add_region(
+        &self,
+        actor_user_id: Uuid,
+        community_id: Uuid,
+        region: &RegionInput,
+    ) -> Result<Uuid>;
 
     /// Deactivates a group (sets active=false without deleting).
-    async fn deactivate_group(&self, actor_user_id: Uuid, community_id: Uuid, group_id: Uuid) -> Result<()>;
+    async fn deactivate_group(
+        &self,
+        actor_user_id: Uuid,
+        community_id: Uuid,
+        group_id: Uuid,
+    ) -> Result<()>;
 
     /// Deletes a user from the community team.
     async fn delete_community_team_member(
@@ -78,7 +97,12 @@ pub(crate) trait DBDashboardCommunity {
     ) -> Result<()>;
 
     /// Deletes a group (soft delete by setting active=false).
-    async fn delete_group(&self, actor_user_id: Uuid, community_id: Uuid, group_id: Uuid) -> Result<()>;
+    async fn delete_group(
+        &self,
+        actor_user_id: Uuid,
+        community_id: Uuid,
+        group_id: Uuid,
+    ) -> Result<()>;
 
     /// Deletes an event category from the database.
     async fn delete_event_category(
@@ -97,7 +121,12 @@ pub(crate) trait DBDashboardCommunity {
     ) -> Result<()>;
 
     /// Deletes a region from the database.
-    async fn delete_region(&self, actor_user_id: Uuid, community_id: Uuid, region_id: Uuid) -> Result<()>;
+    async fn delete_region(
+        &self,
+        actor_user_id: Uuid,
+        community_id: Uuid,
+        region_id: Uuid,
+    ) -> Result<()>;
 
     /// Retrieves analytics statistics for a community.
     async fn get_community_stats(&self, community_id: Uuid) -> Result<CommunityDashboardStats>;
@@ -177,7 +206,12 @@ pub(crate) trait DBDashboardCommunity {
 impl DBDashboardCommunity for PgDB {
     /// [`DBDashboardCommunity::activate_group`]
     #[instrument(skip(self), err)]
-    async fn activate_group(&self, actor_user_id: Uuid, community_id: Uuid, group_id: Uuid) -> Result<()> {
+    async fn activate_group(
+        &self,
+        actor_user_id: Uuid,
+        community_id: Uuid,
+        group_id: Uuid,
+    ) -> Result<()> {
         self.execute(
             "select activate_group($1::uuid, $2::uuid, $3::uuid)",
             &[&actor_user_id, &community_id, &group_id],
@@ -218,7 +252,12 @@ impl DBDashboardCommunity for PgDB {
 
     /// [`DBDashboardCommunity::add_group`]
     #[instrument(skip(self, group), err)]
-    async fn add_group(&self, actor_user_id: Uuid, community_id: Uuid, group: &Group) -> Result<Uuid> {
+    async fn add_group(
+        &self,
+        actor_user_id: Uuid,
+        community_id: Uuid,
+        group: &Group,
+    ) -> Result<Uuid> {
         self.fetch_scalar_one(
             "select add_group($1::uuid, $2::uuid, $3::jsonb)::uuid",
             &[&actor_user_id, &community_id, &Json(group)],
@@ -258,7 +297,12 @@ impl DBDashboardCommunity for PgDB {
 
     /// [`DBDashboardCommunity::deactivate_group`]
     #[instrument(skip(self), err)]
-    async fn deactivate_group(&self, actor_user_id: Uuid, community_id: Uuid, group_id: Uuid) -> Result<()> {
+    async fn deactivate_group(
+        &self,
+        actor_user_id: Uuid,
+        community_id: Uuid,
+        group_id: Uuid,
+    ) -> Result<()> {
         self.execute(
             "select deactivate_group($1::uuid, $2::uuid, $3::uuid)",
             &[&actor_user_id, &community_id, &group_id],
@@ -298,7 +342,12 @@ impl DBDashboardCommunity for PgDB {
 
     /// [`DBDashboardCommunity::delete_group`]
     #[instrument(skip(self), err)]
-    async fn delete_group(&self, actor_user_id: Uuid, community_id: Uuid, group_id: Uuid) -> Result<()> {
+    async fn delete_group(
+        &self,
+        actor_user_id: Uuid,
+        community_id: Uuid,
+        group_id: Uuid,
+    ) -> Result<()> {
         self.execute(
             "select delete_group($1::uuid, $2::uuid, $3::uuid)",
             &[&actor_user_id, &community_id, &group_id],
@@ -323,7 +372,12 @@ impl DBDashboardCommunity for PgDB {
 
     /// [`DBDashboardCommunity::delete_region`]
     #[instrument(skip(self), err)]
-    async fn delete_region(&self, actor_user_id: Uuid, community_id: Uuid, region_id: Uuid) -> Result<()> {
+    async fn delete_region(
+        &self,
+        actor_user_id: Uuid,
+        community_id: Uuid,
+        region_id: Uuid,
+    ) -> Result<()> {
         self.execute(
             "select delete_region($1::uuid, $2::uuid, $3::uuid)",
             &[&actor_user_id, &community_id, &region_id],

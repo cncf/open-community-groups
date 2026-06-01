@@ -22,7 +22,8 @@ use crate::{
 };
 
 /// Link preview description for community pages.
-pub(crate) const PREVIEW_DESCRIPTION: &str = "Open Community Groups, where Open Source communities thrive.";
+pub(crate) const PREVIEW_DESCRIPTION: &str =
+    "Open Community Groups, where Open Source communities thrive.";
 
 // Pages and sections templates.
 

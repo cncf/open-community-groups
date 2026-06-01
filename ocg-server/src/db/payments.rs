@@ -47,10 +47,18 @@ pub(crate) trait DBPayments {
     ) -> Result<EventPurchaseSummary>;
 
     /// Cancels an attendee's active pending checkout.
-    async fn cancel_event_checkout(&self, community_id: Uuid, event_id: Uuid, user_id: Uuid) -> Result<()>;
+    async fn cancel_event_checkout(
+        &self,
+        community_id: Uuid,
+        event_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<()>;
 
     /// Completes a free purchase locally without a provider checkout.
-    async fn complete_free_event_purchase(&self, event_purchase_id: Uuid) -> Result<CompletedEventPurchase>;
+    async fn complete_free_event_purchase(
+        &self,
+        event_purchase_id: Uuid,
+    ) -> Result<CompletedEventPurchase>;
 
     /// Expires a pending purchase when its provider checkout session expires.
     async fn expire_event_purchase_for_checkout_session(
@@ -60,7 +68,10 @@ pub(crate) trait DBPayments {
     ) -> Result<()>;
 
     /// Loads the current attendee-facing summary for a purchase.
-    async fn get_event_purchase_summary(&self, event_purchase_id: Uuid) -> Result<EventPurchaseSummary>;
+    async fn get_event_purchase_summary(
+        &self,
+        event_purchase_id: Uuid,
+    ) -> Result<EventPurchaseSummary>;
 
     /// Prepares a checkout purchase for an attendee ticket purchase.
     async fn prepare_event_checkout_purchase(
@@ -105,8 +116,12 @@ pub(crate) trait DBPayments {
     ) -> Result<()>;
 
     /// Reverts a refund request that was marked as processing.
-    async fn revert_event_refund_approval(&self, group_id: Uuid, event_id: Uuid, user_id: Uuid)
-    -> Result<()>;
+    async fn revert_event_refund_approval(
+        &self,
+        group_id: Uuid,
+        event_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<()>;
 }
 
 #[async_trait]
@@ -189,7 +204,12 @@ impl DBPayments for PgDB {
 
     /// [`DBPayments::cancel_event_checkout`]
     #[instrument(skip(self), err)]
-    async fn cancel_event_checkout(&self, community_id: Uuid, event_id: Uuid, user_id: Uuid) -> Result<()> {
+    async fn cancel_event_checkout(
+        &self,
+        community_id: Uuid,
+        event_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<()> {
         self.execute(
             "select cancel_event_checkout($1::uuid, $2::uuid, $3::uuid)",
             &[&community_id, &event_id, &user_id],
@@ -199,7 +219,10 @@ impl DBPayments for PgDB {
 
     /// [`DBPayments::complete_free_event_purchase`]
     #[instrument(skip(self), err)]
-    async fn complete_free_event_purchase(&self, event_purchase_id: Uuid) -> Result<CompletedEventPurchase> {
+    async fn complete_free_event_purchase(
+        &self,
+        event_purchase_id: Uuid,
+    ) -> Result<CompletedEventPurchase> {
         self.fetch_json_one(
             "select complete_free_event_purchase($1::uuid)",
             &[&event_purchase_id],
@@ -223,7 +246,10 @@ impl DBPayments for PgDB {
 
     /// [`DBPayments::get_event_purchase_summary`]
     #[instrument(skip(self), err)]
-    async fn get_event_purchase_summary(&self, event_purchase_id: Uuid) -> Result<EventPurchaseSummary> {
+    async fn get_event_purchase_summary(
+        &self,
+        event_purchase_id: Uuid,
+    ) -> Result<EventPurchaseSummary> {
         self.fetch_json_one(
             "select prepare_event_checkout_get_purchase_summary($1::uuid)",
             &[&event_purchase_id],
@@ -485,13 +511,14 @@ mod tests {
         let event_id = Uuid::new_v4();
         let user_id = Uuid::new_v4();
 
-        let output: ReconcileEventPurchaseForCheckoutSessionOutput = serde_json::from_value(json!({
-            "outcome": "completed",
-            "community_id": community_id,
-            "event_id": event_id,
-            "user_id": user_id
-        }))
-        .unwrap();
+        let output: ReconcileEventPurchaseForCheckoutSessionOutput =
+            serde_json::from_value(json!({
+                "outcome": "completed",
+                "community_id": community_id,
+                "event_id": event_id,
+                "user_id": user_id
+            }))
+            .unwrap();
 
         match ReconcileEventPurchaseResult::from(output) {
             ReconcileEventPurchaseResult::Completed(completed) => {
@@ -505,10 +532,11 @@ mod tests {
 
     #[test]
     fn reconcile_event_purchase_for_checkout_session_output_maps_noop() {
-        let output: ReconcileEventPurchaseForCheckoutSessionOutput = serde_json::from_value(json!({
-            "outcome": "noop"
-        }))
-        .unwrap();
+        let output: ReconcileEventPurchaseForCheckoutSessionOutput =
+            serde_json::from_value(json!({
+                "outcome": "noop"
+            }))
+            .unwrap();
 
         assert!(matches!(
             ReconcileEventPurchaseResult::from(output),
@@ -520,13 +548,14 @@ mod tests {
     fn reconcile_event_purchase_for_checkout_session_output_maps_refund_required() {
         let event_purchase_id = Uuid::new_v4();
 
-        let output: ReconcileEventPurchaseForCheckoutSessionOutput = serde_json::from_value(json!({
-            "outcome": "refund_required",
-            "amount_minor": 2500,
-            "event_purchase_id": event_purchase_id,
-            "provider_payment_reference": "pi_test_123"
-        }))
-        .unwrap();
+        let output: ReconcileEventPurchaseForCheckoutSessionOutput =
+            serde_json::from_value(json!({
+                "outcome": "refund_required",
+                "amount_minor": 2500,
+                "event_purchase_id": event_purchase_id,
+                "provider_payment_reference": "pi_test_123"
+            }))
+            .unwrap();
 
         match ReconcileEventPurchaseResult::from(output) {
             ReconcileEventPurchaseResult::RefundRequired(refund) => {

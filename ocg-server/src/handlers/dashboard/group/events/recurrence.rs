@@ -2,8 +2,8 @@
 
 use anyhow::{Context, Result, bail};
 use chrono::{
-    DateTime, Datelike, LocalResult, NaiveDate, NaiveDateTime, SecondsFormat, TimeDelta, TimeZone, Utc,
-    Weekday,
+    DateTime, Datelike, LocalResult, NaiveDate, NaiveDateTime, SecondsFormat, TimeDelta, TimeZone,
+    Utc, Weekday,
 };
 use chrono_tz::Tz;
 use serde_json::{Map, Value, json};
@@ -15,7 +15,8 @@ use crate::{
 };
 
 /// Event-level local datetime fields shifted for each generated occurrence.
-const EVENT_LOCAL_DATETIME_FIELD_NAMES: [&str; 4] = ["cfs_ends_at", "cfs_starts_at", "ends_at", "starts_at"];
+const EVENT_LOCAL_DATETIME_FIELD_NAMES: [&str; 4] =
+    ["cfs_ends_at", "cfs_starts_at", "ends_at", "starts_at"];
 /// Start and end field names shared by nested schedule-like payloads.
 const START_END_FIELD_NAMES: [&str; 2] = ["ends_at", "starts_at"];
 
@@ -144,7 +145,8 @@ impl RecurringEventPayloads {
                     Value::String(Uuid::new_v4().to_string()),
                 );
 
-                if let Some(Value::Array(price_windows)) = ticket_type_obj.get_mut("price_windows") {
+                if let Some(Value::Array(price_windows)) = ticket_type_obj.get_mut("price_windows")
+                {
                     // Refresh each nested price window identifier
                     for price_window in price_windows {
                         if let Some(price_window_obj) = price_window.as_object_mut() {
@@ -168,7 +170,12 @@ impl RecurringEventPayloads {
         // Shift each discount code window when present
         for discount_code in discount_codes {
             if let Some(discount_code_obj) = discount_code.as_object_mut() {
-                shift_object_utc_fields(discount_code_obj, timezone, &START_END_FIELD_NAMES, delta)?;
+                shift_object_utc_fields(
+                    discount_code_obj,
+                    timezone,
+                    &START_END_FIELD_NAMES,
+                    delta,
+                )?;
             }
         }
 
@@ -208,7 +215,12 @@ impl RecurringEventPayloads {
 
             for price_window in price_windows {
                 if let Some(price_window_obj) = price_window.as_object_mut() {
-                    shift_object_utc_fields(price_window_obj, timezone, &START_END_FIELD_NAMES, delta)?;
+                    shift_object_utc_fields(
+                        price_window_obj,
+                        timezone,
+                        &START_END_FIELD_NAMES,
+                        delta,
+                    )?;
                 }
             }
         }
@@ -313,7 +325,12 @@ fn next_month(year: i32, month: u32) -> (i32, u32) {
 }
 
 /// Finds the nth weekday in a month, if that ordinal exists.
-fn nth_weekday_in_month(year: i32, month: u32, weekday: Weekday, ordinal: u32) -> Option<NaiveDate> {
+fn nth_weekday_in_month(
+    year: i32,
+    month: u32,
+    weekday: Weekday,
+    ordinal: u32,
+) -> Option<NaiveDate> {
     // Anchor the search at the first day of the requested month
     let first_day = NaiveDate::from_ymd_opt(year, month, 1)?;
 
@@ -389,7 +406,11 @@ fn shift_object_utc_fields(
 }
 
 /// Shifts an RFC3339 field by preserving its local wall-clock time.
-fn shift_rfc3339_field_preserving_wall_time(value: &mut Value, timezone: Tz, delta: TimeDelta) -> Result<()> {
+fn shift_rfc3339_field_preserving_wall_time(
+    value: &mut Value,
+    timezone: Tz,
+    delta: TimeDelta,
+) -> Result<()> {
     // Ignore missing, non-string, and empty form values
     let Value::String(raw_value) = value else {
         return Ok(());
@@ -433,7 +454,12 @@ mod tests {
     fn from_event_builds_weekly_series_payloads_and_metadata() {
         // Setup recurring event form and base payload
         let starts_at = at(2030, 1, 7);
-        let event = sample_event(EventRecurrencePattern::Weekly, Some(2), Some(starts_at), "UTC");
+        let event = sample_event(
+            EventRecurrencePattern::Weekly,
+            Some(2),
+            Some(starts_at),
+            "UTC",
+        );
         let base_payload = json!({
             "ends_at": "2030-01-07T11:00:00",
             "starts_at": "2030-01-07T10:00:00"
@@ -482,10 +508,18 @@ mod tests {
 
         // Check missing additional occurrence count rejection
         let missing_count_err = unwrap_err_message(RecurringEventPayloads::from_event(
-            &sample_event(EventRecurrencePattern::Weekly, None, Some(base_starts_at), "UTC"),
+            &sample_event(
+                EventRecurrencePattern::Weekly,
+                None,
+                Some(base_starts_at),
+                "UTC",
+            ),
             &base_payload,
         ));
-        assert!(missing_count_err.contains("recurring events require recurrence_additional_occurrences"));
+        assert!(
+            missing_count_err
+                .contains("recurring events require recurrence_additional_occurrences")
+        );
 
         // Check invalid additional occurrence count rejection
         let invalid_count_err = unwrap_err_message(RecurringEventPayloads::from_event(
@@ -497,7 +531,10 @@ mod tests {
             ),
             &base_payload,
         ));
-        assert!(invalid_count_err.contains("recurrence_additional_occurrences must be between 1 and 12"));
+        assert!(
+            invalid_count_err
+                .contains("recurrence_additional_occurrences must be between 1 and 12")
+        );
 
         // Check missing start date rejection
         let missing_start_err = unwrap_err_message(RecurringEventPayloads::from_event(
@@ -551,25 +588,27 @@ mod tests {
         assert!(non_object_err.contains("event payload must be an object"));
 
         // Check invalid local datetime rejection
-        let invalid_local_date_err = unwrap_err_message(RecurringEventPayloads::build_occurrence_payload(
-            &json!({ "starts_at": "not-a-local-date" }),
-            base_starts_at,
-            occurrence_starts_at,
-            timezone,
-        ));
+        let invalid_local_date_err =
+            unwrap_err_message(RecurringEventPayloads::build_occurrence_payload(
+                &json!({ "starts_at": "not-a-local-date" }),
+                base_starts_at,
+                occurrence_starts_at,
+                timezone,
+            ));
         assert!(invalid_local_date_err.contains("invalid local datetime: not-a-local-date"));
 
         // Check invalid UTC datetime rejection
-        let invalid_utc_date_err = unwrap_err_message(RecurringEventPayloads::build_occurrence_payload(
-            &json!({
-                "discount_codes": [{
-                    "starts_at": "not-a-utc-date"
-                }]
-            }),
-            base_starts_at,
-            occurrence_starts_at,
-            timezone,
-        ));
+        let invalid_utc_date_err =
+            unwrap_err_message(RecurringEventPayloads::build_occurrence_payload(
+                &json!({
+                    "discount_codes": [{
+                        "starts_at": "not-a-utc-date"
+                    }]
+                }),
+                base_starts_at,
+                occurrence_starts_at,
+                timezone,
+            ));
         assert!(invalid_utc_date_err.contains("invalid UTC datetime: not-a-utc-date"));
     }
 
@@ -623,7 +662,10 @@ mod tests {
         assert_eq!(string_at(&payload, "/cfs_ends_at"), "2026-03-27T20:00:00");
         assert_eq!(string_at(&payload, "/cfs_starts_at"), "2026-03-17T20:00:00");
         assert_eq!(string_at(&payload, "/ends_at"), "2026-04-04T11:00:00");
-        assert_eq!(string_at(&payload, "/sessions/0/ends_at"), "2026-04-04T10:45:00");
+        assert_eq!(
+            string_at(&payload, "/sessions/0/ends_at"),
+            "2026-04-04T10:45:00"
+        );
         assert_eq!(
             string_at(&payload, "/sessions/0/starts_at"),
             "2026-04-04T10:15:00"
@@ -664,7 +706,11 @@ mod tests {
             ),
             price_window_id.to_string()
         );
-        Uuid::parse_str(string_at(&payload, "/discount_codes/0/event_discount_code_id")).unwrap();
+        Uuid::parse_str(string_at(
+            &payload,
+            "/discount_codes/0/event_discount_code_id",
+        ))
+        .unwrap();
         Uuid::parse_str(string_at(&payload, "/ticket_types/0/event_ticket_type_id")).unwrap();
         Uuid::parse_str(string_at(
             &payload,
@@ -756,38 +802,51 @@ mod tests {
     fn occurrence_start_times_preserves_weekday_and_time() {
         // Setup weekly recurrence anchor
         let starts_at = at(2030, 1, 7);
-        let recurrence_request = sample_recurrence_request(EventRecurrencePattern::Weekly, 2, starts_at);
+        let recurrence_request =
+            sample_recurrence_request(EventRecurrencePattern::Weekly, 2, starts_at);
 
         // Generate weekly occurrence start times
-        let occurrence_start_times = RecurringEventPayloads::occurrence_start_times(&recurrence_request);
+        let occurrence_start_times =
+            RecurringEventPayloads::occurrence_start_times(&recurrence_request);
 
         // Check weekday and local time are preserved
-        assert_eq!(occurrence_start_times, vec![at(2030, 1, 14), at(2030, 1, 21)]);
+        assert_eq!(
+            occurrence_start_times,
+            vec![at(2030, 1, 14), at(2030, 1, 21)]
+        );
     }
 
     #[test]
     fn occurrence_start_times_skips_months_without_matching_ordinal_weekday() {
         // Setup fifth Tuesday recurrence anchor
         let starts_at = at(2030, 1, 29);
-        let recurrence_request = sample_recurrence_request(EventRecurrencePattern::Monthly, 2, starts_at);
+        let recurrence_request =
+            sample_recurrence_request(EventRecurrencePattern::Monthly, 2, starts_at);
 
         // Generate monthly occurrence start times
-        let occurrence_start_times = RecurringEventPayloads::occurrence_start_times(&recurrence_request);
+        let occurrence_start_times =
+            RecurringEventPayloads::occurrence_start_times(&recurrence_request);
 
         // Check months without a fifth Tuesday are skipped
-        assert_eq!(occurrence_start_times, vec![at(2030, 4, 30), at(2030, 7, 30)]);
+        assert_eq!(
+            occurrence_start_times,
+            vec![at(2030, 4, 30), at(2030, 7, 30)]
+        );
     }
 
     #[test]
     fn occurrence_start_times_supports_weekly_and_biweekly_patterns() {
         // Setup weekly recurrence anchor
         let starts_at = at(2030, 1, 7);
-        let biweekly_request = sample_recurrence_request(EventRecurrencePattern::Biweekly, 2, starts_at);
-        let weekly_request = sample_recurrence_request(EventRecurrencePattern::Weekly, 2, starts_at);
+        let biweekly_request =
+            sample_recurrence_request(EventRecurrencePattern::Biweekly, 2, starts_at);
+        let weekly_request =
+            sample_recurrence_request(EventRecurrencePattern::Weekly, 2, starts_at);
 
         // Generate weekly and biweekly start times
         let weekly_start_times = RecurringEventPayloads::occurrence_start_times(&weekly_request);
-        let biweekly_start_times = RecurringEventPayloads::occurrence_start_times(&biweekly_request);
+        let biweekly_start_times =
+            RecurringEventPayloads::occurrence_start_times(&biweekly_request);
 
         // Check expected weekly intervals
         assert_eq!(weekly_start_times, vec![at(2030, 1, 14), at(2030, 1, 21)]);
@@ -804,7 +863,10 @@ mod tests {
 
         // Check missing ordinal returns none
         assert_eq!(fifth_monday, None);
-        assert_eq!(second_monday, Some(NaiveDate::from_ymd_opt(2030, 2, 11).unwrap()));
+        assert_eq!(
+            second_monday,
+            Some(NaiveDate::from_ymd_opt(2030, 2, 11).unwrap())
+        );
     }
 
     #[test]

@@ -2,8 +2,8 @@ use anyhow::anyhow;
 use axum::{
     body::{Body, to_bytes},
     http::{
-        HeaderValue, Request, StatusCode,
-        header::{CONTENT_TYPE, COOKIE, HOST},
+        Request, StatusCode,
+        header::{COOKIE, HOST},
     },
 };
 use axum_login::tower_sessions::session;
@@ -25,7 +25,8 @@ async fn test_page_analytics_tab_success() {
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+    let session_record =
+        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
     let stats = sample_community_stats();
 
     // Setup database mock
@@ -77,12 +78,7 @@ async fn test_page_analytics_tab_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/html; charset=utf-8"),
-    );
-    assert!(!bytes.is_empty());
+    assert_html_response(&parts, &bytes, StatusCode::OK);
 }
 
 #[tokio::test]
@@ -93,7 +89,8 @@ async fn test_page_groups_tab_success() {
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+    let session_record =
+        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
     let ts_query = "rust".to_string();
     let groups_output = SearchGroupsOutput {
         total: 0,
@@ -120,7 +117,9 @@ async fn test_page_groups_tab_success() {
     db.expect_user_has_community_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == community_id && *uid == user_id && permission == CommunityPermission::GroupsWrite
+            *cid == community_id
+                && *uid == user_id
+                && permission == CommunityPermission::GroupsWrite
         })
         .returning(|_, _, _| Ok(true));
     db.expect_get_community_full()
@@ -165,12 +164,7 @@ async fn test_page_groups_tab_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/html; charset=utf-8"),
-    );
-    assert!(!bytes.is_empty());
+    assert_html_response(&parts, &bytes, StatusCode::OK);
 }
 
 #[tokio::test]
@@ -181,7 +175,8 @@ async fn test_page_logs_tab_success() {
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
     let output = sample_audit_logs_output();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+    let session_record =
+        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -237,12 +232,7 @@ async fn test_page_logs_tab_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/html; charset=utf-8"),
-    );
-    assert!(!bytes.is_empty());
+    assert_html_response(&parts, &bytes, StatusCode::OK);
 }
 
 #[tokio::test]
@@ -252,7 +242,8 @@ async fn test_page_settings_tab_success() {
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+    let session_record =
+        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -273,7 +264,9 @@ async fn test_page_settings_tab_success() {
     db.expect_user_has_community_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == community_id && *uid == user_id && permission == CommunityPermission::SettingsWrite
+            *cid == community_id
+                && *uid == user_id
+                && permission == CommunityPermission::SettingsWrite
         })
         .returning(|_, _, _| Ok(true));
     db.expect_get_community_full()
@@ -305,12 +298,7 @@ async fn test_page_settings_tab_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/html; charset=utf-8"),
-    );
-    assert!(!bytes.is_empty());
+    assert_html_response(&parts, &bytes, StatusCode::OK);
 }
 
 #[tokio::test]
@@ -320,7 +308,8 @@ async fn test_page_team_tab_success() {
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+    let session_record =
+        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
     let members = vec![
         sample_community_team_member(true),
         sample_community_team_member(false),
@@ -394,12 +383,7 @@ async fn test_page_team_tab_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/html; charset=utf-8"),
-    );
-    assert!(!bytes.is_empty());
+    assert_html_response(&parts, &bytes, StatusCode::OK);
 }
 
 #[tokio::test]
@@ -409,7 +393,8 @@ async fn test_page_regions_tab_success() {
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+    let session_record =
+        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
     let regions = vec![sample_group_region()];
 
     // Setup database mock
@@ -431,7 +416,9 @@ async fn test_page_regions_tab_success() {
     db.expect_user_has_community_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == community_id && *uid == user_id && permission == CommunityPermission::TaxonomyWrite
+            *cid == community_id
+                && *uid == user_id
+                && permission == CommunityPermission::TaxonomyWrite
         })
         .returning(|_, _, _| Ok(true));
     db.expect_get_community_full()
@@ -467,12 +454,7 @@ async fn test_page_regions_tab_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/html; charset=utf-8"),
-    );
-    assert!(!bytes.is_empty());
+    assert_html_response(&parts, &bytes, StatusCode::OK);
 }
 
 #[tokio::test]
@@ -482,7 +464,8 @@ async fn test_page_group_categories_tab_success() {
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+    let session_record =
+        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
     let categories = vec![sample_group_category()];
 
     // Setup database mock
@@ -504,7 +487,9 @@ async fn test_page_group_categories_tab_success() {
     db.expect_user_has_community_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == community_id && *uid == user_id && permission == CommunityPermission::TaxonomyWrite
+            *cid == community_id
+                && *uid == user_id
+                && permission == CommunityPermission::TaxonomyWrite
         })
         .returning(|_, _, _| Ok(true));
     db.expect_get_community_full()
@@ -540,12 +525,7 @@ async fn test_page_group_categories_tab_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/html; charset=utf-8"),
-    );
-    assert!(!bytes.is_empty());
+    assert_html_response(&parts, &bytes, StatusCode::OK);
 }
 
 #[tokio::test]
@@ -555,7 +535,8 @@ async fn test_page_event_categories_tab_success() {
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+    let session_record =
+        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
     let categories = vec![sample_event_category()];
 
     // Setup database mock
@@ -577,7 +558,9 @@ async fn test_page_event_categories_tab_success() {
     db.expect_user_has_community_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == community_id && *uid == user_id && permission == CommunityPermission::TaxonomyWrite
+            *cid == community_id
+                && *uid == user_id
+                && permission == CommunityPermission::TaxonomyWrite
         })
         .returning(|_, _, _| Ok(true));
     db.expect_get_community_full()
@@ -613,12 +596,7 @@ async fn test_page_event_categories_tab_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/html; charset=utf-8"),
-    );
-    assert!(!bytes.is_empty());
+    assert_html_response(&parts, &bytes, StatusCode::OK);
 }
 
 #[tokio::test]
@@ -628,7 +606,8 @@ async fn test_page_db_error() {
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+    let session_record =
+        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -668,6 +647,5 @@ async fn test_page_db_error() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
-    assert!(bytes.is_empty());
+    assert_empty_response(&parts, &bytes, StatusCode::INTERNAL_SERVER_ERROR);
 }

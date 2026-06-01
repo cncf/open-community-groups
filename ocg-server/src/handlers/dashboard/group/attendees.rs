@@ -22,21 +22,29 @@ use crate::{
     handlers::{
         error::HandlerError,
         extractors::{CurrentUser, SelectedCommunityId, SelectedGroupId, ValidatedForm},
-        notifications::enqueue_attendance_canceled_notification,
     },
     router::serde_qs_config,
     services::{
-        notifications::{DynNotificationsManager, NewNotification, NotificationKind},
+        notifications::{
+            DynNotificationsManager, NewNotification, NotificationKind,
+            helpers::{
+                build_event_attendance_canceled_notification, build_event_invitation_notification,
+                build_event_waitlist_promoted_notification, build_event_welcome_notification,
+                should_send_waitlist_promoted_notification,
+            },
+        },
         payments::{ApproveRefundRequestInput, DynPaymentsManager, RejectRefundRequestInput},
     },
     templates::{
-        dashboard::group::attendees::{self, Attendee, AttendeesFilters, AttendeesPaginationFilters},
-        notifications::{EventCustom, EventInvitation, EventWaitlistPromoted, EventWelcome},
+        dashboard::group::attendees::{
+            self, Attendee, AttendeesFilters, AttendeesPaginationFilters,
+        },
+        notifications::EventCustom,
     },
     types::{
-        pagination::NavigationLinks, permissions::GroupPermission, questionnaire::QuestionnaireQuestion,
+        pagination::NavigationLinks, permissions::GroupPermission,
+        questionnaire::QuestionnaireQuestion,
     },
-    util::{build_event_calendar_attachment, build_event_page_link, build_user_dashboard_events_link},
     validation::{
         MAX_LEN_DESCRIPTION_SHORT, MAX_LEN_M, MAX_LEN_NOTIFICATION_BODY, trimmed_non_empty,
         trimmed_non_empty_opt,
@@ -140,24 +148,15 @@ pub(crate) async fn accept_invitation_request(
     };
 
     // Send the attendee welcome notification
-    let base_url = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
-    let link = build_event_page_link(base_url, &event);
-    let calendar_ics = build_event_calendar_attachment(base_url, &event);
-    let template_data = EventWelcome {
-        event,
-        link,
-        theme: site_settings.theme,
-
-        dashboard_link: Some(build_user_dashboard_events_link(base_url)),
-    };
-    let notification = NewNotification {
-        attachments: vec![calendar_ics],
-        kind: NotificationKind::EventWelcome,
-        recipients: vec![user_id],
-        template_data: Some(serde_json::to_value(&template_data)?),
-    };
-    if let Err(err) = notifications_manager.enqueue(&notification).await {
-        warn!(error = %err, "failed to enqueue event invitation acceptance notification");
+    match build_event_welcome_notification(&event, user_id, &server_cfg, &site_settings, true) {
+        Ok(notification) => {
+            if let Err(err) = notifications_manager.enqueue(&notification).await {
+                warn!(error = %err, "failed to enqueue event invitation acceptance notification");
+            }
+        }
+        Err(err) => {
+            warn!(error = %err, "failed to build event invitation acceptance notification");
+        }
     }
 
     Ok((
@@ -234,37 +233,34 @@ pub(crate) async fn cancel_event_attendee_attendance(
     };
 
     // Confirm the canceled attendance to the attendee
-    if let Err(err) = enqueue_attendance_canceled_notification(
-        &event,
-        &notifications_manager,
-        user_id,
-        &server_cfg,
-        &site_settings,
-    )
-    .await
+    match build_event_attendance_canceled_notification(&event, user_id, &server_cfg, &site_settings)
     {
-        warn!(error = %err, "failed to enqueue event attendance cancellation notification");
+        Ok(notification) => {
+            if let Err(err) = notifications_manager.enqueue(&notification).await {
+                warn!(error = %err, "failed to enqueue event attendance cancellation notification");
+            }
+        }
+        Err(err) => {
+            warn!(error = %err, "failed to build event attendance cancellation notification");
+        }
     }
 
     // Notify users promoted off the waitlist after a spot opens up
-    if !cancel_result.promoted_user_ids.is_empty() && !event.test_event {
-        let base_url = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
-        let calendar_ics = build_event_calendar_attachment(base_url, &event);
-        let template_data = EventWaitlistPromoted {
-            event: event.clone(),
-            has_registration_questions: event.has_registration_questions,
-            link: build_event_page_link(base_url, &event),
-            theme: site_settings.theme,
-            dashboard_link: Some(build_user_dashboard_events_link(base_url)),
-        };
-        let notification = NewNotification {
-            attachments: vec![calendar_ics],
-            kind: NotificationKind::EventWaitlistPromoted,
-            recipients: cancel_result.promoted_user_ids,
-            template_data: Some(serde_json::to_value(&template_data)?),
-        };
-        if let Err(err) = notifications_manager.enqueue(&notification).await {
-            warn!(error = %err, "failed to enqueue waitlist promotion notification");
+    if should_send_waitlist_promoted_notification(&event, &cancel_result.promoted_user_ids) {
+        match build_event_waitlist_promoted_notification(
+            &event,
+            cancel_result.promoted_user_ids,
+            &server_cfg,
+            &site_settings,
+        ) {
+            Ok(notification) => {
+                if let Err(err) = notifications_manager.enqueue(&notification).await {
+                    warn!(error = %err, "failed to enqueue waitlist promotion notification");
+                }
+            }
+            Err(err) => {
+                warn!(error = %err, "failed to build waitlist promotion notification");
+            }
         }
     }
 
@@ -376,36 +372,32 @@ pub(crate) async fn invite_event_attendee(
             warn!(error = %err, "failed to load event invitation notification context");
             return Ok((
                 StatusCode::CREATED,
-                [("HX-Trigger", "refresh-event-attendees, refresh-event-waitlist")],
+                [(
+                    "HX-Trigger",
+                    "refresh-event-attendees, refresh-event-waitlist",
+                )],
             )
                 .into_response());
         }
     };
-    let base_url = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
-    let link = if event.has_registration_questions {
-        build_user_dashboard_events_link(base_url)
-    } else {
-        format!("{base_url}/dashboard/user?tab=invitations")
-    };
-    let template_data = EventInvitation {
-        has_registration_questions: event.has_registration_questions,
-        event,
-        link,
-        theme: site_settings.theme,
-    };
-    let notification = NewNotification {
-        attachments: vec![],
-        kind: NotificationKind::EventInvitation,
-        recipients: vec![invited_user_id],
-        template_data: Some(serde_json::to_value(&template_data)?),
-    };
-    if let Err(err) = notifications_manager.enqueue(&notification).await {
-        warn!(error = %err, "failed to enqueue event invitation notification");
+    match build_event_invitation_notification(&event, invited_user_id, &server_cfg, &site_settings)
+    {
+        Ok(notification) => {
+            if let Err(err) = notifications_manager.enqueue(&notification).await {
+                warn!(error = %err, "failed to enqueue event invitation notification");
+            }
+        }
+        Err(err) => {
+            warn!(error = %err, "failed to build event invitation notification");
+        }
     }
 
     Ok((
         StatusCode::CREATED,
-        [("HX-Trigger", "refresh-event-attendees, refresh-event-waitlist")],
+        [(
+            "HX-Trigger",
+            "refresh-event-attendees, refresh-event-waitlist",
+        )],
     )
         .into_response())
 }
@@ -602,7 +594,10 @@ pub(crate) async fn download_csv_with_answers(
     )?;
 
     // Build CSV payload that also includes registration question answers
-    let csv = build_attendees_csv(&search_attendees_results.attendees, Some(&registration_questions))?;
+    let csv = build_attendees_csv(
+        &search_attendees_results.attendees,
+        Some(&registration_questions),
+    )?;
     let file_name = format!("event-{}-attendees-with-answers.csv", event.slug);
 
     Ok((
@@ -683,7 +678,12 @@ fn build_attendees_csv(
             attendee.name.as_deref().unwrap_or(&attendee.username).to_string(),
             attendee.company.clone().unwrap_or_default(),
             attendee.title.clone().unwrap_or_default(),
-            if attendee.manually_invited { "Yes" } else { "No" }.to_string(),
+            if attendee.manually_invited {
+                "Yes"
+            } else {
+                "No"
+            }
+            .to_string(),
         ];
         if let Some(questions) = registration_questions {
             row.extend(

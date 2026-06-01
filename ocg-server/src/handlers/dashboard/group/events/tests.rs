@@ -23,8 +23,8 @@ use crate::{
     templates::{
         dashboard::{DASHBOARD_PAGINATION_LIMIT, group::events::EventRecurrencePattern},
         notifications::{
-            EventCanceled, EventPublished, EventRescheduled, EventSeriesCanceled, EventSeriesPublished,
-            EventWaitlistPromoted, SpeakerWelcome,
+            EventCanceled, EventPublished, EventRescheduled, EventSeriesCanceled,
+            EventSeriesPublished, EventWaitlistPromoted, SpeakerWelcome,
         },
     },
     types::{
@@ -69,7 +69,10 @@ async fn test_add_page_success() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id && *gid == group_id && *uid == user_id && permission == GroupPermission::Read
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::Read
         })
         .returning(|_, _, _, _| Ok(true));
     db.expect_user_has_group_permission()
@@ -142,12 +145,7 @@ async fn test_add_page_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/html; charset=utf-8"),
-    );
-    assert!(!bytes.is_empty());
+    assert_html_response(&parts, &bytes, StatusCode::OK);
 }
 
 #[tokio::test]
@@ -182,7 +180,10 @@ async fn test_list_page_success() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id && *gid == group_id && *uid == user_id && permission == GroupPermission::Read
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::Read
         })
         .returning(|_, _, _, _| Ok(true));
     db.expect_user_has_group_permission()
@@ -231,11 +232,7 @@ async fn test_list_page_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/html; charset=utf-8"),
-    );
+    assert_html_response(&parts, &bytes, StatusCode::OK);
     let body = String::from_utf8(bytes.to_vec()).unwrap();
     assert!(body.contains("aria-label=\"Open event details: Sample Event\""));
     assert!(body.contains(">Test</span>"));
@@ -291,7 +288,10 @@ async fn test_update_page_hides_clear_ticketing_when_event_has_ticket_purchases(
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id && *gid == group_id && *uid == user_id && permission == GroupPermission::Read
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::Read
         })
         .returning(|_, _, _, _| Ok(true));
     db.expect_user_has_group_permission()
@@ -375,12 +375,7 @@ async fn test_update_page_hides_clear_ticketing_when_event_has_ticket_purchases(
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/html; charset=utf-8"),
-    );
-    assert!(!bytes.is_empty());
+    assert_html_response(&parts, &bytes, StatusCode::OK);
 }
 
 #[tokio::test]
@@ -422,7 +417,10 @@ async fn test_update_page_success() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id && *gid == group_id && *uid == user_id && permission == GroupPermission::Read
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::Read
         })
         .returning(|_, _, _, _| Ok(true));
     db.expect_user_has_group_permission()
@@ -506,12 +504,7 @@ async fn test_update_page_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/html; charset=utf-8"),
-    );
-    assert!(!bytes.is_empty());
+    assert_html_response(&parts, &bytes, StatusCode::OK);
 }
 
 #[tokio::test]
@@ -546,7 +539,10 @@ async fn test_details_success() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id && *gid == group_id && *uid == user_id && permission == GroupPermission::Read
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::Read
         })
         .returning(|_, _, _, _| Ok(true));
     db.expect_get_event_full()
@@ -645,11 +641,7 @@ async fn test_preview_uses_submitted_payload_without_event_db_calls() {
     let body = String::from_utf8(bytes.to_vec()).unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(CONTENT_TYPE).unwrap(),
-        &HeaderValue::from_static("text/html; charset=utf-8"),
-    );
+    assert_html_response(&parts, &bytes, StatusCode::OK);
     assert!(body.contains("Event preview"));
     assert!(body.contains("Missing event name"));
     assert!(body.contains("Missing start date"));
@@ -733,12 +725,12 @@ async fn test_add_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::CREATED);
-    assert_eq!(
-        parts.headers.get("HX-Trigger").unwrap(),
-        &HeaderValue::from_static("refresh-group-dashboard-table"),
+    assert_empty_hx_trigger_response(
+        &parts,
+        &bytes,
+        StatusCode::CREATED,
+        "refresh-group-dashboard-table",
     );
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
@@ -827,12 +819,12 @@ async fn test_add_recurring_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::CREATED);
-    assert_eq!(
-        parts.headers.get("HX-Trigger").unwrap(),
-        &HeaderValue::from_static("refresh-group-dashboard-table"),
+    assert_empty_hx_trigger_response(
+        &parts,
+        &bytes,
+        StatusCode::CREATED,
+        "refresh-group-dashboard-table",
     );
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
@@ -1129,12 +1121,12 @@ async fn test_cancel_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert_eq!(
-        parts.headers.get("HX-Location").unwrap(),
-        &HeaderValue::from_static(r#"{"path":"/dashboard/group?tab=events", "target":"body"}"#,),
+    assert_empty_hx_location_response(
+        &parts,
+        &bytes,
+        StatusCode::NO_CONTENT,
+        r#"{"path":"/dashboard/group?tab=events", "target":"body"}"#,
     );
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
@@ -1202,12 +1194,12 @@ async fn test_cancel_test_event_no_notification() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert_eq!(
-        parts.headers.get("HX-Location").unwrap(),
-        &HeaderValue::from_static(r#"{"path":"/dashboard/group?tab=events", "target":"body"}"#,),
+    assert_empty_hx_location_response(
+        &parts,
+        &bytes,
+        StatusCode::NO_CONTENT,
+        r#"{"path":"/dashboard/group?tab=events", "target":"body"}"#,
     );
-    assert!(bytes.is_empty());
 }
 
 #[allow(clippy::too_many_lines)]
@@ -1269,7 +1261,9 @@ async fn test_cancel_series_success() {
         .returning(move |_, _, _| Ok(event_summary.clone()));
     db.expect_get_event_summary()
         .times(1)
-        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == related_event_id)
+        .withf(move |cid, gid, eid| {
+            *cid == community_id && *gid == group_id && *eid == related_event_id
+        })
         .returning(move |_, _, _| Ok(related_event_summary.clone()));
     db.expect_cancel_event().times(0);
     db.expect_cancel_event_series_events()
@@ -1286,7 +1280,9 @@ async fn test_cancel_series_success() {
     let router = TestRouterBuilder::new(db, nm).build().await;
     let request = Request::builder()
         .method("PUT")
-        .uri(format!("/dashboard/group/events/{event_id}/cancel?scope=series"))
+        .uri(format!(
+            "/dashboard/group/events/{event_id}/cancel?scope=series"
+        ))
         .header(COOKIE, format!("id={session_id}"))
         .body(Body::empty())
         .unwrap();
@@ -1295,12 +1291,12 @@ async fn test_cancel_series_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert_eq!(
-        parts.headers.get("HX-Location").unwrap(),
-        &HeaderValue::from_static(r#"{"path":"/dashboard/group?tab=events", "target":"body"}"#,),
+    assert_empty_hx_location_response(
+        &parts,
+        &bytes,
+        StatusCode::NO_CONTENT,
+        r#"{"path":"/dashboard/group?tab=events", "target":"body"}"#,
     );
-    assert!(bytes.is_empty());
 }
 
 #[allow(clippy::too_many_lines)]
@@ -1377,7 +1373,9 @@ async fn test_cancel_series_sends_aggregate_notification() {
         .returning(move |_, _, _| Ok(event_summary.clone()));
     db.expect_get_event_summary()
         .times(1)
-        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == related_event_id)
+        .withf(move |cid, gid, eid| {
+            *cid == community_id && *gid == group_id && *eid == related_event_id
+        })
         .returning(move |_, _, _| Ok(related_event_summary.clone()));
     db.expect_cancel_event_series_events()
         .times(1)
@@ -1391,7 +1389,9 @@ async fn test_cancel_series_sends_aggregate_notification() {
         .returning(move |_, _, _| Ok(event_full.clone()));
     db.expect_get_event_full()
         .times(1)
-        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == related_event_id)
+        .withf(move |cid, gid, eid| {
+            *cid == community_id && *gid == group_id && *eid == related_event_id
+        })
         .returning(move |_, _, _| Ok(related_event_full.clone()));
     db.expect_list_event_attendees_ids()
         .times(2)
@@ -1428,7 +1428,9 @@ async fn test_cancel_series_sends_aggregate_notification() {
     let router = TestRouterBuilder::new(db, nm).build().await;
     let request = Request::builder()
         .method("PUT")
-        .uri(format!("/dashboard/group/events/{event_id}/cancel?scope=series"))
+        .uri(format!(
+            "/dashboard/group/events/{event_id}/cancel?scope=series"
+        ))
         .header(COOKIE, format!("id={session_id}"))
         .body(Body::empty())
         .unwrap();
@@ -1565,12 +1567,12 @@ async fn test_publish_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert_eq!(
-        parts.headers.get("HX-Trigger").unwrap(),
-        &HeaderValue::from_static("refresh-group-dashboard-table"),
+    assert_empty_hx_trigger_response(
+        &parts,
+        &bytes,
+        StatusCode::NO_CONTENT,
+        "refresh-group-dashboard-table",
     );
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
@@ -1641,12 +1643,12 @@ async fn test_publish_test_event_no_notification() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert_eq!(
-        parts.headers.get("HX-Trigger").unwrap(),
-        &HeaderValue::from_static("refresh-group-dashboard-table"),
+    assert_empty_hx_trigger_response(
+        &parts,
+        &bytes,
+        StatusCode::NO_CONTENT,
+        "refresh-group-dashboard-table",
     );
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
@@ -1707,7 +1709,9 @@ async fn test_publish_series_success() {
         .returning(move |_, _, _| Ok(event_summary.clone()));
     db.expect_get_event_summary()
         .times(1)
-        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == related_event_id)
+        .withf(move |cid, gid, eid| {
+            *cid == community_id && *gid == group_id && *eid == related_event_id
+        })
         .returning(move |_, _, _| Ok(related_event_summary.clone()));
     db.expect_publish_event().times(0);
     db.expect_publish_event_series_events()
@@ -1727,7 +1731,9 @@ async fn test_publish_series_success() {
     let router = TestRouterBuilder::new(db, nm).build().await;
     let request = Request::builder()
         .method("PUT")
-        .uri(format!("/dashboard/group/events/{event_id}/publish?scope=series"))
+        .uri(format!(
+            "/dashboard/group/events/{event_id}/publish?scope=series"
+        ))
         .header(COOKIE, format!("id={session_id}"))
         .body(Body::empty())
         .unwrap();
@@ -1736,12 +1742,12 @@ async fn test_publish_series_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert_eq!(
-        parts.headers.get("HX-Trigger").unwrap(),
-        &HeaderValue::from_static("refresh-group-dashboard-table"),
+    assert_empty_hx_trigger_response(
+        &parts,
+        &bytes,
+        StatusCode::NO_CONTENT,
+        "refresh-group-dashboard-table",
     );
-    assert!(bytes.is_empty());
 }
 
 #[allow(clippy::too_many_lines)]
@@ -1818,7 +1824,9 @@ async fn test_publish_series_sends_aggregate_notification() {
         .returning(move |_, _, _| Ok(event_summary.clone()));
     db.expect_get_event_summary()
         .times(1)
-        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == related_event_id)
+        .withf(move |cid, gid, eid| {
+            *cid == community_id && *gid == group_id && *eid == related_event_id
+        })
         .returning(move |_, _, _| Ok(related_event_summary.clone()));
     db.expect_publish_event_series_events()
         .times(1)
@@ -1843,7 +1851,9 @@ async fn test_publish_series_sends_aggregate_notification() {
         .returning(move |_, _, _| Ok(event_full.clone()));
     db.expect_get_event_full()
         .times(1)
-        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == related_event_id)
+        .withf(move |cid, gid, eid| {
+            *cid == community_id && *gid == group_id && *eid == related_event_id
+        })
         .returning(move |_, _, _| Ok(related_event_full.clone()));
     db.expect_get_site_settings()
         .times(1)
@@ -1872,7 +1882,9 @@ async fn test_publish_series_sends_aggregate_notification() {
     let router = TestRouterBuilder::new(db, nm).build().await;
     let request = Request::builder()
         .method("PUT")
-        .uri(format!("/dashboard/group/events/{event_id}/publish?scope=series"))
+        .uri(format!(
+            "/dashboard/group/events/{event_id}/publish?scope=series"
+        ))
         .header(COOKIE, format!("id={session_id}"))
         .body(Body::empty())
         .unwrap();
@@ -1953,12 +1965,12 @@ async fn test_publish_already_published_no_notification() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert_eq!(
-        parts.headers.get("HX-Trigger").unwrap(),
-        &HeaderValue::from_static("refresh-group-dashboard-table"),
+    assert_empty_hx_trigger_response(
+        &parts,
+        &bytes,
+        StatusCode::NO_CONTENT,
+        "refresh-group-dashboard-table",
     );
-    assert!(bytes.is_empty());
 }
 
 #[allow(clippy::too_many_lines)]
@@ -2068,12 +2080,12 @@ async fn test_publish_speakers_only() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert_eq!(
-        parts.headers.get("HX-Trigger").unwrap(),
-        &HeaderValue::from_static("refresh-group-dashboard-table"),
+    assert_empty_hx_trigger_response(
+        &parts,
+        &bytes,
+        StatusCode::NO_CONTENT,
+        "refresh-group-dashboard-table",
     );
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
@@ -2133,12 +2145,12 @@ async fn test_delete_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert_eq!(
-        parts.headers.get("HX-Trigger").unwrap(),
-        &HeaderValue::from_static("refresh-group-dashboard-table"),
+    assert_empty_hx_trigger_response(
+        &parts,
+        &bytes,
+        StatusCode::NO_CONTENT,
+        "refresh-group-dashboard-table",
     );
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
@@ -2199,7 +2211,9 @@ async fn test_delete_series_success() {
     let router = TestRouterBuilder::new(db, nm).build().await;
     let request = Request::builder()
         .method("DELETE")
-        .uri(format!("/dashboard/group/events/{event_id}/delete?scope=series"))
+        .uri(format!(
+            "/dashboard/group/events/{event_id}/delete?scope=series"
+        ))
         .header(COOKIE, format!("id={session_id}"))
         .body(Body::empty())
         .unwrap();
@@ -2208,12 +2222,12 @@ async fn test_delete_series_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert_eq!(
-        parts.headers.get("HX-Trigger").unwrap(),
-        &HeaderValue::from_static("refresh-group-dashboard-table"),
+    assert_empty_hx_trigger_response(
+        &parts,
+        &bytes,
+        StatusCode::NO_CONTENT,
+        "refresh-group-dashboard-table",
     );
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
@@ -2273,12 +2287,12 @@ async fn test_unpublish_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert_eq!(
-        parts.headers.get("HX-Trigger").unwrap(),
-        &HeaderValue::from_static("refresh-group-dashboard-table"),
+    assert_empty_hx_trigger_response(
+        &parts,
+        &bytes,
+        StatusCode::NO_CONTENT,
+        "refresh-group-dashboard-table",
     );
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
@@ -2350,12 +2364,12 @@ async fn test_unpublish_series_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert_eq!(
-        parts.headers.get("HX-Trigger").unwrap(),
-        &HeaderValue::from_static("refresh-group-dashboard-table"),
+    assert_empty_hx_trigger_response(
+        &parts,
+        &bytes,
+        StatusCode::NO_CONTENT,
+        "refresh-group-dashboard-table",
     );
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
@@ -2434,7 +2448,8 @@ async fn test_update_success() {
             *uid == user_id
                 && *gid == group_id
                 && *eid == event_id
-                && event.get("name").and_then(serde_json::Value::as_str) == Some(event_form.name.as_str())
+                && event.get("name").and_then(serde_json::Value::as_str)
+                    == Some(event_form.name.as_str())
                 && cfg_max_participants.is_empty()
         })
         .returning(move |_, _, _, _, _| Ok(vec![]));
@@ -2483,12 +2498,12 @@ async fn test_update_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert_eq!(
-        parts.headers.get("HX-Trigger").unwrap(),
-        &HeaderValue::from_static("refresh-group-dashboard-table"),
+    assert_empty_hx_trigger_response(
+        &parts,
+        &bytes,
+        StatusCode::NO_CONTENT,
+        "refresh-group-dashboard-table",
     );
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
@@ -2724,7 +2739,8 @@ async fn test_update_promotes_waitlist_and_sends_reschedule_notification() {
             *uid == user_id
                 && *gid == group_id
                 && *eid == event_id
-                && event.get("name").and_then(serde_json::Value::as_str) == Some(event_form.name.as_str())
+                && event.get("name").and_then(serde_json::Value::as_str)
+                    == Some(event_form.name.as_str())
                 && cfg_max_participants.is_empty()
         })
         .returning(move |_, _, _, _, _| Ok(vec![promoted_user_id]));
@@ -2788,12 +2804,12 @@ async fn test_update_promotes_waitlist_and_sends_reschedule_notification() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert_eq!(
-        parts.headers.get("HX-Trigger").unwrap(),
-        &HeaderValue::from_static("refresh-group-dashboard-table"),
+    assert_empty_hx_trigger_response(
+        &parts,
+        &bytes,
+        StatusCode::NO_CONTENT,
+        "refresh-group-dashboard-table",
     );
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
@@ -2850,7 +2866,8 @@ async fn test_update_promotion_notification_failure_is_ignored() {
             *uid == user_id
                 && *gid == group_id
                 && *eid == event_id
-                && event.get("name").and_then(serde_json::Value::as_str) == Some(event_form.name.as_str())
+                && event.get("name").and_then(serde_json::Value::as_str)
+                    == Some(event_form.name.as_str())
                 && cfg_max_participants.is_empty()
         })
         .returning(move |_, _, _, _, _| Ok(vec![promoted_user_id]));
@@ -2892,12 +2909,12 @@ async fn test_update_promotion_notification_failure_is_ignored() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert_eq!(
-        parts.headers.get("HX-Trigger").unwrap(),
-        &HeaderValue::from_static("refresh-group-dashboard-table"),
+    assert_empty_hx_trigger_response(
+        &parts,
+        &bytes,
+        StatusCode::NO_CONTENT,
+        "refresh-group-dashboard-table",
     );
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
@@ -2961,7 +2978,8 @@ async fn test_update_promotion_notification_context_failure_is_ignored() {
             *uid == user_id
                 && *gid == group_id
                 && *eid == event_id
-                && event.get("name").and_then(serde_json::Value::as_str) == Some(event_form.name.as_str())
+                && event.get("name").and_then(serde_json::Value::as_str)
+                    == Some(event_form.name.as_str())
                 && cfg_max_participants.is_empty()
         })
         .returning(move |_, _, _, _, _| Ok(vec![promoted_user_id]));
@@ -2986,12 +3004,12 @@ async fn test_update_promotion_notification_context_failure_is_ignored() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert_eq!(
-        parts.headers.get("HX-Trigger").unwrap(),
-        &HeaderValue::from_static("refresh-group-dashboard-table"),
+    assert_empty_hx_trigger_response(
+        &parts,
+        &bytes,
+        StatusCode::NO_CONTENT,
+        "refresh-group-dashboard-table",
     );
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
@@ -3059,7 +3077,8 @@ async fn test_update_no_notification_when_shift_too_small() {
             *uid == user_id
                 && *gid == group_id
                 && *eid == event_id
-                && event.get("name").and_then(serde_json::Value::as_str) == Some(event_form.name.as_str())
+                && event.get("name").and_then(serde_json::Value::as_str)
+                    == Some(event_form.name.as_str())
                 && cfg_max_participants.is_empty()
         })
         .returning(move |_, _, _, _, _| Ok(vec![]));
@@ -3081,12 +3100,12 @@ async fn test_update_no_notification_when_shift_too_small() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert_eq!(
-        parts.headers.get("HX-Trigger").unwrap(),
-        &HeaderValue::from_static("refresh-group-dashboard-table"),
+    assert_empty_hx_trigger_response(
+        &parts,
+        &bytes,
+        StatusCode::NO_CONTENT,
+        "refresh-group-dashboard-table",
     );
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
@@ -3158,7 +3177,8 @@ async fn test_update_no_notification_when_unpublished() {
             *uid == user_id
                 && *gid == group_id
                 && *eid == event_id
-                && event.get("name").and_then(serde_json::Value::as_str) == Some(event_form.name.as_str())
+                && event.get("name").and_then(serde_json::Value::as_str)
+                    == Some(event_form.name.as_str())
                 && cfg_max_participants.is_empty()
         })
         .returning(move |_, _, _, _, _| Ok(vec![]));
@@ -3180,12 +3200,12 @@ async fn test_update_no_notification_when_unpublished() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert_eq!(
-        parts.headers.get("HX-Trigger").unwrap(),
-        &HeaderValue::from_static("refresh-group-dashboard-table"),
+    assert_empty_hx_trigger_response(
+        &parts,
+        &bytes,
+        StatusCode::NO_CONTENT,
+        "refresh-group-dashboard-table",
     );
-    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
@@ -3248,7 +3268,8 @@ async fn test_update_past_event_success() {
                 && *eid == event_id
                 && event.get("description").and_then(serde_json::Value::as_str)
                     == Some("Updated past event description")
-                && event.get("name").and_then(serde_json::Value::as_str) == Some("Past Event Updated")
+                && event.get("name").and_then(serde_json::Value::as_str)
+                    == Some("Past Event Updated")
                 && cfg_max_participants.is_empty()
         })
         .returning(move |_, _, _, _, _| Ok(vec![]));
@@ -3270,10 +3291,10 @@ async fn test_update_past_event_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert_eq!(
-        parts.headers.get("HX-Trigger").unwrap(),
-        &HeaderValue::from_static("refresh-group-dashboard-table"),
+    assert_empty_hx_trigger_response(
+        &parts,
+        &bytes,
+        StatusCode::NO_CONTENT,
+        "refresh-group-dashboard-table",
     );
-    assert!(bytes.is_empty());
 }

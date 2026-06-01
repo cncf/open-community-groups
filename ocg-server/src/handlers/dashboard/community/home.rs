@@ -69,7 +69,11 @@ pub(crate) async fn page(
         }
         Tab::EventCategories => {
             let (can_manage_taxonomy, categories) = tokio::try_join!(
-                db.user_has_community_permission(&community_id, &user_id, CommunityPermission::TaxonomyWrite),
+                db.user_has_community_permission(
+                    &community_id,
+                    &user_id,
+                    CommunityPermission::TaxonomyWrite
+                ),
                 db.list_event_categories(community_id)
             )?;
             Content::EventCategories(event_categories::ListPage {
@@ -79,7 +83,11 @@ pub(crate) async fn page(
         }
         Tab::GroupCategories => {
             let (can_manage_taxonomy, categories) = tokio::try_join!(
-                db.user_has_community_permission(&community_id, &user_id, CommunityPermission::TaxonomyWrite),
+                db.user_has_community_permission(
+                    &community_id,
+                    &user_id,
+                    CommunityPermission::TaxonomyWrite
+                ),
                 db.list_group_categories(community_id)
             )?;
             Content::GroupCategories(group_categories::ListPage {
@@ -99,13 +107,21 @@ pub(crate) async fn page(
             Content::Groups(template)
         }
         Tab::Logs => {
-            let (_, template) =
-                logs::prepare_list_page(&db, community_id, raw_query.as_deref().unwrap_or_default()).await?;
+            let (_, template) = logs::prepare_list_page(
+                &db,
+                community_id,
+                raw_query.as_deref().unwrap_or_default(),
+            )
+            .await?;
             Content::Logs(template)
         }
         Tab::Regions => {
             let (can_manage_taxonomy, regions) = tokio::try_join!(
-                db.user_has_community_permission(&community_id, &user_id, CommunityPermission::TaxonomyWrite),
+                db.user_has_community_permission(
+                    &community_id,
+                    &user_id,
+                    CommunityPermission::TaxonomyWrite
+                ),
                 db.list_regions(community_id)
             )?;
             Content::Regions(regions::ListPage {
@@ -115,7 +131,11 @@ pub(crate) async fn page(
         }
         Tab::Settings => {
             let can_manage_settings = db
-                .user_has_community_permission(&community_id, &user_id, CommunityPermission::SettingsWrite)
+                .user_has_community_permission(
+                    &community_id,
+                    &user_id,
+                    CommunityPermission::SettingsWrite,
+                )
                 .await?;
             Content::Settings(Box::new(settings::UpdatePage {
                 can_manage_settings,

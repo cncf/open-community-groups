@@ -9,7 +9,7 @@ use axum::{
 };
 use garde::{Error as ValidationError, Path as ValidationPath, Report, Validate};
 use serde::{Deserialize, Serialize};
-use serde_json::{json, to_value};
+use serde_json::json;
 use tracing::{instrument, warn};
 use uuid::Uuid;
 
@@ -20,30 +20,38 @@ use crate::{
     db::{DynDB, payments::PrepareEventCheckoutPurchaseInput},
     handlers::{
         extractors::{CurrentUser, ValidatedForm, ValidatedFormQs},
-        notifications::try_enqueue_attendance_canceled_notification,
         request_matches_site,
         site::not_found,
         trim_public_gallery_images,
     },
     router::{CACHE_CONTROL_NO_STORE, PUBLIC_SHARED_CACHE_HEADERS},
     services::{
-        notifications::{DynNotificationsManager, NewNotification, NotificationKind},
+        notifications::{
+            DynNotificationsManager,
+            helpers::{
+                build_event_attendance_canceled_notification,
+                build_event_waitlist_joined_notification, build_event_waitlist_left_notification,
+                build_event_waitlist_promoted_notification, build_event_welcome_notification,
+                should_send_waitlist_promoted_notification,
+            },
+        },
         payments::{DynPaymentsManager, RequestRefundInput},
     },
     templates::{
         PageId,
         auth::User,
         event::{CfsModal, CheckInPage, Page},
-        notifications::{EventWaitlistJoined, EventWaitlistLeft, EventWaitlistPromoted, EventWelcome},
     },
     types::{
         event::{EventAttendanceStatus, EventFull, EventSummary},
         payments::{EventPurchaseStatus, EventTicketType, PreparedEventCheckout},
-        questionnaire::{OptionalQuestionnaireAnswersForm, QuestionnaireAnswers, QuestionnaireQuestion},
+        questionnaire::{
+            OptionalQuestionnaireAnswersForm, QuestionnaireAnswers, QuestionnaireQuestion,
+        },
     },
-    util::{build_event_calendar_attachment, build_event_page_link, build_user_dashboard_events_link},
     validation::{
-        MAX_LEN_DESCRIPTION_SHORT, MAX_LEN_EVENT_LABELS_PER_SUBMISSION, MAX_LEN_S, trimmed_non_empty_opt,
+        MAX_LEN_DESCRIPTION_SHORT, MAX_LEN_EVENT_LABELS_PER_SUBMISSION, MAX_LEN_S,
+        trimmed_non_empty_opt,
     },
 };
 
@@ -81,7 +89,12 @@ pub(crate) async fn page(
 
     // Redirect generated group slugs to their pretty URL
     if should_redirect_to_pretty_group_slug(&event, &group_slug) {
-        let url = public_event_url(&community_name, event.group.public_slug(), &event.slug, &uri);
+        let url = public_event_url(
+            &community_name,
+            event.group.public_slug(),
+            &event.slug,
+            &uri,
+        );
         return Ok(Redirect::temporary(&url).into_response());
     }
 
@@ -190,7 +203,10 @@ pub(crate) async fn availability(
 
     // Prevent volatile seat availability from being cached
     let mut headers = HeaderMap::new();
-    headers.insert(CACHE_CONTROL, HeaderValue::from_static(CACHE_CONTROL_NO_STORE));
+    headers.insert(
+        CACHE_CONTROL,
+        HeaderValue::from_static(CACHE_CONTROL_NO_STORE),
+    );
 
     Ok((headers, Json(EventAvailability::from_event(&event))).into_response())
 }
@@ -240,17 +256,27 @@ pub(crate) async fn attend_event(
     }
 
     // Users joining a waitlist answer registration questions only after promotion.
-    let waitlist_join_without_answers =
-        !event.attendee_approval_required && event.waitlist_enabled && event.remaining_capacity == Some(0);
+    let waitlist_join_without_answers = !event.attendee_approval_required
+        && event.waitlist_enabled
+        && event.remaining_capacity == Some(0);
     if !waitlist_join_without_answers {
         // Get registration questions and validate answers
-        let registration_questions = db.get_event_registration_questions(community_id, event_id).await?;
-        validate_registration_answers(input.registration_answers.as_ref(), &registration_questions)?;
+        let registration_questions =
+            db.get_event_registration_questions(community_id, event_id).await?;
+        validate_registration_answers(
+            input.registration_answers.as_ref(),
+            &registration_questions,
+        )?;
     }
 
     // Attend event
     let attend_result = db
-        .attend_event(community_id, event_id, user.user_id, input.registration_answers)
+        .attend_event(
+            community_id,
+            event_id,
+            user.user_id,
+            input.registration_answers,
+        )
         .await?;
     let response = (
         StatusCode::OK,
@@ -273,29 +299,23 @@ pub(crate) async fn attend_event(
         }
     };
 
-    // Prepare the event page link for notifications
-    let base_url = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
-    let link = build_event_page_link(base_url, &event);
-
     // Build the notification that matches the new attendance status
     let notification_result = match &attend_result {
         EventAttendanceStatus::Attendee => {
             // Confirm the RSVP with the event details and calendar attachment
-            let calendar_ics = build_event_calendar_attachment(base_url, &event);
-            let template_data = EventWelcome {
-                event: event.clone(),
-                link: link.clone(),
-                theme: site_settings.theme.clone(),
-
-                dashboard_link: Some(build_user_dashboard_events_link(base_url)),
-            };
-            let notification = NewNotification {
-                attachments: vec![calendar_ics],
-                kind: NotificationKind::EventWelcome,
-                recipients: vec![user.user_id],
-                template_data: Some(to_value(&template_data)?),
-            };
-            notifications_manager.enqueue(&notification).await
+            match build_event_welcome_notification(
+                &event,
+                user.user_id,
+                &server_cfg,
+                &site_settings,
+                true,
+            ) {
+                Ok(notification) => notifications_manager.enqueue(&notification).await,
+                Err(err) => {
+                    warn!(error = %err, "failed to build event welcome notification");
+                    Ok(())
+                }
+            }
         }
         EventAttendanceStatus::InvitationApproved
         | EventAttendanceStatus::PendingApproval
@@ -304,18 +324,18 @@ pub(crate) async fn attend_event(
         | EventAttendanceStatus::Rejected => Ok(()),
         EventAttendanceStatus::Waitlisted => {
             // Let the user know they were added to the waitlist
-            let template_data = EventWaitlistJoined {
-                event: event.clone(),
-                link: link.clone(),
-                theme: site_settings.theme.clone(),
-            };
-            let notification = NewNotification {
-                attachments: vec![],
-                kind: NotificationKind::EventWaitlistJoined,
-                recipients: vec![user.user_id],
-                template_data: Some(to_value(&template_data)?),
-            };
-            notifications_manager.enqueue(&notification).await
+            match build_event_waitlist_joined_notification(
+                &event,
+                user.user_id,
+                &server_cfg,
+                &site_settings,
+            ) {
+                Ok(notification) => notifications_manager.enqueue(&notification).await,
+                Err(err) => {
+                    warn!(error = %err, "failed to build event waitlist join notification");
+                    Ok(())
+                }
+            }
         }
         EventAttendanceStatus::None => {
             unreachable!("attend_event cannot return an unattached attendance status")
@@ -426,36 +446,40 @@ pub(crate) async fn leave_event(
         }
     };
 
-    // Prepare the event page link for notifications
-    let base_url = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
-    let link = build_event_page_link(base_url, &event);
-
     // Confirm attendee cancellation and waitlist exits
     match leave_result.left_status {
         EventAttendanceStatus::Attendee => {
-            try_enqueue_attendance_canceled_notification(
+            match build_event_attendance_canceled_notification(
                 &event,
-                &notifications_manager,
                 user.user_id,
                 &server_cfg,
                 &site_settings,
-            )
-            .await;
+            ) {
+                Ok(notification) => {
+                    if let Err(err) = notifications_manager.enqueue(&notification).await {
+                        warn!(error = %err, "failed to enqueue event attendance cancellation notification");
+                    }
+                }
+                Err(err) => {
+                    warn!(error = %err, "failed to build event attendance cancellation notification");
+                }
+            }
         }
         EventAttendanceStatus::Waitlisted => {
-            let template_data = EventWaitlistLeft {
-                event: event.clone(),
-                link: link.clone(),
-                theme: site_settings.theme.clone(),
-            };
-            let notification = NewNotification {
-                attachments: vec![],
-                kind: NotificationKind::EventWaitlistLeft,
-                recipients: vec![user.user_id],
-                template_data: Some(to_value(&template_data)?),
-            };
-            if let Err(err) = notifications_manager.enqueue(&notification).await {
-                warn!(error = %err, "failed to enqueue event waitlist leave notification");
+            match build_event_waitlist_left_notification(
+                &event,
+                user.user_id,
+                &server_cfg,
+                &site_settings,
+            ) {
+                Ok(notification) => {
+                    if let Err(err) = notifications_manager.enqueue(&notification).await {
+                        warn!(error = %err, "failed to enqueue event waitlist leave notification");
+                    }
+                }
+                Err(err) => {
+                    warn!(error = %err, "failed to build event waitlist leave notification");
+                }
             }
         }
         EventAttendanceStatus::PendingApproval => {}
@@ -463,23 +487,21 @@ pub(crate) async fn leave_event(
     }
 
     // Notify users promoted off the waitlist after a spot opens up
-    if !leave_result.promoted_user_ids.is_empty() && !event.test_event {
-        let calendar_ics = build_event_calendar_attachment(base_url, &event);
-        let template_data = EventWaitlistPromoted {
-            event: event.clone(),
-            has_registration_questions: event.has_registration_questions,
-            link: link.clone(),
-            theme: site_settings.theme.clone(),
-            dashboard_link: Some(build_user_dashboard_events_link(base_url)),
-        };
-        let notification = NewNotification {
-            attachments: vec![calendar_ics],
-            kind: NotificationKind::EventWaitlistPromoted,
-            recipients: leave_result.promoted_user_ids.clone(),
-            template_data: Some(to_value(&template_data)?),
-        };
-        if let Err(err) = notifications_manager.enqueue(&notification).await {
-            warn!(error = %err, "failed to enqueue waitlist promotion notification");
+    if should_send_waitlist_promoted_notification(&event, &leave_result.promoted_user_ids) {
+        match build_event_waitlist_promoted_notification(
+            &event,
+            leave_result.promoted_user_ids,
+            &server_cfg,
+            &site_settings,
+        ) {
+            Ok(notification) => {
+                if let Err(err) = notifications_manager.enqueue(&notification).await {
+                    warn!(error = %err, "failed to enqueue waitlist promotion notification");
+                }
+            }
+            Err(err) => {
+                warn!(error = %err, "failed to build waitlist promotion notification");
+            }
         }
     }
 
@@ -530,7 +552,8 @@ pub(crate) async fn start_checkout(
     load_checkoutable_event(&db, community_id, event_id).await?;
 
     // Get registration questions and validate answers
-    let registration_questions = db.get_event_registration_questions(community_id, event_id).await?;
+    let registration_questions =
+        db.get_event_registration_questions(community_id, event_id).await?;
     validate_registration_answers(
         input.registration_answers.registration_answers.as_ref(),
         &registration_questions,
@@ -763,7 +786,10 @@ struct EventTicketAvailability {
 
 impl EventTicketAvailability {
     /// Builds a public availability payload for one ticket type.
-    fn from_ticket_type(ticket_type: &EventTicketType, payment_currency_code: Option<&str>) -> Self {
+    fn from_ticket_type(
+        ticket_type: &EventTicketType,
+        payment_currency_code: Option<&str>,
+    ) -> Self {
         Self {
             active: ticket_type.active,
             event_ticket_type_id: ticket_type.event_ticket_type_id,

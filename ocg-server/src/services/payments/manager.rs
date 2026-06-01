@@ -17,7 +17,8 @@ use crate::{
 
 use super::{
     CreateCheckoutSessionInput, DynPaymentsProvider, RefundPaymentInput,
-    notification_composer::PaymentsNotificationComposer, webhook_reconciler::PaymentsWebhookReconciler,
+    notification_composer::PaymentsNotificationComposer,
+    webhook_reconciler::PaymentsWebhookReconciler,
 };
 
 #[cfg(test)]
@@ -85,8 +86,11 @@ impl PgPaymentsManager {
         server_cfg: HttpServerConfig,
     ) -> Self {
         // Build the shared notification helper once for reuse across payments flows
-        let notification_composer =
-            PaymentsNotificationComposer::new(db.clone(), notifications_manager, server_cfg.clone());
+        let notification_composer = PaymentsNotificationComposer::new(
+            db.clone(),
+            notifications_manager,
+            server_cfg.clone(),
+        );
 
         Self {
             db,
@@ -97,7 +101,10 @@ impl PgPaymentsManager {
     }
 
     /// Approves a pending refund request and submits the provider refund.
-    pub(crate) async fn approve_refund_request(&self, input: &ApproveRefundRequestInput) -> Result<()> {
+    pub(crate) async fn approve_refund_request(
+        &self,
+        input: &ApproveRefundRequestInput,
+    ) -> Result<()> {
         let payments_provider = self.payments_provider()?;
 
         // Mark the refund request as being processed and load the purchase
@@ -178,7 +185,9 @@ impl PgPaymentsManager {
         prepared_checkout: &PreparedEventCheckout,
         user_id: Uuid,
     ) -> Result<String> {
-        if let Some(provider_checkout_url) = prepared_checkout.purchase.provider_checkout_url.clone() {
+        if let Some(provider_checkout_url) =
+            prepared_checkout.purchase.provider_checkout_url.clone()
+        {
             return Ok(provider_checkout_url);
         }
 
@@ -225,9 +234,9 @@ impl PgPaymentsManager {
             .get_event_purchase_summary(prepared_checkout.purchase.event_purchase_id)
             .await?;
 
-        purchase
-            .provider_checkout_url
-            .ok_or_else(|| anyhow::anyhow!("provider checkout URL is missing after checkout creation"))
+        purchase.provider_checkout_url.ok_or_else(|| {
+            anyhow::anyhow!("provider checkout URL is missing after checkout creation")
+        })
     }
 
     /// Verifies and processes a webhook payload.
@@ -242,12 +251,13 @@ impl PgPaymentsManager {
             .ok_or(HandleWebhookError::PaymentsNotConfigured)?;
 
         // Verify the webhook payload before dispatching the normalized event
-        let webhook_event = payments_provider
-            .verify_and_parse_webhook(headers, body)
-            .map_err(|err| {
-                warn!(error = %err, "failed to verify payments webhook");
-                HandleWebhookError::InvalidPayload
-            })?;
+        let webhook_event =
+            payments_provider
+                .verify_and_parse_webhook(headers, body)
+                .map_err(|err| {
+                    warn!(error = %err, "failed to verify payments webhook");
+                    HandleWebhookError::InvalidPayload
+                })?;
 
         // Reconcile the verified webhook through the focused webhook helper
         self.webhook_reconciler(payments_provider.clone())
@@ -257,7 +267,10 @@ impl PgPaymentsManager {
     }
 
     /// Rejects a pending refund request and notifies the attendee.
-    pub(crate) async fn reject_refund_request(&self, input: &RejectRefundRequestInput) -> Result<()> {
+    pub(crate) async fn reject_refund_request(
+        &self,
+        input: &RejectRefundRequestInput,
+    ) -> Result<()> {
         // Persist the refund rejection in the database
         self.db
             .reject_event_refund_request(
@@ -271,7 +284,11 @@ impl PgPaymentsManager {
 
         // Notify the attendee about the rejected refund
         self.notification_composer
-            .enqueue_refund_rejection_notification(input.community_id, input.event_id, input.user_id)
+            .enqueue_refund_rejection_notification(
+                input.community_id,
+                input.event_id,
+                input.user_id,
+            )
             .await;
 
         Ok(())
@@ -333,7 +350,10 @@ impl PgPaymentsManager {
     }
 
     /// Builds the webhook reconciler for the configured payments provider.
-    fn webhook_reconciler(&self, payments_provider: DynPaymentsProvider) -> PaymentsWebhookReconciler {
+    fn webhook_reconciler(
+        &self,
+        payments_provider: DynPaymentsProvider,
+    ) -> PaymentsWebhookReconciler {
         PaymentsWebhookReconciler::new(
             self.db.clone(),
             self.notification_composer.clone(),
@@ -357,8 +377,14 @@ impl PaymentsManager for PgPaymentsManager {
         event_purchase_id: Uuid,
         user_id: Uuid,
     ) -> Result<()> {
-        PgPaymentsManager::complete_free_checkout(self, community_id, event_id, event_purchase_id, user_id)
-            .await
+        PgPaymentsManager::complete_free_checkout(
+            self,
+            community_id,
+            event_id,
+            event_purchase_id,
+            user_id,
+        )
+        .await
     }
 
     /// [`PaymentsManager::get_or_create_checkout_redirect_url`].
@@ -367,7 +393,8 @@ impl PaymentsManager for PgPaymentsManager {
         prepared_checkout: &PreparedEventCheckout,
         user_id: Uuid,
     ) -> Result<String> {
-        PgPaymentsManager::get_or_create_checkout_redirect_url(self, prepared_checkout, user_id).await
+        PgPaymentsManager::get_or_create_checkout_redirect_url(self, prepared_checkout, user_id)
+            .await
     }
 
     /// [`PaymentsManager::handle_webhook`].

@@ -92,7 +92,8 @@ pub(crate) async fn prepare_list_page(
     raw_query: &str,
 ) -> Result<(submissions::CfsSubmissionsFilters, submissions::ListPage), HandlerError> {
     // Fetch submissions
-    let filters: submissions::CfsSubmissionsFilters = serde_qs_config().deserialize_str(raw_query)?;
+    let filters: submissions::CfsSubmissionsFilters =
+        serde_qs_config().deserialize_str(raw_query)?;
     let results = db.list_user_cfs_submissions(user_id, &filters).await?;
 
     // Prepare template

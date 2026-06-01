@@ -49,7 +49,10 @@ impl QuestionnaireAnswers {
     }
 
     /// Validates answers against the configured questions.
-    pub fn validate_against_questions(&self, questions: &[QuestionnaireQuestion]) -> Result<(), String> {
+    pub fn validate_against_questions(
+        &self,
+        questions: &[QuestionnaireQuestion],
+    ) -> Result<(), String> {
         self.validate_payload().map_err(|err| err.to_string())?;
 
         if questions.is_empty() {
@@ -58,7 +61,8 @@ impl QuestionnaireAnswers {
             }
 
             return Err(
-                "questionnaire answers cannot be submitted when questions are not configured".to_string(),
+                "questionnaire answers cannot be submitted when questions are not configured"
+                    .to_string(),
             );
         }
 
@@ -143,7 +147,9 @@ impl QuestionnaireQuestion {
         };
 
         match (&self.kind, value) {
-            (QuestionnaireQuestionKind::FreeText, QuestionnaireAnswerValue::One(value)) => value.clone(),
+            (QuestionnaireQuestionKind::FreeText, QuestionnaireAnswerValue::One(value)) => {
+                value.clone()
+            }
             (QuestionnaireQuestionKind::SingleSelect, QuestionnaireAnswerValue::One(value)) => {
                 Uuid::parse_str(value)
                     .ok()
@@ -151,29 +157,39 @@ impl QuestionnaireQuestion {
                     .map(str::to_string)
                     .unwrap_or_default()
             }
-            (QuestionnaireQuestionKind::MultiSelect, QuestionnaireAnswerValue::Many(values)) => values
-                .iter()
-                .filter_map(|option_id| self.option_label(*option_id))
-                .collect::<Vec<_>>()
-                .join(", "),
+            (QuestionnaireQuestionKind::MultiSelect, QuestionnaireAnswerValue::Many(values)) => {
+                values
+                    .iter()
+                    .filter_map(|option_id| self.option_label(*option_id))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            }
             _ => String::new(),
         }
     }
 
     /// Returns a free-text answer for this question, if present.
-    pub fn free_text_answer<'a>(&self, answers: Option<&'a QuestionnaireAnswers>) -> Option<&'a str> {
+    pub fn free_text_answer<'a>(
+        &self,
+        answers: Option<&'a QuestionnaireAnswers>,
+    ) -> Option<&'a str> {
         match (self.kind, answers.and_then(|answers| answers.get(self.id))) {
-            (QuestionnaireQuestionKind::FreeText, Some(QuestionnaireAnswerValue::One(value))) => Some(value),
+            (QuestionnaireQuestionKind::FreeText, Some(QuestionnaireAnswerValue::One(value))) => {
+                Some(value)
+            }
             _ => None,
         }
     }
 
     /// Returns whether an option was selected for this question.
-    pub fn is_option_selected(&self, answers: Option<&QuestionnaireAnswers>, option_id: &Uuid) -> bool {
+    pub fn is_option_selected(
+        &self,
+        answers: Option<&QuestionnaireAnswers>,
+        option_id: &Uuid,
+    ) -> bool {
         match answers.and_then(|answers| answers.get(self.id)) {
-            Some(QuestionnaireAnswerValue::One(value)) => {
-                Uuid::parse_str(value).is_ok_and(|selected_option_id| selected_option_id == *option_id)
-            }
+            Some(QuestionnaireAnswerValue::One(value)) => Uuid::parse_str(value)
+                .is_ok_and(|selected_option_id| selected_option_id == *option_id),
             Some(QuestionnaireAnswerValue::Many(values)) => values.contains(option_id),
             None => false,
         }
@@ -204,8 +220,9 @@ impl QuestionnaireQuestion {
                 }
             }
             (QuestionnaireQuestionKind::SingleSelect, QuestionnaireAnswerValue::One(value)) => {
-                let selected_option_id = Uuid::parse_str(value)
-                    .map_err(|_| "single-select questionnaire answer must be an option id".to_string())?;
+                let selected_option_id = Uuid::parse_str(value).map_err(|_| {
+                    "single-select questionnaire answer must be an option id".to_string()
+                })?;
                 if !self.options.iter().any(|option| option.id == selected_option_id) {
                     return Err("questionnaire answer references an unknown option".to_string());
                 }
@@ -228,7 +245,9 @@ impl QuestionnaireQuestion {
                 return Err("single-select questionnaire answer must be an option id".to_string());
             }
             (QuestionnaireQuestionKind::MultiSelect, _) => {
-                return Err("multi-select questionnaire answer must be an option id array".to_string());
+                return Err(
+                    "multi-select questionnaire answer must be an option id array".to_string(),
+                );
             }
         }
 
@@ -255,7 +274,10 @@ pub enum QuestionnaireQuestionKind {
 #[derive(Debug, Default, Deserialize, Validate)]
 pub(crate) struct OptionalQuestionnaireAnswersForm {
     /// Questionnaire answers decoded from the form field JSON.
-    #[serde(default, deserialize_with = "deserialize_optional_questionnaire_answers")]
+    #[serde(
+        default,
+        deserialize_with = "deserialize_optional_questionnaire_answers"
+    )]
     #[garde(custom(validate_optional_questionnaire_answers))]
     pub registration_answers: Option<QuestionnaireAnswers>,
 }
@@ -325,7 +347,10 @@ fn validate_questionnaire_answers(value: &QuestionnaireAnswers, _ctx: &()) -> ga
 }
 
 /// Validates an optional decoded questionnaire answers payload.
-fn validate_optional_questionnaire_answers(value: &Option<QuestionnaireAnswers>, _ctx: &()) -> garde::Result {
+fn validate_optional_questionnaire_answers(
+    value: &Option<QuestionnaireAnswers>,
+    _ctx: &(),
+) -> garde::Result {
     if let Some(value) = value {
         value.validate_payload()?;
     }
@@ -349,15 +374,17 @@ mod tests {
 
     #[test]
     fn test_required_questionnaire_answers_form_rejects_blank() {
-        let result = serde_urlencoded::from_str::<RequiredQuestionnaireAnswersForm>("registration_answers=");
+        let result =
+            serde_urlencoded::from_str::<RequiredQuestionnaireAnswersForm>("registration_answers=");
 
         assert!(result.is_err());
     }
 
     #[test]
     fn test_questionnaire_answers_form_requires_answers_array() {
-        let result =
-            serde_urlencoded::from_str::<OptionalQuestionnaireAnswersForm>("registration_answers=%7B%7D");
+        let result = serde_urlencoded::from_str::<OptionalQuestionnaireAnswersForm>(
+            "registration_answers=%7B%7D",
+        );
 
         assert!(result.is_err());
     }
@@ -387,7 +414,11 @@ mod tests {
     #[test]
     fn test_questionnaire_answers_validate_against_questions_accepts_valid_answers() {
         let option_id = Uuid::new_v4();
-        let question = sample_question(QuestionnaireQuestionKind::SingleSelect, true, vec![option_id]);
+        let question = sample_question(
+            QuestionnaireQuestionKind::SingleSelect,
+            true,
+            vec![option_id],
+        );
         let answers = QuestionnaireAnswers {
             answers: vec![QuestionnaireAnswer {
                 question_id: question.id,

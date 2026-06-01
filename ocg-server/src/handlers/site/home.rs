@@ -21,7 +21,10 @@ mod tests;
 
 /// Handler that renders the global site home page.
 #[instrument(skip_all, err)]
-pub(crate) async fn page(State(db): State<DynDB>, uri: Uri) -> Result<impl IntoResponse, HandlerError> {
+pub(crate) async fn page(
+    State(db): State<DynDB>,
+    uri: Uri,
+) -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
     let (
         communities,
