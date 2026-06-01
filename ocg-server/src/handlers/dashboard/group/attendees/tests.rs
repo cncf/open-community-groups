@@ -1063,7 +1063,7 @@ async fn test_invite_event_attendee_returns_created_and_sends_notification() {
         ))
         .header(COOKIE, format!("id={session_id}"))
         .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .body(Body::from("email=%20Invitee%40Example.com%20"))
+        .body(Body::from("email=Invitee%40Example.com"))
         .unwrap();
     let response = router.oneshot(request).await.unwrap();
     let (parts, body) = response.into_parts();
@@ -1260,6 +1260,72 @@ async fn test_invite_event_attendee_returns_created_when_notification_enqueue_fa
         &bytes,
         StatusCode::CREATED,
         "refresh-event-attendees, refresh-event-waitlist",
+    );
+}
+
+#[tokio::test]
+async fn test_invite_event_attendee_returns_unprocessable_entity_when_email_is_invalid() {
+    // Setup identifiers and data structures
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(
+        session_id,
+        user_id,
+        &auth_hash,
+        Some(community_id),
+        Some(group_id),
+    );
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::EventsWrite
+        })
+        .returning(|_, _, _, _| Ok(true));
+    db.expect_invite_event_attendee().times(0);
+
+    // Setup notifications manager mock
+    let mut nm = MockNotificationsManager::new();
+    nm.expect_enqueue().times(0);
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("POST")
+        .uri(format!(
+            "/dashboard/group/events/{event_id}/attendees/invite"
+        ))
+        .header(COOKIE, format!("id={session_id}"))
+        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+        .body(Body::from("email=not-an-email"))
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert!(
+        String::from_utf8(bytes.to_vec())
+            .unwrap()
+            .contains("email: not a valid email")
     );
 }
 
