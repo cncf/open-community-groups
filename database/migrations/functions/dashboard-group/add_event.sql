@@ -87,7 +87,11 @@ begin
     end if;
 
     -- Validate capacity and CFS label rules
-    perform validate_event_capacity(p_event, p_cfg_max_participants, p_effective_capacity => v_effective_capacity);
+    perform validate_event_capacity(
+        p_event,
+        p_cfg_max_participants,
+        p_effective_capacity => v_effective_capacity
+    );
     perform validate_event_cfs_labels_payload(p_event->'cfs_labels');
 
     -- Insert event with unique slug generation and collision retry

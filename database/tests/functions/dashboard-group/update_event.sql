@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(114);
+select plan(116);
 
 -- ============================================================================
 -- VARIABLES
@@ -35,6 +35,7 @@ select plan(114);
 \set event24ID '00000000-0000-0000-0000-000000000031'
 \set event25ID '00000000-0000-0000-0000-000000000032'
 \set event26ID '00000000-0000-0000-0000-000000000033'
+\set eventOverCapacityID '00000000-0000-0000-0000-000000000034'
 \set eventQuestionsAnsweredID '90300000-0000-0000-0000-000000000043'
 \set eventQuestionsID '90300000-0000-0000-0000-000000000041'
 \set eventQuestionsPublishedID '90300000-0000-0000-0000-000000000042'
@@ -420,6 +421,33 @@ insert into event (
     true,
     '2030-02-16 10:00:00+00',
     true
+);
+
+-- Published event already over capacity because of a confirmed manual invitation
+insert into event (
+    event_id,
+    group_id,
+    name,
+    slug,
+    description,
+    timezone,
+    event_category_id,
+    event_kind_id,
+    capacity,
+    published,
+    starts_at
+) values (
+    :'eventOverCapacityID',
+    :'group1ID',
+    'Manual Invite Over Capacity Event',
+    'manual-invite-over-capacity',
+    'Published event for unchanged over-capacity save checks',
+    'UTC',
+    :'category1ID',
+    'in-person',
+    2,
+    true,
+    '2030-02-12 10:00:00+00'
 );
 
 -- Published event used when capacity becomes unlimited
@@ -863,6 +891,12 @@ insert into event_attendee (event_id, user_id) values
     (:'event16ID', :'user3ID'),
     (:'event17ID', :'user2ID'),
     (:'event20ID', :'user1ID');
+
+-- Over-capacity event attendees with one organizer-controlled manual seat
+insert into event_attendee (event_id, user_id, manually_invited, status) values
+    (:'eventOverCapacityID', :'user1ID', false, 'confirmed'),
+    (:'eventOverCapacityID', :'user2ID', false, 'confirmed'),
+    (:'eventOverCapacityID', :'user3ID', true, 'confirmed');
 
 -- Attendee with answers that lock registration questions
 insert into event_attendee (event_id, user_id, registration_answers, status)
@@ -3126,6 +3160,23 @@ select throws_ok(
     )$$,
     'event capacity (2) cannot be less than current number of attendees (3)',
     'Should throw error when capacity is reduced below attendee count'
+);
+
+-- Should allow saving an event already over capacity from accepted manual invitations
+select lives_ok(
+    $$select update_event(
+        null::uuid,
+        '00000000-0000-0000-0000-000000000002'::uuid,
+        '00000000-0000-0000-0000-000000000034'::uuid,
+        '{"name": "Manual Invite Over Capacity Event", "description": "Saved while over capacity", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "capacity": 2, "starts_at": "2030-02-12T10:00:00"}'::jsonb
+    )$$,
+    'Should allow saving an event already over capacity from accepted manual invitations'
+);
+
+select is(
+    (select description from event where event_id = :'eventOverCapacityID'::uuid),
+    'Saved while over capacity',
+    'Should persist updates when over-capacity event capacity is unchanged'
 );
 
 -- Should reject ticketing conversion when the event already has attendees

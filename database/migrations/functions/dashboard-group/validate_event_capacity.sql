@@ -9,6 +9,7 @@ returns void as $$
 declare
     v_attendee_count int;
     v_capacity int := coalesce(p_effective_capacity, (p_event->>'capacity')::int);
+    v_manual_occupied_seat_count int;
     v_provider_max_participants int;
     v_waitlist_enabled boolean := coalesce((p_event->>'waitlist_enabled')::boolean, false);
 begin
@@ -33,7 +34,15 @@ begin
     if p_existing_event_id is not null and v_capacity is not null then
         select get_event_occupied_seat_count(p_existing_event_id) into v_attendee_count;
 
-        if v_capacity < v_attendee_count then
+        -- Manual occupied seats are organizer-controlled overbooked seats, so they offset the attendee floor
+        select count(*)::int
+        into v_manual_occupied_seat_count
+        from event_attendee ea
+        where ea.event_id = p_existing_event_id
+        and ea.manually_invited = true
+        and ea.status in ('confirmed', 'registration-questions-pending');
+
+        if v_capacity + v_manual_occupied_seat_count < v_attendee_count then
             raise exception 'event capacity (%) cannot be less than current number of attendees (%)',
                 v_capacity, v_attendee_count;
         end if;
