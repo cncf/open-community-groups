@@ -574,7 +574,7 @@ fn build_missing_fields(
     // Check venue details for in-person or hybrid events
     match normalize_text(input.kind_id.clone()).as_deref() {
         Some("in-person" | "hybrid") if venue_label.is_none() => {
-            missing.push("Venue details".to_string())
+            missing.push("Venue details".to_string());
         }
         _ => {}
     }
