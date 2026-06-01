@@ -56,6 +56,8 @@ pub(crate) struct UserEvent {
     /// Whether the attendee row is waiting for registration questions.
     #[serde(default)]
     pub registration_questions_pending: bool,
+    /// Checkout URL where the user can complete payment.
+    pub resume_checkout_url: Option<String>,
     /// Roles the user has in the event.
     pub roles: Vec<String>,
 }

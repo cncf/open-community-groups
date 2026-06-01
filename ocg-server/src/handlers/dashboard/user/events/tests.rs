@@ -37,6 +37,7 @@ async fn test_list_page_success() {
             registration_answers: None,
             registration_questions: vec![],
             registration_questions_pending: false,
+            resume_checkout_url: None,
             roles: vec!["Attendee".to_string(), "Host".to_string()],
         }],
         total: 1,

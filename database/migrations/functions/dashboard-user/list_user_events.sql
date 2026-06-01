@@ -17,13 +17,34 @@ returns json as $$
                 g.community_id,
                 ea.registration_answers,
                 case
+                    when ea.status = 'registration-questions-pending'
+                        and pending_purchase.event_purchase_id is not null then 'Payment pending'
                     when ea.status = 'registration-questions-pending' then 'Registration pending'
                     else 'Attendee'
                 end as role,
-                ea.status = 'registration-questions-pending' as registration_questions_pending
+                ea.status = 'registration-questions-pending'
+                    and pending_purchase.event_purchase_id is not null as pending_payment,
+                ea.status = 'registration-questions-pending'
+                    and pending_purchase.event_purchase_id is null as registration_questions_pending,
+                case
+                    when ea.status = 'registration-questions-pending' then pending_purchase.provider_checkout_url
+                    else null
+                end as resume_checkout_url
             from event_attendee ea
             join event e using (event_id)
             join "group" g using (group_id)
+            left join lateral (
+                select
+                    ep.event_purchase_id,
+                    ep.provider_checkout_url
+                from event_purchase ep
+                where ep.event_id = ea.event_id
+                and ep.user_id = ea.user_id
+                and ep.status = 'pending'
+                and ep.hold_expires_at > current_timestamp
+                order by ep.created_at desc, ep.event_purchase_id desc
+                limit 1
+            ) pending_purchase on true
             where ea.user_id = p_user_id
             and ea.status in ('confirmed', 'registration-questions-pending')
             and e.canceled = false
@@ -42,7 +63,9 @@ returns json as $$
                 g.community_id,
                 null::jsonb as registration_answers,
                 'Host'::text as role,
-                false as registration_questions_pending
+                false as pending_payment,
+                false as registration_questions_pending,
+                null::text as resume_checkout_url
             from event_host eh
             join event e using (event_id)
             join "group" g using (group_id)
@@ -63,7 +86,9 @@ returns json as $$
                 g.community_id,
                 null::jsonb as registration_answers,
                 'Speaker'::text as role,
-                false as registration_questions_pending
+                false as pending_payment,
+                false as registration_questions_pending,
+                null::text as resume_checkout_url
             from event_speaker es
             join event e using (event_id)
             join "group" g using (group_id)
@@ -84,7 +109,9 @@ returns json as $$
                 g.community_id,
                 null::jsonb as registration_answers,
                 'Speaker'::text as role,
-                false as registration_questions_pending
+                false as pending_payment,
+                false as registration_questions_pending,
+                null::text as resume_checkout_url
             from session_speaker ss
             join session s using (session_id)
             join event e using (event_id)
@@ -99,16 +126,52 @@ returns json as $$
         ),
         -- Combine all user roles by event.
         participant_roles as (
-            select community_id, event_id, group_id, registration_answers, role, starts_at, registration_questions_pending
+            select
+                community_id,
+                event_id,
+                group_id,
+                pending_payment,
+                registration_answers,
+                registration_questions_pending,
+                resume_checkout_url,
+                role,
+                starts_at
             from attendee_events
             union all
-            select community_id, event_id, group_id, registration_answers, role, starts_at, registration_questions_pending
+            select
+                community_id,
+                event_id,
+                group_id,
+                pending_payment,
+                registration_answers,
+                registration_questions_pending,
+                resume_checkout_url,
+                role,
+                starts_at
             from host_events
             union all
-            select community_id, event_id, group_id, registration_answers, role, starts_at, registration_questions_pending
+            select
+                community_id,
+                event_id,
+                group_id,
+                pending_payment,
+                registration_answers,
+                registration_questions_pending,
+                resume_checkout_url,
+                role,
+                starts_at
             from event_speaker_events
             union all
-            select community_id, event_id, group_id, registration_answers, role, starts_at, registration_questions_pending
+            select
+                community_id,
+                event_id,
+                group_id,
+                pending_payment,
+                registration_answers,
+                registration_questions_pending,
+                resume_checkout_url,
+                role,
+                starts_at
             from session_speaker_events
         ),
         -- Deduplicate role rows for the same event.
@@ -117,10 +180,12 @@ returns json as $$
                 pr.community_id,
                 pr.event_id,
                 pr.group_id,
+                pr.pending_payment,
                 pr.registration_answers,
-                pr.role,
+                pr.registration_questions_pending,
+                pr.resume_checkout_url,
                 pr.starts_at,
-                pr.registration_questions_pending
+                pr.role
             from participant_roles pr
         ),
         -- Aggregate roles per event.
@@ -129,8 +194,11 @@ returns json as $$
                 ur.community_id,
                 ur.event_id,
                 ur.group_id,
-                max(ur.registration_answers::text)::jsonb as registration_answers,
+                bool_or(ur.pending_payment) as pending_payment,
+                (max(ur.registration_answers::text) filter (where ur.registration_answers is not null))::jsonb
+                    as registration_answers,
                 bool_or(ur.registration_questions_pending) as registration_questions_pending,
+                max(ur.resume_checkout_url) as resume_checkout_url,
                 array_agg(ur.role order by ur.role asc) as roles,
                 ur.starts_at
             from unique_roles ur
@@ -142,8 +210,10 @@ returns json as $$
                 er.community_id,
                 er.event_id,
                 er.group_id,
+                er.pending_payment,
                 er.registration_answers,
                 er.registration_questions_pending,
+                er.resume_checkout_url,
                 er.roles,
                 er.starts_at
             from event_rows er
@@ -173,17 +243,20 @@ returns json as $$
                             and ep.amount_minor > 0
                         ),
                         'can_complete_registration_questions',
-                        event_rows_page.registration_questions_pending
-                        or (
-                            'Attendee' = any(event_rows_page.roles)
-                            and
-                            json_array_length(
-                                get_event_registration_questions(
-                                    event_rows_page.community_id,
-                                    event_rows_page.event_id
-                                )
-                            ) > 0
-                            and event_rows_page.starts_at > now()
+                        event_rows_page.pending_payment = false
+                        and (
+                            event_rows_page.registration_questions_pending
+                            or (
+                                'Attendee' = any(event_rows_page.roles)
+                                and
+                                json_array_length(
+                                    get_event_registration_questions(
+                                        event_rows_page.community_id,
+                                        event_rows_page.event_id
+                                    )
+                                ) > 0
+                                and event_rows_page.starts_at > now()
+                            )
                         ),
                         'event',
                         get_event_summary(
@@ -191,6 +264,8 @@ returns json as $$
                             event_rows_page.group_id,
                             event_rows_page.event_id
                         ),
+                        'pending_payment',
+                        event_rows_page.pending_payment,
                         'registration_answers',
                         event_rows_page.registration_answers,
                         'registration_questions',
@@ -200,6 +275,8 @@ returns json as $$
                         ),
                         'registration_questions_pending',
                         event_rows_page.registration_questions_pending,
+                        'resume_checkout_url',
+                        event_rows_page.resume_checkout_url,
                         'roles',
                         event_rows_page.roles
                     )

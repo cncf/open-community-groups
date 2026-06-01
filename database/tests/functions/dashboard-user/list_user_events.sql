@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(8);
+select plan(10);
 
 -- ============================================================================
 -- VARIABLES
@@ -16,6 +16,10 @@ select plan(8);
 \set groupID '00000000-0000-0000-0000-000000000032'
 \set groupInactiveID '00000000-0000-0000-0000-000000000033'
 \set questionsAttendeeUserID '90400000-0000-0000-0000-000000000031'
+\set questionsCheckoutExpiredPurchaseID '90400000-0000-0000-0000-000000000063'
+\set questionsCheckoutExpiredUserID '90400000-0000-0000-0000-000000000035'
+\set questionsCheckoutPurchaseID '90400000-0000-0000-0000-000000000062'
+\set questionsCheckoutUserID '90400000-0000-0000-0000-000000000034'
 \set questionsInvitedUserID '90400000-0000-0000-0000-000000000033'
 \set userEmptyID '00000000-0000-0000-0000-000000000099'
 \set userID '00000000-0000-0000-0000-000000000081'
@@ -35,6 +39,7 @@ select plan(8);
 \set eventPaidPurchaseID '00000000-0000-0000-0000-000000000113'
 \set eventPaidTicketTypeID '00000000-0000-0000-0000-000000000114'
 \set eventQuestionsID '90400000-0000-0000-0000-000000000041'
+\set eventQuestionsTicketTypeID '90400000-0000-0000-0000-000000000081'
 \set eventUnpublishedID '00000000-0000-0000-0000-000000000109'
 \set eventDeletedGroupID '00000000-0000-0000-0000-000000000110'
 
@@ -76,6 +81,8 @@ insert into "user" (user_id, auth_hash, email, email_verified, username, name) v
     (:'userID', 'auth-hash', 'alice@example.com', true, 'alice', 'Alice'),
     (:'userPaidID', 'paid-auth-hash', 'paid@example.com', true, 'paid', 'Paid User'),
     (:'questionsAttendeeUserID', 'h', 'rq-attendee@test.com', true, 'rq-attendee', 'RQ Attendee'),
+    (:'questionsCheckoutUserID', 'h', 'rq-checkout@test.com', true, 'rq-checkout', 'RQ Checkout'),
+    (:'questionsCheckoutExpiredUserID', 'h', 'rq-expired@test.com', true, 'rq-expired', 'RQ Expired'),
     (:'questionsInvitedUserID', 'h', 'rq-invited@test.com', true, 'rq-invited', 'RQ Invited');
 
 -- Events
@@ -88,6 +95,7 @@ insert into event (
     event_kind_id,
     group_id,
     name,
+    payment_currency_code,
     published,
     slug,
     starts_at,
@@ -102,6 +110,7 @@ insert into event (
         'in-person',
         :'groupID',
         'Event A',
+        null,
         true,
         'event-a',
         '2099-01-10 10:00:00+00',
@@ -116,6 +125,7 @@ insert into event (
         'virtual',
         :'groupID',
         'Event B',
+        null,
         true,
         'event-b',
         '2099-01-11 10:00:00+00',
@@ -130,6 +140,7 @@ insert into event (
         'virtual',
         :'groupID',
         'Event Canceled',
+        null,
         false,
         'event-canceled',
         '2099-01-13 10:00:00+00',
@@ -144,6 +155,7 @@ insert into event (
         'virtual',
         :'groupID',
         'Event C',
+        null,
         true,
         'event-c',
         '2099-01-12 10:00:00+00',
@@ -158,6 +170,7 @@ insert into event (
         'virtual',
         :'groupID',
         'Event Deleted',
+        null,
         false,
         'event-deleted',
         '2099-01-14 10:00:00+00',
@@ -172,6 +185,7 @@ insert into event (
         'virtual',
         :'groupInactiveID',
         'Event Inactive Group',
+        null,
         true,
         'event-inactive-group',
         '2099-01-15 10:00:00+00',
@@ -186,6 +200,7 @@ insert into event (
         'virtual',
         :'groupID',
         'Event No Start',
+        null,
         false,
         'event-no-start',
         null,
@@ -200,6 +215,7 @@ insert into event (
         'virtual',
         :'groupID',
         'Event Past',
+        null,
         true,
         'event-past',
         '2000-01-01 10:00:00+00',
@@ -214,6 +230,7 @@ insert into event (
         'virtual',
         :'groupID',
         'Event Pending Invitation',
+        null,
         true,
         'event-pending-invitation',
         '2099-01-13 12:00:00+00',
@@ -228,6 +245,7 @@ insert into event (
         'virtual',
         :'groupID',
         'Event Unpublished',
+        null,
         false,
         'event-unpublished',
         '2099-01-16 10:00:00+00',
@@ -242,6 +260,7 @@ insert into event (
         'virtual',
         :'groupDeletedID',
         'Event Deleted Group',
+        null,
         true,
         'event-deleted-group',
         '2099-01-17 10:00:00+00',
@@ -256,6 +275,7 @@ insert into event (
         'in-person',
         :'groupID',
         'Event Paid',
+        'USD',
         true,
         'event-paid',
         '2099-01-18 10:00:00+00',
@@ -289,10 +309,6 @@ insert into event (
     '[{"id": "90400000-0000-0000-0000-000000000101", "kind": "free-text", "prompt": "Note", "required": true, "options": []}]'::jsonb
 );
 
-update event
-set payment_currency_code = 'USD'
-where event_id = :'eventPaidID'::uuid;
-
 -- Sessions for speaker role tests
 insert into session (session_id, event_id, name, session_kind_id, starts_at) values
     (:'sessionAID', :'eventAID', 'Session A', 'virtual', '2099-01-10 11:00:00+00'),
@@ -311,8 +327,15 @@ insert into event_ticket_type (
     1,
     1,
     'Paid admission'
+), (
+    :'eventQuestionsTicketTypeID',
+    :'eventQuestionsID',
+    1,
+    100,
+    'Questions admission'
 );
 
+-- Paid ticket price window used by purchase state tests
 insert into event_ticket_price_window (
     event_ticket_price_window_id,
     amount_minor,
@@ -343,12 +366,27 @@ values
     (:'eventQuestionsID', :'questionsInvitedUserID', true, 'registration-questions-pending', null),
     (
         :'eventQuestionsID',
+        :'questionsCheckoutUserID',
+        false,
+        'registration-questions-pending',
+        '{"answers": [{"question_id": "90400000-0000-0000-0000-000000000101", "value": "Checkout answer"}]}'::jsonb
+    ),
+    (
+        :'eventQuestionsID',
+        :'questionsCheckoutExpiredUserID',
+        false,
+        'registration-questions-pending',
+        '{"answers": [{"question_id": "90400000-0000-0000-0000-000000000101", "value": "Expired answer"}]}'::jsonb
+    ),
+    (
+        :'eventQuestionsID',
         :'questionsAttendeeUserID',
         false,
         'confirmed',
         '{"answers": [{"question_id": "90400000-0000-0000-0000-000000000101", "value": "Attendee answer"}]}'::jsonb
     );
 
+-- User roles for role aggregation
 insert into event_host (event_id, user_id) values
     (:'eventAID', :'userID');
 
@@ -359,6 +397,7 @@ insert into session_speaker (session_id, user_id, featured) values
     (:'sessionAID', :'userID', false),
     (:'sessionCID', :'userID', true);
 
+-- Completed paid purchase used to disable attendee cancellation
 insert into event_purchase (
     event_purchase_id,
     amount_minor,
@@ -379,6 +418,42 @@ insert into event_purchase (
     :'userPaidID'
 );
 
+-- Pending checkout purchases used to distinguish active and expired holds
+insert into event_purchase (
+    event_purchase_id,
+    amount_minor,
+    currency_code,
+    event_id,
+    event_ticket_type_id,
+    hold_expires_at,
+    provider_checkout_url,
+    status,
+    ticket_title,
+    user_id
+) values (
+    :'questionsCheckoutPurchaseID',
+    1500,
+    'USD',
+    :'eventQuestionsID',
+    :'eventQuestionsTicketTypeID',
+    current_timestamp + interval '10 minutes',
+    'https://example.test/checkout/resume',
+    'pending',
+    'Questions admission',
+    :'questionsCheckoutUserID'
+), (
+    :'questionsCheckoutExpiredPurchaseID',
+    1500,
+    'USD',
+    :'eventQuestionsID',
+    :'eventQuestionsTicketTypeID',
+    current_timestamp - interval '10 minutes',
+    'https://example.test/checkout/expired',
+    'pending',
+    'Questions admission',
+    :'questionsCheckoutExpiredUserID'
+);
+
 -- ============================================================================
 -- TESTS
 -- ============================================================================
@@ -396,12 +471,16 @@ select is(
                 false,
                 'event',
                 get_event_summary(:'communityID'::uuid, :'groupID'::uuid, :'eventAID'::uuid)::jsonb,
+                'pending_payment',
+                false,
                 'registration_answers',
                 null,
                 'registration_questions',
                 get_event_registration_questions(:'communityID'::uuid, :'eventAID'::uuid)::jsonb,
                 'registration_questions_pending',
                 false,
+                'resume_checkout_url',
+                null,
                 'roles',
                 jsonb_build_array('Attendee', 'Host', 'Speaker')
             ),
@@ -412,12 +491,16 @@ select is(
                 false,
                 'event',
                 get_event_summary(:'communityID'::uuid, :'groupID'::uuid, :'eventBID'::uuid)::jsonb,
+                'pending_payment',
+                false,
                 'registration_answers',
                 null,
                 'registration_questions',
                 get_event_registration_questions(:'communityID'::uuid, :'eventBID'::uuid)::jsonb,
                 'registration_questions_pending',
                 false,
+                'resume_checkout_url',
+                null,
                 'roles',
                 jsonb_build_array('Attendee')
             ),
@@ -428,12 +511,16 @@ select is(
                 false,
                 'event',
                 get_event_summary(:'communityID'::uuid, :'groupID'::uuid, :'eventCID'::uuid)::jsonb,
+                'pending_payment',
+                false,
                 'registration_answers',
                 null,
                 'registration_questions',
                 get_event_registration_questions(:'communityID'::uuid, :'eventCID'::uuid)::jsonb,
                 'registration_questions_pending',
                 false,
+                'resume_checkout_url',
+                null,
                 'roles',
                 jsonb_build_array('Speaker')
             )
@@ -469,12 +556,16 @@ select is(
                 false,
                 'event',
                 get_event_summary(:'communityID'::uuid, :'groupID'::uuid, :'eventBID'::uuid)::jsonb,
+                'pending_payment',
+                false,
                 'registration_answers',
                 null,
                 'registration_questions',
                 get_event_registration_questions(:'communityID'::uuid, :'eventBID'::uuid)::jsonb,
                 'registration_questions_pending',
                 false,
+                'resume_checkout_url',
+                null,
                 'roles',
                 jsonb_build_array('Attendee')
             )
@@ -498,12 +589,16 @@ select is(
                 false,
                 'event',
                 get_event_summary(:'communityID'::uuid, :'groupID'::uuid, :'eventPaidID'::uuid)::jsonb,
+                'pending_payment',
+                false,
                 'registration_answers',
                 null,
                 'registration_questions',
                 get_event_registration_questions(:'communityID'::uuid, :'eventPaidID'::uuid)::jsonb,
                 'registration_questions_pending',
                 false,
+                'resume_checkout_url',
+                null,
                 'roles',
                 jsonb_build_array('Attendee')
             )
@@ -545,6 +640,54 @@ select is(
     list_user_events(:'questionsAttendeeUserID'::uuid, '{"limit": 10, "offset": 0}'::jsonb)::jsonb #>> '{events,0,can_complete_registration_questions}',
     'true',
     'Should allow confirmed attendees to edit answers before the event starts'
+);
+
+-- Should report active pending checkout before pending registration questions
+select is(
+    (
+        list_user_events(:'questionsCheckoutUserID'::uuid, '{"limit": 10, "offset": 0}'::jsonb)::jsonb
+        -> 'events'
+        -> 0
+    ) - 'event' - 'registration_answers' - 'registration_questions',
+    jsonb_build_object(
+        'can_cancel_attendance',
+        false,
+        'can_complete_registration_questions',
+        false,
+        'pending_payment',
+        true,
+        'registration_questions_pending',
+        false,
+        'resume_checkout_url',
+        'https://example.test/checkout/resume',
+        'roles',
+        jsonb_build_array('Payment pending')
+    ),
+    'Should report active pending checkout before pending registration questions'
+);
+
+-- Should ignore expired pending checkout before pending registration questions
+select is(
+    (
+        list_user_events(:'questionsCheckoutExpiredUserID'::uuid, '{"limit": 10, "offset": 0}'::jsonb)::jsonb
+        -> 'events'
+        -> 0
+    ) - 'event' - 'registration_answers' - 'registration_questions',
+    jsonb_build_object(
+        'can_cancel_attendance',
+        false,
+        'can_complete_registration_questions',
+        true,
+        'pending_payment',
+        false,
+        'registration_questions_pending',
+        true,
+        'resume_checkout_url',
+        null,
+        'roles',
+        jsonb_build_array('Registration pending')
+    ),
+    'Should ignore expired pending checkout before pending registration questions'
 );
 
 -- ============================================================================
