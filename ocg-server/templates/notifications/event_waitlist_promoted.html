@@ -29,28 +29,30 @@
       Location: {{ location }}
       <br />
     {% endif -%}
-    {% if let Some(meeting_join_url) = &event.meeting_join_url -%}
-      Meeting link:
-      <a href="{{ meeting_join_url }}"
-         target="_blank"
-         rel="noopener noreferrer">{{ meeting_join_url }}</a>
-      <br />
-      {% if let Some(meeting_password) = &event.meeting_password -%}
-        Meeting password:
-        <code class="ml-2 px-2 py-0.5 bg-stone-100 rounded text-stone-800">
-          {{ meeting_password }}
-        </code>
+    {% if !has_registration_questions -%}
+      {% if let Some(meeting_join_url) = &event.meeting_join_url -%}
+        Meeting link:
+        <a href="{{ meeting_join_url }}"
+           target="_blank"
+           rel="noopener noreferrer">{{ meeting_join_url }}</a>
+        <br />
+        {% if let Some(meeting_password) = &event.meeting_password -%}
+          Meeting password:
+          <code class="ml-2 px-2 py-0.5 bg-stone-100 rounded text-stone-800">
+            {{ meeting_password }}
+          </code>
+          <br />
+        {% endif -%}
+      {% endif -%}
+      {% if let Some(meeting_join_instructions) = &event.meeting_join_instructions -%}
+        Meeting instructions:
+        <br />
+        <br />
+        <blockquote class="join-instructions">
+          {{ meeting_join_instructions }}
+        </blockquote>
         <br />
       {% endif -%}
-    {% endif -%}
-    {% if let Some(meeting_join_instructions) = &event.meeting_join_instructions -%}
-      Meeting instructions:
-      <br />
-      <br />
-      <blockquote class="join-instructions">
-        {{ meeting_join_instructions }}
-      </blockquote>
-      <br />
     {% endif -%}
   </div>
 
@@ -64,9 +66,11 @@
     {{ email::button(link = link, text = "View event", color = theme.primary_color) }}
   {% endif -%}
 
-  <p class="default mt-30 mb-15"
-     style="margin-top: 30px;
-            margin-bottom: 15px">Please find attached an .ics file containing the event details.</p>
+  {% if !has_registration_questions -%}
+    <p class="default mt-30 mb-15"
+       style="margin-top: 30px;
+              margin-bottom: 15px">Please find attached an .ics file containing the event details.</p>
+  {% endif -%}
 {% endblock content -%}
 
 {% block footer -%}

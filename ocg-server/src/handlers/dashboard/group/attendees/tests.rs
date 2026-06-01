@@ -371,8 +371,7 @@ async fn test_cancel_event_attendee_attendance_promotes_waitlist_and_enqueues_no
         .withf(move |notification| {
             matches!(notification.kind, NotificationKind::EventWaitlistPromoted)
                 && notification.recipients == vec![promoted_user_id]
-                && notification.attachments.len() == 1
-                && notification.attachments[0].file_name == "event-ghi9abc.ics"
+                && notification.attachments.is_empty()
                 && notification.template_data.as_ref().is_some_and(|value| {
                     from_value::<EventWaitlistPromoted>(value.clone()).is_ok_and(|template| {
                         template.dashboard_link.as_deref()

@@ -234,6 +234,11 @@ pub(crate) fn build_event_waitlist_promoted_notification(
     site_settings: &SiteSettings,
 ) -> Result<NewNotification> {
     let base_url = notification_base_url(server_cfg);
+    let attachments = if event.has_registration_questions {
+        vec![]
+    } else {
+        vec![build_event_calendar_attachment(base_url, event)]
+    };
     let template_data = EventWaitlistPromoted {
         event: event.clone(),
         has_registration_questions: event.has_registration_questions,
@@ -244,7 +249,7 @@ pub(crate) fn build_event_waitlist_promoted_notification(
     };
 
     Ok(NewNotification {
-        attachments: vec![build_event_calendar_attachment(base_url, event)],
+        attachments,
         kind: NotificationKind::EventWaitlistPromoted,
         recipients,
         template_data: Some(serde_json::to_value(&template_data)?),
@@ -331,6 +336,7 @@ mod tests {
 
     #[test]
     fn test_build_event_attendance_canceled_notification_returns_expected_payload() {
+        // Setup identifiers and data structures
         let event_id = Uuid::new_v4();
         let group_id = Uuid::new_v4();
         let recipient_user_id = Uuid::new_v4();
@@ -338,6 +344,7 @@ mod tests {
         let site_settings = sample_site_settings();
         let server_cfg = sample_server_cfg();
 
+        // Build notification
         let notification = build_event_attendance_canceled_notification(
             &event,
             recipient_user_id,
@@ -346,6 +353,7 @@ mod tests {
         )
         .expect("notification to be built");
 
+        // Check notification matches expectations
         assert!(notification.attachments.is_empty());
         assert!(matches!(
             notification.kind,
@@ -372,12 +380,14 @@ mod tests {
 
     #[test]
     fn test_build_event_calendar_notifications_return_expected_payload() {
+        // Setup identifiers and data structures
         let event_id = Uuid::new_v4();
         let recipient_user_id = Uuid::new_v4();
         let event = sample_event_summary(event_id, Uuid::new_v4());
         let site_settings = sample_site_settings();
         let server_cfg = sample_server_cfg();
 
+        // Build notifications
         let canceled = build_event_canceled_notification(
             &event,
             vec![recipient_user_id],
@@ -407,6 +417,7 @@ mod tests {
         )
         .expect("notification to be built");
 
+        // Check notifications match expectations
         assert_eq!(canceled.attachments.len(), 1);
         assert!(matches!(canceled.kind, NotificationKind::EventCanceled));
         let canceled_template: EventCanceled =
@@ -441,6 +452,7 @@ mod tests {
 
     #[test]
     fn test_build_event_invitation_notification_returns_expected_payload() {
+        // Setup identifiers and data structures
         let event_id = Uuid::new_v4();
         let recipient_user_id = Uuid::new_v4();
         let mut event = sample_event_summary(event_id, Uuid::new_v4());
@@ -448,6 +460,7 @@ mod tests {
         let site_settings = sample_site_settings();
         let server_cfg = sample_server_cfg();
 
+        // Build notification
         let notification = build_event_invitation_notification(
             &event,
             recipient_user_id,
@@ -456,6 +469,7 @@ mod tests {
         )
         .expect("notification to be built");
 
+        // Check notification matches expectations
         assert!(notification.attachments.is_empty());
         assert!(matches!(
             notification.kind,
@@ -479,12 +493,14 @@ mod tests {
 
     #[test]
     fn test_build_event_refund_notifications_return_expected_payload() {
+        // Setup identifiers and data structures
         let event_id = Uuid::new_v4();
         let recipient_user_id = Uuid::new_v4();
         let event = sample_event_summary(event_id, Uuid::new_v4());
         let site_settings = sample_site_settings();
         let server_cfg = sample_server_cfg();
 
+        // Build notifications
         let approved = build_event_refund_approved_notification(
             &event,
             recipient_user_id,
@@ -500,6 +516,7 @@ mod tests {
         )
         .expect("notification to be built");
 
+        // Check notifications match expectations
         assert!(approved.attachments.is_empty());
         assert!(matches!(
             approved.kind,
@@ -525,12 +542,14 @@ mod tests {
 
     #[test]
     fn test_build_event_waitlist_joined_and_left_notifications_return_expected_payload() {
+        // Setup identifiers and data structures
         let event_id = Uuid::new_v4();
         let recipient_user_id = Uuid::new_v4();
         let event = sample_event_summary(event_id, Uuid::new_v4());
         let site_settings = sample_site_settings();
         let server_cfg = sample_server_cfg();
 
+        // Build notifications
         let joined = build_event_waitlist_joined_notification(
             &event,
             recipient_user_id,
@@ -546,6 +565,7 @@ mod tests {
         )
         .expect("notification to be built");
 
+        // Check notifications match expectations
         assert!(joined.attachments.is_empty());
         assert!(matches!(joined.kind, NotificationKind::EventWaitlistJoined));
         assert_eq!(joined.recipients, vec![recipient_user_id]);
@@ -572,14 +592,15 @@ mod tests {
     }
 
     #[test]
-    fn test_build_event_waitlist_promoted_notification_returns_expected_payload() {
+    fn test_build_event_waitlist_promoted_notification_includes_calendar_for_confirmed_promotion() {
+        // Setup identifiers and data structures
         let event_id = Uuid::new_v4();
         let recipient_user_id = Uuid::new_v4();
-        let mut event = sample_event_summary(event_id, Uuid::new_v4());
-        event.has_registration_questions = true;
+        let event = sample_event_summary(event_id, Uuid::new_v4());
         let site_settings = sample_site_settings();
         let server_cfg = sample_server_cfg();
 
+        // Build notification
         let notification = build_event_waitlist_promoted_notification(
             &event,
             vec![recipient_user_id],
@@ -588,7 +609,53 @@ mod tests {
         )
         .expect("notification to be built");
 
+        // Check notification matches expectations
         assert_eq!(notification.attachments.len(), 1);
+        assert!(matches!(
+            notification.kind,
+            NotificationKind::EventWaitlistPromoted
+        ));
+        assert_eq!(notification.recipients, vec![recipient_user_id]);
+        let template: EventWaitlistPromoted =
+            serde_json::from_value(notification.template_data.expect("template data to exist"))
+                .expect("template data to deserialize");
+        assert_eq!(
+            template.dashboard_link.as_deref(),
+            Some("https://example.test/dashboard/user?tab=events")
+        );
+        assert_eq!(template.event.event_id, event_id);
+        assert!(!template.has_registration_questions);
+        assert_eq!(
+            template.link,
+            "https://example.test/test-community/group/def5678/event/ghi9abc"
+        );
+        assert_eq!(
+            template.theme.primary_color,
+            site_settings.theme.primary_color
+        );
+    }
+
+    #[test]
+    fn test_build_event_waitlist_promoted_notification_omits_calendar_for_pending_questions() {
+        // Setup identifiers and data structures
+        let event_id = Uuid::new_v4();
+        let recipient_user_id = Uuid::new_v4();
+        let mut event = sample_event_summary(event_id, Uuid::new_v4());
+        event.has_registration_questions = true;
+        let site_settings = sample_site_settings();
+        let server_cfg = sample_server_cfg();
+
+        // Build notification
+        let notification = build_event_waitlist_promoted_notification(
+            &event,
+            vec![recipient_user_id],
+            &server_cfg,
+            &site_settings,
+        )
+        .expect("notification to be built");
+
+        // Check notification matches expectations
+        assert!(notification.attachments.is_empty());
         assert!(matches!(
             notification.kind,
             NotificationKind::EventWaitlistPromoted
@@ -615,12 +682,14 @@ mod tests {
 
     #[test]
     fn test_build_event_welcome_notification_returns_expected_payload() {
+        // Setup identifiers and data structures
         let event_id = Uuid::new_v4();
         let recipient_user_id = Uuid::new_v4();
         let event = sample_event_summary(event_id, Uuid::new_v4());
         let site_settings = sample_site_settings();
         let server_cfg = sample_server_cfg();
 
+        // Build notification
         let notification = build_event_welcome_notification(
             &event,
             recipient_user_id,
@@ -630,6 +699,7 @@ mod tests {
         )
         .expect("notification to be built");
 
+        // Check notification matches expectations
         assert_eq!(notification.attachments.len(), 1);
         assert!(matches!(notification.kind, NotificationKind::EventWelcome));
         assert_eq!(notification.recipients, vec![recipient_user_id]);
@@ -653,8 +723,10 @@ mod tests {
 
     #[test]
     fn test_should_send_waitlist_promoted_notification_accepts_real_recipients() {
+        // Setup data
         let event = sample_event_summary(Uuid::new_v4(), Uuid::new_v4());
 
+        // Check notification should be sent
         assert!(should_send_waitlist_promoted_notification(
             &event,
             &[Uuid::new_v4()]
@@ -663,16 +735,20 @@ mod tests {
 
     #[test]
     fn test_should_send_waitlist_promoted_notification_requires_recipients() {
+        // Setup data
         let event = sample_event_summary(Uuid::new_v4(), Uuid::new_v4());
 
+        // Check notification should be skipped
         assert!(!should_send_waitlist_promoted_notification(&event, &[]));
     }
 
     #[test]
     fn test_should_send_waitlist_promoted_notification_skips_test_events() {
+        // Setup data
         let mut event = sample_event_summary(Uuid::new_v4(), Uuid::new_v4());
         event.test_event = true;
 
+        // Check notification should be skipped
         assert!(!should_send_waitlist_promoted_notification(
             &event,
             &[Uuid::new_v4()]
