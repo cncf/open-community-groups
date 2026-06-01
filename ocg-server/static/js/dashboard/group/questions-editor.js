@@ -807,15 +807,18 @@ class QuestionsEditor extends LitWrapper {
                 </div>
               </div>
 
-              <label class="inline-flex items-center gap-2 text-sm font-medium text-stone-900">
+              <label class="inline-flex cursor-pointer items-center">
                 <input
                   type="checkbox"
-                  class="checkbox-primary"
+                  class="peer sr-only"
                   .checked=${this._draftQuestion?.required || false}
                   ?disabled=${!this._isModalOpen}
                   @change=${(event) => this._updateDraftQuestion({ required: event.target.checked })}
                 />
-                Required
+                <div
+                  class="relative h-6 w-11 rounded-full bg-stone-200 peer peer-checked:bg-primary-500 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 after:absolute after:start-0.5 after:top-0.5 after:h-5 after:w-5 after:rounded-full after:border after:border-stone-200 after:bg-white after:transition-all after:content-[''] peer-checked:after:translate-x-full peer-checked:after:border-white rtl:peer-checked:after:-translate-x-full"
+                ></div>
+                <span class="ms-3 text-sm font-medium text-stone-900">Required</span>
               </label>
 
               ${this._draftQuestion && this._draftQuestion.kind !== "free-text"
