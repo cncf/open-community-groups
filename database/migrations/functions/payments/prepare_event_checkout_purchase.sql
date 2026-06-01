@@ -5,7 +5,8 @@ create or replace function prepare_event_checkout_purchase(
     p_event_ticket_type_id uuid,
     p_user_id uuid,
     p_discount_code text,
-    p_configured_provider text
+    p_configured_provider text,
+    p_registration_answers jsonb default null
 )
 returns jsonb as $$
 declare
@@ -24,6 +25,7 @@ declare
     v_normalized_discount_code text := upper(nullif(btrim(p_discount_code), ''));
     v_purchase_id uuid;
     v_recipient jsonb;
+    v_registration_questions jsonb;
     v_ticket_title text;
 begin
     -- Expire stale pending purchases for the event before reserving a new one
@@ -40,12 +42,14 @@ begin
     select
         c.name,
         e.slug,
+        e.registration_questions,
         g.slug,
         g.slug_pretty,
         g.payment_recipient
     into
         v_community_name,
         v_event_slug,
+        v_registration_questions,
         v_group_slug,
         v_group_slug_pretty,
         v_recipient
@@ -74,6 +78,16 @@ begin
     if found then
         if v_existing_purchase_status <> 'pending'
            or v_existing_purchase_matches_selection then
+            -- Refresh questionnaire answers before returning a reused pending checkout
+            if v_existing_purchase_status = 'pending' then
+                perform upsert_pending_registration_answers(
+                    p_event_id,
+                    p_user_id,
+                    v_registration_questions,
+                    p_registration_answers
+                );
+            end if;
+
             return prepare_event_checkout_get_purchase_summary(v_existing_purchase_id)
                 || jsonb_build_object(
                     'community_name', v_community_name,
@@ -111,6 +125,14 @@ begin
     if v_existing_purchase_id is not null and v_existing_purchase_status = 'pending' then
         perform prepare_event_checkout_expire_previous_hold(v_existing_purchase_id);
     end if;
+
+    -- Persist questionnaire answers before checkout starts so completion can confirm the row
+    perform upsert_pending_registration_answers(
+        p_event_id,
+        p_user_id,
+        v_registration_questions,
+        p_registration_answers
+    );
 
     -- Reserve the chosen discount usage for the new pending purchase
     if v_event_discount_code_id is not null then

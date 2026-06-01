@@ -7,6 +7,7 @@ use axum::{
     },
 };
 use axum_login::tower_sessions::session;
+use serde_json::from_value;
 use tower::ServiceExt;
 use uuid::Uuid;
 
@@ -19,8 +20,18 @@ use crate::{
         payments::MockPaymentsManager,
     },
     templates::dashboard::DASHBOARD_PAGINATION_LIMIT,
-    templates::notifications::{EventCustom, EventInvitation as EventInvitationTemplate},
-    types::permissions::GroupPermission,
+    templates::notifications::{
+        EventAttendanceCanceled, EventCustom, EventInvitation as EventInvitationTemplate,
+        EventWaitlistPromoted,
+    },
+    types::{
+        event::{EventAttendanceStatus, EventLeaveOutcome},
+        permissions::GroupPermission,
+        questionnaire::{
+            QuestionnaireAnswer, QuestionnaireAnswerValue, QuestionnaireAnswers, QuestionnaireOption,
+            QuestionnaireQuestion, QuestionnaireQuestionKind,
+        },
+    },
 };
 
 #[tokio::test]
@@ -281,6 +292,131 @@ async fn test_approve_refund_request_returns_internal_server_error_when_payments
 }
 
 #[tokio::test]
+#[allow(clippy::too_many_lines)]
+async fn test_cancel_event_attendee_attendance_promotes_waitlist_and_enqueues_notifications() {
+    // Setup identifiers and data structures
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let promoted_user_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let target_user_id = Uuid::new_v4();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(
+        session_id,
+        user_id,
+        &auth_hash,
+        Some(community_id),
+        Some(group_id),
+    );
+    let mut event = sample_event_summary(event_id, group_id);
+    event.has_registration_questions = true;
+    let site_settings = sample_site_settings();
+    let primary_color = site_settings.theme.primary_color.clone();
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::EventsWrite
+        })
+        .returning(|_, _, _, _| Ok(true));
+    db.expect_cancel_event_attendee_attendance()
+        .times(1)
+        .withf(move |actor_id, gid, eid, uid| {
+            *actor_id == user_id && *gid == group_id && *eid == event_id && *uid == target_user_id
+        })
+        .returning(move |_, _, _, _| {
+            Ok(EventLeaveOutcome {
+                left_status: EventAttendanceStatus::Attendee,
+                promoted_user_ids: vec![promoted_user_id],
+            })
+        });
+    db.expect_get_site_settings()
+        .times(1)
+        .returning(move || Ok(site_settings.clone()));
+    db.expect_get_event_summary_by_id()
+        .times(1)
+        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .returning(move |_, _| Ok(event.clone()));
+
+    // Setup notifications manager mock
+    let mut nm = MockNotificationsManager::new();
+    nm.expect_enqueue()
+        .times(1)
+        .withf(move |notification| {
+            matches!(notification.kind, NotificationKind::EventAttendanceCanceled)
+                && notification.recipients == vec![target_user_id]
+                && notification.template_data.as_ref().is_some_and(|value| {
+                    from_value::<EventAttendanceCanceled>(value.clone()).is_ok_and(|template| {
+                        template.dashboard_link == "https://ocg.test/dashboard/user?tab=events"
+                            && template.link == "https://ocg.test/test-community/group/def5678/event/ghi9abc"
+                    })
+                })
+        })
+        .returning(|_| Box::pin(async { Ok(()) }));
+    nm.expect_enqueue()
+        .times(1)
+        .withf(move |notification| {
+            matches!(notification.kind, NotificationKind::EventWaitlistPromoted)
+                && notification.recipients == vec![promoted_user_id]
+                && notification.attachments.len() == 1
+                && notification.attachments[0].file_name == "event-ghi9abc.ics"
+                && notification.template_data.as_ref().is_some_and(|value| {
+                    from_value::<EventWaitlistPromoted>(value.clone()).is_ok_and(|template| {
+                        template.dashboard_link.as_deref()
+                            == Some("https://ocg.test/dashboard/user?tab=events")
+                            && template.has_registration_questions
+                            && template.link == "https://ocg.test/test-community/group/def5678/event/ghi9abc"
+                            && template.theme.primary_color == primary_color
+                    })
+                })
+        })
+        .returning(|_| Box::pin(async { Ok(()) }));
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm)
+        .with_server_cfg(HttpServerConfig {
+            base_url: "https://ocg.test/".to_string(),
+            ..sample_tracking_server_cfg()
+        })
+        .build()
+        .await;
+    let request = Request::builder()
+        .method("DELETE")
+        .uri(format!(
+            "/dashboard/group/events/{event_id}/attendees/{target_user_id}/attendance"
+        ))
+        .header(COOKIE, format!("id={session_id}"))
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_eq!(parts.status, StatusCode::NO_CONTENT);
+    assert_eq!(
+        parts.headers.get("HX-Trigger"),
+        Some(&HeaderValue::from_static("refresh-event-attendees"))
+    );
+    assert!(bytes.is_empty());
+}
+
+#[tokio::test]
 async fn test_cancel_event_attendee_invitation_returns_no_content() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
@@ -452,6 +588,164 @@ async fn test_download_csv_success() {
     assert_eq!(
         String::from_utf8(bytes.to_vec()).unwrap(),
         "Name,Company,Title,Invited\n\"Doe, Jane\",\"Example \"\"Cloud\"\"\",\"Principal\nEngineer\",Yes\nanonymous-attendee,,,No\n",
+    );
+}
+
+#[tokio::test]
+#[allow(clippy::too_many_lines)]
+async fn test_download_csv_with_answers_success() {
+    // Setup identifiers and data structures
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let multi_option_id_1 = Uuid::new_v4();
+    let multi_option_id_2 = Uuid::new_v4();
+    let question_id_1 = Uuid::new_v4();
+    let question_id_2 = Uuid::new_v4();
+    let question_id_3 = Uuid::new_v4();
+    let single_option_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(
+        session_id,
+        user_id,
+        &auth_hash,
+        Some(community_id),
+        Some(group_id),
+    );
+    let mut attendee = sample_attendee();
+    attendee.registration_answers = Some(QuestionnaireAnswers {
+        answers: vec![
+            QuestionnaireAnswer {
+                question_id: question_id_1,
+                value: QuestionnaireAnswerValue::One("No peanuts".to_string()),
+            },
+            QuestionnaireAnswer {
+                question_id: question_id_2,
+                value: QuestionnaireAnswerValue::One(single_option_id.to_string()),
+            },
+            QuestionnaireAnswer {
+                question_id: question_id_3,
+                value: QuestionnaireAnswerValue::Many(vec![multi_option_id_1, multi_option_id_2]),
+            },
+        ],
+    });
+    let mut attendee_without_answers = sample_attendee();
+    attendee_without_answers.name = Some("No Answers".to_string());
+    attendee_without_answers.registration_answers = None;
+    let mut pending_invitation = sample_attendee();
+    pending_invitation.name = Some("Pending Invite".to_string());
+    pending_invitation.status = "invitation-pending".to_string();
+    let event = sample_event_summary(event_id, group_id);
+    let registration_questions = vec![
+        QuestionnaireQuestion {
+            id: question_id_1,
+            kind: QuestionnaireQuestionKind::FreeText,
+            prompt: "Dietary restrictions?".to_string(),
+            required: false,
+
+            options: vec![],
+        },
+        QuestionnaireQuestion {
+            id: question_id_2,
+            kind: QuestionnaireQuestionKind::SingleSelect,
+            prompt: "Meal preference".to_string(),
+            required: true,
+
+            options: vec![QuestionnaireOption {
+                id: single_option_id,
+                label: "Vegetarian".to_string(),
+            }],
+        },
+        QuestionnaireQuestion {
+            id: question_id_3,
+            kind: QuestionnaireQuestionKind::MultiSelect,
+            prompt: "Topics".to_string(),
+            required: false,
+
+            options: vec![
+                QuestionnaireOption {
+                    id: multi_option_id_1,
+                    label: "Rust".to_string(),
+                },
+                QuestionnaireOption {
+                    id: multi_option_id_2,
+                    label: "Databases".to_string(),
+                },
+            ],
+        },
+    ];
+    let output = crate::templates::dashboard::group::attendees::AttendeesOutput {
+        attendees: vec![attendee, attendee_without_answers, pending_invitation],
+        notification_recipient_total: 2,
+        total: 3,
+    };
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id && *gid == group_id && *uid == user_id && permission == GroupPermission::Read
+        })
+        .returning(|_, _, _, _| Ok(true));
+    db.expect_search_event_attendees()
+        .times(1)
+        .withf(move |gid, filters| {
+            *gid == group_id
+                && filters.event_id == event_id
+                && filters.limit.is_none()
+                && filters.offset.is_none()
+        })
+        .returning(move |_, _| Ok(output.clone()));
+    db.expect_get_event_summary()
+        .times(1)
+        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
+        .returning(move |_, _, _| Ok(event.clone()));
+    db.expect_get_event_registration_questions()
+        .times(1)
+        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .returning(move |_, _| Ok(registration_questions.clone()));
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("GET")
+        .uri(format!(
+            "/dashboard/group/events/{event_id}/attendees-with-answers.csv"
+        ))
+        .header(COOKIE, format!("id={session_id}"))
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_eq!(parts.status, StatusCode::OK);
+    assert_eq!(
+        parts.headers.get(CONTENT_TYPE).unwrap(),
+        &HeaderValue::from_static("text/csv; charset=utf-8"),
+    );
+    assert_eq!(
+        parts.headers.get(CONTENT_DISPOSITION).unwrap(),
+        &HeaderValue::from_static("attachment; filename=\"event-ghi9abc-attendees-with-answers.csv\""),
+    );
+    assert_eq!(
+        String::from_utf8(bytes.to_vec()).unwrap(),
+        "Name,Company,Title,Invited,Dietary restrictions?,Meal preference,Topics\nEvent Attendee,Example,Engineer,No,No peanuts,Vegetarian,\"Rust, Databases\"\nNo Answers,Example,Engineer,No,,,\n",
     );
 }
 
@@ -676,8 +970,9 @@ async fn test_invite_event_attendee_returns_created_and_sends_notification() {
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
-    let event = sample_event_summary(event_id, group_id);
-    let expected_link = "https://ocg.test/dashboard/user?tab=invitations".to_string();
+    let mut event = sample_event_summary(event_id, group_id);
+    event.has_registration_questions = true;
+    let expected_link = "https://ocg.test/dashboard/user?tab=events".to_string();
     let session_record = sample_session_record(
         session_id,
         user_id,
@@ -732,8 +1027,9 @@ async fn test_invite_event_attendee_returns_created_and_sends_notification() {
             matches!(notification.kind, NotificationKind::EventInvitation)
                 && notification.recipients == vec![invited_user_id]
                 && notification.template_data.as_ref().is_some_and(|value| {
-                    serde_json::from_value::<EventInvitationTemplate>(value.clone())
-                        .is_ok_and(|template| template.link == expected_link)
+                    from_value::<EventInvitationTemplate>(value.clone()).is_ok_and(|template| {
+                        template.has_registration_questions && template.link == expected_link
+                    })
                 })
         })
         .returning(|_| Box::pin(async { Ok(()) }));
@@ -1016,6 +1312,10 @@ async fn test_list_page_success() {
         .times(1)
         .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
         .returning(move |_, _, _| Ok(event.clone()));
+    db.expect_get_event_registration_questions()
+        .times(1)
+        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .returning(|_, _| Ok(vec![]));
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
@@ -1106,6 +1406,10 @@ async fn test_list_page_with_pagination_params() {
         .times(1)
         .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
         .returning(move |_, _, _| Ok(event.clone()));
+    db.expect_get_event_registration_questions()
+        .times(1)
+        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .returning(|_, _| Ok(vec![]));
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();

@@ -663,6 +663,7 @@ input:placeholder-shown {
 .icon-csv { --icon-url: url('/static/images/icons/csv.svg'); }
 .icon-date { --icon-url: url('/static/images/icons/date.svg'); }
 .icon-docs { --icon-url: url('/static/images/icons/docs.svg'); }
+.icon-drag { --icon-url: url('/static/images/icons/drag.svg'); }
 .icon-email { --icon-url: url('/static/images/icons/email.svg'); }
 .icon-event { --icon-url: url('/static/images/icons/event.svg'); }
 .icon-events { --icon-url: url('/static/images/icons/events.svg'); }
@@ -685,6 +686,7 @@ input:placeholder-shown {
 .icon-link { --icon-url: url('/static/images/icons/link.svg'); }
 .icon-linkedin { --icon-url: url('/static/images/icons/linkedin.svg'); }
 .icon-list { --icon-url: url('/static/images/icons/list.svg'); }
+.icon-list-check { --icon-url: url('/static/images/icons/list_check.svg'); }
 .icon-list-magnifying-glass { --icon-url: url('/static/images/icons/list_magnifying_glass.svg'); }
 .icon-location { --icon-url: url('/static/images/icons/location.svg'); }
 .icon-logs { --icon-url: url('/static/images/icons/logs.svg'); }

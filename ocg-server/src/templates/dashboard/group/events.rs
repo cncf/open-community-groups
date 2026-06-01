@@ -21,6 +21,7 @@ use crate::{
         group::GroupSponsor,
         pagination::{self, Pagination, ToRawQuery},
         payments::EventDiscountType,
+        questionnaire::QuestionnaireQuestion,
     },
     validation::{
         MAX_LEN_COUNTRY_CODE, MAX_LEN_DESCRIPTION, MAX_LEN_DESCRIPTION_SHORT, MAX_LEN_ENTITY_NAME,
@@ -227,6 +228,10 @@ pub(crate) struct Event {
     /// Event name.
     #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_ENTITY_NAME))]
     pub name: String,
+    /// Registration questions shown to attendees before registration completes.
+    #[serde(default)]
+    #[garde(dive)]
+    pub registration_questions: Vec<QuestionnaireQuestion>,
     /// Timezone for the event.
     #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_TIMEZONE))]
     pub timezone: String,
@@ -328,6 +333,9 @@ pub(crate) struct Event {
     /// Recurrence pattern selected for new event creation.
     #[garde(skip)]
     pub recurrence_pattern: Option<EventRecurrencePattern>,
+    /// Whether the registration questions section was submitted.
+    #[garde(skip)]
+    pub registration_questions_present: Option<bool>,
     /// Whether registration is required.
     #[garde(skip)]
     pub registration_required: Option<bool>,
@@ -408,8 +416,19 @@ impl Event {
         payload.remove("discount_codes_present");
         payload.remove("recurrence_additional_occurrences");
         payload.remove("recurrence_pattern");
+        payload.remove("registration_questions");
+        payload.remove("registration_questions_present");
         payload.remove("ticket_types");
         payload.remove("ticket_types_present");
+
+        // Preserve omitted registration questions on partial form submissions,
+        // but allow an explicitly submitted empty questions editor to clear them
+        if self.registration_questions_present.is_some() {
+            payload.insert(
+                "registration_questions".to_string(),
+                serde_json::to_value(&self.registration_questions)?,
+            );
+        }
 
         // Null out persisted ticketing fields when ticketing should be cleared
         if self.clear_ticketing.unwrap_or(false) {
@@ -736,7 +755,32 @@ mod tests {
     }
 
     #[test]
-    fn to_db_payload_keeps_ticketing_keys_omitted_when_form_omits_inputs() {
+    fn event_deserialization_accepts_nested_registration_questions() {
+        let event: Event = serde_qs::from_str(
+            "\
+category_id=00000000-0000-0000-0000-000000000001&\
+description=Event%20description&\
+kind_id=virtual&\
+name=Sample%20Event&\
+timezone=UTC&\
+registration_questions_present=true&\
+registration_questions[0][id]=00000000-0000-0000-0000-000000000101&\
+registration_questions[0][kind]=single-select&\
+registration_questions[0][prompt]=Meal%20preference&\
+registration_questions[0][required]=true&\
+registration_questions[0][options][0][id]=00000000-0000-0000-0000-000000000201&\
+registration_questions[0][options][0][label]=Vegetarian",
+        )
+        .unwrap();
+
+        assert!(event.registration_questions_present.is_some());
+        assert_eq!(event.registration_questions.len(), 1);
+        assert_eq!(event.registration_questions[0].prompt, "Meal preference");
+        assert_eq!(event.registration_questions[0].options[0].label, "Vegetarian");
+    }
+
+    #[test]
+    fn to_db_payload_keeps_optional_section_keys_omitted_when_form_omits_inputs() {
         let payload = sample_event().to_db_payload().unwrap();
 
         assert_eq!(payload["cfs_labels"], Value::Array(Vec::new()));
@@ -745,7 +789,18 @@ mod tests {
         assert_eq!(payload["name"], "Sample Event");
         assert_eq!(payload["timezone"], "UTC");
         assert!(payload.get("discount_codes").is_none());
+        assert!(payload.get("registration_questions").is_none());
         assert!(payload.get("ticket_types").is_none());
+    }
+
+    #[test]
+    fn to_db_payload_includes_empty_registration_questions_when_inputs_are_present() {
+        let mut event = sample_event();
+        event.registration_questions_present = Some(true);
+
+        let payload = event.to_db_payload().unwrap();
+
+        assert_eq!(payload["registration_questions"], Value::Array(Vec::new()));
     }
 
     #[test]

@@ -6,6 +6,7 @@ import {
 } from "/static/js/common/alerts.js";
 import { isSuccessfulXHRStatus } from "/static/js/common/common.js";
 import { ocgFetch } from "/static/js/common/fetch.js";
+import { collectQuestionAnswers as collectQuestionAnswersFromForm } from "/static/js/common/question-answers.js";
 
 import {
   ATTENDANCE_CONTAINER_SELECTOR,
@@ -24,8 +25,10 @@ import {
   JOIN_WAITLIST_LABEL,
   LEAVE_WAITLIST_LABEL,
   REQUEST_INVITATION_LABEL,
+  closeQuestionsModal,
   closeTicketModal,
   initializeAttendanceContainer,
+  openQuestionsModal,
   openTicketModal,
   renderMeetingDetails,
   restoreCheckoutModalControls,
@@ -37,6 +40,7 @@ import {
   showPendingApprovalAttendanceState,
   showPendingPaymentState,
   showPrimaryRequestLoading,
+  showRegistrationQuestionsPendingState,
   showRejectedInvitationState,
   showSignedOutAttendanceState,
   showWaitlistedAttendanceState,
@@ -47,6 +51,9 @@ const PAYMENT_RETURN_PARAM = "payment";
 const PAYMENT_RETURN_POLL_ATTEMPTS = 8;
 const PAYMENT_RETURN_POLL_INTERVAL_MS = 2000;
 const PRIMARY_REQUEST_ROLES = new Set(["attend-btn", "checkout-cancel-btn", "leave-btn", "refund-btn"]);
+const QUESTIONS_CONTINUE_ACTION_ATTEND = "attend";
+const QUESTIONS_CONTINUE_ACTION_TICKET = "ticket";
+const PENDING_ATTENDANCE_CHECK_RESPONSE = "__ocgPendingAttendanceCheckResponse";
 const TICKET_PRICE_BADGE_CLASSES = [
   "inline-flex",
   "w-fit",
@@ -76,9 +83,7 @@ const PRIMARY_ACTION_CONFIG = {
         showInfoAlert("You have joined the waiting list for this event.");
       } else if (response?.status === "pending-approval") {
         showInfoAlert("Your invitation request has been sent to the organizers.");
-      } else if (response?.status === "pending-payment") {
-        showInfoAlert("Your checkout is ready. Redirecting you to Stripe now.");
-      } else {
+      } else if (response?.status !== "pending-payment") {
         showInfoAlert("You have successfully registered for this event.");
       }
 
@@ -397,6 +402,37 @@ const renderTicketAvailabilities = (container, ticketTypes = []) => {
 };
 
 /**
+ * Keeps the latest attendance status response while public availability loads.
+ * @param {HTMLElement} container - Attendance container element
+ * @param {Event} event - HTMX afterRequest event
+ */
+const storePendingAttendanceCheckResponse = (container, event) => {
+  const xhr = event.detail?.xhr;
+  container[PENDING_ATTENDANCE_CHECK_RESPONSE] = xhr
+    ? {
+        responseText: xhr.responseText,
+        status: xhr.status,
+      }
+    : null;
+};
+
+/**
+ * Renders a stored attendance status response after availability is hydrated.
+ * @param {HTMLElement} container - Attendance container element
+ * @returns {boolean} Whether a pending response was rendered
+ */
+const replayPendingAttendanceCheckResponse = (container) => {
+  if (!(PENDING_ATTENDANCE_CHECK_RESPONSE in container)) {
+    return false;
+  }
+
+  const xhr = container[PENDING_ATTENDANCE_CHECK_RESPONSE];
+  delete container[PENDING_ATTENDANCE_CHECK_RESPONSE];
+  renderAttendanceCheckResponse(container, { detail: { xhr } });
+  return true;
+};
+
+/**
  * Applies a fresh public availability payload to the event page.
  * @param {HTMLElement} container - Attendance container element
  * @param {Object} availability - Public availability payload
@@ -408,6 +444,10 @@ const applyAvailability = (container, availability, options = {}) => {
   renderAvailabilityRibbon(availability);
   renderTicketAvailabilities(container, availability.ticket_types || []);
   container.dataset.availabilityHydrated = "true";
+
+  if (replayPendingAttendanceCheckResponse(container)) {
+    return;
+  }
 
   if (options.rerenderAttendance) {
     document.body.dispatchEvent(new Event("attendance-changed"));
@@ -422,6 +462,10 @@ const applyAvailability = (container, availability, options = {}) => {
 const handleAvailabilityRefreshFailure = (container, options = {}) => {
   if (container?.dataset?.availabilityHydrated === "false") {
     container.dataset.availabilityHydrated = "true";
+  }
+
+  if (replayPendingAttendanceCheckResponse(container)) {
+    return;
   }
 
   if (options.rerenderAttendance) {
@@ -545,6 +589,72 @@ const parseJsonResponse = (xhr) => {
 };
 
 /**
+ * Returns true when the attendance container has unanswered event questions.
+ * @param {HTMLElement} container - Attendance container element
+ * @returns {boolean} Whether answers must be collected before continuing
+ */
+const shouldCollectQuestionAnswers = (container) =>
+  getAttendanceControl(container, "registration-modal") instanceof HTMLElement &&
+  container.dataset.questionAnswersReady !== "true";
+
+/**
+ * Returns true when the primary attendance action will join the waitlist.
+ * @param {object} meta - Attendance metadata
+ * @returns {boolean} Whether the action is a waitlist join
+ */
+const isWaitlistJoinAction = (meta) =>
+  !meta.isTicketed && !meta.attendeeApprovalRequired && meta.isSoldOut && meta.waitlistEnabled;
+
+/**
+ * Returns true when the attendee must complete promoted waitlist questions.
+ * @param {HTMLElement|null} button - Primary attend button
+ * @returns {boolean} Whether the button is completing pending questions
+ */
+const isCompletingRegistrationQuestions = (button) =>
+  button instanceof HTMLButtonElement && button.dataset.registrationQuestionsPending === "true";
+
+/**
+ * Stores answer JSON in all hidden answer inputs in the attendance container.
+ * @param {HTMLElement} container - Attendance container element
+ * @param {object} answersPayload - Normalized answers payload
+ */
+const setQuestionAnswersPayload = (container, answersPayload) => {
+  const value = JSON.stringify(answersPayload);
+  container.querySelectorAll('[data-attendance-role$="registration-answers-input"]').forEach((input) => {
+    if (input instanceof HTMLInputElement) {
+      input.value = value;
+    }
+  });
+  container.dataset.questionAnswersReady = "true";
+};
+
+/**
+ * Collects and validates event question answers.
+ * @param {HTMLElement} container - Attendance container element
+ * @returns {object|null} Answers payload, or null when invalid
+ */
+const collectQuestionAnswers = (container) => {
+  const form = getAttendanceControl(container, "registration-form");
+  if (!(form instanceof HTMLFormElement)) {
+    return { answers: [] };
+  }
+
+  return collectQuestionAnswersFromForm(form, {
+    answerSelector: "[data-registration-answer]",
+  });
+};
+
+/**
+ * Opens questions before continuing with attendance or ticket checkout.
+ * @param {HTMLElement} container - Attendance container element
+ * @param {"attend"|"ticket"} continueAction - Action to resume after questions
+ */
+const requestQuestionAnswers = (container, continueAction) => {
+  container.dataset.questionsContinueAction = continueAction;
+  openQuestionsModal(container);
+};
+
+/**
  * Loads the current attendance status for the event page.
  * @returns {Promise<Object|null>} Attendance payload or null if unavailable
  */
@@ -651,6 +761,7 @@ const reconcilePaymentReturn = async () => {
  */
 const renderAttendanceCheckResponse = (container, event) => {
   if (container.dataset.availabilityHydrated === "false") {
+    storePendingAttendanceCheckResponse(container, event);
     return;
   }
 
@@ -675,6 +786,11 @@ const renderAttendanceCheckResponse = (container, event) => {
 
   if (response.status === "pending-payment") {
     showPendingPaymentState(container, meta, response);
+    return;
+  }
+
+  if (response.status === "registration-questions-pending") {
+    showRegistrationQuestionsPendingState(container, meta);
     return;
   }
 
@@ -740,6 +856,46 @@ const handleCheckoutConfigRequest = (event) => {
 };
 
 /**
+ * Handles the questions modal submit flow.
+ * @param {Event} event - Submit event
+ */
+const handleAttendanceSubmit = (event) => {
+  const target = event.target;
+  if (!(target instanceof HTMLFormElement) || target.dataset.attendanceRole !== "registration-form") {
+    return;
+  }
+
+  event.preventDefault();
+  const container = getAttendanceContainer(target);
+  if (!container) {
+    return;
+  }
+
+  const answersPayload = collectQuestionAnswers(container);
+  if (!answersPayload) {
+    return;
+  }
+
+  setQuestionAnswersPayload(container, answersPayload);
+  closeQuestionsModal(container);
+
+  const continueAction = container.dataset.questionsContinueAction;
+  delete container.dataset.questionsContinueAction;
+
+  if (continueAction === QUESTIONS_CONTINUE_ACTION_TICKET) {
+    openTicketModal(container);
+    return;
+  }
+
+  if (continueAction === QUESTIONS_CONTINUE_ACTION_ATTEND) {
+    const attendButton = getAttendanceControl(container, "attend-btn");
+    if (attendButton instanceof HTMLButtonElement) {
+      attendButton.click();
+    }
+  }
+};
+
+/**
  * Handles the shared afterRequest flow for primary attendance actions.
  * @param {Event} event - HTMX afterRequest event
  */
@@ -800,6 +956,31 @@ const handleCheckoutBeforeRequest = (target) => {
 };
 
 /**
+ * Blocks attend requests until required registration questions are answered.
+ * @param {Event} event - htmx:beforeRequest event
+ * @param {HTMLElement} target - Event target
+ * @param {HTMLElement} container - Attendance container element
+ * @returns {boolean} True when the request was blocked
+ */
+const blockAttendRequestForQuestions = (event, target, container) => {
+  const meta = getAttendanceMeta(container);
+  if (
+    target.dataset.attendanceRole !== "attend-btn" ||
+    (isWaitlistJoinAction(meta) && !isCompletingRegistrationQuestions(target)) ||
+    !shouldCollectQuestionAnswers(container)
+  ) {
+    return false;
+  }
+
+  event.preventDefault();
+  const continueAction = meta.isTicketed
+    ? QUESTIONS_CONTINUE_ACTION_TICKET
+    : QUESTIONS_CONTINUE_ACTION_ATTEND;
+  requestQuestionAnswers(container, continueAction);
+  return true;
+};
+
+/**
  * Handles checkout form afterRequest state.
  * @param {Event} event - htmx:afterRequest event
  */
@@ -823,6 +1004,9 @@ const handleCheckoutAfterRequest = (event) => {
 
   if (!ok) {
     restoreCheckoutModalControls(container);
+    if (xhr?.status !== 422) {
+      closeTicketModal(container);
+    }
     return;
   }
 
@@ -830,14 +1014,11 @@ const handleCheckoutAfterRequest = (event) => {
   closeTicketModal(container);
 
   if (response?.redirect_url) {
-    showInfoAlert("Your checkout is ready. Redirecting you to Stripe now.");
     window.location.assign(response.redirect_url);
     return;
   }
 
-  if (response?.status === "pending-payment") {
-    showInfoAlert("Your checkout is ready. Redirecting you to Stripe now.");
-  } else {
+  if (response?.status !== "pending-payment") {
     showInfoAlert("You have successfully registered for this event.");
   }
 
@@ -856,6 +1037,10 @@ const handleBeforeRequest = (event) => {
 
   const container = getAttendanceContainer(target);
   if (!container) {
+    return;
+  }
+
+  if (blockAttendRequestForQuestions(event, target, container)) {
     return;
   }
 
@@ -942,7 +1127,23 @@ const handleAttendanceClick = (event) => {
     return;
   }
 
-  if (attendButton instanceof HTMLButtonElement && getAttendanceMeta(container).isTicketed) {
+  const meta = getAttendanceMeta(container);
+  const completingRegistrationQuestions = isCompletingRegistrationQuestions(attendButton);
+
+  if (
+    attendButton instanceof HTMLButtonElement &&
+    shouldCollectQuestionAnswers(container) &&
+    (!isWaitlistJoinAction(meta) || completingRegistrationQuestions)
+  ) {
+    event.preventDefault();
+    const continueAction = meta.isTicketed
+      ? QUESTIONS_CONTINUE_ACTION_TICKET
+      : QUESTIONS_CONTINUE_ACTION_ATTEND;
+    requestQuestionAnswers(container, continueAction);
+    return;
+  }
+
+  if (attendButton instanceof HTMLButtonElement && meta.isTicketed) {
     event.preventDefault();
     openTicketModal(container);
     return;
@@ -989,6 +1190,15 @@ const handleAttendanceClick = (event) => {
   if (closeTicketModalTrigger) {
     restoreCheckoutModalControls(container);
     closeTicketModal(container);
+    return;
+  }
+
+  const closeQuestionsModalTrigger = target.closest(
+    '[data-attendance-role="registration-modal-close"], [data-attendance-role="registration-modal-cancel"], [data-attendance-role="registration-modal-overlay"]',
+  );
+  if (closeQuestionsModalTrigger) {
+    delete container.dataset.questionsContinueAction;
+    closeQuestionsModal(container);
   }
 };
 
@@ -1010,6 +1220,12 @@ const handleAttendanceKeydown = (event) => {
     if (ticketModal && !ticketModal.classList.contains("hidden")) {
       restoreCheckoutModalControls(container);
       closeTicketModal(container);
+    }
+
+    const questionsModal = getAttendanceControl(container, "registration-modal");
+    if (questionsModal && !questionsModal.classList.contains("hidden")) {
+      delete container.dataset.questionsContinueAction;
+      closeQuestionsModal(container);
     }
   });
 };
@@ -1039,6 +1255,7 @@ const initializeAttendance = (root = document) => {
     document.addEventListener("htmx:beforeRequest", handleBeforeRequest);
     document.addEventListener("htmx:afterRequest", handleAfterRequest);
     document.addEventListener("click", handleAttendanceClick);
+    document.addEventListener("submit", handleAttendanceSubmit);
     document.addEventListener("keydown", handleAttendanceKeydown);
   }
 

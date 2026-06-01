@@ -12,7 +12,12 @@
 {% block content -%}
   <div class="default mb-30" style="margin-bottom: 30px">
     Good news - a seat opened up for <strong>{{ event.name }}</strong> from
-    <strong>{{ event.group_name }}</strong>, and you are now registered.
+    <strong>{{ event.group_name }}</strong>.
+    {% if !has_registration_questions -%}
+      You are now registered.
+    {% else -%}
+      Open My Events to answer the registration questions and complete your registration.
+    {% endif -%}
     <br />
     <br />
     {% if let Some(starts_at) = &event.starts_at -%}
@@ -49,7 +54,15 @@
     {% endif -%}
   </div>
 
-  {{ email::button(link = link, text = "View event", color = theme.primary_color) }}
+  {% if has_registration_questions -%}
+    {% if let Some(dashboard_link) = &dashboard_link -%}
+      {{ email::button(link = dashboard_link, text = "Open My Events", color = theme.primary_color) }}
+    {% else -%}
+      {{ email::button(link = link, text = "View event", color = theme.primary_color) }}
+    {% endif -%}
+  {% else -%}
+    {{ email::button(link = link, text = "View event", color = theme.primary_color) }}
+  {% endif -%}
 
   <p class="default mt-30 mb-15"
      style="margin-top: 30px;

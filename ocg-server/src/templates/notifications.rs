@@ -95,6 +95,8 @@ pub(crate) struct EventCustom {
 pub(crate) struct EventInvitation {
     /// Event summary data.
     pub event: EventSummary,
+    /// Whether the event has registration questions configured.
+    pub has_registration_questions: bool,
     /// Link to manage invitations in the dashboard.
     pub link: String,
     /// Theme configuration for the community.
@@ -248,10 +250,16 @@ pub(crate) struct EventWaitlistLeft {
 pub(crate) struct EventWaitlistPromoted {
     /// Event summary data.
     pub event: EventSummary,
+    /// Whether the event has registration questions configured.
+    pub has_registration_questions: bool,
     /// Link to the event page.
     pub link: String,
     /// Theme configuration for the community.
     pub theme: Theme,
+
+    /// Link to the user dashboard events page.
+    #[serde(default)]
+    pub dashboard_link: Option<String>,
 }
 
 /// Template for event welcome notification.

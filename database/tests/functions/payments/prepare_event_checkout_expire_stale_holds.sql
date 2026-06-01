@@ -210,6 +210,14 @@ insert into event_purchase (
     :'user4ID'
 );
 
+-- Pending attendee rows with registration answers created during checkout
+insert into event_attendee (event_id, user_id, status)
+values
+    (:'eventID', :'user1ID', 'registration-questions-pending'),
+    (:'eventID', :'user2ID', 'registration-questions-pending'),
+    (:'eventID', :'user3ID', 'registration-questions-pending'),
+    (:'otherEventID', :'user4ID', 'registration-questions-pending');
+
 -- ============================================================================
 -- TESTS
 -- ============================================================================
@@ -245,10 +253,20 @@ select results_eq(
                 select available::text
                 from event_discount_code
                 where event_discount_code_id = '79220000-0000-0000-0000-000000000002'::uuid
+            ),
+            (
+                select count(*)::int
+                from event_attendee
+                where event_id = '79220000-0000-0000-0000-000000000004'::uuid
+            ),
+            (
+                select count(*)::int
+                from event_attendee
+                where event_id = '79220000-0000-0000-0000-000000000005'::uuid
             )
     $$,
-    $$ values (2::int, 1::int, 'pending'::text, '3'::text) $$,
-    'Should restore discount availability without touching active or other-event holds'
+    $$ values (2::int, 1::int, 'pending'::text, '3'::text, 1::int, 1::int) $$,
+    'Should restore discount availability and release only stale registration holds'
 );
 
 -- ============================================================================

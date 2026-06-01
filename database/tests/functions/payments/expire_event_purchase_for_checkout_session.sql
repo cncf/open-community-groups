@@ -168,6 +168,10 @@ insert into event_purchase (
     :'completedUserID'
 );
 
+-- Pending attendee row with registration answers created during checkout
+insert into event_attendee (event_id, user_id, status)
+values (:'eventID', :'userID', 'registration-questions-pending');
+
 -- ============================================================================
 -- TESTS
 -- ============================================================================
@@ -178,15 +182,24 @@ select lives_ok(
     'Should expire the matching pending purchase'
 );
 
--- Should mark the pending purchase as expired
-select is(
-    (
-        select status
-        from event_purchase
-        where event_purchase_id = :'pendingPurchaseID'::uuid
-    ),
-    'expired',
-    'Should mark the pending purchase as expired'
+-- Should mark the pending purchase as expired and release its registration hold
+select results_eq(
+    $$
+        select
+            (
+                select status
+                from event_purchase
+                where event_purchase_id = '71000000-0000-0000-0000-000000000008'::uuid
+            ),
+            (
+                select count(*)::int
+                from event_attendee
+                where event_id = '71000000-0000-0000-0000-000000000004'::uuid
+                and user_id = '71000000-0000-0000-0000-000000000011'::uuid
+            )
+    $$,
+    $$ values ('expired'::text, 0::int) $$,
+    'Should mark the pending purchase as expired and release its registration hold'
 );
 
 -- Should restore discount availability when expiring the purchase

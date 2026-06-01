@@ -31,10 +31,7 @@ begin
 
     -- Validate event capacity against attendee count for existing events
     if p_existing_event_id is not null and v_capacity is not null then
-        select count(*) into v_attendee_count
-        from event_attendee
-        where event_id = p_existing_event_id
-        and status = 'confirmed';
+        select get_event_occupied_seat_count(p_existing_event_id) into v_attendee_count;
 
         if v_capacity < v_attendee_count then
             raise exception 'event capacity (%) cannot be less than current number of attendees (%)',

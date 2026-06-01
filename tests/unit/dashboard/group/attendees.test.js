@@ -178,6 +178,51 @@ describe("dashboard group attendees", () => {
     );
   });
 
+  it("opens the attendee answers modal with copied answers", () => {
+    document.body.innerHTML = `
+      <div id="attendees-content">
+        <button
+          type="button"
+          data-attendee-answers-open
+          data-attendee-answers-source="attendee-answers-user-1"
+          data-attendee-name="Ana Lopez"
+        >
+          View answers
+        </button>
+        <div id="attendee-answers-user-1" hidden>
+          <ol>
+            <li>
+              <h4>Tell us about your experience</h4>
+              <div>Free text</div>
+              <div>Very positive.</div>
+            </li>
+          </ol>
+        </div>
+        <div id="attendee-answers-modal" class="hidden">
+          <button id="close-attendee-answers-modal" type="button">Close</button>
+          <button id="cancel-attendee-answers-modal" type="button">Cancel</button>
+          <div id="overlay-attendee-answers-modal"></div>
+          <div id="attendee-answers-name"></div>
+          <div id="attendee-answers-content"></div>
+        </div>
+      </div>
+    `;
+
+    initializeAttendeesUi();
+    document.querySelector("[data-attendee-answers-open]")?.click();
+
+    const modal = document.getElementById("attendee-answers-modal");
+    const content = document.getElementById("attendee-answers-content");
+
+    expect(modal.classList.contains("hidden")).to.equal(false);
+    expect(document.getElementById("attendee-answers-name")?.textContent).to.equal("Ana Lopez");
+    expect(content.textContent).to.include("Tell us about your experience");
+    expect(content.textContent).to.include("Very positive.");
+
+    document.getElementById("cancel-attendee-answers-modal")?.click();
+    expect(modal.classList.contains("hidden")).to.equal(true);
+  });
+
   it("opens the refund review modal with attendee payment details", () => {
     const originalHtmx = window.htmx;
     const processCalls = [];

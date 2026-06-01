@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(11);
+select plan(13);
 
 -- ============================================================================
 -- VARIABLES
@@ -15,8 +15,10 @@ select plan(11);
 \set eventCategoryID '00000000-0000-0000-0000-000000000012'
 \set eventFullID '00000000-0000-0000-0000-000000000042'
 \set eventLimitedID '00000000-0000-0000-0000-000000000043'
+\set eventQuestionsID '90400000-0000-0000-0000-000000000043'
 \set eventUnlimitedID '00000000-0000-0000-0000-000000000044'
 \set groupID '00000000-0000-0000-0000-000000000021'
+\set questionsWaitlistUserID '90400000-0000-0000-0000-000000000032'
 \set user1ID '00000000-0000-0000-0000-000000000031'
 \set user2ID '00000000-0000-0000-0000-000000000032'
 \set user3ID '00000000-0000-0000-0000-000000000033'
@@ -56,7 +58,8 @@ values
     (:'user5ID', 'h', 'u5@test.com', 'u5'),
     (:'user6ID', 'h', 'u6@test.com', 'u6'),
     (:'user7ID', 'h', 'u7@test.com', 'u7'),
-    (:'user8ID', 'h', 'u8@test.com', 'u8');
+    (:'user8ID', 'h', 'u8@test.com', 'u8'),
+    (:'questionsWaitlistUserID', 'h', 'rq-waitlist@test.com', 'rq-waitlist');
 
 -- Events
 insert into event (
@@ -80,6 +83,36 @@ values
     (:'eventLimitedID', 'Limited', 'limited', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', true, false, false, 3, true),
     (:'eventUnlimitedID', 'Unlimited', 'unlimited', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', true, false, false, null, false);
 
+-- Event requiring registration answers before promoted waitlist users are confirmed
+insert into event (
+    event_id,
+    name,
+    slug,
+    description,
+    timezone,
+    event_category_id,
+    event_kind_id,
+    group_id,
+    published,
+    capacity,
+    waitlist_enabled,
+    registration_questions
+)
+values (
+    :'eventQuestionsID',
+    'Waitlist Questions Event',
+    'waitlist-questions-event',
+    'd',
+    'UTC',
+    :'eventCategoryID',
+    'in-person',
+    :'groupID',
+    true,
+    1,
+    true,
+    '[{"id": "90400000-0000-0000-0000-000000000101", "kind": "free-text", "prompt": "Note", "required": true, "options": []}]'::jsonb
+);
+
 -- Existing attendees
 insert into event_attendee (event_id, user_id)
 values
@@ -97,7 +130,8 @@ values
     (:'eventLimitedID', :'user3ID', '2024-01-02 00:00:00+00'),
     (:'eventLimitedID', :'user4ID', '2024-01-03 00:00:00+00'),
     (:'eventUnlimitedID', :'user7ID', '2024-01-01 00:00:00+00'),
-    (:'eventUnlimitedID', :'user8ID', '2024-01-02 00:00:00+00');
+    (:'eventUnlimitedID', :'user8ID', '2024-01-02 00:00:00+00'),
+    (:'eventQuestionsID', :'questionsWaitlistUserID', '2024-01-01 00:00:00+00');
 
 -- ============================================================================
 -- TESTS
@@ -241,6 +275,25 @@ select is(
     promote_event_waitlist(:'eventCappedID'::uuid),
     array[:'user6ID'::uuid, :'user7ID'::uuid],
     'Promotes waitlist users successfully with attendee and waitlist exclusivity triggers enabled'
+);
+
+-- Should promote waitlisted users into pending registration when questions are required
+select is(
+    promote_event_waitlist(:'eventQuestionsID'::uuid),
+    array[:'questionsWaitlistUserID'::uuid],
+    'Should promote waitlisted users into pending registration when questions are required'
+);
+
+-- Should store pending registration status for promoted waitlist users
+select is(
+    (
+        select status
+        from event_attendee
+        where event_id = :'eventQuestionsID'::uuid
+        and user_id = :'questionsWaitlistUserID'::uuid
+    ),
+    'registration-questions-pending',
+    'Should store pending registration status for promoted waitlist users'
 );
 
 -- ============================================================================

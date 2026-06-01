@@ -16,6 +16,7 @@ use crate::{
         group::GroupSummary,
         location::{LocationParts, build_location},
         payments::{EventDiscountCode, EventRefundRequestStatus, EventTicketType, format_amount_minor},
+        questionnaire::QuestionnaireQuestion,
         user::User,
     },
     validation::{MAX_LEN_EVENT_LABEL_NAME, trimmed_non_empty, valid_cfs_label_color},
@@ -48,6 +49,9 @@ pub struct EventSummary {
     pub group_name: String,
     /// Generated URL-friendly identifier for the group hosting this event.
     pub group_slug: String,
+    /// Whether this event has registration questions configured.
+    #[serde(default)]
+    pub has_registration_questions: bool,
     /// Whether this event has active related events in the same series.
     #[serde(default)]
     pub has_related_events: bool,
@@ -218,6 +222,9 @@ pub struct EventFull {
     pub event_id: Uuid,
     /// Group hosting the event.
     pub group: GroupSummary,
+    /// Whether this event has registration questions configured.
+    #[serde(default)]
+    pub has_registration_questions: bool,
     /// Whether this event has active related events in the same series.
     #[serde(default)]
     pub has_related_events: bool,
@@ -235,6 +242,12 @@ pub struct EventFull {
     pub organizers: Vec<User>,
     /// Whether the event is published.
     pub published: bool,
+    /// Registration questions configured for the event.
+    #[serde(default)]
+    pub registration_questions: Vec<QuestionnaireQuestion>,
+    /// Whether registration questions are read-only for this event.
+    #[serde(default)]
+    pub registration_questions_locked: bool,
     /// Event sessions grouped by day.
     pub sessions: BTreeMap<NaiveDate, Vec<Session>>,
     /// URL slug of the event.
@@ -248,10 +261,10 @@ pub struct EventFull {
     pub test_event: bool,
     /// Timezone for event times.
     pub timezone: Tz,
-    /// Whether joining the waiting list is enabled for the event.
-    pub waitlist_enabled: bool,
     /// Current number of users on the waiting list.
     pub waitlist_count: i32,
+    /// Whether joining the waiting list is enabled for the event.
+    pub waitlist_enabled: bool,
 
     /// URL to the event banner image optimized for mobile devices.
     pub banner_mobile_url: Option<String>,
@@ -508,6 +521,8 @@ impl From<&EventFull> for EventSummary {
             group_category_name: event.group.category.name.clone(),
             group_name: event.group.name.clone(),
             group_slug: event.group.slug.clone(),
+            has_registration_questions: event.has_registration_questions
+                || !event.registration_questions.is_empty(),
             has_related_events: event.has_related_events,
             kind: event.kind.clone(),
             logo_url: event.logo_url.clone(),
@@ -565,6 +580,8 @@ pub enum EventAttendanceStatus {
     PendingApproval,
     /// The user started checkout but has not completed payment yet.
     PendingPayment,
+    /// The user's seat is reserved until registration questions are answered.
+    RegistrationQuestionsPending,
     /// The user's invitation request was rejected.
     Rejected,
     /// The user joined the waiting list.
@@ -1417,6 +1434,7 @@ mod tests {
             group_category_name: "Technology".to_string(),
             group_name: "Group".to_string(),
             group_slug: "group".to_string(),
+            has_registration_questions: false,
             has_related_events: false,
             kind: EventKind::InPerson,
             logo_url: "https://example.com/logo.png".to_string(),

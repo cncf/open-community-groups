@@ -15,6 +15,7 @@ returns json as $$
         'group_category_name', gc.name,
         'group_name', g.name,
         'group_slug', g.slug,
+        'has_registration_questions', jsonb_array_length(coalesce(e.registration_questions, '[]'::jsonb)) > 0,
         'has_related_events', exists (
             select 1
             from event related_event
@@ -68,12 +69,7 @@ returns json as $$
     join community c on c.community_id = g.community_id
     join group_category gc on g.group_category_id = gc.group_category_id
     left join meeting m_event on m_event.event_id = e.event_id
-    left join (
-        select event_id, count(*)::int as attendee_count
-        from event_attendee
-        where status = 'confirmed'
-        group by event_id
-    ) ea on ea.event_id = e.event_id
+    cross join lateral get_event_occupied_seat_count(e.event_id) as ea(attendee_count)
     left join (
         select event_id, count(*)::int as waitlist_count
         from event_waitlist

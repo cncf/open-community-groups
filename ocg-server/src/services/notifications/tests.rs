@@ -744,8 +744,34 @@ fn test_delivery_worker_prepare_content_event_waitlist_promoted() {
 
     // Check content matches expectations
     assert_eq!(subject, "You moved off the waiting list");
-    assert!(body.contains("you are now registered"));
+    assert!(body.contains("You are now registered"));
+    assert!(body.contains("View event"));
+    assert!(!body.contains("Open My Events"));
     assert!(body.contains("Use the waiting room display name from your ticket."));
+    assert!(body.contains("Waitlist Event"));
+}
+
+#[test]
+fn test_delivery_worker_prepare_content_event_waitlist_promoted_with_registration_questions() {
+    // Setup notification
+    let notification = Notification {
+        attachments: vec![],
+        email: "user@example.test".to_string(),
+        kind: NotificationKind::EventWaitlistPromoted,
+        notification_id: Uuid::new_v4(),
+        template_data: Some(sample_event_waitlist_template_data_with_registration_questions()),
+    };
+
+    // Prepare content
+    let (subject, body) = DeliveryWorker::prepare_content(&notification).unwrap();
+
+    // Check content matches expectations
+    assert_eq!(subject, "You moved off the waiting list");
+    assert!(body.contains("Open My Events"));
+    assert!(body.contains("https://example.test/dashboard/user?tab=events"));
+    assert!(
+        !body.contains("https://example.test/test-community/group/notification-group/event/waitlist-event")
+    );
     assert!(body.contains("Waitlist Event"));
 }
 
@@ -1119,6 +1145,7 @@ fn sample_event_invitation_template_data() -> serde_json::Value {
             "waitlist_count": 0,
             "waitlist_enabled": false
         },
+        "has_registration_questions": false,
         "link": "https://example.test/dashboard/user?tab=invitations",
         "theme": {
             "primary_color": "#000000"
@@ -1268,11 +1295,21 @@ fn sample_event_waitlist_template_data() -> serde_json::Value {
             "waitlist_count": 3,
             "waitlist_enabled": true
         },
+        "dashboard_link": "https://example.test/dashboard/user?tab=events",
+        "has_registration_questions": false,
         "link": "https://example.test/test-community/group/notification-group/event/waitlist-event",
         "theme": {
             "primary_color": "#000000"
         }
     })
+}
+
+/// Sample template payload for event waitlist notifications with registration questions.
+fn sample_event_waitlist_template_data_with_registration_questions() -> serde_json::Value {
+    let mut payload = sample_event_waitlist_template_data();
+    let object = payload.as_object_mut().unwrap();
+    object.insert("has_registration_questions".to_string(), json!(true));
+    payload
 }
 
 /// Sample template payload for event welcome notifications.

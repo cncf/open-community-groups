@@ -19,6 +19,7 @@ export const EVENT_PAGE_FORM_IDS = [
   "hosts-sponsors-form",
   "sessions-form",
   "payments-form",
+  "questions-form",
   "cfs-form",
 ];
 

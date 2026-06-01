@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(14);
+select plan(16);
 
 -- ============================================================================
 -- VARIABLES
@@ -19,9 +19,11 @@ select plan(14);
 \set eventInactiveGroupID '00000000-0000-0000-0000-000000000045'
 \set eventPastID '00000000-0000-0000-0000-000000000047'
 \set eventPendingInvitationID '00000000-0000-0000-0000-000000000048'
+\set eventQuestionsApprovalID '90400000-0000-0000-0000-000000000042'
 \set eventUnpublishedID '00000000-0000-0000-0000-000000000044'
 \set groupID '00000000-0000-0000-0000-000000000021'
 \set inactiveGroupID '00000000-0000-0000-0000-000000000022'
+\set questionsAcceptedRequestUserID '90400000-0000-0000-0000-000000000035'
 \set requesterID '00000000-0000-0000-0000-000000000032'
 \set requester2ID '00000000-0000-0000-0000-000000000033'
 \set requester3ID '00000000-0000-0000-0000-000000000034'
@@ -56,7 +58,8 @@ values
     (:'actorID', 'h', 'actor@test.com', 'actor'),
     (:'requesterID', 'h', 'requester@test.com', 'requester'),
     (:'requester2ID', 'h', 'requester2@test.com', 'requester2'),
-    (:'requester3ID', 'h', 'requester3@test.com', 'requester3');
+    (:'requester3ID', 'h', 'requester3@test.com', 'requester3'),
+    (:'questionsAcceptedRequestUserID', 'h', 'rq-accepted-request@test.com', 'rq-accepted-request');
 
 -- Groups
 insert into "group" (group_id, community_id, group_category_id, name, slug, active)
@@ -187,6 +190,35 @@ values
         null
     );
 
+-- Event with registration questions used to verify answer copying on accept
+insert into event (
+    event_id,
+    name,
+    slug,
+    description,
+    timezone,
+    event_category_id,
+    event_kind_id,
+    group_id,
+    published,
+    attendee_approval_required,
+    starts_at,
+    registration_questions
+) values (
+    :'eventQuestionsApprovalID',
+    'Approval Questions Event',
+    'approval-questions-event',
+    'd',
+    'UTC',
+    :'eventCategoryID',
+    'in-person',
+    :'groupID',
+    true,
+    true,
+    '2030-01-02 10:00:00+00',
+    '[{"id": "90400000-0000-0000-0000-000000000101", "kind": "free-text", "prompt": "Note", "required": true, "options": []}]'::jsonb
+);
+
 -- Invitation requests
 insert into event_invitation_request (event_id, user_id)
 values
@@ -198,6 +230,14 @@ values
     (:'eventApprovalDisabledID', :'requesterID'),
     (:'eventPastID', :'requesterID'),
     (:'eventPendingInvitationID', :'requester3ID');
+
+-- Invitation request with registration answers copied when accepted
+insert into event_invitation_request (event_id, user_id, registration_answers)
+values (
+    :'eventQuestionsApprovalID',
+    :'questionsAcceptedRequestUserID',
+    '{"answers": [{"question_id": "90400000-0000-0000-0000-000000000101", "value": "Accepted request answer"}]}'::jsonb
+);
 
 -- Existing attendee that fills the second event
 insert into event_attendee (event_id, user_id)
@@ -371,6 +411,27 @@ select throws_ok(
     ),
     'pending invitation request not found',
     'Should reject accepting an already reviewed request'
+);
+
+-- Should accept invitation requests that include registration answers
+select lives_ok(
+    format(
+        'select accept_event_invitation_request(%L::uuid,%L::uuid,%L::uuid,%L::uuid)',
+        :'actorID', :'groupID', :'eventQuestionsApprovalID', :'questionsAcceptedRequestUserID'
+    ),
+    'Should accept invitation requests that include registration answers'
+);
+
+-- Should copy request answers to the attendee row
+select is(
+    (
+        select registration_answers
+        from event_attendee
+        where event_id = :'eventQuestionsApprovalID'::uuid
+        and user_id = :'questionsAcceptedRequestUserID'::uuid
+    ),
+    '{"answers": [{"question_id": "90400000-0000-0000-0000-000000000101", "value": "Accepted request answer"}]}'::jsonb,
+    'Should copy request answers to the attendee row'
 );
 
 -- ============================================================================

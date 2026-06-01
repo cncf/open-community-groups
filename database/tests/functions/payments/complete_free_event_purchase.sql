@@ -67,8 +67,10 @@ insert into event (
     timezone,
     starts_at,
     published,
-    published_at
+    published_at,
+    registration_questions
 ) values (
+    -- Event with pending registration answers created during checkout
     :'eventID',
     :'eventCategoryID',
     'in-person',
@@ -79,7 +81,8 @@ insert into event (
     'UTC',
     now() + interval '1 day',
     true,
-    now()
+    now(),
+    '[{"id": "72000000-0000-0000-0000-000000000101", "kind": "free-text", "prompt": "Note", "required": true, "options": []}]'::jsonb
 ), (
     :'eventInactiveID',
     :'eventCategoryID',
@@ -91,7 +94,8 @@ insert into event (
     'UTC',
     now() + interval '1 day',
     true,
-    now()
+    now(),
+    '[]'::jsonb
 );
 
 -- Ticket type
@@ -174,6 +178,15 @@ insert into event_purchase (
     :'user4ID'
 );
 
+-- Pending attendee row with registration answers created during checkout
+insert into event_attendee (event_id, user_id, registration_answers, status)
+values (
+    :'eventID',
+    :'user1ID',
+    '{"answers": [{"question_id": "72000000-0000-0000-0000-000000000101", "value": "Free checkout answer"}]}'::jsonb,
+    'registration-questions-pending'
+);
+
 -- ============================================================================
 -- TESTS
 -- ============================================================================
@@ -219,10 +232,32 @@ select results_eq(
                 from event_attendee
                 where event_id = '72000000-0000-0000-0000-000000000003'::uuid
                 and user_id = '72000000-0000-0000-0000-000000000012'::uuid
+            ),
+            (
+                select status
+                from event_attendee
+                where event_id = '72000000-0000-0000-0000-000000000003'::uuid
+                and user_id = '72000000-0000-0000-0000-000000000012'::uuid
+            ),
+            (
+                select registration_answers
+                from event_attendee
+                where event_id = '72000000-0000-0000-0000-000000000003'::uuid
+                and user_id = '72000000-0000-0000-0000-000000000012'::uuid
             )
     $$,
-    $$ values (true, true, 'completed'::text, 1::int, false) $$,
-    'Should persist the completed purchase fields and add a non-manually invited attendee'
+    $$
+        values (
+            true,
+            true,
+            'completed'::text,
+            1::int,
+            false,
+            'confirmed'::text,
+            '{"answers": [{"question_id": "72000000-0000-0000-0000-000000000101", "value": "Free checkout answer"}]}'::jsonb
+        )
+    $$,
+    'Should persist the completed purchase fields and confirm a non-manually invited attendee'
 );
 
 -- Should reject expired purchase holds

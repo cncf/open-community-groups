@@ -56,6 +56,14 @@ create or replace function get_event_attendance(
                 ) then 'pending-payment'
                 when exists (
                     select 1
+                    from event_attendee ea
+                    where ea.event_id = p_event_id
+                    and ea.user_id = p_user_id
+                    and ea.status = 'registration-questions-pending'
+                    and exists (select 1 from scoped_event)
+                ) then 'registration-questions-pending'
+                when exists (
+                    select 1
                     from event_invitation_request eir
                     where eir.event_id = p_event_id
                     and eir.user_id = p_user_id

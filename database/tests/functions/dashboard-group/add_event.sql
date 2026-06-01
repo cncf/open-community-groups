@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(34);
+select plan(36);
 
 -- ============================================================================
 -- VARIABLES
@@ -103,6 +103,7 @@ select ok(
         "category_name": "Conference",
         "description": "Learn the basics of Kubernetes deployment and management",
         "event_reminder_enabled": true,
+        "has_registration_questions": false,
         "has_related_events": false,
         "has_ticket_purchases": false,
         "hosts": [],
@@ -118,6 +119,8 @@ select ok(
         "attendee_approval_required": false,
         "meeting_recording_published": false,
         "meeting_recording_requested": true,
+        "registration_questions": [],
+        "registration_questions_locked": false,
         "waitlist_count": 0,
         "waitlist_enabled": false
     }'::jsonb,
@@ -274,6 +277,7 @@ select ok(
         "remaining_capacity": 100,
         "description_short": "Short description",
         "event_reminder_enabled": true,
+        "has_registration_questions": false,
         "has_related_events": false,
         "has_ticket_purchases": false,
         "starts_at": 1893520800,
@@ -288,6 +292,8 @@ select ok(
         "meeting_recording_url": "https://youtube.com/recording",
         "meetup_url": "https://meetup.com/event",
         "photos_urls": ["https://example.com/photo1.jpg", "https://example.com/photo2.jpg"],
+        "registration_questions": [],
+        "registration_questions_locked": false,
         "registration_required": true,
         "tags": ["technology", "conference", "networking"],
         "venue_address": "123 Main St",
@@ -874,6 +880,34 @@ select ok(
         '{"name": "Session Within Bounds", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "starts_at": "2030-01-01T10:00:00", "ends_at": "2030-01-01T14:00:00", "sessions": [{"name": "Valid Session", "starts_at": "2030-01-01T11:00:00", "ends_at": "2030-01-01T12:00:00", "kind": "in-person"}]}'::jsonb
     ) is not null),
     'Should succeed when session is within event bounds'
+);
+
+-- Should store registration questions when creating an event
+select add_event(
+    null::uuid,
+    '00000000-0000-0000-0000-000000000002'::uuid,
+    '{"name": "Event With Questions", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "registration_questions": [{"id": "00000000-0000-0000-0000-000000000501", "kind": "single-select", "prompt": "Meal preference", "required": true, "options": [{"id": "00000000-0000-0000-0000-000000000601", "label": "Standard"}, {"id": "00000000-0000-0000-0000-000000000602", "label": "Vegetarian"}]}]}'::jsonb
+) as "questionsEventID" \gset
+
+select is(
+    (
+        select registration_questions
+        from event
+        where event_id = :'questionsEventID'::uuid
+    ),
+    '[{"id": "00000000-0000-0000-0000-000000000501", "kind": "single-select", "prompt": "Meal preference", "required": true, "options": [{"id": "00000000-0000-0000-0000-000000000601", "label": "Standard"}, {"id": "00000000-0000-0000-0000-000000000602", "label": "Vegetarian"}]}]'::jsonb,
+    'Should store registration questions when creating an event'
+);
+
+-- Should validate registration questions when creating an event
+select throws_ok(
+    $$select add_event(
+        null::uuid,
+        '00000000-0000-0000-0000-000000000002'::uuid,
+        '{"name": "Event With Invalid Questions", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "registration_questions": [{"id": "bad", "kind": "free-text", "prompt": "Question", "required": true, "options": []}]}'::jsonb
+    )$$,
+    'questionnaire question id must be a uuid',
+    'Should validate registration questions when creating an event'
 );
 
 -- ============================================================================

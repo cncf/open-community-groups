@@ -16,6 +16,7 @@ const dataKey = "attendeeNotificationReady";
 const refundModalId = "attendee-refund-modal";
 const refundApproveButtonId = "attendee-refund-approve";
 const refundRejectButtonId = "attendee-refund-reject";
+const answersModalId = "attendee-answers-modal";
 const attendeeActionsDropdownSelector = "[data-attendee-actions-dropdown]";
 const attendeeRowActionsMenuSelector = "[data-attendee-row-actions-menu]";
 const invitationModalId = "attendee-invitation-modal";
@@ -68,6 +69,50 @@ const closeRefundModal = (root = document) => {
   const modal = queryElementById(root, refundModalId);
   if (modal && !modal.classList.contains("hidden")) {
     toggleModalVisibility(refundModalId);
+  }
+};
+
+/**
+ * Hide the attendee answers modal if it is currently visible.
+ * @param {Document|Element} [root=document] Query root.
+ * @returns {void}
+ */
+const closeAnswersModal = (root = document) => {
+  const modal = queryElementById(root, answersModalId);
+  if (modal && !modal.classList.contains("hidden")) {
+    toggleModalVisibility(answersModalId);
+  }
+};
+
+/**
+ * Populate the attendee answers modal with a row's answer markup.
+ * @param {HTMLElement} trigger Modal trigger.
+ * @param {Document|Element} root Query root.
+ * @returns {void}
+ */
+const populateAnswersModal = (trigger, root) => {
+  const sourceId = trigger.dataset.attendeeAnswersSource;
+  const source = sourceId ? queryElementById(root, sourceId) : null;
+  const content = queryElementById(root, "attendee-answers-content");
+  const name = queryElementById(root, "attendee-answers-name");
+
+  if (name) {
+    name.textContent = trigger.dataset.attendeeName || "";
+  }
+  if (content) {
+    content.innerHTML = source?.innerHTML || "";
+  }
+};
+
+/**
+ * Show the attendee answers modal if it is currently hidden.
+ * @param {Document|Element} [root=document] Query root.
+ * @returns {void}
+ */
+const openAnswersModal = (root = document) => {
+  const modal = queryElementById(root, answersModalId);
+  if (modal?.classList.contains("hidden")) {
+    toggleModalVisibility(answersModalId);
   }
 };
 
@@ -613,6 +658,44 @@ const initializeRefundReviewModal = (root = document) => {
 };
 
 /**
+ * Initialize attendee answer review modal controls.
+ * @param {Document|Element} [root=document] Query root.
+ */
+const initializeAnswersModal = (root = document) => {
+  if (!(root instanceof Element) || root.dataset.attendeeAnswersReady === "true") {
+    return;
+  }
+
+  root.dataset.attendeeAnswersReady = "true";
+
+  root.addEventListener("click", (event) => {
+    const target = event.target instanceof Element ? event.target : null;
+    const answersTrigger = target?.closest("[data-attendee-answers-open]");
+    if (answersTrigger instanceof HTMLElement && root.contains(answersTrigger)) {
+      event.stopPropagation();
+      populateAnswersModal(answersTrigger, root);
+      openAnswersModal(root);
+      return;
+    }
+
+    if (
+      target?.closest(
+        "#close-attendee-answers-modal, #cancel-attendee-answers-modal, #overlay-attendee-answers-modal",
+      )
+    ) {
+      event.stopPropagation();
+      closeAnswersModal(root);
+    }
+  });
+
+  root.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      closeAnswersModal(root);
+    }
+  });
+};
+
+/**
  * Initialize attendee invitation modal controls and response handling.
  * @param {Document|Element} [root=document] Query root.
  */
@@ -721,6 +804,7 @@ const initializeAttendeesFeatures = (root = document) => {
   }
 
   initializeAttendeeActionsMenu(attendeesRoot);
+  initializeAnswersModal(attendeesRoot);
   initializeInvitationModal(attendeesRoot);
   initializeAttendeeNotification(attendeesRoot);
   initializeQrCodeModal(attendeesRoot);

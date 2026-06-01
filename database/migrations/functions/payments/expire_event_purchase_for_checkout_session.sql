@@ -6,7 +6,9 @@ create or replace function expire_event_purchase_for_checkout_session(
 )
 returns void as $$
 declare
+    v_event_id uuid;
     v_event_discount_code_id uuid;
+    v_user_id uuid;
 begin
     -- Expire the pending purchase linked to the provider checkout session
     update event_purchase
@@ -16,11 +18,23 @@ begin
     where payment_provider_id = p_provider
     and provider_checkout_session_id = p_provider_session_id
     and status = 'pending'
-    returning event_discount_code_id into v_event_discount_code_id;
+    returning
+        event_discount_code_id,
+        event_id,
+        user_id
+    into
+        v_event_discount_code_id,
+        v_event_id,
+        v_user_id;
 
     -- Restore any reserved discount usage released by the expired purchase
     if v_event_discount_code_id is not null then
         perform release_event_discount_code_availability(v_event_discount_code_id);
+    end if;
+
+    -- Release the pending attendee row created for checkout answers
+    if v_event_id is not null then
+        perform release_event_checkout_attendee_hold(v_event_id, v_user_id);
     end if;
 end;
 $$ language plpgsql;

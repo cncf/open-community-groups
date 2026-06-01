@@ -25,7 +25,7 @@
     </p>
   </div>
 
-  <div class="mb-10 grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-stretch gap-x-3">
+  <div class="mb-10 grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-stretch gap-x-8">
     <div class="min-w-0 overflow-x-auto overflow-y-hidden">
       <ul class="inline-flex min-w-max flex-nowrap gap-1 border-b border-stone-900/10 text-center font-medium lg:gap-2">
         <li class="shrink-0">
@@ -82,6 +82,16 @@
         {% endif -%}
         <li class="shrink-0">
           <button type="button"
+                  data-section="questions"
+                  data-active="false"
+                  class="group inline-flex cursor-pointer flex-col items-center justify-center rounded-t-lg border-b-2 border-transparent p-4 px-2 pt-0 hover:border-stone-300 hover:text-stone-600 data-[active=true]:border-primary-500 data-[active=true]:text-primary-500 xl:w-[90px] xl:px-0 2xl:w-[120px]">
+            <div class="svg-icon size-4 lg:size-5 mb-2 icon-list-check bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
+            </div>
+            <span class="text-[10px] 2xl:text-xs">Questions</span>
+          </button>
+        </li>
+        <li class="shrink-0">
+          <button type="button"
                   data-section="cfs"
                   data-active="false"
                   class="group inline-flex cursor-pointer flex-col items-center justify-center rounded-t-lg border-b-2 border-transparent p-4 px-2 pt-0 hover:border-stone-300 hover:text-stone-600 data-[active=true]:border-primary-500 data-[active=true]:text-primary-500 xl:w-[90px] xl:px-0 2xl:w-[120px]">
@@ -130,7 +140,7 @@
               class="btn-primary w-24 text-nowrap ms-auto"
               hx-post="/dashboard/group/events/add"
               hx-ext="no-empty-vals-keep-zero"
-              hx-include="#details-form, #cfs-form, #date-venue-form, #sessions-form, #hosts-sponsors-form
+              hx-include="#details-form, #questions-form, #cfs-form, #date-venue-form, #sessions-form, #hosts-sponsors-form
                           {% if payments_ready %}, #payments-form{% endif %}"
               hx-target="#dashboard-content"
               hx-indicator="#dashboard-spinner"
@@ -434,6 +444,19 @@
   </form>
 </div>
 {# End Event Details Tab -#}
+
+{# Questions Tab -#}
+<div data-content="questions" class="hidden">
+  <form id="questions-form">
+    <div class="pb-12">
+      {{ dashboard::form_title(title = "Registration questions", description = "Ask attendees for extra information before their registration is complete.") -}}
+      <div class="mt-10">
+        <questions-editor name="registration_questions" questions="[]"></questions-editor>
+      </div>
+    </div>
+  </form>
+</div>
+{# End Questions Tab -#}
 
 {# CFS Tab -#}
 <div data-content="cfs" class="hidden">

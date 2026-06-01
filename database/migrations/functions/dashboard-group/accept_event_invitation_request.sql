@@ -10,6 +10,7 @@ declare
     v_attendee_count int;
     v_capacity int;
     v_community_id uuid;
+    v_registration_answers jsonb;
 begin
     -- Lock the event and verify it belongs to the selected group
     select
@@ -37,23 +38,21 @@ begin
         raise exception 'event not found or inactive';
     end if;
 
-    -- Ensure the request is still pending before accepting it
-    if not exists (
-        select 1
-        from event_invitation_request eir
-        where eir.event_id = p_event_id
-        and eir.user_id = p_user_id
-        and eir.status = 'pending'
-    ) then
+    -- Ensure the request is still pending and load any submitted registration answers
+    select eir.registration_answers
+    into v_registration_answers
+    from event_invitation_request eir
+    where eir.event_id = p_event_id
+    and eir.user_id = p_user_id
+    and eir.status = 'pending';
+
+    if not found then
         raise exception 'pending invitation request not found';
     end if;
 
     -- Enforce event capacity against already accepted attendees
     if v_capacity is not null then
-        select count(*) into v_attendee_count
-        from event_attendee
-        where event_id = p_event_id
-        and status = 'confirmed';
+        select get_event_occupied_seat_count(p_event_id) into v_attendee_count;
 
         if v_attendee_count >= v_capacity then
             raise exception 'event has reached capacity';
@@ -73,11 +72,17 @@ begin
     -- Add the confirmed attendee
     -- The conflict branch reuses pending or canceled manual invitation rows
     -- because event_attendee is keyed by event and user.
-    insert into event_attendee (event_id, user_id)
-    values (p_event_id, p_user_id)
+    insert into event_attendee (event_id, user_id, registration_answers)
+    values (p_event_id, p_user_id, v_registration_answers)
     on conflict (event_id, user_id) do update
-    set status = 'confirmed'
-    where event_attendee.status in ('invitation-canceled', 'invitation-pending');
+    set
+        registration_answers = v_registration_answers,
+        status = 'confirmed'
+    where event_attendee.status in (
+        'invitation-canceled',
+        'invitation-pending',
+        'registration-questions-pending'
+    );
 
     -- Track the organizer decision
     perform insert_audit_log(

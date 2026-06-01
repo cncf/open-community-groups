@@ -15,9 +15,11 @@ returns json as $$
             'created_at', floor(extract(epoch from e.created_at)),
             'description', e.description,
             'event_id', e.event_id,
+            'has_registration_questions', jsonb_array_length(coalesce(e.registration_questions, '[]'::jsonb)) > 0,
             'kind', e.event_kind_id,
             'name', e.name,
             'published', e.published,
+            'registration_questions', e.registration_questions,
             'slug', e.slug,
             'test_event', e.test_event,
             'timezone', e.timezone
@@ -172,6 +174,8 @@ returns json as $$
                 where gt.group_id = g.group_id
                 and gt.accepted = true
             ),
+            -- Lock registration questions once answers have been submitted
+            'registration_questions_locked', questionnaire_answers_exist_for_event(e.event_id),
             -- Include remaining capacity when event capacity is set
             'remaining_capacity',
                 case
@@ -327,12 +331,7 @@ returns json as $$
     join community c on c.community_id = g.community_id
     join event_category ec using (event_category_id)
     left join meeting m_event on m_event.event_id = e.event_id
-    left join (
-        select event_id, count(*)::int as attendee_count
-        from event_attendee
-        where status = 'confirmed'
-        group by event_id
-    ) ea on ea.event_id = e.event_id
+    cross join lateral get_event_occupied_seat_count(e.event_id) as ea(attendee_count)
     left join (
         select event_id, count(*)::int as waitlist_count
         from event_waitlist

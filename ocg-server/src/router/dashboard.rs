@@ -222,6 +222,10 @@ pub(super) fn setup_group_dashboard_router(state: &State) -> Router<State> {
             get(dashboard::group::attendees::download_csv),
         )
         .route(
+            "/events/{event_id}/attendees-with-answers.csv",
+            get(dashboard::group::attendees::download_csv_with_answers),
+        )
+        .route(
             "/events/{event_id}/invitation-requests",
             get(dashboard::group::invitation_requests::list_page),
         )
@@ -379,6 +383,10 @@ pub(super) fn setup_user_dashboard_router() -> Router<State> {
         .route(
             "/events/{community_name}/{event_id}/attendance",
             delete(dashboard::user::events::cancel_attendance),
+        )
+        .route(
+            "/events/{community_name}/{event_id}/registration-answers",
+            put(dashboard::user::events::submit_registration_answers),
         )
         .route("/invitations", get(dashboard::user::invitations::list_page))
         .route(

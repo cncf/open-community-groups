@@ -18,10 +18,11 @@
   <div class="shrink-0 w-auto mb-1.5 flex gap-3 flex-row">
     <button id="open-event-qr-code-modal"
             type="button"
-            class="btn-primary-outline w-full lg:w-auto
+            class="btn-primary-outline w-full lg:w-auto whitespace-nowrap
                    {% if event.canceled -%}
                      opacity-50 cursor-not-allowed
                    {% endif -%}"
+            aria-label="Show check-in QR code"
             {% if event.canceled -%}
               disabled title="Canceled events cannot use check-in."
             {% endif -%}
@@ -33,7 +34,10 @@
             data-qr-code-url="/dashboard/group/check-in/{{ event.event_id }}/qr-code"
             {% if let Some(start_time) = &event.starts_at -%}
               data-event-start="{{ start_time.with_timezone(event.timezone).format("%b %e · %I:%M %p %Z") }}"
-            {% endif -%}>Show check-in QR code</button>
+            {% endif -%}>
+      <span class="hidden xl:inline">Show check-in QR code</span>
+      <span class="xl:hidden">Check-in QR</span>
+    </button>
     <span class="inline-flex w-full lg:w-auto
                  {% if !can_manage_events || event.canceled || event.is_past() || event.is_ticketed() -%}
                    cursor-not-allowed
@@ -89,15 +93,25 @@
       </button>
       <div id="attendee-actions-menu"
            data-attendee-actions-dropdown
-           class="dropdown absolute hidden z-10 end-0 top-full mt-2 w-[200px] bg-white divide-y divide-stone-100 rounded-lg shadow border border-stone-200">
+           class="dropdown absolute hidden z-10 end-0 top-full mt-2 w-[22rem] bg-white divide-y divide-stone-100 rounded-lg shadow border border-stone-200">
         <ul class="py-2 text-sm text-stone-700" role="menu">
           <li>
             <a href="/dashboard/group/events/{{ event.event_id }}/attendees.csv"
                download
                role="menuitem"
-               class="flex items-center w-full px-4 py-2 hover:bg-stone-100 hover:text-stone-900 transition-colors gap-3">
+               aria-label="Download CSV"
+               class="flex items-center w-full px-4 py-2 hover:bg-stone-100 hover:text-stone-900 transition-colors gap-3 whitespace-nowrap">
               <div class="svg-icon size-4 icon-csv shrink-0 bg-stone-500"></div>
-              <span>Download CSV</span>
+              <span>Attendees list CSV</span>
+            </a>
+          </li>
+          <li>
+            <a href="/dashboard/group/events/{{ event.event_id }}/attendees-with-answers.csv"
+               download
+               role="menuitem"
+               class="flex items-center w-full px-4 py-2 hover:bg-stone-100 hover:text-stone-900 transition-colors gap-3 whitespace-nowrap">
+              <div class="svg-icon size-4 icon-csv shrink-0 bg-stone-500"></div>
+              <span>Attendees list CSV (including answers)</span>
             </a>
           </li>
         </ul>
@@ -151,7 +165,7 @@
                 <div class="min-w-0">
                   <div class="flex items-center space-x-3 mb-1 min-w-0">
                     <div class="font-medium text-stone-900 truncate min-w-0">
-                      {% if attendee.status == "invitation-pending" && attendee.name.is_none() -%}
+                      {% if (attendee.status == "invitation-pending" || attendee.status == "registration-questions-pending") && attendee.name.is_none() -%}
                         {{ attendee.email }}
                       {% else -%}
                         {{ attendee.name|assigned_or(attendee.username) }}
@@ -198,7 +212,9 @@
 
             {# Payment -#}
             <td class="px-3 xl:px-5 py-4 align-middle">
-              {% if attendee.status != "confirmed" -%}
+              {% if attendee.status == "registration-questions-pending" && event.is_ticketed() -%}
+                {{ badges::invitation_badge(label = "Pending checkout", with_border = true) -}}
+              {% else if attendee.status != "confirmed" -%}
                 <div class="text-stone-500">-</div>
               {% else if attendee.ticket_title.is_some() || attendee.amount_minor.is_some() || attendee.event_purchase_id.is_some() -%}
                 <div class="mx-auto flex max-w-[260px] flex-col gap-2">
@@ -257,11 +273,14 @@
             {# Actions -#}
             <td class="px-3 xl:px-5 py-4 w-[72px] text-right">
               <div class="relative inline-flex justify-end">
-                {% if can_manage_events
+                {% if (attendee.registration_answers.is_some() && !registration_questions.is_empty())
+                  || (can_manage_events
                   && (attendee.status == "confirmed"
+                  || (attendee.registration_answers.is_some() && !registration_questions.is_empty())
                   || attendee.status == "invitation-pending"
+                  || (attendee.status == "registration-questions-pending" && attendee.manually_invited)
                   || attendee.refund_request_status == Some(crate::types::payments::EventRefundRequestStatus::Pending)
-                  || attendee.refund_request_status == Some(crate::types::payments::EventRefundRequestStatus::Approving)) -%}
+                  || attendee.refund_request_status == Some(crate::types::payments::EventRefundRequestStatus::Approving))) -%}
                   <details data-attendee-row-actions-menu class="group relative">
                     <summary class="btn-actions btn-tertiary flex cursor-pointer list-none items-center justify-center p-2 group-open:bg-stone-50 [&::-webkit-details-marker]:hidden"
                              aria-label="Open attendee actions"
@@ -270,7 +289,58 @@
                     </summary>
                     <div class="dropdown absolute z-10 end-0 top-8 w-[220px] bg-white divide-y divide-stone-100 rounded-lg shadow border border-stone-200">
                       <ul class="py-2 text-sm text-stone-700" role="menu">
-                        {% if attendee.status == "invitation-pending" -%}
+                        {% if attendee.registration_answers.is_some() && !registration_questions.is_empty() -%}
+                          <li>
+                            <button type="button"
+                                    data-attendee-answers-open
+                                    data-attendee-answers-source="attendee-answers-{{ attendee.user_id }}"
+                                    data-attendee-name="{{ attendee.name|assigned_or(attendee.username) }}"
+                                    role="menuitem"
+                                    class="flex items-center w-full px-4 py-2 hover:bg-stone-100 hover:text-stone-900 transition-colors gap-3 text-left">
+                              <div class="svg-icon size-4 icon-list-check shrink-0 bg-stone-500"></div>
+                              <span>View answers</span>
+                            </button>
+                            <div id="attendee-answers-{{ attendee.user_id }}" hidden>
+                              <ol class="space-y-3">
+                                {% for question in registration_questions -%}
+                                  <li class="rounded-md border border-stone-200 bg-white p-4">
+                                    <h4 class="flex items-start gap-3 text-base font-semibold leading-6 text-stone-900">
+                                      <span class="flex size-6 shrink-0 items-center justify-center rounded-full bg-stone-100 text-xs font-semibold leading-6 text-stone-700">
+                                        {{ loop.index }}
+                                      </span>
+                                      <span class="min-w-0 flex-1">{{ question.prompt }}</span>
+                                    </h4>
+                                    <div class="ms-9 min-w-0">
+                                      {% let answer = question.format_answer(attendee.registration_answers.as_ref()) -%}
+                                      {% if answer.is_empty() -%}
+                                        <div class="mt-3 text-sm italic text-stone-500">No answer provided</div>
+                                      {% else if question.kind.to_string() == "free-text" -%}
+                                        <div class="mt-3 rounded-lg bg-stone-50 px-4 py-3 text-sm leading-6 text-stone-700 whitespace-pre-wrap">
+                                          {{- answer -}}
+                                        </div>
+                                      {% else -%}
+                                        <div class="mt-3 flex flex-wrap gap-2">
+                                          {% if question.kind.to_string() == "single-select" -%}
+                                            <span class="inline-flex rounded-full border border-stone-200 bg-stone-50 px-3 py-1 text-sm font-medium text-stone-700">{{ answer }}</span>
+                                          {% else -%}
+                                            {% for option in question.options -%}
+                                              {% if question.is_option_selected(attendee.registration_answers.as_ref(), option.id) -%}
+                                                <span class="inline-flex rounded-full border border-stone-200 bg-stone-50 px-3 py-1 text-sm font-medium text-stone-700">{{ option.label }}</span>
+                                              {% endif -%}
+                                            {% endfor -%}
+                                          {% endif -%}
+                                        </div>
+                                      {% endif -%}
+                                    </div>
+                                  </li>
+                                {% endfor -%}
+                              </ol>
+                            </div>
+                          </li>
+                        {% endif -%}
+                        {% if can_manage_events
+                          && (attendee.status == "invitation-pending"
+                          || (attendee.status == "registration-questions-pending" && attendee.manually_invited)) -%}
                           <li>
                             <button id="cancel-invitation-{{ attendee.user_id }}"
                                     hx-put="/dashboard/group/events/{{ event.event_id }}/attendees/{{ attendee.user_id }}/invitation/cancel"
@@ -290,7 +360,7 @@
                             </button>
                           </li>
                         {% endif -%}
-                        {% if attendee.status == "confirmed" -%}
+                        {% if can_manage_events && attendee.status == "confirmed" -%}
                           <li>
                             <button id="cancel-attendance-{{ attendee.user_id }}"
                                     {% if !self::is_paid_attendee(attendee.amount_minor) && !event.canceled && !event.is_past() -%}
@@ -310,7 +380,8 @@
                             </button>
                           </li>
                         {% endif -%}
-                        {% if attendee.refund_request_status == Some(crate::types::payments::EventRefundRequestStatus::Pending) -%}
+                        {% if can_manage_events
+                          && attendee.refund_request_status == Some(crate::types::payments::EventRefundRequestStatus::Pending) -%}
                           <li>
                             <button id="approve-refund-{{ attendee.user_id }}"
                                     hx-put="/dashboard/group/events/{{ event.event_id }}/attendees/{{ attendee.user_id }}/refund/approve"
@@ -340,7 +411,8 @@
                               <span>Reject refund</span>
                             </button>
                           </li>
-                        {% else if attendee.refund_request_status == Some(crate::types::payments::EventRefundRequestStatus::Approving) -%}
+                        {% else if can_manage_events
+                          && attendee.refund_request_status == Some(crate::types::payments::EventRefundRequestStatus::Approving) -%}
                           <li>
                             <button id="retry-refund-{{ attendee.user_id }}"
                                     hx-put="/dashboard/group/events/{{ event.event_id }}/attendees/{{ attendee.user_id }}/refund/approve"
@@ -374,6 +446,43 @@
   {{ pagination::navigation_links(links = navigation_links, hx_target = "#attendees-content", hx_indicator = "#dashboard-spinner") }}
 {% endif -%}
 {# End pagination -#}
+
+{# Attendee answers modal -#}
+<div id="attendee-answers-modal"
+     role="dialog"
+     aria-modal="true"
+     aria-labelledby="attendee-answers-modal-title"
+     aria-describedby="attendee-answers-subtitle"
+     class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 h-full max-h-full flex z-[1000]">
+  <div id="overlay-attendee-answers-modal"
+       class="modal-overlay absolute w-full h-full bg-stone-950 opacity-[0.35]"></div>
+  <div class="modal-panel p-4 max-w-6xl">
+    <div class="modal-card rounded-lg">
+      <div class="flex items-start justify-between p-4 md:p-5 border-b border-stone-200 rounded-t">
+        <div>
+          <h3 id="attendee-answers-modal-title"
+              class="text-xl font-semibold text-stone-900">Registration answers</h3>
+          <div id="attendee-answers-subtitle" class="mt-1 text-sm text-stone-600">
+            <span id="attendee-answers-name"></span>
+          </div>
+        </div>
+        <button id="close-attendee-answers-modal"
+                type="button"
+                class="group text-stone-400 bg-transparent hover:bg-stone-200 hover:text-stone-900 transition-colors rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center">
+          <div class="svg-icon w-5 h-5 bg-stone-500 group-hover:bg-stone-900 transition-colors icon-close"></div>
+          <span class="sr-only">Close modal</span>
+        </button>
+      </div>
+      <div id="attendee-answers-content" class="modal-body p-4 md:p-6"></div>
+      <div class="flex items-center justify-end border-t border-stone-200 p-4 md:p-5">
+        <button id="cancel-attendee-answers-modal"
+                type="button"
+                class="btn-primary-outline">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+{# End attendee answers modal -#}
 
 {# Refund review modal -#}
 <div id="attendee-refund-modal"

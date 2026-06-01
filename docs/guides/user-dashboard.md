@@ -45,7 +45,12 @@ Each row includes:
 - Event title with a direct link to the public event page.
 - Event location.
 - Event date and time.
-- Your role in that event (`Attendee`, `Host`, `Speaker`, or multiple roles).
+- Your role in that event (`Attendee`, `Registration pending`, `Host`, `Speaker`, or multiple
+  roles).
+
+When a row is marked `Registration pending`, use the row actions menu to complete the event's
+registration questions. You can update submitted answers from the same menu before the event
+starts.
 
 Filtering behavior:
 

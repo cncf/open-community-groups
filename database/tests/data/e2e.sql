@@ -571,6 +571,67 @@ insert into event (
     now() + interval '70 days 2 hours'
 );
 
+-- Registration questions event with answered attendees.
+insert into event (
+    event_id, name, slug, description, description_short, timezone, event_category_id,
+    event_kind_id, group_id, published, starts_at, ends_at,
+    capacity, registration_required, registration_questions
+) values (
+    '55555555-5555-5555-5555-555555555525',
+    'Registration Answers Lab',
+    'alpha-registration-answers-lab',
+    'Future event with realistic registration questions and submitted attendee answers.',
+    'Review realistic attendee questionnaire answers in the dashboard.',
+    'UTC',
+    '33333333-3333-3333-3333-333333333331',
+    'hybrid',
+    '44444444-4444-4444-4444-444444444441',
+    true,
+    now() + interval '80 days',
+    now() + interval '80 days 2 hours',
+    60,
+    true,
+    '[
+        {
+            "id": "57555555-5555-5555-5555-555555555501",
+            "kind": "free-text",
+            "prompt": "What are you hoping to learn from this event?",
+            "required": true,
+            "options": []
+        },
+        {
+            "id": "57555555-5555-5555-5555-555555555502",
+            "kind": "single-select",
+            "prompt": "Preferred session format",
+            "required": true,
+            "options": [
+                { "id": "58555555-5555-5555-5555-555555555501", "label": "Hands-on workshop" },
+                { "id": "58555555-5555-5555-5555-555555555502", "label": "Panel discussion" },
+                { "id": "58555555-5555-5555-5555-555555555503", "label": "Lightning talks" }
+            ]
+        },
+        {
+            "id": "57555555-5555-5555-5555-555555555503",
+            "kind": "multi-select",
+            "prompt": "Topics you want covered",
+            "required": true,
+            "options": [
+                { "id": "58555555-5555-5555-5555-555555555504", "label": "Platform reliability" },
+                { "id": "58555555-5555-5555-5555-555555555505", "label": "Developer experience" },
+                { "id": "58555555-5555-5555-5555-555555555506", "label": "Security and compliance" },
+                { "id": "58555555-5555-5555-5555-555555555507", "label": "Open source governance" }
+            ]
+        },
+        {
+            "id": "57555555-5555-5555-5555-555555555504",
+            "kind": "free-text",
+            "prompt": "Anything the organizers should know?",
+            "required": false,
+            "options": []
+        }
+    ]'::jsonb
+);
+
 -- Ticketed payment fixtures reserved for the Playwright suite.
 insert into event (
     event_id, name, slug, description, timezone, event_category_id,
@@ -1136,6 +1197,85 @@ values (
     '77777777-7777-7777-7777-777777777712'
 );
 
+insert into event_attendee (event_id, user_id, registration_answers)
+values (
+    '55555555-5555-5555-5555-555555555525',
+    '77777777-7777-7777-7777-777777777705',
+    '{
+        "answers": [
+            {
+                "question_id": "57555555-5555-5555-5555-555555555501",
+                "value": "I want practical patterns for incident readiness.\nI am also comparing governance models for our internal platform."
+            },
+            {
+                "question_id": "57555555-5555-5555-5555-555555555502",
+                "value": "58555555-5555-5555-5555-555555555501"
+            },
+            {
+                "question_id": "57555555-5555-5555-5555-555555555503",
+                "value": [
+                    "58555555-5555-5555-5555-555555555504",
+                    "58555555-5555-5555-5555-555555555505",
+                    "58555555-5555-5555-5555-555555555507"
+                ]
+            },
+            {
+                "question_id": "57555555-5555-5555-5555-555555555504",
+                "value": "Vegetarian lunch if food is provided."
+            }
+        ]
+    }'::jsonb
+), (
+    '55555555-5555-5555-5555-555555555525',
+    '77777777-7777-7777-7777-777777777706',
+    '{
+        "answers": [
+            {
+                "question_id": "57555555-5555-5555-5555-555555555501",
+                "value": "I am looking for examples of measuring platform adoption without creating vanity metrics."
+            },
+            {
+                "question_id": "57555555-5555-5555-5555-555555555502",
+                "value": "58555555-5555-5555-5555-555555555502"
+            },
+            {
+                "question_id": "57555555-5555-5555-5555-555555555503",
+                "value": [
+                    "58555555-5555-5555-5555-555555555505",
+                    "58555555-5555-5555-5555-555555555506"
+                ]
+            },
+            {
+                "question_id": "57555555-5555-5555-5555-555555555504",
+                "value": "Please share slides after the event."
+            }
+        ]
+    }'::jsonb
+), (
+    '55555555-5555-5555-5555-555555555525',
+    '77777777-7777-7777-7777-777777777707',
+    '{
+        "answers": [
+            {
+                "question_id": "57555555-5555-5555-5555-555555555501",
+                "value": "I want to understand how other teams introduce reliability reviews."
+            },
+            {
+                "question_id": "57555555-5555-5555-5555-555555555502",
+                "value": "58555555-5555-5555-5555-555555555503"
+            },
+            {
+                "question_id": "57555555-5555-5555-5555-555555555503",
+                "value": [
+                    "58555555-5555-5555-5555-555555555504",
+                    "58555555-5555-5555-5555-555555555506",
+                    "58555555-5555-5555-5555-555555555507"
+                ]
+            }
+        ]
+    }'::jsonb
+);
+
 -- ============================================================================
 -- EVENT TICKETING
 -- ============================================================================
@@ -1216,7 +1356,7 @@ values (
     '57555555-5555-5555-5555-555555555522',
     3000,
     '56555555-5555-5555-5555-555555555521',
-    now() + interval '45 days',
+    now() + interval '45 days 1 minute',
     null
 ), (
     '57555555-5555-5555-5555-555555555523',

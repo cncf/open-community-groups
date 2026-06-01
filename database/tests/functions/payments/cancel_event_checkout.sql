@@ -172,6 +172,10 @@ insert into event_purchase (
     :'userID'
 );
 
+-- Pending attendee row with registration answers created during checkout
+insert into event_attendee (event_id, user_id, status)
+values (:'eventID', :'userID', 'registration-questions-pending');
+
 -- ============================================================================
 -- TESTS
 -- ============================================================================
@@ -199,9 +203,15 @@ select results_eq(
                 select status
                 from event_purchase
                 where event_purchase_id = '79310000-0000-0000-0000-000000000009'::uuid
+            ),
+            (
+                select count(*)::int
+                from event_attendee
+                where event_id = '79310000-0000-0000-0000-000000000004'::uuid
+                and user_id = '79310000-0000-0000-0000-000000000011'::uuid
             )
     $$,
-    $$ values (0::int, 'pending'::text) $$,
+    $$ values (0::int, 'pending'::text, 1::int) $$,
     'Should leave unmatched community checkout state unchanged'
 );
 
@@ -233,10 +243,16 @@ select results_eq(
                 select status
                 from event_purchase
                 where event_purchase_id = '79310000-0000-0000-0000-000000000009'::uuid
+            ),
+            (
+                select count(*)::int
+                from event_attendee
+                where event_id = '79310000-0000-0000-0000-000000000004'::uuid
+                and user_id = '79310000-0000-0000-0000-000000000011'::uuid
             )
     $$,
-    $$ values (1::int, true, 'expired'::text) $$,
-    'Should expire the pending checkout and restore the reserved discount usage'
+    $$ values (1::int, true, 'expired'::text, 0::int) $$,
+    'Should expire the pending checkout, release registration hold, and restore discount usage'
 );
 
 -- ============================================================================

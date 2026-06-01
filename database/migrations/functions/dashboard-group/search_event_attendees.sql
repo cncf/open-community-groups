@@ -16,6 +16,7 @@ returns json as $$
                 extract(epoch from ea.created_at)::bigint as created_at,
                 u.email,
                 ea.manually_invited,
+                ea.registration_answers,
                 ea.status,
                 u.user_id,
                 u.username,
@@ -57,7 +58,12 @@ returns json as $$
             ) err on true
             where e.group_id = p_group_id
             and ea.event_id = (select event_id from filters)
-            and ea.status in ('confirmed', 'invitation-pending', 'invitation-rejected')
+            and ea.status in (
+                'confirmed',
+                'invitation-pending',
+                'invitation-rejected',
+                'registration-questions-pending'
+            )
             order by coalesce(lower(u.name), lower(u.username)) asc, u.user_id asc
             offset (select offset_value from filters)
             limit (select limit_value from filters)
@@ -75,7 +81,12 @@ returns json as $$
             join "user" u on u.user_id = ea.user_id
             where e.group_id = p_group_id
             and ea.event_id = (select event_id from filters)
-            and ea.status in ('confirmed', 'invitation-pending', 'invitation-rejected')
+            and ea.status in (
+                'confirmed',
+                'invitation-pending',
+                'invitation-rejected',
+                'registration-questions-pending'
+            )
         ),
         -- Render attendees as JSON
         attendees_json as (

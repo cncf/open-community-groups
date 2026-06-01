@@ -45,7 +45,7 @@ use crate::{
         payments::GroupPaymentRecipient,
         permissions::GroupPermission,
     },
-    util::{build_event_calendar_attachment, build_event_page_link},
+    util::{build_event_calendar_attachment, build_event_page_link, build_user_dashboard_events_link},
 };
 
 mod recurrence;
@@ -556,7 +556,7 @@ pub(crate) async fn update(
         // Fetch notification context and updated event summary concurrently
         match tokio::try_join!(
             db.get_site_settings(),
-            db.get_event_summary(community_id, group_id, event_id),
+            db.get_event_summary(community_id, group_id, event_id)
         ) {
             Ok((site_settings, event)) if !event.test_event => {
                 // Build and enqueue the waitlist promotion notification
@@ -564,9 +564,11 @@ pub(crate) async fn update(
                 let link = build_event_page_link(base_url, &event);
                 let calendar_ics = build_event_calendar_attachment(base_url, &event);
                 let template_data = EventWaitlistPromoted {
-                    event,
+                    event: event.clone(),
+                    has_registration_questions: event.has_registration_questions,
                     link,
                     theme: site_settings.theme,
+                    dashboard_link: Some(build_user_dashboard_events_link(base_url)),
                 };
                 let notification = NewNotification {
                     attachments: vec![calendar_ics],

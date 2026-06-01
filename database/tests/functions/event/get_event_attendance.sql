@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(16);
+select plan(19);
 
 -- ============================================================================
 -- VARIABLES
@@ -20,10 +20,16 @@ select plan(16);
 \set eventPurchaseID '00000000-0000-0000-0000-000000000061'
 \set eventPurchaseCurrentID '00000000-0000-0000-0000-000000000062'
 \set eventPurchaseProcessingID '00000000-0000-0000-0000-000000000063'
+\set eventPurchaseQuestionsExpiredID '90400000-0000-0000-0000-000000000063'
+\set eventPurchaseQuestionsPendingID '90400000-0000-0000-0000-000000000062'
+\set eventQuestionsID '90400000-0000-0000-0000-000000000041'
 \set eventRefundRequestID '00000000-0000-0000-0000-000000000071'
 \set eventRefundRequestProcessingID '00000000-0000-0000-0000-000000000072'
 \set eventStartedNoEndID '00000000-0000-0000-0000-000000000043'
 \set groupID '00000000-0000-0000-0000-000000000031'
+\set questionsCheckoutExpiredUserID '90400000-0000-0000-0000-000000000035'
+\set questionsCheckoutUserID '90400000-0000-0000-0000-000000000034'
+\set questionsInvitedUserID '90400000-0000-0000-0000-000000000033'
 \set user1ID '00000000-0000-0000-0000-000000000051'
 \set user2ID '00000000-0000-0000-0000-000000000052'
 \set user4ID '00000000-0000-0000-0000-000000000054'
@@ -63,7 +69,10 @@ values
     (:'user5ID', 'h5', 'att5@example.com', 'att5', 'Att Five'),
     (:'user6ID', 'h6', 'att6@example.com', 'att6', 'Att Six'),
     (:'user7ID', 'h7', 'att7@example.com', 'att7', 'Att Seven'),
-    (:'user8ID', 'h8', 'att8@example.com', 'att8', 'Att Eight');
+    (:'user8ID', 'h8', 'att8@example.com', 'att8', 'Att Eight'),
+    (:'questionsCheckoutUserID', 'h9', 'rq-checkout@test.com', 'rq-checkout', null),
+    (:'questionsCheckoutExpiredUserID', 'h10', 'rq-expired-checkout@test.com', 'rq-expired-checkout', null),
+    (:'questionsInvitedUserID', 'h', 'rq-invited@test.com', 'rq-invited', null);
 
 -- Event
 insert into event (
@@ -152,6 +161,33 @@ insert into event (
     current_timestamp - interval '1 hour'
 );
 
+-- Event requiring invited users to answer registration questions
+insert into event (
+    event_id,
+    name,
+    slug,
+    description,
+    timezone,
+    event_category_id,
+    event_kind_id,
+    group_id,
+    published,
+    starts_at,
+    registration_questions
+) values (
+    :'eventQuestionsID',
+    'Questions Event',
+    'questions-event',
+    'd',
+    'UTC',
+    :'eventCategoryID',
+    'in-person',
+    :'groupID',
+    true,
+    '2030-01-01 10:00:00+00',
+    '[{"id": "90400000-0000-0000-0000-000000000101", "kind": "free-text", "prompt": "Note", "required": true, "options": []}]'::jsonb
+);
+
 -- Event ticket type
 insert into event_ticket_type (
     event_ticket_type_id,
@@ -162,7 +198,8 @@ insert into event_ticket_type (
     title
 ) values
     ('00000000-0000-0000-0000-000000000081'::uuid, true, :'eventID', 1, 100, 'General admission'),
-    ('00000000-0000-0000-0000-000000000082'::uuid, true, :'eventID', 2, 100, 'VIP');
+    ('00000000-0000-0000-0000-000000000082'::uuid, true, :'eventID', 2, 100, 'VIP'),
+    ('90400000-0000-0000-0000-000000000081'::uuid, true, :'eventQuestionsID', 1, 100, 'Questions general admission');
 
 -- Event Attendee - user1 is checked in
 insert into event_attendee (event_id, user_id, checked_in, checked_in_at) values (:'eventID', :'user1ID', true, current_timestamp);
@@ -185,6 +222,13 @@ values (:'eventDraftCanceledID', :'user2ID', false);
 -- Event Attendee - pending organizer invitation should not report attendee
 insert into event_attendee (event_id, user_id, status)
 values (:'eventID', :'user8ID', 'invitation-pending');
+
+-- Event Attendee - pending registration questions should report pending state
+insert into event_attendee (event_id, user_id, manually_invited, status)
+values
+    (:'eventQuestionsID', :'questionsInvitedUserID', true, 'registration-questions-pending'),
+    (:'eventQuestionsID', :'questionsCheckoutUserID', false, 'registration-questions-pending'),
+    (:'eventQuestionsID', :'questionsCheckoutExpiredUserID', false, 'registration-questions-pending');
 
 -- Event Waitlist
 insert into event_waitlist (event_id, user_id)
@@ -245,6 +289,41 @@ insert into event_purchase (
     'refund-requested',
     'VIP',
     :'user2ID'
+);
+
+insert into event_purchase (
+    event_purchase_id,
+    amount_minor,
+    currency_code,
+    event_id,
+    event_ticket_type_id,
+    hold_expires_at,
+    provider_checkout_url,
+    status,
+    ticket_title,
+    user_id
+) values (
+    :'eventPurchaseQuestionsPendingID',
+    1200,
+    'USD',
+    :'eventQuestionsID',
+    '90400000-0000-0000-0000-000000000081',
+    current_timestamp + interval '10 minutes',
+    'https://example.test/checkout/resume',
+    'pending',
+    'Questions general admission',
+    :'questionsCheckoutUserID'
+), (
+    :'eventPurchaseQuestionsExpiredID',
+    1200,
+    'USD',
+    :'eventQuestionsID',
+    '90400000-0000-0000-0000-000000000081',
+    current_timestamp - interval '10 minutes',
+    'https://example.test/checkout/expired',
+    'pending',
+    'Questions general admission',
+    :'questionsCheckoutExpiredUserID'
 );
 
 -- Event refund request
@@ -499,6 +578,39 @@ select is(
         "status": "none"
     }'::jsonb,
     'Should return none for a non-attendee'
+);
+
+-- Should report pending registration questions in event attendance state
+select is(
+    get_event_attendance(:'communityID'::uuid, :'eventQuestionsID'::uuid, :'questionsInvitedUserID'::uuid)::jsonb->>'status',
+    'registration-questions-pending',
+    'Should report pending registration questions in event attendance state'
+);
+
+-- Should report pending payment before pending registration questions
+select is(
+    get_event_attendance(:'communityID'::uuid, :'eventQuestionsID'::uuid, :'questionsCheckoutUserID'::uuid)::jsonb,
+    '{
+        "is_checked_in": false,
+        "purchase_amount_minor": 1200,
+        "refund_request_status": null,
+        "resume_checkout_url": "https://example.test/checkout/resume",
+        "status": "pending-payment"
+    }'::jsonb,
+    'Should report active pending checkout before pending registration questions'
+);
+
+-- Should ignore expired pending payments before pending registration questions
+select is(
+    get_event_attendance(:'communityID'::uuid, :'eventQuestionsID'::uuid, :'questionsCheckoutExpiredUserID'::uuid)::jsonb,
+    '{
+        "is_checked_in": false,
+        "purchase_amount_minor": null,
+        "refund_request_status": null,
+        "resume_checkout_url": null,
+        "status": "registration-questions-pending"
+    }'::jsonb,
+    'Should ignore expired pending checkout before pending registration questions'
 );
 
 -- ============================================================================

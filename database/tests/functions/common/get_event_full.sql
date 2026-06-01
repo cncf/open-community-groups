@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(9);
+select plan(11);
 
 -- ============================================================================
 -- VARIABLES
@@ -281,6 +281,33 @@ insert into event (
     'America/New_York'
 );
 
+-- Event (unpublished)
+insert into event (
+    event_id,
+    name,
+    slug,
+    description,
+    event_kind_id,
+    event_category_id,
+    group_id,
+    published,
+    starts_at,
+    timezone,
+    registration_questions
+) values (
+    :'eventUnpublishedID',
+    'Draft Workshop',
+    'ghi9abc',
+    'A draft workshop that is not yet published',
+    'virtual',
+    :'eventCategoryID',
+    :'groupID',
+    false,
+    '2024-07-15 09:00:00+00',
+    'America/New_York',
+    '[{"id": "00000000-0000-0000-0000-000000000091", "kind": "free-text", "prompt": "Question", "required": true, "options": []}]'::jsonb
+);
+
 -- Event CFS labels
 insert into event_cfs_label (event_cfs_label_id, event_id, name, color)
 values
@@ -379,6 +406,15 @@ values
     (:'eventID', :'user1ID', 'confirmed', true, '2024-01-01 00:00:00', '2024-01-01 00:00:00'),
     (:'eventID', :'user2ID', 'confirmed', false, null, '2024-01-01 00:00:00'),
     (:'eventID', :'user3ID', 'invitation-pending', false, null, '2024-01-01 00:00:00');
+
+-- Event attendee with registration answers for questionnaire lock checks
+insert into event_attendee (event_id, user_id, status, registration_answers)
+values (
+    :'eventUnpublishedID',
+    :'user3ID',
+    'confirmed',
+    '{"answers": [{"question_id": "00000000-0000-0000-0000-000000000091", "value": "Answer"}]}'::jsonb
+);
 
 -- Group Team
 insert into group_team (group_id, user_id, role, accepted, "order")
@@ -623,31 +659,6 @@ insert into legacy_event_speaker (
     'https://example.com/diego.png'
 );
 
--- Event (unpublished)
-insert into event (
-    event_id,
-    name,
-    slug,
-    description,
-    event_kind_id,
-    event_category_id,
-    group_id,
-    published,
-    starts_at,
-    timezone
-) values (
-    :'eventUnpublishedID',
-    'Draft Workshop',
-    'ghi9abc',
-    'A draft workshop that is not yet published',
-    'virtual',
-    :'eventCategoryID',
-    :'groupID',
-    false,
-    '2024-07-15 09:00:00+00',
-    'America/New_York'
-);
-
 -- Event (inactive group)
 insert into event (
     event_id,
@@ -815,6 +826,7 @@ select is(
         "description": "Annual Kubernetes conference featuring workshops, talks, and hands-on sessions with industry experts from across the cloud native ecosystem",
         "event_id": "00000000-0000-0000-0000-000000000031",
         "event_reminder_enabled": true,
+        "has_registration_questions": false,
         "has_related_events": true,
         "has_ticket_purchases": false,
         "kind": "hybrid",
@@ -860,6 +872,8 @@ select is(
         "meetup_url": "https://meetup.com/event123",
         "photos_urls": ["https://example.com/photo1.jpg", "https://example.com/photo2.jpg"],
         "published_at": 1714564800,
+        "registration_questions": [],
+        "registration_questions_locked": false,
         "registration_required": true,
         "starts_at": 1718438400,
         "tags": ["technology", "conference", "workshops"],
@@ -1183,6 +1197,32 @@ select is(
         ]
     }'::jsonb,
     'Should return complete event data with hosts, organizers, and sessions as JSON'
+);
+
+-- Should indicate whether registration questions are configured
+select is(
+    (
+        get_event_full(
+            :'communityID'::uuid,
+            :'groupID'::uuid,
+            :'eventUnpublishedID'::uuid
+        )::jsonb
+    )->>'has_registration_questions',
+    'true',
+    'Should indicate whether registration questions are configured'
+);
+
+-- Should lock registration questions when answers exist
+select is(
+    (
+        get_event_full(
+            :'communityID'::uuid,
+            :'groupID'::uuid,
+            :'eventUnpublishedID'::uuid
+        )::jsonb
+    )->>'registration_questions_locked',
+    'true',
+    'Should lock registration questions when answers exist'
 );
 
 -- Should include normalized ticketing fields in the full event payload

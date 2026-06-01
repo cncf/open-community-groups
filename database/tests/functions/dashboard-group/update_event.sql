@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(107);
+select plan(114);
 
 -- ============================================================================
 -- VARIABLES
@@ -35,6 +35,9 @@ select plan(107);
 \set event24ID '00000000-0000-0000-0000-000000000031'
 \set event25ID '00000000-0000-0000-0000-000000000032'
 \set event26ID '00000000-0000-0000-0000-000000000033'
+\set eventQuestionsAnsweredID '90300000-0000-0000-0000-000000000043'
+\set eventQuestionsID '90300000-0000-0000-0000-000000000041'
+\set eventQuestionsPublishedID '90300000-0000-0000-0000-000000000042'
 \set group1ID '00000000-0000-0000-0000-000000000002'
 \set invalidUserID '99999999-9999-9999-9999-999999999999'
 \set label1ID '00000000-0000-0000-0000-000000000401'
@@ -46,6 +49,12 @@ select plan(107);
 \set meeting3ID '00000000-0000-0000-0000-000000000303'
 \set meeting4ID '00000000-0000-0000-0000-000000000304'
 \set meeting5ID '00000000-0000-0000-0000-000000000305'
+\set questionsAttendeeUserID '90300000-0000-0000-0000-000000000031'
+\set questionsCategoryID '90300000-0000-0000-0000-000000000011'
+\set questionsCommunityID '90300000-0000-0000-0000-000000000001'
+\set questionsEventCategoryID '90300000-0000-0000-0000-000000000012'
+\set questionsGroupID '90300000-0000-0000-0000-000000000021'
+\set questionsOrganizerUserID '90300000-0000-0000-0000-000000000030'
 \set session1ID '00000000-0000-0000-0000-000000000101'
 \set session2ID '00000000-0000-0000-0000-000000000102'
 \set session3ID '00000000-0000-0000-0000-000000000103'
@@ -66,23 +75,34 @@ select plan(107);
 insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
 values (:'community1ID', 'test-community', 'Test Community', 'A test community for testing purposes', 'https://example.com/logo.png', 'https://example.com/banner_mobile.png', 'https://example.com/banner.png');
 
+-- Community for registration-question update tests
+insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
+values (:'questionsCommunityID', 'update-questions-community', 'Update Questions Community', 'Desc', 'https://example.com/logo.png', 'https://example.com/banner-mobile.png', 'https://example.com/banner.png');
+
 -- Users
 insert into "user" (user_id, auth_hash, email, username, name) values
     (:'user1ID', 'hash1', 'host1@example.com', 'host1', 'Host One'),
     (:'user2ID', 'hash2', 'host2@example.com', 'host2', 'Host Two'),
     (:'user3ID', 'hash3', 'speaker1@example.com', 'speaker1', 'Speaker One'),
     (:'user4ID', 'hash4', 'waitlist1@example.com', 'waitlist1', 'Waitlist One'),
-    (:'user5ID', 'hash5', 'waitlist2@example.com', 'waitlist2', 'Waitlist Two');
+    (:'user5ID', 'hash5', 'waitlist2@example.com', 'waitlist2', 'Waitlist Two'),
+    (:'questionsOrganizerUserID', 'rq-hash-1', 'rq-organizer@example.com', 'rq-organizer', null),
+    (:'questionsAttendeeUserID', 'rq-hash-2', 'rq-attendee@example.com', 'rq-attendee', null);
 
 -- Event Category
 insert into event_category (event_category_id, name, community_id)
 values
     (:'category1ID', 'Conference', :'community1ID'),
-    (:'category2ID', 'Workshop', :'community1ID');
+    (:'category2ID', 'Workshop', :'community1ID'),
+    (:'questionsEventCategoryID', 'General', :'questionsCommunityID');
 
 -- Group Category
 insert into group_category (group_category_id, name, community_id)
 values ('00000000-0000-0000-0000-000000000010', 'Technology', :'community1ID');
+
+-- Group category for registration-question update tests
+insert into group_category (group_category_id, name, community_id)
+values (:'questionsCategoryID', 'Technology', :'questionsCommunityID');
 
 -- Group
 insert into "group" (
@@ -100,6 +120,10 @@ insert into "group" (
     'A test group',
     '00000000-0000-0000-0000-000000000010'
 );
+
+-- Group for registration-question update tests
+insert into "group" (group_id, community_id, group_category_id, name, slug)
+values (:'questionsGroupID', :'questionsCommunityID', :'questionsCategoryID', 'Update Questions Group', 'update-questions-group');
 
 -- Group Sponsors
 insert into group_sponsor (group_sponsor_id, group_id, name, logo_url, website_url)
@@ -126,6 +150,57 @@ insert into event (
     'America/New_York',
     :'category1ID',
     'in-person'
+);
+
+-- Events used to update and lock registration questions
+insert into event (
+    event_id,
+    group_id,
+    name,
+    slug,
+    description,
+    timezone,
+    event_category_id,
+    event_kind_id,
+    published,
+    starts_at,
+    registration_questions
+) values (
+    :'eventQuestionsID',
+    :'questionsGroupID',
+    'Draft Questions Event',
+    'draft-questions-event',
+    'Desc',
+    'UTC',
+    :'questionsEventCategoryID',
+    'in-person',
+    false,
+    '2030-01-01 10:00:00+00',
+    '[]'::jsonb
+), (
+    :'eventQuestionsPublishedID',
+    :'questionsGroupID',
+    'Published Questions Event',
+    'published-questions-event',
+    'Desc',
+    'UTC',
+    :'questionsEventCategoryID',
+    'in-person',
+    true,
+    '2030-01-01 10:00:00+00',
+    '[{"id": "90300000-0000-0000-0000-000000000101", "kind": "free-text", "prompt": "Original", "required": true, "options": []}]'::jsonb
+), (
+    :'eventQuestionsAnsweredID',
+    :'questionsGroupID',
+    'Answered Questions Event',
+    'answered-questions-event',
+    'Desc',
+    'UTC',
+    :'questionsEventCategoryID',
+    'in-person',
+    false,
+    '2030-01-01 10:00:00+00',
+    '[{"id": "90300000-0000-0000-0000-000000000101", "kind": "free-text", "prompt": "Original", "required": true, "options": []}]'::jsonb
 );
 
 -- Add initial host and sponsor to the event
@@ -231,7 +306,7 @@ values (
     'started-event'
 );
 
--- Published dateless event for waitlist promotion checks
+-- Published event for waitlist promotion checks
 insert into event (
     event_id,
     group_id,
@@ -243,18 +318,20 @@ insert into event (
     event_kind_id,
     capacity,
     published,
+    starts_at,
     waitlist_enabled
 ) values (
     :'event13ID',
     :'group1ID',
-    'Published Dateless Event',
-    'dateless-waitlist',
-    'Published event without dates for waitlist promotion checks',
+    'Published Waitlist Event',
+    'published-waitlist',
+    'Published event for waitlist promotion checks',
     'UTC',
     :'category1ID',
     'in-person',
     1,
     true,
+    '2030-02-01 10:00:00+00',
     true
 );
 
@@ -269,7 +346,8 @@ insert into event (
     event_category_id,
     event_kind_id,
     capacity,
-    published
+    published,
+    starts_at
 ) values (
     :'event14ID',
     :'group1ID',
@@ -280,7 +358,8 @@ insert into event (
     :'category1ID',
     'in-person',
     3,
-    true
+    true,
+    '2030-02-10 10:00:00-05'
 );
 
 -- Published event used for waitlist promotion on capacity increase
@@ -314,7 +393,7 @@ insert into event (
     true
 );
 
--- Published dateless event used when waitlist is disabled for new joins
+-- Published event used when waitlist is disabled for new joins
 insert into event (
     event_id,
     group_id,
@@ -326,22 +405,24 @@ insert into event (
     event_kind_id,
     capacity,
     published,
+    starts_at,
     waitlist_enabled
 ) values (
     :'event16ID',
     :'group1ID',
-    'Dateless Waitlist Disabled Event',
-    'dateless-waitlist-disabled',
-    'Published dateless event for disabled waitlist promotion checks',
+    'Waitlist Disabled Event',
+    'waitlist-disabled',
+    'Published event for disabled waitlist promotion checks',
     'UTC',
     :'category1ID',
     'in-person',
     2,
     true,
+    '2030-02-16 10:00:00+00',
     true
 );
 
--- Published dateless event used when capacity becomes unlimited
+-- Published event used when capacity becomes unlimited
 insert into event (
     event_id,
     group_id,
@@ -353,18 +434,20 @@ insert into event (
     event_kind_id,
     capacity,
     published,
+    starts_at,
     waitlist_enabled
 ) values (
     :'event17ID',
     :'group1ID',
-    'Dateless Unlimited Event',
-    'dateless-unlimited',
-    'Published dateless event for unlimited capacity promotion checks',
+    'Unlimited Event',
+    'unlimited-event',
+    'Published event for unlimited capacity promotion checks',
     'UTC',
     :'category1ID',
     'in-person',
     1,
     true,
+    '2030-02-17 10:00:00+00',
     true
 );
 
@@ -780,6 +863,15 @@ insert into event_attendee (event_id, user_id) values
     (:'event16ID', :'user3ID'),
     (:'event17ID', :'user2ID'),
     (:'event20ID', :'user1ID');
+
+-- Attendee with answers that lock registration questions
+insert into event_attendee (event_id, user_id, registration_answers, status)
+values (
+    :'eventQuestionsAnsweredID',
+    :'questionsAttendeeUserID',
+    '{"answers": [{"question_id": "90300000-0000-0000-0000-000000000101", "value": "Answer"}]}'::jsonb,
+    'confirmed'
+);
 
 -- Event Waitlist (for waitlist promotion tests)
 insert into event_waitlist (event_id, user_id, created_at) values
@@ -1234,6 +1326,7 @@ select is(
         "remaining_capacity": 100,
         "ends_at": 1896220800,
         "event_reminder_enabled": true,
+        "has_registration_questions": false,
         "has_related_events": false,
         "has_ticket_purchases": false,
         "meeting_in_sync": false,
@@ -1241,6 +1334,8 @@ select is(
         "meeting_recording_published": false,
         "meeting_recording_requested": true,
         "meeting_requested": true,
+        "registration_questions": [],
+        "registration_questions_locked": false,
         "sessions": {},
         "starts_at": 1896213600,
         "waitlist_count": 0,
@@ -1866,8 +1961,11 @@ select is(
         "meeting_recording_url": "https://youtube.com/new-recording",
         "meetup_url": "https://meetup.com/new-event",
         "photos_urls": ["https://example.com/new-photo1.jpg", "https://example.com/new-photo2.jpg"],
+        "registration_questions": [],
+        "registration_questions_locked": false,
         "registration_required": false,
         "event_reminder_enabled": true,
+        "has_registration_questions": false,
         "has_related_events": false,
         "has_ticket_purchases": false,
         "tags": ["updated", "event", "tags"],
@@ -2592,6 +2690,18 @@ select lives_ok(
     'Should succeed with event ends_at null when starts_at is null'
 );
 
+-- Should reject clearing the start date on a published event
+select throws_ok(
+    $$select update_event(
+        null::uuid,
+        '00000000-0000-0000-0000-000000000002'::uuid,
+        '00000000-0000-0000-0000-000000000016'::uuid,
+        '{"name": "Published No Dates Event", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person"}'::jsonb
+    )$$,
+    'published event must have a start date',
+    'Should reject clearing the start date on a published event'
+);
+
 -- Should succeed with session ends_at null when starts_at is set
 select lives_ok(
     $$select update_event(
@@ -3012,7 +3122,7 @@ select throws_ok(
         null::uuid,
         '00000000-0000-0000-0000-000000000002'::uuid,
         '00000000-0000-0000-0000-000000000016'::uuid,
-        '{"name": "Capacity Validation Event", "description": "Test", "timezone": "America/New_York", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "capacity": 2}'::jsonb
+        '{"name": "Capacity Validation Event", "description": "Test", "timezone": "America/New_York", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "capacity": 2, "starts_at": "2030-02-10T10:00:00"}'::jsonb
     )$$,
     'event capacity (2) cannot be less than current number of attendees (3)',
     'Should throw error when capacity is reduced below attendee count'
@@ -3059,7 +3169,7 @@ select lives_ok(
         null::uuid,
         '00000000-0000-0000-0000-000000000002'::uuid,
         '00000000-0000-0000-0000-000000000016'::uuid,
-        '{"name": "Capacity Validation Event", "description": "Test capacity equals", "timezone": "America/New_York", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "capacity": 3}'::jsonb
+        '{"name": "Capacity Validation Event", "description": "Test capacity equals", "timezone": "America/New_York", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "capacity": 3, "starts_at": "2030-02-10T10:00:00"}'::jsonb
     )$$,
     'Should succeed when capacity equals attendee count'
 );
@@ -3070,7 +3180,7 @@ select lives_ok(
         null::uuid,
         '00000000-0000-0000-0000-000000000002'::uuid,
         '00000000-0000-0000-0000-000000000016'::uuid,
-        '{"name": "Capacity Validation Event", "description": "Test capacity exceeds", "timezone": "America/New_York", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "capacity": 100}'::jsonb
+        '{"name": "Capacity Validation Event", "description": "Test capacity exceeds", "timezone": "America/New_York", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "capacity": 100, "starts_at": "2030-02-10T10:00:00"}'::jsonb
     )$$,
     'Should succeed when capacity exceeds attendee count'
 );
@@ -3261,7 +3371,7 @@ select is(
     'Should leave existing waitlist entries untouched when ticketing conversion is rejected'
 );
 
--- Should promote waitlisted users for a published dateless event when capacity increases
+-- Should promote waitlisted users for a published event when capacity increases
 select is(
     update_event(
         null::uuid,
@@ -3269,22 +3379,23 @@ select is(
         :'event13ID'::uuid,
         format(
             '{
-                "name": "Published Dateless Event",
-                "description": "Published event without dates for waitlist promotion checks",
+                "name": "Published Waitlist Event",
+                "description": "Published event for waitlist promotion checks",
                 "timezone": "UTC",
                 "category_id": "%s",
                 "kind_id": "in-person",
                 "capacity": 2,
+                "starts_at": "2030-02-01T10:00:00",
                 "waitlist_enabled": true
             }',
             :'category1ID'
         )::jsonb
     )::jsonb,
     format('["%s"]', :'user3ID')::jsonb,
-    'Should return promoted waitlist user ids when a dateless event gains capacity'
+    'Should return promoted waitlist user ids when a published event gains capacity'
 );
 
--- Should move promoted users into attendees for a published dateless event
+-- Should move promoted users into attendees for a published event
 select is(
     (
         select jsonb_build_object(
@@ -3304,7 +3415,7 @@ select is(
         '{"attendees":["%s","%s"],"waitlist":[]}',
         :'user2ID', :'user3ID'
     )::jsonb,
-    'Should move promoted users into attendees when a dateless event gains capacity'
+    'Should move promoted users into attendees when a published event gains capacity'
 );
 
 -- Should continue promoting queued users when waitlist is disabled for new joins
@@ -3315,12 +3426,13 @@ select is(
         :'event16ID'::uuid,
         format(
             '{
-                "name": "Dateless Waitlist Disabled Event",
-                "description": "Published dateless event for disabled waitlist promotion checks",
+                "name": "Waitlist Disabled Event",
+                "description": "Published event for disabled waitlist promotion checks",
                 "timezone": "UTC",
                 "category_id": "%s",
                 "kind_id": "in-person",
                 "capacity": 3,
+                "starts_at": "2030-02-16T10:00:00",
                 "waitlist_enabled": false
             }',
             :'category1ID'
@@ -3345,12 +3457,13 @@ select is(
         :'event17ID'::uuid,
         format(
             '{
-                "name": "Dateless Unlimited Event",
-                "description": "Published dateless event for unlimited capacity promotion checks",
+                "name": "Unlimited Event",
+                "description": "Published event for unlimited capacity promotion checks",
                 "timezone": "UTC",
                 "category_id": "%s",
                 "kind_id": "in-person",
                 "capacity": null,
+                "starts_at": "2030-02-17T10:00:00",
                 "waitlist_enabled": false
             }',
             :'category1ID'
@@ -3441,6 +3554,76 @@ select is(
     (select event_reminder_evaluated_for_starts_at from event where event_id = :'event11ID'),
     null::timestamptz,
     'Should keep reminder unevaluated when starts_at remains unchanged inside 24 hours'
+);
+
+-- Should update registration questions while the event is unpublished
+select lives_ok(
+    $$
+        select update_event(
+            '90300000-0000-0000-0000-000000000030'::uuid,
+            '90300000-0000-0000-0000-000000000021'::uuid,
+            '90300000-0000-0000-0000-000000000041'::uuid,
+            '{"name": "Draft Questions Event", "description": "Desc", "timezone": "UTC", "category_id": "90300000-0000-0000-0000-000000000012", "kind_id": "in-person", "starts_at": "2030-01-01T10:00:00Z", "registration_questions": [{"id": "90300000-0000-0000-0000-000000000101", "kind": "free-text", "prompt": "Original", "required": true, "options": []}]}'::jsonb
+        )
+    $$,
+    'Should update registration questions while the event is unpublished'
+);
+
+-- Should store updated registration questions
+select is(
+    (
+        select registration_questions
+        from event
+        where event_id = :'eventQuestionsID'::uuid
+    ),
+    '[{"id": "90300000-0000-0000-0000-000000000101", "kind": "free-text", "prompt": "Original", "required": true, "options": []}]'::jsonb,
+    'Should store updated registration questions'
+);
+
+-- Should validate registration questions when updating an event
+select throws_ok(
+    $$select update_event(
+        '90300000-0000-0000-0000-000000000030'::uuid,
+        '90300000-0000-0000-0000-000000000021'::uuid,
+        '90300000-0000-0000-0000-000000000041'::uuid,
+        '{"name": "Draft Questions Event", "description": "Desc", "timezone": "UTC", "category_id": "90300000-0000-0000-0000-000000000012", "kind_id": "in-person", "starts_at": "2030-01-01T10:00:00Z", "registration_questions": [{"id": "bad", "kind": "free-text", "prompt": "Invalid", "required": true, "options": []}]}'::jsonb
+    )$$,
+    'questionnaire question id must be a uuid',
+    'Should validate registration questions when updating an event'
+);
+
+-- Should update registration questions after publish when no answers exist
+select lives_ok(
+    $$select update_event(
+        '90300000-0000-0000-0000-000000000030'::uuid,
+        '90300000-0000-0000-0000-000000000021'::uuid,
+        '90300000-0000-0000-0000-000000000042'::uuid,
+        '{"name": "Published Questions Event", "description": "Desc", "timezone": "UTC", "category_id": "90300000-0000-0000-0000-000000000012", "kind_id": "in-person", "starts_at": "2030-01-01T10:00:00Z", "registration_questions": [{"id": "90300000-0000-0000-0000-000000000101", "kind": "free-text", "prompt": "Changed", "required": true, "options": []}]}'::jsonb
+    )$$,
+    'Should update registration questions after publish when no answers exist'
+);
+
+-- Should preserve registration questions when answers exist and questions are omitted
+select lives_ok(
+    $$select update_event(
+        '90300000-0000-0000-0000-000000000030'::uuid,
+        '90300000-0000-0000-0000-000000000021'::uuid,
+        '90300000-0000-0000-0000-000000000043'::uuid,
+        '{"name": "Answered Questions Event Updated", "description": "Desc", "timezone": "UTC", "category_id": "90300000-0000-0000-0000-000000000012", "kind_id": "in-person", "starts_at": "2030-01-01T10:00:00Z"}'::jsonb
+    )$$,
+    'Should preserve registration questions when answers exist and questions are omitted'
+);
+
+-- Should reject registration question changes after answers exist
+select throws_ok(
+    $$select update_event(
+        '90300000-0000-0000-0000-000000000030'::uuid,
+        '90300000-0000-0000-0000-000000000021'::uuid,
+        '90300000-0000-0000-0000-000000000043'::uuid,
+        '{"name": "Answered Questions Event", "description": "Desc", "timezone": "UTC", "category_id": "90300000-0000-0000-0000-000000000012", "kind_id": "in-person", "starts_at": "2030-01-01T10:00:00Z", "registration_questions": [{"id": "90300000-0000-0000-0000-000000000101", "kind": "free-text", "prompt": "Changed", "required": true, "options": []}]}'::jsonb
+    )$$,
+    'registration questions cannot be changed after attendees have submitted answers',
+    'Should reject registration question changes after answers exist'
 );
 
 -- ============================================================================

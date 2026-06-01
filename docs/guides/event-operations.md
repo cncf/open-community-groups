@@ -155,6 +155,16 @@ Waitlist control also lives here:
 !> If you want a waitlist, set capacity first.
 Unlimited-capacity events always keep waitlist disabled.
 
+### Questions
+
+Use the `Questions` tab to define registration questions for attendees. Supported question types
+are free text, single select, and multi select. Select questions use organizer-defined options,
+and each question can be marked required.
+
+Registration questions are copied when you create an event from an existing event. After attendees
+submit answers, the questions become read-only so existing attendee answers cannot drift away from
+the question definitions.
+
 Invitation review also lives here:
 
 - `Require Invitation Approval` changes the public action to `Request invitation`.
@@ -389,7 +399,7 @@ This tab supports delivery-day execution:
 - Generate check-in QR code for on-site flow.
 - Invite attendees to free RSVP events.
 - Send attendee-wide operational emails.
-- Download the attendee list as CSV.
+- Download the attendee list or attendee answers as CSV.
 
 Manual check-in bypasses attendee self-check-in timing windows, but the person must already be
 registered as an attendee and the event must still be published or active.
@@ -400,8 +410,10 @@ the invitee's LF account primary email because they must log in with LF SSO to a
 invitations show in the attendee table and can be canceled from the row actions menu. Rejected
 invitations remain visible and cannot be sent again for the same event and user.
 
-`Download CSV` is available from the attendee actions menu and exports attendee name, company,
-title, and whether the confirmed attendee was manually invited.
+The attendee actions menu has two CSV exports: `Attendees list CSV` exports attendee name,
+company, title, and whether the confirmed attendee was manually invited; `Attendees + answers CSV`
+adds one column per registration question. Row actions also include `View answers` when an attendee
+has submitted registration answers.
 
 `Send email` in this tab sends operational updates to attendees who receive optional
 notifications. The email form includes a required `Subject`, defaults it to
