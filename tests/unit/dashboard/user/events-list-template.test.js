@@ -42,7 +42,9 @@ describe("dashboard user events list template", () => {
   it("renders registration pending with the warning status badge style", async () => {
     const template = normalizeWhitespace(await loadTemplate());
 
-    expect(template).to.include('{% if role == "Registration pending" -%}');
+    expect(template).to.include(
+      '{% if role == "Payment pending" || role == "Registration pending" -%}',
+    );
     expect(template).to.include(
       '{{ badges::status_badge(label = role, extra_styles = Some("uppercase") ) -}}',
     );
