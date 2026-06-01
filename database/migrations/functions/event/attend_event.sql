@@ -127,10 +127,12 @@ begin
             end if;
 
             -- Recreate the attendee row for an already accepted requester
-            insert into event_attendee (event_id, user_id)
-            values (p_event_id, p_user_id)
+            insert into event_attendee (event_id, user_id, registration_answers)
+            values (p_event_id, p_user_id, v_registration_answers)
             on conflict (event_id, user_id) do update
-            set status = 'confirmed'
+            set
+                registration_answers = v_registration_answers,
+                status = 'confirmed'
             where event_attendee.status = 'invitation-canceled';
 
             return 'attendee';
