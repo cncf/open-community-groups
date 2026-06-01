@@ -752,6 +752,7 @@ fn test_delivery_worker_prepare_content_event_waitlist_promoted() {
     assert!(body.contains("View event"));
     assert!(!body.contains("Open My Events"));
     assert!(body.contains("Use the waiting room display name from your ticket."));
+    assert!(body.contains("Please find attached an .ics file containing the event details."));
     assert!(body.contains("Waitlist Event"));
 }
 
@@ -776,6 +777,9 @@ fn test_delivery_worker_prepare_content_event_waitlist_promoted_with_registratio
     assert!(!body.contains(
         "https://example.test/test-community/group/notification-group/event/waitlist-event"
     ));
+    assert!(!body.contains("https://example.test/waitlist-event/live"));
+    assert!(!body.contains("Use the waiting room display name from your ticket."));
+    assert!(!body.contains("Please find attached an .ics file containing the event details."));
     assert!(body.contains("Waitlist Event"));
 }
 
