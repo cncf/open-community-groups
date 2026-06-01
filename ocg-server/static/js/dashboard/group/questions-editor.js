@@ -631,7 +631,10 @@ class QuestionsEditor extends LitWrapper {
       >
         <button
           type="button"
-          class="mt-4 inline-flex size-8 shrink-0 cursor-grab items-center justify-center rounded-md transition-colors enabled:hover:bg-stone-100 active:cursor-grabbing disabled:cursor-not-allowed disabled:opacity-50"
+          class="shrink-0 rounded-full p-2 transition-colors hover:bg-stone-100 ${this.disabled ||
+          this.questions.length <= 1
+            ? "cursor-not-allowed opacity-60"
+            : "cursor-grab active:cursor-grabbing"}"
           draggable=${this.disabled || this.questions.length <= 1 ? "false" : "true"}
           ?disabled=${this.disabled || this.questions.length <= 1}
           @dragstart=${(event) => this._handleQuestionDragStart(event, questionIndex)}
@@ -640,7 +643,7 @@ class QuestionsEditor extends LitWrapper {
           aria-label="Reorder question"
           title="Drag to reorder"
         >
-          <div class="svg-icon size-4 icon-drag bg-stone-500"></div>
+          <div class="svg-icon size-4 icon-drag bg-stone-600"></div>
         </button>
         <div
           class=${[
@@ -887,7 +890,10 @@ class QuestionsEditor extends LitWrapper {
             >
               <button
                 type="button"
-                class="inline-flex size-8 shrink-0 cursor-grab items-center justify-center rounded-md transition-colors enabled:hover:bg-stone-100 active:cursor-grabbing disabled:cursor-not-allowed disabled:opacity-50"
+                class="shrink-0 rounded-full p-2 transition-colors hover:bg-stone-100 ${!this._isModalOpen ||
+                this._draftQuestion.options.length <= 1
+                  ? "cursor-not-allowed opacity-60"
+                  : "cursor-grab active:cursor-grabbing"}"
                 draggable="true"
                 ?disabled=${!this._isModalOpen || this._draftQuestion.options.length <= 1}
                 @dragstart=${(event) => this._handleDraftOptionDragStart(event, optionIndex)}
@@ -896,7 +902,7 @@ class QuestionsEditor extends LitWrapper {
                 aria-label="Reorder option"
                 title="Drag to reorder"
               >
-                <div class="svg-icon size-4 icon-drag bg-stone-500"></div>
+                <div class="svg-icon size-4 icon-drag bg-stone-600"></div>
               </button>
               <input
                 class="input-primary"
