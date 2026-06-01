@@ -1,5 +1,8 @@
 -- claim_pending_notification claims the next notification pending delivery.
-create or replace function claim_pending_notification()
+create or replace function claim_pending_notification(
+    p_delivery_rate_limit integer default 15000,
+    p_delivery_rate_limit_window_seconds integer default 60
+)
 returns table (
     attachment_ids uuid[],
     email text,
@@ -8,7 +11,31 @@ returns table (
 
     template_data jsonb
 ) as $$
+begin
+    -- Check rate limit params are valid
+    if p_delivery_rate_limit <= 0 then
+        raise exception 'delivery rate limit must be positive';
+    end if;
+    if p_delivery_rate_limit_window_seconds <= 0 then
+        raise exception 'delivery rate limit window must be positive';
+    end if;
+
+    -- Serialize delivery reservations across all workers and server instances.
+    perform pg_advisory_xact_lock(hashtextextended('ocg:notification-delivery-rate-limit', 0));
+
+    -- Check if the rate limit has been reached
+    if (
+        select count(*)
+        from notification n
+        where n.delivery_claimed_at >= current_timestamp - make_interval(
+            secs => p_delivery_rate_limit_window_seconds::double precision
+        )
+    ) >= p_delivery_rate_limit::bigint then
+        return;
+    end if;
+
     -- Find the oldest deliverable pending notification
+    return query
     with next_notification as (
         select n.notification_id
         from notification n
@@ -54,4 +81,5 @@ returns table (
     from claimed_notification cn
     join "user" u using (user_id)
     left join notification_template_data ntd using (notification_template_data_id);
-$$ language sql;
+end;
+$$ language plpgsql;
