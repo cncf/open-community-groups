@@ -106,7 +106,7 @@ insert into event (
     false,
     false,
     'Event create test',
-    '2026-06-01 11:00:00+00',
+    current_timestamp + interval '1 day 1 hour',
     :'categoryID',
     :'eventCreateID',
     'virtual',
@@ -118,7 +118,7 @@ insert into event (
     'Event Create Test',
     true,
     'event-create-test',
-    '2026-06-01 10:00:00+00',
+    current_timestamp + interval '1 day',
     'UTC'
 ),
 (
@@ -126,7 +126,7 @@ insert into event (
     false,
     false,
     'Event update test',
-    '2026-06-02 12:00:00+00',
+    current_timestamp + interval '2 days 2 hours',
     :'categoryID',
     :'eventUpdateID',
     'virtual',
@@ -138,7 +138,7 @@ insert into event (
     'Event Update Test',
     true,
     'event-update-test',
-    '2026-06-02 10:00:00+00',
+    current_timestamp + interval '2 days',
     'UTC'
 ),
 (
@@ -146,7 +146,7 @@ insert into event (
     false,
     false,
     'Parent event for sessions',
-    '2026-06-03 12:00:00+00',
+    current_timestamp + interval '3 days 2 hours',
     :'categoryID',
     :'eventWithSessionsID',
     'virtual',
@@ -158,7 +158,7 @@ insert into event (
     'Event With Sessions',
     true,
     'event-with-sessions',
-    '2026-06-03 10:00:00+00',
+    current_timestamp + interval '3 days',
     'UTC'
 ),
 (
@@ -166,7 +166,7 @@ insert into event (
     true,
     false,
     'Canceled event delete test',
-    '2026-06-04 11:00:00+00',
+    current_timestamp + interval '4 days 1 hour',
     :'categoryID',
     :'eventCanceledDeleteID',
     'virtual',
@@ -178,7 +178,7 @@ insert into event (
     'Event Canceled Delete Test',
     false,
     'event-canceled-delete-test',
-    '2026-06-04 10:00:00+00',
+    current_timestamp + interval '4 days',
     'UTC'
 ),
 (
@@ -186,7 +186,7 @@ insert into event (
     false,
     true,
     'Soft deleted event test',
-    '2026-06-04 12:00:00+00',
+    current_timestamp + interval '4 days 2 hours',
     :'categoryID',
     :'eventDeletedID',
     'virtual',
@@ -198,7 +198,7 @@ insert into event (
     'Event Deleted Test',
     false,
     'event-deleted-test',
-    '2026-06-04 11:00:00+00',
+    current_timestamp + interval '4 days 1 hour',
     'UTC'
 ),
 (
@@ -206,7 +206,7 @@ insert into event (
     false,
     false,
     'Unpublished event test',
-    '2026-06-05 11:00:00+00',
+    current_timestamp + interval '5 days 1 hour',
     :'categoryID',
     :'eventUnpublishedID',
     'virtual',
@@ -218,7 +218,7 @@ insert into event (
     'Event Unpublished Test',
     false,
     'event-unpublished-test',
-    '2026-06-05 10:00:00+00',
+    current_timestamp + interval '5 days',
     'UTC'
 ),
 (
@@ -226,7 +226,7 @@ insert into event (
     false,
     false,
     'Unpublished event with meeting test',
-    '2026-06-05 12:00:00+00',
+    current_timestamp + interval '5 days 2 hours',
     :'categoryID',
     :'eventUnpublishedWithMeetingID',
     'virtual',
@@ -238,7 +238,7 @@ insert into event (
     'Event Unpublished With Meeting Test',
     false,
     'event-unpublished-with-meeting-test',
-    '2026-06-05 11:00:00+00',
+    current_timestamp + interval '5 days 1 hour',
     'UTC'
 ),
 (
@@ -246,7 +246,7 @@ insert into event (
     false,
     false,
     'Meeting disabled test',
-    '2026-06-06 11:00:00+00',
+    current_timestamp + interval '6 days 1 hour',
     :'categoryID',
     :'eventDisabledID',
     'virtual',
@@ -258,7 +258,7 @@ insert into event (
     'Event Disabled Test',
     true,
     'event-disabled-test',
-    '2026-06-06 10:00:00+00',
+    current_timestamp + interval '6 days',
     'UTC'
 ),
 (
@@ -266,7 +266,7 @@ insert into event (
     true,
     false,
     'Canceled before meeting creation',
-    '2026-06-07 11:00:00+00',
+    current_timestamp + interval '7 days 1 hour',
     :'categoryID',
     :'eventCanceledNoMeetingID',
     'virtual',
@@ -278,7 +278,7 @@ insert into event (
     'Event Canceled No Meeting Test',
     false,
     'event-canceled-no-meeting-test',
-    '2026-06-07 10:00:00+00',
+    current_timestamp + interval '7 days',
     'UTC'
 ),
 (
@@ -286,7 +286,7 @@ insert into event (
     false,
     false,
     'In-sync event exclusion',
-    '2026-06-08 11:00:00+00',
+    current_timestamp + interval '8 days 1 hour',
     :'categoryID',
     :'eventInSyncID',
     'virtual',
@@ -298,7 +298,7 @@ insert into event (
     'Event In Sync Test',
     true,
     'event-in-sync-test',
-    '2026-06-08 10:00:00+00',
+    current_timestamp + interval '8 days',
     'UTC'
 ),
 (
@@ -306,7 +306,7 @@ insert into event (
     false,
     false,
     'No meeting request exclusion',
-    '2026-06-09 11:00:00+00',
+    current_timestamp + interval '9 days 1 hour',
     :'categoryID',
     :'eventNoRequestID',
     'virtual',
@@ -318,7 +318,7 @@ insert into event (
     'Event No Request Test',
     true,
     'event-no-request-test',
-    '2026-06-09 10:00:00+00',
+    current_timestamp + interval '9 days',
     'UTC'
 ),
 (
@@ -346,7 +346,7 @@ insert into event (
     false,
     false,
     'Event for hard-delete orphan meetings',
-    '2026-06-10 11:00:00+00',
+    current_timestamp + interval '10 days 1 hour',
     :'categoryID',
     :'eventOrphanCascadeID',
     'virtual',
@@ -358,7 +358,7 @@ insert into event (
     'Event Orphan Cascade Test',
     true,
     'event-orphan-cascade-test',
-    '2026-06-10 10:00:00+00',
+    current_timestamp + interval '10 days',
     'UTC'
 );
 
@@ -377,7 +377,7 @@ insert into session (
     starts_at
 ) values
 (
-    '2026-06-03 10:30:00+00',
+    current_timestamp + interval '3 days 30 minutes',
     :'eventWithSessionsID',
     array['sessionhost@example.com'],
     false,
@@ -386,10 +386,10 @@ insert into session (
     'Session Create Test',
     :'sessionCreateID',
     'virtual',
-    '2026-06-03 10:00:00+00'
+    current_timestamp + interval '3 days'
 ),
 (
-    '2026-06-03 11:30:00+00',
+    current_timestamp + interval '3 days 1 hour 30 minutes',
     :'eventWithSessionsID',
     null,
     false,
@@ -398,10 +398,10 @@ insert into session (
     'Session Update Test',
     :'sessionUpdateID',
     'virtual',
-    '2026-06-03 11:00:00+00'
+    current_timestamp + interval '3 days 1 hour'
 ),
 (
-    '2026-06-04 10:30:00+00',
+    current_timestamp + interval '4 days 30 minutes',
     :'eventCanceledDeleteID',
     null,
     true,
@@ -410,10 +410,10 @@ insert into session (
     'Session Delete Test',
     :'sessionDeleteID',
     'virtual',
-    '2026-06-04 10:00:00+00'
+    current_timestamp + interval '4 days'
 ),
 (
-    '2026-06-04 11:30:00+00',
+    current_timestamp + interval '4 days 1 hour 30 minutes',
     :'eventDeletedID',
     null,
     true,
@@ -422,10 +422,10 @@ insert into session (
     'Session Deleted Parent Test',
     :'sessionDeletedParentID',
     'virtual',
-    '2026-06-04 11:00:00+00'
+    current_timestamp + interval '4 days 1 hour'
 ),
 (
-    '2026-06-07 10:30:00+00',
+    current_timestamp + interval '7 days 30 minutes',
     :'eventCanceledNoMeetingID',
     null,
     true,
@@ -434,10 +434,10 @@ insert into session (
     'Session Canceled No Meeting Test',
     :'sessionCanceledNoMeetingID',
     'virtual',
-    '2026-06-07 10:00:00+00'
+    current_timestamp + interval '7 days'
 ),
 (
-    '2026-06-05 10:30:00+00',
+    current_timestamp + interval '5 days 30 minutes',
     :'eventUnpublishedID',
     null,
     true,
@@ -446,10 +446,10 @@ insert into session (
     'Session Unpublished No Meeting Test',
     :'sessionUnpublishedNoMeetingID',
     'virtual',
-    '2026-06-05 10:00:00+00'
+    current_timestamp + interval '5 days'
 ),
 (
-    '2026-06-05 11:00:00+00',
+    current_timestamp + interval '5 days 1 hour',
     :'eventUnpublishedID',
     null,
     true,
@@ -458,10 +458,10 @@ insert into session (
     'Session Unpublished With Meeting Test',
     :'sessionUnpublishedWithMeetingID',
     'virtual',
-    '2026-06-05 10:30:00+00'
+    current_timestamp + interval '5 days 30 minutes'
 ),
 (
-    '2026-06-03 12:00:00+00',
+    current_timestamp + interval '3 days 2 hours',
     :'eventWithSessionsID',
     null,
     true,
@@ -470,10 +470,10 @@ insert into session (
     'Session Disabled Test',
     :'sessionDisabledID',
     'virtual',
-    '2026-06-03 11:30:00+00'
+    current_timestamp + interval '3 days 1 hour 30 minutes'
 ),
 (
-    '2026-06-10 10:30:00+00',
+    current_timestamp + interval '10 days 30 minutes',
     :'eventOrphanCascadeID',
     null,
     true,
@@ -482,7 +482,7 @@ insert into session (
     'Session Orphan Cascade Test',
     :'sessionOrphanCascadeID',
     'virtual',
-    '2026-06-10 10:00:00+00'
+    current_timestamp + interval '10 days'
 ),
 (
     '2020-06-11 10:30:00+00',
