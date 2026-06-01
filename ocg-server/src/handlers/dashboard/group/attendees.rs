@@ -10,7 +10,7 @@ use axum::{
     },
     response::{Html, IntoResponse},
 };
-use garde::{Validate, rules::email::parse_email};
+use garde::Validate;
 use qrcode::render::svg;
 use serde::{Deserialize, Serialize};
 use tracing::{instrument, warn};
@@ -346,20 +346,22 @@ pub(crate) async fn invite_event_attendee(
     Path(event_id): Path<Uuid>,
     ValidatedForm(invitation): ValidatedForm<EventAttendeeInvitation>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Validate target shape and normalize email
+    // Validate target shape
     if (invitation.user_id.is_none() && invitation.email.is_none())
         || (invitation.user_id.is_some() && invitation.email.is_some())
     {
         return Ok((StatusCode::BAD_REQUEST, "provide exactly one invite target").into_response());
     }
-    let email = invitation.email.map(|email| email.trim().to_string());
-    if let Some(email) = &email {
-        parse_email(email).map_err(|err| anyhow::anyhow!("invalid email: {err}"))?;
-    }
 
     // Create the pending invitation
     let invited_user_id = db
-        .invite_event_attendee(user.user_id, group_id, event_id, invitation.user_id, email)
+        .invite_event_attendee(
+            user.user_id,
+            group_id,
+            event_id,
+            invitation.user_id,
+            invitation.email,
+        )
         .await?;
 
     // Load context and enqueue the invitation notification
@@ -618,7 +620,7 @@ pub(crate) async fn download_csv_with_answers(
 #[derive(Debug, Deserialize, Serialize, Validate)]
 pub(crate) struct EventAttendeeInvitation {
     /// Email address for an unregistered invitee.
-    #[garde(length(max = MAX_LEN_M))]
+    #[garde(email, length(max = MAX_LEN_M))]
     pub email: Option<String>,
     /// Existing registered user identifier.
     #[garde(skip)]
