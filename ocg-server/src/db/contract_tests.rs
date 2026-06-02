@@ -91,6 +91,14 @@ async fn db_contracts_get_event_full_deserializes() -> Result<()> {
     let db = contract_tests_db()?;
     let event = db.get_event_full(community_id(), group_id(), event_id()).await?;
 
+    assert_eq!(
+        event.community.ad_banner_link_url.as_deref(),
+        Some("https://example.com/community-ad")
+    );
+    assert_eq!(
+        event.community.ad_banner_url.as_deref(),
+        Some("https://example.com/community-ad-banner.png")
+    );
     assert_eq!(event.event_id, event_id());
     assert!(event.has_registration_questions);
     assert_eq!(
@@ -146,6 +154,14 @@ async fn db_contracts_get_group_full_deserializes() -> Result<()> {
     let db = contract_tests_db()?;
     let group = db.get_group_full(community_id(), group_id()).await?;
 
+    assert_eq!(
+        group.community.ad_banner_link_url.as_deref(),
+        Some("https://example.com/community-ad")
+    );
+    assert_eq!(
+        group.community.ad_banner_url.as_deref(),
+        Some("https://example.com/community-ad-banner.png")
+    );
     assert_eq!(group.group_id, group_id());
     assert_eq!(group.organizers.len(), 1);
     assert_eq!(group.sponsors.len(), 1);

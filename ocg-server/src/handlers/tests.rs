@@ -357,6 +357,8 @@ pub(crate) fn sample_community_summary(community_id: Uuid) -> CommunitySummary {
         display_name: "Test".to_string(),
         logo_url: "/static/images/placeholder_cncf.png".to_string(),
         name: "test".to_string(),
+        ad_banner_link_url: None,
+        ad_banner_url: None,
         og_image_url: None,
     }
 }
@@ -1271,6 +1273,8 @@ pub(crate) fn sample_user_communities(community_id: Uuid) -> Vec<CommunitySummar
         display_name: "Test Community".to_string(),
         logo_url: "https://example.com/logo.png".to_string(),
         name: "test-community".to_string(),
+        ad_banner_link_url: None,
+        ad_banner_url: None,
         og_image_url: None,
     }]
 }
@@ -1288,6 +1292,8 @@ pub(crate) fn sample_user_groups_by_community(
             display_name: "Test Community".to_string(),
             logo_url: "https://example.com/logo.png".to_string(),
             name: "test-community".to_string(),
+            ad_banner_link_url: None,
+            ad_banner_url: None,
             og_image_url: None,
         },
         groups: vec![sample_group_minimal(group_id)],
