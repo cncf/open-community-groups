@@ -278,9 +278,15 @@
       </div>
       {# End next event and location -#}
 
+      {% if let Some(ad_banner_url) = &group.community.ad_banner_url -%}
+        {{ ui::advertisement_banner(alt = group.community.display_name.clone() + " advertisement",
+        image_url = ad_banner_url,
+        link_url = group.community.ad_banner_link_url.as_deref()
+        ) -}}
+      {% endif -%}
+
       {# Group description -#}
       {% if let Some(description) = &group.description -%}
-        <div>{{ ui::advertisement_banner(alt = "KubeCon + CloudNativeCon India advertisement") -}}</div>
         <div>
           <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-6 pb-6 lg:pt-2 lg:pb-14">
             About this group

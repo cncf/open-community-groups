@@ -402,7 +402,12 @@
       {% endif -%}
       {# End Call for Speakers -#}
 
-      <div>{{ ui::advertisement_banner(alt = "KubeCon + CloudNativeCon India advertisement") -}}</div>
+      {% if let Some(ad_banner_url) = &event.community.ad_banner_url -%}
+        {{ ui::advertisement_banner(alt = event.community.display_name.clone() + " advertisement",
+        image_url = ad_banner_url,
+        link_url = event.community.ad_banner_link_url.as_deref()
+        ) -}}
+      {% endif -%}
 
       {# Event description -#}
       <div>
