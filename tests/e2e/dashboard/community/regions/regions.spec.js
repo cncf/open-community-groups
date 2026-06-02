@@ -6,6 +6,7 @@ import { taxonomyCases } from "../helpers.js";
 
 test.describe("community dashboard regions view", () => {
   test("admin can add and delete a region", async ({ adminCommunityPage }) => {
+    // Create a unique region name for the temporary region flow.
     const regionName = `E2E Region ${Date.now()}`;
 
     await navigateToPath(
@@ -63,6 +64,7 @@ test.describe("community dashboard regions view", () => {
   test("admin can distinguish used and unused entries on Regions", async ({
     adminCommunityPage,
   }) => {
+    // Load the region taxonomy case with seeded used entries.
     const taxonomyCase = taxonomyCases[0];
     await navigateToPath(adminCommunityPage, taxonomyCase.path);
 
@@ -84,6 +86,7 @@ test.describe("community dashboard regions view", () => {
   test("viewer sees read-only controls on Regions", async ({
     communityViewerPage,
   }) => {
+    // Load the region taxonomy case as a read-only viewer.
     const taxonomyCase = taxonomyCases[0];
     await navigateToPath(communityViewerPage, taxonomyCase.path);
 

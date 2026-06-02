@@ -6,6 +6,7 @@ test.describe("user dashboard my events view", () => {
   test("my events page lists only upcoming published participation", async ({
     member1Page,
   }) => {
+    // Load the user events tab before checking filtered participation.
     await navigateToPath(member1Page, "/dashboard/user?tab=events");
 
     const dashboardContent = member1Page.locator("#dashboard-content");

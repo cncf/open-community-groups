@@ -284,6 +284,7 @@ test.describe("community dashboard groups view", () => {
       name: `E2E Rich Community Group Updated ${Date.now()}`,
       regionId: "22222222-2222-2222-2222-222222222301",
       slackUrl: "https://e2e-community-group-updated.slack.com",
+      slugPretty: `e2e-rich-community-group-${Date.now()}`,
       state: "Community of Madrid",
       tags: ["cloud", "devex"],
       twitterUrl: "https://x.com/e2e_group_updated",
@@ -295,6 +296,9 @@ test.describe("community dashboard groups view", () => {
     // Fill every rich field used by the create and update flows.
     const fillGroupForm = async (values) => {
       await adminCommunityPage.locator("#name").fill(values.name);
+      if (values.slugPretty) {
+        await adminCommunityPage.locator("#slug_pretty").fill(values.slugPretty);
+      }
       await adminCommunityPage
         .locator("#category_id")
         .selectOption(values.categoryId);
@@ -438,6 +442,9 @@ test.describe("community dashboard groups view", () => {
     await expect(adminCommunityPage.locator("#name")).toHaveValue(
       updatedValues.name,
     );
+    await expect(adminCommunityPage.locator("#slug_pretty")).toHaveValue(
+      updatedValues.slugPretty,
+    );
     await expect(adminCommunityPage.locator("#category_id")).toHaveValue(
       updatedValues.categoryId,
     );
@@ -499,6 +506,14 @@ test.describe("community dashboard groups view", () => {
     await navigateToPath(adminCommunityPage, "/dashboard/community?tab=groups");
     groupRow = dashboardContent.locator("tr", { hasText: updatedValues.name });
     await expect(groupRow).toBeVisible();
+    await expect(
+      groupRow.getByRole("link", {
+        name: `View group page: ${updatedValues.name}`,
+      }),
+    ).toHaveAttribute(
+      "href",
+      new RegExp(`/group/${updatedValues.slugPretty}$`),
+    );
 
     // Open the actions menu for the updated temporary group.
     await groupRow

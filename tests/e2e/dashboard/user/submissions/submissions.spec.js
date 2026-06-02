@@ -10,6 +10,7 @@ test.describe("user dashboard submissions view", () => {
   test("submissions page shows review statuses and available actions", async ({
     member1Page,
   }) => {
+    // Load the submissions tab before checking seeded review states.
     await openUserDashboardPath("/dashboard/user?tab=submissions", member1Page);
 
     const dashboardContent = member1Page.locator("#dashboard-content");
@@ -67,6 +68,7 @@ test.describe("user dashboard submissions view", () => {
   test("user can submit a newly created proposal and see it in submissions", async ({
     pending1Page,
   }) => {
+    // Create a unique proposal title for the temporary submission flow.
     const proposalTitle = `Pending1 CFS proposal ${Date.now()}`;
 
     await createSessionProposal(pending1Page, proposalTitle);
@@ -91,6 +93,7 @@ test.describe("user dashboard submissions view", () => {
   test("user can withdraw a newly submitted CFS submission from submissions", async ({
     pending2Page,
   }) => {
+    // Create a unique proposal title for the temporary withdrawal flow.
     const proposalTitle = `Pending2 CFS proposal ${Date.now()}`;
 
     await createSessionProposal(pending2Page, proposalTitle);

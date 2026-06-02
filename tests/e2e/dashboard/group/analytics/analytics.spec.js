@@ -6,6 +6,7 @@ test.describe("group dashboard analytics view", () => {
   test("organizer can view analytics summary cards and chart sections", async ({
     organizerGroupPage,
   }) => {
+    // Load the group analytics dashboard before checking chart sections.
     await navigateToPath(organizerGroupPage, "/dashboard/group?tab=analytics");
 
     const dashboardContent = organizerGroupPage.locator("#dashboard-content");

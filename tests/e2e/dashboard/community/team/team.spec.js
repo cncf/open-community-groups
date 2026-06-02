@@ -8,6 +8,7 @@ test.describe("community dashboard team view", () => {
   test("community team page shows seeded roles and final-admin protection", async ({
     adminCommunityPage,
   }) => {
+    // Load the community team tab before checking seeded roles.
     await navigateToPath(adminCommunityPage, "/dashboard/community?tab=team");
 
     const dashboardContent = adminCommunityPage.locator("#dashboard-content");
@@ -51,6 +52,7 @@ test.describe("community dashboard team view", () => {
   test("admin can invite and remove a pending community team member", async ({
     adminCommunityPage,
   }) => {
+    // Load the community team tab before inviting a temporary member.
     await navigateToPath(adminCommunityPage, "/dashboard/community?tab=team");
 
     const dashboardContent = adminCommunityPage.locator("#dashboard-content");
@@ -128,6 +130,7 @@ test.describe("community dashboard team view", () => {
   test("admin can update and restore a community team member role", async ({
     adminCommunityPage,
   }) => {
+    // Define the seeded team member role that must be restored.
     const seededRole = "groups-manager";
     const teamTabPath = "/dashboard/community?tab=team";
 

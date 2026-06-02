@@ -35,6 +35,7 @@ describe("advertisement banner", () => {
   });
 
   it("scopes closed state to the banner image and link URL", () => {
+    // Store a closed marker for one banner/link combination.
     const key = getAdBannerStorageKey("https://example.com/banner.png", "https://example.com/event");
     localStorage.setItem(key, "true");
 
@@ -46,6 +47,7 @@ describe("advertisement banner", () => {
   });
 
   it("animates in after the banner image loads", () => {
+    // Create a floating banner that has not loaded its image yet.
     const { banner, image } = createFloatingBanner();
     document.body.append(banner);
 
@@ -60,6 +62,7 @@ describe("advertisement banner", () => {
   });
 
   it("hides and stores the current banner when closed", () => {
+    // Create a banner with an image and link before closing it.
     const imageUrl = "https://example.com/banner.png";
     const linkUrl = "https://example.com/event";
     const { banner, closeButton } = createFloatingBanner({ imageUrl, linkUrl });
@@ -73,6 +76,7 @@ describe("advertisement banner", () => {
   });
 
   it("shows a changed banner after a previous one was closed", () => {
+    // Store a closed marker for a different banner/link combination.
     const oldKey = getAdBannerStorageKey("https://example.com/banner.png", "https://example.com/event");
     const { banner, image } = createFloatingBanner({
       imageUrl: "https://example.com/banner.png",

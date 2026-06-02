@@ -10,6 +10,7 @@ test.describe("group dashboard settings view", () => {
   test("organizer can update and restore group settings", async ({
     organizerGroupPage,
   }) => {
+    // Define the settings URL used by the read and submit helpers.
     const settingsPath = "/dashboard/group?tab=settings";
 
     // Read current group settings values before updating them.
@@ -123,6 +124,7 @@ test.describe("group dashboard settings view", () => {
   test("viewer sees read-only controls on group settings", async ({
     groupViewerPage,
   }) => {
+    // Load the group settings tab as a read-only viewer.
     await navigateToPath(groupViewerPage, "/dashboard/group?tab=settings");
 
     const dashboardContent = groupViewerPage.locator("#dashboard-content");
@@ -167,6 +169,7 @@ test.describe("group dashboard settings view", () => {
   test("organizer can update and restore the Stripe recipient", async ({
     organizerGroupPage,
   }) => {
+    // Define the settings URL and payment fields used for restoration.
     const settingsPath = "/dashboard/group?tab=settings";
     const paymentRecipientInput = organizerGroupPage.locator(
       "#payment_recipient_recipient_id",

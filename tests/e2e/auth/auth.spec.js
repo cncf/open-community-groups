@@ -208,6 +208,7 @@ test.describe("authentication", () => {
   test("email sign up requires verification before log in", async ({
     page,
   }) => {
+    // Create a unique email user for the verification-gated login flow.
     const user = buildAuthUser();
 
     await signUpWithEmail(page, user);
@@ -218,6 +219,7 @@ test.describe("authentication", () => {
   });
 
   test("email sign up can verify and then log in", async ({ page }) => {
+    // Create a unique email user for the verification flow.
     const user = buildAuthUser();
 
     await signUpWithEmail(page, user);
@@ -252,6 +254,7 @@ test.describe("authentication", () => {
   test("seeded user can log in and is redirected to the requested page", async ({
     page,
   }) => {
+    // Open a protected page to capture the redirect target.
     await navigateToPath(page, USER_DASHBOARD_EVENTS_PATH);
 
     await expect(page).toHaveURL(/\/log-in\?next_url=/);
@@ -277,6 +280,7 @@ test.describe("authentication", () => {
   });
 
   test("logged in user can log out from the header menu", async ({ page }) => {
+    // Log in with a seeded member before using the header menu.
     await logInWithSeededUser(page, TEST_USER_CREDENTIALS.member1);
 
     const userMenuButton = page.locator(

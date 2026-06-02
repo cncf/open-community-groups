@@ -12,6 +12,7 @@ test.describe("group dashboard waitlist tab", () => {
   test("organizer can open the waitlist tab for an event with waitlist disabled", async ({
     organizerGroupPage,
   }) => {
+    // Load the group events dashboard before opening the seeded event.
     await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
 
     const eventRow = organizerGroupPage.locator("tr", {
@@ -180,6 +181,7 @@ test.describe("group dashboard waitlist tab", () => {
     member2Page,
     organizerGroupPage,
   }) => {
+    // Load the public waitlist event before creating a waitlist entry.
     await navigateToEvent(
       member2Page,
       TEST_COMMUNITY_NAME,

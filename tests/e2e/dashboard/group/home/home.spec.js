@@ -6,6 +6,7 @@ test.describe("group dashboard home", () => {
   test("shows the dashboard shell, selectors, and primary navigation", async ({
     organizerGroupPage,
   }) => {
+    // Load the group events tab before checking the dashboard shell.
     await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
 
     await expect(
@@ -50,6 +51,7 @@ test.describe("group dashboard home", () => {
   test("organizer can filter groups in the dashboard selector", async ({
     organizerGroupPage,
   }) => {
+    // Load the group events tab before opening the group selector.
     await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
 
     const groupSelectorButton = organizerGroupPage.locator(

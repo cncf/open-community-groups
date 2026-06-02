@@ -8,6 +8,7 @@ test.describe("community dashboard event categories view", () => {
   test("admin can add and delete an event category", async ({
     adminCommunityPage,
   }) => {
+    // Create a unique category name for the temporary category flow.
     const categoryName = `E2E Event Category ${Date.now()}`;
 
     await navigateToPath(
@@ -73,6 +74,7 @@ test.describe("community dashboard event categories view", () => {
   test("admin can distinguish used and unused entries on Event Categories", async ({
     adminCommunityPage,
   }) => {
+    // Load the event category taxonomy case with seeded used entries.
     const taxonomyCase = taxonomyCases[2];
     await navigateToPath(adminCommunityPage, taxonomyCase.path);
 
@@ -94,6 +96,7 @@ test.describe("community dashboard event categories view", () => {
   test("viewer sees read-only controls on Event Categories", async ({
     communityViewerPage,
   }) => {
+    // Load the event category taxonomy case as a read-only viewer.
     const taxonomyCase = taxonomyCases[2];
     await navigateToPath(communityViewerPage, taxonomyCase.path);
 

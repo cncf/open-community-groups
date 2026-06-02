@@ -12,6 +12,7 @@ test.describe("user dashboard logs view", () => {
   test("member can view the seeded user logs list and active filters", async ({
     member1Page,
   }) => {
+    // Load the filtered user logs URL.
     await navigateToPath(member1Page, FILTERED_USER_LOGS_PATH);
 
     const dashboardContent = member1Page.locator("#dashboard-content");
@@ -37,6 +38,7 @@ test.describe("user dashboard logs view", () => {
   });
 
   test("member can open seeded user log details", async ({ member1Page }) => {
+    // Load the user logs URL filtered to a seeded detail row.
     await navigateToPath(member1Page, USER_DETAILS_LOGS_PATH);
 
     const dashboardContent = member1Page.locator("#dashboard-content");
@@ -65,6 +67,7 @@ test.describe("user dashboard logs view", () => {
   test("member can browse the full seeded user logs list", async ({
     member1Page,
   }) => {
+    // Load the unfiltered user logs URL.
     await navigateToPath(member1Page, USER_LOGS_PATH);
 
     const dashboardContent = member1Page.locator("#dashboard-content");
@@ -83,6 +86,7 @@ test.describe("user dashboard logs view", () => {
   test("member can apply empty log filters and reset them", async ({
     member1Page,
   }) => {
+    // Load the unfiltered user logs URL before applying empty filters.
     await navigateToPath(member1Page, USER_LOGS_PATH);
 
     const dashboardContent = member1Page.locator("#dashboard-content");

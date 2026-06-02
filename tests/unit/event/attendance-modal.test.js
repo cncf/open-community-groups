@@ -369,6 +369,7 @@ describe("event attendance paid modal", () => {
   });
 
   it("opens ticket selection after registration questions without showing a checkout alert", async () => {
+    // Render paid attendance controls with registration questions.
     const {
       checker,
       attendButton,
@@ -830,6 +831,7 @@ describe("event attendance paid modal", () => {
   });
 
   it("renders pending payment when attendance status returns before availability", async () => {
+    // Hold the availability response while attendance status arrives first.
     let resolveAvailability;
     const availabilityResponse = new Promise((resolve) => {
       resolveAvailability = resolve;
@@ -1014,6 +1016,7 @@ describe("event attendance paid modal", () => {
   });
 
   it("does not show a checkout alert when payment remains pending", async () => {
+    // Render paid attendance controls before submitting checkout.
     const { checker, attendButton, ticketModal, ticketTypeOptions, checkoutForm } = renderPaidAttendanceDom();
     await initializeAttendanceDom();
 
@@ -1034,6 +1037,7 @@ describe("event attendance paid modal", () => {
   });
 
   it("closes the ticket modal when checkout fails", async () => {
+    // Render paid attendance controls before simulating checkout failure.
     const {
       checker,
       attendButton,
@@ -1065,6 +1069,7 @@ describe("event attendance paid modal", () => {
   });
 
   it("keeps the ticket modal open when checkout validation fails", async () => {
+    // Render paid attendance controls before simulating validation failure.
     const {
       checker,
       attendButton,

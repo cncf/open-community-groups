@@ -72,6 +72,7 @@ describe("image-field", () => {
   });
 
   it("does not show the generic supported formats text for Open Graph images", async () => {
+    // Mount an Open Graph image field with explicit format guidance.
     const element = await mountLitComponent("image-field", {
       helpPrefixText: "Size required 1200 x 630 px. Format must be PNG, JPEG, or WebP.",
       imageKind: "banner",
@@ -89,6 +90,7 @@ describe("image-field", () => {
   });
 
   it("shows the generic supported formats text for banner images", async () => {
+    // Mount a standard banner image field with generic guidance.
     const element = await mountLitComponent("image-field", {
       helpPrefixText: "Size required 2428 x 192 px.",
       imageKind: "banner",

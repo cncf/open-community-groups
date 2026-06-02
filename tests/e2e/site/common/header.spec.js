@@ -6,6 +6,7 @@ test.describe("site header", () => {
   test("desktop navigation links point to the expected public pages", async ({
     page,
   }) => {
+    // Load the public home page before checking desktop navigation links.
     await navigateToSiteHome(page);
 
     const navigation = page.getByRole("navigation", {
@@ -29,6 +30,7 @@ test.describe("site header", () => {
   test("guest user menu links point to authentication pages", async ({
     page,
   }) => {
+    // Load a public page before opening the guest user menu.
     await navigateToPath(page, "/explore?entity=events");
 
     const userMenuButton = page.locator(

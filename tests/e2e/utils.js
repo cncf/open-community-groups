@@ -20,6 +20,11 @@ export const TEST_EVENT_PAGE_BADGE_EVENT = {
   name: "Test Event Page Badge",
   slug: "alpha-test-event-badge",
 };
+export const TEST_REGISTRATION_QUESTIONS_EVENT = {
+  id: "55555555-5555-5555-5555-555555555525",
+  name: "Registration Answers Lab",
+  slug: "alpha-registration-answers-lab",
+};
 export const TEST_SEARCH_QUERY = "Test";
 export const TEST_SITE_TITLE = "E2E Test Site";
 export const TEST_COMMUNITY_TITLE = "Platform Engineering Community";

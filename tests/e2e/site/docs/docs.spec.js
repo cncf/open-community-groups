@@ -6,6 +6,7 @@ test.describe("site docs page", () => {
   test("loads the docs shell and documentation navigation", async ({
     page,
   }) => {
+    // Load the docs page before checking the embedded docs shell.
     await navigateToPath(page, "/docs");
 
     const docsRoot = page.locator(".ocg-docs-root");

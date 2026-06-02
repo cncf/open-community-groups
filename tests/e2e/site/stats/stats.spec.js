@@ -4,6 +4,7 @@ import { navigateToPath } from "../../utils.js";
 
 test.describe("site stats page", () => {
   test("renders totals and analytics chart containers", async ({ page }) => {
+    // Load the public stats page before checking analytics sections.
     await navigateToPath(page, "/stats");
 
     const mainContent = page.locator("#main-content");

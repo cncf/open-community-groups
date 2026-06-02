@@ -431,6 +431,7 @@ describe("event attendance", () => {
   });
 
   it("blocks the attend request until registration questions are answered", () => {
+    // Render attendance controls with registration questions.
     const { attendButton, container, loadingButton, questionsModal } = renderAttendanceDom({
       includeRegistrationQuestions: true,
     });
@@ -450,6 +451,7 @@ describe("event attendance", () => {
   });
 
   it("allows waitlist joins before registration questions are answered", () => {
+    // Render full-event attendance controls with waitlist enabled.
     const { attendButton, loadingButton, questionsModal } = renderAttendanceDom({
       capacity: "10",
       includeRegistrationQuestions: true,
@@ -476,6 +478,7 @@ describe("event attendance", () => {
   });
 
   it("opens registration questions for promoted waitlist attendees", () => {
+    // Render waitlist controls with registration questions.
     const { attendButton, checker, container, loadingButton, questionsModal } = renderAttendanceDom({
       capacity: "10",
       includeRegistrationQuestions: true,
@@ -504,6 +507,7 @@ describe("event attendance", () => {
   });
 
   it("blocks promoted waitlist completion until registration questions are answered", () => {
+    // Render waitlist controls before the attendee is promoted.
     const { attendButton, checker, questionsModal } = renderAttendanceDom({
       capacity: "10",
       includeRegistrationQuestions: true,
@@ -1204,6 +1208,7 @@ describe("event attendance", () => {
   });
 
   it('leaves the helper-provided "Free" label untouched', async () => {
+    // Render standalone helper-provided ticket label text.
     document.body.innerHTML = `
       <div>
         Free

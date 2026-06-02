@@ -12,6 +12,7 @@ const normalizeWhitespace = (value) => value.replace(/\s+/g, " ").trim();
 
 describe("dashboard group event update template", () => {
   it("keeps the existing read-only copy when registration answers lock question editing", async () => {
+    // Load the event update template before checking locked question copy.
     const template = normalizeWhitespace(await loadTemplate());
 
     expect(template).to.include("{% if event.registration_questions_locked -%}");

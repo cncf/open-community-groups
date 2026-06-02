@@ -20,6 +20,7 @@ test.describe("group dashboard sponsors view", () => {
   test("canceling sponsor visibility confirmation keeps the toggle on and skips the request", async ({
     organizerGroupPage,
   }) => {
+    // Load the sponsors tab before canceling a visibility change.
     await navigateToPath(organizerGroupPage, "/dashboard/group?tab=sponsors");
 
     const dashboardContent = organizerGroupPage.locator("#dashboard-content");
@@ -67,6 +68,7 @@ test.describe("group dashboard sponsors view", () => {
   test("organizer can update sponsor visibility from the table and restore it", async ({
     organizerGroupPage,
   }) => {
+    // Load the sponsors tab before changing a seeded sponsor.
     await navigateToPath(organizerGroupPage, "/dashboard/group?tab=sponsors");
 
     const dashboardContent = organizerGroupPage.locator("#dashboard-content");
@@ -132,6 +134,7 @@ test.describe("group dashboard sponsors view", () => {
   test("organizer can add and delete a sponsor", async ({
     organizerGroupPage,
   }) => {
+    // Create unique sponsor values for the temporary sponsor flow.
     const sponsorName = `E2E Sponsor ${Date.now()}`;
     const sponsorWebsite = "https://e2e-sponsor.example.com";
 
@@ -211,6 +214,7 @@ test.describe("group dashboard sponsors view", () => {
   test("organizer can update a sponsor and restore the original values", async ({
     organizerGroupPage,
   }) => {
+    // Load the sponsors tab before updating the seeded sponsor.
     await navigateToPath(organizerGroupPage, "/dashboard/group?tab=sponsors");
 
     const dashboardContent = organizerGroupPage.locator("#dashboard-content");
@@ -314,6 +318,7 @@ test.describe("group dashboard sponsors view", () => {
   test("viewer sees read-only controls in the sponsors view", async ({
     groupViewerPage,
   }) => {
+    // Load the sponsors tab as a read-only viewer.
     await navigateToPath(groupViewerPage, "/dashboard/group?tab=sponsors");
 
     const sponsorsContent = groupViewerPage.locator("#dashboard-content");

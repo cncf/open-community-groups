@@ -9,6 +9,7 @@ describe("dashboard user events", () => {
   });
 
   it("closes the open actions dropdown when another row action menu opens", () => {
+    // Render two user event action dropdowns.
     document.body.innerHTML = `
       <details data-user-event-actions-dropdown>
         <summary>First actions</summary>
@@ -30,6 +31,7 @@ describe("dashboard user events", () => {
   });
 
   it("closes open action dropdowns when clicking outside", () => {
+    // Render an open user event action dropdown.
     document.body.innerHTML = `
       <details data-user-event-actions-dropdown open>
         <summary>Actions</summary>

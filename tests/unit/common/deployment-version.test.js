@@ -96,6 +96,7 @@ describe("deployment version", () => {
   });
 
   it("suppresses repeated automatic refreshes within the public cache window", () => {
+    // Start inside the public cache window with a stale loaded commit.
     Date.now = () => 1_000;
     setLoadedCommitSha("old");
     let reloads = 0;
@@ -127,6 +128,7 @@ describe("deployment version", () => {
   });
 
   it("schedules automatic refresh retries when cached HTML is still loaded", () => {
+    // Start inside the public cache window with a stale loaded commit.
     Date.now = () => 1_000;
     setLoadedCommitSha("old");
     let reloads = 0;
@@ -163,6 +165,7 @@ describe("deployment version", () => {
   });
 
   it("resumes refresh retries while the stale commit is still loaded", () => {
+    // Start inside the public cache window with a stale loaded commit.
     Date.now = () => 1_000;
     setLoadedCommitSha("old");
     setDeploymentReloadHandler(() => {});
@@ -202,6 +205,7 @@ describe("deployment version", () => {
   });
 
   it("allows another automatic refresh after the public cache window", () => {
+    // Start inside the public cache window with a stale loaded commit.
     Date.now = () => 1_000;
     setLoadedCommitSha("old");
     let reloads = 0;

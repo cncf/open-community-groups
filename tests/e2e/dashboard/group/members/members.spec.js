@@ -9,6 +9,7 @@ test.describe("group dashboard members view", () => {
   test("organizer can send a notification to group members", async ({
     organizerGroupPage,
   }) => {
+    // Load the members tab before opening the email modal.
     await navigateToPath(organizerGroupPage, "/dashboard/group?tab=members");
 
     const dashboardContent = organizerGroupPage.locator("#dashboard-content");
@@ -50,6 +51,7 @@ test.describe("group dashboard members view", () => {
   test("viewer sees read-only controls in the members view", async ({
     groupViewerPage,
   }) => {
+    // Load the members tab as a read-only viewer.
     await navigateToPath(groupViewerPage, "/dashboard/group?tab=members");
 
     const dashboardContent = groupViewerPage.locator("#dashboard-content");

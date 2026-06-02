@@ -89,6 +89,7 @@ describe("dashboard group attendees", () => {
   });
 
   it("toggles attendee row action menus for pending invitations", () => {
+    // Render an attendees row with pending invitation actions.
     document.body.innerHTML = `
       <div id="attendees-content">
         <details data-attendee-row-actions-menu>
@@ -200,6 +201,7 @@ describe("dashboard group attendees", () => {
   });
 
   it("opens the attendee answers modal with copied answers", () => {
+    // Render the attendee answers trigger and modal.
     document.body.innerHTML = `
       <div id="attendees-content">
         <button
@@ -566,6 +568,7 @@ describe("dashboard group attendees", () => {
   });
 
   it("handles invitation modal controls after attendee content refreshes", () => {
+    // Render invitation controls inside refreshed attendees content.
     document.body.innerHTML = `
       <div id="attendees-content">
         ${attendeeInvitationMarkup()}
@@ -626,6 +629,7 @@ describe("dashboard group attendees", () => {
   });
 
   it("enables attendee invitation for a typed email when no user matches", async () => {
+    // Mock an empty user search result for the typed email flow.
     fetchMock.setImpl(async () => ({
       ok: true,
       async json() {
@@ -686,6 +690,7 @@ describe("dashboard group attendees", () => {
   });
 
   it("renders selected invitation users with the shared user pill style", () => {
+    // Render invitation controls before dispatching a user selection.
     document.body.innerHTML = `
       <div id="attendees-content">
         ${attendeeInvitationMarkup()}

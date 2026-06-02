@@ -142,6 +142,7 @@ describe("review-submission-modal", () => {
   });
 
   it("does not render the labels divider when no labels are available", async () => {
+    // Render the modal with a submission that has no labels.
     const element = await renderModal();
 
     element.open(buildSubmission({ labels: [] }));

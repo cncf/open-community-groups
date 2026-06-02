@@ -12,6 +12,7 @@ const normalizeWhitespace = (value) => value.replace(/\s+/g, " ").trim();
 
 describe("dashboard user events list template", () => {
   it("renders cancel attendance as a confirmed delete action when cancellation is allowed", async () => {
+    // Load the user events template before checking cancellation markup.
     const template = normalizeWhitespace(await loadTemplate());
 
     expect(template).to.include("<span>Cancel attendance</span>");
@@ -31,6 +32,7 @@ describe("dashboard user events list template", () => {
   });
 
   it("keeps cancel attendance visible but disabled when cancellation is unavailable", async () => {
+    // Load the user events template before checking disabled cancellation.
     const template = normalizeWhitespace(await loadTemplate());
 
     expect(template).to.include("disabled");
@@ -40,6 +42,7 @@ describe("dashboard user events list template", () => {
   });
 
   it("renders registration pending with the warning status badge style", async () => {
+    // Load the user events template before checking pending badges.
     const template = normalizeWhitespace(await loadTemplate());
 
     expect(template).to.include(

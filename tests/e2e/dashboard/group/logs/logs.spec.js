@@ -12,6 +12,7 @@ test.describe("group dashboard logs view", () => {
   test("organizer can view the seeded group logs list and active filters", async ({
     organizerGroupPage,
   }) => {
+    // Load the filtered group logs URL.
     await navigateToPath(organizerGroupPage, FILTERED_GROUP_LOGS_PATH);
 
     const dashboardContent = organizerGroupPage.locator("#dashboard-content");
@@ -42,6 +43,7 @@ test.describe("group dashboard logs view", () => {
   test("organizer can open seeded group log details", async ({
     organizerGroupPage,
   }) => {
+    // Load the group logs URL filtered to a seeded detail row.
     await navigateToPath(organizerGroupPage, GROUP_DETAILS_LOGS_PATH);
 
     const dashboardContent = organizerGroupPage.locator("#dashboard-content");
@@ -68,6 +70,7 @@ test.describe("group dashboard logs view", () => {
   test("organizer sees one group log details popover at a time", async ({
     organizerGroupPage,
   }) => {
+    // Use a desktop viewport before opening the full logs list.
     await organizerGroupPage.setViewportSize({ width: 1100, height: 720 });
     await navigateToPath(organizerGroupPage, GROUP_LOGS_PATH);
 
@@ -104,6 +107,7 @@ test.describe("group dashboard logs view", () => {
   test("organizer can browse the full seeded group logs list", async ({
     organizerGroupPage,
   }) => {
+    // Load the unfiltered group logs URL.
     await navigateToPath(organizerGroupPage, GROUP_LOGS_PATH);
 
     const dashboardContent = organizerGroupPage.locator("#dashboard-content");

@@ -12,6 +12,7 @@ const normalizeWhitespace = (value) => value.replace(/\s+/g, " ").trim();
 
 describe("dashboard group attendees list template", () => {
   it("renders cancel attendance as a confirmed delete action for eligible attendees", async () => {
+    // Load the attendees list template before checking cancel attendance markup.
     const template = normalizeWhitespace(await loadTemplate());
 
     expect(template).to.include('attendee.status == "confirmed"');
@@ -30,6 +31,7 @@ describe("dashboard group attendees list template", () => {
   });
 
   it("keeps cancel attendance disabled for unsupported attendee states", async () => {
+    // Load the attendees list template before checking disabled states.
     const template = normalizeWhitespace(await loadTemplate());
 
     expect(template).to.include("!self::is_paid_attendee(attendee.amount_minor)");
@@ -41,6 +43,7 @@ describe("dashboard group attendees list template", () => {
   });
 
   it("renders cancel invitation for manual question-pending invitations", async () => {
+    // Load the attendees list template before checking invitation actions.
     const template = normalizeWhitespace(await loadTemplate());
 
     expect(template).to.include(
@@ -56,6 +59,7 @@ describe("dashboard group attendees list template", () => {
   });
 
   it("renders registration answers in the review modal layout", async () => {
+    // Load the attendees list template before checking answers markup.
     const template = normalizeWhitespace(await loadTemplate());
 
     expect(template).to.include('aria-describedby="attendee-answers-subtitle"');

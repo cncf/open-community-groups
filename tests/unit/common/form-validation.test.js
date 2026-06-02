@@ -29,6 +29,7 @@ describe("form validation helpers", () => {
   });
 
   it("validates optional group pretty slugs before submit", () => {
+    // Create a slug input with the generated slug metadata.
     const input = document.createElement("input");
     input.dataset.groupGeneratedSlug = "generated-slug";
     stubValidityUi(input);

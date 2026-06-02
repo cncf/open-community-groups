@@ -13,6 +13,7 @@ const MOBILE_WARNING = "This dashboard is not optimized yet for mobile devices";
 test.describe("dashboard home", () => {
   for (const route of DASHBOARD_ROUTES) {
     test(`requires login for ${route}`, async ({ page }) => {
+      // Open the protected dashboard route as a guest.
       await navigateToPath(page, route);
 
       await expect(page).toHaveURL(/\/log-in/);
@@ -24,6 +25,7 @@ test.describe("dashboard home", () => {
     test("community dashboard shows the mobile unsupported state", async ({
       adminCommunityPage,
     }) => {
+      // Load the community dashboard on a mobile viewport.
       await navigateToPath(
         adminCommunityPage,
         "/dashboard/community?tab=groups",
@@ -40,6 +42,7 @@ test.describe("dashboard home", () => {
     test("group dashboard shows the mobile unsupported state", async ({
       organizerGroupPage,
     }) => {
+      // Load the group dashboard on a mobile viewport.
       await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
 
       await expect(
@@ -53,6 +56,7 @@ test.describe("dashboard home", () => {
     test("user dashboard shows the mobile unsupported state", async ({
       member1Page,
     }) => {
+      // Load the user dashboard on a mobile viewport.
       await navigateToPath(member1Page, "/dashboard/user?tab=events");
 
       await expect(

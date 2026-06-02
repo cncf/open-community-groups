@@ -29,6 +29,7 @@ describe("questions-editor", () => {
   };
 
   it("renders serde_qs hidden inputs for registration questions", async () => {
+    // Mount an editor with a selectable registration question.
     const element = await mountLitComponent("questions-editor", {
       name: "registration_questions",
       questions: [
@@ -69,6 +70,7 @@ describe("questions-editor", () => {
   });
 
   it("does not submit options for free-text questions", async () => {
+    // Mount an editor with a free-text question that has stale options.
     const element = await mountLitComponent("questions-editor", {
       name: "registration_questions",
       questions: [
@@ -91,6 +93,7 @@ describe("questions-editor", () => {
   });
 
   it("marks question prompts and selectable options as required", async () => {
+    // Mount an editor with an incomplete selectable question.
     const element = await mountLitComponent("questions-editor", {
       name: "registration_questions",
       questions: [
@@ -116,6 +119,7 @@ describe("questions-editor", () => {
   });
 
   it("keeps one option available for selectable questions", async () => {
+    // Mount an editor with one selectable option.
     const element = await mountLitComponent("questions-editor", {
       name: "registration_questions",
       questions: [
@@ -150,6 +154,7 @@ describe("questions-editor", () => {
   });
 
   it("adds questions through the modal editor", async () => {
+    // Mount an empty editor before opening the add-question modal.
     const element = await mountLitComponent("questions-editor", {
       name: "registration_questions",
     });
@@ -169,6 +174,7 @@ describe("questions-editor", () => {
   });
 
   it("edits selectable questions through the modal editor", async () => {
+    // Mount an editor with a selectable question to edit.
     const element = await mountLitComponent("questions-editor", {
       name: "registration_questions",
       questions: [
@@ -207,6 +213,7 @@ describe("questions-editor", () => {
   });
 
   it("reorders selectable question options through the modal editor", async () => {
+    // Mount an editor with two selectable options.
     const element = await mountLitComponent("questions-editor", {
       name: "registration_questions",
       questions: [
@@ -245,6 +252,7 @@ describe("questions-editor", () => {
   });
 
   it("reorders questions from the question card handle", async () => {
+    // Mount an editor with two reorderable questions.
     const element = await mountLitComponent("questions-editor", {
       name: "registration_questions",
       questions: [
@@ -279,6 +287,7 @@ describe("questions-editor", () => {
   });
 
   it("does not reorder questions when the editor is disabled", async () => {
+    // Mount a disabled editor with two questions.
     const element = await mountLitComponent("questions-editor", {
       disabled: true,
       name: "registration_questions",
@@ -317,6 +326,7 @@ describe("questions-editor", () => {
   });
 
   it("shows an editable warning when questions have been added", async () => {
+    // Mount an editable editor that already has questions.
     const element = await mountLitComponent("questions-editor", {
       name: "registration_questions",
       questions: [
@@ -339,6 +349,7 @@ describe("questions-editor", () => {
   });
 
   it("does not show the editable warning when questions are locked", async () => {
+    // Mount a disabled editor that already has questions.
     const element = await mountLitComponent("questions-editor", {
       disabled: true,
       questions: [
@@ -358,6 +369,7 @@ describe("questions-editor", () => {
   });
 
   it("renders selected question types from the questions attribute", async () => {
+    // Mount an editor from serialized question attributes.
     const element = await mountLitComponentWithAttributes("questions-editor", {
       attributes: {
         questions: JSON.stringify([
@@ -394,6 +406,7 @@ describe("questions-editor", () => {
   });
 
   it("normalizes questions assigned after render", async () => {
+    // Mount an empty editor before assigning questions programmatically.
     const element = await mountLitComponent("questions-editor", {
       name: "registration_questions",
     });
@@ -423,6 +436,7 @@ describe("questions-editor", () => {
   });
 
   it("disables visible controls when disabled", async () => {
+    // Mount a disabled editor with a selectable question.
     const element = await mountLitComponent("questions-editor", {
       disabled: true,
       questions: [

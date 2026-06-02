@@ -12,6 +12,7 @@ test.describe("user dashboard session proposals view", () => {
   test("session proposals page shows seeded proposal states and locks", async ({
     member1Page,
   }) => {
+    // Load the session proposals tab before checking seeded states.
     await openUserDashboardPath(
       "/dashboard/user?tab=session-proposals",
       member1Page,
@@ -63,6 +64,7 @@ test.describe("user dashboard session proposals view", () => {
   test("user can create and delete a session proposal", async ({
     pending1Page,
   }) => {
+    // Create a unique proposal title for the temporary proposal flow.
     const proposalTitle = `Pending1 reusable proposal ${Date.now()}`;
     const dashboardContent = await createSessionProposal(
       pending1Page,
@@ -98,6 +100,7 @@ test.describe("user dashboard session proposals view", () => {
   test("pending co-speaker invitations are surfaced to the invited user", async ({
     member2Page,
   }) => {
+    // Load the invited user's session proposals tab.
     await openUserDashboardPath(
       "/dashboard/user?tab=session-proposals",
       member2Page,
@@ -122,6 +125,7 @@ test.describe("user dashboard session proposals view", () => {
     member1Page,
     member2Page,
   }) => {
+    // Load the invited user's session proposals tab before accepting.
     await openUserDashboardPath(
       "/dashboard/user?tab=session-proposals",
       member2Page,

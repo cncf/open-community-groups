@@ -165,6 +165,7 @@ describe("ocgFetch", () => {
   });
 
   it("leaves callers pending when deployment refresh enters retry mode", async () => {
+    // Start inside the public cache window before entering retry mode.
     Date.now = () => 1_000;
     let reloads = 0;
     setDeploymentReloadHandler(() => {

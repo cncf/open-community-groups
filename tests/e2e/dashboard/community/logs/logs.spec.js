@@ -12,6 +12,7 @@ test.describe("community dashboard logs view", () => {
   test("admin can view the seeded community logs list and active filters", async ({
     adminCommunityPage,
   }) => {
+    // Load the filtered community logs URL.
     await navigateToPath(adminCommunityPage, FILTERED_COMMUNITY_LOGS_PATH);
 
     const dashboardContent = adminCommunityPage.locator("#dashboard-content");
@@ -42,6 +43,7 @@ test.describe("community dashboard logs view", () => {
   test("admin can open seeded community log details", async ({
     adminCommunityPage,
   }) => {
+    // Load the community logs URL filtered to a seeded detail row.
     await navigateToPath(adminCommunityPage, COMMUNITY_DETAILS_LOGS_PATH);
 
     const dashboardContent = adminCommunityPage.locator("#dashboard-content");
@@ -71,6 +73,7 @@ test.describe("community dashboard logs view", () => {
   test("admin can browse the full seeded community logs list", async ({
     adminCommunityPage,
   }) => {
+    // Load the unfiltered community logs URL.
     await navigateToPath(adminCommunityPage, COMMUNITY_LOGS_PATH);
 
     const dashboardContent = adminCommunityPage.locator("#dashboard-content");

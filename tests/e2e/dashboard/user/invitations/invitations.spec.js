@@ -14,6 +14,7 @@ test.describe("user dashboard invitations view", () => {
     adminCommunityPage,
     pending1Page,
   }) => {
+    // Reset seeded invitations before checking the pending roles.
     await resetCommunityInvitation(
       adminCommunityPage,
       TEST_USER_IDS.pending1,
@@ -58,6 +59,7 @@ test.describe("user dashboard invitations view", () => {
     adminCommunityPage,
     pending1Page,
   }) => {
+    // Reset seeded invitations before accepting them.
     await resetCommunityInvitation(
       adminCommunityPage,
       TEST_USER_IDS.pending1,
@@ -153,6 +155,7 @@ test.describe("user dashboard invitations view", () => {
     organizerGroupPage,
     pending2Page,
   }) => {
+    // Ensure the seeded group invitation exists before rejecting it.
     await ensureGroupInvitation(
       organizerGroupPage,
       TEST_GROUP_IDS.community1.alpha,

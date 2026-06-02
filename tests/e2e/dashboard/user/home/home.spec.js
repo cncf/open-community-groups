@@ -6,6 +6,7 @@ test.describe("user dashboard home", () => {
   test("shows the dashboard shell and primary navigation", async ({
     member1Page,
   }) => {
+    // Load the user events tab before checking the dashboard shell.
     await navigateToPath(member1Page, "/dashboard/user?tab=events");
 
     await expect(

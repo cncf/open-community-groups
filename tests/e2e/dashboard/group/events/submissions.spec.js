@@ -6,6 +6,7 @@ test.describe("group dashboard submissions tab", () => {
   test("events manager can review CFS submissions with labels and ratings", async ({
     eventsManagerGroupPage,
   }) => {
+    // Load the group events dashboard before opening the CFS event.
     await navigateToPath(eventsManagerGroupPage, "/dashboard/group?tab=events");
 
     const cfsEventRow = eventsManagerGroupPage.locator("tr", {
@@ -81,6 +82,7 @@ test.describe("group dashboard submissions tab", () => {
   test("viewer sees read-only event and submission controls on the submissions tab", async ({
     groupViewerPage,
   }) => {
+    // Load the group events dashboard as a read-only viewer.
     await navigateToPath(groupViewerPage, "/dashboard/group?tab=events");
 
     const dashboardContent = groupViewerPage.locator("#dashboard-content");

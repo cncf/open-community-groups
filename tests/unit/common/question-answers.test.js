@@ -13,6 +13,7 @@ describe("question answer helpers", () => {
   });
 
   it("collects free-text and selected option answers", () => {
+    // Render a form with every supported question answer type.
     document.body.innerHTML = `
       <form id="questions-form">
         <fieldset data-question-id="question-text" data-question-kind="free-text">
@@ -42,6 +43,7 @@ describe("question answer helpers", () => {
   });
 
   it("validates required multi-select answers", () => {
+    // Render a required multi-select question without a selected option.
     document.body.innerHTML = `
       <form id="questions-form">
         <fieldset data-question-id="question-checkbox"
@@ -69,6 +71,7 @@ describe("question answer helpers", () => {
   });
 
   it("validates required free-text answers after trimming whitespace", () => {
+    // Render a required free-text question with a whitespace-only answer.
     document.body.innerHTML = `
       <form id="questions-form">
         <fieldset data-question-id="question-text"
@@ -96,6 +99,7 @@ describe("question answer helpers", () => {
   });
 
   it("serializes answer payloads into hidden inputs", () => {
+    // Render a form with the hidden answers input.
     document.body.innerHTML = `
       <form id="questions-form">
         <input type="hidden" data-answers-input>

@@ -34,6 +34,7 @@ test.describe("community dashboard analytics view", () => {
   test("admin can switch between analytics tabs and view each section", async ({
     adminCommunityPage,
   }) => {
+    // Load the community analytics dashboard before switching tabs.
     await navigateToPath(
       adminCommunityPage,
       "/dashboard/community?tab=analytics",

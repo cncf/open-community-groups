@@ -10,6 +10,7 @@ import {
   TEST_PAYMENT_EVENT_IDS,
   TEST_PAYMENT_EVENT_NAMES,
   TEST_PAYMENT_EVENT_SLUGS,
+  TEST_REGISTRATION_QUESTIONS_EVENT,
   getAttendButton,
   getLeaveButton,
   navigateToEvent,
@@ -106,6 +107,106 @@ test.describe("event attendance", () => {
 
     // Restore the reusable attendance state.
     await cancelAttendance(member2Page, TEST_EVENT_IDS.alpha.one);
+  });
+
+  test("member answers registration questions before attending", async ({
+    pending2Page,
+  }) => {
+    // Load the event page before changing attendance state.
+    await navigateToEvent(
+      pending2Page,
+      TEST_COMMUNITY_NAME,
+      TEST_GROUP_SLUGS.community1.alpha,
+      TEST_REGISTRATION_QUESTIONS_EVENT.slug,
+    );
+
+    // Verify the public event page is ready.
+    await expect(
+      pending2Page.getByRole("heading", {
+        level: 1,
+        name: TEST_REGISTRATION_QUESTIONS_EVENT.name,
+      }),
+    ).toBeVisible();
+
+    // Resolve current attendance before resetting the member state.
+    await waitForAttendanceState(pending2Page);
+
+    if (await getLeaveButton(pending2Page).isVisible()) {
+      await cancelAttendance(
+        pending2Page,
+        TEST_REGISTRATION_QUESTIONS_EVENT.id,
+      );
+    }
+
+    // Open the required registration questions modal.
+    await getAttendButton(pending2Page).click();
+
+    const registrationModal = pending2Page.locator(
+      '[data-attendance-role="registration-modal"]',
+    );
+    await expect(registrationModal).toBeVisible();
+    await expect(
+      registrationModal.getByRole("heading", {
+        name: "Registration questions",
+      }),
+    ).toBeVisible();
+    await expect(registrationModal).toContainText(
+      "What are you hoping to learn from this event?",
+    );
+    await expect(registrationModal).toContainText("Preferred session format");
+    await expect(registrationModal).toContainText("Topics you want covered");
+    await expect(registrationModal).toContainText(
+      "Anything the organizers should know?",
+    );
+
+    // Fill all question types before submitting the registration.
+    await registrationModal
+      .locator("fieldset", {
+        hasText: "What are you hoping to learn from this event?",
+      })
+      .locator("textarea")
+      .fill("I want to compare live platform practices.");
+    await registrationModal
+      .locator("label", { hasText: "Panel discussion" })
+      .click();
+    await registrationModal
+      .locator("label", { hasText: "Developer experience" })
+      .click();
+    await registrationModal
+      .locator("label", { hasText: "Security and compliance" })
+      .click();
+    await registrationModal
+      .locator("fieldset", {
+        hasText: "Anything the organizers should know?",
+      })
+      .locator("textarea")
+      .fill("Please share slides afterward.");
+
+    // Submit the answers and wait for attendance to be created.
+    await Promise.all([
+      pending2Page.waitForResponse(
+        (response) =>
+          response.request().method() === "POST" &&
+          response
+            .url()
+            .includes(
+              `/event/${TEST_REGISTRATION_QUESTIONS_EVENT.id}/attend`,
+            ) &&
+          response.ok(),
+      ),
+      registrationModal
+        .locator('[data-attendance-role="registration-modal-submit"]')
+        .click(),
+    ]);
+
+    // Verify the member can now cancel attendance.
+    await expect(registrationModal).toBeHidden();
+    await expect(getLeaveButton(pending2Page)).toContainText(
+      "Cancel attendance",
+    );
+
+    // Restore the reusable attendance state.
+    await cancelAttendance(pending2Page, TEST_REGISTRATION_QUESTIONS_EVENT.id);
   });
 
   test.describe("payment-enabled attendance flows", () => {

@@ -225,6 +225,7 @@ describe("htmx extensions", () => {
   });
 
   it("owns htmx refresh headers without reloading during the refresh cooldown", () => {
+    // Start inside the refresh cooldown window.
     Date.now = () => 1_000;
     let reloads = 0;
     setDeploymentReloadHandler(() => {

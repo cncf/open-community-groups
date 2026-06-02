@@ -6,6 +6,7 @@ test.describe("community dashboard home", () => {
   test("shows the dashboard shell, selector, and primary navigation", async ({
     adminCommunityPage,
   }) => {
+    // Load the community groups tab before checking the dashboard shell.
     await navigateToPath(adminCommunityPage, "/dashboard/community?tab=groups");
 
     await expect(
@@ -59,6 +60,7 @@ test.describe("community dashboard home", () => {
   test("community navigation can open a selected group dashboard", async ({
     adminCommunityPage,
   }) => {
+    // Load the community groups tab before choosing a group dashboard.
     await navigateToPath(adminCommunityPage, "/dashboard/community?tab=groups");
 
     const dashboardContent = adminCommunityPage.locator("#dashboard-content");

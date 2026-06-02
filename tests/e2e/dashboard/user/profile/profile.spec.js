@@ -50,6 +50,7 @@ test.describe("user dashboard profile view", () => {
   test("user sees the notifications toggle in the compact switch layout", async ({
     page,
   }) => {
+    // Log in as the seeded user before opening account settings.
     await logInWithSeededUser(page, TEST_USER_CREDENTIALS.admin2);
     await navigateToPath(page, ACCOUNT_PATH);
 
@@ -90,6 +91,7 @@ test.describe("user dashboard profile view", () => {
   });
 
   test("user can update and restore profile details", async ({ page }) => {
+    // Allow enough time for the full profile update and restore flow.
     test.setTimeout(60_000);
 
     // Select the requested timezone only when it differs from the current value.
@@ -239,6 +241,7 @@ test.describe("user dashboard profile view", () => {
   test("user sees an error when the current password is incorrect", async ({
     page,
   }) => {
+    // Log in as the seeded user before submitting the password form.
     await logInWithSeededUser(page, TEST_USER_CREDENTIALS.admin2);
     await navigateToPath(page, ACCOUNT_PATH);
 

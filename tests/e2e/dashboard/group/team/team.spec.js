@@ -8,6 +8,7 @@ test.describe("group dashboard team view", () => {
   test("group team page shows seeded roles and last-admin protection", async ({
     organizerGroupPage,
   }) => {
+    // Restore the seeded viewer role before checking team permissions.
     await ensureGroupViewerRole(organizerGroupPage, "viewer");
     await navigateToPath(organizerGroupPage, "/dashboard/group?tab=team");
 
@@ -46,6 +47,7 @@ test.describe("group dashboard team view", () => {
   test("organizer can invite and remove a pending group team member", async ({
     organizerGroupPage,
   }) => {
+    // Load the group team tab before inviting a temporary member.
     await navigateToPath(organizerGroupPage, "/dashboard/group?tab=team");
 
     const dashboardContent = organizerGroupPage.locator("#dashboard-content");
@@ -123,6 +125,7 @@ test.describe("group dashboard team view", () => {
   test("organizer can update and restore a group team member role", async ({
     organizerGroupPage,
   }) => {
+    // Define the seeded team member role that must be restored.
     const seededRole = "viewer";
     const updatedRole = "events-manager";
     const teamTabPath = "/dashboard/group?tab=team";

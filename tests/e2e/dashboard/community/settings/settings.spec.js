@@ -7,6 +7,7 @@ test.describe("community dashboard settings view", () => {
   test("admin can update and restore community settings", async ({
     adminCommunityPage,
   }) => {
+    // Define the settings URL used by the read and submit helpers.
     const settingsPath = "/dashboard/community?tab=settings";
 
     // Read current community settings values before updating them.
@@ -123,6 +124,7 @@ test.describe("community dashboard settings view", () => {
   test("viewer sees read-only controls on community settings", async ({
     communityViewerPage,
   }) => {
+    // Load the community settings tab as a read-only viewer.
     await navigateToPath(
       communityViewerPage,
       "/dashboard/community?tab=settings",

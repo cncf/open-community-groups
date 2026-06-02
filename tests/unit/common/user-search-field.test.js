@@ -81,6 +81,7 @@ describe("user-search-field", () => {
   });
 
   it("emits query changes while typing and clearing", async () => {
+    // Mount a search field and capture query-change events.
     const element = await mountLitComponent("user-search-field");
     const queries = [];
 
@@ -95,6 +96,7 @@ describe("user-search-field", () => {
   });
 
   it("renders an opt-in email action for valid email queries with no matches", async () => {
+    // Mount a search field with the email action enabled.
     const element = await mountLitComponent("user-search-field", {
       emailActionEnabled: true,
       emailActionText: "Invite by email",
@@ -120,6 +122,7 @@ describe("user-search-field", () => {
   });
 
   it("keeps the default no-results message when the email action is not enabled", async () => {
+    // Mount a search field without the email action enabled.
     const element = await mountLitComponent("user-search-field");
 
     element._searchQuery = "ada@example.com";
@@ -242,6 +245,7 @@ describe("user-search-field", () => {
   });
 
   it("can keep the query when clicking outside the component", async () => {
+    // Mount a search field that persists the query on outside clicks.
     const element = await mountLitComponent("user-search-field", {
       persistQueryOnOutside: true,
     });

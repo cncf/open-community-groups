@@ -62,8 +62,10 @@ describe("alerts", () => {
   });
 
   it("renders the deployment refresh retry alert without auto-dismissal", () => {
+    // Show the deployment refresh retry alert.
     showDeploymentRefreshRetryAlert();
 
+    // Check the retry alert stays modal and persistent.
     expect(env.current.swal.calls).to.have.length(1);
     expect(env.current.swal.calls[0]).to.include({
       showConfirmButton: false,
