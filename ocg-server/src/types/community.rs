@@ -106,6 +106,10 @@ pub struct CommunitySummary {
     /// Unique identifier used in URLs and database references.
     pub name: String,
 
+    /// Target URL when users click on the advertisement banner.
+    pub ad_banner_link_url: Option<String>,
+    /// URL to the advertisement banner image.
+    pub ad_banner_url: Option<String>,
     /// URL to the Open Graph image used for link previews.
     pub og_image_url: Option<String>,
 }

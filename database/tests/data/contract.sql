@@ -5,6 +5,8 @@ begin;
 -- ============================================================================
 
 insert into community (
+    ad_banner_link_url,
+    ad_banner_url,
     banner_mobile_url,
     banner_url,
     community_id,
@@ -13,6 +15,8 @@ insert into community (
     logo_url,
     name
 ) values (
+    'https://example.com/community-ad',
+    'https://example.com/community-ad-banner.png',
     'https://example.com/community-banner-mobile.png',
     'https://example.com/community-banner.png',
     '00000000-0000-0000-0000-00000000c001',

@@ -21,6 +21,8 @@ insert into community (
     name,
     display_name,
     description,
+    ad_banner_link_url,
+    ad_banner_url,
     logo_url,
     og_image_url,
     banner_mobile_url,
@@ -30,6 +32,8 @@ insert into community (
     'cloud-native-seattle',
     'Cloud Native Seattle',
     'A vibrant community for cloud native technologies and practices in Seattle',
+    'https://example.com/ad-banner-link',
+    'https://example.com/ad-banner.png',
     'https://example.com/logo.png',
     'https://example.com/community-og.png',
     'https://example.com/banner_mobile.png',
@@ -50,6 +54,8 @@ select is(
         "display_name": "Cloud Native Seattle",
         "logo_url": "https://example.com/logo.png",
         "name": "cloud-native-seattle",
+        "ad_banner_link_url": "https://example.com/ad-banner-link",
+        "ad_banner_url": "https://example.com/ad-banner.png",
         "og_image_url": "https://example.com/community-og.png"
     }'::jsonb,
     'Should return correct community summary data as JSON'

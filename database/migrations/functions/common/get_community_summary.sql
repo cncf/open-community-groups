@@ -9,6 +9,8 @@ returns json as $$
         'logo_url', logo_url,
         'name', name,
 
+        'ad_banner_link_url', ad_banner_link_url,
+        'ad_banner_url', ad_banner_url,
         'og_image_url', og_image_url
     ))
     from community
