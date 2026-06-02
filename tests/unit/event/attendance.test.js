@@ -203,7 +203,7 @@ describe("event attendance", () => {
       responseText: JSON.stringify({ status: "attendee" }),
     });
 
-    // Confirm it shows attendee controls and meeting details after a successful.
+    // Confirm a successful attendance check reveals attendee-only controls.
     expect(leaveButton.classList.contains("hidden")).to.equal(false);
     expect(
       leaveButton.querySelector("[data-attendance-label]")?.textContent,
@@ -329,7 +329,7 @@ describe("event attendance", () => {
       responseText: "{invalid json}",
     });
 
-    // Confirm it falls back to the waitlist sign-in state when the check response cannot.
+    // Confirm an unparseable response falls back to the waitlist sign-in state.
     expect(signinButton.classList.contains("hidden")).to.equal(false);
     expect(
       signinButton.querySelector("[data-attendance-label]")?.textContent,
@@ -366,13 +366,13 @@ describe("event attendance", () => {
   });
 
   it("keeps no-capacity events behind sign-in when signed out", () => {
-    // Render the fixture to check it keeps no-capacity events behind sign-in when signed.
+    // Render the signed-out fixture for a no-capacity event.
     const { attendButton, container, signinButton } = renderAttendanceDom({
       capacity: "0",
       remainingCapacity: "0",
     });
 
-    // Exercise the flow to check it keeps no-capacity events behind sign-in when signed.
+    // Apply the signed-out state using the no-capacity event metadata.
     showSignedOutAttendanceState(container, getAttendanceMeta(container));
 
     // Confirm it keeps no-capacity events behind sign-in when signed out.
@@ -394,7 +394,7 @@ describe("event attendance", () => {
     // Exercise the flow to check it keeps approval-required no-capacity events behind.
     showSignedOutAttendanceState(container, getAttendanceMeta(container));
 
-    // Confirm it keeps approval-required no-capacity events behind sign-in when signed.
+    // Confirm approval-required no-capacity events stay behind sign-in.
     expect(signinButton.classList.contains("hidden")).to.equal(false);
     expect(
       signinButton.querySelector("[data-attendance-label]")?.textContent,

@@ -18,7 +18,7 @@ describe("user-search-selector", () => {
   });
 
   it("focuses the search field when the inline panel is opened", async () => {
-    // Set up focuses the search field when the inline panel is opened.
+    // Track focus calls from the nested search field.
     let focusCalls = 0;
     userSearchFieldPrototype.focusInput = () => {
       focusCalls += 1;

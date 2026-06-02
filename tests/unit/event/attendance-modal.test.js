@@ -740,10 +740,10 @@ describe("event attendance paid modal", () => {
       },
     });
 
-    // Dispatch the event event to check it omits an empty discount code from checkout.
+    // Dispatch the blank discount code through HTMX request configuration.
     checkoutForm.dispatchEvent(blankEvent);
 
-    // Confirm it omits an empty discount code from checkout params and trims a filled.
+    // Confirm blank discount codes are removed from submitted parameters.
     expect(blankEvent.detail.parameters).to.not.have.property("discount_code");
     expect(blankEvent.detail.unfilteredParameters).to.not.have.property(
       "discount_code",
@@ -767,10 +767,10 @@ describe("event attendance paid modal", () => {
       },
     });
 
-    // Dispatch the event event to check it omits an empty discount code from checkout.
+    // Dispatch the filled discount code through HTMX request configuration.
     checkoutForm.dispatchEvent(filledEvent);
 
-    // Confirm it omits an empty discount code from checkout params and trims a filled.
+    // Confirm filled discount codes are trimmed before submission.
     expect(discountCodeInput.value).to.equal("SPRING25");
     expect(filledEvent.detail.parameters.discount_code).to.equal("SPRING25");
     expect(filledEvent.detail.unfilteredParameters.discount_code).to.equal(
@@ -779,7 +779,7 @@ describe("event attendance paid modal", () => {
   });
 
   it("keeps pending-payment on the main button instead of opening the ticket modal", async () => {
-    // Read fixture controls to check it keeps pending-payment on the main button instead.
+    // Read controls for the pending-payment main-button flow.
     const {
       actionsMenu,
       checker,
