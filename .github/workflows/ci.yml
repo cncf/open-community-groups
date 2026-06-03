@@ -21,7 +21,7 @@ jobs:
     steps:
       - name: Determine changed paths
         id: filter
-        uses: dorny/paths-filter@v3
+        uses: dorny/paths-filter@v4
         with:
           filters: |
             database:
@@ -130,7 +130,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
       - name: Run markdownlint
-        uses: DavidAnson/markdownlint-cli2-action@v22
+        uses: DavidAnson/markdownlint-cli2-action@v23
         with:
           globs: 'docs/**/*.md'
 
@@ -248,7 +248,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
       - name: Set up Node.js
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v6
         with:
           node-version: "22"
           cache: npm
