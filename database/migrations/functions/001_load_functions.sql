@@ -23,6 +23,10 @@
 {{ template "common/list_event_ticket_types.sql" }} -- Dependency for get_event_full and payments
 {{ template "common/get_group_summary.sql" }} -- Do not sort alphabetically, has dependency
 {{ template "common/questionnaire_answers_exist_for_event.sql" }} -- Do not sort alphabetically, dependency for get_event_full and update_event
+{{ template "common/stats_label_count_series.sql" }}
+{{ template "common/stats_label_count_series_by_name.sql" }}
+{{ template "common/stats_running_total_series.sql" }}
+{{ template "common/stats_running_total_series_by_name.sql" }}
 {{ template "common/validate_questionnaire_questions_payload.sql" }} -- Do not sort alphabetically, dependency for add/update_event and validate_questionnaire_answers_payload
 {{ template "common/validate_questionnaire_answers_payload.sql" }} -- Do not sort alphabetically, dependency for attend_event, submit_event_registration_answers and prepare_event_checkout_purchase
 {{ template "common/get_event_full.sql" }}

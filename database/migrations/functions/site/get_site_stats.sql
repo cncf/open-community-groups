@@ -83,126 +83,104 @@ attendees as (
     from event_attendee ea
     join events e on e.event_id = ea.event_id
     where ea.status = 'confirmed'
+),
+domain_running_total_counts as (
+    select
+        'groups' as domain,
+        fg.created_month as bucket_start,
+        count(*)::int as count
+    from filtered_groups fg
+    join params p on fg.created_at >= p.period_start
+    group by fg.created_month
+
+    union all
+
+    select
+        'members' as domain,
+        m.created_month as bucket_start,
+        count(*)::int as count
+    from members m
+    join params p on m.created_at >= p.period_start
+    group by m.created_month
+
+    union all
+
+    select
+        'events' as domain,
+        ews.starts_month as bucket_start,
+        count(*)::int as count
+    from events_with_start ews
+    join params p on ews.starts_at >= p.period_start
+    group by ews.starts_month
+
+    union all
+
+    select
+        'attendees' as domain,
+        a.created_month as bucket_start,
+        count(*)::int as count
+    from attendees a
+    join params p on a.created_at >= p.period_start
+    group by a.created_month
+),
+domain_monthly_counts as (
+    select
+        domain,
+        to_char(bucket_start, 'YYYY-MM') as label,
+        count
+    from domain_running_total_counts
 )
 select json_strip_nulls(json_build_object(
     'groups', json_build_object(
-        'per_month', coalesce((
-            select json_agg(json_build_array(month_label, month_count) order by month_label)
-            from (
-                select
-                    to_char(fg.created_month, 'YYYY-MM') as month_label,
-                    count(*)::int as month_count
-                from filtered_groups fg
-                join params p on fg.created_at >= p.period_start
-                group by to_char(fg.created_month, 'YYYY-MM')
-            ) monthly
-        ), '[]'::json),
-        'running_total', coalesce((
-            select json_agg(json_build_array(ts, cumulative_total) order by ts)
-            from (
-                select
-                    floor(extract(epoch from month) * 1000)::bigint as ts,
-                    sum(month_count) over (order by month) ::int as cumulative_total
-                from (
-                    select
-                        fg.created_month as month,
-                        count(*)::int as month_count
-                    from filtered_groups fg
-                    join params p on fg.created_at >= p.period_start
-                    group by fg.created_month
-                ) monthly
-            ) totals
-        ), '[]'::json),
+        'per_month', stats_label_count_series((
+            select jsonb_agg(to_jsonb(counts))
+            from domain_monthly_counts counts
+            where domain = 'groups'
+        )),
+        'running_total', stats_running_total_series((
+            select jsonb_agg(to_jsonb(counts))
+            from domain_running_total_counts counts
+            where domain = 'groups'
+        )),
         'total', (select count(*)::int from filtered_groups)
     ),
     'members', json_build_object(
-        'per_month', coalesce((
-            select json_agg(json_build_array(month_label, month_count) order by month_label)
-            from (
-                select
-                    to_char(m.created_month, 'YYYY-MM') as month_label,
-                    count(*)::int as month_count
-                from members m
-                join params p on m.created_at >= p.period_start
-                group by to_char(m.created_month, 'YYYY-MM')
-            ) monthly
-        ), '[]'::json),
-        'running_total', coalesce((
-            select json_agg(json_build_array(ts, cumulative_total) order by ts)
-            from (
-                select
-                    floor(extract(epoch from month) * 1000)::bigint as ts,
-                    sum(month_count) over (order by month) ::int as cumulative_total
-                from (
-                    select
-                        m.created_month as month,
-                        count(*)::int as month_count
-                    from members m
-                    join params p on m.created_at >= p.period_start
-                    group by m.created_month
-                ) monthly
-            ) totals
-        ), '[]'::json),
+        'per_month', stats_label_count_series((
+            select jsonb_agg(to_jsonb(counts))
+            from domain_monthly_counts counts
+            where domain = 'members'
+        )),
+        'running_total', stats_running_total_series((
+            select jsonb_agg(to_jsonb(counts))
+            from domain_running_total_counts counts
+            where domain = 'members'
+        )),
         'total', (select count(*)::int from members)
     ),
     'events', json_build_object(
-        'per_month', coalesce((
-            select json_agg(json_build_array(month_label, month_count) order by month_label)
-            from (
-                select
-                    to_char(ews.starts_month, 'YYYY-MM') as month_label,
-                    count(*)::int as month_count
-                from events_with_start ews
-                join params p on ews.starts_at >= p.period_start
-                group by to_char(ews.starts_month, 'YYYY-MM')
-            ) monthly
-        ), '[]'::json),
-        'running_total', coalesce((
-            select json_agg(json_build_array(ts, cumulative_total) order by ts)
-            from (
-                select
-                    floor(extract(epoch from month) * 1000)::bigint as ts,
-                    sum(month_count) over (order by month) ::int as cumulative_total
-                from (
-                    select
-                        ews.starts_month as month,
-                        count(*)::int as month_count
-                    from events_with_start ews
-                    join params p on ews.starts_at >= p.period_start
-                    group by ews.starts_month
-                ) monthly
-            ) totals
-        ), '[]'::json),
+        'per_month', stats_label_count_series((
+            select jsonb_agg(to_jsonb(counts))
+            from domain_monthly_counts counts
+            where domain = 'events'
+        )),
+        'running_total', stats_running_total_series((
+            select jsonb_agg(to_jsonb(counts))
+            from domain_running_total_counts counts
+            where domain = 'events'
+        )),
         'total', (select count(*)::int from events)
     ),
     'attendees', json_build_object(
-        'per_month', coalesce((
-            select json_agg(json_build_array(month_label, month_count) order by month_label)
-            from (
-                select
-                    to_char(a.created_month, 'YYYY-MM') as month_label,
-                    count(*)::int as month_count
-                from attendees a
-                join params p on a.created_at >= p.period_start
-                group by to_char(a.created_month, 'YYYY-MM')
-            ) monthly
-        ), '[]'::json),
-        'running_total', coalesce((
-            select json_agg(json_build_array(ts, cumulative_total) order by ts)
-            from (
-                select
-                    floor(extract(epoch from month) * 1000)::bigint as ts,
-                    sum(month_count) over (order by month) ::int as cumulative_total
-                from (
-                    select
-                        a.created_month as month,
-                        count(*)::int as month_count
-                    from attendees a
-                    join params p on a.created_at >= p.period_start
-                    group by a.created_month
-                ) monthly
-            ) totals
-        ), '[]'::json),
+        'per_month', stats_label_count_series((
+            select jsonb_agg(to_jsonb(counts))
+            from domain_monthly_counts counts
+            where domain = 'attendees'
+        )),
+        'running_total', stats_running_total_series((
+            select jsonb_agg(to_jsonb(counts))
+            from domain_running_total_counts counts
+            where domain = 'attendees'
+        )),
         'total', (select count(*)::int from attendees)
     )
 ));

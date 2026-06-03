@@ -10,9 +10,12 @@ use crate::{
         PgDB,
         auth::DBAuth,
         common::DBCommon,
-        dashboard::{group::DBDashboardGroup, user::DBDashboardUser},
+        dashboard::{
+            community::DBDashboardCommunity, group::DBDashboardGroup, user::DBDashboardUser,
+        },
         event::DBEvent,
         meetings::DBMeetings,
+        site::DBSite,
     },
     services::meetings::MeetingProvider,
     templates::dashboard::{
@@ -213,6 +216,38 @@ async fn db_contracts_get_group_stats_deserializes() -> Result<()> {
     assert_eq!(stats.page_views.events.total_views, 2);
     assert_eq!(stats.page_views.group.total_views, 3);
     assert_eq!(stats.page_views.total_views, 5);
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_get_community_stats_deserializes() -> Result<()> {
+    let db = contract_tests_db()?;
+    let stats = db.get_community_stats(community_id()).await?;
+
+    assert_eq!(stats.attendees.total, 1);
+    assert_eq!(stats.events.total, 2);
+    assert_eq!(stats.groups.total, 1);
+    assert_eq!(stats.members.total, 1);
+    assert_eq!(stats.page_views.community.total_views, 0);
+    assert_eq!(stats.page_views.events.total_views, 2);
+    assert_eq!(stats.page_views.groups.total_views, 3);
+    assert_eq!(stats.page_views.total_views, 5);
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_get_site_stats_deserializes() -> Result<()> {
+    let db = contract_tests_db()?;
+    let stats = db.get_site_stats().await?;
+
+    assert_eq!(stats.attendees.total, 1);
+    assert_eq!(stats.events.total, 2);
+    assert_eq!(stats.groups.total, 1);
+    assert_eq!(stats.members.total, 1);
 
     Ok(())
 }
