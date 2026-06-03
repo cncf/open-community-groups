@@ -1,5 +1,5 @@
 # Build server
-FROM rust:1.95.0-alpine3.23 AS builder
+FROM rust:1.96.0-alpine3.23 AS builder
 ARG OCG_COMMIT_SHA
 ENV OCG_COMMIT_SHA=$OCG_COMMIT_SHA
 RUN apk --no-cache add musl-dev perl make
