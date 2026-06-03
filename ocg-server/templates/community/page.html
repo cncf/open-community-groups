@@ -129,6 +129,29 @@
         </div>
         {# End about this community -#}
 
+        {% if let Some(ad_banner_url) = &community.ad_banner_url -%}
+          <div class="mx-auto hidden max-w-4xl rounded-lg border border-stone-200 bg-white p-4 md:block">
+            {% if let Some(ad_banner_link_url) = &community.ad_banner_link_url -%}
+              <a href="{{ ad_banner_link_url }}"
+                 target="_blank"
+                 rel="noopener noreferrer"
+                 class="block overflow-hidden rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500">
+                <img class="w-full object-cover"
+                     height="auto"
+                     width="auto"
+                     src="{{ ad_banner_url }}"
+                     alt="{{ community.display_name }} advertisement" />
+              </a>
+            {% else -%}
+              <img class="w-full rounded-md object-cover"
+                   height="auto"
+                   width="auto"
+                   src="{{ ad_banner_url }}"
+                   alt="{{ community.display_name }} advertisement" />
+            {% endif -%}
+          </div>
+        {% endif -%}
+
         {# Events in-person -#}
         {% if upcoming_in_person_events.len() > 0 -%}
           {% let in_person_link = "/explore?entity=events&community[0]=".to_owned() + &community.name -%}
