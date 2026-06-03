@@ -113,14 +113,14 @@ describe("event preview", () => {
   });
 
   it("builds a preview payload from current form state and display context", () => {
-    // Prepare page root to check it builds a preview payload from current form state.
+    // Prepare page root for building a preview payload from current form state.
     const pageRoot = mountPreviewPage();
 
-    // Prepare payload to check it builds a preview payload from current form state.
+    // Prepare payload for building a preview payload from current form state.
     const payload = buildEventPreviewPayload(pageRoot);
     const context = JSON.parse(payload.get("preview_context"));
 
-    // Confirm it builds a preview payload from current form state and display context.
+    // Verify builds a preview payload from current form state and display context.
     expect(payload.get("name")).to.equal("Draft Event");
     expect(payload.get("capacity")).to.equal(null);
     expect(payload.get("meetup_url")).to.equal(null);
@@ -148,7 +148,7 @@ describe("event preview", () => {
   });
 
   it("posts the preview payload and opens the returned modal", async () => {
-    // Prepare page root to check it posts the preview payload and opens the returned.
+    // Prepare page root for posting the preview payload and opens the returned.
     const pageRoot = mountPreviewPage();
     const fetchMock = mockFetch({
       impl: async () =>
@@ -169,13 +169,13 @@ describe("event preview", () => {
         ),
     });
 
-    // Exercise the flow to check it posts the preview payload and opens the returned.
+    // Assert the page root.
     try {
       expect(pageRoot.querySelector("#event-preview-modal-root")).to.equal(
         null,
       );
 
-      // Exercise the flow to check it posts the preview payload and opens the returned.
+      // Initialize event preview behavior.
       initializeEventPreview({
         pageRoot,
       });
@@ -183,7 +183,7 @@ describe("event preview", () => {
       await waitForMicrotask();
       await waitForMicrotask();
 
-      // Confirm it posts the preview payload and opens the returned modal.
+      // Posting the preview payload opens the returned modal.
       expect(fetchMock.calls).to.have.length(1);
       expect(fetchMock.calls[0][0]).to.equal("/dashboard/group/events/preview");
       expect(fetchMock.calls[0][1].method).to.equal("POST");
@@ -202,10 +202,10 @@ describe("event preview", () => {
       expect(socialContainers[1].classList.contains("hidden")).to.equal(false);
       expect(document.body.dataset.modalOpenCount).to.equal("1");
 
-      // Trigger the user interaction to check it posts the preview payload and opens.
+      // The preview modal receives the returned markup.
       document.querySelector("[data-event-preview-close]").click();
 
-      // Confirm it posts the preview payload and opens the returned modal.
+      // The returned modal is marked as open.
       expect(document.querySelector("#event-preview-modal")).to.equal(null);
       expect(document.body.dataset.modalOpenCount).to.equal("0");
     } finally {
@@ -214,11 +214,11 @@ describe("event preview", () => {
   });
 
   it("shows the test badge in the preview modal when test event is enabled", () => {
-    // Prepare page root to check it shows the test badge in the preview modal when test.
+    // Prepare page root for showing the test badge in the preview modal when test.
     const pageRoot = mountPreviewPage({ testEvent: true });
     const modalRoot = document.getElementById("event-preview-modal-root");
 
-    // Exercise the flow to check it shows the test badge in the preview modal when test.
+    // Verify shows the test badge in the preview modal when test.
     openEventPreviewModal(
       modalRoot,
       `<div id="event-preview-modal">
@@ -232,14 +232,14 @@ describe("event preview", () => {
       pageRoot,
     );
 
-    // Read the DOM to check it shows the test badge in the preview modal when test event.
+    // Read the preview modal after rendering a test event.
     const testBadge = modalRoot.querySelector(
       "[data-event-preview-test-badge]",
     );
     expect(testBadge.classList.contains("hidden")).to.equal(false);
     expect(testBadge.textContent.trim()).to.equal("Test");
 
-    // Trigger the user interaction to check it shows the test badge in the preview modal.
+    // Verify shows the test badge in the preview modal.
     modalRoot.querySelector("[data-event-preview-close]").click();
   });
 });

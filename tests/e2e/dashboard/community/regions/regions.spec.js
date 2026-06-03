@@ -9,23 +9,28 @@ test.describe("community dashboard regions view", () => {
     // Create a unique region name for the temporary region flow.
     const regionName = `E2E Region ${Date.now()}`;
 
+    // Load the regions dashboard.
     await navigateToPath(
       adminCommunityPage,
       "/dashboard/community?tab=regions",
     );
 
+    // Open the add form and submit the temporary region.
     const dashboardContent = adminCommunityPage.locator("#dashboard-content");
     await expect(
       dashboardContent.getByText("Regions", { exact: true }),
     ).toBeVisible();
 
+    // Click Add Region.
     await dashboardContent.getByRole("button", { name: "Add Region" }).click();
     await expect(
       dashboardContent.getByText("Region Details", { exact: true }),
     ).toBeVisible();
 
+    // Fill Name.
     await adminCommunityPage.getByLabel("Name").fill(regionName);
 
+    // Click Add Region.
     await Promise.all([
       adminCommunityPage.waitForResponse(
         (response) =>
@@ -36,9 +41,11 @@ test.describe("community dashboard regions view", () => {
       adminCommunityPage.getByRole("button", { name: "Add Region" }).click(),
     ]);
 
+    // Verify the temporary region appears before deleting it.
     const regionRow = dashboardContent.locator("tr", { hasText: regionName });
     await expect(regionRow).toBeVisible();
 
+    // Delete the region from its row action.
     await regionRow
       .getByRole("button", { name: `Delete region: ${regionName}` })
       .click();
@@ -46,6 +53,7 @@ test.describe("community dashboard regions view", () => {
       "Are you sure you would like to delete this region?",
     );
 
+    // Confirm deletion and verify the region is removed.
     await Promise.all([
       adminCommunityPage.waitForResponse(
         (response) =>
@@ -56,6 +64,7 @@ test.describe("community dashboard regions view", () => {
       adminCommunityPage.getByRole("button", { name: "Yes" }).click(),
     ]);
 
+    // Assert how many matching elements are shown.
     await expect(
       dashboardContent.locator("tr", { hasText: regionName }),
     ).toHaveCount(0);
@@ -68,6 +77,7 @@ test.describe("community dashboard regions view", () => {
     const taxonomyCase = taxonomyCases[0];
     await navigateToPath(adminCommunityPage, taxonomyCase.path);
 
+    // Verify used entries cannot be deleted while unused entries can.
     const dashboardContent = adminCommunityPage.locator("#dashboard-content");
     await expect(
       dashboardContent.getByText(taxonomyCase.heading, { exact: true }),
@@ -90,6 +100,7 @@ test.describe("community dashboard regions view", () => {
     const taxonomyCase = taxonomyCases[0];
     await navigateToPath(communityViewerPage, taxonomyCase.path);
 
+    // Verify all mutation controls are disabled for the viewer.
     const dashboardContent = communityViewerPage.locator("#dashboard-content");
     await expect(
       dashboardContent.getByText(taxonomyCase.heading, { exact: true }),

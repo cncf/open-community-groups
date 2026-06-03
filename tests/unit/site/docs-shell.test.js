@@ -37,7 +37,7 @@ describe("site docs shell", () => {
       .forEach((node) => node.remove());
   };
 
-  // Prepare import docs shell to check it covers the current behavior.
+  // Prepare the module under test.
   const importDocsShell = () =>
     import(`/static/js/site/docs-shell.js?test=${Date.now()}-${Math.random()}`);
 
@@ -48,7 +48,7 @@ describe("site docs shell", () => {
         return;
       }
 
-      // Exercise the flow to check it covers the current behavior.
+      // Run the behavior under test.
       queueMicrotask(() => {
         node.dataset.loaded = "1";
         node.dispatchEvent(new Event("load"));
@@ -69,7 +69,7 @@ describe("site docs shell", () => {
       },
     };
 
-    // Exercise the flow to check it covers the current behavior.
+    // Run the behavior under test.
     originalAppendChild = document.head.appendChild.bind(document.head);
     originalAppend = document.head.append.bind(document.head);
     originalInsertBefore = document.head.insertBefore.bind(document.head);
@@ -107,19 +107,19 @@ describe("site docs shell", () => {
     // Load the page module after setup.
     await importDocsShell();
 
-    // Confirm it loads safely when the docs root is not present.
+    // Verify loads safely when the docs root is not present.
     expect(document.querySelector(".ocg-docs-root")).to.equal(null);
   });
 
   it("renders a fallback error when docs assets fail to load", async () => {
-    // Build the DOM fixture to check it renders a fallback error when docs assets fail.
+    // Render the DOM fixture for rendering a fallback error when docs assets fail.
     document.body.innerHTML = `
       <div class="ocg-docs-root">
         <div id="ocg-docs-app"></div>
       </div>
     `;
 
-    // Configure browser state to check it renders a fallback error when docs assets fail.
+    // Configure browser state before loading failed docs assets.
     fetchMock.setImpl(async () => ({
       ok: false,
       status: 500,
@@ -133,7 +133,7 @@ describe("site docs shell", () => {
     await waitForMicrotask();
     await waitForAnimationFrames(2);
 
-    // Confirm it renders a fallback error when docs assets fail to load.
+    // Verify renders a fallback error when docs assets fail to load.
     expect(
       document.querySelector("#ocg-docs-app [role='alert']")?.textContent,
     ).to.equal(
@@ -142,7 +142,7 @@ describe("site docs shell", () => {
   });
 
   it("rewrites app links, mirrors body classes, and enhances markdown tables after mount", async () => {
-    // Build the DOM fixture to check it rewrites app links, mirrors body classes.
+    // Render the DOM fixture for rewriting app links, mirrors body classes.
     document.body.innerHTML = `
       <div class="ocg-docs-root">
         <div id="ocg-docs-app">
@@ -168,7 +168,7 @@ describe("site docs shell", () => {
     `;
     document.body.classList.add("close");
 
-    // Configure browser state to check it rewrites app links, mirrors body classes.
+    // Configure browser state before rewriting docs content.
     fetchMock.setImpl(async () => ({
       ok: true,
       async text() {
@@ -181,12 +181,12 @@ describe("site docs shell", () => {
     await waitForMicrotask();
     await waitForAnimationFrames(3);
 
-    // Read the ocg docs root element to check it rewrites app links, mirrors body.
+    // Read the docs root after app links and body classes are synced.
     const docsRoot = document.querySelector(".ocg-docs-root");
     const docsLink = document.getElementById("docs-link");
     const tableCell = document.querySelector("tbody td");
 
-    // Confirm it rewrites app links, mirrors body classes, and enhances markdown tables.
+    // App links, body classes, and markdown tables are updated.
     expect(window.$docsify?.basePath).to.equal("/static/docs/");
     expect(docsRoot?.classList.contains("close")).to.equal(true);
     expect(docsLink?.getAttribute("href")).to.equal("/dashboard/groups");
@@ -195,23 +195,23 @@ describe("site docs shell", () => {
     expect(tableCell?.getAttribute("data-label")).to.equal("City");
     expect(processCalls).to.have.length(1);
 
-    // Update fixture state to check it rewrites app links, mirrors body classes.
+    // Update fixture state before asserting the new state.
     document.body.classList.remove("close");
     await waitForMicrotask();
 
-    // Confirm it rewrites app links, mirrors body classes, and enhances markdown tables.
+    // Updated docs content keeps links, body classes, and tables in sync.
     expect(docsRoot?.classList.contains("close")).to.equal(false);
   });
 
   it("removes injected docs styles and scripts during head cleanup", async () => {
-    // Build the DOM fixture to check it removes injected docs styles and scripts during.
+    // Build the docs shell fixture before loading injected assets.
     document.body.innerHTML = `
       <div class="ocg-docs-root">
         <div id="ocg-docs-app"></div>
       </div>
     `;
 
-    // Configure browser state to check it removes injected docs styles and scripts.
+    // Return stylesheet content for the injected docs asset request.
     fetchMock.setImpl(async () => ({
       ok: true,
       async text() {
@@ -224,18 +224,18 @@ describe("site docs shell", () => {
     await waitForMicrotask();
     await waitForAnimationFrames(3);
 
-    // Confirm it removes injected docs styles and scripts during head cleanup.
+    // Confirm the docs assets were injected into the document head.
     expect(document.head.querySelectorAll(docsHeadSelector).length).to.equal(5);
 
-    // Exercise the flow to check it removes injected docs styles and scripts during head.
+    // Run the docs head cleanup helper.
     cleanupDocsHead();
 
-    // Confirm it removes injected docs styles and scripts during head cleanup.
+    // Confirm the injected docs assets were removed.
     expect(document.head.querySelectorAll(docsHeadSelector).length).to.equal(0);
   });
 
   it("updates the docs hash, scrolls to the section, and syncs the active sidebar item", async () => {
-    // Exercise the flow to check it updates the docs hash, scrolls to the section.
+    // Verify updates the docs hash, scrolls to the section.
     setLocationPath("/docs");
     window.location.hash = "#/guide";
     document.body.innerHTML = `
@@ -260,7 +260,7 @@ describe("site docs shell", () => {
       </div>
     `;
 
-    // Read the section a element to check it updates the docs hash, scrolls.
+    // Keep a reference to the section a element.
     document.getElementById("section-a").getBoundingClientRect = () => ({
       top: 120,
       bottom: 160,
@@ -273,7 +273,7 @@ describe("site docs shell", () => {
       toJSON() {},
     });
 
-    // Configure browser state to check it updates the docs hash, scrolls to the section.
+    // Configure browser state before testing docs hash navigation.
     fetchMock.setImpl(async () => ({
       ok: true,
       async text() {
@@ -286,7 +286,7 @@ describe("site docs shell", () => {
     await waitForMicrotask();
     await waitForAnimationFrames(3);
 
-    // Dispatch the event event to check it updates the docs hash, scrolls to the section.
+    // Click the section link inside the docs shell.
     document.getElementById("section-link")?.dispatchEvent(
       new MouseEvent("click", {
         bubbles: true,
@@ -296,7 +296,7 @@ describe("site docs shell", () => {
     );
     await waitForAnimationFrames(3);
 
-    // Confirm it updates the docs hash, scrolls to the section, and syncs the active.
+    // Verify updates the docs hash, scrolls to the section, and syncs the active.
     expect(window.location.hash).to.equal("#/guide?id=section-a");
     expect(scrollToMock.calls.at(-1)).to.deep.equal({
       behavior: "auto",
@@ -311,7 +311,7 @@ describe("site docs shell", () => {
   });
 
   it("cleans up and remounts docs lifecycle on swap and page events", async () => {
-    // Build the DOM fixture to check it cleans up and remounts docs lifecycle on swap.
+    // Render the DOM fixture for cleaning up and remounts docs lifecycle on swap.
     document.body.innerHTML = `
       <div class="ocg-docs-root">
         <div id="ocg-docs-app">
@@ -322,7 +322,7 @@ describe("site docs shell", () => {
       </div>
     `;
 
-    // Configure browser state to check it cleans up and remounts docs lifecycle on swap.
+    // Configure browser state before testing docs lifecycle remounting.
     fetchMock.setImpl(async () => ({
       ok: true,
       async text() {
@@ -335,15 +335,15 @@ describe("site docs shell", () => {
     await waitForMicrotask();
     await waitForAnimationFrames(3);
 
-    // Confirm it cleans up and remounts docs lifecycle on swap and page events.
+    // Verify cleans up and remounts docs lifecycle on swap and page events.
     expect(document.head.querySelectorAll(docsHeadSelector).length).to.equal(5);
 
-    // Build the DOM fixture to check it cleans up and remounts docs lifecycle on swap.
+    // Render the DOM fixture for cleaning up and remounts docs lifecycle on swap.
     document.body.innerHTML = "";
     dispatchHtmxAfterSwap();
     await waitForMicrotask();
 
-    // Build the DOM fixture to check it cleans up and remounts docs lifecycle on swap.
+    // Mount the docs shell again after the body swap.
     document.body.innerHTML = `
       <div class="ocg-docs-root">
         <div id="ocg-docs-app">
@@ -357,7 +357,7 @@ describe("site docs shell", () => {
     await waitForMicrotask();
     await waitForAnimationFrames(3);
 
-    // Confirm it cleans up and remounts docs lifecycle on swap and page events.
+    // Verify cleans up and remounts docs lifecycle on swap and page events.
     expect(document.head.querySelectorAll(docsHeadSelector).length).to.equal(5);
     expect(window.$docsify?.basePath).to.equal("/static/docs/");
     expect(

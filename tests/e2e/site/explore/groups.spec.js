@@ -16,6 +16,7 @@ test.describe("site explore groups page", () => {
       `/explore?entity=groups&community[0]=${TEST_COMMUNITY_NAME}`,
     );
 
+    // Find the Search groups control.
     const searchInput = page.getByPlaceholder("Search groups");
 
     // Verify groups render before applying search.

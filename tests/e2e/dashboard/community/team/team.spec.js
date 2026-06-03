@@ -11,7 +11,10 @@ test.describe("community dashboard team view", () => {
     // Load the community team tab before checking seeded roles.
     await navigateToPath(adminCommunityPage, "/dashboard/community?tab=team");
 
+    // Find the dashboard content.
     const dashboardContent = adminCommunityPage.locator("#dashboard-content");
+
+    // Verify community team page shows seeded roles and final-admin protection.
     await expect(
       dashboardContent.getByText("Community Team", { exact: true }),
     ).toBeVisible();
@@ -19,6 +22,7 @@ test.describe("community dashboard team view", () => {
       dashboardContent.getByRole("button", { name: "Add member" }),
     ).toBeEnabled();
 
+    // Find the admin row.
     const adminRow = dashboardContent.locator("tr", {
       hasText: "E2E Admin One",
     });
@@ -28,11 +32,13 @@ test.describe("community dashboard team view", () => {
       "At least one accepted admin is required.",
     );
 
+    // Find the groups manager row.
     const groupsManagerRow = dashboardContent.locator("tr", {
       hasText: "E2E Groups Manager One",
     });
     await expect(groupsManagerRow.locator('select[name="role"]')).toBeEnabled();
 
+    // Find the viewer row.
     const viewerRow = dashboardContent.locator("tr", {
       hasText: "E2E Community Viewer One",
     });
@@ -40,6 +46,7 @@ test.describe("community dashboard team view", () => {
       "viewer",
     );
 
+    // Find the pending row.
     const pendingRow = dashboardContent.locator("tr", {
       hasText: "E2E Pending One",
     });
@@ -55,16 +62,22 @@ test.describe("community dashboard team view", () => {
     // Load the community team tab before inviting a temporary member.
     await navigateToPath(adminCommunityPage, "/dashboard/community?tab=team");
 
+    // Find the dashboard content.
     const dashboardContent = adminCommunityPage.locator("#dashboard-content");
+
+    // Verify admin can invite and remove a pending community team member.
     await expect(
       dashboardContent.getByText("Community Team", { exact: true }),
     ).toBeVisible();
 
+    // Click Add member.
     await dashboardContent.getByRole("button", { name: "Add member" }).click();
 
+    // Find the add member form.
     const addMemberForm = adminCommunityPage.locator("#team-add-form");
     await expect(addMemberForm).toBeVisible();
 
+    // Find the search input.
     const searchInput = addMemberForm.locator("#search-input");
     await Promise.all([
       adminCommunityPage.waitForResponse(
@@ -78,9 +91,11 @@ test.describe("community dashboard team view", () => {
       searchInput.fill("e2e-pending-2"),
     ]);
 
+    // Click E2E Pending Two.
     await addMemberForm.getByText("E2E Pending Two", { exact: true }).click();
     await addMemberForm.locator("#team-add-role").selectOption("viewer");
 
+    // Submit and wait for the server response.
     await Promise.all([
       adminCommunityPage.waitForResponse(
         (response) =>
@@ -91,6 +106,7 @@ test.describe("community dashboard team view", () => {
       addMemberForm.locator("#team-add-submit").click(),
     ]);
 
+    // Find the pending row.
     const pendingRow = dashboardContent.locator("tr", {
       hasText: "E2E Pending Two",
     });
@@ -100,6 +116,7 @@ test.describe("community dashboard team view", () => {
       "viewer",
     );
 
+    // Find the remove button.
     const removeButton = pendingRow.locator(
       `#remove-member-${TEST_USER_IDS.pending2}`,
     );
@@ -108,6 +125,7 @@ test.describe("community dashboard team view", () => {
       "Are you sure you would like to delete this team member?",
     );
 
+    // Click Yes.
     await Promise.all([
       adminCommunityPage.waitForResponse(
         (response) =>
@@ -122,6 +140,7 @@ test.describe("community dashboard team view", () => {
       adminCommunityPage.getByRole("button", { name: "Yes" }).click(),
     ]);
 
+    // Assert how many matching elements are shown.
     await expect(
       dashboardContent.locator("tr", { hasText: "E2E Pending Two" }),
     ).toHaveCount(0);
@@ -134,22 +153,27 @@ test.describe("community dashboard team view", () => {
     const seededRole = "groups-manager";
     const teamTabPath = "/dashboard/community?tab=team";
 
+    // Give the member group manager permissions.
     await ensureCommunityGroupsManagerRole(seededRole, adminCommunityPage);
 
+    // Restore the changed permissions after this check.
     try {
       await navigateToPath(adminCommunityPage, teamTabPath);
 
+      // Find the dashboard content.
       const dashboardContent = adminCommunityPage.locator("#dashboard-content");
       const groupsManagerRow = dashboardContent.locator("tr", {
         hasText: "E2E Groups Manager One",
       });
       const currentRoleSelect = groupsManagerRow.locator('select[name="role"]');
 
+      // Verify admin can update and restore a community team member role.
       await expect(
         dashboardContent.getByText("Community Team", { exact: true }),
       ).toBeVisible();
       await expect(currentRoleSelect).toHaveValue(seededRole);
 
+      // Submit and wait for the server response.
       await Promise.all([
         adminCommunityPage.waitForResponse(
           (response) =>
@@ -161,6 +185,7 @@ test.describe("community dashboard team view", () => {
         currentRoleSelect.selectOption("viewer"),
       ]);
 
+      // Assert the field value was updated.
       await expect(currentRoleSelect).toHaveValue("viewer");
     } finally {
       await ensureCommunityGroupsManagerRole(seededRole, adminCommunityPage);

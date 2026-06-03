@@ -40,11 +40,15 @@ test.describe("community dashboard analytics view", () => {
       "/dashboard/community?tab=analytics",
     );
 
+    // Find the dashboard content.
     const dashboardContent = adminCommunityPage.locator("#dashboard-content");
+
+    // Verify admin can switch between analytics tabs and view each section.
     await expect(
       dashboardContent.getByText("Analytics", { exact: true }),
     ).toBeVisible();
 
+    // Assert each expected case.
     for (const analyticsTab of ANALYTICS_TABS) {
       const tabButton = dashboardContent
         .locator(`button[data-analytics-tab="${analyticsTab.key}"]`)
@@ -53,9 +57,11 @@ test.describe("community dashboard analytics view", () => {
         `[data-analytics-content="${analyticsTab.key}"]`,
       );
 
+      // Assert the expected content is visible.
       await expect(tabButton).toBeVisible();
       await tabButton.click();
 
+      // Assert the rendered attribute value.
       await expect(tabButton).toHaveAttribute("data-active", "true");
       await expect(tabContent).toBeVisible();
       await expect(

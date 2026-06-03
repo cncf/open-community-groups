@@ -39,6 +39,7 @@ describe("advertisement banner", () => {
     const key = getAdBannerStorageKey("https://example.com/banner.png", "https://example.com/event");
     localStorage.setItem(key, "true");
 
+    // Assert that the flag is enabled.
     expect(isAdBannerClosed("https://example.com/banner.png", "https://example.com/event")).to.equal(true);
     expect(isAdBannerClosed("https://example.com/banner-new.png", "https://example.com/event")).to.equal(
       false,
@@ -52,10 +53,14 @@ describe("advertisement banner", () => {
     document.body.append(banner);
 
     initializeFloatingAdBanners(document);
+
+    // Verify animates in after the banner image loads.
     expect(banner.classList.contains("translate-y-0")).to.equal(false);
 
+    // Dispatch the form event.
     image.dispatchEvent(new Event("load"));
 
+    // Assert that the flag is enabled.
     expect(banner.classList.contains("translate-y-0")).to.equal(true);
     expect(banner.classList.contains("translate-y-[150%]")).to.equal(false);
     expect(banner.hasAttribute("hidden")).to.equal(false);
@@ -71,6 +76,7 @@ describe("advertisement banner", () => {
     initializeFloatingAdBanners(document);
     closeButton.click();
 
+    // Assert that the flag is enabled.
     expect(banner.hasAttribute("hidden")).to.equal(true);
     expect(localStorage.getItem(getAdBannerStorageKey(imageUrl, linkUrl))).to.equal("true");
   });
@@ -88,6 +94,7 @@ describe("advertisement banner", () => {
     initializeFloatingAdBanners(banner);
     image.dispatchEvent(new Event("load"));
 
+    // Assert that the flag is disabled.
     expect(banner.hasAttribute("hidden")).to.equal(false);
     expect(banner.classList.contains("translate-y-0")).to.equal(true);
   });

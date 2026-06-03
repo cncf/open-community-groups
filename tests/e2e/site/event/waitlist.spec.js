@@ -74,7 +74,7 @@ test.describe("event waitlist", () => {
       member2Page.getByRole("button", { name: "Yes" }).click(),
     ]);
 
-    // Verify the waitlist join action is available again.
+    // Assert the expected text is rendered.
     await expect(getAttendButton(member2Page)).toContainText(
       "Join waiting list",
     );
@@ -187,7 +187,7 @@ test.describe("event waitlist", () => {
       WAITLIST_EVENT_SLUG,
     );
 
-    // Verify the organizer can attend again.
+    // Run wait for attendance state.
     await waitForAttendanceState(organizerGroupPage);
     await expect(getAttendButton(organizerGroupPage)).toContainText(
       "Attend event",

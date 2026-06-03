@@ -27,12 +27,16 @@ test.describe("user dashboard invitations view", () => {
       "events-manager",
     );
 
+    // Open the user dashboard page.
     await openUserDashboardPath(
       "/dashboard/user?tab=invitations",
       pending1Page,
     );
 
+    // Find the dashboard content.
     const dashboardContent = pending1Page.locator("#dashboard-content");
+
+    // Verify invitations page shows pending community and group roles.
     await expect(
       dashboardContent.getByText("Community Invitations", { exact: true }),
     ).toBeVisible();
@@ -40,6 +44,7 @@ test.describe("user dashboard invitations view", () => {
       dashboardContent.getByText("Group Invitations", { exact: true }),
     ).toBeVisible();
 
+    // Find the community row.
     const communityRow = dashboardContent.locator("tr", {
       hasText: "e2e-test-community",
     });
@@ -47,6 +52,7 @@ test.describe("user dashboard invitations view", () => {
     await expect(communityRow.getByTitle("Approve")).toBeVisible();
     await expect(communityRow.getByTitle("Reject")).toBeVisible();
 
+    // Find the group row.
     const groupRow = dashboardContent.locator("tr", {
       hasText: "Inactive Local Chapter",
     });
@@ -72,19 +78,24 @@ test.describe("user dashboard invitations view", () => {
       "events-manager",
     );
 
+    // Open the user dashboard page.
     await openUserDashboardPath(
       "/dashboard/user?tab=invitations",
       pending1Page,
     );
 
+    // Find the dashboard content.
     const dashboardContent = pending1Page.locator("#dashboard-content");
     const communityInvitationRow = dashboardContent.locator("tr", {
       hasText: "e2e-test-community",
     });
     const approveCommunityInvitationButton =
       communityInvitationRow.getByTitle("Approve");
+
+    // Verify accepting pending invitations removes them from the user dashboard.
     await expect(approveCommunityInvitationButton).toBeVisible();
 
+    // Click the approve community invitation button.
     try {
       await Promise.all([
         pending1Page.waitForResponse(
@@ -97,8 +108,10 @@ test.describe("user dashboard invitations view", () => {
         approveCommunityInvitationButton.click(),
       ]);
 
+      // Reload the invited user dashboard.
       await pending1Page.reload();
 
+      // Find the group invitation row.
       const groupInvitationRow = dashboardContent.locator("tr", {
         hasText: "Inactive Local Chapter",
       });
@@ -106,6 +119,7 @@ test.describe("user dashboard invitations view", () => {
         groupInvitationRow.getByTitle("Approve");
       await expect(approveGroupInvitationButton).toBeVisible();
 
+      // Click the approve group invitation button.
       await Promise.all([
         pending1Page.waitForResponse(
           (response) =>
@@ -117,8 +131,10 @@ test.describe("user dashboard invitations view", () => {
         approveGroupInvitationButton.click(),
       ]);
 
+      // Reload the invited user dashboard.
       await pending1Page.reload();
 
+      // Assert how many matching elements are shown.
       await expect(
         dashboardContent.locator("tr", { hasText: "e2e-test-community" }),
       ).toHaveCount(0);
@@ -138,6 +154,7 @@ test.describe("user dashboard invitations view", () => {
         "events-manager",
       );
 
+      // Open the user dashboard page.
       await openUserDashboardPath(
         "/dashboard/user?tab=invitations",
         pending1Page,
@@ -163,28 +180,34 @@ test.describe("user dashboard invitations view", () => {
       "viewer",
     );
 
+    // Open the user dashboard page.
     await openUserDashboardPath(
       "/dashboard/user?tab=invitations",
       pending2Page,
     );
 
+    // Find the dashboard content.
     const dashboardContent = pending2Page.locator("#dashboard-content");
     const groupInvitationRow = dashboardContent.locator("tr", {
       hasText: "Platform Ops Meetup",
     });
     const rejectGroupInvitationButton = groupInvitationRow.getByTitle("Reject");
 
+    // Restore the page state after the check.
     try {
+      // Verify rejecting a pending group invitation removes it from the user dashboard.
       await expect(
         dashboardContent.getByText("Group Invitations", { exact: true }),
       ).toBeVisible();
       await expect(rejectGroupInvitationButton).toBeVisible();
 
+      // Click the reject group invitation button.
       await rejectGroupInvitationButton.click();
       await expect(pending2Page.locator(".swal2-popup")).toContainText(
         "Are you sure you would like to reject this invitation?",
       );
 
+      // Click Yes.
       await Promise.all([
         pending2Page.waitForResponse(
           (response) =>
@@ -196,8 +219,10 @@ test.describe("user dashboard invitations view", () => {
         pending2Page.getByRole("button", { name: "Yes" }).click(),
       ]);
 
+      // Reload the invited user dashboard.
       await pending2Page.reload();
 
+      // Assert how many matching elements are shown.
       await expect(
         dashboardContent.locator("tr", { hasText: "Platform Ops Meetup" }),
       ).toHaveCount(0);

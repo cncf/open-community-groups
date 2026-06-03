@@ -12,23 +12,30 @@ test.describe("group dashboard members view", () => {
     // Load the members tab before opening the email modal.
     await navigateToPath(organizerGroupPage, "/dashboard/group?tab=members");
 
+    // Find the dashboard content.
     const dashboardContent = organizerGroupPage.locator("#dashboard-content");
+
+    // Verify organizer can send a notification to group members.
     await expect(
       dashboardContent.getByText("Members", { exact: true }),
     ).toBeVisible();
 
+    // Find the Send email control.
     const openModalButton = organizerGroupPage.getByRole("button", {
       name: "Send email",
     });
     await expect(openModalButton).toBeEnabled();
     await openModalButton.click();
 
+    // Find the notification modal.
     const notificationModal = organizerGroupPage.locator("#notification-modal");
     await expect(notificationModal).toBeVisible();
 
+    // Fill Subject.
     await notificationModal.getByLabel("Subject").fill(NOTIFICATION_SUBJECT);
     await notificationModal.getByLabel("Body").fill(NOTIFICATION_BODY);
 
+    // Click Send email.
     await Promise.all([
       organizerGroupPage.waitForResponse(
         (response) =>
@@ -42,6 +49,7 @@ test.describe("group dashboard members view", () => {
         .click(),
     ]);
 
+    // Assert that the content is hidden.
     await expect(notificationModal).toBeHidden();
     await expect(organizerGroupPage.locator(".swal2-popup")).toContainText(
       "Email sent successfully to all group members.",
@@ -54,7 +62,10 @@ test.describe("group dashboard members view", () => {
     // Load the members tab as a read-only viewer.
     await navigateToPath(groupViewerPage, "/dashboard/group?tab=members");
 
+    // Find the dashboard content.
     const dashboardContent = groupViewerPage.locator("#dashboard-content");
+
+    // Verify viewer sees read-only controls in the members view.
     await expect(
       dashboardContent.getByText("Members", { exact: true }),
     ).toBeVisible();

@@ -15,7 +15,7 @@ describe("dashboard group members", () => {
   });
 
   it("initializes the members notification modal with the members success copy", async () => {
-    // Build the DOM fixture to check it initializes the members notification modal.
+    // Render the DOM fixture for initializing the members notification modal.
     document.body.innerHTML = `
       <button id="open-notification-modal" type="button">Open</button>
       <div id="notification-modal" class="hidden"></div>
@@ -27,15 +27,15 @@ describe("dashboard group members", () => {
       </form>
     `;
 
-    // Dispatch the HTMX load event to check it initializes the members notification.
+    // Dispatch the HTMX load event for the current body.
     dispatchHtmxLoad();
 
-    // Dispatch the HTMX after request event to check it initializes the members.
+    // Dispatch the HTMX after-request event.
     dispatchHtmxAfterRequest(document.getElementById("notification-form"), {
       status: 204,
     });
 
-    // Confirm it initializes the members notification modal with the members success.
+    // Verify initializes the members notification modal with the members success.
     expect(env.current.swal.calls[0]).to.include({
       text: "Email sent successfully to all group members.",
       icon: "success",
@@ -43,7 +43,7 @@ describe("dashboard group members", () => {
   });
 
   it("opens the notification modal after the dashboard body is swapped", () => {
-    // Prepare replacement body to check it opens the notification modal.
+    // Prepare replacement body for opening the notification modal.
     const replacementBody = document.createElement("body");
     replacementBody.innerHTML = `
       <button id="open-notification-modal" type="button">Open</button>
@@ -54,14 +54,14 @@ describe("dashboard group members", () => {
       <form id="notification-form"></form>
     `;
 
-    // Exercise the flow to check it opens the notification modal after the dashboard.
+    // Verify opens the notification modal after the dashboard.
     document.documentElement.replaceChild(replacementBody, document.body);
 
-    // Dispatch the HTMX load event to check it opens the notification modal.
+    // Dispatch HTMX load after swapping the dashboard body.
     dispatchHtmxLoad();
     document.getElementById("open-notification-modal")?.click();
 
-    // Confirm it opens the notification modal after the dashboard body is swapped.
+    // Verify opens the notification modal after the dashboard body is swapped.
     expect(
       document
         .getElementById("notification-modal")

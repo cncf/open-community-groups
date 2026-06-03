@@ -24,13 +24,13 @@ describe("alerts", () => {
   });
 
   it("renders success, error, info, and server error alerts", () => {
-    // Trigger each alert helper covered by this scenario.
+    // Assert each alert helper covered by this scenario.
     showSuccessAlert("Saved");
     showErrorAlert("Failed");
     showInfoAlert("Heads up");
     showServerErrorAlert("Validation failed", "Missing field");
 
-    // Check each helper passes the expected SweetAlert options.
+    // Assert each helper passes the expected SweetAlert options.
     expect(env.current.swal.calls).to.have.length(4);
     expect(env.current.swal.calls[0]).to.include({
       text: "Saved",
@@ -55,7 +55,7 @@ describe("alerts", () => {
     // Show a persistent HTML error alert.
     showErrorAlert("<strong>Broken</strong>", true, true);
 
-    // Check the HTML error stays persistent without a timer.
+    // Assert the HTML error stays persistent without a timer.
     expect(env.current.swal.calls).to.have.length(1);
     expect(env.current.swal.calls[0].html).to.equal("<strong>Broken</strong>");
     expect("timer" in env.current.swal.calls[0]).to.equal(false);
@@ -65,7 +65,7 @@ describe("alerts", () => {
     // Show the deployment refresh retry alert.
     showDeploymentRefreshRetryAlert();
 
-    // Check the retry alert stays modal and persistent.
+    // Assert the retry alert stays modal and persistent.
     expect(env.current.swal.calls).to.have.length(1);
     expect(env.current.swal.calls[0]).to.include({
       showConfirmButton: false,
@@ -81,7 +81,7 @@ describe("alerts", () => {
   });
 
   it("handles successful, forbidden, validation, and missing xhr responses", () => {
-    // Check a successful response shows the success alert.
+    // Successful responses show the success alert.
     expect(
       handleHtmxResponse({
         xhr: { status: 204 },
@@ -90,7 +90,7 @@ describe("alerts", () => {
       }),
     ).to.equal(true);
 
-    // Check forbidden responses use the permission alert copy.
+    // Forbidden responses use the permission alert copy.
     expect(
       handleHtmxResponse({
         xhr: { status: 403, responseText: "Forbidden" },
@@ -99,7 +99,7 @@ describe("alerts", () => {
       }),
     ).to.equal(false);
 
-    // Check validation responses include the server message.
+    // Validation responses include the server message.
     expect(
       handleHtmxResponse({
         xhr: { status: 422, responseText: "Slug already taken" },
@@ -108,7 +108,7 @@ describe("alerts", () => {
       }),
     ).to.equal(false);
 
-    // Check missing xhr responses fall back to the provided error message.
+    // Missing xhr responses fall back to the provided error message.
     expect(
       handleHtmxResponse({
         xhr: null,
@@ -117,7 +117,7 @@ describe("alerts", () => {
       }),
     ).to.equal(false);
 
-    // Check each response triggers the expected alert and scroll behavior.
+    // Assert each response triggers the expected alert and scroll behavior.
     expect(env.current.swal.calls).to.have.length(4);
     expect(env.current.swal.calls[0]).to.include({
       text: "Updated",
@@ -157,7 +157,7 @@ describe("alerts", () => {
       withHtml: true,
     });
 
-    // Check both confirmation results and their SweetAlert options.
+    // Assert both confirmation results and their SweetAlert options.
     expect(declined).to.equal(false);
     expect(confirmed).to.equal(true);
     expect(env.current.swal.calls[0]).to.include({
@@ -177,7 +177,7 @@ describe("alerts", () => {
     // Collect the shared options.
     const options = getCommonAlertOptions();
 
-    // Check all alert buttons use the shared stylesheet classes.
+    // Assert all alert buttons use the shared stylesheet classes.
     expect(options.customClass.popup).to.equal("ocg-swal-popup");
     expect(options.customClass.actions).to.equal("ocg-swal-actions");
     expect(options.customClass.confirmButton).to.equal(
@@ -202,7 +202,7 @@ describe("alerts", () => {
       denyText: "All in series",
     });
 
-    // Check the recurring choice keeps the shared alert layout.
+    // Assert the recurring choice keeps the shared alert layout.
     expect(result).to.equal("series");
     expect(env.current.swal.calls[0].customClass.popup).to.equal(
       "ocg-swal-popup",
@@ -220,7 +220,7 @@ describe("alerts", () => {
     showConfirmAlert("Proceed?", "save-button", "Yes");
     await waitForMicrotask();
 
-    // Check accepted confirmation triggers the HTMX confirmed event.
+    // Accepted confirmation triggers the HTMX confirmed event.
     expect(env.current.htmx.triggerCalls).to.deep.equal([
       ["#save-button", "confirmed"],
     ]);
@@ -233,7 +233,7 @@ describe("alerts", () => {
     showConfirmAlert("Proceed?", "save-button", "Yes");
     await waitForMicrotask();
 
-    // Check declined confirmation does not trigger HTMX.
+    // Declined confirmation does not trigger HTMX.
     expect(env.current.htmx.triggerCalls).to.deep.equal([]);
   });
 });

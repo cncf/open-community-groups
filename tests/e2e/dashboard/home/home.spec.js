@@ -16,6 +16,7 @@ test.describe("dashboard home", () => {
       // Open the protected dashboard route as a guest.
       await navigateToPath(page, route);
 
+      // Verify requires login for route.
       await expect(page).toHaveURL(/\/log-in/);
       await expect(page.getByRole("heading", { name: "Log In" })).toBeVisible();
     });
@@ -31,6 +32,7 @@ test.describe("dashboard home", () => {
         "/dashboard/community?tab=groups",
       );
 
+      // Verify community dashboard shows the mobile unsupported state.
       await expect(
         adminCommunityPage.getByText(MOBILE_WARNING, { exact: true }),
       ).toBeVisible();
@@ -45,6 +47,7 @@ test.describe("dashboard home", () => {
       // Load the group dashboard on a mobile viewport.
       await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
 
+      // Verify group dashboard shows the mobile unsupported state.
       await expect(
         organizerGroupPage.getByText(MOBILE_WARNING, { exact: true }),
       ).toBeVisible();
@@ -59,6 +62,7 @@ test.describe("dashboard home", () => {
       // Load the user dashboard on a mobile viewport.
       await navigateToPath(member1Page, "/dashboard/user?tab=events");
 
+      // Verify user dashboard shows the mobile unsupported state.
       await expect(
         member1Page.getByText(MOBILE_WARNING, { exact: true }),
       ).toBeVisible();

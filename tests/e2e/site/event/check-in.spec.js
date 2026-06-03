@@ -142,6 +142,7 @@ test.describe("public event check-in page", () => {
     // Resolve existing attendance before recording check-in.
     await waitForAttendanceState(member2Page);
 
+    // Leave any existing attendance before continuing.
     if (await getLeaveButton(member2Page).isVisible()) {
       await leaveEvent(member2Page);
     }

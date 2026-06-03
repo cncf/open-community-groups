@@ -15,6 +15,7 @@ describe("dashboard group attendees list template", () => {
     // Load the attendees list template before checking cancel attendance markup.
     const template = normalizeWhitespace(await loadTemplate());
 
+    // Verify eligible attendees get a confirmed cancel action.
     expect(template).to.include('attendee.status == "confirmed"');
     expect(template).to.include('id="cancel-attendance-{{ attendee.user_id }}"');
     expect(template).to.include(
@@ -34,6 +35,7 @@ describe("dashboard group attendees list template", () => {
     // Load the attendees list template before checking disabled states.
     const template = normalizeWhitespace(await loadTemplate());
 
+    // Verify keeps cancel attendance disabled for unsupported attendee states.
     expect(template).to.include("!self::is_paid_attendee(attendee.amount_minor)");
     expect(template).to.include("!event.canceled");
     expect(template).to.include("!event.is_past()");
@@ -46,6 +48,7 @@ describe("dashboard group attendees list template", () => {
     // Load the attendees list template before checking invitation actions.
     const template = normalizeWhitespace(await loadTemplate());
 
+    // Verify renders cancel invitation for manual question-pending invitations.
     expect(template).to.include(
       'attendee.status == "registration-questions-pending") && attendee.name.is_none()',
     );
@@ -62,6 +65,7 @@ describe("dashboard group attendees list template", () => {
     // Load the attendees list template before checking answers markup.
     const template = normalizeWhitespace(await loadTemplate());
 
+    // Verify renders registration answers in the review modal layout.
     expect(template).to.include('aria-describedby="attendee-answers-subtitle"');
     expect(template).to.include('id="attendee-answers-subtitle"');
     expect(template).to.include('<ol class="space-y-3">');

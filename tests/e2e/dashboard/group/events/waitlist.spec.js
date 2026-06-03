@@ -15,11 +15,15 @@ test.describe("group dashboard waitlist tab", () => {
     // Load the group events dashboard before opening the seeded event.
     await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
 
+    // Find the event row.
     const eventRow = organizerGroupPage.locator("tr", {
       hasText: "Upcoming In-Person Event",
     });
+
+    // Verify organizer can open the waitlist tab for an event with waitlist disabled.
     await expect(eventRow).toBeVisible();
 
+    // Submit and wait for the server response.
     await Promise.all([
       organizerGroupPage.waitForResponse(
         (response) =>
@@ -36,6 +40,7 @@ test.describe("group dashboard waitlist tab", () => {
         .click(),
     ]);
 
+    // Submit and wait for the server response.
     await Promise.all([
       organizerGroupPage.waitForResponse(
         (response) =>
@@ -50,6 +55,7 @@ test.describe("group dashboard waitlist tab", () => {
       organizerGroupPage.locator('button[data-section="waitlist"]').click(),
     ]);
 
+    // Find the waitlist content.
     const waitlistContent = organizerGroupPage.locator("#waitlist-content");
     await expect(
       waitlistContent
@@ -68,11 +74,13 @@ test.describe("group dashboard waitlist tab", () => {
     const openAlphaEventEditor = async () => {
       await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
 
+      // Find the event row.
       const eventRow = organizerGroupPage.locator("tr", {
         hasText: "Upcoming In-Person Event",
       });
       await expect(eventRow).toBeVisible();
 
+      // Submit and wait for the server response.
       await Promise.all([
         organizerGroupPage.waitForResponse(
           (response) =>
@@ -98,6 +106,7 @@ test.describe("group dashboard waitlist tab", () => {
         .locator('button[data-section="details"]')
         .click();
 
+      // Find the waitlist toggle.
       const waitlistToggle = organizerGroupPage.locator(
         "#toggle_waitlist_enabled",
       );
@@ -105,13 +114,16 @@ test.describe("group dashboard waitlist tab", () => {
         "#waitlist-toggle-label",
       );
 
+      // Assert the expected content is visible.
       await expect(waitlistToggleLabel).toBeVisible();
       await expect(waitlistToggle).toBeEnabled();
 
+      // Click the waitlist toggle label.
       if ((await waitlistToggle.isChecked()) !== (nextValue === "true")) {
         await waitlistToggleLabel.click();
       }
 
+      // Assert the saved waitlist toggle state.
       await expect(waitlistToggle).toBeChecked({
         checked: nextValue === "true",
       });
@@ -119,6 +131,7 @@ test.describe("group dashboard waitlist tab", () => {
         nextValue,
       );
 
+      // Submit and wait for the server response.
       await Promise.all([
         organizerGroupPage.waitForResponse(
           (response) =>
@@ -134,18 +147,22 @@ test.describe("group dashboard waitlist tab", () => {
       ]);
     };
 
+    // Reopen the Alpha event editor.
     await openAlphaEventEditor();
     await expect(organizerGroupPage.locator("#waitlist_enabled")).toHaveValue(
       "false",
     );
 
+    // Enable the waitlist setting.
     await submitWaitlistValue("true");
 
+    // Reopen the Alpha event editor.
     await openAlphaEventEditor();
     await expect(organizerGroupPage.locator("#waitlist_enabled")).toHaveValue(
       "true",
     );
 
+    // Submit and wait for the server response.
     await Promise.all([
       organizerGroupPage.waitForResponse(
         (response) =>
@@ -160,6 +177,7 @@ test.describe("group dashboard waitlist tab", () => {
       organizerGroupPage.locator('button[data-section="waitlist"]').click(),
     ]);
 
+    // Find the waitlist content.
     const waitlistContent = organizerGroupPage.locator("#waitlist-content");
     await expect(
       waitlistContent
@@ -169,8 +187,10 @@ test.describe("group dashboard waitlist tab", () => {
         }),
     ).toBeVisible();
 
+    // Disable the waitlist setting.
     await submitWaitlistValue("false");
 
+    // Reopen the Alpha event editor.
     await openAlphaEventEditor();
     await expect(organizerGroupPage.locator("#waitlist_enabled")).toHaveValue(
       "false",
@@ -189,6 +209,7 @@ test.describe("group dashboard waitlist tab", () => {
       "alpha-waitlist-lab",
     );
 
+    // Find the attend button.
     const attendButton = member2Page.locator(
       '[data-attendance-role="attend-btn"]',
     );
@@ -196,8 +217,10 @@ test.describe("group dashboard waitlist tab", () => {
       '[data-attendance-role="leave-btn"]',
     );
 
+    // Verify organizer can see a public waitlist entry on the waitlist tab.
     await expect(attendButton).toContainText("Join waiting list");
 
+    // Click the attend button.
     await Promise.all([
       member2Page.waitForResponse(
         (response) =>
@@ -210,15 +233,19 @@ test.describe("group dashboard waitlist tab", () => {
       attendButton.click(),
     ]);
 
+    // Assert the expected text is rendered.
     await expect(leaveButton).toContainText("Leave waiting list");
 
+    // Return to the group events dashboard.
     await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
 
+    // Find the event row.
     const eventRow = organizerGroupPage.locator("tr", {
       hasText: "Full Event With Waitlist",
     });
     await expect(eventRow).toBeVisible();
 
+    // Submit and wait for the server response.
     await Promise.all([
       organizerGroupPage.waitForResponse(
         (response) =>
@@ -235,6 +262,7 @@ test.describe("group dashboard waitlist tab", () => {
         .click(),
     ]);
 
+    // Submit and wait for the server response.
     await Promise.all([
       organizerGroupPage.waitForResponse(
         (response) =>
@@ -249,11 +277,13 @@ test.describe("group dashboard waitlist tab", () => {
       organizerGroupPage.locator('button[data-section="waitlist"]').click(),
     ]);
 
+    // Find the waitlist content.
     const waitlistContent = organizerGroupPage.locator("#waitlist-content");
     const waitlistRow = waitlistContent.locator("tr", {
       hasText: "E2E Member Two",
     });
 
+    // Assert that Waitlist entries is visible.
     await expect(
       waitlistContent.getByRole("table", { name: "Waitlist entries" }),
     ).toBeVisible();
@@ -261,6 +291,7 @@ test.describe("group dashboard waitlist tab", () => {
     await expect(waitlistRow).toContainText("e2e-member-2");
     await expect(waitlistRow).toContainText("1");
 
+    // Open the public event page.
     await navigateToEvent(
       member2Page,
       TEST_COMMUNITY_NAME,
@@ -268,11 +299,13 @@ test.describe("group dashboard waitlist tab", () => {
       "alpha-waitlist-lab",
     );
 
+    // Click the leave button.
     await leaveButton.click();
     await expect(
       member2Page.getByRole("button", { name: "Yes" }),
     ).toBeVisible();
 
+    // Click Yes.
     await Promise.all([
       member2Page.waitForResponse(
         (response) =>
@@ -285,6 +318,7 @@ test.describe("group dashboard waitlist tab", () => {
       member2Page.getByRole("button", { name: "Yes" }).click(),
     ]);
 
+    // Assert the expected text is rendered.
     await expect(attendButton).toContainText("Join waiting list");
   });
 });

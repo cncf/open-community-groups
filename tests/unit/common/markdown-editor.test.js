@@ -67,7 +67,7 @@ describe("markdown-editor", () => {
       onChange: (value) => values.push(value),
     });
 
-    // Trigger the EasyMDE change handler.
+    // Assert the EasyMDE change handler.
     latestEditor._changeHandler();
 
     // The markdown editor forwards the updated EasyMDE value.

@@ -23,7 +23,7 @@ describe("confirm actions", () => {
   });
 
   it("opens a confirmation dialog for confirm-action buttons", async () => {
-    // Build the DOM fixture to check it opens a confirmation dialog for confirm-action.
+    // Render the DOM fixture for opening a confirmation dialog for confirm-action.
     document.body.innerHTML = `
       <button
         id="delete-button"
@@ -35,11 +35,11 @@ describe("confirm actions", () => {
       </button>
     `;
 
-    // Trigger the user interaction to check it opens a confirmation dialog.
+    // Verify opens a confirmation dialog.
     document.getElementById("delete-button")?.click();
     await waitForMicrotask();
 
-    // Confirm it opens a confirmation dialog for confirm-action buttons.
+    // Verify opens a confirmation dialog for confirm-action buttons.
     expect(swal.calls).to.have.length(1);
     expect(swal.calls[0].text).to.equal("Delete this event?");
     expect(swal.calls[0].confirmButtonText).to.equal("Delete");
@@ -47,24 +47,24 @@ describe("confirm actions", () => {
   });
 
   it("ignores disabled confirm-action buttons", async () => {
-    // Build the DOM fixture to check it ignores disabled confirm-action buttons.
+    // Render the DOM fixture for ignoring disabled confirm-action buttons.
     document.body.innerHTML = `
       <button id="delete-button" data-confirm-action="true" disabled>
         Delete
       </button>
     `;
 
-    // Trigger the user interaction to check it ignores disabled confirm-action buttons.
+    // Click delete button.
     document.getElementById("delete-button")?.click();
     await waitForMicrotask();
 
-    // Confirm it ignores disabled confirm-action buttons.
+    // Assert the captured calls.
     expect(swal.calls).to.have.length(0);
     expect(htmx.triggerCalls).to.have.length(0);
   });
 
   it("handles successful htmx requests for confirm-action buttons", () => {
-    // Build the DOM fixture to check it handles successful HTMX requests.
+    // Render the DOM fixture for handling successful HTMX requests.
     document.body.innerHTML = `
       <button
         id="publish-button"
@@ -76,12 +76,12 @@ describe("confirm actions", () => {
       </button>
     `;
 
-    // Dispatch the HTMX after request event to check it handles successful HTMX requests.
+    // Dispatch the HTMX after-request event.
     dispatchHtmxAfterRequest(document.getElementById("publish-button"), {
       status: 204,
     });
 
-    // Confirm it handles successful HTMX requests for confirm-action buttons.
+    // Successful HTMX responses reset the confirmation state.
     expect(swal.calls).to.have.length(1);
     expect(swal.calls[0]).to.include({
       text: "Published successfully.",
@@ -90,7 +90,7 @@ describe("confirm actions", () => {
   });
 
   it("handles failed htmx requests for confirm-action buttons", () => {
-    // Build the DOM fixture to check it handles failed HTMX requests for confirm-action.
+    // Render the DOM fixture for handling failed HTMX requests for confirm-action.
     document.body.innerHTML = `
       <button
         id="publish-button"
@@ -101,12 +101,12 @@ describe("confirm actions", () => {
       </button>
     `;
 
-    // Dispatch the HTMX after request event to check it handles failed HTMX requests.
+    // Dispatch the HTMX after-request event.
     dispatchHtmxAfterRequest(document.getElementById("publish-button"), {
       status: 500,
     });
 
-    // Confirm it handles failed HTMX requests for confirm-action buttons.
+    // Failed HTMX responses restore the confirmation button state.
     expect(swal.calls).to.have.length(1);
     expect(swal.calls[0]).to.include({
       text: "Publish failed.",

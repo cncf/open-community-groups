@@ -12,7 +12,7 @@ describe("notification modal", () => {
   });
 
   it("updates the form endpoint and toggles the modal from controls", () => {
-    // Build the DOM fixture to check it updates the form endpoint and toggles the modal.
+    // Render the DOM fixture for updating the form endpoint and toggles the modal.
     document.body.innerHTML = `
       <button id="open-modal" type="button">Open</button>
       <div id="notification-modal" class="hidden"></div>
@@ -24,10 +24,10 @@ describe("notification modal", () => {
       </form>
     `;
 
-    // Prepare update calls to check it updates the form endpoint and toggles the modal.
+    // Prepare update calls for updating the form endpoint and toggles the modal.
     const updateCalls = [];
 
-    // Exercise the flow to check it updates the form endpoint and toggles the modal.
+    // Verify updates the form endpoint and toggles the modal.
     createNotificationModal({
       modalId: "notification-modal",
       formId: "notification-form",
@@ -42,32 +42,32 @@ describe("notification modal", () => {
       },
     });
 
-    // Read the notification modal element to check it updates the form endpoint.
+    // Keep a reference to the notification modal element.
     const modal = document.getElementById("notification-modal");
     document.getElementById("open-modal")?.click();
 
-    // Confirm it updates the form endpoint and toggles the modal from controls.
+    // Verify updates the form endpoint and toggles the modal from controls.
     expect(updateCalls).to.have.length(2);
     expect(
       document.getElementById("notification-form")?.getAttribute("action"),
     ).to.equal("/updated");
     expect(modal.classList.contains("hidden")).to.equal(false);
 
-    // Trigger the user interaction to check it updates the form endpoint and toggles.
+    // Close the modal from the close button.
     document.getElementById("close-modal")?.click();
     expect(modal.classList.contains("hidden")).to.equal(true);
 
-    // Trigger the user interaction to check it updates the form endpoint and toggles.
+    // Close the modal from the cancel button.
     document.getElementById("cancel-modal")?.click();
     expect(modal.classList.contains("hidden")).to.equal(false);
 
-    // Trigger the user interaction to check it updates the form endpoint and toggles.
+    // Close the modal from the overlay.
     document.getElementById("modal-overlay")?.click();
     expect(modal.classList.contains("hidden")).to.equal(true);
   });
 
   it("resets the form and closes the modal after a successful htmx request", () => {
-    // Build the DOM fixture to check it resets the form and closes the modal.
+    // Render the DOM fixture for resetting the form and closes the modal.
     document.body.innerHTML = `
       <button id="open-modal" type="button">Open</button>
       <div id="notification-modal"></div>
@@ -76,14 +76,14 @@ describe("notification modal", () => {
       </form>
     `;
 
-    // Read the notification form element to check it resets the form and closes.
+    // Keep a reference to the notification form element.
     const form = document.getElementById("notification-form");
     let resetCalls = 0;
     form.reset = () => {
       resetCalls += 1;
     };
 
-    // Exercise the flow to check it resets the form and closes the modal.
+    // The form reset closes the modal.
     createNotificationModal({
       modalId: "notification-modal",
       formId: "notification-form",
@@ -92,12 +92,12 @@ describe("notification modal", () => {
       successMessage: "Email sent.",
     });
 
-    // Dispatch the HTMX after request event to check it resets the form and closes.
+    // Dispatch the HTMX after-request event.
     dispatchHtmxAfterRequest(form, {
       status: 204,
     });
 
-    // Confirm it resets the form and closes the modal after a successful HTMX request.
+    // A successful HTMX response resets the form and closes the modal.
     expect(resetCalls).to.equal(1);
     expect(
       document
@@ -112,7 +112,7 @@ describe("notification modal", () => {
   });
 
   it("shows an error and keeps the modal open after a failed htmx request", () => {
-    // Build the DOM fixture to check it shows an error and keeps the modal open.
+    // Render the DOM fixture for showing an error and keeps the modal open.
     document.body.innerHTML = `
       <button id="open-modal" type="button">Open</button>
       <div id="notification-modal"></div>
@@ -121,7 +121,7 @@ describe("notification modal", () => {
       </form>
     `;
 
-    // Exercise the flow to check it shows an error and keeps the modal open.
+    // Verify shows an error and keeps the modal open.
     createNotificationModal({
       modalId: "notification-modal",
       formId: "notification-form",
@@ -129,13 +129,13 @@ describe("notification modal", () => {
       openButtonId: "open-modal",
     });
 
-    // Dispatch the HTMX after request event to check it shows an error and keeps.
+    // Dispatch the HTMX after-request event.
     dispatchHtmxAfterRequest(document.getElementById("notification-form"), {
       status: 500,
       responseText: "Server exploded",
     });
 
-    // Confirm it shows an error and keeps the modal open after a failed HTMX request.
+    // Verify shows an error and keeps the modal open after a failed HTMX request.
     expect(
       document
         .getElementById("notification-modal")

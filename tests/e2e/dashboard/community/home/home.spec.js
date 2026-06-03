@@ -9,6 +9,7 @@ test.describe("community dashboard home", () => {
     // Load the community groups tab before checking the dashboard shell.
     await navigateToPath(adminCommunityPage, "/dashboard/community?tab=groups");
 
+    // Verify the dashboard shell and selector are visible.
     await expect(
       adminCommunityPage
         .getByText("Community Dashboard", { exact: true })
@@ -21,6 +22,7 @@ test.describe("community dashboard home", () => {
       adminCommunityPage.locator("#community-selector-button"),
     ).toBeVisible();
 
+    // Verify the primary community navigation links are available.
     await expect(
       adminCommunityPage.locator(
         'a[hx-get="/dashboard/community?tab=settings"]',
@@ -63,18 +65,22 @@ test.describe("community dashboard home", () => {
     // Load the community groups tab before choosing a group dashboard.
     await navigateToPath(adminCommunityPage, "/dashboard/community?tab=groups");
 
+    // Target the seeded group dashboard action.
     const dashboardContent = adminCommunityPage.locator("#dashboard-content");
     const openGroupButton = dashboardContent.getByRole("button", {
       name: "Open group dashboard: Observability Guild",
     });
 
+    // Assert the expected content is visible.
     await expect(openGroupButton).toBeVisible();
 
+    // Open the group dashboard and verify the selected group context.
     await Promise.all([
       adminCommunityPage.waitForURL(/\/dashboard\/group$/),
       openGroupButton.click(),
     ]);
 
+    // Assert that Group Dashboard is visible.
     await expect(
       adminCommunityPage.getByText("Group Dashboard", { exact: true }).last(),
     ).toBeVisible();

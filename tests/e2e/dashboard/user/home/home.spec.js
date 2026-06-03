@@ -9,11 +9,13 @@ test.describe("user dashboard home", () => {
     // Load the user events tab before checking the dashboard shell.
     await navigateToPath(member1Page, "/dashboard/user?tab=events");
 
+    // Verify shows the dashboard shell and primary navigation.
     await expect(
       member1Page.getByText("User Dashboard", { exact: true }).last(),
     ).toBeVisible();
     await expect(member1Page.locator("#dashboard-content")).toBeVisible();
 
+    // Assert the expected text is rendered.
     await expect(
       member1Page.locator('a[hx-get="/dashboard/user?tab=events"]'),
     ).toContainText("My Events");

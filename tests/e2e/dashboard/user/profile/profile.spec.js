@@ -54,6 +54,7 @@ test.describe("user dashboard profile view", () => {
     await logInWithSeededUser(page, TEST_USER_CREDENTIALS.admin2);
     await navigateToPath(page, ACCOUNT_PATH);
 
+    // Find the notification toggle label.
     const notificationToggleLabel = page.locator(
       'label[for="toggle_optional_notifications_enabled"]',
     );
@@ -67,23 +68,28 @@ test.describe("user dashboard profile view", () => {
       "Receive broader announcements such as new event announcements",
     );
 
+    // Verify user sees the notifications toggle in the compact switch layout.
     await expect(notificationToggleLabel).toBeVisible();
     await expect(notificationSwitch).toBeVisible();
     await expect(notificationText).toBeVisible();
     await expect(notificationDescription).toBeVisible();
 
+    // Set up switch box.
     const switchBox = await notificationSwitch.boundingBox();
     const textBox = await notificationText.boundingBox();
     const descriptionBox = await notificationDescription.boundingBox();
 
+    // Assert that the switch was measured.
     expect(switchBox).not.toBeNull();
     expect(textBox).not.toBeNull();
     expect(descriptionBox).not.toBeNull();
 
+    // Fail clearly if profile layout boxes were not measured.
     if (!switchBox || !textBox || !descriptionBox) {
       return;
     }
 
+    // Assert the profile switch layout.
     expect(switchBox.x).toBeLessThan(textBox.x);
     expect(Math.abs(switchBox.y - textBox.y)).toBeLessThanOrEqual(4);
     expect(descriptionBox.y).toBeGreaterThan(switchBox.y + switchBox.height);
@@ -100,10 +106,12 @@ test.describe("user dashboard profile view", () => {
         'timezone-selector[name="timezone"] input[name="timezone"]',
       );
 
+      // Skip the timezone update when it already matches.
       if ((await timezoneInput.inputValue()) === timezone) {
         return;
       }
 
+      // Select the profile timezone.
       await selectTimezone(page, timezone);
     };
 
@@ -111,9 +119,11 @@ test.describe("user dashboard profile view", () => {
     const saveProfileDetails = async (values) => {
       await navigateToPath(page, ACCOUNT_PATH);
 
+      // Find the details form.
       const detailsForm = page.locator("#user-details-form");
       await expect(detailsForm).toBeVisible();
 
+      // Fill name.
       await page.locator("#name").fill(values.name);
       await setTimezoneIfNeeded(values.timezone);
       await page.locator("#company").fill(values.company);
@@ -134,18 +144,22 @@ test.describe("user dashboard profile view", () => {
       await page.locator("#facebook_url").fill(values.facebookUrl);
       await page.locator("#github_url").fill(values.githubUrl);
 
+      // Install the browser-side dialog spy.
       await page.evaluate(() => {
         const testWindow = window;
         const swal = testWindow.Swal;
 
+        // Leave the page dialog helper untouched when it is unavailable.
         if (!swal || typeof swal.fire !== "function") {
           return;
         }
 
+        // Keep the original dialog helper for cleanup.
         if (!swal.__ocgOriginalFire) {
           swal.__ocgOriginalFire = swal.fire.bind(swal);
         }
 
+        // Reset the captured dialog calls.
         testWindow.__ocgSwalCalls = [];
         swal.fire = (...args) => {
           testWindow.__ocgSwalCalls?.push(args[0]);
@@ -153,6 +167,7 @@ test.describe("user dashboard profile view", () => {
         };
       });
 
+      // Click Save.
       await Promise.all([
         page.waitForResponse(
           (response) =>
@@ -163,6 +178,7 @@ test.describe("user dashboard profile view", () => {
         detailsForm.getByRole("button", { name: "Save" }).click(),
       ]);
 
+      // Assert the expected content is visible.
       await expect(
         page
           .locator(".swal2-popup")
@@ -171,11 +187,13 @@ test.describe("user dashboard profile view", () => {
       const successAlertMessages = await page.evaluate(() => {
         const calls = window.__ocgSwalCalls ?? [];
 
+        // Return the values used by the caller.
         return calls
           .filter((call) => call.icon === "success")
           .map((call) => call.text ?? "");
       });
 
+      // Assert the emitted payload.
       expect(successAlertMessages).toEqual([
         "User details updated successfully.",
       ]);
@@ -185,6 +203,7 @@ test.describe("user dashboard profile view", () => {
     const expectProfileDetails = async (values) => {
       await navigateToPath(page, ACCOUNT_PATH);
 
+      // Assert the field value was updated.
       await expect(page.locator("#name")).toHaveValue(values.name);
       await expect(
         page.locator(
@@ -225,12 +244,15 @@ test.describe("user dashboard profile view", () => {
       await expect(page.locator("#github_url")).toHaveValue(values.githubUrl);
     };
 
+    // Log in before continuing the scenario.
     await logInWithSeededUser(page, TEST_USER_CREDENTIALS.admin2);
 
+    // Restore the page state after the check.
     try {
       await saveProfileDetails(UPDATED_DETAILS);
       await expectProfileDetails(UPDATED_DETAILS);
 
+      // Restore the baseline profile details.
       await saveProfileDetails(BASELINE_DETAILS);
       await expectProfileDetails(BASELINE_DETAILS);
     } finally {
@@ -245,15 +267,20 @@ test.describe("user dashboard profile view", () => {
     await logInWithSeededUser(page, TEST_USER_CREDENTIALS.admin2);
     await navigateToPath(page, ACCOUNT_PATH);
 
+    // Find the password form.
     const passwordForm = page.locator("#password-form");
+
+    // Verify user sees an error when the current password is incorrect.
     await expect(passwordForm).toBeVisible();
 
+    // Fill old password.
     await passwordForm.locator("#old_password").fill("WrongPassword123!");
     await passwordForm.locator("#new_password").fill("TemporaryPassword123!");
     await passwordForm
       .locator("#password_confirmation")
       .fill("TemporaryPassword123!");
 
+    // Set up update password response.
     const updatePasswordResponse = page.waitForResponse(
       (response) =>
         response.request().method() === "PUT" &&
@@ -261,8 +288,10 @@ test.describe("user dashboard profile view", () => {
         response.status() === 403,
     );
 
+    // Click Save.
     await passwordForm.getByRole("button", { name: "Save" }).click();
 
+    // Wait for the password update response.
     await updatePasswordResponse;
     await expect(page).toHaveURL(/\/dashboard\/user\?tab=account$/);
     await expect(passwordForm.locator("#old_password")).toHaveValue(

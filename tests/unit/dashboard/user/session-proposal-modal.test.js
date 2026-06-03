@@ -20,7 +20,7 @@ describe("session-proposal-modal", () => {
   useMountedElementsCleanup("session-proposal-modal");
 
   it("opens in edit mode and syncs form endpoints and values", async () => {
-    // Render the fixture to check it opens in edit mode and syncs form endpoints.
+    // Call mount lit component with attributes.
     const element = await mountLitComponentWithAttributes(
       "session-proposal-modal",
       {
@@ -32,7 +32,7 @@ describe("session-proposal-modal", () => {
       },
     );
 
-    // Exercise the flow to check it opens in edit mode and syncs form endpoints.
+    // Verify opens in edit mode and syncs form endpoints.
     element.openEdit({
       session_proposal_id: 7,
       title: "Platform Engineering",
@@ -42,7 +42,7 @@ describe("session-proposal-modal", () => {
     });
     await element.updateComplete;
 
-    // Confirm it opens in edit mode and syncs form endpoints and values.
+    // Verify opens in edit mode and syncs form endpoints and values.
     expect(element._buildUpdateEndpoint()).to.equal(
       "/dashboard/user/session-proposals/7",
     );
@@ -61,48 +61,48 @@ describe("session-proposal-modal", () => {
   });
 
   it("closes after a successful htmx save request", async () => {
-    // Render the fixture to check it closes after a successful HTMX save request.
+    // Call mount lit component.
     const element = await mountLitComponent("session-proposal-modal");
 
-    // Exercise the flow to check it closes after a successful HTMX save request.
+    // Verify closes after a successful HTMX save request.
     element.openCreate();
     await element.updateComplete;
 
-    // Dispatch the HTMX after request event to check it closes after a successful HTMX.
+    // Dispatch the HTMX after-request event.
     dispatchHtmxAfterRequest(element.querySelector("#session-proposal-form"), {
       status: 204,
     });
 
-    // Confirm it closes after a successful HTMX save request.
+    // Verify closes after a successful HTMX save request.
     expect(element._isOpen).to.equal(false);
   });
 
   it("keeps the modal open after a failed htmx save request", async () => {
-    // Render the fixture to check it keeps the modal open after a failed HTMX save.
+    // Call mount lit component.
     const element = await mountLitComponent("session-proposal-modal");
 
-    // Exercise the flow to check it keeps the modal open after a failed HTMX save.
+    // Verify keeps the modal open after a failed HTMX save.
     element.openCreate();
     await element.updateComplete;
 
-    // Dispatch the HTMX after request event to check it keeps the modal open.
+    // Dispatch the HTMX after-request event.
     dispatchHtmxAfterRequest(element.querySelector("#session-proposal-form"), {
       status: 500,
     });
 
-    // Confirm it keeps the modal open after a failed HTMX save request.
+    // Verify keeps the modal open after a failed HTMX save request.
     expect(element._isOpen).to.equal(true);
   });
 
   it("toggles the editor to readonly and closes on escape", async () => {
-    // Render the fixture to check it toggles the editor to readonly and closes on escape.
+    // Call mount lit component.
     const element = await mountLitComponent("session-proposal-modal");
 
-    // Exercise the flow to check it toggles the editor to readonly and closes on escape.
+    // Verify toggles the editor to readonly and closes on escape.
     element.openCreate();
     await element.updateComplete;
 
-    // Read the DOM to check it toggles the editor to readonly and closes on escape.
+    // Read the modal controls after switching to readonly mode.
     const editor = element.querySelector(
       "markdown-editor#session-proposal-description",
     );
@@ -118,11 +118,11 @@ describe("session-proposal-modal", () => {
     };
     editor.append(toolbar, codeMirrorElement);
 
-    // Run component methods to check it toggles the editor to readonly and closes.
+    // Call set description read only.
     element._setDescriptionReadOnly(true);
     await waitForMicrotask();
 
-    // Confirm it toggles the editor to readonly and closes on escape.
+    // Verify toggles the editor to readonly and closes on escape.
     expect(editor.disabled).to.equal(true);
     expect(toolbar.classList.contains("pointer-events-none")).to.equal(true);
     expect(codeMirrorElement.classList.contains("bg-stone-100")).to.equal(true);
@@ -130,20 +130,20 @@ describe("session-proposal-modal", () => {
       { option: "readOnly", value: "nocursor" },
     ]);
 
-    // Dispatch the event event to check it toggles the editor to readonly and closes.
+    // Dispatch the keydown event.
     document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
 
-    // Confirm it toggles the editor to readonly and closes on escape.
+    // Verify toggles the editor to readonly and closes on escape.
     expect(element._isOpen).to.equal(false);
   });
 
   it("locks co-speaker changes once a submitted proposal is being edited", async () => {
-    // Render the fixture to check it locks co-speaker changes once a submitted proposal.
+    // Call mount lit component.
     const element = await mountLitComponent("session-proposal-modal", {
       currentUserId: "speaker-1",
     });
 
-    // Exercise the flow to check it locks co-speaker changes once a submitted proposal.
+    // Submitted proposals lock co-speaker changes.
     element.openEdit({
       session_proposal_id: 12,
       title: "Systems thinking",
@@ -152,22 +152,22 @@ describe("session-proposal-modal", () => {
     });
     await element.updateComplete;
 
-    // Read the DOM to check it locks co-speaker changes once a submitted proposal.
+    // Read the rendered DOM state for locks co-speaker changes once a submitted proposal.
     const coSpeakerSearch = element.querySelector(
       "#session-proposal-co-speaker-search",
     );
 
-    // Confirm it locks co-speaker changes once a submitted proposal is being edited.
+    // Submitted proposals keep co-speaker controls locked while editing.
     expect(coSpeakerSearch.disabled).to.equal(true);
     expect(coSpeakerSearch.excludeUsernames).to.deep.equal(["grace"]);
 
-    // Run component methods to check it locks co-speaker changes once a submitted.
+    // Call the co-speaker selection handler.
     element._handleCoSpeakerSelected({
       detail: { user: { user_id: "speaker-3", username: "hedy" } },
     });
     element._clearCoSpeaker();
 
-    // Confirm it locks co-speaker changes once a submitted proposal is being edited.
+    // Locked co-speaker state survives attempted changes.
     expect(element._selectedCoSpeaker).to.deep.equal({
       user_id: "speaker-2",
       username: "grace",
@@ -175,28 +175,28 @@ describe("session-proposal-modal", () => {
   });
 
   it("removes the document keydown listener when disconnected", async () => {
-    // Prepare original remove event listener to check it removes the document keydown.
+    // Prepare original remove event listener for removes the document keydown.
     const originalRemoveEventListener =
       document.removeEventListener.bind(document);
     const removedListeners = [];
 
-    // Exercise the flow to check it removes the document keydown listener.
+    // Verify removes the document keydown listener.
     document.removeEventListener = (type, listener, options) => {
       removedListeners.push({ type, listener, options });
       return originalRemoveEventListener(type, listener, options);
     };
 
-    // Exercise the flow to check it removes the document keydown listener.
+    // Track listener cleanup while the component disconnects.
     try {
       const element = await mountLitComponent("session-proposal-modal");
       const keydownListener = element._onKeydown;
 
-      // Exercise the flow to check it removes the document keydown listener.
+      // Assert the behavior after the update.
       element.openCreate();
       await element.updateComplete;
       element.remove();
 
-      // Confirm it removes the document keydown listener when disconnected.
+      // Verify removes the document keydown listener when disconnected.
       expect(
         removedListeners.some(
           ({ type, listener }) =>

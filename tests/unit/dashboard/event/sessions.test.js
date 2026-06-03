@@ -31,13 +31,13 @@ describe("sessions-section", () => {
     globalThis.htmx = originalHtmx;
   });
 
-  // Render the fixture to check it covers the current behavior.
+  // Render the component fixture.
   const renderSessionsSection = async (properties = {}) => {
     return mountLitComponent("sessions-section", properties);
   };
 
   it("parses and initializes session payloads from server attributes", async () => {
-    // Render the fixture to check it parses and initializes session payloads from server.
+    // Render the sessions section fixture.
     const element = await renderSessionsSection({
       timezone: "America/New_York",
       sessions: JSON.stringify({
@@ -64,7 +64,7 @@ describe("sessions-section", () => {
       meetingMaxParticipants: JSON.stringify({ zoom: 100 }),
     });
 
-    // Confirm it parses and initializes session payloads from server attributes.
+    // Server attributes are parsed into initialized session payloads.
     expect(element.sessions).to.have.length(2);
     expect(element.sessions[0]).to.include({
       id: 0,
@@ -89,7 +89,7 @@ describe("sessions-section", () => {
   });
 
   it("falls back safely when server attributes contain invalid payloads", async () => {
-    // Render the fixture to check it falls back safely when server attributes contain.
+    // Render the sessions section fixture.
     const element = await renderSessionsSection({
       sessions: "{invalid",
       sessionKinds: "{invalid",
@@ -97,7 +97,7 @@ describe("sessions-section", () => {
       meetingMaxParticipants: "[invalid",
     });
 
-    // Confirm it falls back safely when server attributes contain invalid payloads.
+    // Verify falls back safely when server attributes contain invalid payloads.
     expect(element.sessions).to.deep.equal([]);
     expect(element.sessionKinds).to.deep.equal([]);
     expect(element.approvedSubmissions).to.deep.equal([]);
@@ -105,13 +105,13 @@ describe("sessions-section", () => {
   });
 
   it("computes event days, groups sessions, and isolates out-of-range entries", async () => {
-    // Render the fixture to check it computes event days, groups sessions, and isolates.
+    // Render the sessions section fixture.
     const element = await renderSessionsSection({
       eventStartsAt: "2025-01-31T09:00",
       eventEndsAt: "2025-02-02T17:00",
     });
 
-    // Exercise the flow to check it computes event days, groups sessions, and isolates.
+    // Event days are computed while out-of-range sessions stay isolated.
     element.sessions = [
       {
         id: 4,
@@ -139,12 +139,12 @@ describe("sessions-section", () => {
       },
     ];
 
-    // Prepare days to check it computes event days, groups sessions, and isolates.
+    // Prepare days for computes event days, groups sessions, and isolates.
     const days = element._computeEventDays();
     const grouped = element._groupSessionsByDay();
     const outOfRange = element._getOutOfRangeSessions(days);
 
-    // Confirm it computes event days, groups sessions, and isolates out-of-range entries.
+    // Event days are grouped while out-of-range sessions stay isolated.
     expect(days).to.deep.equal(["2025-01-31", "2025-02-01", "2025-02-02"]);
     expect(
       grouped.get("2025-01-31").map((session) => session.name),
@@ -159,7 +159,7 @@ describe("sessions-section", () => {
   });
 
   it("renders hidden inputs for automatic meetings and speaker payloads", async () => {
-    // Render the fixture to check it renders hidden inputs for automatic meetings.
+    // Render the sessions section fixture.
     const element = await renderSessionsSection({
       sessions: [
         {
@@ -201,10 +201,10 @@ describe("sessions-section", () => {
       ],
     });
 
-    // Wait for render before checking it renders hidden inputs for automatic meetings.
+    // Wait for the component to finish rendering.
     await element.updateComplete;
 
-    // Confirm it renders hidden inputs for automatic meetings and speaker payloads.
+    // Verify renders hidden inputs for automatic meetings and speaker payloads.
     expect(
       element.querySelector('input[name="sessions[0][description]"]')?.value,
     ).to.equal("");
@@ -234,7 +234,7 @@ describe("sessions-section", () => {
       element.querySelector('input[name="sessions[0][speakers][0][user_id]"]'),
     ).to.equal(null);
 
-    // Confirm it renders hidden inputs for automatic meetings and speaker payloads.
+    // Verify renders hidden inputs for automatic meetings and speaker payloads.
     expect(
       element.querySelector('input[name="sessions[1][description]"]')?.value,
     ).to.equal("Keep this description");
@@ -263,7 +263,7 @@ describe("sessions-section", () => {
   });
 
   it("renders multiple raw provider recording URLs as read-only fields", async () => {
-    // Render the fixture to check it renders multiple raw provider recording URLs.
+    // Call mount lit component.
     const element = await mountLitComponent("session-item", {
       data: {
         id: 1,
@@ -283,12 +283,12 @@ describe("sessions-section", () => {
       sessionKinds: [{ session_kind_id: "virtual", display_name: "Virtual" }],
     });
 
-    // Prepare raw recording inputs to check it renders multiple raw provider recording.
+    // Prepare raw recording inputs for rendering multiple raw provider recording.
     const rawRecordingInputs = [
       ...element.querySelectorAll('input[readonly][type="url"]'),
     ];
 
-    // Confirm it renders multiple raw provider recording URLs as read-only fields.
+    // Verify renders multiple raw provider recording URLs as read-only fields.
     expect(rawRecordingInputs.map((input) => input.value)).to.deep.equal([
       "https://zoom.us/rec/share/session-main",
       "https://zoom.us/rec/share/session-late",
@@ -299,14 +299,14 @@ describe("sessions-section", () => {
   });
 
   it("adds new sessions with the next numeric id and updates existing ones in place", async () => {
-    // Render the fixture to check it adds new sessions with the next numeric id.
+    // Render the sessions section fixture.
     const element = await renderSessionsSection();
     element.sessions = [
       { id: 2, name: "Opening", starts_at: "2025-05-10T09:00" },
       { id: 7, name: "Panel", starts_at: "2025-05-10T10:00" },
     ];
 
-    // Run component methods to check it adds new sessions with the next numeric id.
+    // Call handle session saved.
     element._handleSessionSaved({
       detail: {
         isNew: true,
@@ -314,7 +314,7 @@ describe("sessions-section", () => {
       },
     });
 
-    // Confirm it adds new sessions with the next numeric id and updates existing ones.
+    // Verify adds new sessions with the next numeric id and updates existing ones.
     expect(element.sessions.map((session) => session.id)).to.deep.equal([
       2, 7, 8,
     ]);
@@ -324,7 +324,7 @@ describe("sessions-section", () => {
       starts_at: "2025-05-10T11:00",
     });
 
-    // Run component methods to check it adds new sessions with the next numeric id.
+    // Call handle session saved.
     element._handleSessionSaved({
       detail: {
         isNew: false,
@@ -336,7 +336,7 @@ describe("sessions-section", () => {
       },
     });
 
-    // Confirm it adds new sessions with the next numeric id and updates existing ones.
+    // Verify adds new sessions with the next numeric id and updates existing ones.
     expect(element.sessions).to.deep.equal([
       { id: 2, name: "Opening", starts_at: "2025-05-10T09:00" },
       { id: 7, name: "Updated panel", starts_at: "2025-05-10T10:30" },
@@ -345,11 +345,11 @@ describe("sessions-section", () => {
   });
 
   it("starts session ids at zero when adding the first saved session", async () => {
-    // Render the fixture to check it starts session ids at zero when adding the first.
+    // Render the sessions section fixture.
     const element = await renderSessionsSection();
     element.sessions = [];
 
-    // Run component methods to check it starts session ids at zero when adding the first.
+    // Call handle session saved.
     element._handleSessionSaved({
       detail: {
         isNew: true,
@@ -357,21 +357,21 @@ describe("sessions-section", () => {
       },
     });
 
-    // Confirm it starts session ids at zero when adding the first saved session.
+    // The first saved session starts id generation at zero.
     expect(element.sessions).to.deep.equal([
       { id: 0, name: "First session", starts_at: "2025-05-10T09:00" },
     ]);
   });
 
   it("registers htmx cleanup that removes empty session buckets", async () => {
-    // Render the fixture to check it registers HTMX cleanup that removes empty session.
+    // Render the sessions section fixture.
     await renderSessionsSection();
 
-    // Confirm it registers HTMX cleanup that removes empty session buckets.
+    // HTMX cleanup removes empty session buckets.
     expect(htmxOnCalls).to.have.length(1);
     expect(htmxOnCalls[0].eventName).to.equal("htmx:configRequest");
 
-    // Prepare params to check it registers HTMX cleanup that removes empty session.
+    // Prepare params for registers HTMX cleanup that removes empty session.
     const params = {
       "sessions[0][name]": "",
       "sessions[0][meeting_requested]": "false",
@@ -380,14 +380,14 @@ describe("sessions-section", () => {
       "sessions[1][meeting_requested]": "false",
     };
 
-    // Exercise the flow to check it registers HTMX cleanup that removes empty session.
+    // Empty session buckets are removed after cleanup.
     htmxOnCalls[0].handler({
       detail: {
         parameters: params,
       },
     });
 
-    // Confirm it registers HTMX cleanup that removes empty session buckets.
+    // Non-empty session buckets remain after cleanup.
     expect(params).to.deep.equal({
       "sessions[1][name]": "Closing keynote",
       "sessions[1][meeting_requested]": "false",
@@ -395,10 +395,10 @@ describe("sessions-section", () => {
   });
 
   it("keeps session buckets that still contain non-empty array values during htmx cleanup", async () => {
-    // Render the fixture to check it keeps session buckets that still contain non-empty.
+    // Render the sessions section fixture.
     await renderSessionsSection();
 
-    // Prepare params to check it keeps session buckets that still contain non-empty.
+    // Prepare params for keeping session buckets that still contain non-empty.
     const params = {
       "sessions[0][name]": "",
       "sessions[0][meeting_requested]": "false",
@@ -407,14 +407,14 @@ describe("sessions-section", () => {
       "sessions[1][meeting_requested]": "false",
     };
 
-    // Exercise the flow to check it keeps session buckets that still contain non-empty.
+    // Fire the HTMX config hook with mixed empty and non-empty session fields.
     htmxOnCalls[0].handler({
       detail: {
         parameters: params,
       },
     });
 
-    // Confirm it keeps session buckets that still contain non-empty array values during.
+    // Assert that only the non-empty session bucket survives cleanup.
     expect(params).to.deep.equal({
       "sessions[0][name]": "",
       "sessions[0][meeting_requested]": "false",

@@ -99,6 +99,7 @@ describe("header", () => {
     const dropdown = document.getElementById("user-dropdown");
     let focused = false;
 
+    // Stub focus so the test can observe it.
     button.focus = () => {
       focused = true;
     };

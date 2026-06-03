@@ -22,7 +22,7 @@ describe("dashboard user submissions", () => {
   };
 
   it("opens and closes the action required modal with the selected message", () => {
-    // Build the DOM fixture to check it opens and closes the action required modal.
+    // Render the DOM fixture for opening and closes the action required modal.
     document.body.innerHTML = `
       <div id="action-required-modal" class="hidden"></div>
       <div id="action-required-modal-message"></div>
@@ -38,35 +38,35 @@ describe("dashboard user submissions", () => {
       </button>
     `;
 
-    // Exercise the flow to check it opens and closes the action required modal.
+    // Call initialize submissions ui.
     initializeSubmissionsUi();
 
-    // Read the action required modal element to check it opens and closes the action.
+    // Keep a reference to the action required modal element.
     const modal = document.getElementById("action-required-modal");
     const message = document.getElementById("action-required-modal-message");
 
-    // Exercise the flow to check it opens and closes the action required modal.
+    // Click the next control.
     document
       .querySelector('[data-action="open-action-required-modal"]')
       ?.click();
 
-    // Confirm it opens and closes the action required modal with the selected message.
+    // Verify opens and closes the action required modal with the selected message.
     expect(message.textContent).to.equal(
       "Please update the abstract before resubmitting.",
     );
     expect(modal.classList.contains("hidden")).to.equal(false);
     expect(document.body.style.overflow).to.equal("hidden");
 
-    // Trigger the user interaction to check it opens and closes the action required.
+    // Verify opens and closes the action required.
     document.getElementById("close-action-required-modal")?.click();
 
-    // Confirm it opens and closes the action required modal with the selected message.
+    // Verify opens and closes the action required modal with the selected message.
     expect(modal.classList.contains("hidden")).to.equal(true);
     expect(document.body.style.overflow).to.equal("");
   });
 
   it("opens the action required modal after the dashboard body is swapped", () => {
-    // Prepare replacement body to check it opens the action required modal.
+    // Prepare replacement body for opening the action required modal.
     const replacementBody = document.createElement("body");
     replacementBody.innerHTML = `
       <div id="action-required-modal" class="hidden"></div>
@@ -84,13 +84,13 @@ describe("dashboard user submissions", () => {
     `;
     document.documentElement.replaceChild(replacementBody, document.body);
 
-    // Exercise the flow to check it opens the action required modal after the dashboard.
+    // Verify opens the action required modal after the dashboard.
     initializeSubmissionsUi();
     document
       .querySelector('[data-action="open-action-required-modal"]')
       ?.click();
 
-    // Confirm it opens the action required modal after the dashboard body is swapped.
+    // Verify opens the action required modal after the dashboard body is swapped.
     expect(
       document.getElementById("action-required-modal-message")?.textContent,
     ).to.equal("Please update the bio before resubmitting.");
@@ -102,7 +102,7 @@ describe("dashboard user submissions", () => {
   });
 
   it("opens a confirmation dialog for withdraw actions and handles request errors", async () => {
-    // Build the DOM fixture to check it opens a confirmation dialog for withdraw actions.
+    // Render the DOM fixture for opening a confirmation dialog for withdraw actions.
     document.body.innerHTML = `
       <button
         type="button"
@@ -113,17 +113,17 @@ describe("dashboard user submissions", () => {
       </button>
     `;
 
-    // Exercise the flow to check it opens a confirmation dialog for withdraw actions.
+    // Verify opens a confirmation dialog for withdraw actions.
     initializeSubmissionsUi();
 
-    // Read the DOM to check it opens a confirmation dialog for withdraw actions.
+    // Read the rendered DOM state for opening a confirmation dialog for withdraw actions.
     const button = document.querySelector(
       '[data-action="withdraw-submission"]',
     );
     button.click();
     await waitForMicrotask();
 
-    // Confirm it opens a confirmation dialog for withdraw actions and handles request.
+    // Verify withdraw request errors keep the confirmation flow visible.
     expect(button.id).to.equal("withdraw-submission-submission-42");
     expect(env.current.swal.calls).to.have.length(1);
     expect(env.current.swal.calls[0].html).to.include(
@@ -134,12 +134,12 @@ describe("dashboard user submissions", () => {
       ["#withdraw-submission-submission-42", "confirmed"],
     ]);
 
-    // Dispatch the HTMX after request event to check it opens a confirmation dialog.
+    // Dispatch the HTMX after-request event.
     dispatchHtmxAfterRequest(button, {
       status: 500,
     });
 
-    // Confirm it opens a confirmation dialog for withdraw actions and handles request.
+    // Verify withdraw success clears the confirmation state.
     expect(env.current.swal.calls).to.have.length(2);
     expect(env.current.swal.calls[1]).to.include({
       text: "Unable to withdraw this submission. Please try again later.",
@@ -151,7 +151,7 @@ describe("dashboard user submissions", () => {
   });
 
   it("opens a resubmit confirmation dialog and handles successful requests", async () => {
-    // Build the DOM fixture to check it opens a resubmit confirmation dialog and handles.
+    // Render the DOM fixture for opening a resubmit confirmation dialog and handles.
     document.body.innerHTML = `
       <button
         type="button"
@@ -162,17 +162,17 @@ describe("dashboard user submissions", () => {
       </button>
     `;
 
-    // Exercise the flow to check it opens a resubmit confirmation dialog and handles.
+    // Verify opens a resubmit confirmation dialog and handles.
     initializeSubmissionsUi();
 
-    // Read the DOM to check it opens a resubmit confirmation dialog and handles.
+    // Read the rendered DOM state for opening a resubmit confirmation dialog and handles.
     const button = document.querySelector(
       '[data-action="resubmit-submission"]',
     );
     button.click();
     await waitForMicrotask();
 
-    // Confirm it opens a resubmit confirmation dialog and handles successful requests.
+    // Verify opens a resubmit confirmation dialog and handles successful requests.
     expect(button.id).to.equal("resubmit-submission-submission-84");
     expect(env.current.swal.calls).to.have.length(1);
     expect(env.current.swal.calls[0].html).to.include(
@@ -183,12 +183,12 @@ describe("dashboard user submissions", () => {
       ["#resubmit-submission-submission-84", "confirmed"],
     ]);
 
-    // Dispatch the HTMX after request event to check it opens a resubmit confirmation.
+    // Dispatch the HTMX after-request event.
     dispatchHtmxAfterRequest(button, {
       status: 204,
     });
 
-    // Confirm it opens a resubmit confirmation dialog and handles successful requests.
+    // Verify opens a resubmit confirmation dialog and handles successful requests.
     expect(env.current.swal.calls).to.have.length(1);
   });
 });

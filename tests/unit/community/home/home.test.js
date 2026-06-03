@@ -15,28 +15,28 @@ describe("community home", () => {
   });
 
   it("leaves the current page untouched when the search input is empty", () => {
-    // Prepare input to check it leaves the current page untouched when the search input.
+    // Prepare input for leaving the current page untouched when the search input.
     const input = document.createElement("input");
     input.id = "ts_query";
     input.value = "";
     document.body.append(input);
 
-    // Exercise the flow to check it leaves the current page untouched when the search.
+    // Empty search text keeps the current page unchanged.
     loadExplorePage();
 
-    // Confirm it leaves the current page untouched when the search input is empty.
+    // Empty searches leave the current page unchanged.
     expect(window.location.pathname).to.equal("/");
   });
 
   it("redirects to explore with the text search query when the input is filled", () => {
-    // Prepare assigned urls to check it redirects to explore with the text search query.
+    // Prepare assigned URLs for redirecting to explore with the text search query.
     const assignedUrls = [];
     const executeLoadExplorePage = new Function(
       "document",
       `const loadExplorePage = ${loadExplorePage.toString()}; return loadExplorePage();`,
     );
 
-    // Exercise the flow to check it redirects to explore with the text search query.
+    // Search text redirects to the explore page.
     executeLoadExplorePage({
       getElementById(id) {
         if (id === "ts_query") {
@@ -51,7 +51,7 @@ describe("community home", () => {
       },
     });
 
-    // Confirm it redirects to explore with the text search query when the input.
+    // Submitted search text is included in the explore redirect.
     expect(assignedUrls).to.deep.equal(["/explore?ts_query=cloud%20native"]);
   });
 });

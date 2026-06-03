@@ -65,7 +65,7 @@ describe("collapsible-filter", () => {
     element.querySelector("ul button")?.click();
     await element.updateComplete;
 
-    // Clearing selection triggers the form change again.
+    // Assert the element state.
     expect(element.selected).to.deep.equal([]);
     expect(htmx.triggerCalls).to.deep.equal([
       [form, "change"],

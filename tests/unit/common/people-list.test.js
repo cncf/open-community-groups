@@ -10,15 +10,15 @@ describe("people-list", () => {
   });
 
   it("renders nothing when there are no people", async () => {
-    // Render the people-list fixture.
+    // Mount the list without people.
     const element = await mountLitComponent("people-list");
 
-    // Renders nothing when there are no people.
+    // The empty list renders no light DOM content.
     expect(element.children.length).to.equal(0);
   });
 
   it("renders the initial subset with the show more control", async () => {
-    // Render the people-list fixture.
+    // Mount a list with more people than the initial count.
     const element = await mountLitComponent("people-list", {
       people: [
         { name: "Ada Lovelace", title: "Mathematician" },
@@ -95,7 +95,7 @@ describe("people-list", () => {
     // Create the people-list fixture element.
     const element = document.createElement("people-list");
 
-    // Cleans non-letter characters when asked directly.
+    // The helper removes non-letter characters and preserves letters.
     expect(element._cleanString("Ada 123!")).to.equal("Ada");
     expect(element._cleanString("Mária 😀 Dev")).to.equal("MáriaDev");
     expect(element._cleanString("")).to.equal("");

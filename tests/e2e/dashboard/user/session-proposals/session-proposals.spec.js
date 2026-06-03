@@ -18,7 +18,10 @@ test.describe("user dashboard session proposals view", () => {
       member1Page,
     );
 
+    // Find the dashboard content.
     const dashboardContent = member1Page.locator("#dashboard-content");
+
+    // Verify session proposals page shows seeded proposal states and locks.
     await expect(
       dashboardContent.getByText("Session proposals", { exact: true }),
     ).toBeVisible();
@@ -26,12 +29,14 @@ test.describe("user dashboard session proposals view", () => {
       dashboardContent.getByRole("button", { name: "New proposal" }),
     ).toBeVisible();
 
+    // Find the ready row.
     const readyRow = dashboardContent.locator("tr", {
       hasText: "Cloud Native Operations Deep Dive",
     });
     await expect(readyRow).toContainText("Ready for submission");
     await expect(readyRow.getByTitle("Delete proposal")).toBeEnabled();
 
+    // Find the submitted row.
     const submittedRow = dashboardContent.locator("tr", {
       hasText: "Platform Reliability Patterns",
     });
@@ -40,6 +45,7 @@ test.describe("user dashboard session proposals view", () => {
       submittedRow.getByTitle("Submitted proposals cannot be deleted"),
     ).toBeDisabled();
 
+    // Find the linked row.
     const linkedRow = dashboardContent.locator("tr", {
       hasText: "Scaling Community Workshops",
     });
@@ -48,6 +54,7 @@ test.describe("user dashboard session proposals view", () => {
       linkedRow.getByTitle("Linked proposals cannot be edited"),
     ).toBeDisabled();
 
+    // Find the pending row.
     const pendingRow = dashboardContent.locator("tr", {
       hasText: "Collaborative Roadmaps",
     });
@@ -55,6 +62,7 @@ test.describe("user dashboard session proposals view", () => {
       /Awaiting co-speaker response|Ready for submission/,
     );
 
+    // Find the declined row.
     const declinedRow = dashboardContent.locator("tr", {
       hasText: "Co-Speaker Retrospective",
     });
@@ -71,17 +79,23 @@ test.describe("user dashboard session proposals view", () => {
       proposalTitle,
     );
 
+    // Find the proposal row.
     const proposalRow = dashboardContent.locator("tr", {
       hasText: proposalTitle,
     });
+
+    // Verify user can create and delete a session proposal.
     await expect(proposalRow).toContainText("Ready for submission");
 
+    // Find the delete proposal button.
     const deleteProposalButton = proposalRow.getByTitle("Delete proposal");
     await expect(deleteProposalButton).toBeVisible();
 
+    // Click the delete proposal button.
     await deleteProposalButton.click();
     await expect(pending1Page.locator(".swal2-popup")).toBeVisible();
 
+    // Click Delete.
     await Promise.all([
       pending1Page.waitForResponse(
         (response) =>
@@ -92,6 +106,7 @@ test.describe("user dashboard session proposals view", () => {
       pending1Page.getByRole("button", { name: "Delete" }).click(),
     ]);
 
+    // Assert how many matching elements are shown.
     await expect(
       dashboardContent.locator("tr", { hasText: proposalTitle }),
     ).toHaveCount(0);
@@ -106,12 +121,14 @@ test.describe("user dashboard session proposals view", () => {
       member2Page,
     );
 
+    // Find the dashboard content.
     const dashboardContent = member2Page.locator("#dashboard-content");
     const invitationAlert = dashboardContent.locator("[role='alert']");
     const invitationRow = dashboardContent.locator("tr", {
       hasText: "Collaborative Roadmaps",
     });
 
+    // Verify pending co-speaker invitations are surfaced to the invited user.
     await expect(invitationAlert).toContainText(
       "co-speaker invitation waiting for your response",
     );
@@ -131,20 +148,25 @@ test.describe("user dashboard session proposals view", () => {
       member2Page,
     );
 
+    // Find the member2 dashboard.
     const member2Dashboard = member2Page.locator("#dashboard-content");
     const invitationRow = member2Dashboard.locator("tr", {
       hasText: "Collaborative Roadmaps",
     });
     const acceptInvitationButton =
       invitationRow.getByTitle("Accept invitation");
+
+    // Verify accepting a co-speaker invitation updates both users' proposal views.
     await expect(member2Dashboard.locator("[role='alert']")).toContainText(
       "co-speaker invitation waiting for your response",
     );
     await expect(invitationRow).toContainText("E2E Member One");
     await expect(acceptInvitationButton).toBeVisible();
 
+    // Set up invitation accepted.
     let invitationAccepted = false;
 
+    // Click the accept invitation button.
     try {
       await Promise.all([
         member2Page.waitForResponse(
@@ -157,22 +179,26 @@ test.describe("user dashboard session proposals view", () => {
       ]);
       invitationAccepted = true;
 
+      // Reload the member dashboard.
       await member2Page.reload();
       await expect(member2Dashboard.locator("[role='alert']")).toHaveCount(0);
       await expect(
         member2Dashboard.locator("tr", { hasText: "Collaborative Roadmaps" }),
       ).toHaveCount(0);
 
+      // Open the user dashboard page.
       await openUserDashboardPath(
         "/dashboard/user?tab=session-proposals",
         member1Page,
       );
 
+      // Find the member1 dashboard.
       const member1Dashboard = member1Page.locator("#dashboard-content");
       const proposalRow = member1Dashboard.locator("tr", {
         hasText: "Collaborative Roadmaps",
       });
 
+      // Assert the expected text is rendered.
       await expect(proposalRow).toContainText("E2E Member Two");
       await expect(proposalRow).toContainText("Ready for submission");
       await expect(proposalRow).not.toContainText(
@@ -186,6 +212,7 @@ test.describe("user dashboard session proposals view", () => {
           TEST_USER_IDS.member2,
         );
 
+        // Open the user dashboard page.
         await openUserDashboardPath(
           "/dashboard/user?tab=session-proposals",
           member2Page,

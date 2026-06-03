@@ -117,6 +117,7 @@ test.describe("event page call for speakers", () => {
       ),
     ).toBeVisible();
 
+    // Find the ready option.
     const readyOption = member1Page.locator(
       'option[value="99999999-9999-9999-9999-999999999801"]',
     );
@@ -124,6 +125,7 @@ test.describe("event page call for speakers", () => {
       'option[value="99999999-9999-9999-9999-999999999802"]',
     );
 
+    // Assert the expected text is rendered.
     await expect(readyOption).toContainText(
       "Cloud Native Operations Deep Dive",
     );

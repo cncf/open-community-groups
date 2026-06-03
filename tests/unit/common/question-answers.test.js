@@ -30,9 +30,11 @@ describe("question answer helpers", () => {
       </form>
     `;
 
+    // Set up form.
     const form = document.getElementById("questions-form");
     const payload = collectQuestionAnswers(form, { answerSelector: "[data-answer]" });
 
+    // Assert the emitted payload.
     expect(payload).to.deep.equal({
       answers: [
         { question_id: "question-text", value: "Accessibility needs" },
@@ -54,16 +56,20 @@ describe("question answer helpers", () => {
       </form>
     `;
 
+    // Set up form.
     const form = document.getElementById("questions-form");
     const input = form.querySelector("[data-answer]");
     const payload = collectQuestionAnswers(form, { answerSelector: "[data-answer]" });
 
+    // Verify validates required multi-select answers.
     expect(payload).to.equal(null);
     expect(input.validationMessage).to.equal("Select at least one option.");
 
+    // Select the answer option.
     input.checked = true;
     const nextPayload = collectQuestionAnswers(form, { answerSelector: "[data-answer]" });
 
+    // Assert the validation message.
     expect(input.validationMessage).to.equal("");
     expect(nextPayload).to.deep.equal({
       answers: [{ question_id: "question-checkbox", value: ["alpha"] }],
@@ -82,16 +88,20 @@ describe("question answer helpers", () => {
       </form>
     `;
 
+    // Set up form.
     const form = document.getElementById("questions-form");
     const input = form.querySelector("[data-answer]");
     const payload = collectQuestionAnswers(form, { answerSelector: "[data-answer]" });
 
+    // Verify validates required free-text answers after trimming whitespace.
     expect(payload).to.equal(null);
     expect(input.validationMessage).to.equal("Answer this question.");
 
+    // Answer the required form question.
     input.value = "Accessibility needs";
     const nextPayload = collectQuestionAnswers(form, { answerSelector: "[data-answer]" });
 
+    // Assert the validation message.
     expect(input.validationMessage).to.equal("");
     expect(nextPayload).to.deep.equal({
       answers: [{ question_id: "question-text", value: "Accessibility needs" }],
@@ -106,9 +116,11 @@ describe("question answer helpers", () => {
       </form>
     `;
 
+    // Set up form.
     const form = document.getElementById("questions-form");
     const payload = { answers: [{ question_id: "question-text", value: "Yes" }] };
 
+    // Assert that the flag is enabled.
     expect(setQuestionAnswersInputValue(form, "[data-answers-input]", payload)).to.equal(true);
     expect(form.querySelector("[data-answers-input]").value).to.equal(JSON.stringify(payload));
   });

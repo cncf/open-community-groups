@@ -15,6 +15,7 @@ describe("dashboard group event update template", () => {
     // Load the event update template before checking locked question copy.
     const template = normalizeWhitespace(await loadTemplate());
 
+    // Assert the rendered registration question fields.
     expect(template).to.include("{% if event.registration_questions_locked -%}");
     expect(template).to.include(
       "Registration questions are read-only because attendees have submitted answers.",

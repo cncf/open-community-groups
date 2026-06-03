@@ -24,7 +24,7 @@ describe("dashboard group sponsors", () => {
   });
 
   it("updates sponsor featured toggles after the dashboard body is swapped", async () => {
-    // Prepare replacement body to check it updates sponsor featured toggles.
+    // Prepare replacement body for updating sponsor featured toggles.
     const replacementBody = document.createElement("body");
     replacementBody.innerHTML = `
       <label class="cursor-pointer">
@@ -38,7 +38,7 @@ describe("dashboard group sponsors", () => {
     `;
     document.documentElement.replaceChild(replacementBody, document.body);
 
-    // Dispatch the HTMX load event to check it updates sponsor featured toggles.
+    // Dispatch HTMX load for the replacement dashboard body.
     dispatchHtmxLoad();
     const checkbox = document.querySelector(".sponsor-featured-toggle");
     checkbox.checked = true;
@@ -47,7 +47,7 @@ describe("dashboard group sponsors", () => {
     // Wait for queued event handlers to finish.
     await waitForMicrotask();
 
-    // Confirm it updates sponsor featured toggles after the dashboard body is swapped.
+    // Verify updates sponsor featured toggles after the dashboard body is swapped.
     expect(fetchMock.calls).to.have.length(1);
     expect(fetchMock.calls[0][0]).to.equal(
       "/dashboard/group/sponsors/sponsor-7/featured",

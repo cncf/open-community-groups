@@ -57,14 +57,14 @@ describe("qr code modal", () => {
   };
 
   it("shows an error when the trigger button is missing qr data", () => {
-    // Render the fixture to check it shows an error when the trigger button is missing.
+    // Render the modal without QR data on the trigger.
     renderModalFixture();
     initializeQrCodeModal();
 
-    // Trigger the user interaction to check it shows an error when the trigger button.
+    // Try to open the modal from the incomplete trigger.
     document.getElementById("open-event-qr-code-modal")?.click();
 
-    // Confirm it shows an error when the trigger button is missing qr data.
+    // Verify the missing-data error keeps the modal closed.
     expect(swal.calls).to.have.length(1);
     expect(swal.calls[0].text).to.equal(
       "Select an event before opening the QR code.",
@@ -77,23 +77,23 @@ describe("qr code modal", () => {
   });
 
   it("populates the modal and enables printing after the qr image loads", () => {
-    // Render the fixture to check it populates the modal and enables printing.
+    // Render the modal with event QR data.
     renderModalFixture({
       qrUrl: "https://example.com/qr.png",
       checkInUrl: "/events/kubecon/check-in",
     });
     initializeQrCodeModal();
 
-    // Read the event QR code modal element to check it populates the modal and enables.
+    // Read the modal fields that should receive the event data.
     const modal = document.getElementById("event-qr-code-modal");
     const image = document.getElementById("event-qr-code-image");
     const printButton = document.getElementById("print-event-qr-code");
     const link = document.getElementById("event-qr-code-link");
 
-    // Trigger the user interaction to check it populates the modal and enables printing.
+    // Open the modal before the QR image has loaded.
     document.getElementById("open-event-qr-code-modal")?.click();
 
-    // Confirm it populates the modal and enables printing after the qr image loads.
+    // Verify the modal is populated while printing is still disabled.
     expect(modal?.classList.contains("hidden")).to.equal(false);
     expect(image?.getAttribute("src")).to.equal("https://example.com/qr.png");
     expect(image?.getAttribute("alt")).to.equal(
@@ -116,28 +116,28 @@ describe("qr code modal", () => {
     );
     expect(printButton?.disabled).to.equal(true);
 
-    // Dispatch the event event to check it populates the modal and enables printing.
+    // Finish loading the QR image so printing becomes available.
     image?.dispatchEvent(new Event("load"));
     expect(printButton?.disabled).to.equal(false);
   });
 
   it("shows an error when the qr image fails to load", () => {
-    // Render the fixture to check it shows an error when the qr image fails to load.
+    // Render the modal with a QR image that will fail to load.
     renderModalFixture({
       qrUrl: "https://example.com/qr.png",
       checkInUrl: "/events/kubecon/check-in",
     });
     initializeQrCodeModal();
 
-    // Read the event QR code image element to check it shows an error when the qr image.
+    // Read the image and print button affected by the load error.
     const image = document.getElementById("event-qr-code-image");
     const printButton = document.getElementById("print-event-qr-code");
 
-    // Trigger the user interaction to check it shows an error when the qr image fails.
+    // Open the modal and emit the QR image error.
     document.getElementById("open-event-qr-code-modal")?.click();
     image?.dispatchEvent(new Event("error"));
 
-    // Confirm it shows an error when the qr image fails to load.
+    // Verify the load error disables printing and shows feedback.
     expect(swal.calls).to.have.length(1);
     expect(swal.calls[0].text).to.equal(
       "Failed to load QR code. Please try again.",
@@ -146,51 +146,51 @@ describe("qr code modal", () => {
   });
 
   it("closes the modal from the close button and overlay", () => {
-    // Render the fixture to check it closes the modal from the close button and overlay.
+    // Render the modal with valid QR data for close interactions.
     renderModalFixture({
       qrUrl: "https://example.com/qr.png",
       checkInUrl: "/events/kubecon/check-in",
     });
     initializeQrCodeModal();
 
-    // Read the event QR code modal element to check it closes the modal from the close.
+    // Open the modal before testing each close control.
     const modal = document.getElementById("event-qr-code-modal");
     document.getElementById("open-event-qr-code-modal")?.click();
     expect(modal?.classList.contains("hidden")).to.equal(false);
 
-    // Trigger the user interaction to check it closes the modal from the close button.
+    // Close the modal from the close button.
     document.getElementById("close-event-qr-code-modal")?.click();
     expect(modal?.classList.contains("hidden")).to.equal(true);
 
-    // Trigger the user interaction to check it closes the modal from the close button.
+    // Reopen the modal and close it from the overlay.
     document.getElementById("open-event-qr-code-modal")?.click();
     document.getElementById("overlay-event-qr-code-modal")?.click();
     expect(modal?.classList.contains("hidden")).to.equal(true);
   });
 
   it("passes the modal through to the qr print flow", () => {
-    // Render the fixture to check it passes the modal through to the qr print flow.
+    // Render the modal with QR data for the print flow.
     renderModalFixture({
       qrUrl: "https://example.com/qr.png",
       checkInUrl: "/events/kubecon/check-in",
     });
     initializeQrCodeModal();
 
-    // Trigger the user interaction to check it passes the modal through to the qr print.
+    // Open the modal, load the QR image, and start printing.
     document.getElementById("open-event-qr-code-modal")?.click();
     document
       .getElementById("event-qr-code-image")
       ?.dispatchEvent(new Event("load"));
     document.getElementById("print-event-qr-code")?.click();
 
-    // Read the event QR code image print element to check it passes the modal through.
+    // Read the copied print image that must load before printing.
     const printImage = document.getElementById("event-qr-code-image-print");
     expect(printImage).to.not.equal(null);
 
-    // Dispatch the event event to check it passes the modal through to the qr print flow.
+    // Finish loading the print image.
     printImage?.dispatchEvent(new Event("load"));
 
-    // Confirm it passes the modal through to the qr print flow.
+    // Verify the print flow receives the modal content.
     expect(printMock.calls).to.have.length(1);
     expect(
       document.getElementById("qr-print-container")?.style.display,

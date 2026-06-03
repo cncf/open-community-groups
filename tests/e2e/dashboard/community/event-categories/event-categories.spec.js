@@ -11,16 +11,19 @@ test.describe("community dashboard event categories view", () => {
     // Create a unique category name for the temporary category flow.
     const categoryName = `E2E Event Category ${Date.now()}`;
 
+    // Load the event categories dashboard.
     await navigateToPath(
       adminCommunityPage,
       "/dashboard/community?tab=event-categories",
     );
 
+    // Open the add form and submit the temporary category.
     const dashboardContent = adminCommunityPage.locator("#dashboard-content");
     await expect(
       dashboardContent.getByText("Event Categories", { exact: true }),
     ).toBeVisible();
 
+    // Click Add Event Category.
     await dashboardContent
       .getByRole("button", { name: "Add Event Category" })
       .click();
@@ -28,8 +31,10 @@ test.describe("community dashboard event categories view", () => {
       dashboardContent.getByText("Event Category Details", { exact: true }),
     ).toBeVisible();
 
+    // Fill Name.
     await adminCommunityPage.getByLabel("Name").fill(categoryName);
 
+    // Click Add Event Category.
     await Promise.all([
       adminCommunityPage.waitForResponse(
         (response) =>
@@ -44,11 +49,13 @@ test.describe("community dashboard event categories view", () => {
         .click(),
     ]);
 
+    // Verify the temporary category appears before deleting it.
     const categoryRow = dashboardContent.locator("tr", {
       hasText: categoryName,
     });
     await expect(categoryRow).toBeVisible();
 
+    // Delete the event category from its row action.
     await categoryRow
       .getByRole("button", { name: `Delete event category: ${categoryName}` })
       .click();
@@ -56,6 +63,7 @@ test.describe("community dashboard event categories view", () => {
       "Are you sure you would like to delete this event category?",
     );
 
+    // Confirm deletion and verify the category is removed.
     await Promise.all([
       adminCommunityPage.waitForResponse(
         (response) =>
@@ -66,6 +74,7 @@ test.describe("community dashboard event categories view", () => {
       adminCommunityPage.getByRole("button", { name: "Yes" }).click(),
     ]);
 
+    // Assert how many matching elements are shown.
     await expect(
       dashboardContent.locator("tr", { hasText: categoryName }),
     ).toHaveCount(0);
@@ -78,6 +87,7 @@ test.describe("community dashboard event categories view", () => {
     const taxonomyCase = taxonomyCases[2];
     await navigateToPath(adminCommunityPage, taxonomyCase.path);
 
+    // Verify used entries cannot be deleted while unused entries can.
     const dashboardContent = adminCommunityPage.locator("#dashboard-content");
     await expect(
       dashboardContent.getByText(taxonomyCase.heading, { exact: true }),
@@ -100,6 +110,7 @@ test.describe("community dashboard event categories view", () => {
     const taxonomyCase = taxonomyCases[2];
     await navigateToPath(communityViewerPage, taxonomyCase.path);
 
+    // Verify all mutation controls are disabled for the viewer.
     const dashboardContent = communityViewerPage.locator("#dashboard-content");
     await expect(
       dashboardContent.getByText(taxonomyCase.heading, { exact: true }),

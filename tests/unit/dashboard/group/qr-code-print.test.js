@@ -22,10 +22,10 @@ describe("qr code print", () => {
   });
 
   it("shows an error when the modal is missing", () => {
-    // Exercise the flow to check it shows an error when the modal is missing.
+    // Call print qr code.
     printQrCode(null, "qr-image", "/qr.png");
 
-    // Confirm it shows an error when the modal is missing.
+    // Assert the captured calls.
     expect(printMock.calls).to.have.length(0);
     expect(swal.calls).to.have.length(1);
     expect(swal.calls[0].text).to.equal(
@@ -34,14 +34,14 @@ describe("qr code print", () => {
   });
 
   it("shows an error when the printable root is missing", () => {
-    // Prepare modal to check it shows an error when the printable root is missing.
+    // Prepare modal for showing an error when the printable root is missing.
     const modal = document.createElement("div");
     document.body.append(modal);
 
-    // Exercise the flow to check it shows an error when the printable root is missing.
+    // Call print qr code.
     printQrCode(modal, "qr-image", "/qr.png");
 
-    // Confirm it shows an error when the printable root is missing.
+    // Assert the captured calls.
     expect(printMock.calls).to.have.length(0);
     expect(swal.calls).to.have.length(1);
     expect(swal.calls[0].text).to.equal(
@@ -50,7 +50,7 @@ describe("qr code print", () => {
   });
 
   it("prepares the printable container and prints when no image is present", () => {
-    // Prepare modal to check it prepares the printable container and prints when no.
+    // Prepare modal for preparing the printable container and prints when no.
     const modal = document.createElement("div");
     modal.innerHTML = `
       <div data-qr-print-root>
@@ -61,14 +61,14 @@ describe("qr code print", () => {
     `;
     document.body.append(modal);
 
-    // Exercise the flow to check it prepares the printable container and prints when no.
+    // The printable container is prepared before printing.
     printQrCode(modal, "qr-image", "/qr.png");
 
-    // Read the QR print styles element to check it prepares the printable container.
+    // Keep a reference to the QR print styles element.
     const style = document.getElementById("qr-print-styles");
     const container = document.getElementById("qr-print-container");
 
-    // Confirm it prepares the printable container and prints when no image is present.
+    // Printing works after preparing a container without an image.
     expect(style).to.not.equal(null);
     expect(container).to.not.equal(null);
     expect(container?.style.display).to.equal("flex");
@@ -76,15 +76,15 @@ describe("qr code print", () => {
     expect(container?.querySelector("[data-qr-print-actions]")).to.equal(null);
     expect(printMock.calls).to.have.length(1);
 
-    // Dispatch the event event to check it prepares the printable container and prints.
+    // Dispatch the afterprint event.
     window.dispatchEvent(new Event("afterprint"));
 
-    // Confirm it prepares the printable container and prints when no image is present.
+    // The temporary print container is cleaned up after printing.
     expect(document.getElementById("qr-print-container")).to.equal(null);
   });
 
   it("waits for the qr image to load before printing", () => {
-    // Prepare modal to check it waits for the qr image to load before printing.
+    // Prepare modal for waiting for the qr image to load before printing.
     const modal = document.createElement("div");
     modal.innerHTML = `
       <div data-qr-print-root>
@@ -93,23 +93,23 @@ describe("qr code print", () => {
     `;
     document.body.append(modal);
 
-    // Exercise the flow to check it waits for the qr image to load before printing.
+    // Call print qr code.
     printQrCode(modal, "qr-image", "https://example.com/qr.png");
 
-    // Read the QR image print element to check it waits for the qr image to load.
+    // Keep a reference to the QR image print element.
     const printImage = document.getElementById("qr-image-print");
 
-    // Confirm it waits for the qr image to load before printing.
+    // Assert the print image state.
     expect(printImage).to.not.equal(null);
     expect(printImage?.getAttribute("src")).to.include(
       "https://example.com/qr.png?print=",
     );
     expect(printMock.calls).to.have.length(0);
 
-    // Dispatch the event event to check it waits for the qr image to load.
+    // Dispatch the load event.
     printImage?.dispatchEvent(new Event("load"));
 
-    // Confirm it waits for the qr image to load before printing.
+    // Verify waits for the qr image to load before printing.
     expect(printMock.calls).to.have.length(1);
     expect(
       document.getElementById("qr-print-container")?.style.display,
@@ -117,7 +117,7 @@ describe("qr code print", () => {
   });
 
   it("shows an error when the qr image fails to load", () => {
-    // Prepare modal to check it shows an error when the qr image fails to load.
+    // Prepare modal for showing an error when the qr image fails to load.
     const modal = document.createElement("div");
     modal.innerHTML = `
       <div data-qr-print-root>
@@ -126,15 +126,15 @@ describe("qr code print", () => {
     `;
     document.body.append(modal);
 
-    // Exercise the flow to check it shows an error when the qr image fails to load.
+    // Call print qr code.
     printQrCode(modal, "qr-image", "https://example.com/qr.png");
 
-    // Exercise the flow to check it shows an error when the qr image fails to load.
+    // Dispatch the error event.
     document
       .getElementById("qr-image-print")
       ?.dispatchEvent(new Event("error"));
 
-    // Confirm it shows an error when the qr image fails to load.
+    // Assert the captured calls.
     expect(printMock.calls).to.have.length(0);
     expect(swal.calls).to.have.length(1);
     expect(swal.calls[0].text).to.equal(

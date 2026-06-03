@@ -31,7 +31,7 @@ describe("explore helpers", () => {
     // Replace the results markup with the fetched response.
     updateResults("<p>Updated</p>");
 
-    // Updates the results container html.
+    // The results container receives the replacement markup.
     expect(document.getElementById("results")?.innerHTML).to.equal(
       "<p>Updated</p>",
     );
@@ -40,7 +40,7 @@ describe("explore helpers", () => {
   it("fetches explore data as json", async () => {
     // Mock the fetch response.
     fetchMock.setImpl(async (url, options) => {
-      // Fetches explore data as json.
+      // The request asks the search endpoint for JSON.
       expect(url).to.equal("/explore/events/search?kind=conference");
       expect(options.headers).to.be.instanceOf(Headers);
       expect(options.headers.get("Accept")).to.equal("application/json");
@@ -56,7 +56,7 @@ describe("explore helpers", () => {
     // Capture the async result.
     const result = await fetchData("events", "kind=conference");
 
-    // Fetches explore data as json.
+    // The parsed JSON response is returned without showing an alert.
     expect(result).to.deep.equal({ items: [1, 2, 3] });
     expect(swal.calls).to.have.length(0);
   });
@@ -67,17 +67,17 @@ describe("explore helpers", () => {
       throw new Error("network error");
     });
 
-    // Set up shows an alert and throws when the request fails.
+    // Set up thrown error.
     let thrownError = null;
 
-    // Set up shows an alert and throws when the request fails.
+    // Run the fetch call that should throw.
     try {
       await fetchData("groups", "region=emea");
     } catch (error) {
       thrownError = error;
     }
 
-    // Shows an alert and throws when the request fails.
+    // The original network error is surfaced and the fallback alert is shown.
     expect(thrownError?.message).to.equal("network error");
     expect(swal.calls).to.have.length(1);
     expect(swal.calls[0].text).to.equal(
@@ -93,17 +93,17 @@ describe("explore helpers", () => {
       text: async () => "Internal error",
     }));
 
-    // Set up shows an alert and throws when the server responds with an error.
+    // Set up thrown error.
     let thrownError = null;
 
-    // Set up shows an alert and throws when the server responds with an error.
+    // Run the fetch call that should reject the error response.
     try {
       await fetchData("groups", "region=emea");
     } catch (error) {
       thrownError = error;
     }
 
-    // Shows an alert and throws when the server responds with an error.
+    // The error response is reported with the status code and fallback alert.
     expect(thrownError?.message).to.equal(
       "Failed to fetch groups data (status 500)",
     );
@@ -122,17 +122,17 @@ describe("explore helpers", () => {
       },
     }));
 
-    // Set up shows an alert and throws when the response body is not valid json.
+    // Set up thrown error.
     let thrownError = null;
 
-    // Set up shows an alert and throws when the response body is not valid json.
+    // Run the fetch call that should reject invalid JSON.
     try {
       await fetchData("events", "kind=conference");
     } catch (error) {
       thrownError = error;
     }
 
-    // Shows an alert and throws when the response body is not valid json.
+    // The JSON parsing error is surfaced with the fallback alert.
     expect(thrownError?.message).to.equal("invalid json");
     expect(swal.calls).to.have.length(1);
     expect(swal.calls[0].text).to.equal(

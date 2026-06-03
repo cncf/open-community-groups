@@ -22,7 +22,7 @@ describe("multi-select-filter", () => {
   });
 
   it("filters typed options and renders hidden inputs for selected values", async () => {
-    // Build the DOM fixture to check it filters typed options and renders hidden inputs.
+    // Render the DOM fixture for filtering typed options and renders hidden inputs.
     document.body.innerHTML = '<form id="filters-form"></form>';
     const form = document.getElementById("filters-form");
     const element = document.createElement("multi-select-filter");
@@ -36,34 +36,34 @@ describe("multi-select-filter", () => {
     form.append(element);
     await element.updateComplete;
 
-    // Read the DOM to check it filters typed options and renders hidden inputs.
+    // Read the rendered DOM state for filtering typed options and renders hidden inputs.
     const input = element.querySelector('input[type="text"]');
     input.dispatchEvent(new FocusEvent("focus"));
     input.value = "sec";
     input.dispatchEvent(new Event("input", { bubbles: true }));
     await element.updateComplete;
 
-    // Confirm it filters typed options and renders hidden inputs for selected values.
+    // Verify filters typed options and renders hidden inputs for selected values.
     expect(element._filteredOptions).to.deep.equal([
       { value: "security", name: "Security" },
     ]);
 
-    // Trigger the user interaction to check it filters typed options and renders hidden.
+    // Verify filters typed options and renders hidden inputs.
     element.querySelector('[role="option"]')?.click();
     await element.updateComplete;
 
-    // Confirm it filters typed options and renders hidden inputs for selected values.
+    // Verify filters typed options and renders hidden inputs for selected values.
     expect(element.selected).to.deep.equal(["security"]);
     expect(
       element.querySelector('input[type="hidden"][value="security"]'),
     ).to.not.equal(null);
     expect(element.textContent).to.include("Security");
 
-    // Trigger the user interaction to check it filters typed options and renders hidden.
+    // Verify selected options stay mirrored in hidden inputs.
     element.querySelectorAll(".icon-close")[1]?.closest("button")?.click();
     await element.updateComplete;
 
-    // Confirm it filters typed options and renders hidden inputs for selected values.
+    // Verify filters typed options and renders hidden inputs for selected values.
     expect(element.selected).to.deep.equal([]);
     expect(htmx.triggerCalls).to.deep.equal([
       [form, "change"],
@@ -72,7 +72,7 @@ describe("multi-select-filter", () => {
   });
 
   it("supports keyboard navigation and closes on outside clicks", async () => {
-    // Render the fixture to check it supports keyboard navigation and closes on outside.
+    // Call mount lit component.
     const element = await mountLitComponent("multi-select-filter", {
       options: [
         { value: "cloud", name: "Cloud" },
@@ -80,12 +80,12 @@ describe("multi-select-filter", () => {
       ],
     });
 
-    // Read the DOM to check it supports keyboard navigation and closes on outside clicks.
+    // Read the listbox and options used by keyboard navigation.
     const input = element.querySelector('input[type="text"]');
     input.dispatchEvent(new FocusEvent("focus"));
     await element.updateComplete;
 
-    // Dispatch the event event to check it supports keyboard navigation and closes.
+    // Dispatch the keydown event.
     element.dispatchEvent(
       new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }),
     );
@@ -94,17 +94,17 @@ describe("multi-select-filter", () => {
     );
     await element.updateComplete;
 
-    // Confirm it supports keyboard navigation and closes on outside clicks.
+    // Verify supports keyboard navigation and closes on outside clicks.
     expect(element.selected).to.deep.equal(["cloud"]);
     expect(element._isOpen).to.equal(true);
 
-    // Dispatch the event event to check it supports keyboard navigation and closes.
+    // Click outside the filter to close the options.
     document.dispatchEvent(
       new MouseEvent("click", { bubbles: true, composed: true }),
     );
     await waitForMicrotask();
 
-    // Confirm it supports keyboard navigation and closes on outside clicks.
+    // Verify supports keyboard navigation and closes on outside clicks.
     expect(element._isOpen).to.equal(false);
   });
 });

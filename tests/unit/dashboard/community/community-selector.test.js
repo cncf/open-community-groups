@@ -22,7 +22,7 @@ describe("community-selector", () => {
     htmx.restore();
   });
 
-  // Render the fixture to check it covers the current behavior.
+  // Render the component fixture.
   const renderSelector = async (properties = {}) => {
     return mountLitComponent("community-selector", {
       communities: [
@@ -37,13 +37,13 @@ describe("community-selector", () => {
   };
 
   it("renders the selected community label", async () => {
-    // Render the fixture to check it renders the selected community label.
+    // Render the selector fixture.
     const element = await renderSelector();
 
-    // Read the DOM to check it renders the selected community label.
+    // Read the rendered DOM state for rendering the selected community label.
     const button = element.querySelector("#community-selector-button");
 
-    // Confirm it renders the selected community label.
+    // Verify renders the selected community label.
     expect(button?.textContent).to.include("CNCF");
     expect(element._findSelectedCommunity()).to.deep.equal({
       community_id: "1",
@@ -53,20 +53,20 @@ describe("community-selector", () => {
   });
 
   it("filters communities from the debounced search query", async () => {
-    // Render the fixture to check it filters communities from the debounced search query.
+    // Render the selector fixture.
     const element = await renderSelector();
 
-    // Run component methods to check it filters communities from the debounced search.
+    // Call handle search input.
     element._handleSearchInput({
       target: {
         value: "open",
       },
     });
 
-    // Exercise the flow to check it filters communities from the debounced search query.
+    // Verify filters communities from the debounced search query.
     await new Promise((resolve) => setTimeout(resolve, 250));
 
-    // Confirm it filters communities from the debounced search query.
+    // Assert the element state.
     expect(element._query).to.equal("open");
     expect(element._filteredCommunities).to.deep.equal([
       { community_id: "2", display_name: "OpenSSF", name: "openssf" },
@@ -74,7 +74,7 @@ describe("community-selector", () => {
   });
 
   it("supports keyboard navigation and closes on escape", async () => {
-    // Render the fixture to check it supports keyboard navigation and closes on escape.
+    // Render the selector fixture.
     const element = await renderSelector();
     const handledSelections = [];
     const event = {
@@ -86,40 +86,40 @@ describe("community-selector", () => {
       },
     };
 
-    // Run component methods to check it supports keyboard navigation and closes.
+    // Open the selector with two keyboard options.
     element._isOpen = true;
     element._handleCommunityClick = async (_event, community) => {
       handledSelections.push(community.community_id);
     };
 
-    // Exercise the flow to check it supports keyboard navigation and closes on escape.
+    // Move to the first option.
     event.key = "ArrowDown";
     element._handleKeydown(event);
     expect(element._activeIndex).to.equal(0);
 
-    // Exercise the flow to check it supports keyboard navigation and closes on escape.
+    // Move to the next option.
     event.key = "ArrowDown";
     element._handleKeydown(event);
     expect(element._activeIndex).to.equal(1);
 
-    // Exercise the flow to check it supports keyboard navigation and closes on escape.
+    // Press ArrowUp.
     event.key = "ArrowUp";
     element._handleKeydown(event);
     expect(element._activeIndex).to.equal(0);
 
-    // Exercise the flow to check it supports keyboard navigation and closes on escape.
+    // Press Enter.
     event.key = "Enter";
     element._handleKeydown(event);
     expect(handledSelections).to.deep.equal([]);
 
-    // Exercise the flow to check it supports keyboard navigation and closes on escape.
+    // Select the highlighted community with Enter.
     element.selectedCommunityId = "3";
     element._activeIndex = 1;
     event.key = "Enter";
     element._handleKeydown(event);
     expect(handledSelections).to.deep.equal(["2"]);
 
-    // Exercise the flow to check it supports keyboard navigation and closes on escape.
+    // Press Escape.
     event.key = "Escape";
     element._handleKeydown(event);
     expect(element._isOpen).to.equal(false);
@@ -128,12 +128,12 @@ describe("community-selector", () => {
   });
 
   it("persists the selected community and keeps the selector usable", async () => {
-    // Render the fixture to check it persists the selected community and keeps.
+    // Render the selector fixture.
     const element = await renderSelector({
       selectedCommunityId: "3",
     });
 
-    // Prepare event to check it persists the selected community and keeps the selector.
+    // Prepare event for persisting the selected community and keeps the selector.
     const event = {
       prevented: false,
       preventDefault() {
@@ -141,7 +141,7 @@ describe("community-selector", () => {
       },
     };
 
-    // Run component methods to check it persists the selected community and keeps.
+    // Select a different community from the selector.
     element._isOpen = true;
     await element._handleCommunityClick(event, {
       community_id: "2",
@@ -149,7 +149,7 @@ describe("community-selector", () => {
       name: "openssf",
     });
 
-    // Confirm it persists the selected community and keeps the selector usable.
+    // The selected community is persisted without disabling the selector.
     expect(htmx.ajaxCalls).to.deep.equal([
       [
         "PUT",

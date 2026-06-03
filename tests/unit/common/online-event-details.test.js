@@ -19,7 +19,7 @@ describe("online-event-details", () => {
       meetingRecordingUrl: " https://example.com/recording ",
     });
 
-    // Returned manual meeting data and resets back to manual defaults.
+    // Manual meeting data is trimmed before submission.
     expect(element.getMeetingData()).to.deep.equal({
       meeting_join_instructions: "Bring your ticket confirmation.",
       meeting_join_url: "https://example.com/join",
@@ -33,7 +33,7 @@ describe("online-event-details", () => {
     // Reset the fixture state.
     element.reset();
 
-    // Returned manual meeting data and resets back to manual defaults.
+    // Resetting returns the component to empty manual defaults.
     expect(element._mode).to.equal("manual");
     expect(element._joinInstructions).to.equal("");
     expect(element._joinUrl).to.equal("");
@@ -52,14 +52,14 @@ describe("online-event-details", () => {
       },
     );
 
-    // Honors a server-rendered false recording request attribute.
+    // The false attribute value is preserved in submitted data.
     expect(element.getMeetingData()).to.include({
       meeting_recording_requested: false,
     });
   });
 
   it("submits recording visibility and explains the public target", async () => {
-    // Set up submits recording visibility and explains the public target.
+    // Save browser globals before mocking clipboard and window open.
     const originalClipboardDescriptor = Object.getOwnPropertyDescriptor(
       navigator,
       "clipboard",
@@ -98,7 +98,7 @@ describe("online-event-details", () => {
 
     // Execute the async scenario and restore mocked globals afterward.
     try {
-      // Submits recording visibility and explains the public target.
+      // Recording metadata starts unpublished with both raw URLs visible.
       expect(element.getMeetingData()).to.include({
         meeting_recording_published: false,
       });
@@ -130,16 +130,16 @@ describe("online-event-details", () => {
         ...element.renderRoot.querySelectorAll("[data-raw-recording-open]"),
       ];
 
-      // Submits recording visibility and explains the public target.
+      // Copy and open controls are rendered for each raw recording URL.
       expect(copyButtons).to.have.length(2);
       expect(openButtons).to.have.length(2);
 
-      // Click the control and verify the resulting state.
+      // Click one copy button and one open button.
       copyButtons[0].click();
       openButtons[1].click();
       await new Promise((resolve) => setTimeout(resolve, 0));
 
-      // Submits recording visibility and explains the public target.
+      // Copying and opening use the selected raw recording URLs.
       expect(clipboardCalls).to.deep.equal([
         "https://zoom.us/rec/share/raw-main",
       ]);
@@ -155,7 +155,7 @@ describe("online-event-details", () => {
       element._handleRecordingPublishedChange({ target: { checked: true } });
       await element.updateComplete;
 
-      // Submits recording visibility and explains the public target.
+      // Publishing the recording updates submitted data and keeps helper copy.
       expect(element.getMeetingData()).to.include({
         meeting_recording_published: true,
       });
@@ -197,7 +197,7 @@ describe("online-event-details", () => {
     element._providerId = "zoom";
     element._checkMeetingCapacity();
 
-    // Shows a capacity warning when automatic meeting capacity is exceeded.
+    // The provider capacity warning is shown for the oversized event.
     expect(element._capacityWarning).to.include("Capacity (150) exceeds");
   });
 
@@ -303,7 +303,7 @@ describe("online-event-details", () => {
       target: { value: "manual" },
     });
 
-    // Keeps automatic recording edits when switching to manual without saving.
+    // The manual mode keeps the edited recording URL without saving first.
     expect(element._mode).to.equal("manual");
     expect(element._recordingUrl).to.equal(
       " https://youtube.com/watch?v=processed ",
@@ -341,7 +341,7 @@ describe("online-event-details", () => {
       target: { value: "automatic" },
     });
 
-    // Preserves recording overrides when switching from manual to automatic.
+    // Automatic mode preserves the processed recording URL.
     expect(element._mode).to.equal("automatic");
     expect(element._joinUrl).to.equal("");
     expect(element._recordingUrl).to.equal(
@@ -373,7 +373,7 @@ describe("online-event-details", () => {
       target: { value: " https://youtube.com/watch?v=session-processed " },
     });
 
-    // Returned automatic recording overrides for session meeting data.
+    // Session meeting data uses the processed recording override.
     expect(element.getMeetingData()).to.deep.equal({
       meeting_join_instructions: "",
       meeting_join_url: "",

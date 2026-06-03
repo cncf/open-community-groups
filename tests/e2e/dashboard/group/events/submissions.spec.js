@@ -9,11 +9,15 @@ test.describe("group dashboard submissions tab", () => {
     // Load the group events dashboard before opening the CFS event.
     await navigateToPath(eventsManagerGroupPage, "/dashboard/group?tab=events");
 
+    // Find the cfs event row.
     const cfsEventRow = eventsManagerGroupPage.locator("tr", {
       hasText: "Event With Active CFS",
     });
+
+    // Verify events manager can review CFS submissions with labels and ratings.
     await expect(cfsEventRow).toBeVisible();
 
+    // Submit and wait for the server response.
     await Promise.all([
       eventsManagerGroupPage.waitForResponse(
         (response) =>
@@ -30,6 +34,7 @@ test.describe("group dashboard submissions tab", () => {
         .click(),
     ]);
 
+    // Submit and wait for the server response.
     await Promise.all([
       eventsManagerGroupPage.waitForResponse(
         (response) =>
@@ -46,6 +51,7 @@ test.describe("group dashboard submissions tab", () => {
         .click(),
     ]);
 
+    // Assert that Submissions is visible.
     await expect(
       eventsManagerGroupPage
         .locator("#submissions-content")
@@ -58,17 +64,20 @@ test.describe("group dashboard submissions tab", () => {
     await expect(sortBy).toContainText("Stars (high to low)");
     await expect(sortBy).toContainText("Ratings count (high to low)");
 
+    // Find the not reviewed row.
     const notReviewedRow = eventsManagerGroupPage.locator("tr", {
       hasText: "Platform Reliability Patterns",
     });
     await expect(notReviewedRow).toContainText("Platform");
 
+    // Find the information requested row.
     const informationRequestedRow = eventsManagerGroupPage.locator("tr", {
       hasText: "Observability in Practice",
     });
     await expect(informationRequestedRow).toContainText("Workshop");
     await expect(informationRequestedRow).toContainText("1 rating");
 
+    // Find the approved row.
     const approvedRow = eventsManagerGroupPage.locator("tr", {
       hasText: "Scaling Community Workshops",
     });
@@ -85,7 +94,10 @@ test.describe("group dashboard submissions tab", () => {
     // Load the group events dashboard as a read-only viewer.
     await navigateToPath(groupViewerPage, "/dashboard/group?tab=events");
 
+    // Find the dashboard content.
     const dashboardContent = groupViewerPage.locator("#dashboard-content");
+
+    // Verify viewer sees read-only event and submission controls on the submissions tab.
     await expect(
       dashboardContent.getByText("Events", { exact: true }),
     ).toBeVisible();
@@ -93,11 +105,13 @@ test.describe("group dashboard submissions tab", () => {
       dashboardContent.getByRole("button", { name: "Add Event" }),
     ).toBeDisabled();
 
+    // Find the cfs event row.
     const cfsEventRow = groupViewerPage.locator("tr", {
       hasText: "Event With Active CFS",
     });
     await expect(cfsEventRow).toBeVisible();
 
+    // Submit and wait for the server response.
     await Promise.all([
       groupViewerPage.waitForResponse(
         (response) =>
@@ -114,6 +128,7 @@ test.describe("group dashboard submissions tab", () => {
         .click(),
     ]);
 
+    // Submit and wait for the server response.
     await Promise.all([
       groupViewerPage.waitForResponse(
         (response) =>
@@ -128,6 +143,7 @@ test.describe("group dashboard submissions tab", () => {
       groupViewerPage.locator('button[data-section="submissions"]').click(),
     ]);
 
+    // Find the review buttons.
     const reviewButtons = groupViewerPage.getByTitle(
       "Your role cannot manage events.",
     );

@@ -47,6 +47,8 @@ test.describe("event page", () => {
   test("group link displays and links correctly", async ({ page }) => {
     // Verify the event header links back to the hosting group page.
     const groupLink = page.getByRole("link", { name: TEST_GROUP_NAME }).last();
+
+    // Verify group link displays and links correctly.
     await expect(groupLink).toBeVisible();
     await expect(groupLink).toHaveAttribute(
       "href",
@@ -78,6 +80,7 @@ test.describe("event page", () => {
     // Verify the date section shows either a formatted date or TBD.
     expect(hasFormattedDate || hasTbdDate).toBeTruthy();
 
+    // Only check the formatted date when event data includes one.
     if (hasFormattedDate) {
       expect(eventDateText).toMatch(/\d{1,2}:\d{2}\s?(AM|PM)/);
     } else {
@@ -113,6 +116,7 @@ test.describe("event page", () => {
     // Verify the location section has either map, fallback, or details.
     expect(hasMapButton || hasFallbackText || hasLocationDetails).toBeTruthy();
 
+    // Only test the map modal when the venue has a map button.
     if (hasMapButton) {
       // Verify the map action is visible when map data is available.
       await expect(
@@ -167,6 +171,8 @@ test.describe("event page", () => {
     test("individual tags display correctly", async ({ page }) => {
       // Verify each expected event tag is visible.
       await expect(page.getByText("meetup", { exact: true })).toBeVisible();
+
+      // Verify the remaining expected event tags are visible.
       await expect(page.getByText("tech", { exact: true })).toBeVisible();
       await expect(page.getByText("networking", { exact: true })).toBeVisible();
     });
@@ -191,6 +197,8 @@ test.describe("event page", () => {
       await expect(
         page.getByText("Gallery", { exact: true }).first(),
       ).toBeVisible();
+
+      // Verify the gallery component is present.
       const gallery = page.locator("images-gallery");
       await expect(gallery).toBeVisible();
     });
@@ -253,6 +261,8 @@ test.describe("event page", () => {
     test("sponsors section renders with sponsor badge", async ({ page }) => {
       // Verify public sponsor content is shown for the event.
       await expect(page.getByText("Sponsors", { exact: true })).toBeVisible();
+
+      // Verify the seeded sponsor appears in the section.
       await expect(page.getByText("Tech Corp")).toBeVisible();
     });
 
@@ -268,12 +278,16 @@ test.describe("event page", () => {
       await expect(
         page.getByText("Featured speakers", { exact: true }),
       ).toBeVisible();
+
+      // Verify the regular speakers section is present.
       await expect(page.getByText("Speakers", { exact: true })).toBeVisible();
     });
 
     test("agenda section renders with sessions", async ({ page }) => {
       // Verify the agenda includes the expected session names.
       await expect(page.getByText("Agenda", { exact: true })).toBeVisible();
+
+      // Verify seeded agenda sessions are visible.
       await expect(page.getByText("Opening Keynote")).toBeVisible();
       await expect(page.getByText("Technical Workshop")).toBeVisible();
     });
@@ -292,6 +306,7 @@ test.describe("event page - responsive", () => {
       TEST_EVENT_SLUG,
     );
 
+    // Find the heading.
     const heading = page.getByRole("heading", {
       level: 1,
       name: TEST_EVENT_NAME,
@@ -300,6 +315,7 @@ test.describe("event page - responsive", () => {
     // Verify the mobile page sections are visible.
     await expect(heading).toBeVisible();
 
+    // Assert the expected content is visible.
     await expect(getEventInfoSection(page, "Event date")).toBeVisible();
     await expect(getEventInfoSection(page, "Location")).toBeVisible();
     await expect(getEventAboutSection(page)).toBeVisible();
@@ -314,6 +330,7 @@ test.describe("event page - responsive", () => {
       TEST_EVENT_SLUG,
     );
 
+    // Find the heading.
     const heading = page.getByRole("heading", {
       level: 1,
       name: TEST_EVENT_NAME,
@@ -322,6 +339,7 @@ test.describe("event page - responsive", () => {
     // Verify the desktop page sections are visible.
     await expect(heading).toBeVisible();
 
+    // Assert the expected content is visible.
     await expect(getEventInfoSection(page, "Event date")).toBeVisible();
     await expect(getEventInfoSection(page, "Location")).toBeVisible();
     await expect(getEventAboutSection(page)).toBeVisible();
@@ -398,6 +416,7 @@ test.describe("event page - test event badge", () => {
       }),
     ).toBeVisible();
 
+    // Set up event type badge.
     const eventTypeBadge = introSection
       .locator(".custom-badge")
       .filter({ hasText: /^virtual$/i })

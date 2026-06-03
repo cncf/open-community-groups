@@ -8,7 +8,7 @@ import { waitForMicrotask } from "/tests/unit/test-utils/async.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
 import { mockHtmx, mockSwal } from "/tests/unit/test-utils/globals.js";
 
-// Prepare shared event forms markup to check it covers the current behavior.
+// Prepare the module under test.
 const sharedEventFormsMarkup = () => `
   <div id="pending-changes-alert"></div>
   <form id="details-form"></form>
@@ -97,13 +97,13 @@ describe("event page modules", () => {
   });
 
   it("initializes the add page and syncs boolean hidden fields", () => {
-    // Exercise the flow to check it initializes the add page and syncs boolean hidden.
+    // Mount the add page shell.
     mountAddPageShell();
 
-    // Exercise the flow to check it initializes the add page and syncs boolean hidden.
+    // Initialize the add page behavior.
     initializeEventAddPage();
 
-    // Read the DOM to check it initializes the add page and syncs boolean hidden fields.
+    // Read the add page toggles and hidden fields.
     const registrationToggle = document.getElementById(
       "toggle_registration_required",
     );
@@ -112,7 +112,7 @@ describe("event page modules", () => {
       "toggle_event_reminder_enabled",
     );
 
-    // Update the checkbox state to check it initializes the add page and syncs boolean.
+    // Update the checkbox state before asserting the new state.
     registrationToggle.checked = true;
     registrationToggle.dispatchEvent(new Event("change", { bubbles: true }));
     testEventToggle.checked = true;
@@ -120,7 +120,7 @@ describe("event page modules", () => {
     reminderToggle.checked = true;
     reminderToggle.dispatchEvent(new Event("change", { bubbles: true }));
 
-    // Confirm it initializes the add page and syncs boolean hidden fields.
+    // Verify initializes the add page and syncs boolean hidden fields.
     expect(document.getElementById("registration_required").value).to.equal(
       "true",
     );
@@ -131,7 +131,7 @@ describe("event page modules", () => {
   });
 
   it("clears add page venue fields from the location clear button", () => {
-    // Exercise the flow to check it clears add page venue fields from the location clear.
+    // Location clear events empty the add page venue fields.
     mountAddPageShell();
     const pageRoot = document.querySelector('[data-event-page="add"]');
     pageRoot.insertAdjacentHTML(
@@ -144,33 +144,33 @@ describe("event page modules", () => {
       `,
     );
 
-    // Read the DOM to check it clears add page venue fields from the location clear.
+    // Read the add page venue fields before clearing them.
     const locationSearchField = pageRoot.querySelector("location-search-field");
     let locationFieldsCleared = false;
     locationSearchField.clearLocationFields = () => {
       locationFieldsCleared = true;
     };
 
-    // Exercise the flow to check it clears add page venue fields from the location clear.
+    // Clearing location data removes add page venue values.
     initializeEventAddPage();
 
-    // Trigger the user interaction to check it clears add page venue fields.
+    // Add page venue fields are empty after clearing.
     document.getElementById("clear-location-fields").click();
 
-    // Confirm it clears add page venue fields from the location clear button.
+    // The add page clear button empties venue fields.
     expect(document.getElementById("venue_name").value).to.equal("");
     expect(document.getElementById("venue_address").value).to.equal("");
     expect(locationFieldsCleared).to.equal(true);
   });
 
   it("converts event and session dates during add page HTMX config requests", () => {
-    // Exercise the flow to check it converts event and session dates during add page.
+    // Mount the add page shell.
     mountAddPageShell();
 
-    // Exercise the flow to check it converts event and session dates during add page.
+    // Initialize the add page behavior.
     initializeEventAddPage();
 
-    // Prepare request event to check it converts event and session dates during add page.
+    // Prepare request event for converting event and session dates during add page.
     const requestEvent = new CustomEvent("htmx:configRequest", {
       bubbles: true,
       cancelable: true,
@@ -184,10 +184,10 @@ describe("event page modules", () => {
       },
     });
 
-    // Dispatch the event event to check it converts event and session dates during add.
+    // Dispatch the add-page HTMX config request.
     document.getElementById("add-event-button").dispatchEvent(requestEvent);
 
-    // Confirm it converts event and session dates during add page HTMX config requests.
+    // Verify converts event and session dates during add page HTMX config requests.
     expect(requestEvent.detail.parameters.starts_at).to.equal(
       "2026-05-10T09:30:00",
     );
@@ -200,7 +200,7 @@ describe("event page modules", () => {
   });
 
   it("updates add page recurrence labels and additional-occurrence controls", () => {
-    // Exercise the flow to check it updates add page recurrence labels.
+    // Verify updates add page recurrence labels.
     mountAddPageShell();
     document.querySelector('[data-event-page="add"]').insertAdjacentHTML(
       "beforeend",
@@ -217,7 +217,7 @@ describe("event page modules", () => {
       `,
     );
 
-    // Read the starts at element to check it updates add page recurrence labels.
+    // Keep a reference to the starts at element.
     const startsAtInput = document.getElementById("starts_at");
     const recurrencePatternSelect =
       document.getElementById("recurrence_pattern");
@@ -227,18 +227,19 @@ describe("event page modules", () => {
     const additionalOccurrencesInput = document.getElementById(
       "recurrence_additional_occurrences",
     );
+
     // Return option text for assertions.
     const optionText = (value) =>
       recurrencePatternSelect.querySelector(`option[value="${value}"]`)
         .textContent;
 
-    // Update the input value to check it updates add page recurrence labels.
+    // Update the input before asserting it updates add page recurrence labels.
     startsAtInput.value = "2026-05-13T09:30";
 
-    // Exercise the flow to check it updates add page recurrence labels.
+    // Verify updates add page recurrence labels.
     initializeEventAddPage();
 
-    // Confirm it updates add page recurrence labels and additional-occurrence controls.
+    // Verify updates add page recurrence labels and additional-occurrence controls.
     expect(optionText("weekly")).to.equal("Weekly on Wednesday");
     expect(optionText("biweekly")).to.equal("Every two weeks on Wednesday");
     expect(optionText("monthly")).to.equal("Monthly on the second Wednesday");
@@ -249,14 +250,14 @@ describe("event page modules", () => {
     expect(additionalOccurrencesInput.required).to.equal(false);
     expect(additionalOccurrencesInput.value).to.equal("");
 
-    // Update the input value to check it updates add page recurrence labels.
+    // Update the input before asserting it updates add page recurrence labels.
     additionalOccurrencesInput.value = "2";
     recurrencePatternSelect.value = "weekly";
     recurrencePatternSelect.dispatchEvent(
       new Event("change", { bubbles: true }),
     );
 
-    // Confirm it updates add page recurrence labels and additional-occurrence controls.
+    // Verify updates add page recurrence labels and additional-occurrence controls.
     expect(
       additionalOccurrencesContainer.classList.contains("hidden"),
     ).to.equal(false);
@@ -264,20 +265,20 @@ describe("event page modules", () => {
     expect(additionalOccurrencesInput.required).to.equal(true);
     expect(additionalOccurrencesInput.value).to.equal("2");
 
-    // Update the input value to check it updates add page recurrence labels.
+    // Set the event start date used by recurrence labels.
     startsAtInput.value = "2026-05-20T09:30";
     startsAtInput.dispatchEvent(new Event("change", { bubbles: true }));
 
-    // Confirm it updates add page recurrence labels and additional-occurrence controls.
+    // Verify updates add page recurrence labels and additional-occurrence controls.
     expect(optionText("monthly")).to.equal("Monthly on the third Wednesday");
 
-    // Update the input value to check it updates add page recurrence labels.
+    // Switch recurrence back to a single occurrence.
     recurrencePatternSelect.value = "just-once";
     recurrencePatternSelect.dispatchEvent(
       new Event("change", { bubbles: true }),
     );
 
-    // Confirm it updates add page recurrence labels and additional-occurrence controls.
+    // Verify updates add page recurrence labels and additional-occurrence controls.
     expect(
       additionalOccurrencesContainer.classList.contains("hidden"),
     ).to.equal(true);
@@ -287,7 +288,7 @@ describe("event page modules", () => {
   });
 
   it("re-syncs session bounds after rejecting an add page start date change", async () => {
-    // Exercise the flow to check it re-syncs session bounds after rejecting an add page.
+    // Rejected add-page changes keep session bounds unchanged.
     mountAddPageShell();
     document
       .querySelector('[data-event-page="add"]')
@@ -296,35 +297,35 @@ describe("event page modules", () => {
         '<sessions-section></sessions-section><online-event-details id="online-event-details"></online-event-details>',
       );
 
-    // Read the DOM to check it re-syncs session bounds after rejecting an add page start.
+    // Read the add page event and session date fields.
     const sessionsSection = document.querySelector("sessions-section");
     const onlineEventDetails = document.querySelector("online-event-details");
     const startsAtInput = document.getElementById("starts_at");
     const endsAtInput = document.getElementById("ends_at");
 
-    // Update the input value to check it re-syncs session bounds after rejecting an add.
+    // Set the event start date.
     startsAtInput.value = "2026-05-10T09:00";
     endsAtInput.value = "2026-05-10T11:00";
     onlineEventDetails.trySetStartsAt = async () => false;
 
-    // Exercise the flow to check it re-syncs session bounds after rejecting an add page.
+    // Session bounds are restored after rejecting add-page changes.
     initializeEventAddPage();
 
-    // Update the input value to check it re-syncs session bounds after rejecting an add.
+    // Try moving the session outside the event date.
     startsAtInput.value = "2026-05-11T09:00";
     startsAtInput.dispatchEvent(new Event("change", { bubbles: true }));
 
     // Wait for queued event handlers to finish.
     await waitForMicrotask();
 
-    // Confirm it re-syncs session bounds after rejecting an add page start date change.
+    // Rejected add-page start changes restore session bounds.
     expect(startsAtInput.value).to.equal("2026-05-10T09:00");
     expect(sessionsSection.eventStartsAt).to.equal("2026-05-10T09:00");
     expect(sessionsSection.eventEndsAt).to.equal("2026-05-10T11:00");
   });
 
   it("re-syncs session bounds after rejecting an update page end date change", async () => {
-    // Exercise the flow to check it re-syncs session bounds after rejecting an update.
+    // Rejected update-page changes keep session bounds unchanged.
     mountUpdatePageShell();
     document
       .querySelector('[data-event-page="update"]')
@@ -333,53 +334,53 @@ describe("event page modules", () => {
         '<sessions-section></sessions-section><online-event-details id="online-event-details"></online-event-details>',
       );
 
-    // Read the DOM to check it re-syncs session bounds after rejecting an update page.
+    // Read the update page event and session date fields.
     const sessionsSection = document.querySelector("sessions-section");
     const onlineEventDetails = document.querySelector("online-event-details");
     const startsAtInput = document.getElementById("starts_at");
     const endsAtInput = document.getElementById("ends_at");
 
-    // Update the input value to check it re-syncs session bounds after rejecting.
+    // Set the event start date.
     startsAtInput.value = "2026-05-10T09:00";
     endsAtInput.value = "2026-05-10T11:00";
     onlineEventDetails.trySetEndsAt = async () => false;
 
-    // Exercise the flow to check it re-syncs session bounds after rejecting an update.
+    // Session bounds are restored after rejecting update-page changes.
     initializeEventUpdatePage();
 
-    // Update the input value to check it re-syncs session bounds after rejecting.
+    // Try moving the session outside the updated end time.
     endsAtInput.value = "2026-05-10T12:30";
     endsAtInput.dispatchEvent(new Event("change", { bubbles: true }));
 
     // Wait for queued event handlers to finish.
     await waitForMicrotask();
 
-    // Confirm it re-syncs session bounds after rejecting an update page end date change.
+    // Rejected update-page end changes restore session bounds.
     expect(endsAtInput.value).to.equal("2026-05-10T11:00");
     expect(sessionsSection.eventStartsAt).to.equal("2026-05-10T09:00");
     expect(sessionsSection.eventEndsAt).to.equal("2026-05-10T11:00");
   });
 
   it("initializes the update page and respects the page data contract", () => {
-    // Exercise the flow to check it initializes the update page and respects the page.
+    // Mount the update page shell.
     mountUpdatePageShell();
 
-    // Exercise the flow to check it initializes the update page and respects the page.
+    // Initialize the update page behavior.
     initializeEventUpdatePage();
 
-    // Exercise the flow to check it initializes the update page and respects the page.
+    // Dispatch the click event.
     document
       .querySelector('[data-section="submissions"]')
       .dispatchEvent(new Event("click", { bubbles: true }));
 
-    // Confirm it initializes the update page and respects the page data contract.
+    // Verify initializes the update page and respects the page data contract.
     expect(
       document.querySelector(".inert-form").hasAttribute("inert"),
     ).to.equal(false);
   });
 
   it("clears update page venue fields from the location clear button", () => {
-    // Exercise the flow to check it clears update page venue fields from the location.
+    // Location clear events empty the update page venue fields.
     mountUpdatePageShell();
     const pageRoot = document.querySelector('[data-event-page="update"]');
     pageRoot.insertAdjacentHTML(
@@ -392,61 +393,61 @@ describe("event page modules", () => {
       `,
     );
 
-    // Read the DOM to check it clears update page venue fields from the location clear.
+    // Read the update page venue fields before clearing them.
     const locationSearchField = pageRoot.querySelector("location-search-field");
     let locationFieldsCleared = false;
     locationSearchField.clearLocationFields = () => {
       locationFieldsCleared = true;
     };
 
-    // Exercise the flow to check it clears update page venue fields from the location.
+    // Clearing location data removes update page venue values.
     initializeEventUpdatePage();
 
-    // Trigger the user interaction to check it clears update page venue fields.
+    // Update page venue fields are empty after clearing.
     document.getElementById("clear-location-fields").click();
 
-    // Confirm it clears update page venue fields from the location clear button.
+    // The update page clear button empties venue fields.
     expect(document.getElementById("venue_name").value).to.equal("");
     expect(document.getElementById("venue_address").value).to.equal("");
     expect(locationFieldsCleared).to.equal(true);
   });
 
   it("keeps canceled event review tabs interactive for event managers", () => {
-    // Exercise the flow to check it keeps canceled event review tabs interactive.
+    // Mount the update page shell.
     mountUpdatePageShell({ canManageEvents: true, eventCanceled: true });
 
-    // Exercise the flow to check it keeps canceled event review tabs interactive.
+    // Initialize the update page behavior.
     initializeEventUpdatePage();
 
-    // Exercise the flow to check it keeps canceled event review tabs interactive.
+    // Dispatch the click event.
     document
       .querySelector('[data-section="attendees"]')
       .dispatchEvent(new Event("click", { bubbles: true }));
 
-    // Confirm it keeps canceled event review tabs interactive for event managers.
+    // Verify keeps canceled event review tabs interactive for event managers.
     expect(
       document.querySelector(".inert-form").hasAttribute("inert"),
     ).to.equal(false);
 
-    // Exercise the flow to check it keeps canceled event review tabs interactive.
+    // Verify keeps canceled event review tabs interactive.
     document
       .querySelector('[data-section="details"]')
       .dispatchEvent(new Event("click", { bubbles: true }));
 
-    // Confirm it keeps canceled event review tabs interactive for event managers.
+    // Verify keeps canceled event review tabs interactive for event managers.
     expect(
       document.querySelector(".inert-form").hasAttribute("inert"),
     ).to.equal(true);
   });
 
   it("warns before clearing capacity with a populated waitlist on the update page", async () => {
-    // Exercise the flow to check it warns before clearing capacity with a populated.
+    // Mount the update page shell.
     mountUpdatePageShell({ canManageEvents: true });
 
-    // Exercise the flow to check it warns before clearing capacity with a populated.
+    // Initialize the update page behavior.
     initializeEventUpdatePage();
 
-    // Exercise the flow to check it warns before clearing capacity with a populated.
+    // Click the update button with a populated waitlist.
     document
       .getElementById("update-event-button")
       .dispatchEvent(
@@ -455,7 +456,7 @@ describe("event page modules", () => {
     await waitForMicrotask();
     await waitForMicrotask();
 
-    // Confirm it warns before clearing capacity with a populated waitlist on the update.
+    // Clearing capacity with a populated waitlist shows a warning.
     expect(swal.calls).to.have.length(1);
     expect(swal.calls[0].text).to.contain("currently on the waitlist");
     expect(htmx.triggerCalls).to.deep.equal([
@@ -464,7 +465,7 @@ describe("event page modules", () => {
   });
 
   it("scopes add page initialization to the provided root", () => {
-    // Build the DOM fixture to check it scopes add page initialization to the provided.
+    // Render the DOM fixture for scoping add page initialization to the provided.
     document.body.innerHTML = `
       <div id="outside">
         <input id="toggle_registration_required" type="checkbox" checked />
@@ -481,18 +482,18 @@ describe("event page modules", () => {
       </div>
     `;
 
-    // Read the page root element to check it scopes add page initialization.
+    // Keep a reference to the page root element.
     const pageRoot = document.getElementById("page-root");
     initializeEventAddPage(pageRoot);
 
-    // Read the DOM to check it scopes add page initialization to the provided root.
+    // Read controls from the scoped add page root.
     const scopedToggle = pageRoot.querySelector(
       "#toggle_registration_required",
     );
     scopedToggle.checked = true;
     scopedToggle.dispatchEvent(new Event("change", { bubbles: true }));
 
-    // Confirm it scopes add page initialization to the provided root.
+    // Verify scopes add page initialization to the provided root.
     expect(pageRoot.querySelector("#registration_required").value).to.equal(
       "true",
     );
@@ -502,7 +503,7 @@ describe("event page modules", () => {
   });
 
   it("reconfigures ticketing editors to use scoped page dependencies", async () => {
-    // Build the DOM fixture to check it reconfigures ticketing editors to use scoped.
+    // Render the DOM fixture for reconfiguring ticketing editors to use scoped.
     document.body.innerHTML = `
       <div id="outside-root">
         <button id="add-ticket-type-button" type="button">Outside ticket</button>
@@ -536,11 +537,11 @@ describe("event page modules", () => {
       </div>
     `;
 
-    // Read the page root element to check it reconfigures ticketing editors to use.
+    // Keep a reference to the page root element.
     const pageRoot = document.getElementById("page-root");
     initializeEventAddPage(pageRoot);
 
-    // Read the DOM to check it reconfigures ticketing editors to use scoped page.
+    // Read the rendered DOM state for reconfiguring ticketing editors to use scoped page.
     const ticketTypesEditor = pageRoot.querySelector("#ticket-types-ui");
     const discountCodesEditor = pageRoot.querySelector("#discount-codes-ui");
     const scopedTicketButton = pageRoot.querySelector(
@@ -552,7 +553,7 @@ describe("event page modules", () => {
     const scopedCurrency = pageRoot.querySelector("#payment_currency_code");
     const scopedTimezone = pageRoot.querySelector('[name="timezone"]');
 
-    // Confirm it reconfigures ticketing editors to use scoped page dependencies.
+    // Ticketing editors use dependencies from the scoped page.
     expect(ticketTypesEditor.addButton).to.equal(scopedTicketButton);
     expect(ticketTypesEditor.currencyInput).to.equal(scopedCurrency);
     expect(ticketTypesEditor.timezoneInput).to.equal(scopedTimezone);
@@ -560,13 +561,13 @@ describe("event page modules", () => {
     expect(discountCodesEditor.currencyInput).to.equal(scopedCurrency);
     expect(discountCodesEditor.timezoneInput).to.equal(scopedTimezone);
 
-    // Trigger the user interaction to check it reconfigures ticketing editors to use.
+    // Ticketing editors use the scoped dependencies.
     scopedTicketButton.click();
     scopedDiscountButton.click();
     await ticketTypesEditor.updateComplete;
     await discountCodesEditor.updateComplete;
 
-    // Confirm it reconfigures ticketing editors to use scoped page dependencies.
+    // Reconfigured ticketing editors keep using scoped dependencies.
     expect(ticketTypesEditor.textContent).to.contain("Price (EUR)");
     expect(
       ticketTypesEditor
@@ -581,7 +582,7 @@ describe("event page modules", () => {
   });
 
   it("keeps venue changes scoped when switching the event kind", async () => {
-    // Build the DOM fixture to check it keeps venue changes scoped when switching.
+    // Render the DOM fixture for keeping venue changes scoped when switching.
     document.body.innerHTML = `
       <div id="outside-root">
         <section id="venue-information-section" class="hidden"></section>
@@ -604,20 +605,20 @@ describe("event page modules", () => {
       </div>
     `;
 
-    // Read the page root element to check it keeps venue changes scoped when switching.
+    // Keep a reference to the page root element.
     const pageRoot = document.getElementById("page-root");
     const kindSelect = pageRoot.querySelector("#kind_id");
     swal.setNextResult({ isConfirmed: true });
 
-    // Exercise the flow to check it keeps venue changes scoped when switching the event.
+    // Verify keeps venue changes scoped when switching the event.
     initializeEventAddPage(pageRoot);
 
-    // Update the input value to check it keeps venue changes scoped when switching.
+    // Update the input before asserting it keeps venue changes scoped when switching.
     kindSelect.value = "virtual";
     kindSelect.dispatchEvent(new Event("change", { bubbles: true }));
     await waitForMicrotask();
 
-    // Confirm it keeps venue changes scoped when switching the event kind.
+    // Verify keeps venue changes scoped when switching the event kind.
     expect(pageRoot.querySelector("#venue_name")?.value).to.equal("");
     expect(pageRoot.querySelector("#venue_address")?.value).to.equal("");
     expect(
@@ -631,7 +632,7 @@ describe("event page modules", () => {
         ?.classList.contains("hidden"),
     ).to.equal(false);
 
-    // Confirm it keeps venue changes scoped when switching the event kind.
+    // Verify keeps venue changes scoped when switching the event kind.
     expect(document.querySelector("#outside-root #venue_name")?.value).to.equal(
       "Outside hall",
     );
@@ -646,33 +647,33 @@ describe("event page modules", () => {
   });
 
   it("does not bind duplicate update page handlers when initialized twice", () => {
-    // Exercise the flow to check it does not bind duplicate update page handlers.
+    // Mount the update page shell.
     mountUpdatePageShell({ canManageEvents: true });
 
-    // Exercise the flow to check it does not bind duplicate update page handlers.
+    // Initialize the update page behavior.
     initializeEventUpdatePage();
     initializeEventUpdatePage();
 
-    // Exercise the flow to check it does not bind duplicate update page handlers.
+    // Click the update button after initializing twice.
     document
       .getElementById("update-event-button")
       .dispatchEvent(
         new MouseEvent("click", { bubbles: true, cancelable: true }),
       );
 
-    // Confirm it does not bind duplicate update page handlers when initialized twice.
+    // Initializing twice does not bind duplicate update handlers.
     expect(swal.calls).to.have.length(1);
   });
 
   it("syncs approved submissions only within the initialized update page root", () => {
-    // Exercise the flow to check it syncs approved submissions only within.
+    // Mount the managed update page and add an unrelated sessions section.
     mountUpdatePageShell({ canManageEvents: true });
     document.body.insertAdjacentHTML(
       "beforeend",
       '<sessions-section id="outside-sessions" approved-submissions=\'[{"cfs_submission_id":"outside"}]\'></sessions-section>',
     );
 
-    // Read the event page= element to check it syncs approved submissions only within.
+    // Keep a reference to the event page= element.
     const pageRoot = document.querySelector('[data-event-page="update"]');
     const scopedSessions = document.createElement("sessions-section");
     scopedSessions.id = "scoped-sessions";
@@ -687,10 +688,10 @@ describe("event page modules", () => {
     };
     pageRoot.append(scopedSessions);
 
-    // Exercise the flow to check it syncs approved submissions only within.
+    // Initialize only the update page root.
     initializeEventUpdatePage(pageRoot);
 
-    // Dispatch the event event to check it syncs approved submissions only within.
+    // Dispatch the approved submissions update.
     pageRoot.dispatchEvent(
       new CustomEvent("event-approved-submissions-updated", {
         bubbles: true,
@@ -707,7 +708,7 @@ describe("event page modules", () => {
       }),
     );
 
-    // Confirm it syncs approved submissions only within the initialized update page root.
+    // Only sessions inside the initialized root receive the update.
     expect(scopedSessions.getAttribute("approved-submissions")).to.equal(
       JSON.stringify([
         {
@@ -727,15 +728,15 @@ describe("event page modules", () => {
   });
 
   it("dispatches submissions refresh from the update page root after a successful save", () => {
-    // Exercise the flow to check it dispatches submissions refresh from the update page.
+    // Mount the update page shell.
     mountUpdatePageShell({ canManageEvents: true, waitlistCount: "0" });
 
-    // Read the event update page element to check it dispatches submissions refresh.
+    // Keep a reference to the event update page element.
     const pageRoot = document.getElementById("event-update-page");
     const refreshEvents = [];
     const bodyEvents = [];
 
-    // Exercise the flow to check it dispatches submissions refresh from the update page.
+    // Listen for refresh events on the page root and body.
     pageRoot.addEventListener("refresh-event-submissions", () => {
       refreshEvents.push("page");
     });
@@ -743,10 +744,10 @@ describe("event page modules", () => {
       bodyEvents.push("body");
     });
 
-    // Exercise the flow to check it dispatches submissions refresh from the update page.
+    // Initialize the update page behavior.
     initializeEventUpdatePage();
 
-    // Dispatch the event event to check it dispatches submissions refresh.
+    // Dispatch the successful update response.
     document.getElementById("update-event-button").dispatchEvent(
       new CustomEvent("htmx:afterRequest", {
         bubbles: true,
@@ -757,7 +758,7 @@ describe("event page modules", () => {
       }),
     );
 
-    // Confirm it dispatches submissions refresh from the update page root.
+    // Submissions refresh is emitted from the update page root.
     expect(refreshEvents).to.deep.equal(["page"]);
     expect(bodyEvents).to.deep.equal([]);
   });

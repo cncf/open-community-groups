@@ -15,6 +15,8 @@ describe("stats utilities", () => {
     // Computed category label intervals.
     expect(getCategoryLabelInterval(0)).to.equal(0);
     expect(getCategoryLabelInterval(6)).to.equal(0);
+
+    // Larger category counts increase the interval.
     expect(getCategoryLabelInterval(24)).to.equal(1);
     expect(getCategoryLabelInterval(25)).to.equal(2);
   });
@@ -23,6 +25,8 @@ describe("stats utilities", () => {
     // Computed time split numbers within the expected bounds.
     expect(getTimeSplitNumber(0)).to.equal(4);
     expect(getTimeSplitNumber(6)).to.equal(3);
+
+    // Larger month ranges keep the split count bounded.
     expect(getTimeSplitNumber(24)).to.equal(4);
     expect(getTimeSplitNumber(60)).to.equal(6);
   });

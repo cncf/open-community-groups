@@ -47,7 +47,7 @@ describe("ocgFetch", () => {
     // Mock the fetch response.
     setLoadedCommitSha("abc123");
     fetchMock.setImpl(async (_url, options) => {
-      // Adds OCG fetch and commit SHA headers for same-origin requests.
+      // Same-origin requests include the OCG and commit headers.
       expect(options.headers).to.be.instanceOf(Headers);
       expect(options.headers.get("X-OCG-Fetch")).to.equal("true");
       expect(options.headers.get(COMMIT_SHA_HEADER)).to.equal("abc123");
@@ -71,7 +71,7 @@ describe("ocgFetch", () => {
     // Mock the fetch response.
     setLoadedCommitSha("abc123");
     fetchMock.setImpl(async (_url, options) => {
-      // Does not add OCG headers for cross-origin requests.
+      // Cross-origin requests keep the OCG headers unset.
       expect(options.headers).to.be.instanceOf(Headers);
       expect(options.headers.get("X-OCG-Fetch")).to.equal(null);
       expect(options.headers.get(COMMIT_SHA_HEADER)).to.equal(null);
@@ -136,7 +136,7 @@ describe("ocgFetch", () => {
       ocgFetch("/test"),
     );
 
-    // Check deployment refresh responses reload and leave callers pending.
+    // Deployment refresh responses reload and leave callers pending.
     expect(settledState).to.equal("pending");
     expect(reloads).to.equal(1);
   });
@@ -159,7 +159,7 @@ describe("ocgFetch", () => {
       ocgFetch("/test"),
     );
 
-    // Reloads and leaves callers pending when a same-origin response comes from a newer commit.
+    // Verify refresh keeps callers pending for a newer same-origin commit.
     expect(settledState).to.equal("pending");
     expect(reloads).to.equal(1);
   });
@@ -188,6 +188,7 @@ describe("ocgFetch", () => {
       ocgFetch("/test"),
     );
 
+    // The fetch promise remains pending while the page reloads.
     expect(settledState).to.equal("pending");
     expect(reloads).to.equal(1);
   });

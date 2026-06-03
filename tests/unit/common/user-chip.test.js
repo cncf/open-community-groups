@@ -10,15 +10,15 @@ describe("user-chip", () => {
   });
 
   it("renders nothing when no user is provided", async () => {
-    // Render the user-chip fixture.
+    // Mount the chip without user data.
     const element = await mountLitComponent("user-chip");
 
-    // Renders nothing when no user is provided.
+    // The empty chip renders no light DOM content.
     expect(element.children.length).to.equal(0);
   });
 
   it("parses a json user payload and renders the display name", async () => {
-    // Render the user-chip fixture.
+    // Mount the chip with a serialized user payload.
     const element = await mountLitComponent("user-chip", {
       user: JSON.stringify({
         name: "Ada Lovelace",
@@ -28,7 +28,7 @@ describe("user-chip", () => {
       }),
     });
 
-    // Parsed a json user payload and renders the display name.
+    // The display name, title, and initials come from the parsed payload.
     expect(element.textContent).to.include("Ada Lovelace");
     expect(element.textContent).to.include("Mathematician");
     expect(
@@ -53,16 +53,16 @@ describe("user-chip", () => {
       bioIsHtml: true,
     });
 
-    // Set up dispatches the user modal event on click when display-modal is enabled.
+    // Capture the modal event emitted by the chip.
     let eventDetail = null;
     element.addEventListener("open-user-modal", (event) => {
       eventDetail = event.detail;
     });
 
-    // Click the control and verify the resulting state.
+    // Click the user chip.
     element.querySelector('[role="button"]')?.click();
 
-    // Dispatches the user modal event on click when display-modal is enabled.
+    // The click emits the complete modal payload.
     expect(eventDetail).to.deep.equal({
       name: "Grace Hopper",
       username: "grace",
@@ -82,7 +82,7 @@ describe("user-chip", () => {
   });
 
   it("opens the modal from keyboard interactions when clickable", async () => {
-    // Render the user-chip fixture.
+    // Mount a clickable chip before sending keyboard events.
     const element = await mountLitComponent("user-chip", {
       user: {
         name: "Margaret Hamilton",
@@ -108,7 +108,7 @@ describe("user-chip", () => {
       new KeyboardEvent("keydown", { key: " ", bubbles: true }),
     );
 
-    // Opened the modal from keyboard interactions when clickable.
+    // Enter and Space both emit the modal event.
     expect(openedBy).to.deep.equal(["opened", "opened"]);
   });
 

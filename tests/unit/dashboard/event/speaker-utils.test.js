@@ -8,7 +8,7 @@ import {
 
 describe("speaker-utils", () => {
   it("normalizes nested user data and featured flags", () => {
-    // Prepare speakers to check it normalizes nested user data and featured flags.
+    // Prepare speakers for normalizing nested user data and featured flags.
     const speakers = normalizeSpeakers([
       {
         featured: 1,
@@ -24,7 +24,7 @@ describe("speaker-utils", () => {
       null,
     ]);
 
-    // Confirm it normalizes nested user data and featured flags.
+    // Verify normalizes nested user data and featured flags.
     expect(speakers).to.deep.equal([
       {
         featured: true,
@@ -40,7 +40,7 @@ describe("speaker-utils", () => {
   });
 
   it("accepts json strings and ignores invalid values", () => {
-    // Confirm it accepts json strings and ignores invalid values.
+    // JSON strings are normalized into speaker records.
     expect(
       normalizeSpeakers(
         JSON.stringify([
@@ -56,13 +56,13 @@ describe("speaker-utils", () => {
       },
     ]);
 
-    // Confirm it accepts json strings and ignores invalid values.
+    // Invalid speaker values fall back to an empty list.
     expect(normalizeSpeakers("{")).to.deep.equal([]);
     expect(normalizeSpeakers({ username: "jamie" })).to.deep.equal([]);
   });
 
   it("builds comparable keys and checks membership", () => {
-    // Prepare speakers to check it builds comparable keys and checks membership.
+    // Prepare speakers with user ids and username-only profiles.
     const speakers = normalizeSpeakers([
       {
         user: {
@@ -75,7 +75,7 @@ describe("speaker-utils", () => {
       },
     ]);
 
-    // Confirm it builds comparable keys and checks membership.
+    // Assert comparable keys and membership checks use the normalized speakers.
     expect(speakerKey({ user_id: 42 })).to.equal("42");
     expect(speakerKey({ username: "taylor" })).to.equal("taylor");
     expect(hasSpeaker(speakers, { user_id: 42 })).to.equal(true);

@@ -9,10 +9,12 @@ test.describe("site header", () => {
     // Load the public home page before checking desktop navigation links.
     await navigateToSiteHome(page);
 
+    // Find the Main navigation control.
     const navigation = page.getByRole("navigation", {
       name: "Main navigation",
     });
 
+    // Verify desktop navigation links point to the expected public pages.
     await expect(
       navigation.getByRole("link", { name: "Home" }),
     ).toHaveAttribute("href", "/");
@@ -33,12 +35,16 @@ test.describe("site header", () => {
     // Load a public page before opening the guest user menu.
     await navigateToPath(page, "/explore?entity=events");
 
+    // Find the user menu button.
     const userMenuButton = page.locator(
       '#user-dropdown-button[data-logged-in="false"]',
     );
+
+    // Verify guest user menu links point to authentication pages.
     await expect(userMenuButton).toBeVisible();
     await userMenuButton.click();
 
+    // Find the user menu.
     const userMenu = page.locator("#user-dropdown");
     await expect(userMenu).toBeVisible();
     await expect(

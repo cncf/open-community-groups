@@ -67,7 +67,7 @@ describe("common utilities", () => {
     container.append(image);
     document.body.append(container);
 
-    // Trigger the error event.
+    // Assert the error event.
     image.dispatchEvent(new Event("error"));
 
     // The broken image now uses the shared placeholder.
@@ -105,7 +105,7 @@ describe("common utilities", () => {
     container.append(image);
     document.body.append(container);
 
-    // Trigger the error event.
+    // Assert the error event.
     image.dispatchEvent(new Event("error"));
 
     // The visual state matches the scenario.
@@ -126,7 +126,7 @@ describe("common utilities", () => {
     container.append(image);
     document.body.append(container);
 
-    // Trigger the error event.
+    // Assert the error event.
     image.dispatchEvent(new Event("error"));
 
     // Positioned parents are left unchanged.
@@ -173,7 +173,7 @@ describe("common utilities", () => {
     avatar.append(image);
     document.body.append(avatar);
 
-    // Trigger the error event.
+    // Assert the error event.
     image.dispatchEvent(new Event("error"));
 
     // The image fallback is left untouched.
@@ -191,7 +191,7 @@ describe("common utilities", () => {
     });
     document.body.append(image);
 
-    // Trigger the error event.
+    // Assert the error event.
     image.dispatchEvent(new Event("error"));
 
     // The image fallback is left untouched.
@@ -207,7 +207,7 @@ describe("common utilities", () => {
     container.append(image);
     document.body.append(container);
 
-    // Trigger the error event.
+    // Assert the error event.
     image.dispatchEvent(new Event("error"));
     image.src = "https://example.com/recovered.png";
     image.dispatchEvent(new Event("load"));
@@ -350,6 +350,8 @@ describe("common utilities", () => {
     expect(toUtcIsoInTimezone("2026-04-10T10:00", "America/New_York")).to.equal(
       "2026-04-10T14:00:00.000Z",
     );
+
+    // Empty or invalid timezone values preserve fallback behavior.
     expect(toUtcIsoInTimezone(" 2026-04-10T10:00 ", "")).to.equal(
       "2026-04-10T10:00",
     );

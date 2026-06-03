@@ -17,9 +17,11 @@ test.describe("group dashboard settings view", () => {
     const readSettingsFormValues = async () => {
       await navigateToPath(organizerGroupPage, settingsPath);
 
+      // Find the settings form.
       const settingsForm = organizerGroupPage.locator("#groups-form");
       await expect(settingsForm).toBeVisible();
 
+      // Find the description editor.
       const descriptionEditor = organizerGroupPage.locator(
         "markdown-editor#description",
       );
@@ -33,6 +35,7 @@ test.describe("group dashboard settings view", () => {
         .locator("#region_id")
         .inputValue();
 
+      // Return the values used by the caller.
       return {
         categoryId: await organizerGroupPage
           .locator("#category_id")
@@ -61,6 +64,7 @@ test.describe("group dashboard settings view", () => {
       await fillMarkdownEditor(organizerGroupPage, "description", description);
       await organizerGroupPage.locator("#website_url").fill(websiteUrl);
 
+      // Click Update Group.
       await Promise.all([
         organizerGroupPage.waitForResponse(
           (response) =>
@@ -74,6 +78,7 @@ test.describe("group dashboard settings view", () => {
       ]);
     };
 
+    // Set up original form values.
     const originalFormValues = await readSettingsFormValues();
     const updatedValues = {
       ...originalFormValues,
@@ -84,8 +89,10 @@ test.describe("group dashboard settings view", () => {
       regionId: originalFormValues.regionId,
     };
 
+    // Save the updated settings.
     await submitSettings(updatedValues);
 
+    // Assert the field value was updated.
     await expect(organizerGroupPage.locator("#category_id")).toHaveValue(
       updatedValues.categoryId,
     );
@@ -102,8 +109,10 @@ test.describe("group dashboard settings view", () => {
       updatedValues.websiteUrl,
     );
 
+    // Restore the original settings.
     await submitSettings(originalFormValues);
 
+    // Assert the field value was updated.
     await expect(organizerGroupPage.locator("#category_id")).toHaveValue(
       originalFormValues.categoryId,
     );
@@ -127,7 +136,10 @@ test.describe("group dashboard settings view", () => {
     // Load the group settings tab as a read-only viewer.
     await navigateToPath(groupViewerPage, "/dashboard/group?tab=settings");
 
+    // Find the dashboard content.
     const dashboardContent = groupViewerPage.locator("#dashboard-content");
+
+    // Verify viewer sees read-only controls on group settings.
     await expect(
       dashboardContent.getByText("Group Details", { exact: true }),
     ).toBeVisible();
@@ -144,6 +156,7 @@ test.describe("group dashboard settings view", () => {
       name: "Update Group",
     });
 
+    // Dismiss pending group-setting changes when the button is present.
     if ((await updateGroupButton.count()) > 0) {
       await expect(updateGroupButton).toBeDisabled();
       await expect(updateGroupButton).toHaveAttribute(
@@ -152,10 +165,12 @@ test.describe("group dashboard settings view", () => {
       );
     }
 
+    // Find the payment recipient input.
     const paymentRecipientInput = dashboardContent.locator(
       "#payment_recipient_recipient_id",
     );
 
+    // Clear the payment recipient when the field is present.
     if ((await paymentRecipientInput.count()) > 0) {
       await expect(paymentRecipientInput).toHaveValue(
         TEST_PAYMENT_GROUP_RECIPIENT,
@@ -163,6 +178,7 @@ test.describe("group dashboard settings view", () => {
       return;
     }
 
+    // Assert how many matching elements are shown.
     await expect(paymentRecipientInput).toHaveCount(0);
   });
 
@@ -176,11 +192,14 @@ test.describe("group dashboard settings view", () => {
     );
     const updatedRecipient = "  acct_e2e_alpha_updated  ";
 
+    // Open the group settings page.
     await navigateToPath(organizerGroupPage, settingsPath);
     test.skip(
       (await paymentRecipientInput.count()) === 0,
       "Payments are disabled in this environment.",
     );
+
+    // Verify organizer can update and restore the Stripe recipient.
     await expect(
       organizerGroupPage.getByText("Payments", { exact: true }),
     ).toBeVisible();
@@ -188,8 +207,10 @@ test.describe("group dashboard settings view", () => {
       TEST_PAYMENT_GROUP_RECIPIENT,
     );
 
+    // Fill the form field.
     await paymentRecipientInput.fill(updatedRecipient);
 
+    // Click Update Group.
     await Promise.all([
       organizerGroupPage.waitForResponse(
         (response) =>
@@ -200,10 +221,13 @@ test.describe("group dashboard settings view", () => {
       organizerGroupPage.getByRole("button", { name: "Update Group" }).click(),
     ]);
 
+    // Assert the field value was updated.
     await expect(paymentRecipientInput).toHaveValue("acct_e2e_alpha_updated");
 
+    // Fill the form field.
     await paymentRecipientInput.fill(TEST_PAYMENT_GROUP_RECIPIENT);
 
+    // Click Update Group.
     await Promise.all([
       organizerGroupPage.waitForResponse(
         (response) =>
@@ -214,6 +238,7 @@ test.describe("group dashboard settings view", () => {
       organizerGroupPage.getByRole("button", { name: "Update Group" }).click(),
     ]);
 
+    // Assert the field value was updated.
     await expect(paymentRecipientInput).toHaveValue(
       TEST_PAYMENT_GROUP_RECIPIENT,
     );

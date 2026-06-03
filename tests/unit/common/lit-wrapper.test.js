@@ -20,15 +20,15 @@ describe("lit-wrapper", () => {
   });
 
   it("returns the element as its own render root", () => {
-    // Create the test-lit-wrapper fixture element.
+    // Create a wrapper element without connecting it.
     const element = document.createElement("test-lit-wrapper");
 
-    // Returned the element as its own render root.
+    // The component keeps rendering in light DOM.
     expect(element.createRenderRoot()).to.equal(element);
   });
 
   it("clears restored light-dom markup before the first render", async () => {
-    // Create the test-lit-wrapper fixture element.
+    // Create a wrapper with stale server-rendered content.
     const element = document.createElement("test-lit-wrapper");
     element.innerHTML = "<span>stale</span>";
     document.body.append(element);
@@ -39,7 +39,7 @@ describe("lit-wrapper", () => {
     // Collect the rendered spans element.
     const renderedSpans = element.querySelectorAll("span");
 
-    // The rendered text shows the scenario data.
+    // The stale content is replaced by the component render.
     expect(renderedSpans).to.have.length(1);
     expect(renderedSpans[0]?.textContent).to.equal("content");
   });
@@ -56,7 +56,7 @@ describe("lit-wrapper", () => {
     element.remove();
     document.body.append(element);
 
-    // Let the component finish rendering.
+    // Wait for the reconnected element to render.
     await element.updateComplete;
 
     // Collect the rendered spans element.

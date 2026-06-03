@@ -106,6 +106,7 @@ test.describe("group page - responsive links", () => {
       TEST_GROUP_SLUGS.community1.alpha,
     );
 
+    // Set up expected upcoming href.
     const expectedUpcomingHref =
       `/explore?entity=events&group[0]=${TEST_GROUP_SLUGS.community1.alpha}` +
       `&community[0]=${TEST_COMMUNITY_NAME}`;

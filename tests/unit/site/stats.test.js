@@ -14,7 +14,7 @@ describe("site stats", () => {
     initCalls = [];
     resizeCalls = [];
 
-    // Exercise the flow to check it covers the current behavior.
+    // Run the behavior under test.
     globalThis.echarts = {
       getInstanceByDom() {
         return null;
@@ -32,7 +32,7 @@ describe("site stats", () => {
       },
     };
 
-    // Exercise the flow to check it covers the current behavior.
+    // Run the behavior under test.
     document.documentElement.style.setProperty(
       "--color-primary-500",
       "#0f766e",
@@ -48,7 +48,7 @@ describe("site stats", () => {
       removeEventListener() {},
     });
 
-    // Exercise the flow to check it covers the current behavior.
+    // Run the behavior under test.
     [
       "groups-running-chart",
       "groups-monthly-chart",
@@ -76,7 +76,7 @@ describe("site stats", () => {
   });
 
   it("renders charts for each stats section and registers resize handling", async () => {
-    // Exercise the flow to check it renders charts for each stats section and registers.
+    // Verify renders charts for each stats section and registers.
     await initSiteStatsCharts({
       groups: {
         running_total: [
@@ -121,10 +121,10 @@ describe("site stats", () => {
       },
     });
 
-    // Confirm it renders charts for each stats section and registers resize handling.
+    // Verify renders charts for each stats section and registers resize handling.
     expect(initCalls).to.have.length(8);
 
-    // Prepare groups running option to check it renders charts for each stats section.
+    // Prepare groups running option for rendering charts for each stats section.
     const groupsRunningOption = initCalls.find(
       ({ element }) => element.id === "groups-running-chart",
     )?.option;
@@ -132,7 +132,7 @@ describe("site stats", () => {
       ({ element }) => element.id === "groups-monthly-chart",
     )?.option;
 
-    // Confirm it renders charts for each stats section and registers resize handling.
+    // Verify renders charts for each stats section and registers resize handling.
     expect(groupsRunningOption.baseOption.legend).to.include({
       bottom: 10,
       left: "center",
@@ -154,11 +154,11 @@ describe("site stats", () => {
     );
     expect(groupsMonthlyOption.legend.bottom).to.equal(10);
 
-    // Dispatch the event event to check it renders charts for each stats section.
+    // Dispatch the resize event.
     window.dispatchEvent(new Event("resize"));
     await new Promise((resolve) => setTimeout(resolve, 250));
 
-    // Confirm it renders charts for each stats section and registers resize handling.
+    // Verify renders charts for each stats section and registers resize handling.
     expect(resizeCalls).to.include("groups-running-chart");
     expect(resizeCalls).to.include("attendees-monthly-chart");
   });

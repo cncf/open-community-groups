@@ -104,10 +104,12 @@ describe("deployment version", () => {
       reloads += 1;
     });
 
+    // Set up first changed.
     const firstChanged = reloadIfDeploymentChanged(
       new Headers({ [COMMIT_SHA_HEADER]: "new" }),
     );
 
+    // Verify suppresses repeated automatic refreshes within the public cache window.
     expect(firstChanged).to.equal(true);
     expect(reloads).to.equal(1);
     expect(consumePendingDeploymentRefreshAlert()).to.equal(true);
@@ -118,10 +120,12 @@ describe("deployment version", () => {
     });
     Date.now = () => 1_000 + 4 * 60 * 1000;
 
+    // Set up second changed.
     const secondChanged = reloadIfDeploymentChanged(
       new Headers({ [COMMIT_SHA_HEADER]: "new" }),
     );
 
+    // Assert that the flag is enabled.
     expect(secondChanged).to.equal(true);
     expect(reloads).to.equal(1);
     expect(consumePendingDeploymentRefreshAlert()).to.equal(false);
@@ -138,6 +142,7 @@ describe("deployment version", () => {
     const swal = mockSwal();
     const retryTimer = captureDeploymentRefreshRetryTimer();
 
+    // Restore the page state after the check.
     try {
       reloadIfDeploymentChanged(new Headers({ [COMMIT_SHA_HEADER]: "new" }));
       resetDeploymentReloadState({ clearRefreshHistory: false });
@@ -146,17 +151,21 @@ describe("deployment version", () => {
       });
       Date.now = () => 1_000 + 4 * 60 * 1000;
 
+      // Set up changed.
       const changed = reloadIfDeploymentChanged(
         new Headers({ [COMMIT_SHA_HEADER]: "new" }),
       );
 
+      // Verify schedules automatic refresh retries when cached HTML is still loaded.
       expect(changed).to.equal(true);
       expect(reloads).to.equal(1);
       expect(swal.calls).to.have.length(1);
       expect(retryTimer.delay).to.equal(30_000);
 
+      // Fire the retry timer.
       retryTimer.callback();
 
+      // Assert the reload count.
       expect(reloads).to.equal(2);
     } finally {
       retryTimer.restore();
@@ -172,6 +181,7 @@ describe("deployment version", () => {
     const swal = mockSwal();
     const firstRetryTimer = captureDeploymentRefreshRetryTimer();
 
+    // Restore the page state after the check.
     try {
       reloadIfDeploymentChanged(new Headers({ [COMMIT_SHA_HEADER]: "new" }));
       resetDeploymentReloadState({ clearRefreshHistory: false });
@@ -187,6 +197,7 @@ describe("deployment version", () => {
     });
     const resumedRetryTimer = captureDeploymentRefreshRetryTimer();
 
+    // Restore the page state after the check.
     try {
       setLoadedCommitSha("old");
       expect(initializeDeploymentRefreshRetry()).to.equal(true);
@@ -220,10 +231,12 @@ describe("deployment version", () => {
     });
     Date.now = () => 1_000 + 5 * 60 * 1000;
 
+    // Set up changed.
     const changed = reloadIfDeploymentChanged(
       new Headers({ [COMMIT_SHA_HEADER]: "new" }),
     );
 
+    // Assert that the flag is enabled.
     expect(changed).to.equal(true);
     expect(reloads).to.equal(2);
     expect(consumePendingDeploymentRefreshAlert()).to.equal(true);

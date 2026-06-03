@@ -23,13 +23,13 @@ describe("sponsors-section", () => {
   useMountedElementsCleanup("sponsors-section");
 
   it("normalizes selected sponsor ids into sponsor objects", async () => {
-    // Render the fixture to check it normalizes selected sponsor ids into sponsor.
+    // Call mount lit component.
     const element = await mountLitComponent("sponsors-section", {
       sponsors,
       selectedSponsors: ["sponsor-2"],
     });
 
-    // Confirm it normalizes selected sponsor ids into sponsor objects.
+    // Verify normalizes selected sponsor ids into sponsor objects.
     expect(element.selectedSponsors).to.deep.equal([
       {
         group_sponsor_id: "sponsor-2",
@@ -40,12 +40,12 @@ describe("sponsors-section", () => {
   });
 
   it("filters sponsors and opens the level modal from keyboard selection", async () => {
-    // Render the fixture to check it filters sponsors and opens the level modal.
+    // Call mount lit component.
     const element = await mountLitComponent("sponsors-section", {
       sponsors,
     });
 
-    // Run component methods to check it filters sponsors and opens the level modal.
+    // Call on input change.
     element._onInputChange({
       target: {
         value: "beta",
@@ -53,21 +53,21 @@ describe("sponsors-section", () => {
     });
     await element.updateComplete;
 
-    // Confirm it filters sponsors and opens the level modal from keyboard selection.
+    // Verify filters sponsors and opens the level modal from keyboard selection.
     expect(element.visibleDropdown).to.equal(true);
     expect(element.visibleOptions.map((item) => item.name)).to.deep.equal([
       "Beta Compute",
     ]);
     expect(element.activeIndex).to.equal(0);
 
-    // Run component methods to check it filters sponsors and opens the level modal.
+    // Call handle key down.
     element._handleKeyDown({
       key: "Enter",
       preventDefault() {},
     });
     await element.updateComplete;
 
-    // Confirm it filters sponsors and opens the level modal from keyboard selection.
+    // Verify filters sponsors and opens the level modal from keyboard selection.
     expect(element.showLevelModal).to.equal(true);
     expect(element.pendingSponsor).to.deep.equal({
       group_sponsor_id: "sponsor-2",
@@ -77,20 +77,20 @@ describe("sponsors-section", () => {
   });
 
   it("adds the pending sponsor with its level and renders hidden inputs", async () => {
-    // Render the fixture to check it adds the pending sponsor with its level and renders.
+    // Call mount lit component.
     const element = await mountLitComponent("sponsors-section", {
       sponsors,
     });
 
-    // Run component methods to check it adds the pending sponsor with its level.
+    // Call on select.
     element._onSelect(sponsors[0]);
     element.pendingLevel = "Gold";
 
-    // Run component methods to check it adds the pending sponsor with its level.
+    // Confirm the pending sponsor level.
     element._confirmAddSponsorLevel();
     await element.updateComplete;
 
-    // Confirm it adds the pending sponsor with its level and renders hidden inputs.
+    // Verify adds the pending sponsor with its level and renders hidden inputs.
     expect(element.selectedSponsors).to.deep.equal([
       {
         group_sponsor_id: "sponsor-1",
@@ -110,12 +110,12 @@ describe("sponsors-section", () => {
   });
 
   it("blocks event submission when a selected sponsor is missing a level", async () => {
-    // Prepare add event button to check it blocks event submission when a selected.
+    // Prepare a selected sponsor without a level before submitting.
     const addEventButton = document.createElement("button");
     addEventButton.id = "add-event-button";
     document.body.append(addEventButton);
 
-    // Render the fixture to check it blocks event submission when a selected sponsor.
+    // Call mount lit component.
     const element = await mountLitComponent("sponsors-section", {
       sponsors,
       selectedSponsors: [
@@ -128,7 +128,7 @@ describe("sponsors-section", () => {
       ],
     });
 
-    // Prepare submit event to check it blocks event submission when a selected sponsor.
+    // Prepare submit event for blocking event submission when a selected sponsor.
     const submitEvent = new MouseEvent("click", {
       bubbles: true,
       cancelable: true,
@@ -136,7 +136,7 @@ describe("sponsors-section", () => {
     const dispatchResult = addEventButton.dispatchEvent(submitEvent);
     await element.updateComplete;
 
-    // Confirm it blocks event submission when a selected sponsor is missing a level.
+    // Submission is blocked when a selected sponsor is missing a level.
     expect(dispatchResult).to.equal(false);
     expect(element.showLevelModal).to.equal(true);
     expect(element.pendingSponsor.group_sponsor_id).to.equal("sponsor-1");

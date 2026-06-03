@@ -10,15 +10,15 @@ describe("user-info-modal", () => {
   useMountedElementsCleanup("user-info-modal");
 
   it("renders nothing while closed", async () => {
-    // Render the user-info-modal fixture.
+    // Mount the modal without opening it.
     const element = await mountLitComponent("user-info-modal");
 
-    // Renders nothing while closed.
+    // The closed modal has no light DOM content.
     expect(element.children.length).to.equal(0);
   });
 
   it("opens when an open-user-modal event is dispatched", async () => {
-    // Render the user-info-modal fixture.
+    // Mount the modal before dispatching the document event.
     const element = await mountLitComponent("user-info-modal");
 
     // Dispatch the open-user-modal event.
@@ -37,7 +37,7 @@ describe("user-info-modal", () => {
     );
     await element.updateComplete;
 
-    // Opened when an open-user-modal event is dispatched.
+    // The modal renders the user details from the event payload.
     expect(element._isOpen).to.equal(true);
     expect(element.querySelector('[role="dialog"]')).to.not.equal(null);
     expect(element.textContent).to.include("Grace Hopper");
@@ -72,7 +72,7 @@ describe("user-info-modal", () => {
     // Read normalized social links after opening the profile modal.
     const links = element._getSocialLinks();
 
-    // Renders social links and the openprofile.dev link when available.
+    // Social links include the supported profile URLs.
     expect(links).to.deep.equal([
       { url: "https://example.com", icon: "website", label: "Website" },
       {

@@ -34,19 +34,25 @@ describe("form validation helpers", () => {
     input.dataset.groupGeneratedSlug = "generated-slug";
     stubValidityUi(input);
 
+    // Leave the optional pretty slug empty.
     input.value = "";
+
+    // Verify validates optional group pretty slugs before submit.
     expect(validateGroupPrettySlugField(input)).to.equal(true);
 
+    // Set the input value to pretty-group .
     input.value = " pretty-group ";
     expect(validateGroupPrettySlugField(input)).to.equal(true);
     expect(input.value).to.equal("pretty-group");
 
+    // Set the input value to Pretty_Group.
     input.value = "Pretty_Group";
     expect(validateGroupPrettySlugField(input)).to.equal(false);
     expect(input.validationMessage).to.equal(
       "Use lowercase ASCII letters, numbers, and single hyphens only. Start and end with a letter or number.",
     );
 
+    // Set the input value to generated-slug.
     input.value = "generated-slug";
     expect(validateGroupPrettySlugField(input)).to.equal(false);
     expect(input.validationMessage).to.equal("Pretty URL slug must be different from the generated slug.");

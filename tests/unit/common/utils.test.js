@@ -24,9 +24,11 @@ describe("common utils", () => {
   });
 
   it("normalizes string helpers", () => {
-    // Normalized string helpers.
+    // String checks distinguish strings from other primitive values.
     expect(isString("hello")).to.equal(true);
     expect(isString(42)).to.equal(false);
+
+    // Verify trimming and optional string conversion helpers.
     expect(toTrimmedString("  hello  ")).to.equal("hello");
     expect(toTrimmedString(null)).to.equal("");
     expect(toOptionalString(42)).to.equal("42");
@@ -34,7 +36,7 @@ describe("common utils", () => {
   });
 
   it("parses JSON attributes safely and normalizes booleans", () => {
-    // Parsed JSON attributes safely and normalizes booleans.
+    // JSON attributes accept strings and already-parsed values.
     expect(parseJsonAttribute("[1,2,3]", [])).to.deep.equal([1, 2, 3]);
     expect(parseJsonAttribute([{ id: 1 }], [])).to.deep.equal([{ id: 1 }]);
     expect(parseJsonAttribute({ zoom: 100 }, {})).to.deep.equal({ zoom: 100 });
@@ -46,7 +48,7 @@ describe("common utils", () => {
     ]);
     expect(parseJsonAttribute("", ["fallback"])).to.deep.equal(["fallback"]);
 
-    // Parsed JSON attributes safely and normalizes booleans.
+    // Boolean values are normalized from booleans and strings.
     expect(toBoolean(true)).to.equal(true);
     expect(toBoolean(" TRUE ")).to.equal(true);
     expect(toBoolean("false")).to.equal(false);
@@ -54,13 +56,13 @@ describe("common utils", () => {
   });
 
   it("sanitizes string arrays and normalizes users", () => {
-    // Sanitizes string arrays and normalizes users.
+    // Assert the sanitize string array.
     expect(sanitizeStringArray([" alpha ", "", " beta ", null])).to.deep.equal([
       "alpha",
       "beta",
     ]);
 
-    // Sanitizes string arrays and normalizes users.
+    // Assert the updated value.
     expect(
       normalizeUsers([
         { user: { user_id: "1", username: "alice" } },

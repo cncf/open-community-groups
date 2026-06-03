@@ -25,7 +25,7 @@ describe("pending changes alert", () => {
   });
 
   it("tracks dirty state for form changes and shows the alert", async () => {
-    // Build the DOM fixture to check it tracks dirty state for form changes and shows.
+    // Render the DOM fixture for tracking dirty state for form changes and shows.
     document.body.innerHTML = `
       <div id="pending-alert" class="hidden"></div>
       <form id="event-form">
@@ -33,7 +33,7 @@ describe("pending changes alert", () => {
       </form>
     `;
 
-    // Prepare api to check it tracks dirty state for form changes and shows the alert.
+    // Prepare API for tracking dirty state for form changes and shows the alert.
     const api = initializePendingChangesAlert({
       alertId: "pending-alert",
       formIds: ["event-form"],
@@ -42,13 +42,13 @@ describe("pending changes alert", () => {
     // Wait for async UI before checking it tracks dirty state for form changes and shows.
     await waitForAnimationFrames();
 
-    // Confirm it tracks dirty state for form changes and shows the alert.
+    // Form changes mark the page dirty and show the alert.
     expect(api.hasPendingChanges()).to.equal(false);
     expect(
       document.getElementById("pending-alert")?.classList.contains("hidden"),
     ).to.equal(true);
 
-    // Read the DOM to check it tracks dirty state for form changes and shows the alert.
+    // Read the form and alert state after the first change.
     const titleInput = document.querySelector(
       '#event-form input[name="title"]',
     );
@@ -58,7 +58,7 @@ describe("pending changes alert", () => {
     // Wait for async UI before checking it tracks dirty state for form changes and shows.
     await waitForAnimationFrames();
 
-    // Confirm it tracks dirty state for form changes and shows the alert.
+    // Resetting the form clears dirty state and hides the alert.
     expect(api.hasPendingChanges()).to.equal(true);
     expect(
       document.getElementById("pending-alert")?.classList.contains("hidden"),
@@ -66,7 +66,7 @@ describe("pending changes alert", () => {
   });
 
   it("tracks dirty state across multiple forms including payment-only changes", async () => {
-    // Build the DOM fixture to check it tracks dirty state across multiple forms.
+    // Render the DOM fixture for tracking dirty state across multiple forms.
     document.body.innerHTML = `
       <div id="pending-alert" class="hidden"></div>
       <form id="details-form">
@@ -77,7 +77,7 @@ describe("pending changes alert", () => {
       </form>
     `;
 
-    // Prepare api to check it tracks dirty state across multiple forms including.
+    // Prepare API for tracking dirty state across multiple forms including.
     const api = initializePendingChangesAlert({
       alertId: "pending-alert",
       formIds: ["details-form", "payments-form"],
@@ -86,7 +86,7 @@ describe("pending changes alert", () => {
     // Wait for async UI before checking it tracks dirty state across multiple forms.
     await waitForAnimationFrames();
 
-    // Read the DOM to check it tracks dirty state across multiple forms including.
+    // Read the forms and payment fields under dirty-state tracking.
     const currencyInput = document.querySelector(
       '#payments-form input[name="payment_currency_code"]',
     );
@@ -96,7 +96,7 @@ describe("pending changes alert", () => {
     // Wait for async UI before checking it tracks dirty state across multiple forms.
     await waitForAnimationFrames();
 
-    // Confirm it tracks dirty state across multiple forms including payment-only changes.
+    // Dirty state includes payment-only changes across forms.
     expect(api.hasPendingChanges()).to.equal(true);
     expect(
       document.getElementById("pending-alert")?.classList.contains("hidden"),
@@ -104,7 +104,7 @@ describe("pending changes alert", () => {
   });
 
   it("ignores fields inside pending-changes-ignore containers", async () => {
-    // Build the DOM fixture to check it ignores fields inside pending-changes-ignore.
+    // Render the DOM fixture for ignoring fields inside pending-changes-ignore.
     document.body.innerHTML = `
       <div id="pending-alert" class="hidden"></div>
       <form id="event-form">
@@ -115,7 +115,7 @@ describe("pending changes alert", () => {
       </form>
     `;
 
-    // Prepare api to check it ignores fields inside pending-changes-ignore containers.
+    // Prepare API for ignoring fields inside pending-changes-ignore containers.
     const api = initializePendingChangesAlert({
       alertId: "pending-alert",
       formIds: ["event-form"],
@@ -124,7 +124,7 @@ describe("pending changes alert", () => {
     // Wait for async UI before checking it ignores fields inside pending-changes-ignore.
     await waitForAnimationFrames();
 
-    // Read the DOM to check it ignores fields inside pending-changes-ignore containers.
+    // Read the ignored and tracked fields.
     const ignoredInput = document.querySelector(
       '#event-form input[name="temporary_note"]',
     );
@@ -134,7 +134,7 @@ describe("pending changes alert", () => {
     // Wait for async UI before checking it ignores fields inside pending-changes-ignore.
     await waitForAnimationFrames();
 
-    // Confirm it ignores fields inside pending-changes-ignore containers.
+    // Ignored fields do not mark the page dirty.
     expect(api.hasPendingChanges()).to.equal(false);
     expect(
       document.getElementById("pending-alert")?.classList.contains("hidden"),
@@ -142,7 +142,7 @@ describe("pending changes alert", () => {
   });
 
   it("asks for confirmation when cancelling with pending changes", async () => {
-    // Build the DOM fixture to check it asks for confirmation when cancelling.
+    // Render the DOM fixture for asking for confirmation when cancelling.
     document.body.innerHTML = `
       <div id="pending-alert" class="hidden"></div>
       <button id="cancel-button" type="button">Cancel</button>
@@ -151,7 +151,7 @@ describe("pending changes alert", () => {
       </form>
     `;
 
-    // Prepare api to check it asks for confirmation when cancelling with pending changes.
+    // Prepare API for asking for confirmation when cancelling with pending changes.
     const api = initializePendingChangesAlert({
       alertId: "pending-alert",
       formIds: ["event-form"],
@@ -163,7 +163,7 @@ describe("pending changes alert", () => {
     // Wait for async UI before checking it asks for confirmation when cancelling.
     await waitForAnimationFrames();
 
-    // Read the DOM to check it asks for confirmation when cancelling with pending.
+    // Read the cancel button before confirming pending changes.
     const titleInput = document.querySelector(
       '#event-form input[name="title"]',
     );
@@ -173,11 +173,11 @@ describe("pending changes alert", () => {
     // Wait for async UI before checking it asks for confirmation when cancelling.
     await waitForAnimationFrames();
 
-    // Trigger the user interaction to check it asks for confirmation when cancelling.
+    // Cancelling with no changes does not show confirmation.
     document.getElementById("cancel-button")?.click();
     await waitForMicrotask();
 
-    // Confirm it asks for confirmation when cancelling with pending changes.
+    // Cancelling with pending changes asks for confirmation.
     expect(api.hasPendingChanges()).to.equal(true);
     expect(swal.calls).to.have.length(1);
     expect(swal.calls[0].text).to.equal("Discard pending changes?");

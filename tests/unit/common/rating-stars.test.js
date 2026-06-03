@@ -22,7 +22,7 @@ describe("rating-stars", () => {
       (node) => node.style.width,
     );
 
-    // Renders the expected label and fractional star fill.
+    // The accessible label and partial star widths reflect the rating.
     expect(image?.getAttribute("aria-label")).to.equal("3.50 out of 5 stars");
     expect(fillWidths).to.deep.equal(["100%", "100%", "100%", "50%", "0%"]);
   });
@@ -36,11 +36,11 @@ describe("rating-stars", () => {
     element.averageRating = 12;
     await element.updateComplete;
 
-    // Track the value under test.
+    // Set up image.
     let image = element.querySelector('[role="img"]');
     expect(image?.getAttribute("aria-label")).to.equal("5.00 out of 5 stars");
 
-    // Set up clamps out-of-range and invalid ratings.
+    // Replace the rating with an invalid value.
     element.averageRating = Number.NaN;
     await element.updateComplete;
 

@@ -187,7 +187,7 @@ describe("event attendance", () => {
   });
 
   it("shows attendee controls and meeting details after a successful attendance check", () => {
-    // Read fixture controls to check it shows attendee controls and meeting details.
+    // Keep references to the fixture controls under assertion.
     const {
       checker,
       leaveButton,
@@ -198,7 +198,7 @@ describe("event attendance", () => {
       attendeeMeetingAccessOpen: "true",
     });
 
-    // Dispatch the HTMX after request event to check it shows attendee controls.
+    // Dispatch the HTMX after-request event.
     dispatchHtmxAfterRequest(checker, {
       responseText: JSON.stringify({ status: "attendee" }),
     });
@@ -221,7 +221,7 @@ describe("event attendance", () => {
   });
 
   it("shows the join meeting link when attendee meeting access is open", () => {
-    // Read fixture controls to check it shows the join meeting link when attendee.
+    // Read controls for the attendee meeting-access state.
     const {
       checker,
       alwaysJoinLink,
@@ -232,12 +232,12 @@ describe("event attendance", () => {
       attendeeMeetingAccessOpen: "true",
     });
 
-    // Dispatch the HTMX after request event to check it shows the join meeting link.
+    // Dispatch the HTMX after-request event.
     dispatchHtmxAfterRequest(checker, {
       responseText: JSON.stringify({ status: "attendee" }),
     });
 
-    // Confirm it shows the join meeting link when attendee meeting access is open.
+    // Verify shows the join meeting link when attendee meeting access is open.
     expect(alwaysJoinLink.classList.contains("hidden")).to.equal(false);
     expect(liveJoinLink.classList.contains("hidden")).to.equal(false);
     expect(liveJoinLink.classList.contains("xl:flex")).to.equal(true);
@@ -247,15 +247,15 @@ describe("event attendance", () => {
   });
 
   it("handles attendance clicks after the page body is swapped", () => {
-    // Prepare replacement body to check it handles attendance clicks after the page body.
+    // Prepare replacement body for handling attendance clicks after the page body.
     const replacementBody = document.createElement("body");
     document.documentElement.replaceChild(replacementBody, document.body);
     const { signinButton } = renderAttendanceDom();
 
-    // Trigger the user interaction to check it handles attendance clicks after the page.
+    // Attendance clicks still work after the page body is swapped.
     signinButton.click();
 
-    // Confirm it handles attendance clicks after the page body is swapped.
+    // Verify attendance clicks work after the page body is swapped.
     expect(env.current.swal.calls[0].icon).to.equal("info");
     expect(env.current.swal.calls[0].html).to.include(
       "/log-in?next_url=/events/test-event",
@@ -263,7 +263,7 @@ describe("event attendance", () => {
   });
 
   it("keeps the join meeting link hidden when the event is canceled", () => {
-    // Read fixture controls to check it keeps the join meeting link hidden.
+    // Read controls for canceled meeting-access state.
     const {
       checker,
       alwaysJoinLink,
@@ -275,12 +275,12 @@ describe("event attendance", () => {
       canceled: "true",
     });
 
-    // Dispatch the HTMX after request event to check it keeps the join meeting link.
+    // Dispatch the HTMX after-request event.
     dispatchHtmxAfterRequest(checker, {
       responseText: JSON.stringify({ status: "attendee" }),
     });
 
-    // Confirm it keeps the join meeting link hidden when the event is canceled.
+    // Verify keeps the join meeting link hidden when the event is canceled.
     expect(alwaysJoinLink.classList.contains("hidden")).to.equal(true);
     expect(liveJoinLink.classList.contains("hidden")).to.equal(true);
     expect(liveJoinLink.classList.contains("xl:flex")).to.equal(false);
@@ -290,7 +290,7 @@ describe("event attendance", () => {
   });
 
   it("keeps the join meeting link hidden before attendee meeting access opens", () => {
-    // Read fixture controls to check it keeps the join meeting link hidden.
+    // Read controls for meeting access before it opens.
     const {
       checker,
       alwaysJoinLink,
@@ -301,12 +301,12 @@ describe("event attendance", () => {
       attendeeMeetingAccessOpen: "false",
     });
 
-    // Dispatch the HTMX after request event to check it keeps the join meeting link.
+    // Dispatch the HTMX after-request event.
     dispatchHtmxAfterRequest(checker, {
       responseText: JSON.stringify({ status: "attendee" }),
     });
 
-    // Confirm it keeps the join meeting link hidden before attendee meeting access opens.
+    // Verify keeps the join meeting link hidden before attendee meeting access opens.
     expect(alwaysJoinLink.classList.contains("hidden")).to.equal(true);
     expect(liveJoinLink.classList.contains("hidden")).to.equal(true);
     expect(liveJoinLink.classList.contains("xl:flex")).to.equal(false);
@@ -316,7 +316,7 @@ describe("event attendance", () => {
   });
 
   it("falls back to the waitlist sign-in state when the check response cannot be parsed", () => {
-    // Read fixture controls to check it falls back to the waitlist sign-in state.
+    // Keep references to the fixture controls under assertion.
     const { checker, signinButton, attendButton, leaveButton } =
       renderAttendanceDom({
         capacity: "10",
@@ -324,7 +324,7 @@ describe("event attendance", () => {
         waitlistEnabled: "true",
       });
 
-    // Dispatch the HTMX after request event to check it falls back to the waitlist.
+    // Dispatch the HTMX after-request event.
     dispatchHtmxAfterRequest(checker, {
       responseText: "{invalid json}",
     });
@@ -339,17 +339,17 @@ describe("event attendance", () => {
   });
 
   it("uses the request invitation icon for approval-required sign-in state", () => {
-    // Render the fixture to check it uses the request invitation icon.
+    // Render the attendance fixture.
     const { checker, signinButton } = renderAttendanceDom({
       attendeeApprovalRequired: "true",
     });
 
-    // Dispatch the HTMX after request event to check it uses the request invitation icon.
+    // Dispatch the HTMX after-request event.
     dispatchHtmxAfterRequest(checker, {
       responseText: "{invalid json}",
     });
 
-    // Confirm it uses the request invitation icon for approval-required sign-in state.
+    // Verify uses the request invitation icon for approval-required sign-in state.
     expect(
       signinButton.querySelector("[data-attendance-label]")?.textContent,
     ).to.equal("Request invitation");
@@ -375,7 +375,7 @@ describe("event attendance", () => {
     // Apply the signed-out state using the no-capacity event metadata.
     showSignedOutAttendanceState(container, getAttendanceMeta(container));
 
-    // Confirm it keeps no-capacity events behind sign-in when signed out.
+    // Verify keeps no-capacity events behind sign-in when signed out.
     expect(signinButton.classList.contains("hidden")).to.equal(false);
     expect(
       signinButton.querySelector("[data-attendance-label]")?.textContent,
@@ -384,14 +384,14 @@ describe("event attendance", () => {
   });
 
   it("keeps approval-required no-capacity events behind sign-in when signed out", () => {
-    // Render the fixture to check it keeps approval-required no-capacity events behind.
+    // Render the attendance fixture.
     const { attendButton, container, signinButton } = renderAttendanceDom({
       attendeeApprovalRequired: "true",
       capacity: "0",
       remainingCapacity: "0",
     });
 
-    // Exercise the flow to check it keeps approval-required no-capacity events behind.
+    // Verify keeps approval-required no-capacity events behind.
     showSignedOutAttendanceState(container, getAttendanceMeta(container));
 
     // Confirm approval-required no-capacity events stay behind sign-in.
@@ -403,26 +403,26 @@ describe("event attendance", () => {
   });
 
   it("shows loading state before attending and emits a waitlist success message", () => {
-    // Render the fixture to check it shows loading state before attending and emits.
+    // Render the attendance fixture.
     const { attendButton, loadingButton } = renderAttendanceDom();
     let changedEvents = 0;
     document.body.addEventListener("attendance-changed", () => {
       changedEvents += 1;
     });
 
-    // Dispatch the HTMX before request event to check it shows loading state.
+    // Dispatch the HTMX before-request event.
     dispatchHtmxBeforeRequest(attendButton);
 
-    // Confirm it shows loading state before attending and emits a waitlist success.
+    // Verify shows loading state before attending and emits a waitlist success.
     expect(attendButton.classList.contains("hidden")).to.equal(true);
     expect(loadingButton.classList.contains("hidden")).to.equal(false);
 
-    // Dispatch the HTMX after request event to check it shows loading state.
+    // Dispatch the HTMX after-request event.
     dispatchHtmxAfterRequest(attendButton, {
       responseText: JSON.stringify({ status: "waitlisted" }),
     });
 
-    // Confirm it shows loading state before attending and emits a waitlist success.
+    // Verify shows loading state before attending and emits a waitlist success.
     expect(changedEvents).to.equal(1);
     expect(env.current.swal.calls.at(-1)).to.include({
       text: "You have joined the waiting list for this event.",
@@ -440,9 +440,11 @@ describe("event attendance", () => {
       cancelable: true,
     });
 
+    // Expose the attend button before dispatching the event.
     attendButton.classList.remove("hidden");
     attendButton.dispatchEvent(event);
 
+    // Verify blocks the attend request until registration questions are answered.
     expect(event.defaultPrevented).to.equal(true);
     expect(container.dataset.questionsContinueAction).to.equal("attend");
     expect(questionsModal.classList.contains("hidden")).to.equal(false);
@@ -463,14 +465,18 @@ describe("event attendance", () => {
       cancelable: true,
     });
 
+    // Expose the attend button before dispatching the event.
     attendButton.classList.remove("hidden");
     attendButton.click();
 
+    // Verify allows waitlist joins before registration questions are answered.
     expect(questionsModal.classList.contains("hidden")).to.equal(true);
     expect(attendButton.classList.contains("hidden")).to.equal(false);
 
+    // Dispatch the form event.
     attendButton.dispatchEvent(event);
 
+    // Assert whether the event was prevented.
     expect(event.defaultPrevented).to.equal(false);
     expect(questionsModal.classList.contains("hidden")).to.equal(true);
     expect(attendButton.classList.contains("hidden")).to.equal(true);
@@ -490,6 +496,7 @@ describe("event attendance", () => {
       responseText: JSON.stringify({ status: "registration-questions-pending" }),
     });
 
+    // Verify opens registration questions for promoted waitlist attendees.
     expect(attendButton.classList.contains("hidden")).to.equal(false);
     expect(attendButton.querySelector("[data-attendance-label]")?.textContent).to.equal(
       "Complete registration",
@@ -498,8 +505,10 @@ describe("event attendance", () => {
       attendButton.querySelector("[data-attendance-icon]")?.classList.contains("icon-list-check"),
     ).to.equal(true);
 
+    // Click the attend button.
     attendButton.click();
 
+    // Assert the stored follow-up action.
     expect(container.dataset.questionsContinueAction).to.equal("attend");
     expect(questionsModal.classList.contains("hidden")).to.equal(false);
     expect(attendButton.classList.contains("hidden")).to.equal(false);
@@ -524,34 +533,35 @@ describe("event attendance", () => {
     });
     attendButton.dispatchEvent(event);
 
+    // Assert whether the event was prevented.
     expect(event.defaultPrevented).to.equal(true);
     expect(questionsModal.classList.contains("hidden")).to.equal(false);
   });
 
   it("shows sign-in info for waitlists and confirms leaving the waitlist", async () => {
-    // Render the fixture to check it shows sign-in info for waitlists and confirms.
+    // Render the attendance fixture.
     const { signinButton, leaveButton } = renderAttendanceDom();
 
-    // Read the attendance label element to check it shows sign-in info for waitlists.
+    // Keep a reference to the attendance label element.
     signinButton.querySelector("[data-attendance-label]").textContent =
       "Join waiting list";
     signinButton.click();
 
-    // Confirm it shows sign-in info for waitlists and confirms leaving the waitlist.
+    // Verify shows sign-in info for waitlists and confirms leaving the waitlist.
     expect(env.current.swal.calls[0].icon).to.equal("info");
     expect(env.current.swal.calls[0].html).to.include("join the waiting list");
     expect(env.current.swal.calls[0].html).to.include(
       "/log-in?next_url=/events/test-event",
     );
 
-    // Read the attendance label element to check it shows sign-in info for waitlists.
+    // Keep a reference to the attendance label element.
     leaveButton.querySelector("[data-attendance-label]").textContent =
       "Leave waiting list";
     env.current.swal.setNextResult({ isConfirmed: true });
     leaveButton.click();
     await waitForMicrotask();
 
-    // Confirm it shows sign-in info for waitlists and confirms leaving the waitlist.
+    // Verify shows sign-in info for waitlists and confirms leaving the waitlist.
     expect(env.current.swal.calls[1]).to.include({
       text: "Are you sure you want to leave the waiting list?",
       icon: "warning",
@@ -562,17 +572,17 @@ describe("event attendance", () => {
   });
 
   it("confirms canceling a pending invitation request with request-specific copy", async () => {
-    // Render the fixture to check it confirms canceling a pending invitation request.
+    // Render the attendance fixture.
     const { leaveButton } = renderAttendanceDom();
 
-    // Read the attendance label element to check it confirms canceling a pending.
+    // Keep a reference to the attendance label element.
     leaveButton.querySelector("[data-attendance-label]").textContent =
       "Cancel request";
     env.current.swal.setNextResult({ isConfirmed: true });
     leaveButton.click();
     await waitForMicrotask();
 
-    // Confirm it confirms canceling a pending invitation request with request-specific.
+    // Verify confirms canceling a pending invitation request with request-specific.
     expect(env.current.swal.calls[0]).to.include({
       text: "Are you sure you want to cancel your invitation request?",
       icon: "warning",
@@ -583,15 +593,15 @@ describe("event attendance", () => {
   });
 
   it("uses cancel icons for waitlist and pending invitation cancellation", () => {
-    // Render the fixture to check it uses cancel icons for waitlist and pending.
+    // Render the attendance fixture.
     const { checker, leaveButton } = renderAttendanceDom();
 
-    // Dispatch the HTMX after request event to check it uses cancel icons for waitlist.
+    // Dispatch the HTMX after-request event.
     dispatchHtmxAfterRequest(checker, {
       responseText: JSON.stringify({ status: "waitlisted" }),
     });
 
-    // Confirm it uses cancel icons for waitlist and pending invitation cancellation.
+    // Verify uses cancel icons for waitlist and pending invitation cancellation.
     expect(
       leaveButton.querySelector("[data-attendance-label]")?.textContent,
     ).to.equal("Leave waiting list");
@@ -601,12 +611,12 @@ describe("event attendance", () => {
         ?.classList.contains("icon-cancel"),
     ).to.equal(true);
 
-    // Dispatch the HTMX after request event to check it uses cancel icons for waitlist.
+    // Dispatch the HTMX after-request event.
     dispatchHtmxAfterRequest(checker, {
       responseText: JSON.stringify({ status: "pending-approval" }),
     });
 
-    // Confirm it uses cancel icons for waitlist and pending invitation cancellation.
+    // Verify uses cancel icons for waitlist and pending invitation cancellation.
     expect(
       leaveButton.querySelector("[data-attendance-label]")?.textContent,
     ).to.equal("Cancel request");
@@ -618,19 +628,19 @@ describe("event attendance", () => {
   });
 
   it("disables attendance changes for past events", () => {
-    // Render the fixture to check it disables attendance changes for past events.
+    // Render the attendance fixture.
     const { checker, attendButton } = renderAttendanceDom({
       starts: "2000-05-10T10:00:00Z",
       capacity: "10",
       remainingCapacity: "5",
     });
 
-    // Dispatch the HTMX after request event to check it disables attendance changes.
+    // Dispatch the HTMX after-request event.
     dispatchHtmxAfterRequest(checker, {
       responseText: JSON.stringify({ status: "guest" }),
     });
 
-    // Confirm it disables attendance changes for past events.
+    // Verify disables attendance changes for past events.
     expect(attendButton.classList.contains("hidden")).to.equal(false);
     expect(attendButton.disabled).to.equal(true);
     expect(attendButton.title).to.equal(
@@ -639,17 +649,17 @@ describe("event attendance", () => {
   });
 
   it("uses the request invitation icon for approval-required guest state", () => {
-    // Render the fixture to check it uses the request invitation icon.
+    // Render the attendance fixture.
     const { checker, attendButton } = renderAttendanceDom({
       attendeeApprovalRequired: "true",
     });
 
-    // Dispatch the HTMX after request event to check it uses the request invitation icon.
+    // Dispatch the HTMX after-request event.
     dispatchHtmxAfterRequest(checker, {
       responseText: JSON.stringify({ status: "guest" }),
     });
 
-    // Confirm it uses the request invitation icon for approval-required guest state.
+    // Verify uses the request invitation icon for approval-required guest state.
     expect(
       attendButton.querySelector("[data-attendance-label]")?.textContent,
     ).to.equal("Request invitation");
@@ -666,19 +676,19 @@ describe("event attendance", () => {
   });
 
   it("disables approved invitation rejoin when the event is sold out", () => {
-    // Render the fixture to check it disables approved invitation rejoin when the event.
+    // Render the attendance fixture.
     const { checker, attendButton } = renderAttendanceDom({
       attendeeApprovalRequired: "true",
       capacity: "10",
       remainingCapacity: "0",
     });
 
-    // Dispatch the HTMX after request event to check it disables approved invitation.
+    // Dispatch the HTMX after-request event.
     dispatchHtmxAfterRequest(checker, {
       responseText: JSON.stringify({ status: "invitation-approved" }),
     });
 
-    // Confirm it disables approved invitation rejoin when the event is sold out.
+    // Verify disables approved invitation rejoin when the event is sold out.
     expect(attendButton.classList.contains("hidden")).to.equal(false);
     expect(attendButton.disabled).to.equal(true);
     expect(attendButton.title).to.equal("This event is sold out.");
@@ -693,7 +703,7 @@ describe("event attendance", () => {
   });
 
   it("shows canceled state for approved invitations when a no-capacity event is canceled", () => {
-    // Render the fixture to check it shows canceled state for approved invitations.
+    // Render the attendance fixture.
     const { checker, attendButton } = renderAttendanceDom({
       attendeeApprovalRequired: "true",
       canceled: "true",
@@ -701,12 +711,12 @@ describe("event attendance", () => {
       remainingCapacity: "0",
     });
 
-    // Dispatch the HTMX after request event to check it shows canceled state.
+    // Dispatch the HTMX after-request event.
     dispatchHtmxAfterRequest(checker, {
       responseText: JSON.stringify({ status: "invitation-approved" }),
     });
 
-    // Confirm it shows canceled state for approved invitations when a no-capacity event.
+    // Verify shows canceled state for approved invitations when a no-capacity event.
     expect(attendButton.classList.contains("hidden")).to.equal(false);
     expect(attendButton.disabled).to.equal(true);
     expect(attendButton.title).to.equal("This event has been canceled.");
@@ -716,19 +726,19 @@ describe("event attendance", () => {
   });
 
   it("shows a sold-out attend button when no waitlist is available", () => {
-    // Render the fixture to check it shows a sold-out attend button when no waitlist.
+    // Render the attendance fixture.
     const { checker, attendButton, signinButton } = renderAttendanceDom({
       capacity: "10",
       remainingCapacity: "0",
       waitlistEnabled: "false",
     });
 
-    // Dispatch the HTMX after request event to check it shows a sold-out attend button.
+    // Dispatch the HTMX after-request event.
     dispatchHtmxAfterRequest(checker, {
       responseText: JSON.stringify({ status: "guest" }),
     });
 
-    // Confirm it shows a sold-out attend button when no waitlist is available.
+    // Verify shows a sold-out attend button when no waitlist is available.
     expect(attendButton.classList.contains("hidden")).to.equal(false);
     expect(attendButton.disabled).to.equal(true);
     expect(attendButton.title).to.equal("This event is sold out.");
@@ -736,38 +746,38 @@ describe("event attendance", () => {
   });
 
   it("shows a no-capacity attend button when event capacity is zero", () => {
-    // Render the fixture to check it shows a no-capacity attend button when event.
+    // Render the attendance fixture.
     const { checker, attendButton } = renderAttendanceDom({
       capacity: "0",
       remainingCapacity: "0",
       waitlistEnabled: "false",
     });
 
-    // Dispatch the HTMX after request event to check it shows a no-capacity attend.
+    // Dispatch the HTMX after-request event.
     dispatchHtmxAfterRequest(checker, {
       responseText: JSON.stringify({ status: "guest" }),
     });
 
-    // Confirm it shows a no-capacity attend button when event capacity is zero.
+    // Verify shows a no-capacity attend button when event capacity is zero.
     expect(attendButton.classList.contains("hidden")).to.equal(false);
     expect(attendButton.disabled).to.equal(true);
     expect(attendButton.title).to.equal("This event has no attendee capacity.");
   });
 
   it("disables approval-required attendance when event capacity is zero", () => {
-    // Render the fixture to check it disables approval-required attendance when event.
+    // Render the attendance fixture.
     const { checker, attendButton } = renderAttendanceDom({
       attendeeApprovalRequired: "true",
       capacity: "0",
       remainingCapacity: "0",
     });
 
-    // Dispatch the HTMX after request event to check it disables approval-required.
+    // Dispatch the HTMX after-request event.
     dispatchHtmxAfterRequest(checker, {
       responseText: JSON.stringify({ status: "guest" }),
     });
 
-    // Confirm it disables approval-required attendance when event capacity is zero.
+    // Verify disables approval-required attendance when event capacity is zero.
     expect(attendButton.classList.contains("hidden")).to.equal(false);
     expect(attendButton.disabled).to.equal(true);
     expect(attendButton.title).to.equal("This event has no attendee capacity.");
@@ -777,7 +787,7 @@ describe("event attendance", () => {
   });
 
   it("shows remaining seats instead of waitlist while capacity is still available", async () => {
-    // Render the fixture to check it shows remaining seats instead of waitlist.
+    // Render the attendance fixture.
     const { availabilityCapacity, availabilityCaptions } = renderAttendanceDom({
       availabilityUrl: "/events/test-event/availability",
     });
@@ -800,12 +810,12 @@ describe("event attendance", () => {
       },
     });
 
-    // Exercise the flow to check it shows remaining seats instead of waitlist.
+    // Verify shows remaining seats instead of waitlist.
     try {
       await initializeAttendanceDom();
       await waitForMicrotask();
 
-      // Confirm it shows remaining seats instead of waitlist while capacity is still.
+      // Verify shows remaining seats instead of waitlist while capacity is still.
       expect(
         availabilityCaptions.attendees.classList.contains("hidden"),
       ).to.equal(true);
@@ -833,7 +843,7 @@ describe("event attendance", () => {
   });
 
   it("waits for refreshed availability before rendering attendance actions", async () => {
-    // Render the fixture to check it waits for refreshed availability before rendering.
+    // Render the attendance fixture.
     const { attendButton, checker } = renderAttendanceDom({
       availabilityUrl: "/events/test-event/availability",
     });
@@ -845,19 +855,19 @@ describe("event attendance", () => {
       impl: async () => availabilityResponse,
     });
 
-    // Exercise the flow to check it waits for refreshed availability before rendering.
+    // Verify waits for refreshed availability before rendering.
     try {
       await initializeAttendanceDom();
 
-      // Dispatch the HTMX after request event to check it waits for refreshed.
+      // Dispatch the HTMX after-request event.
       dispatchHtmxAfterRequest(checker, {
         responseText: JSON.stringify({ status: "guest" }),
       });
 
-      // Confirm it waits for refreshed availability before rendering attendance actions.
+      // Verify waits for refreshed availability before rendering attendance actions.
       expect(attendButton.classList.contains("hidden")).to.equal(true);
 
-      // Exercise the flow to check it waits for refreshed availability before rendering.
+      // Verify waits for refreshed availability before rendering.
       resolveAvailability({
         ok: true,
         json: async () => ({
@@ -876,12 +886,12 @@ describe("event attendance", () => {
       });
       await waitForMicrotask();
 
-      // Dispatch the HTMX after request event to check it waits for refreshed.
+      // Dispatch the HTMX after-request event.
       dispatchHtmxAfterRequest(checker, {
         responseText: JSON.stringify({ status: "guest" }),
       });
 
-      // Confirm it waits for refreshed availability before rendering attendance actions.
+      // Verify waits for refreshed availability before rendering attendance actions.
       expect(attendButton.classList.contains("hidden")).to.equal(false);
     } finally {
       fetchMock.restore();
@@ -889,7 +899,7 @@ describe("event attendance", () => {
   });
 
   it("falls back to cached attendance metadata when availability fails", async () => {
-    // Render the fixture to check it falls back to cached attendance metadata.
+    // Render the attendance fixture.
     const { attendButton, checker, container } = renderAttendanceDom({
       availabilityUrl: "/events/test-event/availability",
     });
@@ -899,20 +909,20 @@ describe("event attendance", () => {
       },
     });
 
-    // Exercise the flow to check it falls back to cached attendance metadata.
+    // Verify falls back to cached attendance metadata.
     try {
       await initializeAttendanceDom();
       await waitForMicrotask();
 
-      // Confirm it falls back to cached attendance metadata when availability fails.
+      // Assert the container state.
       expect(container.dataset.availabilityHydrated).to.equal("true");
 
-      // Dispatch the HTMX after request event to check it falls back to cached.
+      // Dispatch the HTMX after-request event.
       dispatchHtmxAfterRequest(checker, {
         responseText: JSON.stringify({ status: "guest" }),
       });
 
-      // Confirm it falls back to cached attendance metadata when availability fails.
+      // Assert the expected visibility state.
       expect(attendButton.classList.contains("hidden")).to.equal(false);
       expect(attendButton.disabled).to.equal(false);
     } finally {
@@ -921,7 +931,7 @@ describe("event attendance", () => {
   });
 
   it("hydrates attendee meeting access from refreshed availability", async () => {
-    // Render the fixture to check it hydrates attendee meeting access from refreshed.
+    // Render the attendance fixture.
     const { container } = renderAttendanceDom({
       availabilityUrl: "/events/test-event/availability",
       attendeeMeetingAccessOpen: "false",
@@ -949,12 +959,12 @@ describe("event attendance", () => {
       },
     });
 
-    // Exercise the flow to check it hydrates attendee meeting access from refreshed.
+    // Verify hydrates attendee meeting access from refreshed.
     try {
       await initializeAttendanceDom();
       await waitForMicrotask();
 
-      // Confirm it hydrates attendee meeting access from refreshed availability.
+      // Verify hydrates attendee meeting access from refreshed availability.
       expect(container.dataset.attendeeMeetingAccessOpen).to.equal("true");
       expect(changedEvents).to.equal(1);
     } finally {
@@ -963,7 +973,7 @@ describe("event attendance", () => {
   });
 
   it("shows waitlist count after refreshing availability", async () => {
-    // Render the fixture to check it shows waitlist count after refreshing availability.
+    // Render the attendance fixture.
     const { availabilityCapacity, availabilityCaptions } = renderAttendanceDom({
       availabilityUrl: "/events/test-event/availability",
     });
@@ -986,12 +996,12 @@ describe("event attendance", () => {
       },
     });
 
-    // Exercise the flow to check it shows waitlist count after refreshing availability.
+    // Verify shows waitlist count after refreshing availability.
     try {
       await initializeAttendanceDom();
       await waitForMicrotask();
 
-      // Confirm it shows waitlist count after refreshing availability.
+      // Assert the expected text is rendered.
       expect(availabilityCapacity.textContent.trim()).to.equal("2");
       expect(
         availabilityCaptions.waitlist.classList.contains("hidden"),
@@ -1013,7 +1023,7 @@ describe("event attendance", () => {
   });
 
   it("shows attendee count when refreshed availability is unlimited", async () => {
-    // Read fixture controls to check it shows attendee count when refreshed availability.
+    // Keep references to the fixture controls under assertion.
     const {
       availabilityAttendeeCount,
       availabilityCapacity,
@@ -1041,12 +1051,12 @@ describe("event attendance", () => {
       },
     });
 
-    // Exercise the flow to check it shows attendee count when refreshed availability.
+    // Verify shows attendee count when refreshed availability.
     try {
       await initializeAttendanceDom();
       await waitForMicrotask();
 
-      // Confirm it shows attendee count when refreshed availability is unlimited.
+      // Verify shows attendee count when refreshed availability is unlimited.
       expect(availabilityCapacity.textContent.trim()).to.equal("");
       expect(availabilityAttendeeCount.textContent.trim()).to.equal("12");
       expect(
@@ -1070,7 +1080,7 @@ describe("event attendance", () => {
   });
 
   it("hides attendee count when refreshed unlimited availability has no attendees", async () => {
-    // Read fixture controls to check it hides attendee count when refreshed unlimited.
+    // Keep references to the fixture controls under assertion.
     const { availabilityAttendeeCount, availabilityCaptions } =
       renderAttendanceDom({
         availabilityUrl: "/events/test-event/availability",
@@ -1095,12 +1105,12 @@ describe("event attendance", () => {
       },
     });
 
-    // Exercise the flow to check it hides attendee count when refreshed unlimited.
+    // Verify hides attendee count when refreshed unlimited.
     try {
       await initializeAttendanceDom();
       await waitForMicrotask();
 
-      // Confirm it hides attendee count when refreshed unlimited availability has no.
+      // Verify hides attendee count when refreshed unlimited availability has no.
       expect(availabilityAttendeeCount.textContent.trim()).to.equal("");
       expect(
         availabilityCaptions.attendees.classList.contains("hidden"),
@@ -1114,7 +1124,7 @@ describe("event attendance", () => {
   });
 
   it("keeps the sold-out ribbon hidden for canceled availability", async () => {
-    // Render the fixture to check it keeps the sold-out ribbon hidden for canceled.
+    // Render the attendance fixture.
     const { soldOutRibbon } = renderAttendanceDom({
       availabilityUrl: "/events/test-event/availability",
     });
@@ -1137,12 +1147,12 @@ describe("event attendance", () => {
       },
     });
 
-    // Exercise the flow to check it keeps the sold-out ribbon hidden for canceled.
+    // Verify keeps the sold-out ribbon hidden for canceled.
     try {
       await initializeAttendanceDom();
       await waitForMicrotask();
 
-      // Confirm it keeps the sold-out ribbon hidden for canceled availability.
+      // Verify keeps the sold-out ribbon hidden for canceled availability.
       expect(soldOutRibbon.classList.contains("hidden")).to.equal(true);
     } finally {
       fetchMock.restore();
@@ -1150,17 +1160,17 @@ describe("event attendance", () => {
   });
 
   it("disables attendance controls when cached event data is canceled", () => {
-    // Render the fixture to check it disables attendance controls when cached event data.
+    // Render the attendance fixture.
     const { checker, attendButton, signinButton } = renderAttendanceDom({
       canceled: "true",
     });
 
-    // Dispatch the HTMX after request event to check it disables attendance controls.
+    // Dispatch the HTMX after-request event.
     dispatchHtmxAfterRequest(checker, {
       responseText: JSON.stringify({ status: "guest" }),
     });
 
-    // Confirm it disables attendance controls when cached event data is canceled.
+    // Verify disables attendance controls when cached event data is canceled.
     expect(attendButton.classList.contains("hidden")).to.equal(false);
     expect(attendButton.disabled).to.equal(true);
     expect(attendButton.title).to.equal("This event has been canceled.");
@@ -1168,12 +1178,12 @@ describe("event attendance", () => {
   });
 
   it("allows refund requests for paid attendees when cached event data is canceled", () => {
-    // Render the fixture to check it allows refund requests for paid attendees.
+    // Render the attendance fixture.
     const { checker, leaveButton, refundButton } = renderAttendanceDom({
       canceled: "true",
     });
 
-    // Dispatch the HTMX after request event to check it allows refund requests for paid.
+    // Dispatch the HTMX after-request event.
     dispatchHtmxAfterRequest(checker, {
       responseText: JSON.stringify({
         can_request_refund: true,
@@ -1183,7 +1193,7 @@ describe("event attendance", () => {
       }),
     });
 
-    // Confirm it allows refund requests for paid attendees when cached event data.
+    // Cached paid attendance data keeps refund requests available.
     expect(refundButton.classList.contains("hidden")).to.equal(false);
     expect(refundButton.disabled).to.equal(false);
     expect(
@@ -1193,17 +1203,17 @@ describe("event attendance", () => {
   });
 
   it("leaves standalone ticket price badge text untouched", async () => {
-    // Build the DOM fixture to check it leaves standalone ticket price badge text.
+    // Render the DOM fixture for leaving standalone ticket price badge text.
     document.body.innerHTML = `
       <div>
         From EUR 50.00
       </div>
     `;
 
-    // Exercise the flow to check it leaves standalone ticket price badge text untouched.
+    // Initialize attendance behavior.
     await initializeAttendanceDom();
 
-    // Confirm it leaves standalone ticket price badge text untouched.
+    // Assert the expected text is rendered.
     expect(document.body.textContent?.trim()).to.equal("From EUR 50.00");
   });
 
@@ -1215,46 +1225,46 @@ describe("event attendance", () => {
       </div>
     `;
 
-    // Exercise the flow to check it leaves standalone ticket price badge text untouched.
+    // Initialize attendance behavior.
     await initializeAttendanceDom();
 
-    // Confirm it leaves standalone ticket price badge text untouched.
+    // Assert the expected text is rendered.
     expect(document.body.textContent?.trim()).to.equal("Free");
   });
 
   it("emits a success message when leaving the waitlist and restores the button on failure", () => {
-    // Render the fixture to check it emits a success message when leaving the waitlist.
+    // Render the attendance fixture.
     const { leaveButton, loadingButton } = renderAttendanceDom();
     let changedEvents = 0;
     document.body.addEventListener("attendance-changed", () => {
       changedEvents += 1;
     });
 
-    // Read the attendance label element to check it emits a success message when leaving.
+    // Keep a reference to the attendance label element.
     leaveButton.querySelector("[data-attendance-label]").textContent =
       "Leave waiting list";
     dispatchHtmxBeforeRequest(leaveButton);
 
-    // Dispatch the HTMX after request event to check it emits a success message.
+    // Dispatch the HTMX after-request event.
     dispatchHtmxAfterRequest(leaveButton, {
       responseText: JSON.stringify({ left_status: "waitlisted" }),
     });
 
-    // Confirm it emits a success message when leaving the waitlist and restores.
+    // Leaving the waitlist emits success and restores the action.
     expect(changedEvents).to.equal(1);
     expect(env.current.swal.calls.at(-1)).to.include({
       text: "You have left the waiting list for this event.",
       icon: "info",
     });
 
-    // Update fixture state to check it emits a success message when leaving the waitlist.
+    // Update fixture state before asserting the new state.
     leaveButton.classList.remove("hidden");
     loadingButton.classList.remove("hidden");
     dispatchHtmxAfterRequest(leaveButton, {
       status: 500,
     });
 
-    // Confirm it emits a success message when leaving the waitlist and restores.
+    // The restored waitlist action remains available after success.
     expect(leaveButton.classList.contains("hidden")).to.equal(false);
     expect(loadingButton.classList.contains("hidden")).to.equal(true);
     expect(env.current.swal.calls.at(-1)).to.include({

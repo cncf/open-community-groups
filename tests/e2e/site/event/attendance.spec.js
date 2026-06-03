@@ -81,6 +81,7 @@ test.describe("event attendance", () => {
     // Resolve current attendance before resetting the member state.
     await waitForAttendanceState(member2Page);
 
+    // Leave any existing attendance before continuing.
     if (await getLeaveButton(member2Page).isVisible()) {
       await cancelAttendance(member2Page, TEST_EVENT_IDS.alpha.one);
     }
@@ -131,6 +132,7 @@ test.describe("event attendance", () => {
     // Resolve current attendance before resetting the member state.
     await waitForAttendanceState(pending2Page);
 
+    // Leave any existing attendance before continuing.
     if (await getLeaveButton(pending2Page).isVisible()) {
       await cancelAttendance(
         pending2Page,
@@ -141,6 +143,7 @@ test.describe("event attendance", () => {
     // Open the required registration questions modal.
     await getAttendButton(pending2Page).click();
 
+    // Find the registration modal.
     const registrationModal = pending2Page.locator(
       '[data-attendance-role="registration-modal"]',
     );
@@ -226,6 +229,7 @@ test.describe("event attendance", () => {
         TEST_PAYMENT_EVENT_SLUGS.draft,
       );
 
+      // Assert the expected content is visible.
       await expect(
         page.getByRole("heading", {
           level: 1,
@@ -419,6 +423,7 @@ test.describe("event attendance", () => {
       await waitForAttendanceState(member1Page);
       await getAttendButton(member1Page).click();
 
+      // Set up ticket modal.
       const ticketModal = getTicketModal(member1Page);
 
       // Select a ticket and enter an expired discount code.
@@ -464,6 +469,7 @@ test.describe("event attendance", () => {
       await waitForAttendanceState(member1Page);
       await getAttendButton(member1Page).click();
 
+      // Set up ticket modal.
       const ticketModal = getTicketModal(member1Page);
 
       // Select a ticket and enter an exhausted discount code.
@@ -505,6 +511,7 @@ test.describe("event attendance", () => {
         TEST_PAYMENT_EVENT_SLUGS.refunds,
       );
 
+      // Set up refund button.
       const refundButton = getRefundButton(member1Page);
 
       // Verify the pending refund state disables attendee cancellation.
@@ -525,6 +532,7 @@ test.describe("event attendance", () => {
         TEST_PAYMENT_EVENT_SLUGS.refunds,
       );
 
+      // Set up refund button.
       const refundButton = getRefundButton(member2Page);
 
       // Verify the processing refund state disables attendee cancellation.
@@ -545,9 +553,10 @@ test.describe("event attendance", () => {
         TEST_PAYMENT_EVENT_SLUGS.refunds,
       );
 
+      // Set up refund button.
       const refundButton = getRefundButton(pending1Page);
 
-      // Verify rejected refunds cannot be requested again.
+      // Assert the refund button.
       await expect(refundButton).toBeVisible();
       await expect(refundButton).toContainText("Refund unavailable");
       await expect(refundButton).toBeDisabled();
@@ -565,6 +574,7 @@ test.describe("event attendance", () => {
         TEST_PAYMENT_EVENT_SLUGS.refunds,
       );
 
+      // Set up refund button.
       const refundButton = getRefundButton(pending2Page);
 
       // Verify the attendee can request a refund instead of canceling.
@@ -578,6 +588,7 @@ test.describe("event attendance", () => {
       const confirmButton = pending2Page.getByRole("button", { name: "Yes" });
       await expect(confirmButton).toBeVisible();
 
+      // Click the confirm button.
       await Promise.all([
         pending2Page.waitForResponse(
           (response) =>

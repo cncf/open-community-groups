@@ -257,12 +257,12 @@ describe("location-search-field", () => {
       selected.push(result);
     };
 
-    // Move the keyboard highlight down.
+    // Move to the first option.
     event.key = "ArrowDown";
     element._handleKeyDown(event);
     expect(element._highlightedIndex).to.equal(0);
 
-    // Move the keyboard highlight down.
+    // Move to the next option.
     event.key = "ArrowDown";
     element._handleKeyDown(event);
     expect(element._highlightedIndex).to.equal(1);
@@ -362,7 +362,7 @@ describe("location-search-field", () => {
     // Reset the fixture state.
     element.clearLocationFields();
 
-    // Clears current values, tears down the map, and emits a clear event.
+    // The field values, map instance, and clear event are all reset.
     expect(element._venueNameValue).to.equal("");
     expect(element._venueCityValue).to.equal("");
     expect(element._latitudeValue).to.equal("");

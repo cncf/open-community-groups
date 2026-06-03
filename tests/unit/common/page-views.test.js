@@ -68,7 +68,7 @@ describe("page views", () => {
     // Track the page view event.
     trackPageView({ entityId: "group-a", entityType: "group" });
 
-    // Queues hidden page views until the document becomes visible.
+    // Assert the captured calls.
     expect(sendBeaconMock.calls).to.have.length(0);
     expect(window.__ocgPageViewTracker.pendingViews).to.equal(1);
 
@@ -76,7 +76,7 @@ describe("page views", () => {
     visibilityState.set("visible");
     document.dispatchEvent(new Event("visibilitychange"));
 
-    // Queues hidden page views until the document becomes visible.
+    // Assert the later captured calls.
     expect(sendBeaconMock.calls).to.have.length(1);
     expect(sendBeaconMock.calls[0].endpoint).to.equal("/groups/group-a/views");
     expect(window.__ocgPageViewTracker.pendingViews).to.equal(0);
@@ -87,12 +87,12 @@ describe("page views", () => {
     trackPageView({ entityId: "cncf", entityType: "community" });
     expect(sendBeaconMock.calls).to.have.length(1);
 
-    // Dispatch the  new page transition event("pageshow", { persisted: true } event.
+    // Dispatch the new page transition event("pageshow", { persisted: true } event.
     window.dispatchEvent(
       new PageTransitionEvent("pageshow", { persisted: true }),
     );
 
-    // Replays page views when a persisted page is shown again.
+    // Assert the captured calls.
     expect(sendBeaconMock.calls).to.have.length(2);
     expect(sendBeaconMock.calls[1].endpoint).to.equal(
       "/communities/cncf/views",

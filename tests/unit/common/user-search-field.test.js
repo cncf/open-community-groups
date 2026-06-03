@@ -85,13 +85,16 @@ describe("user-search-field", () => {
     const element = await mountLitComponent("user-search-field");
     const queries = [];
 
+    // Listen for the user-search-query-changed event.
     element.addEventListener("user-search-query-changed", (event) => {
       queries.push(event.detail.query);
     });
 
+    // Type a search query into the component.
     element._handleSearchInput({ target: { value: "ada@example.com" } });
     element.clearSearch({ refocus: false });
 
+    // Assert the emitted payload.
     expect(queries).to.deep.equal(["ada@example.com", ""]);
   });
 
@@ -103,21 +106,26 @@ describe("user-search-field", () => {
     });
     const selectedEmails = [];
 
+    // Listen for the email-action-selected event.
     element.addEventListener("email-action-selected", (event) => {
       selectedEmails.push(event.detail.email);
     });
 
+    // Seed the current search query.
     element._searchQuery = "ada@example.com";
     element._searchResults = [];
     await element.updateComplete;
 
+    // Verify renders an opt-in email action for valid email queries with no matches.
     expect(element.textContent).to.contain("ada@example.com");
     expect(element.textContent).to.contain("Invite by email");
     expect(element.textContent).not.to.contain("No users found");
     expect(element.querySelector(".icon-add-circle")).to.exist;
 
+    // Click Invite by email ada@example.com.
     element.querySelector("button[aria-label='Invite by email ada@example.com']")?.click();
 
+    // Assert the emitted payload.
     expect(selectedEmails).to.deep.equal(["ada@example.com"]);
   });
 
@@ -125,10 +133,12 @@ describe("user-search-field", () => {
     // Mount a search field without the email action enabled.
     const element = await mountLitComponent("user-search-field");
 
+    // Seed the current search query.
     element._searchQuery = "ada@example.com";
     element._searchResults = [];
     await element.updateComplete;
 
+    // Assert the expected copy is rendered.
     expect(element.textContent).to.contain('No users found for "ada@example.com"');
   });
 
@@ -250,13 +260,16 @@ describe("user-search-field", () => {
       persistQueryOnOutside: true,
     });
 
+    // Seed the current search query.
     element._searchQuery = "ada@example.com";
     element._searchResults = [];
 
+    // Click outside the search field.
     element._handleOutsidePointer({
       target: document.body,
     });
 
+    // Assert that the outside click preserved the query.
     expect(element._searchQuery).to.equal("ada@example.com");
   });
 

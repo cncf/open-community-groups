@@ -29,7 +29,7 @@ describe("event-selector", () => {
     scrollToMock.restore();
   });
 
-  // Render the fixture to check it covers the current behavior.
+  // Render the component fixture.
   const renderSelector = async (properties = {}) => {
     return mountLitComponent("event-selector", {
       groupId: "group-1",
@@ -41,10 +41,10 @@ describe("event-selector", () => {
   };
 
   it("loads primary events from upcoming and past results", async () => {
-    // Render the fixture to check it loads primary events from upcoming and past results.
+    // Render the selector fixture.
     const element = await renderSelector();
 
-    // Prepare request calls to check it loads primary events from upcoming and past.
+    // Prepare request calls for loading primary events from upcoming and past.
     const requestCalls = [];
     element._requestEvents = async (config) => {
       requestCalls.push(config);
@@ -62,10 +62,10 @@ describe("event-selector", () => {
       ];
     };
 
-    // Configure browser state to check it loads primary events from upcoming and past.
+    // Configure browser state before loading upcoming and past events.
     await element._fetchPrimaryEvents();
 
-    // Confirm it loads primary events from upcoming and past results.
+    // Verify loads primary events from upcoming and past results.
     expect(requestCalls).to.have.length(2);
     expect(requestCalls[0]).to.include({ sortDirection: "asc", query: "" });
     expect(requestCalls[1]).to.include({ sortDirection: "desc", query: "" });
@@ -77,7 +77,7 @@ describe("event-selector", () => {
   });
 
   it("deduplicates searched events by id", async () => {
-    // Render the fixture to check it deduplicates searched events by id.
+    // Render the selector fixture.
     const element = await renderSelector();
     element._query = "today";
     element._requestEvents = async () => [
@@ -86,10 +86,10 @@ describe("event-selector", () => {
       { event_id: "event-2", name: "Event 2" },
     ];
 
-    // Configure browser state to check it deduplicates searched events by id.
+    // Configure browser state before asserting it deduplicates searched events by id.
     await element._fetchEvents();
 
-    // Confirm it deduplicates searched events by id.
+    // Search results are deduplicated by event id.
     expect(element._results.map((event) => event.event_id)).to.deep.equal([
       "event-1",
       "event-2",
@@ -97,18 +97,18 @@ describe("event-selector", () => {
   });
 
   it("updates active navigation and closes the dropdown on escape", async () => {
-    // Render the fixture to check it updates active navigation and closes the dropdown.
+    // Render the selector fixture.
     const element = await renderSelector();
     let selectedActiveResult = 0;
 
-    // Run component methods to check it updates active navigation and closes.
+    // Open the result list with two keyboard options.
     element._isOpen = true;
     element._results = [{ event_id: "1" }, { event_id: "2" }];
     element._selectActiveResult = () => {
       selectedActiveResult += 1;
     };
 
-    // Prepare event to check it updates active navigation and closes the dropdown.
+    // Prepare event for updating active navigation and closes the dropdown.
     const event = {
       key: "",
       preventDefaultCalls: 0,
@@ -117,22 +117,22 @@ describe("event-selector", () => {
       },
     };
 
-    // Exercise the flow to check it updates active navigation and closes the dropdown.
+    // Press ArrowDown.
     event.key = "ArrowDown";
     element._handleInputKeydown(event);
     expect(element._activeIndex).to.equal(0);
 
-    // Exercise the flow to check it updates active navigation and closes the dropdown.
+    // Press ArrowUp.
     event.key = "ArrowUp";
     element._handleInputKeydown(event);
     expect(element._activeIndex).to.equal(1);
 
-    // Exercise the flow to check it updates active navigation and closes the dropdown.
+    // Press Enter.
     event.key = "Enter";
     element._handleInputKeydown(event);
     expect(selectedActiveResult).to.equal(1);
 
-    // Exercise the flow to check it updates active navigation and closes the dropdown.
+    // Press Escape.
     event.key = "Escape";
     element._handleInputKeydown(event);
     expect(element._isOpen).to.equal(false);
@@ -141,11 +141,11 @@ describe("event-selector", () => {
   });
 
   it("copies event details, updates selection state, and shows success feedback", async () => {
-    // Render the fixture to check it copies event details, updates selection state.
+    // Render the selector fixture.
     const element = await renderSelector();
     const appliedDetails = [];
 
-    // Run component methods to check it copies event details, updates selection state.
+    // Stub event-detail loading and application.
     element._isOpen = true;
     element._applyEventDetails = (details) => {
       appliedDetails.push(details);
@@ -157,10 +157,10 @@ describe("event-selector", () => {
       timezone: "Europe/Madrid",
     });
 
-    // Exercise the flow to check it copies event details, updates selection state.
+    // Copied event details update the selection state.
     await element._handleCopyMode({ event_id: "event-9" });
 
-    // Confirm it copies event details, updates selection state, and shows success.
+    // Copied event details update selection state and show success.
     expect(appliedDetails).to.deep.equal([
       {
         event_id: "event-9",
@@ -186,7 +186,7 @@ describe("event-selector", () => {
   });
 
   it("applies copied event details into the form and resets meeting state", async () => {
-    // Build the DOM fixture to check it applies copied event details into the form.
+    // Render the DOM fixture for applying copied event details into the form.
     document.body.innerHTML = `
       <input id="name" />
       <select id="category_id">
@@ -231,7 +231,7 @@ describe("event-selector", () => {
       </markdown-editor>
     `;
 
-    // Read the DOM to check it applies copied event details into the form and resets.
+    // Wire the gallery field so copied photos can be observed.
     const gallery = document.querySelector(
       'gallery-field[field-name="photos_urls"]',
     );
@@ -239,35 +239,35 @@ describe("event-selector", () => {
       gallery.images = images;
     };
 
-    // Read the DOM to check it applies copied event details into the form and resets.
+    // Stub tag updates while copied tags are applied.
     const tags = document.querySelector('multiple-inputs[field-name="tags"]');
     tags.requestUpdate = () => {};
 
-    // Read the DOM to check it applies copied event details into the form and resets.
+    // Stub host updates while copied hosts are applied.
     const hosts = document.querySelector(
       'user-search-selector[field-name="hosts"]',
     );
     hosts.requestUpdate = () => {};
 
-    // Read the DOM to check it applies copied event details into the form and resets.
+    // Stub sponsor updates while copied sponsors are applied.
     const sponsors = document.querySelector("sponsors-section");
     sponsors.requestUpdate = () => {};
 
-    // Read the DOM to check it applies copied event details into the form and resets.
+    // Stub session updates while copied sessions are applied.
     const sessionsSection = document.querySelector("sessions-section");
     sessionsSection.requestUpdate = () => {};
 
-    // Read the ticket types UI element to check it applies copied event details.
+    // Keep a reference to the ticket types UI element.
     const ticketTypesEditor = document.getElementById("ticket-types-ui");
     const discountCodesEditor = document.getElementById("discount-codes-ui");
 
-    // Read the DOM to check it applies copied event details into the form and resets.
+    // Stub timezone dispatch while copied timezone data is applied.
     const timezoneSelector = document.querySelector(
       "timezone-selector[name='timezone']",
     );
     timezoneSelector.dispatchEvent = () => true;
 
-    // Read the DOM to check it applies copied event details into the form and resets.
+    // Track how copied meeting details reset manual fields.
     const meetingDetails = document.querySelector("online-event-details");
     let resetCalls = 0;
     let manualMeetingDetails = null;
@@ -278,14 +278,14 @@ describe("event-selector", () => {
       manualMeetingDetails = fields;
     };
 
-    // Read the DOM to check it applies copied event details into the form and resets.
+    // Read the markdown editor before copied description data is applied.
     const editor = document.querySelector("markdown-editor#description");
     const editorTextarea = editor.querySelector("textarea");
 
-    // Render the fixture to check it applies copied event details into the form.
+    // Render the selector that applies the copied event details.
     const element = await renderSelector();
 
-    // Exercise the flow to check it applies copied event details into the form.
+    // Copied event details populate the form.
     await element._applyEventDetails({
       name: "Cloud Native Málaga",
       category_name: "Conference",
@@ -340,11 +340,11 @@ describe("event-selector", () => {
       sponsors: [{ name: "ACME", level: 2 }],
     });
 
-    // Wait for render before checking it applies copied event details into the form.
+    // Wait for the component to finish rendering.
     await ticketTypesEditor.updateComplete;
     await discountCodesEditor.updateComplete;
 
-    // Confirm it applies copied event details into the form and resets meeting state.
+    // Copied event details populate the form and reset meeting state.
     expect(document.getElementById("name")?.value).to.equal(
       "Cloud Native Málaga (copy)",
     );
@@ -458,14 +458,14 @@ describe("event-selector", () => {
     expect(timezoneSelector.value).to.equal("Europe/Madrid");
     expect(resetCalls).to.equal(1);
 
-    // Update the input value to check it applies copied event details into the form.
+    // Update the input before asserting it applies copied event details into the form.
     document.getElementById("meeting_join_instructions").value =
       "stale instructions";
     document.getElementById("meeting_join_url").value =
       "https://stale.example.com";
     manualMeetingDetails = null;
 
-    // Exercise the flow to check it applies copied event details into the form.
+    // The copied event details remain in the form.
     await element._applyEventDetails({
       name: "Automatic Meeting Event",
       category_name: "Conference",
@@ -480,7 +480,7 @@ describe("event-selector", () => {
       timezone: "Europe/Madrid",
     });
 
-    // Confirm it applies copied event details into the form and resets meeting state.
+    // Reapplying copied details keeps the form and meeting state in sync.
     expect(
       document.getElementById("meeting_join_instructions")?.value,
     ).to.equal("");

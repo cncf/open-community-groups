@@ -79,9 +79,11 @@ describe("image-field", () => {
       target: "open_graph",
     });
 
+    // Set up help text.
     const helpText = element.querySelector(".form-legend").textContent.trim();
     const fileInput = element.querySelector('input[type="file"]');
 
+    // Verify does not show the generic supported formats text for Open Graph images.
     expect(helpText).to.equal(
       "Size required 1200 x 630 px. Format must be PNG, JPEG, or WebP. Maximum size: 1MB.",
     );
@@ -97,9 +99,11 @@ describe("image-field", () => {
       target: "banner",
     });
 
+    // Set up help text.
     const helpText = element.querySelector(".form-legend").textContent.trim();
     const fileInput = element.querySelector('input[type="file"]');
 
+    // Assert the accepted image formats copy.
     expect(helpText).to.include("Supported formats: SVG, PNG, JPEG, GIF, WEBP and TIFF.");
     expect(fileInput.accept).to.equal(".svg,.png,.jpg,.jpeg,.gif,.webp,.tif,.tiff");
   });

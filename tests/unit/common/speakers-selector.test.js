@@ -24,7 +24,7 @@ describe("speakers-selector", () => {
     // Open the speaker modal and keep body scrolling locked.
     element._openSpeakerModal();
 
-    // Opened the speaker modal with existing speaker ids disabled.
+    // The modal opens with the existing speaker disabled.
     expect(openCalls).to.equal(1);
     expect(modal.disabledUserIds).to.deep.equal(["12"]);
   });

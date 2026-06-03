@@ -27,7 +27,7 @@ describe("gallery-field", () => {
     element._handleRemoveImage(0);
     await element.updateComplete;
 
-    // Reorders and removes gallery images while emitting updates.
+    // The component stores the final order and emits each intermediate update.
     expect(element.images).to.deep.equal(["https://example.com/1.png"]);
     expect(received[0]).to.deep.equal([
       "https://example.com/2.png",
@@ -43,7 +43,7 @@ describe("gallery-field", () => {
       maxImages: 2,
     });
 
-    // Hides the add tile when the gallery reaches its limit.
+    // The add tile is unavailable once the max image count is reached.
     expect(element._showAddTile).to.equal(false);
     expect(element._remainingSlots).to.equal(0);
   });

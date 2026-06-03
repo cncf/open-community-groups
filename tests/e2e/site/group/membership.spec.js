@@ -76,6 +76,7 @@ test.describe("group membership", () => {
     // Resolve existing membership before starting the join flow.
     await waitForMembershipState(member2Page);
 
+    // Leave any existing attendance before continuing.
     if (await getLeaveButton(member2Page).isVisible()) {
       await leaveGroup(member2Page);
     }

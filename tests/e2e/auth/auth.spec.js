@@ -211,9 +211,11 @@ test.describe("authentication", () => {
     // Create a unique email user for the verification-gated login flow.
     const user = buildAuthUser();
 
+    // Complete the sign-up flow for the test user.
     await signUpWithEmail(page, user);
     await logInWithEmail(page, user);
 
+    // Verify email sign up requires verification before log in.
     await expect(page).toHaveURL(/\/log-in/);
     await expect(page.getByRole("button", { name: "Sign In" })).toBeVisible();
   });
@@ -222,11 +224,16 @@ test.describe("authentication", () => {
     // Create a unique email user for the verification flow.
     const user = buildAuthUser();
 
+    // Complete the sign-up flow for the test user.
     await signUpWithEmail(page, user);
 
+    // Use the email verification code from the test inbox.
     const verificationCode = await waitForEmailVerificationCode(user.email);
 
+    // Open the email verification link.
     await navigateToPath(page, `/verify-email/${verificationCode}`);
+
+    // Verify email sign up can verify and then log in.
     await expect(page).toHaveURL(/\/log-in/);
     await expect(
       page.getByText(
@@ -234,15 +241,19 @@ test.describe("authentication", () => {
       ),
     ).toBeVisible();
 
+    // Open the protected events page.
     await navigateToPath(page, USER_DASHBOARD_EVENTS_PATH);
 
+    // Assert that the browser lands on the right URL.
     await expect(page).toHaveURL(/\/log-in\?next_url=/);
 
+    // Log in with the email user.
     await Promise.all([
       page.waitForURL((url) => url.pathname === "/dashboard/user"),
       logInWithEmail(page, user),
     ]);
 
+    // Assert that the browser lands on the right URL.
     await expect(page).toHaveURL(
       (url) =>
         url.pathname === "/dashboard/user" &&
@@ -257,16 +268,19 @@ test.describe("authentication", () => {
     // Open a protected page to capture the redirect target.
     await navigateToPath(page, USER_DASHBOARD_EVENTS_PATH);
 
+    // Verify seeded user can log in and is redirected to the requested page.
     await expect(page).toHaveURL(/\/log-in\?next_url=/);
     expect(page.url()).toContain(
       encodeURIComponent(USER_DASHBOARD_EVENTS_PATH),
     );
 
+    // Log in with the email user.
     await Promise.all([
       page.waitForURL((url) => url.pathname === "/dashboard/user"),
       logInWithEmail(page, TEST_USER_CREDENTIALS.member1),
     ]);
 
+    // Assert that the browser lands on the right URL.
     await expect(page).toHaveURL(
       (url) =>
         url.pathname === "/dashboard/user" &&
@@ -283,17 +297,23 @@ test.describe("authentication", () => {
     // Log in with a seeded member before using the header menu.
     await logInWithSeededUser(page, TEST_USER_CREDENTIALS.member1);
 
+    // Find the user menu button.
     const userMenuButton = page.locator(
       '#user-dropdown-button[data-logged-in="true"]',
     );
+
+    // Verify logged in user can log out from the header menu.
     await expect(userMenuButton).toBeVisible();
     await userMenuButton.click();
 
+    // Find the Log out control.
     const logOutLink = page.getByRole("menuitem", { name: "Log out" });
     await expect(logOutLink).toBeVisible();
 
+    // Submit the action and wait for navigation.
     await Promise.all([page.waitForURL(/\/log-in/), logOutLink.click()]);
 
+    // Assert that Log In is visible.
     await expect(page.getByRole("heading", { name: "Log In" })).toBeVisible();
   });
 });

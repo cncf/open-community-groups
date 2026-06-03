@@ -7,7 +7,10 @@ test.describe("site stats page", () => {
     // Load the public stats page before checking analytics sections.
     await navigateToPath(page, "/stats");
 
+    // Find the main content.
     const mainContent = page.locator("#main-content");
+
+    // Verify renders totals and analytics chart containers.
     await expect(mainContent.getByText("Stats", { exact: true })).toBeVisible();
     await expect(
       mainContent.getByText("Global growth trends across all communities.", {
@@ -15,12 +18,14 @@ test.describe("site stats page", () => {
       }),
     ).toBeVisible();
 
+    // Assert each expected case.
     for (const sectionName of ["Groups", "Members", "Events", "Attendees"]) {
       await expect(
         mainContent.getByText(sectionName, { exact: true }).first(),
       ).toBeVisible();
     }
 
+    // Set up groups section.
     const groupsSection = mainContent
       .getByText("Groups", { exact: true })
       .first()
@@ -35,6 +40,7 @@ test.describe("site stats page", () => {
       groupsSection.locator("#groups-monthly-chart, .chart-empty-state").last(),
     ).toBeVisible();
 
+    // Set up members section.
     const membersSection = mainContent
       .getByText("Members", { exact: true })
       .first()
@@ -51,6 +57,7 @@ test.describe("site stats page", () => {
         .last(),
     ).toBeVisible();
 
+    // Set up events section.
     const eventsSection = mainContent
       .getByText("Events", { exact: true })
       .first()
@@ -65,6 +72,7 @@ test.describe("site stats page", () => {
       eventsSection.locator("#events-monthly-chart, .chart-empty-state").last(),
     ).toBeVisible();
 
+    // Set up attendees section.
     const attendeesSection = mainContent
       .getByText("Attendees", { exact: true })
       .first()

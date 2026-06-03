@@ -4,7 +4,7 @@ import { resolveUrl, setLinkContent } from "/static/js/common/url-utils.js";
 
 describe("url-utils", () => {
   it("resolves relative and absolute urls from the current origin", () => {
-    // Resolves relative and absolute urls from the current origin.
+    // Relative paths are expanded while absolute URLs are preserved.
     expect(resolveUrl("/groups")).to.equal(`${window.location.origin}/groups`);
     expect(resolveUrl("https://example.com/community")).to.equal(
       "https://example.com/community",
@@ -12,7 +12,7 @@ describe("url-utils", () => {
   });
 
   it("returns an empty string for invalid urls", () => {
-    // Returned an empty string for invalid urls.
+    // Invalid and empty URLs resolve to an empty string.
     expect(resolveUrl("http://[invalid")).to.equal("");
     expect(resolveUrl("")).to.equal("");
   });

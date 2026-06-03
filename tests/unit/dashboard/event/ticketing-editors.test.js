@@ -45,7 +45,7 @@ describe("ticketing editors", () => {
   beforeEach(() => {
     resetDom();
 
-    // Prepare currency field to check it covers the current behavior.
+    // Prepare the module under test.
     const currencyField = document.createElement("select");
     currencyField.id = "payment_currency_code";
     currencyField.innerHTML = `
@@ -56,7 +56,7 @@ describe("ticketing editors", () => {
     currencyField.value = "EUR";
     document.body.append(currencyField);
 
-    // Prepare timezone field to check it covers the current behavior.
+    // Prepare the module under test.
     const timezoneField = document.createElement("input");
     timezoneField.name = "timezone";
     timezoneField.value = "UTC";
@@ -64,7 +64,7 @@ describe("ticketing editors", () => {
   });
 
   it("renders ticket type summary rows and preserves hidden field serialization", async () => {
-    // Prepare ui root to check it renders ticket type summary rows and preserves hidden.
+    // Prepare the UI root for persisted ticket summary rows.
     const uiRoot = mountTicketTypesUi();
     uiRoot.setAttribute(
       "ticket-types",
@@ -85,10 +85,10 @@ describe("ticketing editors", () => {
       ]),
     );
 
-    // Wait for render before checking it renders ticket type summary rows and preserves.
+    // Wait for the component to finish rendering.
     await uiRoot.updateComplete;
 
-    // Confirm it renders ticket type summary rows and preserves hidden field.
+    // Verify renders ticket type summary rows and preserves hidden field.
     expect(uiRoot.textContent).to.contain("General admission");
     expect(uiRoot.textContent).to.contain("25");
     expect(
@@ -106,7 +106,7 @@ describe("ticketing editors", () => {
   });
 
   it("keeps seats and status in dedicated table cells on small layouts", async () => {
-    // Prepare ui root to check it keeps seats and status in dedicated table cells.
+    // Prepare ui root for keeping seats and status in dedicated table cells.
     const uiRoot = mountTicketTypesUi();
     uiRoot.setAttribute(
       "ticket-types",
@@ -126,15 +126,15 @@ describe("ticketing editors", () => {
       ]),
     );
 
-    // Wait for render before checking it keeps seats and status in dedicated table cells.
+    // Wait for the component to finish rendering.
     await uiRoot.updateComplete;
 
-    // Read the DOM to check it keeps seats and status in dedicated table cells on small.
+    // Read the ticket row cells in the compact layout.
     const rowCells = uiRoot.querySelectorAll(
       '[data-ticketing-role="table-body"] tr td',
     );
 
-    // Confirm it keeps seats and status in dedicated table cells on small layouts.
+    // Verify keeps seats and status in dedicated table cells on small layouts.
     expect(rowCells).to.have.length(4);
     expect(rowCells[1].className).to.not.contain("hidden");
     expect(rowCells[1].textContent).to.contain("25");
@@ -144,7 +144,7 @@ describe("ticketing editors", () => {
   });
 
   it("adds ticket types through the modal and emits ticket-types-changed", async () => {
-    // Prepare ui root to check it adds ticket types through the modal and emits.
+    // Prepare ui root for adding ticket types through the modal and emits.
     const uiRoot = mountTicketTypesUi();
     await uiRoot.updateComplete;
     const events = [];
@@ -152,11 +152,11 @@ describe("ticketing editors", () => {
       events.push(event.detail),
     );
 
-    // Exercise the flow to check it adds ticket types through the modal and emits.
+    // Verify adds ticket types through the modal and emits.
     uiRoot._openTicketModal();
     await uiRoot.updateComplete;
 
-    // Confirm it adds ticket types through the modal and emits ticket-types-changed.
+    // Verify adds ticket types through the modal and emits ticket-types-changed.
     expect(
       uiRoot.querySelector('label[for="ticket-title-draft"]')?.textContent,
     ).to.contain("*");
@@ -168,16 +168,16 @@ describe("ticketing editors", () => {
     ).to.contain("*");
     expect(uiRoot.querySelector("#ticket-price-1")?.max).to.equal("999999.99");
 
-    // Exercise the flow to check it adds ticket types through the modal and emits.
+    // Verify adds ticket types through the modal and emits.
     await setInputValue(uiRoot, "#ticket-title-draft", "Early bird");
     await setInputValue(uiRoot, "#ticket-seats-draft", "40");
     await setInputValue(uiRoot, "#ticket-price-1", "15.00");
 
-    // Trigger the user interaction to check it adds ticket types through the modal.
+    // Verify adds ticket types through the modal.
     uiRoot.querySelector('[data-ticketing-action="save-ticket"]')?.click();
     await uiRoot.updateComplete;
 
-    // Confirm it adds ticket types through the modal and emits ticket-types-changed.
+    // Verify adds ticket types through the modal and emits ticket-types-changed.
     expect(uiRoot.textContent).to.contain("Early bird");
     expect(
       uiRoot.querySelector('input[name="ticket_types[0][title]"]')?.value,
@@ -194,27 +194,27 @@ describe("ticketing editors", () => {
   });
 
   it("rejects ticket prices outside Stripe charge limits before saving", async () => {
-    // Update the input value to check it rejects ticket prices outside Stripe charge.
+    // Update the input before asserting it rejects ticket prices outside Stripe charge.
     document.getElementById("payment_currency_code").value = "USD";
 
-    // Prepare ui root to check it rejects ticket prices outside Stripe charge limits.
+    // Prepare ui root for rejects ticket prices outside Stripe charge limits.
     const uiRoot = mountTicketTypesUi();
     await uiRoot.updateComplete;
 
-    // Exercise the flow to check it rejects ticket prices outside Stripe charge limits.
+    // Verify rejects ticket prices outside Stripe charge limits.
     uiRoot._openTicketModal();
     await uiRoot.updateComplete;
 
-    // Exercise the flow to check it rejects ticket prices outside Stripe charge limits.
+    // Fill ticket title draft.
     await setInputValue(uiRoot, "#ticket-title-draft", "Tiny paid ticket");
     await setInputValue(uiRoot, "#ticket-seats-draft", "40");
     const priceInput = await setInputValue(uiRoot, "#ticket-price-1", "0.49");
 
-    // Trigger the user interaction to check it rejects ticket prices outside Stripe.
+    // Verify rejects ticket prices outside Stripe.
     uiRoot.querySelector('[data-ticketing-action="save-ticket"]')?.click();
     await uiRoot.updateComplete;
 
-    // Confirm it rejects ticket prices outside Stripe charge limits before saving.
+    // Verify rejects ticket prices outside Stripe charge limits before saving.
     expect(priceInput.validationMessage).to.equal(
       "Use 0 for free tickets, or at least 0.50 USD.",
     );
@@ -222,49 +222,49 @@ describe("ticketing editors", () => {
       uiRoot.querySelector('input[name="ticket_types[0][title]"]'),
     ).to.equal(null);
 
-    // Exercise the flow to check it rejects ticket prices outside Stripe charge limits.
+    // Verify rejects ticket prices outside Stripe charge limits.
     await setInputValue(uiRoot, "#ticket-price-1", "1000000.00");
     uiRoot.querySelector('[data-ticketing-action="save-ticket"]')?.click();
     await uiRoot.updateComplete;
 
-    // Confirm it rejects ticket prices outside Stripe charge limits before saving.
+    // Verify rejects ticket prices outside Stripe charge limits before saving.
     expect(priceInput.validationMessage).to.equal(
       "Stripe allows up to 999999.99 USD.",
     );
   });
 
   it("uses explicit ticket type controller dependencies instead of global fields", async () => {
-    // Update the input value to check it uses explicit ticket type controller.
+    // Update the input before asserting it uses explicit ticket type controller.
     document.getElementById("payment_currency_code").value = "USD";
     document.querySelector('[name="timezone"]').value = "UTC";
 
-    // Prepare add button to check it uses explicit ticket type controller dependencies.
+    // Prepare add button for using explicit ticket type controller dependencies.
     const addButton = document.createElement("button");
     document.body.append(addButton);
 
-    // Prepare currency input to check it uses explicit ticket type controller.
+    // Prepare currency input for using explicit ticket type controller.
     const currencyInput = document.createElement("input");
     currencyInput.value = "EUR";
     document.body.append(currencyInput);
 
-    // Prepare timezone input to check it uses explicit ticket type controller.
+    // Prepare timezone input for using explicit ticket type controller.
     const timezoneInput = document.createElement("input");
     timezoneInput.value = "America/New_York";
     document.body.append(timezoneInput);
 
-    // Prepare ui root to check it uses explicit ticket type controller dependencies.
+    // Prepare ui root for using explicit ticket type controller dependencies.
     const uiRoot = mountTicketTypesUi();
     uiRoot.configure({ addButton, currencyInput, timezoneInput });
     await uiRoot.updateComplete;
 
-    // Trigger the user interaction to check it uses explicit ticket type controller.
+    // Verify uses explicit ticket type controller.
     addButton.click();
     await uiRoot.updateComplete;
 
-    // Confirm it uses explicit ticket type controller dependencies instead of global.
+    // Verify uses explicit ticket type controller dependencies instead of global.
     expect(uiRoot.textContent).to.contain("Price (EUR)");
 
-    // Exercise the flow to check it uses explicit ticket type controller dependencies.
+    // Verify uses explicit ticket type controller dependencies.
     await setInputValue(
       uiRoot,
       "#ticket-title-draft",
@@ -274,57 +274,57 @@ describe("ticketing editors", () => {
     await setInputValue(uiRoot, "#ticket-price-1", "15.00");
     await setInputValue(uiRoot, "#ticket-starts-1", "2026-04-10T10:00");
 
-    // Trigger the user interaction to check it uses explicit ticket type controller.
+    // Verify uses explicit ticket type controller.
     uiRoot.querySelector('[data-ticketing-action="save-ticket"]')?.click();
     await uiRoot.updateComplete;
 
-    // Confirm it uses explicit ticket type controller dependencies instead of global.
+    // Verify uses explicit ticket type controller dependencies instead of global.
     expect(
       uiRoot.querySelector(
         'input[name="ticket_types[0][price_windows][0][starts_at]"]',
       )?.value,
     ).to.equal("2026-04-10T14:00:00.000Z");
 
-    // Update the input value to check it uses explicit ticket type controller.
+    // Update the input before asserting it uses explicit ticket type controller.
     currencyInput.value = "JPY";
     currencyInput.dispatchEvent(
       new Event("input", { bubbles: true, composed: true }),
     );
     await uiRoot.updateComplete;
 
-    // Trigger the user interaction to check it uses explicit ticket type controller.
+    // Verify uses explicit ticket type controller.
     uiRoot.querySelector('[data-ticketing-action="edit-ticket"]')?.click();
     await uiRoot.updateComplete;
 
-    // Confirm it uses explicit ticket type controller dependencies instead of global.
+    // Verify uses explicit ticket type controller dependencies instead of global.
     expect(uiRoot.textContent).to.contain("Price (JPY)");
   });
 
   it("reconfigures ticket type dependencies on repeated configure calls", async () => {
-    // Prepare initial add button to check it reconfigures ticket type dependencies.
+    // Prepare initial add button for reconfiguring ticket type dependencies.
     const initialAddButton = document.createElement("button");
     document.body.append(initialAddButton);
 
-    // Prepare reconfigured add button to check it reconfigures ticket type dependencies.
+    // Prepare reconfigured add button for reconfiguring ticket type dependencies.
     const reconfiguredAddButton = document.createElement("button");
     document.body.append(reconfiguredAddButton);
 
-    // Prepare currency input to check it reconfigures ticket type dependencies.
+    // Prepare currency input for reconfiguring ticket type dependencies.
     const currencyInput = document.createElement("input");
     currencyInput.value = "EUR";
     document.body.append(currencyInput);
 
-    // Prepare timezone input to check it reconfigures ticket type dependencies.
+    // Prepare timezone input for reconfiguring ticket type dependencies.
     const timezoneInput = document.createElement("input");
     timezoneInput.value = "America/New_York";
     document.body.append(timezoneInput);
 
-    // Prepare ui root to check it reconfigures ticket type dependencies on repeated.
+    // Prepare ui root for reconfiguring ticket type dependencies on repeated.
     const uiRoot = mountTicketTypesUi();
     uiRoot.configure({ addButton: initialAddButton });
     await uiRoot.updateComplete;
 
-    // Exercise the flow to check it reconfigures ticket type dependencies on repeated.
+    // Repeated configuration keeps ticket type dependencies current.
     uiRoot.configure({
       addButton: reconfiguredAddButton,
       currencyInput,
@@ -332,69 +332,69 @@ describe("ticketing editors", () => {
     });
     await uiRoot.updateComplete;
 
-    // Trigger the user interaction to check it reconfigures ticket type dependencies.
+    // Click the initial add button.
     initialAddButton.click();
     await uiRoot.updateComplete;
     expect(
       uiRoot.querySelector('[data-ticketing-role="ticket-modal"]')?.className,
     ).to.contain("hidden");
 
-    // Trigger the user interaction to check it reconfigures ticket type dependencies.
+    // Click the reconfigured add button.
     reconfiguredAddButton.click();
     await uiRoot.updateComplete;
     expect(uiRoot.textContent).to.contain("Price (EUR)");
 
-    // Exercise the flow to check it reconfigures ticket type dependencies on repeated.
+    // Ticket type dependencies stay current after another configuration.
     await setInputValue(uiRoot, "#ticket-title-draft", "Reconfigured ticket");
     await setInputValue(uiRoot, "#ticket-seats-draft", "20");
     await setInputValue(uiRoot, "#ticket-price-1", "15.00");
     await setInputValue(uiRoot, "#ticket-starts-1", "2026-04-10T10:00");
 
-    // Trigger the user interaction to check it reconfigures ticket type dependencies.
+    // Ticket type dependencies update dependent fields.
     uiRoot.querySelector('[data-ticketing-action="save-ticket"]')?.click();
     await uiRoot.updateComplete;
 
-    // Confirm it reconfigures ticket type dependencies on repeated configure calls.
+    // Repeated configure calls keep ticket type dependencies current.
     expect(
       uiRoot.querySelector(
         'input[name="ticket_types[0][price_windows][0][starts_at]"]',
       )?.value,
     ).to.equal("2026-04-10T14:00:00.000Z");
 
-    // Update the input value to check it reconfigures ticket type dependencies.
+    // Update the input before asserting it reconfigures ticket type dependencies.
     currencyInput.value = "JPY";
     currencyInput.dispatchEvent(
       new Event("input", { bubbles: true, composed: true }),
     );
     await uiRoot.updateComplete;
 
-    // Trigger the user interaction to check it reconfigures ticket type dependencies.
+    // Reconfigured ticket type dependencies update field state.
     uiRoot.querySelector('[data-ticketing-action="edit-ticket"]')?.click();
     await uiRoot.updateComplete;
 
-    // Confirm it reconfigures ticket type dependencies on repeated configure calls.
+    // Reconfigured ticket type dependencies update the dependent fields.
     expect(uiRoot.textContent).to.contain("Price (JPY)");
   });
 
   it("keeps free ticket prices as amount_minor 0 in hidden fields", async () => {
-    // Prepare ui root to check it keeps free ticket prices as amount_minor 0 in hidden.
+    // Prepare the UI root before saving a free ticket.
     const uiRoot = mountTicketTypesUi();
     await uiRoot.updateComplete;
 
-    // Exercise the flow to check it keeps free ticket prices as amount_minor 0 in hidden.
+    // Verify free tickets keep amount_minor 0 in hidden fields.
     uiRoot._openTicketModal();
     await uiRoot.updateComplete;
 
-    // Exercise the flow to check it keeps free ticket prices as amount_minor 0 in hidden.
+    // Fill ticket title draft.
     await setInputValue(uiRoot, "#ticket-title-draft", "Free entry");
     await setInputValue(uiRoot, "#ticket-seats-draft", "10");
     await setInputValue(uiRoot, "#ticket-price-1", "0");
 
-    // Trigger the user interaction to check it keeps free ticket prices as amount_minor.
+    // Save the free ticket through the editor.
     uiRoot.querySelector('[data-ticketing-action="save-ticket"]')?.click();
     await uiRoot.updateComplete;
 
-    // Confirm it keeps free ticket prices as amount_minor 0 in hidden fields.
+    // Verify keeps free ticket prices as amount_minor 0 in hidden fields.
     expect(uiRoot.textContent).to.contain("Free entry");
     expect(
       uiRoot.querySelector(
@@ -404,7 +404,7 @@ describe("ticketing editors", () => {
   });
 
   it("renders scheduled ticket windows with compact dates", async () => {
-    // Prepare ui root to check it renders scheduled ticket windows with compact dates.
+    // Prepare ui root for rendering scheduled ticket windows with compact dates.
     const uiRoot = mountTicketTypesUi();
     uiRoot.setAttribute(
       "ticket-types",
@@ -429,17 +429,17 @@ describe("ticketing editors", () => {
       ]),
     );
 
-    // Wait for render before checking it renders scheduled ticket windows with compact.
+    // Wait for the component to finish rendering.
     await uiRoot.updateComplete;
 
-    // Confirm it renders scheduled ticket windows with compact dates.
+    // Verify renders scheduled ticket windows with compact dates.
     expect(uiRoot.textContent).to.contain("Early bird");
     expect(uiRoot.textContent).to.not.contain("until Apr 10");
     expect(uiRoot.textContent).to.not.contain("from Apr 11");
   });
 
   it("renders persisted ticket rows from the dataset and wires row actions", async () => {
-    // Prepare ui root to check it renders persisted ticket rows from the dataset.
+    // Prepare ui root for rendering persisted ticket rows from the dataset.
     const uiRoot = mountTicketTypesUi();
     uiRoot.setAttribute(
       "ticket-types",
@@ -460,17 +460,17 @@ describe("ticketing editors", () => {
       ]),
     );
 
-    // Wait for render before checking it renders persisted ticket rows from the dataset.
+    // Wait for the component to finish rendering.
     await uiRoot.updateComplete;
 
-    // Confirm it renders persisted ticket rows from the dataset and wires row actions.
+    // Assert that the persisted ticket is rendered.
     expect(uiRoot.textContent).to.contain("General admission");
 
-    // Trigger the user interaction to check it renders persisted ticket rows.
+    // Verify renders persisted ticket rows.
     uiRoot.querySelector('[data-ticketing-action="edit-ticket"]')?.click();
     await uiRoot.updateComplete;
 
-    // Confirm it renders persisted ticket rows from the dataset and wires row actions.
+    // Assert that editing opens the ticket modal.
     expect(
       uiRoot
         .querySelector('[data-ticketing-role="modal-title"]')
@@ -479,7 +479,7 @@ describe("ticketing editors", () => {
   });
 
   it("parses ticket type JSON from the element attribute", async () => {
-    // Prepare ui root to check it parses ticket type JSON from the element attribute.
+    // Prepare ui root for parses ticket type JSON from the element attribute.
     const uiRoot = mountTicketTypesUi();
     uiRoot.setAttribute(
       "ticket-types",
@@ -493,19 +493,19 @@ describe("ticketing editors", () => {
       ]),
     );
 
-    // Wait for render before checking it parses ticket type JSON from the element.
+    // Wait for the component to finish rendering.
     await uiRoot.updateComplete;
 
-    // Confirm it parses ticket type JSON from the element attribute.
+    // Ticket type JSON is parsed from the element attribute.
     expect(uiRoot.textContent).to.contain("Attribute ticket");
   });
 
   it("rehydrates ticket rows when the attribute changes after mount", async () => {
-    // Prepare ui root to check it rehydrates ticket rows when the attribute changes.
+    // Prepare ui root for rehydrates ticket rows when the attribute changes.
     const uiRoot = mountTicketTypesUi();
     await uiRoot.updateComplete;
 
-    // Update fixture state to check it rehydrates ticket rows when the attribute changes.
+    // Update fixture state before asserting the new state.
     uiRoot.setAttribute(
       "ticket-types",
       JSON.stringify([
@@ -519,22 +519,22 @@ describe("ticketing editors", () => {
     );
     await uiRoot.updateComplete;
 
-    // Confirm it rehydrates ticket rows when the attribute changes after mount.
+    // Ticket rows rehydrate when the attribute changes after mount.
     expect(uiRoot.textContent).to.contain("Late release ticket");
     expect(uiRoot.hasConfiguredTicketTypes()).to.equal(true);
   });
 
   it("keeps hidden ticket modal fields disabled so parent form validation ignores them", async () => {
-    // Prepare form to check it keeps hidden ticket modal fields disabled so parent form.
+    // Prepare form for keeping hidden ticket modal fields disabled so parent form.
     const form = document.createElement("form");
     const uiRoot = mountTicketTypesUi();
     form.append(uiRoot);
     document.body.append(form);
 
-    // Wait for render before checking it keeps hidden ticket modal fields disabled so.
+    // Wait for the component to finish rendering.
     await uiRoot.updateComplete;
 
-    // Confirm it keeps hidden ticket modal fields disabled so parent form validation.
+    // Verify keeps hidden ticket modal fields disabled so parent form validation.
     expect(form.checkValidity()).to.equal(true);
     expect(uiRoot.querySelector("#ticket-title-draft")?.disabled).to.equal(
       true,
@@ -545,48 +545,48 @@ describe("ticketing editors", () => {
   });
 
   it("requires an event currency when ticket types are configured", async () => {
-    // Read the payment currency code element to check it requires an event currency.
+    // Keep a reference to the payment currency code element.
     const currencyField = document.getElementById("payment_currency_code");
     currencyField.value = "";
 
-    // Prepare ui root to check it requires an event currency when ticket types.
+    // Prepare ui root for requiring an event currency when ticket types.
     const uiRoot = mountTicketTypesUi();
     initializeEventEnrollmentState();
     await uiRoot.updateComplete;
 
-    // Exercise the flow to check it requires an event currency when ticket types.
+    // Verify requires an event currency when ticket types.
     uiRoot._openTicketModal();
     await uiRoot.updateComplete;
 
-    // Exercise the flow to check it requires an event currency when ticket types.
+    // Fill ticket title draft.
     await setInputValue(uiRoot, "#ticket-title-draft", "Paid ticket");
     await setInputValue(uiRoot, "#ticket-seats-draft", "25");
     await setInputValue(uiRoot, "#ticket-price-1", "15.00");
 
-    // Trigger the user interaction to check it requires an event currency when ticket.
+    // Verify requires an event currency when ticket.
     uiRoot.querySelector('[data-ticketing-action="save-ticket"]')?.click();
     await uiRoot.updateComplete;
 
-    // Confirm it requires an event currency when ticket types are configured.
+    // Verify requires an event currency when ticket types are configured.
     expect(currencyField.required).to.equal(true);
     expect(currencyField.validationMessage).to.equal(
       "Ticketed events require an event currency.",
     );
     expect(currencyField.checkValidity()).to.equal(false);
 
-    // Update the input value to check it requires an event currency when ticket types.
+    // Update the input before asserting it requires an event currency when ticket types.
     currencyField.value = "USD";
     currencyField.dispatchEvent(
       new Event("change", { bubbles: true, composed: true }),
     );
 
-    // Confirm it requires an event currency when ticket types are configured.
+    // Verify requires an event currency when ticket types are configured.
     expect(currencyField.validationMessage).to.equal("");
     expect(currencyField.checkValidity()).to.equal(true);
   });
 
   it("renders discount code rows and updates serialization after modal edits", async () => {
-    // Prepare ui root to check it renders discount code rows and updates serialization.
+    // Prepare ui root for rendering discount code rows and updates serialization.
     const uiRoot = mountDiscountCodesUi();
     uiRoot.setAttribute(
       "discount-codes",
@@ -602,10 +602,10 @@ describe("ticketing editors", () => {
       ]),
     );
 
-    // Wait for render before checking it renders discount code rows and updates.
+    // Wait for the component to finish rendering.
     await uiRoot.updateComplete;
 
-    // Confirm it renders discount code rows and updates serialization after modal edits.
+    // Verify renders discount code rows and updates serialization after modal edits.
     expect(uiRoot.textContent).to.contain("Early supporter");
     expect(uiRoot.textContent).to.contain("EARLY20");
     expect(
@@ -613,20 +613,20 @@ describe("ticketing editors", () => {
         ?.value,
     ).to.equal("20");
 
-    // Exercise the flow to check it renders discount code rows and updates serialization.
+    // Verify renders discount code rows and updates serialization.
     uiRoot._openDiscountModal(uiRoot._rows[0]._row_id);
     await uiRoot.updateComplete;
 
-    // Exercise the flow to check it renders discount code rows and updates serialization.
+    // Fill discount title draft.
     await setInputValue(uiRoot, "#discount-title-draft", "Member perk");
     await setInputValue(uiRoot, "#discount-code-draft", "member10");
     await setInputValue(uiRoot, "#discount-percentage-draft", "10");
 
-    // Trigger the user interaction to check it renders discount code rows and updates.
+    // Verify renders discount code rows and updates.
     uiRoot.querySelector('[data-ticketing-action="save-discount"]')?.click();
     await uiRoot.updateComplete;
 
-    // Confirm it renders discount code rows and updates serialization after modal edits.
+    // Verify renders discount code rows and updates serialization after modal edits.
     expect(uiRoot.textContent).to.contain("Member perk");
     expect(uiRoot.textContent).to.contain("MEMBER10");
     expect(
@@ -642,7 +642,7 @@ describe("ticketing editors", () => {
   });
 
   it("serializes discount availability override state explicitly", async () => {
-    // Prepare ui root to check it serializes discount availability override state.
+    // Prepare ui root for serializes discount availability override state.
     const uiRoot = mountDiscountCodesUi();
     uiRoot.setAttribute(
       "discount-codes",
@@ -660,21 +660,21 @@ describe("ticketing editors", () => {
       ]),
     );
 
-    // Wait for render before checking it serializes discount availability override state.
+    // Wait for the component to finish rendering.
     await uiRoot.updateComplete;
 
-    // Exercise the flow to check it serializes discount availability override state.
+    // Verify serializes discount availability override state.
     uiRoot._openDiscountModal(uiRoot._rows[0]._row_id);
     await uiRoot.updateComplete;
 
-    // Exercise the flow to check it serializes discount availability override state.
+    // Fill discount available draft.
     await setInputValue(uiRoot, "#discount-available-draft", "");
 
-    // Trigger the user interaction to check it serializes discount availability override.
+    // Verify serializes discount availability override.
     uiRoot.querySelector('[data-ticketing-action="save-discount"]')?.click();
     await uiRoot.updateComplete;
 
-    // Confirm it serializes discount availability override state explicitly.
+    // Verify serializes discount availability override state explicitly.
     expect(
       uiRoot.querySelector('input[name="discount_codes[0][available]"]'),
     ).to.equal(null);
@@ -686,7 +686,7 @@ describe("ticketing editors", () => {
   });
 
   it("preserves preloaded discount availability overrides marked dirty", async () => {
-    // Prepare ui root to check it preserves preloaded discount availability overrides.
+    // Prepare ui root for preserves preloaded discount availability overrides.
     const uiRoot = mountDiscountCodesUi();
     uiRoot.setAttribute(
       "discount-codes",
@@ -705,10 +705,10 @@ describe("ticketing editors", () => {
       ]),
     );
 
-    // Wait for render before checking it preserves preloaded discount availability.
+    // Wait for the component to finish rendering.
     await uiRoot.updateComplete;
 
-    // Confirm it preserves preloaded discount availability overrides marked dirty.
+    // Verify preserves preloaded discount availability overrides marked dirty.
     expect(
       uiRoot.querySelector('input[name="discount_codes[0][available]"]')?.value,
     ).to.equal("12");
@@ -720,15 +720,15 @@ describe("ticketing editors", () => {
   });
 
   it("adds and removes discount codes from the compact card list", async () => {
-    // Prepare ui root to check it adds and removes discount codes from the compact card.
+    // Prepare ui root for adding and removes discount codes from the compact card.
     const uiRoot = mountDiscountCodesUi();
     await uiRoot.updateComplete;
 
-    // Exercise the flow to check it adds and removes discount codes from the compact.
+    // Verify adds and removes discount codes from the compact.
     uiRoot._openDiscountModal();
     await uiRoot.updateComplete;
 
-    // Exercise the flow to check it adds and removes discount codes from the compact.
+    // Fill discount title draft.
     await setInputValue(uiRoot, "#discount-title-draft", "Sponsor invite");
     await setInputValue(uiRoot, "#discount-code-draft", "sponsor50");
     uiRoot.querySelector("#discount-kind-draft").value = "fixed_amount";
@@ -738,22 +738,22 @@ describe("ticketing editors", () => {
     await uiRoot.updateComplete;
     await setInputValue(uiRoot, "#discount-amount-draft", "5.00");
 
-    // Trigger the user interaction to check it adds and removes discount codes.
+    // Verify adds and removes discount codes.
     uiRoot.querySelector('[data-ticketing-action="save-discount"]')?.click();
     await uiRoot.updateComplete;
 
-    // Confirm it adds and removes discount codes from the compact card list.
+    // Verify adds and removes discount codes from the compact card list.
     expect(uiRoot.textContent).to.contain("Sponsor invite");
     expect(
       uiRoot.querySelector('input[name="discount_codes[0][amount_minor]"]')
         ?.value,
     ).to.equal("500");
 
-    // Exercise the flow to check it adds and removes discount codes from the compact.
+    // Verify adds and removes discount codes from the compact.
     uiRoot._removeDiscountCode(uiRoot._rows[0]._row_id);
     await uiRoot.updateComplete;
 
-    // Confirm it adds and removes discount codes from the compact card list.
+    // Verify adds and removes discount codes from the compact card list.
     expect(uiRoot.textContent).to.contain("No discount codes yet.");
     expect(
       uiRoot.querySelector('input[name="discount_codes[0][title]"]'),
@@ -761,29 +761,29 @@ describe("ticketing editors", () => {
   });
 
   it("uses explicit discount controller dependencies instead of global fields", async () => {
-    // Update the input value to check it uses explicit discount controller dependencies.
+    // Update the input before checking explicit discount dependencies.
     document.getElementById("payment_currency_code").value = "USD";
 
-    // Prepare add button to check it uses explicit discount controller dependencies.
+    // Prepare add button for using explicit discount controller dependencies.
     const addButton = document.createElement("button");
     document.body.append(addButton);
 
-    // Prepare currency input to check it uses explicit discount controller dependencies.
+    // Prepare currency input for using explicit discount controller dependencies.
     const currencyInput = document.createElement("input");
     currencyInput.value = "EUR";
     document.body.append(currencyInput);
 
-    // Prepare timezone input to check it uses explicit discount controller dependencies.
+    // Prepare timezone input for using explicit discount controller dependencies.
     const timezoneInput = document.createElement("input");
     timezoneInput.value = "UTC";
     document.body.append(timezoneInput);
 
-    // Prepare ui root to check it uses explicit discount controller dependencies instead.
+    // Prepare the UI root with explicit discount controller dependencies.
     const uiRoot = mountDiscountCodesUi();
     uiRoot.configure({ addButton, currencyInput, timezoneInput });
     await uiRoot.updateComplete;
 
-    // Trigger the user interaction to check it uses explicit discount controller.
+    // Verify uses explicit discount controller.
     addButton.click();
     await uiRoot.updateComplete;
     uiRoot.querySelector("#discount-kind-draft").value = "fixed_amount";
@@ -792,7 +792,7 @@ describe("ticketing editors", () => {
       .dispatchEvent(new Event("change", { bubbles: true, composed: true }));
     await uiRoot.updateComplete;
 
-    // Confirm it uses explicit discount controller dependencies instead of global fields.
+    // Verify uses explicit discount controller dependencies instead of global fields.
     expect(
       uiRoot.querySelector('label[for="discount-title-draft"]')?.textContent,
     ).to.contain("*");
@@ -804,24 +804,24 @@ describe("ticketing editors", () => {
     ).to.contain("*");
     expect(uiRoot.textContent).to.contain("Amount (EUR)");
 
-    // Update the input value to check it uses explicit discount controller dependencies.
+    // Update the input before checking the discount dependency value.
     currencyInput.value = "GBP";
     currencyInput.dispatchEvent(
       new Event("input", { bubbles: true, composed: true }),
     );
     await uiRoot.updateComplete;
 
-    // Confirm it uses explicit discount controller dependencies instead of global fields.
+    // Verify uses explicit discount controller dependencies instead of global fields.
     expect(uiRoot.textContent).to.contain("Amount (GBP)");
 
-    // Update the input value to check it uses explicit discount controller dependencies.
+    // Update the input before checking the repeated discount dependency value.
     uiRoot.querySelector("#discount-kind-draft").value = "percentage";
     uiRoot
       .querySelector("#discount-kind-draft")
       .dispatchEvent(new Event("change", { bubbles: true, composed: true }));
     await uiRoot.updateComplete;
 
-    // Confirm it uses explicit discount controller dependencies instead of global fields.
+    // Verify uses explicit discount controller dependencies instead of global fields.
     expect(
       uiRoot.querySelector('label[for="discount-percentage-draft"]')
         ?.textContent,
@@ -829,30 +829,30 @@ describe("ticketing editors", () => {
   });
 
   it("reconfigures discount dependencies on repeated configure calls", async () => {
-    // Prepare initial add button to check it reconfigures discount dependencies.
+    // Prepare initial add button for reconfiguring discount dependencies.
     const initialAddButton = document.createElement("button");
     document.body.append(initialAddButton);
 
-    // Prepare reconfigured add button to check it reconfigures discount dependencies.
+    // Prepare reconfigured add button for reconfiguring discount dependencies.
     const reconfiguredAddButton = document.createElement("button");
     document.body.append(reconfiguredAddButton);
 
-    // Prepare currency input to check it reconfigures discount dependencies on repeated.
+    // Prepare currency input for reconfiguring discount dependencies on repeated.
     const currencyInput = document.createElement("input");
     currencyInput.value = "EUR";
     document.body.append(currencyInput);
 
-    // Prepare timezone input to check it reconfigures discount dependencies on repeated.
+    // Prepare timezone input for reconfiguring discount dependencies on repeated.
     const timezoneInput = document.createElement("input");
     timezoneInput.value = "UTC";
     document.body.append(timezoneInput);
 
-    // Prepare ui root to check it reconfigures discount dependencies on repeated.
+    // Prepare ui root for reconfiguring discount dependencies on repeated.
     const uiRoot = mountDiscountCodesUi();
     uiRoot.configure({ addButton: initialAddButton });
     await uiRoot.updateComplete;
 
-    // Exercise the flow to check it reconfigures discount dependencies on repeated.
+    // Repeated configuration keeps discount dependencies current.
     uiRoot.configure({
       addButton: reconfiguredAddButton,
       currencyInput,
@@ -860,14 +860,14 @@ describe("ticketing editors", () => {
     });
     await uiRoot.updateComplete;
 
-    // Trigger the user interaction to check it reconfigures discount dependencies.
+    // Click the initial add button.
     initialAddButton.click();
     await uiRoot.updateComplete;
     expect(
       uiRoot.querySelector('[data-ticketing-role="discount-modal"]')?.className,
     ).to.contain("hidden");
 
-    // Trigger the user interaction to check it reconfigures discount dependencies.
+    // Click the reconfigured add button.
     reconfiguredAddButton.click();
     await uiRoot.updateComplete;
     uiRoot.querySelector("#discount-kind-draft").value = "fixed_amount";
@@ -876,30 +876,30 @@ describe("ticketing editors", () => {
       .dispatchEvent(new Event("change", { bubbles: true, composed: true }));
     await uiRoot.updateComplete;
 
-    // Confirm it reconfigures discount dependencies on repeated configure calls.
+    // Repeated configure calls keep discount dependencies current.
     expect(uiRoot.textContent).to.contain("Amount (EUR)");
 
-    // Update the input value to check it reconfigures discount dependencies on repeated.
+    // Update the input before checking reconfigured discount dependencies.
     currencyInput.value = "GBP";
     currencyInput.dispatchEvent(
       new Event("input", { bubbles: true, composed: true }),
     );
     await uiRoot.updateComplete;
 
-    // Confirm it reconfigures discount dependencies on repeated configure calls.
+    // Reconfigured discount dependencies update the dependent fields.
     expect(uiRoot.textContent).to.contain("Amount (GBP)");
   });
 
   it("rejects zero fixed discount amounts in the editor", async () => {
-    // Prepare ui root to check it rejects zero fixed discount amounts in the editor.
+    // Prepare ui root for rejects zero fixed discount amounts in the editor.
     const uiRoot = mountDiscountCodesUi();
     await uiRoot.updateComplete;
 
-    // Exercise the flow to check it rejects zero fixed discount amounts in the editor.
+    // Verify rejects zero fixed discount amounts in the editor.
     uiRoot._openDiscountModal();
     await uiRoot.updateComplete;
 
-    // Exercise the flow to check it rejects zero fixed discount amounts in the editor.
+    // Fill discount title draft.
     await setInputValue(uiRoot, "#discount-title-draft", "Free comp");
     await setInputValue(uiRoot, "#discount-code-draft", "FREE0");
     uiRoot.querySelector("#discount-kind-draft").value = "fixed_amount";
@@ -909,11 +909,11 @@ describe("ticketing editors", () => {
     await uiRoot.updateComplete;
     await setInputValue(uiRoot, "#discount-amount-draft", "0");
 
-    // Trigger the user interaction to check it rejects zero fixed discount amounts.
+    // Verify rejects zero fixed discount amounts.
     uiRoot.querySelector('[data-ticketing-action="save-discount"]')?.click();
     await uiRoot.updateComplete;
 
-    // Confirm it rejects zero fixed discount amounts in the editor.
+    // Verify rejects zero fixed discount amounts in the editor.
     expect(uiRoot.textContent).to.not.contain("Free comp");
     expect(
       uiRoot.querySelector('input[name="discount_codes[0][amount_minor]"]'),
@@ -921,7 +921,7 @@ describe("ticketing editors", () => {
   });
 
   it("renders persisted discount rows from the dataset and wires row actions", async () => {
-    // Prepare ui root to check it renders persisted discount rows from the dataset.
+    // Prepare ui root for rendering persisted discount rows from the dataset.
     const uiRoot = mountDiscountCodesUi();
     uiRoot.setAttribute(
       "discount-codes",
@@ -937,17 +937,17 @@ describe("ticketing editors", () => {
       ]),
     );
 
-    // Wait for render before checking it renders persisted discount rows.
+    // Wait for the component to finish rendering.
     await uiRoot.updateComplete;
 
-    // Confirm it renders persisted discount rows from the dataset and wires row actions.
+    // Assert that the persisted discount is rendered.
     expect(uiRoot.textContent).to.contain("Early supporter");
 
-    // Trigger the user interaction to check it renders persisted discount rows.
+    // Verify renders persisted discount rows.
     uiRoot.querySelector('[data-ticketing-action="edit-discount"]')?.click();
     await uiRoot.updateComplete;
 
-    // Confirm it renders persisted discount rows from the dataset and wires row actions.
+    // Assert that editing opens the discount modal.
     expect(
       uiRoot
         .querySelector('[data-ticketing-role="modal-title"]')
@@ -956,7 +956,7 @@ describe("ticketing editors", () => {
   });
 
   it("parses discount code JSON from the element attribute", async () => {
-    // Prepare ui root to check it parses discount code JSON from the element attribute.
+    // Prepare ui root for parses discount code JSON from the element attribute.
     const uiRoot = mountDiscountCodesUi();
     uiRoot.setAttribute(
       "discount-codes",
@@ -971,24 +971,24 @@ describe("ticketing editors", () => {
       ]),
     );
 
-    // Wait for render before checking it parses discount code JSON from the element.
+    // Wait for the component to finish rendering.
     await uiRoot.updateComplete;
 
-    // Confirm it parses discount code JSON from the element attribute.
+    // Discount code JSON is parsed from the element attribute.
     expect(uiRoot.textContent).to.contain("Attribute code");
   });
 
   it("keeps hidden discount modal fields disabled so parent form validation ignores them", async () => {
-    // Prepare form to check it keeps hidden discount modal fields disabled so parent.
+    // Prepare form for keeping hidden discount modal fields disabled so parent.
     const form = document.createElement("form");
     const uiRoot = mountDiscountCodesUi();
     form.append(uiRoot);
     document.body.append(form);
 
-    // Wait for render before checking it keeps hidden discount modal fields disabled so.
+    // Wait for the component to finish rendering.
     await uiRoot.updateComplete;
 
-    // Confirm it keeps hidden discount modal fields disabled so parent form validation.
+    // Verify keeps hidden discount modal fields disabled so parent form validation.
     expect(form.checkValidity()).to.equal(true);
     expect(uiRoot.querySelector("#discount-title-draft")?.disabled).to.equal(
       true,
@@ -999,7 +999,7 @@ describe("ticketing editors", () => {
   });
 
   it("preserves persisted remaining counts after discount row rerenders", async () => {
-    // Prepare ui root to check it preserves persisted remaining counts after discount.
+    // Prepare ui root for preserves persisted remaining counts after discount.
     const uiRoot = mountDiscountCodesUi();
     uiRoot.setAttribute(
       "discount-codes",
@@ -1016,13 +1016,13 @@ describe("ticketing editors", () => {
       ]),
     );
 
-    // Wait for render before checking it preserves persisted remaining counts.
+    // Wait for the component to finish rendering.
     await uiRoot.updateComplete;
 
-    // Confirm it preserves persisted remaining counts after discount row rerenders.
+    // Verify preserves persisted remaining counts after discount row rerenders.
     expect(uiRoot.textContent).to.contain("12 remaining");
 
-    // Read the payment currency code element to check it preserves persisted remaining.
+    // Keep a reference to the payment currency code element.
     const currencyField = document.getElementById("payment_currency_code");
     currencyField.value = "USD";
     currencyField.dispatchEvent(
@@ -1030,34 +1030,34 @@ describe("ticketing editors", () => {
     );
     await uiRoot.updateComplete;
 
-    // Confirm it preserves persisted remaining counts after discount row rerenders.
+    // Verify preserves persisted remaining counts after discount row rerenders.
     expect(uiRoot.textContent).to.contain("12 remaining");
   });
 
   it("self-bootstraps ticketing editors from page controls after reconnecting", async () => {
-    // Prepare ticket button to check it self-bootstraps ticketing editors from page.
+    // Prepare ticket button for self-bootstraps ticketing editors from page.
     const ticketButton = document.createElement("button");
     ticketButton.id = "add-ticket-type-button";
     document.body.append(ticketButton);
 
-    // Prepare discount button to check it self-bootstraps ticketing editors from page.
+    // Prepare discount button for self-bootstraps ticketing editors from page.
     const discountButton = document.createElement("button");
     discountButton.id = "add-discount-code-button";
     document.body.append(discountButton);
 
-    // Prepare ticket types ui root to check it self-bootstraps ticketing editors.
+    // Prepare ticket types ui root for self-bootstraps ticketing editors.
     const ticketTypesUiRoot = mountTicketTypesUi();
     const discountCodesUiRoot = mountDiscountCodesUi();
     await ticketTypesUiRoot.updateComplete;
     await discountCodesUiRoot.updateComplete;
 
-    // Trigger the user interaction to check it self-bootstraps ticketing editors.
+    // Ticketing editors bootstrap from the page controls.
     ticketButton.click();
     discountButton.click();
     await ticketTypesUiRoot.updateComplete;
     await discountCodesUiRoot.updateComplete;
 
-    // Confirm it self-bootstraps ticketing editors from page controls after reconnecting.
+    // Reconnected ticketing editors bootstrap from page controls.
     expect(
       ticketTypesUiRoot
         .querySelector('[data-ticketing-role="modal-title"]')
@@ -1069,26 +1069,26 @@ describe("ticketing editors", () => {
         ?.textContent?.trim(),
     ).to.equal("Add discount code");
 
-    // Exercise the flow to check it self-bootstraps ticketing editors from page controls.
+    // Reconnected ticketing editors keep their page-control wiring.
     ticketTypesUiRoot._closeTicketModal();
     discountCodesUiRoot._closeDiscountModal();
     await ticketTypesUiRoot.updateComplete;
     await discountCodesUiRoot.updateComplete;
 
-    // Prepare fragment to check it self-bootstraps ticketing editors from page controls.
+    // Prepare fragment for self-bootstraps ticketing editors from page controls.
     const fragment = document.createElement("div");
     fragment.append(ticketTypesUiRoot, discountCodesUiRoot);
     document.body.append(fragment);
     await ticketTypesUiRoot.updateComplete;
     await discountCodesUiRoot.updateComplete;
 
-    // Trigger the user interaction to check it self-bootstraps ticketing editors.
+    // Discount editors bootstrap from the page controls.
     ticketButton.click();
     discountButton.click();
     await ticketTypesUiRoot.updateComplete;
     await discountCodesUiRoot.updateComplete;
 
-    // Confirm it self-bootstraps ticketing editors from page controls after reconnecting.
+    // Reconnected discount editors bootstrap from page controls.
     expect(
       ticketTypesUiRoot
         .querySelector('[data-ticketing-role="modal-title"]')
@@ -1102,27 +1102,27 @@ describe("ticketing editors", () => {
   });
 
   it("restores body scroll when a ticket editor disconnects with the modal open", async () => {
-    // Prepare ticket button to check it restores body scroll when a ticket editor.
+    // Prepare ticket button for restores body scroll when a ticket editor.
     const ticketButton = document.createElement("button");
     ticketButton.id = "add-ticket-type-button";
     document.body.append(ticketButton);
 
-    // Prepare ui root to check it restores body scroll when a ticket editor disconnects.
+    // Prepare ui root for restores body scroll when a ticket editor disconnects.
     const uiRoot = mountTicketTypesUi();
     await uiRoot.updateComplete;
 
-    // Trigger the user interaction to check it restores body scroll when a ticket editor.
+    // Click the ticket button.
     ticketButton.click();
     await uiRoot.updateComplete;
 
-    // Confirm it restores body scroll when a ticket editor disconnects with the modal.
+    // Assert the document.
     expect(document.body.dataset.modalOpenCount).to.equal("1");
     expect(document.body.style.overflow).to.equal("hidden");
 
-    // Exercise the flow to check it restores body scroll when a ticket editor.
+    // Remove the editor while the modal is open.
     uiRoot.remove();
 
-    // Confirm it restores body scroll when a ticket editor disconnects with the modal.
+    // Assert the updated document.
     expect(document.body.dataset.modalOpenCount).to.equal("0");
     expect(document.body.style.overflow).to.equal("");
   });

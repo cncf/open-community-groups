@@ -19,7 +19,7 @@ describe("breadcrumb-nav", () => {
     // Render the empty breadcrumb navigation fixture.
     const element = await mountLitComponent("breadcrumb-nav");
 
-    // Check the component leaves the light DOM empty without items.
+    // Assert the component leaves the light DOM empty without items.
     expect(element.children.length).to.equal(0);
   });
 
@@ -31,7 +31,7 @@ describe("breadcrumb-nav", () => {
       bannerMobileUrl: "/img/banner-mobile.png",
     });
 
-    // Check the current label and responsive banners are rendered.
+    // Assert the current label and responsive banners are rendered.
     expect(element.textContent).to.include("CNCF Madrid");
     expect(
       element.querySelector('img[src="/img/banner-desktop.png"]'),
@@ -51,7 +51,7 @@ describe("breadcrumb-nav", () => {
       ],
     });
 
-    // Check the last item becomes the current breadcrumb.
+    // Assert the last item becomes the current breadcrumb.
     expect(element._getCurrentItem()).to.deep.equal({
       label: "KubeCon",
       icon: "date",
@@ -69,7 +69,7 @@ describe("breadcrumb-nav", () => {
       ],
     });
 
-    // Check non-link breadcrumbs render as plain text with the current marker.
+    // Non-link breadcrumbs render as plain text with the current marker.
     expect(element.querySelector("ol a")).to.equal(null);
     expect(
       element.querySelector('li[aria-current="page"]').textContent,

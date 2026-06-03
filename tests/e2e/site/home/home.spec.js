@@ -32,8 +32,11 @@ test.describe("site home page", () => {
       await expect(
         page.getByRole("heading", { level: 1, name: TEST_SITE_TITLE }),
       ).toBeVisible();
+
+      // Verify the jumbotron description and CTA destination.
       await expect(page.locator(".jumbotron-description")).toBeVisible();
 
+      // Find the Explore groups and events control.
       const ctaLink = page.getByRole("link", {
         name: "Explore groups and events",
       });
@@ -44,7 +47,7 @@ test.describe("site home page", () => {
     test("stats strip displays all stat labels with values", async ({
       page,
     }) => {
-      // Check each site stat label in the default stats strip.
+      // Assert each site stat label in the default stats strip.
       const statLabels = ["Groups", "Members", "Events", "Attendees"];
       for (const label of statLabels) {
         // Verify the current stat label is visible.
@@ -172,6 +175,7 @@ test.describe("site home page", () => {
       const desktopStats = getStatsContainer(page, "site", "desktop");
       const statLabels = ["Groups", "Members", "Events", "Attendees"];
 
+      // Assert each expected case.
       for (const label of statLabels) {
         // Verify the current desktop stat has a numeric value.
         const valueElement = getStatValue(desktopStats, label);
@@ -207,6 +211,7 @@ test.describe("site home page", () => {
         `/${TEST_COMMUNITY_NAME}`,
       );
 
+      // Set up community2 link.
       const community2Link = page
         .getByRole("link")
         .filter({ has: page.getByAltText(`${TEST_COMMUNITY_TITLE_2} banner`) })
@@ -222,6 +227,8 @@ test.describe("site home page", () => {
       await expect(
         getCommunityBanner(page, TEST_COMMUNITY_TITLE, "desktop"),
       ).toBeVisible();
+
+      // Verify the second community banner also uses its display name.
       await expect(
         getCommunityBanner(page, TEST_COMMUNITY_TITLE_2, "desktop"),
       ).toBeVisible();

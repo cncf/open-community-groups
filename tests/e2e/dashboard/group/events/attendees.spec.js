@@ -53,7 +53,14 @@ const openAttendeesTab = async (page, eventName, eventId) => {
     page.locator('button[data-section="attendees"]').click(),
   ]);
 
-  return page.locator("#attendees-content");
+  const attendeesContent = page.locator("#attendees-content");
+
+  // Wait until the attendees tab has swapped in its table.
+  await expect(
+    attendeesContent.getByRole("table", { name: "Attendees list" }),
+  ).toBeVisible();
+
+  return attendeesContent;
 };
 
 test.describe("group dashboard attendees tab", () => {
@@ -107,6 +114,7 @@ test.describe("group dashboard attendees tab", () => {
       hasText: "E2E Organizer One",
     });
 
+    // Assert that Attendees list is visible.
     await expect(
       attendeesContent.getByRole("table", { name: "Attendees list" }),
     ).toBeVisible();
@@ -132,6 +140,7 @@ test.describe("group dashboard attendees tab", () => {
       TEST_EVENT_SLUGS.alpha[0],
     );
 
+    // Find the attend button.
     const attendButton = member2Page.locator(
       '[data-attendance-role="attend-btn"]',
     );
@@ -142,6 +151,7 @@ test.describe("group dashboard attendees tab", () => {
     // Attend the event as a member.
     await expect(attendButton).toContainText("Attend event");
 
+    // Click the attend button.
     await Promise.all([
       member2Page.waitForResponse(
         (response) =>
@@ -154,11 +164,13 @@ test.describe("group dashboard attendees tab", () => {
       attendButton.click(),
     ]);
 
+    // Assert the expected text is rendered.
     await expect(leaveButton).toContainText("Cancel attendance");
 
     // Load the group events dashboard as the organizer.
     await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
 
+    // Find the event row.
     const eventRow = organizerGroupPage.locator("tr", {
       hasText: "Upcoming In-Person Event",
     });
@@ -202,6 +214,7 @@ test.describe("group dashboard attendees tab", () => {
       hasText: "E2E Member Two",
     });
 
+    // Assert that Attendees list is visible.
     await expect(
       attendeesContent.getByRole("table", { name: "Attendees list" }),
     ).toBeVisible();
@@ -225,6 +238,7 @@ test.describe("group dashboard attendees tab", () => {
       member2Page.getByRole("button", { name: "Yes" }),
     ).toBeVisible();
 
+    // Click Yes.
     await Promise.all([
       member2Page.waitForResponse(
         (response) =>
@@ -235,6 +249,7 @@ test.describe("group dashboard attendees tab", () => {
       member2Page.getByRole("button", { name: "Yes" }).click(),
     ]);
 
+    // Assert the expected text is rendered.
     await expect(attendButton).toContainText("Attend event");
   });
 
@@ -250,6 +265,7 @@ test.describe("group dashboard attendees tab", () => {
       TEST_EVENT_SLUGS.alpha[0],
     );
 
+    // Find the attend button.
     const attendButton = member2Page.locator(
       '[data-attendance-role="attend-btn"]',
     );
@@ -260,6 +276,7 @@ test.describe("group dashboard attendees tab", () => {
     // Attend the event as a member.
     await expect(attendButton).toContainText("Attend event");
 
+    // Click the attend button.
     await Promise.all([
       member2Page.waitForResponse(
         (response) =>
@@ -272,11 +289,13 @@ test.describe("group dashboard attendees tab", () => {
       attendButton.click(),
     ]);
 
+    // Assert the expected text is rendered.
     await expect(leaveButton).toContainText("Cancel attendance");
 
     // Load the group events dashboard as the organizer.
     await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
 
+    // Find the event row.
     const eventRow = organizerGroupPage.locator("tr", {
       hasText: "Upcoming In-Person Event",
     });
@@ -321,6 +340,7 @@ test.describe("group dashboard attendees tab", () => {
     });
     const checkInToggle = attendeeRow.locator(".check-in-toggle");
 
+    // Assert the expected content is visible.
     await expect(attendeeRow).toBeVisible();
     await expect(checkInToggle).toBeEnabled();
 
@@ -339,6 +359,7 @@ test.describe("group dashboard attendees tab", () => {
       attendeeRow.locator("label").click(),
     ]);
 
+    // The attendee row reflects the saved interaction.
     await expect(checkInToggle).toBeChecked();
     await expect(checkInToggle).toBeDisabled();
 
@@ -363,6 +384,7 @@ test.describe("group dashboard attendees tab", () => {
       member2Page.getByRole("button", { name: "Yes" }),
     ).toBeVisible();
 
+    // Click Yes.
     await Promise.all([
       member2Page.waitForResponse(
         (response) =>
@@ -373,6 +395,7 @@ test.describe("group dashboard attendees tab", () => {
       member2Page.getByRole("button", { name: "Yes" }).click(),
     ]);
 
+    // Assert the expected text is rendered.
     await expect(attendButton).toContainText("Attend event");
   });
 
@@ -382,6 +405,7 @@ test.describe("group dashboard attendees tab", () => {
     // Load the group events dashboard before opening the seeded event.
     await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
 
+    // Find the event row.
     const eventRow = organizerGroupPage.locator("tr", {
       hasText: "Upcoming Virtual Event",
     });
@@ -422,6 +446,7 @@ test.describe("group dashboard attendees tab", () => {
     // Verify the empty state and disabled email action.
     const attendeesContent = organizerGroupPage.locator("#attendees-content");
 
+    // Assert that Attendees list is visible.
     await expect(
       attendeesContent.getByRole("table", { name: "Attendees list" }),
     ).toBeVisible();
@@ -458,6 +483,7 @@ test.describe("group dashboard attendees tab", () => {
     await expect(actionsButton).toBeVisible();
     await actionsButton.click();
 
+    // Find the Download CSV control.
     const downloadCsvLink = attendeesContent.getByRole("menuitem", {
       name: "Download CSV",
     });
@@ -474,12 +500,14 @@ test.describe("group dashboard attendees tab", () => {
     ]);
     const downloadPath = await download.path();
 
+    // Fail clearly if the CSV download was not captured.
     if (!downloadPath) {
       throw new Error(
         "Expected attendee CSV download to have a local file path.",
       );
     }
 
+    // Assert the downloaded filename.
     expect(download.suggestedFilename()).toBe(
       "event-alpha-waitlist-lab-attendees.csv",
     );
@@ -505,6 +533,7 @@ test.describe("group dashboard attendees tab", () => {
       "[data-attendee-row-actions-menu]",
     );
 
+    // Assert the expected content is visible.
     await expect(attendeeRow).toBeVisible();
     await expect(rowActionsMenu).toBeVisible();
 
@@ -562,6 +591,7 @@ test.describe("group dashboard attendees tab", () => {
     await expect(actionsButton).toBeVisible();
     await actionsButton.click();
 
+    // Find the Attendees list CSV (including answers) control.
     const downloadCsvLink = attendeesContent.getByRole("menuitem", {
       name: "Attendees list CSV (including answers)",
     });
@@ -578,12 +608,14 @@ test.describe("group dashboard attendees tab", () => {
     ]);
     const downloadPath = await download.path();
 
+    // Fail clearly if the CSV download was not captured.
     if (!downloadPath) {
       throw new Error(
         "Expected attendee answers CSV download to have a local file path.",
       );
     }
 
+    // Assert the downloaded filename.
     expect(download.suggestedFilename()).toBe(
       "event-alpha-registration-answers-lab-attendees-with-answers.csv",
     );
@@ -603,6 +635,9 @@ test.describe("group dashboard attendees tab", () => {
   test("organizer can invite and cancel an attendee invitation", async ({
     organizerGroupPage,
   }) => {
+    // Give the invite and cancel flow enough time on slower deep runs.
+    test.setTimeout(60_000);
+
     // Load the attendees tab for a seeded event without RSVPs.
     const attendeesContent = await openAttendeesTab(
       organizerGroupPage,
@@ -611,10 +646,13 @@ test.describe("group dashboard attendees tab", () => {
     );
 
     // Open the manual invitation modal for an event without RSVPs.
-    await attendeesContent
-      .getByRole("button", { name: "Invite attendee" })
-      .click();
+    const inviteAttendeeButton = attendeesContent.getByRole("button", {
+      name: "Invite",
+    });
+    await expect(inviteAttendeeButton).toBeVisible();
+    await inviteAttendeeButton.click();
 
+    // Find the modal.
     const modal = organizerGroupPage.locator("#attendee-invitation-modal");
     const searchField = modal.locator(
       "user-search-field[data-attendee-invitation-search]",
@@ -623,6 +661,7 @@ test.describe("group dashboard attendees tab", () => {
       "#attendee-invitation-search-input",
     );
 
+    // Assert the expected content is visible.
     await expect(modal).toBeVisible();
     await expect(
       modal.getByRole("heading", { name: "Invite attendee" }),
@@ -642,6 +681,7 @@ test.describe("group dashboard attendees tab", () => {
     ).toContainText("E2E Pending Two");
     await expect(modal.locator("#submit-attendee-invitation")).toBeEnabled();
 
+    // Submit and wait for the server response.
     await Promise.all([
       organizerGroupPage.waitForResponse(
         (response) =>
@@ -656,6 +696,7 @@ test.describe("group dashboard attendees tab", () => {
       modal.locator("#submit-attendee-invitation").click(),
     ]);
 
+    // Assert that the content is hidden.
     await expect(modal).toBeHidden();
     await expect(organizerGroupPage.locator(".swal2-popup")).toContainText(
       "Invitation sent.",
@@ -680,6 +721,7 @@ test.describe("group dashboard attendees tab", () => {
       organizerGroupPage.getByRole("button", { name: "Yes" }),
     ).toBeVisible();
 
+    // Click Yes.
     await Promise.all([
       organizerGroupPage.waitForResponse(
         (response) =>
@@ -694,6 +736,7 @@ test.describe("group dashboard attendees tab", () => {
       organizerGroupPage.getByRole("button", { name: "Yes" }).click(),
     ]);
 
+    // Assert how many matching elements are shown.
     await expect(attendeeRow).toHaveCount(0);
     await expect(
       attendeesContent.locator("div.text-xl.lg\\:text-2xl:visible").filter({
@@ -724,6 +767,7 @@ test.describe("group dashboard attendees tab", () => {
         "[data-attendee-row-actions-menu]",
       );
 
+      // Assert that Refund requested is visible.
       await expect(
         attendeeRow.getByText("Refund requested", { exact: true }),
       ).toBeVisible();
@@ -755,6 +799,7 @@ test.describe("group dashboard attendees tab", () => {
         "[data-attendee-row-actions-menu]",
       );
 
+      // Assert that Refund processing is visible.
       await expect(
         attendeeRow.getByText("Refund processing", { exact: true }),
       ).toBeVisible();
@@ -788,6 +833,7 @@ test.describe("group dashboard attendees tab", () => {
         "[data-attendee-row-actions-menu]",
       );
 
+      // Assert that Refund rejected is visible.
       await expect(
         attendeeRow.getByText("Refund rejected", { exact: true }),
       ).toBeVisible();
@@ -821,6 +867,7 @@ test.describe("group dashboard attendees tab", () => {
         "[data-attendee-row-actions-menu]",
       );
 
+      // Assert that Refund approved is visible.
       await expect(
         attendeeRow.getByText("Refund approved", { exact: true }),
       ).toBeVisible();
@@ -864,6 +911,7 @@ test.describe("group dashboard attendees tab", () => {
     // Load the group events dashboard before opening the seeded event.
     await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
 
+    // Find the event row.
     const eventRow = organizerGroupPage.locator("tr", {
       hasText: "Full Event With Waitlist",
     });
@@ -907,6 +955,7 @@ test.describe("group dashboard attendees tab", () => {
       name: "Send email",
     });
 
+    // Assert that the answers modal can open.
     await expect(openModalButton).toBeEnabled();
     await openModalButton.click();
 
@@ -935,6 +984,7 @@ test.describe("group dashboard attendees tab", () => {
     // Load the group events dashboard before opening the seeded event.
     await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
 
+    // Find the event row.
     const eventRow = organizerGroupPage.locator("tr", {
       hasText: "Full Event With Waitlist",
     });
@@ -978,9 +1028,11 @@ test.describe("group dashboard attendees tab", () => {
       name: "Send email",
     });
 
+    // Assert that the answers modal can open.
     await expect(openModalButton).toBeEnabled();
     await openModalButton.click();
 
+    // Find the modal.
     const modal = organizerGroupPage.locator("#attendee-notification-modal");
     await expect(modal).toBeVisible();
 
@@ -990,6 +1042,7 @@ test.describe("group dashboard attendees tab", () => {
       .fill(ATTENDEE_NOTIFICATION_SUBJECT);
     await modal.locator("#attendee-body").fill(ATTENDEE_NOTIFICATION_BODY);
 
+    // Click Send email.
     await Promise.all([
       organizerGroupPage.waitForResponse(
         (response) =>
@@ -1017,6 +1070,7 @@ test.describe("group dashboard attendees tab", () => {
     // Load the group events dashboard before opening the seeded event.
     await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
 
+    // Find the event row.
     const eventRow = organizerGroupPage.locator("tr", {
       hasText: "Full Event With Waitlist",
     });
@@ -1060,6 +1114,7 @@ test.describe("group dashboard attendees tab", () => {
       "#open-event-qr-code-modal",
     );
 
+    // Assert the expected content is visible.
     await expect(openModalButton).toBeVisible();
     await openModalButton.click();
 

@@ -34,7 +34,7 @@ describe("logo-image", () => {
     let placeholder = element.querySelector(".absolute.inset-0");
     const image = element.querySelector("img");
 
-    // Shows the image after a successful load event.
+    // The placeholder is visible while the image is still loading.
     expect(placeholder?.className).to.include("flex");
     expect(image?.className).to.include("opacity-0");
 
@@ -45,7 +45,7 @@ describe("logo-image", () => {
     // Collect the absolute.inset 0 element.
     placeholder = element.querySelector(".absolute.inset-0");
 
-    // Shows the image after a successful load event.
+    // The loaded image replaces the placeholder.
     expect(placeholder?.className).to.include("hidden");
     expect(image?.className).to.not.include("opacity-0");
   });
@@ -62,7 +62,7 @@ describe("logo-image", () => {
     image?.dispatchEvent(new Event("error"));
     await element.updateComplete;
 
-    // Hides the component after an image error when hide-on-error is enabled.
+    // The component clears its content after the image error.
     expect(element.children.length).to.equal(0);
   });
 });

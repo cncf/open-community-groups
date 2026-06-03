@@ -77,6 +77,7 @@ test.describe("community home page", () => {
         TEST_COMMUNITY_BANNER_MOBILE_URL,
       );
 
+      // Set up items attr.
       const itemsAttr = await breadcrumb.getAttribute("items");
 
       // Verify breadcrumb metadata includes the community title.
@@ -84,7 +85,7 @@ test.describe("community home page", () => {
     });
 
     test("stats strip displays all stat labels", async ({ page }) => {
-      // Check each community stat label in the default stats strip.
+      // Assert each community stat label in the default stats strip.
       const statLabels = ["Groups", "Members", "Events", "Attendees"];
       for (const label of statLabels) {
         // Verify the current stat label is visible.
@@ -115,6 +116,8 @@ test.describe("community home page", () => {
       await expect(
         page.getByText(TEST_EVENT_NAMES.alpha[0], { exact: true }),
       ).toBeVisible();
+
+      // Verify another seeded in-person event is shown.
       await expect(
         page.getByText(TEST_EVENT_NAMES.gamma[0], { exact: true }),
       ).toBeVisible();
@@ -127,6 +130,8 @@ test.describe("community home page", () => {
       await expect(
         page.getByText(TEST_EVENT_NAMES.alpha[1], { exact: true }),
       ).toBeVisible();
+
+      // Verify additional seeded virtual events are shown.
       await expect(
         page.getByText(TEST_EVENT_NAMES.beta[1], { exact: true }),
       ).toBeVisible();
@@ -192,6 +197,7 @@ test.describe("community home page", () => {
         },
       ];
 
+      // Assert each expected case.
       for (const { name, slug } of groupData) {
         // Target the current group card inside the latest groups section.
         const groupCard = groupsSection
@@ -219,6 +225,7 @@ test.describe("community home page", () => {
       const desktopStats = getStatsContainer(page, "community", "desktop");
       const statLabels = ["Groups", "Members", "Events", "Attendees"];
 
+      // Assert each expected case.
       for (const label of statLabels) {
         // Target the current desktop stat value.
         const valueElement = getStatValue(desktopStats, label);

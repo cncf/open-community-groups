@@ -19,6 +19,7 @@ import {
 
 // Convert form data into comparable entries.
 const formDataToEntries = (formData) => Array.from(formData.entries());
+
 // Set the loaded commit SHA meta tag for deployment header checks.
 const setLoadedCommitSha = (commitSha) => {
   document.head.innerHTML = `<meta name="ocg-commit-sha" content="${commitSha}">`;
@@ -260,6 +261,7 @@ describe("htmx extensions", () => {
 
     handleCommitShaBeforeOnLoad(event);
 
+    // Assert whether the event was prevented.
     expect(event.defaultPrevented).to.equal(true);
     expect(reloads).to.equal(1);
     expect(consumePendingDeploymentRefreshAlert()).to.equal(false);
@@ -324,7 +326,7 @@ describe("htmx extensions", () => {
   });
 
   it("keeps marked not found responses suppressed while a deployment reload is already pending", () => {
-    // Trigger deployment reload state before processing a marked 404 response.
+    // Deployment reload state is set before processing a marked 404 response.
     setLoadedCommitSha("abc123");
     setDeploymentReloadHandler(() => {});
     handleCommitShaBeforeSwap({

@@ -32,7 +32,7 @@ describe("dashboard group analytics", () => {
       "#115e59",
     );
 
-    // Exercise the flow to check it covers the current behavior.
+    // Run the behavior under test.
     [
       "total-views-monthly-chart",
       "total-views-daily-chart",
@@ -63,7 +63,7 @@ describe("dashboard group analytics", () => {
   });
 
   it("initializes the expected group analytics charts", async () => {
-    // Exercise the flow to check it initializes the expected group analytics charts.
+    // Verify initializes the expected group analytics charts.
     await initAnalyticsCharts({
       page_views: {
         total: {
@@ -102,7 +102,7 @@ describe("dashboard group analytics", () => {
       },
     });
 
-    // Confirm it initializes the expected group analytics charts.
+    // Verify initializes the expected group analytics charts.
     expect(setOptionCalls).to.have.length(12);
     expect(setOptionCalls.map((call) => call.id)).to.include(
       "members-running-chart",

@@ -130,6 +130,7 @@ test.describe("site explore events page", () => {
         throw new Error("in-person filter input not found");
       }
 
+      // Select the answer option.
       input.checked = true;
       input.dispatchEvent(new Event("change", { bubbles: true }));
     });
@@ -188,6 +189,7 @@ test.describe("site explore events page", () => {
         .then(() => searchInput.press("Enter")),
     ]);
 
+    // Find the filtered empty state.
     const filteredEmptyState = page.locator(
       ".no-results-filtered:not(.hidden)",
     );
@@ -234,9 +236,11 @@ test.describe("site explore events page", () => {
       `/explore?entity=events&community[0]=${TEST_COMMUNITY_NAME}`,
     );
 
+    // Set up scenario.
     const scenario = await findCalendarNavigationScenario(page);
     test.skip(!scenario, "Requires seeded calendar event data");
 
+    // Set up the data for this check.
     const { emptyMonth, populatedMonth, direction } = scenario;
     const emptyRange = getMonthRange(emptyMonth);
 
@@ -263,6 +267,7 @@ test.describe("site explore events page", () => {
     );
     await expect(calendarEvents).toHaveCount(0);
 
+    // Set up month steps.
     const monthSteps = Math.abs(getMonthDistance(emptyMonth, populatedMonth));
     expect(monthSteps).toBeGreaterThan(0);
 
@@ -295,6 +300,7 @@ test.describe("site explore events page", () => {
         page.evaluate(() => {
           const params = new URLSearchParams(window.location.search);
 
+          // Return the values used by the caller.
           return {
             viewMode: params.get("view_mode"),
             dateFrom: params.get("date_from"),
@@ -318,9 +324,11 @@ test.describe("site explore events page", () => {
       `/explore?entity=events&community[0]=${TEST_COMMUNITY_NAME}`,
     );
 
+    // Set up scenario.
     const scenario = await findCalendarNavigationScenario(page);
     test.skip(!scenario, "Requires seeded calendar event data");
 
+    // Set up the data for this check.
     const { emptyMonth, populatedMonth } = scenario;
     const populatedRange = getMonthRange(populatedMonth);
 
@@ -334,6 +342,7 @@ test.describe("site explore events page", () => {
     // Verify the calendar starts on a populated month.
     await expect(page.locator("#calendar-box")).toBeVisible();
 
+    // Find the calendar events.
     const calendarEvents = page.locator(".fc-daygrid-event");
     await expect(calendarEvents.first()).toBeVisible();
     await expect(page.locator(".no-results-filtered:not(.hidden)")).toHaveCount(
@@ -343,9 +352,11 @@ test.describe("site explore events page", () => {
       0,
     );
 
+    // Set up month distance.
     const monthDistance = getMonthDistance(populatedMonth, emptyMonth);
     expect(monthDistance).not.toBe(0);
 
+    // Set up navigation button.
     const navigationButton =
       monthDistance > 0
         ? page.locator("#next-month-btn")
@@ -378,6 +389,7 @@ test.describe("site explore events page", () => {
         page.evaluate(() => {
           const params = new URLSearchParams(window.location.search);
 
+          // Return the values used by the caller.
           return {
             viewMode: params.get("view_mode"),
             dateFrom: params.get("date_from"),

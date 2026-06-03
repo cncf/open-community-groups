@@ -18,13 +18,13 @@ describe("session-speaker-modal", () => {
   });
 
   it("opens by resetting state, locking body scroll, and focusing the search field", async () => {
-    // Prepare focus calls to check it opens by resetting state, locking body scroll.
+    // Prepare focus calls for opening by resetting state, locking body scroll.
     let focusCalls = 0;
     userSearchFieldPrototype.focusInput = () => {
       focusCalls += 1;
     };
 
-    // Render the fixture to check it opens by resetting state, locking body scroll.
+    // Call mount lit component.
     const element = await mountLitComponent("session-speaker-modal", {
       _selectedUser: {
         user_id: "user-1",
@@ -33,12 +33,12 @@ describe("session-speaker-modal", () => {
       _featured: true,
     });
 
-    // Exercise the flow to check it opens by resetting state, locking body scroll.
+    // Verify opens by resetting state, locking body scroll.
     element.open();
     await element.updateComplete;
     await Promise.resolve();
 
-    // Confirm it opens by resetting state, locking body scroll, and focusing the search.
+    // Verify opens by resetting state, locking body scroll, and focusing the search.
     expect(element._isOpen).to.equal(true);
     expect(element._selectedUser).to.equal(null);
     expect(element._featured).to.equal(false);
@@ -48,12 +48,12 @@ describe("session-speaker-modal", () => {
   });
 
   it("ignores disabled users and accepts selectable ones", async () => {
-    // Render the fixture to check it ignores disabled users and accepts selectable ones.
+    // Call mount lit component.
     const element = await mountLitComponent("session-speaker-modal", {
       disabledUserIds: ["42"],
     });
 
-    // Run component methods to check it ignores disabled users and accepts selectable.
+    // Call the user selection handler.
     element._handleUserSelected({
       detail: {
         user: {
@@ -63,10 +63,10 @@ describe("session-speaker-modal", () => {
       },
     });
 
-    // Confirm it ignores disabled users and accepts selectable ones.
+    // Disabled users are ignored while selectable users remain active.
     expect(element._selectedUser).to.equal(null);
 
-    // Run component methods to check it ignores disabled users and accepts selectable.
+    // Call the handler with a selectable user.
     element._handleUserSelected({
       detail: {
         user: {
@@ -77,7 +77,7 @@ describe("session-speaker-modal", () => {
       },
     });
 
-    // Confirm it ignores disabled users and accepts selectable ones.
+    // Selecting an enabled user updates the active selection.
     expect(element._selectedUser).to.deep.equal({
       user_id: "84",
       name: "Margaret Hamilton",
@@ -86,20 +86,20 @@ describe("session-speaker-modal", () => {
   });
 
   it("emits speaker-selected with the featured state and closes the modal", async () => {
-    // Render the fixture to check it emits speaker-selected with the featured state.
+    // Call mount lit component.
     const element = await mountLitComponent("session-speaker-modal");
     const receivedEvents = [];
 
-    // Exercise the flow to check it emits speaker-selected with the featured state.
+    // The emitted speaker payload includes the featured state.
     element.addEventListener("speaker-selected", (event) => {
       receivedEvents.push(event.detail);
     });
 
-    // Exercise the flow to check it emits speaker-selected with the featured state.
+    // Open the speaker modal before selecting a user.
     element.open();
     await element.updateComplete;
 
-    // Run component methods to check it emits speaker-selected with the featured state.
+    // Select a featured speaker before confirming the modal.
     element._selectedUser = {
       user_id: "user-7",
       name: "Ada Lovelace",
@@ -112,7 +112,7 @@ describe("session-speaker-modal", () => {
     });
     element._confirmSelection();
 
-    // Confirm it emits speaker-selected with the featured state and closes the modal.
+    // The selected featured speaker is emitted before the modal closes.
     expect(receivedEvents).to.deep.equal([
       {
         user: {
@@ -131,19 +131,19 @@ describe("session-speaker-modal", () => {
   });
 
   it("closes on escape once the modal is open", async () => {
-    // Render the fixture to check it closes on escape once the modal is open.
+    // Call mount lit component.
     const element = await mountLitComponent("session-speaker-modal");
 
-    // Exercise the flow to check it closes on escape once the modal is open.
+    // Verify closes on escape once the modal is open.
     element.open();
     await element.updateComplete;
 
-    // Run component methods to check it closes on escape once the modal is open.
+    // Call on keydown.
     element._onKeydown({
       key: "Escape",
     });
 
-    // Confirm it closes on escape once the modal is open.
+    // Verify closes on escape once the modal is open.
     expect(element._isOpen).to.equal(false);
     expect(document.body.style.overflow).to.equal("");
     expect(document.body.dataset.modalOpenCount).to.equal("0");

@@ -52,7 +52,7 @@ describe("dashboard group attendees", () => {
   `;
 
   it("toggles and closes the attendee actions menu", () => {
-    // Build the DOM fixture to check it toggles and closes the attendee actions menu.
+    // Render the DOM fixture for toggling and closes the attendee actions menu.
     document.body.innerHTML = `
       <div id="attendees-content">
         <button id="attendee-actions-button" type="button">
@@ -64,26 +64,26 @@ describe("dashboard group attendees", () => {
       </div>
     `;
 
-    // Exercise the flow to check it toggles and closes the attendee actions menu.
+    // Verify toggles and closes the attendee actions menu.
     initializeAttendeesUi();
 
-    // Read the attendee actions button element to check it toggles and closes.
+    // Keep a reference to the attendee actions button element.
     const button = document.getElementById("attendee-actions-button");
     const dropdown = document.getElementById("attendee-actions-menu");
 
-    // Trigger the user interaction to check it toggles and closes the attendee actions.
+    // Click the control.
     button.click();
     expect(dropdown.classList.contains("hidden")).to.equal(false);
 
-    // Trigger the user interaction to check it toggles and closes the attendee actions.
+    // Click the dropdown.
     dropdown.querySelector("a")?.click();
     expect(dropdown.classList.contains("hidden")).to.equal(true);
 
-    // Trigger the user interaction to check it toggles and closes the attendee actions.
+    // Click the next control.
     button.click();
     expect(dropdown.classList.contains("hidden")).to.equal(false);
 
-    // Trigger the user interaction to check it toggles and closes the attendee actions.
+    // Click the body.
     document.body.click();
     expect(dropdown.classList.contains("hidden")).to.equal(true);
   });
@@ -112,28 +112,35 @@ describe("dashboard group attendees", () => {
 
     initializeAttendeesUi();
 
+    // Set up menu.
     const menu = document.querySelector("[data-attendee-row-actions-menu]");
     const trigger = menu.querySelector("summary");
     const cancelButton = document.getElementById("cancel-invitation-user-1");
 
+    // Click the trigger.
     trigger.click();
+
+    // Verify toggles attendee row action menus for pending invitations.
     expect(menu.open).to.equal(true);
     expect(cancelButton.getAttribute("hx-put")).to.equal(
       "/dashboard/group/events/event-42/attendees/user-1/invitation/cancel",
     );
 
+    // Click the cancel button.
     cancelButton.click();
     expect(menu.open).to.equal(false);
 
+    // Click the trigger.
     trigger.click();
     expect(menu.open).to.equal(true);
 
+    // Click outside the open menu.
     document.body.click();
     expect(menu.open).to.equal(false);
   });
 
   it("updates the attendee notification endpoint before opening the modal", () => {
-    // Build the DOM fixture to check it updates the attendee notification endpoint.
+    // Render the DOM fixture for updating the attendee notification endpoint.
     document.body.innerHTML = `
       <button
         id="open-attendee-notification-modal"
@@ -149,15 +156,15 @@ describe("dashboard group attendees", () => {
       <form id="attendee-notification-form"></form>
     `;
 
-    // Exercise the flow to check it updates the attendee notification endpoint.
+    // Verify updates the attendee notification endpoint.
     initializeAttendeesUi();
 
-    // Read the attendee notification form element to check it updates the attendee.
+    // Read the notification form that receives the attendee endpoint.
     const form = document.getElementById("attendee-notification-form");
     const modal = document.getElementById("attendee-notification-modal");
     document.getElementById("open-attendee-notification-modal")?.click();
 
-    // Confirm it updates the attendee notification endpoint before opening the modal.
+    // Verify updates the attendee notification endpoint before opening the modal.
     expect(form.getAttribute("hx-post")).to.equal(
       "/dashboard/group/notifications/event-42",
     );
@@ -165,7 +172,7 @@ describe("dashboard group attendees", () => {
   });
 
   it("opens the attendee notification modal after the dashboard body is swapped", () => {
-    // Prepare replacement body to check it opens the attendee notification modal.
+    // Prepare replacement body for opening the attendee notification modal.
     const replacementBody = document.createElement("body");
     replacementBody.innerHTML = `
       <button
@@ -183,11 +190,11 @@ describe("dashboard group attendees", () => {
     `;
     document.documentElement.replaceChild(replacementBody, document.body);
 
-    // Exercise the flow to check it opens the attendee notification modal.
+    // Verify opens the attendee notification modal.
     initializeAttendeesUi();
     document.getElementById("open-attendee-notification-modal")?.click();
 
-    // Confirm it opens the attendee notification modal after the dashboard body.
+    // Verify opens the attendee notification modal after the dashboard body.
     expect(
       document
         .getElementById("attendee-notification-form")
@@ -234,27 +241,30 @@ describe("dashboard group attendees", () => {
     initializeAttendeesUi();
     document.querySelector("[data-attendee-answers-open]")?.click();
 
+    // Set up modal.
     const modal = document.getElementById("attendee-answers-modal");
     const content = document.getElementById("attendee-answers-content");
 
+    // Verify opens the attendee answers modal with copied answers.
     expect(modal.classList.contains("hidden")).to.equal(false);
     expect(document.getElementById("attendee-answers-name")?.textContent).to.equal("Ana Lopez");
     expect(content.textContent).to.include("Tell us about your experience");
     expect(content.textContent).to.include("Very positive.");
 
+    // Click the cancel attendee answers modal button.
     document.getElementById("cancel-attendee-answers-modal")?.click();
     expect(modal.classList.contains("hidden")).to.equal(true);
   });
 
   it("opens the refund review modal with attendee payment details", () => {
-    // Prepare original HTMX to check it opens the refund review modal with attendee.
+    // Save the original HTMX helper before opening refund review.
     const originalHtmx = window.htmx;
     const processCalls = [];
     window.htmx = {
       process: (element) => processCalls.push(element?.id),
     };
 
-    // Build the DOM fixture to check it opens the refund review modal with attendee.
+    // Render the DOM fixture for opening the refund review modal with attendee.
     document.body.innerHTML = `
       <button
         type="button"
@@ -268,8 +278,6 @@ describe("dashboard group attendees", () => {
       >
         Review
       </button>
-
-      // Exercise the flow to check it opens the refund review modal with attendee.
       <div id="attendee-refund-modal" class="hidden">
         <button id="close-attendee-refund-modal" type="button">Close</button>
         <button id="cancel-attendee-refund-modal" type="button">Cancel</button>
@@ -282,18 +290,18 @@ describe("dashboard group attendees", () => {
       </div>
     `;
 
-    // Exercise the flow to check it opens the refund review modal with attendee payment.
+    // Verify opens the refund review modal with attendee payment.
     initializeAttendeesUi();
 
-    // Read the attendee refund modal element to check it opens the refund review modal.
+    // Keep a reference to the attendee refund modal element.
     const modal = document.getElementById("attendee-refund-modal");
     const approveButton = document.getElementById("attendee-refund-approve");
     const rejectButton = document.getElementById("attendee-refund-reject");
 
-    // Trigger the user interaction to check it opens the refund review modal.
+    // Verify opens the refund review modal.
     document.querySelector("[data-refund-review-trigger]")?.click();
 
-    // Confirm it opens the refund review modal with attendee payment details.
+    // Verify opens the refund review modal with attendee payment details.
     expect(modal.classList.contains("hidden")).to.equal(false);
     expect(
       document.getElementById("attendee-refund-name")?.textContent,
@@ -317,12 +325,12 @@ describe("dashboard group attendees", () => {
       "attendee-refund-reject",
     ]);
 
-    // Exercise the flow to check it opens the refund review modal with attendee payment.
+    // Verify opens the refund review modal with attendee payment.
     window.htmx = originalHtmx;
   });
 
   it("shows only the retry action for refund processing entries", () => {
-    // Build the DOM fixture to check it shows only the retry action for refund.
+    // Render the DOM fixture for showing only the retry action for refund.
     document.body.innerHTML = `
       <button
         type="button"
@@ -335,8 +343,6 @@ describe("dashboard group attendees", () => {
       >
         Review
       </button>
-
-      // Exercise the flow to check it shows only the retry action for refund processing.
       <div id="attendee-refund-modal" class="hidden">
         <button id="close-attendee-refund-modal" type="button">Close</button>
         <button id="cancel-attendee-refund-modal" type="button">Cancel</button>
@@ -349,24 +355,24 @@ describe("dashboard group attendees", () => {
       </div>
     `;
 
-    // Exercise the flow to check it shows only the retry action for refund processing.
+    // Verify shows only the retry action for refund processing.
     initializeAttendeesUi();
 
-    // Read the attendee refund approve element to check it shows only the retry action.
+    // Keep a reference to the attendee refund approve element.
     const approveButton = document.getElementById("attendee-refund-approve");
     const rejectButton = document.getElementById("attendee-refund-reject");
 
-    // Trigger the user interaction to check it shows only the retry action for refund.
+    // Verify shows only the retry action for refund.
     document.querySelector("[data-refund-review-trigger]")?.click();
 
-    // Confirm it shows only the retry action for refund processing entries.
+    // Verify shows only the retry action for refund processing entries.
     expect(approveButton.classList.contains("hidden")).to.equal(false);
     expect(approveButton.textContent).to.equal("Retry refund finalization");
     expect(rejectButton.classList.contains("hidden")).to.equal(true);
   });
 
   it("closes the refund review modal after a successful approve request", () => {
-    // Build the DOM fixture to check it closes the refund review modal.
+    // Render the DOM fixture for closing the refund review modal.
     document.body.innerHTML = `
       <button
         type="button"
@@ -380,8 +386,6 @@ describe("dashboard group attendees", () => {
       >
         Review
       </button>
-
-      // Exercise the flow to check it closes the refund review modal after a successful.
       <div id="attendee-refund-modal" class="hidden">
         <button id="close-attendee-refund-modal" type="button">Close</button>
         <button id="cancel-attendee-refund-modal" type="button">Cancel</button>
@@ -394,18 +398,18 @@ describe("dashboard group attendees", () => {
       </div>
     `;
 
-    // Exercise the flow to check it closes the refund review modal after a successful.
+    // Verify the modal closes after a successful approve response.
     initializeAttendeesUi();
 
-    // Read the attendee refund modal element to check it closes the refund review modal.
+    // Keep a reference to the attendee refund modal element.
     const modal = document.getElementById("attendee-refund-modal");
     const approveButton = document.getElementById("attendee-refund-approve");
 
-    // Trigger the user interaction to check it closes the refund review modal.
+    // Verify closes the refund review modal.
     document.querySelector("[data-refund-review-trigger]")?.click();
     expect(modal.classList.contains("hidden")).to.equal(false);
 
-    // Dispatch the event event to check it closes the refund review modal.
+    // Dispatch the successful approve response.
     approveButton?.dispatchEvent(
       new CustomEvent("htmx:afterRequest", {
         bubbles: true,
@@ -417,12 +421,12 @@ describe("dashboard group attendees", () => {
       }),
     );
 
-    // Confirm it closes the refund review modal after a successful approve request.
+    // Verify closes the refund review modal after a successful approve request.
     expect(modal.classList.contains("hidden")).to.equal(true);
   });
 
   it("keeps the refund review modal open after a failed reject request", () => {
-    // Build the DOM fixture to check it keeps the refund review modal open.
+    // Render the DOM fixture for keeping the refund review modal open.
     document.body.innerHTML = `
       <button
         type="button"
@@ -436,8 +440,6 @@ describe("dashboard group attendees", () => {
       >
         Review
       </button>
-
-      // Exercise the flow to check it keeps the refund review modal open after a failed.
       <div id="attendee-refund-modal" class="hidden">
         <button id="close-attendee-refund-modal" type="button">Close</button>
         <button id="cancel-attendee-refund-modal" type="button">Cancel</button>
@@ -450,18 +452,18 @@ describe("dashboard group attendees", () => {
       </div>
     `;
 
-    // Exercise the flow to check it keeps the refund review modal open after a failed.
+    // Verify the modal stays open after a failed reject response.
     initializeAttendeesUi();
 
-    // Read the attendee refund modal element to check it keeps the refund review modal.
+    // Keep a reference to the attendee refund modal element.
     const modal = document.getElementById("attendee-refund-modal");
     const rejectButton = document.getElementById("attendee-refund-reject");
 
-    // Trigger the user interaction to check it keeps the refund review modal open.
+    // Verify keeps the refund review modal open.
     document.querySelector("[data-refund-review-trigger]")?.click();
     expect(modal.classList.contains("hidden")).to.equal(false);
 
-    // Dispatch the event event to check it keeps the refund review modal open.
+    // Dispatch the failed reject response.
     rejectButton?.dispatchEvent(
       new CustomEvent("htmx:afterRequest", {
         bubbles: true,
@@ -473,12 +475,12 @@ describe("dashboard group attendees", () => {
       }),
     );
 
-    // Confirm it keeps the refund review modal open after a failed reject request.
+    // Verify keeps the refund review modal open after a failed reject request.
     expect(modal.classList.contains("hidden")).to.equal(false);
   });
 
   it("opens refund review for newly swapped attendee content after HTMX load", () => {
-    // Build the DOM fixture to check it opens refund review for newly swapped attendee.
+    // Render the DOM fixture for opening refund review for newly swapped attendee.
     document.body.innerHTML = `
       <button
         type="button"
@@ -492,8 +494,6 @@ describe("dashboard group attendees", () => {
       >
         Review
       </button>
-
-      // Exercise the flow to check it opens refund review for newly swapped attendee.
       <div id="attendee-refund-modal" class="hidden">
         <button id="close-attendee-refund-modal" type="button">Close</button>
         <button id="cancel-attendee-refund-modal" type="button">Cancel</button>
@@ -506,10 +506,10 @@ describe("dashboard group attendees", () => {
       </div>
     `;
 
-    // Exercise the flow to check it opens refund review for newly swapped attendee.
+    // Verify opens refund review for newly swapped attendee.
     initializeAttendeesUi();
 
-    // Build the DOM fixture to check it opens refund review for newly swapped attendee.
+    // Render the DOM fixture for opening refund review for newly swapped attendee.
     document.body.innerHTML = `
       <button
         type="button"
@@ -523,8 +523,6 @@ describe("dashboard group attendees", () => {
       >
         Review
       </button>
-
-      // Exercise the flow to check it opens refund review for newly swapped attendee.
       <div id="attendee-refund-modal" class="hidden">
         <button id="close-attendee-refund-modal" type="button">Close</button>
         <button id="cancel-attendee-refund-modal" type="button">Cancel</button>
@@ -537,18 +535,18 @@ describe("dashboard group attendees", () => {
       </div>
     `;
 
-    // Exercise the flow to check it opens refund review for newly swapped attendee.
+    // Verify opens refund review for newly swapped attendee.
     initializeAttendeesUi();
 
-    // Read the attendee refund modal element to check it opens refund review for newly.
+    // Read the refund modal fields after the attendee content swap.
     const modal = document.getElementById("attendee-refund-modal");
     const approveButton = document.getElementById("attendee-refund-approve");
     const rejectButton = document.getElementById("attendee-refund-reject");
 
-    // Trigger the user interaction to check it opens refund review for newly swapped.
+    // Verify newly swapped attendee content opens refund review.
     document.querySelector("[data-refund-review-trigger]")?.click();
 
-    // Confirm it opens refund review for newly swapped attendee content after HTMX load.
+    // Verify opens refund review for newly swapped attendee content after HTMX load.
     expect(modal.classList.contains("hidden")).to.equal(false);
     expect(
       document.getElementById("attendee-refund-name")?.textContent,
@@ -575,11 +573,14 @@ describe("dashboard group attendees", () => {
       </div>
     `;
 
+    // Set up attendees root.
     const attendeesRoot = document.getElementById("attendees-content");
     dispatchHtmxLoad(attendeesRoot);
 
+    // Click the open attendee invitation modal button.
     document.getElementById("open-attendee-invitation-modal")?.click();
 
+    // Set up initial submit.
     const initialSubmit = document.getElementById("submit-attendee-invitation");
     const initialSearchField = document.querySelector("[data-attendee-invitation-search]");
     const initialEmailInput = document.getElementById("attendee-invitation-email");
@@ -589,8 +590,11 @@ describe("dashboard group attendees", () => {
         detail: { query: "first" },
       }),
     );
+
+    // Verify handles invitation modal controls after attendee content refreshes.
     expect(initialSubmit.disabled).to.equal(true);
 
+    // Dispatch the form event.
     initialSearchField.dispatchEvent(
       new CustomEvent("user-search-query-changed", {
         bubbles: true,
@@ -600,11 +604,14 @@ describe("dashboard group attendees", () => {
     expect(initialEmailInput.value).to.equal("first@example.com");
     expect(initialSubmit.disabled).to.equal(false);
 
+    // Re-render refreshed attendee invitation markup.
     attendeesRoot.innerHTML = attendeeInvitationMarkup();
     dispatchHtmxLoad(attendeesRoot);
 
+    // Click the open attendee invitation modal button.
     document.getElementById("open-attendee-invitation-modal")?.click();
 
+    // Set up refreshed modal.
     const refreshedModal = document.getElementById("attendee-invitation-modal");
     const refreshedSubmit = document.getElementById("submit-attendee-invitation");
     const refreshedSearchField = document.querySelector("[data-attendee-invitation-search]");
@@ -616,11 +623,13 @@ describe("dashboard group attendees", () => {
       }),
     );
 
+    // Assert the saved field value.
     expect(refreshedEmailInput.value).to.equal("second@example.com");
     expect(refreshedSubmit.disabled).to.equal(false);
 
     dispatchHtmxAfterRequest(document.getElementById("attendee-invitation-form"), { status: 201 });
 
+    // Assert the confirmation dialog options.
     expect(env.current.swal.calls[0]).to.include({
       text: "Invitation sent.",
       icon: "success",
@@ -637,31 +646,38 @@ describe("dashboard group attendees", () => {
       },
     }));
 
+    // Mount the DOM fixture.
     document.body.innerHTML = `
       <div id="attendees-content">
         ${attendeeInvitationMarkup()}
       </div>
     `;
 
+    // Set up attendees root.
     const attendeesRoot = document.getElementById("attendees-content");
     dispatchHtmxLoad(attendeesRoot);
 
+    // Click the open attendee invitation modal button.
     document.getElementById("open-attendee-invitation-modal")?.click();
 
+    // Set up search field.
     const searchField = document.querySelector("[data-attendee-invitation-search]");
     await searchField.updateComplete;
     searchField.searchDelay = 0;
 
+    // Set up search input.
     const searchInput = searchField.querySelector("[data-user-search-input]");
     const userInput = document.getElementById("attendee-invitation-user-id");
     const emailInput = document.getElementById("attendee-invitation-email");
     const submitButton = document.getElementById("submit-attendee-invitation");
 
+    // Answer the required form question.
     searchInput.value = "invitee+test3@example.com";
     searchInput.dispatchEvent(new Event("input", { bubbles: true }));
     await new Promise((resolve) => setTimeout(resolve, 0));
     await searchField.updateComplete;
 
+    // Verify enables attendee invitation for a typed email when no user matches.
     expect(emailInput.value).to.equal("invitee+test3@example.com");
     expect(userInput.disabled).to.equal(true);
     expect(emailInput.disabled).to.equal(false);
@@ -670,11 +686,14 @@ describe("dashboard group attendees", () => {
     expect(searchField.textContent).not.to.contain("No users found");
     expect(submitButton.disabled).to.equal(false);
 
+    // Click Invite by email invitee+test3@example.com.
     searchField.querySelector("button[aria-label='Invite by email invitee+test3@example.com']")?.click();
     await waitForMicrotask();
 
+    // Set up selected user.
     const selectedUser = document.getElementById("attendee-invitation-selected-user");
 
+    // Assert the saved field value.
     expect(emailInput.value).to.equal("invitee+test3@example.com");
     expect(userInput.disabled).to.equal(true);
     expect(emailInput.disabled).to.equal(false);
@@ -697,9 +716,11 @@ describe("dashboard group attendees", () => {
       </div>
     `;
 
+    // Set up attendees root.
     const attendeesRoot = document.getElementById("attendees-content");
     dispatchHtmxLoad(attendeesRoot);
 
+    // Dispatch the form event.
     attendeesRoot.dispatchEvent(
       new CustomEvent("user-selected", {
         bubbles: true,
@@ -714,12 +735,14 @@ describe("dashboard group attendees", () => {
       }),
     );
 
+    // Set up selected user.
     const selectedUser = document.getElementById("attendee-invitation-selected-user");
     const userInput = document.getElementById("attendee-invitation-user-id");
     const emailInput = document.getElementById("attendee-invitation-email");
     const submitButton = document.getElementById("submit-attendee-invitation");
     const pill = selectedUser.querySelector(".inline-flex.rounded-full");
 
+    // Verify renders selected invitation users with the shared user pill style.
     expect(userInput.value).to.equal("user-1");
     expect(userInput.disabled).to.equal(false);
     expect(emailInput.disabled).to.equal(true);
@@ -734,8 +757,10 @@ describe("dashboard group attendees", () => {
     expect(pill.querySelector("[data-attendee-invitation-clear-user]")).to.exist;
     expect(submitButton.disabled).to.equal(false);
 
+    // Click the pill.
     pill.querySelector("[data-attendee-invitation-clear-user]")?.click();
 
+    // Assert the saved field value.
     expect(userInput.value).to.equal("");
     expect(userInput.disabled).to.equal(true);
     expect(emailInput.disabled).to.equal(true);
@@ -744,7 +769,7 @@ describe("dashboard group attendees", () => {
   });
 
   it("keeps the check-in toggle disabled after a successful check-in", async () => {
-    // Build the DOM fixture to check it keeps the check-in toggle disabled.
+    // Render the DOM fixture for keeping the check-in toggle disabled.
     document.body.innerHTML = `
       <label class="cursor-pointer">
         <input
@@ -755,17 +780,17 @@ describe("dashboard group attendees", () => {
       </label>
     `;
 
-    // Exercise the flow to check it keeps the check-in toggle disabled.
+    // Verify keeps the check-in toggle disabled.
     initializeAttendeesUi();
 
-    // Read the check in toggle element to check it keeps the check-in toggle disabled.
+    // Keep a reference to the check in toggle element.
     const checkbox = document.querySelector(".check-in-toggle");
     const label = checkbox.closest("label");
     checkbox.checked = true;
     checkbox.dispatchEvent(new Event("change", { bubbles: true }));
     await waitForMicrotask();
 
-    // Confirm it keeps the check-in toggle disabled after a successful check-in.
+    // Verify keeps the check-in toggle disabled after a successful check-in.
     expect(fetchMock.calls).to.have.length(1);
     const [url, options] = fetchMock.calls[0];
     expect(url).to.equal("/dashboard/group/attendees/check-in/7");
@@ -779,10 +804,10 @@ describe("dashboard group attendees", () => {
   });
 
   it("reverts the check-in toggle and shows an error when the request fails", async () => {
-    // Configure browser state to check it reverts the check-in toggle and shows an error.
+    // Configure browser state before testing the failed check-in path.
     fetchMock.setImpl(async () => ({ ok: false, status: 500 }));
 
-    // Build the DOM fixture to check it reverts the check-in toggle and shows an error.
+    // Render the DOM fixture for reverts the check-in toggle and shows an error.
     document.body.innerHTML = `
       <label class="cursor-pointer">
         <input
@@ -793,17 +818,17 @@ describe("dashboard group attendees", () => {
       </label>
     `;
 
-    // Exercise the flow to check it reverts the check-in toggle and shows an error.
+    // Failed check-in reverts the toggle and shows an error.
     initializeAttendeesUi();
 
-    // Read the check in toggle element to check it reverts the check-in toggle and shows.
+    // Keep a reference to the check in toggle element.
     const checkbox = document.querySelector(".check-in-toggle");
     const label = checkbox.closest("label");
     checkbox.checked = true;
     checkbox.dispatchEvent(new Event("change", { bubbles: true }));
     await waitForMicrotask();
 
-    // Confirm it reverts the check-in toggle and shows an error when the request fails.
+    // A failed request reverts the check-in toggle and shows an error.
     expect(checkbox.checked).to.equal(false);
     expect(checkbox.disabled).to.equal(false);
     expect(label.classList.contains("cursor-pointer")).to.equal(true);
@@ -816,14 +841,14 @@ describe("dashboard group attendees", () => {
   });
 
   it("does not duplicate refund modal handling when the same attendees root reloads", () => {
-    // Prepare original HTMX to check it does not duplicate refund modal handling.
+    // Prepare original HTMX for does not duplicate refund modal handling.
     const originalHtmx = window.htmx;
     const processCalls = [];
     window.htmx = {
       process: (element) => processCalls.push(element?.id),
     };
 
-    // Build the DOM fixture to check it does not duplicate refund modal handling.
+    // Render the DOM fixture for does not duplicate refund modal handling.
     document.body.innerHTML = `
       <div id="attendees-content">
         <button
@@ -838,8 +863,6 @@ describe("dashboard group attendees", () => {
         >
           Review
         </button>
-
-        // Exercise the flow to check it does not duplicate refund modal handling.
         <div id="attendee-refund-modal" class="hidden">
           <button id="close-attendee-refund-modal" type="button">Close</button>
           <button id="cancel-attendee-refund-modal" type="button">Cancel</button>
@@ -853,21 +876,21 @@ describe("dashboard group attendees", () => {
       </div>
     `;
 
-    // Read the attendees content element to check it does not duplicate refund modal.
+    // Keep a reference to the attendees content element.
     const attendeesRoot = document.getElementById("attendees-content");
     dispatchHtmxLoad(attendeesRoot);
     dispatchHtmxLoad(attendeesRoot);
 
-    // Trigger the user interaction to check it does not duplicate refund modal handling.
+    // Refund modal handling is not duplicated.
     document.querySelector("[data-refund-review-trigger]")?.click();
 
-    // Confirm it does not duplicate refund modal handling when the same attendees root.
+    // Reinitializing the same root does not duplicate refund modal handling.
     expect(processCalls).to.deep.equal([
       "attendee-refund-approve",
       "attendee-refund-reject",
     ]);
 
-    // Exercise the flow to check it does not duplicate refund modal handling.
+    // Repeated refund clicks still produce one modal action.
     window.htmx = originalHtmx;
   });
 });

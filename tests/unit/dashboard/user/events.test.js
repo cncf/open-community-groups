@@ -21,11 +21,13 @@ describe("dashboard user events", () => {
       </details>
     `;
 
+    // Set up dropdowns.
     const dropdowns = document.querySelectorAll("[data-user-event-actions-dropdown]");
 
     dropdowns[0].open = true;
     dropdowns[1].querySelector("summary").click();
 
+    // Assert that the flag is disabled.
     expect(dropdowns[0].open).to.equal(false);
     expect(dropdowns[1].open).to.equal(true);
   });
@@ -40,10 +42,13 @@ describe("dashboard user events", () => {
       <button type="button" id="outside-button">Outside</button>
     `;
 
+    // Set up dropdown.
     const dropdown = document.querySelector("[data-user-event-actions-dropdown]");
 
+    // Click the outside button button.
     document.getElementById("outside-button").click();
 
+    // Assert that the flag is disabled.
     expect(dropdown.open).to.equal(false);
   });
 });

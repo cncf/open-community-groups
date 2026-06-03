@@ -14,14 +14,17 @@ test.describe("community dashboard settings view", () => {
     const readSettingsFormValues = async () => {
       await navigateToPath(adminCommunityPage, settingsPath);
 
+      // Find the Display Name control.
       const displayNameInput = adminCommunityPage.getByLabel("Display Name");
       const descriptionEditor = adminCommunityPage.locator(
         "markdown-editor#description",
       );
       const websiteInput = adminCommunityPage.getByLabel("Website");
 
+      // Assert the expected content is visible.
       await expect(displayNameInput).toBeVisible();
 
+      // Return the values used by the caller.
       return {
         bannerMobileUrl: await adminCommunityPage
           .locator(
@@ -56,6 +59,7 @@ test.describe("community dashboard settings view", () => {
     }) => {
       await navigateToPath(adminCommunityPage, settingsPath);
 
+      // Fill Display Name.
       await adminCommunityPage.getByLabel("Display Name").fill(displayName);
       await fillMarkdownEditor(adminCommunityPage, "description", description);
       await setImageFieldValue(adminCommunityPage, "logo_url", logoUrl);
@@ -67,6 +71,7 @@ test.describe("community dashboard settings view", () => {
       );
       await adminCommunityPage.getByLabel("Website").fill(websiteUrl);
 
+      // Click Update Settings.
       await Promise.all([
         adminCommunityPage.waitForResponse(
           (response) =>
@@ -79,6 +84,7 @@ test.describe("community dashboard settings view", () => {
           .click(),
       ]);
 
+      // Assert the field value was updated.
       await expect(adminCommunityPage.getByLabel("Display Name")).toHaveValue(
         displayName,
       );
@@ -105,6 +111,7 @@ test.describe("community dashboard settings view", () => {
       );
     };
 
+    // Set up original values.
     const originalValues = await readSettingsFormValues();
     const updatedValues = {
       ...originalValues,
@@ -117,6 +124,7 @@ test.describe("community dashboard settings view", () => {
       logoUrl: "/static/images/e2e/community-secondary-logo.svg",
     };
 
+    // Save the updated settings.
     await submitSettings(updatedValues);
     await submitSettings(originalValues);
   });
@@ -130,7 +138,10 @@ test.describe("community dashboard settings view", () => {
       "/dashboard/community?tab=settings",
     );
 
+    // Find the dashboard content.
     const dashboardContent = communityViewerPage.locator("#dashboard-content");
+
+    // Verify viewer sees read-only controls on community settings.
     await expect(
       dashboardContent.getByText("General Settings", { exact: true }),
     ).toBeVisible();

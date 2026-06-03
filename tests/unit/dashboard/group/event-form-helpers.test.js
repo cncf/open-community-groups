@@ -33,14 +33,14 @@ describe("event form helpers", () => {
   });
 
   it("adds the copy suffix only for non-empty names", () => {
-    // Confirm it adds the copy suffix only for non-empty names.
+    // Verify adds the copy suffix only for non-empty names.
     expect(appendCopySuffix(" Demo event ")).to.equal("Demo event (copy)");
     expect(appendCopySuffix("   ")).to.equal("");
     expect(appendCopySuffix(null)).to.equal("");
   });
 
   it("sets category by id and falls back to matching the option label", () => {
-    // Build the DOM fixture to check it sets category by id and falls back to matching.
+    // Render the DOM fixture for sets category by id and falls back to matching.
     document.body.innerHTML = `
       <select id="category_id">
         <option value="">Select a category</option>
@@ -49,51 +49,51 @@ describe("event form helpers", () => {
       </select>
     `;
 
-    // Read the category id element to check it sets category by id and falls back.
+    // Keep a reference to the category id element.
     const select = document.getElementById("category_id");
     const changes = [];
     select.addEventListener("change", () => changes.push(select.value));
 
-    // Exercise the flow to check it sets category by id and falls back to matching.
+    // Apply the category id value.
     setCategoryValue({ category_id: 2 });
     expect(select.value).to.equal("2");
 
-    // Exercise the flow to check it sets category by id and falls back to matching.
+    // Apply the fallback category value.
     setCategoryValue({ category_name: " workshop " });
     expect(select.value).to.equal("1");
     expect(changes).to.deep.equal(["2", "1"]);
   });
 
   it("updates gallery images and tags with sanitized values", () => {
-    // Build the DOM fixture to check it updates gallery images and tags with sanitized.
+    // Render the DOM fixture for updating gallery images and tags with sanitized.
     document.body.innerHTML = `
       <gallery-field field-name="photos_urls"></gallery-field>
       <multiple-inputs field-name="tags"></multiple-inputs>
     `;
 
-    // Read the DOM to check it updates gallery images and tags with sanitized values.
+    // Read the gallery and tag fields after applying sanitized values.
     const gallery = document.querySelector(
       'gallery-field[field-name="photos_urls"]',
     );
     const tags = document.querySelector('multiple-inputs[field-name="tags"]');
 
-    // Prepare gallery images to check it updates gallery images and tags with sanitized.
+    // Prepare gallery images for updating gallery images and tags with sanitized.
     let galleryImages = [];
     gallery._setImages = (images) => {
       galleryImages = images;
     };
 
-    // Prepare tags updated to check it updates gallery images and tags with sanitized.
+    // Prepare tags updated for updating gallery images and tags with sanitized.
     let tagsUpdated = 0;
     tags.requestUpdate = () => {
       tagsUpdated += 1;
     };
 
-    // Exercise the flow to check it updates gallery images and tags with sanitized.
+    // Verify updates gallery images and tags with sanitized.
     setGalleryImages([" one.png ", "", "two.png", null]);
     setTags([" frontend ", "", "community "]);
 
-    // Confirm it updates gallery images and tags with sanitized values.
+    // Verify updates gallery images and tags with sanitized values.
     expect(galleryImages).to.deep.equal(["one.png", "two.png"]);
     expect(tags.items).to.deep.equal([
       { id: 0, value: "frontend" },
@@ -104,7 +104,7 @@ describe("event form helpers", () => {
   });
 
   it("syncs registration and reminder toggles with their hidden fields", () => {
-    // Build the DOM fixture to check it syncs registration and reminder toggles.
+    // Render the DOM fixture for syncing registration and reminder toggles.
     document.body.innerHTML = `
       <input id="toggle_registration_required" type="checkbox" />
       <input id="registration_required" type="hidden" value="false" />
@@ -112,11 +112,11 @@ describe("event form helpers", () => {
       <input id="event_reminder_enabled" type="hidden" value="false" />
     `;
 
-    // Exercise the flow to check it syncs registration and reminder toggles with their.
+    // Registration and reminder toggles are wired to hidden fields.
     setRegistrationRequired(true);
     setEventReminderEnabled(false);
 
-    // Confirm it syncs registration and reminder toggles with their hidden fields.
+    // Registration and reminder toggles update their hidden fields.
     expect(
       document.getElementById("toggle_registration_required").checked,
     ).to.equal(true);
@@ -132,19 +132,19 @@ describe("event form helpers", () => {
   });
 
   it("sets normalized hosts and sponsors on their components", () => {
-    // Build the DOM fixture to check it sets normalized hosts and sponsors on their.
+    // Render the DOM fixture for sets normalized hosts and sponsors on their.
     document.body.innerHTML = `
       <user-search-selector field-name="hosts"></user-search-selector>
       <sponsors-section></sponsors-section>
     `;
 
-    // Read the DOM to check it sets normalized hosts and sponsors on their components.
+    // Read the host and sponsor components after normalization.
     const hosts = document.querySelector(
       'user-search-selector[field-name="hosts"]',
     );
     const sponsors = document.querySelector("sponsors-section");
 
-    // Prepare hosts updated to check it sets normalized hosts and sponsors on their.
+    // Prepare hosts updated for sets normalized hosts and sponsors on their.
     let hostsUpdated = 0;
     let sponsorsUpdated = 0;
     hosts.requestUpdate = () => {
@@ -154,7 +154,7 @@ describe("event form helpers", () => {
       sponsorsUpdated += 1;
     };
 
-    // Exercise the flow to check it sets normalized hosts and sponsors on their.
+    // Hosts and sponsors are normalized before component assignment.
     setHosts([
       { user: { user_id: "1", username: "alice" } },
       { user_id: "2", username: "bob" },
@@ -162,7 +162,7 @@ describe("event form helpers", () => {
     ]);
     setSponsors([{ name: "ACME", level: 2 }, { name: "Community" }]);
 
-    // Confirm it sets normalized hosts and sponsors on their components.
+    // Normalized hosts and sponsors are applied to their components.
     expect(hosts.selectedUsers).to.deep.equal([
       { user_id: "1", username: "alice" },
       { user_id: "2", username: "bob" },
@@ -176,10 +176,10 @@ describe("event form helpers", () => {
   });
 
   it("builds and applies normalized sessions for the sessions section", () => {
-    // Build the DOM fixture to check it builds and applies normalized sessions.
+    // Render the DOM fixture for building and applies normalized sessions.
     document.body.innerHTML = `<sessions-section></sessions-section>`;
 
-    // Read the DOM to check it builds and applies normalized sessions for the sessions.
+    // Read the sessions section after normalized sessions are applied.
     const sessionsSection = document.querySelector("sessions-section");
     let initializeCalls = 0;
     let updateCalls = 0;
@@ -190,7 +190,7 @@ describe("event form helpers", () => {
       updateCalls += 1;
     };
 
-    // Prepare sessions data to check it builds and applies normalized sessions.
+    // Prepare sessions data for building and applies normalized sessions.
     const sessionsData = {
       dayOne: [
         {
@@ -210,7 +210,7 @@ describe("event form helpers", () => {
       ignored: "not-an-array",
     };
 
-    // Confirm it builds and applies normalized sessions for the sessions section.
+    // Verify builds and applies normalized sessions for the sessions section.
     expect(buildSessionEntries(sessionsData)).to.deep.equal([
       {
         name: "Opening keynote",
@@ -231,10 +231,10 @@ describe("event form helpers", () => {
       },
     ]);
 
-    // Exercise the flow to check it builds and applies normalized sessions.
+    // Verify builds and applies normalized sessions.
     setSessions(sessionsData);
 
-    // Confirm it builds and applies normalized sessions for the sessions section.
+    // Verify builds and applies normalized sessions for the sessions section.
     expect(sessionsSection.sessions).to.deep.equal(
       buildSessionEntries(sessionsData),
     );
@@ -243,7 +243,7 @@ describe("event form helpers", () => {
   });
 
   it("updates markdown content and timezone selectors", () => {
-    // Build the DOM fixture to check it updates markdown content and timezone selectors.
+    // Render the DOM fixture for updating markdown content and timezone selectors.
     document.body.innerHTML = `
       <markdown-editor id="description">
         <textarea></textarea>
@@ -252,7 +252,7 @@ describe("event form helpers", () => {
       <timezone-selector name="timezone"></timezone-selector>
     `;
 
-    // Read the DOM to check it updates markdown content and timezone selectors.
+    // Read the rendered DOM state for updating markdown content and timezone selectors.
     const editor = document.querySelector("markdown-editor#description");
     const textarea = editor.querySelector("textarea");
     const codeMirror = editor.querySelector(".CodeMirror");
@@ -260,12 +260,12 @@ describe("event form helpers", () => {
       "timezone-selector[name='timezone']",
     );
 
-    // Prepare input values to check it updates markdown content and timezone selectors.
+    // Prepare input values for updating markdown content and timezone selectors.
     const inputValues = [];
     let savedValue = "";
     let timezoneChanges = 0;
 
-    // Exercise the flow to check it updates markdown content and timezone selectors.
+    // Verify updates markdown content and timezone selectors.
     textarea.addEventListener("input", () => inputValues.push(textarea.value));
     codeMirror.CodeMirror = {
       setValue(value) {
@@ -279,11 +279,11 @@ describe("event form helpers", () => {
       timezoneChanges += 1;
     });
 
-    // Exercise the flow to check it updates markdown content and timezone selectors.
+    // Call update markdown content.
     updateMarkdownContent("## Agenda");
     updateTimezone("Europe/Madrid");
 
-    // Confirm it updates markdown content and timezone selectors.
+    // Assert the saved value was updated.
     expect(textarea.value).to.equal("## Agenda");
     expect(inputValues).to.deep.equal(["## Agenda"]);
     expect(savedValue).to.equal("## Agenda:saved");
@@ -292,7 +292,7 @@ describe("event form helpers", () => {
   });
 
   it("warns before removing sessions when saving without event dates", async () => {
-    // Build the DOM fixture to check it warns before removing sessions when saving.
+    // Render the DOM fixture for warning before removing sessions when saving.
     document.body.innerHTML = `
       <input id="starts_at" value="" />
       <input id="ends_at" value="" />
@@ -300,25 +300,25 @@ describe("event form helpers", () => {
       <sessions-section></sessions-section>
     `;
 
-    // Read the save button element to check it warns before removing sessions.
+    // Keep a reference to the save button element.
     const saveButton = document.getElementById("save-button");
     const sessionsSection = document.querySelector("sessions-section");
     let allowedClicks = 0;
 
-    // Exercise the flow to check it warns before removing sessions when saving.
+    // Saving warns before removing sessions.
     sessionsSection.sessions = [{ name: "Opening keynote" }];
     saveButton.addEventListener("click", () => {
       allowedClicks += 1;
     });
 
-    // Exercise the flow to check it warns before removing sessions when saving.
+    // Initialize the sessions removal warning.
     initializeSessionsRemovalWarning({ saveButton });
 
-    // Trigger the user interaction to check it warns before removing sessions.
+    // Confirming the warning allows the save to continue.
     saveButton.click();
     await waitForMicrotask();
 
-    // Confirm it warns before removing sessions when saving without event dates.
+    // Saving without event dates still warns before removing sessions.
     expect(swal.calls).to.have.length(1);
     expect(swal.calls[0].text).to.include("will remove all sessions");
     expect(allowedClicks).to.equal(1);

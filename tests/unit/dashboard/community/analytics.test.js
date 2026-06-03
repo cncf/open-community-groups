@@ -32,7 +32,7 @@ describe("dashboard community analytics", () => {
       "#115e59",
     );
 
-    // Build the DOM fixture to check it covers the current behavior.
+    // Build the DOM fixture.
     document.body.innerHTML = `
       <button data-analytics-tab="groups"></button>
       <button data-analytics-tab="events"></button>
@@ -69,7 +69,7 @@ describe("dashboard community analytics", () => {
   });
 
   it("initializes the default groups analytics tab", async () => {
-    // Exercise the flow to check it initializes the default groups analytics tab.
+    // Verify initializes the default groups analytics tab.
     await initAnalyticsCharts({
       groups: {
         running_total: [
@@ -96,7 +96,7 @@ describe("dashboard community analytics", () => {
       },
     });
 
-    // Confirm it initializes the default groups analytics tab.
+    // Verify initializes the default groups analytics tab.
     expect(setOptionCalls).to.have.length(8);
     expect(setOptionCalls.map((call) => call.id)).to.include(
       "groups-region-chart",
@@ -111,7 +111,7 @@ describe("dashboard community analytics", () => {
   });
 
   it("uses clearer event, attendee, and total page-view chart titles", async () => {
-    // Exercise the flow to check it uses clearer event, attendee, and total page-view.
+    // Verify uses clearer event, attendee, and total page-view.
     await initAnalyticsCharts({
       groups: {},
       events: {
@@ -136,12 +136,12 @@ describe("dashboard community analytics", () => {
       },
     });
 
-    // Exercise the flow to check it uses clearer event, attendee, and total page-view.
+    // Verify uses clearer event, attendee, and total page-view.
     setOptionCalls = [];
     document.querySelector('[data-analytics-tab="events"]').click();
     await new Promise((resolve) => setTimeout(resolve, 0));
 
-    // Confirm it uses clearer event, attendee, and total page-view chart titles.
+    // Verify uses clearer event, attendee, and total page-view chart titles.
     expect(
       setOptionCalls.find((call) => call.id === "events-monthly-chart").option
         .title.text,
@@ -151,12 +151,12 @@ describe("dashboard community analytics", () => {
         .title.subtext,
     ).to.equal("Published events by scheduled month");
 
-    // Exercise the flow to check it uses clearer event, attendee, and total page-view.
+    // Verify uses clearer event, attendee, and total page-view.
     setOptionCalls = [];
     document.querySelector('[data-analytics-tab="attendees"]').click();
     await new Promise((resolve) => setTimeout(resolve, 0));
 
-    // Confirm it uses clearer event, attendee, and total page-view chart titles.
+    // Verify uses clearer event, attendee, and total page-view chart titles.
     expect(
       setOptionCalls.find((call) => call.id === "attendees-monthly-chart")
         .option.title.text,
@@ -166,12 +166,12 @@ describe("dashboard community analytics", () => {
         .option.title.subtext,
     ).to.equal("Event RSVPs created each month");
 
-    // Exercise the flow to check it uses clearer event, attendee, and total page-view.
+    // Verify uses clearer event, attendee, and total page-view.
     setOptionCalls = [];
     document.querySelector('[data-analytics-tab="page-views"]').click();
     await new Promise((resolve) => setTimeout(resolve, 0));
 
-    // Confirm it uses clearer event, attendee, and total page-view chart titles.
+    // Verify uses clearer event, attendee, and total page-view chart titles.
     expect(
       setOptionCalls.find((call) => call.id === "total-views-monthly-chart")
         .option.title.text,
