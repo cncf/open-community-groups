@@ -279,7 +279,7 @@
       {# End next event and location -#}
 
       {% if let Some(ad_banner_url) = &group.community.ad_banner_url -%}
-        {{ ui::advertisement_banner(alt = group.community.display_name.clone() + " advertisement",
+        {{ ui::floating_advertisement_banner(alt = group.community.display_name.clone() + " advertisement",
         image_url = ad_banner_url,
         link_url = group.community.ad_banner_link_url.as_deref()
         ) -}}

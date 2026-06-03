@@ -403,7 +403,7 @@
       {# End Call for Speakers -#}
 
       {% if let Some(ad_banner_url) = &event.community.ad_banner_url -%}
-        {{ ui::advertisement_banner(alt = event.community.display_name.clone() + " advertisement",
+        {{ ui::floating_advertisement_banner(alt = event.community.display_name.clone() + " advertisement",
         image_url = ad_banner_url,
         link_url = event.community.ad_banner_link_url.as_deref()
         ) -}}

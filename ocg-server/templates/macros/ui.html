@@ -123,28 +123,42 @@
 {% endmacro social_icon_link -%}
 {# End social icon link -#}
 
-{% macro advertisement_banner(alt, image_url, link_url) -%}
-  <div class="mx-auto max-w-4xl rounded-lg border border-stone-200 bg-white p-4">
-    {% if let Some(link_url) = &link_url -%}
-      <a href="{{ link_url }}"
-         target="_blank"
-         rel="noopener noreferrer"
-         class="block overflow-hidden rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500">
-        <img class="w-full object-cover"
+{% macro floating_advertisement_banner(alt, image_url, link_url) -%}
+  <div class="fixed bottom-0.5 left-1/2 z-50 hidden w-full max-w-[95%] -translate-x-1/2 translate-y-[150%] transition-transform duration-500 ease-in-out md:block lg:max-w-4xl"
+       data-ad-banner="floating"
+       data-ad-banner-image-url="{{ image_url }}"
+       data-ad-banner-link-url="{% if let Some(link_url) = &link_url %}
+                                  {{ link_url }}
+                                {% endif %}">
+    <div class="rounded-lg border border-stone-300 bg-white p-4 shadow-[0_0_28px_rgb(0_0_0_/_0.22)]">
+      {% if let Some(link_url) = &link_url -%}
+        <a href="{{ link_url }}"
+           target="_blank"
+           rel="noopener noreferrer"
+           class="block overflow-hidden rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500">
+          <img class="block h-auto w-full object-contain"
+               height="auto"
+               width="auto"
+               src="{{ image_url }}"
+               alt="{{ alt }}" />
+        </a>
+      {% else -%}
+        <img class="block h-auto w-full rounded-md object-contain"
              height="auto"
              width="auto"
              src="{{ image_url }}"
              alt="{{ alt }}" />
-      </a>
-    {% else -%}
-      <img class="w-full rounded-md object-cover"
-           height="auto"
-           width="auto"
-           src="{{ image_url }}"
-           alt="{{ alt }}" />
-    {% endif -%}
+      {% endif -%}
+    </div>
+    <button type="button"
+            class="group absolute -top-4 -right-4 inline-flex size-8 items-center justify-center rounded-full border border-stone-200 bg-white p-2 text-stone-500 shadow-sm transition-colors hover:bg-stone-50 hover:text-stone-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+            data-ad-banner-close
+            aria-label="Close advertisement banner">
+      <span class="svg-icon size-3.5 bg-stone-500 transition-colors group-hover:bg-stone-900 icon-close"
+            aria-hidden="true"></span>
+    </button>
   </div>
-{% endmacro advertisement_banner -%}
+{% endmacro floating_advertisement_banner -%}
 
 {# Events list -#}
 {% macro events_list(title, link, events) -%}
