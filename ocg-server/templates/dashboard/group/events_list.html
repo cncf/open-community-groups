@@ -54,6 +54,7 @@
 
 {# Upcoming Events Section -#}
 <div id="upcoming-content"
+     data-events-list-page
      data-events-content="upcoming"
      class="{% if events_tab == EventsTab::Past %}
               hidden
@@ -327,6 +328,7 @@
 
 {# Past Events Section -#}
 <div id="past-content"
+     data-events-list-page
      data-events-content="past"
      class="{% if events_tab == EventsTab::Upcoming %}
               hidden
@@ -550,14 +552,6 @@
   {# End pagination -#}
 </div>
 {# End Past Events Section -#}
-
-<script type="module">
-  import {
-    initializeEventsListPage
-  } from '/static/js/dashboard/group/events-list-page.js';
-
-  initializeEventsListPage();
-</script>
 
 {# Event dropdown action with optional series scope. #}
 {% macro event_scoped_action(
