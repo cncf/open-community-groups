@@ -60,15 +60,8 @@
     </div>
   </div>
 </div>
-
 {# djlint:off #}
-<script type="module">
-  import {
-    Map
-  } from '/static/js/community/explore/map.js';
-
-  const map = new Map('groups', { groups: {{ groups|json|safe }}, bbox: {{ bbox|json|safe }} });
-</script>
+<script type="application/json" data-explore-map-data data-entity="groups">{ "groups": {{ groups|json|safe }}, "bbox": {{ bbox|json|safe }} }</script>
 {# djlint:on #}
 {# End map view -#}
 

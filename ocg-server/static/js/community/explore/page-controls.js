@@ -23,6 +23,12 @@ const SORT_DIRECTION_INPUT_ID = "sort_direction";
 const CALENDAR_BOX_ID = "calendar-box";
 const NO_RESULTS_DEFAULT_SELECTOR = ".no-results-default";
 const NO_RESULTS_FILTERED_SELECTOR = ".no-results-filtered";
+const CALENDAR_DATA_SELECTOR = "[data-explore-calendar-data]";
+const MAP_DATA_SELECTOR = "[data-explore-map-data]";
+const EXPLORE_WIDGET_READY_KEY = "exploreWidgetReady";
+const CURRENT_MONTH_BUTTON_ID = "current-month-btn";
+const PREV_MONTH_BUTTON_ID = "prev-month-btn";
+const NEXT_MONTH_BUTTON_ID = "next-month-btn";
 
 /**
  * Gets the active desktop explore form id.
@@ -32,6 +38,50 @@ const getExploreFormId = () => {
   const desktopForm = document.querySelector(DESKTOP_FILTER_FORM_SELECTOR);
   const fallbackForm = document.querySelector(FILTER_FORM_SELECTOR);
   return (desktopForm || fallbackForm)?.id;
+};
+
+/**
+ * Parses JSON data from an inert explore payload marker.
+ * @param {HTMLScriptElement} marker - Script marker containing JSON data
+ * @returns {object|null} Parsed payload when valid
+ */
+const readExplorePayload = (marker) => {
+  try {
+    return JSON.parse(marker.textContent || "{}");
+  } catch (error) {
+    console.error("Failed to parse explore payload", error);
+    return null;
+  }
+};
+
+/**
+ * Binds a calendar navigation button to the active calendar instance.
+ * @param {Document|Element} root - Root element containing the calendar controls
+ * @param {string} id - Button id
+ * @param {Function} callback - Calendar action called on click
+ */
+const bindCalendarButton = (root, id, callback) => {
+  const button = root.querySelector(`#${id}`);
+  if (!button || button.dataset[EXPLORE_WIDGET_READY_KEY] === "true") {
+    return;
+  }
+
+  button.dataset[EXPLORE_WIDGET_READY_KEY] = "true";
+  button.addEventListener("click", () => {
+    callback();
+    button.blur();
+  });
+};
+
+/**
+ * Binds calendar navigation controls for a calendar instance.
+ * @param {Document|Element} root - Root element containing the calendar controls
+ * @param {object} calendar - Calendar instance
+ */
+const bindCalendarControls = (root, calendar) => {
+  bindCalendarButton(root, CURRENT_MONTH_BUTTON_ID, () => calendar.currentMonth());
+  bindCalendarButton(root, PREV_MONTH_BUTTON_ID, () => calendar.previousMonth());
+  bindCalendarButton(root, NEXT_MONTH_BUTTON_ID, () => calendar.nextMonth());
 };
 
 /**
@@ -59,6 +109,34 @@ export const syncNoResultsPlaceholders = (root = document) => {
   filteredPlaceholders.forEach((placeholder) => {
     placeholder.classList.toggle("hidden", !filtered);
   });
+};
+
+/**
+ * Initializes explore calendar and map widgets from declarative payload markers.
+ * @param {Document|Element} root - Root element containing widget markers
+ */
+export const initializeExploreWidgets = async (root = document) => {
+  const calendarMarker = root.querySelector(CALENDAR_DATA_SELECTOR);
+  if (calendarMarker && calendarMarker.dataset[EXPLORE_WIDGET_READY_KEY] !== "true") {
+    const data = readExplorePayload(calendarMarker);
+    if (data) {
+      calendarMarker.dataset[EXPLORE_WIDGET_READY_KEY] = "true";
+      const module = await import("/static/js/community/explore/calendar.js");
+      const calendar = new module.Calendar(data);
+      bindCalendarControls(root, calendar);
+    }
+  }
+
+  const mapMarker = root.querySelector(MAP_DATA_SELECTOR);
+  if (mapMarker && mapMarker.dataset[EXPLORE_WIDGET_READY_KEY] !== "true") {
+    const data = readExplorePayload(mapMarker);
+    const entity = mapMarker.dataset.entity;
+    if (data && entity) {
+      mapMarker.dataset[EXPLORE_WIDGET_READY_KEY] = "true";
+      const module = await import("/static/js/community/explore/map.js");
+      new module.Map(entity, data);
+    }
+  }
 };
 
 /**
@@ -157,12 +235,7 @@ const handleExploreChange = (event) => {
  * Re-initializes dynamic widgets restored from HTMX history cache.
  */
 const handleExploreHistoryRestore = async () => {
-  if (!document.getElementById("calendar-box")) {
-    return;
-  }
-
-  const module = await import("/static/js/community/explore/calendar.js");
-  new module.Calendar();
+  await initializeExploreWidgets();
 };
 
 /**
@@ -172,6 +245,7 @@ const handleExploreHistoryRestore = async () => {
 const handleExploreAfterSwap = (event) => {
   if (event.target instanceof Element) {
     syncNoResultsPlaceholders(event.target);
+    initializeExploreWidgets(event.target);
   }
 };
 
@@ -191,6 +265,7 @@ export const initializeExploreControls = (root = document) => {
   root.addEventListener("htmx:afterSwap", handleExploreAfterSwap);
   root.addEventListener("htmx:historyRestore", handleExploreHistoryRestore);
   syncNoResultsPlaceholders(root);
+  initializeExploreWidgets(root);
 };
 
 initializeExploreControls();

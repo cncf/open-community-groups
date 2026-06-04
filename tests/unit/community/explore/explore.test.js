@@ -1,16 +1,25 @@
 import { expect } from "@open-wc/testing";
 
+import { Calendar } from "/static/js/community/explore/calendar.js";
 import {
   fetchData,
   updateResults,
   updateResultsFromSummary,
 } from "/static/js/community/explore/explore.js";
-import { syncNoResultsPlaceholders } from "/static/js/community/explore/page-controls.js";
+import { Map as ExploreMap } from "/static/js/community/explore/map.js";
+import {
+  initializeExploreWidgets,
+  syncNoResultsPlaceholders,
+} from "/static/js/community/explore/page-controls.js";
+import { waitForMicrotask } from "/tests/unit/test-utils/async.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
 import { mockHtmx, mockSwal } from "/tests/unit/test-utils/globals.js";
 import { mockFetch } from "/tests/unit/test-utils/network.js";
 
 describe("explore helpers", () => {
+  const originalFullCalendar = globalThis.FullCalendar;
+  const originalLeaflet = globalThis.L;
+  const originalWindowLeaflet = globalThis.window.L;
   let fetchMock;
   let htmx;
   let swal;
@@ -24,9 +33,26 @@ describe("explore helpers", () => {
 
   afterEach(() => {
     resetDom();
+    Calendar._instance = null;
+    ExploreMap._instance = null;
     fetchMock.restore();
     htmx.restore();
     swal.restore();
+    if (originalFullCalendar) {
+      globalThis.FullCalendar = originalFullCalendar;
+    } else {
+      delete globalThis.FullCalendar;
+    }
+    if (originalLeaflet) {
+      globalThis.L = originalLeaflet;
+    } else {
+      delete globalThis.L;
+    }
+    if (originalWindowLeaflet) {
+      globalThis.window.L = originalWindowLeaflet;
+    } else {
+      delete globalThis.window.L;
+    }
   });
 
   it("updates the results container text", () => {
@@ -124,6 +150,180 @@ describe("explore helpers", () => {
     expect(document.querySelector(".no-results-filtered")?.classList.contains("hidden")).to.equal(
       false,
     );
+  });
+
+  it("initializes calendar widgets from declarative payloads", async () => {
+    let calendarApi;
+
+    // Mock FullCalendar so the declarative initializer can create a calendar.
+    globalThis.FullCalendar = {
+      Calendar: class {
+        constructor(element) {
+          this.element = element;
+          this.currentData = { viewTitle: "April 2026" };
+          this.events = [];
+          this.todayCalls = 0;
+          this.nextCalls = 0;
+          this.previousCalls = 0;
+          this.viewDate = new Date("2026-04-01T00:00:00Z");
+          calendarApi = this;
+        }
+
+        // Render is a no-op because the test inspects the captured API directly.
+        render() {}
+        getDate() {
+          return this.viewDate;
+        }
+        removeAllEvents() {
+          this.events = [];
+        }
+        addEventSource(events) {
+          this.events = events.filter(Boolean);
+        }
+        today() {
+          this.todayCalls += 1;
+        }
+        next() {
+          this.nextCalls += 1;
+        }
+        prev() {
+          this.previousCalls += 1;
+        }
+      },
+    };
+    document.body.innerHTML = `
+      <div id="main-loading-calendar" class="hidden"></div>
+      <div id="loading-calendar" class="hidden"></div>
+      <div>
+        <div id="calendar-box"></div>
+        <div class="no-results-default hidden"></div>
+        <div class="no-results-filtered hidden"></div>
+      </div>
+      <div id="calendar-date"></div>
+      <form id="events-form" class="filters-form">
+        <input name="date_from" value="2026-04-01" />
+        <input name="date_to" value="2026-04-30" />
+      </form>
+      <input name="ts_query" value="" />
+      <button id="current-month-btn"></button>
+      <button id="prev-month-btn"></button>
+      <button id="next-month-btn"></button>
+      <script type="application/json" data-explore-calendar-data>
+        { "events": [{ "name": "Meetup", "slug": "meetup", "starts_at": 1712000000 }] }
+      </script>
+    `;
+
+    // Initialize the calendar from the JSON marker and use delegated controls.
+    await initializeExploreWidgets(document);
+    await waitForMicrotask();
+    document.getElementById("current-month-btn").click();
+    document.getElementById("prev-month-btn").click();
+    document.getElementById("next-month-btn").click();
+
+    // The payload initializes the calendar and the buttons call its public API.
+    expect(calendarApi.events).to.have.length(1);
+    expect(calendarApi.todayCalls).to.equal(1);
+    expect(calendarApi.previousCalls).to.equal(1);
+    expect(calendarApi.nextCalls).to.equal(1);
+  });
+
+  it("initializes map widgets from declarative payloads", async () => {
+    let loadHandler;
+    const markerAdds = [];
+    const addedLayers = [];
+    const leafletMock = {
+      Browser: { retina: false },
+      latLng(lat, lng) {
+        return { lat, lng };
+      },
+      latLngBounds(sw, ne) {
+        return { sw, ne };
+      },
+      map() {
+        return {
+          on(name, handler) {
+            if (name === "load") {
+              loadHandler = handler;
+            }
+          },
+          addLayer(layer) {
+            addedLayers.push(layer);
+          },
+          off() {},
+          remove() {},
+          invalidateSize() {},
+          setView() {},
+          getBounds() {
+            return {
+              _southWest: { lat: 1, lng: 2 },
+              _northEast: { lat: 3, lng: 4 },
+            };
+          },
+          flyToBounds() {},
+        };
+      },
+      control: {
+        zoom() {
+          return { addTo() {} };
+        },
+      },
+      tileLayer() {
+        return { addTo() {} };
+      },
+      markerClusterGroup() {
+        return {
+          addLayer(layer) {
+            markerAdds.push(layer);
+          },
+        };
+      },
+      divIcon(config) {
+        return config;
+      },
+      marker(latLng, config) {
+        return {
+          latLng,
+          config,
+          on() {},
+          bindTooltip() {},
+          openTooltip() {},
+          getTooltip() {
+            return null;
+          },
+        };
+      },
+    };
+    globalThis.L = leafletMock;
+    globalThis.window.L = leafletMock;
+    document.body.innerHTML = `
+      <div id="main-loading-map" class="hidden"></div>
+      <div id="loading-map" class="hidden"></div>
+      <div id="map-box"></div>
+      <script type="application/json" data-explore-map-data data-entity="groups">
+        {
+          "groups": [
+            {
+              "slug": "malaga-js",
+              "community_name": "spain",
+              "latitude": 36.7213,
+              "longitude": -4.4214
+            }
+          ],
+          "bbox": { "sw_lat": 1, "sw_lon": 2, "ne_lat": 3, "ne_lon": 4 }
+        }
+      </script>
+    `;
+
+    // Initialize the map from the JSON marker and trigger the first load.
+    await initializeExploreWidgets(document);
+    await waitForMicrotask();
+    await waitForMicrotask();
+    loadHandler();
+
+    // The map receives the declarative payload and adds valid markers.
+    expect(ExploreMap._instance.entity).to.equal("groups");
+    expect(markerAdds).to.have.length(1);
+    expect(addedLayers).to.have.length(1);
   });
 
   it("delegates search and clear actions to the active explore form", () => {

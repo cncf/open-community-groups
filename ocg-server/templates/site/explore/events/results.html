@@ -66,37 +66,7 @@
 
 </div>
 {# djlint:off #}
-<script type="module">
-  import {
-    Calendar
-  } from '/static/js/community/explore/calendar.js';
-
-  const calendar = new Calendar({ events: {{ events|json|safe }} });
-
-  const currentMonthBtn = document.getElementById('current-month-btn');
-  if (currentMonthBtn) {
-    currentMonthBtn.addEventListener('click', () => {
-      calendar.currentMonth()
-      currentMonthBtn.blur();
-    });
-  }
-
-  const prevMonthBtn = document.getElementById('prev-month-btn');
-  if (prevMonthBtn) {
-    prevMonthBtn.addEventListener('click', () => {
-      calendar.previousMonth();
-      prevMonthBtn.blur();
-    });
-  }
-
-  const nextMonthBtn = document.getElementById('next-month-btn');
-  if (nextMonthBtn) {
-    nextMonthBtn.addEventListener('click', () => {
-      calendar.nextMonth();
-      nextMonthBtn.blur();
-    });
-  }
-</script>
+<script type="application/json" data-explore-calendar-data>{ "events": {{ events|json|safe }} }</script>
 {# djlint:on #}
 {# End calendar view -#}
 
@@ -161,15 +131,8 @@
     </div>
   </div>
 </div>
-
 {# djlint:off #}
-<script type="module">
-  import {
-    Map
-  } from '/static/js/community/explore/map.js';
-
-  const map = new Map('events', { events: {{ events|json|safe }}, bbox: {{ bbox|json|safe }} });
-</script>
+<script type="application/json" data-explore-map-data data-entity="events">{ "events": {{ events|json|safe }}, "bbox": {{ bbox|json|safe }} }</script>
 {# djlint:on #}
 {# End map view -#}
 
