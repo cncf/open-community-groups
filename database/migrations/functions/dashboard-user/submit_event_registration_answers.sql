@@ -1,5 +1,4 @@
 -- Submits or updates registration answers for a user's event registration.
-drop function if exists submit_event_registration_answers(uuid, uuid, uuid, jsonb);
 create or replace function submit_event_registration_answers(
     p_actor_user_id uuid,
     p_community_id uuid,

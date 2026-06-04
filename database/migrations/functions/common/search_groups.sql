@@ -34,7 +34,7 @@ begin
         from jsonb_array_elements_text(p_filters->'group_category') e;
     end if;
     if p_filters ? 'latitude' and p_filters ? 'longitude' then
-        v_user_location := st_setsrid(st_makepoint((p_filters->>'longitude')::real, (p_filters->>'latitude')::real), 4326);
+        v_user_location := jsonb_geography_point(p_filters);
         if p_filters ? 'distance' then
             v_max_distance := (p_filters->>'distance')::real;
         end if;

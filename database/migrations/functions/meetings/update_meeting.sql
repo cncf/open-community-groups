@@ -1,5 +1,4 @@
 -- update_meeting updates a meeting and completes the event/session claim.
-drop function if exists update_meeting(uuid, text, text, text, uuid, uuid);
 create or replace function update_meeting(
     p_meeting_id uuid,
     p_provider_meeting_id text,

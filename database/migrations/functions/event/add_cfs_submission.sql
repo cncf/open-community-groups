@@ -61,24 +61,7 @@ begin
     end if;
 
     -- Validate labels payload
-    if coalesce(array_length(p_label_ids, 1), 0) > 10 then
-        raise exception 'too many submission labels';
-    end if;
-
-    if p_label_ids is not null then
-        perform 1
-        from unnest(p_label_ids) as input_label_id
-        where not exists (
-            select 1
-            from event_cfs_label ecl
-            where ecl.event_cfs_label_id = input_label_id
-            and ecl.event_id = p_event_id
-        );
-
-        if found then
-            raise exception 'invalid event CFS labels';
-        end if;
-    end if;
+    perform validate_cfs_submission_label_ids(p_event_id, p_label_ids);
 
     -- Create submission
     insert into cfs_submission (
@@ -93,12 +76,7 @@ begin
     returning cfs_submission_id into v_submission_id;
 
     -- Link labels to submission
-    if p_label_ids is not null then
-        insert into cfs_submission_label (cfs_submission_id, event_cfs_label_id)
-        select v_submission_id, input_label_id
-        from unnest(p_label_ids) as input_label_id
-        group by input_label_id;
-    end if;
+    perform sync_cfs_submission_labels(v_submission_id, p_event_id, p_label_ids);
 
     return v_submission_id;
 end;

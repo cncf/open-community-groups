@@ -86,18 +86,14 @@ begin
                 nullif(p_group->>'github_url', ''),
                 nullif(p_group->>'instagram_url', ''),
                 nullif(p_group->>'linkedin_url', ''),
-                case
-                    when (p_group->>'latitude') is not null and (p_group->>'longitude') is not null
-                    then ST_SetSRID(ST_MakePoint((p_group->>'longitude')::float, (p_group->>'latitude')::float), 4326)::geography
-                    else null
-                end,
+                jsonb_geography_point(p_group),
                 nullif(p_group->>'logo_url', ''),
                 nullif(p_group->>'og_image_url', ''),
-                case when p_group->'photos_urls' is not null then array(select jsonb_array_elements_text(p_group->'photos_urls')) else null end,
+                jsonb_text_array(p_group->'photos_urls'),
                 case when p_group->>'region_id' <> '' then (p_group->>'region_id')::uuid else null end,
                 nullif(p_group->>'slack_url', ''),
                 nullif(p_group->>'state', ''),
-                case when p_group->'tags' is not null then array(select jsonb_array_elements_text(p_group->'tags')) else null end,
+                jsonb_text_array(p_group->'tags'),
                 nullif(p_group->>'twitter_url', ''),
                 nullif(p_group->>'website_url', ''),
                 nullif(p_group->>'wechat_url', ''),

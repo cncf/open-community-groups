@@ -7,6 +7,7 @@ create or replace function update_cfs_submission(
 )
 returns boolean as $$
 declare
+    v_label_ids uuid[];
     v_notify boolean;
     v_previous_action_required_message text;
     v_previous_status_id text;
@@ -30,19 +31,13 @@ begin
         end if;
 
         if p_submission->'label_ids' is not null then
-            perform 1
-            from jsonb_array_elements_text(p_submission->'label_ids') as input_label_id
-            where not exists (
-                select 1
-                from event_cfs_label ecl
-                where ecl.event_cfs_label_id = input_label_id::uuid
-                and ecl.event_id = p_event_id
+            v_label_ids := array(
+                select input_label_id::uuid
+                from jsonb_array_elements_text(p_submission->'label_ids') as input_label_id
             );
-
-            if found then
-                raise exception 'invalid event CFS labels';
-            end if;
         end if;
+
+        perform validate_cfs_submission_label_ids(p_event_id, v_label_ids);
     end if;
 
     -- Validate rating payload (`0` clears; `1`-`5` sets rating)
@@ -89,15 +84,7 @@ begin
 
     -- Replace submission labels
     if p_submission ? 'label_ids' then
-        delete from cfs_submission_label
-        where cfs_submission_id = p_cfs_submission_id;
-
-        if p_submission->'label_ids' is not null then
-            insert into cfs_submission_label (cfs_submission_id, event_cfs_label_id)
-            select p_cfs_submission_id, input_label_id::uuid
-            from jsonb_array_elements_text(p_submission->'label_ids') as input_label_id
-            group by input_label_id::uuid;
-        end if;
+        perform sync_cfs_submission_labels(p_cfs_submission_id, p_event_id, v_label_ids);
     end if;
 
     -- Upsert or remove the reviewer rating

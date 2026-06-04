@@ -1,5 +1,4 @@
 -- add_meeting adds a new meeting and completes the event/session claim.
-drop function if exists add_meeting(text, text, text, text, text, uuid, uuid);
 create or replace function add_meeting(
     p_meeting_provider_id text,
     p_provider_meeting_id text,

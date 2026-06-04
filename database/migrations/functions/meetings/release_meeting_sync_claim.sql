@@ -1,5 +1,4 @@
 -- release_meeting_sync_claim releases a retryable meeting sync claim.
-drop function if exists release_meeting_sync_claim(uuid, uuid, uuid);
 create or replace function release_meeting_sync_claim(
     p_event_id uuid,
     p_meeting_id uuid,

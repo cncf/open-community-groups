@@ -4,11 +4,8 @@ create or replace function activate_pre_registered_user_email_password(
 )
 returns table("user" json, verification_code uuid) as $$
 declare
-    v_base_username text;
-    v_suffix int;
-    v_username text;
-    v_username_exists boolean;
     v_user_id uuid;
+    v_username text;
     v_verification_code uuid;
 begin
     -- Lock the placeholder user if this email was pre-registered
@@ -23,35 +20,8 @@ begin
         return;
     end if;
 
-    -- Generate a unique username using the user-provided username
-    v_base_username := p_user->>'username';
-    v_username := v_base_username;
-
-    select exists(
-        select 1
-        from "user"
-        where username = v_username
-        and user_id <> v_user_id
-    ) into v_username_exists;
-
-    if v_username_exists then
-        for v_suffix in 2..99 loop
-            v_username := v_base_username || v_suffix;
-
-            select exists(
-                select 1
-                from "user"
-                where username = v_username
-                and user_id <> v_user_id
-            ) into v_username_exists;
-
-            exit when not v_username_exists;
-        end loop;
-
-        if v_username_exists then
-            raise exception 'unable to generate unique username: all variants from % to %99 are taken', v_base_username, v_base_username;
-        end if;
-    end if;
+    -- Resolve the requested username while ignoring the placeholder row
+    v_username := resolve_unique_username(p_user->>'username', v_user_id);
 
     -- Promote the placeholder row while keeping email verification pending
     update "user"
@@ -70,6 +40,7 @@ begin
         raise exception 'pre-registered user not found';
     end if;
 
+    -- Create/refresh email verification code for the activated user
     insert into email_verification_code (user_id)
     values (v_user_id)
     on conflict (user_id) do update

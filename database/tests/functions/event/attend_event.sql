@@ -213,7 +213,7 @@ values (
 -- Existing organizer invitation decisions
 insert into event_attendee (event_id, user_id, manually_invited, status)
 values
-    (:'eventOK', :'user3ID', false, 'invitation-canceled'),
+    (:'eventOK', :'user3ID', true, 'invitation-canceled'),
     (:'eventFullWaitlist', :'user3ID', false, 'invitation-canceled'),
     (:'eventFullNoWaitlist', :'user5ID', true, 'invitation-pending'),
     (:'eventFullNoWaitlist', :'user6ID', true, 'invitation-rejected');

@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(13);
+select plan(14);
 
 -- ============================================================================
 -- VARIABLES
@@ -277,6 +277,27 @@ select is(
         get_group_summary(:'community1ID'::uuid, :'group4ID'::uuid)::jsonb
     ),
     'Should filter groups by distance'
+);
+
+-- Should sort groups by distance
+select is(
+    (select search_groups(
+        jsonb_build_object(
+            'community', jsonb_build_array('test-community'),
+            'latitude', 37.7749,
+            'longitude', -122.4194,
+            'sort_by', 'distance',
+            'limit', 10,
+            'offset', 0
+        )
+    )::jsonb->'groups'),
+    jsonb_build_array(
+        get_group_summary(:'community1ID'::uuid, :'group1ID'::uuid)::jsonb,
+        get_group_summary(:'community1ID'::uuid, :'group4ID'::uuid)::jsonb,
+        get_group_summary(:'community1ID'::uuid, :'group2ID'::uuid)::jsonb,
+        get_group_summary(:'community1ID'::uuid, :'group3ID'::uuid)::jsonb
+    ),
+    'Should sort groups by distance'
 );
 
 -- Should paginate results correctly

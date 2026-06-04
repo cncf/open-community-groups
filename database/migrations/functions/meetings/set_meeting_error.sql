@@ -1,5 +1,4 @@
 -- set_meeting_error records a sync error and completes the target claim.
-drop function if exists set_meeting_error(text, uuid, uuid, uuid);
 create or replace function set_meeting_error(
     p_error text,
     p_event_id uuid,
