@@ -8,7 +8,10 @@
       hx-target="#dashboard-content"
       hx-history="false"
       hx-indicator="#dashboard-spinner, #community-groups-update-spinner"
-      hx-disabled-elt="button[type=submit], #cancel-button">
+      hx-disabled-elt="button[type=submit], #cancel-button"
+      data-htmx-response
+      data-success-message="You have successfully updated the group."
+      data-error-message="Something went wrong updating the group. Please try again later.">
   <div class="space-y-12">
     {{ dashboard::page_title(title = "Group Details", docs_href = "/docs#/guides/community-dashboard?id=groups-portfolio", description = "Please update as many details about this group as possible.") -}}
 
@@ -465,25 +468,7 @@ button = clear_location_button) -}}
 </form>
 
 <script type="module">
-  import {
-    handleHtmxResponse
-  } from '/static/js/common/alerts.js';
   import '/static/js/common/location-search-field.js';
-
-  const groupsForm = document.getElementById('groups-form');
-
-  if (groupsForm) {
-    groupsForm.addEventListener('htmx:afterRequest', (e) => {
-      if (e.detail.elt.id === 'groups-form') {
-        const xhr = e.detail?.xhr;
-        handleHtmxResponse({
-          xhr,
-          successMessage: 'You have successfully updated the group.',
-          errorMessage: 'Something went wrong updating the group. Please try again later.'
-        });
-      }
-    });
-  }
 
   const clearLocationButton = document.getElementById('clear-location-fields');
   const locationSearchField = document.getElementById('group-location-search');

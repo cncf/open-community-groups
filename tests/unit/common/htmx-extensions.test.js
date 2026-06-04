@@ -5,10 +5,12 @@ import {
   handleCommitShaBeforeOnLoad,
   handleCommitShaBeforeSwap,
   handleCommitShaConfigRequest,
+  handleDeclarativeHtmxResponse,
   handleNotFoundBeforeSwap,
   registerHtmxNoEmptyValuesExtensions,
   registerHtmxResponseHandlers,
 } from "/static/js/common/htmx-extensions.js";
+import { mockSwal } from "/tests/unit/test-utils/globals.js";
 import {
   COMMIT_SHA_HEADER,
   consumePendingDeploymentRefreshAlert,
@@ -27,8 +29,14 @@ const setLoadedCommitSha = (commitSha) => {
 
 describe("htmx extensions", () => {
   const originalDateNow = Date.now;
+  let swal;
+
+  beforeEach(() => {
+    swal = mockSwal();
+  });
 
   afterEach(() => {
+    swal.restore();
     Date.now = originalDateNow;
     document.head.innerHTML = "";
     resetDeploymentReloadState();
@@ -45,10 +53,7 @@ describe("htmx extensions", () => {
     registerHtmxNoEmptyValuesExtensions(htmxMock);
 
     // The default and keep-zero variants are both available by name.
-    expect(Array.from(extensions.keys())).to.deep.equal([
-      "no-empty-vals",
-      "no-empty-vals-keep-zero",
-    ]);
+    expect(Array.from(extensions.keys())).to.deep.equal(["no-empty-vals", "no-empty-vals-keep-zero"]);
   });
 
   it('drops empty strings and "0" for the default no-empty-vals extension', () => {
@@ -63,9 +68,7 @@ describe("htmx extensions", () => {
     extension.encodeParameters(null, parameters, null);
 
     // Blank strings and zero values are removed while text is trimmed.
-    expect(formDataToEntries(parameters)).to.deep.equal([
-      ["name", "Spring meetup"],
-    ]);
+    expect(formDataToEntries(parameters)).to.deep.equal([["name", "Spring meetup"]]);
   });
 
   it('keeps "0" while still trimming and removing blank values for the keep-zero extension', () => {
@@ -144,8 +147,7 @@ describe("htmx extensions", () => {
         shouldSwap: false,
         xhr: {
           status: 404,
-          getResponseHeader: (name) =>
-            name === "X-OCG-Not-Found" ? "true" : null,
+          getResponseHeader: (name) => (name === "X-OCG-Not-Found" ? "true" : null),
         },
       },
     };
@@ -210,8 +212,7 @@ describe("htmx extensions", () => {
       cancelable: true,
       detail: {
         xhr: {
-          getResponseHeader: (name) =>
-            name === REFRESH_HEADER ? "true" : null,
+          getResponseHeader: (name) => (name === REFRESH_HEADER ? "true" : null),
         },
       },
     });
@@ -238,8 +239,7 @@ describe("htmx extensions", () => {
         cancelable: true,
         detail: {
           xhr: {
-            getResponseHeader: (name) =>
-              name === REFRESH_HEADER ? "true" : null,
+            getResponseHeader: (name) => (name === REFRESH_HEADER ? "true" : null),
           },
         },
       }),
@@ -253,8 +253,7 @@ describe("htmx extensions", () => {
       cancelable: true,
       detail: {
         xhr: {
-          getResponseHeader: (name) =>
-            name === REFRESH_HEADER ? "true" : null,
+          getResponseHeader: (name) => (name === REFRESH_HEADER ? "true" : null),
         },
       },
     });
@@ -278,8 +277,7 @@ describe("htmx extensions", () => {
       detail: {
         shouldSwap: true,
         xhr: {
-          getResponseHeader: (name) =>
-            name === COMMIT_SHA_HEADER ? "def456" : null,
+          getResponseHeader: (name) => (name === COMMIT_SHA_HEADER ? "def456" : null),
         },
       },
     };
@@ -303,8 +301,7 @@ describe("htmx extensions", () => {
       detail: {
         shouldSwap: true,
         xhr: {
-          getResponseHeader: (name) =>
-            name === COMMIT_SHA_HEADER ? "def456" : null,
+          getResponseHeader: (name) => (name === COMMIT_SHA_HEADER ? "def456" : null),
         },
       },
     });
@@ -333,8 +330,7 @@ describe("htmx extensions", () => {
       detail: {
         shouldSwap: true,
         xhr: {
-          getResponseHeader: (name) =>
-            name === COMMIT_SHA_HEADER ? "def456" : null,
+          getResponseHeader: (name) => (name === COMMIT_SHA_HEADER ? "def456" : null),
         },
       },
     });
@@ -344,8 +340,7 @@ describe("htmx extensions", () => {
         shouldSwap: false,
         xhr: {
           status: 404,
-          getResponseHeader: (name) =>
-            name === "X-OCG-Not-Found" ? "true" : null,
+          getResponseHeader: (name) => (name === "X-OCG-Not-Found" ? "true" : null),
         },
       },
     };
@@ -356,6 +351,50 @@ describe("htmx extensions", () => {
     // Pending deployment reload keeps marked not-found responses suppressed.
     expect(event.detail.shouldSwap).to.equal(false);
     expect(event.detail.isError).to.equal(true);
+  });
+
+  it("handles declarative HTMX response messages", () => {
+    // Build a form with declarative response messages.
+    const form = document.createElement("form");
+    form.dataset.htmxResponse = "";
+    form.dataset.successMessage = "Saved successfully.";
+    form.dataset.errorMessage = "Save failed.";
+
+    // Dispatch a successful HTMX response from the form.
+    handleDeclarativeHtmxResponse({
+      detail: {
+        elt: form,
+        xhr: {
+          status: 204,
+          responseText: "",
+        },
+      },
+    });
+
+    // The configured success message is shown.
+    expect(swal.calls).to.have.length(1);
+    expect(swal.calls[0]).to.include({
+      text: "Saved successfully.",
+      icon: "success",
+    });
+
+    // Dispatch a failed HTMX response from the form.
+    handleDeclarativeHtmxResponse({
+      detail: {
+        elt: form,
+        xhr: {
+          status: 500,
+          responseText: "",
+        },
+      },
+    });
+
+    // The configured error message is shown.
+    expect(swal.calls).to.have.length(2);
+    expect(swal.calls[1]).to.include({
+      text: "Save failed.",
+      icon: "error",
+    });
   });
 
   it("registers the shared htmx response handlers", () => {
@@ -376,6 +415,7 @@ describe("htmx extensions", () => {
       ["htmx:beforeOnLoad", handleCommitShaBeforeOnLoad],
       ["htmx:beforeSwap", handleCommitShaBeforeSwap],
       ["htmx:beforeSwap", handleNotFoundBeforeSwap],
+      ["htmx:afterRequest", handleDeclarativeHtmxResponse],
     ]);
   });
 
@@ -398,6 +438,27 @@ describe("htmx extensions", () => {
       ["htmx:beforeOnLoad", handleCommitShaBeforeOnLoad],
       ["htmx:beforeSwap", handleCommitShaBeforeSwap],
       ["htmx:beforeSwap", handleNotFoundBeforeSwap],
+      ["htmx:afterRequest", handleDeclarativeHtmxResponse],
+    ]);
+  });
+
+  it("registers shared htmx response handlers on roots without a body", () => {
+    // Capture listeners added to a document-like root without a parsed body.
+    const listeners = [];
+    const root = {
+      addEventListener: (name, handler) => listeners.push([name, handler]),
+    };
+
+    // Register the shared handlers on the root itself.
+    registerHtmxResponseHandlers(root);
+
+    // The root receives the shared response handlers.
+    expect(listeners).to.deep.equal([
+      ["htmx:configRequest", handleCommitShaConfigRequest],
+      ["htmx:beforeOnLoad", handleCommitShaBeforeOnLoad],
+      ["htmx:beforeSwap", handleCommitShaBeforeSwap],
+      ["htmx:beforeSwap", handleNotFoundBeforeSwap],
+      ["htmx:afterRequest", handleDeclarativeHtmxResponse],
     ]);
   });
 });

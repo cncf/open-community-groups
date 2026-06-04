@@ -8,7 +8,10 @@
       hx-exclude="input[type='checkbox'][name^='toggle_']"
       hx-target="#dashboard-content"
       hx-indicator="#dashboard-spinner, #community-settings-spinner"
-      hx-disabled-elt="button[type=submit], #cancel-button">
+      hx-disabled-elt="button[type=submit], #cancel-button"
+      data-htmx-response
+      data-success-message="You have successfully updated the community settings."
+      data-error-message="Something went wrong updating the settings. Please try again later.">
 
   <div class="space-y-12">
     {{ dashboard::page_title(title = "General Settings", docs_href = "/docs#/guides/community-dashboard?id=settings-community-identity", description = "Configure core community information and basic settings.") -}}
@@ -418,9 +421,6 @@
 
 <script type="module">
   import {
-    handleHtmxResponse
-  } from '/static/js/common/alerts.js';
-  import {
     bindBooleanToggle
   } from '/static/js/dashboard/group/page-form-state.js';
 
@@ -433,17 +433,6 @@
       toggle: groupTeamRestrictionToggle,
       hiddenInput: groupTeamRestrictionInput,
       syncOnInit: true
-    });
-
-    settingsForm.addEventListener('htmx:afterRequest', (e) => {
-      if (e.detail.elt.id === 'settings-form') {
-        const xhr = e.detail?.xhr;
-        handleHtmxResponse({
-          xhr,
-          successMessage: 'You have successfully updated the community settings.',
-          errorMessage: 'Something went wrong updating the settings. Please try again later.'
-        });
-      }
     });
   }
 </script>

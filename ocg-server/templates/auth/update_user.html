@@ -7,7 +7,9 @@
       hx-ext="no-empty-vals"
       hx-trigger="submit"
       hx-indicator="#dashboard-spinner, #user-details-spinner"
-      hx-disabled-elt="button[type=submit]">
+      hx-disabled-elt="button[type=submit]"
+      data-htmx-response
+      data-error-message="Something went wrong updating the user details. Please try again later.">
   <div class="space-y-12">
     {# Personal Details section -#}
     <div class="border-b border-stone-900/10 pb-12">
@@ -327,7 +329,10 @@
         hx-trigger="submit"
         hx-target="body"
         hx-indicator="#dashboard-spinner, #password-update-spinner"
-        hx-disabled-elt="button[type=submit]">
+        hx-disabled-elt="button[type=submit]"
+        data-htmx-response
+        data-success-message="You have successfully updated your password."
+        data-error-message="Something went wrong updating the password. Please try again later.">
     <div class="space-y-12">
       <div>
         {{ dashboard::form_title(title = "Update password", description = "After updating your password all your current sessions will be terminated and you will need to log back in.") -}}
@@ -393,40 +398,12 @@
 {% endif -%}
 
 <script type="module">
-  import {
-    handleHtmxResponse
-  } from '/static/js/common/alerts.js';
-
-  const userDetailsForm = document.getElementById('user-details-form');
-  const passwordForm = document.getElementById('password-form');
   const optionalNotificationsInput = document.getElementById('optional_notifications_enabled');
   const optionalNotificationsToggle = document.getElementById('toggle_optional_notifications_enabled');
 
   if (optionalNotificationsInput && optionalNotificationsToggle) {
     optionalNotificationsToggle.addEventListener('change', () => {
       optionalNotificationsInput.value = String(optionalNotificationsToggle.checked);
-    });
-  }
-
-  if (userDetailsForm) {
-    userDetailsForm.addEventListener('htmx:afterRequest', (e) => {
-      const xhr = e.detail?.xhr;
-      handleHtmxResponse({
-        xhr,
-        successMessage: '',
-        errorMessage: 'Something went wrong updating the user details. Please try again later.'
-      });
-    });
-  }
-
-  if (passwordForm) {
-    passwordForm.addEventListener('htmx:afterRequest', (e) => {
-      const xhr = e.detail?.xhr;
-      handleHtmxResponse({
-        xhr,
-        successMessage: 'You have successfully updated your password.',
-        errorMessage: 'Something went wrong updating the password. Please try again later.'
-      });
     });
   }
 </script>

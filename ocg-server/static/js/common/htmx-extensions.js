@@ -1,3 +1,4 @@
+import { handleHtmxResponse } from "/static/js/common/alerts.js";
 import {
   addLoadedCommitShaHeader,
   isDeploymentReloadRequested,
@@ -6,6 +7,7 @@ import {
 
 // Tracks event roots already wired so repeated initialization stays idempotent.
 const responseHandlerRoots = new WeakSet();
+const htmxResponseSelector = "[data-htmx-response]";
 
 /**
  * Filters HTMX parameters by trimming strings and dropping selected empty values.
@@ -149,6 +151,29 @@ export const handleCommitShaBeforeSwap = (event, root = document) => {
 };
 
 /**
+ * Shows configured success or error alerts for declarative HTMX response elements.
+ * @param {CustomEvent} event HTMX afterRequest event.
+ * @returns {void}
+ */
+export const handleDeclarativeHtmxResponse = (event) => {
+  const source = event.detail?.elt;
+  if (!(source instanceof Element)) {
+    return;
+  }
+
+  const responseElement = source.closest(htmxResponseSelector);
+  if (!responseElement) {
+    return;
+  }
+
+  handleHtmxResponse({
+    xhr: event.detail?.xhr,
+    successMessage: responseElement.dataset.successMessage || "",
+    errorMessage: responseElement.dataset.errorMessage || "Something went wrong. Please try again later.",
+  });
+};
+
+/**
  * Registers the shared HTMX parameter filtering extensions.
  * @param {{defineExtension?: Function}|undefined|null} htmxInstance Global HTMX instance.
  * @returns {void}
@@ -168,8 +193,8 @@ export const registerHtmxNoEmptyValuesExtensions = (htmxInstance) => {
  * @returns {void}
  */
 export const registerHtmxResponseHandlers = (root = document) => {
-  const eventRoot = root?.body;
-  if (!eventRoot || responseHandlerRoots.has(eventRoot)) {
+  const eventRoot = root?.body || root;
+  if (!eventRoot || typeof eventRoot.addEventListener !== "function" || responseHandlerRoots.has(eventRoot)) {
     return;
   }
 
@@ -177,5 +202,6 @@ export const registerHtmxResponseHandlers = (root = document) => {
   eventRoot.addEventListener("htmx:beforeOnLoad", handleCommitShaBeforeOnLoad);
   eventRoot.addEventListener("htmx:beforeSwap", handleCommitShaBeforeSwap);
   eventRoot.addEventListener("htmx:beforeSwap", handleNotFoundBeforeSwap);
+  eventRoot.addEventListener("htmx:afterRequest", handleDeclarativeHtmxResponse);
   responseHandlerRoots.add(eventRoot);
 };

@@ -8,7 +8,10 @@
       hx-target="#dashboard-content"
       hx-history="false"
       hx-indicator="#dashboard-spinner, #community-group-category-create-spinner"
-      hx-disabled-elt="button[type=submit], #cancel-button">
+      hx-disabled-elt="button[type=submit], #cancel-button"
+      data-htmx-response
+      data-success-message="You have successfully added the group category."
+      data-error-message="Something went wrong adding the group category. Please try again later.">
   <div class="space-y-12">
     <div class="border-b border-stone-900/10 pb-12">
       {{ dashboard::page_title(title = "Group Category Details", docs_href = "/docs#/guides/community-dashboard?id=group-categories-group-taxonomy", description = "Add a new group category for this community.") -}}
@@ -53,24 +56,4 @@
   </div>
 </form>
 
-<script type="module">
-  import {
-    handleHtmxResponse
-  } from '/static/js/common/alerts.js';
-
-  const groupCategoryForm = document.getElementById('group-category-form');
-
-  if (groupCategoryForm) {
-    groupCategoryForm.addEventListener('htmx:afterRequest', (e) => {
-      if (e.detail.elt.id === 'group-category-form') {
-        const xhr = e.detail?.xhr;
-        handleHtmxResponse({
-          xhr,
-          successMessage: 'You have successfully added the group category.',
-          errorMessage: 'Something went wrong adding the group category. Please try again later.'
-        });
-      }
-    });
-  }
-</script>
 {# End Add Group Category form -#}
