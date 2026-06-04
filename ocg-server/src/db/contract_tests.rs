@@ -117,6 +117,11 @@ async fn db_contracts_get_event_full_deserializes() -> Result<()> {
         event.hosts[0].github_url.as_deref(),
         Some("https://github.com/contract-organizer")
     );
+    assert_eq!(event.organizers.len(), 1);
+    assert_eq!(
+        event.organizers[0].github_url.as_deref(),
+        Some("https://github.com/contract-organizer")
+    );
 
     Ok(())
 }

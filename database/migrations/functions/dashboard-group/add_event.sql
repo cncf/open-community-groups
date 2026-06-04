@@ -219,6 +219,13 @@ begin
         end;
     end loop;
 
+    -- Snapshot current accepted group organizers for historical attribution
+    insert into event_organizer (event_id, user_id, "order")
+    select v_event_id, gt.user_id, gt."order"
+    from group_team gt
+    where gt.group_id = p_group_id
+    and gt.accepted = true;
+
     -- Insert ticketing data after creating the event row
     perform sync_event_discount_codes(v_event_id, v_discount_codes);
     perform sync_event_ticket_types(v_event_id, v_ticket_types);

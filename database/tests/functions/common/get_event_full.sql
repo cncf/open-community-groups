@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(11);
+select plan(14);
 
 -- ============================================================================
 -- VARIABLES
@@ -297,6 +297,7 @@ insert into event (
     published,
     starts_at,
     timezone,
+    legacy_id,
     registration_questions
 ) values (
     :'eventUnpublishedID',
@@ -309,6 +310,7 @@ insert into event (
     false,
     '2024-07-15 09:00:00+00',
     'America/New_York',
+    1234,
     '[{"id": "00000000-0000-0000-0000-000000000091", "kind": "free-text", "prompt": "Question", "required": true, "options": []}]'::jsonb
 );
 
@@ -423,6 +425,10 @@ values (
 -- Group Team
 insert into group_team (group_id, user_id, role, accepted, "order")
 values (:'groupID', :'user2ID', 'admin', true, 1);
+
+-- Event Organizers
+insert into event_organizer (event_id, user_id, "order")
+values (:'eventID', :'user2ID', 1);
 
 -- Session
 insert into session (
@@ -768,6 +774,13 @@ insert into event (
     '2024-06-20 09:00:00+00',
     'America/New_York'
 );
+
+-- Paid event organizers for order checks
+insert into event_organizer (event_id, user_id, "order")
+values
+    (:'eventPaidID', :'user1ID', 1),
+    (:'eventPaidID', :'user2ID', 2),
+    (:'eventPaidID', :'user3ID', null);
 
 -- Event discount code
 insert into event_discount_code (
@@ -1296,6 +1309,22 @@ select is(
     'Should include normalized ticketing fields in the full event payload'
 );
 
+-- Should order event organizers by snapshot order with nulls last
+select is(
+    (
+        select array_agg(organizer->>'username' order by ordinality)
+        from jsonb_array_elements((
+            get_event_full(
+                :'communityID'::uuid,
+                :'groupID'::uuid,
+                :'eventPaidID'::uuid
+            )::jsonb
+        )->'organizers') with ordinality as organizers(organizer, ordinality)
+    ),
+    array['sarah-host', 'mike-organizer', 'alex-speaker']::text[],
+    'Should order event organizers by snapshot order with nulls last'
+);
+
 -- Should use group logo when event has no logo
 select is(
     (get_event_full(
@@ -1316,6 +1345,47 @@ select is(
     )::jsonb)->>'logo_url',
     'https://example.com/logo.png',
     'Should use community logo when event and group have no logo'
+);
+
+-- Should return an empty organizers array when a legacy event has no snapshots
+select is(
+    (get_event_full(
+        :'communityID'::uuid,
+        :'groupID'::uuid,
+        :'eventUnpublishedID'::uuid
+    )::jsonb)->'organizers',
+    '[]'::jsonb,
+    'Should return an empty organizers array when a legacy event has no snapshots'
+);
+
+-- Should keep event organizer attribution after group team changes
+delete from group_team
+where group_id = :'groupID'::uuid
+and user_id = :'user2ID'::uuid;
+
+select is(
+    (get_event_full(
+        :'communityID'::uuid,
+        :'groupID'::uuid,
+        :'eventID'::uuid
+    )::jsonb)->'organizers',
+    jsonb_build_array(jsonb_build_object(
+        'bio', 'Event organizer and speaker',
+        'bluesky_url', 'https://bsky.app/profile/mikerod',
+        'company', 'AWS',
+        'facebook_url', 'https://facebook.com/mikerod',
+        'github_url', 'https://github.com/mikerod',
+        'linkedin_url', 'https://linkedin.com/in/mikerod',
+        'name', 'Mike Rodriguez',
+        'photo_url', 'https://example.com/mike.png',
+        'provider', jsonb_build_object('github', jsonb_build_object('username', 'mike-gh')),
+        'title', 'Solutions Architect',
+        'twitter_url', 'https://twitter.com/mikerod',
+        'user_id', :'user2ID'::uuid,
+        'username', 'mike-organizer',
+        'website_url', 'https://mikerodriguez.io'
+    )),
+    'Should keep event organizer attribution after group team changes'
 );
 
 -- Should return null for non-existent event

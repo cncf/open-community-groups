@@ -243,7 +243,7 @@ pub struct EventFull {
     pub logo_url: String,
     /// Event title.
     pub name: String,
-    /// Event organizers (from group team).
+    /// Event organizers snapshotted at creation time.
     pub organizers: Vec<User>,
     /// Whether the event is published.
     pub published: bool,

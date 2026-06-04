@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(150);
+select plan(153);
 
 -- ============================================================================
 -- TESTS
@@ -33,6 +33,7 @@ select has_pk('event_category');
 select has_pk('event_discount_code');
 select has_pk('event_host');
 select has_pk('event_kind');
+select has_pk('event_organizer');
 select has_pk('event_purchase');
 select has_pk('event_refund_request');
 select has_pk('event_ticket_price_window');
@@ -106,6 +107,8 @@ select col_is_fk('event_category', 'community_id', 'community');
 select col_is_fk('event_discount_code', 'event_id', 'event');
 select col_is_fk('event_host', 'event_id', 'event');
 select col_is_fk('event_host', 'user_id', 'user');
+select col_is_fk('event_organizer', 'event_id', 'event');
+select col_is_fk('event_organizer', 'user_id', 'user');
 select col_is_fk('event_purchase', 'event_discount_code_id', 'event_discount_code');
 select col_is_fk('event_purchase', 'event_id', 'event');
 select col_is_fk('event_purchase', 'payment_provider_id', 'payment_provider');

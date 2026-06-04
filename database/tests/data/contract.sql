@@ -525,6 +525,17 @@ insert into event_host (
 );
 
 -- ============================================================================
+-- EVENT ORGANIZERS
+-- ============================================================================
+
+insert into event_organizer (event_id, user_id, "order")
+select e.event_id, gt.user_id, gt."order"
+from event e
+join group_team gt on gt.group_id = e.group_id
+where e.legacy_id is null
+and gt.accepted = true;
+
+-- ============================================================================
 -- EVENT SPEAKERS
 -- ============================================================================
 
