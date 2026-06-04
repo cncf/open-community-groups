@@ -1,6 +1,10 @@
 import { expect } from "@open-wc/testing";
 
-import { resetPageViewTracker, trackPageView } from "/static/js/common/page-views.js";
+import {
+  initializePageViewTracking,
+  resetPageViewTracker,
+  trackPageView,
+} from "/static/js/common/page-views.js";
 import { waitForMicrotask } from "/tests/unit/test-utils/async.js";
 import { resetDom, trackAddedEventListeners } from "/tests/unit/test-utils/dom.js";
 import { mockFetch, mockSendBeacon, mockVisibilityState } from "/tests/unit/test-utils/network.js";
@@ -36,6 +40,22 @@ describe("page views", () => {
     // Sends a beacon for visible community page views.
     expect(sendBeaconMock.calls).to.have.length(1);
     expect(sendBeaconMock.calls[0].endpoint).to.equal("/communities/cncf/views");
+    expect(fetchMock.calls).to.have.length(0);
+  });
+
+  it("tracks declarative page view markers once", () => {
+    // Build the DOM fixture with a server-rendered page view marker.
+    document.body.innerHTML = `
+      <span data-page-view data-entity-id="event-123" data-entity-type="event" hidden></span>
+    `;
+
+    // Initialize tracking twice to verify the marker is consumed only once.
+    initializePageViewTracking();
+    initializePageViewTracking();
+
+    // The marker sends one page view to the expected endpoint.
+    expect(sendBeaconMock.calls).to.have.length(1);
+    expect(sendBeaconMock.calls[0].endpoint).to.equal("/events/event-123/views");
     expect(fetchMock.calls).to.have.length(0);
   });
 

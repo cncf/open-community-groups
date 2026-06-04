@@ -35,16 +35,7 @@
   <script type="module" src="/static/js/common/breadcrumb-nav.js"></script>
   <script type="module" src="/static/js/common/images-gallery.js"></script>
   <script type="module" src="/static/js/common/map-modal.js"></script>
-  <script type="module">
-    import {
-      trackPageView
-    } from "/static/js/common/page-views.js";
-
-    trackPageView({
-      entityId: "{{ group.group_id }}",
-      entityType: "group"
-    });
-  </script>
+  <script type="module" src="/static/js/common/page-views.js"></script>
   <script type="module" src="/static/js/common/people-list.js"></script>
   <script type="module" src="/static/js/common/user-chip.js"></script>
   <script type="module" src="/static/js/common/user-info-modal.js"></script>
@@ -52,6 +43,11 @@
 {% endblock scripts -%}
 
 {% block content -%}
+  <span data-page-view
+        data-entity-id="{{ group.group_id }}"
+        data-entity-type="group"
+        hidden></span>
+
   {% let has_social_links = group.website_url.is_some() || group.bluesky_url.is_some() || group.twitter_url.is_some() || group.facebook_url.is_some() || group.linkedin_url.is_some() || group.github_url.is_some() || group.instagram_url.is_some() || group.youtube_url.is_some() || group.slack_url.is_some() || group.wechat_url.is_some() || group.flickr_url.is_some() || group.extra_links.is_some() -%}
 
   {# Breadcrumb -#}

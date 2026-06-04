@@ -1,3 +1,6 @@
+const PAGE_VIEW_SELECTOR = "[data-page-view]";
+const PAGE_VIEW_READY_KEY = "pageViewReady";
+
 /**
  * Sends a single page view using sendBeacon when possible.
  * @param {string | null} endpoint - View tracking endpoint
@@ -86,6 +89,36 @@ export const trackPageView = ({ entityId, entityType }) => {
   bindLifecycleListeners();
   flushPendingPageViews();
 };
+
+/**
+ * Tracks declarative page view markers rendered by the server.
+ * @param {Document|Element} root - Root element containing page view markers
+ */
+export const initializePageViewTracking = (root = document) => {
+  root.querySelectorAll(PAGE_VIEW_SELECTOR).forEach((marker) => {
+    if (marker.dataset[PAGE_VIEW_READY_KEY] === "true") {
+      return;
+    }
+
+    marker.dataset[PAGE_VIEW_READY_KEY] = "true";
+    trackPageView({
+      entityId: marker.dataset.entityId || "",
+      entityType: marker.dataset.entityType || "",
+    });
+  });
+};
+
+const initializePageViewTrackingWhenReady = () => {
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", () => initializePageViewTracking(), {
+      once: true,
+    });
+  } else {
+    initializePageViewTracking();
+  }
+};
+
+initializePageViewTrackingWhenReady();
 
 /**
  * Resets page view tracker state for isolated browser tests.

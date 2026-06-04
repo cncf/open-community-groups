@@ -35,16 +35,7 @@
   <script type="module" src="/static/js/common/breadcrumb-nav.js"></script>
   <script type="module" src="/static/js/common/images-gallery.js"></script>
   <script type="module" src="/static/js/common/map-modal.js"></script>
-  <script type="module">
-    import {
-      trackPageView
-    } from "/static/js/common/page-views.js";
-
-    trackPageView({
-      entityId: "{{ event.event_id }}",
-      entityType: "event"
-    });
-  </script>
+  <script type="module" src="/static/js/common/page-views.js"></script>
   <script type="module" src="/static/js/common/people-list.js"></script>
   <script type="module" src="/static/js/common/user-chip.js"></script>
   <script type="module" src="/static/js/common/user-info-modal.js"></script>
@@ -54,6 +45,11 @@
 {% endblock scripts -%}
 
 {% block content -%}
+  <span data-page-view
+        data-entity-id="{{ event.event_id }}"
+        data-entity-type="event"
+        hidden></span>
+
   {% let has_social_links = event.meetup_url.is_some() || event.luma_url.is_some() -%}
 
   {# Breadcrumb -#}
