@@ -2,11 +2,18 @@ import { expect } from "@open-wc/testing";
 
 import "/static/js/dashboard/event/ticketing/discount-codes-editor.js";
 import "/static/js/dashboard/event/ticketing/ticket-types-editor.js";
-import { initializeEventAddPage } from "/static/js/dashboard/group/event-add-page.js";
-import { initializeEventUpdatePage } from "/static/js/dashboard/group/event-update-page.js";
+import {
+  initializeEventAddPage,
+  initializeEventAddPageRoots,
+} from "/static/js/dashboard/group/event-add-page.js";
+import {
+  initializeEventUpdatePage,
+  initializeEventUpdatePageRoots,
+} from "/static/js/dashboard/group/event-update-page.js";
 import { waitForMicrotask } from "/tests/unit/test-utils/async.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
 import { mockHtmx, mockSwal } from "/tests/unit/test-utils/globals.js";
+import { dispatchHtmxLoad } from "/tests/unit/test-utils/htmx.js";
 
 // Prepare the module under test.
 const sharedEventFormsMarkup = () => `
@@ -161,6 +168,31 @@ describe("event page modules", () => {
     expect(document.getElementById("venue_name").value).to.equal("");
     expect(document.getElementById("venue_address").value).to.equal("");
     expect(locationFieldsCleared).to.equal(true);
+  });
+
+  it("initializes add page fragments from the fragment root", () => {
+    // Mount the add page shell.
+    mountAddPageShell();
+    const pageRoot = document.querySelector('[data-event-page="add"]');
+
+    // Initialize the add page from the swapped fragment root.
+    initializeEventAddPageRoots(pageRoot);
+
+    // Verify the add page fragment is marked as initialized.
+    expect(pageRoot.dataset.eventPageReady).to.equal("true");
+  });
+
+  it("initializes swapped add page fragments on htmx load", () => {
+    // Mount the add page shell as swapped dashboard content.
+    mountAddPageShell();
+
+    // Dispatch the lifecycle event used by swapped dashboard content.
+    dispatchHtmxLoad(document.querySelector('[data-event-page="add"]'));
+
+    // Verify the add page fragment is initialized from the lifecycle event.
+    expect(
+      document.querySelector('[data-event-page="add"]').dataset.eventPageReady,
+    ).to.equal("true");
   });
 
   it("converts event and session dates during add page HTMX config requests", () => {
@@ -410,6 +442,31 @@ describe("event page modules", () => {
     expect(document.getElementById("venue_name").value).to.equal("");
     expect(document.getElementById("venue_address").value).to.equal("");
     expect(locationFieldsCleared).to.equal(true);
+  });
+
+  it("initializes update page fragments from the fragment root", () => {
+    // Mount the update page shell.
+    mountUpdatePageShell();
+    const pageRoot = document.querySelector('[data-event-page="update"]');
+
+    // Initialize the update page from the swapped fragment root.
+    initializeEventUpdatePageRoots(pageRoot);
+
+    // Verify the update page fragment is marked as initialized.
+    expect(pageRoot.dataset.eventPageReady).to.equal("true");
+  });
+
+  it("initializes swapped update page fragments on htmx load", () => {
+    // Mount the update page shell as swapped dashboard content.
+    mountUpdatePageShell();
+
+    // Dispatch the lifecycle event used by swapped dashboard content.
+    dispatchHtmxLoad(document.querySelector('[data-event-page="update"]'));
+
+    // Verify the update page fragment is initialized from the lifecycle event.
+    expect(
+      document.querySelector('[data-event-page="update"]').dataset.eventPageReady,
+    ).to.equal("true");
   });
 
   it("keeps canceled event review tabs interactive for event managers", () => {

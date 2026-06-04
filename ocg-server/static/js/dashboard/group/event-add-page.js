@@ -23,6 +23,8 @@ import {
 } from "/static/js/dashboard/group/meeting-validations.js";
 import { initializeSectionTabs } from "/static/js/dashboard/group/page-form-state.js";
 
+const EVENT_ADD_PAGE_SELECTOR = '[data-event-page="add"]';
+
 /**
  * Initializes the event add page behavior for the active form fragment.
  * @param {Document|Element} [root=document] Root page container
@@ -292,3 +294,37 @@ const updateRecurrenceAdditionalOccurrencesState = ({
     recurrenceAdditionalOccurrencesInput.value = "";
   }
 };
+
+/**
+ * Initializes event add page roots inside a swapped fragment.
+ * @param {Document|Element} [root=document] Root page container
+ * @returns {void}
+ */
+export const initializeEventAddPageRoots = (root = document) => {
+  if (root instanceof Element && root.matches(EVENT_ADD_PAGE_SELECTOR)) {
+    initializeEventAddPage(root);
+    return;
+  }
+
+  root.querySelectorAll?.(EVENT_ADD_PAGE_SELECTOR).forEach((pageRoot) => {
+    initializeEventAddPage(pageRoot);
+  });
+};
+
+const initializeEventAddPageWhenReady = () => {
+  // Initialize event add fragments on first load and after HTMX swaps.
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", () => initializeEventAddPageRoots(document), {
+      once: true,
+    });
+  } else {
+    initializeEventAddPageRoots(document);
+  }
+
+  document.addEventListener("htmx:load", (event) => {
+    const root = event.target instanceof Element ? event.target : document;
+    initializeEventAddPageRoots(root);
+  });
+};
+
+initializeEventAddPageWhenReady();

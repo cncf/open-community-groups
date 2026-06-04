@@ -489,16 +489,4 @@ button = clear_location_button) -}}
 </div>
 </form>
 
-<script type="module">
-  import '/static/js/common/location-search-field.js';
-
-  const clearLocationButton = document.getElementById('clear-location-fields');
-  const locationSearchField = document.getElementById('group-location-search');
-
-  if (clearLocationButton && locationSearchField && typeof locationSearchField.clearLocationFields === 'function') {
-    clearLocationButton.addEventListener('click', () => {
-      locationSearchField.clearLocationFields();
-    });
-  }
-</script>
 {# End Groups update form -#}

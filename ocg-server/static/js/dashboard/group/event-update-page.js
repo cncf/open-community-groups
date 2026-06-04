@@ -33,6 +33,7 @@ import { initializeSectionTabs } from "/static/js/dashboard/group/page-form-stat
 const readBooleanDataAttribute = (element, attributeName) => element?.dataset?.[attributeName] === "true";
 
 const canceledEventReviewSections = new Set(["submissions", "attendees", "invitation-requests", "waitlist"]);
+const EVENT_UPDATE_PAGE_SELECTOR = '[data-event-page="update"]';
 
 /**
  * Initializes the event update page behavior for the active form fragment.
@@ -299,3 +300,37 @@ export const initializeEventUpdatePage = (root = document) => {
     },
   });
 };
+
+/**
+ * Initializes event update page roots inside a swapped fragment.
+ * @param {Document|Element} [root=document] Root page container
+ * @returns {void}
+ */
+export const initializeEventUpdatePageRoots = (root = document) => {
+  if (root instanceof Element && root.matches(EVENT_UPDATE_PAGE_SELECTOR)) {
+    initializeEventUpdatePage(root);
+    return;
+  }
+
+  root.querySelectorAll?.(EVENT_UPDATE_PAGE_SELECTOR).forEach((pageRoot) => {
+    initializeEventUpdatePage(pageRoot);
+  });
+};
+
+const initializeEventUpdatePageWhenReady = () => {
+  // Initialize event update fragments on first load and after HTMX swaps.
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", () => initializeEventUpdatePageRoots(document), {
+      once: true,
+    });
+  } else {
+    initializeEventUpdatePageRoots(document);
+  }
+
+  document.addEventListener("htmx:load", (event) => {
+    const root = event.target instanceof Element ? event.target : document;
+    initializeEventUpdatePageRoots(root);
+  });
+};
+
+initializeEventUpdatePageWhenReady();
