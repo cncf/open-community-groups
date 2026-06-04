@@ -4,6 +4,7 @@ import { ocgFetch } from "/static/js/common/fetch.js";
 const RESULTS_ID = "results";
 const RESULTS_SUMMARY_SELECTOR = "[data-results-summary]";
 const RESULTS_ERROR_MESSAGE = "Something went wrong loading results. Please try again later.";
+const ENTITY_SECTION_ID = "entity-section";
 
 /**
  * Updates the results container in the DOM with new content.
@@ -33,10 +34,13 @@ export const updateResultsFromSummary = (root = document) => {
  */
 export const initializeExploreResults = (root = document) => {
   updateResultsFromSummary(root);
-  root.body?.addEventListener("htmx:afterSwap", (event) => {
+  root.addEventListener("htmx:afterSwap", (event) => {
     const target = event.target;
     if (target instanceof HTMLElement) {
       updateResultsFromSummary(target);
+      if (target.id === ENTITY_SECTION_ID) {
+        window.scrollTo({ top: 0, behavior: "instant" });
+      }
     }
   });
 };
