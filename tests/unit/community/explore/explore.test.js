@@ -5,16 +5,19 @@ import {
   updateResults,
   updateResultsFromSummary,
 } from "/static/js/community/explore/explore.js";
+import "/static/js/community/explore/page-controls.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
-import { mockSwal } from "/tests/unit/test-utils/globals.js";
+import { mockHtmx, mockSwal } from "/tests/unit/test-utils/globals.js";
 import { mockFetch } from "/tests/unit/test-utils/network.js";
 
 describe("explore helpers", () => {
   let fetchMock;
+  let htmx;
   let swal;
 
   beforeEach(() => {
     resetDom();
+    htmx = mockHtmx();
     swal = mockSwal();
     fetchMock = mockFetch();
   });
@@ -22,6 +25,7 @@ describe("explore helpers", () => {
   afterEach(() => {
     resetDom();
     fetchMock.restore();
+    htmx.restore();
     swal.restore();
   });
 
@@ -71,6 +75,96 @@ describe("explore helpers", () => {
 
     // The initialized explore module syncs the summary after swaps.
     expect(document.getElementById("results")?.textContent).to.equal("11-20 of 20");
+  });
+
+  it("delegates search and clear actions to the active explore form", () => {
+    // Build the DOM fixture with an explore form and search controls.
+    document.body.innerHTML = `
+      <div id="explore-filters">
+        <form id="events-form" class="filters-form"></form>
+      </div>
+      <input id="ts_query" value="cloud native" />
+      <button id="search-btn"></button>
+      <button id="clean-search"></button>
+    `;
+
+    // Click the delegated search and clear controls.
+    document.getElementById("search-btn").click();
+    document.getElementById("clean-search").click();
+
+    // The active form is triggered and the search input is cleared.
+    expect(document.getElementById("ts_query")?.value).to.equal("");
+    expect(htmx.triggerCalls).to.deep.equal([
+      [document.getElementById("events-form"), "change"],
+      [document.getElementById("events-form"), "change"],
+    ]);
+  });
+
+  it("delegates sort changes and syncs event sort inputs", () => {
+    // Build the DOM fixture with event sort controls.
+    document.body.innerHTML = `
+      <div id="explore-filters">
+        <form id="events-form" class="filters-form"></form>
+      </div>
+      <input id="sort_by" value="date" />
+      <input id="sort_direction" value="asc" />
+      <select id="sort_selector">
+        <option value="date-desc" selected>Date descending</option>
+      </select>
+    `;
+
+    // Change the delegated sort selector.
+    document.getElementById("sort_selector").dispatchEvent(new Event("change", { bubbles: true }));
+
+    // The hidden sort inputs are synced before the form is triggered.
+    expect(document.getElementById("sort_by")?.value).to.equal("date");
+    expect(document.getElementById("sort_direction")?.value).to.equal("desc");
+    expect(htmx.triggerCalls).to.deep.equal([[document.getElementById("events-form"), "change"]]);
+  });
+
+  it("delegates view mode changes and resets kind filters", () => {
+    // Build the DOM fixture with view mode and kind controls.
+    document.body.innerHTML = `
+      <div id="explore-filters">
+        <form id="events-form" class="filters-form">
+          <input type="checkbox" name="kind[]" checked />
+        </form>
+      </div>
+      <input type="hidden" name="date_from" value="2026-01-01" />
+      <input type="hidden" name="date_to" value="2026-01-31" />
+      <input type="radio" name="view_mode" value="map" checked />
+    `;
+
+    // Change the delegated view mode selector.
+    document
+      .querySelector('input[name="view_mode"]')
+      .dispatchEvent(new Event("change", { bubbles: true }));
+
+    // View mode changes clear kind and date filters before triggering the form.
+    expect(document.querySelector('input[name="kind[]"]')?.checked).to.equal(false);
+    expect(document.querySelector('input[name="date_from"]')?.value).to.equal("");
+    expect(document.querySelector('input[name="date_to"]')?.value).to.equal("");
+    expect(htmx.triggerCalls).to.deep.equal([[document.getElementById("events-form"), "change"]]);
+  });
+
+  it("delegates mobile filter drawer actions", () => {
+    // Build the DOM fixture with mobile drawer controls.
+    document.body.innerHTML = `
+      <button id="open-filters"></button>
+      <button id="close-filters"></button>
+      <div id="drawer-filters" class="-translate-x-full"></div>
+      <div id="drawer-backdrop" class="hidden"></div>
+    `;
+
+    // Open and close the mobile filters drawer through delegated clicks.
+    document.getElementById("open-filters").click();
+    expect(document.getElementById("drawer-filters")?.classList.contains("-translate-x-full")).to.equal(false);
+    expect(document.getElementById("drawer-backdrop")?.classList.contains("hidden")).to.equal(false);
+    document.getElementById("close-filters").click();
+
+    // The drawer and backdrop return to the hidden state.
+    expect(document.getElementById("drawer-filters")?.classList.contains("-translate-x-full")).to.equal(true);
+    expect(document.getElementById("drawer-backdrop")?.classList.contains("hidden")).to.equal(true);
   });
 
   it("fetches explore data as json", async () => {

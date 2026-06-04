@@ -6,6 +6,7 @@
   <script type="module"
           src="/static/js/community/explore/multi-select-filter.js"></script>
   <script type="module" src="/static/js/community/explore/explore.js"></script>
+  <script type="module" src="/static/js/community/explore/page-controls.js"></script>
 {% endblock scripts -%}
 
 {% block jumbotron -%}
@@ -42,24 +43,4 @@
 </div>
 {# End main content -#}
 
-<script type="module">
-  const entitySection = document.getElementById('entity-section');
-  if (entitySection) {
-    entitySection.addEventListener('htmx:afterSwap', () => {
-      window.scrollTo({
-        top: 0,
-        behavior: 'instant'
-      })
-    });
-  }
-
-  // Re-initialize dynamic widgets (e.g., calendar) on history restore
-  document.body.addEventListener('htmx:historyRestore', async () => {
-    const calendarBox = document.getElementById('calendar-box');
-    if (calendarBox) {
-      const module = await import('/static/js/community/explore/calendar.js');
-      new module.Calendar();
-    }
-  });
-</script>
 {% endblock content -%}

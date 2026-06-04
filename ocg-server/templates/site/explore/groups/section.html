@@ -38,28 +38,6 @@
 {# Search bar -#}
 {% block search_bar -%}
   {{ search::search_bar(placeholder = "Search groups", input_styles = "w-full md:w-3/4", container_styles = "justify-center", with_help = true, value = filters.ts_query) -}}
-  <script type="module">
-    import {
-      cleanInputField,
-      searchOnEnter,
-      triggerChangeOnForm
-    } from '/static/js/community/explore/filters.js';
-
-    const searchBtn = document.getElementById('search-btn');
-    if (searchBtn) {
-      searchBtn.addEventListener('click', () => triggerChangeOnForm("groups-form", true));
-    }
-
-    const searchInput = document.getElementById('ts_query');
-    if (searchInput) {
-      searchInput.addEventListener('keydown', (event) => searchOnEnter(event, "groups-form"));
-    }
-
-    const cleanSearch = document.getElementById('clean-search');
-    if (cleanSearch) {
-      cleanSearch.addEventListener('click', () => cleanInputField('ts_query', 'groups-form'));
-    }
-  </script>
 {% endblock search_bar -%}
 {# End search bar -#}
 
