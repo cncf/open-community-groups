@@ -465,64 +465,52 @@ select is(
         'events',
         jsonb_build_array(
             jsonb_build_object(
-                'can_cancel_attendance',
-                false,
-                'can_complete_registration_questions',
-                false,
+                'attendance_status',
+                'attendee',
                 'event',
                 get_event_summary(:'communityID'::uuid, :'groupID'::uuid, :'eventAID'::uuid)::jsonb,
-                'pending_payment',
+                'has_paid_purchase',
                 false,
                 'registration_answers',
                 null,
                 'registration_questions',
                 get_event_registration_questions(:'communityID'::uuid, :'eventAID'::uuid)::jsonb,
-                'registration_questions_pending',
-                false,
                 'resume_checkout_url',
                 null,
                 'roles',
-                jsonb_build_array('Attendee', 'Host', 'Speaker')
+                jsonb_build_array('attendee', 'host', 'speaker')
             ),
             jsonb_build_object(
-                'can_cancel_attendance',
-                true,
-                'can_complete_registration_questions',
-                false,
+                'attendance_status',
+                'attendee',
                 'event',
                 get_event_summary(:'communityID'::uuid, :'groupID'::uuid, :'eventBID'::uuid)::jsonb,
-                'pending_payment',
+                'has_paid_purchase',
                 false,
                 'registration_answers',
                 null,
                 'registration_questions',
                 get_event_registration_questions(:'communityID'::uuid, :'eventBID'::uuid)::jsonb,
-                'registration_questions_pending',
-                false,
                 'resume_checkout_url',
                 null,
                 'roles',
-                jsonb_build_array('Attendee')
+                jsonb_build_array('attendee')
             ),
             jsonb_build_object(
-                'can_cancel_attendance',
-                false,
-                'can_complete_registration_questions',
-                false,
+                'attendance_status',
+                null,
                 'event',
                 get_event_summary(:'communityID'::uuid, :'groupID'::uuid, :'eventCID'::uuid)::jsonb,
-                'pending_payment',
+                'has_paid_purchase',
                 false,
                 'registration_answers',
                 null,
                 'registration_questions',
                 get_event_registration_questions(:'communityID'::uuid, :'eventCID'::uuid)::jsonb,
-                'registration_questions_pending',
-                false,
                 'resume_checkout_url',
                 null,
                 'roles',
-                jsonb_build_array('Speaker')
+                jsonb_build_array('speaker')
             )
         ),
         'total',
@@ -539,7 +527,7 @@ select is(
         -> 0
         -> 'roles'
     ),
-    jsonb_build_array('Attendee', 'Host', 'Speaker'),
+    jsonb_build_array('attendee', 'host', 'speaker'),
     'Should deduplicate roles per event'
 );
 
@@ -550,24 +538,20 @@ select is(
         'events',
         jsonb_build_array(
             jsonb_build_object(
-                'can_cancel_attendance',
-                true,
-                'can_complete_registration_questions',
-                false,
+                'attendance_status',
+                'attendee',
                 'event',
                 get_event_summary(:'communityID'::uuid, :'groupID'::uuid, :'eventBID'::uuid)::jsonb,
-                'pending_payment',
+                'has_paid_purchase',
                 false,
                 'registration_answers',
                 null,
                 'registration_questions',
                 get_event_registration_questions(:'communityID'::uuid, :'eventBID'::uuid)::jsonb,
-                'registration_questions_pending',
-                false,
                 'resume_checkout_url',
                 null,
                 'roles',
-                jsonb_build_array('Attendee')
+                jsonb_build_array('attendee')
             )
         ),
         'total',
@@ -583,24 +567,20 @@ select is(
         'events',
         jsonb_build_array(
             jsonb_build_object(
-                'can_cancel_attendance',
-                false,
-                'can_complete_registration_questions',
-                false,
+                'attendance_status',
+                'attendee',
                 'event',
                 get_event_summary(:'communityID'::uuid, :'groupID'::uuid, :'eventPaidID'::uuid)::jsonb,
-                'pending_payment',
-                false,
+                'has_paid_purchase',
+                true,
                 'registration_answers',
                 null,
                 'registration_questions',
                 get_event_registration_questions(:'communityID'::uuid, :'eventPaidID'::uuid)::jsonb,
-                'registration_questions_pending',
-                false,
                 'resume_checkout_url',
                 null,
                 'roles',
-                jsonb_build_array('Attendee')
+                jsonb_build_array('attendee')
             )
         ),
         'total',
@@ -623,23 +603,33 @@ select is(
 
 -- Should include pending registration events in the user dashboard
 select is(
-    list_user_events(:'questionsInvitedUserID'::uuid, '{"limit": 10, "offset": 0}'::jsonb)::jsonb #>> '{events,0,registration_questions_pending}',
-    'true',
+    list_user_events(:'questionsInvitedUserID'::uuid, '{"limit": 10, "offset": 0}'::jsonb)::jsonb #>> '{events,0,attendance_status}',
+    'registration-questions-pending',
     'Should include pending registration events in the user dashboard'
 );
 
--- Should allow pending users to complete registration questions from the user dashboard
+-- Should return registration questions for pending users
 select is(
-    list_user_events(:'questionsInvitedUserID'::uuid, '{"limit": 10, "offset": 0}'::jsonb)::jsonb #>> '{events,0,can_complete_registration_questions}',
-    'true',
-    'Should allow pending users to complete registration questions from the user dashboard'
+    jsonb_array_length(
+        list_user_events(:'questionsInvitedUserID'::uuid, '{"limit": 10, "offset": 0}'::jsonb)::jsonb
+        -> 'events'
+        -> 0
+        -> 'registration_questions'
+    )::text,
+    '1',
+    'Should return registration questions for pending users'
 );
 
--- Should allow confirmed attendees to edit answers before the event starts
+-- Should return registration questions for confirmed attendees
 select is(
-    list_user_events(:'questionsAttendeeUserID'::uuid, '{"limit": 10, "offset": 0}'::jsonb)::jsonb #>> '{events,0,can_complete_registration_questions}',
-    'true',
-    'Should allow confirmed attendees to edit answers before the event starts'
+    jsonb_array_length(
+        list_user_events(:'questionsAttendeeUserID'::uuid, '{"limit": 10, "offset": 0}'::jsonb)::jsonb
+        -> 'events'
+        -> 0
+        -> 'registration_questions'
+    )::text,
+    '1',
+    'Should return registration questions for confirmed attendees'
 );
 
 -- Should report active pending checkout before pending registration questions
@@ -650,18 +640,14 @@ select is(
         -> 0
     ) - 'event' - 'registration_answers' - 'registration_questions',
     jsonb_build_object(
-        'can_cancel_attendance',
-        false,
-        'can_complete_registration_questions',
-        false,
-        'pending_payment',
-        true,
-        'registration_questions_pending',
+        'attendance_status',
+        'pending-payment',
+        'has_paid_purchase',
         false,
         'resume_checkout_url',
         'https://example.test/checkout/resume',
         'roles',
-        jsonb_build_array('Payment pending')
+        jsonb_build_array('attendee')
     ),
     'Should report active pending checkout before pending registration questions'
 );
@@ -674,18 +660,14 @@ select is(
         -> 0
     ) - 'event' - 'registration_answers' - 'registration_questions',
     jsonb_build_object(
-        'can_cancel_attendance',
+        'attendance_status',
+        'registration-questions-pending',
+        'has_paid_purchase',
         false,
-        'can_complete_registration_questions',
-        true,
-        'pending_payment',
-        false,
-        'registration_questions_pending',
-        true,
         'resume_checkout_url',
         null,
         'roles',
-        jsonb_build_array('Registration pending')
+        jsonb_build_array('attendee')
     ),
     'Should ignore expired pending checkout before pending registration questions'
 );

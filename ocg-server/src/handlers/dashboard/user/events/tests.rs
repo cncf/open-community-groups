@@ -15,7 +15,7 @@ use crate::{
     db::mock::MockDB,
     handlers::tests::*,
     services::notifications::{MockNotificationsManager, NotificationKind},
-    templates::dashboard::DASHBOARD_PAGINATION_LIMIT,
+    templates::dashboard::{DASHBOARD_PAGINATION_LIMIT, user::events::UserEventRole},
     templates::notifications::{EventAttendanceCanceled, EventWaitlistPromoted, EventWelcome},
     types::event::{EventAttendanceInfo, EventAttendanceStatus, EventLeaveOutcome},
 };
@@ -301,14 +301,13 @@ async fn test_list_page_success() {
     let group_id = Uuid::new_v4();
     let output = crate::templates::dashboard::user::events::UserEventsOutput {
         events: vec![crate::templates::dashboard::user::events::UserEvent {
-            can_cancel_attendance: false,
-            can_complete_registration_questions: false,
             event: sample_event_summary(event_id, group_id),
-            registration_answers: None,
+            has_paid_purchase: false,
             registration_questions: vec![],
-            registration_questions_pending: false,
+            roles: vec![UserEventRole::Attendee, UserEventRole::Host],
+            attendance_status: Some(EventAttendanceStatus::Attendee),
+            registration_answers: None,
             resume_checkout_url: None,
-            roles: vec!["Attendee".to_string(), "Host".to_string()],
         }],
         total: 1,
     };
