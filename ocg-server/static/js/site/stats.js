@@ -15,6 +15,9 @@ import {
   renderChart,
 } from "/static/js/common/stats.js";
 
+const SITE_STATS_DATA_SELECTOR = "[data-site-stats]";
+const SITE_STATS_READY_KEY = "siteStatsReady";
+
 /**
  * Apply stats-page specific legend styling without affecting dashboard charts.
  * @param {Object} option - ECharts option object.
@@ -130,3 +133,53 @@ export const initSiteStatsCharts = async (stats) => {
 
   registerChartResizeHandler(charts);
 };
+
+/**
+ * Initialize site stats charts from the page JSON marker.
+ * @param {Document|Element} root - Root element to search from.
+ * @returns {Promise<void>} Promise resolved when initialization finishes.
+ */
+export const initializeSiteStatsFromPage = async (root = document) => {
+  const marker = root.querySelector(SITE_STATS_DATA_SELECTOR);
+  if (!marker || marker.dataset[SITE_STATS_READY_KEY] === "true") {
+    return;
+  }
+
+  const stats = readSiteStatsPayload(marker);
+  if (!stats) {
+    return;
+  }
+
+  marker.dataset[SITE_STATS_READY_KEY] = "true";
+
+  try {
+    await initSiteStatsCharts(stats);
+  } catch (error) {
+    console.error("Failed to initialize site stats charts:", error);
+  }
+};
+
+/**
+ * Read the site stats payload from an inert JSON marker.
+ * @param {HTMLElement} marker - JSON marker element.
+ * @returns {Object|null} Parsed stats payload.
+ */
+const readSiteStatsPayload = (marker) => {
+  try {
+    return JSON.parse(marker.textContent || "{}");
+  } catch (error) {
+    console.error("Failed to parse site stats payload:", error);
+    return null;
+  }
+};
+
+const initializeSiteStatsWhenReady = () => {
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", () => initializeSiteStatsFromPage(), { once: true });
+    return;
+  }
+
+  initializeSiteStatsFromPage();
+};
+
+initializeSiteStatsWhenReady();
