@@ -23,9 +23,16 @@ describe("dashboard community analytics", () => {
         };
       },
     };
-    document.documentElement.style.setProperty("--color-primary-500", "#0f766e");
-    document.documentElement.style.setProperty("--color-primary-700", "#115e59");
+    document.documentElement.style.setProperty(
+      "--color-primary-500",
+      "#0f766e",
+    );
+    document.documentElement.style.setProperty(
+      "--color-primary-700",
+      "#115e59",
+    );
 
+    // Build the DOM fixture.
     document.body.innerHTML = `
       <button data-analytics-tab="groups"></button>
       <button data-analytics-tab="events"></button>
@@ -62,6 +69,7 @@ describe("dashboard community analytics", () => {
   });
 
   it("initializes the default groups analytics tab", async () => {
+    // Verify initializes the default groups analytics tab.
     await initAnalyticsCharts({
       groups: {
         running_total: [
@@ -88,15 +96,22 @@ describe("dashboard community analytics", () => {
       },
     });
 
+    // Verify initializes the default groups analytics tab.
     expect(setOptionCalls).to.have.length(8);
-    expect(setOptionCalls.map((call) => call.id)).to.include("groups-region-chart");
+    expect(setOptionCalls.map((call) => call.id)).to.include(
+      "groups-region-chart",
+    );
     expect(
-      setOptionCalls.find((call) => call.id === "groups-running-chart").option.baseOption.title.subtext,
+      setOptionCalls.find((call) => call.id === "groups-running-chart").option
+        .baseOption.title.subtext,
     ).to.equal("Cumulative active groups over time");
-    expect(document.querySelector('[data-analytics-tab="groups"]').dataset.active).to.equal("true");
+    expect(
+      document.querySelector('[data-analytics-tab="groups"]').dataset.active,
+    ).to.equal("true");
   });
 
   it("uses clearer event, attendee, and total page-view chart titles", async () => {
+    // Verify uses clearer event, attendee, and total page-view.
     await initAnalyticsCharts({
       groups: {},
       events: {
@@ -121,37 +136,49 @@ describe("dashboard community analytics", () => {
       },
     });
 
+    // Verify uses clearer event, attendee, and total page-view.
     setOptionCalls = [];
     document.querySelector('[data-analytics-tab="events"]').click();
     await new Promise((resolve) => setTimeout(resolve, 0));
 
-    expect(setOptionCalls.find((call) => call.id === "events-monthly-chart").option.title.text).to.equal(
-      "Events per Month",
-    );
-    expect(setOptionCalls.find((call) => call.id === "events-monthly-chart").option.title.subtext).to.equal(
-      "Published events by scheduled month",
-    );
+    // Verify uses clearer event, attendee, and total page-view chart titles.
+    expect(
+      setOptionCalls.find((call) => call.id === "events-monthly-chart").option
+        .title.text,
+    ).to.equal("Events per Month");
+    expect(
+      setOptionCalls.find((call) => call.id === "events-monthly-chart").option
+        .title.subtext,
+    ).to.equal("Published events by scheduled month");
 
+    // Verify uses clearer event, attendee, and total page-view.
     setOptionCalls = [];
     document.querySelector('[data-analytics-tab="attendees"]').click();
     await new Promise((resolve) => setTimeout(resolve, 0));
 
-    expect(setOptionCalls.find((call) => call.id === "attendees-monthly-chart").option.title.text).to.equal(
-      "Attendees per Month",
-    );
+    // Verify uses clearer event, attendee, and total page-view chart titles.
     expect(
-      setOptionCalls.find((call) => call.id === "attendees-monthly-chart").option.title.subtext,
+      setOptionCalls.find((call) => call.id === "attendees-monthly-chart")
+        .option.title.text,
+    ).to.equal("Attendees per Month");
+    expect(
+      setOptionCalls.find((call) => call.id === "attendees-monthly-chart")
+        .option.title.subtext,
     ).to.equal("Event RSVPs created each month");
 
+    // Verify uses clearer event, attendee, and total page-view.
     setOptionCalls = [];
     document.querySelector('[data-analytics-tab="page-views"]').click();
     await new Promise((resolve) => setTimeout(resolve, 0));
 
-    expect(setOptionCalls.find((call) => call.id === "total-views-monthly-chart").option.title.text).to.equal(
-      "Monthly total page views",
-    );
+    // Verify uses clearer event, attendee, and total page-view chart titles.
     expect(
-      setOptionCalls.find((call) => call.id === "total-views-monthly-chart").option.title.subtext,
+      setOptionCalls.find((call) => call.id === "total-views-monthly-chart")
+        .option.title.text,
+    ).to.equal("Monthly total page views");
+    expect(
+      setOptionCalls.find((call) => call.id === "total-views-monthly-chart")
+        .option.title.subtext,
     ).to.equal("All tracked views grouped by month");
   });
 });

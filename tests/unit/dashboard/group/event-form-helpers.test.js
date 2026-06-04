@@ -33,12 +33,14 @@ describe("event form helpers", () => {
   });
 
   it("adds the copy suffix only for non-empty names", () => {
+    // Verify adds the copy suffix only for non-empty names.
     expect(appendCopySuffix(" Demo event ")).to.equal("Demo event (copy)");
     expect(appendCopySuffix("   ")).to.equal("");
     expect(appendCopySuffix(null)).to.equal("");
   });
 
   it("sets category by id and falls back to matching the option label", () => {
+    // Render the DOM fixture for sets category by id and falls back to matching.
     document.body.innerHTML = `
       <select id="category_id">
         <option value="">Select a category</option>
@@ -47,40 +49,51 @@ describe("event form helpers", () => {
       </select>
     `;
 
+    // Keep a reference to the category id element.
     const select = document.getElementById("category_id");
     const changes = [];
     select.addEventListener("change", () => changes.push(select.value));
 
+    // Apply the category id value.
     setCategoryValue({ category_id: 2 });
     expect(select.value).to.equal("2");
 
+    // Apply the fallback category value.
     setCategoryValue({ category_name: " workshop " });
     expect(select.value).to.equal("1");
     expect(changes).to.deep.equal(["2", "1"]);
   });
 
   it("updates gallery images and tags with sanitized values", () => {
+    // Render the DOM fixture for updating gallery images and tags with sanitized.
     document.body.innerHTML = `
       <gallery-field field-name="photos_urls"></gallery-field>
       <multiple-inputs field-name="tags"></multiple-inputs>
     `;
 
-    const gallery = document.querySelector('gallery-field[field-name="photos_urls"]');
+    // Read the gallery and tag fields after applying sanitized values.
+    const gallery = document.querySelector(
+      'gallery-field[field-name="photos_urls"]',
+    );
     const tags = document.querySelector('multiple-inputs[field-name="tags"]');
 
+    // Prepare gallery images for updating gallery images and tags with sanitized.
     let galleryImages = [];
     gallery._setImages = (images) => {
       galleryImages = images;
     };
 
+    // Prepare tags updated for updating gallery images and tags with sanitized.
     let tagsUpdated = 0;
     tags.requestUpdate = () => {
       tagsUpdated += 1;
     };
 
+    // Verify updates gallery images and tags with sanitized.
     setGalleryImages([" one.png ", "", "two.png", null]);
     setTags([" frontend ", "", "community "]);
 
+    // Verify updates gallery images and tags with sanitized values.
     expect(galleryImages).to.deep.equal(["one.png", "two.png"]);
     expect(tags.items).to.deep.equal([
       { id: 0, value: "frontend" },
@@ -91,6 +104,7 @@ describe("event form helpers", () => {
   });
 
   it("syncs registration and reminder toggles with their hidden fields", () => {
+    // Render the DOM fixture for syncing registration and reminder toggles.
     document.body.innerHTML = `
       <input id="toggle_registration_required" type="checkbox" />
       <input id="registration_required" type="hidden" value="false" />
@@ -98,24 +112,39 @@ describe("event form helpers", () => {
       <input id="event_reminder_enabled" type="hidden" value="false" />
     `;
 
+    // Registration and reminder toggles are wired to hidden fields.
     setRegistrationRequired(true);
     setEventReminderEnabled(false);
 
-    expect(document.getElementById("toggle_registration_required").checked).to.equal(true);
-    expect(document.getElementById("registration_required").value).to.equal("true");
-    expect(document.getElementById("toggle_event_reminder_enabled").checked).to.equal(false);
-    expect(document.getElementById("event_reminder_enabled").value).to.equal("false");
+    // Registration and reminder toggles update their hidden fields.
+    expect(
+      document.getElementById("toggle_registration_required").checked,
+    ).to.equal(true);
+    expect(document.getElementById("registration_required").value).to.equal(
+      "true",
+    );
+    expect(
+      document.getElementById("toggle_event_reminder_enabled").checked,
+    ).to.equal(false);
+    expect(document.getElementById("event_reminder_enabled").value).to.equal(
+      "false",
+    );
   });
 
   it("sets normalized hosts and sponsors on their components", () => {
+    // Render the DOM fixture for sets normalized hosts and sponsors on their.
     document.body.innerHTML = `
       <user-search-selector field-name="hosts"></user-search-selector>
       <sponsors-section></sponsors-section>
     `;
 
-    const hosts = document.querySelector('user-search-selector[field-name="hosts"]');
+    // Read the host and sponsor components after normalization.
+    const hosts = document.querySelector(
+      'user-search-selector[field-name="hosts"]',
+    );
     const sponsors = document.querySelector("sponsors-section");
 
+    // Prepare hosts updated for sets normalized hosts and sponsors on their.
     let hostsUpdated = 0;
     let sponsorsUpdated = 0;
     hosts.requestUpdate = () => {
@@ -125,6 +154,7 @@ describe("event form helpers", () => {
       sponsorsUpdated += 1;
     };
 
+    // Hosts and sponsors are normalized before component assignment.
     setHosts([
       { user: { user_id: "1", username: "alice" } },
       { user_id: "2", username: "bob" },
@@ -132,6 +162,7 @@ describe("event form helpers", () => {
     ]);
     setSponsors([{ name: "ACME", level: 2 }, { name: "Community" }]);
 
+    // Normalized hosts and sponsors are applied to their components.
     expect(hosts.selectedUsers).to.deep.equal([
       { user_id: "1", username: "alice" },
       { user_id: "2", username: "bob" },
@@ -145,8 +176,10 @@ describe("event form helpers", () => {
   });
 
   it("builds and applies normalized sessions for the sessions section", () => {
+    // Render the DOM fixture for building and applies normalized sessions.
     document.body.innerHTML = `<sessions-section></sessions-section>`;
 
+    // Read the sessions section after normalized sessions are applied.
     const sessionsSection = document.querySelector("sessions-section");
     let initializeCalls = 0;
     let updateCalls = 0;
@@ -157,6 +190,7 @@ describe("event form helpers", () => {
       updateCalls += 1;
     };
 
+    // Prepare sessions data for building and applies normalized sessions.
     const sessionsData = {
       dayOne: [
         {
@@ -176,6 +210,7 @@ describe("event form helpers", () => {
       ignored: "not-an-array",
     };
 
+    // Verify builds and applies normalized sessions for the sessions section.
     expect(buildSessionEntries(sessionsData)).to.deep.equal([
       {
         name: "Opening keynote",
@@ -196,14 +231,19 @@ describe("event form helpers", () => {
       },
     ]);
 
+    // Verify builds and applies normalized sessions.
     setSessions(sessionsData);
 
-    expect(sessionsSection.sessions).to.deep.equal(buildSessionEntries(sessionsData));
+    // Verify builds and applies normalized sessions for the sessions section.
+    expect(sessionsSection.sessions).to.deep.equal(
+      buildSessionEntries(sessionsData),
+    );
     expect(initializeCalls).to.equal(1);
     expect(updateCalls).to.equal(1);
   });
 
   it("updates markdown content and timezone selectors", () => {
+    // Render the DOM fixture for updating markdown content and timezone selectors.
     document.body.innerHTML = `
       <markdown-editor id="description">
         <textarea></textarea>
@@ -212,15 +252,20 @@ describe("event form helpers", () => {
       <timezone-selector name="timezone"></timezone-selector>
     `;
 
+    // Read the rendered DOM state for updating markdown content and timezone selectors.
     const editor = document.querySelector("markdown-editor#description");
     const textarea = editor.querySelector("textarea");
     const codeMirror = editor.querySelector(".CodeMirror");
-    const timezoneSelector = document.querySelector("timezone-selector[name='timezone']");
+    const timezoneSelector = document.querySelector(
+      "timezone-selector[name='timezone']",
+    );
 
+    // Prepare input values for updating markdown content and timezone selectors.
     const inputValues = [];
     let savedValue = "";
     let timezoneChanges = 0;
 
+    // Verify updates markdown content and timezone selectors.
     textarea.addEventListener("input", () => inputValues.push(textarea.value));
     codeMirror.CodeMirror = {
       setValue(value) {
@@ -234,9 +279,11 @@ describe("event form helpers", () => {
       timezoneChanges += 1;
     });
 
+    // Call update markdown content.
     updateMarkdownContent("## Agenda");
     updateTimezone("Europe/Madrid");
 
+    // Assert the saved value was updated.
     expect(textarea.value).to.equal("## Agenda");
     expect(inputValues).to.deep.equal(["## Agenda"]);
     expect(savedValue).to.equal("## Agenda:saved");
@@ -245,6 +292,7 @@ describe("event form helpers", () => {
   });
 
   it("warns before removing sessions when saving without event dates", async () => {
+    // Render the DOM fixture for warning before removing sessions when saving.
     document.body.innerHTML = `
       <input id="starts_at" value="" />
       <input id="ends_at" value="" />
@@ -252,20 +300,25 @@ describe("event form helpers", () => {
       <sessions-section></sessions-section>
     `;
 
+    // Keep a reference to the save button element.
     const saveButton = document.getElementById("save-button");
     const sessionsSection = document.querySelector("sessions-section");
     let allowedClicks = 0;
 
+    // Saving warns before removing sessions.
     sessionsSection.sessions = [{ name: "Opening keynote" }];
     saveButton.addEventListener("click", () => {
       allowedClicks += 1;
     });
 
+    // Initialize the sessions removal warning.
     initializeSessionsRemovalWarning({ saveButton });
 
+    // Confirming the warning allows the save to continue.
     saveButton.click();
     await waitForMicrotask();
 
+    // Saving without event dates still warns before removing sessions.
     expect(swal.calls).to.have.length(1);
     expect(swal.calls[0].text).to.include("will remove all sessions");
     expect(allowedClicks).to.equal(1);

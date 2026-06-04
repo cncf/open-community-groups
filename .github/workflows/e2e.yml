@@ -44,13 +44,13 @@ jobs:
       matrix:
         include:
           - suite: Smoke
-            command: npx playwright test --config playwright.config.ts --project=chromium-smoke --project=firefox-smoke --project=webkit-smoke
+            command: npx playwright test --config playwright.config.js --project=chromium-smoke --project=firefox-smoke --project=webkit-smoke
             artifact_name: playwright-artifacts-smoke
           - suite: Functional
-            command: npx playwright test --config playwright.config.ts --project=chromium-deep --project=chromium-mobile-deep
+            command: npx playwright test --config playwright.config.js --project=chromium-deep --project=chromium-mobile-deep
             artifact_name: playwright-artifacts-deep
           - suite: Visual
-            command: npx playwright test --config playwright.config.ts --grep @visual --project=chromium-deep --project=chromium-mobile-deep
+            command: npx playwright test --config playwright.config.js --grep @visual --project=chromium-deep --project=chromium-mobile-deep
             artifact_name: playwright-artifacts-visual
     permissions:
       contents: read

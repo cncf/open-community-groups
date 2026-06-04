@@ -24,27 +24,33 @@ describe("ticketing currency helpers", () => {
   });
 
   it("resolves the event currency code with a fallback", () => {
+    // Prepare currency field for resolves the event currency code.
     const currencyField = document.createElement("input");
     currencyField.value = " eur ";
     document.body.append(currencyField);
 
+    // Event currency resolution uses the configured fallback.
     expect(resolveEventCurrencyCode(currencyField)).to.equal("EUR");
     expect(resolveEventCurrencyCode(null)).to.equal("USD");
   });
 
   it("resolves input metadata for decimal and zero-decimal currencies", () => {
+    // Assert the resolve currency input placeholder.
     expect(resolveCurrencyInputPlaceholder("USD")).to.equal("25.00");
     expect(resolveCurrencyInputPlaceholder("JPY")).to.equal("5000");
 
+    // Assert the updated resolve currency input step.
     expect(resolveCurrencyInputStep("USD")).to.equal("0.01");
     expect(resolveCurrencyInputStep("JPY")).to.equal("1");
   });
 
   it("resolves Stripe charge limits for supported currencies", () => {
+    // Assert the resolve stripe maximum charge input.
     expect(resolveStripeMaximumChargeInput("USD")).to.equal("999999.99");
     expect(resolveStripeMaximumChargeInput("JPY")).to.equal("9999999999999");
     expect(resolveStripeMaximumChargeMinor("INR")).to.equal(999999999);
 
+    // Assert the updated resolve stripe minimum charge input.
     expect(resolveStripeMinimumChargeInput("USD")).to.equal("0.50");
     expect(resolveStripeMinimumChargeInput("JPY")).to.equal("50");
     expect(resolveStripeMinimumChargeMinor("GBP")).to.equal(30);
@@ -52,11 +58,13 @@ describe("ticketing currency helpers", () => {
   });
 
   it("formats and parses minor units for different currencies", () => {
+    // Assert the format minor units for input.
     expect(formatMinorUnitsForInput(1234, "USD")).to.equal("12.34");
     expect(formatMinorUnitsForInput(-1234, "USD")).to.equal("-12.34");
     expect(formatMinorUnitsForInput(5000, "JPY")).to.equal("5000");
     expect(formatMinorUnitsForInput(Number.NaN, "USD")).to.equal("");
 
+    // Assert the updated parse currency input to minor units.
     expect(parseCurrencyInputToMinorUnits("12.34", "USD")).to.equal(1234);
     expect(parseCurrencyInputToMinorUnits(".5", "USD")).to.equal(50);
     expect(parseCurrencyInputToMinorUnits("5000", "JPY")).to.equal(5000);
@@ -66,11 +74,16 @@ describe("ticketing currency helpers", () => {
   });
 
   it("validates Stripe charge limits", () => {
+    // Stripe charge validation respects currency limits.
     expect(validateStripePaymentAmountMinor(0, "USD")).to.equal("");
     expect(validateStripePaymentAmountMinor(50, "USD")).to.equal("");
+
+    // Verify values outside Stripe limits return validation messages.
     expect(validateStripePaymentAmountMinor(49, "USD")).to.equal(
       "Use 0 for free tickets, or at least 0.50 USD.",
     );
-    expect(validateStripePaymentAmountMinor(100000000, "USD")).to.equal("Stripe allows up to 999999.99 USD.");
+    expect(validateStripePaymentAmountMinor(100000000, "USD")).to.equal(
+      "Stripe allows up to 999999.99 USD.",
+    );
   });
 });

@@ -35,9 +35,11 @@ describe("advertisement banner", () => {
   });
 
   it("scopes closed state to the banner image and link URL", () => {
+    // Store a closed marker for one banner/link combination.
     const key = getAdBannerStorageKey("https://example.com/banner.png", "https://example.com/event");
     localStorage.setItem(key, "true");
 
+    // Assert that the flag is enabled.
     expect(isAdBannerClosed("https://example.com/banner.png", "https://example.com/event")).to.equal(true);
     expect(isAdBannerClosed("https://example.com/banner-new.png", "https://example.com/event")).to.equal(
       false,
@@ -46,20 +48,26 @@ describe("advertisement banner", () => {
   });
 
   it("animates in after the banner image loads", () => {
+    // Create a floating banner that has not loaded its image yet.
     const { banner, image } = createFloatingBanner();
     document.body.append(banner);
 
     initializeFloatingAdBanners(document);
+
+    // Verify animates in after the banner image loads.
     expect(banner.classList.contains("translate-y-0")).to.equal(false);
 
+    // Dispatch the form event.
     image.dispatchEvent(new Event("load"));
 
+    // Assert that the flag is enabled.
     expect(banner.classList.contains("translate-y-0")).to.equal(true);
     expect(banner.classList.contains("translate-y-[150%]")).to.equal(false);
     expect(banner.hasAttribute("hidden")).to.equal(false);
   });
 
   it("hides and stores the current banner when closed", () => {
+    // Create a banner with an image and link before closing it.
     const imageUrl = "https://example.com/banner.png";
     const linkUrl = "https://example.com/event";
     const { banner, closeButton } = createFloatingBanner({ imageUrl, linkUrl });
@@ -68,11 +76,13 @@ describe("advertisement banner", () => {
     initializeFloatingAdBanners(document);
     closeButton.click();
 
+    // Assert that the flag is enabled.
     expect(banner.hasAttribute("hidden")).to.equal(true);
     expect(localStorage.getItem(getAdBannerStorageKey(imageUrl, linkUrl))).to.equal("true");
   });
 
   it("shows a changed banner after a previous one was closed", () => {
+    // Store a closed marker for a different banner/link combination.
     const oldKey = getAdBannerStorageKey("https://example.com/banner.png", "https://example.com/event");
     const { banner, image } = createFloatingBanner({
       imageUrl: "https://example.com/banner.png",
@@ -84,6 +94,7 @@ describe("advertisement banner", () => {
     initializeFloatingAdBanners(banner);
     image.dispatchEvent(new Event("load"));
 
+    // Assert that the flag is disabled.
     expect(banner.hasAttribute("hidden")).to.equal(false);
     expect(banner.classList.contains("translate-y-0")).to.equal(true);
   });

@@ -12,8 +12,10 @@ const normalizeWhitespace = (value) => value.replace(/\s+/g, " ").trim();
 
 describe("dashboard user events list template", () => {
   it("renders cancel attendance as a confirmed delete action when cancellation is allowed", async () => {
+    // Load the user events template before checking cancellation markup.
     const template = normalizeWhitespace(await loadTemplate());
 
+    // Verify allowed cancellations get a confirmed cancel action.
     expect(template).to.include("<span>Cancel attendance</span>");
     expect(template).to.include('id="cancel-attendance-{{ item.event.event_id }}"');
     expect(template).to.include("{% if item.can_cancel_attendance -%}");
@@ -31,8 +33,10 @@ describe("dashboard user events list template", () => {
   });
 
   it("keeps cancel attendance visible but disabled when cancellation is unavailable", async () => {
+    // Load the user events template before checking disabled cancellation.
     const template = normalizeWhitespace(await loadTemplate());
 
+    // Verify unavailable cancellations stay visible and disabled.
     expect(template).to.include("disabled");
     expect(template).to.include('title="Only attendee attendance can be canceled."');
     expect(template).to.include('<span class="sr-only">Actions</span>');
@@ -40,8 +44,10 @@ describe("dashboard user events list template", () => {
   });
 
   it("renders registration pending with the warning status badge style", async () => {
+    // Load the user events template before checking pending badges.
     const template = normalizeWhitespace(await loadTemplate());
 
+    // Verify renders registration pending with the warning status badge style.
     expect(template).to.include(
       '{% if role == "Payment pending" || role == "Registration pending" -%}',
     );

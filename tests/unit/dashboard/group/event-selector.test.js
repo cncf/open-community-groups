@@ -4,7 +4,10 @@ import "/static/js/dashboard/event/ticketing/ticket-types-editor.js";
 import "/static/js/dashboard/event/ticketing/discount-codes-editor.js";
 import "/static/js/dashboard/group/event-selector.js";
 import { resetDom, mockScrollTo } from "/tests/unit/test-utils/dom.js";
-import { mountLitComponent, useMountedElementsCleanup } from "/tests/unit/test-utils/lit.js";
+import {
+  mountLitComponent,
+  useMountedElementsCleanup,
+} from "/tests/unit/test-utils/lit.js";
 import { mockSwal } from "/tests/unit/test-utils/globals.js";
 
 describe("event-selector", () => {
@@ -26,6 +29,7 @@ describe("event-selector", () => {
     scrollToMock.restore();
   });
 
+  // Render the component fixture.
   const renderSelector = async (properties = {}) => {
     return mountLitComponent("event-selector", {
       groupId: "group-1",
@@ -37,8 +41,10 @@ describe("event-selector", () => {
   };
 
   it("loads primary events from upcoming and past results", async () => {
+    // Render the selector fixture.
     const element = await renderSelector();
 
+    // Prepare request calls for loading primary events from upcoming and past.
     const requestCalls = [];
     element._requestEvents = async (config) => {
       requestCalls.push(config);
@@ -56,23 +62,22 @@ describe("event-selector", () => {
       ];
     };
 
+    // Configure browser state before loading upcoming and past events.
     await element._fetchPrimaryEvents();
 
+    // Verify loads primary events from upcoming and past results.
     expect(requestCalls).to.have.length(2);
     expect(requestCalls[0]).to.include({ sortDirection: "asc", query: "" });
     expect(requestCalls[1]).to.include({ sortDirection: "desc", query: "" });
-    expect(element._primaryResults.map((event) => event.event_id)).to.deep.equal([
-      "future-3",
-      "today-1",
-      "future-1",
-      "past-1",
-      "past-2",
-    ]);
+    expect(
+      element._primaryResults.map((event) => event.event_id),
+    ).to.deep.equal(["future-3", "today-1", "future-1", "past-1", "past-2"]);
     expect(element._results).to.deep.equal(element._primaryResults);
     expect(element._hasFetched).to.equal(true);
   });
 
   it("deduplicates searched events by id", async () => {
+    // Render the selector fixture.
     const element = await renderSelector();
     element._query = "today";
     element._requestEvents = async () => [
@@ -81,21 +86,29 @@ describe("event-selector", () => {
       { event_id: "event-2", name: "Event 2" },
     ];
 
+    // Configure browser state before asserting it deduplicates searched events by id.
     await element._fetchEvents();
 
-    expect(element._results.map((event) => event.event_id)).to.deep.equal(["event-1", "event-2"]);
+    // Search results are deduplicated by event id.
+    expect(element._results.map((event) => event.event_id)).to.deep.equal([
+      "event-1",
+      "event-2",
+    ]);
   });
 
   it("updates active navigation and closes the dropdown on escape", async () => {
+    // Render the selector fixture.
     const element = await renderSelector();
     let selectedActiveResult = 0;
 
+    // Open the result list with two keyboard options.
     element._isOpen = true;
     element._results = [{ event_id: "1" }, { event_id: "2" }];
     element._selectActiveResult = () => {
       selectedActiveResult += 1;
     };
 
+    // Prepare event for updating active navigation and closes the dropdown.
     const event = {
       key: "",
       preventDefaultCalls: 0,
@@ -104,18 +117,22 @@ describe("event-selector", () => {
       },
     };
 
+    // Press ArrowDown.
     event.key = "ArrowDown";
     element._handleInputKeydown(event);
     expect(element._activeIndex).to.equal(0);
 
+    // Press ArrowUp.
     event.key = "ArrowUp";
     element._handleInputKeydown(event);
     expect(element._activeIndex).to.equal(1);
 
+    // Press Enter.
     event.key = "Enter";
     element._handleInputKeydown(event);
     expect(selectedActiveResult).to.equal(1);
 
+    // Press Escape.
     event.key = "Escape";
     element._handleInputKeydown(event);
     expect(element._isOpen).to.equal(false);
@@ -124,9 +141,11 @@ describe("event-selector", () => {
   });
 
   it("copies event details, updates selection state, and shows success feedback", async () => {
+    // Render the selector fixture.
     const element = await renderSelector();
     const appliedDetails = [];
 
+    // Stub event-detail loading and application.
     element._isOpen = true;
     element._applyEventDetails = (details) => {
       appliedDetails.push(details);
@@ -138,8 +157,10 @@ describe("event-selector", () => {
       timezone: "Europe/Madrid",
     });
 
+    // Copied event details update the selection state.
     await element._handleCopyMode({ event_id: "event-9" });
 
+    // Copied event details update selection state and show success.
     expect(appliedDetails).to.deep.equal([
       {
         event_id: "event-9",
@@ -165,6 +186,7 @@ describe("event-selector", () => {
   });
 
   it("applies copied event details into the form and resets meeting state", async () => {
+    // Render the DOM fixture for applying copied event details into the form.
     document.body.innerHTML = `
       <input id="name" />
       <select id="category_id">
@@ -209,29 +231,43 @@ describe("event-selector", () => {
       </markdown-editor>
     `;
 
-    const gallery = document.querySelector('gallery-field[field-name="photos_urls"]');
+    // Wire the gallery field so copied photos can be observed.
+    const gallery = document.querySelector(
+      'gallery-field[field-name="photos_urls"]',
+    );
     gallery._setImages = (images) => {
       gallery.images = images;
     };
 
+    // Stub tag updates while copied tags are applied.
     const tags = document.querySelector('multiple-inputs[field-name="tags"]');
     tags.requestUpdate = () => {};
 
-    const hosts = document.querySelector('user-search-selector[field-name="hosts"]');
+    // Stub host updates while copied hosts are applied.
+    const hosts = document.querySelector(
+      'user-search-selector[field-name="hosts"]',
+    );
     hosts.requestUpdate = () => {};
 
+    // Stub sponsor updates while copied sponsors are applied.
     const sponsors = document.querySelector("sponsors-section");
     sponsors.requestUpdate = () => {};
 
+    // Stub session updates while copied sessions are applied.
     const sessionsSection = document.querySelector("sessions-section");
     sessionsSection.requestUpdate = () => {};
 
+    // Keep a reference to the ticket types UI element.
     const ticketTypesEditor = document.getElementById("ticket-types-ui");
     const discountCodesEditor = document.getElementById("discount-codes-ui");
 
-    const timezoneSelector = document.querySelector("timezone-selector[name='timezone']");
+    // Stub timezone dispatch while copied timezone data is applied.
+    const timezoneSelector = document.querySelector(
+      "timezone-selector[name='timezone']",
+    );
     timezoneSelector.dispatchEvent = () => true;
 
+    // Track how copied meeting details reset manual fields.
     const meetingDetails = document.querySelector("online-event-details");
     let resetCalls = 0;
     let manualMeetingDetails = null;
@@ -242,11 +278,14 @@ describe("event-selector", () => {
       manualMeetingDetails = fields;
     };
 
+    // Read the markdown editor before copied description data is applied.
     const editor = document.querySelector("markdown-editor#description");
     const editorTextarea = editor.querySelector("textarea");
 
+    // Render the selector that applies the copied event details.
     const element = await renderSelector();
 
+    // Copied event details populate the form.
     await element._applyEventDetails({
       name: "Cloud Native Málaga",
       category_name: "Conference",
@@ -301,76 +340,132 @@ describe("event-selector", () => {
       sponsors: [{ name: "ACME", level: 2 }],
     });
 
+    // Wait for the component to finish rendering.
     await ticketTypesEditor.updateComplete;
     await discountCodesEditor.updateComplete;
 
-    expect(document.getElementById("name")?.value).to.equal("Cloud Native Málaga (copy)");
+    // Copied event details populate the form and reset meeting state.
+    expect(document.getElementById("name")?.value).to.equal(
+      "Cloud Native Málaga (copy)",
+    );
     expect(document.getElementById("category_id")?.value).to.equal("10");
     expect(document.getElementById("kind_id")?.value).to.equal("workshop");
-    expect(document.getElementById("description_short")?.value).to.equal("Short description");
+    expect(document.getElementById("description_short")?.value).to.equal(
+      "Short description",
+    );
     expect(editorTextarea.value).to.equal("Long description");
     expect(document.getElementById("capacity")?.value).to.equal("300");
-    expect(document.getElementById("toggle_event_reminder_enabled")?.checked).to.equal(true);
-    expect(document.getElementById("event_reminder_enabled")?.value).to.equal("true");
-    expect(document.getElementById("toggle_registration_required")?.checked).to.equal(true);
-    expect(document.getElementById("registration_required")?.value).to.equal("true");
-    expect(document.getElementById("meetup_url")?.value).to.equal("https://meetup.com/cloud-native-malaga");
-    expect(document.getElementById("luma_url")?.value).to.equal("https://luma.com/cloud-native-malaga");
-    expect(document.getElementById("payment_currency_code")?.value).to.equal("EUR");
-    expect(document.getElementById("venue_city")?.value).to.equal("Málaga");
-    expect(document.getElementById("meeting_join_instructions")?.value).to.equal(
-      "Use your registration name when joining.",
+    expect(
+      document.getElementById("toggle_event_reminder_enabled")?.checked,
+    ).to.equal(true);
+    expect(document.getElementById("event_reminder_enabled")?.value).to.equal(
+      "true",
     );
+    expect(
+      document.getElementById("toggle_registration_required")?.checked,
+    ).to.equal(true);
+    expect(document.getElementById("registration_required")?.value).to.equal(
+      "true",
+    );
+    expect(document.getElementById("meetup_url")?.value).to.equal(
+      "https://meetup.com/cloud-native-malaga",
+    );
+    expect(document.getElementById("luma_url")?.value).to.equal(
+      "https://luma.com/cloud-native-malaga",
+    );
+    expect(document.getElementById("payment_currency_code")?.value).to.equal(
+      "EUR",
+    );
+    expect(document.getElementById("venue_city")?.value).to.equal("Málaga");
+    expect(
+      document.getElementById("meeting_join_instructions")?.value,
+    ).to.equal("Use your registration name when joining.");
     expect(document.getElementById("meeting_join_url")?.value).to.equal(
       "https://meet.example.com/cloud-native-malaga",
     );
-    expect(document.getElementById("meeting_recording_url")?.value).to.equal("");
+    expect(document.getElementById("meeting_recording_url")?.value).to.equal(
+      "",
+    );
     expect(manualMeetingDetails).to.deep.equal({
       meeting_join_instructions: "Use your registration name when joining.",
       meeting_join_url: "https://meet.example.com/cloud-native-malaga",
     });
-    expect(ticketTypesEditor.querySelector('input[name="ticket_types[0][title]"]')?.value).to.equal(
-      "General admission",
-    );
-    expect(ticketTypesEditor.querySelector('input[name="ticket_types[0][price_windows][0][starts_at]"]')).to.equal(
-      null,
-    );
-    expect(ticketTypesEditor.querySelector('input[name="ticket_types[0][price_windows][0][ends_at]"]')).to.equal(
-      null,
-    );
-    expect(ticketTypesEditor.querySelector('input[name="ticket_types[0][event_ticket_type_id]"]')).to.equal(null);
     expect(
-      ticketTypesEditor.querySelector('input[name="ticket_types[0][price_windows][0][event_ticket_price_window_id]"]'),
+      ticketTypesEditor.querySelector('input[name="ticket_types[0][title]"]')
+        ?.value,
+    ).to.equal("General admission");
+    expect(
+      ticketTypesEditor.querySelector(
+        'input[name="ticket_types[0][price_windows][0][starts_at]"]',
+      ),
     ).to.equal(null);
-    expect(discountCodesEditor.querySelector('input[name="discount_codes[0][code]"]')?.value).to.equal(
-      "EARLY20",
-    );
-    expect(discountCodesEditor.querySelector('input[name="discount_codes[0][available]"]')?.value).to.equal(
-      "12",
-    );
     expect(
-      discountCodesEditor.querySelector('input[name="discount_codes[0][available_override_active]"]')?.value,
+      ticketTypesEditor.querySelector(
+        'input[name="ticket_types[0][price_windows][0][ends_at]"]',
+      ),
+    ).to.equal(null);
+    expect(
+      ticketTypesEditor.querySelector(
+        'input[name="ticket_types[0][event_ticket_type_id]"]',
+      ),
+    ).to.equal(null);
+    expect(
+      ticketTypesEditor.querySelector(
+        'input[name="ticket_types[0][price_windows][0][event_ticket_price_window_id]"]',
+      ),
+    ).to.equal(null);
+    expect(
+      discountCodesEditor.querySelector('input[name="discount_codes[0][code]"]')
+        ?.value,
+    ).to.equal("EARLY20");
+    expect(
+      discountCodesEditor.querySelector(
+        'input[name="discount_codes[0][available]"]',
+      )?.value,
+    ).to.equal("12");
+    expect(
+      discountCodesEditor.querySelector(
+        'input[name="discount_codes[0][available_override_active]"]',
+      )?.value,
     ).to.equal("true");
-    expect(discountCodesEditor.querySelector('input[name="discount_codes[0][starts_at]"]')).to.equal(null);
-    expect(discountCodesEditor.querySelector('input[name="discount_codes[0][ends_at]"]')).to.equal(null);
-    expect(discountCodesEditor.querySelector('input[name="discount_codes[0][event_discount_code_id]"]')).to.equal(
-      null,
-    );
+    expect(
+      discountCodesEditor.querySelector(
+        'input[name="discount_codes[0][starts_at]"]',
+      ),
+    ).to.equal(null);
+    expect(
+      discountCodesEditor.querySelector(
+        'input[name="discount_codes[0][ends_at]"]',
+      ),
+    ).to.equal(null);
+    expect(
+      discountCodesEditor.querySelector(
+        'input[name="discount_codes[0][event_discount_code_id]"]',
+      ),
+    ).to.equal(null);
     expect(gallery.images).to.deep.equal(["one.png", "two.png"]);
     expect(tags.items).to.deep.equal([
       { id: 0, value: "cloud" },
       { id: 1, value: "malaga" },
     ]);
-    expect(hosts.selectedUsers).to.deep.equal([{ user_id: "1", username: "alice" }]);
-    expect(sponsors.selectedSponsors).to.deep.equal([{ name: "ACME", level: "2" }]);
+    expect(hosts.selectedUsers).to.deep.equal([
+      { user_id: "1", username: "alice" },
+    ]);
+    expect(sponsors.selectedSponsors).to.deep.equal([
+      { name: "ACME", level: "2" },
+    ]);
     expect(sessionsSection.sessions).to.deep.equal([]);
     expect(timezoneSelector.value).to.equal("Europe/Madrid");
     expect(resetCalls).to.equal(1);
 
-    document.getElementById("meeting_join_instructions").value = "stale instructions";
-    document.getElementById("meeting_join_url").value = "https://stale.example.com";
+    // Update the input before asserting it applies copied event details into the form.
+    document.getElementById("meeting_join_instructions").value =
+      "stale instructions";
+    document.getElementById("meeting_join_url").value =
+      "https://stale.example.com";
     manualMeetingDetails = null;
 
+    // The copied event details remain in the form.
     await element._applyEventDetails({
       name: "Automatic Meeting Event",
       category_name: "Conference",
@@ -385,7 +480,10 @@ describe("event-selector", () => {
       timezone: "Europe/Madrid",
     });
 
-    expect(document.getElementById("meeting_join_instructions")?.value).to.equal("");
+    // Reapplying copied details keeps the form and meeting state in sync.
+    expect(
+      document.getElementById("meeting_join_instructions")?.value,
+    ).to.equal("");
     expect(document.getElementById("meeting_join_url")?.value).to.equal("");
     expect(manualMeetingDetails).to.equal(null);
     expect(resetCalls).to.equal(2);

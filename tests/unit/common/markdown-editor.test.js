@@ -1,7 +1,10 @@
 import { expect } from "@open-wc/testing";
 
 import "/static/js/common/markdown-editor.js";
-import { mountLitComponent, useMountedElementsCleanup } from "/tests/unit/test-utils/lit.js";
+import {
+  mountLitComponent,
+  useMountedElementsCleanup,
+} from "/tests/unit/test-utils/lit.js";
 
 describe("markdown-editor", () => {
   const originalEasyMde = globalThis.EasyMDE;
@@ -40,26 +43,34 @@ describe("markdown-editor", () => {
   });
 
   it("initializes EasyMDE with the provided content", async () => {
+    // Render the markdown-editor fixture.
     const element = await mountLitComponent("markdown-editor", {
       content: "# Hello",
       mini: true,
       name: "description",
     });
 
+    // The EasyMDE editor receives the provided content and textarea element.
     expect(latestEditor.options.initialValue).to.equal("# Hello");
-    expect(latestEditor.options.element).to.equal(element.querySelector("textarea"));
+    expect(latestEditor.options.element).to.equal(
+      element.querySelector("textarea"),
+    );
     expect(element.querySelector("textarea").style.display).to.equal("block");
   });
 
   it("forwards editor changes through the onChange callback", async () => {
+    // Track values emitted from the EasyMDE change handler.
     const values = [];
 
+    // Render the markdown-editor fixture.
     await mountLitComponent("markdown-editor", {
       onChange: (value) => values.push(value),
     });
 
+    // Assert the EasyMDE change handler.
     latestEditor._changeHandler();
 
+    // The markdown editor forwards the updated EasyMDE value.
     expect(values).to.deep.equal(["## Updated"]);
   });
 });

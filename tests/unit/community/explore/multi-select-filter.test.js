@@ -3,7 +3,10 @@ import { expect } from "@open-wc/testing";
 import "/static/js/community/explore/multi-select-filter.js";
 import { waitForMicrotask } from "/tests/unit/test-utils/async.js";
 import { mockHtmx } from "/tests/unit/test-utils/globals.js";
-import { mountLitComponent, useMountedElementsCleanup } from "/tests/unit/test-utils/lit.js";
+import {
+  mountLitComponent,
+  useMountedElementsCleanup,
+} from "/tests/unit/test-utils/lit.js";
 
 describe("multi-select-filter", () => {
   useMountedElementsCleanup("multi-select-filter");
@@ -19,6 +22,7 @@ describe("multi-select-filter", () => {
   });
 
   it("filters typed options and renders hidden inputs for selected values", async () => {
+    // Render the DOM fixture for filtering typed options and renders hidden inputs.
     document.body.innerHTML = '<form id="filters-form"></form>';
     const form = document.getElementById("filters-form");
     const element = document.createElement("multi-select-filter");
@@ -32,29 +36,43 @@ describe("multi-select-filter", () => {
     form.append(element);
     await element.updateComplete;
 
+    // Read the rendered DOM state for filtering typed options and renders hidden inputs.
     const input = element.querySelector('input[type="text"]');
     input.dispatchEvent(new FocusEvent("focus"));
     input.value = "sec";
     input.dispatchEvent(new Event("input", { bubbles: true }));
     await element.updateComplete;
 
-    expect(element._filteredOptions).to.deep.equal([{ value: "security", name: "Security" }]);
+    // Verify filters typed options and renders hidden inputs for selected values.
+    expect(element._filteredOptions).to.deep.equal([
+      { value: "security", name: "Security" },
+    ]);
 
+    // Verify filters typed options and renders hidden inputs.
     element.querySelector('[role="option"]')?.click();
     await element.updateComplete;
 
+    // Verify filters typed options and renders hidden inputs for selected values.
     expect(element.selected).to.deep.equal(["security"]);
-    expect(element.querySelector('input[type="hidden"][value="security"]')).to.not.equal(null);
+    expect(
+      element.querySelector('input[type="hidden"][value="security"]'),
+    ).to.not.equal(null);
     expect(element.textContent).to.include("Security");
 
+    // Verify selected options stay mirrored in hidden inputs.
     element.querySelectorAll(".icon-close")[1]?.closest("button")?.click();
     await element.updateComplete;
 
+    // Verify filters typed options and renders hidden inputs for selected values.
     expect(element.selected).to.deep.equal([]);
-    expect(htmx.triggerCalls).to.deep.equal([[form, "change"], [form, "change"]]);
+    expect(htmx.triggerCalls).to.deep.equal([
+      [form, "change"],
+      [form, "change"],
+    ]);
   });
 
   it("supports keyboard navigation and closes on outside clicks", async () => {
+    // Call mount lit component.
     const element = await mountLitComponent("multi-select-filter", {
       options: [
         { value: "cloud", name: "Cloud" },
@@ -62,20 +80,31 @@ describe("multi-select-filter", () => {
       ],
     });
 
+    // Read the listbox and options used by keyboard navigation.
     const input = element.querySelector('input[type="text"]');
     input.dispatchEvent(new FocusEvent("focus"));
     await element.updateComplete;
 
-    element.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }));
-    element.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    // Dispatch the keydown event.
+    element.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }),
+    );
+    element.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
+    );
     await element.updateComplete;
 
+    // Verify supports keyboard navigation and closes on outside clicks.
     expect(element.selected).to.deep.equal(["cloud"]);
     expect(element._isOpen).to.equal(true);
 
-    document.dispatchEvent(new MouseEvent("click", { bubbles: true, composed: true }));
+    // Click outside the filter to close the options.
+    document.dispatchEvent(
+      new MouseEvent("click", { bubbles: true, composed: true }),
+    );
     await waitForMicrotask();
 
+    // Verify supports keyboard navigation and closes on outside clicks.
     expect(element._isOpen).to.equal(false);
   });
 });

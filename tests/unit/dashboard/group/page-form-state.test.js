@@ -17,6 +17,7 @@ describe("page form state helpers", () => {
   });
 
   it("toggles active sections and notifies section hooks", () => {
+    // Render two tabs with the details section active by default.
     document.body.innerHTML = `
       <button data-section="details" data-active="true" class="active">Details</button>
       <button data-section="sessions" data-active="false">Sessions</button>
@@ -24,18 +25,22 @@ describe("page form state helpers", () => {
       <section data-content="sessions" class="hidden">Sessions content</section>
     `;
 
+    // Track the section names reported by the tab helper.
     const visitedSections = [];
     const { displayActiveSection } = initializeSectionTabs({
       onSectionChange: (sectionName) => visitedSections.push(sectionName),
     });
 
+    // Switch to the sessions section programmatically.
     displayActiveSection("sessions");
 
+    // Read the tab and panel state after the section changes.
     const detailsButton = document.querySelector('[data-section="details"]');
     const sessionsButton = document.querySelector('[data-section="sessions"]');
     const detailsSection = document.querySelector('[data-content="details"]');
     const sessionsSection = document.querySelector('[data-content="sessions"]');
 
+    // The selected tab, visible panel, and hook call all match the new section.
     expect(detailsButton.getAttribute("data-active")).to.equal("false");
     expect(detailsButton.classList.contains("active")).to.equal(false);
     expect(sessionsButton.getAttribute("data-active")).to.equal("true");
@@ -46,6 +51,7 @@ describe("page form state helpers", () => {
   });
 
   it("handles section buttons added after initialization", () => {
+    // Start with a single initialized section in the page root.
     document.body.innerHTML = `
       <div id="page-root">
         <button data-section="details" data-active="true" class="active">Details</button>
@@ -53,6 +59,7 @@ describe("page form state helpers", () => {
       </div>
     `;
 
+    // Add another section after the click handler has already been registered.
     const pageRoot = document.getElementById("page-root");
     initializeSectionTabs({ root: pageRoot });
     pageRoot.insertAdjacentHTML(
@@ -65,23 +72,34 @@ describe("page form state helpers", () => {
       `,
     );
 
+    // Click inside the new tab to exercise the delegated handler.
     pageRoot.querySelector('[data-section="date-venue"] span').click();
 
-    expect(pageRoot.querySelector('[data-section="details"]').getAttribute("data-active")).to.equal(
-      "false",
-    );
-    expect(pageRoot.querySelector('[data-section="date-venue"]').getAttribute("data-active")).to.equal(
-      "true",
-    );
-    expect(pageRoot.querySelector('[data-content="details"]').classList.contains("hidden")).to.equal(
-      true,
-    );
-    expect(pageRoot.querySelector('[data-content="date-venue"]').classList.contains("hidden")).to.equal(
-      false,
-    );
+    // The dynamically-added tab becomes active and its panel is shown.
+    expect(
+      pageRoot
+        .querySelector('[data-section="details"]')
+        .getAttribute("data-active"),
+    ).to.equal("false");
+    expect(
+      pageRoot
+        .querySelector('[data-section="date-venue"]')
+        .getAttribute("data-active"),
+    ).to.equal("true");
+    expect(
+      pageRoot
+        .querySelector('[data-content="details"]')
+        .classList.contains("hidden"),
+    ).to.equal(true);
+    expect(
+      pageRoot
+        .querySelector('[data-content="date-venue"]')
+        .classList.contains("hidden"),
+    ).to.equal(false);
   });
 
   it("advances to the next section from bottom navigation", () => {
+    // Render three ordered sections with bottom navigation.
     document.body.innerHTML = `
       <div id="page-root">
         <button data-section="details" data-active="true" class="active">Details</button>
@@ -94,6 +112,7 @@ describe("page form state helpers", () => {
       </div>
     `;
 
+    // Capture the navigation button, destination sections, and scroll calls.
     const pageRoot = document.getElementById("page-root");
     const nextButton = pageRoot.querySelector("[data-section-next]");
     const dateSection = pageRoot.querySelector('[data-content="date-venue"]');
@@ -101,24 +120,36 @@ describe("page form state helpers", () => {
     const scrollOptions = [];
     const originalScrollTo = window.scrollTo;
 
+    // Replace scrolling so the test can assert when the page would move upward.
     window.scrollTo = (options) => scrollOptions.push(options);
 
+    // Initialize section tabs while scroll is mocked.
     try {
       initializeSectionTabs({ root: pageRoot });
 
+      // The first click moves from details to date and venue.
       expect(nextButton.disabled).to.equal(false);
       nextButton.click();
 
-      expect(pageRoot.querySelector('[data-section="date-venue"]').getAttribute("data-active")).to.equal(
-        "true",
-      );
+      // Bottom navigation remains available while another section follows.
+      expect(
+        pageRoot
+          .querySelector('[data-section="date-venue"]')
+          .getAttribute("data-active"),
+      ).to.equal("true");
       expect(dateSection.classList.contains("hidden")).to.equal(false);
       expect(nextButton.classList.contains("hidden")).to.equal(false);
       expect(nextButton.disabled).to.equal(false);
 
+      // The second click moves to the final section.
       nextButton.click();
 
-      expect(pageRoot.querySelector('[data-section="cfs"]').getAttribute("data-active")).to.equal("true");
+      // The final section hides bottom navigation and records both scrolls.
+      expect(
+        pageRoot
+          .querySelector('[data-section="cfs"]')
+          .getAttribute("data-active"),
+      ).to.equal("true");
       expect(cfsSection.classList.contains("hidden")).to.equal(false);
       expect(nextButton.classList.contains("hidden")).to.equal(true);
       expect(nextButton.disabled).to.equal(true);
@@ -132,6 +163,7 @@ describe("page form state helpers", () => {
   });
 
   it("follows the current tab order when optional sections exist", () => {
+    // Render optional sections around the current sessions tab.
     document.body.innerHTML = `
       <div id="page-root">
         <button data-section="details" data-active="false">Details</button>
@@ -146,20 +178,28 @@ describe("page form state helpers", () => {
       </div>
     `;
 
+    // Initialize the helper from the sessions tab.
     const pageRoot = document.getElementById("page-root");
     initializeSectionTabs({ root: pageRoot });
 
+    // Move forward using the next button.
     pageRoot.querySelector("[data-section-next]").click();
 
-    expect(pageRoot.querySelector('[data-section="payments"]').getAttribute("data-active")).to.equal(
-      "true",
-    );
-    expect(pageRoot.querySelector('[data-content="payments"]').classList.contains("hidden")).to.equal(
-      false,
-    );
+    // The next visible tab in the DOM order becomes active.
+    expect(
+      pageRoot
+        .querySelector('[data-section="payments"]')
+        .getAttribute("data-active"),
+    ).to.equal("true");
+    expect(
+      pageRoot
+        .querySelector('[data-content="payments"]')
+        .classList.contains("hidden"),
+    ).to.equal(false);
   });
 
   it("hides bottom navigation when initialized on the final section", () => {
+    // Render the final section as the active tab from the start.
     document.body.innerHTML = `
       <div id="page-root">
         <button data-section="details" data-active="false">Details</button>
@@ -170,45 +210,55 @@ describe("page form state helpers", () => {
       </div>
     `;
 
+    // Keep a reference to the next button before initializing the helper.
     const pageRoot = document.getElementById("page-root");
     const nextButton = pageRoot.querySelector("[data-section-next]");
 
+    // Initialize tab behavior with the last section already active.
     initializeSectionTabs({ root: pageRoot });
 
+    // Bottom navigation is hidden because there is nowhere else to advance.
     expect(nextButton.classList.contains("hidden")).to.equal(true);
     expect(nextButton.disabled).to.equal(true);
   });
 
   it("syncs checkbox toggles into hidden boolean inputs", () => {
+    // Render the visible checkbox and the hidden field submitted with the form.
     document.body.innerHTML = `
       <input id="toggle_registration_required" type="checkbox" />
       <input id="registration_required" type="hidden" value="false" />
     `;
 
+    // Track the hidden input and callback values after binding the toggle.
     const toggle = document.getElementById("toggle_registration_required");
     const hiddenInput = document.getElementById("registration_required");
     const seenValues = [];
 
+    // Wire the visible checkbox to the hidden boolean input.
     bindBooleanToggle({
       toggle,
       hiddenInput,
       onChange: (enabled) => seenValues.push(enabled),
     });
 
+    // Turn the checkbox on and emit the same change event the browser would send.
     toggle.checked = true;
     toggle.dispatchEvent(new Event("change", { bubbles: true }));
 
+    // The hidden field and change callback both receive the enabled state.
     expect(hiddenInput.value).to.equal("true");
     expect(seenValues).to.deep.equal([true]);
   });
 
   it("collects only forms that exist in the current page root", () => {
+    // Render only the forms that are present on this page variant.
     document.body.innerHTML = `
       <form id="details-form"></form>
       <form id="sessions-form"></form>
       <div id="other-content"></div>
     `;
 
+    // Missing optional form ids are skipped.
     expect(
       collectExistingFormIds([
         "details-form",

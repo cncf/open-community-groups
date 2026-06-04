@@ -23,9 +23,16 @@ describe("dashboard group analytics", () => {
         };
       },
     };
-    document.documentElement.style.setProperty("--color-primary-500", "#0f766e");
-    document.documentElement.style.setProperty("--color-primary-700", "#115e59");
+    document.documentElement.style.setProperty(
+      "--color-primary-500",
+      "#0f766e",
+    );
+    document.documentElement.style.setProperty(
+      "--color-primary-700",
+      "#115e59",
+    );
 
+    // Run the behavior under test.
     [
       "total-views-monthly-chart",
       "total-views-daily-chart",
@@ -56,11 +63,21 @@ describe("dashboard group analytics", () => {
   });
 
   it("initializes the expected group analytics charts", async () => {
+    // Verify initializes the expected group analytics charts.
     await initAnalyticsCharts({
       page_views: {
-        total: { per_month_views: [["2025-01", 4]], per_day_views: [["2025-01-01", 2]] },
-        group: { per_month_views: [["2025-01", 2]], per_day_views: [["2025-01-01", 1]] },
-        events: { per_month_views: [["2025-01", 2]], per_day_views: [["2025-01-01", 1]] },
+        total: {
+          per_month_views: [["2025-01", 4]],
+          per_day_views: [["2025-01-01", 2]],
+        },
+        group: {
+          per_month_views: [["2025-01", 2]],
+          per_day_views: [["2025-01-01", 1]],
+        },
+        events: {
+          per_month_views: [["2025-01", 2]],
+          per_day_views: [["2025-01-01", 1]],
+        },
       },
       members: {
         running_total: [
@@ -85,18 +102,28 @@ describe("dashboard group analytics", () => {
       },
     });
 
+    // Verify initializes the expected group analytics charts.
     expect(setOptionCalls).to.have.length(12);
-    expect(setOptionCalls.map((call) => call.id)).to.include("members-running-chart");
-    expect(setOptionCalls.map((call) => call.id)).to.include("total-views-monthly-chart");
-    expect(setOptionCalls.map((call) => call.id)).to.include("event-views-daily-chart");
-    expect(setOptionCalls.find((call) => call.id === "events-monthly-chart").option.title.text).to.equal(
-      "Events per Month",
+    expect(setOptionCalls.map((call) => call.id)).to.include(
+      "members-running-chart",
     );
-    expect(setOptionCalls.find((call) => call.id === "attendees-monthly-chart").option.title.text).to.equal(
-      "Attendees per Month",
+    expect(setOptionCalls.map((call) => call.id)).to.include(
+      "total-views-monthly-chart",
+    );
+    expect(setOptionCalls.map((call) => call.id)).to.include(
+      "event-views-daily-chart",
     );
     expect(
-      setOptionCalls.find((call) => call.id === "total-views-monthly-chart").option.title.subtext,
+      setOptionCalls.find((call) => call.id === "events-monthly-chart").option
+        .title.text,
+    ).to.equal("Events per Month");
+    expect(
+      setOptionCalls.find((call) => call.id === "attendees-monthly-chart")
+        .option.title.text,
+    ).to.equal("Attendees per Month");
+    expect(
+      setOptionCalls.find((call) => call.id === "total-views-monthly-chart")
+        .option.title.subtext,
     ).to.equal("Group and event views grouped by month");
   });
 });

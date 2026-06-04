@@ -1,20 +1,27 @@
 import { expect } from "@open-wc/testing";
 
 import "/static/js/common/user-info-modal.js";
-import { mountLitComponent, useMountedElementsCleanup } from "/tests/unit/test-utils/lit.js";
+import {
+  mountLitComponent,
+  useMountedElementsCleanup,
+} from "/tests/unit/test-utils/lit.js";
 
 describe("user-info-modal", () => {
   useMountedElementsCleanup("user-info-modal");
 
   it("renders nothing while closed", async () => {
+    // Mount the modal without opening it.
     const element = await mountLitComponent("user-info-modal");
 
+    // The closed modal has no light DOM content.
     expect(element.children.length).to.equal(0);
   });
 
   it("opens when an open-user-modal event is dispatched", async () => {
+    // Mount the modal before dispatching the document event.
     const element = await mountLitComponent("user-info-modal");
 
+    // Dispatch the open-user-modal event.
     document.dispatchEvent(
       new CustomEvent("open-user-modal", {
         bubbles: true,
@@ -30,6 +37,7 @@ describe("user-info-modal", () => {
     );
     await element.updateComplete;
 
+    // The modal renders the user details from the event payload.
     expect(element._isOpen).to.equal(true);
     expect(element.querySelector('[role="dialog"]')).to.not.equal(null);
     expect(element.textContent).to.include("Grace Hopper");
@@ -38,8 +46,10 @@ describe("user-info-modal", () => {
   });
 
   it("renders social links and the openprofile.dev link when available", async () => {
+    // Render the user-info-modal fixture.
     const element = await mountLitComponent("user-info-modal");
 
+    // Dispatch the open-user-modal event.
     document.dispatchEvent(
       new CustomEvent("open-user-modal", {
         bubbles: true,
@@ -59,22 +69,34 @@ describe("user-info-modal", () => {
     );
     await element.updateComplete;
 
+    // Read normalized social links after opening the profile modal.
     const links = element._getSocialLinks();
 
+    // Social links include the supported profile URLs.
     expect(links).to.deep.equal([
       { url: "https://example.com", icon: "website", label: "Website" },
-      { url: "https://linkedin.com/in/ada", icon: "linkedin", label: "LinkedIn" },
+      {
+        url: "https://linkedin.com/in/ada",
+        icon: "linkedin",
+        label: "LinkedIn",
+      },
       { url: "https://github.com/ada", icon: "github", label: "GitHub" },
     ]);
-    expect(element.querySelector('a[href="https://openprofile.dev/profile/ada-lf"]')).to.not.equal(null);
+    expect(
+      element.querySelector('a[href="https://openprofile.dev/profile/ada-lf"]'),
+    ).to.not.equal(null);
     expect(element.querySelector('a[aria-label="Website"]')).to.not.equal(null);
-    expect(element.querySelector('a[aria-label="LinkedIn"]')).to.not.equal(null);
+    expect(element.querySelector('a[aria-label="LinkedIn"]')).to.not.equal(
+      null,
+    );
     expect(element.querySelector('a[aria-label="GitHub"]')).to.not.equal(null);
   });
 
   it("shows the profile placeholder when the user has no bio or social links", async () => {
+    // Render the user-info-modal fixture.
     const element = await mountLitComponent("user-info-modal");
 
+    // Dispatch the open-user-modal event.
     document.dispatchEvent(
       new CustomEvent("open-user-modal", {
         bubbles: true,
@@ -87,13 +109,18 @@ describe("user-info-modal", () => {
     );
     await element.updateComplete;
 
+    // The rendered text shows the scenario data.
     expect(element.textContent).to.include("Profile not completed");
-    expect(element.textContent).to.include("This user hasn’t finished setting up their profile yet.");
+    expect(element.textContent).to.include(
+      "This user hasn’t finished setting up their profile yet.",
+    );
   });
 
   it("closes from escape and overlay interactions", async () => {
+    // Render the user-info-modal fixture.
     const element = await mountLitComponent("user-info-modal");
 
+    // Dispatch the open-user-modal event.
     document.dispatchEvent(
       new CustomEvent("open-user-modal", {
         bubbles: true,
@@ -105,15 +132,18 @@ describe("user-info-modal", () => {
     );
     await element.updateComplete;
 
+    // Escape closes the modal and restores body scrolling.
     element._handleKeydown({
       key: "Escape",
       preventDefault() {},
     });
     await element.updateComplete;
 
+    // The modal is closed after Escape.
     expect(element._isOpen).to.equal(false);
     expect(document.body.style.overflow).to.equal("");
 
+    // Reopen the modal before checking the overlay close path.
     document.dispatchEvent(
       new CustomEvent("open-user-modal", {
         bubbles: true,
@@ -125,6 +155,7 @@ describe("user-info-modal", () => {
     );
     await element.updateComplete;
 
+    // Overlay clicks close the reopened modal.
     element._handleOutsideClick({
       target: {
         classList: {
@@ -136,6 +167,7 @@ describe("user-info-modal", () => {
     });
     await element.updateComplete;
 
+    // The modal is closed after the overlay interaction.
     expect(element._isOpen).to.equal(false);
   });
 });

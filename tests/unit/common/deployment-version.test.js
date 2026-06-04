@@ -12,6 +12,7 @@ import {
 } from "/static/js/common/deployment-version.js";
 import { mockSwal } from "/tests/unit/test-utils/globals.js";
 
+// Set the loaded commit SHA meta tag for deployment checks.
 const setLoadedCommitSha = (commitSha) => {
   document.head.innerHTML = `<meta name="ocg-commit-sha" content="${commitSha}">`;
 };
@@ -53,15 +54,18 @@ describe("deployment version", () => {
   });
 
   it("stores and consumes a one-shot alert marker when the server requests a refresh", () => {
+    // Count reloads requested by the deployment refresh handler.
     let reloads = 0;
     setDeploymentReloadHandler(() => {
       reloads += 1;
     });
 
+    // Process the explicit refresh header from the server.
     const changed = reloadIfDeploymentChanged(
       new Headers({ [REFRESH_HEADER]: "true" }),
     );
 
+    // Commit-sha refresh stores and consumes the reload alert marker.
     expect(changed).to.equal(true);
     expect(reloads).to.equal(1);
     expect(DEPLOYMENT_REFRESH_MESSAGE).to.equal(
@@ -72,16 +76,19 @@ describe("deployment version", () => {
   });
 
   it("stores and consumes a one-shot alert marker when a response comes from a newer commit", () => {
+    // Store the current page commit SHA before reading the response.
     setLoadedCommitSha("abc123");
     let reloads = 0;
     setDeploymentReloadHandler(() => {
       reloads += 1;
     });
 
+    // Process a response from a different commit SHA.
     const changed = reloadIfDeploymentChanged(
       new Headers({ [COMMIT_SHA_HEADER]: "def456" }),
     );
 
+    // Cross-version responses store and consume the reload alert marker.
     expect(changed).to.equal(true);
     expect(reloads).to.equal(1);
     expect(consumePendingDeploymentRefreshAlert()).to.equal(true);
@@ -89,6 +96,7 @@ describe("deployment version", () => {
   });
 
   it("suppresses repeated automatic refreshes within the public cache window", () => {
+    // Start inside the public cache window with a stale loaded commit.
     Date.now = () => 1_000;
     setLoadedCommitSha("old");
     let reloads = 0;
@@ -96,10 +104,12 @@ describe("deployment version", () => {
       reloads += 1;
     });
 
+    // Set up first changed.
     const firstChanged = reloadIfDeploymentChanged(
       new Headers({ [COMMIT_SHA_HEADER]: "new" }),
     );
 
+    // Verify suppresses repeated automatic refreshes within the public cache window.
     expect(firstChanged).to.equal(true);
     expect(reloads).to.equal(1);
     expect(consumePendingDeploymentRefreshAlert()).to.equal(true);
@@ -110,16 +120,19 @@ describe("deployment version", () => {
     });
     Date.now = () => 1_000 + 4 * 60 * 1000;
 
+    // Set up second changed.
     const secondChanged = reloadIfDeploymentChanged(
       new Headers({ [COMMIT_SHA_HEADER]: "new" }),
     );
 
+    // Assert that the flag is enabled.
     expect(secondChanged).to.equal(true);
     expect(reloads).to.equal(1);
     expect(consumePendingDeploymentRefreshAlert()).to.equal(false);
   });
 
   it("schedules automatic refresh retries when cached HTML is still loaded", () => {
+    // Start inside the public cache window with a stale loaded commit.
     Date.now = () => 1_000;
     setLoadedCommitSha("old");
     let reloads = 0;
@@ -129,6 +142,7 @@ describe("deployment version", () => {
     const swal = mockSwal();
     const retryTimer = captureDeploymentRefreshRetryTimer();
 
+    // Restore the page state after the check.
     try {
       reloadIfDeploymentChanged(new Headers({ [COMMIT_SHA_HEADER]: "new" }));
       resetDeploymentReloadState({ clearRefreshHistory: false });
@@ -137,17 +151,21 @@ describe("deployment version", () => {
       });
       Date.now = () => 1_000 + 4 * 60 * 1000;
 
+      // Set up changed.
       const changed = reloadIfDeploymentChanged(
         new Headers({ [COMMIT_SHA_HEADER]: "new" }),
       );
 
+      // Verify schedules automatic refresh retries when cached HTML is still loaded.
       expect(changed).to.equal(true);
       expect(reloads).to.equal(1);
       expect(swal.calls).to.have.length(1);
       expect(retryTimer.delay).to.equal(30_000);
 
+      // Fire the retry timer.
       retryTimer.callback();
 
+      // Assert the reload count.
       expect(reloads).to.equal(2);
     } finally {
       retryTimer.restore();
@@ -156,12 +174,14 @@ describe("deployment version", () => {
   });
 
   it("resumes refresh retries while the stale commit is still loaded", () => {
+    // Start inside the public cache window with a stale loaded commit.
     Date.now = () => 1_000;
     setLoadedCommitSha("old");
     setDeploymentReloadHandler(() => {});
     const swal = mockSwal();
     const firstRetryTimer = captureDeploymentRefreshRetryTimer();
 
+    // Restore the page state after the check.
     try {
       reloadIfDeploymentChanged(new Headers({ [COMMIT_SHA_HEADER]: "new" }));
       resetDeploymentReloadState({ clearRefreshHistory: false });
@@ -177,6 +197,7 @@ describe("deployment version", () => {
     });
     const resumedRetryTimer = captureDeploymentRefreshRetryTimer();
 
+    // Restore the page state after the check.
     try {
       setLoadedCommitSha("old");
       expect(initializeDeploymentRefreshRetry()).to.equal(true);
@@ -195,6 +216,7 @@ describe("deployment version", () => {
   });
 
   it("allows another automatic refresh after the public cache window", () => {
+    // Start inside the public cache window with a stale loaded commit.
     Date.now = () => 1_000;
     setLoadedCommitSha("old");
     let reloads = 0;
@@ -209,10 +231,12 @@ describe("deployment version", () => {
     });
     Date.now = () => 1_000 + 5 * 60 * 1000;
 
+    // Set up changed.
     const changed = reloadIfDeploymentChanged(
       new Headers({ [COMMIT_SHA_HEADER]: "new" }),
     );
 
+    // Assert that the flag is enabled.
     expect(changed).to.equal(true);
     expect(reloads).to.equal(2);
     expect(consumePendingDeploymentRefreshAlert()).to.equal(true);

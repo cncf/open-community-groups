@@ -23,6 +23,7 @@ describe("dashboard chart config helpers", () => {
   });
 
   it("builds monthly bar series without reserving empty periods", () => {
+    // Verify builds monthly bar series without reserving empty periods.
     expect(
       buildRecentBarSeries(
         [
@@ -40,6 +41,7 @@ describe("dashboard chart config helpers", () => {
   });
 
   it("normalizes category tuples and bar sizing options", () => {
+    // Verify normalizes category tuples and bar sizing options.
     expect(
       toCategorySeries([
         ["Talks", "12"],
@@ -50,6 +52,7 @@ describe("dashboard chart config helpers", () => {
       { name: "Workshops", value: 4 },
     ]);
 
+    // Verify normalizes category tuples and bar sizing options.
     expect(getVerticalBarSeriesStyle(12)).to.deep.equal({
       barMaxWidth: 35,
       barMinWidth: 12,
@@ -66,10 +69,23 @@ describe("dashboard chart config helpers", () => {
   });
 
   it("formats sparse category axis labels", () => {
-    const categories = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct"];
+    // Prepare categories for formatting sparse category axis labels.
+    const categories = [
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+    ];
     const axisConfig = getVerticalBarCategoryAxisConfig(categories);
     const formatter = axisConfig.axisLabel.formatter;
 
+    // Verify formats sparse category axis labels.
     expect(formatter("Jan", 0)).to.equal("Jan");
     expect(formatter("Feb", 1)).to.equal("");
     expect(formatter("Mar", 2)).to.equal("Mar");
@@ -77,13 +93,16 @@ describe("dashboard chart config helpers", () => {
   });
 
   it("reads shared chart colors and tooltip config from css variables", () => {
+    // Verify reads shared chart colors and tooltip config.
     document.documentElement.style.setProperty("--color-stone-100", "#f5f5f4");
     document.documentElement.style.setProperty("--color-stone-200", "#e7e5e4");
     document.documentElement.style.setProperty("--color-stone-700", "#44403c");
     document.documentElement.style.setProperty("--color-white", "#ffffff");
 
+    // Assert the chart grid line color.
     expect(getChartGridLineColor()).to.equal("#f5f5f4");
 
+    // Assert the axis tooltip config.
     expect(getAxisTooltipConfig()).to.deep.equal({
       trigger: "axis",
       backgroundColor: "#ffffff",
@@ -92,6 +111,7 @@ describe("dashboard chart config helpers", () => {
       textStyle: { color: "#44403c" },
     });
 
+    // Verify reads shared chart colors and tooltip config from css variables.
     expect(getItemTooltipConfig()).to.deep.equal({
       trigger: "item",
       backgroundColor: "#ffffff",
@@ -102,9 +122,13 @@ describe("dashboard chart config helpers", () => {
   });
 
   it("builds title and value axis configs", () => {
+    // Verify builds title and value axis configs.
     document.documentElement.style.setProperty("--color-stone-100", "#f5f5f4");
 
-    expect(getChartTitleConfig("Members over time", { 950: "#0c0a09" })).to.deep.equal({
+    // Assert the computed value.
+    expect(
+      getChartTitleConfig("Members over time", { 950: "#0c0a09" }),
+    ).to.deep.equal({
       text: "Members over time",
       left: "center",
       top: 12,
@@ -117,6 +141,7 @@ describe("dashboard chart config helpers", () => {
       },
     });
 
+    // Verify builds title and value axis configs.
     expect(getValueAxisConfig()).to.deep.equal({
       type: "value",
       minInterval: 1,

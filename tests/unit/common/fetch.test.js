@@ -10,10 +10,12 @@ import {
 } from "/static/js/common/deployment-version.js";
 import { mockFetch } from "/tests/unit/test-utils/network.js";
 
+// Set loaded commit sha for the test.
 const setLoadedCommitSha = (commitSha) => {
   document.head.innerHTML = `<meta name="ocg-commit-sha" content="${commitSha}">`;
 };
 
+// Return settled state after current task for the test.
 const getSettledStateAfterCurrentTask = (promise) =>
   Promise.race([
     promise.then(
@@ -42,12 +44,15 @@ describe("ocgFetch", () => {
   });
 
   it("adds OCG fetch and commit SHA headers for same-origin requests", async () => {
+    // Mock the fetch response.
     setLoadedCommitSha("abc123");
     fetchMock.setImpl(async (_url, options) => {
+      // Same-origin requests include the OCG and commit headers.
       expect(options.headers).to.be.instanceOf(Headers);
       expect(options.headers.get("X-OCG-Fetch")).to.equal("true");
       expect(options.headers.get(COMMIT_SHA_HEADER)).to.equal("abc123");
 
+      // Return the value used by the assertion.
       return {
         headers: new Headers(),
         ok: true,
@@ -55,18 +60,23 @@ describe("ocgFetch", () => {
       };
     });
 
+    // Execute the OCG fetch helper.
     await ocgFetch("/test");
 
+    // The request uses the expected endpoint and options.
     expect(fetchMock.calls).to.have.length(1);
   });
 
   it("does not add OCG headers for cross-origin requests", async () => {
+    // Mock the fetch response.
     setLoadedCommitSha("abc123");
     fetchMock.setImpl(async (_url, options) => {
+      // Cross-origin requests keep the OCG headers unset.
       expect(options.headers).to.be.instanceOf(Headers);
       expect(options.headers.get("X-OCG-Fetch")).to.equal(null);
       expect(options.headers.get(COMMIT_SHA_HEADER)).to.equal(null);
 
+      // Return the value used by the assertion.
       return {
         headers: new Headers(),
         ok: true,
@@ -74,18 +84,23 @@ describe("ocgFetch", () => {
       };
     });
 
+    // Execute the OCG fetch helper.
     await ocgFetch("https://example.test/api");
 
+    // The request uses the expected endpoint and options.
     expect(fetchMock.calls).to.have.length(1);
   });
 
   it("preserves HTMX headers while adding OCG fetch headers for same-origin requests", async () => {
+    // Mock the fetch response.
     setLoadedCommitSha("abc123");
     fetchMock.setImpl(async (_url, options) => {
+      // Preserves HTMX headers while adding OCG fetch headers for same-origin requests.
       expect(options.headers.get("HX-Request")).to.equal("true");
       expect(options.headers.get("X-OCG-Fetch")).to.equal("true");
       expect(options.headers.get(COMMIT_SHA_HEADER)).to.equal("abc123");
 
+      // Return the value used by the assertion.
       return {
         headers: new Headers(),
         ok: true,
@@ -93,16 +108,19 @@ describe("ocgFetch", () => {
       };
     });
 
+    // Execute the OCG fetch helper.
     await ocgFetch("/test", {
       headers: {
         "HX-Request": "true",
       },
     });
 
+    // The request uses the expected endpoint and options.
     expect(fetchMock.calls).to.have.length(1);
   });
 
   it("reloads and leaves callers pending when the server requests a deployment refresh", async () => {
+    // Mock the fetch response.
     let reloads = 0;
     setDeploymentReloadHandler(() => {
       reloads += 1;
@@ -113,15 +131,18 @@ describe("ocgFetch", () => {
       status: 204,
     }));
 
+    // Capture the async result.
     const settledState = await getSettledStateAfterCurrentTask(
       ocgFetch("/test"),
     );
 
+    // Deployment refresh responses reload and leave callers pending.
     expect(settledState).to.equal("pending");
     expect(reloads).to.equal(1);
   });
 
   it("reloads and leaves callers pending when a same-origin response comes from a newer commit", async () => {
+    // Mock the fetch response.
     setLoadedCommitSha("abc123");
     let reloads = 0;
     setDeploymentReloadHandler(() => {
@@ -133,15 +154,18 @@ describe("ocgFetch", () => {
       status: 200,
     }));
 
+    // Capture the async result.
     const settledState = await getSettledStateAfterCurrentTask(
       ocgFetch("/test"),
     );
 
+    // Verify refresh keeps callers pending for a newer same-origin commit.
     expect(settledState).to.equal("pending");
     expect(reloads).to.equal(1);
   });
 
   it("leaves callers pending when deployment refresh enters retry mode", async () => {
+    // Start inside the public cache window before entering retry mode.
     Date.now = () => 1_000;
     let reloads = 0;
     setDeploymentReloadHandler(() => {
@@ -159,10 +183,12 @@ describe("ocgFetch", () => {
       status: 204,
     }));
 
+    // Capture the async result.
     const settledState = await getSettledStateAfterCurrentTask(
       ocgFetch("/test"),
     );
 
+    // The fetch promise remains pending while the page reloads.
     expect(settledState).to.equal("pending");
     expect(reloads).to.equal(1);
   });

@@ -17,7 +17,9 @@ describe("community explore map", () => {
     markerAdds = [];
     flyToBoundsCalls = [];
     document.head
-      .querySelectorAll('script[src*="leaflet.v1.9.4.min.js"], script[src*="leaflet.markercluster.v1.5.3.min.js"]')
+      .querySelectorAll(
+        'script[src*="leaflet.v1.9.4.min.js"], script[src*="leaflet.markercluster.v1.5.3.min.js"]',
+      )
       .forEach((node) => node.remove());
     document.body.innerHTML = `
       <div id="main-loading-map" class="hidden"></div>
@@ -25,6 +27,7 @@ describe("community explore map", () => {
     `;
     globalThis.htmx = { process() {} };
 
+    // Run the behavior under test.
     globalThis.L = {
       Browser: { retina: false },
       latLng(lat, lng) {
@@ -100,7 +103,9 @@ describe("community explore map", () => {
     resetDom();
     ExploreMap._instance = null;
     document.head
-      .querySelectorAll('script[src*="leaflet.v1.9.4.min.js"], script[src*="leaflet.markercluster.v1.5.3.min.js"]')
+      .querySelectorAll(
+        'script[src*="leaflet.v1.9.4.min.js"], script[src*="leaflet.markercluster.v1.5.3.min.js"]',
+      )
       .forEach((node) => node.remove());
     if (originalLeaflet) {
       globalThis.L = originalLeaflet;
@@ -117,19 +122,27 @@ describe("community explore map", () => {
   });
 
   it("loads map scripts, filters invalid coordinates, fits bbox, and navigates to group pages", () => {
+    // Prepare original anchor click for loading map scripts, filters invalid.
     const originalAnchorClick = HTMLAnchorElement.prototype.click;
     const clickedUrls = [];
     HTMLAnchorElement.prototype.click = function click() {
       clickedUrls.push(this.getAttribute("href"));
     };
 
+    // Prepare map for loading map scripts, filters invalid coordinates, fits bbox.
     const map = new ExploreMap("groups", { groups: [] });
-    const leafletScript = document.head.querySelector('script[src*="leaflet.v1.9.4.min.js"]');
+    const leafletScript = document.head.querySelector(
+      'script[src*="leaflet.v1.9.4.min.js"]',
+    );
 
+    // Verify loads map scripts, filters invalid coordinates, fits.
     leafletScript.onload();
-    const clusterScript = document.head.querySelector('script[src*="leaflet.markercluster.v1.5.3.min.js"]');
+    const clusterScript = document.head.querySelector(
+      'script[src*="leaflet.markercluster.v1.5.3.min.js"]',
+    );
     clusterScript.onload();
 
+    // Add markers while invalid coordinates are present.
     try {
       map.addMarkers(
         [
@@ -152,14 +165,22 @@ describe("community explore map", () => {
         { sw_lat: 1, sw_lon: 2, ne_lat: 3, ne_lon: 4 },
       );
 
+      // Verify loads map scripts, filters invalid coordinates, fits bbox.
       expect(markerAdds).to.have.length(1);
       expect(markerAdds[0].config.icon.className).to.equal("marker-malaga-js");
-      expect(markerAdds[0].latLng).to.deep.equal({ lat: 36.7213, lng: -4.4214 });
+      expect(markerAdds[0].latLng).to.deep.equal({
+        lat: 36.7213,
+        lng: -4.4214,
+      });
       expect(addedLayers).to.have.length(1);
-      expect(flyToBoundsCalls).to.deep.equal([{ sw: { lat: 1, lng: 2 }, ne: { lat: 3, lng: 4 } }]);
+      expect(flyToBoundsCalls).to.deep.equal([
+        { sw: { lat: 1, lng: 2 }, ne: { lat: 3, lng: 4 } },
+      ]);
 
+      // Verify loads map scripts, filters invalid.
       markerAdds[0].handlers.click();
 
+      // Verify loads map scripts, filters invalid coordinates, fits bbox.
       expect(clickedUrls).to.deep.equal(["/spain/group/malaga-javascript"]);
     } finally {
       HTMLAnchorElement.prototype.click = originalAnchorClick;
@@ -167,17 +188,24 @@ describe("community explore map", () => {
   });
 
   it("builds event urls and ignores invalid bounding boxes", () => {
+    // Prepare original anchor click for building event urls and ignores invalid.
     const originalAnchorClick = HTMLAnchorElement.prototype.click;
     const clickedUrls = [];
     HTMLAnchorElement.prototype.click = function click() {
       clickedUrls.push(this.getAttribute("href"));
     };
 
+    // Verify builds event urls and ignores invalid bounding boxes.
     try {
       const map = new ExploreMap("events", { events: [] });
-      document.head.querySelector('script[src*="leaflet.v1.9.4.min.js"]')?.onload();
-      document.head.querySelector('script[src*="leaflet.markercluster.v1.5.3.min.js"]')?.onload();
+      document.head
+        .querySelector('script[src*="leaflet.v1.9.4.min.js"]')
+        ?.onload();
+      document.head
+        .querySelector('script[src*="leaflet.markercluster.v1.5.3.min.js"]')
+        ?.onload();
 
+      // Verify builds event urls and ignores invalid bounding.
       map.addMarkers(
         [
           {
@@ -193,11 +221,16 @@ describe("community explore map", () => {
         { sw_lat: 5, sw_lon: 5, ne_lat: 5, ne_lon: 5 },
       );
 
+      // Assert the map bounds calls.
       expect(flyToBoundsCalls).to.deep.equal([]);
 
+      // Verify builds event urls and ignores invalid.
       markerAdds[0].handlers.click();
 
-      expect(clickedUrls).to.deep.equal(["/spain/group/malaga-javascript/event/open-source-day"]);
+      // Assert the updated clicked urls.
+      expect(clickedUrls).to.deep.equal([
+        "/spain/group/malaga-javascript/event/open-source-day",
+      ]);
     } finally {
       HTMLAnchorElement.prototype.click = originalAnchorClick;
     }
