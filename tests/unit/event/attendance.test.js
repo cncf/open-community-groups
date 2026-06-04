@@ -258,7 +258,7 @@ describe("event attendance", () => {
     // Verify attendance clicks work after the page body is swapped.
     expect(env.current.swal.calls[0].icon).to.equal("info");
     expect(env.current.swal.calls[0].html).to.include(
-      "/log-in?next_url=/events/test-event",
+      "/log-in?next_url=%2Fevents%2Ftest-event",
     );
   });
 
@@ -551,7 +551,7 @@ describe("event attendance", () => {
     expect(env.current.swal.calls[0].icon).to.equal("info");
     expect(env.current.swal.calls[0].html).to.include("join the waiting list");
     expect(env.current.swal.calls[0].html).to.include(
-      "/log-in?next_url=/events/test-event",
+      "/log-in?next_url=%2Fevents%2Ftest-event",
     );
 
     // Keep a reference to the attendance label element.
@@ -569,6 +569,20 @@ describe("event attendance", () => {
     expect(env.current.htmx.triggerCalls).to.deep.equal([
       ["#leave-btn", "confirmed"],
     ]);
+  });
+
+  it("escapes the sign-in return path in attendance alerts", () => {
+    // Render the attendance fixture with a path that has query delimiters.
+    const { signinButton } = renderAttendanceDom();
+    signinButton.dataset.path = "/events/test-event?ticket=early&ref=home";
+
+    // Open the attendance sign-in alert.
+    signinButton.click();
+
+    // The sign-in link keeps the full return path inside the next_url value.
+    expect(env.current.swal.calls[0].html).to.include(
+      "/log-in?next_url=%2Fevents%2Ftest-event%3Fticket%3Dearly%26ref%3Dhome",
+    );
   });
 
   it("confirms canceling a pending invitation request with request-specific copy", async () => {

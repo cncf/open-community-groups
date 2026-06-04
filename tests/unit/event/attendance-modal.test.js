@@ -316,7 +316,7 @@ describe("event attendance paid modal", () => {
       "buy a ticket for this event",
     );
     expect(env.current.swal.calls.at(-1)?.html).to.include(
-      "/log-in?next_url=/events/test-event",
+      "/log-in?next_url=%2Fevents%2Ftest-event",
     );
   });
 

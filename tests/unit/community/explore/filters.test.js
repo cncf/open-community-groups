@@ -10,6 +10,7 @@ import {
   openFiltersDrawer,
   resetFilters,
   resetDateFiltersOnCalendarViewMode,
+  searchOnEnter,
   triggerChangeOnForm,
   unckeckAllKinds,
   updateDateInput,
@@ -97,6 +98,33 @@ describe("explore filters", () => {
     expect(htmx.triggerCalls).to.deep.equal([
       [document.getElementById("events-form"), "change"],
     ]);
+  });
+
+  it("redirects escaped text searches when pressing enter outside a form", () => {
+    // Prepare assigned URLs for redirecting to explore with special characters.
+    const assignedUrls = [];
+    const executeSearchOnEnter = new Function(
+      "document",
+      `const searchOnEnter = ${searchOnEnter.toString()}; return searchOnEnter;`,
+    )({
+      location: {
+        set href(url) {
+          assignedUrls.push(url);
+        },
+      },
+    });
+
+    // Press Enter in a search input without a form target.
+    executeSearchOnEnter({
+      key: "Enter",
+      currentTarget: {
+        value: "cloud & native?",
+        blur() {},
+      },
+    });
+
+    // Submitted search text is escaped in the explore redirect.
+    expect(assignedUrls).to.deep.equal(["/explore?ts_query=cloud+%26+native%3F"]);
   });
 
   it("updates sort inputs from the selector value", () => {

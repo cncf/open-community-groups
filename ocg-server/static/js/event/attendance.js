@@ -1110,11 +1110,12 @@ const handleAttendanceClick = (event) => {
   const signinButton = target.closest('[data-attendance-role="signin-btn"]');
   if (signinButton instanceof HTMLElement) {
     const path = signinButton.dataset.path || window.location.pathname;
+    const nextUrl = encodeURIComponent(path);
     const label = getAttendanceControlLabel(signinButton) || ATTEND_EVENT_LABEL;
     const actionText = getSigninActionText(label);
 
     showInfoAlert(
-      `You need to be <a href='/log-in?next_url=${path}' class='underline font-medium' hx-boost='true'>logged in</a> to ${actionText}.`,
+      `You need to be <a href='/log-in?next_url=${nextUrl}' class='underline font-medium' hx-boost='true'>logged in</a> to ${actionText}.`,
       true,
     );
     return;

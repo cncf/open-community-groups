@@ -52,6 +52,33 @@ describe("community home", () => {
     });
 
     // Submitted search text is included in the explore redirect.
-    expect(assignedUrls).to.deep.equal(["/explore?ts_query=cloud%20native"]);
+    expect(assignedUrls).to.deep.equal(["/explore?ts_query=cloud+native"]);
+  });
+
+  it("escapes special characters in the text search redirect", () => {
+    // Prepare assigned URLs for redirecting to explore with special characters.
+    const assignedUrls = [];
+    const executeLoadExplorePage = new Function(
+      "document",
+      `const loadExplorePage = ${loadExplorePage.toString()}; return loadExplorePage();`,
+    );
+
+    // Search text with query delimiters redirects to the explore page.
+    executeLoadExplorePage({
+      getElementById(id) {
+        if (id === "ts_query") {
+          return { value: "cloud & native?" };
+        }
+        return null;
+      },
+      location: {
+        assign(url) {
+          assignedUrls.push(url);
+        },
+      },
+    });
+
+    // Submitted search text is escaped in the explore redirect.
+    expect(assignedUrls).to.deep.equal(["/explore?ts_query=cloud+%26+native%3F"]);
   });
 });

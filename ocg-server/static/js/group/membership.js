@@ -246,8 +246,9 @@ const handleMembershipClick = (event) => {
   const signinButton = target.closest("#signin-btn");
   if (signinButton) {
     const path = signinButton.dataset.path || window.location.pathname;
+    const nextUrl = encodeURIComponent(path);
     showInfoAlert(
-      `You need to be <a href='/log-in?next_url=${path}' class='underline font-medium' hx-boost='true'>logged in</a> to join this group.`,
+      `You need to be <a href='/log-in?next_url=${nextUrl}' class='underline font-medium' hx-boost='true'>logged in</a> to join this group.`,
       true,
     );
     return;

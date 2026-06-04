@@ -204,7 +204,8 @@ export const searchOnEnter = (e, formId) => {
     } else {
       const value = e.currentTarget.value;
       if (value !== "") {
-        document.location.href = `/explore?ts_query=${value}`;
+        const params = new URLSearchParams({ ts_query: value });
+        document.location.href = `/explore?${params.toString()}`;
       }
     }
     e.currentTarget.blur();
