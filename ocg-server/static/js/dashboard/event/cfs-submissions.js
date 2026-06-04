@@ -12,11 +12,29 @@ const OPEN_ACTION = "open-cfs-submission-modal";
 const DATA_KEY = "cfsSubmissionModalReady";
 const APPROVED_SUBMISSIONS_EVENT = "event-approved-submissions-updated";
 const SUBMISSIONS_CONTENT_ID = "submissions-content";
+const SUBMISSIONS_FILTERS_FORM_ID = "submissions-filters-form";
 const SUBMISSIONS_FILTER_ID = "submissions-label-filter";
+const SUBMISSIONS_FILTERS_SORT_ID = "submissions-sort";
+const SUBMISSIONS_FILTERS_BOUND_KEY = "submissionsFiltersBound";
 const REVIEW_TABS = {
   DETAILS: "details",
   DECISION: "decision",
   RATINGS: "ratings",
+};
+
+/**
+ * Returns an element by ID from a document or element root.
+ * @param {Document|Element} root - Root element to search from.
+ * @param {string} id - Element ID.
+ * @returns {HTMLElement|null} Matching element.
+ */
+const getElementById = (root, id) => {
+  if (root instanceof HTMLElement && root.id === id) {
+    return root;
+  }
+
+  const element = root.getElementById?.(id) || root.querySelector?.(`#${id}`);
+  return element instanceof HTMLElement ? element : null;
 };
 
 /**
@@ -1135,16 +1153,47 @@ if (!customElements.get("review-submission-modal")) {
   customElements.define("review-submission-modal", ReviewSubmissionModal);
 }
 
+/**
+ * Initializes auto-submit behavior for the submissions filters form.
+ * @param {Document|Element} root - Root element to search from.
+ * @returns {void}
+ */
+export const initializeSubmissionFilters = (root = document) => {
+  const form = getElementById(root, SUBMISSIONS_FILTERS_FORM_ID);
+  if (!form || form.dataset[SUBMISSIONS_FILTERS_BOUND_KEY] === "true") {
+    return;
+  }
+
+  const sort = getElementById(root, SUBMISSIONS_FILTERS_SORT_ID);
+  const labelFilter = getElementById(root, SUBMISSIONS_FILTER_ID);
+  const submitFilters = () => {
+    window.requestAnimationFrame(() => form.requestSubmit());
+  };
+
+  form.dataset[SUBMISSIONS_FILTERS_BOUND_KEY] = "true";
+  sort?.addEventListener("change", submitFilters);
+  labelFilter?.addEventListener("change", submitFilters);
+};
+
 const initializeCfsSubmissions = () => {
   if (document.documentElement.dataset[DATA_KEY] === "true") {
     return;
   }
   document.documentElement.dataset[DATA_KEY] = "true";
+  initializeSubmissionFilters(document);
+
+  document.addEventListener("htmx:load", (event) => {
+    const root = event.target instanceof Element ? event.target : document;
+    initializeSubmissionFilters(root);
+  });
+
   document.addEventListener("htmx:afterSwap", (event) => {
     const target = event?.detail?.target || event?.detail?.elt;
     if (!(target instanceof Element) || target.id !== SUBMISSIONS_CONTENT_ID) {
       return;
     }
+
+    initializeSubmissionFilters(target);
 
     const modal = document.getElementById(MODAL_ELEMENT_ID);
     if (!modal || typeof modal.syncLabelsFromFilter !== "function") {

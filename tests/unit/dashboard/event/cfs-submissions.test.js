@@ -1,8 +1,11 @@
 import { expect } from "@open-wc/testing";
 
-import "/static/js/dashboard/event/cfs-submissions.js";
+import { initializeSubmissionFilters } from "/static/js/dashboard/event/cfs-submissions.js";
 import { useDashboardTestEnv } from "/tests/unit/test-utils/env.js";
-import { dispatchHtmxAfterRequest } from "/tests/unit/test-utils/htmx.js";
+import {
+  dispatchHtmxAfterRequest,
+  dispatchHtmxLoad,
+} from "/tests/unit/test-utils/htmx.js";
 import {
   mountLitComponent,
   useMountedElementsCleanup,
@@ -27,6 +30,37 @@ describe("review-submission-modal", () => {
       processCalls.push(form);
     };
   });
+
+  // Prepare the submissions filters fixture.
+  const renderFilters = () => {
+    document.body.insertAdjacentHTML(
+      "beforeend",
+      `
+        <form id="submissions-filters-form">
+          <select id="submissions-sort" name="sort">
+            <option value="created-desc">Submitted (newest)</option>
+            <option value="created-asc">Submitted (oldest)</option>
+          </select>
+          <div id="submissions-label-filter"></div>
+        </form>
+      `,
+    );
+
+    const form = document.getElementById("submissions-filters-form");
+    const submitCalls = [];
+    form.requestSubmit = () => submitCalls.push(form);
+
+    return {
+      form,
+      labelFilter: document.getElementById("submissions-label-filter"),
+      sort: document.getElementById("submissions-sort"),
+      submitCalls,
+    };
+  };
+
+  // Wait for filter submission scheduled in the next animation frame.
+  const waitForFilterSubmit = () =>
+    new Promise((resolve) => window.requestAnimationFrame(resolve));
 
   // Render the component fixture.
   const renderModal = async (properties = {}) => {
@@ -106,6 +140,39 @@ describe("review-submission-modal", () => {
     expect(document.body.style.overflow).to.equal("hidden");
     expect(processCalls).to.have.length(1);
     expect(element.querySelector("#cfs-submission-form")).to.not.equal(null);
+  });
+
+  it("submits filters when sort or label filters change", async () => {
+    // Prepare the submissions filters fixture.
+    const { labelFilter, sort, submitCalls } = renderFilters();
+
+    // Initialize filters twice to verify duplicate handlers are guarded.
+    initializeSubmissionFilters();
+    initializeSubmissionFilters();
+
+    // Change the sort selector.
+    sort.dispatchEvent(new Event("change"));
+    await waitForFilterSubmit();
+
+    // Change the label selector.
+    labelFilter.dispatchEvent(new Event("change"));
+    await waitForFilterSubmit();
+
+    // Verify each filter change submits once.
+    expect(submitCalls).to.have.length(2);
+  });
+
+  it("initializes submissions filters on htmx load", async () => {
+    // Prepare the submissions filters fixture.
+    const { sort, submitCalls } = renderFilters();
+
+    // Dispatch the lifecycle event used by swapped dashboard content.
+    dispatchHtmxLoad(document.body);
+    sort.dispatchEvent(new Event("change"));
+    await waitForFilterSubmit();
+
+    // Verify the swapped filters submit after being initialized from htmx load.
+    expect(submitCalls).to.have.length(1);
   });
 
   it("opens from a review trigger after the dashboard body is swapped", async () => {

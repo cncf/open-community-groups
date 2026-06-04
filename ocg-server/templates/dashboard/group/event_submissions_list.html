@@ -52,25 +52,6 @@ description = "Review and manage call for speakers submissions.") -}}
     </div>
   </form>
 </div>
-<script type="module">
-  const submissionsFiltersForm = document.getElementById("submissions-filters-form");
-  const submissionsSort = document.getElementById("submissions-sort");
-  const submissionsLabelFilter = document.getElementById("submissions-label-filter");
-  const submitFilters = () => {
-    if (!submissionsFiltersForm) {
-      return;
-    }
-    window.requestAnimationFrame(() => submissionsFiltersForm.requestSubmit());
-  };
-
-  if (submissionsFiltersForm && submissionsSort) {
-    submissionsSort.addEventListener("change", () => submitFilters());
-  }
-
-  if (submissionsFiltersForm && submissionsLabelFilter) {
-    submissionsLabelFilter.addEventListener("change", () => submitFilters());
-  }
-</script>
 
 <div class="mt-10">
   <div class="relative overflow-visible">
