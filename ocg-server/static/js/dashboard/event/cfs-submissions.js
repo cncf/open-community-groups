@@ -2,6 +2,7 @@ import { html, unsafeHTML } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { handleHtmxResponse } from "/static/js/common/alerts.js";
 import { computeUserInitials, lockBodyScroll, unlockBodyScroll } from "/static/js/common/common.js";
+import { getElementById } from "/static/js/common/dom.js";
 import { parseJsonAttribute } from "/static/js/common/utils.js";
 import "/static/js/common/cfs-label-selector.js";
 import "/static/js/common/logo-image.js";
@@ -20,21 +21,6 @@ const REVIEW_TABS = {
   DETAILS: "details",
   DECISION: "decision",
   RATINGS: "ratings",
-};
-
-/**
- * Returns an element by ID from a document or element root.
- * @param {Document|Element} root - Root element to search from.
- * @param {string} id - Element ID.
- * @returns {HTMLElement|null} Matching element.
- */
-const getElementById = (root, id) => {
-  if (root instanceof HTMLElement && root.id === id) {
-    return root;
-  }
-
-  const element = root.getElementById?.(id) || root.querySelector?.(`#${id}`);
-  return element instanceof HTMLElement ? element : null;
 };
 
 /**

@@ -1,4 +1,5 @@
 import { toggleModalVisibility } from "/static/js/common/common.js";
+import { getElementById, initializeOnReadyAndHtmxLoad } from "/static/js/common/dom.js";
 
 const MODAL_ID = "audit-log-filters-modal";
 const OPEN_BUTTON_ID = "open-audit-log-filters-modal";
@@ -17,17 +18,6 @@ const DETAILS_HOVER_DISABLED_ATTRIBUTE = "data-audit-log-hover-disabled";
 const DETAILS_HOVER_BOUND_ATTRIBUTE = "data-audit-log-hover-bound";
 
 let auditLogGlobalHandlersBound = false;
-
-/**
- * Returns an element by ID from a document or element root.
- * @param {Document|Element} root - Root element to search from.
- * @param {string} id - Element ID.
- * @returns {HTMLElement|null} Matching element.
- */
-const getElementById = (root, id) => {
-  const element = root.getElementById?.(id) || root.querySelector?.(`#${id}`);
-  return element instanceof HTMLElement ? element : null;
-};
 
 /**
  * Returns the popover card controlled by the provided trigger.
@@ -225,17 +215,4 @@ export const initializeAuditLogs = (root = document) => {
   syncAuditLogDetails(root);
 };
 
-const initializeAuditLogsWhenReady = () => {
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", () => initializeAuditLogs(document), { once: true });
-  } else {
-    initializeAuditLogs(document);
-  }
-
-  document.addEventListener("htmx:load", (event) => {
-    const root = event.target instanceof Element ? event.target : document;
-    initializeAuditLogs(root);
-  });
-};
-
-initializeAuditLogsWhenReady();
+initializeOnReadyAndHtmxLoad(initializeAuditLogs);

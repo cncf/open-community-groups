@@ -1,4 +1,4 @@
-import { queryElementById } from "/static/js/common/dom.js";
+import { getElementById } from "/static/js/common/dom.js";
 
 /**
  * Builds a list of existing form ids for page-level wiring.
@@ -7,7 +7,7 @@ import { queryElementById } from "/static/js/common/dom.js";
  * @returns {string[]} Existing form ids only.
  */
 export const collectExistingFormIds = (formIds, root = document) =>
-  (formIds || []).filter((formId) => !!queryElementById(root, formId));
+  (formIds || []).filter((formId) => !!getElementById(root, formId));
 
 /**
  * Syncs a checkbox toggle with its hidden boolean input.

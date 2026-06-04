@@ -1,6 +1,7 @@
 import { initializeSessionsRemovalWarning } from "/static/js/dashboard/group/event-form-helpers.js";
 import { initializeEventPreview } from "/static/js/dashboard/group/event-preview.js";
 import "/static/js/dashboard/group/questions-editor.js";
+import { initializeMatchingRoots, initializeOnReadyAndHtmxLoad } from "/static/js/common/dom.js";
 import {
   attachEventSaveAfterRequest,
   attachEventSaveBeforeRequestValidation,
@@ -301,30 +302,7 @@ const updateRecurrenceAdditionalOccurrencesState = ({
  * @returns {void}
  */
 export const initializeEventAddPageRoots = (root = document) => {
-  if (root instanceof Element && root.matches(EVENT_ADD_PAGE_SELECTOR)) {
-    initializeEventAddPage(root);
-    return;
-  }
-
-  root.querySelectorAll?.(EVENT_ADD_PAGE_SELECTOR).forEach((pageRoot) => {
-    initializeEventAddPage(pageRoot);
-  });
+  initializeMatchingRoots(root, EVENT_ADD_PAGE_SELECTOR, initializeEventAddPage);
 };
 
-const initializeEventAddPageWhenReady = () => {
-  // Initialize event add fragments on first load and after HTMX swaps.
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", () => initializeEventAddPageRoots(document), {
-      once: true,
-    });
-  } else {
-    initializeEventAddPageRoots(document);
-  }
-
-  document.addEventListener("htmx:load", (event) => {
-    const root = event.target instanceof Element ? event.target : document;
-    initializeEventAddPageRoots(root);
-  });
-};
-
-initializeEventAddPageWhenReady();
+initializeOnReadyAndHtmxLoad(initializeEventAddPageRoots);

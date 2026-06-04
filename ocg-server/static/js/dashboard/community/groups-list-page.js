@@ -1,5 +1,6 @@
 import { searchOnEnter } from "/static/js/community/explore/filters.js";
 import { selectDashboardAndSwapBody } from "/static/js/common/dashboard-selection.js";
+import { getElementById, initializeOnReadyAndHtmxLoad } from "/static/js/common/dom.js";
 
 const GROUPS_SEARCH_FORM_ID = "groups-search-form";
 const GROUPS_SEARCH_INPUT_ID = "search_groups";
@@ -8,21 +9,6 @@ const GROUP_ACTION_BUTTON_SELECTOR = ".btn-group-actions";
 const GROUP_SEARCH_BOUND_KEY = "groupsSearchBound";
 const GROUP_SELECTION_BOUND_KEY = "groupSelectionBound";
 const GROUP_ACTION_BOUND_KEY = "groupActionBound";
-
-/**
- * Returns an element by ID from a document or element root.
- * @param {Document|Element} root - Root element to search from.
- * @param {string} id - Element ID.
- * @returns {HTMLElement|null} Matching element.
- */
-const getElementById = (root, id) => {
-  if (root instanceof HTMLElement && root.id === id) {
-    return root;
-  }
-
-  const element = root.getElementById?.(id) || root.querySelector?.(`#${id}`);
-  return element instanceof HTMLElement ? element : null;
-};
 
 /**
  * Initializes search input behavior for the community groups list.
@@ -130,20 +116,4 @@ export const initializeCommunityGroupsList = (root = document) => {
   initializeGroupActionMenus(root);
 };
 
-const initializeCommunityGroupsListWhenReady = () => {
-  // Initialize current list controls on first load and after HTMX swaps.
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", () => initializeCommunityGroupsList(document), {
-      once: true,
-    });
-  } else {
-    initializeCommunityGroupsList(document);
-  }
-
-  document.addEventListener("htmx:load", (event) => {
-    const root = event.target instanceof Element ? event.target : document;
-    initializeCommunityGroupsList(root);
-  });
-};
-
-initializeCommunityGroupsListWhenReady();
+initializeOnReadyAndHtmxLoad(initializeCommunityGroupsList);

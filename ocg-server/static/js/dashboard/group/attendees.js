@@ -7,7 +7,7 @@ import {
   isSuccessfulXHRStatus,
   toggleModalVisibility,
 } from "/static/js/common/common.js";
-import { queryElementById } from "/static/js/common/dom.js";
+import { getElementById } from "/static/js/common/dom.js";
 import { ocgFetch } from "/static/js/common/fetch.js";
 
 const modalId = "attendee-notification-modal";
@@ -40,12 +40,12 @@ const resolveAttendeesRoot = (root = document) => {
  * @returns {Object} Refund modal controls.
  */
 const getRefundReviewControls = (root = document) => ({
-  modal: queryElementById(root, refundModalId),
-  nameField: queryElementById(root, "attendee-refund-name"),
-  ticketField: queryElementById(root, "attendee-refund-ticket"),
-  amountField: queryElementById(root, "attendee-refund-amount"),
-  approveButton: queryElementById(root, refundApproveButtonId),
-  rejectButton: queryElementById(root, refundRejectButtonId),
+  modal: getElementById(root, refundModalId),
+  nameField: getElementById(root, "attendee-refund-name"),
+  ticketField: getElementById(root, "attendee-refund-ticket"),
+  amountField: getElementById(root, "attendee-refund-amount"),
+  approveButton: getElementById(root, refundApproveButtonId),
+  rejectButton: getElementById(root, refundRejectButtonId),
 });
 
 /**
@@ -54,7 +54,7 @@ const getRefundReviewControls = (root = document) => ({
  * @returns {void}
  */
 const openRefundModal = (root = document) => {
-  const modal = queryElementById(root, refundModalId);
+  const modal = getElementById(root, refundModalId);
   if (modal?.classList.contains("hidden")) {
     toggleModalVisibility(refundModalId);
   }
@@ -66,7 +66,7 @@ const openRefundModal = (root = document) => {
  * @returns {void}
  */
 const closeRefundModal = (root = document) => {
-  const modal = queryElementById(root, refundModalId);
+  const modal = getElementById(root, refundModalId);
   if (modal && !modal.classList.contains("hidden")) {
     toggleModalVisibility(refundModalId);
   }
@@ -78,7 +78,7 @@ const closeRefundModal = (root = document) => {
  * @returns {void}
  */
 const closeAnswersModal = (root = document) => {
-  const modal = queryElementById(root, answersModalId);
+  const modal = getElementById(root, answersModalId);
   if (modal && !modal.classList.contains("hidden")) {
     toggleModalVisibility(answersModalId);
   }
@@ -92,9 +92,9 @@ const closeAnswersModal = (root = document) => {
  */
 const populateAnswersModal = (trigger, root) => {
   const sourceId = trigger.dataset.attendeeAnswersSource;
-  const source = sourceId ? queryElementById(root, sourceId) : null;
-  const content = queryElementById(root, "attendee-answers-content");
-  const name = queryElementById(root, "attendee-answers-name");
+  const source = sourceId ? getElementById(root, sourceId) : null;
+  const content = getElementById(root, "attendee-answers-content");
+  const name = getElementById(root, "attendee-answers-name");
 
   if (name) {
     name.textContent = trigger.dataset.attendeeName || "";
@@ -110,7 +110,7 @@ const populateAnswersModal = (trigger, root) => {
  * @returns {void}
  */
 const openAnswersModal = (root = document) => {
-  const modal = queryElementById(root, answersModalId);
+  const modal = getElementById(root, answersModalId);
   if (modal?.classList.contains("hidden")) {
     toggleModalVisibility(answersModalId);
   }
@@ -122,7 +122,7 @@ const openAnswersModal = (root = document) => {
  * @returns {void}
  */
 const closeInvitationModal = (root = document) => {
-  const modal = queryElementById(root, invitationModalId);
+  const modal = getElementById(root, invitationModalId);
   if (modal && !modal.classList.contains("hidden")) {
     toggleModalVisibility(invitationModalId);
   }
@@ -150,8 +150,8 @@ const getInvitationSearchField = (root) =>
  * @returns {void}
  */
 const setInvitationSubmissionField = (root, field) => {
-  const userInput = queryElementById(root, "attendee-invitation-user-id");
-  const emailInput = queryElementById(root, "attendee-invitation-email");
+  const userInput = getElementById(root, "attendee-invitation-user-id");
+  const emailInput = getElementById(root, "attendee-invitation-email");
 
   if (userInput) userInput.disabled = field !== "user";
   if (emailInput) emailInput.disabled = field !== "email";
@@ -163,9 +163,9 @@ const setInvitationSubmissionField = (root, field) => {
  * @returns {void}
  */
 const clearInvitationSelectedUser = (root) => {
-  const userInput = queryElementById(root, "attendee-invitation-user-id");
-  const emailInput = queryElementById(root, "attendee-invitation-email");
-  const selectedUser = queryElementById(root, "attendee-invitation-selected-user");
+  const userInput = getElementById(root, "attendee-invitation-user-id");
+  const emailInput = getElementById(root, "attendee-invitation-email");
+  const selectedUser = getElementById(root, "attendee-invitation-selected-user");
   const searchField = getInvitationSearchField(root);
 
   if (userInput) userInput.value = "";
@@ -184,9 +184,9 @@ const clearInvitationSelectedUser = (root) => {
  * @returns {void}
  */
 const resetInvitationForm = (root) => {
-  const userInput = queryElementById(root, "attendee-invitation-user-id");
-  const emailInput = queryElementById(root, "attendee-invitation-email");
-  const selectedUser = queryElementById(root, "attendee-invitation-selected-user");
+  const userInput = getElementById(root, "attendee-invitation-user-id");
+  const emailInput = getElementById(root, "attendee-invitation-email");
+  const selectedUser = getElementById(root, "attendee-invitation-selected-user");
   const searchField = getInvitationSearchField(root);
 
   if (userInput) userInput.value = "";
@@ -206,7 +206,7 @@ const resetInvitationForm = (root) => {
  * @returns {void}
  */
 const renderInvitationSelectedUser = (root, user) => {
-  const selectedUser = queryElementById(root, "attendee-invitation-selected-user");
+  const selectedUser = getElementById(root, "attendee-invitation-selected-user");
   if (!selectedUser) return;
 
   const pill = document.createElement("div");
@@ -244,7 +244,7 @@ const renderInvitationSelectedUser = (root, user) => {
  * @returns {void}
  */
 const renderInvitationSelectedEmail = (root, email) => {
-  const selectedUser = queryElementById(root, "attendee-invitation-selected-user");
+  const selectedUser = getElementById(root, "attendee-invitation-selected-user");
   if (!selectedUser) return;
 
   const pill = document.createElement("div");
@@ -282,12 +282,12 @@ const renderInvitationSelectedEmail = (root, email) => {
  * @returns {void}
  */
 const updateInvitationSubmitState = (root) => {
-  const form = queryElementById(root, "attendee-invitation-form");
-  const submit = queryElementById(root, "submit-attendee-invitation");
+  const form = getElementById(root, "attendee-invitation-form");
+  const submit = getElementById(root, "submit-attendee-invitation");
   if (!form || !submit) return;
 
-  const userId = queryElementById(root, "attendee-invitation-user-id")?.value || "";
-  const email = queryElementById(root, "attendee-invitation-email")?.value.trim() || "";
+  const userId = getElementById(root, "attendee-invitation-user-id")?.value || "";
+  const email = getElementById(root, "attendee-invitation-email")?.value.trim() || "";
   submit.disabled = userId === "" && !isValidInvitationEmail(email);
 };
 
@@ -298,9 +298,9 @@ const updateInvitationSubmitState = (root) => {
  * @returns {void}
  */
 const updateInvitationQuery = (root, query) => {
-  const userInput = queryElementById(root, "attendee-invitation-user-id");
-  const emailInput = queryElementById(root, "attendee-invitation-email");
-  const selectedUser = queryElementById(root, "attendee-invitation-selected-user");
+  const userInput = getElementById(root, "attendee-invitation-user-id");
+  const emailInput = getElementById(root, "attendee-invitation-email");
+  const selectedUser = getElementById(root, "attendee-invitation-selected-user");
   if (!userInput || !emailInput) return;
 
   const email = query.trim();
@@ -323,8 +323,8 @@ const updateInvitationQuery = (root, query) => {
  * @returns {void}
  */
 const selectInvitationEmail = (root, email) => {
-  const userInput = queryElementById(root, "attendee-invitation-user-id");
-  const emailInput = queryElementById(root, "attendee-invitation-email");
+  const userInput = getElementById(root, "attendee-invitation-user-id");
+  const emailInput = getElementById(root, "attendee-invitation-email");
   if (!emailInput || !isValidInvitationEmail(email)) return;
 
   if (userInput) userInput.value = "";
@@ -556,7 +556,7 @@ const initializeAttendeeActionsMenu = (root = document) => {
         rowSummary.focus();
         return;
       }
-      queryElementById(root, "attendee-actions-button")?.focus();
+      getElementById(root, "attendee-actions-button")?.focus();
     }
   });
 };
@@ -735,9 +735,9 @@ const initializeInvitationModal = (root = document) => {
 
   root.addEventListener("user-selected", (event) => {
     const user = event.detail?.user;
-    const input = queryElementById(root, "attendee-invitation-user-id");
-    const emailInput = queryElementById(root, "attendee-invitation-email");
-    const selected = queryElementById(root, "attendee-invitation-selected-user");
+    const input = getElementById(root, "attendee-invitation-user-id");
+    const emailInput = getElementById(root, "attendee-invitation-email");
+    const selected = getElementById(root, "attendee-invitation-selected-user");
     if (!user || !input) return;
 
     input.value = user.user_id || "";

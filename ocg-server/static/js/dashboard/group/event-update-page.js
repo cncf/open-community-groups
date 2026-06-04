@@ -1,4 +1,5 @@
 import { showConfirmAlert } from "/static/js/common/alerts.js";
+import { initializeMatchingRoots, initializeOnReadyAndHtmxLoad } from "/static/js/common/dom.js";
 import { initializeSessionsRemovalWarning } from "/static/js/dashboard/group/event-form-helpers.js";
 import { initializeEventPreview } from "/static/js/dashboard/group/event-preview.js";
 import "/static/js/dashboard/group/questions-editor.js";
@@ -307,30 +308,7 @@ export const initializeEventUpdatePage = (root = document) => {
  * @returns {void}
  */
 export const initializeEventUpdatePageRoots = (root = document) => {
-  if (root instanceof Element && root.matches(EVENT_UPDATE_PAGE_SELECTOR)) {
-    initializeEventUpdatePage(root);
-    return;
-  }
-
-  root.querySelectorAll?.(EVENT_UPDATE_PAGE_SELECTOR).forEach((pageRoot) => {
-    initializeEventUpdatePage(pageRoot);
-  });
+  initializeMatchingRoots(root, EVENT_UPDATE_PAGE_SELECTOR, initializeEventUpdatePage);
 };
 
-const initializeEventUpdatePageWhenReady = () => {
-  // Initialize event update fragments on first load and after HTMX swaps.
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", () => initializeEventUpdatePageRoots(document), {
-      once: true,
-    });
-  } else {
-    initializeEventUpdatePageRoots(document);
-  }
-
-  document.addEventListener("htmx:load", (event) => {
-    const root = event.target instanceof Element ? event.target : document;
-    initializeEventUpdatePageRoots(root);
-  });
-};
-
-initializeEventUpdatePageWhenReady();
+initializeOnReadyAndHtmxLoad(initializeEventUpdatePageRoots);

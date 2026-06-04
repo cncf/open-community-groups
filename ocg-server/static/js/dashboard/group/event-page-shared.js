@@ -1,6 +1,6 @@
 import { convertDateTimeLocalToISO } from "/static/js/common/common.js";
 import { handleHtmxResponse, showErrorAlert } from "/static/js/common/alerts.js";
-import { queryElementById } from "/static/js/common/dom.js";
+import { getElementById } from "/static/js/common/dom.js";
 import {
   clearCfsWindowValidity,
   clearSessionDateBoundsValidity,
@@ -56,7 +56,7 @@ export const initializeEventPageContext = (root, pageName) => {
 
   return {
     pageRoot,
-    queryById: (id) => queryElementById(pageRoot, id),
+    queryById: (id) => getElementById(pageRoot, id),
     queryOne: (selector) => pageRoot.querySelector(selector),
   };
 };

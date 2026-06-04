@@ -1,6 +1,6 @@
 import { toggleModalVisibility } from "/static/js/common/common.js";
 import { showErrorAlert } from "/static/js/common/alerts.js";
-import { queryElementById } from "/static/js/common/dom.js";
+import { getElementById } from "/static/js/common/dom.js";
 import { setLinkContent } from "/static/js/common/url-utils.js";
 import { printQrCode } from "/static/js/dashboard/group/qr-code-print.js";
 
@@ -99,7 +99,7 @@ const updateModalContent = (modal, trigger, elements, printButton) => {
  * printing. Prevents duplicate initialization using a dataset flag.
  */
 export const initializeQrCodeModal = (root = document) => {
-  const modal = queryElementById(root, MODAL_ID);
+  const modal = getElementById(root, MODAL_ID);
   if (!modal || modal.dataset[DATASET_KEY] === "true") {
     return;
   }
@@ -107,17 +107,17 @@ export const initializeQrCodeModal = (root = document) => {
   modal.dataset[DATASET_KEY] = "true";
 
   const elements = {
-    image: queryElementById(root, IMAGE_ID),
-    name: queryElementById(root, NAME_ID),
-    group: queryElementById(root, GROUP_ID),
-    start: queryElementById(root, START_ID),
-    link: queryElementById(root, LINK_ID),
+    image: getElementById(root, IMAGE_ID),
+    name: getElementById(root, NAME_ID),
+    group: getElementById(root, GROUP_ID),
+    start: getElementById(root, START_ID),
+    link: getElementById(root, LINK_ID),
   };
 
-  const openButton = queryElementById(root, OPEN_BUTTON_ID);
-  const closeButton = queryElementById(root, CLOSE_BUTTON_ID);
-  const overlay = queryElementById(root, OVERLAY_ID);
-  const printButton = queryElementById(root, PRINT_BUTTON_ID);
+  const openButton = getElementById(root, OPEN_BUTTON_ID);
+  const closeButton = getElementById(root, CLOSE_BUTTON_ID);
+  const overlay = getElementById(root, OVERLAY_ID);
+  const printButton = getElementById(root, PRINT_BUTTON_ID);
 
   const toggleModal = () => toggleModalVisibility(MODAL_ID);
 

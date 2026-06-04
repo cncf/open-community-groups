@@ -8,10 +8,76 @@ import {
   hasChartData,
   hasTimeSeriesData,
 } from "/static/js/dashboard/common.js";
+import { initializeOnReady } from "/static/js/common/dom.js";
 import { registerChartResizeHandler, renderChart } from "/static/js/common/stats.js";
 
 const GROUP_ANALYTICS_DATA_SELECTOR = "[data-group-analytics]";
 const GROUP_ANALYTICS_READY_KEY = "groupAnalyticsReady";
+
+/**
+ * Adds a rendered chart to the collection when the container has chart data.
+ * @param {Array<echarts.ECharts>} charts - Chart collection.
+ * @param {string} elementId - Chart container ID.
+ * @param {Object} chartOptions - ECharts options.
+ * @param {boolean} hasData - Whether chart data is available.
+ * @returns {void}
+ */
+const addRenderedChart = (charts, elementId, chartOptions, hasData) => {
+  const chart = renderChart(elementId, chartOptions, hasData);
+  if (chart) {
+    charts.push(chart);
+  }
+};
+
+/**
+ * Builds a running total area chart and monthly bar chart for one metric.
+ * @param {Object} config - Trend chart configuration.
+ * @param {Object} config.stats - Metric stats payload.
+ * @param {Object} config.palette - Theme palette.
+ * @param {string} config.runningChartId - Running total chart ID.
+ * @param {string} config.monthlyChartId - Monthly chart ID.
+ * @param {string} config.runningTitle - Running total chart title.
+ * @param {string} config.monthlyTitle - Monthly chart title.
+ * @param {string} config.label - Metric label.
+ * @param {string} config.runningDescription - Running chart description.
+ * @param {string} config.monthlyDescription - Monthly chart description.
+ * @returns {Array<echarts.ECharts>} Initialized charts.
+ */
+const buildTrendCharts = ({
+  stats = {},
+  palette,
+  runningChartId,
+  monthlyChartId,
+  runningTitle,
+  monthlyTitle,
+  label,
+  runningDescription,
+  monthlyDescription,
+}) => {
+  const charts = [];
+  const runningData = stats.running_total || [];
+  const monthlyData = stats.per_month || [];
+
+  addRenderedChart(
+    charts,
+    runningChartId,
+    createAreaChart(runningTitle, label, runningData, palette, {
+      description: runningDescription,
+    }),
+    hasTimeSeriesData(runningData),
+  );
+  addRenderedChart(
+    charts,
+    monthlyChartId,
+    createMonthlyBarChart(monthlyTitle, label, monthlyData, palette, {
+      description: monthlyDescription,
+      reservePeriodStart: true,
+    }),
+    hasChartData(monthlyData),
+  );
+
+  return charts;
+};
 
 /**
  * Build charts for members metrics.
@@ -19,32 +85,18 @@ const GROUP_ANALYTICS_READY_KEY = "groupAnalyticsReady";
  * @param {Object} palette - Theme palette.
  * @returns {Array<echarts.ECharts>} Initialized charts.
  */
-const initMembersCharts = (stats = {}, palette) => {
-  const charts = [];
-
-  const runningData = stats.running_total || [];
-  const runningChart = renderChart(
-    "members-running-chart",
-    createAreaChart("Members over time", "Members", runningData, palette, {
-      description: "Cumulative group members over time",
-    }),
-    hasTimeSeriesData(runningData),
-  );
-  if (runningChart) charts.push(runningChart);
-
-  const monthlyData = stats.per_month || [];
-  const monthlyChart = renderChart(
-    "members-monthly-chart",
-    createMonthlyBarChart("New Members per Month", "Members", monthlyData, palette, {
-      description: "Member joins each month",
-      reservePeriodStart: true,
-    }),
-    hasChartData(monthlyData),
-  );
-  if (monthlyChart) charts.push(monthlyChart);
-
-  return charts;
-};
+const initMembersCharts = (stats = {}, palette) =>
+  buildTrendCharts({
+    stats,
+    palette,
+    runningChartId: "members-running-chart",
+    monthlyChartId: "members-monthly-chart",
+    runningTitle: "Members over time",
+    monthlyTitle: "New Members per Month",
+    label: "Members",
+    runningDescription: "Cumulative group members over time",
+    monthlyDescription: "Member joins each month",
+  });
 
 /**
  * Build charts for events metrics.
@@ -52,31 +104,44 @@ const initMembersCharts = (stats = {}, palette) => {
  * @param {Object} palette - Theme palette.
  * @returns {Array<echarts.ECharts>} Initialized charts.
  */
-const initEventsCharts = (stats = {}, palette) => {
-  const charts = [];
+const initEventsCharts = (stats = {}, palette) =>
+  buildTrendCharts({
+    stats,
+    palette,
+    runningChartId: "events-running-chart",
+    monthlyChartId: "events-monthly-chart",
+    runningTitle: "Events over time",
+    monthlyTitle: "Events per Month",
+    label: "Events",
+    runningDescription: "Cumulative group events over time",
+    monthlyDescription: "Published events by scheduled month",
+  });
 
-  const runningData = stats.running_total || [];
-  const runningChart = renderChart(
-    "events-running-chart",
-    createAreaChart("Events over time", "Events", runningData, palette, {
-      description: "Cumulative group events over time",
-    }),
-    hasTimeSeriesData(runningData),
-  );
-  if (runningChart) charts.push(runningChart);
+/**
+ * Build a page-view chart from a small local chart spec.
+ * @param {Object} config - Page-view chart configuration.
+ * @param {Object} config.stats - Page views stats payload.
+ * @param {Object} config.palette - Theme palette.
+ * @param {string} config.elementId - Chart container ID.
+ * @param {string} config.title - Chart title.
+ * @param {string} config.description - Chart description.
+ * @param {Array<string>} config.path - Payload path for chart data.
+ * @param {"monthly"|"daily"} config.kind - Chart kind.
+ * @returns {echarts.ECharts|null} Initialized chart.
+ */
+const buildPageViewChart = ({ stats, palette, elementId, title, description, path, kind }) => {
+  const data = path.reduce((value, key) => value?.[key], stats) || [];
+  const createOptions =
+    kind === "monthly"
+      ? () =>
+          createMonthlyBarChart(title, "Page views", data, palette, {
+            description,
+            useTimeAxis: true,
+            reservePeriodStart: true,
+          })
+      : () => createDailyBarChart(title, "Page views", data, palette, { description });
 
-  const monthlyData = stats.per_month || [];
-  const monthlyChart = renderChart(
-    "events-monthly-chart",
-    createMonthlyBarChart("Events per Month", "Events", monthlyData, palette, {
-      description: "Published events by scheduled month",
-      reservePeriodStart: true,
-    }),
-    hasChartData(monthlyData),
-  );
-  if (monthlyChart) charts.push(monthlyChart);
-
-  return charts;
+  return renderChart(elementId, createOptions(), hasChartData(data));
 };
 
 /**
@@ -85,87 +150,53 @@ const initEventsCharts = (stats = {}, palette) => {
  * @param {Object} palette - Theme palette.
  * @returns {Array<echarts.ECharts>} Initialized charts.
  */
-const initPageViewsCharts = async (stats = {}, palette) => {
-  await loadEChartsScript();
-
-  const charts = [];
-
-  const totalMonthlyData = stats.total?.per_month_views || [];
-  const totalMonthlyChart = renderChart(
-    "total-views-monthly-chart",
-    createMonthlyBarChart("Monthly total page views", "Page views", totalMonthlyData, palette, {
+const initPageViewsCharts = (stats = {}, palette) =>
+  [
+    {
+      elementId: "total-views-monthly-chart",
+      title: "Monthly total page views",
       description: "Group and event views grouped by month",
-      useTimeAxis: true,
-      reservePeriodStart: true,
-    }),
-    hasChartData(totalMonthlyData),
-  );
-  if (totalMonthlyChart) charts.push(totalMonthlyChart);
-
-  const totalDailyData = stats.total?.per_day_views || [];
-  const totalDailyChart = renderChart(
-    "total-views-daily-chart",
-    createDailyBarChart("Daily total page views", "Page views", totalDailyData, palette, {
+      path: ["total", "per_month_views"],
+      kind: "monthly",
+    },
+    {
+      elementId: "total-views-daily-chart",
+      title: "Daily total page views",
       description: "Group and event views over the last 30 days",
-    }),
-    hasChartData(totalDailyData),
-  );
-  if (totalDailyChart) charts.push(totalDailyChart);
-
-  const groupMonthlyData = stats.group?.per_month_views || [];
-  const groupMonthlyChart = renderChart(
-    "group-views-monthly-chart",
-    createMonthlyBarChart("Monthly group page views", "Page views", groupMonthlyData, palette, {
+      path: ["total", "per_day_views"],
+      kind: "daily",
+    },
+    {
+      elementId: "group-views-monthly-chart",
+      title: "Monthly group page views",
       description: "Group page views grouped by month",
-      useTimeAxis: true,
-      reservePeriodStart: true,
-    }),
-    hasChartData(groupMonthlyData),
-  );
-  if (groupMonthlyChart) charts.push(groupMonthlyChart);
-
-  const groupDailyData = stats.group?.per_day_views || [];
-  const groupDailyChart = renderChart(
-    "group-views-daily-chart",
-    createDailyBarChart(
-      "Daily group page views during the last month",
-      "Page views",
-      groupDailyData,
-      palette,
-      { description: "Group page views over the last 30 days" },
-    ),
-    hasChartData(groupDailyData),
-  );
-  if (groupDailyChart) charts.push(groupDailyChart);
-
-  const eventMonthlyData = stats.events?.per_month_views || [];
-  const eventMonthlyChart = renderChart(
-    "event-views-monthly-chart",
-    createMonthlyBarChart("Monthly event page views", "Page views", eventMonthlyData, palette, {
+      path: ["group", "per_month_views"],
+      kind: "monthly",
+    },
+    {
+      elementId: "group-views-daily-chart",
+      title: "Daily group page views during the last month",
+      description: "Group page views over the last 30 days",
+      path: ["group", "per_day_views"],
+      kind: "daily",
+    },
+    {
+      elementId: "event-views-monthly-chart",
+      title: "Monthly event page views",
       description: "Event page views grouped by month",
-      useTimeAxis: true,
-      reservePeriodStart: true,
-    }),
-    hasChartData(eventMonthlyData),
-  );
-  if (eventMonthlyChart) charts.push(eventMonthlyChart);
-
-  const eventDailyData = stats.events?.per_day_views || [];
-  const eventDailyChart = renderChart(
-    "event-views-daily-chart",
-    createDailyBarChart(
-      "Daily event page views during the last month",
-      "Page views",
-      eventDailyData,
-      palette,
-      { description: "Event page views over the last 30 days" },
-    ),
-    hasChartData(eventDailyData),
-  );
-  if (eventDailyChart) charts.push(eventDailyChart);
-
-  return charts;
-};
+      path: ["events", "per_month_views"],
+      kind: "monthly",
+    },
+    {
+      elementId: "event-views-daily-chart",
+      title: "Daily event page views during the last month",
+      description: "Event page views over the last 30 days",
+      path: ["events", "per_day_views"],
+      kind: "daily",
+    },
+  ]
+    .map((config) => buildPageViewChart({ ...config, stats, palette }))
+    .filter(Boolean);
 
 /**
  * Build charts for attendees metrics.
@@ -173,32 +204,18 @@ const initPageViewsCharts = async (stats = {}, palette) => {
  * @param {Object} palette - Theme palette.
  * @returns {Array<echarts.ECharts>} Initialized charts.
  */
-const initAttendeesCharts = (stats = {}, palette) => {
-  const charts = [];
-
-  const runningData = stats.running_total || [];
-  const runningChart = renderChart(
-    "attendees-running-chart",
-    createAreaChart("Attendees over time", "Attendees", runningData, palette, {
-      description: "Cumulative event RSVPs over time",
-    }),
-    hasTimeSeriesData(runningData),
-  );
-  if (runningChart) charts.push(runningChart);
-
-  const monthlyData = stats.per_month || [];
-  const monthlyChart = renderChart(
-    "attendees-monthly-chart",
-    createMonthlyBarChart("Attendees per Month", "Attendees", monthlyData, palette, {
-      description: "Event RSVPs created each month",
-      reservePeriodStart: true,
-    }),
-    hasChartData(monthlyData),
-  );
-  if (monthlyChart) charts.push(monthlyChart);
-
-  return charts;
-};
+const initAttendeesCharts = (stats = {}, palette) =>
+  buildTrendCharts({
+    stats,
+    palette,
+    runningChartId: "attendees-running-chart",
+    monthlyChartId: "attendees-monthly-chart",
+    runningTitle: "Attendees over time",
+    monthlyTitle: "Attendees per Month",
+    label: "Attendees",
+    runningDescription: "Cumulative event RSVPs over time",
+    monthlyDescription: "Event RSVPs created each month",
+  });
 
 /**
  * Initialize all analytics charts for the group dashboard.
@@ -214,7 +231,7 @@ export const initAnalyticsCharts = async (stats) => {
     const palette = getThemePalette();
 
     const charts = [
-      ...(await initPageViewsCharts(stats.page_views, palette)),
+      ...initPageViewsCharts(stats.page_views, palette),
       ...initMembersCharts(stats.members, palette),
       ...initEventsCharts(stats.events, palette),
       ...initAttendeesCharts(stats.attendees, palette),
@@ -265,13 +282,4 @@ const readGroupAnalyticsPayload = (marker) => {
   }
 };
 
-const initializeGroupAnalyticsWhenReady = () => {
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", () => initializeGroupAnalyticsFromPage(), { once: true });
-    return;
-  }
-
-  initializeGroupAnalyticsFromPage();
-};
-
-initializeGroupAnalyticsWhenReady();
+initializeOnReady(() => initializeGroupAnalyticsFromPage());

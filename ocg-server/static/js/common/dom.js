@@ -4,12 +4,60 @@
  * @param {string} id Element id.
  * @returns {HTMLElement|null} Matching element when present.
  */
-export const queryElementById = (root, id) => {
+export const getElementById = (root, id) => {
   if (typeof root?.getElementById === "function") {
     return root.getElementById(id);
   }
 
+  if (root instanceof HTMLElement && root.id === id) {
+    return root;
+  }
+
   return root?.querySelector?.(`#${id}`) || null;
+};
+
+/**
+ * Initializes current content when the document is ready.
+ * @param {() => void} callback Initialization callback.
+ * @returns {void}
+ */
+export const initializeOnReady = (callback) => {
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", callback, { once: true });
+  } else {
+    callback();
+  }
+};
+
+/**
+ * Initializes current content once and repeats initialization after HTMX loads.
+ * @param {(root: Document|Element) => void} callback Initialization callback.
+ * @returns {void}
+ */
+export const initializeOnReadyAndHtmxLoad = (callback) => {
+  initializeOnReady(() => callback(document));
+
+  document.addEventListener("htmx:load", (event) => {
+    const root = event.target instanceof Element ? event.target : document;
+    callback(root);
+  });
+};
+
+/**
+ * Initializes the matching root and any matching descendants.
+ * @param {Document|Element} root Root element to scan from.
+ * @param {string} selector Selector for declarative roots.
+ * @param {(element: Element) => void} initializer Root initializer.
+ * @returns {void}
+ */
+export const initializeMatchingRoots = (root = document, selector, initializer) => {
+  if (root instanceof Element && root.matches(selector)) {
+    initializer(root);
+  }
+
+  root.querySelectorAll?.(selector).forEach((element) => {
+    initializer(element);
+  });
 };
 
 /**

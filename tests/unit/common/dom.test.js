@@ -1,8 +1,14 @@
 import { expect } from "@open-wc/testing";
 
-import { loadScriptOnce, queryElementById } from "/static/js/common/dom.js";
+import {
+  initializeMatchingRoots,
+  initializeOnReady,
+  initializeOnReadyAndHtmxLoad,
+  loadScriptOnce,
+  getElementById,
+} from "/static/js/common/dom.js";
 import { waitForMicrotask } from "/tests/unit/test-utils/async.js";
-import { resetDom } from "/tests/unit/test-utils/dom.js";
+import { resetDom, trackAddedEventListeners } from "/tests/unit/test-utils/dom.js";
 
 describe("common dom", () => {
   const exampleScriptSrc = "data:text/javascript,window.__ocgDomTestScriptLoaded%3Dtrue";
@@ -28,10 +34,65 @@ describe("common dom", () => {
     // Read the root element used for subtree queries.
     const root = document.getElementById("root");
 
-    // The helper finds ids from document and element roots.
-    expect(queryElementById(document, "save-button")?.textContent).to.equal("Save");
-    expect(queryElementById(root, "save-button")?.textContent).to.equal("Save");
-    expect(queryElementById(root, "missing")).to.equal(null);
+    // The helper finds ids from document, element, and direct matching roots.
+    expect(getElementById(document, "save-button")?.textContent).to.equal("Save");
+    expect(getElementById(root, "save-button")?.textContent).to.equal("Save");
+    expect(getElementById(root, "root")).to.equal(root);
+    expect(getElementById(root, "missing")).to.equal(null);
+  });
+
+  it("initializes current content and htmx-loaded fragments", () => {
+    // Track the roots passed to the lifecycle initializer.
+    const listenerTracker = trackAddedEventListeners();
+    const initializedRoots = [];
+
+    try {
+      // Initialize once for the current document.
+      initializeOnReadyAndHtmxLoad((root) => {
+        initializedRoots.push(root);
+      });
+
+      // Dispatch the lifecycle event used by swapped content.
+      const fragment = document.createElement("section");
+      document.body.append(fragment);
+      fragment.dispatchEvent(new CustomEvent("htmx:load", { bubbles: true }));
+
+      // Verify current and swapped roots are initialized.
+      expect(initializedRoots).to.deep.equal([document, fragment]);
+    } finally {
+      listenerTracker.restore();
+    }
+  });
+
+  it("initializes once when the document is ready", () => {
+    // Track the ready initializer callback.
+    let initialized = false;
+
+    // Initialize immediately because the test document is already ready.
+    initializeOnReady(() => {
+      initialized = true;
+    });
+
+    // Verify the ready initializer ran.
+    expect(initialized).to.equal(true);
+  });
+
+  it("initializes matching root elements and descendants", () => {
+    // Build nested declarative roots.
+    document.body.innerHTML = `
+      <section id="root" data-page-root>
+        <div data-page-root id="child"></div>
+      </section>
+    `;
+    const initializedIds = [];
+
+    // Initialize the matching root and matching descendants.
+    initializeMatchingRoots(document.getElementById("root"), "[data-page-root]", (element) => {
+      initializedIds.push(element.id);
+    });
+
+    // Verify both matching roots were initialized.
+    expect(initializedIds).to.deep.equal(["root", "child"]);
   });
 
   it("resolves immediately when the script is already loaded", async () => {

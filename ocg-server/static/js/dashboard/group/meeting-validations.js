@@ -1,4 +1,4 @@
-import { queryElementById } from "/static/js/common/dom.js";
+import { getElementById } from "/static/js/common/dom.js";
 import { getCommonAlertOptions } from "/static/js/common/alerts.js";
 
 /**
@@ -10,7 +10,7 @@ export const DEFAULT_MEETING_PROVIDER = "zoom";
 const VENUE_FIELDS = ["venue_name", "venue_address", "venue_city", "venue_zip_code"];
 
 const findVenueField = (root, fieldId) =>
-  queryElementById(root, fieldId) || root?.querySelector?.(`[name="${fieldId}"]`);
+  getElementById(root, fieldId) || root?.querySelector?.(`[name="${fieldId}"]`);
 
 /**
  * Updates visibility of venue and online event sections based on event kind.
@@ -18,8 +18,8 @@ const findVenueField = (root, fieldId) =>
  * @param {Document|Element} [root=document] Root container
  */
 export const updateSectionVisibility = (kind, root = document) => {
-  const venueSection = queryElementById(root, "venue-information-section");
-  const onlineSection = queryElementById(root, "online-event-details-section");
+  const venueSection = getElementById(root, "venue-information-section");
+  const onlineSection = getElementById(root, "online-event-details-section");
 
   if (venueSection) {
     venueSection.classList.toggle("hidden", kind === "virtual");
