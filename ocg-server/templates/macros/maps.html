@@ -2,10 +2,17 @@
 {# Map with modal -#}
 {% macro map_with_modal(base_id, lat, lng, overlay_text = "", small_overlay_text = "", modal_title = "") -%}
   <div id="{{ base_id }}-map"
-        class="w-full h-full min-h-25 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary-500"
-        role="button"
-        tabindex="0"
-        aria-label="Open full map view"></div>
+       class="w-full h-full min-h-25 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary-500"
+       role="button"
+       tabindex="0"
+       aria-label="Open full map view"
+       data-map-modal
+       data-lat="{{ lat }}"
+       data-lng="{{ lng }}"
+       data-modal-id="{{ base_id }}-map-modal"
+       data-modal-map-id="{{ base_id }}-map-modal-map"
+       data-close-button-id="close-{{ base_id }}-map-modal"
+       data-backdrop-id="backdrop-{{ base_id }}-map-modal"></div>
   {% if let Some(text) = &overlay_text -%}
     <div class="absolute bottom-2 left-2 bg-white/80 text-stone-700 text-xs rounded-full px-1.5 md:px-3 py-1 z-10 pointer-events-none hidden sm:block md:hidden xl:block">
       {{ text }}
@@ -58,58 +65,6 @@
     </div>
   </div>
 
-  <script type="module">
-    import {
-      loadMap,
-      toggleModalVisibility
-    } from "/static/js/common/common.js";
-
-    const mapContainer = document.getElementById('{{ base_id }}-map');
-    const modalId = '{{ base_id }}-map-modal';
-    const modalMapId = '{{ base_id }}-map-modal-map';
-    const closeButtonId = 'close-{{ base_id }}-map-modal';
-    const backdropId = 'backdrop-{{ base_id }}-map-modal';
-    let modalMapLoaded = false;
-
-    const ensureModalMap = () => {
-      if (modalMapLoaded) {
-        return;
-      }
-      modalMapLoaded = true;
-      requestAnimationFrame(() => {
-        loadMap(modalMapId, {{ lat }}, {{ lng }});
-      });
-    };
-
-    const openModal = () => {
-      toggleModalVisibility(modalId);
-      ensureModalMap();
-    };
-
-    loadMap('{{ base_id }}-map', {{ lat }}, {{ lng }}, {
-      interactive: false
-    });
-
-    if (mapContainer) {
-      mapContainer.addEventListener('click', openModal);
-      mapContainer.addEventListener('keydown', (event) => {
-        if (event.key === 'Enter' || event.key === ' ') {
-          event.preventDefault();
-          openModal();
-        }
-      });
-    }
-
-    const closeButton = document.getElementById(closeButtonId);
-    if (closeButton) {
-      closeButton.addEventListener('click', () => toggleModalVisibility(modalId));
-    }
-
-    const backdrop = document.getElementById(backdropId);
-    if (backdrop) {
-      backdrop.addEventListener('click', () => toggleModalVisibility(modalId));
-    }
-</script>
 {% endmacro map_with_modal -%}
 {# End map with modal -#}
 {# djlint:on #}
