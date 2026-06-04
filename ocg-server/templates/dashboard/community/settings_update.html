@@ -419,21 +419,4 @@
 </div>
 </form>
 
-<script type="module">
-  import {
-    bindBooleanToggle
-  } from '/static/js/dashboard/group/page-form-state.js';
-
-  const settingsForm = document.getElementById('settings-form');
-  const groupTeamRestrictionToggle = document.getElementById('toggle_group_team_management_restricted');
-  const groupTeamRestrictionInput = document.getElementById('group_team_management_restricted');
-
-  if (settingsForm) {
-    bindBooleanToggle({
-      toggle: groupTeamRestrictionToggle,
-      hiddenInput: groupTeamRestrictionInput,
-      syncOnInit: true
-    });
-  }
-</script>
 {# End Community settings update form -#}
