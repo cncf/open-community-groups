@@ -2,23 +2,23 @@ import { expect } from "@open-wc/testing";
 
 import "/static/js/dashboard/community/community-selector.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
-import { mockHtmx } from "/tests/unit/test-utils/globals.js";
-import {
-  mountLitComponent,
-  useMountedElementsCleanup,
-} from "/tests/unit/test-utils/lit.js";
+import { mockHtmx, mockSwal } from "/tests/unit/test-utils/globals.js";
+import { mountLitComponent, useMountedElementsCleanup } from "/tests/unit/test-utils/lit.js";
 
 describe("community-selector", () => {
   let htmx;
+  let swal;
 
   useMountedElementsCleanup("community-selector");
 
   beforeEach(() => {
     resetDom();
     htmx = mockHtmx();
+    swal = mockSwal();
   });
 
   afterEach(() => {
+    swal.restore();
     htmx.restore();
   });
 
@@ -163,5 +163,40 @@ describe("community-selector", () => {
     expect(event.prevented).to.equal(true);
     expect(element._isOpen).to.equal(false);
     expect(element._isSubmitting).to.equal(false);
+  });
+
+  it("shows an error and keeps the selector usable when selection fails", async () => {
+    // Replace the HTMX mock with a failing selection request.
+    htmx.restore();
+    htmx = mockHtmx({
+      ajaxImpl: async () => {
+        throw new Error("Selection failed");
+      },
+    });
+
+    // Render the selector fixture.
+    const element = await renderSelector({
+      selectedCommunityId: "3",
+    });
+    const event = {
+      preventDefault() {},
+    };
+
+    // Select a different community from the selector.
+    element._isOpen = true;
+    await element._handleCommunityClick(event, {
+      community_id: "2",
+      display_name: "OpenSSF",
+      name: "openssf",
+    });
+
+    // The failed selection leaves the selector usable and reports the error.
+    expect(element._isSubmitting).to.equal(false);
+    expect(element._isOpen).to.equal(false);
+    expect(swal.calls).to.have.length(1);
+    expect(swal.calls[0]).to.include({
+      text: "Something went wrong selecting the community. Please try again later.",
+      icon: "error",
+    });
   });
 });

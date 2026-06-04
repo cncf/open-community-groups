@@ -1,4 +1,5 @@
 import { html, repeat } from "/static/vendor/js/lit-all.v3.3.1.min.js";
+import { showErrorAlert } from "/static/js/common/alerts.js";
 import { selectDashboardAndKeepTab } from "/static/js/common/dashboard-selection.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 
@@ -107,7 +108,7 @@ export class GroupSelector extends LitWrapper {
     try {
       await this._selectDashboardGroup(group.group_id);
     } catch (_) {
-      // Keep the current selector usable when the request fails.
+      showErrorAlert("Something went wrong selecting the group. Please try again later.");
     } finally {
       this._isSubmitting = false;
     }

@@ -44,6 +44,7 @@ describe("confirm actions", () => {
     expect(swal.calls[0].text).to.equal("Delete this event?");
     expect(swal.calls[0].confirmButtonText).to.equal("Delete");
     expect(htmx.triggerCalls).to.deep.equal([["#delete-button", "confirmed"]]);
+    expect(window.__ocgConfirmActionsBound).to.equal(undefined);
   });
 
   it("ignores disabled confirm-action buttons", async () => {

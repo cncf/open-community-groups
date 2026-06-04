@@ -7,7 +7,7 @@ import {
   hasChartData,
   hasTimeSeriesData,
   loadEChartsScript,
-} from "/static/js/dashboard/common.js";
+} from "/static/js/common/charts.js";
 import {
   getCategoryLabelInterval,
   getTimeSplitNumber,

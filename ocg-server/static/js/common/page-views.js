@@ -22,11 +22,16 @@ const sendPageView = (endpoint) => {
   });
 };
 
+const trackerState = {
+  endpoint: null,
+  initialized: false,
+  pendingViews: 0,
+};
+
 /**
  * Sends all queued page views for the current page once it becomes visible.
- * @param {{ endpoint: string | null, initialized: boolean, pendingViews: number }} trackerState - Shared page view tracker state
  */
-const flushPendingPageViews = (trackerState) => {
+const flushPendingPageViews = () => {
   if (document.visibilityState !== "visible" || !trackerState.endpoint || trackerState.pendingViews === 0) {
     return;
   }
@@ -41,15 +46,14 @@ const flushPendingPageViews = (trackerState) => {
 
 /**
  * Binds lifecycle listeners once so page views can be retried later.
- * @param {{ endpoint: string | null, initialized: boolean, pendingViews: number }} trackerState - Shared page view tracker state
  */
-const bindLifecycleListeners = (trackerState) => {
+const bindLifecycleListeners = () => {
   if (trackerState.initialized) {
     return;
   }
 
   document.addEventListener("visibilitychange", () => {
-    flushPendingPageViews(trackerState);
+    flushPendingPageViews();
   });
 
   window.addEventListener("pageshow", (event) => {
@@ -58,7 +62,7 @@ const bindLifecycleListeners = (trackerState) => {
     }
 
     trackerState.pendingViews += 1;
-    flushPendingPageViews(trackerState);
+    flushPendingPageViews();
   });
 
   trackerState.initialized = true;
@@ -76,15 +80,18 @@ export const trackPageView = ({ entityId, entityType }) => {
         ? `/events/${entityId}/views`
         : `/groups/${entityId}/views`;
 
-  const trackerState = (window.__ocgPageViewTracker = window.__ocgPageViewTracker || {
-    endpoint: null,
-    initialized: false,
-    pendingViews: 0,
-  });
-
   trackerState.endpoint = endpoint;
   trackerState.pendingViews += 1;
 
-  bindLifecycleListeners(trackerState);
-  flushPendingPageViews(trackerState);
+  bindLifecycleListeners();
+  flushPendingPageViews();
+};
+
+/**
+ * Resets page view tracker state for isolated browser tests.
+ */
+export const resetPageViewTracker = () => {
+  trackerState.endpoint = null;
+  trackerState.initialized = false;
+  trackerState.pendingViews = 0;
 };

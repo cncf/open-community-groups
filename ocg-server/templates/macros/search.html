@@ -29,7 +29,7 @@
 
       {% if with_help -%}
         <div class="absolute hidden -right-[1.5rem] top-0 md:block">
-          <button id="open-search-tips-modal">
+          <button id="open-search-tips-modal" data-modal-toggle="search-tips">
             <div class="svg-icon w-4 h-4 bg-stone-300 hover:bg-stone-700 transition-colors icon-question-mark"></div>
           </button>
         </div>
@@ -40,6 +40,7 @@
              aria-hidden="true"
              class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 h-full max-h-full flex z-[1000]">
           <div id="overlay-search-tips"
+               data-modal-toggle="search-tips"
                class="modal-overlay absolute w-full h-full bg-stone-950 opacity-[0.35]"></div>
           <div class="modal-panel p-4 max-w-2xl">
             <div class="modal-card rounded-lg">
@@ -48,6 +49,7 @@
                 <h3 class="text-xl font-semibold text-stone-900">Search tips</h3>
                 <button id="close-search-tips-modal"
                         type="button"
+                        data-modal-toggle="search-tips"
                         class="group text-stone-400 bg-transparent hover:bg-stone-200 hover:text-stone-900 transition-colors rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center">
                   <div class="svg-icon w-5 h-5 bg-stone-500 group-hover:bg-stone-900 transition-colors icon-close"></div>
                   <span class="sr-only">Close modal</span>
@@ -68,27 +70,6 @@
           </div>
         </div>
         {# End search tips modal -#}
-
-        <script type="module">
-          import {
-            toggleModalVisibility
-          } from '/static/js/common/common.js';
-
-          const openSearchTipsModal = document.getElementById('open-search-tips-modal');
-          if (openSearchTipsModal) {
-            openSearchTipsModal.addEventListener('click', () => toggleModalVisibility('search-tips'));
-          }
-
-          const overlaySearchTips = document.getElementById('overlay-search-tips');
-          if (overlaySearchTips) {
-            overlaySearchTips.addEventListener('click', () => toggleModalVisibility('search-tips'));
-          }
-
-          const closeSearchTipsModal = document.getElementById('close-search-tips-modal');
-          if (closeSearchTipsModal) {
-            closeSearchTipsModal.addEventListener('click', () => toggleModalVisibility('search-tips'));
-          }
-        </script>
       {% endif -%}
     </div>
   </div>

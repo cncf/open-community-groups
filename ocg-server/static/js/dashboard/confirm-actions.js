@@ -1,8 +1,13 @@
 import { showConfirmAlert, handleHtmxResponse } from "/static/js/common/alerts.js";
 
-if (!window.__ocgConfirmActionsBound) {
-  window.__ocgConfirmActionsBound = true;
+let confirmActionsBound = false;
 
+const bindConfirmActions = () => {
+  if (confirmActionsBound) {
+    return;
+  }
+
+  confirmActionsBound = true;
   document.addEventListener("click", (event) => {
     const button = event.target.closest("[data-confirm-action]");
     if (!button || button.disabled) {
@@ -28,4 +33,6 @@ if (!window.__ocgConfirmActionsBound) {
       errorMessage: button.dataset.errorMessage || "Something went wrong. Please try again later.",
     });
   });
-}
+};
+
+bindConfirmActions();

@@ -2,21 +2,22 @@ import { expect } from "@open-wc/testing";
 
 import "/static/js/dashboard/group/group-selector.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
-import { mockHtmx } from "/tests/unit/test-utils/globals.js";
+import { mockHtmx, mockSwal } from "/tests/unit/test-utils/globals.js";
 
 describe("group-selector", () => {
   let htmx;
+  let swal;
 
   beforeEach(() => {
     resetDom();
     htmx = mockHtmx();
+    swal = mockSwal();
   });
 
   afterEach(() => {
-    document
-      .querySelectorAll("group-selector")
-      .forEach((element) => element.remove());
+    document.querySelectorAll("group-selector").forEach((element) => element.remove());
     resetDom();
+    swal.restore();
     htmx.restore();
   });
 
@@ -64,9 +65,7 @@ describe("group-selector", () => {
     await element.updateComplete;
 
     // Verify filters groups from the current query.
-    expect(element._filteredGroups).to.deep.equal([
-      { group_id: "2", name: "Cloud Native", active: true },
-    ]);
+    expect(element._filteredGroups).to.deep.equal([{ group_id: "2", name: "Cloud Native", active: true }]);
   });
 
   it("persists the selected group when an option handler runs", async () => {
@@ -105,5 +104,42 @@ describe("group-selector", () => {
     expect(prevented).to.equal(true);
     expect(element._isSubmitting).to.equal(false);
     expect(element._isOpen).to.equal(false);
+  });
+
+  it("shows an error and keeps the selector usable when selection fails", async () => {
+    // Replace the HTMX mock with a failing selection request.
+    htmx.restore();
+    htmx = mockHtmx({
+      ajaxImpl: async () => {
+        throw new Error("Selection failed");
+      },
+    });
+
+    // Render the selector fixture.
+    const element = await renderSelector({
+      groups: [
+        { group_id: "1", name: "Platform Team", active: true },
+        { group_id: "2", name: "Cloud Native", active: true },
+      ],
+      selectedGroupId: "1",
+    });
+
+    // Select a different group from the selector.
+    await element._handleGroupClick(
+      {
+        preventDefault() {},
+      },
+      { group_id: "2", name: "Cloud Native", active: true },
+    );
+    await element.updateComplete;
+
+    // The failed selection leaves the selector usable and reports the error.
+    expect(element._isSubmitting).to.equal(false);
+    expect(element._isOpen).to.equal(false);
+    expect(swal.calls).to.have.length(1);
+    expect(swal.calls[0]).to.include({
+      text: "Something went wrong selecting the group. Please try again later.",
+      icon: "error",
+    });
   });
 });
