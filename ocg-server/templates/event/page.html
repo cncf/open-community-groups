@@ -41,6 +41,7 @@
   <script type="module" src="/static/js/common/user-info-modal.js"></script>
   <script type="module" src="/static/js/common/share-modal.js"></script>
   <script type="module" src="/static/js/common/cfs-label-selector.js"></script>
+  <script type="module" src="/static/js/event/agenda-tabs.js"></script>
   <script type="module" src="/static/js/event/cfs.js"></script>
 {% endblock scripts -%}
 
@@ -539,21 +540,6 @@
                 </ol>
               </div>
             {% endfor -%}
-
-            <script type="module">
-              const dayTabs = document.querySelectorAll('[data-day-tab]');
-              const dayPanels = document.querySelectorAll('[data-day-content]');
-              dayTabs.forEach((btn) => {
-                btn.addEventListener('click', () => {
-                  const target = btn.getAttribute('data-day-tab');
-                  dayTabs.forEach(b => b.setAttribute('data-active', b === btn ? 'true' : 'false'));
-                  dayPanels.forEach(panel => {
-                    const isTarget = panel.getAttribute('data-day-content') === target;
-                    panel.toggleAttribute('hidden', !isTarget);
-                  });
-                });
-              });
-            </script>
           {% endif -%}
         </div>
       {% endif -%}
