@@ -4,6 +4,146 @@ import { fetchData } from "/static/js/community/explore/explore.js";
 
 const LEAFLET_SCRIPT_SRC = "/static/vendor/js/leaflet.v1.9.4.min.js";
 const MARKER_CLUSTER_SCRIPT_SRC = "/static/vendor/js/leaflet.markercluster.v1.5.3.min.js";
+const MAIN_LOADING_MAP_ID = "main-loading-map";
+const MAP_LOADING_ID = "loading-map";
+const MAP_ELEMENT_ID = "map-box";
+const MARKER_ICON_CONFIG = {
+  html: '<div class="svg-icon h-[30px] w-[30px] bg-primary-500 hover:bg-primary-900 icon-marker"></div>',
+  iconSize: [30, 30],
+  iconAnchor: [15, 30],
+  popupAnchor: [0, -25],
+};
+const TOOLTIP_OPTIONS = {
+  className: "explore-map-tooltip",
+  direction: "top",
+  permanent: false,
+  sticky: false,
+  offset: [0, -18],
+  opacity: 1,
+};
+const TOOLTIP_OPEN_DELAY_MS = 300;
+
+/**
+ * Gets the collection for the selected explore entity.
+ * @param {string} entity - Explore entity type
+ * @param {object} data - Explore response payload
+ * @returns {Array} Items for the entity
+ */
+const getItemsForEntity = (entity, data) => {
+  if (entity === "events") {
+    return data.events || [];
+  }
+
+  if (entity === "groups") {
+    return data.groups || [];
+  }
+
+  return [];
+};
+
+/**
+ * Checks whether an item can be rendered as a map marker.
+ * @param {object} item - Explore item
+ * @returns {boolean} True when coordinates are present and non-zero
+ */
+const hasValidCoordinates = (item) =>
+  item.latitude !== undefined && item.longitude !== undefined && item.latitude != 0 && item.longitude != 0;
+
+/**
+ * Builds the destination URL for an explore map item.
+ * @param {string} entity - Explore entity type
+ * @param {object} item - Explore item
+ * @returns {string|undefined} Destination URL when the entity is supported
+ */
+const getItemUrl = (entity, item) => {
+  if (entity === "events") {
+    return `/${item.community_name}/group/${item.group_slug_pretty || item.group_slug}/event/${item.slug}`;
+  }
+
+  if (entity === "groups") {
+    return `/${item.community_name}/group/${item.slug_pretty || item.slug}`;
+  }
+
+  return undefined;
+};
+
+/**
+ * Fits the map to a valid response bounding box.
+ * @param {object} map - Leaflet map instance
+ * @param {object|null|undefined} bbox - Optional response bounding box
+ */
+const fitMapToBbox = (map, bbox) => {
+  if (!bbox || !checkValidBbox(bbox)) {
+    return;
+  }
+
+  const southWest = L.latLng(bbox.sw_lat, bbox.sw_lon);
+  const northEast = L.latLng(bbox.ne_lat, bbox.ne_lon);
+  const bounds = L.latLngBounds(southWest, northEast);
+  map.flyToBounds(bounds, { animate: false, noMoveStart: true });
+};
+
+/**
+ * Creates a Leaflet marker icon for an explore item.
+ * @param {object} item - Explore item
+ * @returns {object} Leaflet div icon
+ */
+const createMarkerIcon = (item) =>
+  L.divIcon({
+    ...MARKER_ICON_CONFIG,
+    className: `marker-${item.slug}`,
+  });
+
+/**
+ * Builds HTML used by the delayed map tooltip.
+ * @param {object} item - Explore item
+ * @returns {string} Tooltip HTML
+ */
+const getTooltipContent = (item) => `<div class="explore-popover-card-shell">${item.popover_html}</div>`;
+
+/**
+ * Binds delayed tooltip behavior to a marker.
+ * @param {object} marker - Leaflet marker instance
+ * @param {object} item - Explore item
+ * @param {WeakMap} tooltipTimers - Marker tooltip timers
+ */
+const bindMarkerTooltip = (marker, item, tooltipTimers) => {
+  if (!item.popover_html) {
+    return;
+  }
+
+  const startTooltipTimer = () => {
+    clearTimeout(tooltipTimers.get(marker));
+    const timer = setTimeout(() => {
+      if (!marker.getTooltip()) {
+        marker.bindTooltip(getTooltipContent(item), TOOLTIP_OPTIONS);
+      }
+      marker.openTooltip();
+    }, TOOLTIP_OPEN_DELAY_MS);
+    tooltipTimers.set(marker, timer);
+  };
+
+  const stopTooltipTimer = () => {
+    clearTimeout(tooltipTimers.get(marker));
+    tooltipTimers.delete(marker);
+  };
+
+  marker.on("mouseover", startTooltipTimer);
+  marker.on("mouseout", () => {
+    stopTooltipTimer();
+    if (marker.getTooltip()) {
+      marker.closeTooltip();
+      marker.unbindTooltip();
+    }
+  });
+
+  marker.on("remove", () => {
+    stopTooltipTimer();
+    if (marker.getTooltip()) {
+      marker.unbindTooltip();
+    }
+  });
+};
 
 export class Map {
   /**
@@ -22,7 +162,7 @@ export class Map {
     }
 
     // Display main loading spinner
-    const mainLoading = document.getElementById("main-loading-map");
+    const mainLoading = document.getElementById(MAIN_LOADING_MAP_ID);
     if (mainLoading) {
       mainLoading.classList.remove("hidden");
     }
@@ -35,7 +175,7 @@ export class Map {
     Map._instance = this;
     this.loadScripts()
       .then(() => this.setup(data))
-      .catch(() => hideLoadingSpinner("main-loading-map"));
+      .catch(() => hideLoadingSpinner(MAIN_LOADING_MAP_ID));
   }
 
   /**
@@ -57,7 +197,7 @@ export class Map {
    * @param {object} data - Map data containing items to display
    */
   setup(data) {
-    this.map = L.map("map-box", {
+    this.map = L.map(MAP_ELEMENT_ID, {
       maxZoom: 20,
       minZoom: 3,
       zoomControl: false,
@@ -126,37 +266,27 @@ export class Map {
       data = currentData;
     } else {
       // Show loading spinner
-      showLoadingSpinner("loading-map");
+      showLoadingSpinner(MAP_LOADING_ID);
 
       // Fetch data based on current map bounds
       try {
         data = await this.fetchLocationData(overwriteBounds);
       } catch (error) {
         // If fetch fails (e.g., due to invalid bbox), hide loading and ignore error
-        hideLoadingSpinner("loading-map");
+        hideLoadingSpinner(MAP_LOADING_ID);
         return;
       }
     }
 
     if (data) {
-      // Get items from data
-      let items = [];
-      if (this.entity === "events") {
-        if (data.events && data.events.length > 0) {
-          items = data.events;
-        }
-      } else if (this.entity === "groups") {
-        if (data.groups && data.groups.length > 0) {
-          items = data.groups;
-        }
-      }
+      const items = getItemsForEntity(this.entity, data);
 
       // Refresh map markers
       if (items.length > 0) {
         this.addMarkers(items, overwriteBounds ? data.bbox : null);
       } else {
         // Hide loading spinner
-        hideLoadingSpinner("loading-map");
+        hideLoadingSpinner(MAP_LOADING_ID);
       }
     }
   }
@@ -203,21 +333,7 @@ export class Map {
    * @param {object} bbox - Optional bounding box to fit the map view
    */
   addMarkers(items, bbox) {
-    // Fit map bounds to the bbox
-    if (bbox && checkValidBbox(bbox)) {
-      const southWest = L.latLng(bbox.sw_lat, bbox.sw_lon);
-      const northEast = L.latLng(bbox.ne_lat, bbox.ne_lon);
-      const bounds = L.latLngBounds(southWest, northEast);
-      this.map.flyToBounds(bounds, { animate: false, noMoveStart: true });
-    }
-
-    // SVG icon for markers
-    const svgIcon = {
-      html: '<div class="svg-icon h-[30px] w-[30px] bg-primary-500 hover:bg-primary-900 icon-marker"></div>',
-      iconSize: [30, 30],
-      iconAnchor: [15, 30],
-      popupAnchor: [0, -25],
-    };
+    fitMapToBbox(this.map, bbox);
 
     // Create marker cluster group
     const markers = window.L.markerClusterGroup({
@@ -226,87 +342,21 @@ export class Map {
 
     // Add markers
     items.forEach((item) => {
-      const latitude = item.latitude;
-      const longitude = item.longitude;
-
-      // Skip items without valid coordinates
-      if (
-        typeof latitude == "undefined" ||
-        typeof longitude == "undefined" ||
-        latitude == 0 ||
-        longitude == 0
-      ) {
+      if (!hasValidCoordinates(item)) {
         return;
       }
 
-      // Create icon for marker
-      const icon = L.divIcon({
-        ...svgIcon,
-        className: `marker-${item.slug}`,
-      });
-
-      // Create marker
-      const marker = L.marker(L.latLng(latitude, longitude), {
-        icon: icon,
+      const marker = L.marker(L.latLng(item.latitude, item.longitude), {
+        icon: createMarkerIcon(item),
         autoPanOnFocus: false,
         bubblingMouseEvents: true,
       });
 
-      if (item.popover_html) {
-        const tooltipContent = `<div class="explore-popover-card-shell">${item.popover_html}</div>`;
-        const tooltipOptions = {
-          className: "explore-map-tooltip",
-          direction: "top",
-          permanent: false,
-          sticky: false,
-          offset: [0, -18],
-          opacity: 1,
-        };
-
-        /** Starts a 300ms delay before opening the tooltip. */
-        const startTooltipTimer = () => {
-          clearTimeout(this.tooltipTimers.get(marker));
-          const timer = setTimeout(() => {
-            if (!marker.getTooltip()) {
-              marker.bindTooltip(tooltipContent, tooltipOptions);
-            }
-            marker.openTooltip();
-          }, 300);
-          this.tooltipTimers.set(marker, timer);
-        };
-
-        /** Clears the tooltip delay timer. */
-        const stopTooltipTimer = () => {
-          clearTimeout(this.tooltipTimers.get(marker));
-          this.tooltipTimers.delete(marker);
-        };
-
-        marker.on("mouseover", startTooltipTimer);
-        marker.on("mouseout", () => {
-          stopTooltipTimer();
-          if (marker.getTooltip()) {
-            marker.closeTooltip();
-            marker.unbindTooltip();
-          }
-        });
-
-        marker.on("remove", () => {
-          stopTooltipTimer();
-          if (marker.getTooltip()) {
-            marker.unbindTooltip();
-          }
-        });
-      }
+      bindMarkerTooltip(marker, item, this.tooltipTimers);
 
       // Add click handler to navigate to item page
       marker.on("click", () => {
-        let url;
-        if (this.entity === "events") {
-          url = `/${item.community_name}/group/${item.group_slug_pretty || item.group_slug}/event/${item.slug}`;
-        } else if (this.entity === "groups") {
-          url = `/${item.community_name}/group/${item.slug_pretty || item.slug}`;
-        }
-        navigateWithHtmx(url);
+        navigateWithHtmx(getItemUrl(this.entity, item));
       });
 
       // Add marker to the marker cluster group
@@ -317,7 +367,7 @@ export class Map {
     this.map.addLayer(markers);
 
     // Hide loading spinner
-    hideLoadingSpinner("loading-map");
+    hideLoadingSpinner(MAP_LOADING_ID);
   }
 }
 
