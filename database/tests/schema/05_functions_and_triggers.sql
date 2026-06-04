@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(250);
+select plan(257);
 
 -- ============================================================================
 -- TESTS
@@ -109,6 +109,8 @@ select has_function('is_event_meeting_in_sync');
 select has_function('is_group_member');
 select has_function('is_session_meeting_in_sync');
 select has_function('join_group');
+select has_function('jsonb_geography_point');
+select has_function('jsonb_text_array');
 select has_function('leave_event');
 select has_function('leave_group');
 select has_function('list_communities');
@@ -182,6 +184,7 @@ select has_function('release_event_discount_code_availability');
 select has_function('release_meeting_auto_end_check_claim');
 select has_function('release_meeting_sync_claim');
 select has_function('request_event_refund');
+select has_function('resolve_unique_username');
 select has_function('resubmit_cfs_submission');
 select has_function('revert_event_refund_approval');
 select has_function('search_event_attendees');
@@ -194,8 +197,10 @@ select has_function('set_meeting_auto_end_check_outcome');
 select has_function('set_meeting_error');
 select has_function('sign_up_user');
 select has_function('submit_event_registration_answers');
+select has_function('sync_cfs_submission_labels');
 select has_function('sync_event_cfs_labels');
 select has_function('sync_event_discount_codes');
+select has_function('sync_event_hosts_speakers_sponsors');
 select has_function('sync_event_sessions');
 select has_function('sync_event_ticket_types');
 select has_function('track_custom_notification');
@@ -224,6 +229,8 @@ select has_function('update_user_provider');
 select has_function('upsert_pending_registration_answers');
 select has_function('user_has_community_permission');
 select has_function('user_has_group_permission');
+select has_function('validate_add_event_dates');
+select has_function('validate_cfs_submission_label_ids');
 select has_function('validate_event_capacity');
 select has_function('validate_event_cfs_labels_payload');
 select has_function('validate_event_discount_codes_payload');

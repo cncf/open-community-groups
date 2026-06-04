@@ -23,11 +23,7 @@ begin
         for v_session in select jsonb_array_elements(p_event->'sessions')
         loop
             v_session_ends_at := (v_session->>'ends_at')::timestamp at time zone v_timezone;
-            v_session_meeting_hosts := case
-                when v_session->'meeting_hosts' is not null
-                then array(select jsonb_array_elements_text(v_session->'meeting_hosts'))
-                else null
-            end;
+            v_session_meeting_hosts := jsonb_text_array(v_session->'meeting_hosts');
             v_session_starts_at := (v_session->>'starts_at')::timestamp at time zone v_timezone;
 
             if v_session->>'session_id' is not null then

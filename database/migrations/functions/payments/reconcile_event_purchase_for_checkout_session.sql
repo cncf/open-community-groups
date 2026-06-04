@@ -1,6 +1,6 @@
 -- Used by the checkout-completed webhook handler: reconciles the provider
 -- checkout session with the local purchase by completing it, returning noop,
--- or marking it for automatic refund when it can no longer be fulfilled
+-- or marking it for automatic refund when it can no longer be fulfilled.
 create or replace function reconcile_event_purchase_for_checkout_session(
     p_provider text,
     p_provider_session_id text,
@@ -10,52 +10,45 @@ returns jsonb as $$
 declare
     v_amount_minor bigint;
     v_community_id uuid;
-    v_event_canceled boolean;
     v_event_discount_code_id uuid;
-    v_event_deleted boolean;
-    v_event_ends_at timestamptz;
     v_event_id uuid;
-    v_event_published boolean;
-    v_event_starts_at timestamptz;
-    v_group_active boolean;
-    v_hold_expires_at timestamptz;
+    v_hold_expired boolean;
     v_provider_payment_reference text;
     v_purchase_id uuid;
     v_status text;
+    v_unfulfillable boolean;
     v_user_id uuid;
 begin
     -- Lock the purchase before deciding how to reconcile the provider checkout
     select
         ep.amount_minor,
         g.community_id,
-        e.canceled,
         ep.event_discount_code_id,
-        e.deleted,
-        e.ends_at,
         ep.event_id,
-        e.published,
-        e.starts_at,
-        g.active,
-        ep.hold_expires_at,
+        ep.hold_expires_at is not null
+            and ep.hold_expires_at <= current_timestamp,
         coalesce(p_provider_payment_reference, ep.provider_payment_reference),
         ep.event_purchase_id,
         ep.status,
+        e.canceled
+            or e.deleted
+            or not e.published
+            or not g.active
+            or (
+                coalesce(e.ends_at, e.starts_at) is not null
+                and coalesce(e.ends_at, e.starts_at) <= current_timestamp
+            ),
         ep.user_id
     into
         v_amount_minor,
         v_community_id,
-        v_event_canceled,
         v_event_discount_code_id,
-        v_event_deleted,
-        v_event_ends_at,
         v_event_id,
-        v_event_published,
-        v_event_starts_at,
-        v_group_active,
-        v_hold_expires_at,
+        v_hold_expired,
         v_provider_payment_reference,
         v_purchase_id,
         v_status,
+        v_unfulfillable,
         v_user_id
     from event_purchase ep
     join event e on e.event_id = ep.event_id
@@ -71,96 +64,42 @@ begin
 
     -- Ignore purchases that are already reconciled
     if not (
-        v_status = 'pending'
-        or v_status = 'refund-pending'
+        v_status in ('pending', 'refund-pending')
         or (
             v_status = 'expired'
-            and v_hold_expires_at is not null
-            and v_hold_expires_at <= current_timestamp
+            and v_hold_expired
         )
     ) then
         return jsonb_build_object('outcome', 'noop');
     end if;
 
-    -- Refund purchases whose hold has already expired locally
-    if v_status in ('pending', 'expired')
-       and v_hold_expires_at is not null
-       and v_hold_expires_at <= current_timestamp then
+    -- Refund purchases that cannot be completed or are awaiting refund retry
+    if v_status = 'refund-pending'
+       or v_hold_expired
+       or v_unfulfillable then
         -- Require a provider payment reference before requesting a refund
         if v_provider_payment_reference is null then
             raise exception 'provider payment reference is required for refund';
         end if;
 
         -- Persist the refund-pending state before the provider refund step
-        update event_purchase
-        set
-            hold_expires_at = null,
-            provider_payment_reference = v_provider_payment_reference,
-            status = 'refund-pending',
-            updated_at = current_timestamp
-        where event_purchase_id = v_purchase_id;
+        if v_status <> 'refund-pending' then
+            update event_purchase
+            set
+                hold_expires_at = null,
+                provider_payment_reference = v_provider_payment_reference,
+                status = 'refund-pending',
+                updated_at = current_timestamp
+            where event_purchase_id = v_purchase_id;
 
-        -- Release the discount reservation only when expiring a pending hold
-        if v_status = 'pending' and v_event_discount_code_id is not null then
-            perform release_event_discount_code_availability(v_event_discount_code_id);
+            -- Release the discount reservation only when expiring a pending hold
+            if v_status = 'pending' and v_event_discount_code_id is not null then
+                perform release_event_discount_code_availability(v_event_discount_code_id);
+            end if;
+
+            -- Release the pending attendee row created for checkout answers
+            perform release_event_checkout_attendee_hold(v_event_id, v_user_id);
         end if;
-
-        -- Release the pending attendee row created for checkout answers
-        perform release_event_checkout_attendee_hold(v_event_id, v_user_id);
-
-        return jsonb_build_object(
-            'amount_minor', v_amount_minor,
-            'event_purchase_id', v_purchase_id,
-            'outcome', 'refund_required',
-            'provider_payment_reference', v_provider_payment_reference
-        );
-    end if;
-
-    -- Retry automatic refunds that were already handed off previously
-    if v_status = 'refund-pending' then
-        -- Require a provider payment reference before requesting a refund
-        if v_provider_payment_reference is null then
-            raise exception 'provider payment reference is required for refund';
-        end if;
-
-        return jsonb_build_object(
-            'amount_minor', v_amount_minor,
-            'event_purchase_id', v_purchase_id,
-            'outcome', 'refund_required',
-            'provider_payment_reference', v_provider_payment_reference
-        );
-    end if;
-
-    -- Refund purchases that can no longer be fulfilled locally
-    if v_event_canceled
-       or v_event_deleted
-       or not v_event_published
-       or not v_group_active
-       or (
-           coalesce(v_event_ends_at, v_event_starts_at) is not null
-           and coalesce(v_event_ends_at, v_event_starts_at) <= current_timestamp
-       ) then
-        -- Require a provider payment reference before requesting a refund
-        if v_provider_payment_reference is null then
-            raise exception 'provider payment reference is required for refund';
-        end if;
-
-        -- Persist the refund-pending state before the provider refund step
-        update event_purchase
-        set
-            hold_expires_at = null,
-            provider_payment_reference = v_provider_payment_reference,
-            status = 'refund-pending',
-            updated_at = current_timestamp
-        where event_purchase_id = v_purchase_id;
-
-        -- Release the discount reservation only when expiring a pending hold
-        if v_status = 'pending' and v_event_discount_code_id is not null then
-            perform release_event_discount_code_availability(v_event_discount_code_id);
-        end if;
-
-        -- Release the pending attendee row created for checkout answers
-        perform release_event_checkout_attendee_hold(v_event_id, v_user_id);
 
         return jsonb_build_object(
             'amount_minor', v_amount_minor,
@@ -182,7 +121,7 @@ begin
     set
         completed_at = current_timestamp,
         hold_expires_at = null,
-        provider_payment_reference = coalesce(v_provider_payment_reference, provider_payment_reference),
+        provider_payment_reference = v_provider_payment_reference,
         status = 'completed',
         updated_at = current_timestamp
     where event_purchase_id = v_purchase_id;

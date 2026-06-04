@@ -29,11 +29,7 @@ begin
         linkedin_url = nullif(p_data->>'linkedin_url', ''),
         new_group_details = nullif(p_data->>'new_group_details', ''),
         og_image_url = nullif(p_data->>'og_image_url', ''),
-        photos_urls = case
-            when p_data ? 'photos_urls' and jsonb_typeof(p_data->'photos_urls') != 'null' then
-                array(select jsonb_array_elements_text(p_data->'photos_urls'))
-            else null
-        end,
+        photos_urls = jsonb_text_array(p_data->'photos_urls'),
         slack_url = nullif(p_data->>'slack_url', ''),
         twitter_url = nullif(p_data->>'twitter_url', ''),
         website_url = nullif(p_data->>'website_url', ''),

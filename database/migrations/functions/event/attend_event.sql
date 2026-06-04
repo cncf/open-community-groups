@@ -51,22 +51,31 @@ begin
     -- until promotion, while attendee and invitation paths still enforce answers.
     v_has_registration_questions := jsonb_array_length(coalesce(v_registration_questions, '[]'::jsonb)) > 0;
 
-    -- Lock organizer-created invitation rows before converting them into attendance.
+    -- Lock any existing attendee lifecycle row before deciding the RSVP path
     select ea.status into v_attendee_status
     from event_attendee ea
     where ea.event_id = p_event_id
     and ea.user_id = p_user_id
-    and ea.status in ('invitation-pending', 'invitation-rejected', 'registration-questions-pending')
     for update of ea;
 
-    if found then
-        -- Invitation acceptance confirms attendance, so validate answers here.
+    -- Reject duplicate confirmed attendance before other enrollment paths
+    if v_attendee_status = 'confirmed' then
+        raise exception 'user is already attending this event';
+    end if;
+
+    -- Convert pending attendee lifecycle states into confirmed attendance
+    if v_attendee_status in (
+        'invitation-pending',
+        'invitation-rejected',
+        'registration-questions-pending'
+    ) then
+        -- These lifecycle rows confirm attendance, so validate answers here
         if v_has_registration_questions then
             perform validate_questionnaire_answers_payload(v_registration_questions, p_registration_answers);
             v_registration_answers := p_registration_answers;
         end if;
 
-        -- Preserve the locked invitation row while updating only the status we read.
+        -- Preserve the locked attendee row while updating only the status we read
         update event_attendee
         set
             registration_answers = v_registration_answers,
@@ -89,25 +98,14 @@ begin
         return 'attendee';
     end if;
 
-    -- Ensure the user is not already attending
-    if exists (
-        select 1
-        from event_attendee ea
-        where ea.event_id = p_event_id
-        and ea.user_id = p_user_id
-        and ea.status = 'confirmed'
-    ) then
-        raise exception 'user is already attending this event';
-    end if;
-
-    -- Load any existing invitation request for approval-required decisions
-    select eir.status into v_invitation_request_status
-    from event_invitation_request eir
-    where eir.event_id = p_event_id
-    and eir.user_id = p_user_id;
-
     -- Route approval-required events through the invitation request flow
     if v_attendee_approval_required then
+        -- Load any existing invitation request for approval-required decisions
+        select eir.status into v_invitation_request_status
+        from event_invitation_request eir
+        where eir.event_id = p_event_id
+        and eir.user_id = p_user_id;
+
         -- Approval requests and accepted-request rejoins are attendee paths,
         -- so required registration answers must be present before proceeding.
         if v_has_registration_questions then
@@ -131,6 +129,7 @@ begin
             values (p_event_id, p_user_id, v_registration_answers)
             on conflict (event_id, user_id) do update
             set
+                manually_invited = false,
                 registration_answers = v_registration_answers,
                 status = 'confirmed'
             where event_attendee.status = 'invitation-canceled';
@@ -177,12 +176,14 @@ begin
                 and user_id = p_user_id
                 and status = 'invitation-canceled';
 
-                begin
-                    insert into event_waitlist (event_id, user_id)
-                    values (p_event_id, p_user_id);
-                exception when unique_violation then
+                -- Add the user to the waitlist, rejecting duplicate joins below
+                insert into event_waitlist (event_id, user_id)
+                values (p_event_id, p_user_id)
+                on conflict (event_id, user_id) do nothing;
+
+                if not found then
                     raise exception 'user is already on the waiting list for this event';
-                end;
+                end if;
 
                 return 'waitlisted';
             end if;
@@ -202,6 +203,7 @@ begin
     values (p_event_id, p_user_id, v_registration_answers)
     on conflict (event_id, user_id) do update
     set
+        manually_invited = false,
         registration_answers = v_registration_answers,
         status = 'confirmed'
     where event_attendee.status in ('invitation-canceled', 'registration-questions-pending');

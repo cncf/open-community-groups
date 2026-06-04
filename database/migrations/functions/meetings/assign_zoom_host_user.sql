@@ -1,5 +1,4 @@
 -- assign_zoom_host_user reserves one available host user for a Zoom meeting.
-drop function if exists assign_zoom_host_user(uuid, uuid, text[], integer, timestamptz, timestamptz);
 create or replace function assign_zoom_host_user(
     p_event_id uuid,
     p_session_id uuid,

@@ -15,11 +15,7 @@ begin
         country = nullif(p_user->>'country', ''),
         facebook_url = nullif(p_user->>'facebook_url', ''),
         github_url = nullif(p_user->>'github_url', ''),
-        interests = case
-            when p_user ? 'interests' and jsonb_typeof(p_user->'interests') != 'null' then
-                array(select jsonb_array_elements_text(p_user->'interests'))
-            else null
-        end,
+        interests = jsonb_text_array(p_user->'interests'),
         linkedin_url = nullif(p_user->>'linkedin_url', ''),
         optional_notifications_enabled = coalesce(
             (p_user->>'optional_notifications_enabled')::boolean,

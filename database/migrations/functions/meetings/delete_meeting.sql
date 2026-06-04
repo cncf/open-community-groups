@@ -1,5 +1,4 @@
 -- delete_meeting deletes a meeting and completes the event/session claim.
-drop function if exists delete_meeting(uuid, uuid, uuid);
 create or replace function delete_meeting(
     p_meeting_id uuid,
     p_event_id uuid,

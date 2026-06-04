@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(13);
+select plan(14);
 
 -- ============================================================================
 -- VARIABLES
@@ -28,6 +28,7 @@ select plan(13);
 \set purchaseStartedID '79000000-0000-0000-0000-000000000022'
 \set startedEventID '79000000-0000-0000-0000-000000000023'
 \set startedTicketTypeID '79000000-0000-0000-0000-000000000024'
+\set purchaseExpiredActiveHoldID '79000000-0000-0000-0000-000000000026'
 \set user1ID '79000000-0000-0000-0000-000000000017'
 \set user2ID '79000000-0000-0000-0000-000000000018'
 \set user3ID '79000000-0000-0000-0000-000000000019'
@@ -211,6 +212,22 @@ insert into event_purchase (
     'General admission',
     :'user2ID'
 ), (
+    :'purchaseExpiredActiveHoldID',
+    2500,
+    'USD',
+    0,
+    null,
+    null,
+    :'activeEventID',
+    :'activeTicketTypeID',
+    now() + interval '15 minutes',
+    'stripe',
+    'cs_expired_active_hold',
+    'pi_expired_active_hold',
+    'expired',
+    'General admission',
+    :'user5ID'
+), (
     :'purchaseCanceledID',
     2500,
     'USD',
@@ -313,6 +330,13 @@ select is(
     reconcile_event_purchase_for_checkout_session('stripe', 'cs_missing', 'pi_missing')::jsonb,
     '{"outcome":"noop"}'::jsonb,
     'Should return noop when there is no matching checkout session'
+);
+
+-- Should return noop for expired purchases whose hold has not expired locally
+select is(
+    reconcile_event_purchase_for_checkout_session('stripe', 'cs_expired_active_hold', null)::jsonb,
+    '{"outcome":"noop"}'::jsonb,
+    'Should return noop for expired purchases whose hold has not expired locally'
 );
 
 -- Should complete a valid pending checkout session

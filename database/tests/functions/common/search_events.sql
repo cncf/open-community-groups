@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(18);
+select plan(19);
 
 -- ============================================================================
 -- VARIABLES
@@ -347,6 +347,28 @@ select is(
         get_event_summary(:'community1ID'::uuid, :'group2ID'::uuid, :'event5ID'::uuid)::jsonb
     ),
     'Should filter events by distance (event location is used when available, otherwise group location)'
+);
+
+-- Should sort events by distance
+select is(
+    (select search_events(
+        jsonb_build_object(
+            'latitude', 37.7749,
+            'longitude', -122.4194,
+            'sort_by', 'distance',
+            'sort_direction', 'desc',
+            'limit', 10,
+            'offset', 0
+        )
+     )::jsonb->'events'),
+    jsonb_build_array(
+        get_event_summary(:'community2ID'::uuid, :'group3ID'::uuid, :'event6ID'::uuid)::jsonb,
+        get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event1ID'::uuid)::jsonb,
+        get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb,
+        get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event3ID'::uuid)::jsonb,
+        get_event_summary(:'community1ID'::uuid, :'group2ID'::uuid, :'event5ID'::uuid)::jsonb
+    ),
+    'Should sort events by distance'
 );
 
 -- Should paginate results correctly

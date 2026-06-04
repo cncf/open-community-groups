@@ -1,4 +1,8 @@
+{{ template "common/jsonb_geography_point.sql" }} -- Dependency for payload location mappings and distance search filters
+{{ template "common/jsonb_text_array.sql" }} -- Dependency for payload text-array mappings
+
 {{ template "auth/get_user_by_id.sql" }} -- Do not sort alphabetically, has dependency
+{{ template "auth/resolve_unique_username.sql" }} -- Dependency for signup and pre-registration activation
 {{ template "auth/activate_pre_registered_user_email_password.sql" }}
 {{ template "auth/activate_pre_registered_user_external_provider.sql" }}
 {{ template "auth/get_user_by_email.sql" }}
@@ -27,6 +31,8 @@
 {{ template "common/stats_label_count_series_by_name.sql" }}
 {{ template "common/stats_running_total_series.sql" }}
 {{ template "common/stats_running_total_series_by_name.sql" }}
+{{ template "common/validate_cfs_submission_label_ids.sql" }} -- Dependency for CFS submission label sync
+{{ template "common/sync_cfs_submission_labels.sql" }} -- Dependency for add/update_cfs_submission
 {{ template "common/validate_questionnaire_questions_payload.sql" }} -- Do not sort alphabetically, dependency for add/update_event and validate_questionnaire_answers_payload
 {{ template "common/validate_questionnaire_answers_payload.sql" }} -- Do not sort alphabetically, dependency for attend_event, submit_event_registration_answers and prepare_event_checkout_purchase
 {{ template "common/get_event_full.sql" }}
@@ -87,9 +93,15 @@
 {{ template "dashboard-group/validate_event_series_action_event_ids.sql" }} -- Dependency for series actions
 {{ template "dashboard-group/validate_event_ticket_types_payload.sql" }} -- Dependency for validate_event_ticketing_payload
 {{ template "dashboard-group/validate_event_ticketing_payload.sql" }} -- Dependency for add/update_event
+{{ template "dashboard-group/validate_add_event_dates.sql" }} -- Dependency for add_event
 {{ template "event/promote_event_waitlist.sql" }} -- Dependency for update_event and leave_event
 {{ template "dashboard-group/sync_event_discount_codes.sql" }} -- Dependency for add/update_event
 {{ template "dashboard-group/sync_event_ticket_types.sql" }} -- Dependency for add/update_event
+{{ template "dashboard-group/is_event_meeting_in_sync.sql" }} -- Dependency for update_event
+{{ template "dashboard-group/is_session_meeting_in_sync.sql" }} -- Dependency for sync_event_sessions
+{{ template "dashboard-group/sync_event_cfs_labels.sql" }} -- Dependency for add/update_event
+{{ template "dashboard-group/sync_event_hosts_speakers_sponsors.sql" }} -- Dependency for add/update_event
+{{ template "dashboard-group/sync_event_sessions.sql" }} -- Dependency for add/update_event
 {{ template "dashboard-group/accept_event_invitation_request.sql" }}
 {{ template "dashboard-group/add_event.sql" }}
 {{ template "dashboard-group/add_event_series.sql" }}
@@ -107,8 +119,6 @@
 {{ template "dashboard-group/get_event_summary_dashboard.sql" }} -- Dependency for list_group_events
 {{ template "dashboard-group/get_group_sponsor.sql" }}
 {{ template "dashboard-group/get_group_stats.sql" }}
-{{ template "dashboard-group/is_event_meeting_in_sync.sql" }}
-{{ template "dashboard-group/is_session_meeting_in_sync.sql" }}
 {{ template "dashboard-group/invite_event_attendee.sql" }}
 {{ template "dashboard-group/list_cfs_submission_statuses_for_review.sql" }}
 {{ template "dashboard-group/list_event_approved_cfs_submissions.sql" }}
@@ -136,8 +146,6 @@
 {{ template "dashboard-group/search_event_attendees.sql" }}
 {{ template "dashboard-group/search_event_invitation_requests.sql" }}
 {{ template "dashboard-group/search_event_waitlist.sql" }}
-{{ template "dashboard-group/sync_event_cfs_labels.sql" }} -- Dependency for update_event
-{{ template "dashboard-group/sync_event_sessions.sql" }} -- Dependency for update_event
 {{ template "dashboard-group/unpublish_event.sql" }}
 {{ template "dashboard-group/unpublish_event_series_events.sql" }}
 {{ template "dashboard-group/update_cfs_submission.sql" }}

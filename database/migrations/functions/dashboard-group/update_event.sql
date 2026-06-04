@@ -54,33 +54,10 @@ begin
 
     -- Parse payload values used across the update flow
     v_event_capacity_before := (v_event_before->>'capacity')::int;
-    v_event_location := case
-        when (p_event->>'latitude') is not null
-             and (p_event->>'longitude') is not null
-        then ST_SetSRID(
-            ST_MakePoint(
-                (p_event->>'longitude')::float,
-                (p_event->>'latitude')::float
-            ),
-            4326
-        )::geography
-        else null
-    end;
-    v_event_meeting_hosts := case
-        when p_event->'meeting_hosts' is not null
-        then array(select jsonb_array_elements_text(p_event->'meeting_hosts'))
-        else null
-    end;
-    v_event_photos_urls := case
-        when p_event->'photos_urls' is not null
-        then array(select jsonb_array_elements_text(p_event->'photos_urls'))
-        else null
-    end;
-    v_event_tags := case
-        when p_event->'tags' is not null
-        then array(select jsonb_array_elements_text(p_event->'tags'))
-        else null
-    end;
+    v_event_location := jsonb_geography_point(p_event);
+    v_event_meeting_hosts := jsonb_text_array(p_event->'meeting_hosts');
+    v_event_photos_urls := jsonb_text_array(p_event->'photos_urls');
+    v_event_tags := jsonb_text_array(p_event->'tags');
 
     -- Resolve ticketing values and the effective event capacity
     v_discount_codes := case
@@ -314,31 +291,8 @@ begin
     -- Synchronize event CFS labels
     perform sync_event_cfs_labels(p_event_id, p_event->'cfs_labels');
 
-    -- Delete existing hosts, sponsors, sessions and speakers
-    delete from event_host where event_id = p_event_id;
-    delete from event_speaker where event_id = p_event_id;
-    delete from event_sponsor where event_id = p_event_id;
-
-    -- Insert event hosts
-    if p_event->'hosts' is not null then
-        insert into event_host (event_id, user_id)
-        select p_event_id, host.user_id::uuid
-        from jsonb_array_elements_text(p_event->'hosts') as host(user_id);
-    end if;
-
-    -- Insert event speakers
-    if p_event->'speakers' is not null then
-        insert into event_speaker (event_id, user_id, featured)
-        select p_event_id, speaker.user_id, speaker.featured
-        from jsonb_to_recordset(p_event->'speakers') as speaker(featured boolean, user_id uuid);
-    end if;
-
-    -- Insert event sponsors with per-event level
-    if p_event->'sponsors' is not null then
-        insert into event_sponsor (event_id, group_sponsor_id, level)
-        select p_event_id, sponsor.group_sponsor_id, sponsor.level
-        from jsonb_to_recordset(p_event->'sponsors') as sponsor(group_sponsor_id uuid, level text);
-    end if;
+    -- Synchronize event hosts, speakers, and sponsors
+    perform sync_event_hosts_speakers_sponsors(p_event_id, p_event);
 
     -- Synchronize event sessions and speakers
     perform sync_event_sessions(p_event_id, p_event, v_event_before);

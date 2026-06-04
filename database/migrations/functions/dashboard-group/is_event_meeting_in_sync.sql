@@ -7,7 +7,7 @@ returns boolean as $$
 declare
     v_before_ends_at timestamptz := to_timestamp((p_before_event->>'ends_at')::double precision);
     v_before_host_ids uuid[];
-    v_before_meeting_hosts text[] := case when p_before_event->'meeting_hosts' is not null then array(select jsonb_array_elements_text(p_before_event->'meeting_hosts')) else null end;
+    v_before_meeting_hosts text[] := jsonb_text_array(p_before_event->'meeting_hosts');
     v_before_meeting_in_sync boolean := (p_before_event->>'meeting_in_sync')::boolean;
     v_before_meeting_provider_id text := p_before_event->>'meeting_provider_id';
     v_before_meeting_recording_requested boolean := coalesce((p_before_event->>'meeting_recording_requested')::boolean, true);
@@ -19,7 +19,7 @@ declare
 
     v_after_ends_at timestamptz;
     v_after_host_ids uuid[];
-    v_after_meeting_hosts text[] := case when p_after_event->'meeting_hosts' is not null then array(select jsonb_array_elements_text(p_after_event->'meeting_hosts')) else null end;
+    v_after_meeting_hosts text[] := jsonb_text_array(p_after_event->'meeting_hosts');
     v_after_meeting_provider_id text := p_after_event->>'meeting_provider_id';
     v_after_meeting_recording_requested boolean := coalesce((p_after_event->>'meeting_recording_requested')::boolean, true);
     v_after_meeting_requested boolean := (p_after_event->>'meeting_requested')::boolean;
