@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(22);
+select plan(27);
 
 -- ============================================================================
 -- VARIABLES
@@ -23,6 +23,8 @@ select plan(22);
 \set eventPaidTicketTypeID '00000000-0000-0000-0000-000000000065'
 \set eventPaidTicketed '00000000-0000-0000-0000-000000000055'
 \set eventPaidTicketedPurchaseID '00000000-0000-0000-0000-000000000064'
+\set eventQuestionsInvited '00000000-0000-0000-0000-000000000058'
+\set eventQuestionsPromoted '00000000-0000-0000-0000-000000000057'
 \set eventStartedNoEnd '00000000-0000-0000-0000-000000000053'
 \set eventTicketed '00000000-0000-0000-0000-000000000054'
 \set eventTicketedDiscountCodeID '00000000-0000-0000-0000-000000000063'
@@ -37,6 +39,8 @@ select plan(22);
 \set user2ID '00000000-0000-0000-0000-000000000032'
 \set user3ID '00000000-0000-0000-0000-000000000033'
 \set user4ID '00000000-0000-0000-0000-000000000034'
+\set user5ID '00000000-0000-0000-0000-000000000035'
+\set user6ID '00000000-0000-0000-0000-000000000036'
 
 -- ============================================================================
 -- SEED DATA
@@ -60,7 +64,9 @@ values
     (:'user1ID', 'h', 'u1@test.com', 'u1'),
     (:'user2ID', 'h', 'u2@test.com', 'u2'),
     (:'user3ID', 'h', 'u3@test.com', 'u3'),
-    (:'user4ID', 'h', 'u4@test.com', 'u4');
+    (:'user4ID', 'h', 'u4@test.com', 'u4'),
+    (:'user5ID', 'h', 'u5@test.com', 'u5'),
+    (:'user6ID', 'h', 'u6@test.com', 'u6');
 
 -- Group
 insert into "group" (group_id, community_id, group_category_id, name, slug, active, deleted)
@@ -139,6 +145,62 @@ insert into event (
     false
 );
 
+-- Events with registration questions used to release pending-question seats
+insert into event (
+    event_id,
+    name,
+    slug,
+    description,
+    timezone,
+    event_category_id,
+    event_kind_id,
+    group_id,
+    published,
+    canceled,
+    deleted,
+    starts_at,
+    ends_at,
+    capacity,
+    waitlist_enabled,
+    registration_questions
+) values
+    (
+        :'eventQuestionsPromoted',
+        'Questions Promoted',
+        'questions-promoted',
+        'd',
+        'UTC',
+        :'eventCategoryID',
+        'in-person',
+        :'groupID',
+        true,
+        false,
+        false,
+        null,
+        null,
+        1,
+        true,
+        '[{"id": "00000000-0000-0000-0000-000000000101", "kind": "free-text", "prompt": "Note", "required": true, "options": []}]'::jsonb
+    ),
+    (
+        :'eventQuestionsInvited',
+        'Questions Invited',
+        'questions-invited',
+        'd',
+        'UTC',
+        :'eventCategoryID',
+        'in-person',
+        :'groupID',
+        true,
+        false,
+        false,
+        null,
+        null,
+        1,
+        true,
+        '[{"id": "00000000-0000-0000-0000-000000000101", "kind": "free-text", "prompt": "Note", "required": true, "options": []}]'::jsonb
+    );
+
 -- Event Ticket Type
 insert into event_ticket_type (
     event_ticket_type_id,
@@ -198,10 +260,16 @@ insert into event_attendee (event_id, user_id, status) values
     (:'eventDisabledWaitlist', :'user2ID', 'confirmed'),
     (:'eventPast', :'user1ID', 'confirmed'),
     (:'eventPaidTicketed', :'user3ID', 'confirmed'),
+    (:'eventQuestionsPromoted', :'user5ID', 'registration-questions-pending'),
     (:'eventStartedNoEnd', :'user1ID', 'confirmed'),
     (:'eventFull', :'user1ID', 'confirmed'),
     (:'eventUnlimited', :'user1ID', 'confirmed'),
-    (:'eventTicketed', :'user1ID', 'confirmed');
+    (:'eventTicketed', :'user1ID', 'confirmed'),
+    (:'eventTicketed', :'user5ID', 'registration-questions-pending');
+
+-- Manually invited attendee pending registration answers
+insert into event_attendee (event_id, user_id, manually_invited, status)
+values (:'eventQuestionsInvited', :'user5ID', true, 'registration-questions-pending');
 
 -- Event Waitlists
 insert into event_waitlist (event_id, user_id, created_at) values
@@ -209,6 +277,8 @@ insert into event_waitlist (event_id, user_id, created_at) values
     (:'eventDisabledWaitlist', :'user3ID', current_timestamp),
     (:'eventFull', :'user2ID', current_timestamp),
     (:'eventFull', :'user3ID', current_timestamp + interval '1 minute'),
+    (:'eventQuestionsInvited', :'user6ID', current_timestamp),
+    (:'eventQuestionsPromoted', :'user6ID', current_timestamp),
     (:'eventTicketed', :'user2ID', current_timestamp + interval '30 seconds'),
     (:'eventUnlimited', :'user2ID', current_timestamp),
     (:'eventUnlimited', :'user4ID', current_timestamp + interval '1 minute'),
@@ -458,6 +528,53 @@ select is(
         :'user4ID'
     )::jsonb,
     'Moves the full waitlist into attendees when an unlimited event is left'
+);
+
+-- Should release a promoted pending-questions registration and promote the next user
+select is(
+    leave_event(:'communityID'::uuid, :'eventQuestionsPromoted'::uuid, :'user5ID'::uuid)::jsonb,
+    format('{"left_status":"attendee","promoted_user_ids":["%s"]}', :'user6ID')::jsonb,
+    'Releases a promoted pending-questions registration and promotes the next user'
+);
+
+-- Should delete the promoted pending-questions row and queue the next user for answers
+select is(
+    (
+        select jsonb_agg(jsonb_build_array(user_id, status) order by user_id)
+        from event_attendee
+        where event_id = :'eventQuestionsPromoted'::uuid
+    ),
+    format('[["%s","registration-questions-pending"]]', :'user6ID')::jsonb,
+    'Deletes the promoted pending-questions row and queues the next user for answers'
+);
+
+-- Should turn a manually invited pending-questions registration into a rejected invitation
+select is(
+    leave_event(:'communityID'::uuid, :'eventQuestionsInvited'::uuid, :'user5ID'::uuid)::jsonb,
+    format('{"left_status":"attendee","promoted_user_ids":["%s"]}', :'user6ID')::jsonb,
+    'Releases a manually invited pending-questions registration and promotes the next user'
+);
+
+-- Should keep the rejected manual invitation on record after leaving
+select is(
+    (
+        select jsonb_build_array(manually_invited, status)
+        from event_attendee
+        where event_id = :'eventQuestionsInvited'::uuid
+        and user_id = :'user5ID'::uuid
+    ),
+    '[true, "invitation-rejected"]'::jsonb,
+    'Keeps the rejected manual invitation on record after leaving'
+);
+
+-- Should not release pending-questions registrations on ticketed events
+select throws_ok(
+    format(
+        'select leave_event(%L::uuid,%L::uuid,%L::uuid)',
+        :'communityID', :'eventTicketed', :'user5ID'
+    ),
+    'user is not attending or waitlisted for this event',
+    'Does not release pending-questions registrations on ticketed events'
 );
 
 -- Should reject pending organizer-created invitations

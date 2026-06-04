@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(13);
+select plan(14);
 
 -- ============================================================================
 -- VARIABLES
@@ -47,6 +47,8 @@ select plan(13);
 \set questionsPriceWindowID '79100000-0000-0000-0000-000000000036'
 \set questionsTicketTypeID '79100000-0000-0000-0000-000000000037'
 \set questionsUserID '79100000-0000-0000-0000-000000000038'
+\set invitedUserID '79100000-0000-0000-0000-000000000039'
+\set invitedPendingPurchaseID '79100000-0000-0000-0000-000000000040'
 
 -- ============================================================================
 -- SEED DATA
@@ -78,7 +80,8 @@ insert into "user" (user_id, auth_hash, email, email_verified, username) values
     (:'redeemedUserID', 'hash-10', 'redeemed@example.com', true, 'redeemed-user'),
     (:'soldOutHolderUserID', 'hash-11', 'holder@example.com', true, 'holder-user'),
     (:'underMinimumUserID', 'hash-12', 'under-minimum@example.com', true, 'under-minimum-user'),
-    (:'questionsUserID', 'hash-13', 'questions@example.com', true, 'questions-user');
+    (:'questionsUserID', 'hash-13', 'questions@example.com', true, 'questions-user'),
+    (:'invitedUserID', 'hash-14', 'invited@example.com', true, 'invited-user');
 
 -- Group
 insert into "group" (group_id, community_id, group_category_id, name, payment_recipient, slug, slug_pretty)
@@ -248,6 +251,35 @@ insert into event_discount_code (
 -- Existing attendee
 insert into event_attendee (event_id, user_id)
 values (:'mainEventID', :'attendeeUserID');
+
+-- Attendee with a pending invitation alongside a reusable pending purchase
+insert into event_attendee (event_id, user_id, manually_invited, status)
+values (:'mainEventID', :'invitedUserID', true, 'invitation-pending');
+
+-- Pending purchase held by the invited user
+insert into event_purchase (
+    event_purchase_id,
+    amount_minor,
+    currency_code,
+    discount_amount_minor,
+    event_id,
+    event_ticket_type_id,
+    hold_expires_at,
+    status,
+    ticket_title,
+    user_id
+) values (
+    :'invitedPendingPurchaseID',
+    2500,
+    'USD',
+    0,
+    :'mainEventID',
+    :'ticketTypeAID',
+    now() + interval '15 minutes',
+    'pending',
+    'General admission',
+    :'invitedUserID'
+);
 
 -- Existing completed purchases
 insert into event_purchase (
@@ -547,6 +579,22 @@ select results_eq(
     $$,
     $$ values ('registration-questions-pending'::text, '{"answers": [{"question_id": "79100000-0000-0000-0000-000000000101", "value": "Checkout answer"}]}'::jsonb) $$,
     'Should store checkout registration answers in a pending attendee row'
+);
+
+-- Should reject reusing a pending purchase when an invitation is pending
+select throws_ok(
+    $$
+        select prepare_event_checkout_purchase(
+            '79100000-0000-0000-0000-000000000001'::uuid,
+            '79100000-0000-0000-0000-000000000003'::uuid,
+            '79100000-0000-0000-0000-000000000006'::uuid,
+            '79100000-0000-0000-0000-000000000039'::uuid,
+            null,
+            'stripe'
+        )
+    $$,
+    'user has a pending or rejected invitation for this event',
+    'Should reject reusing a pending purchase when an invitation is pending'
 );
 
 -- ============================================================================

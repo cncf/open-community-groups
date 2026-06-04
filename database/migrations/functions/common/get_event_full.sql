@@ -331,11 +331,11 @@ returns json as $$
     join event_category ec using (event_category_id)
     left join meeting m_event on m_event.event_id = e.event_id
     cross join lateral get_event_occupied_seat_count(e.event_id) as ea(attendee_count)
-    left join (
-        select event_id, count(*)::int as waitlist_count
-        from event_waitlist
-        group by event_id
-    ) ew on ew.event_id = e.event_id
+    cross join lateral (
+        select count(*)::int as waitlist_count
+        from event_waitlist ewl
+        where ewl.event_id = e.event_id
+    ) ew
     where e.event_id = p_event_id
     and g.group_id = p_group_id
     and g.community_id = p_community_id;

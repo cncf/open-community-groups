@@ -85,6 +85,42 @@ begin
         );
     end if;
 
+    -- Otherwise release a pending registration-questions seat, since these
+    -- rows occupy capacity until answered; ticketed pending rows are owned
+    -- by the checkout hold flow instead
+    if not v_is_ticketed then
+        -- Declining a manual invitation keeps the rejection on record
+        update event_attendee
+        set status = 'invitation-rejected'
+        where event_id = p_event_id
+        and user_id = p_user_id
+        and manually_invited = true
+        and status = 'registration-questions-pending';
+
+        -- Registrations promoted from the waitlist are simply removed
+        if not found then
+            delete from event_attendee
+            where event_id = p_event_id
+            and user_id = p_user_id
+            and manually_invited = false
+            and status = 'registration-questions-pending';
+        end if;
+
+        if found then
+            -- Promote the next waitlisted user now that a seat is free
+            select promote_event_waitlist(
+                p_event_id,
+                case when v_capacity is null then null else 1 end
+            )
+            into v_promoted_user_ids;
+
+            return json_build_object(
+                'left_status', 'attendee',
+                'promoted_user_ids', v_promoted_user_ids
+            );
+        end if;
+    end if;
+
     -- Otherwise remove the user from the waiting list
     delete from event_waitlist
     where event_id = p_event_id

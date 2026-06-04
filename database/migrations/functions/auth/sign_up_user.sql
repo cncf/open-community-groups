@@ -23,7 +23,7 @@ begin
         username
     ) values (
         encode(gen_random_bytes(32), 'hex'),
-        p_user->>'email',
+        lower(p_user->>'email'),
         p_email_verified,
         p_user->>'name',
         p_user->>'password',

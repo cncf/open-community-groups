@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(66);
+select plan(68);
 
 -- ============================================================================
 -- TESTS
@@ -479,12 +479,12 @@ select indexes_are('site', array[
 -- Test: user indexes should match expected
 select indexes_are('user', array[
     'user_pkey',
-    'user_email_key',
     'user_email_lower_idx',
     'user_name_lower_idx',
-    'user_username_key',
     'user_username_lower_idx'
 ]);
+select index_is_unique('user', 'user_email_lower_idx');
+select index_is_unique('user', 'user_username_lower_idx');
 
 -- ============================================================================
 -- CLEANUP

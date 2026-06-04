@@ -13,7 +13,7 @@ begin
     select exists(
         select 1
         from "user"
-        where username = v_username
+        where lower(username) = lower(v_username)
         and (
             p_excluded_user_id is null
             or user_id <> p_excluded_user_id
@@ -28,7 +28,7 @@ begin
             select exists(
                 select 1
                 from "user"
-                where username = v_username
+                where lower(username) = lower(v_username)
                 and (
                     p_excluded_user_id is null
                     or user_id <> p_excluded_user_id

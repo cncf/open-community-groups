@@ -1,5 +1,6 @@
 -- set_meeting_auto_end_check_outcome records the auto-end check outcome for a meeting.
 create or replace function set_meeting_auto_end_check_outcome(
+    p_claimed_at timestamptz,
     p_meeting_id uuid,
     p_outcome text
 ) returns void as $$
@@ -8,5 +9,6 @@ create or replace function set_meeting_auto_end_check_outcome(
         auto_end_check_claimed_at = null,
         auto_end_check_outcome = p_outcome,
         updated_at = current_timestamp
-    where meeting_id = p_meeting_id;
+    where meeting_id = p_meeting_id
+      and auto_end_check_claimed_at = p_claimed_at;
 $$ language sql;

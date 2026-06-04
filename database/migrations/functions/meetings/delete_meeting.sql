@@ -6,13 +6,20 @@ create or replace function delete_meeting(
     p_sync_claimed_at timestamptz,
     p_sync_state_hash text
 ) returns void as $$
+declare
+    v_claim_held boolean := false;
 begin
-    -- Delete meeting (if one exists)
-    if p_meeting_id is not null then
-        delete from meeting where meeting_id = p_meeting_id;
+    -- Orphan meeting case: the claim lives on the meeting row itself
+    if p_event_id is null and p_session_id is null then
+        if p_meeting_id is not null then
+            delete from meeting
+            where meeting_id = p_meeting_id
+              and sync_claimed_at = p_sync_claimed_at;
+        end if;
+        return;
     end if;
 
-    -- Complete event claim when the owner state did not change
+    -- Complete event claim when the worker still holds it
     if p_event_id is not null then
         update event
         set
@@ -28,9 +35,10 @@ begin
         ) current_state
         where event_id = p_event_id
           and meeting_sync_claimed_at = p_sync_claimed_at;
+        v_claim_held := found;
     end if;
 
-    -- Complete session claim when the owner state did not change
+    -- Complete session claim when the worker still holds it
     if p_session_id is not null then
         update session
         set
@@ -46,6 +54,12 @@ begin
         ) current_state
         where session_id = p_session_id
           and meeting_sync_claimed_at = p_sync_claimed_at;
+        v_claim_held := found;
+    end if;
+
+    -- Delete meeting (if one exists) only when the worker still held the claim
+    if v_claim_held and p_meeting_id is not null then
+        delete from meeting where meeting_id = p_meeting_id;
     end if;
 end;
 $$ language plpgsql;

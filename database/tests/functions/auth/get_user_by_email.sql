@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(4);
+select plan(5);
 
 -- ============================================================================
 -- VARIABLES
@@ -43,6 +43,13 @@ select is(
     get_user_by_email('verified@example.com')::jsonb->>'email',
     'verified@example.com',
     'Should return verified user by email'
+);
+
+-- Should return verified user by email ignoring case
+select is(
+    get_user_by_email('VERIFIED@EXAMPLE.COM')::jsonb->>'email',
+    'verified@example.com',
+    'Should return verified user by email ignoring case'
 );
 
 -- Should not include password for email lookup

@@ -147,7 +147,7 @@ description = "Upcoming events where you'll participate.") -}}
                               {% if item.can_cancel_attendance() -%}
                                 hx-delete="/dashboard/user/events/{{ item.event.community_name }}/{{ item.event.event_id }}/attendance" hx-indicator="#dashboard-spinner" hx-trigger="confirmed" hx-disabled-elt="this" data-confirm-action data-confirm-message="Are you sure you want to cancel your attendance?" data-confirm-text="Yes" data-success-message="You have successfully canceled your attendance." data-error-message="Something went wrong canceling your attendance. Please try again later."
                               {% else -%}
-                                disabled title="Only attendee attendance can be canceled."
+                                disabled title="This attendance cannot be canceled from My Events."
                               {% endif -%}
                               role="menuitem"
                               class="flex items-center w-full px-4 py-2 hover:bg-stone-100 hover:text-stone-900 transition-colors gap-3 text-left disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white disabled:hover:text-stone-700"

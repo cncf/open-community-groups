@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(11);
+select plan(13);
 
 -- ============================================================================
 -- VARIABLES
@@ -115,9 +115,9 @@ insert into session (
     '2025-06-01 10:00:00-04'
 );
 
--- Orphan meeting
-insert into meeting (meeting_id, meeting_provider_id, provider_meeting_id, join_url)
-values (:'orphanMeetingID', 'zoom', 'provider-001', 'https://zoom.us/j/provider-001');
+-- Orphan meeting claimed for deletion
+insert into meeting (meeting_id, meeting_provider_id, provider_meeting_id, join_url, sync_claimed_at)
+values (:'orphanMeetingID', 'zoom', 'provider-001', 'https://zoom.us/j/provider-001', current_timestamp);
 
 -- ============================================================================
 -- TESTS
@@ -259,11 +259,27 @@ select results_eq(
     'Should mark session as in sync and clear claim'
 );
 
+-- Should not delete orphan meeting when the claim token does not match
+select lives_ok(
+    format(
+        $$select set_meeting_error(%L::text, null, %L::uuid, null, current_timestamp - interval '1 hour', null)$$,
+        'orphan sync failed',
+        :'orphanMeetingID'
+    ),
+    'Should accept orphan error with a mismatched claim token'
+);
+select is(
+    (select count(*) from meeting where meeting_id = :'orphanMeetingID'),
+    1::bigint,
+    'Should keep orphan meeting when claim token does not match'
+);
+
 -- Should delete orphan meeting when no event/session exists
 select lives_ok(
     format(
-        $$select set_meeting_error(%L::text, null, %L::uuid, null, null, null)$$,
+        $$select set_meeting_error(%L::text, null, %L::uuid, null, (select sync_claimed_at from meeting where meeting_id = %L::uuid), null)$$,
         'orphan sync failed',
+        :'orphanMeetingID',
         :'orphanMeetingID'
     ),
     'Should delete orphan meeting when no event/session exists'

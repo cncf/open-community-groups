@@ -202,4 +202,4 @@ begin
     )
     );
 end
-$$ language plpgsql;
+$$ language plpgsql set plan_cache_mode = force_custom_plan;

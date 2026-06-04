@@ -5,6 +5,18 @@ create or replace function sync_event_hosts_speakers_sponsors(
 )
 returns void as $$
 begin
+    -- Reject sponsors that belong to a different group
+    if exists (
+        select 1
+        from jsonb_to_recordset(coalesce(p_event->'sponsors', '[]'::jsonb))
+            as sponsor(group_sponsor_id uuid)
+        join group_sponsor gs on gs.group_sponsor_id = sponsor.group_sponsor_id
+        join event e on e.event_id = p_event_id
+        where gs.group_id <> e.group_id
+    ) then
+        raise exception 'sponsor does not belong to event group';
+    end if;
+
     -- Replace associations from the payload
     delete from event_host where event_id = p_event_id;
     delete from event_speaker where event_id = p_event_id;

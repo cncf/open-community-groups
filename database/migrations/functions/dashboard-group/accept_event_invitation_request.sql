@@ -8,6 +8,7 @@ create or replace function accept_event_invitation_request(
 returns void as $$
 declare
     v_attendee_count int;
+    v_attendee_status text;
     v_capacity int;
     v_community_id uuid;
     v_registration_answers jsonb;
@@ -50,6 +51,23 @@ begin
         raise exception 'pending invitation request not found';
     end if;
 
+    -- Lock any existing attendee row and reject states the upsert below
+    -- cannot convert, so acceptance is never recorded without attendance
+    select ea.status
+    into v_attendee_status
+    from event_attendee ea
+    where ea.event_id = p_event_id
+    and ea.user_id = p_user_id
+    for update of ea;
+
+    if v_attendee_status = 'confirmed' then
+        raise exception 'user is already attending this event';
+    end if;
+
+    if v_attendee_status = 'invitation-rejected' then
+        raise exception 'user rejected an invitation for this event';
+    end if;
+
     -- Enforce event capacity against already accepted attendees
     if v_capacity is not null then
         select get_event_occupied_seat_count(p_event_id) into v_attendee_count;
@@ -83,6 +101,10 @@ begin
         'invitation-pending',
         'registration-questions-pending'
     );
+
+    if not found then
+        raise exception 'user is not eligible to attend this event';
+    end if;
 
     -- Track the organizer decision
     perform insert_audit_log(

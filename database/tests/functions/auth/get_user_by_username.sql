@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(6);
+select plan(7);
 
 -- ============================================================================
 -- VARIABLES
@@ -95,6 +95,13 @@ select is(
     get_user_by_username('with-password')::jsonb->>'user_id',
     :'userWithPasswordID',
     'Should return verified user with password by username'
+);
+
+-- Should return verified user with password by username ignoring case
+select is(
+    get_user_by_username('WITH-PASSWORD')::jsonb->>'user_id',
+    :'userWithPasswordID',
+    'Should return verified user with password by username ignoring case'
 );
 
 -- Should include password for username lookup

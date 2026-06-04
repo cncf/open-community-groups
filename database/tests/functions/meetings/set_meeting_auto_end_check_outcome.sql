@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(12);
+select plan(14);
 
 -- ============================================================================
 -- VARIABLES
@@ -16,7 +16,7 @@ select plan(12);
 -- SEED DATA
 -- ============================================================================
 
--- Zoom meeting row
+-- Claimed Zoom meeting row
 insert into meeting (
     auto_end_check_claimed_at,
     join_url,
@@ -35,10 +35,39 @@ insert into meeting (
 -- TESTS
 -- ============================================================================
 
--- Should record auto_ended outcome
+-- Should not record outcome when the claim token does not match
 select lives_ok(
     format(
-        $$select set_meeting_auto_end_check_outcome(%L::uuid, 'auto_ended')$$,
+        $$select set_meeting_auto_end_check_outcome(current_timestamp - interval '1 hour', %L::uuid, 'auto_ended')$$,
+        :'meetingID'
+    ),
+    'Should accept outcome with a mismatched claim token'
+);
+select results_eq(
+    format(
+        $query$
+        select
+            auto_end_check_at,
+            auto_end_check_outcome
+        from meeting
+        where meeting_id = %L::uuid
+        $query$,
+        :'meetingID'
+    ),
+    $expected$
+    values (
+        null::timestamptz,
+        null::text
+    )
+    $expected$,
+    'Should keep outcome unset when the claim token does not match'
+);
+
+-- Should record auto_ended outcome with a matching token
+select lives_ok(
+    format(
+        $$select set_meeting_auto_end_check_outcome((select auto_end_check_claimed_at from meeting where meeting_id = %L::uuid), %L::uuid, 'auto_ended')$$,
+        :'meetingID',
         :'meetingID'
     ),
     'Should record auto_ended outcome'
@@ -59,10 +88,18 @@ select is(
     'Should clear auto-end check claim when writing auto_ended'
 );
 
+-- Reclaim meeting for next outcome
+update meeting
+set auto_end_check_at = null,
+    auto_end_check_claimed_at = current_timestamp,
+    auto_end_check_outcome = null
+where meeting_id = :'meetingID';
+
 -- Should allow already_not_running outcome
 select lives_ok(
     format(
-        $$select set_meeting_auto_end_check_outcome(%L::uuid, 'already_not_running')$$,
+        $$select set_meeting_auto_end_check_outcome((select auto_end_check_claimed_at from meeting where meeting_id = %L::uuid), %L::uuid, 'already_not_running')$$,
+        :'meetingID',
         :'meetingID'
     ),
     'Should allow already_not_running outcome'
@@ -73,10 +110,18 @@ select is(
     'Should persist already_not_running outcome'
 );
 
+-- Reclaim meeting for next outcome
+update meeting
+set auto_end_check_at = null,
+    auto_end_check_claimed_at = current_timestamp,
+    auto_end_check_outcome = null
+where meeting_id = :'meetingID';
+
 -- Should allow error outcome
 select lives_ok(
     format(
-        $$select set_meeting_auto_end_check_outcome(%L::uuid, 'error')$$,
+        $$select set_meeting_auto_end_check_outcome((select auto_end_check_claimed_at from meeting where meeting_id = %L::uuid), %L::uuid, 'error')$$,
+        :'meetingID',
         :'meetingID'
     ),
     'Should allow error outcome'
@@ -87,10 +132,18 @@ select is(
     'Should persist error outcome'
 );
 
+-- Reclaim meeting for next outcome
+update meeting
+set auto_end_check_at = null,
+    auto_end_check_claimed_at = current_timestamp,
+    auto_end_check_outcome = null
+where meeting_id = :'meetingID';
+
 -- Should allow not_found outcome
 select lives_ok(
     format(
-        $$select set_meeting_auto_end_check_outcome(%L::uuid, 'not_found')$$,
+        $$select set_meeting_auto_end_check_outcome((select auto_end_check_claimed_at from meeting where meeting_id = %L::uuid), %L::uuid, 'not_found')$$,
+        :'meetingID',
         :'meetingID'
     ),
     'Should allow not_found outcome'
@@ -101,10 +154,18 @@ select is(
     'Should persist not_found outcome'
 );
 
+-- Reclaim meeting for next outcome
+update meeting
+set auto_end_check_at = null,
+    auto_end_check_claimed_at = current_timestamp,
+    auto_end_check_outcome = null
+where meeting_id = :'meetingID';
+
 -- Should reject unsupported outcome
 select throws_ok(
     format(
-        $$select set_meeting_auto_end_check_outcome(%L::uuid, 'invalid')$$,
+        $$select set_meeting_auto_end_check_outcome((select auto_end_check_claimed_at from meeting where meeting_id = %L::uuid), %L::uuid, 'invalid')$$,
+        :'meetingID',
         :'meetingID'
     ),
     '23503',
@@ -115,7 +176,7 @@ select throws_ok(
 -- Should not fail when meeting ID does not exist
 select lives_ok(
     format(
-        $$select set_meeting_auto_end_check_outcome(%L::uuid, 'auto_ended')$$,
+        $$select set_meeting_auto_end_check_outcome(current_timestamp, %L::uuid, 'auto_ended')$$,
         :'missingMeetingID'
     ),
     'Should not fail when meeting does not exist'

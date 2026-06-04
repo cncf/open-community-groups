@@ -237,6 +237,7 @@
 {{ template "payments/prepare_event_checkout_get_purchase_summary.sql" }} -- Dependency for prepare_event_checkout_purchase
 {{ template "payments/prepare_event_checkout_reserve_discount_code_availability.sql" }} -- Dependency for prepare_event_checkout_purchase
 {{ template "payments/prepare_event_checkout_validate_and_resolve_pricing.sql" }} -- Dependency for prepare_event_checkout_purchase
+{{ template "payments/prepare_event_checkout_validate_attendee_state.sql" }} -- Dependency for prepare_event_checkout_purchase
 {{ template "payments/prepare_event_checkout_validate_event.sql" }} -- Dependency for prepare_event_checkout_purchase
 {{ template "payments/upsert_pending_registration_answers.sql" }} -- Dependency for prepare_event_checkout_purchase
 {{ template "payments/prepare_event_checkout_purchase.sql" }}

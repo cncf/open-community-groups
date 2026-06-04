@@ -274,10 +274,7 @@ impl MeetingsAutoEndWorker {
             );
 
             self.db
-                .set_meeting_auto_end_check_outcome(
-                    candidate.meeting_id,
-                    MeetingAutoEndCheckOutcome::Error,
-                )
+                .set_meeting_auto_end_check_outcome(&candidate, MeetingAutoEndCheckOutcome::Error)
                 .await
                 .map_err(SyncError::Other)?;
             return Ok(true);
@@ -292,7 +289,7 @@ impl MeetingsAutoEndWorker {
             Err(MeetingProviderError::NotFound) => MeetingAutoEndCheckOutcome::NotFound,
             Err(err) if err.is_retryable() => {
                 self.db
-                    .release_meeting_auto_end_check_claim(candidate.meeting_id)
+                    .release_meeting_auto_end_check_claim(&candidate)
                     .await
                     .map_err(SyncError::Other)?;
                 return Err(SyncError::Provider(err));
@@ -310,7 +307,7 @@ impl MeetingsAutoEndWorker {
 
         // Persist check outcome to avoid reprocessing the same meeting
         self.db
-            .set_meeting_auto_end_check_outcome(candidate.meeting_id, check_outcome)
+            .set_meeting_auto_end_check_outcome(&candidate, check_outcome)
             .await
             .map_err(SyncError::Other)?;
 

@@ -30,16 +30,8 @@ declare
 begin
     discount_amount_minor := 0;
 
-    -- Prevent duplicate attendance before creating a pending purchase
-    if exists (
-        select 1
-        from event_attendee
-        where event_id = p_event_id
-        and user_id = p_user_id
-        and status = 'confirmed'
-    ) then
-        raise exception 'user is already attending this ticketed event';
-    end if;
+    -- Reject attendee states that checkout completion cannot confirm
+    perform prepare_event_checkout_validate_attendee_state(p_event_id, p_user_id);
 
     -- Resolve the selected ticket type and the currently active price window
     select

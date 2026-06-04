@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(6);
+select plan(7);
 
 -- ============================================================================
 -- VARIABLES
@@ -27,6 +27,8 @@ select plan(6);
 \set user2ID '72000000-0000-0000-0000-000000000013'
 \set user3ID '72000000-0000-0000-0000-000000000014'
 \set user4ID '72000000-0000-0000-0000-000000000015'
+\set user5ID '72000000-0000-0000-0000-000000000019'
+\set invitedPurchaseID '72000000-0000-0000-0000-000000000020'
 
 -- ============================================================================
 -- SEED DATA
@@ -49,7 +51,8 @@ insert into "user" (user_id, auth_hash, email, email_verified, username) values
     (:'user1ID', 'hash-1', 'user1@example.com', true, 'user-1'),
     (:'user2ID', 'hash-2', 'user2@example.com', true, 'user-2'),
     (:'user3ID', 'hash-3', 'user3@example.com', true, 'user-3'),
-    (:'user4ID', 'hash-4', 'user4@example.com', true, 'user-4');
+    (:'user4ID', 'hash-4', 'user4@example.com', true, 'user-4'),
+    (:'user5ID', 'hash-5', 'user5@example.com', true, 'user-5');
 
 -- Group
 insert into "group" (group_id, community_id, group_category_id, name, slug)
@@ -176,6 +179,16 @@ insert into event_purchase (
     'completed',
     'General admission',
     :'user4ID'
+), (
+    :'invitedPurchaseID',
+    0,
+    'USD',
+    :'eventID',
+    :'eventTicketTypeID',
+    now() + interval '10 minutes',
+    'pending',
+    'General admission',
+    :'user5ID'
 );
 
 -- Pending attendee row with registration answers created during checkout
@@ -186,6 +199,10 @@ values (
     '{"answers": [{"question_id": "72000000-0000-0000-0000-000000000101", "value": "Free checkout answer"}]}'::jsonb,
     'registration-questions-pending'
 );
+
+-- Attendee with a pending invitation that checkout cannot confirm
+insert into event_attendee (event_id, user_id, manually_invited, status)
+values (:'eventID', :'user5ID', true, 'invitation-pending');
 
 -- ============================================================================
 -- TESTS
@@ -290,6 +307,13 @@ select throws_ok(
     $$select complete_free_event_purchase('72000000-0000-0000-0000-000000000010'::uuid)$$,
     'purchase is no longer pending',
     'Should reject purchases that are no longer pending'
+);
+
+-- Should reject purchases whose attendee row cannot be confirmed
+select throws_ok(
+    $$select complete_free_event_purchase('72000000-0000-0000-0000-000000000020'::uuid)$$,
+    'attendee cannot be confirmed for this event',
+    'Should reject purchases whose attendee row cannot be confirmed'
 );
 
 -- ============================================================================
