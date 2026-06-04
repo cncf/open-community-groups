@@ -10,6 +10,9 @@ import {
 } from "/static/js/dashboard/common.js";
 import { registerChartResizeHandler, renderChart } from "/static/js/common/stats.js";
 
+const GROUP_ANALYTICS_DATA_SELECTOR = "[data-group-analytics]";
+const GROUP_ANALYTICS_READY_KEY = "groupAnalyticsReady";
+
 /**
  * Build charts for members metrics.
  * @param {Object} stats - Members stats payload.
@@ -222,3 +225,53 @@ export const initAnalyticsCharts = async (stats) => {
     registerChartResizeHandler(hydratedCharts);
   });
 };
+
+/**
+ * Initialize group analytics charts from the page JSON marker.
+ * @param {Document|Element} root - Root element to search from.
+ * @returns {Promise<void>} Promise resolved when initialization finishes.
+ */
+export const initializeGroupAnalyticsFromPage = async (root = document) => {
+  const marker = root.querySelector(GROUP_ANALYTICS_DATA_SELECTOR);
+  if (!marker || marker.dataset[GROUP_ANALYTICS_READY_KEY] === "true") {
+    return;
+  }
+
+  const stats = readGroupAnalyticsPayload(marker);
+  if (!stats) {
+    return;
+  }
+
+  marker.dataset[GROUP_ANALYTICS_READY_KEY] = "true";
+
+  try {
+    await initAnalyticsCharts(stats);
+  } catch (error) {
+    console.error("Failed to initialize analytics charts:", error);
+  }
+};
+
+/**
+ * Read the group analytics payload from an inert JSON marker.
+ * @param {HTMLElement} marker - JSON marker element.
+ * @returns {Object|null} Parsed stats payload.
+ */
+const readGroupAnalyticsPayload = (marker) => {
+  try {
+    return JSON.parse(marker.textContent || "{}");
+  } catch (error) {
+    console.error("Failed to parse group analytics payload:", error);
+    return null;
+  }
+};
+
+const initializeGroupAnalyticsWhenReady = () => {
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", () => initializeGroupAnalyticsFromPage(), { once: true });
+    return;
+  }
+
+  initializeGroupAnalyticsFromPage();
+};
+
+initializeGroupAnalyticsWhenReady();

@@ -1,6 +1,9 @@
 import { expect } from "@open-wc/testing";
 
-import { initAnalyticsCharts } from "/static/js/dashboard/group/analytics.js";
+import {
+  initializeGroupAnalyticsFromPage,
+  initAnalyticsCharts,
+} from "/static/js/dashboard/group/analytics.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
 
 describe("dashboard group analytics", () => {
@@ -125,5 +128,60 @@ describe("dashboard group analytics", () => {
       setOptionCalls.find((call) => call.id === "total-views-monthly-chart")
         .option.title.subtext,
     ).to.equal("Group and event views grouped by month");
+  });
+
+  it("initializes charts from the page payload only once", async () => {
+    // Prepare the declarative analytics payload used by the page template.
+    const marker = document.createElement("script");
+    marker.type = "application/json";
+    marker.dataset.groupAnalytics = "";
+    marker.textContent = JSON.stringify({
+      page_views: {
+        total: {
+          per_month_views: [["2025-01", 4]],
+          per_day_views: [["2025-01-01", 2]],
+        },
+        group: {
+          per_month_views: [["2025-01", 2]],
+          per_day_views: [["2025-01-01", 1]],
+        },
+        events: {
+          per_month_views: [["2025-01", 2]],
+          per_day_views: [["2025-01-01", 1]],
+        },
+      },
+      members: {
+        running_total: [
+          [1, 1],
+          [2, 2],
+        ],
+        per_month: [["2025-01", 1]],
+      },
+      events: {
+        running_total: [
+          [1, 1],
+          [2, 2],
+        ],
+        per_month: [["2025-01", 1]],
+      },
+      attendees: {
+        running_total: [
+          [1, 1],
+          [2, 2],
+        ],
+        per_month: [["2025-01", 1]],
+      },
+    });
+    document.body.append(marker);
+
+    // Run the page initializer twice to verify duplicate renders are guarded.
+    await initializeGroupAnalyticsFromPage();
+    await initializeGroupAnalyticsFromPage();
+
+    // Verify the page payload renders the expected charts once.
+    expect(setOptionCalls).to.have.length(12);
+    expect(setOptionCalls.map((call) => call.id)).to.include(
+      "members-running-chart",
+    );
   });
 });
