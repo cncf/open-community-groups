@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(69);
+select plan(70);
 
 -- ============================================================================
 -- TESTS
@@ -354,6 +354,14 @@ select columns_are('event_host', array[
 select columns_are('event_kind', array[
     'event_kind_id',
     'display_name'
+]);
+
+-- Test: event_organizer columns should match expected
+select columns_are('event_organizer', array[
+    'event_id',
+    'user_id',
+
+    'order'
 ]);
 
 -- Test: event_purchase columns should match expected

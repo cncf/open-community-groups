@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(65);
+select plan(66);
 
 -- ============================================================================
 -- TESTS
@@ -197,6 +197,13 @@ select indexes_are('event_invitation_request', array[
 select indexes_are('event_kind', array[
     'event_kind_pkey',
     'event_kind_display_name_key'
+]);
+
+-- Test: event_organizer indexes should match expected
+select indexes_are('event_organizer', array[
+    'event_organizer_pkey',
+    'event_organizer_event_id_idx',
+    'event_organizer_user_id_idx'
 ]);
 
 -- Test: event_purchase indexes should match expected

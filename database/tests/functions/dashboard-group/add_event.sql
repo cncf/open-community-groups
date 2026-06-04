@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(36);
+select plan(37);
 
 -- ============================================================================
 -- VARIABLES
@@ -79,6 +79,13 @@ insert into group_sponsor (group_sponsor_id, group_id, name, logo_url, website_u
 values
     (:'sponsor1ID', :'groupID', 'TechCorp', 'https://example.com/techcorp.png', 'https://techcorp.com'),
     (:'sponsor2ID', :'groupID', 'CloudInc', 'https://example.com/cloudinc.png', null);
+
+-- Group Team
+insert into group_team (accepted, group_id, role, user_id, "order")
+values
+    (true, :'groupID', 'admin', :'user1ID', 2),
+    (false, :'groupID', 'events-manager', :'user2ID', 1),
+    (true, :'groupID', 'viewer', :'user3ID', null);
 
 
 -- ============================================================================
@@ -172,6 +179,23 @@ select is(
     ),
     :'user1ID'::uuid,
     'Should store the actor as the event creator'
+);
+
+-- Should snapshot accepted group team organizers only
+select results_eq(
+    $$
+        select eo.user_id, eo."order"
+        from event_organizer eo
+        join event e using (event_id)
+        where e.name = 'Kubernetes Fundamentals Workshop'
+        order by eo.user_id
+    $$,
+    $$
+        values
+            ('00000000-0000-0000-0000-000000000020'::uuid, 2),
+            ('00000000-0000-0000-0000-000000000022'::uuid, null::integer)
+    $$,
+    'Should snapshot accepted group team organizers and their order only'
 );
 
 -- Should create event with all fields including hosts, sponsors, and sessions

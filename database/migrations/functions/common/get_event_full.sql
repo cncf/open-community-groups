@@ -150,7 +150,7 @@ returns json as $$
                 from legacy_event_speaker les
                 where les.event_id = e.event_id
             ),
-            -- Include group organizers
+            -- Include event organizers
             'organizers', (
                 select coalesce(json_agg(json_strip_nulls(json_build_object(
                     'user_id', u.user_id,
@@ -168,11 +168,10 @@ returns json as $$
                     'title', u.title,
                     'twitter_url', u.twitter_url,
                     'website_url', u.website_url
-                )) order by gt."order" nulls last, u.name), '[]')
-                from group_team gt
+                )) order by eo."order" nulls last, u.name nulls last, u.username, u.user_id), '[]')
+                from event_organizer eo
                 join "user" u using (user_id)
-                where gt.group_id = g.group_id
-                and gt.accepted = true
+                where eo.event_id = e.event_id
             ),
             -- Lock registration questions once answers have been submitted
             'registration_questions_locked', questionnaire_answers_exist_for_event(e.event_id),
