@@ -5,6 +5,7 @@ import {
   confirmSeriesAction,
   getCommonAlertOptions,
   handleHtmxResponse,
+  initializePageAlerts,
   showConfirmAlert,
   showDeploymentRefreshRetryAlert,
   showErrorAlert,
@@ -49,6 +50,29 @@ describe("alerts", () => {
     });
     expect(env.current.swal.calls[3].html).to.include("Validation failed");
     expect(env.current.swal.calls[3].html).to.include("Missing field");
+  });
+
+  it("renders declarative page alerts once", () => {
+    // Build the DOM fixture with server-rendered alert markers.
+    document.body.innerHTML = `
+      <span data-page-alert data-alert-level="success" data-alert-message="Saved" hidden></span>
+      <span data-page-alert data-alert-level="error" data-alert-message="Failed" hidden></span>
+    `;
+
+    // Initialize alerts twice to verify markers are consumed only once.
+    initializePageAlerts();
+    initializePageAlerts();
+
+    // Assert the markers produce one success alert and one error alert.
+    expect(env.current.swal.calls).to.have.length(2);
+    expect(env.current.swal.calls[0]).to.include({
+      text: "Saved",
+      icon: "success",
+    });
+    expect(env.current.swal.calls[1]).to.include({
+      text: "Failed",
+      icon: "error",
+    });
   });
 
   it("supports persistent and html error alerts", () => {

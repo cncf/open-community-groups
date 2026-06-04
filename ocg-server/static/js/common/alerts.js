@@ -1,5 +1,8 @@
 import { scrollToDashboardTop } from "/static/js/common/common.js";
 
+const PAGE_ALERT_SELECTOR = "[data-page-alert]";
+const PAGE_ALERT_READY_KEY = "pageAlertReady";
+
 /**
  * Returns common configuration options for all alert dialogs.
  * Includes positioning, styling, and custom CSS classes.
@@ -40,6 +43,26 @@ export const showSuccessAlert = (message) => {
 };
 
 /**
+ * Displays declarative page alerts rendered by the server.
+ * @param {Document|Element} root - Root element containing alert markers
+ */
+export const initializePageAlerts = (root = document) => {
+  root.querySelectorAll(PAGE_ALERT_SELECTOR).forEach((alertMarker) => {
+    if (alertMarker.dataset[PAGE_ALERT_READY_KEY] === "true") {
+      return;
+    }
+
+    alertMarker.dataset[PAGE_ALERT_READY_KEY] = "true";
+    const message = alertMarker.dataset.alertMessage || "";
+    if (alertMarker.dataset.alertLevel === "success") {
+      showSuccessAlert(message);
+    } else if (alertMarker.dataset.alertLevel === "error") {
+      showErrorAlert(message);
+    }
+  });
+};
+
+/**
  * Displays an error alert with the given message.
  * Auto-dismisses after 30 seconds to ensure user sees errors.
  * @param {string} message - The error message to display
@@ -61,6 +84,16 @@ export const showErrorAlert = (message, withHtml = false, persist = false) => {
 
   Swal.fire(alertOptions);
 };
+
+const initializePageAlertsWhenReady = () => {
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", () => initializePageAlerts(), { once: true });
+  } else {
+    initializePageAlerts();
+  }
+};
+
+initializePageAlertsWhenReady();
 
 /**
  * Displays the deployment refresh retry alert while cached HTML expires.

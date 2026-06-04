@@ -21,22 +21,22 @@
 {# End placeholder -#}
 
 {# Alerts #}
-{# djlint:off #}
 {% macro alerts(messages) -%}
-  <script type="module">
-    import { showErrorAlert, showSuccessAlert } from '/static/js/common/alerts.js';
-
-    {% for message in messages -%}
-      {% match message.level -%}
-        {% when Level::Success -%}
-          showSuccessAlert('{{ message }}');
-        {% when Level::Error -%}
-          showErrorAlert('{{ message }}');
-        {% when _ -%}
-          {# Do nothing #}
-      {% endmatch -%}
-    {% endfor -%}
-</script>
+  {% for message in messages -%}
+    {% match message.level -%}
+    {% when Level::Success -%}
+    <span data-page-alert
+          data-alert-level="success"
+          data-alert-message="{{ message }}"
+          hidden></span>
+    {% when Level::Error -%}
+    <span data-page-alert
+          data-alert-level="error"
+          data-alert-message="{{ message }}"
+          hidden></span>
+    {% when _ -%}
+    {# Do nothing #}
+  {% endmatch -%}
+{% endfor -%}
 {% endmacro alerts -%}
-{# djlint:on #}
 {# End alerts #}
