@@ -396,14 +396,3 @@
   </form>
   {# End update user password form -#}
 {% endif -%}
-
-<script type="module">
-  const optionalNotificationsInput = document.getElementById('optional_notifications_enabled');
-  const optionalNotificationsToggle = document.getElementById('toggle_optional_notifications_enabled');
-
-  if (optionalNotificationsInput && optionalNotificationsToggle) {
-    optionalNotificationsToggle.addEventListener('change', () => {
-      optionalNotificationsInput.value = String(optionalNotificationsToggle.checked);
-    });
-  }
-</script>
