@@ -12,6 +12,47 @@ export const MEETING_RECORDING_VISIBILITY_LEGEND =
 
 export const BROKEN_IMAGE_PLACEHOLDER_URL = "/static/images/icons/broken_image.svg";
 const DEFAULT_BROKEN_IMAGE_PLACEHOLDER_BG_CLASS = "bg-stone-50";
+const REMOVE_BROKEN_IMAGE_SELECTOR = "[data-ocg-remove-broken-images]";
+const EMPTY_IMAGE_WRAPPER_SELECTOR = "img, video, iframe, object, embed";
+
+/**
+ * Checks if a failed image should be removed instead of replaced.
+ * @param {HTMLImageElement} image - Image element that emitted the event
+ * @returns {boolean} True when the image should be removed from the DOM
+ */
+const shouldRemoveBrokenImage = (image) => Boolean(image.closest(REMOVE_BROKEN_IMAGE_SELECTOR));
+
+/**
+ * Checks whether a wrapper has content worth keeping after an image is removed.
+ * @param {Element|null} element - Possible wrapper around the failed image
+ * @returns {boolean} True when the wrapper has meaningful remaining content
+ */
+const hasRemainingWrapperContent = (element) =>
+  Boolean(element?.textContent?.trim() || element?.querySelector(EMPTY_IMAGE_WRAPPER_SELECTOR));
+
+/**
+ * Removes a failed image in content areas that opt out of placeholders.
+ * @param {EventTarget|null} target - Possible image element from an error event
+ * @returns {boolean} True when the image was removed
+ */
+const removeBrokenImage = (target) => {
+  if (!(target instanceof HTMLImageElement) || !shouldRemoveBrokenImage(target)) {
+    return false;
+  }
+
+  const linkedImage = target.parentElement?.tagName === "A" ? target.parentElement : null;
+  const paragraph = target.closest("p");
+
+  target.remove();
+  if (linkedImage && !hasRemainingWrapperContent(linkedImage)) {
+    linkedImage.remove();
+  }
+  if (paragraph && !hasRemainingWrapperContent(paragraph)) {
+    paragraph.remove();
+  }
+
+  return true;
+};
 
 /**
  * Checks if a failed image should keep an existing fallback, such as avatar initials.
@@ -61,6 +102,10 @@ const isPositionedElement = (element) => {
  */
 export const applyBrokenImagePlaceholder = (target) => {
   if (!(target instanceof HTMLImageElement)) {
+    return false;
+  }
+
+  if (removeBrokenImage(target)) {
     return false;
   }
 
@@ -144,6 +189,10 @@ export const applyBrokenImagePlaceholders = (root = document) => {
 
   return [...root.querySelectorAll("img")].reduce((appliedCount, image) => {
     if (!image.complete || image.naturalWidth > 0) {
+      return appliedCount;
+    }
+
+    if (removeBrokenImage(image)) {
       return appliedCount;
     }
 
