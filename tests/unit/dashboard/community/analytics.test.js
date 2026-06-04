@@ -1,6 +1,9 @@
 import { expect } from "@open-wc/testing";
 
-import { initAnalyticsCharts } from "/static/js/dashboard/community/analytics.js";
+import {
+  initializeCommunityAnalyticsFromPage,
+  initAnalyticsCharts,
+} from "/static/js/dashboard/community/analytics.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
 
 describe("dashboard community analytics", () => {
@@ -105,6 +108,49 @@ describe("dashboard community analytics", () => {
       setOptionCalls.find((call) => call.id === "groups-running-chart").option
         .baseOption.title.subtext,
     ).to.equal("Cumulative active groups over time");
+    expect(
+      document.querySelector('[data-analytics-tab="groups"]').dataset.active,
+    ).to.equal("true");
+  });
+
+  it("initializes charts from the page payload only once", async () => {
+    // Prepare the declarative analytics payload used by the page template.
+    const marker = document.createElement("script");
+    marker.type = "application/json";
+    marker.dataset.communityAnalytics = "";
+    marker.textContent = JSON.stringify({
+      groups: {
+        running_total: [
+          [1, 1],
+          [2, 2],
+        ],
+        per_month: [["2025-01", 1]],
+        total_by_category: [["Cloud", 3]],
+        total_by_region: [["EU", 2]],
+        running_total_by_category: {
+          Cloud: [
+            [1, 1],
+            [2, 2],
+          ],
+        },
+        running_total_by_region: {
+          EU: [
+            [1, 1],
+            [2, 2],
+          ],
+        },
+        per_month_by_category: { Cloud: [["2025-01", 1]] },
+        per_month_by_region: { EU: [["2025-01", 1]] },
+      },
+    });
+    document.body.append(marker);
+
+    // Run the page initializer twice to verify duplicate renders are guarded.
+    await initializeCommunityAnalyticsFromPage();
+    await initializeCommunityAnalyticsFromPage();
+
+    // Verify the page payload renders the default groups charts once.
+    expect(setOptionCalls).to.have.length(8);
     expect(
       document.querySelector('[data-analytics-tab="groups"]').dataset.active,
     ).to.equal("true");

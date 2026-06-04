@@ -18,6 +18,9 @@ import {
 } from "/static/js/dashboard/common.js";
 import { registerChartResizeHandler, renderChart } from "/static/js/common/stats.js";
 
+const COMMUNITY_ANALYTICS_DATA_SELECTOR = "[data-community-analytics]";
+const COMMUNITY_ANALYTICS_READY_KEY = "communityAnalyticsReady";
+
 /**
  * Render page view charts.
  * @param {Object} pageViews - Page views stats payload.
@@ -703,3 +706,55 @@ export const initAnalyticsCharts = async (stats) => {
     setupAnalyticsTabs(stats, palette);
   });
 };
+
+/**
+ * Initialize community analytics charts from the page JSON marker.
+ * @param {Document|Element} root - Root element to search from.
+ * @returns {Promise<void>} Promise resolved when initialization finishes.
+ */
+export const initializeCommunityAnalyticsFromPage = async (root = document) => {
+  const marker = root.querySelector(COMMUNITY_ANALYTICS_DATA_SELECTOR);
+  if (!marker || marker.dataset[COMMUNITY_ANALYTICS_READY_KEY] === "true") {
+    return;
+  }
+
+  const stats = readCommunityAnalyticsPayload(marker);
+  if (!stats) {
+    return;
+  }
+
+  marker.dataset[COMMUNITY_ANALYTICS_READY_KEY] = "true";
+
+  try {
+    await initAnalyticsCharts(stats);
+  } catch (error) {
+    console.error("Failed to initialize analytics charts:", error);
+  }
+};
+
+/**
+ * Read the community analytics payload from an inert JSON marker.
+ * @param {HTMLElement} marker - JSON marker element.
+ * @returns {Object|null} Parsed stats payload.
+ */
+const readCommunityAnalyticsPayload = (marker) => {
+  try {
+    return JSON.parse(marker.textContent || "{}");
+  } catch (error) {
+    console.error("Failed to parse community analytics payload:", error);
+    return null;
+  }
+};
+
+const initializeCommunityAnalyticsWhenReady = () => {
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", () => initializeCommunityAnalyticsFromPage(), {
+      once: true,
+    });
+    return;
+  }
+
+  initializeCommunityAnalyticsFromPage();
+};
+
+initializeCommunityAnalyticsWhenReady();
