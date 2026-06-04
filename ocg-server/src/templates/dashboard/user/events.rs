@@ -8,7 +8,7 @@ use serde_with::skip_serializing_none;
 use crate::{
     templates::dashboard,
     types::{
-        event::EventSummary,
+        event::{EventAttendanceStatus, EventSummary},
         pagination::{self, Pagination, ToRawQuery},
         questionnaire::{QuestionnaireAnswers, QuestionnaireQuestion},
     },
@@ -40,26 +40,90 @@ pub(crate) struct ListPage {
 #[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct UserEvent {
-    /// Whether the user can cancel attendance from this row.
-    #[serde(default)]
-    pub can_cancel_attendance: bool,
-    /// Whether the user must complete registration questions for this event.
-    #[serde(default)]
-    pub can_complete_registration_questions: bool,
     /// Event summary data.
     pub event: EventSummary,
-    /// Existing registration answers submitted by the user.
-    pub registration_answers: Option<QuestionnaireAnswers>,
+    /// Whether the user has a paid purchase that blocks dashboard cancellation.
+    #[serde(default)]
+    pub has_paid_purchase: bool,
     /// Registration questions configured for the event.
     #[serde(default)]
     pub registration_questions: Vec<QuestionnaireQuestion>,
-    /// Whether the attendee row is waiting for registration questions.
+    /// Roles the user has in the event.
     #[serde(default)]
-    pub registration_questions_pending: bool,
+    pub roles: Vec<UserEventRole>,
+
+    /// Current attendee status for the user, when the user is an attendee.
+    pub attendance_status: Option<EventAttendanceStatus>,
+    /// Existing registration answers submitted by the user.
+    pub registration_answers: Option<QuestionnaireAnswers>,
     /// Checkout URL where the user can complete payment.
     pub resume_checkout_url: Option<String>,
-    /// Roles the user has in the event.
-    pub roles: Vec<String>,
+}
+
+impl UserEvent {
+    /// Returns the attendee status badge label, when the row needs one.
+    pub(crate) fn attendance_status_label(&self) -> Option<&'static str> {
+        match self.attendance_status.as_ref()? {
+            EventAttendanceStatus::PendingPayment => Some("Payment pending"),
+            EventAttendanceStatus::RegistrationQuestionsPending => Some("Registration pending"),
+            _ => None,
+        }
+    }
+
+    /// Returns true when attendance can be canceled from the user dashboard.
+    pub(crate) fn can_cancel_attendance(&self) -> bool {
+        matches!(
+            self.attendance_status.as_ref(),
+            Some(EventAttendanceStatus::Attendee)
+        ) && self.roles.as_slice() == [UserEventRole::Attendee]
+            && !self.has_paid_purchase
+    }
+
+    /// Returns true when registration answers can be completed or updated.
+    pub(crate) fn can_complete_registration_questions(&self) -> bool {
+        !self.registration_questions.is_empty()
+            && matches!(
+                self.attendance_status.as_ref(),
+                Some(
+                    EventAttendanceStatus::Attendee
+                        | EventAttendanceStatus::RegistrationQuestionsPending
+                )
+            )
+    }
+
+    /// Returns true when registration questions are still required.
+    pub(crate) fn registration_questions_pending(&self) -> bool {
+        matches!(
+            self.attendance_status.as_ref(),
+            Some(EventAttendanceStatus::RegistrationQuestionsPending)
+        )
+    }
+}
+
+/// User's participation role in an event.
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, strum::Display, strum::EnumString,
+)]
+#[serde(rename_all = "lowercase")]
+#[strum(serialize_all = "lowercase")]
+pub(crate) enum UserEventRole {
+    /// User attends the event.
+    Attendee,
+    /// User hosts the event.
+    Host,
+    /// User speaks at the event or one of its sessions.
+    Speaker,
+}
+
+impl UserEventRole {
+    /// Returns the user-facing role label.
+    pub(crate) fn label(self) -> &'static str {
+        match self {
+            Self::Attendee => "Attendee",
+            Self::Host => "Host",
+            Self::Speaker => "Speaker",
+        }
+    }
 }
 
 /// Filter parameters for events pagination.

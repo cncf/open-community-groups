@@ -423,10 +423,14 @@ async fn db_contracts_list_user_events_deserializes() -> Result<()> {
 
     assert_eq!(output.total, 1);
     assert_eq!(output.events.len(), 1);
-    assert!(output.events[0].can_complete_registration_questions);
+    assert_eq!(
+        output.events[0].attendance_status,
+        Some(EventAttendanceStatus::Attendee)
+    );
+    assert!(output.events[0].can_complete_registration_questions());
     assert!(output.events[0].event.has_registration_questions);
     assert_eq!(output.events[0].registration_questions.len(), 1);
-    assert!(!output.events[0].registration_questions_pending);
+    assert!(!output.events[0].registration_questions_pending());
     let answers = output.events[0]
         .registration_answers
         .as_ref()

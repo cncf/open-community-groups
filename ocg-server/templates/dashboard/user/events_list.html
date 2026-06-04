@@ -95,12 +95,11 @@ description = "Upcoming events where you'll participate.") -}}
 
             <td class="px-3 xl:px-5 py-4 w-64">
               <div class="flex flex-wrap gap-1.5">
+                {% if let Some(attendance_status_label) = item.attendance_status_label() -%}
+                  {{ badges::status_badge(label = attendance_status_label, extra_styles = Some("uppercase") ) -}}
+                {% endif -%}
                 {% for role in item.roles -%}
-                  {% if role == "Payment pending" || role == "Registration pending" -%}
-                    {{ badges::status_badge(label = role, extra_styles = Some("uppercase") ) -}}
-                  {% else -%}
-                    {{ badges::common_badge(content = role, extra_styles = Some("px-2.5 py-0.5") ) -}}
-                  {% endif -%}
+                  {{ badges::common_badge(content = role.label() , extra_styles = Some("px-2.5 py-0.5") ) -}}
                 {% endfor -%}
               </div>
             </td>
@@ -125,7 +124,7 @@ description = "Upcoming events where you'll participate.") -}}
                         </a>
                       </li>
                     {% endif -%}
-                    {% if item.can_complete_registration_questions && !item.registration_questions.is_empty() -%}
+                    {% if item.can_complete_registration_questions() -%}
                       <li>
                         <button type="button"
                                 data-user-event-questions-open
@@ -134,7 +133,7 @@ description = "Upcoming events where you'll participate.") -}}
                                 class="flex items-center w-full px-4 py-2 hover:bg-stone-100 hover:text-stone-900 transition-colors gap-3 text-left">
                           <div class="svg-icon size-4 icon-list-check shrink-0 bg-stone-500"></div>
                           <span>
-                            {% if item.registration_questions_pending -%}
+                            {% if item.registration_questions_pending() -%}
                               Complete registration
                             {% else -%}
                               Update answers
@@ -145,7 +144,7 @@ description = "Upcoming events where you'll participate.") -}}
                     {% endif -%}
                     <li>
                       <button id="cancel-attendance-{{ item.event.event_id }}"
-                              {% if item.can_cancel_attendance -%}
+                              {% if item.can_cancel_attendance() -%}
                                 hx-delete="/dashboard/user/events/{{ item.event.community_name }}/{{ item.event.event_id }}/attendance" hx-indicator="#dashboard-spinner" hx-trigger="confirmed" hx-disabled-elt="this" data-confirm-action data-confirm-message="Are you sure you want to cancel your attendance?" data-confirm-text="Yes" data-success-message="You have successfully canceled your attendance." data-error-message="Something went wrong canceling your attendance. Please try again later."
                               {% else -%}
                                 disabled title="Only attendee attendance can be canceled."
@@ -169,7 +168,7 @@ description = "Upcoming events where you'll participate.") -}}
 </div>
 
 {% for item in events -%}
-  {% if item.can_complete_registration_questions && !item.registration_questions.is_empty() -%}
+  {% if item.can_complete_registration_questions() -%}
     <div id="user-event-questions-modal-{{ item.event.event_id }}"
          data-user-event-questions-modal
          role="dialog"
@@ -261,7 +260,7 @@ description = "Upcoming events where you'll participate.") -}}
                         type="button"
                         class="btn-primary-outline">Cancel</button>
                 <button type="submit" class="btn-primary">
-                  {% if item.registration_questions_pending -%}
+                  {% if item.registration_questions_pending() -%}
                     Complete registration
                   {% else -%}
                     Save answers

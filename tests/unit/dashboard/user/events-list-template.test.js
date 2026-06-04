@@ -18,7 +18,7 @@ describe("dashboard user events list template", () => {
     // Verify allowed cancellations get a confirmed cancel action.
     expect(template).to.include("<span>Cancel attendance</span>");
     expect(template).to.include('id="cancel-attendance-{{ item.event.event_id }}"');
-    expect(template).to.include("{% if item.can_cancel_attendance -%}");
+    expect(template).to.include("{% if item.can_cancel_attendance() -%}");
     expect(template).to.include(
       'hx-delete="/dashboard/user/events/{{ item.event.community_name }}/{{ item.event.event_id }}/attendance"',
     );
@@ -43,19 +43,19 @@ describe("dashboard user events list template", () => {
     expect(template).to.include('aria-label="Open event actions"');
   });
 
-  it("renders registration pending with the warning status badge style", async () => {
+  it("renders pending attendance status and typed roles as badges", async () => {
     // Load the user events template before checking pending badges.
     const template = normalizeWhitespace(await loadTemplate());
 
-    // Verify renders registration pending with the warning status badge style.
+    // Verify pending attendance status uses the status badge and roles use regular badges.
     expect(template).to.include(
-      '{% if role == "Payment pending" || role == "Registration pending" -%}',
+      "{% if let Some(attendance_status_label) = item.attendance_status_label() -%}",
     );
     expect(template).to.include(
-      '{{ badges::status_badge(label = role, extra_styles = Some("uppercase") ) -}}',
+      '{{ badges::status_badge(label = attendance_status_label, extra_styles = Some("uppercase") ) -}}',
     );
     expect(template).to.include(
-      '{{ badges::common_badge(content = role, extra_styles = Some("px-2.5 py-0.5") ) -}}',
+      '{{ badges::common_badge(content = role.label() , extra_styles = Some("px-2.5 py-0.5") ) -}}',
     );
   });
 });
