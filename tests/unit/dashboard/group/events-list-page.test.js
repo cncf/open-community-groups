@@ -3,6 +3,7 @@ import { expect } from "@open-wc/testing";
 import { initializeEventsListPage } from "/static/js/dashboard/group/events-list-page.js";
 import { waitForMicrotask } from "/tests/unit/test-utils/async.js";
 import { useDashboardTestEnv } from "/tests/unit/test-utils/env.js";
+import { dispatchHtmxLoad } from "/tests/unit/test-utils/htmx.js";
 
 // Prepare the module under test.
 const scopedActionMarkup = ({ hasRelatedEvents = false } = {}) => `
@@ -162,6 +163,46 @@ describe("events list page", () => {
 
     // Verify shows an error alert for failed invitation request actions.
     expect(env.current.swal.calls).to.have.length(1);
+    expect(env.current.swal.calls[0]).to.include({
+      text: "Accept failed.",
+      icon: "error",
+    });
+  });
+
+  it("initializes declarative events list roots on htmx load", () => {
+    // Prepare an HTMX-loaded invitation requests root.
+    document.body.innerHTML = `
+      <div data-events-list-page>
+        <button class="btn-actions" data-event-id="invitation-request-user-1">Actions</button>
+        <div
+          id="dropdown-actions-invitation-request-user-1"
+          data-event-actions-dropdown
+          class="dropdown hidden">
+          <button
+            data-invitation-request-action
+            data-error-message="Accept failed.">
+            Accept
+          </button>
+        </div>
+      </div>
+    `;
+
+    // Dispatch the lifecycle event used by swapped dashboard content.
+    dispatchHtmxLoad(document.body);
+
+    // Verify the actions dropdown is initialized from the declarative root.
+    document.querySelector(".btn-actions").click();
+    expect(document.querySelector(".dropdown").classList.contains("hidden")).to.equal(false);
+
+    // Dispatch the failed invitation action response.
+    document.querySelector("[data-invitation-request-action]").dispatchEvent(
+      new CustomEvent("htmx:afterRequest", {
+        bubbles: true,
+        detail: { xhr: { status: 500 } },
+      }),
+    );
+
+    // Verify invitation request response handling is initialized too.
     expect(env.current.swal.calls[0]).to.include({
       text: "Accept failed.",
       icon: "error",

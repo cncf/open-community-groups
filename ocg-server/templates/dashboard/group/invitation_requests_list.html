@@ -3,6 +3,7 @@
 {% let refresh_offset = offset.unwrap_or(0) -%}
 
 <div id="invitation-requests-refresh"
+     data-events-list-page
      hx-get="/dashboard/group/events/{{ event.event_id }}/invitation-requests?limit={{ refresh_limit }}&offset={{ refresh_offset }}"
      hx-trigger="refresh-event-invitation-requests from:body"
      hx-target="#invitation-requests-content"
@@ -186,11 +187,3 @@
   {{ pagination::navigation_links(links = navigation_links, hx_target = "#invitation-requests-content", hx_indicator = "#dashboard-spinner") }}
 {% endif -%}
 {# End pagination -#}
-
-<script type="module">
-  import {
-    initializeEventsListPage
-  } from '/static/js/dashboard/group/events-list-page.js';
-
-  initializeEventsListPage();
-</script>

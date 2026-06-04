@@ -1,6 +1,7 @@
 import { confirmAction, confirmSeriesAction, handleHtmxResponse } from "/static/js/common/alerts.js";
 
 const initializedRoots = new WeakSet();
+const EVENTS_LIST_PAGE_SELECTOR = "[data-events-list-page]";
 const EVENT_ACTION_DROPDOWN_SELECTOR = "[data-event-actions-dropdown]";
 const INVITATION_REQUEST_ACTION_SELECTOR = "[data-invitation-request-action]";
 
@@ -133,3 +134,36 @@ export const initializeEventsListPage = (root = document) => {
     }
   });
 };
+
+/**
+ * Initializes all declarative events list behavior roots.
+ * @param {Document|Element} root - Root element to scan from.
+ * @returns {void}
+ */
+export const initializeEventsListPageRoots = (root = document) => {
+  if (root instanceof Element && root.matches(EVENTS_LIST_PAGE_SELECTOR)) {
+    initializeEventsListPage(root);
+  }
+
+  root.querySelectorAll?.(EVENTS_LIST_PAGE_SELECTOR).forEach((element) => {
+    initializeEventsListPage(element);
+  });
+};
+
+const initializeEventsListPageWhenReady = () => {
+  // Initialize declarative roots on first load and after HTMX swaps.
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", () => initializeEventsListPageRoots(document), {
+      once: true,
+    });
+  } else {
+    initializeEventsListPageRoots(document);
+  }
+
+  document.addEventListener("htmx:load", (event) => {
+    const root = event.target instanceof Element ? event.target : document;
+    initializeEventsListPageRoots(root);
+  });
+};
+
+initializeEventsListPageWhenReady();
