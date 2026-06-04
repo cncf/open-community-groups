@@ -1,6 +1,8 @@
 import {
   cleanInputField,
   closeFiltersDrawer,
+  hasActiveCalendarFilters,
+  hasActiveFilters,
   openFiltersDrawer,
   resetDateFiltersOnCalendarViewMode,
   resetFilters,
@@ -18,6 +20,9 @@ const SEARCH_INPUT_ID = "ts_query";
 const SORT_SELECTOR_ID = "sort_selector";
 const SORT_BY_INPUT_ID = "sort_by";
 const SORT_DIRECTION_INPUT_ID = "sort_direction";
+const CALENDAR_BOX_ID = "calendar-box";
+const NO_RESULTS_DEFAULT_SELECTOR = ".no-results-default";
+const NO_RESULTS_FILTERED_SELECTOR = ".no-results-filtered";
 
 /**
  * Gets the active desktop explore form id.
@@ -27,6 +32,33 @@ const getExploreFormId = () => {
   const desktopForm = document.querySelector(DESKTOP_FILTER_FORM_SELECTOR);
   const fallbackForm = document.querySelector(FILTER_FORM_SELECTOR);
   return (desktopForm || fallbackForm)?.id;
+};
+
+/**
+ * Syncs the no-results placeholders with the current filter state.
+ * @param {Document|Element} root - Root element containing the swapped results
+ */
+export const syncNoResultsPlaceholders = (root = document) => {
+  const defaultPlaceholders = root.querySelectorAll(NO_RESULTS_DEFAULT_SELECTOR);
+  const filteredPlaceholders = root.querySelectorAll(NO_RESULTS_FILTERED_SELECTOR);
+  if (defaultPlaceholders.length === 0 && filteredPlaceholders.length === 0) {
+    return;
+  }
+
+  const formId = getExploreFormId();
+  if (!formId) {
+    return;
+  }
+
+  const hasCalendar = Boolean(document.getElementById(CALENDAR_BOX_ID));
+  const filtered = hasCalendar ? hasActiveCalendarFilters(formId) : hasActiveFilters(formId);
+
+  defaultPlaceholders.forEach((placeholder) => {
+    placeholder.classList.toggle("hidden", filtered);
+  });
+  filteredPlaceholders.forEach((placeholder) => {
+    placeholder.classList.toggle("hidden", !filtered);
+  });
 };
 
 /**
@@ -134,6 +166,16 @@ const handleExploreHistoryRestore = async () => {
 };
 
 /**
+ * Syncs explore controls after HTMX swaps.
+ * @param {CustomEvent} event - HTMX swap event
+ */
+const handleExploreAfterSwap = (event) => {
+  if (event.target instanceof Element) {
+    syncNoResultsPlaceholders(event.target);
+  }
+};
+
+/**
  * Initializes delegated explore page controls.
  * @param {Document} root - Document root used for event binding
  */
@@ -146,7 +188,9 @@ export const initializeExploreControls = (root = document) => {
   root.addEventListener("click", handleExploreClick);
   root.addEventListener("keydown", handleExploreKeydown);
   root.addEventListener("change", handleExploreChange);
+  root.addEventListener("htmx:afterSwap", handleExploreAfterSwap);
   root.addEventListener("htmx:historyRestore", handleExploreHistoryRestore);
+  syncNoResultsPlaceholders(root);
 };
 
 initializeExploreControls();

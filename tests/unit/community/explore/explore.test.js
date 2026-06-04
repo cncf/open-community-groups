@@ -5,7 +5,7 @@ import {
   updateResults,
   updateResultsFromSummary,
 } from "/static/js/community/explore/explore.js";
-import "/static/js/community/explore/page-controls.js";
+import { syncNoResultsPlaceholders } from "/static/js/community/explore/page-controls.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
 import { mockHtmx, mockSwal } from "/tests/unit/test-utils/globals.js";
 import { mockFetch } from "/tests/unit/test-utils/network.js";
@@ -75,6 +75,55 @@ describe("explore helpers", () => {
 
     // The initialized explore module syncs the summary after swaps.
     expect(document.getElementById("results")?.textContent).to.equal("11-20 of 20");
+  });
+
+  it("shows the default no-results placeholder without active filters", () => {
+    // Build the DOM fixture with an empty results state and inactive filters.
+    document.body.innerHTML = `
+      <div id="explore-filters">
+        <form id="events-form" class="filters-form"></form>
+      </div>
+      <div id="cards-list">
+        <div class="no-results-default hidden"></div>
+        <div class="no-results-filtered hidden"></div>
+      </div>
+    `;
+
+    // Sync the empty state with the current filters.
+    syncNoResultsPlaceholders(document.getElementById("cards-list"));
+
+    // The default placeholder is shown when the empty state is unfiltered.
+    expect(document.querySelector(".no-results-default")?.classList.contains("hidden")).to.equal(
+      false,
+    );
+    expect(document.querySelector(".no-results-filtered")?.classList.contains("hidden")).to.equal(
+      true,
+    );
+  });
+
+  it("shows the filtered no-results placeholder with active filters", () => {
+    // Build the DOM fixture with an empty results state and active search.
+    document.body.innerHTML = `
+      <div id="explore-filters">
+        <form id="events-form" class="filters-form"></form>
+      </div>
+      <input name="ts_query" value="conference" />
+      <div id="cards-list">
+        <div class="no-results-default hidden"></div>
+        <div class="no-results-filtered hidden"></div>
+      </div>
+    `;
+
+    // Sync the empty state with the current filters.
+    syncNoResultsPlaceholders(document.getElementById("cards-list"));
+
+    // The filtered placeholder is shown when the empty state has active filters.
+    expect(document.querySelector(".no-results-default")?.classList.contains("hidden")).to.equal(
+      true,
+    );
+    expect(document.querySelector(".no-results-filtered")?.classList.contains("hidden")).to.equal(
+      false,
+    );
   });
 
   it("delegates search and clear actions to the active explore form", () => {
