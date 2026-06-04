@@ -1,4 +1,4 @@
-import { createNotificationModal } from "/static/js/dashboard/group/notificationModal.js";
+import { createNotificationModal } from "/static/js/dashboard/group/notification-modal.js";
 
 const modalId = "notification-modal";
 const formId = "notification-form";

@@ -230,6 +230,11 @@
                                   hx-target="#dashboard-content"
                                   hx-indicator="#dashboard-spinner"
                                   hx-trigger="confirmed"
+                                  data-confirm-action
+                                  data-confirm-message="Are you sure you wish to deactivate this group?"
+                                  data-confirm-text="Yes"
+                                  data-success-message="You have successfully deactivated the group."
+                                  data-error-message="Something went wrong deactivating this group. Please try again later."
                                   class="cursor-pointer w-full text-start px-4 py-2 hover:bg-stone-100
                                          {% if !can_manage_groups -%}
                                            opacity-50 cursor-not-allowed
@@ -242,32 +247,6 @@
                               <div class="ms-2">Deactivate</div>
                             </div>
                           </button>
-                          <script type="module">
-                            import {
-                              showConfirmAlert,
-                              handleHtmxResponse,
-                            } from '/static/js/common/alerts.js';
-
-                            const deactivateGroupBtn = document.getElementById('deactivate-group-{{ group.group_id }}');
-                            if (deactivateGroupBtn) {
-                              deactivateGroupBtn.addEventListener('click', () => {
-                                showConfirmAlert(
-                                  "Are you sure you wish to deactivate this group?",
-                                  "deactivate-group-{{ group.group_id }}",
-                                  "Yes",
-                                );
-                              });
-
-                              deactivateGroupBtn.addEventListener('htmx:afterRequest', (e) => {
-                                const xhr = e.detail?.xhr;
-                                handleHtmxResponse({
-                                  xhr,
-                                  successMessage: "You have successfully deactivated the group.",
-                                  errorMessage: "Something went wrong deactivating this group. Please try again later."
-                                });
-                              });
-                            }
-                          </script>
                         </li>
                       {% else -%}
                         <li>
@@ -276,6 +255,11 @@
                                   hx-target="#dashboard-content"
                                   hx-indicator="#dashboard-spinner"
                                   hx-trigger="confirmed"
+                                  data-confirm-action
+                                  data-confirm-message="Are you sure you wish to activate this group?"
+                                  data-confirm-text="Yes"
+                                  data-success-message="You have successfully activated the group."
+                                  data-error-message="Something went wrong activating this group. Please try again later."
                                   class="cursor-pointer w-full text-start px-4 py-2 hover:bg-stone-100
                                          {% if !can_manage_groups -%}
                                            opacity-50 cursor-not-allowed
@@ -288,32 +272,6 @@
                               <div class="ms-2">Activate</div>
                             </div>
                           </button>
-                          <script type="module">
-                            import {
-                              showConfirmAlert,
-                              handleHtmxResponse,
-                            } from '/static/js/common/alerts.js';
-
-                            const activateGroupBtn = document.getElementById('activate-group-{{ group.group_id }}');
-                            if (activateGroupBtn) {
-                              activateGroupBtn.addEventListener('click', () => {
-                                showConfirmAlert(
-                                  "Are you sure you wish to activate this group?",
-                                  "activate-group-{{ group.group_id }}",
-                                  "Yes",
-                                );
-                              });
-
-                              activateGroupBtn.addEventListener('htmx:afterRequest', (e) => {
-                                const xhr = e.detail?.xhr;
-                                handleHtmxResponse({
-                                  xhr,
-                                  successMessage: "You have successfully activated the group.",
-                                  errorMessage: "Something went wrong activating this group. Please try again later."
-                                });
-                              });
-                            }
-                          </script>
                         </li>
                       {% endif -%}
 
@@ -324,6 +282,11 @@
                                 hx-target="#dashboard-content"
                                 hx-indicator="#dashboard-spinner"
                                 hx-trigger="confirmed"
+                                data-confirm-action
+                                data-confirm-message="Are you sure you wish to delete this group?"
+                                data-confirm-text="Yes"
+                                data-success-message="You have successfully deleted the group."
+                                data-error-message="Something went wrong deleting this group. Please try again later."
                                 class="cursor-pointer w-full text-start px-4 py-2 hover:bg-stone-100
                                        {% if !can_manage_groups -%}
                                          opacity-50 cursor-not-allowed
@@ -336,32 +299,6 @@
                             <div class="ms-2">Delete</div>
                           </div>
                         </button>
-                        <script type="module">
-                          import {
-                            showConfirmAlert,
-                            handleHtmxResponse,
-                          } from '/static/js/common/alerts.js';
-
-                          const deleteGroupBtn = document.getElementById('delete-group-{{ group.group_id }}');
-                          if (deleteGroupBtn) {
-                            deleteGroupBtn.addEventListener('click', () => {
-                              showConfirmAlert(
-                                "Are you sure you wish to delete this group?",
-                                "delete-group-{{ group.group_id }}",
-                                "Yes",
-                              );
-                            });
-
-                            deleteGroupBtn.addEventListener('htmx:afterRequest', (e) => {
-                              const xhr = e.detail?.xhr;
-                              handleHtmxResponse({
-                                xhr,
-                                successMessage: "You have successfully deleted the group.",
-                                errorMessage: "Something went wrong deleting this group. Please try again later."
-                              });
-                            });
-                          }
-                        </script>
                       </li>
                       {# End delete button -#}
                     </ul>

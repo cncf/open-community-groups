@@ -1,6 +1,6 @@
 import { expect } from "@open-wc/testing";
 
-import { createNotificationModal } from "/static/js/dashboard/group/notificationModal.js";
+import { createNotificationModal } from "/static/js/dashboard/group/notification-modal.js";
 import { useDashboardTestEnv } from "/tests/unit/test-utils/env.js";
 import { dispatchHtmxAfterRequest } from "/tests/unit/test-utils/htmx.js";
 
@@ -48,9 +48,7 @@ describe("notification modal", () => {
 
     // Verify updates the form endpoint and toggles the modal from controls.
     expect(updateCalls).to.have.length(2);
-    expect(
-      document.getElementById("notification-form")?.getAttribute("action"),
-    ).to.equal("/updated");
+    expect(document.getElementById("notification-form")?.getAttribute("action")).to.equal("/updated");
     expect(modal.classList.contains("hidden")).to.equal(false);
 
     // Close the modal from the close button.
@@ -99,11 +97,7 @@ describe("notification modal", () => {
 
     // A successful HTMX response resets the form and closes the modal.
     expect(resetCalls).to.equal(1);
-    expect(
-      document
-        .getElementById("notification-modal")
-        ?.classList.contains("hidden"),
-    ).to.equal(true);
+    expect(document.getElementById("notification-modal")?.classList.contains("hidden")).to.equal(true);
     expect(env.current.swal.calls).to.have.length(1);
     expect(env.current.swal.calls[0]).to.include({
       text: "Email sent.",
@@ -136,18 +130,12 @@ describe("notification modal", () => {
     });
 
     // Verify shows an error and keeps the modal open after a failed HTMX request.
-    expect(
-      document
-        .getElementById("notification-modal")
-        ?.classList.contains("hidden"),
-    ).to.equal(false);
+    expect(document.getElementById("notification-modal")?.classList.contains("hidden")).to.equal(false);
     expect(env.current.swal.calls).to.have.length(1);
     expect(env.current.swal.calls[0]).to.include({
       text: "Server exploded",
       icon: "error",
     });
-    expect(env.current.scrollToMock.calls).to.deep.equal([
-      { top: 0, behavior: "auto" },
-    ]);
+    expect(env.current.scrollToMock.calls).to.deep.equal([{ top: 0, behavior: "auto" }]);
   });
 });

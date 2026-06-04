@@ -1,0 +1,81 @@
+import { expect } from "@open-wc/testing";
+
+import { loadScriptOnce, queryElementById } from "/static/js/common/dom.js";
+import { waitForMicrotask } from "/tests/unit/test-utils/async.js";
+import { resetDom } from "/tests/unit/test-utils/dom.js";
+
+describe("common dom", () => {
+  const exampleScriptSrc = "data:text/javascript,window.__ocgDomTestScriptLoaded%3Dtrue";
+
+  beforeEach(() => {
+    resetDom();
+  });
+
+  afterEach(() => {
+    resetDom();
+  });
+
+  it("queries ids from document and element roots", () => {
+    // Build the DOM fixture with a nested button.
+    document.body.innerHTML = `
+      <section id="root">
+        <button id="save-button">Save</button>
+      </section>
+    `;
+
+    // Read the root element used for subtree queries.
+    const root = document.getElementById("root");
+
+    // The helper finds ids from document and element roots.
+    expect(queryElementById(document, "save-button")?.textContent).to.equal("Save");
+    expect(queryElementById(root, "save-button")?.textContent).to.equal("Save");
+    expect(queryElementById(root, "missing")).to.equal(null);
+  });
+
+  it("resolves immediately when the script is already loaded", async () => {
+    // Track whether the loader checks the provided library predicate.
+    let checked = false;
+
+    // Resolve the loader through the already-loaded path.
+    await loadScriptOnce(exampleScriptSrc, {
+      isLoaded: () => {
+        checked = true;
+        return true;
+      },
+    });
+
+    // Already-loaded scripts do not append a new script element.
+    expect(checked).to.equal(true);
+    expect(document.querySelector(`script[src="${exampleScriptSrc}"]`)).to.equal(null);
+  });
+
+  it("deduplicates an existing script element", async () => {
+    // Build the DOM fixture with an existing script tag.
+    const script = document.createElement("script");
+    script.src = exampleScriptSrc;
+    document.head.append(script);
+
+    // Load the same script URL and finish the existing script load.
+    const loadPromise = loadScriptOnce(exampleScriptSrc);
+    script.dispatchEvent(new Event("load"));
+
+    await loadPromise;
+    await waitForMicrotask();
+
+    // The loader reuses the existing script element.
+    expect(document.querySelectorAll(`script[src="${exampleScriptSrc}"]`)).to.have.length(1);
+  });
+
+  it("appends a missing script element", async () => {
+    // Load a script URL that is not present in the document yet.
+    const loadPromise = loadScriptOnce(exampleScriptSrc);
+    const script = document.querySelector(`script[src="${exampleScriptSrc}"]`);
+
+    // Finish the appended script load.
+    expect(script).to.not.equal(null);
+    script.dispatchEvent(new Event("load"));
+
+    // The loader resolves after the appended script fires load.
+    await loadPromise;
+  });
+});

@@ -34,18 +34,21 @@ export class TimezoneSelector extends LitWrapper {
     this._activeIndex = null;
     this._searchTimeoutId = 0;
     this._documentClickHandler = null;
+    this._keydownHandler = (event) => this._handleKeydown(event);
   }
 
   connectedCallback() {
     super.connectedCallback();
-    this.addEventListener("keydown", this._handleKeydown.bind(this));
+    this.addEventListener("keydown", this._keydownHandler);
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
+    this.removeEventListener("keydown", this._keydownHandler);
     this._removeDocumentListener();
     if (this._searchTimeoutId) {
       window.clearTimeout(this._searchTimeoutId);
+      this._searchTimeoutId = 0;
     }
   }
 

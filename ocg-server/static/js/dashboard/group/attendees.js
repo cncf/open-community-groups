@@ -1,4 +1,4 @@
-import { createNotificationModal } from "/static/js/dashboard/group/notificationModal.js";
+import { createNotificationModal } from "/static/js/dashboard/group/notification-modal.js";
 import { initializeQrCodeModal } from "/static/js/dashboard/group/qr-code-modal.js";
 import "/static/js/common/user-search-field.js";
 import { handleHtmxResponse, showErrorAlert } from "/static/js/common/alerts.js";

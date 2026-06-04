@@ -1,4 +1,5 @@
 import { hideLoadingSpinner, showLoadingSpinner, navigateWithHtmx } from "/static/js/common/common.js";
+import { loadScriptOnce } from "/static/js/common/dom.js";
 import { fetchData } from "/static/js/community/explore/explore.js";
 import {
   getFirstAndLastDayOfMonth,
@@ -29,16 +30,15 @@ export class Calendar {
       mainLoading.classList.remove("hidden");
     }
 
-    // Load `fullcalendar` script
-    let script = document.createElement("script");
-    script.type = "text/javascript";
-    script.src = "/static/vendor/js/fullcalendar.v6.1.19.min.js";
-    document.getElementsByTagName("head")[0].appendChild(script);
-
-    // Setup calendar after script is loaded
-    script.onload = () => {
-      this.setup(data);
-    };
+    loadScriptOnce("/static/vendor/js/fullcalendar.v6.1.19.min.js", {
+      isLoaded: () => typeof window.FullCalendar !== "undefined",
+    })
+      .then(() => this.setup(data))
+      .catch(() => {
+        if (mainLoading) {
+          mainLoading.classList.add("hidden");
+        }
+      });
 
     // Save calendar instance
     Calendar._instance = this;

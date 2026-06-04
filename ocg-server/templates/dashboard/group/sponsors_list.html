@@ -128,6 +128,11 @@
                           hx-target="#dashboard-content"
                           hx-indicator="#dashboard-spinner"
                           hx-trigger="confirmed"
+                          data-confirm-action
+                          data-confirm-message="Are you sure you would like to delete this sponsor?"
+                          data-confirm-text="Yes"
+                          data-success-message="You have successfully deleted the sponsor."
+                          data-error-message="Something went wrong deleting this sponsor. Please try again later."
                           class="btn-tertiary p-2
                                  {% if !can_manage_sponsors -%}
                                    opacity-50 cursor-not-allowed
@@ -138,32 +143,6 @@
                           aria-label="Delete sponsor: {{ sponsor.name }}">
                     <div class="svg-icon size-4 icon-trash"></div>
                   </button>
-                  <script type="module">
-                    import {
-                      showConfirmAlert,
-                      handleHtmxResponse,
-                    } from '/static/js/common/alerts.js';
-
-                    const deleteButton = document.getElementById('delete-sponsor-{{ sponsor.group_sponsor_id }}');
-                    if (deleteButton && !deleteButton.disabled) {
-                      deleteButton.addEventListener('click', () => {
-                        showConfirmAlert(
-                          'Are you sure you would like to delete this sponsor?',
-                          'delete-sponsor-{{ sponsor.group_sponsor_id }}',
-                          'Yes',
-                        );
-                      });
-
-                      deleteButton.addEventListener('htmx:afterRequest', (e) => {
-                        const xhr = e.detail?.xhr;
-                        handleHtmxResponse({
-                          xhr,
-                          successMessage: 'You have successfully deleted the sponsor.',
-                          errorMessage: 'Something went wrong deleting this sponsor. Please try again later.'
-                        });
-                      });
-                    }
-                  </script>
                 </div>
               </div>
             </td>

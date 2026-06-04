@@ -72,6 +72,11 @@
                         hx-target="#dashboard-content"
                         hx-indicator="#dashboard-spinner"
                         hx-trigger="confirmed"
+                        data-confirm-action
+                        data-confirm-message="Are you sure you would like to delete this group category?"
+                        data-confirm-text="Yes"
+                        data-success-message="You have successfully deleted the group category."
+                        data-error-message="Something went wrong deleting this group category. Please try again later."
                         class="btn-tertiary p-2
                                {% if groups_count > 0 || !can_manage_taxonomy -%}
                                  opacity-50 cursor-not-allowed
@@ -84,34 +89,6 @@
                         aria-label="Delete group category: {{ category.name }}">
                   <div class="svg-icon size-4 icon-trash"></div>
                 </button>
-                <script type="module">
-                  import {
-                    showConfirmAlert,
-                    handleHtmxResponse,
-                  } from '/static/js/common/alerts.js';
-
-                  const deleteButton = document.getElementById(
-                    'delete-group-category-{{ category.group_category_id }}'
-                  );
-                  if (deleteButton && !deleteButton.disabled) {
-                    deleteButton.addEventListener('click', () => {
-                      showConfirmAlert(
-                        'Are you sure you would like to delete this group category?',
-                        'delete-group-category-{{ category.group_category_id }}',
-                        'Yes',
-                      );
-                    });
-
-                    deleteButton.addEventListener('htmx:afterRequest', (e) => {
-                      const xhr = e.detail?.xhr;
-                      handleHtmxResponse({
-                        xhr,
-                        successMessage: 'You have successfully deleted the group category.',
-                        errorMessage: 'Something went wrong deleting this group category. Please try again later.'
-                      });
-                    });
-                  }
-                </script>
               </div>
             </td>
           </tr>
