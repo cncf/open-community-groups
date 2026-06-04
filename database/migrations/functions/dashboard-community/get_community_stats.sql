@@ -151,6 +151,433 @@ all_page_views_data as (
     union all
     select total, viewed_month, day
     from group_views_data
+),
+domain_running_total_counts as (
+    select
+        'groups' as domain,
+        fg.created_month as bucket_start,
+        count(*)::int as count
+    from filtered_groups fg
+    group by fg.created_month
+
+    union all
+
+    select
+        'members' as domain,
+        m.created_month as bucket_start,
+        count(*)::int as count
+    from members m
+    group by m.created_month
+
+    union all
+
+    select
+        'events' as domain,
+        e.starts_month as bucket_start,
+        count(*)::int as count
+    from events_with_start e
+    group by e.starts_month
+
+    union all
+
+    select
+        'attendees' as domain,
+        a.created_month as bucket_start,
+        count(*)::int as count
+    from attendees a
+    group by a.created_month
+),
+domain_monthly_counts as (
+    select
+        'groups' as domain,
+        to_char(fg.created_month, 'YYYY-MM') as label,
+        count(*)::int as count
+    from filtered_groups fg
+    join params p on fg.created_at >= p.period_start
+    group by to_char(fg.created_month, 'YYYY-MM')
+
+    union all
+
+    select
+        'members' as domain,
+        to_char(m.created_month, 'YYYY-MM') as label,
+        count(*)::int as count
+    from members m
+    join params p on m.created_at >= p.period_start
+    group by to_char(m.created_month, 'YYYY-MM')
+
+    union all
+
+    select
+        'events' as domain,
+        to_char(e.starts_month, 'YYYY-MM') as label,
+        count(*)::int as count
+    from events_with_start e
+    join params p on e.starts_at >= p.period_start
+    group by to_char(e.starts_month, 'YYYY-MM')
+
+    union all
+
+    select
+        'attendees' as domain,
+        to_char(a.created_month, 'YYYY-MM') as label,
+        count(*)::int as count
+    from attendees a
+    join params p on a.created_at >= p.period_start
+    group by to_char(a.created_month, 'YYYY-MM')
+),
+dimension_running_total_counts as (
+    select
+        'groups' as domain,
+        'category' as dimension,
+        gc.name as series_name,
+        fg.created_month as bucket_start,
+        count(*)::int as count
+    from filtered_groups fg
+    join group_categories gc on gc.group_category_id = fg.group_category_id
+    group by gc.name, fg.created_month
+
+    union all
+
+    select
+        'groups' as domain,
+        'region' as dimension,
+        r.name as series_name,
+        fg.created_month as bucket_start,
+        count(*)::int as count
+    from filtered_groups fg
+    join regions r on r.region_id = fg.region_id
+    group by r.name, fg.created_month
+
+    union all
+
+    select
+        'members' as domain,
+        'category' as dimension,
+        gc.name as series_name,
+        m.created_month as bucket_start,
+        count(*)::int as count
+    from members m
+    join group_categories gc on gc.group_category_id = m.group_category_id
+    group by gc.name, m.created_month
+
+    union all
+
+    select
+        'members' as domain,
+        'region' as dimension,
+        r.name as series_name,
+        m.created_month as bucket_start,
+        count(*)::int as count
+    from members m
+    join regions r on r.region_id = m.region_id
+    group by r.name, m.created_month
+
+    union all
+
+    select
+        'events' as domain,
+        'event_category' as dimension,
+        ec.name as series_name,
+        e.starts_month as bucket_start,
+        count(*)::int as count
+    from events_with_start e
+    join event_categories ec on ec.event_category_id = e.event_category_id
+    group by ec.name, e.starts_month
+
+    union all
+
+    select
+        'events' as domain,
+        'group_category' as dimension,
+        gc.name as series_name,
+        e.starts_month as bucket_start,
+        count(*)::int as count
+    from events_with_start e
+    join group_categories gc on gc.group_category_id = e.group_category_id
+    group by gc.name, e.starts_month
+
+    union all
+
+    select
+        'events' as domain,
+        'group_region' as dimension,
+        r.name as series_name,
+        e.starts_month as bucket_start,
+        count(*)::int as count
+    from events_with_start e
+    join regions r on r.region_id = e.region_id
+    group by r.name, e.starts_month
+
+    union all
+
+    select
+        'attendees' as domain,
+        'event_category' as dimension,
+        ec.name as series_name,
+        a.created_month as bucket_start,
+        count(*)::int as count
+    from attendees a
+    join event_categories ec on ec.event_category_id = a.event_category_id
+    group by ec.name, a.created_month
+
+    union all
+
+    select
+        'attendees' as domain,
+        'group_category' as dimension,
+        gc.name as series_name,
+        a.created_month as bucket_start,
+        count(*)::int as count
+    from attendees a
+    join group_categories gc on gc.group_category_id = a.group_category_id
+    group by gc.name, a.created_month
+
+    union all
+
+    select
+        'attendees' as domain,
+        'group_region' as dimension,
+        r.name as series_name,
+        a.created_month as bucket_start,
+        count(*)::int as count
+    from attendees a
+    join regions r on r.region_id = a.region_id
+    group by r.name, a.created_month
+),
+dimension_monthly_counts as (
+    select
+        'groups' as domain,
+        'category' as dimension,
+        gc.name as series_name,
+        to_char(fg.created_month, 'YYYY-MM') as label,
+        count(*)::int as count
+    from filtered_groups fg
+    join params p on fg.created_at >= p.period_start
+    join group_categories gc on gc.group_category_id = fg.group_category_id
+    group by gc.name, to_char(fg.created_month, 'YYYY-MM')
+
+    union all
+
+    select
+        'groups' as domain,
+        'region' as dimension,
+        r.name as series_name,
+        to_char(fg.created_month, 'YYYY-MM') as label,
+        count(*)::int as count
+    from filtered_groups fg
+    join params p on fg.created_at >= p.period_start
+    join regions r on r.region_id = fg.region_id
+    group by r.name, to_char(fg.created_month, 'YYYY-MM')
+
+    union all
+
+    select
+        'members' as domain,
+        'category' as dimension,
+        gc.name as series_name,
+        to_char(m.created_month, 'YYYY-MM') as label,
+        count(*)::int as count
+    from members m
+    join params p on m.created_at >= p.period_start
+    join group_categories gc on gc.group_category_id = m.group_category_id
+    group by gc.name, to_char(m.created_month, 'YYYY-MM')
+
+    union all
+
+    select
+        'members' as domain,
+        'region' as dimension,
+        r.name as series_name,
+        to_char(m.created_month, 'YYYY-MM') as label,
+        count(*)::int as count
+    from members m
+    join params p on m.created_at >= p.period_start
+    join regions r on r.region_id = m.region_id
+    group by r.name, to_char(m.created_month, 'YYYY-MM')
+
+    union all
+
+    select
+        'events' as domain,
+        'event_category' as dimension,
+        ec.name as series_name,
+        to_char(e.starts_month, 'YYYY-MM') as label,
+        count(*)::int as count
+    from events_with_start e
+    join params p on e.starts_at >= p.period_start
+    join event_categories ec on ec.event_category_id = e.event_category_id
+    group by ec.name, to_char(e.starts_month, 'YYYY-MM')
+
+    union all
+
+    select
+        'events' as domain,
+        'group_category' as dimension,
+        gc.name as series_name,
+        to_char(e.starts_month, 'YYYY-MM') as label,
+        count(*)::int as count
+    from events_with_start e
+    join params p on e.starts_at >= p.period_start
+    join group_categories gc on gc.group_category_id = e.group_category_id
+    group by gc.name, to_char(e.starts_month, 'YYYY-MM')
+
+    union all
+
+    select
+        'events' as domain,
+        'group_region' as dimension,
+        r.name as series_name,
+        to_char(e.starts_month, 'YYYY-MM') as label,
+        count(*)::int as count
+    from events_with_start e
+    join params p on e.starts_at >= p.period_start
+    join regions r on r.region_id = e.region_id
+    group by r.name, to_char(e.starts_month, 'YYYY-MM')
+
+    union all
+
+    select
+        'attendees' as domain,
+        'event_category' as dimension,
+        ec.name as series_name,
+        to_char(a.created_month, 'YYYY-MM') as label,
+        count(*)::int as count
+    from attendees a
+    join params p on a.created_at >= p.period_start
+    join event_categories ec on ec.event_category_id = a.event_category_id
+    group by ec.name, to_char(a.created_month, 'YYYY-MM')
+
+    union all
+
+    select
+        'attendees' as domain,
+        'group_category' as dimension,
+        gc.name as series_name,
+        to_char(a.created_month, 'YYYY-MM') as label,
+        count(*)::int as count
+    from attendees a
+    join params p on a.created_at >= p.period_start
+    join group_categories gc on gc.group_category_id = a.group_category_id
+    group by gc.name, to_char(a.created_month, 'YYYY-MM')
+
+    union all
+
+    select
+        'attendees' as domain,
+        'group_region' as dimension,
+        r.name as series_name,
+        to_char(a.created_month, 'YYYY-MM') as label,
+        count(*)::int as count
+    from attendees a
+    join params p on a.created_at >= p.period_start
+    join regions r on r.region_id = a.region_id
+    group by r.name, to_char(a.created_month, 'YYYY-MM')
+),
+page_view_total_counts as (
+    select
+        'total' as scope,
+        coalesce(sum(apv.total), 0)::int as total_views
+    from all_page_views_data apv
+
+    union all
+
+    select
+        'community' as scope,
+        coalesce(sum(cv.total), 0)::int as total_views
+    from community_views_data cv
+
+    union all
+
+    select
+        'events' as scope,
+        coalesce(sum(ev.total), 0)::int as total_views
+    from event_views_data ev
+
+    union all
+
+    select
+        'groups' as scope,
+        coalesce(sum(gv.total), 0)::int as total_views
+    from group_views_data gv
+),
+page_view_daily_counts as (
+    select
+        'total' as scope,
+        to_char(apv.day, 'YYYY-MM-DD') as label,
+        sum(apv.total)::int as count
+    from all_page_views_data apv
+    join params p on apv.day >= p.recent_views_start
+    group by to_char(apv.day, 'YYYY-MM-DD')
+
+    union all
+
+    select
+        'community' as scope,
+        to_char(cv.day, 'YYYY-MM-DD') as label,
+        sum(cv.total)::int as count
+    from community_views_data cv
+    join params p on cv.day >= p.recent_views_start
+    group by to_char(cv.day, 'YYYY-MM-DD')
+
+    union all
+
+    select
+        'events' as scope,
+        to_char(ev.day, 'YYYY-MM-DD') as label,
+        sum(ev.total)::int as count
+    from event_views_data ev
+    join params p on ev.day >= p.recent_views_start
+    group by to_char(ev.day, 'YYYY-MM-DD')
+
+    union all
+
+    select
+        'groups' as scope,
+        to_char(gv.day, 'YYYY-MM-DD') as label,
+        sum(gv.total)::int as count
+    from group_views_data gv
+    join params p on gv.day >= p.recent_views_start
+    group by to_char(gv.day, 'YYYY-MM-DD')
+),
+page_view_monthly_counts as (
+    select
+        'total' as scope,
+        to_char(apv.viewed_month, 'YYYY-MM') as label,
+        sum(apv.total)::int as count
+    from all_page_views_data apv
+    join params p on apv.day >= p.period_start
+    group by to_char(apv.viewed_month, 'YYYY-MM')
+
+    union all
+
+    select
+        'community' as scope,
+        to_char(cv.viewed_month, 'YYYY-MM') as label,
+        sum(cv.total)::int as count
+    from community_views_data cv
+    join params p on cv.day >= p.period_start
+    group by to_char(cv.viewed_month, 'YYYY-MM')
+
+    union all
+
+    select
+        'events' as scope,
+        to_char(ev.viewed_month, 'YYYY-MM') as label,
+        sum(ev.total)::int as count
+    from event_views_data ev
+    join params p on ev.day >= p.period_start
+    group by to_char(ev.viewed_month, 'YYYY-MM')
+
+    union all
+
+    select
+        'groups' as scope,
+        to_char(gv.viewed_month, 'YYYY-MM') as label,
+        sum(gv.total)::int as count
+    from group_views_data gv
+    join params p on gv.day >= p.period_start
+    group by to_char(gv.viewed_month, 'YYYY-MM')
 )
 select json_strip_nulls(json_build_object(
     -- ========================================================================
@@ -180,117 +607,39 @@ select json_strip_nulls(json_build_object(
             ) stats
             join regions r on r.region_id = stats.region_id
         ), '[]'::json),
-        'running_total', coalesce((
-            select json_agg(json_build_array(ts, cumulative_total) order by ts)
-            from (
-                select
-                    floor(extract(epoch from month) * 1000)::bigint as ts,
-                    sum(month_count) over (order by month) ::int as cumulative_total
-                from (
-                    select
-                        fg.created_month as month,
-                        count(*)::int as month_count
-                    from filtered_groups fg
-                    group by fg.created_month
-                ) monthly
-            ) totals
-        ), '[]'::json),
+        'running_total', stats_running_total_series((
+            select jsonb_agg(to_jsonb(counts))
+            from domain_running_total_counts counts
+            where domain = 'groups'
+        )),
         'running_total_by_category', coalesce((
-            select json_object_agg(category_name, series order by category_name)
-            from (
-                select
-                    category_name,
-                    json_agg(json_build_array(ts, cumulative_total) order by ts) as series
-                from (
-                    select
-                        gc.name as category_name,
-                        floor(extract(epoch from month) * 1000)::bigint as ts,
-                        sum(month_count) over (partition by gc.name order by month) ::int as cumulative_total
-                    from (
-                        select
-                            fg.group_category_id,
-                            fg.created_month as month,
-                            count(*)::int as month_count
-                        from filtered_groups fg
-                        group by fg.group_category_id, fg.created_month
-                    ) monthly
-                    join group_categories gc on gc.group_category_id = monthly.group_category_id
-                ) categorized
-                group by category_name
-            ) grouped
+            select stats_running_total_series_by_name(jsonb_agg(to_jsonb(counts)))
+            from dimension_running_total_counts counts
+            where domain = 'groups'
+            and dimension = 'category'
         ), '{}'::json),
         'running_total_by_region', coalesce((
-            select json_object_agg(region_name, series order by region_name)
-            from (
-                select
-                    region_name,
-                    json_agg(json_build_array(ts, cumulative_total) order by ts) as series
-                from (
-                    select
-                        r.name as region_name,
-                        floor(extract(epoch from month) * 1000)::bigint as ts,
-                        sum(month_count) over (partition by r.name order by month) ::int as cumulative_total
-                    from (
-                        select
-                            fg.region_id,
-                            fg.created_month as month,
-                            count(*)::int as month_count
-                        from filtered_groups fg
-                        group by fg.region_id, fg.created_month
-                    ) monthly
-                    join regions r on r.region_id = monthly.region_id
-                ) categorized
-                group by region_name
-            ) grouped
+            select stats_running_total_series_by_name(jsonb_agg(to_jsonb(counts)))
+            from dimension_running_total_counts counts
+            where domain = 'groups'
+            and dimension = 'region'
         ), '{}'::json),
-        'per_month', coalesce((
-            select json_agg(json_build_array(month_label, month_count) order by month_label)
-            from (
-                select
-                    to_char(fg.created_month, 'YYYY-MM') as month_label,
-                    count(*)::int as month_count
-                from filtered_groups fg
-                join params p on fg.created_at >= p.period_start
-                group by to_char(fg.created_month, 'YYYY-MM')
-            ) monthly
-        ), '[]'::json),
+        'per_month', stats_label_count_series((
+            select jsonb_agg(to_jsonb(counts))
+            from domain_monthly_counts counts
+            where domain = 'groups'
+        )),
         'per_month_by_category', coalesce((
-            select json_object_agg(category_name, series order by category_name)
-            from (
-                select
-                    category_name,
-                    json_agg(json_build_array(month_label, month_count) order by month_label) as series
-                from (
-                    select
-                        gc.name as category_name,
-                        to_char(fg.created_month, 'YYYY-MM') as month_label,
-                        count(*)::int as month_count
-                    from filtered_groups fg
-                    join params p on fg.created_at >= p.period_start
-                    join group_categories gc on gc.group_category_id = fg.group_category_id
-                    group by gc.name, to_char(fg.created_month, 'YYYY-MM')
-                ) categorized
-                group by category_name
-            ) grouped
+            select stats_label_count_series_by_name(jsonb_agg(to_jsonb(counts)))
+            from dimension_monthly_counts counts
+            where domain = 'groups'
+            and dimension = 'category'
         ), '{}'::json),
         'per_month_by_region', coalesce((
-            select json_object_agg(region_name, series order by region_name)
-            from (
-                select
-                    region_name,
-                    json_agg(json_build_array(month_label, month_count) order by month_label) as series
-                from (
-                    select
-                        r.name as region_name,
-                        to_char(fg.created_month, 'YYYY-MM') as month_label,
-                        count(*)::int as month_count
-                    from filtered_groups fg
-                    join params p on fg.created_at >= p.period_start
-                    join regions r on r.region_id = fg.region_id
-                    group by r.name, to_char(fg.created_month, 'YYYY-MM')
-                ) categorized
-                group by region_name
-            ) grouped
+            select stats_label_count_series_by_name(jsonb_agg(to_jsonb(counts)))
+            from dimension_monthly_counts counts
+            where domain = 'groups'
+            and dimension = 'region'
         ), '{}'::json)
     ),
     -- ========================================================================
@@ -320,117 +669,39 @@ select json_strip_nulls(json_build_object(
             ) stats
             join regions r on r.region_id = stats.region_id
         ), '[]'::json),
-        'running_total', coalesce((
-            select json_agg(json_build_array(ts, cumulative_total) order by ts)
-            from (
-                select
-                    floor(extract(epoch from month) * 1000)::bigint as ts,
-                    sum(month_count) over (order by month) ::int as cumulative_total
-                from (
-                    select
-                        m.created_month as month,
-                        count(*)::int as month_count
-                    from members m
-                    group by m.created_month
-                ) monthly
-            ) totals
-        ), '[]'::json),
+        'running_total', stats_running_total_series((
+            select jsonb_agg(to_jsonb(counts))
+            from domain_running_total_counts counts
+            where domain = 'members'
+        )),
         'running_total_by_category', coalesce((
-            select json_object_agg(category_name, series order by category_name)
-            from (
-                select
-                    category_name,
-                    json_agg(json_build_array(ts, cumulative_total) order by ts) as series
-                from (
-                    select
-                        gc.name as category_name,
-                        floor(extract(epoch from month) * 1000)::bigint as ts,
-                        sum(month_count) over (partition by gc.name order by month) ::int as cumulative_total
-                    from (
-                        select
-                            m.group_category_id,
-                            m.created_month as month,
-                            count(*)::int as month_count
-                        from members m
-                        group by m.group_category_id, m.created_month
-                    ) monthly
-                    join group_categories gc on gc.group_category_id = monthly.group_category_id
-                ) categorized
-                group by category_name
-            ) grouped
+            select stats_running_total_series_by_name(jsonb_agg(to_jsonb(counts)))
+            from dimension_running_total_counts counts
+            where domain = 'members'
+            and dimension = 'category'
         ), '{}'::json),
         'running_total_by_region', coalesce((
-            select json_object_agg(region_name, series order by region_name)
-            from (
-                select
-                    region_name,
-                    json_agg(json_build_array(ts, cumulative_total) order by ts) as series
-                from (
-                    select
-                        r.name as region_name,
-                        floor(extract(epoch from month) * 1000)::bigint as ts,
-                        sum(month_count) over (partition by r.name order by month) ::int as cumulative_total
-                    from (
-                        select
-                            m.region_id,
-                            m.created_month as month,
-                            count(*)::int as month_count
-                        from members m
-                        group by m.region_id, m.created_month
-                    ) monthly
-                    join regions r on r.region_id = monthly.region_id
-                ) categorized
-                group by region_name
-            ) grouped
+            select stats_running_total_series_by_name(jsonb_agg(to_jsonb(counts)))
+            from dimension_running_total_counts counts
+            where domain = 'members'
+            and dimension = 'region'
         ), '{}'::json),
-        'per_month', coalesce((
-            select json_agg(json_build_array(month_label, month_count) order by month_label)
-            from (
-                select
-                    to_char(m.created_month, 'YYYY-MM') as month_label,
-                    count(*)::int as month_count
-                from members m
-                join params p on m.created_at >= p.period_start
-                group by to_char(m.created_month, 'YYYY-MM')
-            ) monthly
-        ), '[]'::json),
+        'per_month', stats_label_count_series((
+            select jsonb_agg(to_jsonb(counts))
+            from domain_monthly_counts counts
+            where domain = 'members'
+        )),
         'per_month_by_category', coalesce((
-            select json_object_agg(category_name, series order by category_name)
-            from (
-                select
-                    category_name,
-                    json_agg(json_build_array(month_label, month_count) order by month_label) as series
-                from (
-                    select
-                        gc.name as category_name,
-                        to_char(m.created_month, 'YYYY-MM') as month_label,
-                        count(*)::int as month_count
-                    from members m
-                    join params p on m.created_at >= p.period_start
-                    join group_categories gc on gc.group_category_id = m.group_category_id
-                    group by gc.name, to_char(m.created_month, 'YYYY-MM')
-                ) categorized
-                group by category_name
-            ) grouped
+            select stats_label_count_series_by_name(jsonb_agg(to_jsonb(counts)))
+            from dimension_monthly_counts counts
+            where domain = 'members'
+            and dimension = 'category'
         ), '{}'::json),
         'per_month_by_region', coalesce((
-            select json_object_agg(region_name, series order by region_name)
-            from (
-                select
-                    region_name,
-                    json_agg(json_build_array(month_label, month_count) order by month_label) as series
-                from (
-                    select
-                        r.name as region_name,
-                        to_char(m.created_month, 'YYYY-MM') as month_label,
-                        count(*)::int as month_count
-                    from members m
-                    join params p on m.created_at >= p.period_start
-                    join regions r on r.region_id = m.region_id
-                    group by r.name, to_char(m.created_month, 'YYYY-MM')
-                ) categorized
-                group by region_name
-            ) grouped
+            select stats_label_count_series_by_name(jsonb_agg(to_jsonb(counts)))
+            from dimension_monthly_counts counts
+            where domain = 'members'
+            and dimension = 'region'
         ), '{}'::json)
     ),
     -- ========================================================================
@@ -471,160 +742,51 @@ select json_strip_nulls(json_build_object(
             ) stats
             join regions r on r.region_id = stats.region_id
         ), '[]'::json),
-        'running_total', coalesce((
-            select json_agg(json_build_array(ts, cumulative_total) order by ts)
-            from (
-                select
-                    floor(extract(epoch from month) * 1000)::bigint as ts,
-                    sum(month_count) over (order by month) ::int as cumulative_total
-                from (
-                    select
-                        ews.starts_month as month,
-                        count(*)::int as month_count
-                    from events_with_start ews
-                    group by ews.starts_month
-                ) monthly
-            ) totals
-        ), '[]'::json),
+        'running_total', stats_running_total_series((
+            select jsonb_agg(to_jsonb(counts))
+            from domain_running_total_counts counts
+            where domain = 'events'
+        )),
         'running_total_by_event_category', coalesce((
-            select json_object_agg(category_name, series order by category_name)
-            from (
-                select
-                    category_name,
-                    json_agg(json_build_array(ts, cumulative_total) order by ts) as series
-                from (
-                    select
-                        ec.name as category_name,
-                        floor(extract(epoch from month) * 1000)::bigint as ts,
-                        sum(month_count) over (partition by ec.name order by month) ::int as cumulative_total
-                    from (
-                        select
-                            ews.event_category_id,
-                            ews.starts_month as month,
-                            count(*)::int as month_count
-                        from events_with_start ews
-                        group by ews.event_category_id, ews.starts_month
-                    ) monthly
-                    join event_categories ec on ec.event_category_id = monthly.event_category_id
-                ) categorized
-                group by category_name
-            ) grouped
+            select stats_running_total_series_by_name(jsonb_agg(to_jsonb(counts)))
+            from dimension_running_total_counts counts
+            where domain = 'events'
+            and dimension = 'event_category'
         ), '{}'::json),
         'running_total_by_group_category', coalesce((
-            select json_object_agg(category_name, series order by category_name)
-            from (
-                select
-                    category_name,
-                    json_agg(json_build_array(ts, cumulative_total) order by ts) as series
-                from (
-                    select
-                        gc.name as category_name,
-                        floor(extract(epoch from month) * 1000)::bigint as ts,
-                        sum(month_count) over (partition by gc.name order by month) ::int as cumulative_total
-                    from (
-                        select
-                            ews.group_category_id,
-                            ews.starts_month as month,
-                            count(*)::int as month_count
-                        from events_with_start ews
-                        group by ews.group_category_id, ews.starts_month
-                    ) monthly
-                    join group_categories gc on gc.group_category_id = monthly.group_category_id
-                ) categorized
-                group by category_name
-            ) grouped
+            select stats_running_total_series_by_name(jsonb_agg(to_jsonb(counts)))
+            from dimension_running_total_counts counts
+            where domain = 'events'
+            and dimension = 'group_category'
         ), '{}'::json),
         'running_total_by_group_region', coalesce((
-            select json_object_agg(region_name, series order by region_name)
-            from (
-                select
-                    region_name,
-                    json_agg(json_build_array(ts, cumulative_total) order by ts) as series
-                from (
-                    select
-                        r.name as region_name,
-                        floor(extract(epoch from month) * 1000)::bigint as ts,
-                        sum(month_count) over (partition by r.name order by month) ::int as cumulative_total
-                    from (
-                        select
-                            ews.region_id,
-                            ews.starts_month as month,
-                            count(*)::int as month_count
-                        from events_with_start ews
-                        group by ews.region_id, ews.starts_month
-                    ) monthly
-                    join regions r on r.region_id = monthly.region_id
-                ) categorized
-                group by region_name
-            ) grouped
+            select stats_running_total_series_by_name(jsonb_agg(to_jsonb(counts)))
+            from dimension_running_total_counts counts
+            where domain = 'events'
+            and dimension = 'group_region'
         ), '{}'::json),
-        'per_month', coalesce((
-            select json_agg(json_build_array(month_label, month_count) order by month_label)
-            from (
-                select
-                    to_char(ews.starts_month, 'YYYY-MM') as month_label,
-                    count(*)::int as month_count
-                from events_with_start ews
-                join params p on ews.starts_at >= p.period_start
-                group by to_char(ews.starts_month, 'YYYY-MM')
-            ) monthly
-        ), '[]'::json),
+        'per_month', stats_label_count_series((
+            select jsonb_agg(to_jsonb(counts))
+            from domain_monthly_counts counts
+            where domain = 'events'
+        )),
         'per_month_by_event_category', coalesce((
-            select json_object_agg(category_name, series order by category_name)
-            from (
-                select
-                    category_name,
-                    json_agg(json_build_array(month_label, month_count) order by month_label) as series
-                from (
-                    select
-                        ec.name as category_name,
-                        to_char(ews.starts_month, 'YYYY-MM') as month_label,
-                        count(*)::int as month_count
-                    from events_with_start ews
-                    join params p on ews.starts_at >= p.period_start
-                    join event_categories ec on ec.event_category_id = ews.event_category_id
-                    group by ec.name, to_char(ews.starts_month, 'YYYY-MM')
-                ) categorized
-                group by category_name
-            ) grouped
+            select stats_label_count_series_by_name(jsonb_agg(to_jsonb(counts)))
+            from dimension_monthly_counts counts
+            where domain = 'events'
+            and dimension = 'event_category'
         ), '{}'::json),
         'per_month_by_group_category', coalesce((
-            select json_object_agg(category_name, series order by category_name)
-            from (
-                select
-                    category_name,
-                    json_agg(json_build_array(month_label, month_count) order by month_label) as series
-                from (
-                    select
-                        gc.name as category_name,
-                        to_char(ews.starts_month, 'YYYY-MM') as month_label,
-                        count(*)::int as month_count
-                    from events_with_start ews
-                    join params p on ews.starts_at >= p.period_start
-                    join group_categories gc on gc.group_category_id = ews.group_category_id
-                    group by gc.name, to_char(ews.starts_month, 'YYYY-MM')
-                ) categorized
-                group by category_name
-            ) grouped
+            select stats_label_count_series_by_name(jsonb_agg(to_jsonb(counts)))
+            from dimension_monthly_counts counts
+            where domain = 'events'
+            and dimension = 'group_category'
         ), '{}'::json),
         'per_month_by_group_region', coalesce((
-            select json_object_agg(region_name, series order by region_name)
-            from (
-                select
-                    region_name,
-                    json_agg(json_build_array(month_label, month_count) order by month_label) as series
-                from (
-                    select
-                        r.name as region_name,
-                        to_char(ews.starts_month, 'YYYY-MM') as month_label,
-                        count(*)::int as month_count
-                    from events_with_start ews
-                    join params p on ews.starts_at >= p.period_start
-                    join regions r on r.region_id = ews.region_id
-                    group by r.name, to_char(ews.starts_month, 'YYYY-MM')
-                ) categorized
-                group by region_name
-            ) grouped
+            select stats_label_count_series_by_name(jsonb_agg(to_jsonb(counts)))
+            from dimension_monthly_counts counts
+            where domain = 'events'
+            and dimension = 'group_region'
         ), '{}'::json)
     ),
     -- ========================================================================
@@ -665,266 +827,109 @@ select json_strip_nulls(json_build_object(
             ) stats
             join regions r on r.region_id = stats.region_id
         ), '[]'::json),
-        'running_total', coalesce((
-            select json_agg(json_build_array(ts, cumulative_total) order by ts)
-            from (
-                select
-                    floor(extract(epoch from month) * 1000)::bigint as ts,
-                    sum(month_count) over (order by month) ::int as cumulative_total
-                from (
-                    select
-                        a.created_month as month,
-                        count(*)::int as month_count
-                    from attendees a
-                    group by a.created_month
-                ) monthly
-            ) totals
-        ), '[]'::json),
+        'running_total', stats_running_total_series((
+            select jsonb_agg(to_jsonb(counts))
+            from domain_running_total_counts counts
+            where domain = 'attendees'
+        )),
         'running_total_by_event_category', coalesce((
-            select json_object_agg(category_name, series order by category_name)
-            from (
-                select
-                    category_name,
-                    json_agg(json_build_array(ts, cumulative_total) order by ts) as series
-                from (
-                    select
-                        ec.name as category_name,
-                        floor(extract(epoch from month) * 1000)::bigint as ts,
-                        sum(month_count) over (partition by ec.name order by month) ::int as cumulative_total
-                    from (
-                        select
-                            a.event_category_id,
-                            a.created_month as month,
-                            count(*)::int as month_count
-                        from attendees a
-                        group by a.event_category_id, a.created_month
-                    ) monthly
-                    join event_categories ec on ec.event_category_id = monthly.event_category_id
-                ) categorized
-                group by category_name
-            ) grouped
+            select stats_running_total_series_by_name(jsonb_agg(to_jsonb(counts)))
+            from dimension_running_total_counts counts
+            where domain = 'attendees'
+            and dimension = 'event_category'
         ), '{}'::json),
         'running_total_by_group_category', coalesce((
-            select json_object_agg(category_name, series order by category_name)
-            from (
-                select
-                    category_name,
-                    json_agg(json_build_array(ts, cumulative_total) order by ts) as series
-                from (
-                    select
-                        gc.name as category_name,
-                        floor(extract(epoch from month) * 1000)::bigint as ts,
-                        sum(month_count) over (partition by gc.name order by month) ::int as cumulative_total
-                    from (
-                        select
-                            a.group_category_id,
-                            a.created_month as month,
-                            count(*)::int as month_count
-                        from attendees a
-                        group by a.group_category_id, a.created_month
-                    ) monthly
-                    join group_categories gc on gc.group_category_id = monthly.group_category_id
-                ) categorized
-                group by category_name
-            ) grouped
+            select stats_running_total_series_by_name(jsonb_agg(to_jsonb(counts)))
+            from dimension_running_total_counts counts
+            where domain = 'attendees'
+            and dimension = 'group_category'
         ), '{}'::json),
         'running_total_by_group_region', coalesce((
-            select json_object_agg(region_name, series order by region_name)
-            from (
-                select
-                    region_name,
-                    json_agg(json_build_array(ts, cumulative_total) order by ts) as series
-                from (
-                    select
-                        r.name as region_name,
-                        floor(extract(epoch from month) * 1000)::bigint as ts,
-                        sum(month_count) over (partition by r.name order by month) ::int as cumulative_total
-                    from (
-                        select
-                            a.region_id,
-                            a.created_month as month,
-                            count(*)::int as month_count
-                        from attendees a
-                        group by a.region_id, a.created_month
-                    ) monthly
-                    join regions r on r.region_id = monthly.region_id
-                ) categorized
-                group by region_name
-            ) grouped
+            select stats_running_total_series_by_name(jsonb_agg(to_jsonb(counts)))
+            from dimension_running_total_counts counts
+            where domain = 'attendees'
+            and dimension = 'group_region'
         ), '{}'::json),
-        'per_month', coalesce((
-            select json_agg(json_build_array(month_label, month_count) order by month_label)
-            from (
-                select
-                    to_char(a.created_month, 'YYYY-MM') as month_label,
-                    count(*)::int as month_count
-                from attendees a
-                join params p on a.created_at >= p.period_start
-                group by to_char(a.created_month, 'YYYY-MM')
-            ) monthly
-        ), '[]'::json),
+        'per_month', stats_label_count_series((
+            select jsonb_agg(to_jsonb(counts))
+            from domain_monthly_counts counts
+            where domain = 'attendees'
+        )),
         'per_month_by_event_category', coalesce((
-            select json_object_agg(category_name, series order by category_name)
-            from (
-                select
-                    category_name,
-                    json_agg(json_build_array(month_label, month_count) order by month_label) as series
-                from (
-                    select
-                        ec.name as category_name,
-                        to_char(a.created_month, 'YYYY-MM') as month_label,
-                        count(*)::int as month_count
-                    from attendees a
-                    join params p on a.created_at >= p.period_start
-                    join event_categories ec on ec.event_category_id = a.event_category_id
-                    group by ec.name, to_char(a.created_month, 'YYYY-MM')
-                ) categorized
-                group by category_name
-            ) grouped
+            select stats_label_count_series_by_name(jsonb_agg(to_jsonb(counts)))
+            from dimension_monthly_counts counts
+            where domain = 'attendees'
+            and dimension = 'event_category'
         ), '{}'::json),
         'per_month_by_group_category', coalesce((
-            select json_object_agg(category_name, series order by category_name)
-            from (
-                select
-                    category_name,
-                    json_agg(json_build_array(month_label, month_count) order by month_label) as series
-                from (
-                    select
-                        gc.name as category_name,
-                        to_char(a.created_month, 'YYYY-MM') as month_label,
-                        count(*)::int as month_count
-                    from attendees a
-                    join params p on a.created_at >= p.period_start
-                    join group_categories gc on gc.group_category_id = a.group_category_id
-                    group by gc.name, to_char(a.created_month, 'YYYY-MM')
-                ) categorized
-                group by category_name
-            ) grouped
+            select stats_label_count_series_by_name(jsonb_agg(to_jsonb(counts)))
+            from dimension_monthly_counts counts
+            where domain = 'attendees'
+            and dimension = 'group_category'
         ), '{}'::json),
         'per_month_by_group_region', coalesce((
-            select json_object_agg(region_name, series order by region_name)
-            from (
-                select
-                    region_name,
-                    json_agg(json_build_array(month_label, month_count) order by month_label) as series
-                from (
-                    select
-                        r.name as region_name,
-                        to_char(a.created_month, 'YYYY-MM') as month_label,
-                        count(*)::int as month_count
-                    from attendees a
-                    join params p on a.created_at >= p.period_start
-                    join regions r on r.region_id = a.region_id
-                    group by r.name, to_char(a.created_month, 'YYYY-MM')
-                ) categorized
-                group by region_name
-            ) grouped
+            select stats_label_count_series_by_name(jsonb_agg(to_jsonb(counts)))
+            from dimension_monthly_counts counts
+            where domain = 'attendees'
+            and dimension = 'group_region'
         ), '{}'::json)
     ),
     -- ========================================================================
     -- PAGE VIEWS STATISTICS
     -- ========================================================================
     'page_views', json_build_object(
-        'total_views', (select coalesce(sum(total), 0)::int from all_page_views_data),
+        'total_views', (select total_views from page_view_total_counts where scope = 'total'),
         'total', json_build_object(
-            'total_views', (select coalesce(sum(total), 0)::int from all_page_views_data),
-            'per_day_views', coalesce((
-                select json_agg(json_build_array(day_label, day_count) order by day_label)
-                from (
-                    select
-                        to_char(apv.day, 'YYYY-MM-DD') as day_label,
-                        sum(apv.total)::int as day_count
-                    from all_page_views_data apv
-                    join params p on apv.day >= p.recent_views_start
-                    group by to_char(apv.day, 'YYYY-MM-DD')
-                ) daily
-            ), '[]'::json),
-            'per_month_views', coalesce((
-                select json_agg(json_build_array(month_label, month_count) order by month_label)
-                from (
-                    select
-                        to_char(apv.viewed_month, 'YYYY-MM') as month_label,
-                        sum(apv.total)::int as month_count
-                    from all_page_views_data apv
-                    join params p on apv.day >= p.period_start
-                    group by to_char(apv.viewed_month, 'YYYY-MM')
-                ) monthly
-            ), '[]'::json)
+            'total_views', (select total_views from page_view_total_counts where scope = 'total'),
+            'per_day_views', stats_label_count_series((
+                select jsonb_agg(to_jsonb(counts))
+                from page_view_daily_counts counts
+                where scope = 'total'
+            )),
+            'per_month_views', stats_label_count_series((
+                select jsonb_agg(to_jsonb(counts))
+                from page_view_monthly_counts counts
+                where scope = 'total'
+            ))
         ),
         'community', json_build_object(
-            'total_views', (select coalesce(sum(total), 0)::int from community_views_data),
-            'per_day_views', coalesce((
-                select json_agg(json_build_array(day_label, day_count) order by day_label)
-                from (
-                    select
-                        to_char(cv.day, 'YYYY-MM-DD') as day_label,
-                        sum(cv.total)::int as day_count
-                    from community_views_data cv
-                    join params p on cv.day >= p.recent_views_start
-                    group by to_char(cv.day, 'YYYY-MM-DD')
-                ) daily
-            ), '[]'::json),
-            'per_month_views', coalesce((
-                select json_agg(json_build_array(month_label, month_count) order by month_label)
-                from (
-                    select
-                        to_char(cv.viewed_month, 'YYYY-MM') as month_label,
-                        sum(cv.total)::int as month_count
-                    from community_views_data cv
-                    join params p on cv.day >= p.period_start
-                    group by to_char(cv.viewed_month, 'YYYY-MM')
-                ) monthly
-            ), '[]'::json)
+            'total_views', (select total_views from page_view_total_counts where scope = 'community'),
+            'per_day_views', stats_label_count_series((
+                select jsonb_agg(to_jsonb(counts))
+                from page_view_daily_counts counts
+                where scope = 'community'
+            )),
+            'per_month_views', stats_label_count_series((
+                select jsonb_agg(to_jsonb(counts))
+                from page_view_monthly_counts counts
+                where scope = 'community'
+            ))
         ),
         'events', json_build_object(
-            'total_views', (select coalesce(sum(total), 0)::int from event_views_data),
-            'per_day_views', coalesce((
-                select json_agg(json_build_array(day_label, day_count) order by day_label)
-                from (
-                    select
-                        to_char(ev.day, 'YYYY-MM-DD') as day_label,
-                        sum(ev.total)::int as day_count
-                    from event_views_data ev
-                    join params p on ev.day >= p.recent_views_start
-                    group by to_char(ev.day, 'YYYY-MM-DD')
-                ) daily
-            ), '[]'::json),
-            'per_month_views', coalesce((
-                select json_agg(json_build_array(month_label, month_count) order by month_label)
-                from (
-                    select
-                        to_char(ev.viewed_month, 'YYYY-MM') as month_label,
-                        sum(ev.total)::int as month_count
-                    from event_views_data ev
-                    join params p on ev.day >= p.period_start
-                    group by to_char(ev.viewed_month, 'YYYY-MM')
-                ) monthly
-            ), '[]'::json)
+            'total_views', (select total_views from page_view_total_counts where scope = 'events'),
+            'per_day_views', stats_label_count_series((
+                select jsonb_agg(to_jsonb(counts))
+                from page_view_daily_counts counts
+                where scope = 'events'
+            )),
+            'per_month_views', stats_label_count_series((
+                select jsonb_agg(to_jsonb(counts))
+                from page_view_monthly_counts counts
+                where scope = 'events'
+            ))
         ),
         'groups', json_build_object(
-            'total_views', (select coalesce(sum(total), 0)::int from group_views_data),
-            'per_day_views', coalesce((
-                select json_agg(json_build_array(day_label, day_count) order by day_label)
-                from (
-                    select
-                        to_char(gv.day, 'YYYY-MM-DD') as day_label,
-                        sum(gv.total)::int as day_count
-                    from group_views_data gv
-                    join params p on gv.day >= p.recent_views_start
-                    group by to_char(gv.day, 'YYYY-MM-DD')
-                ) daily
-            ), '[]'::json),
-            'per_month_views', coalesce((
-                select json_agg(json_build_array(month_label, month_count) order by month_label)
-                from (
-                    select
-                        to_char(gv.viewed_month, 'YYYY-MM') as month_label,
-                        sum(gv.total)::int as month_count
-                    from group_views_data gv
-                    join params p on gv.day >= p.period_start
-                    group by to_char(gv.viewed_month, 'YYYY-MM')
-                ) monthly
-            ), '[]'::json)
+            'total_views', (select total_views from page_view_total_counts where scope = 'groups'),
+            'per_day_views', stats_label_count_series((
+                select jsonb_agg(to_jsonb(counts))
+                from page_view_daily_counts counts
+                where scope = 'groups'
+            )),
+            'per_month_views', stats_label_count_series((
+                select jsonb_agg(to_jsonb(counts))
+                from page_view_monthly_counts counts
+                where scope = 'groups'
+            ))
         )
     )
 ));

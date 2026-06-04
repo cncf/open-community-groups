@@ -95,171 +95,220 @@ all_page_views_data as (
     union all
     select total, viewed_month, day
     from group_views_data
+),
+domain_running_total_counts as (
+    select
+        'members' as domain,
+        m.created_month as bucket_start,
+        count(*)::int as count
+    from members m
+    group by m.created_month
+
+    union all
+
+    select
+        'events' as domain,
+        e.starts_month as bucket_start,
+        count(*)::int as count
+    from events_with_start e
+    group by e.starts_month
+
+    union all
+
+    select
+        'attendees' as domain,
+        a.created_month as bucket_start,
+        count(*)::int as count
+    from attendees a
+    group by a.created_month
+),
+domain_monthly_counts as (
+    select
+        'members' as domain,
+        to_char(m.created_month, 'YYYY-MM') as label,
+        count(*)::int as count
+    from members m
+    join params p on m.created_at >= p.period_start
+    group by to_char(m.created_month, 'YYYY-MM')
+
+    union all
+
+    select
+        'events' as domain,
+        to_char(e.starts_month, 'YYYY-MM') as label,
+        count(*)::int as count
+    from events_with_start e
+    join params p on e.starts_at >= p.period_start
+    group by to_char(e.starts_month, 'YYYY-MM')
+
+    union all
+
+    select
+        'attendees' as domain,
+        to_char(a.created_month, 'YYYY-MM') as label,
+        count(*)::int as count
+    from attendees a
+    join params p on a.created_at >= p.period_start
+    group by to_char(a.created_month, 'YYYY-MM')
+),
+page_view_total_counts as (
+    select
+        'total' as scope,
+        coalesce(sum(apv.total), 0)::int as total_views
+    from all_page_views_data apv
+
+    union all
+
+    select
+        'events' as scope,
+        coalesce(sum(ev.total), 0)::int as total_views
+    from event_views_data ev
+
+    union all
+
+    select
+        'group' as scope,
+        coalesce(sum(gv.total), 0)::int as total_views
+    from group_views_data gv
+),
+page_view_daily_counts as (
+    select
+        'total' as scope,
+        to_char(apv.day, 'YYYY-MM-DD') as label,
+        sum(apv.total)::int as count
+    from all_page_views_data apv
+    join params p on apv.day >= p.recent_views_start
+    group by to_char(apv.day, 'YYYY-MM-DD')
+
+    union all
+
+    select
+        'events' as scope,
+        to_char(ev.day, 'YYYY-MM-DD') as label,
+        sum(ev.total)::int as count
+    from event_views_data ev
+    join params p on ev.day >= p.recent_views_start
+    group by to_char(ev.day, 'YYYY-MM-DD')
+
+    union all
+
+    select
+        'group' as scope,
+        to_char(gv.day, 'YYYY-MM-DD') as label,
+        sum(gv.total)::int as count
+    from group_views_data gv
+    join params p on gv.day >= p.recent_views_start
+    group by to_char(gv.day, 'YYYY-MM-DD')
+),
+page_view_monthly_counts as (
+    select
+        'total' as scope,
+        to_char(apv.viewed_month, 'YYYY-MM') as label,
+        sum(apv.total)::int as count
+    from all_page_views_data apv
+    join params p on apv.day >= p.period_start
+    group by to_char(apv.viewed_month, 'YYYY-MM')
+
+    union all
+
+    select
+        'events' as scope,
+        to_char(ev.viewed_month, 'YYYY-MM') as label,
+        sum(ev.total)::int as count
+    from event_views_data ev
+    join params p on ev.day >= p.period_start
+    group by to_char(ev.viewed_month, 'YYYY-MM')
+
+    union all
+
+    select
+        'group' as scope,
+        to_char(gv.viewed_month, 'YYYY-MM') as label,
+        sum(gv.total)::int as count
+    from group_views_data gv
+    join params p on gv.day >= p.period_start
+    group by to_char(gv.viewed_month, 'YYYY-MM')
 )
 select json_strip_nulls(json_build_object(
     'members', json_build_object(
         'total', (select count(*)::int from members),
-        'running_total', coalesce((
-            select json_agg(json_build_array(ts, cumulative_total) order by ts)
-            from (
-                select
-                    floor(extract(epoch from month) * 1000)::bigint as ts,
-                    sum(month_count) over (order by month) ::int as cumulative_total
-                from (
-                    select
-                        m.created_month as month,
-                        count(*)::int as month_count
-                    from members m
-                    group by m.created_month
-                ) monthly
-            ) totals
-        ), '[]'::json),
-        'per_month', coalesce((
-            select json_agg(json_build_array(month_label, month_count) order by month_label)
-            from (
-                select
-                    to_char(m.created_month, 'YYYY-MM') as month_label,
-                    count(*)::int as month_count
-                from members m
-                join params p on m.created_at >= p.period_start
-                group by to_char(m.created_month, 'YYYY-MM')
-            ) monthly
-        ), '[]'::json)
+        'running_total', stats_running_total_series((
+            select jsonb_agg(to_jsonb(counts))
+            from domain_running_total_counts counts
+            where domain = 'members'
+        )),
+        'per_month', stats_label_count_series((
+            select jsonb_agg(to_jsonb(counts))
+            from domain_monthly_counts counts
+            where domain = 'members'
+        ))
     ),
     'events', json_build_object(
         'total', (select count(*)::int from events),
-        'running_total', coalesce((
-            select json_agg(json_build_array(ts, cumulative_total) order by ts)
-            from (
-                select
-                    floor(extract(epoch from month) * 1000)::bigint as ts,
-                    sum(month_count) over (order by month) ::int as cumulative_total
-                from (
-                    select
-                        e.starts_month as month,
-                        count(*)::int as month_count
-                    from events_with_start e
-                    group by e.starts_month
-                ) monthly
-            ) totals
-        ), '[]'::json),
-        'per_month', coalesce((
-            select json_agg(json_build_array(month_label, month_count) order by month_label)
-            from (
-                select
-                    to_char(e.starts_month, 'YYYY-MM') as month_label,
-                    count(*)::int as month_count
-                from events_with_start e
-                join params p on e.starts_at >= p.period_start
-                group by to_char(e.starts_month, 'YYYY-MM')
-            ) monthly
-        ), '[]'::json)
+        'running_total', stats_running_total_series((
+            select jsonb_agg(to_jsonb(counts))
+            from domain_running_total_counts counts
+            where domain = 'events'
+        )),
+        'per_month', stats_label_count_series((
+            select jsonb_agg(to_jsonb(counts))
+            from domain_monthly_counts counts
+            where domain = 'events'
+        ))
     ),
     'attendees', json_build_object(
         'total', (select count(*)::int from attendees),
-        'running_total', coalesce((
-            select json_agg(json_build_array(ts, cumulative_total) order by ts)
-            from (
-                select
-                    floor(extract(epoch from month) * 1000)::bigint as ts,
-                    sum(month_count) over (order by month) ::int as cumulative_total
-                from (
-                    select
-                        a.created_month as month,
-                        count(*)::int as month_count
-                    from attendees a
-                    group by a.created_month
-                ) monthly
-            ) totals
-        ), '[]'::json),
-        'per_month', coalesce((
-            select json_agg(json_build_array(month_label, month_count) order by month_label)
-            from (
-                select
-                    to_char(a.created_month, 'YYYY-MM') as month_label,
-                    count(*)::int as month_count
-                from attendees a
-                join params p on a.created_at >= p.period_start
-                group by to_char(a.created_month, 'YYYY-MM')
-            ) monthly
-        ), '[]'::json)
+        'running_total', stats_running_total_series((
+            select jsonb_agg(to_jsonb(counts))
+            from domain_running_total_counts counts
+            where domain = 'attendees'
+        )),
+        'per_month', stats_label_count_series((
+            select jsonb_agg(to_jsonb(counts))
+            from domain_monthly_counts counts
+            where domain = 'attendees'
+        ))
     ),
     'page_views', json_build_object(
-        'total_views', (select coalesce(sum(total), 0)::int from all_page_views_data),
+        'total_views', (select total_views from page_view_total_counts where scope = 'total'),
         'total', json_build_object(
-            'total_views', (select coalesce(sum(total), 0)::int from all_page_views_data),
-            'per_day_views', coalesce((
-                select json_agg(json_build_array(day_label, day_count) order by day_label)
-                from (
-                    select
-                        to_char(apv.day, 'YYYY-MM-DD') as day_label,
-                        sum(apv.total)::int as day_count
-                    from all_page_views_data apv
-                    join params p on apv.day >= p.recent_views_start
-                    group by to_char(apv.day, 'YYYY-MM-DD')
-                ) daily
-            ), '[]'::json),
-            'per_month_views', coalesce((
-                select json_agg(json_build_array(month_label, month_count) order by month_label)
-                from (
-                    select
-                        to_char(apv.viewed_month, 'YYYY-MM') as month_label,
-                        sum(apv.total)::int as month_count
-                    from all_page_views_data apv
-                    join params p on apv.day >= p.period_start
-                    group by to_char(apv.viewed_month, 'YYYY-MM')
-                ) monthly
-            ), '[]'::json)
+            'total_views', (select total_views from page_view_total_counts where scope = 'total'),
+            'per_day_views', stats_label_count_series((
+                select jsonb_agg(to_jsonb(counts))
+                from page_view_daily_counts counts
+                where scope = 'total'
+            )),
+            'per_month_views', stats_label_count_series((
+                select jsonb_agg(to_jsonb(counts))
+                from page_view_monthly_counts counts
+                where scope = 'total'
+            ))
         ),
         'events', json_build_object(
-            'total_views', (select coalesce(sum(total), 0)::int from event_views_data),
-            'per_day_views', coalesce((
-                select json_agg(json_build_array(day_label, day_count) order by day_label)
-                from (
-                    select
-                        to_char(ev.day, 'YYYY-MM-DD') as day_label,
-                        sum(ev.total)::int as day_count
-                    from event_views_data ev
-                    join params p on ev.day >= p.recent_views_start
-                    group by to_char(ev.day, 'YYYY-MM-DD')
-                ) daily
-            ), '[]'::json),
-            'per_month_views', coalesce((
-                select json_agg(json_build_array(month_label, month_count) order by month_label)
-                from (
-                    select
-                        to_char(ev.viewed_month, 'YYYY-MM') as month_label,
-                        sum(ev.total)::int as month_count
-                    from event_views_data ev
-                    join params p on ev.day >= p.period_start
-                    group by to_char(ev.viewed_month, 'YYYY-MM')
-                ) monthly
-            ), '[]'::json)
+            'total_views', (select total_views from page_view_total_counts where scope = 'events'),
+            'per_day_views', stats_label_count_series((
+                select jsonb_agg(to_jsonb(counts))
+                from page_view_daily_counts counts
+                where scope = 'events'
+            )),
+            'per_month_views', stats_label_count_series((
+                select jsonb_agg(to_jsonb(counts))
+                from page_view_monthly_counts counts
+                where scope = 'events'
+            ))
         ),
         'group', json_build_object(
-            'total_views', (select coalesce(sum(total), 0)::int from group_views_data),
-            'per_day_views', coalesce((
-                select json_agg(json_build_array(day_label, day_count) order by day_label)
-                from (
-                    select
-                        to_char(gv.day, 'YYYY-MM-DD') as day_label,
-                        sum(gv.total)::int as day_count
-                    from group_views_data gv
-                    join params p on gv.day >= p.recent_views_start
-                    group by to_char(gv.day, 'YYYY-MM-DD')
-                ) daily
-            ), '[]'::json),
-            'per_month_views', coalesce((
-                select json_agg(json_build_array(month_label, month_count) order by month_label)
-                from (
-                    select
-                        to_char(gv.viewed_month, 'YYYY-MM') as month_label,
-                        sum(gv.total)::int as month_count
-                    from group_views_data gv
-                    join params p on gv.day >= p.period_start
-                    group by to_char(gv.viewed_month, 'YYYY-MM')
-                ) monthly
-            ), '[]'::json)
+            'total_views', (select total_views from page_view_total_counts where scope = 'group'),
+            'per_day_views', stats_label_count_series((
+                select jsonb_agg(to_jsonb(counts))
+                from page_view_daily_counts counts
+                where scope = 'group'
+            )),
+            'per_month_views', stats_label_count_series((
+                select jsonb_agg(to_jsonb(counts))
+                from page_view_monthly_counts counts
+                where scope = 'group'
+            ))
         )
     )
 ));
