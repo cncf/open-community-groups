@@ -125,13 +125,7 @@
 {% endif %}
 {# End pagination -#}
 
-<script type="module">
-  import {
-    updateResults
-  } from '/static/js/community/explore/explore.js';
-
-  updateResults('{{ search::current_page(total, events.len(), offset) }}');
-</script>
+<span data-results-summary class="hidden">{{ search::current_page(total, events.len() , offset) }}</span>
 {# End list view -#}
 
 {% when ViewMode::Map -%}

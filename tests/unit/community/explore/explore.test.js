@@ -3,6 +3,7 @@ import { expect } from "@open-wc/testing";
 import {
   fetchData,
   updateResults,
+  updateResultsFromSummary,
 } from "/static/js/community/explore/explore.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
 import { mockSwal } from "/tests/unit/test-utils/globals.js";
@@ -24,17 +25,52 @@ describe("explore helpers", () => {
     swal.restore();
   });
 
-  it("updates the results container html", () => {
+  it("updates the results container text", () => {
     // Build the DOM fixture with results.
     document.body.innerHTML = `<div id="results"></div>`;
 
     // Replace the results markup with the fetched response.
     updateResults("<p>Updated</p>");
 
-    // The results container receives the replacement markup.
+    // The results container receives text, not trusted markup.
+    expect(document.getElementById("results")?.textContent).to.equal("<p>Updated</p>");
     expect(document.getElementById("results")?.innerHTML).to.equal(
-      "<p>Updated</p>",
+      "&lt;p&gt;Updated&lt;/p&gt;",
     );
+  });
+
+  it("updates the results container from a declarative summary marker", () => {
+    // Build the DOM fixture with results and swapped summary content.
+    document.body.innerHTML = `
+      <div id="results"></div>
+      <div id="cards-list">
+        <span data-results-summary class="hidden">1-10 of 20</span>
+      </div>
+    `;
+
+    // Read the summary marker from the swapped content.
+    updateResultsFromSummary(document.getElementById("cards-list"));
+
+    // The results container receives the summary marker text.
+    expect(document.getElementById("results")?.textContent).to.equal("1-10 of 20");
+  });
+
+  it("updates the results container after an HTMX swap", () => {
+    // Build the DOM fixture with results and swapped summary content.
+    document.body.innerHTML = `
+      <div id="results"></div>
+      <div id="cards-list">
+        <span data-results-summary class="hidden">11-20 of 20</span>
+      </div>
+    `;
+
+    // Dispatch the HTMX swap event from the swapped content root.
+    document.getElementById("cards-list").dispatchEvent(
+      new CustomEvent("htmx:afterSwap", { bubbles: true }),
+    );
+
+    // The initialized explore module syncs the summary after swaps.
+    expect(document.getElementById("results")?.textContent).to.equal("11-20 of 20");
   });
 
   it("fetches explore data as json", async () => {

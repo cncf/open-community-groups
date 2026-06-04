@@ -1,15 +1,44 @@
 import { handleHtmxResponse } from "/static/js/common/alerts.js";
 import { ocgFetch } from "/static/js/common/fetch.js";
 
+const RESULTS_ID = "results";
+const RESULTS_SUMMARY_SELECTOR = "[data-results-summary]";
+const RESULTS_ERROR_MESSAGE = "Something went wrong loading results. Please try again later.";
+
 /**
  * Updates the results container in the DOM with new content.
- * @param {string} content - The HTML content to insert into the results container
+ * @param {string} content - The text content to insert into the results container
  */
 export const updateResults = (content) => {
-  const results = document.getElementById("results");
+  const results = document.getElementById(RESULTS_ID);
   if (results) {
-    results.innerHTML = content;
+    results.textContent = content;
   }
+};
+
+/**
+ * Updates the results summary from swapped explore markup.
+ * @param {Document|HTMLElement} root - Root node to search for a summary marker
+ */
+export const updateResultsFromSummary = (root = document) => {
+  const summary = root.querySelector?.(RESULTS_SUMMARY_SELECTOR);
+  if (summary) {
+    updateResults(summary.textContent.trim());
+  }
+};
+
+/**
+ * Initializes result summary updates for initial render and HTMX swaps.
+ * @param {Document} root - Document root used for event binding
+ */
+export const initializeExploreResults = (root = document) => {
+  updateResultsFromSummary(root);
+  root.body?.addEventListener("htmx:afterSwap", (event) => {
+    const target = event.target;
+    if (target instanceof HTMLElement) {
+      updateResultsFromSummary(target);
+    }
+  });
 };
 
 /**
@@ -21,14 +50,13 @@ export const updateResults = (content) => {
  */
 export async function fetchData(entity, params) {
   const url = `/explore/${entity}/search?${params}`;
-  const baseMessage = "Something went wrong loading results. Please try again later.";
 
   /** @type {Response} */
   let response;
   try {
     response = await ocgFetch(url, { headers: { Accept: "application/json" } });
   } catch (error) {
-    handleHtmxResponse({ xhr: null, successMessage: "", errorMessage: baseMessage });
+    handleHtmxResponse({ xhr: null, successMessage: "", errorMessage: RESULTS_ERROR_MESSAGE });
     throw error;
   }
 
@@ -37,7 +65,7 @@ export async function fetchData(entity, params) {
     handleHtmxResponse({
       xhr: { status: response.status, responseText },
       successMessage: "",
-      errorMessage: baseMessage,
+      errorMessage: RESULTS_ERROR_MESSAGE,
     });
     throw new Error(`Failed to fetch ${entity} data (status ${response.status})`);
   }
@@ -45,7 +73,9 @@ export async function fetchData(entity, params) {
   try {
     return await response.json();
   } catch (error) {
-    handleHtmxResponse({ xhr: null, successMessage: "", errorMessage: baseMessage });
+    handleHtmxResponse({ xhr: null, successMessage: "", errorMessage: RESULTS_ERROR_MESSAGE });
     throw error;
   }
 }
+
+initializeExploreResults();
