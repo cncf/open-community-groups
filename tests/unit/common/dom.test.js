@@ -9,10 +9,12 @@ describe("common dom", () => {
 
   beforeEach(() => {
     resetDom();
+    document.head.querySelectorAll(`script[src="${exampleScriptSrc}"]`).forEach((script) => script.remove());
   });
 
   afterEach(() => {
     resetDom();
+    document.head.querySelectorAll(`script[src="${exampleScriptSrc}"]`).forEach((script) => script.remove());
   });
 
   it("queries ids from document and element roots", () => {
@@ -63,6 +65,20 @@ describe("common dom", () => {
     await waitForMicrotask();
 
     // The loader reuses the existing script element.
+    expect(document.querySelectorAll(`script[src="${exampleScriptSrc}"]`)).to.have.length(1);
+  });
+
+  it("resolves immediately when an existing script was already loaded", async () => {
+    // Build the DOM fixture with a script that finished loading earlier.
+    const script = document.createElement("script");
+    script.src = exampleScriptSrc;
+    script.dataset.ocgScriptLoaded = "true";
+    document.head.append(script);
+
+    // Load the same script URL after it has already finished loading.
+    await loadScriptOnce(exampleScriptSrc);
+
+    // The loader reuses the already-loaded script element.
     expect(document.querySelectorAll(`script[src="${exampleScriptSrc}"]`)).to.have.length(1);
   });
 

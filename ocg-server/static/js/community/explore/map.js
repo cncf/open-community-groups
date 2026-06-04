@@ -1,5 +1,9 @@
 import { hideLoadingSpinner, showLoadingSpinner, navigateWithHtmx } from "/static/js/common/common.js";
+import { loadScriptOnce } from "/static/js/common/dom.js";
 import { fetchData } from "/static/js/community/explore/explore.js";
+
+const LEAFLET_SCRIPT_SRC = "/static/vendor/js/leaflet.v1.9.4.min.js";
+const MARKER_CLUSTER_SCRIPT_SRC = "/static/vendor/js/leaflet.markercluster.v1.5.3.min.js";
 
 export class Map {
   /**
@@ -23,33 +27,29 @@ export class Map {
       mainLoading.classList.remove("hidden");
     }
 
-    // Load LeafletJS library
-    let script = document.createElement("script");
-    script.type = "text/javascript";
-    script.src = "/static/vendor/js/leaflet.v1.9.4.min.js";
-    document.getElementsByTagName("head")[0].appendChild(script);
-
-    // Load markercluster script
-    let markerClusterScript = document.createElement("script");
-    markerClusterScript.type = "text/javascript";
-    markerClusterScript.src = "/static/vendor/js/leaflet.markercluster.v1.5.3.min.js";
-
     this.entity = entity;
     this.enabledMoveEnd = false;
     this.tooltipTimers = new WeakMap();
 
-    // Load markercluster library after LeafletJS is loaded
-    script.onload = () => {
-      document.getElementsByTagName("head")[0].appendChild(markerClusterScript);
-    };
-
-    // Setup map after scripts are loaded
-    markerClusterScript.onload = () => {
-      this.setup(data);
-    };
-
     // Save map instance
     Map._instance = this;
+    this.loadScripts()
+      .then(() => this.setup(data))
+      .catch(() => hideLoadingSpinner("main-loading-map"));
+  }
+
+  /**
+   * Loads Leaflet and marker clustering in dependency order.
+   * @returns {Promise<void>} Promise resolved when map libraries are ready
+   */
+  loadScripts() {
+    return loadScriptOnce(LEAFLET_SCRIPT_SRC, {
+      isLoaded: () => typeof window.L !== "undefined",
+    }).then(() =>
+      loadScriptOnce(MARKER_CLUSTER_SCRIPT_SRC, {
+        isLoaded: () => typeof window.L?.markerClusterGroup === "function",
+      }),
+    );
   }
 
   /**

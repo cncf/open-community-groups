@@ -1,3 +1,4 @@
+import { loadScriptOnce } from "/static/js/common/dom.js";
 import { toTrimmedString } from "/static/js/common/utils.js";
 
 export const MEETING_RECORDING_URL_LEGEND =
@@ -14,6 +15,7 @@ export const BROKEN_IMAGE_PLACEHOLDER_URL = "/static/images/icons/broken_image.s
 const DEFAULT_BROKEN_IMAGE_PLACEHOLDER_BG_CLASS = "bg-stone-50";
 const REMOVE_BROKEN_IMAGE_SELECTOR = "[data-ocg-remove-broken-images]";
 const EMPTY_IMAGE_WRAPPER_SELECTOR = "img, video, iframe, object, embed";
+const LEAFLET_SCRIPT_SRC = "/static/vendor/js/leaflet.v1.9.4.min.js";
 
 /**
  * Checks if a failed image should be removed instead of replaced.
@@ -381,20 +383,8 @@ export const toggleModalVisibility = (modalId) => {
  * @returns {Promise} Promise that resolves when Leaflet is loaded
  */
 const loadLeafletScript = () => {
-  return new Promise((resolve, reject) => {
-    // Check if Leaflet is already loaded
-    if (window.L) {
-      resolve();
-      return;
-    }
-
-    // Create and load the Leaflet script
-    const script = document.createElement("script");
-    script.type = "text/javascript";
-    script.src = "/static/vendor/js/leaflet.v1.9.4.min.js";
-    script.onload = resolve;
-    script.onerror = reject;
-    document.head.appendChild(script);
+  return loadScriptOnce(LEAFLET_SCRIPT_SRC, {
+    isLoaded: () => typeof window.L !== "undefined",
   });
 };
 

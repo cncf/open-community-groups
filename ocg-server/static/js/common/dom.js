@@ -26,8 +26,19 @@ export const loadScriptOnce = (src, { isLoaded = () => false } = {}) => {
 
   const existingScript = document.querySelector(`script[src="${src}"]`);
   if (existingScript) {
+    if (existingScript.dataset.ocgScriptLoaded === "true" || existingScript.dataset.loaded === "1") {
+      return Promise.resolve();
+    }
+
     return new Promise((resolve, reject) => {
-      existingScript.addEventListener("load", () => resolve(), { once: true });
+      existingScript.addEventListener(
+        "load",
+        () => {
+          existingScript.dataset.ocgScriptLoaded = "true";
+          resolve();
+        },
+        { once: true },
+      );
       existingScript.addEventListener("error", () => reject(new Error(`Failed to load script: ${src}`)), {
         once: true,
       });
@@ -37,7 +48,10 @@ export const loadScriptOnce = (src, { isLoaded = () => false } = {}) => {
   return new Promise((resolve, reject) => {
     const script = document.createElement("script");
     script.src = src;
-    script.onload = () => resolve();
+    script.onload = () => {
+      script.dataset.ocgScriptLoaded = "true";
+      resolve();
+    };
     script.onerror = () => reject(new Error(`Failed to load script: ${src}`));
     document.head.appendChild(script);
   });

@@ -1,3 +1,4 @@
+import { loadScriptOnce } from "/static/js/common/dom.js";
 import { ocgFetch } from "/static/js/common/fetch.js";
 
 const DOCS_ROOT_SELECTOR = ".ocg-docs-root";
@@ -539,40 +540,6 @@ const setupScopedStyles = async () => {
   setStyleTag(STYLE_IDS.theme, scopeCssRules(themeCss, DOCS_SCOPE_SELECTOR));
   setStyleTag(STYLE_IDS.overrides, DOCS_SHELL_OVERRIDES);
 };
-
-/**
- * Loads a script once by URL.
- * @param {string} src Script source URL.
- * @returns {Promise<void>} Resolved once loaded.
- */
-const loadScript = (src) =>
-  new Promise((resolve, reject) => {
-    const existingScript = document.querySelector(`script[src="${src}"]`);
-    if (existingScript) {
-      if (existingScript.dataset.loaded === "1") {
-        resolve();
-        return;
-      }
-      existingScript.addEventListener("load", () => resolve(), { once: true });
-      existingScript.addEventListener("error", () => reject(new Error(src)), {
-        once: true,
-      });
-      return;
-    }
-
-    const script = document.createElement("script");
-    script.src = src;
-    script.addEventListener(
-      "load",
-      () => {
-        script.dataset.loaded = "1";
-        resolve();
-      },
-      { once: true },
-    );
-    script.addEventListener("error", () => reject(new Error(src)), { once: true });
-    document.head.appendChild(script);
-  });
 
 /**
  * Mirrors docsify body classes to the docs container root.
@@ -1224,12 +1191,12 @@ const mountDocs = async (docsRoot, docsApp) => {
       window.removeEventListener("hashchange", handleRewriteOnHashChange);
     });
 
-    await loadScript(SCRIPT_URLS.docsify);
+    await loadScriptOnce(SCRIPT_URLS.docsify);
     if (!isCurrentMount(runId, docsRoot)) {
       return;
     }
 
-    await loadScript(SCRIPT_URLS.copyCode);
+    await loadScriptOnce(SCRIPT_URLS.copyCode);
     if (!isCurrentMount(runId, docsRoot)) {
       return;
     }

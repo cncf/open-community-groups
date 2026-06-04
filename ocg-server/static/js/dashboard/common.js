@@ -1,6 +1,7 @@
 /**
  * Dashboard common utilities
  */
+import { loadScriptOnce } from "/static/js/common/dom.js";
 
 /**
  * Dispose of any existing ECharts instance on the given element.
@@ -98,28 +99,8 @@ export const triggerChangeOnForm = (formId) => {
  * @returns {Promise<void>} Promise that resolves when ECharts is loaded
  */
 export const loadEChartsScript = () => {
-  return new Promise((resolve, reject) => {
-    // Check if ECharts is already loaded
-    if (typeof window.echarts !== "undefined") {
-      resolve();
-      return;
-    }
-
-    // Check if script is already being loaded
-    const existingScript = document.querySelector('script[src*="echarts"]');
-    if (existingScript) {
-      // Wait for existing script to load
-      existingScript.addEventListener("load", () => resolve());
-      existingScript.addEventListener("error", () => reject(new Error("Failed to load ECharts")));
-      return;
-    }
-
-    // Create and inject script tag
-    const script = document.createElement("script");
-    script.src = "/static/vendor/js/echarts.v6.0.0.min.js";
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error("Failed to load ECharts"));
-    document.head.appendChild(script);
+  return loadScriptOnce("/static/vendor/js/echarts.v6.0.0.min.js", {
+    isLoaded: () => typeof window.echarts !== "undefined",
   });
 };
 
