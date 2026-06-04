@@ -1,0 +1,149 @@
+import { searchOnEnter } from "/static/js/community/explore/filters.js";
+import { selectDashboardAndSwapBody } from "/static/js/common/dashboard-selection.js";
+
+const GROUPS_SEARCH_FORM_ID = "groups-search-form";
+const GROUPS_SEARCH_INPUT_ID = "search_groups";
+const GROUPS_LIST_ID = "groups-list";
+const GROUP_ACTION_BUTTON_SELECTOR = ".btn-group-actions";
+const GROUP_SEARCH_BOUND_KEY = "groupsSearchBound";
+const GROUP_SELECTION_BOUND_KEY = "groupSelectionBound";
+const GROUP_ACTION_BOUND_KEY = "groupActionBound";
+
+/**
+ * Returns an element by ID from a document or element root.
+ * @param {Document|Element} root - Root element to search from.
+ * @param {string} id - Element ID.
+ * @returns {HTMLElement|null} Matching element.
+ */
+const getElementById = (root, id) => {
+  if (root instanceof HTMLElement && root.id === id) {
+    return root;
+  }
+
+  const element = root.getElementById?.(id) || root.querySelector?.(`#${id}`);
+  return element instanceof HTMLElement ? element : null;
+};
+
+/**
+ * Initializes search input behavior for the community groups list.
+ * @param {Document|Element} root - Root element to search from.
+ * @returns {void}
+ */
+const initializeGroupsSearch = (root = document) => {
+  const searchInput = getElementById(root, GROUPS_SEARCH_INPUT_ID);
+  if (!searchInput || searchInput.dataset[GROUP_SEARCH_BOUND_KEY] === "true") {
+    return;
+  }
+
+  searchInput.dataset[GROUP_SEARCH_BOUND_KEY] = "true";
+  searchInput.addEventListener("keydown", (event) => {
+    searchOnEnter(event, GROUPS_SEARCH_FORM_ID);
+  });
+};
+
+/**
+ * Initializes dashboard selection from group name buttons.
+ * @param {Document|Element} root - Root element to search from.
+ * @returns {void}
+ */
+const initializeGroupSelection = (root = document) => {
+  const groupsList = getElementById(root, GROUPS_LIST_ID);
+  if (!groupsList || groupsList.dataset[GROUP_SELECTION_BOUND_KEY] === "true") {
+    return;
+  }
+
+  let isSelectingGroup = false;
+
+  groupsList.dataset[GROUP_SELECTION_BOUND_KEY] = "true";
+  groupsList.addEventListener("click", async (event) => {
+    const selectGroupButton = event.target.closest("[data-select-group-id]");
+    if (!selectGroupButton) {
+      return;
+    }
+
+    event.preventDefault();
+    if (isSelectingGroup) {
+      return;
+    }
+
+    const groupId = selectGroupButton.dataset.selectGroupId;
+    if (!groupId) {
+      return;
+    }
+
+    isSelectingGroup = true;
+    selectGroupButton.setAttribute("disabled", "disabled");
+    try {
+      await selectDashboardAndSwapBody(`/dashboard/group/${groupId}/select`, "/dashboard/group");
+    } catch (error) {
+      console.warn("Failed to select group from groups list:", error);
+    } finally {
+      selectGroupButton.removeAttribute("disabled");
+      isSelectingGroup = false;
+    }
+  });
+};
+
+/**
+ * Initializes action dropdown behavior for community group rows.
+ * @param {Document|Element} root - Root element to search from.
+ * @returns {void}
+ */
+const initializeGroupActionMenus = (root = document) => {
+  root.querySelectorAll?.(GROUP_ACTION_BUTTON_SELECTOR).forEach((button) => {
+    if (button.dataset[GROUP_ACTION_BOUND_KEY] === "true") {
+      return;
+    }
+
+    button.dataset[GROUP_ACTION_BOUND_KEY] = "true";
+    button.addEventListener("click", () => {
+      const groupId = button.dataset.groupId;
+      const dropdown = document.getElementById(`dropdown-group-actions-${groupId}`);
+      if (!dropdown) {
+        return;
+      }
+
+      const isHidden = dropdown.classList.contains("hidden");
+      dropdown.classList.toggle("hidden");
+
+      if (isHidden) {
+        const outsideClick = (event) => {
+          if (!dropdown.contains(event.target) && !button.contains(event.target)) {
+            dropdown.classList.add("hidden");
+            document.removeEventListener("click", outsideClick);
+          }
+        };
+        setTimeout(() => document.addEventListener("click", outsideClick), 0);
+      }
+    });
+  });
+};
+
+/**
+ * Initializes community groups list behavior for the current content root.
+ * @param {Document|Element} root - Root element to search from.
+ * @returns {void}
+ */
+export const initializeCommunityGroupsList = (root = document) => {
+  initializeGroupsSearch(root);
+  initializeGroupSelection(root);
+  initializeGroupActionMenus(root);
+};
+
+const initializeCommunityGroupsListWhenReady = () => {
+  // Initialize current list controls on first load and after HTMX swaps.
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", () => initializeCommunityGroupsList(document), {
+      once: true,
+    });
+  } else {
+    initializeCommunityGroupsList(document);
+  }
+
+  document.addEventListener("htmx:load", (event) => {
+    const root = event.target instanceof Element ? event.target : document;
+    initializeCommunityGroupsList(root);
+  });
+};
+
+initializeCommunityGroupsListWhenReady();
