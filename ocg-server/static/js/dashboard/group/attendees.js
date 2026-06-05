@@ -7,7 +7,7 @@ import {
   isSuccessfulXHRStatus,
   toggleModalVisibility,
 } from "/static/js/common/common.js";
-import { getElementById } from "/static/js/common/dom.js";
+import { getElementById, initializeOnReadyAndHtmxLoad } from "/static/js/common/dom.js";
 import { ocgFetch } from "/static/js/common/fetch.js";
 
 const modalId = "attendee-notification-modal";
@@ -815,8 +815,4 @@ const initializeAttendeesFeatures = (root = document) => {
   initCheckInToggles(attendeesRoot);
 };
 
-initializeAttendeesFeatures();
-
-document.addEventListener("htmx:load", (event) => {
-  initializeAttendeesFeatures(event.target || document);
-});
+initializeOnReadyAndHtmxLoad(initializeAttendeesFeatures);

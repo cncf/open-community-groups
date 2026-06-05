@@ -215,4 +215,4 @@ export const initializeAuditLogs = (root = document) => {
   syncAuditLogDetails(root);
 };
 
-initializeOnReadyAndHtmxLoad(initializeAuditLogs);
+initializeOnReadyAndHtmxLoad(() => initializeAuditLogs(document));

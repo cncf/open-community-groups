@@ -84,7 +84,7 @@ const initializeGroupActionMenus = (root = document) => {
     button.dataset[GROUP_ACTION_BOUND_KEY] = "true";
     button.addEventListener("click", () => {
       const groupId = button.dataset.groupId;
-      const dropdown = document.getElementById(`dropdown-group-actions-${groupId}`);
+      const dropdown = getElementById(root, `dropdown-group-actions-${groupId}`);
       if (!dropdown) {
         return;
       }

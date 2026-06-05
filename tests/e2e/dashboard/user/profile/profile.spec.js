@@ -178,12 +178,15 @@ test.describe("user dashboard profile view", () => {
         detailsForm.getByRole("button", { name: "Save" }).click(),
       ]);
 
-      // Assert the expected content is visible.
-      await expect(
-        page
-          .locator(".swal2-popup")
-          .filter({ hasText: "User details updated successfully." }),
-      ).toBeVisible();
+      // Wait for the success dialog call.
+      await page.waitForFunction(
+        () =>
+          (window.__ocgSwalCalls ?? []).some(
+            (call) =>
+              call.icon === "success" &&
+              call.text === "User details updated successfully.",
+          ),
+      );
       const successAlertMessages = await page.evaluate(() => {
         const calls = window.__ocgSwalCalls ?? [];
 
