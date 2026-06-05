@@ -13,6 +13,7 @@ import {
   MEETING_RECORDING_VISIBILITY_LEGEND,
 } from "/static/js/common/common.js";
 import { getElementById } from "/static/js/common/dom.js";
+import { parseJsonAttribute } from "/static/js/common/utils.js";
 import "/static/js/common/multiple-inputs.js";
 
 /**
@@ -27,14 +28,7 @@ export class OnlineEventDetails extends LitWrapper {
       type: String,
       attribute: "meeting-join-instructions",
       converter: {
-        fromAttribute: (value) => {
-          if (!value) return "";
-          try {
-            return JSON.parse(value);
-          } catch {
-            return value;
-          }
-        },
+        fromAttribute: (value) => parseJsonAttribute(value, value || ""),
       },
     },
     meetingJoinUrl: { type: String, attribute: "meeting-join-url" },
@@ -51,14 +45,7 @@ export class OnlineEventDetails extends LitWrapper {
       type: Array,
       attribute: "meeting-hosts",
       converter: {
-        fromAttribute: (value) => {
-          if (!value || value.trim() === "") return [];
-          try {
-            return JSON.parse(value);
-          } catch {
-            return [];
-          }
-        },
+        fromAttribute: (value) => parseJsonAttribute(value, []),
       },
     },
     startsAt: { type: String, attribute: "starts-at" },
@@ -72,14 +59,7 @@ export class OnlineEventDetails extends LitWrapper {
       type: Array,
       attribute: "meeting-recording-raw-urls",
       converter: {
-        fromAttribute: (value) => {
-          if (!value || value.trim() === "") return [];
-          try {
-            return JSON.parse(value);
-          } catch {
-            return [];
-          }
-        },
+        fromAttribute: (value) => parseJsonAttribute(value, []),
       },
     },
     meetingRecordingPublished: {
@@ -93,15 +73,7 @@ export class OnlineEventDetails extends LitWrapper {
       type: Object,
       attribute: "meeting-max-participants",
       converter: {
-        fromAttribute: (value) => {
-          if (!value) return {};
-          try {
-            return JSON.parse(value);
-          } catch (e) {
-            console.warn("Failed to parse meeting-max-participants", e);
-            return {};
-          }
-        },
+        fromAttribute: (value) => parseJsonAttribute(value, {}),
       },
     },
     _mode: { type: String, state: true },

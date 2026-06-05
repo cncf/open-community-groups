@@ -1,4 +1,5 @@
 import { getElementById } from "/static/js/common/dom.js";
+import { parseJsonAttribute } from "/static/js/common/utils.js";
 
 /**
  * Formats a date object to ISO format (YYYY-MM-DD).
@@ -292,12 +293,8 @@ export const hasActiveFilters = (formId, { ignoreDateRange = false } = {}) => {
   for (const f of customFilters) {
     const selected = f.getAttribute("selected");
     if (selected) {
-      try {
-        const arr = JSON.parse(selected);
-        if (Array.isArray(arr) && arr.length > 0) return true;
-      } catch {
-        // Ignore parse errors
-      }
+      const arr = parseJsonAttribute(selected, []);
+      if (Array.isArray(arr) && arr.length > 0) return true;
     }
   }
 

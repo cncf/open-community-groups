@@ -5,6 +5,7 @@ import "/static/js/common/logo-image.js";
 import { computeUserInitials, lockBodyScroll, unlockBodyScroll } from "/static/js/common/common.js";
 import { getElementById } from "/static/js/common/dom.js";
 import { handleHtmxResponse } from "/static/js/common/alerts.js";
+import { parseJsonAttribute } from "/static/js/common/utils.js";
 
 /**
  * TeamAddMember component for inviting team members.
@@ -63,31 +64,23 @@ export class TeamAddMember extends LitWrapper {
 
     // Parse selected-users attribute (JSON array of user objects)
     const selectedAttr = this.getAttribute("selected-users");
-    if (selectedAttr && typeof selectedAttr === "string") {
-      try {
-        const parsed = JSON.parse(selectedAttr);
-        if (Array.isArray(parsed)) {
-          this.selectedUsers = parsed;
-          this.disabledUserIds = parsed.map((u) => String(u.user_id));
-        }
-      } catch (_) {
-        // ignore parsing errors
+    if (selectedAttr) {
+      const selectedUsers = parseJsonAttribute(selectedAttr, []);
+      if (Array.isArray(selectedUsers)) {
+        this.selectedUsers = selectedUsers;
+        this.disabledUserIds = selectedUsers.map((user) => String(user.user_id));
       }
     }
 
     // Parse role-options attribute (JSON array)
     const roleOptionsAttr = this.getAttribute("role-options");
-    if (roleOptionsAttr && typeof roleOptionsAttr === "string") {
-      try {
-        const parsed = JSON.parse(roleOptionsAttr);
-        if (Array.isArray(parsed)) {
-          this.roleOptions = parsed.map((role) => ({
-            label: role.display_name,
-            value: role.community_role_id || role.group_role_id,
-          }));
-        }
-      } catch (_) {
-        // ignore parsing errors
+    if (roleOptionsAttr) {
+      const roleOptions = parseJsonAttribute(roleOptionsAttr, []);
+      if (Array.isArray(roleOptions)) {
+        this.roleOptions = roleOptions.map((role) => ({
+          label: role.display_name,
+          value: role.community_role_id || role.group_role_id,
+        }));
       }
     }
   }

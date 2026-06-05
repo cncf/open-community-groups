@@ -1,6 +1,7 @@
 import { html } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { lockBodyScroll, unlockBodyScroll } from "/static/js/common/common.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
+import { parseJsonAttribute } from "/static/js/common/utils.js";
 
 const QUESTION_TYPES = [
   ["free-text", "Free text"],
@@ -62,12 +63,7 @@ class QuestionsEditor extends LitWrapper {
       attribute: "questions",
       converter: {
         fromAttribute(value) {
-          if (!value) return [];
-          try {
-            return normalizeQuestions(JSON.parse(value));
-          } catch {
-            return [];
-          }
+          return normalizeQuestions(parseJsonAttribute(value, []));
         },
       },
     },

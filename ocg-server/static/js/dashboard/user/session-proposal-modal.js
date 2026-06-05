@@ -3,6 +3,7 @@ import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { handleHtmxResponse } from "/static/js/common/alerts.js";
 import { computeUserInitials, lockBodyScroll, unlockBodyScroll } from "/static/js/common/common.js";
 import { getElementById } from "/static/js/common/dom.js";
+import { parseJsonAttribute } from "/static/js/common/utils.js";
 import "/static/js/common/logo-image.js";
 import "/static/js/common/user-search-field.js";
 
@@ -183,13 +184,9 @@ export class SessionProposalModal extends LitWrapper {
       return;
     }
 
-    try {
-      const parsedLevels = JSON.parse(levelsAttr);
-      if (Array.isArray(parsedLevels)) {
-        this._sessionProposalLevels = parsedLevels;
-      }
-    } catch (error) {
-      console.error("Invalid session proposal levels payload", error);
+    const parsedLevels = parseJsonAttribute(levelsAttr, []);
+    if (Array.isArray(parsedLevels)) {
+      this._sessionProposalLevels = parsedLevels;
     }
   }
 

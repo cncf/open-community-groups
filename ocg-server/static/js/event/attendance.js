@@ -8,6 +8,7 @@ import { isSuccessfulXHRStatus } from "/static/js/common/common.js";
 import { initializeOnReadyAndHtmxLoad } from "/static/js/common/dom.js";
 import { ocgFetch } from "/static/js/common/fetch.js";
 import { collectQuestionAnswers as collectQuestionAnswersFromForm } from "/static/js/common/question-answers.js";
+import { parseJsonText } from "/static/js/common/utils.js";
 
 import {
   ATTENDANCE_CONTAINER_SELECTOR,
@@ -582,11 +583,7 @@ const parseJsonResponse = (xhr) => {
     return null;
   }
 
-  try {
-    return JSON.parse(xhr.responseText);
-  } catch {
-    return null;
-  }
+  return parseJsonText(xhr.responseText, null);
 };
 
 /**

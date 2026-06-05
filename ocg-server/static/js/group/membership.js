@@ -1,6 +1,7 @@
 import { showConfirmAlert, showInfoAlert, handleHtmxResponse } from "/static/js/common/alerts.js";
 import { isSuccessfulXHRStatus } from "/static/js/common/common.js";
 import { getElementById, initializeOnReadyAndHtmxLoad } from "/static/js/common/dom.js";
+import { parseJsonText } from "/static/js/common/utils.js";
 
 const MEMBERSHIP_CONTAINER_SELECTOR = "#membership-container";
 const GROUP_ACTIONS_MENU_SELECTOR = "[data-group-actions-menu]";
@@ -71,16 +72,16 @@ const handleMembershipCheckResponse = (event) => {
   const xhr = event.detail?.xhr;
 
   if (isSuccessfulXHRStatus(xhr?.status)) {
-    try {
-      const response = JSON.parse(xhr.responseText);
-
-      if (response.is_member) {
-        leaveButton.classList.remove("hidden");
-      } else {
-        joinButton.classList.remove("hidden");
-      }
-    } catch (error) {
+    const response = parseJsonText(xhr.responseText, null);
+    if (!response) {
       signinButton.classList.remove("hidden");
+      return;
+    }
+
+    if (response.is_member) {
+      leaveButton.classList.remove("hidden");
+    } else {
+      joinButton.classList.remove("hidden");
     }
     return;
   }

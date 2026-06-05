@@ -3,7 +3,12 @@ import { ocgFetch } from "/static/js/common/fetch.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { showErrorAlert, showInfoAlert } from "/static/js/common/alerts.js";
 import { getElementById } from "/static/js/common/dom.js";
-import { setImageFieldValue, setSelectValue, setTextValue } from "/static/js/common/utils.js";
+import {
+  parseJsonAttribute,
+  setImageFieldValue,
+  setSelectValue,
+  setTextValue,
+} from "/static/js/common/utils.js";
 import * as formHelpers from "/static/js/dashboard/group/event-form-helpers.js";
 import "/static/js/common/svg-spinner.js";
 
@@ -36,13 +41,7 @@ class EventSelector extends LitWrapper {
       attribute: "selected-event",
       converter: {
         fromAttribute(value) {
-          if (!value) return null;
-          try {
-            return JSON.parse(value);
-          } catch (error) {
-            console.warn("Invalid selected event payload", error);
-            return null;
-          }
+          return parseJsonAttribute(value, null);
         },
       },
     },

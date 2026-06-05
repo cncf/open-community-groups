@@ -15,6 +15,7 @@ import {
   renderChart,
 } from "/static/js/common/stats.js";
 import { initializeOnReady } from "/static/js/common/dom.js";
+import { parseJsonText } from "/static/js/common/utils.js";
 
 const SITE_STATS_DATA_SELECTOR = "[data-site-stats]";
 const SITE_STATS_READY_KEY = "siteStatsReady";
@@ -166,12 +167,9 @@ export const initializeSiteStatsFromPage = async (root = document) => {
  * @returns {Object|null} Parsed stats payload.
  */
 const readSiteStatsPayload = (marker) => {
-  try {
-    return JSON.parse(marker.textContent || "{}");
-  } catch (error) {
+  return parseJsonText(marker.textContent || "{}", null, (error) => {
     console.error("Failed to parse site stats payload:", error);
-    return null;
-  }
+  });
 };
 
 initializeOnReady(() => initializeSiteStatsFromPage());

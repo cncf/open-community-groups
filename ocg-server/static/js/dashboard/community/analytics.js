@@ -11,7 +11,6 @@ import {
   createStackedMonthlyChart,
   createStackedAreaChart,
   loadEChartsScript,
-  deferUntilHtmxSettled,
   hasChartData,
   hasTimeSeriesData,
   hasStackedTimeSeriesData,
@@ -19,6 +18,7 @@ import {
 import { deferUntilHtmxSettled } from "/static/js/dashboard/common.js";
 import { initializeOnReady } from "/static/js/common/dom.js";
 import { registerChartResizeHandler, renderChart } from "/static/js/common/stats.js";
+import { parseJsonText } from "/static/js/common/utils.js";
 
 const COMMUNITY_ANALYTICS_DATA_SELECTOR = "[data-community-analytics]";
 const COMMUNITY_ANALYTICS_READY_KEY = "communityAnalyticsReady";
@@ -739,12 +739,9 @@ export const initializeCommunityAnalyticsFromPage = async (root = document) => {
  * @returns {Object|null} Parsed stats payload.
  */
 const readCommunityAnalyticsPayload = (marker) => {
-  try {
-    return JSON.parse(marker.textContent || "{}");
-  } catch (error) {
+  return parseJsonText(marker.textContent || "{}", null, (error) => {
     console.error("Failed to parse community analytics payload:", error);
-    return null;
-  }
+  });
 };
 
 initializeOnReady(() => initializeCommunityAnalyticsFromPage());

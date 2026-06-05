@@ -1,6 +1,7 @@
 import { html } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { getElementById } from "/static/js/common/dom.js";
+import { parseJsonAttribute } from "/static/js/common/utils.js";
 
 /**
  * Event sponsors selector.
@@ -87,14 +88,7 @@ export class SponsorsSection extends LitWrapper {
    * @private
    */
   _ensureArrayProp(prop) {
-    const value = this[prop];
-    if (typeof value === "string") {
-      try {
-        this[prop] = JSON.parse(value || "[]");
-      } catch (_e) {
-        this[prop] = [];
-      }
-    }
+    this[prop] = parseJsonAttribute(this[prop], []);
     if (!Array.isArray(this[prop])) {
       this[prop] = [];
     }

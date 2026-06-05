@@ -10,6 +10,7 @@ import {
 import { deferUntilHtmxSettled } from "/static/js/dashboard/common.js";
 import { initializeOnReady } from "/static/js/common/dom.js";
 import { registerChartResizeHandler, renderChart } from "/static/js/common/stats.js";
+import { parseJsonText } from "/static/js/common/utils.js";
 
 const GROUP_ANALYTICS_DATA_SELECTOR = "[data-group-analytics]";
 const GROUP_ANALYTICS_READY_KEY = "groupAnalyticsReady";
@@ -274,12 +275,9 @@ export const initializeGroupAnalyticsFromPage = async (root = document) => {
  * @returns {Object|null} Parsed stats payload.
  */
 const readGroupAnalyticsPayload = (marker) => {
-  try {
-    return JSON.parse(marker.textContent || "{}");
-  } catch (error) {
+  return parseJsonText(marker.textContent || "{}", null, (error) => {
     console.error("Failed to parse group analytics payload:", error);
-    return null;
-  }
+  });
 };
 
 initializeOnReady(() => initializeGroupAnalyticsFromPage());

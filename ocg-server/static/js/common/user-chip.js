@@ -1,6 +1,7 @@
 import { html } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { computeUserInitials } from "/static/js/common/common.js";
+import { parseJsonAttribute } from "/static/js/common/utils.js";
 import "/static/js/common/logo-image.js";
 
 /**
@@ -37,13 +38,7 @@ export class UserChip extends LitWrapper {
     super.connectedCallback();
 
     // Parse user if it's a JSON string from template
-    if (typeof this.user === "string") {
-      try {
-        this.user = JSON.parse(this.user);
-      } catch (_) {
-        this.user = null;
-      }
-    }
+    this.user = parseJsonAttribute(this.user, null);
   }
 
   _handleClick = (e) => {

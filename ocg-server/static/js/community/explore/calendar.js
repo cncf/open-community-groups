@@ -1,5 +1,6 @@
 import { hideLoadingSpinner, showLoadingSpinner, navigateWithHtmx } from "/static/js/common/common.js";
 import { getElementById, loadScriptOnce } from "/static/js/common/dom.js";
+import { parseJsonText } from "/static/js/common/utils.js";
 import { fetchData } from "/static/js/community/explore/explore.js";
 import {
   getFirstAndLastDayOfMonth,
@@ -93,7 +94,7 @@ const readPopoverAlignment = (parent) => {
     return null;
   }
 
-  return JSON.parse(parent.dataset.popoverAlign);
+  return parseJsonText(parent.dataset.popoverAlign, null);
 };
 
 /**

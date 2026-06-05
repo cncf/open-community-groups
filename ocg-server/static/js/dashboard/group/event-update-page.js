@@ -4,6 +4,7 @@ import {
   initializeMatchingRoots,
   initializeOnReadyAndHtmxLoad,
 } from "/static/js/common/dom.js";
+import { parseJsonAttribute } from "/static/js/common/utils.js";
 import { initializeSessionsRemovalWarning } from "/static/js/dashboard/group/event-form-helpers.js";
 import { initializeEventPreview } from "/static/js/dashboard/group/event-preview.js";
 import "/static/js/dashboard/group/questions-editor.js";
@@ -84,12 +85,8 @@ export const initializeEventUpdatePage = (root = document) => {
       return [];
     }
 
-    try {
-      const parsed = JSON.parse(payload);
-      return Array.isArray(parsed) ? parsed : [];
-    } catch (_) {
-      return [];
-    }
+    const parsed = parseJsonAttribute(payload, []);
+    return Array.isArray(parsed) ? parsed : [];
   };
 
   const sortApprovedSubmissions = (submissions) =>

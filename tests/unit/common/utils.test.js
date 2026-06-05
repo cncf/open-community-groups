@@ -4,6 +4,7 @@ import {
   isString,
   normalizeUsers,
   parseJsonAttribute,
+  parseJsonText,
   sanitizeStringArray,
   setImageFieldValue,
   setSelectValue,
@@ -53,6 +54,21 @@ describe("common utils", () => {
     expect(toBoolean(" TRUE ")).to.equal(true);
     expect(toBoolean("false")).to.equal(false);
     expect(toBoolean("maybe", true)).to.equal(true);
+  });
+
+  it("parses JSON text safely", () => {
+    // JSON text parses into the expected value.
+    expect(parseJsonText('{"ready":true}', null)).to.deep.equal({ ready: true });
+
+    // Invalid JSON returns the fallback and reports the parse error.
+    const errors = [];
+    expect(parseJsonText("not-json", { fallback: true }, (error) => errors.push(error))).to.deep.equal({
+      fallback: true,
+    });
+    expect(errors).to.have.length(1);
+
+    // Empty JSON text returns the fallback without reporting an error.
+    expect(parseJsonText("", [])).to.deep.equal([]);
   });
 
   it("sanitizes string arrays and normalizes users", () => {

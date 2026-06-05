@@ -104,6 +104,26 @@ const setImageFieldValue = (fieldName, url) => {
 };
 
 /**
+ * Safely parses JSON text.
+ * @param {*} value Raw JSON string
+ * @param {*} fallback Fallback value
+ * @param {(error: Error) => void} onError Optional parse error handler
+ * @returns {*}
+ */
+const parseJsonText = (value, fallback, onError) => {
+  if (typeof value !== "string" || value.trim().length === 0) {
+    return fallback;
+  }
+
+  try {
+    return JSON.parse(value);
+  } catch (error) {
+    onError?.(error);
+    return fallback;
+  }
+};
+
+/**
  * Safely parses a JSON attribute or returns already parsed JSON-like values.
  * @param {*} value Raw attribute value
  * @param {*} fallback Fallback value
@@ -118,15 +138,7 @@ const parseJsonAttribute = (value, fallback) => {
     return value;
   }
 
-  if (typeof value !== "string" || value.trim().length === 0) {
-    return fallback;
-  }
-
-  try {
-    return JSON.parse(value);
-  } catch (_) {
-    return fallback;
-  }
+  return parseJsonText(value, fallback);
 };
 
 /**
@@ -157,6 +169,7 @@ export {
   isString,
   normalizeUsers,
   parseJsonAttribute,
+  parseJsonText,
   sanitizeStringArray,
   setImageFieldValue,
   setSelectValue,

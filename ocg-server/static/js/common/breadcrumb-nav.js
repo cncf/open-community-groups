@@ -1,5 +1,6 @@
 import { html, nothing } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
+import { parseJsonAttribute } from "/static/js/common/utils.js";
 
 /**
  * BreadcrumbNav - Responsive breadcrumb navigation component with optional banner.
@@ -48,13 +49,7 @@ export class BreadcrumbNav extends LitWrapper {
   connectedCallback() {
     super.connectedCallback();
 
-    if (typeof this.items === "string") {
-      try {
-        this.items = JSON.parse(this.items);
-      } catch (_) {
-        this.items = [];
-      }
-    }
+    this.items = parseJsonAttribute(this.items, []);
 
     document.addEventListener("click", this._handleDocumentClick);
     document.addEventListener("keydown", this._handleKeydown);
@@ -67,12 +62,8 @@ export class BreadcrumbNav extends LitWrapper {
   }
 
   willUpdate(changedProperties) {
-    if (changedProperties.has("items") && typeof this.items === "string") {
-      try {
-        this.items = JSON.parse(this.items);
-      } catch (_) {
-        this.items = [];
-      }
+    if (changedProperties.has("items")) {
+      this.items = parseJsonAttribute(this.items, []);
     }
   }
 

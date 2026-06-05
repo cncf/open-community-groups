@@ -1,5 +1,6 @@
 import { handleHtmxResponse, showConfirmAlert } from "/static/js/common/alerts.js";
 import { getElementById, initializeOnReadyAndHtmxLoad } from "/static/js/common/dom.js";
+import { parseJsonText } from "/static/js/common/utils.js";
 import "/static/js/dashboard/user/session-proposal-modal.js";
 
 const MODAL_COMPONENT_ID = "session-proposal-modal-component";
@@ -8,16 +9,9 @@ const DATA_KEY = "sessionProposalReady";
 const getModalComponent = (root = document) => getElementById(root, MODAL_COMPONENT_ID);
 
 const parseSessionProposal = (payload) => {
-  if (!payload) {
-    return null;
-  }
-
-  try {
-    return JSON.parse(payload);
-  } catch (error) {
+  return parseJsonText(payload, null, (error) => {
     console.error("Invalid proposal payload", error);
-    return null;
-  }
+  });
 };
 
 const applyDescriptionHtml = (button, sessionProposal) => {
@@ -26,13 +20,11 @@ const applyDescriptionHtml = (button, sessionProposal) => {
     return;
   }
 
-  try {
-    const descriptionHtml = JSON.parse(payload);
-    if (typeof descriptionHtml === "string") {
-      sessionProposal.description_html = descriptionHtml;
-    }
-  } catch (error) {
+  const descriptionHtml = parseJsonText(payload, null, (error) => {
     console.error("Invalid proposal description html payload", error);
+  });
+  if (typeof descriptionHtml === "string") {
+    sessionProposal.description_html = descriptionHtml;
   }
 };
 

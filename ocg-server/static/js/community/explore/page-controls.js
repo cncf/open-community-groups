@@ -13,6 +13,7 @@ import {
   updateSortInputsFromSelector,
 } from "/static/js/community/explore/filters.js";
 import { getElementById } from "/static/js/common/dom.js";
+import { parseJsonText } from "/static/js/common/utils.js";
 
 const EXPLORE_CONTROLS_READY_KEY = "exploreControlsReady";
 const DESKTOP_FILTER_FORM_SELECTOR = "#explore-filters .filters-form";
@@ -47,12 +48,9 @@ const getExploreFormId = () => {
  * @returns {object|null} Parsed payload when valid
  */
 const readExplorePayload = (marker) => {
-  try {
-    return JSON.parse(marker.textContent || "{}");
-  } catch (error) {
+  return parseJsonText(marker.textContent || "{}", null, (error) => {
     console.error("Failed to parse explore payload", error);
-    return null;
-  }
+  });
 };
 
 /**

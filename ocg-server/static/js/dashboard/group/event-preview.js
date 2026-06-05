@@ -8,6 +8,7 @@ import {
 } from "/static/js/common/common.js";
 import { getElementById } from "/static/js/common/dom.js";
 import { ocgFetch } from "/static/js/common/fetch.js";
+import { parseJsonAttribute } from "/static/js/common/utils.js";
 import "/static/js/common/images-gallery.js";
 import "/static/js/common/user-chip.js";
 import { EVENT_PAGE_FORM_IDS } from "/static/js/dashboard/group/event-page-shared.js";
@@ -623,16 +624,8 @@ const readArray = (value) => {
     return value;
   }
 
-  if (typeof value === "string") {
-    try {
-      const parsed = JSON.parse(value);
-      return Array.isArray(parsed) ? parsed : [];
-    } catch (_) {
-      return [];
-    }
-  }
-
-  return [];
+  const parsed = parseJsonAttribute(value, []);
+  return Array.isArray(parsed) ? parsed : [];
 };
 
 /**
