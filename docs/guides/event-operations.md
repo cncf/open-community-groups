@@ -220,7 +220,7 @@ whole linked series, but editing event content is intentionally one event at a t
 
 ![Event date and venue](../screenshots/dashboard-group-event-date.png)
 
-### Hosts and Speakers
+### Hosts, Speakers, and Organizers
 
 In this tab, you manage event-level people and sponsor attribution:
 
@@ -228,7 +228,12 @@ In this tab, you manage event-level people and sponsor attribution:
 - Add visible speakers/presenters.
 - Attach event sponsors from reusable sponsor records.
 
-This is where attendees understand who is running and presenting the program.
+OCG also shows an `Organizers` section on the public event page. Organizers are snapshotted from
+the accepted group team when the event is created, so later group team changes do not rewrite
+existing event attribution. Use event hosts for people who should be explicitly highlighted as
+running the event program.
+
+This is where attendees understand who is running, organizing, and presenting the program.
 
 ![Event hosts and speakers](../screenshots/dashboard-group-event-hosts.png)
 
@@ -397,12 +402,18 @@ This tab supports delivery-day execution:
 - Review attendee list and RSVP timing.
 - Run manual check-in.
 - Generate check-in QR code for on-site flow.
+- Cancel confirmed free attendance for future active events.
 - Invite attendees to free RSVP events.
 - Send attendee-wide operational emails.
 - Download the attendee list or attendee answers as CSV.
 
 Manual check-in bypasses attendee self-check-in timing windows, but the person must already be
 registered as an attendee and the event must still be published or active.
+
+`Cancel attendance` is available from confirmed attendee row actions for future, active events
+when the attendee does not have a paid ticket. OCG removes the attendance, notifies the attendee,
+and can promote the next waitlisted user when a seat opens. Paid attendees stay on the refund
+workflow instead.
 
 `Invite` is available for free RSVP events when you have event write access. You can select a
 registered platform user or enter an email address. For email invitations, the address must match
