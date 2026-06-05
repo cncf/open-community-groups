@@ -19,8 +19,7 @@ export const findCurrentUserRating = (submission, currentUserId) => {
     return null;
   }
   return (
-    ratings.find((rating) => String(rating?.reviewer?.user_id || "") === normalizedCurrentUserId) ||
-    null
+    ratings.find((rating) => String(rating?.reviewer?.user_id || "") === normalizedCurrentUserId) || null
   );
 };
 
@@ -36,9 +35,7 @@ export const getOtherTeamRatings = (submission, currentUserId) => {
   if (!normalizedCurrentUserId) {
     return [];
   }
-  return ratings.filter(
-    (rating) => String(rating?.reviewer?.user_id || "") !== normalizedCurrentUserId,
-  );
+  return ratings.filter((rating) => String(rating?.reviewer?.user_id || "") !== normalizedCurrentUserId);
 };
 
 /**

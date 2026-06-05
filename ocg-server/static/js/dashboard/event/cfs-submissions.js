@@ -847,7 +847,8 @@ export class ReviewSubmissionModal extends LitWrapper {
 
         <div>
           <label for="cfs-submission-message" class="form-label">
-            Message for speaker ${isMessageRequired(this._statusId) ? html`<span class="asterisk">*</span>` : ""}
+            Message for speaker
+            ${isMessageRequired(this._statusId) ? html`<span class="asterisk">*</span>` : ""}
           </label>
           <div class="mt-2">
             <textarea

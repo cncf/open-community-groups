@@ -6,6 +6,7 @@ import {
   getOutOfRangeSessions,
   groupSessionsByDay,
 } from "/static/js/dashboard/event/sessions-schedule.js";
+import { getSessionHiddenInputValues } from "/static/js/dashboard/event/sessions-hidden-inputs.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
 import {
   mountLitComponent,
@@ -265,6 +266,46 @@ describe("sessions-section", () => {
       element.querySelector('input[name="sessions[1][speakers][0][featured]"]')
         ?.value,
     ).to.equal("true");
+  });
+
+  it("normalizes hidden input values for session form submission", () => {
+    // Automatic meetings clear manual join details and default the provider.
+    expect(
+      getSessionHiddenInputValues({
+        cfs_submission_id: "sub-1",
+        description: "Hidden for CFS sessions",
+        meeting_join_instructions: "Will be cleared",
+        meeting_join_url: "https://join.example",
+        meeting_requested: true,
+      }),
+    ).to.deep.include({
+      description: "",
+      isCfsLinkedSession: true,
+      meetingJoinInstructions: "",
+      meetingJoinUrl: "",
+      meetingProviderId: "zoom",
+    });
+
+    // Manual meetings preserve manual fields and explicit provider values.
+    expect(
+      getSessionHiddenInputValues({
+        description: "Manual description",
+        meeting_join_instructions: "Join early",
+        meeting_join_url: "https://teams.example",
+        meeting_provider_id: "teams",
+        meeting_recording_published: true,
+        meeting_recording_url: "https://recording.example",
+        meeting_requested: false,
+      }),
+    ).to.deep.include({
+      description: "Manual description",
+      isCfsLinkedSession: false,
+      meetingJoinInstructions: "Join early",
+      meetingJoinUrl: "https://teams.example",
+      meetingProviderId: "teams",
+      meetingRecordingPublished: true,
+      meetingRecordingUrl: "https://recording.example",
+    });
   });
 
   it("renders multiple raw provider recording URLs as read-only fields", async () => {

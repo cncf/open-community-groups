@@ -122,9 +122,7 @@ export const groupSessionsByDay = (sessions = [], days = []) => {
  */
 export const getOutOfRangeSessions = (sessions = [], days = []) => {
   const daySet = new Set(days);
-  return getSortedSessions(sessions).filter(
-    (session) => !daySet.has(extractDatePart(session.starts_at)),
-  );
+  return getSortedSessions(sessions).filter((session) => !daySet.has(extractDatePart(session.starts_at)));
 };
 
 /**
