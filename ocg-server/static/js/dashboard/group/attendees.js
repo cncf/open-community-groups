@@ -49,15 +49,29 @@ const getRefundReviewControls = (root = document) => ({
 });
 
 /**
+ * Set a scoped modal visible or hidden only when its current state differs.
+ * @param {Document|Element} root Query root.
+ * @param {string} targetModalId Modal element id.
+ * @param {boolean} visible Whether the modal should be visible.
+ * @returns {void}
+ */
+const setScopedModalVisibility = (root, targetModalId, visible) => {
+  const modal = getElementById(root, targetModalId);
+  if (!modal) return;
+
+  const isHidden = modal.classList.contains("hidden");
+  if ((visible && isHidden) || (!visible && !isHidden)) {
+    toggleModalVisibility(targetModalId);
+  }
+};
+
+/**
  * Show the refund review modal if it is currently hidden.
  * @param {Document|Element} [root=document] Query root.
  * @returns {void}
  */
 const openRefundModal = (root = document) => {
-  const modal = getElementById(root, refundModalId);
-  if (modal?.classList.contains("hidden")) {
-    toggleModalVisibility(refundModalId);
-  }
+  setScopedModalVisibility(root, refundModalId, true);
 };
 
 /**
@@ -66,10 +80,7 @@ const openRefundModal = (root = document) => {
  * @returns {void}
  */
 const closeRefundModal = (root = document) => {
-  const modal = getElementById(root, refundModalId);
-  if (modal && !modal.classList.contains("hidden")) {
-    toggleModalVisibility(refundModalId);
-  }
+  setScopedModalVisibility(root, refundModalId, false);
 };
 
 /**
@@ -78,10 +89,7 @@ const closeRefundModal = (root = document) => {
  * @returns {void}
  */
 const closeAnswersModal = (root = document) => {
-  const modal = getElementById(root, answersModalId);
-  if (modal && !modal.classList.contains("hidden")) {
-    toggleModalVisibility(answersModalId);
-  }
+  setScopedModalVisibility(root, answersModalId, false);
 };
 
 /**
@@ -110,10 +118,7 @@ const populateAnswersModal = (trigger, root) => {
  * @returns {void}
  */
 const openAnswersModal = (root = document) => {
-  const modal = getElementById(root, answersModalId);
-  if (modal?.classList.contains("hidden")) {
-    toggleModalVisibility(answersModalId);
-  }
+  setScopedModalVisibility(root, answersModalId, true);
 };
 
 /**
@@ -122,10 +127,7 @@ const openAnswersModal = (root = document) => {
  * @returns {void}
  */
 const closeInvitationModal = (root = document) => {
-  const modal = getElementById(root, invitationModalId);
-  if (modal && !modal.classList.contains("hidden")) {
-    toggleModalVisibility(invitationModalId);
-  }
+  setScopedModalVisibility(root, invitationModalId, false);
 };
 
 /**
@@ -207,18 +209,46 @@ const resetInvitationForm = (root) => {
 };
 
 /**
- * Render the selected invitation user with the shared user chip style.
+ * Render the selected invitation chip with the shared user/email style.
  * @param {Document|Element} root Query root.
- * @param {Object} user Selected user.
+ * @param {Object} config Chip render configuration.
+ * @param {HTMLElement} config.leadingElement Leading avatar or icon element.
+ * @param {string} config.labelText Chip label text.
+ * @param {string} config.removeTitle Remove button title.
  * @returns {void}
  */
-const renderInvitationSelectedUser = (root, user) => {
+const renderInvitationSelectedChip = (root, { leadingElement, labelText, removeTitle }) => {
   const { selectedUser } = getInvitationControls(root);
   if (!selectedUser) return;
 
   const pill = document.createElement("div");
   pill.className = "inline-flex items-center gap-2 bg-stone-100 rounded-full ps-1 pe-1 py-1";
 
+  const label = document.createElement("span");
+  label.className = "text-sm text-stone-700 pe-2";
+  label.textContent = labelText;
+
+  const removeButton = document.createElement("button");
+  removeButton.type = "button";
+  removeButton.className = "p-1 hover:bg-stone-200 rounded-full transition-colors";
+  removeButton.title = removeTitle;
+  removeButton.setAttribute("data-attendee-invitation-clear-user", "");
+
+  const removeIcon = document.createElement("div");
+  removeIcon.className = "svg-icon size-3 icon-close bg-stone-600";
+
+  removeButton.append(removeIcon);
+  pill.append(leadingElement, label, removeButton);
+  selectedUser.replaceChildren(pill);
+};
+
+/**
+ * Render the selected invitation user with the shared user chip style.
+ * @param {Document|Element} root Query root.
+ * @param {Object} user Selected user.
+ * @returns {void}
+ */
+const renderInvitationSelectedUser = (root, user) => {
   const avatar = document.createElement("logo-image");
   avatar.setAttribute("image-url", user.photo_url || "");
   avatar.setAttribute("placeholder", computeUserInitials(user.name, user.username, 2));
@@ -226,22 +256,11 @@ const renderInvitationSelectedUser = (root, user) => {
   avatar.setAttribute("font-size", "text-xs");
   avatar.setAttribute("hide-border", "true");
 
-  const label = document.createElement("span");
-  label.className = "text-sm text-stone-700 pe-2";
-  label.textContent = user.name || user.username;
-
-  const removeButton = document.createElement("button");
-  removeButton.type = "button";
-  removeButton.className = "p-1 hover:bg-stone-200 rounded-full transition-colors";
-  removeButton.title = "Remove user";
-  removeButton.setAttribute("data-attendee-invitation-clear-user", "");
-
-  const removeIcon = document.createElement("div");
-  removeIcon.className = "svg-icon size-3 icon-close bg-stone-600";
-
-  removeButton.append(removeIcon);
-  pill.append(avatar, label, removeButton);
-  selectedUser.replaceChildren(pill);
+  renderInvitationSelectedChip(root, {
+    leadingElement: avatar,
+    labelText: user.name || user.username,
+    removeTitle: "Remove user",
+  });
 };
 
 /**
@@ -251,12 +270,6 @@ const renderInvitationSelectedUser = (root, user) => {
  * @returns {void}
  */
 const renderInvitationSelectedEmail = (root, email) => {
-  const { selectedUser } = getInvitationControls(root);
-  if (!selectedUser) return;
-
-  const pill = document.createElement("div");
-  pill.className = "inline-flex items-center gap-2 bg-stone-100 rounded-full ps-1 pe-1 py-1";
-
   const iconBox = document.createElement("span");
   iconBox.className =
     "inline-flex size-[24px] shrink-0 items-center justify-center rounded-full bg-stone-200";
@@ -264,23 +277,12 @@ const renderInvitationSelectedEmail = (root, email) => {
   const icon = document.createElement("div");
   icon.className = "svg-icon size-3.5 icon-email bg-stone-600";
 
-  const label = document.createElement("span");
-  label.className = "text-sm text-stone-700 pe-2";
-  label.textContent = email;
-
-  const removeButton = document.createElement("button");
-  removeButton.type = "button";
-  removeButton.className = "p-1 hover:bg-stone-200 rounded-full transition-colors";
-  removeButton.title = "Remove email";
-  removeButton.setAttribute("data-attendee-invitation-clear-user", "");
-
-  const removeIcon = document.createElement("div");
-  removeIcon.className = "svg-icon size-3 icon-close bg-stone-600";
-
-  removeButton.append(removeIcon);
   iconBox.append(icon);
-  pill.append(iconBox, label, removeButton);
-  selectedUser.replaceChildren(pill);
+  renderInvitationSelectedChip(root, {
+    leadingElement: iconBox,
+    labelText: email,
+    removeTitle: "Remove email",
+  });
 };
 
 /**
@@ -714,7 +716,7 @@ const initializeInvitationModal = (root = document) => {
     if (target?.closest("#open-attendee-invitation-modal")) {
       event.stopPropagation();
       resetInvitationForm(root);
-      toggleModalVisibility(invitationModalId);
+      setScopedModalVisibility(root, invitationModalId, true);
       getInvitationSearchField(root)?.focusInput?.();
       return;
     }
