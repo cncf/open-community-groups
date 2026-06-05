@@ -3,6 +3,7 @@ import { ocgFetch } from "/static/js/common/fetch.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import "/static/js/common/logo-image.js";
 import { computeUserInitials } from "/static/js/common/common.js";
+import { clearTimeoutId, replaceTimeout } from "/static/js/common/timers.js";
 
 const emailAddressPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -93,10 +94,7 @@ export class UserSearchField extends LitWrapper {
 
   disconnectedCallback() {
     super.disconnectedCallback();
-    if (this._searchTimeoutId) {
-      clearTimeout(this._searchTimeoutId);
-      this._searchTimeoutId = 0;
-    }
+    this._searchTimeoutId = clearTimeoutId(this._searchTimeoutId);
     if (this._outsidePointerHandler) {
       document.removeEventListener("pointerdown", this._outsidePointerHandler);
     }
@@ -176,10 +174,7 @@ export class UserSearchField extends LitWrapper {
     this._searchQuery = "";
     this._searchResults = [];
     this._isSearching = false;
-    if (this._searchTimeoutId) {
-      clearTimeout(this._searchTimeoutId);
-      this._searchTimeoutId = 0;
-    }
+    this._searchTimeoutId = clearTimeoutId(this._searchTimeoutId);
     if (emitChange) {
       this._emitSearchQueryChanged("");
     }
@@ -199,10 +194,7 @@ export class UserSearchField extends LitWrapper {
     this._searchQuery = query;
     this._emitSearchQueryChanged(query);
 
-    if (this._searchTimeoutId) {
-      clearTimeout(this._searchTimeoutId);
-      this._searchTimeoutId = 0;
-    }
+    this._searchTimeoutId = clearTimeoutId(this._searchTimeoutId);
 
     if (query === "") {
       this._searchResults = [];
@@ -211,7 +203,7 @@ export class UserSearchField extends LitWrapper {
     }
 
     this._isSearching = true;
-    this._searchTimeoutId = setTimeout(() => {
+    this._searchTimeoutId = replaceTimeout(this._searchTimeoutId, () => {
       this._searchTimeoutId = 0;
       this._performSearch(query);
     }, this.searchDelay);

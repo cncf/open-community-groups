@@ -13,6 +13,7 @@ import {
   MEETING_RECORDING_VISIBILITY_LEGEND,
 } from "/static/js/common/common.js";
 import { getElementById } from "/static/js/common/dom.js";
+import { clearTimeoutId, replaceTimeout } from "/static/js/common/timers.js";
 import { parseJsonAttribute } from "/static/js/common/utils.js";
 import "/static/js/common/multiple-inputs.js";
 
@@ -143,10 +144,7 @@ export class OnlineEventDetails extends LitWrapper {
     super.disconnectedCallback();
     this._capacityField?.removeEventListener("input", this._capacityInputHandler);
     this._capacityField = null;
-    if (this._hostsInputTimeoutId) {
-      window.clearTimeout(this._hostsInputTimeoutId);
-      this._hostsInputTimeoutId = 0;
-    }
+    this._hostsInputTimeoutId = clearTimeoutId(this._hostsInputTimeoutId);
   }
 
   willUpdate() {
@@ -185,10 +183,7 @@ export class OnlineEventDetails extends LitWrapper {
     if (changedProperties.has("_mode") || changedProperties.has("_createMeeting")) {
       if (this._mode === "automatic" && this._createMeeting) {
         // Wait for next render cycle to ensure the input element exists
-        if (this._hostsInputTimeoutId) {
-          window.clearTimeout(this._hostsInputTimeoutId);
-        }
-        this._hostsInputTimeoutId = window.setTimeout(() => {
+        this._hostsInputTimeoutId = replaceTimeout(this._hostsInputTimeoutId, () => {
           this._hostsInputTimeoutId = 0;
           this._initializeHostsInput();
         }, 0);

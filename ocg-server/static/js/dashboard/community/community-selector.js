@@ -4,6 +4,7 @@ import { selectDashboardAndKeepTab } from "/static/js/common/dashboard-selection
 import { bindOutsideClickListener, focusElementById } from "/static/js/common/dom.js";
 import { getNextLoopedIndex, isEscapeEvent } from "/static/js/common/keyboard.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
+import { clearTimeoutId, replaceTimeout } from "/static/js/common/timers.js";
 
 /**
  * CommunitySelector renders a searchable dropdown to pick a single community.
@@ -56,10 +57,7 @@ export class CommunitySelector extends LitWrapper {
     super.disconnectedCallback();
     this.removeEventListener("keydown", this._keydownHandler);
     this._removeDocumentListener();
-    if (this._searchTimeoutId) {
-      window.clearTimeout(this._searchTimeoutId);
-      this._searchTimeoutId = 0;
-    }
+    this._searchTimeoutId = clearTimeoutId(this._searchTimeoutId);
   }
 
   /**
@@ -69,10 +67,7 @@ export class CommunitySelector extends LitWrapper {
   _handleSearchInput(event) {
     const value = event.target.value || "";
     this._pendingQuery = value;
-    if (this._searchTimeoutId) {
-      window.clearTimeout(this._searchTimeoutId);
-    }
-    this._searchTimeoutId = window.setTimeout(() => {
+    this._searchTimeoutId = replaceTimeout(this._searchTimeoutId, () => {
       this._activeIndex = null;
       this._query = this._pendingQuery;
       this._searchTimeoutId = 0;
@@ -164,10 +159,7 @@ export class CommunitySelector extends LitWrapper {
     this._query = "";
     this._pendingQuery = "";
     this._activeIndex = null;
-    if (this._searchTimeoutId) {
-      window.clearTimeout(this._searchTimeoutId);
-      this._searchTimeoutId = 0;
-    }
+    this._searchTimeoutId = clearTimeoutId(this._searchTimeoutId);
     this._removeDocumentListener();
   }
 

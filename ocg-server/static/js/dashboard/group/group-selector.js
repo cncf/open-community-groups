@@ -4,6 +4,7 @@ import { selectDashboardAndKeepTab } from "/static/js/common/dashboard-selection
 import { bindOutsideClickListener, focusElementById } from "/static/js/common/dom.js";
 import { getNextLoopedIndex, isEscapeEvent } from "/static/js/common/keyboard.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
+import { clearTimeoutId, replaceTimeout } from "/static/js/common/timers.js";
 
 /**
  * GroupSelector renders a searchable dropdown to pick a single group.
@@ -49,10 +50,7 @@ export class GroupSelector extends LitWrapper {
     super.disconnectedCallback();
     this.removeEventListener("keydown", this._keydownHandler);
     this._removeDocumentListener();
-    if (this._searchTimeoutId) {
-      window.clearTimeout(this._searchTimeoutId);
-      this._searchTimeoutId = 0;
-    }
+    this._searchTimeoutId = clearTimeoutId(this._searchTimeoutId);
   }
 
   /**
@@ -62,10 +60,7 @@ export class GroupSelector extends LitWrapper {
   _handleSearchInput(event) {
     const value = event.target.value || "";
     this._query = value;
-    if (this._searchTimeoutId) {
-      window.clearTimeout(this._searchTimeoutId);
-    }
-    this._searchTimeoutId = window.setTimeout(() => {
+    this._searchTimeoutId = replaceTimeout(this._searchTimeoutId, () => {
       this._activeIndex = null;
       this._searchTimeoutId = 0;
       this.requestUpdate();
