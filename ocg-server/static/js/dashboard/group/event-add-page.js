@@ -1,27 +1,21 @@
 import { initializeSessionsRemovalWarning } from "/static/js/dashboard/group/event-form-helpers.js";
 import { initializeEventPreview } from "/static/js/dashboard/group/event-preview.js";
 import "/static/js/dashboard/group/questions-editor.js";
-import { initializeMatchingRoots, initializeOnReadyAndHtmxLoad } from "/static/js/common/dom.js";
+import {
+  getElementById,
+  initializeMatchingRoots,
+  initializeOnReadyAndHtmxLoad,
+} from "/static/js/common/dom.js";
 import {
   attachEventSaveAfterRequest,
   attachEventSaveBeforeRequestValidation,
   attachEventSaveConfigRequest,
-  bindSharedEventDateFieldListeners,
-  configureScopedTicketingEditors,
-  createEventPageCfsFieldUpdater,
-  createEventPageValidationCallbacks,
   createSessionsDateRangeSync,
   initializeEventPageContext,
-  initializeCommonEventPageToggles,
-  initializeEventKindField,
   initializeEventPagePendingChanges,
+  initializeSharedEventPageControls,
+  resolveSharedEventPageControls,
 } from "/static/js/dashboard/group/event-page-shared.js";
-import {
-  clearVenueFields,
-  confirmVenueDataDeletion,
-  hasVenueData,
-  updateSectionVisibility,
-} from "/static/js/dashboard/group/meeting-validations.js";
 import { initializeSectionTabs } from "/static/js/dashboard/group/page-form-state.js";
 
 const EVENT_ADD_PAGE_SELECTOR = '[data-event-page="add"]';
@@ -37,24 +31,24 @@ export const initializeEventAddPage = (root = document) => {
     return;
   }
 
-  const { pageRoot, queryById, queryOne } = pageContext;
+  const { pageRoot, queryOne } = pageContext;
 
-  const addEventButton = queryById("add-event-button");
-  const cancelButton = queryById("cancel-button");
-  const kindSelect = queryById("kind_id");
-  const onlineEventDetails = queryById("online-event-details");
-  const clearLocationButton = queryById("clear-location-fields");
-  const toggleCfsEnabled = queryById("toggle_cfs_enabled");
-  const cfsEnabledInput = queryById("cfs_enabled");
-  const cfsStartsAtInput = queryById("cfs_starts_at");
-  const cfsEndsAtInput = queryById("cfs_ends_at");
-  const cfsDescriptionInput = queryById("cfs_description");
-  const cfsLabelsEditor = queryById("cfs-labels-editor");
-  const startsAtInput = queryById("starts_at");
-  const endsAtInput = queryById("ends_at");
-  const recurrenceAdditionalOccurrencesContainer = queryById("recurrence-additional-occurrences-container");
-  const recurrenceAdditionalOccurrencesInput = queryById("recurrence_additional_occurrences");
-  const recurrencePatternSelect = queryById("recurrence_pattern");
+  const controls = resolveSharedEventPageControls(pageRoot);
+  const {
+    startsAtInput,
+    endsAtInput,
+    cfsEnabledInput,
+    cfsStartsAtInput,
+    cfsEndsAtInput,
+    onlineEventDetails,
+  } = controls;
+  const addEventButton = getElementById(pageRoot, "add-event-button");
+  const recurrenceAdditionalOccurrencesContainer = getElementById(
+    pageRoot,
+    "recurrence-additional-occurrences-container",
+  );
+  const recurrenceAdditionalOccurrencesInput = getElementById(pageRoot, "recurrence_additional_occurrences");
+  const recurrencePatternSelect = getElementById(pageRoot, "recurrence_pattern");
 
   const syncSessionsDateRange = createSessionsDateRangeSync({
     queryOne,
@@ -72,61 +66,14 @@ export const initializeEventAddPage = (root = document) => {
   });
 
   const { validateEventForms, validateSessionOnlineDetails, showSessionBoundsError } =
-    createEventPageValidationCallbacks({
-      queryById,
+    initializeSharedEventPageControls({
+      pageRoot,
       queryOne,
       displayActiveSection,
-      cfsStartsAtInput,
-      cfsEndsAtInput,
+      syncSessionsDateRange,
+      controls,
+      bindDisabledCfsToggle: true,
     });
-
-  const updateCfsFields = createEventPageCfsFieldUpdater({
-    cfsStartsAtInput,
-    cfsEndsAtInput,
-    cfsDescriptionInput,
-    cfsLabelsEditor,
-  });
-
-  configureScopedTicketingEditors({
-    queryById,
-    queryOne,
-  });
-
-  initializeCommonEventPageToggles({
-    pageRoot,
-    queryById,
-    toggleCfsEnabled,
-    cfsEnabledInput,
-    cfsStartsAtInput,
-    cfsEndsAtInput,
-    updateCfsFields,
-    bindDisabledCfsToggle: true,
-  });
-
-  initializeEventKindField({
-    kindSelect,
-    onlineEventDetails,
-    hasVenueData: () => hasVenueData(pageRoot),
-    confirmVenueDataDeletion,
-    clearVenueFields: () => clearVenueFields(pageRoot),
-    updateSectionVisibility: (kind) => updateSectionVisibility(kind, pageRoot),
-  });
-
-  if (clearLocationButton) {
-    clearLocationButton.addEventListener("click", () => {
-      clearVenueFields(pageRoot);
-    });
-  }
-
-  bindSharedEventDateFieldListeners({
-    queryById,
-    syncSessionsDateRange,
-    startsAtInput,
-    endsAtInput,
-    cfsStartsAtInput,
-    cfsEndsAtInput,
-    onlineEventDetails,
-  });
 
   initializeRecurrenceFields({
     recurrenceAdditionalOccurrencesContainer,
@@ -160,7 +107,7 @@ export const initializeEventAddPage = (root = document) => {
     validateSessionOnlineDetails,
     showSessionBoundsError,
     displayActiveSection,
-    queryById,
+    pageRoot,
     startsAtInput,
     endsAtInput,
     cfsEnabledInput,

@@ -1,5 +1,9 @@
 import { showConfirmAlert } from "/static/js/common/alerts.js";
-import { initializeMatchingRoots, initializeOnReadyAndHtmxLoad } from "/static/js/common/dom.js";
+import {
+  getElementById,
+  initializeMatchingRoots,
+  initializeOnReadyAndHtmxLoad,
+} from "/static/js/common/dom.js";
 import { initializeSessionsRemovalWarning } from "/static/js/dashboard/group/event-form-helpers.js";
 import { initializeEventPreview } from "/static/js/dashboard/group/event-preview.js";
 import "/static/js/dashboard/group/questions-editor.js";
@@ -7,22 +11,12 @@ import {
   attachEventSaveAfterRequest,
   attachEventSaveBeforeRequestValidation,
   attachEventSaveConfigRequest,
-  bindSharedEventDateFieldListeners,
-  configureScopedTicketingEditors,
-  createEventPageCfsFieldUpdater,
-  createEventPageValidationCallbacks,
   createSessionsDateRangeSync,
   initializeEventPageContext,
-  initializeCommonEventPageToggles,
-  initializeEventKindField,
   initializeEventPagePendingChanges,
+  initializeSharedEventPageControls,
+  resolveSharedEventPageControls,
 } from "/static/js/dashboard/group/event-page-shared.js";
-import {
-  clearVenueFields,
-  confirmVenueDataDeletion,
-  hasVenueData,
-  updateSectionVisibility,
-} from "/static/js/dashboard/group/meeting-validations.js";
 import { initializeSectionTabs } from "/static/js/dashboard/group/page-form-state.js";
 
 /**
@@ -47,24 +41,21 @@ export const initializeEventUpdatePage = (root = document) => {
     return;
   }
 
-  const { pageRoot, queryById, queryOne } = pageContext;
+  const { pageRoot, queryOne } = pageContext;
 
-  const updateEventButton = queryById("update-event-button");
-  const cancelButton = queryById("cancel-button");
-  const kindSelect = queryById("kind_id");
-  const onlineEventDetails = queryById("online-event-details");
-  const clearLocationButton = queryById("clear-location-fields");
+  const controls = resolveSharedEventPageControls(pageRoot);
+  const {
+    startsAtInput,
+    endsAtInput,
+    cfsEnabledInput,
+    cfsStartsAtInput,
+    cfsEndsAtInput,
+    onlineEventDetails,
+  } = controls;
+  const updateEventButton = getElementById(pageRoot, "update-event-button");
   const locationSearchField = queryOne("location-search-field");
   const inertForm = queryOne(".inert-form");
-  const toggleCfsEnabled = queryById("toggle_cfs_enabled");
-  const cfsEnabledInput = queryById("cfs_enabled");
-  const cfsStartsAtInput = queryById("cfs_starts_at");
-  const cfsEndsAtInput = queryById("cfs_ends_at");
-  const cfsDescriptionInput = queryById("cfs_description");
-  const cfsLabelsEditor = queryById("cfs-labels-editor");
-  const startsAtInput = queryById("starts_at");
-  const endsAtInput = queryById("ends_at");
-  const capacityInput = queryById("capacity");
+  const capacityInput = getElementById(pageRoot, "capacity");
   const approvedSubmissionsEvent = "event-approved-submissions-updated";
   const isCanceledEvent = readBooleanDataAttribute(pageRoot, "eventCanceled");
   const isPastEvent = readBooleanDataAttribute(pageRoot, "eventPast");
@@ -144,12 +135,6 @@ export const initializeEventUpdatePage = (root = document) => {
     });
   }
 
-  if (clearLocationButton) {
-    clearLocationButton.addEventListener("click", () => {
-      clearVenueFields(pageRoot);
-    });
-  }
-
   const { displayActiveSection } = initializeSectionTabs({
     root: pageRoot,
     onSectionChange: (sectionName) => {
@@ -176,55 +161,14 @@ export const initializeEventUpdatePage = (root = document) => {
   });
 
   const { validateEventForms, validateSessionOnlineDetails, showSessionBoundsError } =
-    createEventPageValidationCallbacks({
-      queryById,
+    initializeSharedEventPageControls({
+      pageRoot,
       queryOne,
       displayActiveSection,
-      cfsStartsAtInput,
-      cfsEndsAtInput,
+      syncSessionsDateRange,
+      controls,
+      isCfsFieldLocked: (field) => field?.dataset?.locked === "true",
     });
-
-  const updateCfsFields = createEventPageCfsFieldUpdater({
-    cfsStartsAtInput,
-    cfsEndsAtInput,
-    cfsDescriptionInput,
-    cfsLabelsEditor,
-    isFieldLocked: (field) => field?.dataset?.locked === "true",
-  });
-
-  configureScopedTicketingEditors({
-    queryById,
-    queryOne,
-  });
-
-  initializeCommonEventPageToggles({
-    pageRoot,
-    queryById,
-    toggleCfsEnabled,
-    cfsEnabledInput,
-    cfsStartsAtInput,
-    cfsEndsAtInput,
-    updateCfsFields,
-  });
-
-  initializeEventKindField({
-    kindSelect,
-    onlineEventDetails,
-    hasVenueData: () => hasVenueData(pageRoot),
-    confirmVenueDataDeletion,
-    clearVenueFields: () => clearVenueFields(pageRoot),
-    updateSectionVisibility: (kind) => updateSectionVisibility(kind, pageRoot),
-  });
-
-  bindSharedEventDateFieldListeners({
-    queryById,
-    syncSessionsDateRange,
-    startsAtInput,
-    endsAtInput,
-    cfsStartsAtInput,
-    cfsEndsAtInput,
-    onlineEventDetails,
-  });
 
   initializeEventPagePendingChanges({
     pageRoot,
@@ -274,7 +218,7 @@ export const initializeEventUpdatePage = (root = document) => {
     validateSessionOnlineDetails,
     showSessionBoundsError,
     displayActiveSection,
-    queryById,
+    pageRoot,
     startsAtInput,
     endsAtInput,
     cfsEnabledInput,
