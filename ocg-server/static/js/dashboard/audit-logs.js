@@ -1,8 +1,10 @@
 import { toggleModalVisibility } from "/static/js/common/common.js";
 import {
+  closestElement,
   getElementById,
   initializeOnReadyAndHtmxLoad,
   markDatasetReady,
+  setElementHidden,
 } from "/static/js/common/dom.js";
 
 const MODAL_ID = "audit-log-filters-modal";
@@ -74,7 +76,7 @@ const setAuditLogDetailsExpanded = (trigger, expanded) => {
   const card = getAuditLogDetailsCard(trigger);
 
   trigger.setAttribute("aria-expanded", String(expanded));
-  card?.classList.toggle("hidden", !expanded);
+  setElementHidden(card, !expanded);
 };
 
 /**
@@ -138,11 +140,7 @@ const bindAuditLogGlobalHandlers = () => {
   auditLogGlobalHandlersBound = true;
 
   document.addEventListener("click", (event) => {
-    if (!(event.target instanceof Element)) {
-      return;
-    }
-
-    const trigger = event.target.closest(DETAILS_TRIGGER_SELECTOR);
+    const trigger = closestElement(event.target, DETAILS_TRIGGER_SELECTOR);
 
     if (trigger) {
       const isExpanded = trigger.getAttribute("aria-expanded") === "true";
@@ -152,7 +150,7 @@ const bindAuditLogGlobalHandlers = () => {
       return;
     }
 
-    if (!event.target.closest(DETAILS_GROUP_SELECTOR)) {
+    if (!closestElement(event.target, DETAILS_GROUP_SELECTOR)) {
       closeAuditLogDetails(document);
     }
   });
@@ -194,7 +192,7 @@ const initializeAuditLogFilters = (root = document) => {
   const syncActiveFiltersIndicator = () => {
     const active = hasActiveFilters();
 
-    activeIndicator?.classList.toggle("hidden", !active);
+    setElementHidden(activeIndicator, !active);
     openButton?.setAttribute("aria-pressed", String(active));
   };
   const closeModal = () => closeAuditLogFiltersModal();

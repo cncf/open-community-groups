@@ -6,9 +6,11 @@ import {
 } from "/static/js/common/alerts.js";
 import { isSuccessfulXHRStatus } from "/static/js/common/common.js";
 import {
+  closestElement,
   initializeOnReadyAndHtmxLoad,
   isDatasetReady,
   markDatasetReady,
+  setElementHidden,
 } from "/static/js/common/dom.js";
 import { ocgFetch } from "/static/js/common/fetch.js";
 import { collectQuestionAnswers as collectQuestionAnswersFromForm } from "/static/js/common/question-answers.js";
@@ -149,7 +151,7 @@ const isFiniteNumberValue = (value) =>
  */
 const renderAvailabilityCaption = (caption, visible, displayClasses) => {
   document.querySelectorAll(`[data-availability-caption="${caption}"]`).forEach((node) => {
-    node.classList.toggle("hidden", !visible);
+    setElementHidden(node, !visible);
     displayClasses.forEach((className) => {
       node.classList.toggle(className, visible);
     });
@@ -219,7 +221,7 @@ const renderAvailabilityRibbon = (availability) => {
     remainingCapacity <= 0;
 
   document.querySelectorAll("[data-availability-sold-out-ribbon]").forEach((node) => {
-    node.classList.toggle("hidden", !isSoldOut);
+    setElementHidden(node, !isSoldOut);
   });
 };
 
@@ -1109,7 +1111,7 @@ const handleAttendanceClick = (event) => {
     return;
   }
 
-  const signinButton = target.closest('[data-attendance-role="signin-btn"]');
+  const signinButton = closestElement(event.target, '[data-attendance-role="signin-btn"]');
   if (signinButton instanceof HTMLElement) {
     const path = signinButton.dataset.path || window.location.pathname;
     const nextUrl = encodeURIComponent(path);
@@ -1123,7 +1125,7 @@ const handleAttendanceClick = (event) => {
     return;
   }
 
-  const attendButton = target.closest('[data-attendance-role="attend-btn"]');
+  const attendButton = closestElement(event.target, '[data-attendance-role="attend-btn"]');
   if (attendButton instanceof HTMLButtonElement && attendButton.dataset.resumeUrl) {
     event.preventDefault();
     window.location.assign(attendButton.dataset.resumeUrl);
@@ -1152,14 +1154,14 @@ const handleAttendanceClick = (event) => {
     return;
   }
 
-  const checkoutResumeButton = target.closest('[data-attendance-role="checkout-resume-btn"]');
+  const checkoutResumeButton = closestElement(event.target, '[data-attendance-role="checkout-resume-btn"]');
   if (checkoutResumeButton instanceof HTMLButtonElement && checkoutResumeButton.dataset.resumeUrl) {
     event.preventDefault();
     window.location.assign(checkoutResumeButton.dataset.resumeUrl);
     return;
   }
 
-  const leaveButton = target.closest('[data-attendance-role="leave-btn"]');
+  const leaveButton = closestElement(event.target, '[data-attendance-role="leave-btn"]');
   if (leaveButton instanceof HTMLElement) {
     const label = getAttendanceControlLabel(leaveButton) || CANCEL_ATTENDANCE_LABEL;
     let message = "Are you sure you want to cancel your attendance?";
@@ -1172,7 +1174,7 @@ const handleAttendanceClick = (event) => {
     return;
   }
 
-  const checkoutCancelButton = target.closest('[data-attendance-role="checkout-cancel-btn"]');
+  const checkoutCancelButton = closestElement(event.target, '[data-attendance-role="checkout-cancel-btn"]');
   if (checkoutCancelButton instanceof HTMLElement) {
     showConfirmAlert(
       "Are you sure you want to cancel this checkout? Your ticket hold will be released.",
@@ -1182,12 +1184,13 @@ const handleAttendanceClick = (event) => {
     return;
   }
 
-  const refundButton = target.closest('[data-attendance-role="refund-btn"]');
+  const refundButton = closestElement(event.target, '[data-attendance-role="refund-btn"]');
   if (refundButton instanceof HTMLElement) {
     showConfirmAlert("Are you sure you want to request a refund for this ticket?", refundButton.id, "Yes");
   }
 
-  const closeTicketModalTrigger = target.closest(
+  const closeTicketModalTrigger = closestElement(
+    event.target,
     '[data-attendance-role="ticket-modal-close"], [data-attendance-role="ticket-modal-cancel"], [data-attendance-role="ticket-modal-overlay"]',
   );
   if (closeTicketModalTrigger) {
@@ -1196,7 +1199,8 @@ const handleAttendanceClick = (event) => {
     return;
   }
 
-  const closeQuestionsModalTrigger = target.closest(
+  const closeQuestionsModalTrigger = closestElement(
+    event.target,
     '[data-attendance-role="registration-modal-close"], [data-attendance-role="registration-modal-cancel"], [data-attendance-role="registration-modal-overlay"]',
   );
   if (closeQuestionsModalTrigger) {

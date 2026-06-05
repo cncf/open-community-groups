@@ -1,5 +1,5 @@
 import { toggleModalVisibility } from "/static/js/common/common.js";
-import { getElementById, markDatasetReady } from "/static/js/common/dom.js";
+import { closestElement, getElementById, markDatasetReady } from "/static/js/common/dom.js";
 
 const ROOT_ID = "cfs-modal-root";
 const MODAL_ID = "cfs-modal";
@@ -42,7 +42,7 @@ const initializeCfsModal = () => {
     closeButton?.addEventListener("click", toggleModal);
     overlay?.addEventListener("click", toggleModal);
     modal.addEventListener("click", (event) => {
-      if (event.target instanceof Element && event.target.closest("#cancel-cfs-modal")) {
+      if (closestElement(event.target, "#cancel-cfs-modal")) {
         toggleModal();
       }
     });

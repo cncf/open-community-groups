@@ -1,6 +1,7 @@
 import { showConfirmAlert, showInfoAlert, handleHtmxResponse } from "/static/js/common/alerts.js";
 import { isSuccessfulXHRStatus } from "/static/js/common/common.js";
 import {
+  closestElement,
   getElementById,
   initializeOnReadyAndHtmxLoad,
   markDatasetReady,
@@ -51,7 +52,7 @@ const handleMembershipCheckResponse = (event) => {
     return;
   }
 
-  const container = target.closest(MEMBERSHIP_CONTAINER_SELECTOR);
+  const container = closestElement(target, MEMBERSHIP_CONTAINER_SELECTOR);
   if (!container) {
     return;
   }
@@ -99,7 +100,7 @@ const handleJoinBeforeRequest = (target) => {
     return;
   }
 
-  const container = target.closest(MEMBERSHIP_CONTAINER_SELECTOR);
+  const container = closestElement(target, MEMBERSHIP_CONTAINER_SELECTOR);
   const loadingButton = container ? getElementById(container, "loading-btn") : null;
   if (!loadingButton) {
     return;
@@ -118,7 +119,7 @@ const handleLeaveBeforeRequest = (target) => {
     return;
   }
 
-  const container = target.closest(MEMBERSHIP_CONTAINER_SELECTOR);
+  const container = closestElement(target, MEMBERSHIP_CONTAINER_SELECTOR);
   const loadingButton = container ? getElementById(container, "loading-btn") : null;
   if (!loadingButton) {
     return;
@@ -138,7 +139,7 @@ const handleJoinAfterRequest = (event) => {
     return;
   }
 
-  const container = target.closest(MEMBERSHIP_CONTAINER_SELECTOR);
+  const container = closestElement(target, MEMBERSHIP_CONTAINER_SELECTOR);
   if (!container) {
     return;
   }
@@ -173,7 +174,7 @@ const handleLeaveAfterRequest = (event) => {
     return;
   }
 
-  const container = target.closest(MEMBERSHIP_CONTAINER_SELECTOR);
+  const container = closestElement(target, MEMBERSHIP_CONTAINER_SELECTOR);
   if (!container) {
     return;
   }
@@ -208,7 +209,7 @@ const handleBeforeRequest = (event) => {
     return;
   }
 
-  if (!target.closest(MEMBERSHIP_CONTAINER_SELECTOR)) {
+  if (!closestElement(target, MEMBERSHIP_CONTAINER_SELECTOR)) {
     return;
   }
 
@@ -242,11 +243,11 @@ const handleMembershipClick = (event) => {
     }
   });
 
-  if (!target.closest(MEMBERSHIP_CONTAINER_SELECTOR)) {
+  if (!closestElement(event.target, MEMBERSHIP_CONTAINER_SELECTOR)) {
     return;
   }
 
-  const signinButton = target.closest("#signin-btn");
+  const signinButton = closestElement(event.target, "#signin-btn");
   if (signinButton) {
     const path = signinButton.dataset.path || window.location.pathname;
     const nextUrl = encodeURIComponent(path);
@@ -257,7 +258,7 @@ const handleMembershipClick = (event) => {
     return;
   }
 
-  const leaveButton = target.closest("#leave-btn");
+  const leaveButton = closestElement(event.target, "#leave-btn");
   if (leaveButton) {
     showConfirmAlert("Are you sure you want to leave this group?", "leave-btn", "Yes");
   }

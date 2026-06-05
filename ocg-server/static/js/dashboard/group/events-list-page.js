@@ -1,23 +1,20 @@
 import { confirmAction, confirmSeriesAction, handleHtmxResponse } from "/static/js/common/alerts.js";
-import { initializeMatchingRoots, initializeOnReadyAndHtmxLoad } from "/static/js/common/dom.js";
+import {
+  closestElementWithinRoot,
+  initializeMatchingRoots,
+  initializeOnReadyAndHtmxLoad,
+  setElementHidden,
+} from "/static/js/common/dom.js";
 
 const initializedRoots = new WeakSet();
 const EVENTS_LIST_PAGE_SELECTOR = "[data-events-list-page]";
 const EVENT_ACTION_DROPDOWN_SELECTOR = "[data-event-actions-dropdown]";
 const INVITATION_REQUEST_ACTION_SELECTOR = "[data-invitation-request-action]";
 
-const closestWithinRoot = (target, selector, root) => {
-  const element = target instanceof Element ? target.closest(selector) : null;
-  if (!element) {
-    return null;
-  }
-  return root === document || root.contains(element) ? element : null;
-};
-
 const closeDropdowns = (root, exceptDropdown = null) => {
   root.querySelectorAll?.(`${EVENT_ACTION_DROPDOWN_SELECTOR}:not(.hidden)`).forEach((dropdown) => {
     if (dropdown !== exceptDropdown) {
-      dropdown.classList.add("hidden");
+      setElementHidden(dropdown, true);
     }
   });
 };
@@ -33,7 +30,7 @@ const handleActionsMenuClick = (button, root) => {
 
   const shouldOpen = dropdown.classList.contains("hidden");
   closeDropdowns(root, dropdown);
-  dropdown.classList.toggle("hidden", !shouldOpen);
+  setElementHidden(dropdown, !shouldOpen);
 };
 
 const handleScopedActionClick = async (button) => {
@@ -98,38 +95,42 @@ export const initializeEventsListPage = (root = document) => {
   initializedRoots.add(root);
 
   root.addEventListener("click", (event) => {
-    const actionsButton = closestWithinRoot(event.target, ".btn-actions", root);
+    const actionsButton = closestElementWithinRoot(event.target, ".btn-actions", root);
     if (actionsButton) {
       handleActionsMenuClick(actionsButton, root);
       return;
     }
 
-    const scopedActionButton = closestWithinRoot(event.target, "[data-event-scoped-action]", root);
+    const scopedActionButton = closestElementWithinRoot(event.target, "[data-event-scoped-action]", root);
     if (scopedActionButton) {
       handleScopedActionClick(scopedActionButton);
       return;
     }
 
-    if (!closestWithinRoot(event.target, EVENT_ACTION_DROPDOWN_SELECTOR, root)) {
+    if (!closestElementWithinRoot(event.target, EVENT_ACTION_DROPDOWN_SELECTOR, root)) {
       closeDropdowns(root);
     }
   });
 
   root.addEventListener("htmx:configRequest", (event) => {
-    const scopedActionButton = closestWithinRoot(event.target, "[data-event-scoped-action]", root);
+    const scopedActionButton = closestElementWithinRoot(event.target, "[data-event-scoped-action]", root);
     if (scopedActionButton) {
       handleScopedActionConfigRequest(scopedActionButton, event);
     }
   });
 
   root.addEventListener("htmx:afterRequest", (event) => {
-    const scopedActionButton = closestWithinRoot(event.target, "[data-event-scoped-action]", root);
+    const scopedActionButton = closestElementWithinRoot(event.target, "[data-event-scoped-action]", root);
     if (scopedActionButton) {
       handleScopedActionAfterRequest(scopedActionButton, event);
       return;
     }
 
-    const invitationRequestButton = closestWithinRoot(event.target, INVITATION_REQUEST_ACTION_SELECTOR, root);
+    const invitationRequestButton = closestElementWithinRoot(
+      event.target,
+      INVITATION_REQUEST_ACTION_SELECTOR,
+      root,
+    );
     if (invitationRequestButton) {
       handleInvitationRequestAfterRequest(invitationRequestButton, event);
     }

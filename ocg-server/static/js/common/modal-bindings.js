@@ -1,13 +1,10 @@
 import { toggleModalVisibility } from "/static/js/common/common.js";
+import { closestElement } from "/static/js/common/dom.js";
 
 const modalToggleSelector = "[data-modal-toggle]";
 
 document.addEventListener("click", (event) => {
-  if (!(event.target instanceof Element)) {
-    return;
-  }
-
-  const trigger = event.target.closest(modalToggleSelector);
+  const trigger = closestElement(event.target, modalToggleSelector);
   if (!trigger) {
     return;
   }

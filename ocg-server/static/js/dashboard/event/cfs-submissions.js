@@ -3,6 +3,7 @@ import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { handleHtmxResponse } from "/static/js/common/alerts.js";
 import { computeUserInitials, lockBodyScroll, unlockBodyScroll } from "/static/js/common/common.js";
 import {
+  closestElement,
   getElementById,
   initializeOnReadyAndHtmxLoad,
   markDatasetReady,
@@ -1188,10 +1189,7 @@ const bindCfsSubmissionGlobalHandlers = () => {
   });
 
   document.addEventListener("click", (event) => {
-    if (!(event.target instanceof Element)) {
-      return;
-    }
-    const button = event.target.closest(`[data-action="${OPEN_ACTION}"]`);
+    const button = closestElement(event.target, `[data-action="${OPEN_ACTION}"]`);
     if (!button) {
       return;
     }

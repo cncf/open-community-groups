@@ -1,9 +1,5 @@
 import "/static/js/common/location-search-field.js";
-import {
-  getElementById,
-  initializeOnReadyAndHtmxLoad,
-  markDatasetReady,
-} from "/static/js/common/dom.js";
+import { getElementById, initializeOnReadyAndHtmxLoad, markDatasetReady } from "/static/js/common/dom.js";
 
 const CLEAR_LOCATION_BUTTON_ID = "clear-location-fields";
 const LOCATION_SEARCH_FIELD_ID = "group-location-search";

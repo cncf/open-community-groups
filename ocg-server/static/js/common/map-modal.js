@@ -1,5 +1,10 @@
 import { loadMap, toggleModalVisibility } from "/static/js/common/common.js";
-import { getElementById, initializeOnReady, isDatasetReady, markDatasetReady } from "/static/js/common/dom.js";
+import {
+  getElementById,
+  initializeOnReady,
+  isDatasetReady,
+  markDatasetReady,
+} from "/static/js/common/dom.js";
 
 const MAP_MODAL_SELECTOR = "[data-map-modal]";
 const MAP_MODAL_READY_KEY = "mapModalReady";

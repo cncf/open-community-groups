@@ -1,9 +1,11 @@
 import { searchOnEnter } from "/static/js/community/explore/filters.js";
 import { selectDashboardAndSwapBody } from "/static/js/common/dashboard-selection.js";
 import {
+  closestElementWithinRoot,
   getElementById,
   initializeOnReadyAndHtmxLoad,
   markDatasetReady,
+  setElementHidden,
 } from "/static/js/common/dom.js";
 
 const GROUPS_SEARCH_FORM_ID = "groups-search-form";
@@ -44,7 +46,7 @@ const initializeGroupSelection = (root = document) => {
   let isSelectingGroup = false;
 
   groupsList.addEventListener("click", async (event) => {
-    const selectGroupButton = event.target.closest("[data-select-group-id]");
+    const selectGroupButton = closestElementWithinRoot(event.target, "[data-select-group-id]", groupsList);
     if (!selectGroupButton) {
       return;
     }
@@ -91,12 +93,12 @@ const initializeGroupActionMenus = (root = document) => {
       }
 
       const isHidden = dropdown.classList.contains("hidden");
-      dropdown.classList.toggle("hidden");
+      setElementHidden(dropdown, !isHidden);
 
       if (isHidden) {
         const outsideClick = (event) => {
           if (!dropdown.contains(event.target) && !button.contains(event.target)) {
-            dropdown.classList.add("hidden");
+            setElementHidden(dropdown, true);
             document.removeEventListener("click", outsideClick);
           }
         };

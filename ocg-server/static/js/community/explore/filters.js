@@ -1,4 +1,4 @@
-import { getElementById } from "/static/js/common/dom.js";
+import { getElementById, setElementHidden } from "/static/js/common/dom.js";
 import { parseJsonAttribute } from "/static/js/common/utils.js";
 
 /**
@@ -20,9 +20,7 @@ export const openFiltersDrawer = () => {
     drawer.classList.remove("-translate-x-full");
   }
   const backdrop = getElementById(document, "drawer-backdrop");
-  if (backdrop) {
-    backdrop.classList.remove("hidden");
-  }
+  setElementHidden(backdrop, false);
 };
 
 /**
@@ -35,9 +33,7 @@ export const closeFiltersDrawer = () => {
     drawer.classList.add("-translate-x-full");
   }
   const backdrop = getElementById(document, "drawer-backdrop");
-  if (backdrop) {
-    backdrop.classList.add("hidden");
-  }
+  setElementHidden(backdrop, true);
 };
 
 /**

@@ -1,4 +1,4 @@
-import { getElementById } from "/static/js/common/dom.js";
+import { closestElementWithinRoot, getElementById, setElementHidden } from "/static/js/common/dom.js";
 
 /**
  * Builds a list of existing form ids for page-level wiring.
@@ -64,7 +64,7 @@ export const initializeSectionTabs = ({ root = document, onSectionChange = () =>
     const hasNextButton = currentIndex >= 0 && currentIndex < tabButtons.length - 1;
 
     getNextButtons().forEach((button) => {
-      button.classList.toggle("hidden", !hasNextButton);
+      setElementHidden(button, !hasNextButton);
       button.disabled = !hasNextButton;
     });
   };
@@ -89,7 +89,7 @@ export const initializeSectionTabs = ({ root = document, onSectionChange = () =>
 
     contentSections.forEach((section) => {
       const isActive = section.getAttribute("data-content") === sectionName;
-      section.classList.toggle("hidden", !isActive);
+      setElementHidden(section, !isActive);
     });
 
     updateNextButtons(sectionName);
@@ -97,8 +97,8 @@ export const initializeSectionTabs = ({ root = document, onSectionChange = () =>
   };
 
   root.addEventListener("click", (event) => {
-    const nextButton = event.target?.closest?.("[data-section-next]");
-    if (nextButton && root.contains(nextButton)) {
+    const nextButton = closestElementWithinRoot(event.target, "[data-section-next]", root);
+    if (nextButton) {
       event.preventDefault();
       event.stopPropagation();
 
@@ -124,8 +124,8 @@ export const initializeSectionTabs = ({ root = document, onSectionChange = () =>
       return;
     }
 
-    const button = event.target?.closest?.("[data-section]");
-    if (!button || !root.contains(button)) {
+    const button = closestElementWithinRoot(event.target, "[data-section]", root);
+    if (!button) {
       return;
     }
 

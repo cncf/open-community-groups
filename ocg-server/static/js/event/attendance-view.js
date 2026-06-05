@@ -1,5 +1,5 @@
 import { toggleModalVisibility } from "/static/js/common/common.js";
-import { isDatasetReady, markDatasetReady } from "/static/js/common/dom.js";
+import { isDatasetReady, markDatasetReady, setElementHidden } from "/static/js/common/dom.js";
 
 import {
   getAttendanceControl,
@@ -142,7 +142,7 @@ const setControlPriceBadgesHidden = (container, hidden) => {
 
     getControlPriceBadges(control).forEach((priceBadge) => {
       priceBadge.hidden = hidden;
-      priceBadge.classList.toggle("hidden", hidden);
+      setElementHidden(priceBadge, hidden);
       priceBadge.style.display = hidden ? "none" : "";
     });
   });
@@ -193,7 +193,7 @@ const renderControl = (control, state = {}) => {
   const shouldHidePriceBadge = hidePriceBadge || (label !== null && label !== BUY_TICKET_LABEL);
   getControlPriceBadges(control).forEach((priceBadge) => {
     priceBadge.hidden = shouldHidePriceBadge;
-    priceBadge.classList.toggle("hidden", shouldHidePriceBadge);
+    setElementHidden(priceBadge, shouldHidePriceBadge);
     priceBadge.style.display = shouldHidePriceBadge ? "none" : "";
   });
 
@@ -359,7 +359,7 @@ export const resetPrimaryControls = (container) => {
     refundButton,
   } = getPrimaryControls(container);
 
-  actionsMenu?.classList.remove("hidden");
+  setElementHidden(actionsMenu, false);
   hideControl(loadingButton);
   hideControl(signinButton);
   hideControl(attendButton);
@@ -392,21 +392,21 @@ export const renderMeetingDetails = (isAttendee, meta) => {
 
   sections.forEach((section) => {
     const sectionHasRecording = section.dataset?.hasRecording === "true";
-    section.classList.toggle("hidden", !(sectionHasRecording || showAttendeeMeetingAccess));
+    setElementHidden(section, !(sectionHasRecording || showAttendeeMeetingAccess));
     section.querySelectorAll("[data-join-link-always]").forEach((link) => {
-      link.classList.toggle("hidden", !showAttendeeMeetingAccess);
+      setElementHidden(link, !showAttendeeMeetingAccess);
     });
   });
 
   const joinLinksLive = document.querySelectorAll("[data-join-link]");
   joinLinksLive.forEach((link) => {
-    link.classList.toggle("hidden", !showAttendeeMeetingAccess);
+    setElementHidden(link, !showAttendeeMeetingAccess);
     link.classList.toggle("xl:flex", showAttendeeMeetingAccess);
   });
 
   const joinLinksMenu = document.querySelectorAll("[data-join-link-menu]");
   joinLinksMenu.forEach((link) => {
-    link.classList.toggle("hidden", !showAttendeeMeetingAccess);
+    setElementHidden(link, !showAttendeeMeetingAccess);
     link.classList.toggle("max-xl:flex", showAttendeeMeetingAccess);
   });
 };
@@ -685,7 +685,7 @@ const setCheckoutLoadingState = (container, isLoading) => {
   const checkoutSpinner = getAttendanceControl(container, "checkout-btn-spinner");
   const checkoutLabel = getAttendanceControl(container, "checkout-btn-label");
 
-  checkoutSpinner?.classList.toggle("hidden", !isLoading);
+  setElementHidden(checkoutSpinner, !isLoading);
   checkoutSpinner?.classList.toggle("flex", isLoading);
   checkoutLabel?.classList.toggle("invisible", isLoading);
 };
@@ -700,7 +700,7 @@ const syncTicketModalState = (container) => {
   const meta = getAttendanceMeta(container);
   const ticketTypeOptions = container.querySelectorAll('[data-attendance-role="ticket-type-option"]');
 
-  ticketModalForm?.classList.remove("hidden");
+  setElementHidden(ticketModalForm, false);
   setCheckoutLoadingState(container, false);
 
   ticketTypeOptions.forEach((ticketTypeOption) => {
@@ -838,15 +838,15 @@ export const showPrimaryRequestLoading = (container, role) => {
   }
 
   if (role === "checkout-cancel-btn") {
-    getAttendanceControl(container, "attend-btn")?.classList.add("hidden");
+    setElementHidden(getAttendanceControl(container, "attend-btn"), true);
     const actionsMenu = getAttendanceControl(container, "actions-menu");
-    actionsMenu?.classList.add("hidden");
+    setElementHidden(actionsMenu, true);
     if (actionsMenu instanceof HTMLDetailsElement) {
       actionsMenu.open = false;
     }
   }
-  targetControl.classList.add("hidden");
-  loadingButton.classList.remove("hidden");
+  setElementHidden(targetControl, true);
+  setElementHidden(loadingButton, false);
 };
 
 /**
@@ -861,13 +861,13 @@ export const restorePrimaryRequestControl = (container, role) => {
     return;
   }
 
-  loadingButton.classList.add("hidden");
+  setElementHidden(loadingButton, true);
   if (role === "checkout-cancel-btn") {
-    getAttendanceControl(container, "attend-btn")?.classList.remove("hidden");
+    setElementHidden(getAttendanceControl(container, "attend-btn"), false);
     const actionsMenu = getAttendanceControl(container, "actions-menu");
-    actionsMenu?.classList.remove("hidden");
+    setElementHidden(actionsMenu, false);
   }
-  targetControl.classList.remove("hidden");
+  setElementHidden(targetControl, false);
 };
 
 /**

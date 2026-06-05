@@ -13,6 +13,7 @@ import {
   updateSortInputsFromSelector,
 } from "/static/js/community/explore/filters.js";
 import {
+  closestElement,
   getElementById,
   isDatasetReady,
   markDatasetReady,
@@ -147,18 +148,13 @@ export const initializeExploreWidgets = async (root = document) => {
  * @param {MouseEvent} event - Click event
  */
 const handleExploreClick = (event) => {
-  const target = event.target;
-  if (!(target instanceof Element)) {
-    return;
-  }
-
-  if (target.closest("#open-filters")) {
+  if (closestElement(event.target, "#open-filters")) {
     event.preventDefault();
     openFiltersDrawer();
     return;
   }
 
-  if (target.closest("#close-filters") || target.closest("#drawer-backdrop")) {
+  if (closestElement(event.target, "#close-filters") || closestElement(event.target, "#drawer-backdrop")) {
     event.preventDefault();
     closeFiltersDrawer();
     return;
@@ -169,19 +165,19 @@ const handleExploreClick = (event) => {
     return;
   }
 
-  if (target.closest("#search-btn")) {
+  if (closestElement(event.target, "#search-btn")) {
     event.preventDefault();
     triggerChangeOnForm(formId, true);
     return;
   }
 
-  if (target.closest("#clean-search")) {
+  if (closestElement(event.target, "#clean-search")) {
     event.preventDefault();
     cleanInputField(SEARCH_INPUT_ID, formId);
     return;
   }
 
-  if (target.closest(".reset-filters")) {
+  if (closestElement(event.target, ".reset-filters")) {
     event.preventDefault();
     resetFilters(formId);
   }

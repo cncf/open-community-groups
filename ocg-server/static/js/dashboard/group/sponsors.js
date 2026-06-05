@@ -1,9 +1,5 @@
 import { confirmAction, showErrorAlert } from "/static/js/common/alerts.js";
-import {
-  getElementById,
-  initializeOnReadyAndHtmxLoad,
-  markDatasetReady,
-} from "/static/js/common/dom.js";
+import { getElementById, initializeOnReadyAndHtmxLoad, markDatasetReady } from "/static/js/common/dom.js";
 import { ocgFetch } from "/static/js/common/fetch.js";
 
 /**

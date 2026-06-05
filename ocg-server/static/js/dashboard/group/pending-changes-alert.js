@@ -1,5 +1,5 @@
 import { showConfirmAlert } from "/static/js/common/alerts.js";
-import { getElementById } from "/static/js/common/dom.js";
+import { getElementById, setElementHidden } from "/static/js/common/dom.js";
 
 /**
  * Serializes a form field value for deterministic snapshot comparisons.
@@ -148,9 +148,7 @@ export const initializePendingChangesAlert = ({
 
   const setPendingChangesState = (dirty) => {
     hasPendingChanges = dirty;
-    if (pendingChangesAlert) {
-      pendingChangesAlert.classList.toggle("hidden", !dirty);
-    }
+    setElementHidden(pendingChangesAlert, !dirty);
   };
 
   const refreshPendingChangesState = () => {

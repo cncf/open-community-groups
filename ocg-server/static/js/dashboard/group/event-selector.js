@@ -2,7 +2,7 @@ import { html } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { ocgFetch } from "/static/js/common/fetch.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { showErrorAlert, showInfoAlert } from "/static/js/common/alerts.js";
-import { getElementById } from "/static/js/common/dom.js";
+import { getElementById, setElementHidden } from "/static/js/common/dom.js";
 import {
   parseJsonAttribute,
   setImageFieldValue,
@@ -242,9 +242,7 @@ class EventSelector extends LitWrapper {
   _setCopyLoading(loading) {
     this._copyLoading = loading;
     const indicator = document.querySelector("[data-copy-indicator]");
-    if (indicator) {
-      indicator.classList.toggle("hidden", !loading);
-    }
+    setElementHidden(indicator, !loading);
     const triggerButton = getElementById(document, this.buttonId);
     if (triggerButton) {
       if (loading) {

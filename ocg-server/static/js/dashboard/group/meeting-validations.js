@@ -1,4 +1,4 @@
-import { getElementById } from "/static/js/common/dom.js";
+import { getElementById, setElementHidden } from "/static/js/common/dom.js";
 import { getCommonAlertOptions } from "/static/js/common/alerts.js";
 
 /**
@@ -21,12 +21,8 @@ export const updateSectionVisibility = (kind, root = document) => {
   const venueSection = getElementById(root, "venue-information-section");
   const onlineSection = getElementById(root, "online-event-details-section");
 
-  if (venueSection) {
-    venueSection.classList.toggle("hidden", kind === "virtual");
-  }
-  if (onlineSection) {
-    onlineSection.classList.toggle("hidden", kind === "in-person");
-  }
+  setElementHidden(venueSection, kind === "virtual");
+  setElementHidden(onlineSection, kind === "in-person");
 };
 
 /**

@@ -1,8 +1,4 @@
-import {
-  getElementById,
-  initializeOnReadyAndHtmxLoad,
-  markDatasetReady,
-} from "/static/js/common/dom.js";
+import { getElementById, initializeOnReadyAndHtmxLoad, markDatasetReady } from "/static/js/common/dom.js";
 import { bindBooleanToggle } from "/static/js/dashboard/group/page-form-state.js";
 
 const SETTINGS_FORM_ID = "settings-form";

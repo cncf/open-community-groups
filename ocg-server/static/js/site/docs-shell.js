@@ -1,4 +1,4 @@
-import { getElementById, loadScriptOnce } from "/static/js/common/dom.js";
+import { closestElement, getElementById, loadScriptOnce } from "/static/js/common/dom.js";
 import { ocgFetch } from "/static/js/common/fetch.js";
 
 const DOCS_ROOT_SELECTOR = ".ocg-docs-root";
@@ -616,12 +616,7 @@ const setupMobileSidebarOutsideDismiss = () => {
       return;
     }
 
-    const target = event.target;
-    if (!(target instanceof Element)) {
-      return;
-    }
-
-    if (target.closest(".ocg-docs-root .sidebar, .ocg-docs-root .sidebar-toggle")) {
+    if (closestElement(event.target, ".ocg-docs-root .sidebar, .ocg-docs-root .sidebar-toggle")) {
       return;
     }
 
@@ -959,7 +954,7 @@ const jumpToElement = (element) => {
  * @param {MouseEvent} event Click event.
  */
 const handleCurrentSidebarPageClick = (event) => {
-  const link = event.target.closest("a[href]");
+  const link = closestElement(event.target, "a[href]");
   if (!link || !link.closest(DOCS_SIDEBAR_SELECTOR) || link.closest(".app-sub-sidebar")) {
     return;
   }
@@ -984,7 +979,7 @@ const handleCurrentSidebarPageClick = (event) => {
  * @param {MouseEvent} event Click event.
  */
 const handleSamePageAnchorClick = (event) => {
-  const link = event.target.closest("a[href]");
+  const link = closestElement(event.target, "a[href]");
   if (!link) {
     return;
   }

@@ -9,11 +9,7 @@ import {
   isDashboardPath,
   isElementInView,
 } from "/static/js/common/common.js";
-import {
-  getElementById,
-  initializeOnReadyAndHtmxLoad,
-  markDatasetReady,
-} from "/static/js/common/dom.js";
+import { getElementById, initializeOnReadyAndHtmxLoad, markDatasetReady } from "/static/js/common/dom.js";
 import { trimmedNonEmpty, passwordsMatch } from "/static/js/common/validators.js";
 
 // -----------------------------------------------------------------------------

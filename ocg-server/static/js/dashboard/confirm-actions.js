@@ -1,4 +1,5 @@
 import { showConfirmAlert, handleHtmxResponse } from "/static/js/common/alerts.js";
+import { closestElement } from "/static/js/common/dom.js";
 
 let confirmActionsBound = false;
 
@@ -9,7 +10,7 @@ const bindConfirmActions = () => {
 
   confirmActionsBound = true;
   document.addEventListener("click", (event) => {
-    const button = event.target.closest("[data-confirm-action]");
+    const button = closestElement(event.target, "[data-confirm-action]");
     if (!button || button.disabled) {
       return;
     }
@@ -22,7 +23,7 @@ const bindConfirmActions = () => {
   });
 
   document.addEventListener("htmx:afterRequest", (event) => {
-    const button = event.target?.closest?.("[data-confirm-action]");
+    const button = closestElement(event.target, "[data-confirm-action]");
     if (!button) {
       return;
     }

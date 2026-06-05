@@ -1,5 +1,5 @@
 import { hideLoadingSpinner, showLoadingSpinner, navigateWithHtmx } from "/static/js/common/common.js";
-import { getElementById, loadScriptOnce } from "/static/js/common/dom.js";
+import { getElementById, loadScriptOnce, setElementHidden } from "/static/js/common/dom.js";
 import { parseJsonText } from "/static/js/common/utils.js";
 import { fetchData } from "/static/js/community/explore/explore.js";
 import {
@@ -46,9 +46,7 @@ const getInitialCalendarDate = () => {
  */
 const setMainCalendarLoading = (visible) => {
   const mainLoading = getElementById(document, MAIN_LOADING_CALENDAR_ID);
-  if (mainLoading) {
-    mainLoading.classList.toggle("hidden", !visible);
-  }
+  setElementHidden(mainLoading, !visible);
 };
 
 /**
@@ -175,7 +173,7 @@ const formatCalendarEvent = (event, colors) => {
  */
 const hideNoResultsPlaceholders = (wrapper) => {
   wrapper?.querySelectorAll(NO_RESULTS_SELECTOR).forEach((container) => {
-    container.classList.add("hidden");
+    setElementHidden(container, true);
   });
 };
 
@@ -188,7 +186,7 @@ const showNoResultsPlaceholder = (wrapper, fullCalendar) => {
   const selector = hasActiveCalendarFilters(EVENTS_FORM_ID, fullCalendar.getDate())
     ? FILTERED_NO_RESULTS_SELECTOR
     : DEFAULT_NO_RESULTS_SELECTOR;
-  wrapper?.querySelector(selector)?.classList.remove("hidden");
+  setElementHidden(wrapper?.querySelector(selector), false);
 };
 
 export class Calendar {

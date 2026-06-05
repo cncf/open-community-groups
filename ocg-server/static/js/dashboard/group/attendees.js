@@ -8,6 +8,8 @@ import {
   toggleModalVisibility,
 } from "/static/js/common/common.js";
 import {
+  closestElement,
+  closestElementWithinRoot,
   getElementById,
   initializeOnReadyAndHtmxLoad,
   markDatasetReady,
@@ -379,7 +381,7 @@ const processRefundActionButton = (button) => {
  * @returns {void}
  */
 const closeAttendeeActionsDropdown = (root = document) => {
-  root.querySelector?.(attendeeActionsDropdownSelector)?.classList.add("hidden");
+  setElementHidden(root.querySelector?.(attendeeActionsDropdownSelector), true);
 };
 
 /**
@@ -402,7 +404,8 @@ const closeAttendeeRowActionMenus = (root = document, exceptMenu = null) => {
  * @returns {void}
  */
 const toggleAttendeeActionsDropdown = (root = document) => {
-  root.querySelector?.(attendeeActionsDropdownSelector)?.classList.toggle("hidden");
+  const dropdown = root.querySelector?.(attendeeActionsDropdownSelector);
+  setElementHidden(dropdown, !dropdown?.classList.contains("hidden"));
 };
 
 /**
@@ -505,43 +508,47 @@ const initializeAttendeeActionsMenu = (root = document) => {
   }
 
   root.addEventListener("click", (event) => {
-    const target = event.target instanceof Element ? event.target : null;
-
-    const rowSummary = target?.closest(`${attendeeRowActionsMenuSelector} summary`);
+    const rowSummary = closestElementWithinRoot(
+      event.target,
+      `${attendeeRowActionsMenuSelector} summary`,
+      root,
+    );
     const rowMenu = rowSummary?.closest(attendeeRowActionsMenuSelector);
-    if (rowMenu instanceof HTMLDetailsElement && root.contains(rowMenu)) {
+    if (rowMenu instanceof HTMLDetailsElement) {
       closeAttendeeActionsDropdown(root);
       closeAttendeeRowActionMenus(root, rowMenu);
       return;
     }
 
-    const rowMenuItem = target?.closest(
+    const rowMenuItem = closestElementWithinRoot(
+      event.target,
       `${attendeeRowActionsMenuSelector} button, ${attendeeRowActionsMenuSelector} a`,
+      root,
     );
-    if (rowMenuItem instanceof HTMLElement && root.contains(rowMenuItem)) {
+    if (rowMenuItem instanceof HTMLElement) {
       closeAttendeeRowActionMenus(root);
       return;
     }
 
-    const trigger = target?.closest("#attendee-actions-button");
-    if (trigger instanceof HTMLElement && root.contains(trigger)) {
+    const trigger = closestElementWithinRoot(event.target, "#attendee-actions-button", root);
+    if (trigger instanceof HTMLElement) {
       event.stopPropagation();
       closeAttendeeRowActionMenus(root);
       toggleAttendeeActionsDropdown(root);
       return;
     }
 
-    const menuItem = target?.closest(`${attendeeActionsDropdownSelector} a`);
-    if (menuItem instanceof HTMLAnchorElement && root.contains(menuItem)) {
+    const menuItem = closestElementWithinRoot(event.target, `${attendeeActionsDropdownSelector} a`, root);
+    if (menuItem instanceof HTMLAnchorElement) {
       closeAttendeeActionsDropdown(root);
       return;
     }
 
-    if (!target?.closest(attendeeActionsDropdownSelector)) {
+    if (!closestElementWithinRoot(event.target, attendeeActionsDropdownSelector, root)) {
       closeAttendeeActionsDropdown(root);
     }
 
-    if (!target?.closest(attendeeRowActionsMenuSelector)) {
+    if (!closestElementWithinRoot(event.target, attendeeRowActionsMenuSelector, root)) {
       closeAttendeeRowActionMenus(root);
     }
   });
@@ -622,9 +629,8 @@ const initializeRefundReviewModal = (root = document) => {
   }
 
   root.addEventListener("click", (event) => {
-    const target = event.target instanceof Element ? event.target : null;
-    const refundTrigger = target?.closest("[data-refund-review-trigger]");
-    if (refundTrigger instanceof HTMLElement && root.contains(refundTrigger)) {
+    const refundTrigger = closestElementWithinRoot(event.target, "[data-refund-review-trigger]", root);
+    if (refundTrigger instanceof HTMLElement) {
       event.stopPropagation();
       populateRefundReviewModal(refundTrigger, root);
       openRefundModal(root);
@@ -632,8 +638,10 @@ const initializeRefundReviewModal = (root = document) => {
     }
 
     if (
-      target?.closest(
+      closestElementWithinRoot(
+        event.target,
         "#close-attendee-refund-modal, #cancel-attendee-refund-modal, #overlay-attendee-refund-modal",
+        root,
       )
     ) {
       event.stopPropagation();
@@ -672,9 +680,8 @@ const initializeAnswersModal = (root = document) => {
   }
 
   root.addEventListener("click", (event) => {
-    const target = event.target instanceof Element ? event.target : null;
-    const answersTrigger = target?.closest("[data-attendee-answers-open]");
-    if (answersTrigger instanceof HTMLElement && root.contains(answersTrigger)) {
+    const answersTrigger = closestElementWithinRoot(event.target, "[data-attendee-answers-open]", root);
+    if (answersTrigger instanceof HTMLElement) {
       event.stopPropagation();
       populateAnswersModal(answersTrigger, root);
       openAnswersModal(root);
@@ -682,8 +689,10 @@ const initializeAnswersModal = (root = document) => {
     }
 
     if (
-      target?.closest(
+      closestElementWithinRoot(
+        event.target,
         "#close-attendee-answers-modal, #cancel-attendee-answers-modal, #overlay-attendee-answers-modal",
+        root,
       )
     ) {
       event.stopPropagation();
@@ -708,8 +717,7 @@ const initializeInvitationModal = (root = document) => {
   }
 
   root.addEventListener("click", (event) => {
-    const target = event.target instanceof Element ? event.target : null;
-    if (target?.closest("#open-attendee-invitation-modal")) {
+    if (closestElementWithinRoot(event.target, "#open-attendee-invitation-modal", root)) {
       event.stopPropagation();
       resetInvitationForm(root);
       setScopedModalVisibility(root, invitationModalId, true);
@@ -717,16 +725,22 @@ const initializeInvitationModal = (root = document) => {
       return;
     }
 
-    const clearUserButton = target?.closest("[data-attendee-invitation-clear-user]");
-    if (clearUserButton instanceof HTMLElement && root.contains(clearUserButton)) {
+    const clearUserButton = closestElementWithinRoot(
+      event.target,
+      "[data-attendee-invitation-clear-user]",
+      root,
+    );
+    if (clearUserButton instanceof HTMLElement) {
       event.preventDefault();
       clearInvitationSelectedUser(root);
       return;
     }
 
     if (
-      target?.closest(
+      closestElementWithinRoot(
+        event.target,
         "#close-attendee-invitation-modal, #cancel-attendee-invitation, #overlay-attendee-invitation-modal",
+        root,
       )
     ) {
       event.stopPropagation();
@@ -764,7 +778,7 @@ const initializeInvitationModal = (root = document) => {
     const target = event.target;
     const searchField =
       target instanceof HTMLInputElement
-        ? target.closest("user-search-field[data-attendee-invitation-search]")
+        ? closestElement(target, "user-search-field[data-attendee-invitation-search]")
         : null;
 
     if (searchField) {

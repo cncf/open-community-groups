@@ -69,6 +69,31 @@ export const ensureElementId = (element, fallbackId) => {
 };
 
 /**
+ * Finds the closest matching element from an event target-like value.
+ * @param {EventTarget|null|undefined} target Event target to inspect.
+ * @param {string} selector Selector to match.
+ * @returns {Element|null} Matching element when present.
+ */
+export const closestElement = (target, selector) =>
+  target instanceof Element ? target.closest(selector) : null;
+
+/**
+ * Finds the closest matching element when it belongs to the provided root.
+ * @param {EventTarget|null|undefined} target Event target to inspect.
+ * @param {string} selector Selector to match.
+ * @param {Document|Element} root Root that must contain the match.
+ * @returns {Element|null} Matching element when present in root.
+ */
+export const closestElementWithinRoot = (target, selector, root = document) => {
+  const element = closestElement(target, selector);
+  if (!element) {
+    return null;
+  }
+
+  return root === document || root.contains(element) ? element : null;
+};
+
+/**
  * Initializes current content when the document is ready.
  * @param {() => void} callback Initialization callback.
  * @returns {void}

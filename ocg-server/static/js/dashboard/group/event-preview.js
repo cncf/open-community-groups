@@ -6,7 +6,7 @@ import {
   lockBodyScroll,
   unlockBodyScroll,
 } from "/static/js/common/common.js";
-import { getElementById, markDatasetReady } from "/static/js/common/dom.js";
+import { closestElement, getElementById, markDatasetReady, setElementHidden } from "/static/js/common/dom.js";
 import { ocgFetch } from "/static/js/common/fetch.js";
 import { parseJsonAttribute } from "/static/js/common/utils.js";
 import "/static/js/common/images-gallery.js";
@@ -169,7 +169,7 @@ export const openEventPreviewModal = (modalRoot, html, pageRoot = document) => {
   lockBodyScroll();
 
   const handleClick = (event) => {
-    if (event.target.closest("[data-event-preview-close]")) {
+    if (closestElement(event.target, "[data-event-preview-close]")) {
       closeEventPreviewModal(modalRoot);
     }
   };
@@ -236,18 +236,18 @@ const initializeEventPreviewMap = async (mapRoot, latitude, longitude) => {
 
   const fallback = mapRoot.querySelector("[data-event-preview-location-map-fallback]");
   const emptyState = mapRoot.querySelector("[data-event-preview-location-empty]");
-  mapCanvas.classList.remove("hidden");
+  setElementHidden(mapCanvas, false);
 
   try {
     await loadMap(mapCanvas.id, latitude, longitude, {
       interactive: false,
     });
-    fallback?.classList.add("hidden");
-    emptyState?.classList.add("hidden");
+    setElementHidden(fallback, true);
+    setElementHidden(emptyState, true);
   } catch (_) {
-    mapCanvas.classList.add("hidden");
-    fallback?.classList.remove("hidden");
-    emptyState?.classList.remove("hidden");
+    setElementHidden(mapCanvas, true);
+    setElementHidden(fallback, false);
+    setElementHidden(emptyState, false);
   }
 };
 
@@ -313,7 +313,7 @@ const updateEventPreviewTestBadge = (modalRoot, pageRoot) => {
     .toLowerCase();
   const isTestEvent = testEventValue === "true" || testEventToggle?.checked === true;
 
-  badge.classList.toggle("hidden", !isTestEvent);
+  setElementHidden(badge, !isTestEvent);
 };
 
 /**
@@ -346,7 +346,7 @@ const renderEventPreviewSocialLinks = (modalRoot, links) => {
     const linksList = container.querySelector("[data-event-preview-social-links-list]") || container;
     linksList.replaceChildren(...links.map(createEventPreviewSocialLink));
     if (!container.classList.contains("md:flex")) {
-      container.classList.remove("hidden");
+      setElementHidden(container, false);
     }
   });
 };
@@ -427,7 +427,7 @@ const renderEventPreviewTags = (modalRoot, tags) => {
   });
 
   tagsSection.replaceChildren(heading, tagList);
-  tagsSection.classList.remove("hidden");
+  setElementHidden(tagsSection, false);
 };
 
 /**

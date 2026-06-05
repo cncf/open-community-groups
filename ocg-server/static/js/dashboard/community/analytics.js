@@ -16,7 +16,12 @@ import {
   hasStackedTimeSeriesData,
 } from "/static/js/common/charts.js";
 import { deferUntilHtmxSettled } from "/static/js/dashboard/common.js";
-import { initializeOnReady, isDatasetReady, markDatasetReady } from "/static/js/common/dom.js";
+import {
+  initializeOnReady,
+  isDatasetReady,
+  markDatasetReady,
+  setElementHidden,
+} from "/static/js/common/dom.js";
 import { registerChartResizeHandler, renderChart } from "/static/js/common/stats.js";
 import { parseJsonText } from "/static/js/common/utils.js";
 
@@ -670,7 +675,7 @@ const setupAnalyticsTabs = (stats, palette) => {
 
     tabContents.forEach((content) => {
       const visible = content.dataset.analyticsContent === tab;
-      content.classList.toggle("hidden", !visible);
+      setElementHidden(content, !visible);
     });
 
     initTabCharts(tab)

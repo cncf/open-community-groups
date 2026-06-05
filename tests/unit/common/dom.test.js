@@ -1,6 +1,8 @@
 import { expect } from "@open-wc/testing";
 
 import {
+  closestElement,
+  closestElementWithinRoot,
   ensureElementId,
   initializeMatchingRoots,
   initializeOnReady,
@@ -153,6 +155,29 @@ describe("common dom", () => {
 
     // Missing elements return an empty id.
     expect(ensureElementId(null, "missing-button")).to.equal("");
+  });
+
+  it("finds closest elements from event targets", () => {
+    // Build nested elements for closest lookups.
+    document.body.innerHTML = `
+      <section id="root">
+        <button id="action-button" data-action>
+          <span id="action-label">Open</span>
+        </button>
+      </section>
+      <section id="other-root"></section>
+    `;
+
+    // Resolve the lookup targets.
+    const label = document.getElementById("action-label");
+    const root = document.getElementById("root");
+    const otherRoot = document.getElementById("other-root");
+
+    // The helper finds matches and respects scoped roots.
+    expect(closestElement(label, "[data-action]")?.id).to.equal("action-button");
+    expect(closestElement(label.firstChild, "[data-action]")).to.equal(null);
+    expect(closestElementWithinRoot(label, "[data-action]", root)?.id).to.equal("action-button");
+    expect(closestElementWithinRoot(label, "[data-action]", otherRoot)).to.equal(null);
   });
 
   it("resolves immediately when the script is already loaded", async () => {

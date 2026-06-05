@@ -5,6 +5,7 @@ import {
   getElementById,
   initializeMatchingRoots,
   initializeOnReadyAndHtmxLoad,
+  setElementHidden,
 } from "/static/js/common/dom.js";
 import {
   attachEventSaveAfterRequest,
@@ -230,7 +231,7 @@ const updateRecurrenceAdditionalOccurrencesState = ({
   recurrencePatternSelect,
 }) => {
   const recurring = recurrencePatternSelect.value !== "just-once";
-  recurrenceAdditionalOccurrencesContainer?.classList.toggle("hidden", !recurring);
+  setElementHidden(recurrenceAdditionalOccurrencesContainer, !recurring);
 
   if (!recurrenceAdditionalOccurrencesInput) {
     return;

@@ -1,7 +1,7 @@
 /**
  * Initializes header dropdown and nav loading behavior with HTMX awareness.
  */
-import { getElementById } from "/static/js/common/dom.js";
+import { closestElement, getElementById, setElementHidden } from "/static/js/common/dom.js";
 
 let documentHandlersBound = false;
 let lifecycleListenersBound = false;
@@ -165,7 +165,7 @@ const ensureDocumentHandlers = () => {
 
     if (!clickedButton && !clickedDropdown) {
       // Hide if the click did not originate inside the dropdown or trigger.
-      dropdown.classList.add("hidden");
+      setElementHidden(dropdown, true);
     }
   };
 
@@ -181,7 +181,7 @@ const ensureDocumentHandlers = () => {
       return;
     }
 
-    dropdown.classList.add("hidden");
+    setElementHidden(dropdown, true);
     button.focus();
   };
 
@@ -250,7 +250,7 @@ const toggleDropdownVisibility = () => {
     return;
   }
 
-  dropdown.classList.toggle("hidden");
+  setElementHidden(dropdown, !dropdown.classList.contains("hidden"));
 };
 
 // Public initializer for the user dropdown interactions.
@@ -272,7 +272,7 @@ export const initUserDropdown = () => {
     dropdown.addEventListener(
       "click",
       (event) => {
-        const link = event.target.closest("a");
+        const link = closestElement(event.target, "a");
         if (!link) {
           return;
         }
@@ -284,7 +284,7 @@ export const initUserDropdown = () => {
           }
           return;
         }
-        dropdown.classList.add("hidden");
+        setElementHidden(dropdown, true);
       },
       true,
     );
