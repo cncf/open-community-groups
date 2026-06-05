@@ -144,17 +144,48 @@ const getInvitationSearchField = (root) =>
   root.querySelector?.("user-search-field[data-attendee-invitation-search]") || null;
 
 /**
+ * Resolve the attendee invitation controls from the current modal.
+ * @param {Document|Element} root Query root.
+ * @returns {Object} Invitation controls.
+ */
+const getInvitationControls = (root) => ({
+  form: getElementById(root, "attendee-invitation-form"),
+  submit: getElementById(root, "submit-attendee-invitation"),
+  userInput: getElementById(root, "attendee-invitation-user-id"),
+  emailInput: getElementById(root, "attendee-invitation-email"),
+  selectedUser: getElementById(root, "attendee-invitation-selected-user"),
+});
+
+/**
  * Set which invitation field should be submitted.
  * @param {Document|Element} root Query root.
  * @param {"user"|"email"|""} field Active submission field.
  * @returns {void}
  */
 const setInvitationSubmissionField = (root, field) => {
-  const userInput = getElementById(root, "attendee-invitation-user-id");
-  const emailInput = getElementById(root, "attendee-invitation-email");
+  const { userInput, emailInput } = getInvitationControls(root);
 
   if (userInput) userInput.disabled = field !== "user";
   if (emailInput) emailInput.disabled = field !== "email";
+};
+
+/**
+ * Clear attendee invitation hidden fields, selected display, and search value.
+ * @param {Document|Element} root Query root.
+ * @returns {void}
+ */
+const clearInvitationState = (root) => {
+  const { userInput, emailInput, selectedUser } = getInvitationControls(root);
+  const searchField = getInvitationSearchField(root);
+
+  if (userInput) userInput.value = "";
+  if (emailInput) emailInput.value = "";
+  setInvitationSubmissionField(root, "");
+  selectedUser?.replaceChildren();
+  if (typeof searchField?.clearSearch === "function") {
+    searchField.clearSearch({ refocus: false });
+  }
+  updateInvitationSubmitState(root);
 };
 
 /**
@@ -163,19 +194,7 @@ const setInvitationSubmissionField = (root, field) => {
  * @returns {void}
  */
 const clearInvitationSelectedUser = (root) => {
-  const userInput = getElementById(root, "attendee-invitation-user-id");
-  const emailInput = getElementById(root, "attendee-invitation-email");
-  const selectedUser = getElementById(root, "attendee-invitation-selected-user");
-  const searchField = getInvitationSearchField(root);
-
-  if (userInput) userInput.value = "";
-  if (emailInput) emailInput.value = "";
-  setInvitationSubmissionField(root, "");
-  selectedUser?.replaceChildren();
-  if (typeof searchField?.clearSearch === "function") {
-    searchField.clearSearch({ refocus: false });
-  }
-  updateInvitationSubmitState(root);
+  clearInvitationState(root);
 };
 
 /**
@@ -184,19 +203,7 @@ const clearInvitationSelectedUser = (root) => {
  * @returns {void}
  */
 const resetInvitationForm = (root) => {
-  const userInput = getElementById(root, "attendee-invitation-user-id");
-  const emailInput = getElementById(root, "attendee-invitation-email");
-  const selectedUser = getElementById(root, "attendee-invitation-selected-user");
-  const searchField = getInvitationSearchField(root);
-
-  if (userInput) userInput.value = "";
-  if (emailInput) emailInput.value = "";
-  setInvitationSubmissionField(root, "");
-  selectedUser?.replaceChildren();
-  if (typeof searchField?.clearSearch === "function") {
-    searchField.clearSearch({ refocus: false });
-  }
-  updateInvitationSubmitState(root);
+  clearInvitationState(root);
 };
 
 /**
@@ -206,7 +213,7 @@ const resetInvitationForm = (root) => {
  * @returns {void}
  */
 const renderInvitationSelectedUser = (root, user) => {
-  const selectedUser = getElementById(root, "attendee-invitation-selected-user");
+  const { selectedUser } = getInvitationControls(root);
   if (!selectedUser) return;
 
   const pill = document.createElement("div");
@@ -244,7 +251,7 @@ const renderInvitationSelectedUser = (root, user) => {
  * @returns {void}
  */
 const renderInvitationSelectedEmail = (root, email) => {
-  const selectedUser = getElementById(root, "attendee-invitation-selected-user");
+  const { selectedUser } = getInvitationControls(root);
   if (!selectedUser) return;
 
   const pill = document.createElement("div");
@@ -282,12 +289,11 @@ const renderInvitationSelectedEmail = (root, email) => {
  * @returns {void}
  */
 const updateInvitationSubmitState = (root) => {
-  const form = getElementById(root, "attendee-invitation-form");
-  const submit = getElementById(root, "submit-attendee-invitation");
+  const { form, submit, userInput, emailInput } = getInvitationControls(root);
   if (!form || !submit) return;
 
-  const userId = getElementById(root, "attendee-invitation-user-id")?.value || "";
-  const email = getElementById(root, "attendee-invitation-email")?.value.trim() || "";
+  const userId = userInput?.value || "";
+  const email = emailInput?.value.trim() || "";
   submit.disabled = userId === "" && !isValidInvitationEmail(email);
 };
 
@@ -298,9 +304,7 @@ const updateInvitationSubmitState = (root) => {
  * @returns {void}
  */
 const updateInvitationQuery = (root, query) => {
-  const userInput = getElementById(root, "attendee-invitation-user-id");
-  const emailInput = getElementById(root, "attendee-invitation-email");
-  const selectedUser = getElementById(root, "attendee-invitation-selected-user");
+  const { userInput, emailInput, selectedUser } = getInvitationControls(root);
   if (!userInput || !emailInput) return;
 
   const email = query.trim();
@@ -323,8 +327,7 @@ const updateInvitationQuery = (root, query) => {
  * @returns {void}
  */
 const selectInvitationEmail = (root, email) => {
-  const userInput = getElementById(root, "attendee-invitation-user-id");
-  const emailInput = getElementById(root, "attendee-invitation-email");
+  const { userInput, emailInput } = getInvitationControls(root);
   if (!emailInput || !isValidInvitationEmail(email)) return;
 
   if (userInput) userInput.value = "";
@@ -735,15 +738,13 @@ const initializeInvitationModal = (root = document) => {
 
   root.addEventListener("user-selected", (event) => {
     const user = event.detail?.user;
-    const input = getElementById(root, "attendee-invitation-user-id");
-    const emailInput = getElementById(root, "attendee-invitation-email");
-    const selected = getElementById(root, "attendee-invitation-selected-user");
-    if (!user || !input) return;
+    const { userInput, emailInput, selectedUser } = getInvitationControls(root);
+    if (!user || !userInput) return;
 
-    input.value = user.user_id || "";
+    userInput.value = user.user_id || "";
     if (emailInput) emailInput.value = "";
     setInvitationSubmissionField(root, "user");
-    if (selected) renderInvitationSelectedUser(root, user);
+    if (selectedUser) renderInvitationSelectedUser(root, user);
     updateInvitationSubmitState(root);
   });
 
