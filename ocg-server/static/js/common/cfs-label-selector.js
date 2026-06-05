@@ -1,4 +1,6 @@
 import { html, repeat } from "/static/vendor/js/lit-all.v3.3.1.min.js";
+import { bindOutsideClickListener } from "/static/js/common/dom.js";
+import { getNextLoopedIndex, isEscapeEvent } from "/static/js/common/keyboard.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 
 const DEFAULT_PLACEHOLDER = "Search labels";
@@ -179,7 +181,7 @@ export class CfsLabelSelector extends LitWrapper {
       return;
     }
 
-    if (event.key === "Escape") {
+    if (isEscapeEvent(event)) {
       event.preventDefault();
       this._closeDropdown();
       return;
@@ -193,19 +195,11 @@ export class CfsLabelSelector extends LitWrapper {
     switch (event.key) {
       case "ArrowDown":
         event.preventDefault();
-        if (this._activeIndex === null) {
-          this._activeIndex = 0;
-        } else {
-          this._activeIndex = (this._activeIndex + 1) % filteredLabels.length;
-        }
+        this._activeIndex = getNextLoopedIndex(this._activeIndex, filteredLabels.length, 1);
         break;
       case "ArrowUp":
         event.preventDefault();
-        if (this._activeIndex === null) {
-          this._activeIndex = 0;
-        } else {
-          this._activeIndex = (this._activeIndex - 1 + filteredLabels.length) % filteredLabels.length;
-        }
+        this._activeIndex = getNextLoopedIndex(this._activeIndex, filteredLabels.length, -1);
         break;
       case "Enter":
         event.preventDefault();
@@ -440,13 +434,7 @@ export class CfsLabelSelector extends LitWrapper {
       return;
     }
 
-    this._documentClickHandler = (event) => {
-      const path = event.composedPath();
-      if (!path.includes(this)) {
-        this._closeDropdown();
-      }
-    };
-    document.addEventListener("click", this._documentClickHandler);
+    this._documentClickHandler = bindOutsideClickListener(this, () => this._closeDropdown());
   }
 
   /**
@@ -457,7 +445,7 @@ export class CfsLabelSelector extends LitWrapper {
       return;
     }
 
-    document.removeEventListener("click", this._documentClickHandler);
+    this._documentClickHandler();
     this._documentClickHandler = null;
   }
 

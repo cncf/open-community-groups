@@ -1,6 +1,7 @@
 import { html } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { lockBodyScroll, unlockBodyScroll } from "/static/js/common/common.js";
+import { bindModalDismissListeners, isModalEscapeEvent } from "/static/js/common/modal-lifecycle.js";
 
 /**
  * ImagesGallery component for displaying images with modal carousel.
@@ -24,6 +25,7 @@ export class ImagesGallery extends LitWrapper {
     this.altImage = "Gallery";
     this._isModalOpen = false;
     this._currentIndex = 0;
+    this._removeDismissListeners = null;
   }
 
   connectedCallback() {
@@ -44,8 +46,11 @@ export class ImagesGallery extends LitWrapper {
     this._currentIndex = index;
     this._isModalOpen = true;
     lockBodyScroll();
-    document.addEventListener("keydown", this._handleKeydown);
-    document.addEventListener("mousedown", this._handleModalBackgroundClick);
+    this._removeModalEventListeners();
+    this._removeDismissListeners = bindModalDismissListeners({
+      onKeydown: this._handleKeydown,
+      onOutsideClick: this._handleModalBackgroundClick,
+    });
   }
 
   _closeModal() {
@@ -55,8 +60,8 @@ export class ImagesGallery extends LitWrapper {
   }
 
   _removeModalEventListeners() {
-    document.removeEventListener("keydown", this._handleKeydown);
-    document.removeEventListener("mousedown", this._handleModalBackgroundClick);
+    this._removeDismissListeners?.();
+    this._removeDismissListeners = null;
   }
 
   _navigateCarousel(direction) {
@@ -70,7 +75,7 @@ export class ImagesGallery extends LitWrapper {
   _handleKeydown(e) {
     if (!this._isModalOpen) return;
 
-    if (e.key === "Escape") {
+    if (isModalEscapeEvent(e)) {
       this._closeModal();
     } else if (e.key === "ArrowRight") {
       this._navigateCarousel("next");

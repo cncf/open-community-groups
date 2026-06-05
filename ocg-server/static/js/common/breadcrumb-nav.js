@@ -1,4 +1,5 @@
 import { html, nothing } from "/static/vendor/js/lit-all.v3.3.1.min.js";
+import { isEscapeEvent } from "/static/js/common/keyboard.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { parseJsonAttribute } from "/static/js/common/utils.js";
 
@@ -88,7 +89,7 @@ export class BreadcrumbNav extends LitWrapper {
   }
 
   _handleKeydown(event) {
-    if (event.key === "Escape" && this._isOpen) {
+    if (isEscapeEvent(event) && this._isOpen) {
       this._isOpen = false;
       const trigger = this.querySelector("[data-breadcrumb-trigger]");
       if (trigger) {

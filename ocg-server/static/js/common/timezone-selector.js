@@ -1,5 +1,6 @@
 import { html, repeat } from "/static/vendor/js/lit-all.v3.3.1.min.js";
-import { getElementById } from "/static/js/common/dom.js";
+import { bindOutsideClickListener, focusElementById, getElementById } from "/static/js/common/dom.js";
+import { getNextLoopedIndex, isEscapeEvent } from "/static/js/common/keyboard.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 
 /**
@@ -126,10 +127,7 @@ export class TimezoneSelector extends LitWrapper {
     this._activeIndex = null;
     this._addDocumentListener();
     this.updateComplete.then(() => {
-      const input = getElementById(this, "timezone-search-input");
-      if (input) {
-        input.focus();
-      }
+      focusElementById(this, "timezone-search-input");
     });
   }
 
@@ -150,12 +148,7 @@ export class TimezoneSelector extends LitWrapper {
     if (this._documentClickHandler) {
       return;
     }
-    this._documentClickHandler = (event) => {
-      if (!this.contains(event.target)) {
-        this._closeDropdown();
-      }
-    };
-    document.addEventListener("click", this._documentClickHandler);
+    this._documentClickHandler = bindOutsideClickListener(this, () => this._closeDropdown());
   }
 
   /**
@@ -165,7 +158,7 @@ export class TimezoneSelector extends LitWrapper {
     if (!this._documentClickHandler) {
       return;
     }
-    document.removeEventListener("click", this._documentClickHandler);
+    this._documentClickHandler();
     this._documentClickHandler = null;
   }
 
@@ -180,19 +173,21 @@ export class TimezoneSelector extends LitWrapper {
 
     const filteredTimezones = this._filteredTimezones;
     if (!this._isOpen || filteredTimezones.length === 0) {
-      if (this._isOpen && event.key === "Escape") {
+      if (this._isOpen && isEscapeEvent(event)) {
         event.preventDefault();
         this._closeDropdown();
       }
       return;
     }
 
+    if (isEscapeEvent(event)) {
+      event.preventDefault();
+      this._closeDropdown();
+      return;
+    }
+
     const moveActiveIndex = (delta) => {
-      if (this._activeIndex === null) {
-        this._activeIndex = 0;
-      } else {
-        this._activeIndex = (this._activeIndex + delta + filteredTimezones.length) % filteredTimezones.length;
-      }
+      this._activeIndex = getNextLoopedIndex(this._activeIndex, filteredTimezones.length, delta);
       this._scrollActiveIntoView();
     };
 
@@ -213,10 +208,6 @@ export class TimezoneSelector extends LitWrapper {
             this._handleTimezoneClick(event, timezone);
           }
         }
-        break;
-      case "Escape":
-        event.preventDefault();
-        this._closeDropdown();
         break;
       default:
         break;

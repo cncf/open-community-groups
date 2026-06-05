@@ -16,6 +16,8 @@ import {
   setElementHidden,
 } from "/static/js/common/dom.js";
 import { ocgFetch } from "/static/js/common/fetch.js";
+import { isEscapeEvent } from "/static/js/common/keyboard.js";
+import { isModalEscapeEvent } from "/static/js/common/modal-lifecycle.js";
 
 const modalId = "attendee-notification-modal";
 const formId = "attendee-notification-form";
@@ -562,7 +564,7 @@ const initializeAttendeeActionsMenu = (root = document) => {
   });
 
   root.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") {
+    if (isEscapeEvent(event)) {
       const openRowMenu = root.querySelector(`${attendeeRowActionsMenuSelector}[open]`);
       const rowSummary = openRowMenu?.querySelector("summary");
       closeAttendeeActionsDropdown(root);
@@ -650,7 +652,7 @@ const initializeRefundReviewModal = (root = document) => {
   });
 
   root.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") {
+    if (isModalEscapeEvent(event)) {
       closeRefundModal(root);
     }
   });
@@ -701,7 +703,7 @@ const initializeAnswersModal = (root = document) => {
   });
 
   root.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") {
+    if (isModalEscapeEvent(event)) {
       closeAnswersModal(root);
     }
   });
@@ -804,7 +806,7 @@ const initializeInvitationModal = (root = document) => {
   });
 
   root.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") {
+    if (isModalEscapeEvent(event)) {
       closeInvitationModal(root);
     }
   });

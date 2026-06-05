@@ -5,6 +5,7 @@ import "/static/js/common/logo-image.js";
 import { computeUserInitials, lockBodyScroll, unlockBodyScroll } from "/static/js/common/common.js";
 import { getElementById } from "/static/js/common/dom.js";
 import { handleHtmxResponse } from "/static/js/common/alerts.js";
+import { isModalEscapeEvent } from "/static/js/common/modal-lifecycle.js";
 import { parseJsonAttribute } from "/static/js/common/utils.js";
 
 /**
@@ -100,7 +101,7 @@ export class TeamAddMember extends LitWrapper {
    * @private
    */
   _onKeydown(e) {
-    if (e.key === "Escape" && this._isOpen) {
+    if (isModalEscapeEvent(e) && this._isOpen) {
       this._close();
     }
   }

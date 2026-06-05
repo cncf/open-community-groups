@@ -1,7 +1,8 @@
 import { html, repeat } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { showErrorAlert } from "/static/js/common/alerts.js";
 import { selectDashboardAndKeepTab } from "/static/js/common/dashboard-selection.js";
-import { getElementById } from "/static/js/common/dom.js";
+import { bindOutsideClickListener, focusElementById } from "/static/js/common/dom.js";
+import { getNextLoopedIndex, isEscapeEvent } from "/static/js/common/keyboard.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 
 /**
@@ -142,10 +143,7 @@ export class GroupSelector extends LitWrapper {
     this._activeIndex = null;
     this._addDocumentListener();
     this.updateComplete.then(() => {
-      const input = getElementById(this, "group-search-input");
-      if (input) {
-        input.focus();
-      }
+      focusElementById(this, "group-search-input");
     });
   }
 
@@ -166,12 +164,7 @@ export class GroupSelector extends LitWrapper {
     if (this._documentClickHandler) {
       return;
     }
-    this._documentClickHandler = (event) => {
-      if (!this.contains(event.target)) {
-        this._closeDropdown();
-      }
-    };
-    document.addEventListener("click", this._documentClickHandler);
+    this._documentClickHandler = bindOutsideClickListener(this, () => this._closeDropdown());
   }
 
   /**
@@ -181,7 +174,7 @@ export class GroupSelector extends LitWrapper {
     if (!this._documentClickHandler) {
       return;
     }
-    document.removeEventListener("click", this._documentClickHandler);
+    this._documentClickHandler();
     this._documentClickHandler = null;
   }
 
@@ -195,30 +188,27 @@ export class GroupSelector extends LitWrapper {
     }
 
     if (!this._isOpen || this._filteredGroups.length === 0) {
-      if (this._isOpen && event.key === "Escape") {
+      if (this._isOpen && isEscapeEvent(event)) {
         event.preventDefault();
         this._closeDropdown();
       }
       return;
     }
 
+    if (isEscapeEvent(event)) {
+      event.preventDefault();
+      this._closeDropdown();
+      return;
+    }
+
     switch (event.key) {
       case "ArrowDown":
         event.preventDefault();
-        if (this._activeIndex === null) {
-          this._activeIndex = 0;
-        } else {
-          this._activeIndex = (this._activeIndex + 1) % this._filteredGroups.length;
-        }
+        this._activeIndex = getNextLoopedIndex(this._activeIndex, this._filteredGroups.length, 1);
         break;
       case "ArrowUp":
         event.preventDefault();
-        if (this._activeIndex === null) {
-          this._activeIndex = 0;
-        } else {
-          this._activeIndex =
-            (this._activeIndex - 1 + this._filteredGroups.length) % this._filteredGroups.length;
-        }
+        this._activeIndex = getNextLoopedIndex(this._activeIndex, this._filteredGroups.length, -1);
         break;
       case "Enter":
         event.preventDefault();
@@ -228,10 +218,6 @@ export class GroupSelector extends LitWrapper {
             this._handleGroupClick(event, group);
           }
         }
-        break;
-      case "Escape":
-        event.preventDefault();
-        this._closeDropdown();
         break;
       default:
         break;

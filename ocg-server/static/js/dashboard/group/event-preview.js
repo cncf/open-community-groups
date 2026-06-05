@@ -8,6 +8,7 @@ import {
 } from "/static/js/common/common.js";
 import { closestElement, getElementById, markDatasetReady, setElementHidden } from "/static/js/common/dom.js";
 import { ocgFetch } from "/static/js/common/fetch.js";
+import { isModalEscapeEvent } from "/static/js/common/modal-lifecycle.js";
 import { parseJsonAttribute } from "/static/js/common/utils.js";
 import "/static/js/common/images-gallery.js";
 import "/static/js/common/user-chip.js";
@@ -174,7 +175,7 @@ export const openEventPreviewModal = (modalRoot, html, pageRoot = document) => {
     }
   };
   const handleKeydown = (event) => {
-    if (event.key === "Escape") {
+    if (isModalEscapeEvent(event)) {
       closeEventPreviewModal(modalRoot);
     }
   };

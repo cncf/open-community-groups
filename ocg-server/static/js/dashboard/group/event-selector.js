@@ -1,8 +1,9 @@
 import { html } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { ocgFetch } from "/static/js/common/fetch.js";
+import { getNextLoopedIndex, isEscapeEvent } from "/static/js/common/keyboard.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { showErrorAlert, showInfoAlert } from "/static/js/common/alerts.js";
-import { getElementById, setElementHidden } from "/static/js/common/dom.js";
+import { focusElementById, getElementById, setElementHidden } from "/static/js/common/dom.js";
 import {
   parseJsonAttribute,
   setImageFieldValue,
@@ -128,16 +129,17 @@ class EventSelector extends LitWrapper {
       return;
     }
 
+    const activeIndex = this._activeIndex < 0 ? null : this._activeIndex;
     if (event.key === "ArrowDown") {
       event.preventDefault();
-      this._activeIndex = this._activeIndex < this._results.length - 1 ? this._activeIndex + 1 : 0;
+      this._activeIndex = getNextLoopedIndex(activeIndex, this._results.length, 1);
     } else if (event.key === "ArrowUp") {
       event.preventDefault();
-      this._activeIndex = this._activeIndex > 0 ? this._activeIndex - 1 : this._results.length - 1;
+      this._activeIndex = getNextLoopedIndex(activeIndex, this._results.length, -1, this._results.length - 1);
     } else if (event.key === "Enter") {
       event.preventDefault();
       this._selectActiveResult();
-    } else if (event.key === "Escape") {
+    } else if (isEscapeEvent(event)) {
       event.preventDefault();
       this._closeDropdown();
     }
@@ -175,11 +177,7 @@ class EventSelector extends LitWrapper {
     this._isOpen = true;
     this._addOutsideListener();
     this.updateComplete.then(() => {
-      const input = getElementById(this, "event-search-input");
-      if (input) {
-        input.focus();
-        input.select();
-      }
+      focusElementById(this, "event-search-input", { select: true });
     });
     if (!this._hasFetched) {
       this._fetchEvents();

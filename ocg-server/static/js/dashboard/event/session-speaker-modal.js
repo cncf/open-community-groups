@@ -3,6 +3,7 @@ import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import "/static/js/common/user-search-field.js";
 import "/static/js/common/logo-image.js";
 import { computeUserInitials, lockBodyScroll, unlockBodyScroll } from "/static/js/common/common.js";
+import { isModalEscapeEvent } from "/static/js/common/modal-lifecycle.js";
 import { speakerKey } from "/static/js/dashboard/event/speaker-utils.js";
 
 /**
@@ -96,7 +97,7 @@ export class SessionSpeakerModal extends LitWrapper {
    * @private
    */
   _onKeydown(event) {
-    if (event.key === "Escape" && this._isOpen) {
+    if (isModalEscapeEvent(event) && this._isOpen) {
       this.close();
     }
   }

@@ -11,6 +11,7 @@ import {
   MEETING_RECORDING_VISIBILITY_LEGEND,
 } from "/static/js/common/common.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
+import { isModalEscapeEvent } from "/static/js/common/modal-lifecycle.js";
 import { parseJsonAttribute } from "/static/js/common/utils.js";
 import "/static/js/common/logo-image.js";
 import "/static/js/common/speakers-selector.js";
@@ -996,7 +997,7 @@ class SessionFormModal extends LitWrapper {
    * @private
    */
   _onKeydown(event) {
-    if (event.key === "Escape" && this._isOpen) {
+    if (isModalEscapeEvent(event) && this._isOpen) {
       this.close();
     }
   }

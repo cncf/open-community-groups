@@ -8,6 +8,7 @@ import {
   initializeOnReadyAndHtmxLoad,
   markDatasetReady,
 } from "/static/js/common/dom.js";
+import { isModalEscapeEvent } from "/static/js/common/modal-lifecycle.js";
 import { parseJsonAttribute } from "/static/js/common/utils.js";
 import "/static/js/common/cfs-label-selector.js";
 import "/static/js/common/logo-image.js";
@@ -164,7 +165,7 @@ export class ReviewSubmissionModal extends LitWrapper {
    * @param {KeyboardEvent} event
    */
   _onKeydown(event) {
-    if (event.key === "Escape" && this._isOpen) {
+    if (isModalEscapeEvent(event) && this._isOpen) {
       this.close();
     }
   }

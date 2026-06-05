@@ -2,6 +2,7 @@
  * Initializes header dropdown and nav loading behavior with HTMX awareness.
  */
 import { closestElement, getElementById, setElementHidden } from "/static/js/common/dom.js";
+import { isEscapeEvent } from "/static/js/common/keyboard.js";
 
 let documentHandlersBound = false;
 let lifecycleListenersBound = false;
@@ -170,7 +171,7 @@ const ensureDocumentHandlers = () => {
   };
 
   const handleKeydown = (event) => {
-    if (event.key !== "Escape") {
+    if (!isEscapeEvent(event)) {
       return;
     }
 

@@ -1,6 +1,11 @@
 import { html, unsafeHTML } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { computeUserInitials, lockBodyScroll, unlockBodyScroll } from "/static/js/common/common.js";
+import {
+  bindModalDismissListeners,
+  isModalEscapeEvent,
+  isModalOverlayTarget,
+} from "/static/js/common/modal-lifecycle.js";
 import "/static/js/common/logo-image.js";
 
 /**
@@ -26,6 +31,7 @@ export class UserInfoModal extends LitWrapper {
     super();
     this._isOpen = false;
     this._userData = null;
+    this._removeDismissListeners = null;
   }
 
   connectedCallback() {
@@ -50,8 +56,11 @@ export class UserInfoModal extends LitWrapper {
     this._userData = e.detail;
     this._isOpen = true;
     lockBodyScroll();
-    document.addEventListener("keydown", this._handleKeydown);
-    document.addEventListener("mousedown", this._handleOutsideClick);
+    this._removeEventListeners();
+    this._removeDismissListeners = bindModalDismissListeners({
+      onKeydown: this._handleKeydown,
+      onOutsideClick: this._handleOutsideClick,
+    });
   }
 
   _closeModal() {
@@ -61,12 +70,12 @@ export class UserInfoModal extends LitWrapper {
   }
 
   _removeEventListeners() {
-    document.removeEventListener("keydown", this._handleKeydown);
-    document.removeEventListener("mousedown", this._handleOutsideClick);
+    this._removeDismissListeners?.();
+    this._removeDismissListeners = null;
   }
 
   _handleKeydown(e) {
-    if (this._isOpen && e.key === "Escape") {
+    if (this._isOpen && isModalEscapeEvent(e)) {
       e.preventDefault();
       this._closeModal();
     }
@@ -75,7 +84,7 @@ export class UserInfoModal extends LitWrapper {
   _handleOutsideClick(e) {
     if (!this._isOpen) return;
 
-    if (e.target.classList && e.target.classList.contains("modal-overlay")) {
+    if (isModalOverlayTarget(e.target)) {
       this._closeModal();
     }
   }

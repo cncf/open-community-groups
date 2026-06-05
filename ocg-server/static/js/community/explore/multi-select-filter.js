@@ -1,4 +1,6 @@
 import { html, repeat } from "/static/vendor/js/lit-all.v3.3.1.min.js";
+import { bindOutsideClickListener } from "/static/js/common/dom.js";
+import { getNextLoopedIndex, isEscapeEvent } from "/static/js/common/keyboard.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { triggerChangeOnForm } from "/static/js/community/explore/filters.js";
 
@@ -218,13 +220,7 @@ export class MultiSelectFilter extends LitWrapper {
     if (this._documentClickHandler) {
       return;
     }
-    this._documentClickHandler = (event) => {
-      const path = event.composedPath();
-      if (!path.includes(this)) {
-        this._closeDropdown();
-      }
-    };
-    document.addEventListener("click", this._documentClickHandler);
+    this._documentClickHandler = bindOutsideClickListener(this, () => this._closeDropdown());
   }
 
   /**
@@ -235,7 +231,7 @@ export class MultiSelectFilter extends LitWrapper {
     if (!this._documentClickHandler) {
       return;
     }
-    document.removeEventListener("click", this._documentClickHandler);
+    this._documentClickHandler();
     this._documentClickHandler = null;
   }
 
@@ -253,7 +249,7 @@ export class MultiSelectFilter extends LitWrapper {
       return;
     }
 
-    if (event.key === "Escape") {
+    if (isEscapeEvent(event)) {
       event.preventDefault();
       this._closeDropdown();
       return;
@@ -266,20 +262,11 @@ export class MultiSelectFilter extends LitWrapper {
     switch (event.key) {
       case "ArrowDown":
         event.preventDefault();
-        if (this._activeIndex === null) {
-          this._activeIndex = 0;
-        } else {
-          this._activeIndex = (this._activeIndex + 1) % this._filteredOptions.length;
-        }
+        this._activeIndex = getNextLoopedIndex(this._activeIndex, this._filteredOptions.length, 1);
         break;
       case "ArrowUp":
         event.preventDefault();
-        if (this._activeIndex === null) {
-          this._activeIndex = 0;
-        } else {
-          this._activeIndex =
-            (this._activeIndex - 1 + this._filteredOptions.length) % this._filteredOptions.length;
-        }
+        this._activeIndex = getNextLoopedIndex(this._activeIndex, this._filteredOptions.length, -1);
         break;
       case "Enter":
         event.preventDefault();

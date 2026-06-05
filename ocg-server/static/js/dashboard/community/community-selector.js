@@ -1,7 +1,8 @@
 import { html, repeat } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { showErrorAlert } from "/static/js/common/alerts.js";
 import { selectDashboardAndKeepTab } from "/static/js/common/dashboard-selection.js";
-import { getElementById } from "/static/js/common/dom.js";
+import { bindOutsideClickListener, focusElementById } from "/static/js/common/dom.js";
+import { getNextLoopedIndex, isEscapeEvent } from "/static/js/common/keyboard.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 
 /**
@@ -151,10 +152,7 @@ export class CommunitySelector extends LitWrapper {
     this._activeIndex = null;
     this._addDocumentListener();
     this.updateComplete.then(() => {
-      const input = getElementById(this, "community-search-input");
-      if (input) {
-        input.focus();
-      }
+      focusElementById(this, "community-search-input");
     });
   }
 
@@ -180,12 +178,7 @@ export class CommunitySelector extends LitWrapper {
     if (this._documentClickHandler) {
       return;
     }
-    this._documentClickHandler = (event) => {
-      if (!this.contains(event.target)) {
-        this._closeDropdown();
-      }
-    };
-    document.addEventListener("click", this._documentClickHandler);
+    this._documentClickHandler = bindOutsideClickListener(this, () => this._closeDropdown());
   }
 
   /**
@@ -195,7 +188,7 @@ export class CommunitySelector extends LitWrapper {
     if (!this._documentClickHandler) {
       return;
     }
-    document.removeEventListener("click", this._documentClickHandler);
+    this._documentClickHandler();
     this._documentClickHandler = null;
   }
 
@@ -209,30 +202,27 @@ export class CommunitySelector extends LitWrapper {
     }
 
     if (!this._isOpen || this._filteredCommunities.length === 0) {
-      if (this._isOpen && event.key === "Escape") {
+      if (this._isOpen && isEscapeEvent(event)) {
         event.preventDefault();
         this._closeDropdown();
       }
       return;
     }
 
+    if (isEscapeEvent(event)) {
+      event.preventDefault();
+      this._closeDropdown();
+      return;
+    }
+
     switch (event.key) {
       case "ArrowDown":
         event.preventDefault();
-        if (this._activeIndex === null) {
-          this._activeIndex = 0;
-        } else {
-          this._activeIndex = (this._activeIndex + 1) % this._filteredCommunities.length;
-        }
+        this._activeIndex = getNextLoopedIndex(this._activeIndex, this._filteredCommunities.length, 1);
         break;
       case "ArrowUp":
         event.preventDefault();
-        if (this._activeIndex === null) {
-          this._activeIndex = 0;
-        } else {
-          this._activeIndex =
-            (this._activeIndex - 1 + this._filteredCommunities.length) % this._filteredCommunities.length;
-        }
+        this._activeIndex = getNextLoopedIndex(this._activeIndex, this._filteredCommunities.length, -1);
         break;
       case "Enter":
         event.preventDefault();
@@ -242,10 +232,6 @@ export class CommunitySelector extends LitWrapper {
             this._handleCommunityClick(event, community);
           }
         }
-        break;
-      case "Escape":
-        event.preventDefault();
-        this._closeDropdown();
         break;
       default:
         break;

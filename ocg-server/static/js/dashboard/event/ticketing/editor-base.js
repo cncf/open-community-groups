@@ -1,6 +1,7 @@
 import { resolveEventTimezone, unlockBodyScroll } from "/static/js/common/common.js";
 import { getElementById } from "/static/js/common/dom.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
+import { isModalEscapeEvent } from "/static/js/common/modal-lifecycle.js";
 import {
   resolveCurrencyInputPlaceholder,
   resolveCurrencyInputStep,
@@ -221,7 +222,7 @@ export class TicketingEditorBase extends LitWrapper {
    * @returns {void}
    */
   _handleKeydown(event) {
-    if (event.key === "Escape" && this._isModalOpen) {
+    if (isModalEscapeEvent(event) && this._isModalOpen) {
       this._closeEditorModal();
     }
   }

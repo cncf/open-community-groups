@@ -2,6 +2,11 @@ import { html, render } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { lockBodyScroll, unlockBodyScroll } from "/static/js/common/common.js";
 import { showSuccessAlert, showErrorAlert } from "/static/js/common/alerts.js";
+import {
+  bindModalDismissListeners,
+  isModalEscapeEvent,
+  isModalOverlayTarget,
+} from "/static/js/common/modal-lifecycle.js";
 import "/static/vendor/js/sharer.v0.5.3.min.js";
 
 /**
@@ -32,6 +37,7 @@ export class ShareModal extends LitWrapper {
     this.url = "";
     this._isOpen = false;
     this._modalContainer = null;
+    this._removeDismissListeners = null;
   }
 
   /**
@@ -61,8 +67,11 @@ export class ShareModal extends LitWrapper {
   _openModal() {
     this._isOpen = true;
     lockBodyScroll();
-    document.addEventListener("keydown", this._handleKeydown);
-    document.addEventListener("mousedown", this._handleOutsideClick);
+    this._removeEventListeners();
+    this._removeDismissListeners = bindModalDismissListeners({
+      onKeydown: this._handleKeydown,
+      onOutsideClick: this._handleOutsideClick,
+    });
     this._renderModal();
     this._closeContainingDropdown();
   }
@@ -81,8 +90,8 @@ export class ShareModal extends LitWrapper {
    * Removes document-level event listeners for keydown and outside click.
    */
   _removeEventListeners() {
-    document.removeEventListener("keydown", this._handleKeydown);
-    document.removeEventListener("mousedown", this._handleOutsideClick);
+    this._removeDismissListeners?.();
+    this._removeDismissListeners = null;
   }
 
   /**
@@ -139,7 +148,7 @@ export class ShareModal extends LitWrapper {
    * @param {KeyboardEvent} e - The keyboard event
    */
   _handleKeydown(e) {
-    if (this._isOpen && e.key === "Escape") {
+    if (this._isOpen && isModalEscapeEvent(e)) {
       e.preventDefault();
       this._closeModal();
     }
@@ -152,7 +161,7 @@ export class ShareModal extends LitWrapper {
   _handleOutsideClick(e) {
     if (!this._isOpen) return;
 
-    if (e.target.classList && e.target.classList.contains("modal-overlay")) {
+    if (isModalOverlayTarget(e.target)) {
       this._closeModal();
     }
   }

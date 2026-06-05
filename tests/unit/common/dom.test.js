@@ -1,15 +1,18 @@
 import { expect } from "@open-wc/testing";
 
 import {
+  bindOutsideClickListener,
   closestElement,
   closestElementWithinRoot,
   ensureElementId,
+  focusElementById,
+  getElementById,
   initializeMatchingRoots,
   initializeOnReady,
   initializeOnReadyAndHtmxLoad,
   isDatasetReady,
+  isOutsideElementEvent,
   loadScriptOnce,
-  getElementById,
   markDatasetReady,
   setElementHidden,
 } from "/static/js/common/dom.js";
@@ -157,6 +160,22 @@ describe("common dom", () => {
     expect(ensureElementId(null, "missing-button")).to.equal("");
   });
 
+  it("focuses elements by id", () => {
+    // Build the focusable element.
+    document.body.innerHTML = '<input id="name-input" value="Open Community Groups">';
+    const input = getElementById(document, "name-input");
+
+    // The helper focuses and optionally selects text.
+    expect(focusElementById(document, "name-input")).to.equal(input);
+    expect(document.activeElement).to.equal(input);
+    focusElementById(document, "name-input", { select: true });
+    expect(input.selectionStart).to.equal(0);
+    expect(input.selectionEnd).to.equal(input.value.length);
+
+    // Missing elements are ignored.
+    expect(focusElementById(document, "missing-input")).to.equal(null);
+  });
+
   it("finds closest elements from event targets", () => {
     // Build nested elements for closest lookups.
     document.body.innerHTML = `
@@ -178,6 +197,47 @@ describe("common dom", () => {
     expect(closestElement(label.firstChild, "[data-action]")).to.equal(null);
     expect(closestElementWithinRoot(label, "[data-action]", root)?.id).to.equal("action-button");
     expect(closestElementWithinRoot(label, "[data-action]", otherRoot)).to.equal(null);
+  });
+
+  it("detects and binds outside element clicks", () => {
+    // Build the DOM fixture with inside and outside click targets.
+    document.body.innerHTML = `
+      <section id="root">
+        <button id="inside-button">Inside</button>
+      </section>
+      <button id="outside-button">Outside</button>
+    `;
+    const root = getElementById(document, "root");
+    const insideButton = getElementById(document, "inside-button");
+    const outsideButton = getElementById(document, "outside-button");
+    let insideResult = null;
+    let outsideResult = null;
+    let outsideClickCount = 0;
+
+    // Inspect real click events to verify inside and outside detection.
+    const recordInsideClick = (event) => {
+      insideResult = isOutsideElementEvent(event, root);
+    };
+    document.addEventListener("click", recordInsideClick, { once: true });
+    insideButton.click();
+    const recordOutsideClick = (event) => {
+      outsideResult = isOutsideElementEvent(event, root);
+    };
+    document.addEventListener("click", recordOutsideClick, { once: true });
+    outsideButton.click();
+
+    // Bind the outside click callback and verify cleanup removes it.
+    const cleanup = bindOutsideClickListener(root, () => {
+      outsideClickCount += 1;
+    });
+    insideButton.click();
+    outsideButton.click();
+    cleanup();
+    outsideButton.click();
+
+    expect(insideResult).to.equal(false);
+    expect(outsideResult).to.equal(true);
+    expect(outsideClickCount).to.equal(1);
   });
 
   it("resolves immediately when the script is already loaded", async () => {

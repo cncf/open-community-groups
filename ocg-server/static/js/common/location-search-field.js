@@ -2,6 +2,7 @@ import { html, repeat } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { loadMap } from "/static/js/common/common.js";
 import { getElementById } from "/static/js/common/dom.js";
+import { isEscapeEvent } from "/static/js/common/keyboard.js";
 import { setTextValue } from "/static/js/common/utils.js";
 
 let mapIdCounter = 0;
@@ -626,6 +627,12 @@ export class LocationSearchField extends LitWrapper {
 
     if (this._searchResults.length === 0) return;
 
+    if (isEscapeEvent(event)) {
+      event.preventDefault();
+      this._clearSearch();
+      return;
+    }
+
     switch (event.key) {
       case "ArrowDown":
         event.preventDefault();
@@ -640,10 +647,6 @@ export class LocationSearchField extends LitWrapper {
         if (this._highlightedIndex >= 0 && this._highlightedIndex < this._searchResults.length) {
           this._selectLocation(this._searchResults[this._highlightedIndex]);
         }
-        break;
-      case "Escape":
-        event.preventDefault();
-        this._clearSearch();
         break;
     }
   }

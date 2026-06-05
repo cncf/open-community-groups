@@ -69,6 +69,23 @@ export const ensureElementId = (element, fallbackId) => {
 };
 
 /**
+ * Focuses an element by id when present.
+ * @param {Document|Element} root Query root.
+ * @param {string} id Element id.
+ * @param {object} [options={}] Focus options.
+ * @param {boolean} [options.select=false] Whether to select the element text.
+ * @returns {Element|null} Focused element when present.
+ */
+export const focusElementById = (root, id, { select = false } = {}) => {
+  const element = getElementById(root, id);
+  element?.focus?.();
+  if (select) {
+    element?.select?.();
+  }
+  return element;
+};
+
+/**
  * Finds the closest matching element from an event target-like value.
  * @param {EventTarget|null|undefined} target Event target to inspect.
  * @param {string} selector Selector to match.
@@ -91,6 +108,42 @@ export const closestElementWithinRoot = (target, selector, root = document) => {
   }
 
   return root === document || root.contains(element) ? element : null;
+};
+
+/**
+ * Checks whether an event happened outside an element.
+ * @param {Event} event Event to inspect.
+ * @param {Element|null|undefined} element Element that owns the interaction.
+ * @returns {boolean} True when the event target is outside the element.
+ */
+export const isOutsideElementEvent = (event, element) => {
+  if (!(element instanceof Element)) {
+    return false;
+  }
+
+  const path = event?.composedPath?.();
+  if (Array.isArray(path) && path.length > 0) {
+    return !path.includes(element);
+  }
+
+  return event?.target instanceof Node ? !element.contains(event.target) : true;
+};
+
+/**
+ * Binds a document click listener that only runs for clicks outside an element.
+ * @param {Element} element Element that owns the interaction.
+ * @param {(event: MouseEvent) => void} onOutsideClick Outside click callback.
+ * @returns {() => void} Cleanup callback that removes the listener.
+ */
+export const bindOutsideClickListener = (element, onOutsideClick) => {
+  const handleClick = (event) => {
+    if (isOutsideElementEvent(event, element)) {
+      onOutsideClick(event);
+    }
+  };
+
+  document.addEventListener("click", handleClick);
+  return () => document.removeEventListener("click", handleClick);
 };
 
 /**
