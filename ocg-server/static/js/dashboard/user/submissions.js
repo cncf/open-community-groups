@@ -1,6 +1,7 @@
 import { bindHtmxResponseAlert, showConfirmAlert } from "/static/js/common/alerts.js";
 import { toggleModalVisibility } from "/static/js/common/common.js";
 import {
+  ensureElementId,
   getElementById,
   initializeOnReadyAndHtmxLoad,
   markDatasetReady,
@@ -52,12 +53,9 @@ const initializeSubmissionActions = (root = document) => {
       return;
     }
     button.addEventListener("click", () => {
-      if (!button.id) {
-        button.id = `withdraw-submission-${button.dataset.submissionId}`;
-      }
       showConfirmAlert(
         "Are you sure you want to withdraw this submission?<br><br>This action cannot be undone.",
-        button.id,
+        ensureElementId(button, `withdraw-submission-${button.dataset.submissionId}`),
         "Withdraw",
         "Cancel",
         true,
@@ -74,12 +72,9 @@ const initializeSubmissionActions = (root = document) => {
       return;
     }
     button.addEventListener("click", () => {
-      if (!button.id) {
-        button.id = `resubmit-submission-${button.dataset.submissionId}`;
-      }
       showConfirmAlert(
         "Before resubmitting, please make sure all required changes have been addressed.<br><br>You can see more details about the information requested by clicking on the info icon next to the badge.",
-        button.id,
+        ensureElementId(button, `resubmit-submission-${button.dataset.submissionId}`),
         "Resubmit",
         "Cancel",
         true,

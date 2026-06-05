@@ -1,5 +1,6 @@
 import { bindHtmxResponseAlert, showConfirmAlert } from "/static/js/common/alerts.js";
 import {
+  ensureElementId,
   getElementById,
   initializeOnReadyAndHtmxLoad,
   markDatasetReady,
@@ -112,10 +113,11 @@ const initializeSessionProposals = (root = document) => {
         return;
       }
 
-      if (!button.id) {
-        button.id = `delete-session-proposal-${button.dataset.sessionProposalId}`;
-      }
-      showConfirmAlert("Are you sure you want to delete this session proposal?", button.id, "Delete");
+      showConfirmAlert(
+        "Are you sure you want to delete this session proposal?",
+        ensureElementId(button, `delete-session-proposal-${button.dataset.sessionProposalId}`),
+        "Delete",
+      );
     });
 
     bindHtmxResponseAlert(button, {
@@ -145,13 +147,9 @@ const initializeSessionProposals = (root = document) => {
         return;
       }
 
-      if (!button.id) {
-        button.id = `reject-co-speaker-invitation-${button.dataset.sessionProposalId}`;
-      }
-
       showConfirmAlert(
         "Are you sure you want to decline this co-speaker invitation?",
-        button.id,
+        ensureElementId(button, `reject-co-speaker-invitation-${button.dataset.sessionProposalId}`),
         "Decline",
         "Cancel",
       );

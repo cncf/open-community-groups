@@ -1,6 +1,7 @@
 import { expect } from "@open-wc/testing";
 
 import {
+  ensureElementId,
   initializeMatchingRoots,
   initializeOnReady,
   initializeOnReadyAndHtmxLoad,
@@ -139,6 +140,19 @@ describe("common dom", () => {
 
     // Missing elements are ignored.
     expect(() => setElementHidden(null, true)).not.to.throw();
+  });
+
+  it("ensures element ids", () => {
+    // Build the element that needs a stable id for imperative behavior.
+    const element = document.createElement("button");
+
+    // The helper assigns a fallback id only when the element has none.
+    expect(ensureElementId(element, "fallback-button")).to.equal("fallback-button");
+    expect(element.id).to.equal("fallback-button");
+    expect(ensureElementId(element, "other-button")).to.equal("fallback-button");
+
+    // Missing elements return an empty id.
+    expect(ensureElementId(null, "missing-button")).to.equal("");
   });
 
   it("resolves immediately when the script is already loaded", async () => {

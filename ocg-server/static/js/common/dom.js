@@ -51,6 +51,24 @@ export const setElementHidden = (element, hidden) => {
 };
 
 /**
+ * Ensures an element has an id and returns it.
+ * @param {Element|null|undefined} element Element that needs an id.
+ * @param {string} fallbackId Id to assign when the element has none.
+ * @returns {string} Existing or assigned id.
+ */
+export const ensureElementId = (element, fallbackId) => {
+  if (!element) {
+    return "";
+  }
+
+  if (!element.id) {
+    element.id = fallbackId;
+  }
+
+  return element.id;
+};
+
+/**
  * Initializes current content when the document is ready.
  * @param {() => void} callback Initialization callback.
  * @returns {void}
