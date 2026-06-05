@@ -1,4 +1,4 @@
-import { handleHtmxResponse, showConfirmAlert } from "/static/js/common/alerts.js";
+import { bindHtmxResponseAlert, showConfirmAlert } from "/static/js/common/alerts.js";
 import { toggleModalVisibility } from "/static/js/common/common.js";
 import {
   getElementById,
@@ -63,12 +63,9 @@ const initializeSubmissionActions = (root = document) => {
         true,
       );
     });
-    button.addEventListener("htmx:afterRequest", (event) => {
-      handleHtmxResponse({
-        xhr: event.detail?.xhr,
-        successMessage: "",
-        errorMessage: "Unable to withdraw this submission. Please try again later.",
-      });
+    bindHtmxResponseAlert(button, {
+      successMessage: "",
+      errorMessage: "Unable to withdraw this submission. Please try again later.",
     });
   });
 
@@ -88,12 +85,9 @@ const initializeSubmissionActions = (root = document) => {
         true,
       );
     });
-    button.addEventListener("htmx:afterRequest", (event) => {
-      handleHtmxResponse({
-        xhr: event.detail?.xhr,
-        successMessage: "",
-        errorMessage: "Unable to resubmit this submission. Please try again later.",
-      });
+    bindHtmxResponseAlert(button, {
+      successMessage: "",
+      errorMessage: "Unable to resubmit this submission. Please try again later.",
     });
   });
 

@@ -223,6 +223,24 @@ export const handleHtmxResponse = ({ xhr, successMessage, errorMessage }) => {
 };
 
 /**
+ * Binds a standard HTMX response alert handler to an element.
+ * @param {Element|null|undefined} element - Element receiving htmx:afterRequest
+ * @param {Object} messages - Alert messages for the response
+ * @param {string} messages.successMessage - Success alert copy
+ * @param {string} messages.errorMessage - Error alert copy
+ * @returns {void}
+ */
+export const bindHtmxResponseAlert = (element, { successMessage = "", errorMessage }) => {
+  element?.addEventListener("htmx:afterRequest", (event) => {
+    handleHtmxResponse({
+      xhr: event.detail?.xhr,
+      successMessage,
+      errorMessage,
+    });
+  });
+};
+
+/**
  * Displays an informational alert with plain text message.
  * Auto-dismisses after 10 seconds.
  * @param {string} message - The info message to display

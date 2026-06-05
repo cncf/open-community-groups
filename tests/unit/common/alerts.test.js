@@ -1,6 +1,7 @@
 import { expect } from "@open-wc/testing";
 
 import {
+  bindHtmxResponseAlert,
   confirmAction,
   confirmSeriesAction,
   getCommonAlertOptions,
@@ -158,6 +159,37 @@ describe("alerts", () => {
       { top: 0, behavior: "auto" },
       { top: 0, behavior: "auto" },
     ]);
+  });
+
+  it("binds standard htmx response alerts", () => {
+    // Build the element that receives an HTMX after-request event.
+    const button = document.createElement("button");
+    bindHtmxResponseAlert(button, {
+      successMessage: "Saved",
+      errorMessage: "Save failed",
+    });
+
+    // Dispatch a successful HTMX response.
+    button.dispatchEvent(
+      new CustomEvent("htmx:afterRequest", {
+        detail: {
+          xhr: { status: 204 },
+        },
+      }),
+    );
+
+    // Assert the bound handler delegates to the shared response handling.
+    expect(env.current.swal.calls).to.have.length(1);
+    expect(env.current.swal.calls[0]).to.include({
+      text: "Saved",
+      icon: "success",
+    });
+    expect(() =>
+      bindHtmxResponseAlert(null, {
+        successMessage: "",
+        errorMessage: "Missing",
+      }),
+    ).not.to.throw();
   });
 
   it("resolves confirm actions from the swal result", async () => {

@@ -1,4 +1,4 @@
-import { handleHtmxResponse, showConfirmAlert } from "/static/js/common/alerts.js";
+import { bindHtmxResponseAlert, showConfirmAlert } from "/static/js/common/alerts.js";
 import {
   getElementById,
   initializeOnReadyAndHtmxLoad,
@@ -118,12 +118,9 @@ const initializeSessionProposals = (root = document) => {
       showConfirmAlert("Are you sure you want to delete this session proposal?", button.id, "Delete");
     });
 
-    button.addEventListener("htmx:afterRequest", (event) => {
-      handleHtmxResponse({
-        xhr: event.detail?.xhr,
-        successMessage: "",
-        errorMessage: "Unable to delete this proposal. Please try again later.",
-      });
+    bindHtmxResponseAlert(button, {
+      successMessage: "",
+      errorMessage: "Unable to delete this proposal. Please try again later.",
     });
   });
 
@@ -132,12 +129,9 @@ const initializeSessionProposals = (root = document) => {
       return;
     }
 
-    button.addEventListener("htmx:afterRequest", (event) => {
-      handleHtmxResponse({
-        xhr: event.detail?.xhr,
-        successMessage: "",
-        errorMessage: "Unable to accept this invitation. Please try again later.",
-      });
+    bindHtmxResponseAlert(button, {
+      successMessage: "",
+      errorMessage: "Unable to accept this invitation. Please try again later.",
     });
   });
 
@@ -163,12 +157,9 @@ const initializeSessionProposals = (root = document) => {
       );
     });
 
-    button.addEventListener("htmx:afterRequest", (event) => {
-      handleHtmxResponse({
-        xhr: event.detail?.xhr,
-        successMessage: "",
-        errorMessage: "Unable to decline this invitation. Please try again later.",
-      });
+    bindHtmxResponseAlert(button, {
+      successMessage: "",
+      errorMessage: "Unable to decline this invitation. Please try again later.",
     });
   });
 };
