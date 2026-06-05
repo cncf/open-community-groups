@@ -1,6 +1,7 @@
 import { html, repeat } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { loadMap } from "/static/js/common/common.js";
+import { getElementById } from "/static/js/common/dom.js";
 import { setTextValue } from "/static/js/common/utils.js";
 
 let mapIdCounter = 0;
@@ -1233,7 +1234,7 @@ export class LocationSearchField extends LitWrapper {
       return;
     }
 
-    const container = document.getElementById(this._mapElementId);
+    const container = getElementById(document, this._mapElementId);
     if (!container) return;
 
     const lat = this._parseCoordinate(this._latitudeValue);

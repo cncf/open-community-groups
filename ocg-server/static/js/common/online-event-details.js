@@ -214,7 +214,7 @@ export class OnlineEventDetails extends LitWrapper {
    * @private
    */
   _initializeHostsInput() {
-    const hostsInput = this.renderRoot.querySelector("#meeting-hosts-input");
+    const hostsInput = getElementById(this.renderRoot, "meeting-hosts-input");
 
     if (hostsInput && this._hosts.length > 0) {
       // Convert plain string array to the format MultipleInputs expects: {id, value}

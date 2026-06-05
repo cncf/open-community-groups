@@ -1,6 +1,7 @@
 import { html, repeat } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { showErrorAlert } from "/static/js/common/alerts.js";
 import { selectDashboardAndKeepTab } from "/static/js/common/dashboard-selection.js";
+import { getElementById } from "/static/js/common/dom.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 
 /**
@@ -140,7 +141,7 @@ export class GroupSelector extends LitWrapper {
     this._activeIndex = null;
     this._addDocumentListener();
     this.updateComplete.then(() => {
-      const input = this.querySelector("#group-search-input");
+      const input = getElementById(this, "group-search-input");
       if (input) {
         input.focus();
       }

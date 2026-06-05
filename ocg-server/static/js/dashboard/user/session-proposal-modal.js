@@ -2,6 +2,7 @@ import { html, unsafeHTML } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { handleHtmxResponse } from "/static/js/common/alerts.js";
 import { computeUserInitials, lockBodyScroll, unlockBodyScroll } from "/static/js/common/common.js";
+import { getElementById } from "/static/js/common/dom.js";
 import "/static/js/common/logo-image.js";
 import "/static/js/common/user-search-field.js";
 
@@ -208,7 +209,7 @@ export class SessionProposalModal extends LitWrapper {
    * Applies the form values and HTMX attributes based on active mode.
    */
   _syncFormForMode() {
-    const form = this.querySelector("#session-proposal-form");
+    const form = getElementById(this, "session-proposal-form");
     if (!form) {
       return;
     }
@@ -248,9 +249,9 @@ export class SessionProposalModal extends LitWrapper {
    * @param {Object|null} proposal
    */
   _setFormFieldValues(proposal) {
-    const titleInput = this.querySelector("#session-proposal-title");
-    const levelSelect = this.querySelector("#session-proposal-level");
-    const durationInput = this.querySelector("#session-proposal-duration");
+    const titleInput = getElementById(this, "session-proposal-title");
+    const levelSelect = getElementById(this, "session-proposal-level");
+    const durationInput = getElementById(this, "session-proposal-duration");
 
     if (titleInput) {
       titleInput.value = proposal?.title || "";
@@ -270,7 +271,7 @@ export class SessionProposalModal extends LitWrapper {
    * @param {string} content
    */
   _syncDescriptionContent(content) {
-    const editor = this.querySelector("markdown-editor#session-proposal-description");
+    const editor = getElementById(this, "session-proposal-description");
     if (!editor) {
       return;
     }
@@ -293,7 +294,7 @@ export class SessionProposalModal extends LitWrapper {
    * @param {boolean} isReadOnly
    */
   _setDescriptionReadOnly(isReadOnly) {
-    const editor = this.querySelector("markdown-editor#session-proposal-description");
+    const editor = getElementById(this, "session-proposal-description");
     if (!editor) {
       return;
     }
@@ -320,7 +321,7 @@ export class SessionProposalModal extends LitWrapper {
    * Updates excluded usernames in the co-speaker search field.
    */
   _syncCoSpeakerSearch() {
-    const coSpeakerSearch = this.querySelector("#session-proposal-co-speaker-search");
+    const coSpeakerSearch = getElementById(this, "session-proposal-co-speaker-search");
     if (!coSpeakerSearch) {
       return;
     }
@@ -333,7 +334,7 @@ export class SessionProposalModal extends LitWrapper {
    * Binds form submit response handling to close modal on success.
    */
   _bindFormAfterRequest() {
-    const form = this.querySelector("#session-proposal-form");
+    const form = getElementById(this, "session-proposal-form");
     if (!form) {
       return;
     }
@@ -356,7 +357,7 @@ export class SessionProposalModal extends LitWrapper {
    * Removes the HTMX after-request listener from the form.
    */
   _removeAfterRequestListener() {
-    const form = this.querySelector("#session-proposal-form");
+    const form = getElementById(this, "session-proposal-form");
     if (!form || !this._afterRequestHandler) {
       this._afterRequestHandler = null;
       return;

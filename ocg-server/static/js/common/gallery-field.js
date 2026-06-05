@@ -1,6 +1,7 @@
 import { html } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { isSuccessfulXHRStatus } from "/static/js/common/common.js";
+import { getElementById } from "/static/js/common/dom.js";
 import { ocgFetch } from "/static/js/common/fetch.js";
 import { showErrorAlert } from "/static/js/common/alerts.js";
 import { parseJsonAttribute } from "/static/js/common/utils.js";
@@ -130,7 +131,7 @@ export class GalleryField extends LitWrapper {
     if (this._isAddDisabled) {
       return;
     }
-    const input = this.querySelector(`#${this._fileInputId}`);
+    const input = getElementById(this, this._fileInputId);
     input?.click();
   }
 

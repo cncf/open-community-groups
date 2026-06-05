@@ -1,5 +1,5 @@
 import { hideLoadingSpinner, showLoadingSpinner, navigateWithHtmx } from "/static/js/common/common.js";
-import { loadScriptOnce } from "/static/js/common/dom.js";
+import { getElementById, loadScriptOnce } from "/static/js/common/dom.js";
 import { fetchData } from "/static/js/community/explore/explore.js";
 import {
   getFirstAndLastDayOfMonth,
@@ -44,7 +44,7 @@ const getInitialCalendarDate = () => {
  * @param {boolean} visible - Whether the loading indicator should be visible
  */
 const setMainCalendarLoading = (visible) => {
-  const mainLoading = document.getElementById(MAIN_LOADING_CALENDAR_ID);
+  const mainLoading = getElementById(document, MAIN_LOADING_CALENDAR_ID);
   if (mainLoading) {
     mainLoading.classList.toggle("hidden", !visible);
   }
@@ -101,7 +101,7 @@ const readPopoverAlignment = (parent) => {
  * @param {string} id - Popover element id
  */
 const removePopoverById = (id) => {
-  document.getElementById(id)?.remove();
+  getElementById(document, id)?.remove();
 };
 
 /**
@@ -220,7 +220,7 @@ export class Calendar {
    * @param {object} data - Calendar data containing events to display
    */
   setup(data) {
-    const calendarEl = document.getElementById(CALENDAR_ELEMENT_ID);
+    const calendarEl = getElementById(document, CALENDAR_ELEMENT_ID);
     const initialDate = getInitialCalendarDate();
 
     this.fullCalendar = new FullCalendar.Calendar(calendarEl, {
@@ -299,7 +299,7 @@ export class Calendar {
    */
   async refresh(data) {
     // Update calendar title
-    const el = document.getElementById(CALENDAR_DATE_ID);
+    const el = getElementById(document, CALENDAR_DATE_ID);
     if (el) {
       el.textContent = this.fullCalendar.currentData.viewTitle;
     }
@@ -325,7 +325,7 @@ export class Calendar {
     }
 
     // Toggle placeholder visibility and calendar opacity
-    const calendarEl = document.getElementById(CALENDAR_ELEMENT_ID);
+    const calendarEl = getElementById(document, CALENDAR_ELEMENT_ID);
     const wrapper = calendarEl ? calendarEl.parentElement : null;
     hideNoResultsPlaceholders(wrapper);
 
@@ -510,7 +510,7 @@ function createPopoverIfNeeded(parent, event) {
   if (!alignData) return;
 
   // Check if popover already exists
-  if (document.getElementById(alignData.id)) return;
+  if (getElementById(document, alignData.id)) return;
 
   // Set popovertarget and create popover
   parent.setAttribute("popovertarget", alignData.id);

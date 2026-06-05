@@ -41,6 +41,21 @@ describe("common dom", () => {
     expect(getElementById(root, "missing")).to.equal(null);
   });
 
+  it("queries special-character ids from element roots", () => {
+    // Build the DOM fixture with ids that are not valid raw CSS id selectors.
+    document.body.innerHTML = `
+      <section id="root">
+        <button id="ticket:price.window">Ticket price</button>
+      </section>
+    `;
+
+    // Read the root element used for special-character subtree queries.
+    const root = document.getElementById("root");
+
+    // The helper finds ids without relying on raw #id selector syntax.
+    expect(getElementById(root, "ticket:price.window")?.textContent).to.equal("Ticket price");
+  });
+
   it("initializes current content and htmx-loaded fragments", () => {
     // Track the roots passed to the lifecycle initializer.
     const listenerTracker = trackAddedEventListeners();

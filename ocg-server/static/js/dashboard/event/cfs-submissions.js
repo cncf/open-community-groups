@@ -147,7 +147,7 @@ export class ReviewSubmissionModal extends LitWrapper {
     }
     if (changedProperties.has("_isOpen") || changedProperties.has("_submission")) {
       this._bindFormAfterRequest();
-      const form = this.querySelector("#cfs-submission-form");
+      const form = getElementById(this, "cfs-submission-form");
       if (form && window.htmx && typeof window.htmx.process === "function") {
         window.htmx.process(form);
       }
@@ -231,7 +231,7 @@ export class ReviewSubmissionModal extends LitWrapper {
    * Binds htmx:afterRequest to the modal form.
    */
   _bindFormAfterRequest() {
-    const form = this.querySelector("#cfs-submission-form");
+    const form = getElementById(this, "cfs-submission-form");
     if (!form) {
       return;
     }
@@ -292,7 +292,7 @@ export class ReviewSubmissionModal extends LitWrapper {
    * Removes htmx:afterRequest listener from the modal form.
    */
   _removeAfterRequestListener() {
-    const form = this.querySelector("#cfs-submission-form");
+    const form = getElementById(this, "cfs-submission-form");
     if (!form || !this._afterRequestHandler) {
       this._afterRequestHandler = null;
       return;

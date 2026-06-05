@@ -1,6 +1,7 @@
 import { html } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { isSuccessfulXHRStatus } from "/static/js/common/common.js";
+import { getElementById } from "/static/js/common/dom.js";
 import { ocgFetch } from "/static/js/common/fetch.js";
 import { showErrorAlert } from "/static/js/common/alerts.js";
 import "/static/js/common/svg-spinner.js";
@@ -120,7 +121,7 @@ export class ImageField extends LitWrapper {
     if (this._isUploading) {
       return;
     }
-    const input = this.querySelector(`#${this._fileInputId}`);
+    const input = getElementById(this, this._fileInputId);
     input?.click();
   }
 
@@ -245,7 +246,7 @@ export class ImageField extends LitWrapper {
    */
   _setValue(newValue) {
     this.value = newValue || "";
-    const valueInput = this.querySelector(`#${this._valueInputId}`);
+    const valueInput = getElementById(this, this._valueInputId);
     valueInput?.setCustomValidity("");
     this.dispatchEvent(
       new CustomEvent("image-change", {

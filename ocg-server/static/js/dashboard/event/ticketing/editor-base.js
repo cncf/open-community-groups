@@ -1,4 +1,5 @@
 import { resolveEventTimezone, unlockBodyScroll } from "/static/js/common/common.js";
+import { getElementById } from "/static/js/common/dom.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import {
   resolveCurrencyInputPlaceholder,
@@ -114,7 +115,7 @@ export class TicketingEditorBase extends LitWrapper {
    * @returns {HTMLElement|null}
    */
   _resolveAddButton() {
-    return this._resolveDocument().getElementById(this._addButtonId);
+    return getElementById(this._resolveDocument(), this._addButtonId);
   }
 
   /**
@@ -122,7 +123,7 @@ export class TicketingEditorBase extends LitWrapper {
    * @returns {HTMLInputElement|HTMLSelectElement|null}
    */
   _resolveCurrencyInput() {
-    return this._resolveDocument().getElementById("payment_currency_code");
+    return getElementById(this._resolveDocument(), "payment_currency_code");
   }
 
   /**

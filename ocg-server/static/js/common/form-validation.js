@@ -9,7 +9,7 @@ import {
   isDashboardPath,
   isElementInView,
 } from "/static/js/common/common.js";
-import { initializeOnReadyAndHtmxLoad } from "/static/js/common/dom.js";
+import { getElementById, initializeOnReadyAndHtmxLoad } from "/static/js/common/dom.js";
 import { trimmedNonEmpty, passwordsMatch } from "/static/js/common/validators.js";
 
 // -----------------------------------------------------------------------------
@@ -79,7 +79,7 @@ const getVisibleScrollTarget = (field) => {
  */
 const getStickyHeaderOffset = () => {
   const header =
-    document.querySelector('nav[role="banner"]') || document.querySelector("#header")?.closest("nav");
+    document.querySelector('nav[role="banner"]') || getElementById(document, "header")?.closest("nav");
 
   if (!header) {
     return 0;

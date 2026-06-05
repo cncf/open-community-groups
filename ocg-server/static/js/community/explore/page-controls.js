@@ -62,7 +62,7 @@ const readExplorePayload = (marker) => {
  * @param {Function} callback - Calendar action called on click
  */
 const bindCalendarButton = (root, id, callback) => {
-  const button = root.querySelector(`#${id}`);
+  const button = getElementById(root, id);
   if (!button || button.dataset[EXPLORE_WIDGET_READY_KEY] === "true") {
     return;
   }

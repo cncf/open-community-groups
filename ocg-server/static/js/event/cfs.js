@@ -7,8 +7,8 @@ const DATA_KEY = "cfsModalReady";
 const SELECT_DATA_KEY = "cfsSubmitReady";
 
 const initializeSubmitControls = (modal) => {
-  const select = modal.querySelector("#session_proposal_id");
-  const submit = modal.querySelector("#cfs-submit-button");
+  const select = getElementById(modal, "session_proposal_id");
+  const submit = getElementById(modal, "cfs-submit-button");
   if (!select || !submit) {
     return;
   }
@@ -38,8 +38,8 @@ const initializeCfsModal = () => {
   if (modal.dataset[DATA_KEY] !== "true") {
     modal.dataset[DATA_KEY] = "true";
 
-    const closeButton = modal.querySelector("#close-cfs-modal");
-    const overlay = modal.querySelector("#overlay-cfs-modal");
+    const closeButton = getElementById(modal, "close-cfs-modal");
+    const overlay = getElementById(modal, "overlay-cfs-modal");
     const toggleModal = () => toggleModalVisibility(MODAL_ID);
 
     closeButton?.addEventListener("click", toggleModal);

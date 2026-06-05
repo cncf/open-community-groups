@@ -1,4 +1,4 @@
-import { loadScriptOnce } from "/static/js/common/dom.js";
+import { getElementById, loadScriptOnce } from "/static/js/common/dom.js";
 import { ocgFetch } from "/static/js/common/fetch.js";
 
 const DOCS_ROOT_SELECTOR = ".ocg-docs-root";
@@ -518,7 +518,7 @@ const scopeCssRules = (cssText, scope) => {
  * @param {string} cssText CSS content.
  */
 const setStyleTag = (styleId, cssText) => {
-  let styleTag = document.getElementById(styleId);
+  let styleTag = getElementById(document, styleId);
   if (!styleTag) {
     styleTag = document.createElement("style");
     styleTag.id = styleId;
@@ -1003,7 +1003,7 @@ const handleSamePageAnchorClick = (event) => {
     return;
   }
 
-  const targetElement = document.getElementById(targetRoute.id);
+  const targetElement = getElementById(document, targetRoute.id);
   if (!targetElement) {
     return;
   }

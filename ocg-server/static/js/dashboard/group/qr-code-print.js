@@ -124,7 +124,7 @@ export const printQrCode = (modal, imageId, qrUrl) => {
   container.appendChild(sheet);
   document.body.appendChild(container);
 
-  const qrImage = container.querySelector(`#${imageId}`);
+  const qrImage = getElementById(container, imageId);
   if (qrImage) {
     qrImage.id = `${imageId}-print`;
     const printSrc = qrUrl ? `${qrUrl}?print=${Date.now()}` : qrImage.getAttribute("src");

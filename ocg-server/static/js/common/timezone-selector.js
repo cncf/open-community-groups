@@ -1,4 +1,5 @@
 import { html, repeat } from "/static/vendor/js/lit-all.v3.3.1.min.js";
+import { getElementById } from "/static/js/common/dom.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 
 /**
@@ -124,7 +125,7 @@ export class TimezoneSelector extends LitWrapper {
     this._activeIndex = null;
     this._addDocumentListener();
     this.updateComplete.then(() => {
-      const input = this.querySelector("#timezone-search-input");
+      const input = getElementById(this, "timezone-search-input");
       if (input) {
         input.focus();
       }
@@ -229,7 +230,7 @@ export class TimezoneSelector extends LitWrapper {
       if (this._activeIndex === null) {
         return;
       }
-      const list = this.querySelector("#timezone-selector-list");
+      const list = getElementById(this, "timezone-selector-list");
       const activeItem = list?.querySelector(`[data-index="${this._activeIndex}"]`);
       if (activeItem && list) {
         activeItem.scrollIntoView({ block: "nearest" });

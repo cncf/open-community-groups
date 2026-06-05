@@ -28,10 +28,10 @@ const resolveAttendeesRoot = (root = document) => {
   }
 
   if (root instanceof Element) {
-    return root.closest("#attendees-content") || root.querySelector("#attendees-content") || root;
+    return root.closest("#attendees-content") || getElementById(root, "attendees-content") || root;
   }
 
-  return root.querySelector?.("#attendees-content") || root.body || root;
+  return getElementById(root, "attendees-content") || root.body || root;
 };
 
 /**

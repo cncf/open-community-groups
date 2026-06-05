@@ -1,3 +1,5 @@
+import { getElementById } from "/static/js/common/dom.js";
+
 /**
  * Formats a date object to ISO format (YYYY-MM-DD).
  * @param {Date} date - The date object to format
@@ -12,11 +14,11 @@ const formatDate = (date) => {
  * Removes CSS classes to show the drawer and backdrop.
  */
 export const openFiltersDrawer = () => {
-  const drawer = document.getElementById("drawer-filters");
+  const drawer = getElementById(document, "drawer-filters");
   if (drawer) {
     drawer.classList.remove("-translate-x-full");
   }
-  const backdrop = document.getElementById("drawer-backdrop");
+  const backdrop = getElementById(document, "drawer-backdrop");
   if (backdrop) {
     backdrop.classList.remove("hidden");
   }
@@ -27,11 +29,11 @@ export const openFiltersDrawer = () => {
  * Adds CSS classes to hide the drawer and backdrop.
  */
 export const closeFiltersDrawer = () => {
-  const drawer = document.getElementById("drawer-filters");
+  const drawer = getElementById(document, "drawer-filters");
   if (drawer) {
     drawer.classList.add("-translate-x-full");
   }
-  const backdrop = document.getElementById("drawer-backdrop");
+  const backdrop = getElementById(document, "drawer-backdrop");
   if (backdrop) {
     backdrop.classList.add("hidden");
   }
@@ -42,8 +44,13 @@ export const closeFiltersDrawer = () => {
  * @param {string} formId - The ID of the form containing the filters to reset
  */
 export const resetFilters = async (formId) => {
-  const collapsibleFilters = document.querySelectorAll(`#${formId} collapsible-filter`);
-  const multiSelectFilters = document.querySelectorAll(`#${formId} multi-select-filter`);
+  const form = getElementById(document, formId);
+  if (!form) {
+    return;
+  }
+
+  const collapsibleFilters = form.querySelectorAll("collapsible-filter");
+  const multiSelectFilters = form.querySelectorAll("multi-select-filter");
   const filters = [...collapsibleFilters, ...multiSelectFilters];
 
   filters.forEach((filter) => {
@@ -61,11 +68,11 @@ export const resetFilters = async (formId) => {
   }
 
   // Uncheck all checkboxes and radios
-  document.querySelectorAll(`#${formId} input[type=checkbox]`).forEach((el) => (el.checked = false));
-  document.querySelectorAll(`#${formId} input[type=radio]`).forEach((el) => (el.checked = false));
+  form.querySelectorAll("input[type=checkbox]").forEach((el) => (el.checked = false));
+  form.querySelectorAll("input[type=radio]").forEach((el) => (el.checked = false));
 
   // Date inputs are hidden when view mode is "calendar"
-  const dateInputs = document.querySelectorAll(`#${formId} input[type=date]`);
+  const dateInputs = form.querySelectorAll("input[type=date]");
   if (dateInputs.length > 0) {
     const { from, to } = getDefaultDateRange();
     // Reset date inputs
@@ -79,7 +86,7 @@ export const resetFilters = async (formId) => {
   } else {
     const { first, last } = getFirstAndLastDayOfMonth();
 
-    const inputs = document.querySelectorAll(`#${formId} input[type=hidden]`);
+    const inputs = form.querySelectorAll("input[type=hidden]");
     if (inputs) {
       inputs.forEach((input) => {
         if (input.name === "date_from") {
@@ -95,9 +102,9 @@ export const resetFilters = async (formId) => {
   document.querySelector('input[name="ts_query"]').value = "";
 
   // Reset sort by
-  const sortSelector = document.getElementById("sort_selector");
-  const sortByInput = document.getElementById("sort_by");
-  const sortDirectionInput = document.getElementById("sort_direction");
+  const sortSelector = getElementById(document, "sort_selector");
+  const sortByInput = getElementById(document, "sort_by");
+  const sortDirectionInput = getElementById(document, "sort_direction");
   if (sortSelector) {
     const isEvents = formId === "events-form" || formId === "events-form-mobile";
     sortSelector.value = isEvents ? "date-asc" : "name";
@@ -106,7 +113,7 @@ export const resetFilters = async (formId) => {
   }
 
   // Select "Any" option when applicable
-  document.querySelectorAll(`#${formId} input[value='']`).forEach((el) => (el.checked = true));
+  form.querySelectorAll("input[value='']").forEach((el) => (el.checked = true));
 
   // Trigger change event on the form to update results
   // This is necessary to ensure the filters are applied correctly
@@ -136,7 +143,7 @@ export const resetDateFiltersOnCalendarViewMode = () => {
  * @param {string} formId - The ID of the form to trigger change on (optional)
  */
 export const cleanInputField = (id, formId) => {
-  const input = document.getElementById(id);
+  const input = getElementById(document, id);
   if (input) {
     input.value = "";
   }
@@ -155,13 +162,13 @@ export const triggerChangeOnForm = (formId, fromSearch) => {
   // Prevent form submission if the search input is empty, and it is triggered
   // from the search input
   if (fromSearch) {
-    const input = document.getElementById("ts_query");
+    const input = getElementById(document, "ts_query");
     if (input && input.value === "") {
       return;
     }
   }
 
-  const form = document.getElementById(formId);
+  const form = getElementById(document, formId);
   if (form) {
     // Trigger change event using htmx
     htmx.trigger(form, "change");
@@ -181,8 +188,8 @@ export const updateSortInputsFromSelector = (
   sortDirectionId,
   fallbackDirection = "asc",
 ) => {
-  const sortByInput = document.getElementById(sortById);
-  const sortDirectionInput = document.getElementById(sortDirectionId);
+  const sortByInput = getElementById(document, sortById);
+  const sortDirectionInput = getElementById(document, sortDirectionId);
   if (!selector || !sortByInput || !sortDirectionInput) {
     return;
   }
@@ -259,7 +266,7 @@ export const getDefaultDateRange = () => {
  * @returns {boolean} True if any filter is active
  */
 export const hasActiveFilters = (formId, { ignoreDateRange = false } = {}) => {
-  const form = document.getElementById(formId);
+  const form = getElementById(document, formId);
   if (!form) return false;
 
   const defaultDateRange = getDefaultDateRange();
@@ -309,7 +316,7 @@ export const hasActiveFilters = (formId, { ignoreDateRange = false } = {}) => {
  * @returns {boolean} True if any non-default calendar filter is active
  */
 export const hasActiveCalendarFilters = (formId, date) => {
-  const form = document.getElementById(formId);
+  const form = getElementById(document, formId);
   if (!form) return false;
 
   if (hasActiveFilters(formId, { ignoreDateRange: true })) {

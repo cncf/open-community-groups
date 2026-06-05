@@ -387,7 +387,7 @@ const setSessions = (sessionsData) => {
  * @param {*} content Markdown text
  */
 const updateMarkdownContent = (content) => {
-  const editor = document.querySelector("markdown-editor#description");
+  const editor = getElementById(document, "description");
   if (!editor) {
     return;
   }

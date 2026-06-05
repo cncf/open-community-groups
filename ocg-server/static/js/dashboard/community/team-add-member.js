@@ -3,6 +3,7 @@ import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import "/static/js/common/user-search-field.js";
 import "/static/js/common/logo-image.js";
 import { computeUserInitials, lockBodyScroll, unlockBodyScroll } from "/static/js/common/common.js";
+import { getElementById } from "/static/js/common/dom.js";
 import { handleHtmxResponse } from "/static/js/common/alerts.js";
 
 /**
@@ -152,8 +153,8 @@ export class TeamAddMember extends LitWrapper {
     const user = e.detail?.user;
     if (!user) return;
     this._selectedUser = user;
-    const userIdInput = this.querySelector("#team-add-user-id");
-    const submitBtn = this.querySelector("#team-add-submit");
+    const userIdInput = getElementById(this, "team-add-user-id");
+    const submitBtn = getElementById(this, "team-add-submit");
     if (userIdInput) userIdInput.value = user.user_id;
     if (submitBtn) submitBtn.disabled = !(this._selectedRole && this._selectedUser);
   }
@@ -165,7 +166,7 @@ export class TeamAddMember extends LitWrapper {
    */
   _onRoleChanged(e) {
     this._selectedRole = e.target?.value || "";
-    const submitBtn = this.querySelector("#team-add-submit");
+    const submitBtn = getElementById(this, "team-add-submit");
     if (submitBtn) submitBtn.disabled = !(this._selectedRole && this._selectedUser);
   }
 
@@ -178,7 +179,7 @@ export class TeamAddMember extends LitWrapper {
     // When modal opens, process HTMX on the newly rendered form and bind events
     if (changed.has("_isOpen")) {
       const justOpened = this._isOpen === true;
-      const form = this.querySelector("#team-add-form");
+      const form = getElementById(this, "team-add-form");
 
       if (justOpened && form) {
         if (window.htmx && typeof window.htmx.process === "function") {
@@ -219,9 +220,9 @@ export class TeamAddMember extends LitWrapper {
   _resetSelection() {
     this._selectedUser = null;
     this._selectedRole = "";
-    const userIdInput = this.querySelector("#team-add-user-id");
-    const roleSelect = this.querySelector("#team-add-role");
-    const submitBtn = this.querySelector("#team-add-submit");
+    const userIdInput = getElementById(this, "team-add-user-id");
+    const roleSelect = getElementById(this, "team-add-role");
+    const submitBtn = getElementById(this, "team-add-submit");
     if (userIdInput) userIdInput.value = "";
     if (roleSelect) roleSelect.value = "";
     if (submitBtn) submitBtn.disabled = !(this._selectedRole && this._selectedUser);

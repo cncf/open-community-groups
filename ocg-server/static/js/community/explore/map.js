@@ -1,5 +1,5 @@
 import { hideLoadingSpinner, showLoadingSpinner, navigateWithHtmx } from "/static/js/common/common.js";
-import { loadScriptOnce } from "/static/js/common/dom.js";
+import { getElementById, loadScriptOnce } from "/static/js/common/dom.js";
 import { fetchData } from "/static/js/community/explore/explore.js";
 
 const LEAFLET_SCRIPT_SRC = "/static/vendor/js/leaflet.v1.9.4.min.js";
@@ -162,7 +162,7 @@ export class Map {
     }
 
     // Display main loading spinner
-    const mainLoading = document.getElementById(MAIN_LOADING_MAP_ID);
+    const mainLoading = getElementById(document, MAIN_LOADING_MAP_ID);
     if (mainLoading) {
       mainLoading.classList.remove("hidden");
     }

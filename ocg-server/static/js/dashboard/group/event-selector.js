@@ -2,6 +2,7 @@ import { html } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { ocgFetch } from "/static/js/common/fetch.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { showErrorAlert, showInfoAlert } from "/static/js/common/alerts.js";
+import { getElementById } from "/static/js/common/dom.js";
 import { setImageFieldValue, setSelectValue, setTextValue } from "/static/js/common/utils.js";
 import * as formHelpers from "/static/js/dashboard/group/event-form-helpers.js";
 import "/static/js/common/svg-spinner.js";
@@ -175,7 +176,7 @@ class EventSelector extends LitWrapper {
     this._isOpen = true;
     this._addOutsideListener();
     this.updateComplete.then(() => {
-      const input = this.querySelector("#event-search-input");
+      const input = getElementById(this, "event-search-input");
       if (input) {
         input.focus();
         input.select();
@@ -245,7 +246,7 @@ class EventSelector extends LitWrapper {
     if (indicator) {
       indicator.classList.toggle("hidden", !loading);
     }
-    const triggerButton = document.getElementById(this.buttonId);
+    const triggerButton = getElementById(document, this.buttonId);
     if (triggerButton) {
       if (loading) {
         triggerButton.setAttribute("aria-busy", "true");
@@ -452,7 +453,7 @@ class EventSelector extends LitWrapper {
    * @returns {{community: string, groupSlug: string}}
    */
   _getDashboardSelection() {
-    const container = this.closest("#dashboard-content") || document.getElementById("dashboard-content");
+    const container = this.closest("#dashboard-content") || getElementById(document, "dashboard-content");
     return {
       community: container?.dataset?.community || "",
       groupSlug: container?.dataset?.groupSlug || "",
@@ -852,7 +853,7 @@ class EventSelector extends LitWrapper {
       this._results = [];
       this._fetchPrimaryEvents();
     }
-    const input = this.querySelector("#event-search-input");
+    const input = getElementById(this, "event-search-input");
     if (input) {
       input.value = "";
       input.focus();
@@ -870,7 +871,7 @@ class EventSelector extends LitWrapper {
     if (!active) {
       return;
     }
-    const button = document.getElementById(`select-event-${active.event_id}`);
+    const button = getElementById(document, `select-event-${active.event_id}`);
     if (button && !button.disabled && typeof button.click === "function") {
       button.click();
     }

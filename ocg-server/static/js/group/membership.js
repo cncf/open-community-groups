@@ -1,6 +1,6 @@
 import { showConfirmAlert, showInfoAlert, handleHtmxResponse } from "/static/js/common/alerts.js";
 import { isSuccessfulXHRStatus } from "/static/js/common/common.js";
-import { initializeOnReadyAndHtmxLoad } from "/static/js/common/dom.js";
+import { getElementById, initializeOnReadyAndHtmxLoad } from "/static/js/common/dom.js";
 
 const MEMBERSHIP_CONTAINER_SELECTOR = "#membership-container";
 const GROUP_ACTIONS_MENU_SELECTOR = "[data-group-actions-menu]";
@@ -54,10 +54,10 @@ const handleMembershipCheckResponse = (event) => {
     return;
   }
 
-  const loadingButton = container.querySelector("#loading-btn");
-  const signinButton = container.querySelector("#signin-btn");
-  const joinButton = container.querySelector("#join-btn");
-  const leaveButton = container.querySelector("#leave-btn");
+  const loadingButton = getElementById(container, "loading-btn");
+  const signinButton = getElementById(container, "signin-btn");
+  const joinButton = getElementById(container, "join-btn");
+  const leaveButton = getElementById(container, "leave-btn");
 
   if (!loadingButton || !signinButton || !joinButton || !leaveButton) {
     return;
@@ -98,7 +98,7 @@ const handleJoinBeforeRequest = (target) => {
   }
 
   const container = target.closest(MEMBERSHIP_CONTAINER_SELECTOR);
-  const loadingButton = container?.querySelector("#loading-btn");
+  const loadingButton = container ? getElementById(container, "loading-btn") : null;
   if (!loadingButton) {
     return;
   }
@@ -117,7 +117,7 @@ const handleLeaveBeforeRequest = (target) => {
   }
 
   const container = target.closest(MEMBERSHIP_CONTAINER_SELECTOR);
-  const loadingButton = container?.querySelector("#loading-btn");
+  const loadingButton = container ? getElementById(container, "loading-btn") : null;
   if (!loadingButton) {
     return;
   }
@@ -141,8 +141,8 @@ const handleJoinAfterRequest = (event) => {
     return;
   }
 
-  const loadingButton = container.querySelector("#loading-btn");
-  const joinButton = container.querySelector("#join-btn");
+  const loadingButton = getElementById(container, "loading-btn");
+  const joinButton = getElementById(container, "join-btn");
   if (!loadingButton || !joinButton) {
     return;
   }
@@ -176,8 +176,8 @@ const handleLeaveAfterRequest = (event) => {
     return;
   }
 
-  const loadingButton = container.querySelector("#loading-btn");
-  const leaveButton = container.querySelector("#leave-btn");
+  const loadingButton = getElementById(container, "loading-btn");
+  const leaveButton = getElementById(container, "leave-btn");
   if (!loadingButton || !leaveButton) {
     return;
   }
