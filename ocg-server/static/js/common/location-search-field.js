@@ -3,6 +3,15 @@ import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { loadMap } from "/static/js/common/common.js";
 import { getElementById, isElementHidden } from "/static/js/common/dom.js";
 import { isEscapeEvent } from "/static/js/common/keyboard.js";
+import {
+  DEFAULT_MAP_ZOOM,
+  deriveZoomFromFields,
+  deriveZoomFromLocation,
+  extractAddress,
+  normalizeBoundingBox,
+  parseCoordinate,
+  shouldFitBoundsForResult,
+} from "/static/js/common/location-search-utils.js";
 import { setTextValue } from "/static/js/common/utils.js";
 
 let mapIdCounter = 0;
@@ -10,7 +19,6 @@ const createMapElementId = () => {
   mapIdCounter += 1;
   return `location-search-field-map-${mapIdCounter}`;
 };
-const DEFAULT_MAP_ZOOM = 15;
 
 /**
  * LocationSearchField component for searching and editing location details using Nominatim.
@@ -196,24 +204,12 @@ export class LocationSearchField extends LitWrapper {
   }
 
   /**
-   * @param {string} value
-   * @returns {number|null}
-   * @private
-   */
-  _parseCoordinate(value) {
-    if (typeof value !== "string") return null;
-    const parsed = Number.parseFloat(value);
-    if (Number.isNaN(parsed)) return null;
-    return parsed;
-  }
-
-  /**
    * @returns {boolean}
    * @private
    */
   _hasValidCoordinates() {
-    const lat = this._parseCoordinate(this._latitudeValue);
-    const lng = this._parseCoordinate(this._longitudeValue);
+    const lat = parseCoordinate(this._latitudeValue);
+    const lng = parseCoordinate(this._longitudeValue);
     return lat !== null && lng !== null;
   }
 
@@ -343,153 +339,18 @@ export class LocationSearchField extends LitWrapper {
   }
 
   /**
-   * Extracts structured address components from a Nominatim result.
-   * @param {Object} result - Nominatim search result object
-   * @returns {Object} Extracted address components
-   * @private
-   */
-  _extractAddress(result) {
-    const addr = result.address || {};
-
-    const streetParts = [addr.house_number, addr.road].filter(Boolean);
-    const streetAddress = streetParts.join(" ");
-
-    const city = addr.city || addr.town || addr.village || addr.municipality || addr.county || "";
-
-    const zipCode = addr.postcode || "";
-
-    const venueName =
-      addr[result.type] || addr[result.addresstype] || addr.amenity || addr.building || addr.name || "";
-
-    const state = addr.state || addr.province || addr.region || "";
-
-    const country = addr.country || "";
-    const countryCode = (addr.country_code || "").toUpperCase();
-
-    return {
-      venueName,
-      venueAddress: streetAddress,
-      venueCity: city,
-      venueZipCode: zipCode,
-      state,
-      country,
-      countryCode,
-      latitude: parseFloat(result.lat),
-      longitude: parseFloat(result.lon),
-      displayName: result.display_name,
-    };
-  }
-
-  /**
-   * Choose a zoom level based on the selected Nominatim result.
-   * @param {Object} result - Nominatim location result
-   * @returns {number}
-   * @private
-   */
-  _deriveZoomFromLocation(result) {
-    if (!result || typeof result !== "object") return DEFAULT_MAP_ZOOM;
-    const type = (result.type || "").toLowerCase();
-    const cls = (result.class || "").toLowerCase();
-    const zoomByType = {
-      country: 5,
-      state: 7,
-      region: 7,
-      province: 7,
-      county: 8,
-      city: 11,
-      town: 11,
-      village: 11,
-      hamlet: 12,
-      municipality: 11,
-      postcode: 12,
-      residential: 16,
-      suburb: 14,
-      road: 15,
-      street: 15,
-      address: 17,
-      building: 17,
-      house: 17,
-      entrance: 17,
-    };
-
-    if (Object.prototype.hasOwnProperty.call(zoomByType, type)) {
-      return zoomByType[type];
-    }
-    if (cls === "boundary") {
-      return 8;
-    }
-
-    const addr = result.address || {};
-    if (addr.city || addr.town || addr.village || addr.municipality) {
-      return 11;
-    }
-    if (addr.state || addr.region || addr.province || addr.county) {
-      return 7;
-    }
-    if (addr.country) {
-      return 5;
-    }
-
-    return DEFAULT_MAP_ZOOM;
-  }
-
-  /**
-   * Normalize bounding box values from the selected result.
-   * @param {Array<string>|undefined} boundingbox
-   * @returns {Array<number>|null}
-   * @private
-   */
-  _normalizeBoundingBox(boundingbox) {
-    if (!Array.isArray(boundingbox) || boundingbox.length !== 4) {
-      return null;
-    }
-    const parsed = boundingbox.map((value) => Number.parseFloat(value));
-    if (parsed.some((value) => Number.isNaN(value))) {
-      return null;
-    }
-    return parsed;
-  }
-
-  /**
-   * Determine if the map preview should fit the bounding box.
-   * @param {Object} result - Selected Nominatim result object
-   * @returns {boolean}
-   * @private
-   */
-  _shouldFitBoundsForResult(result) {
-    if (!result || typeof result !== "object") {
-      return false;
-    }
-    const addresstype = (result.addresstype || "").toLowerCase();
-    const type = (result.type || "").toLowerCase();
-    return addresstype === "country" || type === "country";
-  }
-
-  /**
    * Choose a zoom level based on the current manual field values.
    * @returns {number}
    * @private
    */
   _deriveZoomFromFields() {
-    const normalize = (value) => (value || "").trim();
-    const hasAddress = Boolean(normalize(this._venueAddressValue) || normalize(this._venueZipCodeValue));
-    if (hasAddress) {
-      return 16;
-    }
-
-    if (normalize(this._venueCityValue)) {
-      return 14;
-    }
-
-    if (normalize(this._stateValue)) {
-      return 8;
-    }
-
-    if (normalize(this._countryNameValue)) {
-      return 5;
-    }
-
-    return DEFAULT_MAP_ZOOM;
+    return deriveZoomFromFields({
+      venueAddress: this._venueAddressValue,
+      venueZipCode: this._venueZipCodeValue,
+      venueCity: this._venueCityValue,
+      state: this._stateValue,
+      countryName: this._countryNameValue,
+    });
   }
 
   /**
@@ -514,10 +375,10 @@ export class LocationSearchField extends LitWrapper {
    * @private
    */
   _selectLocation(result) {
-    const location = this._extractAddress(result);
-    this._mapZoom = this._deriveZoomFromLocation(result);
-    this._mapBoundingBox = this._normalizeBoundingBox(result.boundingbox);
-    this._shouldFitBounds = this._shouldFitBoundsForResult(result);
+    const location = extractAddress(result);
+    this._mapZoom = deriveZoomFromLocation(result);
+    this._mapBoundingBox = normalizeBoundingBox(result.boundingbox);
+    this._shouldFitBounds = shouldFitBoundsForResult(result);
 
     this._setInternalLocationValues(location);
     this.showMapPreview();
@@ -1240,8 +1101,8 @@ export class LocationSearchField extends LitWrapper {
     const container = getElementById(document, this._mapElementId);
     if (!container) return;
 
-    const lat = this._parseCoordinate(this._latitudeValue);
-    const lng = this._parseCoordinate(this._longitudeValue);
+    const lat = parseCoordinate(this._latitudeValue);
+    const lng = parseCoordinate(this._longitudeValue);
     if (lat === null || lng === null) return;
 
     const zoom = this._mapZoom || DEFAULT_MAP_ZOOM;
