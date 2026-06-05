@@ -1,5 +1,6 @@
 import { handleHtmxResponse, showConfirmAlert } from "/static/js/common/alerts.js";
 import { toggleModalVisibility } from "/static/js/common/common.js";
+import { getElementById, initializeOnReadyAndHtmxLoad } from "/static/js/common/dom.js";
 
 const ACTION_REQUIRED_MODAL_ID = "action-required-modal";
 const ACTION_REQUIRED_MODAL_MESSAGE_ID = "action-required-modal-message";
@@ -8,9 +9,9 @@ const ACTION_REQUIRED_MODAL_CANCEL_ID = "cancel-action-required-modal";
 const ACTION_REQUIRED_MODAL_OVERLAY_ID = "overlay-action-required-modal";
 const ACTION_REQUIRED_TRIGGER_SELECTOR = '[data-action="open-action-required-modal"]';
 
-const initializeActionRequiredModal = () => {
-  const modal = document.getElementById(ACTION_REQUIRED_MODAL_ID);
-  const message = document.getElementById(ACTION_REQUIRED_MODAL_MESSAGE_ID);
+const initializeActionRequiredModal = (root = document) => {
+  const modal = getElementById(root, ACTION_REQUIRED_MODAL_ID);
+  const message = getElementById(root, ACTION_REQUIRED_MODAL_MESSAGE_ID);
   if (!modal || !message) {
     return;
   }
@@ -23,12 +24,12 @@ const initializeActionRequiredModal = () => {
 
   if (modal.dataset.bound !== "true") {
     modal.dataset.bound = "true";
-    document.getElementById(ACTION_REQUIRED_MODAL_CLOSE_ID)?.addEventListener("click", closeModal);
-    document.getElementById(ACTION_REQUIRED_MODAL_CANCEL_ID)?.addEventListener("click", closeModal);
-    document.getElementById(ACTION_REQUIRED_MODAL_OVERLAY_ID)?.addEventListener("click", closeModal);
+    getElementById(root, ACTION_REQUIRED_MODAL_CLOSE_ID)?.addEventListener("click", closeModal);
+    getElementById(root, ACTION_REQUIRED_MODAL_CANCEL_ID)?.addEventListener("click", closeModal);
+    getElementById(root, ACTION_REQUIRED_MODAL_OVERLAY_ID)?.addEventListener("click", closeModal);
   }
 
-  document.querySelectorAll(ACTION_REQUIRED_TRIGGER_SELECTOR).forEach((button) => {
+  root.querySelectorAll?.(ACTION_REQUIRED_TRIGGER_SELECTOR).forEach((button) => {
     if (button.dataset.bound === "true") {
       return;
     }
@@ -43,8 +44,8 @@ const initializeActionRequiredModal = () => {
   });
 };
 
-const initializeSubmissionActions = () => {
-  document.querySelectorAll('[data-action="withdraw-submission"]').forEach((button) => {
+const initializeSubmissionActions = (root = document) => {
+  root.querySelectorAll?.('[data-action="withdraw-submission"]').forEach((button) => {
     if (button.dataset.bound === "true") {
       return;
     }
@@ -70,7 +71,7 @@ const initializeSubmissionActions = () => {
     });
   });
 
-  document.querySelectorAll('[data-action="resubmit-submission"]').forEach((button) => {
+  root.querySelectorAll?.('[data-action="resubmit-submission"]').forEach((button) => {
     if (button.dataset.bound === "true") {
       return;
     }
@@ -96,9 +97,7 @@ const initializeSubmissionActions = () => {
     });
   });
 
-  initializeActionRequiredModal();
+  initializeActionRequiredModal(root);
 };
 
-initializeSubmissionActions();
-
-document.addEventListener("htmx:load", initializeSubmissionActions);
+initializeOnReadyAndHtmxLoad(initializeSubmissionActions);

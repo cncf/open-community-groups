@@ -1,10 +1,11 @@
 import { handleHtmxResponse, showConfirmAlert } from "/static/js/common/alerts.js";
+import { getElementById, initializeOnReadyAndHtmxLoad } from "/static/js/common/dom.js";
 import "/static/js/dashboard/user/session-proposal-modal.js";
 
 const MODAL_COMPONENT_ID = "session-proposal-modal-component";
 const DATA_KEY = "sessionProposalReady";
 
-const getModalComponent = () => document.getElementById(MODAL_COMPONENT_ID);
+const getModalComponent = (root = document) => getElementById(root, MODAL_COMPONENT_ID);
 
 const parseSessionProposal = (payload) => {
   if (!payload) {
@@ -35,8 +36,8 @@ const applyDescriptionHtml = (button, sessionProposal) => {
   }
 };
 
-const initializeSessionProposals = () => {
-  const modalComponent = getModalComponent();
+const initializeSessionProposals = (root = document) => {
+  const modalComponent = getModalComponent(root);
   if (!modalComponent) {
     return;
   }
@@ -45,13 +46,13 @@ const initializeSessionProposals = () => {
     modalComponent.dataset[DATA_KEY] = "true";
   }
 
-  const openButton = document.getElementById("open-session-proposal-modal");
+  const openButton = getElementById(root, "open-session-proposal-modal");
   if (openButton && openButton.dataset.bound !== "true") {
     openButton.dataset.bound = "true";
     openButton.addEventListener("click", () => modalComponent.openCreate());
   }
 
-  document.querySelectorAll('[data-action="edit-session-proposal"]').forEach((button) => {
+  root.querySelectorAll?.('[data-action="edit-session-proposal"]').forEach((button) => {
     if (button.dataset.bound === "true") {
       return;
     }
@@ -67,7 +68,7 @@ const initializeSessionProposals = () => {
     });
   });
 
-  document.querySelectorAll('[data-action="view-session-proposal"]').forEach((button) => {
+  root.querySelectorAll?.('[data-action="view-session-proposal"]').forEach((button) => {
     if (button.dataset.bound === "true") {
       return;
     }
@@ -89,7 +90,7 @@ const initializeSessionProposals = () => {
     });
   });
 
-  document.querySelectorAll('[data-action="view-pending-session-proposal"]').forEach((button) => {
+  root.querySelectorAll?.('[data-action="view-pending-session-proposal"]').forEach((button) => {
     if (button.dataset.bound === "true") {
       return;
     }
@@ -111,7 +112,7 @@ const initializeSessionProposals = () => {
     });
   });
 
-  document.querySelectorAll('[data-action="delete-session-proposal"]').forEach((button) => {
+  root.querySelectorAll?.('[data-action="delete-session-proposal"]').forEach((button) => {
     if (button.dataset.bound === "true") {
       return;
     }
@@ -137,7 +138,7 @@ const initializeSessionProposals = () => {
     });
   });
 
-  document.querySelectorAll('[data-action="accept-co-speaker-invitation"]').forEach((button) => {
+  root.querySelectorAll?.('[data-action="accept-co-speaker-invitation"]').forEach((button) => {
     if (button.dataset.bound === "true") {
       return;
     }
@@ -152,7 +153,7 @@ const initializeSessionProposals = () => {
     });
   });
 
-  document.querySelectorAll('[data-action="reject-co-speaker-invitation"]').forEach((button) => {
+  root.querySelectorAll?.('[data-action="reject-co-speaker-invitation"]').forEach((button) => {
     if (button.dataset.bound === "true") {
       return;
     }
@@ -185,6 +186,4 @@ const initializeSessionProposals = () => {
   });
 };
 
-initializeSessionProposals();
-
-document.addEventListener("htmx:load", initializeSessionProposals);
+initializeOnReadyAndHtmxLoad(initializeSessionProposals);
