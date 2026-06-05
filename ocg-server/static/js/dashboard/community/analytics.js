@@ -15,7 +15,8 @@ import {
   hasChartData,
   hasTimeSeriesData,
   hasStackedTimeSeriesData,
-} from "/static/js/dashboard/common.js";
+} from "/static/js/common/charts.js";
+import { deferUntilHtmxSettled } from "/static/js/dashboard/common.js";
 import { initializeOnReady } from "/static/js/common/dom.js";
 import { registerChartResizeHandler, renderChart } from "/static/js/common/stats.js";
 

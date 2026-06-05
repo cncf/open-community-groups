@@ -584,3 +584,463 @@ export const createMonthlyBarChart = (title, name, data, palette, options = {}) 
     ],
   });
 };
+
+/**
+ * Create vertical bar chart configuration for daily data.
+ * @param {string} title - Chart title.
+ * @param {string} name - Series name.
+ * @param {Array} data - Daily data pairs.
+ * @param {Object} palette - Theme color palette.
+ * @param {Object} options - Chart options.
+ * @param {string} options.description - Short chart description.
+ * @returns {Object} ECharts option.
+ */
+export const createDailyBarChart = (title, name, data, palette, options = {}) => {
+  const { description = "" } = options;
+  const seriesData = buildRecentBarSeries(data, "day", 30);
+  const barSeriesStyle = getVerticalBarSeriesStyle(seriesData.values.length);
+
+  return Object.assign(baseText(), {
+    title: getChartTitleConfig(title, palette, description),
+    color: [palette[700]],
+    tooltip: getAxisTooltipConfig(),
+    legend: {
+      bottom: 10,
+      left: "center",
+      textStyle: { fontFamily: dashboardFontFamily, fontSize: 12 },
+    },
+    grid: { left: 70, right: 40, bottom: 100, top: getChartGridTop(description) },
+    xAxis: getVerticalBarCategoryAxisConfig(seriesData.categories),
+    yAxis: getValueAxisConfig(),
+    series: [
+      {
+        name,
+        type: "bar",
+        data: seriesData.values,
+        ...barSeriesStyle,
+      },
+    ],
+  });
+};
+
+/**
+ * Build a palette for multi-series charts.
+ * @param {Object} palette - Theme color palette.
+ * @param {number} count - Number of series.
+ * @returns {Array<string>} Color list sized to the series count.
+ */
+export const buildSeriesColors = (palette, count) => {
+  const highContrastPalette = [
+    palette[950],
+    palette[800],
+    palette[600],
+    palette[400],
+    palette[200],
+    palette[50],
+  ];
+  const fullPalette = [
+    palette[950],
+    palette[900],
+    palette[800],
+    palette[700],
+    palette[600],
+    palette[500],
+    palette[400],
+    palette[300],
+    palette[200],
+    palette[100],
+    palette[50],
+  ];
+  const paletteToUse = count <= 6 ? highContrastPalette : fullPalette;
+
+  if (count <= paletteToUse.length) {
+    return paletteToUse.slice(0, count);
+  }
+
+  const colors = [];
+  for (let i = 0; i < count; i += 1) {
+    colors.push(paletteToUse[i % paletteToUse.length]);
+  }
+  return colors;
+};
+
+/**
+ * Normalize monthly series maps into aligned stacks.
+ * @param {Object<string, Array<[string, number|string]>>} seriesMap - Named series.
+ * @param {Object} options - Series options.
+ * @param {boolean} options.reservePeriodStart - Reserve empty buckets from the recent period start.
+ * @param {number} options.recentWindowMonths - Number of months to display.
+ * @returns {{months: Array<string>, series: Array<{name: string, data: Array<number>}>}} Aligned data.
+ */
+export const buildStackedMonthlySeries = (seriesMap = {}, options = {}) => {
+  const { recentWindowMonths = 24, reservePeriodStart = false } = options;
+  const seriesEntries = Object.entries(seriesMap).filter(([, points]) => Array.isArray(points));
+  const hasSeriesData = seriesEntries.some(([, points]) => points.length > 0);
+
+  if (!reservePeriodStart || !hasSeriesData) {
+    const monthsSet = new Set();
+    seriesEntries.forEach(([, points]) => {
+      (points || []).forEach(([month]) => monthsSet.add(month));
+    });
+
+    const months = Array.from(monthsSet).sort();
+    const seriesNames = Object.keys(seriesMap).sort((a, b) => a.localeCompare(b));
+
+    return {
+      months,
+      series: seriesNames.map((name) => {
+        const valuesByMonth = new Map(
+          (seriesMap[name] || []).map(([month, value]) => [month, Number(value)]),
+        );
+        return { name, data: months.map((month) => valuesByMonth.get(month) ?? 0) };
+      }),
+    };
+  }
+
+  const months = buildRecentMonthEntries(recentWindowMonths).map(({ key }) => key);
+  const seriesNames = Object.keys(seriesMap).sort((a, b) => a.localeCompare(b));
+
+  return {
+    months,
+    series: seriesNames.map((name) => {
+      const valuesByMonth = new Map((seriesMap[name] || []).map(([month, value]) => [month, Number(value)]));
+      return { name, data: months.map((month) => valuesByMonth.get(month) ?? 0) };
+    }),
+  };
+};
+
+/**
+ * Normalize time-based series maps into aligned stacks.
+ * @param {Object<string, Array<[number|string, number|string]>>} seriesMap - Named series.
+ * @returns {{timestamps: Array<number>, series: Array<{name: string, data: Array<[number, number]>}>}} Aligned series.
+ */
+export const buildStackedTimeSeries = (seriesMap = {}) => {
+  const timestamps = new Set();
+  Object.values(seriesMap).forEach((points) => {
+    (points || []).forEach(([ts]) => timestamps.add(Number(ts)));
+  });
+
+  const sortedTs = Array.from(timestamps).sort((a, b) => a - b);
+  const seriesNames = Object.keys(seriesMap).sort((a, b) => a.localeCompare(b));
+
+  return {
+    timestamps: sortedTs,
+    series: seriesNames.map((name) => {
+      const valuesByTs = new Map((seriesMap[name] || []).map(([ts, value]) => [Number(ts), Number(value)]));
+      let last = 0;
+      return {
+        name,
+        data: sortedTs.map((ts) => {
+          const value = valuesByTs.get(ts);
+          if (typeof value === "number") {
+            last = value;
+          }
+          return [ts, last];
+        }),
+      };
+    }),
+  };
+};
+
+/**
+ * Create stacked monthly bar chart configuration for grouped series.
+ * @param {string} title - Chart title.
+ * @param {Array<string>} months - Month labels.
+ * @param {Array<{name: string, data: Array<number>}>} seriesData - Aligned series data.
+ * @param {Object} palette - Theme color palette.
+ * @param {Object} options - Chart options.
+ * @param {string} options.description - Short chart description.
+ * @returns {Object} ECharts option.
+ */
+export const createStackedMonthlyChart = (title, months, seriesData, palette, options = {}) => {
+  const { description = "" } = options;
+  const colors = buildSeriesColors(palette, seriesData.length || 1);
+  const barSeriesStyle = getVerticalBarSeriesStyle(months.length);
+
+  return Object.assign(baseText(), {
+    title: getChartTitleConfig(title, palette, description),
+    color: colors,
+    tooltip: Object.assign(getAxisTooltipConfig(), { axisPointer: { type: "shadow" } }),
+    legend: {
+      type: seriesData.length > 5 ? "scroll" : "plain",
+      bottom: 10,
+      left: "center",
+      textStyle: { fontFamily: dashboardFontFamily, fontSize: 12 },
+    },
+    grid: { left: 70, right: 40, bottom: 100, top: getChartGridTop(description) },
+    xAxis: getVerticalBarCategoryAxisConfig(months),
+    yAxis: getValueAxisConfig(),
+    series: seriesData.map((series) => ({
+      name: series.name,
+      type: "bar",
+      stack: "total",
+      emphasis: { focus: "series" },
+      data: series.data,
+      ...barSeriesStyle,
+    })),
+  });
+};
+
+/**
+ * Create stacked area chart configuration for grouped running totals.
+ * @param {string} title - Chart title.
+ * @param {Array<{name: string, data: Array<[number, number]>}>} seriesData - Aligned series data.
+ * @param {Object} palette - Theme color palette.
+ * @param {Object} options - Chart options.
+ * @param {string} options.description - Short chart description.
+ * @returns {Object} ECharts option.
+ */
+export const createStackedAreaChart = (title, seriesData, palette, options = {}) => {
+  const { description = "" } = options;
+  const colors = buildSeriesColors(palette, seriesData.length || 1);
+
+  return {
+    baseOption: Object.assign(baseText(), {
+      title: getChartTitleConfig(title, palette, description),
+      color: colors,
+      tooltip: getAxisTooltipConfig(),
+      legend: {
+        type: seriesData.length > 5 ? "scroll" : "plain",
+        bottom: 10,
+        left: "center",
+        textStyle: { fontFamily: dashboardFontFamily, fontSize: 12 },
+      },
+      grid: { left: 70, right: 40, bottom: 90, top: getChartGridTop(description, 60) },
+      xAxis: {
+        type: "time",
+        boundaryGap: false,
+        axisLine: { show: false },
+        axisTick: { show: false },
+        axisLabel: { fontSize: 11 },
+        splitLine: { show: false },
+      },
+      yAxis: getValueAxisConfig(),
+      series: seriesData.map((series) => ({
+        name: series.name,
+        type: "line",
+        stack: "total",
+        smooth: true,
+        symbol: "none",
+        showSymbol: false,
+        areaStyle: { opacity: 0.35 },
+        lineStyle: { width: 2 },
+        emphasis: { focus: "series" },
+        data: series.data,
+      })),
+    }),
+    media: [
+      {
+        query: { maxWidth: 500 },
+        option: { xAxis: { axisLabel: { rotate: 45 } } },
+      },
+    ],
+  };
+};
+
+/**
+ * Create horizontal bar chart configuration for category data.
+ * @param {string} title - Chart title.
+ * @param {Array} categoryData - Category series data.
+ * @param {Object} palette - Theme color palette.
+ * @param {number|Object} leftMarginOrOptions - Left margin for labels or chart options.
+ * @param {Object} options - Chart options.
+ * @param {string} options.description - Short chart description.
+ * @returns {Object} ECharts option.
+ */
+export const createHorizontalBarChart = (
+  title,
+  categoryData,
+  palette,
+  leftMarginOrOptions = 140,
+  options = {},
+) => {
+  const leftMargin = typeof leftMarginOrOptions === "number" ? leftMarginOrOptions : 140;
+  const chartOptions = typeof leftMarginOrOptions === "object" ? leftMarginOrOptions : options;
+  const { description = "" } = chartOptions;
+  const total = categoryData.reduce((sum, d) => sum + d.value, 0);
+  const gridLineColor = getChartGridLineColor();
+  const tooltipColors = getChartTooltipColors();
+  const uiColors = getChartUiColors();
+
+  return Object.assign(baseText(), {
+    title: {
+      text: title,
+      ...(description
+        ? {
+            subtext: description,
+            itemGap: 6,
+            subtextStyle: {
+              color: uiColors.muted,
+              fontFamily: dashboardFontFamily,
+              fontSize: 12,
+              lineHeight: 16,
+            },
+          }
+        : {}),
+      left: "center",
+      top: 12,
+      textStyle: { fontFamily: dashboardFontFamily, fontSize: 14, fontWeight: 500, color: palette[950] },
+    },
+    color: [palette[700]],
+    tooltip: {
+      trigger: "item",
+      backgroundColor: tooltipColors.background,
+      borderColor: tooltipColors.border,
+      borderWidth: 1,
+      textStyle: { color: tooltipColors.text },
+      formatter: (params) => {
+        const percent = total > 0 ? ((params.value / total) * 100).toFixed(1) : 0;
+        return `${params.name}: ${params.value} (${percent}%)`;
+      },
+    },
+    grid: { left: leftMargin, right: 80, bottom: 40, top: getChartGridTop(description) },
+    xAxis: {
+      type: "value",
+      minInterval: 1,
+      axisLine: { show: false },
+      axisTick: { show: false },
+      axisLabel: { color: uiColors.muted, fontSize: 11 },
+      splitLine: { lineStyle: { color: gridLineColor, type: "dashed" } },
+    },
+    yAxis: {
+      type: "category",
+      data: categoryData.map((d) => d.name),
+      axisLine: { show: false },
+      axisTick: { show: false },
+      axisLabel: { color: uiColors.text, fontSize: 12 },
+    },
+    series: [
+      {
+        type: "bar",
+        data: categoryData.map((d) => d.value),
+        barCategoryGap: "30%",
+        label: {
+          show: true,
+          position: "right",
+          formatter: (params) => {
+            const percent = total > 0 ? ((params.value / total) * 100).toFixed(1) : 0;
+            return `${percent}%`;
+          },
+          fontSize: 11,
+          color: uiColors.muted,
+        },
+      },
+    ],
+  });
+};
+
+/**
+ * Create pie chart configuration for distribution data.
+ * @param {string} title - Chart title.
+ * @param {string} name - Series name.
+ * @param {Array} data - Category series data.
+ * @param {Object} palette - Theme color palette.
+ * @param {Object} options - Chart options.
+ * @param {string} options.description - Short chart description.
+ * @returns {Object} ECharts option.
+ */
+export const createPieChart = (title, name, data, palette, options = {}) => {
+  const { description = "" } = options;
+  const tooltipColors = getChartTooltipColors();
+  const uiColors = getChartUiColors();
+  const pieColors =
+    data.length <= 6
+      ? [palette[950], palette[800], palette[600], palette[400], palette[200], palette[50]]
+      : [
+          palette[950],
+          palette[900],
+          palette[800],
+          palette[700],
+          palette[600],
+          palette[500],
+          palette[400],
+          palette[300],
+          palette[200],
+          palette[100],
+          palette[50],
+        ];
+
+  let chartData = data;
+  if (data.length > 6) {
+    const sorted = [...data].sort((a, b) => b.value - a.value);
+    const top6 = sorted.slice(0, 6);
+    const otherValue = sorted.slice(6).reduce((sum, item) => sum + item.value, 0);
+    if (otherValue > 0) {
+      top6.push({ name: "Other", value: otherValue });
+    }
+    chartData = top6;
+  }
+
+  return Object.assign(baseText(), {
+    title: {
+      text: title,
+      ...(description
+        ? {
+            subtext: description,
+            itemGap: 6,
+            subtextStyle: {
+              color: uiColors.muted,
+              fontFamily: dashboardFontFamily,
+              fontSize: 12,
+              lineHeight: 16,
+            },
+          }
+        : {}),
+      left: "center",
+      top: 12,
+      textStyle: { fontFamily: dashboardFontFamily, fontSize: 14, fontWeight: 500, color: palette[950] },
+    },
+    color: pieColors,
+    tooltip: {
+      trigger: "item",
+      backgroundColor: tooltipColors.background,
+      borderColor: tooltipColors.border,
+      borderWidth: 1,
+      textStyle: { color: tooltipColors.text },
+      formatter: "{b}: {c} ({d}%)",
+    },
+    legend: {
+      orient: "vertical",
+      left: "55%",
+      top: "30%",
+      icon: "circle",
+      itemWidth: 10,
+      itemHeight: 10,
+      itemGap: 12,
+      textStyle: { fontFamily: dashboardFontFamily, fontSize: 14 },
+      formatter: (label) => {
+        if (label.length > 25) {
+          return `${label.substring(0, 25)}...`;
+        }
+        return label;
+      },
+    },
+    series: [
+      {
+        name,
+        type: "pie",
+        radius: ["30%", "55%"],
+        center: ["28%", "58%"],
+        avoidLabelOverlap: true,
+        itemStyle: { borderColor: uiColors.surface, borderWidth: 2 },
+        label: {
+          show: true,
+          position: "outside",
+          formatter: "{d}%",
+          fontSize: 11,
+          color: uiColors.muted,
+        },
+        labelLine: {
+          show: true,
+          length: 8,
+          length2: 6,
+          lineStyle: { color: uiColors.soft },
+        },
+        emphasis: {
+          label: { fontWeight: "bold" },
+        },
+        data: chartData,
+      },
+    ],
+  });
+};

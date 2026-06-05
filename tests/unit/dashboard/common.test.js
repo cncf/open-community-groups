@@ -2,13 +2,15 @@ import { expect } from "@open-wc/testing";
 
 import {
   clearChartElement,
-  deferUntilHtmxSettled,
   getThemePalette,
   hasChartData,
   hasStackedTimeSeriesData,
   hasTimeSeriesData,
   showChartEmptyState,
   toTimeSeries,
+} from "/static/js/common/charts.js";
+import {
+  deferUntilHtmxSettled,
   triggerChangeOnForm,
 } from "/static/js/dashboard/common.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
