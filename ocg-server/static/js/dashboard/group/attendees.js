@@ -11,6 +11,7 @@ import {
   getElementById,
   initializeOnReadyAndHtmxLoad,
   markDatasetReady,
+  setElementHidden,
 } from "/static/js/common/dom.js";
 import { ocgFetch } from "/static/js/common/fetch.js";
 
@@ -433,7 +434,7 @@ const populateRefundReviewModal = (triggerButton, root = document) => {
   }
 
   if (approveButton) {
-    approveButton.classList.remove("hidden");
+    setElementHidden(approveButton, false);
     setRefundActionLabel(
       approveButton,
       status === "approving" ? "Retry refund finalization" : "Approve refund",
@@ -451,13 +452,13 @@ const populateRefundReviewModal = (triggerButton, root = document) => {
   }
 
   if (status === "approving") {
-    rejectButton.classList.add("hidden");
+    setElementHidden(rejectButton, true);
     rejectButton.removeAttribute("hx-put");
     processRefundActionButton(rejectButton);
     return;
   }
 
-  rejectButton.classList.remove("hidden");
+  setElementHidden(rejectButton, false);
   if (triggerButton.dataset.refundRejectUrl) {
     rejectButton.setAttribute("hx-put", triggerButton.dataset.refundRejectUrl);
   } else {

@@ -41,6 +41,16 @@ export const markDatasetReady = (element, key) => {
 };
 
 /**
+ * Shows or hides an element with the shared hidden utility class.
+ * @param {Element|null|undefined} element Element to update.
+ * @param {boolean} hidden Whether the element should be hidden.
+ * @returns {void}
+ */
+export const setElementHidden = (element, hidden) => {
+  element?.classList?.toggle("hidden", hidden);
+};
+
+/**
  * Initializes current content when the document is ready.
  * @param {() => void} callback Initialization callback.
  * @returns {void}

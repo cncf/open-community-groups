@@ -8,6 +8,7 @@ import {
   loadScriptOnce,
   getElementById,
   markDatasetReady,
+  setElementHidden,
 } from "/static/js/common/dom.js";
 import { waitForMicrotask } from "/tests/unit/test-utils/async.js";
 import { resetDom, trackAddedEventListeners } from "/tests/unit/test-utils/dom.js";
@@ -124,6 +125,20 @@ describe("common dom", () => {
 
     // Missing elements are treated as not markable.
     expect(markDatasetReady(null, "behaviorReady")).to.equal(false);
+  });
+
+  it("sets element hidden state", () => {
+    // Build the element that owns the shared hidden class.
+    const element = document.createElement("section");
+
+    // The helper applies and removes the hidden state.
+    setElementHidden(element, true);
+    expect(element.classList.contains("hidden")).to.equal(true);
+    setElementHidden(element, false);
+    expect(element.classList.contains("hidden")).to.equal(false);
+
+    // Missing elements are ignored.
+    expect(() => setElementHidden(null, true)).not.to.throw();
   });
 
   it("resolves immediately when the script is already loaded", async () => {

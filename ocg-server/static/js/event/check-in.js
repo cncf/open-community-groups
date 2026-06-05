@@ -1,5 +1,5 @@
 import { handleHtmxResponse } from "/static/js/common/alerts.js";
-import { getElementById, markDatasetReady } from "/static/js/common/dom.js";
+import { getElementById, markDatasetReady, setElementHidden } from "/static/js/common/dom.js";
 
 const CHECK_IN_FORM_ID = "event-check-in-form";
 const SUCCESS_CARD_ID = "check-in-success-card";
@@ -11,10 +11,10 @@ const CHECK_IN_READY_KEY = "checkInReady";
  * Shows the checked-in state after a successful event check-in.
  */
 const showCheckedInState = () => {
-  getElementById(document, SUCCESS_CARD_ID)?.classList.remove("hidden");
-  getElementById(document, FORM_CONTAINER_ID)?.classList.add("hidden");
-  getElementById(document, CHECK_IN_FORM_ID)?.classList.add("hidden");
-  getElementById(document, VIEW_DETAILS_BUTTON_ID)?.classList.remove("hidden");
+  setElementHidden(getElementById(document, SUCCESS_CARD_ID), false);
+  setElementHidden(getElementById(document, FORM_CONTAINER_ID), true);
+  setElementHidden(getElementById(document, CHECK_IN_FORM_ID), true);
+  setElementHidden(getElementById(document, VIEW_DETAILS_BUTTON_ID), false);
 };
 
 /**

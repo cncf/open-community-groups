@@ -12,7 +12,12 @@ import {
   updateDateInput,
   updateSortInputsFromSelector,
 } from "/static/js/community/explore/filters.js";
-import { getElementById, isDatasetReady, markDatasetReady } from "/static/js/common/dom.js";
+import {
+  getElementById,
+  isDatasetReady,
+  markDatasetReady,
+  setElementHidden,
+} from "/static/js/common/dom.js";
 import { parseJsonText } from "/static/js/common/utils.js";
 
 const EXPLORE_CONTROLS_READY_KEY = "exploreControlsReady";
@@ -102,10 +107,10 @@ export const syncNoResultsPlaceholders = (root = document) => {
   const filtered = hasCalendar ? hasActiveCalendarFilters(formId) : hasActiveFilters(formId);
 
   defaultPlaceholders.forEach((placeholder) => {
-    placeholder.classList.toggle("hidden", filtered);
+    setElementHidden(placeholder, filtered);
   });
   filteredPlaceholders.forEach((placeholder) => {
-    placeholder.classList.toggle("hidden", !filtered);
+    setElementHidden(placeholder, !filtered);
   });
 };
 

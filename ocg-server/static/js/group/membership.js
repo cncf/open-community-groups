@@ -4,6 +4,7 @@ import {
   getElementById,
   initializeOnReadyAndHtmxLoad,
   markDatasetReady,
+  setElementHidden,
 } from "/static/js/common/dom.js";
 import { parseJsonText } from "/static/js/common/utils.js";
 
@@ -64,29 +65,29 @@ const handleMembershipCheckResponse = (event) => {
     return;
   }
 
-  loadingButton.classList.add("hidden");
-  signinButton.classList.add("hidden");
-  joinButton.classList.add("hidden");
-  leaveButton.classList.add("hidden");
+  setElementHidden(loadingButton, true);
+  setElementHidden(signinButton, true);
+  setElementHidden(joinButton, true);
+  setElementHidden(leaveButton, true);
 
   const xhr = event.detail?.xhr;
 
   if (isSuccessfulXHRStatus(xhr?.status)) {
     const response = parseJsonText(xhr.responseText, null);
     if (!response) {
-      signinButton.classList.remove("hidden");
+      setElementHidden(signinButton, false);
       return;
     }
 
     if (response.is_member) {
-      leaveButton.classList.remove("hidden");
+      setElementHidden(leaveButton, false);
     } else {
-      joinButton.classList.remove("hidden");
+      setElementHidden(joinButton, false);
     }
     return;
   }
 
-  signinButton.classList.remove("hidden");
+  setElementHidden(signinButton, false);
 };
 
 /**
@@ -104,8 +105,8 @@ const handleJoinBeforeRequest = (target) => {
     return;
   }
 
-  target.classList.add("hidden");
-  loadingButton.classList.remove("hidden");
+  setElementHidden(target, true);
+  setElementHidden(loadingButton, false);
 };
 
 /**
@@ -123,8 +124,8 @@ const handleLeaveBeforeRequest = (target) => {
     return;
   }
 
-  target.classList.add("hidden");
-  loadingButton.classList.remove("hidden");
+  setElementHidden(target, true);
+  setElementHidden(loadingButton, false);
 };
 
 /**
@@ -157,8 +158,8 @@ const handleJoinAfterRequest = (event) => {
   if (ok) {
     document.body.dispatchEvent(new Event("membership-changed"));
   } else {
-    loadingButton.classList.add("hidden");
-    joinButton.classList.remove("hidden");
+    setElementHidden(loadingButton, true);
+    setElementHidden(joinButton, false);
   }
 };
 
@@ -192,8 +193,8 @@ const handleLeaveAfterRequest = (event) => {
   if (ok) {
     document.body.dispatchEvent(new Event("membership-changed"));
   } else {
-    loadingButton.classList.add("hidden");
-    leaveButton.classList.remove("hidden");
+    setElementHidden(loadingButton, true);
+    setElementHidden(leaveButton, false);
   }
 };
 
