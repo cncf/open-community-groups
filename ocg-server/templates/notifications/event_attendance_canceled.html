@@ -1,6 +1,7 @@
 {% extends "notifications/base.html" -%}
 {% import "macros/email.html" as email -%}
 
+{# Event Attendance Canceled Notification -#}
 {% block subject -%}
   Attendance canceled: {{ event.name }}
 {% endblock subject -%}
@@ -35,3 +36,4 @@
   {{ event.name }}, an event from {{ event.group_name }} in the
   {{ event.community_display_name }} community, was canceled.
 {% endblock footer -%}
+{# End event attendance canceled notification -#}

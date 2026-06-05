@@ -1,6 +1,7 @@
 {% extends "notifications/base.html" -%}
 {% import "macros/email.html" as email -%}
 
+{# Session Proposal Co Speaker Invitation Notification -#}
 {% block subject -%}
   You have been invited as a co-speaker
 {% endblock subject -%}
@@ -28,3 +29,4 @@
   email address to co-speak on "{{ session_proposal_title }}". If this
   invitation does not look familiar, you can ignore this message.
 {% endblock footer -%}
+{# End session proposal co speaker invitation notification -#}

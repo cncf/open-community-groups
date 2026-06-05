@@ -1,5 +1,6 @@
 {% extends "notifications/base.html" -%}
 
+{# Event Series Canceled Notification -#}
 {% block subject -%}
   {% if event_count == 1 -%}
     Event canceled by {{ group_name }}
@@ -51,3 +52,4 @@
   You received this email notification because you're attending, waitlisted, or
   speaking at canceled events from {{ group_name }}.
 {% endblock footer -%}
+{# End event series canceled notification -#}

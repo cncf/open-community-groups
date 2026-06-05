@@ -2,6 +2,7 @@
 {% import "macros/ui.html" as ui -%}
 {% import "macros/cards.html" as cards -%}
 
+{# Site Explore Groups Group Card -#}
 {% block href -%}
   {{- "/" -}}{{- group.community_name -}}/group/{{- group.public_slug() -}}
 {%- endblock href %}
@@ -58,3 +59,4 @@
 {% block footer -%}
   {{- cards::group_footer(group = group, location_max_len = 40, left_width_classes = "w-[60px] min-w-[60px] md:w-[88px] md:min-w-[88px]") -}}
 {%- endblock footer %}
+{# End site explore groups group card -#}

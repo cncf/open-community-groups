@@ -3,6 +3,7 @@
 {% import "macros/badges.html" as badges -%}
 {% import "macros/cards.html" as cards -%}
 
+{# Common Event Card Small -#}
 {% block href -%}
   {{- "/" -}}{{- event.community_name -}}/group/{{- event.public_group_slug() -}}/event/{{- event.slug -}}
 {%- endblock href %}
@@ -35,3 +36,4 @@
 {% block footer -%}
   {{- cards::event_footer(event = event, left_width_classes = "w-[60px] min-w-[60px]") -}}
 {%- endblock footer %}
+{# End common event card small -#}

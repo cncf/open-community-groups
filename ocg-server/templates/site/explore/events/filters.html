@@ -65,7 +65,7 @@
 {% endif -%}
 {# End community -#}
 
-{# Groups (only shown when a community is selected) -#}
+{# Groups -#}
 {% if let Some(groups) = &filters_options.groups -%}
   {% if groups.len() > 0 -%}
     <multi-select-filter title="Group" name="group" options="{{ groups|json }}" selected="{{ filters.group|json }}" placeholder="Type to search"></multi-select-filter>
@@ -119,4 +119,3 @@
          value="{%- if let Some(date_to) = &filters.date_to -%} {{ date_to }} {%- endif -%}">
   {# End date on calendar view -#}
 {% endif -%}
-{# Apply filters -#}

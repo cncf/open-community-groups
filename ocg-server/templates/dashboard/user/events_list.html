@@ -2,6 +2,8 @@
 {% import "macros/dashboard.html" as dashboard -%}
 {% import "macros/pagination.html" as pagination -%}
 
+{# Dashboard User Events List -#}
+{# Header -#}
 {{ dashboard::page_title(title = "My Events", docs_href = "/docs#/guides/user-dashboard?id=my-events-upcoming-participation",
 description = "Upcoming events where you'll participate.") -}}
 
@@ -10,10 +12,13 @@ description = "Upcoming events where you'll participate.") -}}
     {{ pagination::range_display(offset = offset.unwrap_or(0) , count = events.len(), total = total, label = "event") }}
   </div>
 </div>
+{# End header -#}
 
+{# Events table -#}
 <div class="relative overflow-visible">
   <table class="table-auto w-full text-xs lg:text-sm text-left text-stone-500">
     <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
+      {# Table header -#}
       <tr>
         <th scope="col" class="px-3 xl:px-5 py-3">Title</th>
         <th scope="col" class="hidden 2xl:table-cell px-3 xl:px-5 py-3">Location</th>
@@ -23,9 +28,11 @@ description = "Upcoming events where you'll participate.") -}}
           <span class="sr-only">Actions</span>
         </th>
       </tr>
+      {# End table header -#}
     </thead>
     <tbody>
       {% if events.is_empty() -%}
+        {# Empty state -#}
         <tr class="bg-white border-b border-stone-200">
           <td class="xl:hidden px-8 py-20 text-center" colspan="3">
             {% include "dashboard/placeholders/user_events_table.html" -%}
@@ -36,9 +43,12 @@ description = "Upcoming events where you'll participate.") -}}
             {% include "dashboard/placeholders/user_events_table.html" -%}
           </td>
         </tr>
+        {# End empty state -#}
       {% else -%}
         {% for item in events -%}
+          {# Event row -#}
           <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
+            {# Event -#}
             <th scope="row"
                 class="px-3 xl:px-5 py-4 font-medium text-stone-900 min-w-[100px] max-w-[200px] xl:max-w-auto">
               <div class="flex items-center">
@@ -69,7 +79,9 @@ description = "Upcoming events where you'll participate.") -}}
                 </div>
               </div>
             </th>
+            {# End event -#}
 
+            {# Location -#}
             <td class="hidden 2xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap min-w-[100px] max-w-[220px]">
               {% if item.event.kind.to_string() == "virtual" -%}
                 <span class="text-stone-500">Virtual</span>
@@ -79,7 +91,9 @@ description = "Upcoming events where you'll participate.") -}}
                 <span class="text-stone-400">-</span>
               {% endif -%}
             </td>
+            {# End location -#}
 
+            {# Date -#}
             <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap w-40">
               {% if let Some(start_time) = &item.event.starts_at -%}
                 <div class="max-w-full truncate">
@@ -92,7 +106,9 @@ description = "Upcoming events where you'll participate.") -}}
                 <span class="text-stone-400">TBD</span>
               {% endif -%}
             </td>
+            {# End date -#}
 
+            {# Role -#}
             <td class="px-3 xl:px-5 py-4 w-64">
               <div class="flex flex-wrap gap-1.5">
                 {% if let Some(attendance_status_label) = item.attendance_status_label() -%}
@@ -103,7 +119,9 @@ description = "Upcoming events where you'll participate.") -}}
                 {% endfor -%}
               </div>
             </td>
+            {# End role -#}
 
+            {# Actions -#}
             <td class="px-3 xl:px-5 py-4 w-[72px] text-right">
               <details data-user-event-actions-dropdown
                        class="group relative inline-flex justify-end">
@@ -160,15 +178,20 @@ description = "Upcoming events where you'll participate.") -}}
                 </div>
               </details>
             </td>
+            {# End actions -#}
           </tr>
+          {# End event row -#}
         {% endfor -%}
       {% endif -%}
     </tbody>
   </table>
 </div>
+{# End events table -#}
 
+{# Registration questions modals -#}
 {% for item in events -%}
   {% if item.can_complete_registration_questions() -%}
+    {# Registration questions modal -#}
     <div id="user-event-questions-modal-{{ item.event.event_id }}"
          data-user-event-questions-modal
          role="dialog"
@@ -179,6 +202,7 @@ description = "Upcoming events where you'll participate.") -}}
            class="modal-overlay absolute w-full h-full bg-stone-950 opacity-[0.35]"></div>
       <div class="modal-panel p-4 max-w-6xl">
         <div class="modal-card rounded-lg">
+          {# Modal header -#}
           <div class="flex items-start justify-between p-4 md:p-5 border-b border-stone-200 rounded-t">
             <div>
               <h3 id="user-event-questions-title-{{ item.event.event_id }}"
@@ -192,6 +216,8 @@ description = "Upcoming events where you'll participate.") -}}
               <span class="sr-only">Close modal</span>
             </button>
           </div>
+          {# End modal header -#}
+          {# Modal form -#}
           <form data-user-event-questions-form
                 hx-put="/dashboard/user/events/{{ item.event.community_name }}/{{ item.event.event_id }}/registration-answers"
                 hx-indicator="#dashboard-spinner"
@@ -269,12 +295,18 @@ description = "Upcoming events where you'll participate.") -}}
               </div>
             </div>
           </form>
+          {# End modal form -#}
         </div>
       </div>
     </div>
+    {# End registration questions modal -#}
   {% endif -%}
 {% endfor -%}
+{# End registration questions modals -#}
 
+{# Pagination -#}
 {% if total > events.len() -%}
   {{ pagination::navigation_links(links = navigation_links, hx_target = "#dashboard-content", hx_indicator = "#dashboard-spinner") }}
 {% endif -%}
+{# End pagination -#}
+{# End dashboard user events list -#}

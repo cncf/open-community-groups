@@ -2,10 +2,14 @@
 {% import "macros/badges.html" as badges -%}
 {% import "macros/pagination.html" as pagination -%}
 
+{# Dashboard User Session Proposals List -#}
+{# Header -#}
 {{ dashboard::page_title(title = "Session proposals", docs_href = "/docs#/guides/user-dashboard?id=session-proposals-reusable-talks",
 description = "Create reusable session proposals to submit to events.") -}}
+{# End header -#}
 
 {% if !pending_co_speaker_invitations.is_empty() -%}
+  {# Pending invitations alert -#}
   <div class="mt-8 mb-4">
     <div class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900"
          role="alert">
@@ -18,10 +22,13 @@ description = "Create reusable session proposals to submit to events.") -}}
       </p>
     </div>
   </div>
+  {# End pending invitations alert -#}
+  {# Pending invitations table -#}
   <div class="mb-10">
     <div class="overflow-hidden bg-white">
       <div class="relative overflow-visible">
         <table class="table-auto w-full text-xs lg:text-sm text-left text-stone-500">
+          {# Table header -#}
           <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
             <tr>
               <th scope="col" class="px-3 xl:px-5 py-3">Proposal</th>
@@ -32,12 +39,17 @@ description = "Create reusable session proposals to submit to events.") -}}
               </th>
             </tr>
           </thead>
+          {# End table header -#}
           <tbody>
             {% for invitation in pending_co_speaker_invitations -%}
+              {# Invitation row -#}
               <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
+                {# Proposal -#}
                 <td class="px-3 xl:px-5 py-4">
                   <div class="font-medium text-stone-900 line-clamp-1">{{ invitation.session_proposal.title }}</div>
                 </td>
+                {# End proposal -#}
+                {# Invited by -#}
                 <td class="px-3 xl:px-5 py-4 whitespace-nowrap">
                   <div class="flex items-center space-x-3">
                     <logo-image
@@ -49,6 +61,8 @@ description = "Create reusable session proposals to submit to events.") -}}
                     <div class="font-medium text-stone-900">{{ invitation.speaker_name }}</div>
                   </div>
                 </td>
+                {# End invited by -#}
+                {# Updated date -#}
                 <td class="px-3 xl:px-5 py-4 whitespace-nowrap hidden xl:table-cell">
                   {% if let Some(updated_at) = invitation.session_proposal.updated_at -%}
                     {{ updated_at.format("%b %d, %Y") }}
@@ -56,6 +70,8 @@ description = "Create reusable session proposals to submit to events.") -}}
                     {{ invitation.session_proposal.created_at.format("%b %d, %Y") }}
                   {% endif -%}
                 </td>
+                {# End updated date -#}
+                {# Actions -#}
                 <td class="px-3 xl:px-5 py-4 w-[152px]">
                   <div class="flex items-center justify-end gap-2">
                     <button type="button"
@@ -94,15 +110,19 @@ description = "Create reusable session proposals to submit to events.") -}}
                     </button>
                   </div>
                 </td>
+                {# End actions -#}
               </tr>
+              {# End invitation row -#}
             {% endfor -%}
           </tbody>
         </table>
       </div>
     </div>
   </div>
+  {# End pending invitations table -#}
 {% endif -%}
 
+{# Proposals header -#}
 <div class="flex justify-between items-end my-5">
   <div class="text-sm text-stone-600">
     {{ pagination::range_display(offset = offset.unwrap_or(0) , count = session_proposals.len(), total = total, label = "session proposal") }}
@@ -111,10 +131,13 @@ description = "Create reusable session proposals to submit to events.") -}}
     <button id="open-session-proposal-modal" type="button" class="btn-primary">New proposal</button>
   </div>
 </div>
+{# End proposals header -#}
 
+{# Session proposals table -#}
 <div>
   <div class="relative overflow-visible">
     <table class="table-auto w-full text-xs lg:text-sm text-left text-stone-500">
+      {# Table header -#}
       <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
         <tr>
           <th scope="col" class="px-3 xl:px-5 py-3">Proposal</th>
@@ -126,8 +149,10 @@ description = "Create reusable session proposals to submit to events.") -}}
           </th>
         </tr>
       </thead>
+      {# End table header -#}
       <tbody>
         {% if session_proposals.is_empty() -%}
+          {# Empty state -#}
           <tr class="bg-white border-b border-stone-200 xl:hidden">
             <td class="px-8 py-16 text-center" colspan="3">
               {% include "dashboard/placeholders/user_session_proposals_table.html" -%}
@@ -143,12 +168,17 @@ description = "Create reusable session proposals to submit to events.") -}}
               {% include "dashboard/placeholders/user_session_proposals_table.html" -%}
             </td>
           </tr>
+          {# End empty state -#}
         {% else -%}
           {% for session_proposal in session_proposals -%}
+            {# Session proposal row -#}
             <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
+              {# Proposal -#}
               <td class="px-3 xl:px-5 py-4">
                 <div class="font-medium text-stone-900 line-clamp-1">{{ session_proposal.title }}</div>
               </td>
+              {# End proposal -#}
+              {# Co-speaker -#}
               <td class="px-3 xl:px-5 py-4 text-nowrap hidden xl:table-cell">
                 {% if let Some(co_speaker) = &session_proposal.co_speaker -%}
                   <div class="flex items-center space-x-3">
@@ -164,6 +194,8 @@ description = "Create reusable session proposals to submit to events.") -}}
                   </div>
                 {% endif -%}
               </td>
+              {# End co-speaker -#}
+              {# Updated date -#}
               <td class="px-3 xl:px-5 py-4 whitespace-nowrap hidden 2xl:table-cell">
                 {% if let Some(updated_at) = &session_proposal.updated_at -%}
                   {{ updated_at.format("%b %d, %Y") }}
@@ -171,6 +203,8 @@ description = "Create reusable session proposals to submit to events.") -}}
                   {{ session_proposal.created_at.format("%b %d, %Y") }}
                 {% endif -%}
               </td>
+              {# End updated date -#}
+              {# Status -#}
               <td class="px-3 xl:px-5 py-4">
                 {% if session_proposal.linked_session_id.is_some() -%}
                   {{ badges::status_badge(label = "Linked", published = true, extra_styles = Some("px-2.5 py-0.5 uppercase") , title = "This session proposal has been approved and linked to an event's session.") -}}
@@ -184,6 +218,8 @@ description = "Create reusable session proposals to submit to events.") -}}
                   {{ badges::status_badge(label = session_proposal.status_name.as_str() , extra_styles = Some("px-2.5 py-0.5 uppercase") , title = "This proposal is waiting for co-speaker response.") -}}
                 {% endif -%}
               </td>
+              {# End status -#}
+              {# Actions -#}
               <td class="px-3 xl:px-5 py-4 w-[152px]">
                 <div class="flex items-center justify-end gap-2">
                   {% set edit_disabled = session_proposal.linked_session_id.is_some() -%}
@@ -228,17 +264,24 @@ description = "Create reusable session proposals to submit to events.") -}}
                   </button>
                 </div>
               </td>
+              {# End actions -#}
             </tr>
+            {# End session proposal row -#}
           {% endfor -%}
         {% endif -%}
       </tbody>
     </table>
   </div>
 </div>
+{# End session proposals table -#}
 
 {% if total > session_proposals.len() -%}
+  {# Pagination -#}
   {{ pagination::navigation_links(links = navigation_links, hx_target = "#dashboard-content", hx_indicator = "#dashboard-spinner") }}
+  {# End pagination -#}
 {% endif -%}
 
 {# Session proposal modal -#}
 <session-proposal-modal id="session-proposal-modal-component" session-proposal-levels='{{ session_proposal_levels|json }}' current-user-id="{{ current_user_id }}" title-max-length="{{ crate::validation::MAX_LEN_ENTITY_NAME }}" description-max-length="{{ crate::validation::MAX_LEN_DESCRIPTION }}" duration-max="{{ crate::validation::MAX_SESSION_PROPOSAL_DURATION_MINUTES }}"></session-proposal-modal>
+{# End session proposal modal -#}
+{# End dashboard user session proposals list -#}

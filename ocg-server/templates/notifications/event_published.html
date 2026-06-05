@@ -1,6 +1,7 @@
 {% extends "notifications/base.html" -%}
 {% import "macros/email.html" as email -%}
 
+{# Event Published Notification -#}
 {% block subject -%}
   New event: {{ event.name }}
 {% endblock subject -%}
@@ -41,3 +42,4 @@
   You received this email notification because you're a member of
   {{ event.group_name }} in the {{ event.community_display_name }} community.
 {% endblock footer -%}
+{# End event published notification -#}

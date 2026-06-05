@@ -2,23 +2,27 @@
 {% let refresh_limit = limit.unwrap_or(crate::templates::dashboard::DASHBOARD_PAGINATION_LIMIT) -%}
 {% let refresh_offset = offset.unwrap_or(0) -%}
 
+{# Invitation requests refresh area -#}
 <div id="invitation-requests-refresh"
      data-events-list-page
      hx-get="/dashboard/group/events/{{ event.event_id }}/invitation-requests?limit={{ refresh_limit }}&offset={{ refresh_offset }}"
      hx-trigger="refresh-event-invitation-requests from:body"
      hx-target="#invitation-requests-content"
      hx-swap="innerHTML">
+  {# Header -#}
   <div class="flex flex-col lg:flex-row lg:items-center justify-between my-5">
     <div class="text-sm text-stone-600 mb-4 lg:mb-0">
       {{ pagination::range_display(offset = refresh_offset , count = invitation_requests.len() , total = total, label = "invitation request") }}
     </div>
   </div>
+  {# End header -#}
 
   {# Invitation requests table -#}
   <div class="relative overflow-visible pb-12">
     <table class="table-auto w-full text-xs lg:text-sm text-left text-stone-500 mb-8"
            role="table"
            aria-label="Invitation requests">
+      {# Table header -#}
       <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200"
              role="rowgroup">
         <tr>
@@ -30,15 +34,19 @@
           <th scope="col" class="px-3 xl:px-5 py-3 w-24 text-right">Actions</th>
         </tr>
       </thead>
+      {# End table header -#}
       <tbody id="invitation-requests-list" role="rowgroup">
         {% if invitation_requests.is_empty() -%}
+          {# Empty state -#}
           <tr class="bg-white border-b border-stone-200">
             <td class="xl:hidden px-8 py-12 text-center text-stone-500" colspan="4">No invitation requests found.</td>
             <td class="hidden xl:table-cell px-8 py-12 text-center text-stone-500"
                 colspan="6">No invitation requests found.</td>
           </tr>
+          {# End empty state -#}
         {% else -%}
           {% for request in invitation_requests -%}
+            {# Invitation request row -#}
             <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
               {# Requester -#}
               <td class="px-3 xl:px-5 py-4 max-w-0">
@@ -174,6 +182,7 @@
               </td>
               {# End actions -#}
             </tr>
+            {# End invitation request row -#}
           {% endfor -%}
         {% endif -%}
       </tbody>
@@ -181,6 +190,7 @@
   </div>
 </div>
 {# End invitation requests table -#}
+{# End invitation requests refresh area -#}
 
 {# Pagination -#}
 {% if total > invitation_requests.len() -%}

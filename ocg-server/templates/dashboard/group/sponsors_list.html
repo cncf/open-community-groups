@@ -23,12 +23,14 @@
                    {% endif -%}">Add Sponsor</button>
   </div>
 </div>
+{# End sponsors header -#}
 
 {# Sponsors table -#}
 <div class="relative overflow-visible mt-5">
   <table class="table-auto w-full text-xs lg:text-sm text-left text-stone-500 mb-8"
          role="table"
          aria-label="Sponsors list">
+    {# Table header -#}
     <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200"
            role="rowgroup">
       <tr>
@@ -40,20 +42,25 @@
         </th>
       </tr>
     </thead>
+    {# End table header -#}
     <tbody id="sponsors-list" role="rowgroup">
       {% if sponsors.is_empty() -%}
+        {# Empty state -#}
         <tr class="bg-white border-b border-stone-200">
           {# Below xl: 3 columns (Sponsor, Featured, Actions) -#}
           <td class="xl:hidden px-8 py-12 text-center" colspan="3">
             {% include "dashboard/placeholders/group_sponsors_table.html" -%}
           </td>
+          {# End below xl: 3 columns (Sponsor, Featured, Actions) -#}
           {# xl: 4 columns (adds Website) -#}
           <td class="hidden xl:table-cell px-8 py-12 text-center" colspan="4">
             {% include "dashboard/placeholders/group_sponsors_table.html" -%}
           </td>
         </tr>
+        {# End empty state -#}
       {% else -%}
         {% for sponsor in sponsors -%}
+          {# Sponsor row -#}
           <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
             {# Sponsor -#}
             <td class="px-3 xl:px-5 py-4 min-w-[140px] max-w-[220px] xl:max-w-[320px] 2xl:max-w-[420px]">
@@ -148,13 +155,13 @@
             </td>
             {# End actions -#}
           </tr>
+          {# End sponsor row -#}
         {% endfor -%}
       {% endif -%}
     </tbody>
   </table>
-  {# End table -#}
-
 </div>
+{# End sponsors table -#}
 
 {# Pagination -#}
 {% if total > sponsors.len() -%}

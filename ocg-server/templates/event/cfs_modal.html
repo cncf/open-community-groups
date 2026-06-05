@@ -1,13 +1,17 @@
 {% import "macros/ui.html" as ui -%}
 
+{# Event Cfs Modal -#}
 {% if let Some(notice) = &notice -%}
+  {# Notice -#}
   <div class="flex items-start gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-900">
     <div class="svg-icon size-4 mt-0.5 bg-emerald-700 icon-check"></div>
     <div class="text-sm">{{ notice }}</div>
   </div>
+  {# End notice -#}
 {% endif -%}
 
 {% if !user.logged_in -%}
+  {# Sign-in prompt -#}
   <div class="space-y-3">
     <p class="text-base text-stone-600">You need to sign in to submit a proposal for this event.</p>
     {% let next_url = "/".to_owned() + &event.community_name + "/group/" + event.public_group_slug() + "/event/" + &event.slug -%}
@@ -19,8 +23,10 @@
       </a>
     </div>
   </div>
+  {# End sign-in prompt -#}
 {% else -%}
   {% if session_proposals.is_empty() -%}
+    {# Empty proposals prompt -#}
     <div class="space-y-3">
       <p class="text-base text-stone-600">
         It looks like you haven't created any session proposals yet.
@@ -36,7 +42,9 @@
         </a>
       </div>
     </div>
+    {# End empty proposals prompt -#}
   {% else -%}
+    {# CFS submission form -#}
     <form id="cfs-submission-form"
           hx-post="/{{ event.community_name }}/event/{{ event.event_id }}/cfs-submissions"
           hx-target="#cfs-modal-root"
@@ -44,6 +52,7 @@
           hx-indicator="#cfs-submit-spinner"
           hx-disabled-elt="#cfs-submit-button">
       <div class="space-y-4">
+        {# Session proposal field -#}
         <div>
           <label for="session_proposal_id" class="form-label">Session proposal</label>
           <div class="mt-2">
@@ -60,8 +69,10 @@
           </div>
           <p class="form-legend">Proposals already submitted to this event will appear disabled.</p>
         </div>
+        {# End session proposal field -#}
 
         {% if !labels.is_empty() -%}
+          {# Labels field -#}
           <div>
             <label for="cfs-label-selector" class="form-label">Labels</label>
             <div class="mt-2">
@@ -72,8 +83,10 @@
               You can select up to {{ crate::validation::MAX_LEN_EVENT_LABELS_PER_SUBMISSION }} labels.
             </p>
           </div>
+          {# End labels field -#}
         {% endif -%}
 
+        {# Form actions -#}
         <div class="flex items-center justify-end gap-3">
           <button id="cancel-cfs-modal"
                   type="button"
@@ -87,7 +100,10 @@
             <span id="cfs-submit-spinner" class="ms-2 hidden hx-spinner">{{ ui::spinner(size = "size-4") -}}</span>
           </button>
         </div>
+        {# End form actions -#}
       </div>
     </form>
+    {# End CFS submission form -#}
   {% endif -%}
 {% endif -%}
+{# End event cfs modal -#}

@@ -58,6 +58,8 @@
                        src="{{ community.banner_mobile_url }}"
                        alt="{{ community.display_name }} banner" />
                 </div>
+                {# End mobile banner -#}
+
                 {# Desktop banner -#}
                 <div class="aspect-[607/48] hidden sm:block">
                   <img class="w-full h-full object-cover"
@@ -66,6 +68,7 @@
                        src="{{ community.banner_url }}"
                        alt="{{ community.display_name }} banner" />
                 </div>
+                {# End desktop banner -#}
               </a>
             {% endfor -%}
           </div>

@@ -8,6 +8,7 @@ description = "Manage invitations to join communities.") -}}
 <div class="mt-10">
   <div class="relative overflow-visible">
     <table class="table-auto w-full text-xs lg:text-sm text-left text-stone-500 mb-10">
+      {# Table header -#}
       <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
         <tr>
           <th scope="col" class="px-3 xl:px-5 py-3 w-auto lg:w-2/5 xl:w-1/3">Community</th>
@@ -18,16 +19,21 @@ description = "Manage invitations to join communities.") -}}
           </th>
         </tr>
       </thead>
+      {# End table header -#}
       <tbody>
         {% if community_invitations.is_empty() -%}
+          {# Empty state -#}
           <tr class="bg-white border-b border-stone-200">
             {# No invitations -#}
             <td class="px-8 py-12 text-center" colspan="4">
               {% include "dashboard/placeholders/user_community_invitations_table.html" -%}
             </td>
+            {# End no invitations -#}
           </tr>
+          {# End empty state -#}
         {% else -%}
           {% for invitation in community_invitations -%}
+            {# Invitation row -#}
             <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
               {# Community -#}
               <td class="px-3 xl:px-5 py-4 font-medium text-stone-900 max-w-0">
@@ -74,6 +80,7 @@ description = "Manage invitations to join communities.") -}}
               </td>
               {# End actions -#}
             </tr>
+            {# End invitation row -#}
           {% endfor -%}
         {% endif -%}
       </tbody>
@@ -89,6 +96,7 @@ description = "Manage invitations to join groups.") -}}
 <div class="mt-10">
   <div class="relative overflow-visible">
     <table class="table-auto w-full text-xs lg:text-sm text-left text-stone-500 mb-10">
+      {# Table header -#}
       <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
         <tr>
           <th scope="col" class="px-3 xl:px-5 py-3 w-auto lg:w-2/5 xl:w-1/3">Group</th>
@@ -99,16 +107,21 @@ description = "Manage invitations to join groups.") -}}
           </th>
         </tr>
       </thead>
+      {# End table header -#}
       <tbody>
         {% if group_invitations.is_empty() -%}
+          {# Empty state -#}
           <tr class="bg-white border-b border-stone-200">
             {# No invitations -#}
             <td class="px-8 py-12 text-center" colspan="4">
               {% include "dashboard/placeholders/user_group_invitations_table.html" -%}
             </td>
+            {# End no invitations -#}
           </tr>
+          {# End empty state -#}
         {% else -%}
           {% for invitation in group_invitations -%}
+            {# Invitation row -#}
             <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
               {# Group -#}
               <td class="px-3 xl:px-5 py-4 font-medium text-stone-900 max-w-0">
@@ -155,6 +168,7 @@ description = "Manage invitations to join groups.") -}}
               </td>
               {# End actions -#}
             </tr>
+            {# End invitation row -#}
           {% endfor -%}
         {% endif -%}
       </tbody>
@@ -170,6 +184,7 @@ description = "Manage invitations to attend events.") -}}
 <div class="mt-10">
   <div class="relative overflow-visible">
     <table class="table-auto w-full text-xs lg:text-sm text-left text-stone-500">
+      {# Table header -#}
       <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
         <tr>
           <th scope="col" class="px-3 xl:px-5 py-3 w-auto lg:w-2/5 xl:w-1/3">Event</th>
@@ -181,21 +196,30 @@ description = "Manage invitations to attend events.") -}}
           </th>
         </tr>
       </thead>
+      {# End table header -#}
       <tbody>
         {% if event_invitations.is_empty() -%}
+          {# Empty state -#}
           <tr class="bg-white border-b border-stone-200">
             <td class="px-8 py-12 text-center" colspan="5">
               {% include "dashboard/placeholders/user_event_invitations_table.html" -%}
             </td>
           </tr>
+          {# End empty state -#}
         {% else -%}
           {% for invitation in event_invitations -%}
+            {# Invitation row -#}
             <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
+              {# Event -#}
               <td class="px-3 xl:px-5 py-4 font-medium text-stone-900 max-w-0">
                 <div class="max-w-full text-black truncate">{{ invitation.event_name }}</div>
                 <div class="text-xs text-stone-600 truncate">{{ invitation.community_display_name }}</div>
               </td>
+              {# End event -#}
+              {# Group -#}
               <td class="px-3 xl:px-5 py-4 whitespace-nowrap">{{ invitation.group_name }}</td>
+              {# End group -#}
+              {# Starts date -#}
               <td class="px-3 xl:px-5 py-4 whitespace-nowrap">
                 {% if let Some(starts_at) = &invitation.starts_at -%}
                   {{ starts_at.with_timezone(invitation.timezone).format(DATE_FORMAT_2) }}
@@ -203,7 +227,11 @@ description = "Manage invitations to attend events.") -}}
                   -
                 {% endif -%}
               </td>
+              {# End starts date -#}
+              {# Created date -#}
               <td class="px-3 xl:px-5 py-4 whitespace-nowrap">{{ invitation.created_at.format(DATE_FORMAT_2) }}</td>
+              {# End created date -#}
+              {# Actions -#}
               <td class="px-3 xl:px-5 py-4 w-[112px]">
                 <div class="flex items-center justify-end gap-2">
                   <button hx-put="/dashboard/user/invitations/event/{{ invitation.event_id }}/accept"
@@ -228,7 +256,9 @@ description = "Manage invitations to attend events.") -}}
                   </button>
                 </div>
               </td>
+              {# End actions -#}
             </tr>
+            {# End invitation row -#}
           {% endfor -%}
         {% endif -%}
       </tbody>

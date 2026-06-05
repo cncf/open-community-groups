@@ -2,6 +2,8 @@
 {% import "macros/badges.html" as badges -%}
 {% import "macros/pagination.html" as pagination -%}
 
+{# Dashboard User Submissions List -#}
+{# Header -#}
 {{ dashboard::page_title(title = "Submissions", docs_href = "/docs#/guides/user-dashboard?id=submissions-track-and-respond",
 description = "Track and manage your call for speakers submissions.") -}}
 
@@ -10,10 +12,13 @@ description = "Track and manage your call for speakers submissions.") -}}
     {{ pagination::range_display(offset = offset.unwrap_or(0) , count = submissions.len(), total = total, label = "submission") }}
   </div>
 </div>
+{# End header -#}
 
+{# Submissions table -#}
 <div>
   <div class="relative overflow-visible">
     <table class="table-fixed w-full text-xs lg:text-sm text-left text-stone-500">
+      {# Table columns -#}
       <colgroup>
         <col />
         <col />
@@ -21,7 +26,9 @@ description = "Track and manage your call for speakers submissions.") -}}
         <col class="hidden 2xl:table-column w-32" />
         <col class="w-[112px]" />
       </colgroup>
+      {# End table columns -#}
       <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
+        {# Table header -#}
         <tr>
           <th scope="col" class="px-3 xl:px-5 py-3">Event</th>
           <th scope="col" class="px-3 xl:px-5 py-3">Proposal</th>
@@ -31,9 +38,11 @@ description = "Track and manage your call for speakers submissions.") -}}
             <span class="sr-only">Actions</span>
           </th>
         </tr>
+        {# End table header -#}
       </thead>
       <tbody>
         {% if submissions.is_empty() -%}
+          {# Empty state -#}
           <tr class="bg-white border-b border-stone-200 xl:hidden">
             <td class="px-8 py-16 text-center" colspan="3">
               {% include "dashboard/placeholders/user_submissions_table.html" -%}
@@ -49,9 +58,12 @@ description = "Track and manage your call for speakers submissions.") -}}
               {% include "dashboard/placeholders/user_submissions_table.html" -%}
             </td>
           </tr>
+          {# End empty state -#}
         {% else -%}
           {% for submission in submissions -%}
+            {# Submission row -#}
             <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
+              {# Event -#}
               <td class="px-3 xl:px-5 py-4">
                 <a href="/{{ submission.event.community_name }}/group/{{ submission.event.public_group_slug() }}/event/{{ submission.event.slug }}"
                    target="_blank"
@@ -61,6 +73,8 @@ description = "Track and manage your call for speakers submissions.") -}}
                 </a>
                 <div class="text-xs text-stone-400 truncate">{{ submission.event.group_name }}</div>
               </td>
+              {# End event -#}
+              {# Proposal -#}
               <td class="px-3 xl:px-5 py-4">
                 <div class="font-medium text-stone-900 line-clamp-1">{{ submission.session_proposal.title }}</div>
                 {% if !submission.labels.is_empty() -%}
@@ -75,9 +89,13 @@ description = "Track and manage your call for speakers submissions.") -}}
                   {{ badges::submission_status_with_action_required(status_id = submission.status_id, label = submission.status_name, action_required_message = submission.action_required_message, extra_styles = Some("px-2.5 py-0.5 uppercase") ) -}}
                 </div>
               </td>
+              {# End proposal -#}
+              {# Status -#}
               <td class="hidden xl:table-cell px-3 xl:px-5 py-4">
                 {{ badges::submission_status_with_action_required(status_id = submission.status_id, label = submission.status_name, action_required_message = submission.action_required_message, extra_styles = Some("px-2.5 py-0.5 uppercase") ) -}}
               </td>
+              {# End status -#}
+              {# Updated date -#}
               <td class="hidden 2xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap">
                 {% if let Some(updated_at) = &submission.updated_at -%}
                   {{ updated_at.format("%b %d, %Y") }}
@@ -85,6 +103,8 @@ description = "Track and manage your call for speakers submissions.") -}}
                   {{ submission.created_at.format("%b %d, %Y") }}
                 {% endif -%}
               </td>
+              {# End updated date -#}
+              {# Actions -#}
               <td class="px-3 xl:px-5 py-4 w-[112px]">
                 <div class="flex items-center justify-end gap-2">
                   {% if submission.status_id == "information-requested" -%}
@@ -139,18 +159,24 @@ description = "Track and manage your call for speakers submissions.") -}}
                   {% endif -%}
                 </div>
               </td>
+              {# End actions -#}
             </tr>
+            {# End submission row -#}
           {% endfor -%}
         {% endif -%}
       </tbody>
     </table>
   </div>
 </div>
+{# End submissions table -#}
 
+{# Pagination -#}
 {% if total > submissions.len() -%}
   {{ pagination::navigation_links(links = navigation_links, hx_target = "#dashboard-content", hx_indicator = "#dashboard-spinner") }}
 {% endif -%}
+{# End pagination -#}
 
+{# Action required modal -#}
 <div id="action-required-modal"
      role="dialog"
      aria-modal="true"
@@ -161,6 +187,7 @@ description = "Track and manage your call for speakers submissions.") -}}
        class="modal-overlay absolute w-full h-full bg-stone-950 opacity-[0.35]"></div>
   <div class="modal-panel p-4 max-w-2xl">
     <div class="modal-card rounded-lg">
+      {# Modal header -#}
       <div class="flex items-center justify-between p-4 md:p-5 border-b border-stone-200 rounded-t">
         <h3 id="action-required-modal-title"
             class="text-xl font-semibold text-stone-900">Action required</h3>
@@ -171,6 +198,8 @@ description = "Track and manage your call for speakers submissions.") -}}
           <span class="sr-only">Close modal</span>
         </button>
       </div>
+      {# End modal header -#}
+      {# Modal body -#}
       <div class="modal-body p-4 md:p-8">
         <p id="action-required-modal-message"
            class="text-sm text-stone-700 whitespace-pre-line"></p>
@@ -180,6 +209,9 @@ description = "Track and manage your call for speakers submissions.") -}}
                   class="btn-primary-outline">Close</button>
         </div>
       </div>
+      {# End modal body -#}
     </div>
   </div>
 </div>
+{# End action required modal -#}
+{# End dashboard user submissions list -#}

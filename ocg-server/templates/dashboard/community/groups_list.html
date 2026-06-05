@@ -61,12 +61,13 @@
 <div class="text-sm text-stone-600">
   {{ pagination::range_display(offset = offset.unwrap_or(0) , count = groups.len(), total = total, label = "group") }}
 </div>
+{# End groups list header with title -#}
 
 {# Groups Table -#}
 <div class="relative overflow-visible mt-5">
   <table class="table-auto w-full text-xs lg:text-sm text-left rtl:text-right text-stone-500 mb-8">
     <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
-      {# Header -#}
+      {# Table header -#}
       <tr>
         <th scope="col" class="px-3 xl:px-5 py-3">Name</th>
         <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3">Location</th>
@@ -76,9 +77,11 @@
           <span class="sr-only">Actions</span>
         </th>
       </tr>
+      {# End table header -#}
     </thead>
     <tbody id="groups-list">
       {% if groups.is_empty() -%}
+        {# Empty state -#}
         <tr class="bg-white border-b border-stone-200">
           {% if ts_query.is_some() && !ts_query.as_ref().unwrap().is_empty() -%}
             {# No results when filtering -#}
@@ -90,6 +93,7 @@
             <td class="hidden 2xl:table-cell px-8 py-20 text-center" colspan="5">
               {% include "dashboard/placeholders/no_results.html" -%}
             </td>
+            {# End no results when filtering -#}
           {% else -%}
             {# No groups created yet -#}
             <td class="xl:hidden px-8 py-20 text-center" colspan="2">
@@ -100,16 +104,19 @@
             <td class="hidden 2xl:table-cell px-8 py-20 text-center" colspan="5">
               {% include "dashboard/placeholders/community_groups_table.html" -%}
             </td>
+            {# End no groups created yet -#}
           {% endif -%}
         </tr>
+        {# End empty state -#}
       {% else -%}
         {% for group in groups -%}
+          {# Group row -#}
           <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
             <th scope="row"
                 class="px-3 xl:px-5 py-4 font-medium text-stone-900 min-w-[100px] max-w-[200px] xl:max-w-auto">
               <div class="flex items-center">
                 <div class="min-w-0">
-                  {# Group name with inactive badge if needed -#}
+                  {# Group name -#}
                   <div class="max-w-full truncate flex items-center gap-x-2">
                     <button type="button"
                             data-select-group-id="{{ group.group_id }}"
@@ -193,7 +200,7 @@
                 </div>
                 {# End view group button -#}
 
-                {# Actions dropdown (Deactivate/Delete) -#}
+                {# Actions dropdown -#}
                 <div class="group relative">
                   <button data-group-id="{{ group.group_id }}"
                           class="btn-group-actions btn-tertiary p-2 group-has-[.dropdown:not(.hidden)]:bg-stone-50"
@@ -207,7 +214,7 @@
                   <div id="dropdown-group-actions-{{ group.group_id }}"
                        class="dropdown absolute hidden z-10 end-0 top-8 w-[200px] bg-white divide-y divide-stone-100 rounded-lg shadow border border-stone-200">
                     <ul class="py-2 text-sm text-stone-700">
-                      {# Activate/Deactivate button depending on status -#}
+                      {# Activate/deactivate button -#}
                       {% if group.active -%}
                         <li>
                           <button id="deactivate-group-{{ group.group_id }}"
@@ -259,6 +266,7 @@
                           </button>
                         </li>
                       {% endif -%}
+                      {# End activate/deactivate button -#}
 
                       {# Delete button -#}
                       <li>
@@ -294,6 +302,7 @@
             </td>
             {# End actions -#}
           </tr>
+          {# End group row -#}
         {% endfor -%}
       {% endif -%}
     </tbody>

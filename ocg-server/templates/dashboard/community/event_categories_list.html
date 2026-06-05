@@ -22,10 +22,12 @@
                    {% endif -%}">Add Event Category</button>
   </div>
 </div>
+{# End event categories header -#}
 
 {# Event categories table -#}
 <div class="relative overflow-visible mt-5">
   <table class="table-auto w-full text-xs lg:text-sm text-left text-stone-500 mb-8">
+    {# Table header -#}
     <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
       <tr>
         <th scope="col" class="px-3 xl:px-5 py-3">Name</th>
@@ -35,8 +37,10 @@
         </th>
       </tr>
     </thead>
+    {# End table header -#}
     <tbody id="event-categories-list">
       {% if categories.is_empty() -%}
+        {# Empty state -#}
         <tr class="bg-white border-b border-stone-200">
           <td class="xl:hidden px-8 py-12 text-center text-stone-500" colspan="2">
             {% include "dashboard/placeholders/community_event_categories_table.html" -%}
@@ -44,17 +48,24 @@
           <td class="hidden xl:table-cell px-8 py-12 text-center text-stone-500"
               colspan="3">{% include "dashboard/placeholders/community_event_categories_table.html" -%}</td>
         </tr>
+        {# End empty state -#}
       {% else -%}
         {% for category in categories -%}
           {% let events_count = category.events_count.unwrap_or(0) -%}
+          {# Category row -#}
           <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
+            {# Category -#}
             <td class="px-3 xl:px-5 py-4">
               <div class="font-medium text-stone-900">{{ category.name }}</div>
               <div class="xl:hidden text-xs text-stone-500 mt-1">
                 {{ events_count }} event{%- if events_count != 1 -%}s{%- endif -%}
               </div>
             </td>
+            {# End category -#}
+            {# Events count -#}
             <td class="hidden xl:table-cell px-3 xl:px-5 py-4">{{ events_count }}</td>
+            {# End events count -#}
+            {# Actions -#}
             <td class="px-3 xl:px-5 py-4 w-[112px]">
               <div class="flex items-center justify-end gap-2">
                 <button hx-get="/dashboard/community/event-categories/{{ category.event_category_id }}/update"
@@ -91,9 +102,12 @@
                 </button>
               </div>
             </td>
+            {# End actions -#}
           </tr>
+          {# End category row -#}
         {% endfor -%}
       {% endif -%}
     </tbody>
   </table>
 </div>
+{# End event categories table -#}

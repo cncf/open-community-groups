@@ -1,5 +1,7 @@
+{# Email button -#}
 {% macro button(link, text = "", color = "#0094FF") -%}
   {# djlint:off H021 #}
+  {# Button table -#}
   <table border="0"
          cellpadding="0"
          cellspacing="0"
@@ -54,6 +56,8 @@
       </tr>
     </tbody>
   </table>
+  {# End button table -#}
+  {# Fallback link -#}
   <table border="0"
          cellpadding="0"
          cellspacing="0"
@@ -78,5 +82,7 @@
       </tr>
     </tbody>
   </table>
+  {# End fallback link -#}
   {# djlint:on H021 #}
 {% endmacro button %}
+{# End email button -#}

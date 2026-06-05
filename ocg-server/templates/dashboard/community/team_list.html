@@ -17,10 +17,12 @@
     ></team-add-member>
   </div>
 </div>
+{# End header -#}
 
 {# Team Table -#}
 <div class="relative overflow-visible">
   <table class="table-auto w-full text-xs lg:text-sm text-left text-stone-500 mb-8">
+    {# Table header -#}
     <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
       <tr>
         <th scope="col" class="px-3 xl:px-5 py-3">Member</th>
@@ -31,8 +33,10 @@
         </th>
       </tr>
     </thead>
+    {# End table header -#}
     <tbody id="team-list">
       {% if members.is_empty() -%}
+        {# Empty state -#}
         <tr class="bg-white border-b border-stone-200">
           {# Mobile: 3 columns (Member, Role, Actions) -#}
           <td class="xl:hidden px-8 py-12 text-center" colspan="3">
@@ -43,8 +47,10 @@
             {% include "dashboard/placeholders/community_team_table.html" -%}
           </td>
         </tr>
+        {# End empty state -#}
       {% else -%}
         {% for member in members -%}
+          {# Member row -#}
           <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
             {# Member -#}
             <td class="px-3 xl:px-5 py-4 max-w-0">
@@ -188,6 +194,7 @@
             </td>
             {# End actions -#}
           </tr>
+          {# End member row -#}
         {% endfor -%}
       {% endif -%}
     </tbody>

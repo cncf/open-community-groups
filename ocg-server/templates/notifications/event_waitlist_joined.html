@@ -1,6 +1,7 @@
 {% extends "notifications/base.html" -%}
 {% import "macros/email.html" as email -%}
 
+{# Event Waitlist Joined Notification -#}
 {% block subject -%}
   You joined the waitlist: {{ event.name }}
 {% endblock subject -%}
@@ -26,3 +27,4 @@
   {{ event.name }}, an event from {{ event.group_name }} in the
   {{ event.community_display_name }} community.
 {% endblock footer -%}
+{# End event waitlist joined notification -#}

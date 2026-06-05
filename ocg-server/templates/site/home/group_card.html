@@ -1,5 +1,6 @@
 {% extends "community/group_card.html" -%}
 
+{# Site Home Group Card -#}
 {% block preheader -%}
   <span>
     <span class="hidden text-primary-500 sm:inline">{{ group.community_display_name }}</span>
@@ -10,3 +11,4 @@
       {{- group.category.name -}}
     {% endif -%}
   </span>{%- endblock preheader -%}
+  {# End site home group card -#}

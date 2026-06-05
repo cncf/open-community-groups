@@ -2,6 +2,7 @@
 {# TODO: Hardcoded community until we add more #}
 {% let explore_events = "/explore?community[0]=cncf&entity=events" %}
 {% let explore_groups = "/explore?community[0]=cncf&entity=groups" %}
+{# End variables for explore URLs #}
 <!DOCTYPE html>
 <html lang="en" class="h-full min-h-screen">
   <head>
@@ -9,6 +10,7 @@
     {% block head_title -%}
       <title>Open Community Groups</title>
     {% endblock head_title -%}
+    {# End page title -#}
     {% block head_description -%}
       <meta name="description" content="{{ site_settings.title }}">
     {% endblock head_description -%}

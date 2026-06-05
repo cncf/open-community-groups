@@ -1,6 +1,7 @@
 {% extends "notifications/base.html" -%}
 {% import "macros/email.html" as email -%}
 
+{# Event Welcome Notification -#}
 {% block subject -%}
   You are registered: {{ event.name }}
 {% endblock subject -%}
@@ -82,3 +83,4 @@
   {{ event.community_display_name }} community. If this wasn't you, you can
   ignore this message.
 {% endblock footer -%}
+{# End event welcome notification -#}

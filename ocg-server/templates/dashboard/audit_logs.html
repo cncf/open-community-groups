@@ -1,6 +1,8 @@
 {% import "macros/dashboard.html" as dashboard -%}
 {% import "macros/pagination.html" as pagination -%}
 
+{# Dashboard Audit Logs -#}
+{# Header -#}
 {{ dashboard::page_title(title = "Logs", docs_href = docs_href, description = page_description) -}}
 
 <div class="mt-5 flex items-center justify-between gap-3">
@@ -20,13 +22,16 @@
           class="hidden absolute -right-0.5 -top-0.5 size-3 rounded-full border-2 border-white bg-primary-700"></span>
   </div>
 </div>
+{# End header -#}
 
+{# Audit logs table -#}
 <div class="relative mt-5 overflow-visible">
   <table class="table-fixed w-full text-xs lg:text-sm text-left text-stone-500"
          role="table"
          aria-label="Audit logs table">
     <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200"
            role="rowgroup">
+      {# Table header -#}
       <tr>
         <th scope="col" class="px-3 xl:px-5 py-3">Action</th>
         {% if show_actor -%}
@@ -36,9 +41,11 @@
         <th scope="col" class="px-3 xl:px-5 py-3 w-36">Date</th>
         <th scope="col" class="px-3 xl:px-5 py-3 w-24">Details</th>
       </tr>
+      {# End table header -#}
     </thead>
     <tbody role="rowgroup">
       {% if logs.is_empty() -%}
+        {# Empty state -#}
         <tr class="bg-white border-b border-stone-200">
           {% if show_actor -%}
             <td class="xl:hidden px-8 py-12 text-center" colspan="4">
@@ -56,29 +63,40 @@
             </td>
           {% endif -%}
         </tr>
+        {# End empty state -#}
       {% else -%}
         {% for log in logs -%}
+          {# Log row -#}
           <tr class="audit-log-row odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
+            {# Action -#}
             <td class="px-3 xl:px-5 py-4">
               <div class="font-medium text-stone-900 wrap-break-word">{{ log.action_label }}</div>
             </td>
+            {# End action -#}
 
             {% if show_actor -%}
+              {# Actor -#}
               <td class="px-3 xl:px-5 py-4 w-48">
                 <div class="font-medium text-stone-900 truncate">{{ log.actor_username.as_deref().unwrap_or("-") }}</div>
               </td>
+              {# End actor -#}
             {% endif -%}
 
+            {# Target -#}
             <td class="hidden max-w-0 px-3 py-4 xl:table-cell xl:px-5">
               <div class="font-medium text-stone-900 truncate">{{ log.resource_display_name }}</div>
               <div class="mt-1 text-xs text-stone-600 truncate">{{ log.resource_type_label }}</div>
             </td>
+            {# End target -#}
 
+            {# Date -#}
             <td class="px-3 xl:px-5 py-4 w-36 whitespace-nowrap">
               <div class="font-medium text-stone-900">{{ log.created_at.format("%b %d, %Y") }}</div>
               <div class="mt-1 text-xs text-stone-600">{{ log.created_at.format("%I:%M %p UTC") }}</div>
             </td>
+            {# End date -#}
 
+            {# Details -#}
             <td class="px-3 xl:px-5 py-4 w-24">
               <div data-audit-log-details-group
                    class="{% if log.details.is_empty() -%}
@@ -122,17 +140,23 @@
                 </div>
               </div>
             </td>
+            {# End details -#}
           </tr>
+          {# End log row -#}
         {% endfor -%}
       {% endif -%}
     </tbody>
   </table>
 </div>
+{# End audit logs table -#}
 
+{# Pagination -#}
 {% if total > logs.len() -%}
   {{ pagination::navigation_links(links = navigation_links, hx_target = "#dashboard-content", hx_indicator = "#dashboard-spinner") }}
 {% endif -%}
+{# End pagination -#}
 
+{# Filters modal -#}
 <div id="audit-log-filters-modal"
      role="dialog"
      aria-modal="true"
@@ -142,6 +166,7 @@
        class="modal-overlay absolute w-full h-full bg-stone-950 opacity-[0.35]"></div>
   <div class="modal-panel p-4 max-w-3xl">
     <div class="modal-card rounded-lg">
+      {# Modal header -#}
       <div class="flex items-center justify-between p-4 md:p-5 border-b border-stone-200 rounded-t">
         <h3 id="audit-log-filters-modal-title"
             class="text-xl font-semibold text-stone-900">Filter logs</h3>
@@ -152,6 +177,8 @@
           <span class="sr-only">Close modal</span>
         </button>
       </div>
+      {# End modal header -#}
+      {# Modal body -#}
       <div class="modal-body p-4 md:p-8">
         <form id="audit-log-filters-form"
               hx-get="{{ filter_url }}"
@@ -224,8 +251,13 @@
           </div>
         </form>
       </div>
+      {# End modal body -#}
     </div>
   </div>
 </div>
+{# End filters modal -#}
 
+{# Page script -#}
 <script type="module" src="/static/js/dashboard/audit-logs.js"></script>
+{# End page script -#}
+{# End dashboard audit logs -#}
