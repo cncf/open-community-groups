@@ -1,4 +1,11 @@
-import { getElementById, initializeOnReady, loadScriptOnce } from "/static/js/common/dom.js";
+import {
+  getElementById,
+  initializeOnReady,
+  isElementHidden,
+  loadScriptOnce,
+  setElementHidden,
+  toggleElementHidden,
+} from "/static/js/common/dom.js";
 import { toTrimmedString } from "/static/js/common/utils.js";
 
 export const MEETING_RECORDING_URL_LEGEND =
@@ -348,13 +355,9 @@ export const unlockBodyScroll = () => {
  */
 export const toggleMobileNavbarVisibility = () => {
   const navbarMobile = getElementById(document, "navbar-mobile");
-  if (navbarMobile) {
-    navbarMobile.classList.toggle("hidden");
-  }
+  toggleElementHidden(navbarMobile);
   const navbarBackdrop = getElementById(document, "navbar-backdrop");
-  if (navbarBackdrop) {
-    navbarBackdrop.classList.toggle("hidden");
-  }
+  toggleElementHidden(navbarBackdrop);
 };
 
 /**
@@ -364,8 +367,8 @@ export const toggleMobileNavbarVisibility = () => {
 export const toggleModalVisibility = (modalId) => {
   const modal = getElementById(document, modalId);
   if (modal) {
-    const willOpen = modal.classList.contains("hidden");
-    modal.classList.toggle("hidden");
+    const willOpen = isElementHidden(modal);
+    setElementHidden(modal, !willOpen);
     if (willOpen) {
       lockBodyScroll();
     } else {

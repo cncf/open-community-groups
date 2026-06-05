@@ -4,6 +4,7 @@ import {
   ensureElementId,
   getElementById,
   initializeOnReadyAndHtmxLoad,
+  isElementHidden,
   markDatasetReady,
 } from "/static/js/common/dom.js";
 
@@ -22,7 +23,7 @@ const initializeActionRequiredModal = (root = document) => {
   }
 
   const closeModal = () => {
-    if (!modal.classList.contains("hidden")) {
+    if (!isElementHidden(modal)) {
       toggleModalVisibility(ACTION_REQUIRED_MODAL_ID);
     }
   };
@@ -40,7 +41,7 @@ const initializeActionRequiredModal = (root = document) => {
 
     button.addEventListener("click", () => {
       message.textContent = button.dataset.actionRequiredMessage || "";
-      if (modal.classList.contains("hidden")) {
+      if (isElementHidden(modal)) {
         toggleModalVisibility(ACTION_REQUIRED_MODAL_ID);
       }
     });

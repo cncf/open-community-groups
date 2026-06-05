@@ -1,7 +1,7 @@
 /**
  * Initializes header dropdown and nav loading behavior with HTMX awareness.
  */
-import { closestElement, getElementById, setElementHidden } from "/static/js/common/dom.js";
+import { closestElement, getElementById, isElementHidden, setElementHidden } from "/static/js/common/dom.js";
 import { isEscapeEvent } from "/static/js/common/keyboard.js";
 
 let documentHandlersBound = false;
@@ -178,7 +178,7 @@ const ensureDocumentHandlers = () => {
     const button = getElementById(document, "user-dropdown-button");
     const dropdown = getElementById(document, "user-dropdown");
 
-    if (!button || !dropdown || dropdown.classList.contains("hidden")) {
+    if (!button || !dropdown || isElementHidden(dropdown)) {
       return;
     }
 
@@ -251,7 +251,7 @@ const toggleDropdownVisibility = () => {
     return;
   }
 
-  setElementHidden(dropdown, !dropdown.classList.contains("hidden"));
+  setElementHidden(dropdown, !isElementHidden(dropdown));
 };
 
 // Public initializer for the user dropdown interactions.

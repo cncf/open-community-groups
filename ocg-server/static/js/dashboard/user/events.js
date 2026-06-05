@@ -1,6 +1,6 @@
 import { handleHtmxResponse } from "/static/js/common/alerts.js";
 import { isSuccessfulXHRStatus, toggleModalVisibility } from "/static/js/common/common.js";
-import { closestElement, getElementById, markDatasetReady } from "/static/js/common/dom.js";
+import { closestElement, getElementById, isElementHidden, markDatasetReady } from "/static/js/common/dom.js";
 import { isEscapeEvent } from "/static/js/common/keyboard.js";
 import { collectQuestionAnswers, setQuestionAnswersInputValue } from "/static/js/common/question-answers.js";
 
@@ -18,7 +18,7 @@ const getModal = (trigger) => {
 };
 
 const closeModal = (modal) => {
-  if (modal instanceof HTMLElement && !modal.classList.contains("hidden")) {
+  if (modal instanceof HTMLElement && !isElementHidden(modal)) {
     toggleModalVisibility(modal.id);
   }
 };
@@ -45,7 +45,7 @@ const handleClick = (event) => {
   const trigger = closestElement(event.target, "[data-user-event-questions-open]");
   if (trigger instanceof HTMLElement) {
     const modal = getModal(trigger);
-    if (modal instanceof HTMLElement && modal.classList.contains("hidden")) {
+    if (modal instanceof HTMLElement && isElementHidden(modal)) {
       toggleModalVisibility(modal.id);
     }
     return;

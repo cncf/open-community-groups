@@ -1,5 +1,5 @@
 import { toggleModalVisibility } from "/static/js/common/common.js";
-import { closestElement, getElementById, markDatasetReady } from "/static/js/common/dom.js";
+import { closestElement, getElementById, isElementHidden, markDatasetReady } from "/static/js/common/dom.js";
 
 const ROOT_ID = "cfs-modal-root";
 const MODAL_ID = "cfs-modal";
@@ -58,7 +58,7 @@ const handleModalSwap = (event) => {
   initializeCfsModal();
 
   const modal = getElementById(document, MODAL_ID);
-  if (modal?.classList.contains("hidden")) {
+  if (isElementHidden(modal)) {
     toggleModalVisibility(MODAL_ID);
   }
 };

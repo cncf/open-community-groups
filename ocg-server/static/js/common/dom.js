@@ -51,6 +51,22 @@ export const setElementHidden = (element, hidden) => {
 };
 
 /**
+ * Checks whether an element has the shared hidden utility class.
+ * @param {Element|null|undefined} element Element to inspect.
+ * @returns {boolean} True when the element is hidden.
+ */
+export const isElementHidden = (element) => element?.classList?.contains("hidden") === true;
+
+/**
+ * Toggles an element's shared hidden utility class.
+ * @param {Element|null|undefined} element Element to update.
+ * @returns {void}
+ */
+export const toggleElementHidden = (element) => {
+  setElementHidden(element, !isElementHidden(element));
+};
+
+/**
  * Ensures an element has an id and returns it.
  * @param {Element|null|undefined} element Element that needs an id.
  * @param {string} fallbackId Id to assign when the element has none.

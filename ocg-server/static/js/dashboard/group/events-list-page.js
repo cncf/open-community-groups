@@ -3,6 +3,7 @@ import {
   closestElementWithinRoot,
   initializeMatchingRoots,
   initializeOnReadyAndHtmxLoad,
+  isElementHidden,
   setElementHidden,
 } from "/static/js/common/dom.js";
 
@@ -28,7 +29,7 @@ const handleActionsMenuClick = (button, root) => {
     return;
   }
 
-  const shouldOpen = dropdown.classList.contains("hidden");
+  const shouldOpen = isElementHidden(dropdown);
   closeDropdowns(root, dropdown);
   setElementHidden(dropdown, !shouldOpen);
 };

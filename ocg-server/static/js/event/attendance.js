@@ -8,6 +8,7 @@ import { isSuccessfulXHRStatus } from "/static/js/common/common.js";
 import {
   closestElement,
   initializeOnReadyAndHtmxLoad,
+  isElementHidden,
   isDatasetReady,
   markDatasetReady,
   setElementHidden,
@@ -1225,13 +1226,13 @@ const handleAttendanceKeydown = (event) => {
     }
 
     const ticketModal = getAttendanceControl(container, "ticket-modal");
-    if (ticketModal && !ticketModal.classList.contains("hidden")) {
+    if (ticketModal && !isElementHidden(ticketModal)) {
       restoreCheckoutModalControls(container);
       closeTicketModal(container);
     }
 
     const questionsModal = getAttendanceControl(container, "registration-modal");
-    if (questionsModal && !questionsModal.classList.contains("hidden")) {
+    if (questionsModal && !isElementHidden(questionsModal)) {
       delete container.dataset.questionsContinueAction;
       closeQuestionsModal(container);
     }

@@ -3,6 +3,7 @@ import {
   closestElement,
   getElementById,
   initializeOnReadyAndHtmxLoad,
+  isElementHidden,
   markDatasetReady,
   setElementHidden,
 } from "/static/js/common/dom.js";
@@ -128,7 +129,7 @@ const syncAuditLogDetails = (root = document) => {
  */
 const closeAuditLogFiltersModal = () => {
   const currentModal = getElementById(document, MODAL_ID);
-  if (currentModal && !currentModal.classList.contains("hidden")) {
+  if (currentModal && !isElementHidden(currentModal)) {
     toggleModalVisibility(MODAL_ID);
   }
 };

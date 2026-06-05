@@ -11,10 +11,12 @@ import {
   initializeOnReady,
   initializeOnReadyAndHtmxLoad,
   isDatasetReady,
+  isElementHidden,
   isOutsideElementEvent,
   loadScriptOnce,
   markDatasetReady,
   setElementHidden,
+  toggleElementHidden,
 } from "/static/js/common/dom.js";
 import { waitForMicrotask } from "/tests/unit/test-utils/async.js";
 import { resetDom, trackAddedEventListeners } from "/tests/unit/test-utils/dom.js";
@@ -145,6 +147,33 @@ describe("common dom", () => {
 
     // Missing elements are ignored.
     expect(() => setElementHidden(null, true)).not.to.throw();
+  });
+
+  it("reads element hidden state", () => {
+    // Build the element that owns the shared hidden class.
+    const element = document.createElement("section");
+
+    // The helper reports the current hidden state.
+    expect(isElementHidden(element)).to.equal(false);
+    element.classList.add("hidden");
+    expect(isElementHidden(element)).to.equal(true);
+
+    // Missing elements are treated as visible.
+    expect(isElementHidden(null)).to.equal(false);
+  });
+
+  it("toggles element hidden state", () => {
+    // Build the element that owns the shared hidden class.
+    const element = document.createElement("section");
+
+    // The helper flips the current hidden state.
+    toggleElementHidden(element);
+    expect(isElementHidden(element)).to.equal(true);
+    toggleElementHidden(element);
+    expect(isElementHidden(element)).to.equal(false);
+
+    // Missing elements are ignored.
+    expect(() => toggleElementHidden(null)).not.to.throw();
   });
 
   it("ensures element ids", () => {

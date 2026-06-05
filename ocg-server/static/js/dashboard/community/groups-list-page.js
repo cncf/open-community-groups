@@ -4,6 +4,7 @@ import {
   closestElementWithinRoot,
   getElementById,
   initializeOnReadyAndHtmxLoad,
+  isElementHidden,
   markDatasetReady,
   setElementHidden,
 } from "/static/js/common/dom.js";
@@ -92,7 +93,7 @@ const initializeGroupActionMenus = (root = document) => {
         return;
       }
 
-      const isHidden = dropdown.classList.contains("hidden");
+      const isHidden = isElementHidden(dropdown);
       setElementHidden(dropdown, !isHidden);
 
       if (isHidden) {

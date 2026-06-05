@@ -12,6 +12,7 @@ import {
   closestElementWithinRoot,
   getElementById,
   initializeOnReadyAndHtmxLoad,
+  isElementHidden,
   markDatasetReady,
   setElementHidden,
 } from "/static/js/common/dom.js";
@@ -68,7 +69,7 @@ const setScopedModalVisibility = (root, targetModalId, visible) => {
   const modal = getElementById(root, targetModalId);
   if (!modal) return;
 
-  const isHidden = modal.classList.contains("hidden");
+  const isHidden = isElementHidden(modal);
   if ((visible && isHidden) || (!visible && !isHidden)) {
     toggleModalVisibility(targetModalId);
   }
@@ -407,7 +408,7 @@ const closeAttendeeRowActionMenus = (root = document, exceptMenu = null) => {
  */
 const toggleAttendeeActionsDropdown = (root = document) => {
   const dropdown = root.querySelector?.(attendeeActionsDropdownSelector);
-  setElementHidden(dropdown, !dropdown?.classList.contains("hidden"));
+  setElementHidden(dropdown, !isElementHidden(dropdown));
 };
 
 /**

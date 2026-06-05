@@ -1,7 +1,7 @@
 import { html, repeat } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { loadMap } from "/static/js/common/common.js";
-import { getElementById } from "/static/js/common/dom.js";
+import { getElementById, isElementHidden } from "/static/js/common/dom.js";
 import { isEscapeEvent } from "/static/js/common/keyboard.js";
 import { setTextValue } from "/static/js/common/utils.js";
 
@@ -898,7 +898,7 @@ export class LocationSearchField extends LitWrapper {
    */
   _isInsideHiddenContent() {
     const contentSection = this.closest("[data-content]");
-    return Boolean(contentSection && contentSection.classList.contains("hidden"));
+    return isElementHidden(contentSection);
   }
 
   /**

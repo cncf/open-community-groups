@@ -1,5 +1,10 @@
 import { toggleModalVisibility } from "/static/js/common/common.js";
-import { isDatasetReady, markDatasetReady, setElementHidden } from "/static/js/common/dom.js";
+import {
+  isDatasetReady,
+  isElementHidden,
+  markDatasetReady,
+  setElementHidden,
+} from "/static/js/common/dom.js";
 
 import {
   getAttendanceControl,
@@ -110,7 +115,8 @@ const hideControl = (control) => {
   }
 
   control.classList.remove("opacity-100");
-  control.classList.add("hidden", "opacity-0", "transition-opacity", "duration-150");
+  setElementHidden(control, true);
+  control.classList.add("opacity-0", "transition-opacity", "duration-150");
 };
 
 /**
@@ -169,9 +175,9 @@ const renderControl = (control, state = {}) => {
   } = state;
 
   if (visible) {
-    const wasHidden = control.classList.contains("hidden");
+    const wasHidden = isElementHidden(control);
     control.classList.add("opacity-0", "transition-opacity", "duration-150");
-    control.classList.remove("hidden");
+    setElementHidden(control, false);
     const showControl = () => {
       control.classList.remove("opacity-0");
       control.classList.add("opacity-100");
@@ -671,7 +677,7 @@ export const updateCheckoutButtonState = (container) => {
     checkoutButton.removeAttribute("title");
   }
 
-  if (checkoutSpinner instanceof HTMLElement && !checkoutSpinner.classList.contains("hidden")) {
+  if (checkoutSpinner instanceof HTMLElement && !isElementHidden(checkoutSpinner)) {
     checkoutButton.disabled = true;
   }
 };
@@ -790,7 +796,7 @@ export const openQuestionsModal = (container) => {
     return;
   }
 
-  if (questionsModal.classList.contains("hidden")) {
+  if (isElementHidden(questionsModal)) {
     toggleModalVisibility(questionsModal.id);
   }
 };
@@ -817,7 +823,7 @@ export const closeQuestionsModal = (container) => {
   if (
     !(questionsModal instanceof HTMLElement) ||
     !questionsModal.id ||
-    questionsModal.classList.contains("hidden")
+    isElementHidden(questionsModal)
   ) {
     return;
   }

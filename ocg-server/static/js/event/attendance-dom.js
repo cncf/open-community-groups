@@ -1,4 +1,4 @@
-import { closestElement } from "/static/js/common/dom.js";
+import { closestElement, isElementHidden } from "/static/js/common/dom.js";
 
 export const ATTENDANCE_CONTAINER_SELECTOR = "[data-attendance-container]";
 
@@ -110,8 +110,7 @@ export const getAttendanceControlLabel = (button) =>
  * @param {HTMLElement|null} modal - Ticket modal element
  * @returns {boolean} True when the modal is open
  */
-export const isTicketModalOpen = (modal) =>
-  modal instanceof HTMLElement && !modal.classList.contains("hidden");
+export const isTicketModalOpen = (modal) => modal instanceof HTMLElement && !isElementHidden(modal);
 
 /**
  * Parses capacity from container data attributes.
