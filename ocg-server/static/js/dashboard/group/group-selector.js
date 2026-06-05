@@ -66,6 +66,7 @@ export class GroupSelector extends LitWrapper {
     }
     this._searchTimeoutId = window.setTimeout(() => {
       this._activeIndex = null;
+      this._searchTimeoutId = 0;
       this.requestUpdate();
     }, 200);
   }

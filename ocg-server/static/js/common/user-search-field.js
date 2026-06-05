@@ -95,6 +95,7 @@ export class UserSearchField extends LitWrapper {
     super.disconnectedCallback();
     if (this._searchTimeoutId) {
       clearTimeout(this._searchTimeoutId);
+      this._searchTimeoutId = 0;
     }
     if (this._outsidePointerHandler) {
       document.removeEventListener("pointerdown", this._outsidePointerHandler);
@@ -177,6 +178,7 @@ export class UserSearchField extends LitWrapper {
     this._isSearching = false;
     if (this._searchTimeoutId) {
       clearTimeout(this._searchTimeoutId);
+      this._searchTimeoutId = 0;
     }
     if (emitChange) {
       this._emitSearchQueryChanged("");
@@ -197,7 +199,10 @@ export class UserSearchField extends LitWrapper {
     this._searchQuery = query;
     this._emitSearchQueryChanged(query);
 
-    if (this._searchTimeoutId) clearTimeout(this._searchTimeoutId);
+    if (this._searchTimeoutId) {
+      clearTimeout(this._searchTimeoutId);
+      this._searchTimeoutId = 0;
+    }
 
     if (query === "") {
       this._searchResults = [];
@@ -207,6 +212,7 @@ export class UserSearchField extends LitWrapper {
 
     this._isSearching = true;
     this._searchTimeoutId = setTimeout(() => {
+      this._searchTimeoutId = 0;
       this._performSearch(query);
     }, this.searchDelay);
   }

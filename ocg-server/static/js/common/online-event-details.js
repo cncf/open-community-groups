@@ -155,16 +155,26 @@ export class OnlineEventDetails extends LitWrapper {
     this._manualRecordingUrl = "";
     this._automaticRecordingUrl = "";
     this._automaticRecordingEdited = false;
+    this._capacityField = null;
+    this._capacityInputHandler = () => this._handleCapacityInput();
+    this._hostsInputTimeoutId = 0;
   }
 
   connectedCallback() {
     super.connectedCallback();
 
-    const capacityField = getElementById(document, "capacity");
-    capacityField?.addEventListener("input", () => {
-      this._checkMeetingCapacity();
-      this.requestUpdate();
-    });
+    this._capacityField = getElementById(document, "capacity");
+    this._capacityField?.addEventListener("input", this._capacityInputHandler);
+  }
+
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    this._capacityField?.removeEventListener("input", this._capacityInputHandler);
+    this._capacityField = null;
+    if (this._hostsInputTimeoutId) {
+      window.clearTimeout(this._hostsInputTimeoutId);
+      this._hostsInputTimeoutId = 0;
+    }
   }
 
   willUpdate() {
@@ -203,10 +213,25 @@ export class OnlineEventDetails extends LitWrapper {
     if (changedProperties.has("_mode") || changedProperties.has("_createMeeting")) {
       if (this._mode === "automatic" && this._createMeeting) {
         // Wait for next render cycle to ensure the input element exists
-        setTimeout(() => this._initializeHostsInput(), 0);
+        if (this._hostsInputTimeoutId) {
+          window.clearTimeout(this._hostsInputTimeoutId);
+        }
+        this._hostsInputTimeoutId = window.setTimeout(() => {
+          this._hostsInputTimeoutId = 0;
+          this._initializeHostsInput();
+        }, 0);
       }
       this._checkMeetingCapacity();
     }
+  }
+
+  /**
+   * Updates the meeting capacity warning when the event capacity changes.
+   * @private
+   */
+  _handleCapacityInput() {
+    this._checkMeetingCapacity();
+    this.requestUpdate();
   }
 
   /**
