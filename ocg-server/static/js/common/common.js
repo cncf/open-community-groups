@@ -1,4 +1,4 @@
-import { initializeOnReady, loadScriptOnce } from "/static/js/common/dom.js";
+import { getElementById, initializeOnReady, loadScriptOnce } from "/static/js/common/dom.js";
 import { toTrimmedString } from "/static/js/common/utils.js";
 
 export const MEETING_RECORDING_URL_LEGEND =
@@ -233,7 +233,7 @@ window.addEventListener("load", applyBrokenImagePlaceholdersForDocument, { once:
  * @param {string} id - The ID of the element to show loading spinner for
  */
 export const showLoadingSpinner = (id) => {
-  const content = document.getElementById(id);
+  const content = getElementById(document, id);
   if (content) {
     content.classList.add("is-loading");
   }
@@ -244,7 +244,7 @@ export const showLoadingSpinner = (id) => {
  * @param {string} id - The ID of the element to hide loading spinner for
  */
 export const hideLoadingSpinner = (id) => {
-  const content = document.getElementById(id);
+  const content = getElementById(document, id);
   if (content) {
     content.classList.remove("is-loading");
   }
@@ -347,11 +347,11 @@ export const unlockBodyScroll = () => {
  * Shows/hides both the mobile navbar and backdrop by toggling the 'hidden' class.
  */
 export const toggleMobileNavbarVisibility = () => {
-  const navbarMobile = document.getElementById("navbar-mobile");
+  const navbarMobile = getElementById(document, "navbar-mobile");
   if (navbarMobile) {
     navbarMobile.classList.toggle("hidden");
   }
-  const navbarBackdrop = document.getElementById("navbar-backdrop");
+  const navbarBackdrop = getElementById(document, "navbar-backdrop");
   if (navbarBackdrop) {
     navbarBackdrop.classList.toggle("hidden");
   }
@@ -362,7 +362,7 @@ export const toggleMobileNavbarVisibility = () => {
  * @param {string} modalId - The ID of the modal element to toggle
  */
 export const toggleModalVisibility = (modalId) => {
-  const modal = document.getElementById(modalId);
+  const modal = getElementById(document, modalId);
   if (modal) {
     const willOpen = modal.classList.contains("hidden");
     modal.classList.toggle("hidden");

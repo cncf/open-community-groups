@@ -12,6 +12,7 @@ import {
   MEETING_RECORDING_URL_LEGEND,
   MEETING_RECORDING_VISIBILITY_LEGEND,
 } from "/static/js/common/common.js";
+import { getElementById } from "/static/js/common/dom.js";
 import "/static/js/common/multiple-inputs.js";
 
 /**
@@ -159,7 +160,7 @@ export class OnlineEventDetails extends LitWrapper {
   connectedCallback() {
     super.connectedCallback();
 
-    const capacityField = document.getElementById("capacity");
+    const capacityField = getElementById(document, "capacity");
     capacityField?.addEventListener("input", () => {
       this._checkMeetingCapacity();
       this.requestUpdate();
@@ -841,7 +842,7 @@ export class OnlineEventDetails extends LitWrapper {
   }
 
   _getCapacityValue() {
-    const capacityField = document.getElementById("capacity");
+    const capacityField = getElementById(document, "capacity");
     const value = parseInt(capacityField?.value, 10);
     return Number.isFinite(value) ? value : null;
   }

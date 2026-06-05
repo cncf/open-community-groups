@@ -1,4 +1,5 @@
 import { showConfirmAlert } from "/static/js/common/alerts.js";
+import { getElementById } from "/static/js/common/dom.js";
 
 /**
  * Serializes a form field value for deterministic snapshot comparisons.
@@ -136,9 +137,9 @@ export const initializePendingChangesAlert = ({
   confirmMessage = "",
   confirmText = "Leave",
 }) => {
-  const pendingChangesAlert = document.getElementById(alertId);
-  const trackedForms = (formIds || []).map((formId) => document.getElementById(formId)).filter(Boolean);
-  const cancelButton = cancelButtonId ? document.getElementById(cancelButtonId) : null;
+  const pendingChangesAlert = getElementById(document, alertId);
+  const trackedForms = (formIds || []).map((formId) => getElementById(document, formId)).filter(Boolean);
+  const cancelButton = cancelButtonId ? getElementById(document, cancelButtonId) : null;
 
   let initialFormSnapshot = "";
   let hasPendingChanges = false;

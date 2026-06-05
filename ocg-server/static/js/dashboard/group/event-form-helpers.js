@@ -5,6 +5,7 @@ import {
   toTrimmedString,
 } from "/static/js/common/utils.js";
 import { confirmAction } from "/static/js/common/alerts.js";
+import { getElementById } from "/static/js/common/dom.js";
 
 /**
  * Adds the copy suffix to a given event name.
@@ -24,7 +25,7 @@ const appendCopySuffix = (name) => {
  * @param {object} details Event payload
  */
 const setCategoryValue = (details) => {
-  const select = document.getElementById("category_id");
+  const select = getElementById(document, "category_id");
   if (!select) {
     return;
   }
@@ -86,8 +87,8 @@ const setTags = (tags) => {
  * @param {boolean} isRequired Whether registration is required
  */
 const setRegistrationRequired = (isRequired) => {
-  const toggle = document.getElementById("toggle_registration_required");
-  const hidden = document.getElementById("registration_required");
+  const toggle = getElementById(document, "toggle_registration_required");
+  const hidden = getElementById(document, "registration_required");
   if (toggle) {
     toggle.checked = !!isRequired;
   }
@@ -139,8 +140,8 @@ const setRegistrationQuestions = (questions) => {
  * @param {boolean} isRequired Whether attendee approval is required
  */
 const setAttendeeApprovalRequired = (isRequired) => {
-  const toggle = document.getElementById("toggle_attendee_approval_required");
-  const hidden = document.getElementById("attendee_approval_required");
+  const toggle = getElementById(document, "toggle_attendee_approval_required");
+  const hidden = getElementById(document, "attendee_approval_required");
   if (toggle) {
     toggle.checked = !!isRequired;
   }
@@ -157,8 +158,8 @@ const setAttendeeApprovalRequired = (isRequired) => {
  * @param {boolean} isEnabled Whether waitlist is enabled
  */
 const setWaitlistEnabled = (isEnabled) => {
-  const toggle = document.getElementById("toggle_waitlist_enabled");
-  const hidden = document.getElementById("waitlist_enabled");
+  const toggle = getElementById(document, "toggle_waitlist_enabled");
+  const hidden = getElementById(document, "waitlist_enabled");
   if (toggle) {
     toggle.checked = !!isEnabled;
   }
@@ -175,8 +176,8 @@ const setWaitlistEnabled = (isEnabled) => {
  * @param {boolean} isEnabled Whether event reminders are enabled
  */
 const setEventReminderEnabled = (isEnabled) => {
-  const toggle = document.getElementById("toggle_event_reminder_enabled");
-  const hidden = document.getElementById("event_reminder_enabled");
+  const toggle = getElementById(document, "toggle_event_reminder_enabled");
+  const hidden = getElementById(document, "event_reminder_enabled");
   if (toggle) {
     toggle.checked = !!isEnabled;
   }
@@ -190,7 +191,7 @@ const setEventReminderEnabled = (isEnabled) => {
  * @param {*} paymentCurrencyCode Event payment currency code
  */
 const setPaymentCurrencyCode = (paymentCurrencyCode) => {
-  const select = document.getElementById("payment_currency_code");
+  const select = getElementById(document, "payment_currency_code");
   if (!select) {
     return;
   }
@@ -250,7 +251,7 @@ const clearCopiedDiscountCodeDates = (discountCodes) => {
  * @param {*} ticketTypes Ticket types payload
  */
 const setTicketTypes = (ticketTypes) => {
-  const root = document.getElementById("ticket-types-ui");
+  const root = getElementById(document, "ticket-types-ui");
   if (!root) {
     return Promise.resolve();
   }
@@ -264,7 +265,7 @@ const setTicketTypes = (ticketTypes) => {
  * @param {*} discountCodes Discount codes payload
  */
 const setDiscountCodes = (discountCodes) => {
-  const root = document.getElementById("discount-codes-ui");
+  const root = getElementById(document, "discount-codes-ui");
   if (!root) {
     return;
   }
@@ -450,8 +451,8 @@ const initializeSessionsRemovalWarning = ({
   };
 
   const shouldWarnAboutRemovingSessions = () => {
-    const startsAtValue = document.getElementById(startsAtInputId)?.value.trim() || "";
-    const endsAtValue = document.getElementById(endsAtInputId)?.value.trim() || "";
+    const startsAtValue = getElementById(document, startsAtInputId)?.value.trim() || "";
+    const endsAtValue = getElementById(document, endsAtInputId)?.value.trim() || "";
 
     return !startsAtValue && !endsAtValue && hasConfiguredSessions();
   };

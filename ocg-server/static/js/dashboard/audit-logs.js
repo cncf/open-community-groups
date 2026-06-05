@@ -26,7 +26,7 @@ let auditLogGlobalHandlersBound = false;
  */
 const getAuditLogDetailsCard = (trigger) => {
   const popoverId = trigger.getAttribute("aria-controls");
-  return popoverId ? document.getElementById(popoverId) : null;
+  return popoverId ? getElementById(document, popoverId) : null;
 };
 
 /**
@@ -120,7 +120,7 @@ const syncAuditLogDetails = (root = document) => {
  * @returns {void}
  */
 const closeAuditLogFiltersModal = () => {
-  const currentModal = document.getElementById(MODAL_ID);
+  const currentModal = getElementById(document, MODAL_ID);
   if (currentModal && !currentModal.classList.contains("hidden")) {
     toggleModalVisibility(MODAL_ID);
   }

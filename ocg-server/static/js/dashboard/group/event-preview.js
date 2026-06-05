@@ -6,6 +6,7 @@ import {
   lockBodyScroll,
   unlockBodyScroll,
 } from "/static/js/common/common.js";
+import { getElementById } from "/static/js/common/dom.js";
 import { ocgFetch } from "/static/js/common/fetch.js";
 import "/static/js/common/images-gallery.js";
 import "/static/js/common/user-chip.js";
@@ -40,7 +41,7 @@ export const initializeEventPreview = ({ pageRoot }) => {
   const previewButton = pageRoot?.querySelector?.(`#${PREVIEW_BUTTON_ID}`);
   const modalRoot =
     pageRoot?.ownerDocument?.getElementById?.(PREVIEW_MODAL_ROOT_ID) ||
-    document.getElementById(PREVIEW_MODAL_ROOT_ID);
+    getElementById(document, PREVIEW_MODAL_ROOT_ID);
   if (!previewButton || !modalRoot || previewButton.dataset.eventPreviewReady === "true") {
     return;
   }
@@ -151,7 +152,7 @@ export const collectEventPreviewContext = (pageRoot) => {
  * @returns {HTMLElement|null} Dashboard content root.
  */
 const getDashboardContent = (pageRoot) =>
-  pageRoot.closest?.("#dashboard-content") || document.getElementById("dashboard-content");
+  pageRoot.closest?.("#dashboard-content") || getElementById(document, "dashboard-content");
 
 /**
  * Inserts preview HTML and binds modal close behavior.
