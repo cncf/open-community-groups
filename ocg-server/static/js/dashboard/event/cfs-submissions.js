@@ -16,6 +16,17 @@ import {
 } from "/static/js/common/modal-lifecycle.js";
 import { renderTrustedHtml } from "/static/js/common/trusted-lit-html.js";
 import { parseJsonAttribute } from "/static/js/common/utils.js";
+import {
+  findCurrentUserRating,
+  getAverageRating,
+  getOtherTeamRatings,
+  getRatingsCount,
+  getStatusColor,
+  isLinkedToSession,
+  isMessageRequired,
+  isStatusAllowed,
+  normalizeLabels,
+} from "/static/js/dashboard/event/cfs-submissions-review-utils.js";
 import "/static/js/common/cfs-label-selector.js";
 import "/static/js/common/logo-image.js";
 import "/static/js/common/rating-stars.js";
@@ -108,7 +119,7 @@ export class ReviewSubmissionModal extends LitWrapper {
     if (!submission) {
       return;
     }
-    const currentUserRating = this._findCurrentUserRating(submission);
+    const currentUserRating = findCurrentUserRating(submission, this.currentUserId);
     this.syncLabelsFromFilter();
     this._submission = submission;
     this._hoverRatingStars = 0;
@@ -211,7 +222,7 @@ export class ReviewSubmissionModal extends LitWrapper {
     }
 
     if (Array.isArray(labelsFilter.labels)) {
-      this.labels = this._normalizeLabels(labelsFilter.labels);
+      this.labels = normalizeLabels(labelsFilter.labels);
       return;
     }
 
@@ -221,7 +232,7 @@ export class ReviewSubmissionModal extends LitWrapper {
       return;
     }
 
-    this.labels = this._normalizeLabels(parseJsonAttribute(labelsAttr, []));
+    this.labels = normalizeLabels(parseJsonAttribute(labelsAttr, []));
   }
 
   /**
@@ -336,20 +347,6 @@ export class ReviewSubmissionModal extends LitWrapper {
   }
 
   /**
-   * Finds the rating created by the current user.
-   * @param {Object} submission
-   * @returns {Object|null}
-   */
-  _findCurrentUserRating(submission) {
-    const ratings = Array.isArray(submission?.ratings) ? submission.ratings : [];
-    const currentUserId = String(this.currentUserId || "");
-    if (!currentUserId) {
-      return null;
-    }
-    return ratings.find((rating) => String(rating?.reviewer?.user_id || "") === currentUserId) || null;
-  }
-
-  /**
    * Builds a stable snapshot for mutable form values.
    * @returns {string}
    */
@@ -373,51 +370,6 @@ export class ReviewSubmissionModal extends LitWrapper {
       return false;
     }
     return this._buildFormStateSnapshot() !== this._initialFormSnapshot;
-  }
-
-  /**
-   * Returns the ratings list for the current submission.
-   * @returns {Array<Object>}
-   */
-  _getSubmissionRatings() {
-    return Array.isArray(this._submission?.ratings) ? this._submission.ratings : [];
-  }
-
-  /**
-   * Returns ratings created by other reviewers.
-   * @returns {Array<Object>}
-   */
-  _getOtherTeamRatings() {
-    const ratings = this._getSubmissionRatings();
-    const currentUserId = String(this.currentUserId || "");
-    if (!currentUserId) {
-      return [];
-    }
-    return ratings.filter((rating) => String(rating?.reviewer?.user_id || "") !== currentUserId);
-  }
-
-  /**
-   * Resolves ratings count for the current submission.
-   * @returns {number}
-   */
-  _getRatingsCount() {
-    const ratingsCount = Number(this._submission?.ratings_count);
-    if (Number.isFinite(ratingsCount) && ratingsCount >= 0) {
-      return ratingsCount;
-    }
-    return this._getSubmissionRatings().length;
-  }
-
-  /**
-   * Resolves average rating for the current submission.
-   * @returns {number}
-   */
-  _getAverageRating() {
-    const averageRating = Number(this._submission?.average_rating);
-    if (Number.isFinite(averageRating)) {
-      return averageRating;
-    }
-    return 0;
   }
 
   /**
@@ -530,7 +482,7 @@ export class ReviewSubmissionModal extends LitWrapper {
    * @returns {import("lit").TemplateResult}
    */
   _renderRatingsList() {
-    const ratings = this._getOtherTeamRatings();
+    const ratings = getOtherTeamRatings(this._submission, this.currentUserId);
     if (!ratings.length) {
       return html`
         <div>
@@ -722,8 +674,8 @@ export class ReviewSubmissionModal extends LitWrapper {
    * @returns {import("lit").TemplateResult}
    */
   _renderRatingsSummaryCard() {
-    const ratingsCount = this._getRatingsCount();
-    const averageRating = this._getAverageRating();
+    const ratingsCount = getRatingsCount(this._submission);
+    const averageRating = getAverageRating(this._submission);
     const averageRatingText = Number.isInteger(averageRating)
       ? String(averageRating)
       : averageRating.toFixed(1);
@@ -774,93 +726,18 @@ export class ReviewSubmissionModal extends LitWrapper {
   }
 
   /**
-   * Returns the color classes for a status.
-   * @param {string} statusId
-   * @returns {Object}
-   */
-  _getStatusColor(statusId) {
-    switch (statusId) {
-      case "rejected":
-        return { border: "border-red-600", ring: "ring-2 ring-red-200", dot: "bg-red-600" };
-      case "information-requested":
-        return { border: "border-orange-600", ring: "ring-2 ring-orange-200", dot: "bg-orange-600" };
-      case "approved":
-        return { border: "border-emerald-600", ring: "ring-2 ring-emerald-200", dot: "bg-emerald-600" };
-      default:
-        return { border: "border-primary-500", ring: "ring-2 ring-primary-200", dot: "bg-primary-500" };
-    }
-  }
-
-  /**
-   * Checks if the message textarea should be required.
-   * @returns {boolean}
-   */
-  _isMessageRequired() {
-    return this._statusId === "information-requested";
-  }
-
-  /**
-   * Checks whether the submission is linked to an event session.
-   * @returns {boolean}
-   */
-  _isLinkedToSession() {
-    return Boolean(this._submission?.linked_session_id);
-  }
-
-  /**
-   * Checks whether a status can be selected for the current submission.
-   * @param {string} statusId
-   * @returns {boolean}
-   */
-  _isStatusAllowed(statusId) {
-    if (!this._isLinkedToSession()) {
-      return true;
-    }
-    return statusId === "approved";
-  }
-
-  /**
-   * Checks whether the current status selection can be submitted.
-   * @returns {boolean}
-   */
-  _isStatusSelectionValid() {
-    return this._isStatusAllowed(this._statusId);
-  }
-
-  /**
-   * Normalizes available labels payload.
-   * @param {Array<Object>} labels
-   * @returns {Array<Object>}
-   */
-  _normalizeLabels(labels) {
-    if (!Array.isArray(labels)) {
-      return [];
-    }
-
-    return labels
-      .map((label) => {
-        return {
-          color: String(label?.color || "").trim(),
-          event_cfs_label_id: String(label?.event_cfs_label_id || "").trim(),
-          name: String(label?.name || "").trim(),
-        };
-      })
-      .filter((label) => label.event_cfs_label_id && label.name);
-  }
-
-  /**
    * Handles status checkbox changes.
    * @param {Event} event
    * @param {string} statusId
    */
   _onStatusCheckChange(event, statusId) {
     if (event.target?.checked) {
-      if (!this._isStatusAllowed(statusId)) {
+      if (!isStatusAllowed(this._submission, statusId)) {
         return;
       }
       this._statusId = statusId;
     } else {
-      this._statusId = this._isLinkedToSession() ? "approved" : "not-reviewed";
+      this._statusId = isLinkedToSession(this._submission) ? "approved" : "not-reviewed";
     }
   }
 
@@ -958,7 +835,7 @@ export class ReviewSubmissionModal extends LitWrapper {
         <div>
           <label class="form-label">Decision</label>
           <div class="mt-3">${this._renderStatusBoxes()}</div>
-          ${this._isLinkedToSession()
+          ${isLinkedToSession(this._submission)
             ? html`
                 <p class="form-legend mt-2">
                   This submission is linked to a session. Unlink it from the session before choosing a
@@ -970,7 +847,7 @@ export class ReviewSubmissionModal extends LitWrapper {
 
         <div>
           <label for="cfs-submission-message" class="form-label">
-            Message for speaker ${this._isMessageRequired() ? html`<span class="asterisk">*</span>` : ""}
+            Message for speaker ${isMessageRequired(this._statusId) ? html`<span class="asterisk">*</span>` : ""}
           </label>
           <div class="mt-2">
             <textarea
@@ -982,7 +859,7 @@ export class ReviewSubmissionModal extends LitWrapper {
               placeholder="Add a note for the speaker..."
               .value=${this._message}
               @input=${(event) => this._onMessageInput(event)}
-              ?required=${this._isMessageRequired()}
+              ?required=${isMessageRequired(this._statusId)}
             ></textarea>
           </div>
           <p class="form-legend">
@@ -1017,14 +894,14 @@ export class ReviewSubmissionModal extends LitWrapper {
    */
   _renderStatusBoxes() {
     const reviewStatuses = this.statuses.filter((s) => s.cfs_submission_status_id !== "not-reviewed");
-    const isLinked = this._isLinkedToSession();
+    const isLinked = isLinkedToSession(this._submission);
 
     return html`
       <div class="grid grid-cols-3 gap-3">
         ${reviewStatuses.map((status) => {
           const statusId = status?.cfs_submission_status_id || "";
           const isSelected = this._statusId === statusId;
-          const color = this._getStatusColor(statusId);
+          const color = getStatusColor(statusId);
           const isDisabled = isLinked && statusId !== "approved";
 
           return html`
@@ -1122,7 +999,7 @@ export class ReviewSubmissionModal extends LitWrapper {
                     id="cfs-submission-submit"
                     type="submit"
                     class="btn-primary"
-                    ?disabled=${!submissionEndpoint || !this._isStatusSelectionValid()}
+                    ?disabled=${!submissionEndpoint || !isStatusAllowed(this._submission, this._statusId)}
                   >
                     Save
                   </button>
