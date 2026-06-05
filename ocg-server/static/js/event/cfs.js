@@ -1,4 +1,5 @@
 import { toggleModalVisibility } from "/static/js/common/common.js";
+import { getElementById } from "/static/js/common/dom.js";
 
 const ROOT_ID = "cfs-modal-root";
 const MODAL_ID = "cfs-modal";
@@ -29,7 +30,7 @@ const initializeSubmitControls = (modal) => {
 };
 
 const initializeCfsModal = () => {
-  const modal = document.getElementById(MODAL_ID);
+  const modal = getElementById(document, MODAL_ID);
   if (!modal) {
     return;
   }
@@ -59,7 +60,7 @@ const handleModalSwap = (event) => {
   }
   initializeCfsModal();
 
-  const modal = document.getElementById(MODAL_ID);
+  const modal = getElementById(document, MODAL_ID);
   if (modal?.classList.contains("hidden")) {
     toggleModalVisibility(MODAL_ID);
   }

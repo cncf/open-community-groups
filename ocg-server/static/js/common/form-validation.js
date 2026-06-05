@@ -9,6 +9,7 @@ import {
   isDashboardPath,
   isElementInView,
 } from "/static/js/common/common.js";
+import { initializeOnReadyAndHtmxLoad } from "/static/js/common/dom.js";
 import { trimmedNonEmpty, passwordsMatch } from "/static/js/common/validators.js";
 
 // -----------------------------------------------------------------------------
@@ -759,28 +760,40 @@ const handleConfigRequest = (event) => {
 // Initialization
 // -----------------------------------------------------------------------------
 
-/**
- * Initializes form validation on all matching forms.
- */
-const init = () => {
-  document.querySelectorAll("form").forEach(wireForm);
+let globalValidationListenersBound = false;
 
-  if (window.htmx && typeof htmx.onLoad === "function") {
-    htmx.onLoad((elt) => {
-      if (!elt) return;
-      if (elt instanceof HTMLFormElement) {
-        wireForm(elt);
-      }
-      elt.querySelectorAll?.("form").forEach(wireForm);
-    });
+/**
+ * Wires form validation for forms in the current root.
+ * @param {Document|Element} root - Root element to search from.
+ */
+const wireFormsInRoot = (root = document) => {
+  if (root instanceof HTMLFormElement) {
+    wireForm(root);
   }
 
+  root.querySelectorAll?.("form").forEach(wireForm);
+};
+
+/**
+ * Binds global validation event handlers once.
+ */
+const bindGlobalValidationListeners = () => {
+  if (globalValidationListenersBound) {
+    return;
+  }
+
+  globalValidationListenersBound = true;
   document.body?.addEventListener("htmx:configRequest", handleConfigRequest);
   document.addEventListener("invalid", handleInvalidEvent, true);
 };
 
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", init);
-} else {
-  init();
-}
+/**
+ * Initializes form validation on all matching forms.
+ * @param {Document|Element} root - Root element to search from.
+ */
+const init = (root = document) => {
+  wireFormsInRoot(root);
+  bindGlobalValidationListeners();
+};
+
+initializeOnReadyAndHtmxLoad(init);

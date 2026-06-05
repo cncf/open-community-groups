@@ -1,5 +1,6 @@
 import { html } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
+import { getElementById } from "/static/js/common/dom.js";
 
 /**
  * Event sponsors selector.
@@ -57,8 +58,8 @@ export class SponsorsSection extends LitWrapper {
     window.addEventListener("mousedown", this._handleClickOutside);
 
     // Validate levels before submitting add/update event forms
-    const addBtn = document.getElementById("add-event-button");
-    const updateBtn = document.getElementById("update-event-button");
+    const addBtn = getElementById(document, "add-event-button");
+    const updateBtn = getElementById(document, "update-event-button");
     const beforeSubmit = (e) => {
       if (!this._requireLevels()) {
         e.preventDefault();

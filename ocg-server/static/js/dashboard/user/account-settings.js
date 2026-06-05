@@ -1,3 +1,5 @@
+import { getElementById } from "/static/js/common/dom.js";
+
 const OPTIONAL_NOTIFICATIONS_INPUT_ID = "optional_notifications_enabled";
 const OPTIONAL_NOTIFICATIONS_TOGGLE_ID = "toggle_optional_notifications_enabled";
 const ACCOUNT_SETTINGS_READY_KEY = "userAccountSettingsReady";
@@ -7,7 +9,7 @@ const ACCOUNT_SETTINGS_READY_KEY = "userAccountSettingsReady";
  * @param {HTMLInputElement} toggle - Optional notifications checkbox
  */
 const syncOptionalNotificationsInput = (toggle) => {
-  const input = document.getElementById(OPTIONAL_NOTIFICATIONS_INPUT_ID);
+  const input = getElementById(document, OPTIONAL_NOTIFICATIONS_INPUT_ID);
   if (input instanceof HTMLInputElement) {
     input.value = String(toggle.checked);
   }

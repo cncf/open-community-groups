@@ -14,6 +14,7 @@ import {
   registerChartResizeHandler,
   renderChart,
 } from "/static/js/common/stats.js";
+import { initializeOnReady } from "/static/js/common/dom.js";
 
 const SITE_STATS_DATA_SELECTOR = "[data-site-stats]";
 const SITE_STATS_READY_KEY = "siteStatsReady";
@@ -173,13 +174,4 @@ const readSiteStatsPayload = (marker) => {
   }
 };
 
-const initializeSiteStatsWhenReady = () => {
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", () => initializeSiteStatsFromPage(), { once: true });
-    return;
-  }
-
-  initializeSiteStatsFromPage();
-};
-
-initializeSiteStatsWhenReady();
+initializeOnReady(() => initializeSiteStatsFromPage());

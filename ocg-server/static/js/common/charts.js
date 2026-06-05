@@ -1,4 +1,4 @@
-import { loadScriptOnce } from "/static/js/common/dom.js";
+import { getElementById, loadScriptOnce } from "/static/js/common/dom.js";
 
 /**
  * Dispose of any existing ECharts instance on the given element.
@@ -21,7 +21,7 @@ const disposeChartInstance = (element) => {
  * @returns {HTMLElement|null} Cleared element or null when missing.
  */
 export const clearChartElement = (elementId) => {
-  const el = document.getElementById(elementId);
+  const el = getElementById(document, elementId);
   if (!el) {
     return null;
   }
@@ -38,7 +38,7 @@ export const clearChartElement = (elementId) => {
  * @param {string} message - Empty state message.
  */
 export const showChartEmptyState = (elementId, message = "No data available yet") => {
-  const el = document.getElementById(elementId);
+  const el = getElementById(document, elementId);
   if (!el) {
     return;
   }
@@ -457,7 +457,7 @@ export const toCategorySeries = (pairs = []) => {
  * @returns {echarts.ECharts | null} Chart instance or null when unavailable.
  */
 export const initChart = (elementId, option) => {
-  const el = document.getElementById(elementId);
+  const el = getElementById(document, elementId);
   if (!el || typeof echarts === "undefined") {
     return null;
   }

@@ -1,4 +1,5 @@
 import { showErrorAlert } from "/static/js/common/alerts.js";
+import { getElementById } from "/static/js/common/dom.js";
 
 const PRINT_CONTAINER_ID = "qr-print-container";
 const PRINT_STYLES_ID = "qr-print-styles";
@@ -20,7 +21,7 @@ const PRINT_DIMENSIONS = {
  * These styles ensure the QR code prints correctly on A4 landscape paper.
  */
 const ensurePrintStyles = () => {
-  if (document.getElementById(PRINT_STYLES_ID)) {
+  if (getElementById(document, PRINT_STYLES_ID)) {
     return;
   }
 
@@ -86,7 +87,7 @@ const ensurePrintStyles = () => {
  * Removes the print container from the DOM if it exists.
  */
 const removePrintContainer = () => {
-  const existing = document.getElementById(PRINT_CONTAINER_ID);
+  const existing = getElementById(document, PRINT_CONTAINER_ID);
   existing?.parentNode?.removeChild(existing);
 };
 

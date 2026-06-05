@@ -1,5 +1,6 @@
 import { handleHtmxResponse } from "/static/js/common/alerts.js";
 import { isSuccessfulXHRStatus, toggleModalVisibility } from "/static/js/common/common.js";
+import { getElementById } from "/static/js/common/dom.js";
 import { collectQuestionAnswers, setQuestionAnswersInputValue } from "/static/js/common/question-answers.js";
 
 const DATA_KEY = "userEventQuestionsReady";
@@ -12,7 +13,7 @@ const ACTIONS_DROPDOWN_SELECTOR = "[data-user-event-actions-dropdown]";
  */
 const getModal = (trigger) => {
   const modalId = trigger?.dataset?.userEventQuestionsModal;
-  return modalId ? document.getElementById(modalId) : null;
+  return modalId ? getElementById(document, modalId) : null;
 };
 
 const closeModal = (modal) => {

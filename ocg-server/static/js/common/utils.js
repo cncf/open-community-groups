@@ -1,3 +1,5 @@
+import { getElementById } from "/static/js/common/dom.js";
+
 /**
  * Checks if the provided value is a string.
  * @param {*} value Incoming value
@@ -57,7 +59,7 @@ const normalizeUsers = (list) => {
  * @param {*} value New value
  */
 const setTextValue = (id, value) => {
-  const input = document.getElementById(id);
+  const input = getElementById(document, id);
   if (!input) {
     return;
   }
@@ -72,7 +74,7 @@ const setTextValue = (id, value) => {
  * @param {*} value New value
  */
 const setSelectValue = (id, value) => {
-  const select = document.getElementById(id);
+  const select = getElementById(document, id);
   if (!select) {
     return;
   }

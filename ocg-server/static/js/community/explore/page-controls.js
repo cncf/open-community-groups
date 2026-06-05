@@ -12,6 +12,7 @@ import {
   updateDateInput,
   updateSortInputsFromSelector,
 } from "/static/js/community/explore/filters.js";
+import { getElementById } from "/static/js/common/dom.js";
 
 const EXPLORE_CONTROLS_READY_KEY = "exploreControlsReady";
 const DESKTOP_FILTER_FORM_SELECTOR = "#explore-filters .filters-form";
@@ -100,7 +101,7 @@ export const syncNoResultsPlaceholders = (root = document) => {
     return;
   }
 
-  const hasCalendar = Boolean(document.getElementById(CALENDAR_BOX_ID));
+  const hasCalendar = Boolean(getElementById(document, CALENDAR_BOX_ID));
   const filtered = hasCalendar ? hasActiveCalendarFilters(formId) : hasActiveFilters(formId);
 
   defaultPlaceholders.forEach((placeholder) => {

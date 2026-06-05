@@ -1,5 +1,5 @@
 import { loadMap, toggleModalVisibility } from "/static/js/common/common.js";
-import { initializeOnReady } from "/static/js/common/dom.js";
+import { getElementById, initializeOnReady } from "/static/js/common/dom.js";
 
 const MAP_MODAL_SELECTOR = "[data-map-modal]";
 const MAP_MODAL_READY_KEY = "mapModalReady";
@@ -76,10 +76,10 @@ const initializeMapModal = (mapContainer) => {
     }
   });
 
-  const closeButton = document.getElementById(mapContainer.dataset.closeButtonId || "");
+  const closeButton = getElementById(document, mapContainer.dataset.closeButtonId || "");
   closeButton?.addEventListener("click", () => toggleModalVisibility(modalId));
 
-  const backdrop = document.getElementById(mapContainer.dataset.backdropId || "");
+  const backdrop = getElementById(document, mapContainer.dataset.backdropId || "");
   backdrop?.addEventListener("click", () => toggleModalVisibility(modalId));
 };
 

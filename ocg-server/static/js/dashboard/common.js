@@ -1,7 +1,7 @@
 /**
  * Dashboard common utilities
  */
-import { loadScriptOnce } from "/static/js/common/dom.js";
+import { getElementById, loadScriptOnce } from "/static/js/common/dom.js";
 
 /**
  * Dispose of any existing ECharts instance on the given element.
@@ -24,7 +24,7 @@ const disposeChartInstance = (element) => {
  * @returns {HTMLElement|null} Cleared element or null when missing.
  */
 export const clearChartElement = (elementId) => {
-  const el = document.getElementById(elementId);
+  const el = getElementById(document, elementId);
   if (!el) {
     return null;
   }
@@ -41,7 +41,7 @@ export const clearChartElement = (elementId) => {
  * @param {string} message - Empty state message.
  */
 export const showChartEmptyState = (elementId, message = "No data available yet") => {
-  const el = document.getElementById(elementId);
+  const el = getElementById(document, elementId);
   if (!el) {
     return;
   }
@@ -87,7 +87,7 @@ export const hasStackedTimeSeriesData = (series = [], minPoints = 2) => {
  * @param {string} formId - The ID of the form to trigger change on
  */
 export const triggerChangeOnForm = (formId) => {
-  const form = document.getElementById(formId);
+  const form = getElementById(document, formId);
   if (form) {
     // Trigger change event using htmx
     htmx.trigger(form, "change");
@@ -509,7 +509,7 @@ export const toCategorySeries = (pairs = []) => {
  * @returns {echarts.ECharts | null} Chart instance or null when unavailable.
  */
 export const initChart = (elementId, option) => {
-  const el = document.getElementById(elementId);
+  const el = getElementById(document, elementId);
   if (!el || typeof echarts === "undefined") {
     return null;
   }

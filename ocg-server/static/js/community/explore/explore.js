@@ -1,4 +1,5 @@
 import { handleHtmxResponse } from "/static/js/common/alerts.js";
+import { getElementById } from "/static/js/common/dom.js";
 import { ocgFetch } from "/static/js/common/fetch.js";
 
 const RESULTS_ID = "results";
@@ -11,7 +12,7 @@ const ENTITY_SECTION_ID = "entity-section";
  * @param {string} content - The text content to insert into the results container
  */
 export const updateResults = (content) => {
-  const results = document.getElementById(RESULTS_ID);
+  const results = getElementById(document, RESULTS_ID);
   if (results) {
     results.textContent = content;
   }

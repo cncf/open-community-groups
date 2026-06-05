@@ -33,23 +33,26 @@ describe("community home", () => {
     const assignedUrls = [];
     const executeLoadExplorePage = new Function(
       "document",
+      "getElementById",
       `const loadExplorePage = ${loadExplorePage.toString()}; return loadExplorePage();`,
     );
 
     // Search text redirects to the explore page.
-    executeLoadExplorePage({
-      getElementById(id) {
+    executeLoadExplorePage(
+      {
+        location: {
+          assign(url) {
+            assignedUrls.push(url);
+          },
+        },
+      },
+      (_root, id) => {
         if (id === "ts_query") {
           return { value: "cloud native" };
         }
         return null;
       },
-      location: {
-        assign(url) {
-          assignedUrls.push(url);
-        },
-      },
-    });
+    );
 
     // Submitted search text is included in the explore redirect.
     expect(assignedUrls).to.deep.equal(["/explore?ts_query=cloud+native"]);
@@ -60,23 +63,26 @@ describe("community home", () => {
     const assignedUrls = [];
     const executeLoadExplorePage = new Function(
       "document",
+      "getElementById",
       `const loadExplorePage = ${loadExplorePage.toString()}; return loadExplorePage();`,
     );
 
     // Search text with query delimiters redirects to the explore page.
-    executeLoadExplorePage({
-      getElementById(id) {
+    executeLoadExplorePage(
+      {
+        location: {
+          assign(url) {
+            assignedUrls.push(url);
+          },
+        },
+      },
+      (_root, id) => {
         if (id === "ts_query") {
           return { value: "cloud & native?" };
         }
         return null;
       },
-      location: {
-        assign(url) {
-          assignedUrls.push(url);
-        },
-      },
-    });
+    );
 
     // Submitted search text is escaped in the explore redirect.
     expect(assignedUrls).to.deep.equal(["/explore?ts_query=cloud+%26+native%3F"]);
