@@ -5,6 +5,7 @@ import {
   showSuccessAlert,
 } from "/static/js/common/alerts.js";
 import { isSuccessfulXHRStatus } from "/static/js/common/common.js";
+import { initializeOnReadyAndHtmxLoad } from "/static/js/common/dom.js";
 import { ocgFetch } from "/static/js/common/fetch.js";
 import { collectQuestionAnswers as collectQuestionAnswersFromForm } from "/static/js/common/question-answers.js";
 
@@ -1233,7 +1234,7 @@ const handleAttendanceKeydown = (event) => {
 
 /**
  * Initializes attendance handlers for the current page.
- * @param {Document|HTMLElement} root - Root node to search
+ * @param {Document|Element} root - Root node to search
  */
 const initializeAttendance = (root = document) => {
   getAttendanceContainers(root).forEach((container) => {
@@ -1263,16 +1264,4 @@ const initializeAttendance = (root = document) => {
   reconcilePaymentReturn();
 };
 
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", () => initializeAttendance(document));
-} else {
-  initializeAttendance(document);
-}
-
-if (window.htmx && typeof htmx.onLoad === "function") {
-  htmx.onLoad((element) => {
-    if (element) {
-      initializeAttendance(element);
-    }
-  });
-}
+initializeOnReadyAndHtmxLoad(initializeAttendance);

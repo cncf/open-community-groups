@@ -2,7 +2,7 @@ import { html, unsafeHTML } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { handleHtmxResponse } from "/static/js/common/alerts.js";
 import { computeUserInitials, lockBodyScroll, unlockBodyScroll } from "/static/js/common/common.js";
-import { getElementById } from "/static/js/common/dom.js";
+import { getElementById, initializeOnReadyAndHtmxLoad } from "/static/js/common/dom.js";
 import { parseJsonAttribute } from "/static/js/common/utils.js";
 import "/static/js/common/cfs-label-selector.js";
 import "/static/js/common/logo-image.js";
@@ -196,7 +196,7 @@ export class ReviewSubmissionModal extends LitWrapper {
    * Synchronizes labels from the submissions filter component.
    */
   syncLabelsFromFilter() {
-    const labelsFilter = document.getElementById(SUBMISSIONS_FILTER_ID);
+    const labelsFilter = getElementById(document, SUBMISSIONS_FILTER_ID);
     if (!labelsFilter) {
       return;
     }
@@ -1161,17 +1161,13 @@ export const initializeSubmissionFilters = (root = document) => {
   labelFilter?.addEventListener("change", submitFilters);
 };
 
-const initializeCfsSubmissions = () => {
+const getReviewSubmissionModal = () => getElementById(document, MODAL_ELEMENT_ID);
+
+const bindCfsSubmissionGlobalHandlers = () => {
   if (document.documentElement.dataset[DATA_KEY] === "true") {
     return;
   }
   document.documentElement.dataset[DATA_KEY] = "true";
-  initializeSubmissionFilters(document);
-
-  document.addEventListener("htmx:load", (event) => {
-    const root = event.target instanceof Element ? event.target : document;
-    initializeSubmissionFilters(root);
-  });
 
   document.addEventListener("htmx:afterSwap", (event) => {
     const target = event?.detail?.target || event?.detail?.elt;
@@ -1181,7 +1177,7 @@ const initializeCfsSubmissions = () => {
 
     initializeSubmissionFilters(target);
 
-    const modal = document.getElementById(MODAL_ELEMENT_ID);
+    const modal = getReviewSubmissionModal();
     if (!modal || typeof modal.syncLabelsFromFilter !== "function") {
       return;
     }
@@ -1201,7 +1197,7 @@ const initializeCfsSubmissions = () => {
     if (!payload) {
       return;
     }
-    const modal = document.getElementById(MODAL_ELEMENT_ID);
+    const modal = getReviewSubmissionModal();
     if (!modal || typeof modal.open !== "function") {
       return;
     }
@@ -1221,4 +1217,9 @@ const initializeCfsSubmissions = () => {
   });
 };
 
-initializeCfsSubmissions();
+const initializeCfsSubmissions = (root = document) => {
+  bindCfsSubmissionGlobalHandlers();
+  initializeSubmissionFilters(root);
+};
+
+initializeOnReadyAndHtmxLoad(initializeCfsSubmissions);

@@ -1,12 +1,13 @@
 import { showConfirmAlert, showInfoAlert, handleHtmxResponse } from "/static/js/common/alerts.js";
 import { isSuccessfulXHRStatus } from "/static/js/common/common.js";
+import { initializeOnReadyAndHtmxLoad } from "/static/js/common/dom.js";
 
 const MEMBERSHIP_CONTAINER_SELECTOR = "#membership-container";
 const GROUP_ACTIONS_MENU_SELECTOR = "[data-group-actions-menu]";
 
 /**
  * Returns all membership containers within a root node.
- * @param {Document|HTMLElement} root - Root node to search
+ * @param {Document|Element} root - Root node to search
  * @returns {HTMLElement[]} Membership containers
  */
 const getMembershipContainers = (root) => {
@@ -262,7 +263,7 @@ const handleMembershipClick = (event) => {
 
 /**
  * Initializes membership handlers for the current page.
- * @param {Document|HTMLElement} root - Root node to search
+ * @param {Document|Element} root - Root node to search
  */
 const initializeMembership = (root = document) => {
   getMembershipContainers(root).forEach(initializeMembershipContainer);
@@ -277,16 +278,4 @@ const initializeMembership = (root = document) => {
   document.addEventListener("click", handleMembershipClick);
 };
 
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", () => initializeMembership(document));
-} else {
-  initializeMembership(document);
-}
-
-if (window.htmx && typeof htmx.onLoad === "function") {
-  htmx.onLoad((element) => {
-    if (element) {
-      initializeMembership(element);
-    }
-  });
-}
+initializeOnReadyAndHtmxLoad(initializeMembership);
