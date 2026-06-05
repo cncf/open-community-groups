@@ -1,5 +1,9 @@
 import { confirmAction, showErrorAlert } from "/static/js/common/alerts.js";
-import { getElementById, initializeOnReadyAndHtmxLoad } from "/static/js/common/dom.js";
+import {
+  getElementById,
+  initializeOnReadyAndHtmxLoad,
+  markDatasetReady,
+} from "/static/js/common/dom.js";
 import { ocgFetch } from "/static/js/common/fetch.js";
 
 /**
@@ -73,11 +77,10 @@ const initializeSponsorFeaturedToggles = (root = document) => {
       return;
     }
 
-    if (checkbox.dataset.featuredToggleReady === "true" || checkbox.disabled) {
+    if (checkbox.disabled || !markDatasetReady(checkbox, "featuredToggleReady")) {
       return;
     }
 
-    checkbox.dataset.featuredToggleReady = "true";
     checkbox.dataset.currentChecked = String(checkbox.checked);
     checkbox.addEventListener("change", async () => {
       const previousChecked = checkbox.dataset.currentChecked === "true";

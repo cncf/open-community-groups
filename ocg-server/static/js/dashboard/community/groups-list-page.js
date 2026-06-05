@@ -1,6 +1,10 @@
 import { searchOnEnter } from "/static/js/community/explore/filters.js";
 import { selectDashboardAndSwapBody } from "/static/js/common/dashboard-selection.js";
-import { getElementById, initializeOnReadyAndHtmxLoad } from "/static/js/common/dom.js";
+import {
+  getElementById,
+  initializeOnReadyAndHtmxLoad,
+  markDatasetReady,
+} from "/static/js/common/dom.js";
 
 const GROUPS_SEARCH_FORM_ID = "groups-search-form";
 const GROUPS_SEARCH_INPUT_ID = "search_groups";
@@ -17,11 +21,10 @@ const GROUP_ACTION_BOUND_KEY = "groupActionBound";
  */
 const initializeGroupsSearch = (root = document) => {
   const searchInput = getElementById(root, GROUPS_SEARCH_INPUT_ID);
-  if (!searchInput || searchInput.dataset[GROUP_SEARCH_BOUND_KEY] === "true") {
+  if (!markDatasetReady(searchInput, GROUP_SEARCH_BOUND_KEY)) {
     return;
   }
 
-  searchInput.dataset[GROUP_SEARCH_BOUND_KEY] = "true";
   searchInput.addEventListener("keydown", (event) => {
     searchOnEnter(event, GROUPS_SEARCH_FORM_ID);
   });
@@ -34,13 +37,12 @@ const initializeGroupsSearch = (root = document) => {
  */
 const initializeGroupSelection = (root = document) => {
   const groupsList = getElementById(root, GROUPS_LIST_ID);
-  if (!groupsList || groupsList.dataset[GROUP_SELECTION_BOUND_KEY] === "true") {
+  if (!markDatasetReady(groupsList, GROUP_SELECTION_BOUND_KEY)) {
     return;
   }
 
   let isSelectingGroup = false;
 
-  groupsList.dataset[GROUP_SELECTION_BOUND_KEY] = "true";
   groupsList.addEventListener("click", async (event) => {
     const selectGroupButton = event.target.closest("[data-select-group-id]");
     if (!selectGroupButton) {
@@ -77,11 +79,10 @@ const initializeGroupSelection = (root = document) => {
  */
 const initializeGroupActionMenus = (root = document) => {
   root.querySelectorAll?.(GROUP_ACTION_BUTTON_SELECTOR).forEach((button) => {
-    if (button.dataset[GROUP_ACTION_BOUND_KEY] === "true") {
+    if (!markDatasetReady(button, GROUP_ACTION_BOUND_KEY)) {
       return;
     }
 
-    button.dataset[GROUP_ACTION_BOUND_KEY] = "true";
     button.addEventListener("click", () => {
       const groupId = button.dataset.groupId;
       const dropdown = getElementById(root, `dropdown-group-actions-${groupId}`);

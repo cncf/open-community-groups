@@ -1,4 +1,4 @@
-import { initializeOnReady } from "/static/js/common/dom.js";
+import { initializeOnReady, markDatasetReady } from "/static/js/common/dom.js";
 
 const PAGE_VIEW_SELECTOR = "[data-page-view]";
 const PAGE_VIEW_READY_KEY = "pageViewReady";
@@ -98,11 +98,10 @@ export const trackPageView = ({ entityId, entityType }) => {
  */
 export const initializePageViewTracking = (root = document) => {
   root.querySelectorAll(PAGE_VIEW_SELECTOR).forEach((marker) => {
-    if (marker.dataset[PAGE_VIEW_READY_KEY] === "true") {
+    if (!markDatasetReady(marker, PAGE_VIEW_READY_KEY)) {
       return;
     }
 
-    marker.dataset[PAGE_VIEW_READY_KEY] = "true";
     trackPageView({
       entityId: marker.dataset.entityId || "",
       entityType: marker.dataset.entityType || "",

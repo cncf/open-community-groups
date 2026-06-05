@@ -8,7 +8,7 @@ import {
   hasTimeSeriesData,
 } from "/static/js/common/charts.js";
 import { deferUntilHtmxSettled } from "/static/js/dashboard/common.js";
-import { initializeOnReady } from "/static/js/common/dom.js";
+import { initializeOnReady, isDatasetReady, markDatasetReady } from "/static/js/common/dom.js";
 import { registerChartResizeHandler, renderChart } from "/static/js/common/stats.js";
 import { parseJsonText } from "/static/js/common/utils.js";
 
@@ -251,7 +251,7 @@ export const initAnalyticsCharts = async (stats) => {
  */
 export const initializeGroupAnalyticsFromPage = async (root = document) => {
   const marker = root.querySelector(GROUP_ANALYTICS_DATA_SELECTOR);
-  if (!marker || marker.dataset[GROUP_ANALYTICS_READY_KEY] === "true") {
+  if (!marker || isDatasetReady(marker, GROUP_ANALYTICS_READY_KEY)) {
     return;
   }
 
@@ -260,7 +260,7 @@ export const initializeGroupAnalyticsFromPage = async (root = document) => {
     return;
   }
 
-  marker.dataset[GROUP_ANALYTICS_READY_KEY] = "true";
+  markDatasetReady(marker, GROUP_ANALYTICS_READY_KEY);
 
   try {
     await initAnalyticsCharts(stats);

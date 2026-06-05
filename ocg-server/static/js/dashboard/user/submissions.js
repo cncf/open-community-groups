@@ -1,6 +1,10 @@
 import { handleHtmxResponse, showConfirmAlert } from "/static/js/common/alerts.js";
 import { toggleModalVisibility } from "/static/js/common/common.js";
-import { getElementById, initializeOnReadyAndHtmxLoad } from "/static/js/common/dom.js";
+import {
+  getElementById,
+  initializeOnReadyAndHtmxLoad,
+  markDatasetReady,
+} from "/static/js/common/dom.js";
 
 const ACTION_REQUIRED_MODAL_ID = "action-required-modal";
 const ACTION_REQUIRED_MODAL_MESSAGE_ID = "action-required-modal-message";
@@ -22,18 +26,16 @@ const initializeActionRequiredModal = (root = document) => {
     }
   };
 
-  if (modal.dataset.bound !== "true") {
-    modal.dataset.bound = "true";
+  if (markDatasetReady(modal, "bound")) {
     getElementById(root, ACTION_REQUIRED_MODAL_CLOSE_ID)?.addEventListener("click", closeModal);
     getElementById(root, ACTION_REQUIRED_MODAL_CANCEL_ID)?.addEventListener("click", closeModal);
     getElementById(root, ACTION_REQUIRED_MODAL_OVERLAY_ID)?.addEventListener("click", closeModal);
   }
 
   root.querySelectorAll?.(ACTION_REQUIRED_TRIGGER_SELECTOR).forEach((button) => {
-    if (button.dataset.bound === "true") {
+    if (!markDatasetReady(button, "bound")) {
       return;
     }
-    button.dataset.bound = "true";
 
     button.addEventListener("click", () => {
       message.textContent = button.dataset.actionRequiredMessage || "";
@@ -46,10 +48,9 @@ const initializeActionRequiredModal = (root = document) => {
 
 const initializeSubmissionActions = (root = document) => {
   root.querySelectorAll?.('[data-action="withdraw-submission"]').forEach((button) => {
-    if (button.dataset.bound === "true") {
+    if (!markDatasetReady(button, "bound")) {
       return;
     }
-    button.dataset.bound = "true";
     button.addEventListener("click", () => {
       if (!button.id) {
         button.id = `withdraw-submission-${button.dataset.submissionId}`;
@@ -72,10 +73,9 @@ const initializeSubmissionActions = (root = document) => {
   });
 
   root.querySelectorAll?.('[data-action="resubmit-submission"]').forEach((button) => {
-    if (button.dataset.bound === "true") {
+    if (!markDatasetReady(button, "bound")) {
       return;
     }
-    button.dataset.bound = "true";
     button.addEventListener("click", () => {
       if (!button.id) {
         button.id = `resubmit-submission-${button.dataset.submissionId}`;

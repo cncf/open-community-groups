@@ -5,7 +5,11 @@ import {
   showSuccessAlert,
 } from "/static/js/common/alerts.js";
 import { isSuccessfulXHRStatus } from "/static/js/common/common.js";
-import { initializeOnReadyAndHtmxLoad } from "/static/js/common/dom.js";
+import {
+  initializeOnReadyAndHtmxLoad,
+  isDatasetReady,
+  markDatasetReady,
+} from "/static/js/common/dom.js";
 import { ocgFetch } from "/static/js/common/fetch.js";
 import { collectQuestionAnswers as collectQuestionAnswersFromForm } from "/static/js/common/question-answers.js";
 import { parseJsonText } from "/static/js/common/utils.js";
@@ -593,7 +597,7 @@ const parseJsonResponse = (xhr) => {
  */
 const shouldCollectQuestionAnswers = (container) =>
   getAttendanceControl(container, "registration-modal") instanceof HTMLElement &&
-  container.dataset.questionAnswersReady !== "true";
+  !isDatasetReady(container, "questionAnswersReady");
 
 /**
  * Returns true when the primary attendance action will join the waitlist.
@@ -623,7 +627,7 @@ const setQuestionAnswersPayload = (container, answersPayload) => {
       input.value = value;
     }
   });
-  container.dataset.questionAnswersReady = "true";
+  markDatasetReady(container, "questionAnswersReady");
 };
 
 /**
@@ -1237,8 +1241,7 @@ const initializeAttendance = (root = document) => {
   getAttendanceContainers(root).forEach((container) => {
     initializeAttendanceContainer(container);
 
-    if (container.dataset.availabilityReady !== "true") {
-      container.dataset.availabilityReady = "true";
+    if (markDatasetReady(container, "availabilityReady")) {
       if (container.dataset.availabilityUrl) {
         container.dataset.availabilityHydrated = "false";
       }
@@ -1248,8 +1251,7 @@ const initializeAttendance = (root = document) => {
     }
   });
 
-  if (document.documentElement.dataset.attendanceListenersReady !== "true") {
-    document.documentElement.dataset.attendanceListenersReady = "true";
+  if (markDatasetReady(document.documentElement, "attendanceListenersReady")) {
     document.addEventListener("htmx:configRequest", handleConfigRequest);
     document.addEventListener("htmx:beforeRequest", handleBeforeRequest);
     document.addEventListener("htmx:afterRequest", handleAfterRequest);

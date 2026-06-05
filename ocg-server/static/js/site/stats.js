@@ -14,7 +14,7 @@ import {
   registerChartResizeHandler,
   renderChart,
 } from "/static/js/common/stats.js";
-import { initializeOnReady } from "/static/js/common/dom.js";
+import { initializeOnReady, isDatasetReady, markDatasetReady } from "/static/js/common/dom.js";
 import { parseJsonText } from "/static/js/common/utils.js";
 
 const SITE_STATS_DATA_SELECTOR = "[data-site-stats]";
@@ -143,7 +143,7 @@ export const initSiteStatsCharts = async (stats) => {
  */
 export const initializeSiteStatsFromPage = async (root = document) => {
   const marker = root.querySelector(SITE_STATS_DATA_SELECTOR);
-  if (!marker || marker.dataset[SITE_STATS_READY_KEY] === "true") {
+  if (!marker || isDatasetReady(marker, SITE_STATS_READY_KEY)) {
     return;
   }
 
@@ -152,7 +152,7 @@ export const initializeSiteStatsFromPage = async (root = document) => {
     return;
   }
 
-  marker.dataset[SITE_STATS_READY_KEY] = "true";
+  markDatasetReady(marker, SITE_STATS_READY_KEY);
 
   try {
     await initSiteStatsCharts(stats);

@@ -1,4 +1,4 @@
-import { getElementById } from "/static/js/common/dom.js";
+import { getElementById, markDatasetReady } from "/static/js/common/dom.js";
 
 const OPTIONAL_NOTIFICATIONS_INPUT_ID = "optional_notifications_enabled";
 const OPTIONAL_NOTIFICATIONS_TOGGLE_ID = "toggle_optional_notifications_enabled";
@@ -30,11 +30,10 @@ const handleAccountSettingsChange = (event) => {
  * Initializes user account settings controls.
  */
 export const initializeUserAccountSettings = () => {
-  if (document.documentElement.dataset[ACCOUNT_SETTINGS_READY_KEY] === "true") {
+  if (!markDatasetReady(document.documentElement, ACCOUNT_SETTINGS_READY_KEY)) {
     return;
   }
 
-  document.documentElement.dataset[ACCOUNT_SETTINGS_READY_KEY] = "true";
   document.addEventListener("change", handleAccountSettingsChange);
 };
 

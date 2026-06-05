@@ -1,5 +1,9 @@
 import { handleHtmxResponse, showConfirmAlert } from "/static/js/common/alerts.js";
-import { getElementById, initializeOnReadyAndHtmxLoad } from "/static/js/common/dom.js";
+import {
+  getElementById,
+  initializeOnReadyAndHtmxLoad,
+  markDatasetReady,
+} from "/static/js/common/dom.js";
 import { parseJsonText } from "/static/js/common/utils.js";
 import "/static/js/dashboard/user/session-proposal-modal.js";
 
@@ -34,22 +38,18 @@ const initializeSessionProposals = (root = document) => {
     return;
   }
 
-  if (modalComponent.dataset[DATA_KEY] !== "true") {
-    modalComponent.dataset[DATA_KEY] = "true";
-  }
+  markDatasetReady(modalComponent, DATA_KEY);
 
   const openButton = getElementById(root, "open-session-proposal-modal");
-  if (openButton && openButton.dataset.bound !== "true") {
-    openButton.dataset.bound = "true";
+  if (markDatasetReady(openButton, "bound")) {
     openButton.addEventListener("click", () => modalComponent.openCreate());
   }
 
   root.querySelectorAll?.('[data-action="edit-session-proposal"]').forEach((button) => {
-    if (button.dataset.bound === "true") {
+    if (!markDatasetReady(button, "bound")) {
       return;
     }
 
-    button.dataset.bound = "true";
     button.addEventListener("click", () => {
       const sessionProposal = parseSessionProposal(button.dataset.sessionProposal);
       if (!sessionProposal) {
@@ -61,11 +61,10 @@ const initializeSessionProposals = (root = document) => {
   });
 
   root.querySelectorAll?.('[data-action="view-session-proposal"]').forEach((button) => {
-    if (button.dataset.bound === "true") {
+    if (!markDatasetReady(button, "bound")) {
       return;
     }
 
-    button.dataset.bound = "true";
     button.addEventListener("click", () => {
       const sessionProposal = parseSessionProposal(button.dataset.sessionProposal);
       if (!sessionProposal) {
@@ -83,11 +82,10 @@ const initializeSessionProposals = (root = document) => {
   });
 
   root.querySelectorAll?.('[data-action="view-pending-session-proposal"]').forEach((button) => {
-    if (button.dataset.bound === "true") {
+    if (!markDatasetReady(button, "bound")) {
       return;
     }
 
-    button.dataset.bound = "true";
     button.addEventListener("click", () => {
       const sessionProposal = parseSessionProposal(button.dataset.sessionProposal);
       if (!sessionProposal) {
@@ -105,11 +103,10 @@ const initializeSessionProposals = (root = document) => {
   });
 
   root.querySelectorAll?.('[data-action="delete-session-proposal"]').forEach((button) => {
-    if (button.dataset.bound === "true") {
+    if (!markDatasetReady(button, "bound")) {
       return;
     }
 
-    button.dataset.bound = "true";
     button.addEventListener("click", () => {
       if (button.disabled) {
         return;
@@ -131,11 +128,10 @@ const initializeSessionProposals = (root = document) => {
   });
 
   root.querySelectorAll?.('[data-action="accept-co-speaker-invitation"]').forEach((button) => {
-    if (button.dataset.bound === "true") {
+    if (!markDatasetReady(button, "bound")) {
       return;
     }
 
-    button.dataset.bound = "true";
     button.addEventListener("htmx:afterRequest", (event) => {
       handleHtmxResponse({
         xhr: event.detail?.xhr,
@@ -146,11 +142,10 @@ const initializeSessionProposals = (root = document) => {
   });
 
   root.querySelectorAll?.('[data-action="reject-co-speaker-invitation"]').forEach((button) => {
-    if (button.dataset.bound === "true") {
+    if (!markDatasetReady(button, "bound")) {
       return;
     }
 
-    button.dataset.bound = "true";
     button.addEventListener("click", () => {
       if (button.disabled) {
         return;

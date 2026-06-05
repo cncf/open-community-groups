@@ -1,5 +1,5 @@
 import { scrollToDashboardTop } from "/static/js/common/common.js";
-import { initializeOnReady } from "/static/js/common/dom.js";
+import { initializeOnReady, markDatasetReady } from "/static/js/common/dom.js";
 
 const PAGE_ALERT_SELECTOR = "[data-page-alert]";
 const PAGE_ALERT_READY_KEY = "pageAlertReady";
@@ -49,11 +49,10 @@ export const showSuccessAlert = (message) => {
  */
 export const initializePageAlerts = (root = document) => {
   root.querySelectorAll(PAGE_ALERT_SELECTOR).forEach((alertMarker) => {
-    if (alertMarker.dataset[PAGE_ALERT_READY_KEY] === "true") {
+    if (!markDatasetReady(alertMarker, PAGE_ALERT_READY_KEY)) {
       return;
     }
 
-    alertMarker.dataset[PAGE_ALERT_READY_KEY] = "true";
     const message = alertMarker.dataset.alertMessage || "";
     if (alertMarker.dataset.alertLevel === "success") {
       showSuccessAlert(message);

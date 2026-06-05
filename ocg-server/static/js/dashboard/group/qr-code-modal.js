@@ -1,6 +1,6 @@
 import { toggleModalVisibility } from "/static/js/common/common.js";
 import { showErrorAlert } from "/static/js/common/alerts.js";
-import { getElementById } from "/static/js/common/dom.js";
+import { getElementById, markDatasetReady } from "/static/js/common/dom.js";
 import { setLinkContent } from "/static/js/common/url-utils.js";
 import { printQrCode } from "/static/js/dashboard/group/qr-code-print.js";
 
@@ -100,11 +100,9 @@ const updateModalContent = (modal, trigger, elements, printButton) => {
  */
 export const initializeQrCodeModal = (root = document) => {
   const modal = getElementById(root, MODAL_ID);
-  if (!modal || modal.dataset[DATASET_KEY] === "true") {
+  if (!markDatasetReady(modal, DATASET_KEY)) {
     return;
   }
-
-  modal.dataset[DATASET_KEY] = "true";
 
   const elements = {
     image: getElementById(root, IMAGE_ID),

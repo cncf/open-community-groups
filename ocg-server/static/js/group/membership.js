@@ -1,6 +1,10 @@
 import { showConfirmAlert, showInfoAlert, handleHtmxResponse } from "/static/js/common/alerts.js";
 import { isSuccessfulXHRStatus } from "/static/js/common/common.js";
-import { getElementById, initializeOnReadyAndHtmxLoad } from "/static/js/common/dom.js";
+import {
+  getElementById,
+  initializeOnReadyAndHtmxLoad,
+  markDatasetReady,
+} from "/static/js/common/dom.js";
 import { parseJsonText } from "/static/js/common/utils.js";
 
 const MEMBERSHIP_CONTAINER_SELECTOR = "#membership-container";
@@ -33,11 +37,7 @@ const getMembershipContainers = (root) => {
  * @param {HTMLElement} container - Membership container element
  */
 const initializeMembershipContainer = (container) => {
-  if (!container || container.dataset.membershipReady === "true") {
-    return;
-  }
-
-  container.dataset.membershipReady = "true";
+  markDatasetReady(container, "membershipReady");
 };
 
 /**
@@ -269,11 +269,10 @@ const handleMembershipClick = (event) => {
 const initializeMembership = (root = document) => {
   getMembershipContainers(root).forEach(initializeMembershipContainer);
 
-  if (document.documentElement.dataset.membershipListenersReady === "true") {
+  if (!markDatasetReady(document.documentElement, "membershipListenersReady")) {
     return;
   }
 
-  document.documentElement.dataset.membershipListenersReady = "true";
   document.addEventListener("htmx:beforeRequest", handleBeforeRequest);
   document.addEventListener("htmx:afterRequest", handleAfterRequest);
   document.addEventListener("click", handleMembershipClick);

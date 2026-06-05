@@ -7,7 +7,11 @@ import {
   isSuccessfulXHRStatus,
   toggleModalVisibility,
 } from "/static/js/common/common.js";
-import { getElementById, initializeOnReadyAndHtmxLoad } from "/static/js/common/dom.js";
+import {
+  getElementById,
+  initializeOnReadyAndHtmxLoad,
+  markDatasetReady,
+} from "/static/js/common/dom.js";
 import { ocgFetch } from "/static/js/common/fetch.js";
 
 const modalId = "attendee-notification-modal";
@@ -495,11 +499,9 @@ const initializeAttendeeNotification = (root) => {
  * @param {Document|Element} [root=document] Query root.
  */
 const initializeAttendeeActionsMenu = (root = document) => {
-  if (!(root instanceof Element) || root.dataset.attendeeActionsMenuReady === "true") {
+  if (!(root instanceof Element) || !markDatasetReady(root, "attendeeActionsMenuReady")) {
     return;
   }
-
-  root.dataset.attendeeActionsMenuReady = "true";
 
   root.addEventListener("click", (event) => {
     const target = event.target instanceof Element ? event.target : null;
@@ -572,11 +574,10 @@ const initializeAttendeeActionsMenu = (root = document) => {
  */
 const initCheckInToggles = (root = document) => {
   root.querySelectorAll(".check-in-toggle").forEach((checkbox) => {
-    if (checkbox.dataset.checkInReady === "true") {
+    if (!markDatasetReady(checkbox, "checkInReady")) {
       return;
     }
 
-    checkbox.dataset.checkInReady = "true";
     checkbox.addEventListener("change", async () => {
       const url = checkbox.dataset.url;
       const label = checkbox.closest("label");
@@ -615,11 +616,9 @@ const initCheckInToggles = (root = document) => {
  * @param {Document|Element} [root=document] Query root.
  */
 const initializeRefundReviewModal = (root = document) => {
-  if (!(root instanceof Element) || root.dataset.attendeeRefundReviewReady === "true") {
+  if (!(root instanceof Element) || !markDatasetReady(root, "attendeeRefundReviewReady")) {
     return;
   }
-
-  root.dataset.attendeeRefundReviewReady = "true";
 
   root.addEventListener("click", (event) => {
     const target = event.target instanceof Element ? event.target : null;
@@ -667,11 +666,9 @@ const initializeRefundReviewModal = (root = document) => {
  * @param {Document|Element} [root=document] Query root.
  */
 const initializeAnswersModal = (root = document) => {
-  if (!(root instanceof Element) || root.dataset.attendeeAnswersReady === "true") {
+  if (!(root instanceof Element) || !markDatasetReady(root, "attendeeAnswersReady")) {
     return;
   }
-
-  root.dataset.attendeeAnswersReady = "true";
 
   root.addEventListener("click", (event) => {
     const target = event.target instanceof Element ? event.target : null;
@@ -705,11 +702,9 @@ const initializeAnswersModal = (root = document) => {
  * @param {Document|Element} [root=document] Query root.
  */
 const initializeInvitationModal = (root = document) => {
-  if (!(root instanceof Element) || root.dataset.attendeeInvitationReady === "true") {
+  if (!(root instanceof Element) || !markDatasetReady(root, "attendeeInvitationReady")) {
     return;
   }
-
-  root.dataset.attendeeInvitationReady = "true";
 
   root.addEventListener("click", (event) => {
     const target = event.target instanceof Element ? event.target : null;

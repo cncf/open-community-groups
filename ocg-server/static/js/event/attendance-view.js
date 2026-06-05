@@ -1,4 +1,5 @@
 import { toggleModalVisibility } from "/static/js/common/common.js";
+import { isDatasetReady, markDatasetReady } from "/static/js/common/dom.js";
 
 import {
   getAttendanceControl,
@@ -747,12 +748,10 @@ export const showCheckoutLoadingState = (container) => {
  * @param {HTMLElement} container - Attendance container element
  */
 const initializeTicketModalControls = (container) => {
-  if (container.dataset.ticketModalReady === "true") {
+  if (!markDatasetReady(container, "ticketModalReady")) {
     syncTicketModalState(container);
     return;
   }
-
-  container.dataset.ticketModalReady = "true";
 
   container.querySelectorAll('[data-attendance-role="ticket-type-option"]').forEach((ticketTypeOption) => {
     if (ticketTypeOption instanceof HTMLInputElement) {
@@ -876,7 +875,7 @@ export const restorePrimaryRequestControl = (container, role) => {
  * @param {HTMLElement} container - Attendance container element
  */
 export const initializeAttendanceContainer = (container) => {
-  if (!container || container.dataset.attendanceReady === "true") {
+  if (!container || isDatasetReady(container, "attendanceReady")) {
     return;
   }
 
@@ -897,6 +896,5 @@ export const initializeAttendanceContainer = (container) => {
     visible: false,
   });
   initializeTicketModalControls(container);
-
-  container.dataset.attendanceReady = "true";
+  markDatasetReady(container, "attendanceReady");
 };

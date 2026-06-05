@@ -18,6 +18,29 @@ export const getElementById = (root, id) => {
 };
 
 /**
+ * Checks whether an element has already been marked ready for a behavior.
+ * @param {Element|null|undefined} element Element with a dataset.
+ * @param {string} key Dataset key.
+ * @returns {boolean} True when the ready flag is set.
+ */
+export const isDatasetReady = (element, key) => element?.dataset?.[key] === "true";
+
+/**
+ * Marks an element ready for a behavior when it has not been marked yet.
+ * @param {Element|null|undefined} element Element with a dataset.
+ * @param {string} key Dataset key.
+ * @returns {boolean} True when the element was newly marked.
+ */
+export const markDatasetReady = (element, key) => {
+  if (!element || isDatasetReady(element, key)) {
+    return false;
+  }
+
+  element.dataset[key] = "true";
+  return true;
+};
+
+/**
  * Initializes current content when the document is ready.
  * @param {() => void} callback Initialization callback.
  * @returns {void}

@@ -1,5 +1,5 @@
 import { toggleModalVisibility } from "/static/js/common/common.js";
-import { getElementById } from "/static/js/common/dom.js";
+import { getElementById, markDatasetReady } from "/static/js/common/dom.js";
 
 const ROOT_ID = "cfs-modal-root";
 const MODAL_ID = "cfs-modal";
@@ -21,11 +21,10 @@ const initializeSubmitControls = (modal) => {
   };
 
   syncSubmitState();
-  if (select.dataset[SELECT_DATA_KEY] === "true") {
+  if (!markDatasetReady(select, SELECT_DATA_KEY)) {
     return;
   }
 
-  select.dataset[SELECT_DATA_KEY] = "true";
   select.addEventListener("change", syncSubmitState);
 };
 
@@ -35,9 +34,7 @@ const initializeCfsModal = () => {
     return;
   }
 
-  if (modal.dataset[DATA_KEY] !== "true") {
-    modal.dataset[DATA_KEY] = "true";
-
+  if (markDatasetReady(modal, DATA_KEY)) {
     const closeButton = getElementById(modal, "close-cfs-modal");
     const overlay = getElementById(modal, "overlay-cfs-modal");
     const toggleModal = () => toggleModalVisibility(MODAL_ID);
@@ -66,7 +63,6 @@ const handleModalSwap = (event) => {
   }
 };
 
-if (document.documentElement.dataset.cfsModalSwapReady !== "true") {
-  document.documentElement.dataset.cfsModalSwapReady = "true";
+if (markDatasetReady(document.documentElement, "cfsModalSwapReady")) {
   document.addEventListener("htmx:afterSwap", handleModalSwap);
 }

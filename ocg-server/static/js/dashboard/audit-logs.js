@@ -1,5 +1,9 @@
 import { toggleModalVisibility } from "/static/js/common/common.js";
-import { getElementById, initializeOnReadyAndHtmxLoad } from "/static/js/common/dom.js";
+import {
+  getElementById,
+  initializeOnReadyAndHtmxLoad,
+  markDatasetReady,
+} from "/static/js/common/dom.js";
 
 const MODAL_ID = "audit-log-filters-modal";
 const OPEN_BUTTON_ID = "open-audit-log-filters-modal";
@@ -171,7 +175,7 @@ const bindAuditLogGlobalHandlers = () => {
 const initializeAuditLogFilters = (root = document) => {
   const modal = getElementById(root, MODAL_ID);
 
-  if (!modal || modal.dataset.bound === "true") {
+  if (!markDatasetReady(modal, "bound")) {
     return;
   }
 
@@ -195,7 +199,6 @@ const initializeAuditLogFilters = (root = document) => {
   };
   const closeModal = () => closeAuditLogFiltersModal();
 
-  modal.dataset.bound = "true";
   openButton?.addEventListener("click", () => toggleModalVisibility(MODAL_ID));
   closeButton?.addEventListener("click", closeModal);
   overlay?.addEventListener("click", closeModal);

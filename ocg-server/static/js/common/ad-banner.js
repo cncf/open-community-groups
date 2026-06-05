@@ -1,4 +1,4 @@
-import { initializeOnReadyAndHtmxLoad } from "/static/js/common/dom.js";
+import { initializeOnReadyAndHtmxLoad, markDatasetReady } from "/static/js/common/dom.js";
 
 const FLOATING_AD_BANNER_SELECTOR = '[data-ad-banner="floating"]';
 const AD_BANNER_CLOSE_SELECTOR = "[data-ad-banner-close]";
@@ -57,11 +57,10 @@ const saveClosedAdBanner = (imageUrl, linkUrl) => {
  * @param {HTMLElement} banner - Floating advertisement banner element.
  */
 const initializeFloatingAdBanner = (banner) => {
-  if (banner.dataset.adBannerInitialized === "true") {
+  if (!markDatasetReady(banner, "adBannerInitialized")) {
     return;
   }
 
-  banner.dataset.adBannerInitialized = "true";
   const imageUrl = (banner.dataset.adBannerImageUrl || "").trim();
   const linkUrl = (banner.dataset.adBannerLinkUrl || "").trim();
   if (isAdBannerClosed(imageUrl, linkUrl)) {

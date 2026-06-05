@@ -1,5 +1,5 @@
 import { handleHtmxResponse } from "/static/js/common/alerts.js";
-import { getElementById } from "/static/js/common/dom.js";
+import { getElementById, markDatasetReady } from "/static/js/common/dom.js";
 
 const CHECK_IN_FORM_ID = "event-check-in-form";
 const SUCCESS_CARD_ID = "check-in-success-card";
@@ -38,11 +38,10 @@ const handleCheckInResponse = (event) => {
  */
 export const initializeEventCheckIn = (root = document) => {
   const form = getElementById(root, CHECK_IN_FORM_ID);
-  if (!form || form.dataset[CHECK_IN_READY_KEY] === "true") {
+  if (!markDatasetReady(form, CHECK_IN_READY_KEY)) {
     return;
   }
 
-  form.dataset[CHECK_IN_READY_KEY] = "true";
   form.addEventListener("htmx:afterRequest", handleCheckInResponse);
 };
 

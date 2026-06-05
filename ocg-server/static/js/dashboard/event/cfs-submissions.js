@@ -2,7 +2,11 @@ import { html, unsafeHTML } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { handleHtmxResponse } from "/static/js/common/alerts.js";
 import { computeUserInitials, lockBodyScroll, unlockBodyScroll } from "/static/js/common/common.js";
-import { getElementById, initializeOnReadyAndHtmxLoad } from "/static/js/common/dom.js";
+import {
+  getElementById,
+  initializeOnReadyAndHtmxLoad,
+  markDatasetReady,
+} from "/static/js/common/dom.js";
 import { parseJsonAttribute } from "/static/js/common/utils.js";
 import "/static/js/common/cfs-label-selector.js";
 import "/static/js/common/logo-image.js";
@@ -1146,7 +1150,7 @@ if (!customElements.get("review-submission-modal")) {
  */
 export const initializeSubmissionFilters = (root = document) => {
   const form = getElementById(root, SUBMISSIONS_FILTERS_FORM_ID);
-  if (!form || form.dataset[SUBMISSIONS_FILTERS_BOUND_KEY] === "true") {
+  if (!markDatasetReady(form, SUBMISSIONS_FILTERS_BOUND_KEY)) {
     return;
   }
 
@@ -1156,7 +1160,6 @@ export const initializeSubmissionFilters = (root = document) => {
     window.requestAnimationFrame(() => form.requestSubmit());
   };
 
-  form.dataset[SUBMISSIONS_FILTERS_BOUND_KEY] = "true";
   sort?.addEventListener("change", submitFilters);
   labelFilter?.addEventListener("change", submitFilters);
 };
@@ -1164,10 +1167,9 @@ export const initializeSubmissionFilters = (root = document) => {
 const getReviewSubmissionModal = () => getElementById(document, MODAL_ELEMENT_ID);
 
 const bindCfsSubmissionGlobalHandlers = () => {
-  if (document.documentElement.dataset[DATA_KEY] === "true") {
+  if (!markDatasetReady(document.documentElement, DATA_KEY)) {
     return;
   }
-  document.documentElement.dataset[DATA_KEY] = "true";
 
   document.addEventListener("htmx:afterSwap", (event) => {
     const target = event?.detail?.target || event?.detail?.elt;

@@ -1,6 +1,6 @@
 import { convertDateTimeLocalToISO } from "/static/js/common/common.js";
 import { handleHtmxResponse, showErrorAlert } from "/static/js/common/alerts.js";
-import { getElementById } from "/static/js/common/dom.js";
+import { getElementById, markDatasetReady } from "/static/js/common/dom.js";
 import {
   clearCfsWindowValidity,
   clearSessionDateBoundsValidity,
@@ -52,12 +52,8 @@ export const resolveEventPageRoot = (root, pageName) => {
  */
 export const initializeEventPageContext = (root, pageName) => {
   const pageRoot = resolveEventPageRoot(root, pageName);
-  if (pageRoot instanceof HTMLElement && pageRoot.dataset.eventPageReady === "true") {
+  if (pageRoot instanceof HTMLElement && !markDatasetReady(pageRoot, "eventPageReady")) {
     return null;
-  }
-
-  if (pageRoot instanceof HTMLElement) {
-    pageRoot.dataset.eventPageReady = "true";
   }
 
   return {

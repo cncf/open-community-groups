@@ -6,7 +6,7 @@ import {
   lockBodyScroll,
   unlockBodyScroll,
 } from "/static/js/common/common.js";
-import { getElementById } from "/static/js/common/dom.js";
+import { getElementById, markDatasetReady } from "/static/js/common/dom.js";
 import { ocgFetch } from "/static/js/common/fetch.js";
 import { parseJsonAttribute } from "/static/js/common/utils.js";
 import "/static/js/common/images-gallery.js";
@@ -43,11 +43,10 @@ export const initializeEventPreview = ({ pageRoot }) => {
   const modalRoot =
     pageRoot?.ownerDocument?.getElementById?.(PREVIEW_MODAL_ROOT_ID) ||
     getElementById(document, PREVIEW_MODAL_ROOT_ID);
-  if (!previewButton || !modalRoot || previewButton.dataset.eventPreviewReady === "true") {
+  if (!modalRoot || !markDatasetReady(previewButton, "eventPreviewReady")) {
     return;
   }
 
-  previewButton.dataset.eventPreviewReady = "true";
   previewButton.addEventListener("click", async () => {
     if (previewButton.disabled) {
       return;

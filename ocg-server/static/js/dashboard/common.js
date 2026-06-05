@@ -25,8 +25,8 @@ export const deferUntilHtmxSettled = (task) => {
   const body = document.body;
   const shouldDefer = Boolean(
     window.htmx &&
-      body &&
-      (body.classList.contains("htmx-swapping") || body.classList.contains("htmx-settling")),
+    body &&
+    (body.classList.contains("htmx-swapping") || body.classList.contains("htmx-settling")),
   );
 
   if (!shouldDefer) {

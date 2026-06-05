@@ -4,8 +4,10 @@ import {
   initializeMatchingRoots,
   initializeOnReady,
   initializeOnReadyAndHtmxLoad,
+  isDatasetReady,
   loadScriptOnce,
   getElementById,
+  markDatasetReady,
 } from "/static/js/common/dom.js";
 import { waitForMicrotask } from "/tests/unit/test-utils/async.js";
 import { resetDom, trackAddedEventListeners } from "/tests/unit/test-utils/dom.js";
@@ -108,6 +110,20 @@ describe("common dom", () => {
 
     // Verify both matching roots were initialized.
     expect(initializedIds).to.deep.equal(["root", "child"]);
+  });
+
+  it("marks dataset readiness once", () => {
+    // Build the element that owns a behavior-ready flag.
+    const element = document.createElement("section");
+
+    // The helper marks the element only the first time.
+    expect(isDatasetReady(element, "behaviorReady")).to.equal(false);
+    expect(markDatasetReady(element, "behaviorReady")).to.equal(true);
+    expect(isDatasetReady(element, "behaviorReady")).to.equal(true);
+    expect(markDatasetReady(element, "behaviorReady")).to.equal(false);
+
+    // Missing elements are treated as not markable.
+    expect(markDatasetReady(null, "behaviorReady")).to.equal(false);
   });
 
   it("resolves immediately when the script is already loaded", async () => {

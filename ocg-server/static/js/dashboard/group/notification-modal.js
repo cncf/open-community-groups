@@ -1,6 +1,6 @@
 import { toggleModalVisibility } from "/static/js/common/common.js";
 import { handleHtmxResponse } from "/static/js/common/alerts.js";
-import { getElementById } from "/static/js/common/dom.js";
+import { getElementById, markDatasetReady } from "/static/js/common/dom.js";
 
 const DEFAULT_ERROR_MESSAGE = "Something went wrong while trying to send the email. Please try again later.";
 
@@ -19,11 +19,9 @@ export const createNotificationModal = ({
 }) => {
   // Locate the modal once and mark it ready so we only bind listeners once.
   const modal = getElementById(root, modalId);
-  if (!modal || modal.dataset[dataKey] === "true") {
+  if (!markDatasetReady(modal, dataKey)) {
     return;
   }
-
-  modal.dataset[dataKey] = "true";
 
   const openButton = openButtonId ? getElementById(root, openButtonId) : null;
   const closeButton = closeButtonId ? getElementById(root, closeButtonId) : null;

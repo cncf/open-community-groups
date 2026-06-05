@@ -12,7 +12,7 @@ import {
   updateDateInput,
   updateSortInputsFromSelector,
 } from "/static/js/community/explore/filters.js";
-import { getElementById } from "/static/js/common/dom.js";
+import { getElementById, isDatasetReady, markDatasetReady } from "/static/js/common/dom.js";
 import { parseJsonText } from "/static/js/common/utils.js";
 
 const EXPLORE_CONTROLS_READY_KEY = "exploreControlsReady";
@@ -61,11 +61,10 @@ const readExplorePayload = (marker) => {
  */
 const bindCalendarButton = (root, id, callback) => {
   const button = getElementById(root, id);
-  if (!button || button.dataset[EXPLORE_WIDGET_READY_KEY] === "true") {
+  if (!markDatasetReady(button, EXPLORE_WIDGET_READY_KEY)) {
     return;
   }
 
-  button.dataset[EXPLORE_WIDGET_READY_KEY] = "true";
   button.addEventListener("click", () => {
     callback();
     button.blur();
@@ -116,10 +115,10 @@ export const syncNoResultsPlaceholders = (root = document) => {
  */
 export const initializeExploreWidgets = async (root = document) => {
   const calendarMarker = root.querySelector(CALENDAR_DATA_SELECTOR);
-  if (calendarMarker && calendarMarker.dataset[EXPLORE_WIDGET_READY_KEY] !== "true") {
+  if (calendarMarker && !isDatasetReady(calendarMarker, EXPLORE_WIDGET_READY_KEY)) {
     const data = readExplorePayload(calendarMarker);
     if (data) {
-      calendarMarker.dataset[EXPLORE_WIDGET_READY_KEY] = "true";
+      markDatasetReady(calendarMarker, EXPLORE_WIDGET_READY_KEY);
       const module = await import("/static/js/community/explore/calendar.js");
       const calendar = new module.Calendar(data);
       bindCalendarControls(root, calendar);
@@ -127,11 +126,11 @@ export const initializeExploreWidgets = async (root = document) => {
   }
 
   const mapMarker = root.querySelector(MAP_DATA_SELECTOR);
-  if (mapMarker && mapMarker.dataset[EXPLORE_WIDGET_READY_KEY] !== "true") {
+  if (mapMarker && !isDatasetReady(mapMarker, EXPLORE_WIDGET_READY_KEY)) {
     const data = readExplorePayload(mapMarker);
     const entity = mapMarker.dataset.entity;
     if (data && entity) {
-      mapMarker.dataset[EXPLORE_WIDGET_READY_KEY] = "true";
+      markDatasetReady(mapMarker, EXPLORE_WIDGET_READY_KEY);
       const module = await import("/static/js/community/explore/map.js");
       new module.Map(entity, data);
     }
@@ -253,11 +252,10 @@ const handleExploreAfterSwap = (event) => {
  * @param {Document} root - Document root used for event binding
  */
 export const initializeExploreControls = (root = document) => {
-  if (root.documentElement.dataset[EXPLORE_CONTROLS_READY_KEY] === "true") {
+  if (!markDatasetReady(root.documentElement, EXPLORE_CONTROLS_READY_KEY)) {
     return;
   }
 
-  root.documentElement.dataset[EXPLORE_CONTROLS_READY_KEY] = "true";
   root.addEventListener("click", handleExploreClick);
   root.addEventListener("keydown", handleExploreKeydown);
   root.addEventListener("change", handleExploreChange);

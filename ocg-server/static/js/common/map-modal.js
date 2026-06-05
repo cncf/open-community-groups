@@ -1,5 +1,5 @@
 import { loadMap, toggleModalVisibility } from "/static/js/common/common.js";
-import { getElementById, initializeOnReady } from "/static/js/common/dom.js";
+import { getElementById, initializeOnReady, isDatasetReady, markDatasetReady } from "/static/js/common/dom.js";
 
 const MAP_MODAL_SELECTOR = "[data-map-modal]";
 const MAP_MODAL_READY_KEY = "mapModalReady";
@@ -36,7 +36,7 @@ const getMapModalRoots = (root) => {
  * @param {HTMLElement} mapContainer - Map preview container
  */
 const initializeMapModal = (mapContainer) => {
-  if (mapContainer.dataset[MAP_MODAL_READY_KEY] === "true") {
+  if (isDatasetReady(mapContainer, MAP_MODAL_READY_KEY)) {
     return;
   }
 
@@ -48,7 +48,7 @@ const initializeMapModal = (mapContainer) => {
     return;
   }
 
-  mapContainer.dataset[MAP_MODAL_READY_KEY] = "true";
+  markDatasetReady(mapContainer, MAP_MODAL_READY_KEY);
   let modalMapLoaded = false;
 
   const ensureModalMap = () => {

@@ -1,4 +1,8 @@
-import { getElementById, initializeOnReadyAndHtmxLoad } from "/static/js/common/dom.js";
+import {
+  getElementById,
+  initializeOnReadyAndHtmxLoad,
+  markDatasetReady,
+} from "/static/js/common/dom.js";
 import { bindBooleanToggle } from "/static/js/dashboard/group/page-form-state.js";
 
 const SETTINGS_FORM_ID = "settings-form";
@@ -13,14 +17,13 @@ const SETTINGS_BOUND_KEY = "communitySettingsBound";
  */
 export const initializeCommunitySettings = (root = document) => {
   const settingsForm = getElementById(root, SETTINGS_FORM_ID);
-  if (!settingsForm || settingsForm.dataset[SETTINGS_BOUND_KEY] === "true") {
+  if (!markDatasetReady(settingsForm, SETTINGS_BOUND_KEY)) {
     return;
   }
 
   const groupTeamRestrictionToggle = getElementById(root, GROUP_TEAM_RESTRICTION_TOGGLE_ID);
   const groupTeamRestrictionInput = getElementById(root, GROUP_TEAM_RESTRICTION_INPUT_ID);
 
-  settingsForm.dataset[SETTINGS_BOUND_KEY] = "true";
   bindBooleanToggle({
     toggle: groupTeamRestrictionToggle,
     hiddenInput: groupTeamRestrictionInput,

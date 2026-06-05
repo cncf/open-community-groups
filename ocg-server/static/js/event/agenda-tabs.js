@@ -1,3 +1,5 @@
+import { markDatasetReady } from "/static/js/common/dom.js";
+
 const DAY_TAB_SELECTOR = "[data-day-tab]";
 const DAY_PANEL_SELECTOR = "[data-day-content]";
 const DAY_TAB_READY_KEY = "dayTabReady";
@@ -31,11 +33,10 @@ export const initializeAgendaTabs = (root = document) => {
   }
 
   dayTabs.forEach((tab) => {
-    if (tab.dataset[DAY_TAB_READY_KEY] === "true") {
+    if (!markDatasetReady(tab, DAY_TAB_READY_KEY)) {
       return;
     }
 
-    tab.dataset[DAY_TAB_READY_KEY] = "true";
     tab.addEventListener("click", () => {
       selectAgendaDay(tab, dayTabs, dayPanels);
     });

@@ -1,6 +1,6 @@
 import { handleHtmxResponse } from "/static/js/common/alerts.js";
 import { isSuccessfulXHRStatus, toggleModalVisibility } from "/static/js/common/common.js";
-import { getElementById } from "/static/js/common/dom.js";
+import { getElementById, markDatasetReady } from "/static/js/common/dom.js";
 import { collectQuestionAnswers, setQuestionAnswersInputValue } from "/static/js/common/question-answers.js";
 
 const DATA_KEY = "userEventQuestionsReady";
@@ -102,11 +102,10 @@ const handleKeydown = (event) => {
 };
 
 const initializeUserEventQuestions = () => {
-  if (document.documentElement.dataset[DATA_KEY] === "true") {
+  if (!markDatasetReady(document.documentElement, DATA_KEY)) {
     return;
   }
 
-  document.documentElement.dataset[DATA_KEY] = "true";
   document.addEventListener("click", handleClick);
   document.addEventListener("submit", handleSubmit, true);
   document.addEventListener("htmx:afterRequest", handleAfterRequest);

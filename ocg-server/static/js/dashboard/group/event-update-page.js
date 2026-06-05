@@ -3,6 +3,7 @@ import {
   getElementById,
   initializeMatchingRoots,
   initializeOnReadyAndHtmxLoad,
+  markDatasetReady,
 } from "/static/js/common/dom.js";
 import { parseJsonAttribute } from "/static/js/common/utils.js";
 import { initializeSessionsRemovalWarning } from "/static/js/dashboard/group/event-form-helpers.js";
@@ -102,8 +103,7 @@ export const initializeEventUpdatePage = (root = document) => {
       return leftId.localeCompare(rightId);
     });
 
-  if (pageRoot instanceof HTMLElement && pageRoot.dataset.approvedSubmissionsSyncBound !== "true") {
-    pageRoot.dataset.approvedSubmissionsSyncBound = "true";
+  if (pageRoot instanceof HTMLElement && markDatasetReady(pageRoot, "approvedSubmissionsSyncBound")) {
     pageRoot.addEventListener(approvedSubmissionsEvent, (event) => {
       const sessionsSection = queryOne("sessions-section");
       if (!sessionsSection) {

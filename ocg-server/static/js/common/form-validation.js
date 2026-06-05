@@ -9,7 +9,11 @@ import {
   isDashboardPath,
   isElementInView,
 } from "/static/js/common/common.js";
-import { getElementById, initializeOnReadyAndHtmxLoad } from "/static/js/common/dom.js";
+import {
+  getElementById,
+  initializeOnReadyAndHtmxLoad,
+  markDatasetReady,
+} from "/static/js/common/dom.js";
 import { trimmedNonEmpty, passwordsMatch } from "/static/js/common/validators.js";
 
 // -----------------------------------------------------------------------------
@@ -714,8 +718,7 @@ const validateIncludedForms = (elt) => {
  * @param {HTMLFormElement} form - The form element
  */
 const wireForm = (form) => {
-  if (form.dataset.trimmedReady === "true") return;
-  form.dataset.trimmedReady = "true";
+  if (!markDatasetReady(form, "trimmedReady")) return;
 
   wirePasswordInputs(form);
   wireRequiredInputs(form);
