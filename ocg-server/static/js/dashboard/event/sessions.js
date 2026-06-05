@@ -19,65 +19,15 @@ import { parseJsonAttribute } from "/static/js/common/utils.js";
 import "/static/js/common/logo-image.js";
 import "/static/js/common/speakers-selector.js";
 import "/static/js/common/online-event-details.js";
+import {
+  combineDateAndTime,
+  extractDatePart,
+  extractTimePart,
+  formatDayHeader,
+  formatTimeDisplay,
+} from "/static/js/dashboard/event/sessions-datetime.js";
 import { normalizeSpeakers } from "/static/js/dashboard/event/speaker-utils.js";
 import { DEFAULT_MEETING_PROVIDER } from "/static/js/dashboard/group/meeting-validations.js";
-
-/**
- * Extracts date part from datetime-local string.
- * @param {string} datetimeLocal - Datetime string (e.g., "2025-01-15T10:00")
- * @returns {string} Date part (e.g., "2025-01-15")
- */
-const extractDatePart = (datetimeLocal) => {
-  if (!datetimeLocal) return "";
-  return datetimeLocal.slice(0, 10);
-};
-
-/**
- * Extracts time part from datetime-local string.
- * @param {string} datetimeLocal - Datetime string (e.g., "2025-01-15T10:00")
- * @returns {string} Time part (e.g., "10:00")
- */
-const extractTimePart = (datetimeLocal) => {
-  if (!datetimeLocal || datetimeLocal.length < 16) return "";
-  return datetimeLocal.slice(11, 16);
-};
-
-/**
- * Combines date and time into datetime-local format.
- * @param {string} date - Date part (e.g., "2025-01-15")
- * @param {string} time - Time part (e.g., "10:00")
- * @returns {string} Combined datetime (e.g., "2025-01-15T10:00")
- */
-const combineDateAndTime = (date, time) => {
-  if (!date || !time) return "";
-  return `${date}T${time}`;
-};
-
-/**
- * Formats a time string for display in 24-hour format.
- * @param {string} datetimeLocal - Datetime string
- * @returns {string} Formatted time (e.g., "10:00")
- */
-const formatTimeDisplay = (datetimeLocal) => {
-  if (!datetimeLocal) return "";
-  return extractTimePart(datetimeLocal);
-};
-
-/**
- * Formats a date string for display as a day header.
- * @param {string} dateStr - Date string (e.g., "2025-01-15")
- * @returns {string} Formatted date (e.g., "Wednesday, December 3, 2025")
- */
-const formatDayHeader = (dateStr) => {
-  if (!dateStr) return "";
-  const date = new Date(dateStr + "T12:00:00");
-  return date.toLocaleDateString(undefined, {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-};
 
 /**
  * Component for managing session entries in events.
