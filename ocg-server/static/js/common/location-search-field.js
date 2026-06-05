@@ -1,8 +1,32 @@
 import { html, repeat } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
-import { loadMap } from "/static/js/common/common.js";
-import { getElementById, isElementHidden } from "/static/js/common/dom.js";
-import { isEscapeEvent } from "/static/js/common/keyboard.js";
+import { isElementHidden } from "/static/js/common/dom.js";
+import {
+  getCoordinateFieldConfig,
+  getEmptyLocationValues,
+  getExternalLocationFieldUpdates,
+  getExternalLocationFieldIds,
+  getInitialLocationValues,
+  getInternalLocationValueUpdates,
+  hasInternalLocationFields,
+} from "/static/js/common/location-field-config.js";
+import { searchNominatimLocations } from "/static/js/common/location-search-api.js";
+import { getLocationSearchKeyAction } from "/static/js/common/location-search-keyboard.js";
+import {
+  getClearedLocationSearchState,
+  getHiddenLocationSearchState,
+  getStartedLocationSearchState,
+} from "/static/js/common/location-search-state.js";
+import {
+  getLocationInputId,
+  getLocationLegendText,
+  getLocationResultText,
+  getLocationDisabledInputClasses,
+  isLocationSearchButtonDisabled,
+  isVenueLocationContext,
+  shouldRenderLocationDropdown,
+} from "/static/js/common/location-search-display.js";
+import { LocationMapPreview } from "/static/js/common/location-map-preview.js";
 import {
   DEFAULT_MAP_ZOOM,
   deriveZoomFromFields,
@@ -156,24 +180,42 @@ export class LocationSearchField extends LitWrapper {
     this._mapZoom = DEFAULT_MAP_ZOOM;
     this._mapBoundingBox = null;
     this._shouldFitBounds = false;
-    this._leafletMap = null;
-    this._leafletMarker = null;
-    this._mapPreviewSyncPromise = Promise.resolve();
+    this._mapPreview = new LocationMapPreview(this._mapElementId);
     this._searchError = null;
     this.disabled = false;
   }
 
+  get _leafletMap() {
+    return this._mapPreview.map;
+  }
+
+  set _leafletMap(map) {
+    this._mapPreview.map = map;
+  }
+
+  get _leafletMarker() {
+    return this._mapPreview.marker;
+  }
+
+  set _leafletMarker(marker) {
+    this._mapPreview.marker = marker;
+  }
+
   connectedCallback() {
     super.connectedCallback();
-    this._venueNameValue = this.initialVenueName || "";
-    this._venueAddressValue = this.initialVenueAddress || "";
-    this._venueCityValue = this.initialVenueCity || "";
-    this._venueZipCodeValue = this.initialVenueZipCode || "";
-    this._stateValue = this.initialState || "";
-    this._countryNameValue = this.initialCountryName || "";
-    this._countryCodeValue = this.initialCountryCode || "";
-    this._latitudeValue = this.initialLatitude || "";
-    this._longitudeValue = this.initialLongitude || "";
+    this._applyLocationValues(
+      getInitialLocationValues({
+        initialVenueName: this.initialVenueName,
+        initialVenueAddress: this.initialVenueAddress,
+        initialVenueCity: this.initialVenueCity,
+        initialVenueZipCode: this.initialVenueZipCode,
+        initialState: this.initialState,
+        initialCountryName: this.initialCountryName,
+        initialCountryCode: this.initialCountryCode,
+        initialLatitude: this.initialLatitude,
+        initialLongitude: this.initialLongitude,
+      }),
+    );
     this._mapZoom = this._deriveZoomFromFields();
 
     if (this._hasValidCoordinates() && !this._isInsideHiddenContent()) {
@@ -190,14 +232,8 @@ export class LocationSearchField extends LitWrapper {
 
   disconnectedCallback() {
     super.disconnectedCallback();
-    if (this._abortController) {
-      this._abortController.abort();
-    }
-    if (this._leafletMap) {
-      this._leafletMap.remove();
-      this._leafletMap = null;
-    }
-    this._leafletMarker = null;
+    this._abortSearch();
+    this._mapPreview.destroy();
     if (this._outsidePointerHandler) {
       document.removeEventListener("pointerdown", this._outsidePointerHandler);
     }
@@ -218,14 +254,8 @@ export class LocationSearchField extends LitWrapper {
    * @private
    */
   _hideDropdown() {
-    this._showDropdown = false;
-    this._searchResults = [];
-    this._highlightedIndex = -1;
-    this._isSearching = false;
-    if (this._abortController) {
-      this._abortController.abort();
-      this._abortController = null;
-    }
+    this._applySearchState(getHiddenLocationSearchState());
+    this._abortSearch();
   }
 
   /**
@@ -243,9 +273,8 @@ export class LocationSearchField extends LitWrapper {
    * @private
    */
   _clearSearch() {
-    this._searchQuery = "";
-    this._searchError = null;
-    this._hideDropdown();
+    this._applySearchState(getClearedLocationSearchState());
+    this._abortSearch();
     this.focusInput();
   }
 
@@ -286,12 +315,45 @@ export class LocationSearchField extends LitWrapper {
       this._hideDropdown();
       return;
     }
-    this._showDropdown = true;
-    this._searchResults = [];
-    this._searchError = null;
-    this._highlightedIndex = -1;
-    this._isSearching = true;
+    this._applySearchState(getStartedLocationSearchState());
     this._performSearch(this._searchQuery);
+  }
+
+  /**
+   * Applies a normalized search-state patch to the component.
+   * @param {Object} state Search state patch.
+   * @private
+   */
+  _applySearchState(state) {
+    if (Object.prototype.hasOwnProperty.call(state, "showDropdown")) {
+      this._showDropdown = state.showDropdown;
+    }
+    if (Object.prototype.hasOwnProperty.call(state, "searchResults")) {
+      this._searchResults = state.searchResults;
+    }
+    if (Object.prototype.hasOwnProperty.call(state, "highlightedIndex")) {
+      this._highlightedIndex = state.highlightedIndex;
+    }
+    if (Object.prototype.hasOwnProperty.call(state, "isSearching")) {
+      this._isSearching = state.isSearching;
+    }
+    if (Object.prototype.hasOwnProperty.call(state, "searchQuery")) {
+      this._searchQuery = state.searchQuery;
+    }
+    if (Object.prototype.hasOwnProperty.call(state, "searchError")) {
+      this._searchError = state.searchError;
+    }
+  }
+
+  /**
+   * Aborts the active location search request.
+   * @private
+   */
+  _abortSearch() {
+    if (this._abortController) {
+      this._abortController.abort();
+      this._abortController = null;
+    }
   }
 
   /**
@@ -303,26 +365,7 @@ export class LocationSearchField extends LitWrapper {
     this._abortController = new AbortController();
 
     try {
-      const params = new URLSearchParams({
-        q: query,
-        format: "json",
-        addressdetails: "1",
-        limit: "10", // default limit
-        dedupe: "1",
-      });
-
-      const response = await fetch(`https://nominatim.openstreetmap.org/search?${params.toString()}`, {
-        signal: this._abortController.signal,
-        headers: {
-          Accept: "application/json",
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const results = await response.json();
+      const results = await searchNominatimLocations(query, this._abortController.signal);
       this._searchResults = results;
       this._searchError = null;
     } catch (err) {
@@ -358,15 +401,30 @@ export class LocationSearchField extends LitWrapper {
    * @private
    */
   _setInternalLocationValues(location) {
-    if (this.venueNameFieldName) this._venueNameValue = location.venueName || "";
-    if (this.venueAddressFieldName) this._venueAddressValue = location.venueAddress || "";
-    if (this.venueCityFieldName) this._venueCityValue = location.venueCity || "";
-    if (this.venueZipCodeFieldName) this._venueZipCodeValue = location.venueZipCode || "";
-    if (this.stateFieldName) this._stateValue = location.state || "";
-    if (this.countryNameFieldName) this._countryNameValue = location.country || "";
-    if (this.countryCodeFieldName) this._countryCodeValue = location.countryCode || "";
-    if (this.latitudeFieldName || this.latitudeFieldId) this._latitudeValue = String(location.latitude);
-    if (this.longitudeFieldName || this.longitudeFieldId) this._longitudeValue = String(location.longitude);
+    const updates = getInternalLocationValueUpdates(this._getLocationFieldConfig(), location);
+    this._applyLocationValues(updates);
+  }
+
+  /**
+   * Applies normalized location-value updates to the component.
+   * @param {Object} updates Location value patch.
+   * @private
+   */
+  _applyLocationValues(updates) {
+    const hasUpdate = (key) => Object.prototype.hasOwnProperty.call(updates, key);
+    if (hasUpdate("venueNameValue")) this._venueNameValue = updates.venueNameValue;
+    if (hasUpdate("venueAddressValue")) {
+      this._venueAddressValue = updates.venueAddressValue;
+    }
+    if (hasUpdate("venueCityValue")) this._venueCityValue = updates.venueCityValue;
+    if (hasUpdate("venueZipCodeValue")) {
+      this._venueZipCodeValue = updates.venueZipCodeValue;
+    }
+    if (hasUpdate("stateValue")) this._stateValue = updates.stateValue;
+    if (hasUpdate("countryNameValue")) this._countryNameValue = updates.countryNameValue;
+    if (hasUpdate("countryCodeValue")) this._countryCodeValue = updates.countryCodeValue;
+    if (hasUpdate("latitudeValue")) this._latitudeValue = updates.latitudeValue;
+    if (hasUpdate("longitudeValue")) this._longitudeValue = updates.longitudeValue;
   }
 
   /**
@@ -383,29 +441,8 @@ export class LocationSearchField extends LitWrapper {
     this._setInternalLocationValues(location);
     this.showMapPreview();
 
-    if (this.venueNameFieldId) {
-      setTextValue(this.venueNameFieldId, location.venueName);
-    }
-    if (this.venueAddressFieldId) {
-      setTextValue(this.venueAddressFieldId, location.venueAddress);
-    }
-    if (this.venueCityFieldId) {
-      setTextValue(this.venueCityFieldId, location.venueCity);
-    }
-    if (this.venueZipCodeFieldId) {
-      setTextValue(this.venueZipCodeFieldId, location.venueZipCode);
-    }
-    if (this.stateFieldId) {
-      setTextValue(this.stateFieldId, location.state);
-    }
-    if (this.countryFieldId) {
-      setTextValue(this.countryFieldId, location.country);
-    }
-    if (this.latitudeFieldId) {
-      setTextValue(this.latitudeFieldId, String(location.latitude));
-    }
-    if (this.longitudeFieldId) {
-      setTextValue(this.longitudeFieldId, String(location.longitude));
+    for (const update of this._getExternalFieldUpdates(location)) {
+      setTextValue(update.fieldId, update.value);
     }
 
     this.dispatchEvent(
@@ -423,38 +460,13 @@ export class LocationSearchField extends LitWrapper {
    * Can be called externally to reset the form fields.
    */
   clearLocationFields() {
-    this._venueNameValue = "";
-    this._venueAddressValue = "";
-    this._venueCityValue = "";
-    this._venueZipCodeValue = "";
-    this._stateValue = "";
-    this._countryNameValue = "";
-    this._countryCodeValue = "";
-    this._latitudeValue = "";
-    this._longitudeValue = "";
+    this._applyLocationValues(getEmptyLocationValues());
 
-    const fieldIds = [
-      this.venueNameFieldId,
-      this.venueAddressFieldId,
-      this.venueCityFieldId,
-      this.venueZipCodeFieldId,
-      this.stateFieldId,
-      this.countryFieldId,
-      this.latitudeFieldId,
-      this.longitudeFieldId,
-    ];
-
-    for (const fieldId of fieldIds) {
-      if (fieldId) {
-        setTextValue(fieldId, "");
-      }
+    for (const fieldId of this._getExternalFieldIds()) {
+      setTextValue(fieldId, "");
     }
 
-    if (this._leafletMap) {
-      this._leafletMap.remove();
-      this._leafletMap = null;
-    }
-    this._leafletMarker = null;
+    this._mapPreview.reset();
     this._mapVisible = false;
     this._mapZoom = DEFAULT_MAP_ZOOM;
     this._mapBoundingBox = null;
@@ -475,40 +487,39 @@ export class LocationSearchField extends LitWrapper {
    * @private
    */
   _handleKeyDown(event) {
-    if (event.key === "Enter" && this._searchResults.length === 0) {
-      event.preventDefault();
-      if (this._searchQuery.trim().length < 3) {
-        this._hideDropdown();
-        return;
-      }
+    const keyAction = getLocationSearchKeyAction({
+      event,
+      resultsCount: this._searchResults.length,
+      highlightedIndex: this._highlightedIndex,
+      query: this._searchQuery,
+    });
 
+    if (keyAction.preventDefault) {
+      event.preventDefault();
+    }
+
+    if (keyAction.action === "hide") {
+      this._hideDropdown();
+      return;
+    }
+    if (keyAction.action === "search") {
       this._triggerSearch();
       return;
     }
-
-    if (this._searchResults.length === 0) return;
-
-    if (isEscapeEvent(event)) {
-      event.preventDefault();
+    if (keyAction.action === "clear") {
       this._clearSearch();
       return;
     }
-
-    switch (event.key) {
-      case "ArrowDown":
-        event.preventDefault();
-        this._highlightedIndex = Math.min(this._highlightedIndex + 1, this._searchResults.length - 1);
-        break;
-      case "ArrowUp":
-        event.preventDefault();
-        this._highlightedIndex = Math.max(this._highlightedIndex - 1, 0);
-        break;
-      case "Enter":
-        event.preventDefault();
-        if (this._highlightedIndex >= 0 && this._highlightedIndex < this._searchResults.length) {
-          this._selectLocation(this._searchResults[this._highlightedIndex]);
-        }
-        break;
+    if (keyAction.action === "highlight") {
+      this._highlightedIndex = keyAction.highlightedIndex;
+      return;
+    }
+    if (
+      keyAction.action === "select" &&
+      this._highlightedIndex >= 0 &&
+      this._highlightedIndex < this._searchResults.length
+    ) {
+      this._selectLocation(this._searchResults[this._highlightedIndex]);
     }
   }
 
@@ -549,9 +560,16 @@ export class LocationSearchField extends LitWrapper {
    * @private
    */
   _renderSearchInterface() {
-    const shouldRenderDropdown =
-      this._showDropdown && this._searchQuery !== "" && this._searchQuery.length >= 3;
-    const disabledClasses = this.disabled ? "cursor-not-allowed bg-stone-100 text-stone-500" : "";
+    const shouldRenderDropdown = shouldRenderLocationDropdown({
+      showDropdown: this._showDropdown,
+      searchQuery: this._searchQuery,
+    });
+    const searchButtonDisabled = isLocationSearchButtonDisabled({
+      disabled: this.disabled,
+      searchQuery: this._searchQuery,
+      isSearching: this._isSearching,
+    });
+    const disabledClasses = getLocationDisabledInputClasses(this.disabled);
 
     return html`
       <div @focusout=${this._handleFocusOut}>
@@ -601,7 +619,7 @@ export class LocationSearchField extends LitWrapper {
               class="btn-primary"
               @pointerdown=${this._handleSearchButtonPointerDown}
               @click=${this._triggerSearch}
-              ?disabled=${this.disabled || this._searchQuery.length < 3 || this._isSearching}
+              ?disabled=${searchButtonDisabled}
             >
               Search
             </button>
@@ -741,15 +759,48 @@ export class LocationSearchField extends LitWrapper {
    * @private
    */
   _hasInternalFields() {
-    return Boolean(
-      this.venueNameFieldName ||
-      this.venueAddressFieldName ||
-      this.venueCityFieldName ||
-      this.venueZipCodeFieldName ||
-      this.stateFieldName ||
-      this.countryNameFieldName ||
-      this.countryCodeFieldName,
-    );
+    return hasInternalLocationFields(this._getLocationFieldConfig());
+  }
+
+  /**
+   * @returns {Array<string>}
+   * @private
+   */
+  _getExternalFieldIds() {
+    return getExternalLocationFieldIds(this._getLocationFieldConfig());
+  }
+
+  /**
+   * @param {Object} location Selected location values.
+   * @returns {Array<{fieldId: string, value: string}>}
+   * @private
+   */
+  _getExternalFieldUpdates(location) {
+    return getExternalLocationFieldUpdates(this._getLocationFieldConfig(), location);
+  }
+
+  /**
+   * @returns {Object}
+   * @private
+   */
+  _getLocationFieldConfig() {
+    return {
+      venueNameFieldId: this.venueNameFieldId,
+      venueAddressFieldId: this.venueAddressFieldId,
+      venueCityFieldId: this.venueCityFieldId,
+      venueZipCodeFieldId: this.venueZipCodeFieldId,
+      stateFieldId: this.stateFieldId,
+      countryFieldId: this.countryFieldId,
+      latitudeFieldId: this.latitudeFieldId,
+      longitudeFieldId: this.longitudeFieldId,
+      venueNameFieldName: this.venueNameFieldName,
+      venueAddressFieldName: this.venueAddressFieldName,
+      venueCityFieldName: this.venueCityFieldName,
+      venueZipCodeFieldName: this.venueZipCodeFieldName,
+      stateFieldName: this.stateFieldName,
+      countryNameFieldName: this.countryNameFieldName,
+      countryCodeFieldName: this.countryCodeFieldName,
+    };
   }
 
   /**
@@ -767,7 +818,11 @@ export class LocationSearchField extends LitWrapper {
    * @private
    */
   _isVenueContext() {
-    return Boolean(this.venueNameFieldName || this.venueAddressFieldName || this.venueZipCodeFieldName);
+    return isVenueLocationContext({
+      venueNameFieldName: this.venueNameFieldName,
+      venueAddressFieldName: this.venueAddressFieldName,
+      venueZipCodeFieldName: this.venueZipCodeFieldName,
+    });
   }
 
   /**
@@ -776,22 +831,7 @@ export class LocationSearchField extends LitWrapper {
    * @private
    */
   _getLegendText(kind) {
-    const isVenue = this._isVenueContext();
-
-    if (kind === "city") {
-      return isVenue ? "City where the venue is located." : "Primary city where the group is located.";
-    }
-    if (kind === "zip") {
-      return "Postal/zip code of the venue.";
-    }
-    if (kind === "state") {
-      return "State, province, or region.";
-    }
-    if (kind === "country") {
-      return isVenue ? "Country where the venue is located." : "Country where the group is located.";
-    }
-
-    return "";
+    return getLocationLegendText(kind, this._isVenueContext());
   }
 
   /**
@@ -800,8 +840,7 @@ export class LocationSearchField extends LitWrapper {
    * @private
    */
   _getInputId(inputName) {
-    if (!inputName) return "";
-    return `${this.id || "location-search"}-${inputName}`;
+    return getLocationInputId(this.id, inputName);
   }
 
   /**
@@ -821,7 +860,7 @@ export class LocationSearchField extends LitWrapper {
           />
         `
       : "";
-    const disabledClasses = this.disabled ? "cursor-not-allowed bg-stone-100 text-stone-500" : "";
+    const disabledClasses = getLocationDisabledInputClasses(this.disabled);
 
     return html`
       <div class="mt-8 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
@@ -970,17 +1009,15 @@ export class LocationSearchField extends LitWrapper {
    * @private
    */
   _renderCoordinateInputs() {
-    if (
-      !this.latitudeFieldName &&
-      !this.latitudeFieldId &&
-      !this.longitudeFieldName &&
-      !this.longitudeFieldId
-    ) {
+    const { hasCoordinateFields, latitudeName, longitudeName } = getCoordinateFieldConfig(
+      this._getLocationFieldConfig(),
+    );
+
+    if (!hasCoordinateFields) {
       return html``;
     }
 
-    const latitudeName = this.latitudeFieldName || this.latitudeFieldId;
-    const longitudeName = this.longitudeFieldName || this.longitudeFieldId;
+    const disabledClasses = getLocationDisabledInputClasses(this.disabled);
 
     return html`
       <div class="grid grid-cols-2 gap-4 mt-6">
@@ -992,7 +1029,7 @@ export class LocationSearchField extends LitWrapper {
               step="any"
               id="${this._getInputId(latitudeName)}"
               name="${latitudeName}"
-              class="input-primary ${this.disabled ? "cursor-not-allowed bg-stone-100 text-stone-500" : ""}"
+              class="input-primary ${disabledClasses}"
               .value=${this._latitudeValue}
               ?disabled=${this.disabled}
               @input=${this._handleLatitudeInput}
@@ -1007,7 +1044,7 @@ export class LocationSearchField extends LitWrapper {
               step="any"
               id="${this._getInputId(longitudeName)}"
               name="${longitudeName}"
-              class="input-primary ${this.disabled ? "cursor-not-allowed bg-stone-100 text-stone-500" : ""}"
+              class="input-primary ${disabledClasses}"
               .value=${this._longitudeValue}
               ?disabled=${this.disabled}
               @input=${this._handleLongitudeInput}
@@ -1026,11 +1063,7 @@ export class LocationSearchField extends LitWrapper {
    * @private
    */
   _renderResult(result, index) {
-    const addr = result.address || {};
-    const mainText =
-      addr.amenity || addr.building || addr.name || addr.road || result.display_name.split(",")[0];
-    const secondaryText = result.display_name;
-
+    const { mainText, secondaryText } = getLocationResultText(result);
     const isHighlighted = index === this._highlightedIndex;
     const rowClass = `flex items-start gap-3 px-4 py-3 cursor-pointer ${
       isHighlighted ? "bg-stone-100" : "hover:bg-stone-50"
@@ -1074,13 +1107,7 @@ export class LocationSearchField extends LitWrapper {
    * @private
    */
   _syncMapPreview() {
-    if (!this._mapVisible || !this._hasValidCoordinates()) {
-      return Promise.resolve();
-    }
-    this._mapPreviewSyncPromise = this._mapPreviewSyncPromise
-      .catch(() => {})
-      .then(() => this._syncMapPreviewInternal());
-    return this._mapPreviewSyncPromise;
+    return this._mapPreview.sync(this._getMapPreviewState());
   }
 
   /**
@@ -1089,65 +1116,22 @@ export class LocationSearchField extends LitWrapper {
    * @private
    */
   async _syncMapPreviewInternal() {
-    if (!this._hasValidCoordinates()) {
-      if (this._leafletMap) {
-        this._leafletMap.remove();
-        this._leafletMap = null;
-      }
-      this._leafletMarker = null;
-      return;
-    }
+    await this._mapPreview.syncInternal(this._getMapPreviewState());
+  }
 
-    const container = getElementById(document, this._mapElementId);
-    if (!container) return;
-
-    const lat = parseCoordinate(this._latitudeValue);
-    const lng = parseCoordinate(this._longitudeValue);
-    if (lat === null || lng === null) return;
-
-    const zoom = this._mapZoom || DEFAULT_MAP_ZOOM;
-    if (!this._leafletMap) {
-      this._leafletMap = await loadMap(this._mapElementId, lat, lng, {
-        zoom,
-        interactive: true,
-        marker: false,
-      });
-    }
-
-    if (this._leafletMarker) {
-      this._leafletMarker.setLatLng([lat, lng]);
-    } else if (window.L) {
-      const icon = L.divIcon({
-        html: '<div class="svg-icon h-[30px] w-[30px] bg-primary-500 icon-marker"></div>',
-        iconSize: [30, 30],
-        iconAnchor: [15, 30],
-        popupAnchor: [0, -25],
-        className: "marker-icon",
-      });
-      this._leafletMarker = L.marker(L.latLng(lat, lng), {
-        icon,
-        interactive: false,
-        autoPanOnFocus: false,
-        bubblingMouseEvents: false,
-      }).addTo(this._leafletMap);
-    }
-
-    const leaflet = window.L;
-    const canFitBounds =
-      this._shouldFitBounds &&
-      Array.isArray(this._mapBoundingBox) &&
-      this._mapBoundingBox.length === 4 &&
-      leaflet;
-
-    if (canFitBounds) {
-      const [south, north, west, east] = this._mapBoundingBox;
-      const bounds = leaflet.latLngBounds([south, west], [north, east]);
-      this._leafletMap.fitBounds(bounds, { animate: false });
-    } else {
-      this._leafletMap.setView([lat, lng], zoom, { animate: false });
-    }
-
-    this._leafletMap.invalidateSize?.(false);
+  /**
+   * @returns {Object}
+   * @private
+   */
+  _getMapPreviewState() {
+    return {
+      mapVisible: this._mapVisible,
+      latitudeValue: this._latitudeValue,
+      longitudeValue: this._longitudeValue,
+      mapZoom: this._mapZoom,
+      mapBoundingBox: this._mapBoundingBox,
+      shouldFitBounds: this._shouldFitBounds,
+    };
   }
 
   /**

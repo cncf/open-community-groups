@@ -9,10 +9,7 @@ import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { parseJsonAttribute } from "/static/js/common/utils.js";
 import "/static/js/common/speakers-selector.js";
 import "/static/js/common/online-event-details.js";
-import {
-  combineDateAndTime,
-  extractTimePart,
-} from "/static/js/dashboard/event/sessions-datetime.js";
+import { combineDateAndTime, extractTimePart } from "/static/js/dashboard/event/sessions-datetime.js";
 import { normalizeSpeakers } from "/static/js/dashboard/event/speaker-utils.js";
 
 /**

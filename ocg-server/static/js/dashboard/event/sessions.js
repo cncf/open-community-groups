@@ -7,10 +7,7 @@ import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { parseJsonAttribute } from "/static/js/common/utils.js";
 import "/static/js/dashboard/event/session-card.js";
 import "/static/js/dashboard/event/session-form-modal.js";
-import {
-  extractDatePart,
-  formatDayHeader,
-} from "/static/js/dashboard/event/sessions-datetime.js";
+import { extractDatePart, formatDayHeader } from "/static/js/dashboard/event/sessions-datetime.js";
 import {
   computeEventDays,
   computeSessionScenario,
