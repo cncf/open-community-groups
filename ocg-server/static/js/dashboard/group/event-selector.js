@@ -10,6 +10,11 @@ import {
   setSelectValue,
   setTextValue,
 } from "/static/js/common/utils.js";
+import {
+  formatEventDate,
+  parseEventTimestamp,
+  uniqueEventsById,
+} from "/static/js/dashboard/group/event-selector-utils.js";
 import * as formHelpers from "/static/js/dashboard/group/event-form-helpers.js";
 import "/static/js/common/svg-spinner.js";
 
@@ -387,22 +392,9 @@ class EventSelector extends LitWrapper {
     this.selectedEvent = {
       event_id: String(details.event_id ?? ""),
       name: details.name || "",
-      starts_at: this._parseEventTimestamp(details.starts_at),
+      starts_at: parseEventTimestamp(details.starts_at),
       timezone: String(details.timezone || ""),
     };
-  }
-
-  /**
-   * Parses a timestamp value safely.
-   * @param {*} value Timestamp value
-   * @returns {number|null}
-   */
-  _parseEventTimestamp(value) {
-    if (value === null || value === undefined) {
-      return null;
-    }
-    const timestamp = Number(value);
-    return Number.isFinite(timestamp) ? timestamp : null;
   }
 
   /**
@@ -586,7 +578,7 @@ class EventSelector extends LitWrapper {
         result.push(...upcomingEvents.slice(0, 5).reverse());
         result.push(...pastEvents.slice(0, 5));
 
-        const uniquePrimaryResults = this._uniqueEventsById(result);
+        const uniquePrimaryResults = uniqueEventsById(result);
         if (uniquePrimaryResults.length < 10) {
           const remainingSlots = 10 - uniquePrimaryResults.length;
           const extraUpcoming = upcomingEvents.slice(5, 5 + remainingSlots).reverse();
@@ -594,7 +586,7 @@ class EventSelector extends LitWrapper {
           result.push(...extraUpcoming, ...extraPast);
         }
 
-        this._primaryResults = this._uniqueEventsById(result).slice(0, 10);
+        this._primaryResults = uniqueEventsById(result).slice(0, 10);
         this._results = this._primaryResults;
         this._activeIndex = -1;
         this._hasFetched = true;
@@ -625,27 +617,6 @@ class EventSelector extends LitWrapper {
   }
 
   /**
-   * Returns the first occurrence of each event id.
-   * @param {object[]} events Event payloads
-   * @returns {object[]}
-   */
-  _uniqueEventsById(events) {
-    const seenEventIds = new Set();
-    return events.filter((event) => {
-      const eventId = event?.event_id;
-      if (!eventId) {
-        return true;
-      }
-      const normalizedEventId = String(eventId);
-      if (seenEventIds.has(normalizedEventId)) {
-        return false;
-      }
-      seenEventIds.add(normalizedEventId);
-      return true;
-    });
-  }
-
-  /**
    * Queries remote events using the selected group id.
    */
   async _fetchEvents() {
@@ -671,7 +642,7 @@ class EventSelector extends LitWrapper {
         query: trimmed,
         dateFrom: this.dateFrom,
       });
-      this._results = this._uniqueEventsById(events);
+      this._results = uniqueEventsById(events);
       this._activeIndex = -1;
       this._hasFetched = true;
       if (this.selectedEventId) {
@@ -712,50 +683,6 @@ class EventSelector extends LitWrapper {
     }
 
     return this.selectedEvent;
-  }
-
-  /**
-   * Formats an event date with month, day, year, time, and zone.
-   * @param {object} event Event payload
-   * @returns {{text: string, isPlaceholder: boolean}}
-   */
-  _formatEventDate(event) {
-    if (!event || !event.starts_at) {
-      return { text: "TBD", isPlaceholder: true };
-    }
-    try {
-      const date = new Date(Number(event.starts_at) * 1000);
-      const formatter = new Intl.DateTimeFormat("en-US", {
-        month: "long",
-        day: "numeric",
-        year: "numeric",
-        hour: "numeric",
-        minute: "numeric",
-        hour12: true,
-        timeZone: event.timezone || "UTC",
-        timeZoneName: "short",
-      });
-      const parts = formatter.formatToParts(date);
-      const pick = (type) => parts.find((part) => part.type === type)?.value ?? "";
-      const month = pick("month");
-      const day = pick("day");
-      const year = pick("year");
-      const hour = pick("hour");
-      const minute = pick("minute");
-      const dayPeriod = pick("dayPeriod");
-      const timeZoneName = pick("timeZoneName");
-
-      const dateLabel = [month, day].filter(Boolean).join(" ");
-      const dateWithYear = year ? `${dateLabel}${dateLabel ? ", " : ""}${year}` : dateLabel || year;
-      const minuteLabel = minute ? minute.padStart(2, "0") : "00";
-      const timeLabel = hour ? `${hour}:${minuteLabel}${dayPeriod ? ` ${dayPeriod}` : ""}` : "";
-      const timeWithZone = [timeLabel, timeZoneName].filter(Boolean).join(" ");
-      const text = [dateWithYear, timeWithZone].filter(Boolean).join(" · ");
-
-      return { text: text || formatter.format(date), isPlaceholder: false };
-    } catch (_error) {
-      return { text: "-", isPlaceholder: false };
-    }
   }
 
   /**
@@ -823,7 +750,7 @@ class EventSelector extends LitWrapper {
    * @returns {import("lit").TemplateResult}
    */
   _renderEventPreview(event) {
-    const formattedDate = this._formatEventDate(event);
+    const formattedDate = formatEventDate(event);
     return html`
       <div class="flex flex-col min-w-0 pe-6 items-start">
         <div class="max-w-full truncate">${event.name ?? ""}</div>
