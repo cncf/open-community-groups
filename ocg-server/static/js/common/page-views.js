@@ -1,3 +1,5 @@
+import { initializeOnReady } from "/static/js/common/dom.js";
+
 const PAGE_VIEW_SELECTOR = "[data-page-view]";
 const PAGE_VIEW_READY_KEY = "pageViewReady";
 
@@ -108,17 +110,7 @@ export const initializePageViewTracking = (root = document) => {
   });
 };
 
-const initializePageViewTrackingWhenReady = () => {
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", () => initializePageViewTracking(), {
-      once: true,
-    });
-  } else {
-    initializePageViewTracking();
-  }
-};
-
-initializePageViewTrackingWhenReady();
+initializeOnReady(() => initializePageViewTracking());
 
 /**
  * Resets page view tracker state for isolated browser tests.

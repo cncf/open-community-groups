@@ -1,4 +1,5 @@
 import { loadMap, toggleModalVisibility } from "/static/js/common/common.js";
+import { initializeOnReady } from "/static/js/common/dom.js";
 
 const MAP_MODAL_SELECTOR = "[data-map-modal]";
 const MAP_MODAL_READY_KEY = "mapModalReady";
@@ -92,12 +93,4 @@ export const initializeMapModals = (root = document) => {
   });
 };
 
-const initializeMapModalsWhenReady = () => {
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", () => initializeMapModals(), { once: true });
-  } else {
-    initializeMapModals();
-  }
-};
-
-initializeMapModalsWhenReady();
+initializeOnReady(() => initializeMapModals());

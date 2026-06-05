@@ -1,4 +1,4 @@
-import { loadScriptOnce } from "/static/js/common/dom.js";
+import { initializeOnReady, loadScriptOnce } from "/static/js/common/dom.js";
 import { toTrimmedString } from "/static/js/common/utils.js";
 
 export const MEETING_RECORDING_URL_LEGEND =
@@ -223,11 +223,7 @@ document.addEventListener(
 );
 
 // Some images can fail before this module registers captured error listeners.
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", applyBrokenImagePlaceholdersForDocument, { once: true });
-} else {
-  applyBrokenImagePlaceholdersForDocument();
-}
+initializeOnReady(applyBrokenImagePlaceholdersForDocument);
 
 // Re-scan after all resources settle so late or lazy image failures are covered.
 window.addEventListener("load", applyBrokenImagePlaceholdersForDocument, { once: true });
