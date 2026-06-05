@@ -203,10 +203,14 @@ export class UserSearchField extends LitWrapper {
     }
 
     this._isSearching = true;
-    this._searchTimeoutId = replaceTimeout(this._searchTimeoutId, () => {
-      this._searchTimeoutId = 0;
-      this._performSearch(query);
-    }, this.searchDelay);
+    this._searchTimeoutId = replaceTimeout(
+      this._searchTimeoutId,
+      () => {
+        this._searchTimeoutId = 0;
+        this._performSearch(query);
+      },
+      this.searchDelay,
+    );
   }
 
   /**
@@ -422,5 +426,18 @@ export class UserSearchField extends LitWrapper {
     `;
   }
 }
+
+/**
+ * Focuses the first user search field inside a root element.
+ * @param {Document|Element} root Query root.
+ * @returns {Element|null} Focused user search field when present.
+ */
+export const focusUserSearchField = (root) => {
+  const field = root?.querySelector?.("user-search-field") || null;
+  if (typeof field?.focusInput === "function") {
+    field.focusInput();
+  }
+  return field;
+};
 
 customElements.define("user-search-field", UserSearchField);

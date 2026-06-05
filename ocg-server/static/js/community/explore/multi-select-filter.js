@@ -32,7 +32,7 @@ export class MultiSelectFilter extends LitWrapper {
     this._query = "";
     this._activeIndex = null;
     this._documentClickHandler = null;
-    this._keydownHandler = null;
+    this._keydownHandler = (event) => this._handleKeydown(event);
   }
 
   /**
@@ -47,17 +47,13 @@ export class MultiSelectFilter extends LitWrapper {
   connectedCallback() {
     super.connectedCallback();
     this._prepareSelected();
-    this._keydownHandler = this._handleKeydown.bind(this);
     this.addEventListener("keydown", this._keydownHandler);
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
     this._removeDocumentListener();
-    if (this._keydownHandler) {
-      this.removeEventListener("keydown", this._keydownHandler);
-      this._keydownHandler = null;
-    }
+    this.removeEventListener("keydown", this._keydownHandler);
   }
 
   /**

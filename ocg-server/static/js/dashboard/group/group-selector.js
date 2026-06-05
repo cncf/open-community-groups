@@ -60,11 +60,15 @@ export class GroupSelector extends LitWrapper {
   _handleSearchInput(event) {
     const value = event.target.value || "";
     this._query = value;
-    this._searchTimeoutId = replaceTimeout(this._searchTimeoutId, () => {
-      this._activeIndex = null;
-      this._searchTimeoutId = 0;
-      this.requestUpdate();
-    }, 200);
+    this._searchTimeoutId = replaceTimeout(
+      this._searchTimeoutId,
+      () => {
+        this._activeIndex = null;
+        this._searchTimeoutId = 0;
+        this.requestUpdate();
+      },
+      200,
+    );
   }
 
   /**

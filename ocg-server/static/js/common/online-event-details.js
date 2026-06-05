@@ -183,10 +183,14 @@ export class OnlineEventDetails extends LitWrapper {
     if (changedProperties.has("_mode") || changedProperties.has("_createMeeting")) {
       if (this._mode === "automatic" && this._createMeeting) {
         // Wait for next render cycle to ensure the input element exists
-        this._hostsInputTimeoutId = replaceTimeout(this._hostsInputTimeoutId, () => {
-          this._hostsInputTimeoutId = 0;
-          this._initializeHostsInput();
-        }, 0);
+        this._hostsInputTimeoutId = replaceTimeout(
+          this._hostsInputTimeoutId,
+          () => {
+            this._hostsInputTimeoutId = 0;
+            this._initializeHostsInput();
+          },
+          0,
+        );
       }
       this._checkMeetingCapacity();
     }

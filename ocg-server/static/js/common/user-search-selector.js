@@ -2,7 +2,7 @@ import { html, repeat } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { computeUserInitials } from "/static/js/common/common.js";
 import "/static/js/common/logo-image.js";
-import "/static/js/common/user-search-field.js";
+import { focusUserSearchField } from "/static/js/common/user-search-field.js";
 
 /**
  * UserSearchSelector component for searching and selecting users.
@@ -56,8 +56,7 @@ export class UserSearchSelector extends LitWrapper {
 
     // Focus search input after render
     this.updateComplete.then(() => {
-      const field = this.querySelector("user-search-field");
-      if (field && typeof field.focusInput === "function") field.focusInput();
+      focusUserSearchField(this);
     });
   }
 

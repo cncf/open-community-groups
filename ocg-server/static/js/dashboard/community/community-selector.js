@@ -67,11 +67,15 @@ export class CommunitySelector extends LitWrapper {
   _handleSearchInput(event) {
     const value = event.target.value || "";
     this._pendingQuery = value;
-    this._searchTimeoutId = replaceTimeout(this._searchTimeoutId, () => {
-      this._activeIndex = null;
-      this._query = this._pendingQuery;
-      this._searchTimeoutId = 0;
-    }, 200);
+    this._searchTimeoutId = replaceTimeout(
+      this._searchTimeoutId,
+      () => {
+        this._activeIndex = null;
+        this._query = this._pendingQuery;
+        this._searchTimeoutId = 0;
+      },
+      200,
+    );
   }
 
   /**

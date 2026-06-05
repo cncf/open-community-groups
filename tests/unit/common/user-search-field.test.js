@@ -1,6 +1,6 @@
 import { expect } from "@open-wc/testing";
 
-import "/static/js/common/user-search-field.js";
+import { focusUserSearchField } from "/static/js/common/user-search-field.js";
 import { waitForMicrotask } from "/tests/unit/test-utils/async.js";
 import {
   mountLitComponent,
@@ -25,6 +25,22 @@ describe("user-search-field", () => {
     fetchMock.restore();
     window.setTimeout = originalSetTimeout;
     window.clearTimeout = originalClearTimeout;
+  });
+
+  it("focuses user search fields inside a root", () => {
+    // Build a root with a user search field.
+    const root = document.createElement("section");
+    const field = document.createElement("user-search-field");
+    let focusCount = 0;
+    field.focusInput = () => {
+      focusCount += 1;
+    };
+    root.append(field);
+
+    // The helper focuses the field and returns it.
+    expect(focusUserSearchField(root)).to.equal(field);
+    expect(focusCount).to.equal(1);
+    expect(focusUserSearchField(document.createElement("section"))).to.equal(null);
   });
 
   it("searches users and excludes configured usernames", async () => {

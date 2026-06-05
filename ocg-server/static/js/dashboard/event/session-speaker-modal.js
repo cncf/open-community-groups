@@ -1,6 +1,6 @@
 import { html } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
-import "/static/js/common/user-search-field.js";
+import { focusUserSearchField } from "/static/js/common/user-search-field.js";
 import "/static/js/common/logo-image.js";
 import { computeUserInitials, lockBodyScroll, unlockBodyScroll } from "/static/js/common/common.js";
 import { isModalEscapeEvent } from "/static/js/common/modal-lifecycle.js";
@@ -68,8 +68,7 @@ export class SessionSpeakerModal extends LitWrapper {
     this._isOpen = true;
     lockBodyScroll();
     this.updateComplete.then(() => {
-      const field = this.querySelector("user-search-field");
-      if (field && typeof field.focusInput === "function") field.focusInput();
+      focusUserSearchField(this);
     });
   }
 
