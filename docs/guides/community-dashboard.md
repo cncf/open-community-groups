@@ -96,7 +96,7 @@ Key sections include:
 - General Settings.
 - Branding.
 - Social Links.
-- Advertisement (coming soon on the public site; not displayed yet).
+- Advertisement.
 - Additional Content.
 
 Common use cases:
@@ -105,6 +105,10 @@ Common use cases:
 - Restricting group team management to community admins and groups managers when policy requires it.
 - Maintaining logo, banner, and Open Graph preview assets for consistent presentation.
 - Managing social links, optional ad placements, gallery images, tags, and extra links.
+
+Advertisement settings are community-wide. When a banner image is configured, OCG shows it on the
+public community page and as a floating banner on public group and event pages for that community.
+The optional banner link URL makes the banner clickable.
 
 Field requirements, character limits, and list limits are shown inline in the settings UI.
 

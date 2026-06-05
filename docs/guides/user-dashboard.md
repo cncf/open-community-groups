@@ -45,12 +45,14 @@ Each row includes:
 - Event title with a direct link to the public event page.
 - Event location.
 - Event date and time.
-- Your role in that event (`Attendee`, `Registration pending`, `Host`, `Speaker`, or multiple
-  roles).
+- Your participation roles in that event (`Attendee`, `Host`, `Speaker`, or multiple roles).
+- Your attendance status when action is still needed, such as `Payment pending` or
+  `Registration pending`.
 
-When a row is marked `Registration pending`, use the row actions menu to complete the event's
-registration questions. You can update submitted answers from the same menu before the event
-starts.
+When a row is marked `Payment pending`, use the row actions menu to complete checkout while the
+ticket hold is still active. When a row is marked `Registration pending`, use the row actions menu
+to complete the event's registration questions. You can update submitted answers from the same
+menu before the event starts.
 
 Filtering behavior:
 
