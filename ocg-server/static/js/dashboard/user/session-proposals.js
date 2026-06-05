@@ -34,19 +34,21 @@ const applyDescriptionHtml = (button, sessionProposal) => {
 };
 
 const initializeSessionProposals = (root = document) => {
-  const modalComponent = getModalComponent(root);
-  if (!modalComponent) {
-    return;
+  const modalComponent = getModalComponent(root) || getModalComponent(document);
+
+  if (modalComponent) {
+    markDatasetReady(modalComponent, DATA_KEY);
   }
 
-  markDatasetReady(modalComponent, DATA_KEY);
-
   const openButton = getElementById(root, "open-session-proposal-modal");
-  if (markDatasetReady(openButton, "bound")) {
+  if (modalComponent && markDatasetReady(openButton, "bound")) {
     openButton.addEventListener("click", () => modalComponent.openCreate());
   }
 
   root.querySelectorAll?.('[data-action="edit-session-proposal"]').forEach((button) => {
+    if (!modalComponent) {
+      return;
+    }
     if (!markDatasetReady(button, "bound")) {
       return;
     }
@@ -62,6 +64,9 @@ const initializeSessionProposals = (root = document) => {
   });
 
   root.querySelectorAll?.('[data-action="view-session-proposal"]').forEach((button) => {
+    if (!modalComponent) {
+      return;
+    }
     if (!markDatasetReady(button, "bound")) {
       return;
     }
@@ -83,6 +88,9 @@ const initializeSessionProposals = (root = document) => {
   });
 
   root.querySelectorAll?.('[data-action="view-pending-session-proposal"]').forEach((button) => {
+    if (!modalComponent) {
+      return;
+    }
     if (!markDatasetReady(button, "bound")) {
       return;
     }

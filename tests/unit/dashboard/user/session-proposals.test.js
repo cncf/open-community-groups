@@ -3,10 +3,7 @@ import { expect } from "@open-wc/testing";
 import "/static/js/dashboard/user/session-proposals.js";
 import { waitForMicrotask } from "/tests/unit/test-utils/async.js";
 import { useDashboardTestEnv } from "/tests/unit/test-utils/env.js";
-import {
-  dispatchHtmxAfterRequest,
-  dispatchHtmxLoad,
-} from "/tests/unit/test-utils/htmx.js";
+import { dispatchHtmxAfterRequest, dispatchHtmxLoad } from "/tests/unit/test-utils/htmx.js";
 
 describe("dashboard user session proposals", () => {
   const env = useDashboardTestEnv({
@@ -156,9 +153,7 @@ describe("dashboard user session proposals", () => {
     initializeSessionProposalsUi();
 
     // Read the delete action before opening its confirmation dialog.
-    const deleteButton = document.querySelector(
-      '[data-action="delete-session-proposal"]',
-    );
+    const deleteButton = document.querySelector('[data-action="delete-session-proposal"]');
     deleteButton.click();
     await waitForMicrotask();
 
@@ -174,9 +169,7 @@ describe("dashboard user session proposals", () => {
     ]);
 
     // Read the reject action before opening its confirmation dialog.
-    const rejectButton = document.querySelector(
-      '[data-action="reject-co-speaker-invitation"]',
-    );
+    const rejectButton = document.querySelector('[data-action="reject-co-speaker-invitation"]');
     rejectButton.click();
     await waitForMicrotask();
 
@@ -198,8 +191,36 @@ describe("dashboard user session proposals", () => {
       text: "Unable to decline this invitation. Please try again later.",
       icon: "error",
     });
-    expect(env.current.scrollToMock.calls).to.deep.equal([
-      { top: 0, behavior: "auto" },
+    expect(env.current.scrollToMock.calls).to.deep.equal([{ top: 0, behavior: "auto" }]);
+  });
+
+  it("binds delete actions loaded without the modal component in the root", async () => {
+    const root = document.createElement("div");
+    root.innerHTML = `
+      <button
+        type="button"
+        data-action="delete-session-proposal"
+        data-session-proposal-id="proposal-15"
+      >
+        Delete
+      </button>
+    `;
+    document.body.append(root);
+
+    dispatchHtmxLoad(root);
+
+    const deleteButton = root.querySelector('[data-action="delete-session-proposal"]');
+    deleteButton.click();
+    await waitForMicrotask();
+
+    expect(deleteButton.id).to.equal("delete-session-proposal-proposal-15");
+    expect(env.current.swal.calls[0]).to.include({
+      text: "Are you sure you want to delete this session proposal?",
+      confirmButtonText: "Delete",
+    });
+    expect(env.current.htmx.triggerCalls[0]).to.deep.equal([
+      "#delete-session-proposal-proposal-15",
+      "confirmed",
     ]);
   });
 });
