@@ -26,6 +26,15 @@ import {
   formatDayHeader,
   formatTimeDisplay,
 } from "/static/js/dashboard/event/sessions-datetime.js";
+import {
+  computeEventDays,
+  computeSessionScenario,
+  createEmptySession,
+  getNextSessionId,
+  getOutOfRangeSessions,
+  getSortedSessions,
+  groupSessionsByDay,
+} from "/static/js/dashboard/event/sessions-schedule.js";
 import { normalizeSpeakers } from "/static/js/dashboard/event/speaker-utils.js";
 import { DEFAULT_MEETING_PROVIDER } from "/static/js/dashboard/group/meeting-validations.js";
 
@@ -138,7 +147,7 @@ export class SessionsSection extends LitWrapper {
             : convertTimestampToDateTimeLocal(ts);
         const meetingProviderId = item.meeting_provider_id || item.meeting_provider || "";
         return {
-          ...this._createEmptySession(),
+          ...createEmptySession(index),
           ...item,
           meeting_provider_id: meetingProviderId,
           id: index,
@@ -147,137 +156,6 @@ export class SessionsSection extends LitWrapper {
         };
       });
     }
-  }
-
-  /**
-   * Creates a new empty session data object.
-   * @returns {Object} Empty session entry
-   * @private
-   */
-  _createEmptySession = () => ({
-    id: this.sessions ? this.sessions.length : 0,
-    name: "",
-    description: "",
-    kind: "",
-    starts_at: "",
-    ends_at: "",
-    cfs_submission_id: "",
-    location: "",
-    meeting_requested: false,
-    meeting_in_sync: false,
-    meeting_join_instructions: "",
-    meeting_join_url: "",
-    meeting_provider_id: "",
-    meeting_password: "",
-    meeting_error: "",
-    meeting_recording_published: false,
-    meeting_recording_raw_urls: [],
-    meeting_recording_url: "",
-    meeting_hosts: [],
-    speakers: [],
-  });
-
-  /**
-   * Determines the current scenario based on event dates.
-   * @returns {string} "no-dates" | "single-day" | "multi-day"
-   * @private
-   */
-  _computeScenario() {
-    if (!this.eventStartsAt || !this.eventEndsAt) {
-      return "no-dates";
-    }
-    const startDate = extractDatePart(this.eventStartsAt);
-    const endDate = extractDatePart(this.eventEndsAt);
-    return startDate === endDate ? "single-day" : "multi-day";
-  }
-
-  /**
-   * Computes all days between event start and end dates.
-   * Uses string manipulation to avoid timezone issues with Date objects.
-   * @returns {string[]} Array of date strings (e.g., ["2025-01-15", "2025-01-16"])
-   * @private
-   */
-  _computeEventDays() {
-    if (!this.eventStartsAt || !this.eventEndsAt) return [];
-
-    const startDate = extractDatePart(this.eventStartsAt);
-    const endDate = extractDatePart(this.eventEndsAt);
-    const days = [];
-
-    // Parse date parts as integers to avoid timezone issues
-    let [year, month, day] = startDate.split("-").map(Number);
-    const [endYear, endMonth, endDay] = endDate.split("-").map(Number);
-
-    // Iterate through dates using simple arithmetic
-    while (
-      year < endYear ||
-      (year === endYear && month < endMonth) ||
-      (year === endYear && month === endMonth && day <= endDay)
-    ) {
-      const dateStr = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-      days.push(dateStr);
-
-      // Increment day and handle month/year overflow
-      day++;
-      const daysInMonth = new Date(year, month, 0).getDate();
-      if (day > daysInMonth) {
-        day = 1;
-        month++;
-        if (month > 12) {
-          month = 1;
-          year++;
-        }
-      }
-    }
-
-    return days;
-  }
-
-  /**
-   * Groups sessions by their date.
-   * @returns {Map<string, Array>} Map of date to sessions array
-   * @private
-   */
-  _groupSessionsByDay() {
-    const map = new Map();
-    const days = this._computeEventDays();
-
-    days.forEach((day) => map.set(day, []));
-
-    this.sessions.forEach((session) => {
-      const dayKey = extractDatePart(session.starts_at);
-      if (dayKey && map.has(dayKey)) {
-        map.get(dayKey).push(session);
-      }
-    });
-
-    map.forEach((sessions) => {
-      sessions.sort((a, b) => (a.starts_at || "").localeCompare(b.starts_at || ""));
-    });
-
-    return map;
-  }
-
-  /**
-   * Returns sessions sorted by start time.
-   * @returns {Array} Sorted sessions
-   * @private
-   */
-  _getSortedSessions() {
-    return [...this.sessions].sort((a, b) => (a.starts_at || "").localeCompare(b.starts_at || ""));
-  }
-
-  /**
-   * Returns sessions outside of the current event date range.
-   * @param {string[]} days - Event day strings
-   * @returns {Array} Sessions outside range, sorted by start time
-   * @private
-   */
-  _getOutOfRangeSessions(days) {
-    const daySet = new Set(days);
-    return this.sessions
-      .filter((session) => !daySet.has(extractDatePart(session.starts_at)))
-      .sort((a, b) => (a.starts_at || "").localeCompare(b.starts_at || ""));
   }
 
   /**
@@ -308,20 +186,6 @@ export class SessionsSection extends LitWrapper {
   }
 
   /**
-   * Gets the next unique session ID.
-   * @returns {number} Next session ID
-   * @private
-   */
-  _getNextSessionId() {
-    const maxId = this.sessions.reduce((currentMax, currentSession) => {
-      const currentId = Number(currentSession?.id);
-      if (!Number.isFinite(currentId)) return currentMax;
-      return Math.max(currentMax, currentId);
-    }, -1);
-    return maxId + 1;
-  }
-
-  /**
    * Handles session saved event from modal.
    * @param {CustomEvent} event - Event with session data
    * @private
@@ -331,7 +195,7 @@ export class SessionsSection extends LitWrapper {
     if (isNew) {
       const newSession = {
         ...session,
-        id: this._getNextSessionId(),
+        id: getNextSessionId(this.sessions),
       };
       this.sessions = [...this.sessions, newSession];
     } else {
@@ -460,7 +324,7 @@ export class SessionsSection extends LitWrapper {
    * @private
    */
   _renderSingleDay() {
-    const sortedSessions = this._getSortedSessions();
+    const sortedSessions = getSortedSessions(this.sessions);
     const eventDate = extractDatePart(this.eventStartsAt);
 
     return html`
@@ -486,9 +350,9 @@ export class SessionsSection extends LitWrapper {
    * @private
    */
   _renderMultiDay() {
-    const days = this._computeEventDays();
-    const sessionsByDay = this._groupSessionsByDay();
-    const outOfRangeSessions = this._getOutOfRangeSessions(days);
+    const days = computeEventDays(this.eventStartsAt, this.eventEndsAt);
+    const sessionsByDay = groupSessionsByDay(this.sessions, days);
+    const outOfRangeSessions = getOutOfRangeSessions(this.sessions, days);
 
     return html`
       <div class="space-y-6">
@@ -604,7 +468,7 @@ export class SessionsSection extends LitWrapper {
   }
 
   render() {
-    const scenario = this._computeScenario();
+    const scenario = computeSessionScenario(this.eventStartsAt, this.eventEndsAt);
     const usedSubmissionIds = this.sessions.map((s) => s.cfs_submission_id).filter((id) => id);
 
     return html`
@@ -891,43 +755,13 @@ class SessionFormModal extends LitWrapper {
   }
 
   /**
-   * Creates a new empty session.
-   * @returns {Object} Empty session
-   * @private
-   */
-  _createEmptySession() {
-    return {
-      id: Date.now(),
-      name: "",
-      description: "",
-      kind: "",
-      starts_at: "",
-      ends_at: "",
-      cfs_submission_id: "",
-      location: "",
-      meeting_requested: false,
-      meeting_in_sync: false,
-      meeting_join_instructions: "",
-      meeting_join_url: "",
-      meeting_provider_id: "",
-      meeting_password: "",
-      meeting_error: "",
-      meeting_recording_published: false,
-      meeting_recording_raw_urls: [],
-      meeting_recording_url: "",
-      meeting_hosts: [],
-      speakers: [],
-    };
-  }
-
-  /**
    * Opens the modal for adding or editing a session.
    * @param {Object|null} session - Session to edit, or null for new session
    * @param {string} prefilledDate - Date to pre-fill for the session
    */
   open(session = null, prefilledDate = "") {
     this._isNewSession = !session;
-    this._session = session ? { ...session } : this._createEmptySession();
+    this._session = session ? { ...session } : createEmptySession(Date.now());
     this._prefilledDate = prefilledDate;
     this._isOpen = openModalBodyScroll(this._isOpen);
   }

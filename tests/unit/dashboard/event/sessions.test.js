@@ -1,6 +1,11 @@
 import { expect } from "@open-wc/testing";
 
 import "/static/js/dashboard/event/sessions.js";
+import {
+  computeEventDays,
+  getOutOfRangeSessions,
+  groupSessionsByDay,
+} from "/static/js/dashboard/event/sessions-schedule.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
 import {
   mountLitComponent,
@@ -140,9 +145,9 @@ describe("sessions-section", () => {
     ];
 
     // Prepare days for computes event days, groups sessions, and isolates.
-    const days = element._computeEventDays();
-    const grouped = element._groupSessionsByDay();
-    const outOfRange = element._getOutOfRangeSessions(days);
+    const days = computeEventDays(element.eventStartsAt, element.eventEndsAt);
+    const grouped = groupSessionsByDay(element.sessions, days);
+    const outOfRange = getOutOfRangeSessions(element.sessions, days);
 
     // Event days are grouped while out-of-range sessions stay isolated.
     expect(days).to.deep.equal(["2025-01-31", "2025-02-01", "2025-02-02"]);
