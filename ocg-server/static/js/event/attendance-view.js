@@ -820,11 +820,7 @@ export const closeTicketModal = (container) => {
  */
 export const closeQuestionsModal = (container) => {
   const questionsModal = getAttendanceControl(container, "registration-modal");
-  if (
-    !(questionsModal instanceof HTMLElement) ||
-    !questionsModal.id ||
-    isElementHidden(questionsModal)
-  ) {
+  if (!(questionsModal instanceof HTMLElement) || !questionsModal.id || isElementHidden(questionsModal)) {
     return;
   }
 

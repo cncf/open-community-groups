@@ -19,6 +19,7 @@ import {
 import { ocgFetch } from "/static/js/common/fetch.js";
 import { isEscapeEvent } from "/static/js/common/keyboard.js";
 import { isModalEscapeEvent } from "/static/js/common/modal-lifecycle.js";
+import { readTrustedHtml, setTrustedHtml } from "/static/js/common/trusted-html.js";
 
 const modalId = "attendee-notification-modal";
 const formId = "attendee-notification-form";
@@ -118,7 +119,7 @@ const populateAnswersModal = (trigger, root) => {
     name.textContent = trigger.dataset.attendeeName || "";
   }
   if (content) {
-    content.innerHTML = source?.innerHTML || "";
+    setTrustedHtml(content, readTrustedHtml(source));
   }
 };
 

@@ -1,5 +1,7 @@
-import { html, repeat, unsafeHTML } from "/static/vendor/js/lit-all.v3.3.1.min.js";
+import { html, repeat } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
+import { readTrustedHtml } from "/static/js/common/trusted-html.js";
+import { renderTrustedHtml } from "/static/js/common/trusted-lit-html.js";
 
 /**
  * CfsLabelsEditor manages event-level CFS labels in event forms.
@@ -300,7 +302,7 @@ export class CfsLabelsEditor extends LitWrapper {
       return;
     }
 
-    this._legendHtml = String(legendNode.innerHTML || "").trim();
+    this._legendHtml = readTrustedHtml(legendNode).trim();
   }
 
   /**
@@ -453,7 +455,7 @@ export class CfsLabelsEditor extends LitWrapper {
           ? html`
               <div class="w-full">
                 <p class="form-legend" data-custom-legend=${hasCustomLegend ? "true" : "false"}>
-                  ${hasCustomLegend ? unsafeHTML(this._legendHtml) : helperLegend}
+                  ${hasCustomLegend ? renderTrustedHtml(this._legendHtml) : helperLegend}
                 </p>
               </div>
             `

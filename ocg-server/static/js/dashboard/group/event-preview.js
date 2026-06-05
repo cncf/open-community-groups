@@ -9,6 +9,7 @@ import {
   isModalEscapeEvent,
   openModalBodyScroll,
 } from "/static/js/common/modal-lifecycle.js";
+import { setTrustedHtml } from "/static/js/common/trusted-html.js";
 import { parseJsonAttribute } from "/static/js/common/utils.js";
 import "/static/js/common/images-gallery.js";
 import "/static/js/common/user-chip.js";
@@ -164,7 +165,7 @@ const getDashboardContent = (pageRoot) =>
  */
 export const openEventPreviewModal = (modalRoot, html, pageRoot = document) => {
   closeEventPreviewModal(modalRoot);
-  modalRoot.innerHTML = html;
+  setTrustedHtml(modalRoot, html);
   initializeEventPreviewMaps(modalRoot, pageRoot);
   initializeEventPreviewDraftSections(modalRoot, pageRoot);
   openModalBodyScroll(false);
@@ -193,14 +194,14 @@ export const openEventPreviewModal = (modalRoot, html, pageRoot = document) => {
 export const closeEventPreviewModal = (modalRoot) => {
   const state = modalState.get(modalRoot);
   if (!state) {
-    modalRoot.innerHTML = "";
+    modalRoot.replaceChildren();
     return;
   }
 
   modalRoot.removeEventListener("click", state.handleClick);
   state.removeDismissListeners();
   modalState.delete(modalRoot);
-  modalRoot.innerHTML = "";
+  modalRoot.replaceChildren();
   closeModalBodyScroll(true);
 };
 

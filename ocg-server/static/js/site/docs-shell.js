@@ -1186,7 +1186,9 @@ const mountDocs = async (docsRoot, docsApp) => {
       window.removeEventListener("hashchange", handleRewriteOnHashChange);
     });
 
-    await loadScriptOnce(SCRIPT_URLS.docsify);
+    await loadScriptOnce(SCRIPT_URLS.docsify, {
+      isLoaded: () => typeof window.Docsify !== "undefined",
+    });
     if (!isCurrentMount(runId, docsRoot)) {
       return;
     }

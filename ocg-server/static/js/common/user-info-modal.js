@@ -1,4 +1,4 @@
-import { html, unsafeHTML } from "/static/vendor/js/lit-all.v3.3.1.min.js";
+import { html } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { computeUserInitials } from "/static/js/common/common.js";
 import {
@@ -8,6 +8,7 @@ import {
   isModalOverlayTarget,
   openModalBodyScroll,
 } from "/static/js/common/modal-lifecycle.js";
+import { renderTrustedHtml } from "/static/js/common/trusted-lit-html.js";
 import "/static/js/common/logo-image.js";
 
 /**
@@ -287,7 +288,7 @@ export class UserInfoModal extends LitWrapper {
                 ? html`
                     <div class="text-stone-700 text-base leading-relaxed">
                       ${this._userData.bioIsHtml
-                        ? html`<div class="markdown">${unsafeHTML(bio)}</div>`
+                        ? html`<div class="markdown">${renderTrustedHtml(bio)}</div>`
                         : html`<div>${bio}</div>`}
                     </div>
                   `

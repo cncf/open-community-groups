@@ -1,5 +1,6 @@
 import { hideLoadingSpinner, showLoadingSpinner, navigateWithHtmx } from "/static/js/common/common.js";
 import { getElementById, loadScriptOnce, setElementHidden } from "/static/js/common/dom.js";
+import { insertTrustedHtml } from "/static/js/common/trusted-html.js";
 import { parseJsonText } from "/static/js/common/utils.js";
 import { fetchData } from "/static/js/community/explore/explore.js";
 import {
@@ -513,7 +514,8 @@ function createPopoverIfNeeded(parent, event) {
 
   // Set popovertarget and create popover
   parent.setAttribute("popovertarget", alignData.id);
-  parent.insertAdjacentHTML(
+  insertTrustedHtml(
+    parent,
     "beforeend",
     newEventPopover(alignData.id, event, alignData.horizontal, alignData.vertical),
   );

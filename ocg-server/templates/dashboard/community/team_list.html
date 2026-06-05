@@ -101,9 +101,9 @@
                       <select name="role"
                               class="input-primary py-1.5 text-xs xl:text-sm min-w-[10rem] opacity-50 cursor-not-allowed"
                               aria-label="Role"
+                              data-team-role-select
                               disabled
-                              title="At least one accepted admin is required."
-                              onchange="this.form.requestSubmit()">
+                              title="At least one accepted admin is required.">
                         {% for role_option in roles -%}
                           <option value="{{ role_option.community_role_id }}"
                                   {% if role.to_string() == role_option.community_role_id -%}
@@ -115,7 +115,7 @@
                       <select name="role"
                               class="input-primary py-1.5 text-xs xl:text-sm min-w-[10rem]"
                               aria-label="Role"
-                              onchange="this.form.requestSubmit()">
+                              data-team-role-select>
                         {% for role_option in roles -%}
                           <option value="{{ role_option.community_role_id }}"
                                   {% if role.to_string() == role_option.community_role_id -%}

@@ -1,4 +1,4 @@
-import { html, unsafeHTML } from "/static/vendor/js/lit-all.v3.3.1.min.js";
+import { html } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { handleHtmxResponse } from "/static/js/common/alerts.js";
 import { computeUserInitials } from "/static/js/common/common.js";
@@ -9,6 +9,7 @@ import {
   isModalEscapeEvent,
   openModalBodyScroll,
 } from "/static/js/common/modal-lifecycle.js";
+import { renderTrustedHtml } from "/static/js/common/trusted-lit-html.js";
 import { parseJsonAttribute } from "/static/js/common/utils.js";
 import "/static/js/common/logo-image.js";
 import "/static/js/common/user-search-field.js";
@@ -546,7 +547,7 @@ export class SessionProposalModal extends LitWrapper {
               <div class="proposal-section-title">Description</div>
               <div class="mt-2 text-stone-700 text-sm/6 markdown">
                 ${proposal?.description_html
-                  ? unsafeHTML(proposal.description_html)
+                  ? renderTrustedHtml(proposal.description_html)
                   : proposal?.description || ""}
               </div>
             </div>

@@ -462,7 +462,7 @@ export const initChart = (elementId, option) => {
     return null;
   }
 
-  el.innerHTML = "";
+  el.replaceChildren();
   const chart = echarts.init(el);
   chart.setOption(option);
   return chart;
