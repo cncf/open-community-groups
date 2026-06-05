@@ -1,11 +1,12 @@
 import { html, render } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
-import { lockBodyScroll, unlockBodyScroll } from "/static/js/common/common.js";
 import { showSuccessAlert, showErrorAlert } from "/static/js/common/alerts.js";
 import {
   bindModalDismissListeners,
+  closeModalBodyScroll,
   isModalEscapeEvent,
   isModalOverlayTarget,
+  openModalBodyScroll,
 } from "/static/js/common/modal-lifecycle.js";
 import "/static/vendor/js/sharer.v0.5.3.min.js";
 
@@ -56,17 +57,14 @@ export class ShareModal extends LitWrapper {
     super.disconnectedCallback();
     this._removeEventListeners();
     this._removeModalContainer();
-    if (this._isOpen) {
-      unlockBodyScroll();
-    }
+    this._isOpen = closeModalBodyScroll(this._isOpen);
   }
 
   /**
    * Opens the share modal and sets up event listeners for dismissal.
    */
   _openModal() {
-    this._isOpen = true;
-    lockBodyScroll();
+    this._isOpen = openModalBodyScroll(this._isOpen);
     this._removeEventListeners();
     this._removeDismissListeners = bindModalDismissListeners({
       onKeydown: this._handleKeydown,
@@ -80,8 +78,7 @@ export class ShareModal extends LitWrapper {
    * Closes the share modal and removes event listeners.
    */
   _closeModal() {
-    this._isOpen = false;
-    unlockBodyScroll();
+    this._isOpen = closeModalBodyScroll(this._isOpen);
     this._removeEventListeners();
     this._removeModalContainer();
   }

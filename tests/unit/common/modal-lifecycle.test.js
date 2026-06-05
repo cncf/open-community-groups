@@ -2,8 +2,10 @@ import { expect } from "@open-wc/testing";
 
 import {
   bindModalDismissListeners,
+  closeModalBodyScroll,
   isModalEscapeEvent,
   isModalOverlayTarget,
+  openModalBodyScroll,
 } from "/static/js/common/modal-lifecycle.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
 
@@ -55,5 +57,40 @@ describe("modal lifecycle", () => {
 
     expect(keydownCount).to.equal(1);
     expect(outsideClickCount).to.equal(1);
+  });
+
+  it("binds dismissal listeners to custom targets", () => {
+    // Build a custom event target for owner-document scoped components.
+    const target = document.createElement("section");
+    let keydownCount = 0;
+
+    // Bind the keydown listener to the custom target.
+    const cleanup = bindModalDismissListeners({
+      onKeydown: () => {
+        keydownCount += 1;
+      },
+      target,
+    });
+
+    // Dispatch while bound, then verify cleanup removes the listener.
+    target.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+    cleanup();
+    target.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+
+    expect(keydownCount).to.equal(1);
+  });
+
+  it("locks body scroll only across modal open transitions", () => {
+    // Open the modal twice and close it twice.
+    let isOpen = false;
+    isOpen = openModalBodyScroll(isOpen);
+    isOpen = openModalBodyScroll(isOpen);
+    isOpen = closeModalBodyScroll(isOpen);
+    isOpen = closeModalBodyScroll(isOpen);
+
+    // The helpers only lock and unlock on real state transitions.
+    expect(isOpen).to.equal(false);
+    expect(document.body.dataset.modalOpenCount).to.equal("0");
+    expect(document.body.style.overflow).to.equal("");
   });
 });

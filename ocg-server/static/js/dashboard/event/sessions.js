@@ -3,15 +3,18 @@ import {
   isObjectEmpty,
   convertTimestampToDateTimeLocal,
   convertTimestampToDateTimeLocalInTz,
-  lockBodyScroll,
-  unlockBodyScroll,
   computeUserInitials,
   MEETING_RECORDING_RAW_URLS_LEGEND,
   MEETING_RECORDING_URL_LEGEND,
   MEETING_RECORDING_VISIBILITY_LEGEND,
 } from "/static/js/common/common.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
-import { isModalEscapeEvent } from "/static/js/common/modal-lifecycle.js";
+import {
+  bindModalDismissListeners,
+  closeModalBodyScroll,
+  isModalEscapeEvent,
+  openModalBodyScroll,
+} from "/static/js/common/modal-lifecycle.js";
 import { parseJsonAttribute } from "/static/js/common/utils.js";
 import "/static/js/common/logo-image.js";
 import "/static/js/common/speakers-selector.js";
@@ -922,19 +925,19 @@ class SessionFormModal extends LitWrapper {
     this._prefilledDate = "";
     this._isNewSession = false;
     this._onKeydown = this._onKeydown.bind(this);
+    this._removeDismissListeners = null;
   }
 
   connectedCallback() {
     super.connectedCallback();
-    document.addEventListener("keydown", this._onKeydown);
+    this._removeDismissListeners = bindModalDismissListeners({ onKeydown: this._onKeydown });
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
-    if (this._isOpen) {
-      unlockBodyScroll();
-    }
-    document.removeEventListener("keydown", this._onKeydown);
+    this._isOpen = closeModalBodyScroll(this._isOpen);
+    this._removeDismissListeners?.();
+    this._removeDismissListeners = null;
   }
 
   /**
@@ -976,8 +979,7 @@ class SessionFormModal extends LitWrapper {
     this._isNewSession = !session;
     this._session = session ? { ...session } : this._createEmptySession();
     this._prefilledDate = prefilledDate;
-    this._isOpen = true;
-    lockBodyScroll();
+    this._isOpen = openModalBodyScroll(this._isOpen);
   }
 
   /**
@@ -985,10 +987,11 @@ class SessionFormModal extends LitWrapper {
    */
   close() {
     if (!this._isOpen) return;
+    const wasOpen = this._isOpen;
     this._isOpen = false;
     this._session = null;
     this._prefilledDate = "";
-    unlockBodyScroll();
+    this._isOpen = closeModalBodyScroll(wasOpen);
   }
 
   /**

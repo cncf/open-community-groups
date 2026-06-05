@@ -1,7 +1,7 @@
 import { handleHtmxResponse } from "/static/js/common/alerts.js";
 import { isSuccessfulXHRStatus, toggleModalVisibility } from "/static/js/common/common.js";
 import { closestElement, getElementById, markDatasetReady } from "/static/js/common/dom.js";
-import { isModalEscapeEvent } from "/static/js/common/modal-lifecycle.js";
+import { isEscapeEvent } from "/static/js/common/keyboard.js";
 import { collectQuestionAnswers, setQuestionAnswersInputValue } from "/static/js/common/question-answers.js";
 
 const DATA_KEY = "userEventQuestionsReady";
@@ -92,7 +92,7 @@ const handleAfterRequest = (event) => {
 };
 
 const handleKeydown = (event) => {
-  if (!isModalEscapeEvent(event)) {
+  if (!isEscapeEvent(event)) {
     return;
   }
 

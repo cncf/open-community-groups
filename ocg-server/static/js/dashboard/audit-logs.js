@@ -6,7 +6,7 @@ import {
   markDatasetReady,
   setElementHidden,
 } from "/static/js/common/dom.js";
-import { isModalEscapeEvent } from "/static/js/common/modal-lifecycle.js";
+import { isEscapeEvent } from "/static/js/common/keyboard.js";
 
 const MODAL_ID = "audit-log-filters-modal";
 const OPEN_BUTTON_ID = "open-audit-log-filters-modal";
@@ -157,7 +157,7 @@ const bindAuditLogGlobalHandlers = () => {
   });
 
   document.addEventListener("keydown", (event) => {
-    if (!isModalEscapeEvent(event)) {
+    if (!isEscapeEvent(event)) {
       return;
     }
 

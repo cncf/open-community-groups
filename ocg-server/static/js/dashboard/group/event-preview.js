@@ -1,14 +1,14 @@
 import { showErrorAlert } from "/static/js/common/alerts.js";
 import "/static/js/common/breadcrumb-nav.js";
-import {
-  convertDateTimeLocalToISO,
-  loadMap,
-  lockBodyScroll,
-  unlockBodyScroll,
-} from "/static/js/common/common.js";
+import { convertDateTimeLocalToISO, loadMap } from "/static/js/common/common.js";
 import { closestElement, getElementById, markDatasetReady, setElementHidden } from "/static/js/common/dom.js";
 import { ocgFetch } from "/static/js/common/fetch.js";
-import { isModalEscapeEvent } from "/static/js/common/modal-lifecycle.js";
+import {
+  bindModalDismissListeners,
+  closeModalBodyScroll,
+  isModalEscapeEvent,
+  openModalBodyScroll,
+} from "/static/js/common/modal-lifecycle.js";
 import { parseJsonAttribute } from "/static/js/common/utils.js";
 import "/static/js/common/images-gallery.js";
 import "/static/js/common/user-chip.js";
@@ -167,7 +167,7 @@ export const openEventPreviewModal = (modalRoot, html, pageRoot = document) => {
   modalRoot.innerHTML = html;
   initializeEventPreviewMaps(modalRoot, pageRoot);
   initializeEventPreviewDraftSections(modalRoot, pageRoot);
-  lockBodyScroll();
+  openModalBodyScroll(false);
 
   const handleClick = (event) => {
     if (closestElement(event.target, "[data-event-preview-close]")) {
@@ -181,8 +181,8 @@ export const openEventPreviewModal = (modalRoot, html, pageRoot = document) => {
   };
 
   modalRoot.addEventListener("click", handleClick);
-  document.addEventListener("keydown", handleKeydown);
-  modalState.set(modalRoot, { handleClick, handleKeydown });
+  const removeDismissListeners = bindModalDismissListeners({ onKeydown: handleKeydown });
+  modalState.set(modalRoot, { handleClick, removeDismissListeners });
 };
 
 /**
@@ -198,10 +198,10 @@ export const closeEventPreviewModal = (modalRoot) => {
   }
 
   modalRoot.removeEventListener("click", state.handleClick);
-  document.removeEventListener("keydown", state.handleKeydown);
+  state.removeDismissListeners();
   modalState.delete(modalRoot);
   modalRoot.innerHTML = "";
-  unlockBodyScroll();
+  closeModalBodyScroll(true);
 };
 
 /**

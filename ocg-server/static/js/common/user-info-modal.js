@@ -1,10 +1,12 @@
 import { html, unsafeHTML } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
-import { computeUserInitials, lockBodyScroll, unlockBodyScroll } from "/static/js/common/common.js";
+import { computeUserInitials } from "/static/js/common/common.js";
 import {
   bindModalDismissListeners,
+  closeModalBodyScroll,
   isModalEscapeEvent,
   isModalOverlayTarget,
+  openModalBodyScroll,
 } from "/static/js/common/modal-lifecycle.js";
 import "/static/js/common/logo-image.js";
 
@@ -46,16 +48,13 @@ export class UserInfoModal extends LitWrapper {
   disconnectedCallback() {
     super.disconnectedCallback();
     this._removeEventListeners();
-    if (this._isOpen) {
-      unlockBodyScroll();
-    }
+    this._isOpen = closeModalBodyScroll(this._isOpen);
     document.removeEventListener("open-user-modal", this._handleOpenModal);
   }
 
   _handleOpenModal(e) {
     this._userData = e.detail;
-    this._isOpen = true;
-    lockBodyScroll();
+    this._isOpen = openModalBodyScroll(this._isOpen);
     this._removeEventListeners();
     this._removeDismissListeners = bindModalDismissListeners({
       onKeydown: this._handleKeydown,
@@ -64,8 +63,7 @@ export class UserInfoModal extends LitWrapper {
   }
 
   _closeModal() {
-    this._isOpen = false;
-    unlockBodyScroll();
+    this._isOpen = closeModalBodyScroll(this._isOpen);
     this._removeEventListeners();
   }
 

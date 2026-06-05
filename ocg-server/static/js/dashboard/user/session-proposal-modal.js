@@ -1,9 +1,14 @@
 import { html, unsafeHTML } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { handleHtmxResponse } from "/static/js/common/alerts.js";
-import { computeUserInitials, lockBodyScroll, unlockBodyScroll } from "/static/js/common/common.js";
+import { computeUserInitials } from "/static/js/common/common.js";
 import { getElementById } from "/static/js/common/dom.js";
-import { isModalEscapeEvent } from "/static/js/common/modal-lifecycle.js";
+import {
+  bindModalDismissListeners,
+  closeModalBodyScroll,
+  isModalEscapeEvent,
+  openModalBodyScroll,
+} from "/static/js/common/modal-lifecycle.js";
 import { parseJsonAttribute } from "/static/js/common/utils.js";
 import "/static/js/common/logo-image.js";
 import "/static/js/common/user-search-field.js";
@@ -59,6 +64,7 @@ export class SessionProposalModal extends LitWrapper {
     this._selectedCoSpeaker = null;
     this._afterRequestHandler = null;
     this._onKeydown = this._onKeydown.bind(this);
+    this._removeDismissListeners = null;
   }
 
   /**
@@ -67,7 +73,7 @@ export class SessionProposalModal extends LitWrapper {
   connectedCallback() {
     super.connectedCallback();
     this._loadLevelsFromAttribute();
-    document.addEventListener("keydown", this._onKeydown);
+    this._removeDismissListeners = bindModalDismissListeners({ onKeydown: this._onKeydown });
   }
 
   /**
@@ -76,10 +82,9 @@ export class SessionProposalModal extends LitWrapper {
   disconnectedCallback() {
     super.disconnectedCallback();
     this._removeAfterRequestListener();
-    document.removeEventListener("keydown", this._onKeydown);
-    if (this._isOpen) {
-      unlockBodyScroll();
-    }
+    this._removeDismissListeners?.();
+    this._removeDismissListeners = null;
+    this._isOpen = closeModalBodyScroll(this._isOpen);
   }
 
   /**
@@ -113,12 +118,13 @@ export class SessionProposalModal extends LitWrapper {
       return;
     }
 
+    const wasOpen = this._isOpen;
     this._isOpen = false;
     this._mode = SessionProposalModal.FORM_MODE.CREATE;
     this._activeProposal = null;
     this._selectedCoSpeaker = null;
     this._removeAfterRequestListener();
-    unlockBodyScroll();
+    this._isOpen = closeModalBodyScroll(wasOpen);
   }
 
   /**
@@ -148,14 +154,10 @@ export class SessionProposalModal extends LitWrapper {
    * @param {Object|null} proposal
    */
   _open(mode, proposal) {
-    const shouldLockScroll = !this._isOpen;
     this._mode = mode;
     this._activeProposal = proposal || null;
     this._selectedCoSpeaker = proposal?.co_speaker || null;
-    this._isOpen = true;
-    if (shouldLockScroll) {
-      lockBodyScroll();
-    }
+    this._isOpen = openModalBodyScroll(this._isOpen);
   }
 
   /**

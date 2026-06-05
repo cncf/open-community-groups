@@ -1,4 +1,5 @@
 import { isEscapeEvent } from "/static/js/common/keyboard.js";
+import { lockBodyScroll, unlockBodyScroll } from "/static/js/common/common.js";
 
 /**
  * Checks whether a keyboard event should dismiss a modal.
@@ -15,22 +16,47 @@ export const isModalEscapeEvent = (event) => isEscapeEvent(event);
 export const isModalOverlayTarget = (target) => target?.classList?.contains?.("modal-overlay") === true;
 
 /**
+ * Locks body scroll when a modal transitions from closed to open.
+ * @param {boolean} isOpen Current modal open state.
+ * @returns {boolean} Open modal state.
+ */
+export const openModalBodyScroll = (isOpen) => {
+  if (!isOpen) {
+    lockBodyScroll();
+  }
+  return true;
+};
+
+/**
+ * Unlocks body scroll when a modal transitions from open to closed.
+ * @param {boolean} isOpen Current modal open state.
+ * @returns {boolean} Closed modal state.
+ */
+export const closeModalBodyScroll = (isOpen) => {
+  if (isOpen) {
+    unlockBodyScroll();
+  }
+  return false;
+};
+
+/**
  * Binds document-level modal dismissal listeners.
  * @param {Object} handlers Dismissal handlers.
  * @param {(event: KeyboardEvent) => void} handlers.onKeydown Keydown handler.
  * @param {(event: MouseEvent) => void} [handlers.onOutsideClick] Outside click handler.
+ * @param {Document|Element} [handlers.target=document] Listener target.
  * @returns {() => void} Cleanup callback that removes the listeners.
  */
-export const bindModalDismissListeners = ({ onKeydown, onOutsideClick }) => {
-  document.addEventListener("keydown", onKeydown);
+export const bindModalDismissListeners = ({ onKeydown, onOutsideClick, target = document }) => {
+  target.addEventListener("keydown", onKeydown);
   if (onOutsideClick) {
-    document.addEventListener("mousedown", onOutsideClick);
+    target.addEventListener("mousedown", onOutsideClick);
   }
 
   return () => {
-    document.removeEventListener("keydown", onKeydown);
+    target.removeEventListener("keydown", onKeydown);
     if (onOutsideClick) {
-      document.removeEventListener("mousedown", onOutsideClick);
+      target.removeEventListener("mousedown", onOutsideClick);
     }
   };
 };

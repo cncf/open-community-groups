@@ -2,10 +2,15 @@ import { html } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { focusUserSearchField } from "/static/js/common/user-search-field.js";
 import "/static/js/common/logo-image.js";
-import { computeUserInitials, lockBodyScroll, unlockBodyScroll } from "/static/js/common/common.js";
+import { computeUserInitials } from "/static/js/common/common.js";
 import { getElementById } from "/static/js/common/dom.js";
 import { handleHtmxResponse } from "/static/js/common/alerts.js";
-import { isModalEscapeEvent } from "/static/js/common/modal-lifecycle.js";
+import {
+  bindModalDismissListeners,
+  closeModalBodyScroll,
+  isModalEscapeEvent,
+  openModalBodyScroll,
+} from "/static/js/common/modal-lifecycle.js";
 import { parseJsonAttribute } from "/static/js/common/utils.js";
 
 /**
@@ -51,13 +56,14 @@ export class TeamAddMember extends LitWrapper {
     this._isOpen = false;
     this._selectedRole = "";
     this._selectedUser = null;
+    this._onKeydown = this._onKeydown.bind(this);
+    this._removeDismissListeners = null;
   }
 
   connectedCallback() {
     // Add ESC key listener to close the modal
     super.connectedCallback();
-    this._onKeydown = this._onKeydown.bind(this);
-    document.addEventListener("keydown", this._onKeydown);
+    this._removeDismissListeners = bindModalDismissListeners({ onKeydown: this._onKeydown });
 
     if (this.hasAttribute("can-manage-team")) {
       this.canManageTeam = this.getAttribute("can-manage-team") !== "false";
@@ -89,10 +95,9 @@ export class TeamAddMember extends LitWrapper {
   disconnectedCallback() {
     // Clean up ESC key listener
     super.disconnectedCallback();
-    if (this._isOpen) {
-      unlockBodyScroll();
-    }
-    document.removeEventListener("keydown", this._onKeydown);
+    this._isOpen = closeModalBodyScroll(this._isOpen);
+    this._removeDismissListeners?.();
+    this._removeDismissListeners = null;
   }
 
   /**
@@ -112,8 +117,7 @@ export class TeamAddMember extends LitWrapper {
    */
   _open() {
     if (!this._canManageTeam()) return;
-    this._isOpen = true;
-    lockBodyScroll();
+    this._isOpen = openModalBodyScroll(this._isOpen);
     this.updateComplete.then(() => {
       focusUserSearchField(this);
     });
@@ -124,8 +128,7 @@ export class TeamAddMember extends LitWrapper {
    * @private
    */
   _close() {
-    this._isOpen = false;
-    unlockBodyScroll();
+    this._isOpen = closeModalBodyScroll(this._isOpen);
   }
 
   /**

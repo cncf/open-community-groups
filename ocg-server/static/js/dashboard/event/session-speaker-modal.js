@@ -2,8 +2,13 @@ import { html } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { focusUserSearchField } from "/static/js/common/user-search-field.js";
 import "/static/js/common/logo-image.js";
-import { computeUserInitials, lockBodyScroll, unlockBodyScroll } from "/static/js/common/common.js";
-import { isModalEscapeEvent } from "/static/js/common/modal-lifecycle.js";
+import { computeUserInitials } from "/static/js/common/common.js";
+import {
+  bindModalDismissListeners,
+  closeModalBodyScroll,
+  isModalEscapeEvent,
+  openModalBodyScroll,
+} from "/static/js/common/modal-lifecycle.js";
 import { speakerKey } from "/static/js/dashboard/event/speaker-utils.js";
 
 /**
@@ -37,6 +42,8 @@ export class SessionSpeakerModal extends LitWrapper {
     this._isOpen = false;
     this._selectedUser = null;
     this._featured = false;
+    this._onKeydown = this._onKeydown.bind(this);
+    this._removeDismissListeners = null;
   }
 
   /**
@@ -44,8 +51,7 @@ export class SessionSpeakerModal extends LitWrapper {
    */
   connectedCallback() {
     super.connectedCallback();
-    this._onKeydown = this._onKeydown.bind(this);
-    document.addEventListener("keydown", this._onKeydown);
+    this._removeDismissListeners = bindModalDismissListeners({ onKeydown: this._onKeydown });
   }
 
   /**
@@ -53,10 +59,9 @@ export class SessionSpeakerModal extends LitWrapper {
    */
   disconnectedCallback() {
     super.disconnectedCallback();
-    if (this._isOpen) {
-      unlockBodyScroll();
-    }
-    document.removeEventListener("keydown", this._onKeydown);
+    this._isOpen = closeModalBodyScroll(this._isOpen);
+    this._removeDismissListeners?.();
+    this._removeDismissListeners = null;
   }
 
   /**
@@ -65,8 +70,7 @@ export class SessionSpeakerModal extends LitWrapper {
   open() {
     if (this.disabled) return;
     this._resetState();
-    this._isOpen = true;
-    lockBodyScroll();
+    this._isOpen = openModalBodyScroll(this._isOpen);
     this.updateComplete.then(() => {
       focusUserSearchField(this);
     });
@@ -76,8 +80,7 @@ export class SessionSpeakerModal extends LitWrapper {
    * Closes modal and clears selection state.
    */
   close() {
-    this._isOpen = false;
-    unlockBodyScroll();
+    this._isOpen = closeModalBodyScroll(this._isOpen);
     this._resetState();
   }
 

@@ -13,7 +13,7 @@ import {
   setElementHidden,
 } from "/static/js/common/dom.js";
 import { ocgFetch } from "/static/js/common/fetch.js";
-import { isModalEscapeEvent } from "/static/js/common/modal-lifecycle.js";
+import { isEscapeEvent } from "/static/js/common/keyboard.js";
 import { collectQuestionAnswers as collectQuestionAnswersFromForm } from "/static/js/common/question-answers.js";
 import { parseJsonText } from "/static/js/common/utils.js";
 
@@ -1215,7 +1215,7 @@ const handleAttendanceClick = (event) => {
  * @param {KeyboardEvent} event - Keyboard event
  */
 const handleAttendanceKeydown = (event) => {
-  if (!isModalEscapeEvent(event)) {
+  if (!isEscapeEvent(event)) {
     return;
   }
 

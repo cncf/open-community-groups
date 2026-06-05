@@ -1,14 +1,19 @@
 import { html, unsafeHTML } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { handleHtmxResponse } from "/static/js/common/alerts.js";
-import { computeUserInitials, lockBodyScroll, unlockBodyScroll } from "/static/js/common/common.js";
+import { computeUserInitials } from "/static/js/common/common.js";
 import {
   closestElement,
   getElementById,
   initializeOnReadyAndHtmxLoad,
   markDatasetReady,
 } from "/static/js/common/dom.js";
-import { isModalEscapeEvent } from "/static/js/common/modal-lifecycle.js";
+import {
+  bindModalDismissListeners,
+  closeModalBodyScroll,
+  isModalEscapeEvent,
+  openModalBodyScroll,
+} from "/static/js/common/modal-lifecycle.js";
 import { parseJsonAttribute } from "/static/js/common/utils.js";
 import "/static/js/common/cfs-label-selector.js";
 import "/static/js/common/logo-image.js";
@@ -76,22 +81,22 @@ export class ReviewSubmissionModal extends LitWrapper {
     this._initialFormSnapshot = "";
     this._afterRequestHandler = null;
     this._onKeydown = this._onKeydown.bind(this);
+    this._removeDismissListeners = null;
   }
 
   connectedCallback() {
     super.connectedCallback();
     this._loadLabelsFromAttribute();
     this._loadStatusesFromAttribute();
-    document.addEventListener("keydown", this._onKeydown);
+    this._removeDismissListeners = bindModalDismissListeners({ onKeydown: this._onKeydown });
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
-    if (this._isOpen) {
-      unlockBodyScroll();
-    }
+    this._isOpen = closeModalBodyScroll(this._isOpen);
     this._removeAfterRequestListener();
-    document.removeEventListener("keydown", this._onKeydown);
+    this._removeDismissListeners?.();
+    this._removeDismissListeners = null;
   }
 
   /**
@@ -103,7 +108,6 @@ export class ReviewSubmissionModal extends LitWrapper {
       return;
     }
     const currentUserRating = this._findCurrentUserRating(submission);
-    const shouldLockScroll = !this._isOpen;
     this.syncLabelsFromFilter();
     this._submission = submission;
     this._hoverRatingStars = 0;
@@ -116,10 +120,7 @@ export class ReviewSubmissionModal extends LitWrapper {
       .filter((eventCfsLabelId) => eventCfsLabelId.length > 0);
     this._statusId = submission.linked_session_id ? "approved" : String(submission.status_id || "");
     this._initialFormSnapshot = this._buildFormStateSnapshot();
-    this._isOpen = true;
-    if (shouldLockScroll) {
-      lockBodyScroll();
-    }
+    this._isOpen = openModalBodyScroll(this._isOpen);
   }
 
   /**
@@ -129,6 +130,7 @@ export class ReviewSubmissionModal extends LitWrapper {
     if (!this._isOpen) {
       return;
     }
+    const wasOpen = this._isOpen;
     this._isOpen = false;
     this._submission = null;
     this._hoverRatingStars = 0;
@@ -140,7 +142,7 @@ export class ReviewSubmissionModal extends LitWrapper {
     this._statusId = "";
     this._initialFormSnapshot = "";
     this._removeAfterRequestListener();
-    unlockBodyScroll();
+    this._isOpen = closeModalBodyScroll(wasOpen);
   }
 
   /**
