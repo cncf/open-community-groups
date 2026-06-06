@@ -178,7 +178,7 @@ test.describe("user dashboard profile view", () => {
         detailsForm.getByRole("button", { name: "Save" }).click(),
       ]);
 
-      // Wait for the success dialog call.
+      // Wait for the backend flash success dialog call.
       await page.waitForFunction(
         () =>
           (window.__ocgSwalCalls ?? []).some(
@@ -196,7 +196,7 @@ test.describe("user dashboard profile view", () => {
           .map((call) => call.text ?? "");
       });
 
-      // Assert the emitted payload.
+      // Assert the backend flash payload.
       expect(successAlertMessages).toEqual([
         "User details updated successfully.",
       ]);

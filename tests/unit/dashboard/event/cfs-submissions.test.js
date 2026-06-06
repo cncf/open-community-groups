@@ -343,4 +343,27 @@ describe("review-submission-modal", () => {
     expect(element._isOpen).to.equal(false);
     expect(element._afterRequestHandler).to.equal(null);
   });
+
+  it("keeps dismiss listener cleanup while closing the modal", async () => {
+    // Render and open the modal fixture.
+    const element = await renderModal();
+    element.open(buildSubmission());
+    await element.updateComplete;
+
+    // Replace the connected cleanup handler with an observable function.
+    let cleanupCalls = 0;
+    const removeDismissListeners = () => {
+      cleanupCalls += 1;
+    };
+    element._removeDismissListeners = removeDismissListeners;
+
+    // Close the modal without disconnecting it.
+    element.close();
+    await element.updateComplete;
+
+    // Verify close resets modal data without clearing lifecycle cleanup.
+    expect(element._isOpen).to.equal(false);
+    expect(element._removeDismissListeners).to.equal(removeDismissListeners);
+    expect(cleanupCalls).to.equal(0);
+  });
 });

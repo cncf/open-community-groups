@@ -45,14 +45,12 @@ const REVIEW_TABS = {
 };
 const MODAL_STATE_KEYS = {
   activeTab: "_activeTab",
-  afterRequestHandler: "_afterRequestHandler",
   hoverRatingStars: "_hoverRatingStars",
   initialFormSnapshot: "_initialFormSnapshot",
   isOpen: "_isOpen",
   message: "_message",
   ratingComment: "_ratingComment",
   ratingStars: "_ratingStars",
-  removeDismissListeners: "_removeDismissListeners",
   selectedLabelIds: "_selectedLabelIds",
   statusId: "_statusId",
   submission: "_submission",
@@ -91,7 +89,9 @@ export class ReviewSubmissionModal extends LitWrapper {
     Object.assign(this, getReviewModalDefaultProperties());
     this._applyModalState(getReviewModalDefaultState());
     this._activeTab = REVIEW_TABS.DETAILS;
+    this._afterRequestHandler = null;
     this._onKeydown = this._onKeydown.bind(this);
+    this._removeDismissListeners = null;
   }
 
   connectedCallback() {

@@ -294,8 +294,6 @@ export const getReviewModalDefaultState = () => ({
   statusId: "",
   submission: null,
   initialFormSnapshot: "",
-  afterRequestHandler: null,
-  removeDismissListeners: null,
 });
 
 /**

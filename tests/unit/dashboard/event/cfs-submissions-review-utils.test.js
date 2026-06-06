@@ -241,9 +241,7 @@ describe("cfs submissions review utils", () => {
       submission: null,
     });
     expect(getReviewModalDefaultState()).to.deep.include({
-      afterRequestHandler: null,
       initialFormSnapshot: "",
-      removeDismissListeners: null,
     });
   });
 

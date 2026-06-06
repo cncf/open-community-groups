@@ -16,6 +16,7 @@ import {
 } from "/static/js/common/alerts.js";
 import { waitForMicrotask } from "/tests/unit/test-utils/async.js";
 import { useDashboardTestEnv } from "/tests/unit/test-utils/env.js";
+import { dispatchHtmxLoad } from "/tests/unit/test-utils/htmx.js";
 
 describe("alerts", () => {
   const env = useDashboardTestEnv({
@@ -73,6 +74,25 @@ describe("alerts", () => {
     expect(env.current.swal.calls[1]).to.include({
       text: "Failed",
       icon: "error",
+    });
+  });
+
+  it("renders declarative page alerts after HTMX loads", () => {
+    // Build the DOM fixture with a server-rendered alert in swapped content.
+    document.body.innerHTML = `
+      <section id="profile-content">
+        <span data-page-alert data-alert-level="success" data-alert-message="Saved" hidden></span>
+      </section>
+    `;
+
+    // Dispatch the HTMX load event emitted for swapped content.
+    dispatchHtmxLoad(document.getElementById("profile-content"));
+
+    // Assert the backend flash marker produces one success alert.
+    expect(env.current.swal.calls).to.have.length(1);
+    expect(env.current.swal.calls[0]).to.include({
+      text: "Saved",
+      icon: "success",
     });
   });
 

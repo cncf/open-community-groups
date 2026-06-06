@@ -1,5 +1,8 @@
 import { scrollToDashboardTop } from "/static/js/common/common.js";
-import { initializeOnReady, markDatasetReady } from "/static/js/common/dom.js";
+import {
+  initializeOnReadyAndHtmxLoad,
+  markDatasetReady,
+} from "/static/js/common/dom.js";
 
 const PAGE_ALERT_SELECTOR = "[data-page-alert]";
 const PAGE_ALERT_READY_KEY = "pageAlertReady";
@@ -85,7 +88,7 @@ export const showErrorAlert = (message, withHtml = false, persist = false) => {
   Swal.fire(alertOptions);
 };
 
-initializeOnReady(() => initializePageAlerts());
+initializeOnReadyAndHtmxLoad(initializePageAlerts);
 
 /**
  * Displays the deployment refresh retry alert while cached HTML expires.
