@@ -1,7 +1,11 @@
 import { expect } from "@open-wc/testing";
 
 import {
+  buildApprovedSubmissionSummary,
+  buildReviewModalOpenState,
+  buildReviewFormStateSnapshot,
   findCurrentUserRating,
+  formatAverageRating,
   getAverageRating,
   getOtherTeamRatings,
   getRatingsCount,
@@ -74,5 +78,76 @@ describe("cfs submissions review utils", () => {
       { event_cfs_label_id: "12", name: "Backend", color: "blue" },
     ]);
     expect(normalizeLabels(null)).to.deep.equal([]);
+  });
+
+  it("builds stable review form snapshots", () => {
+    // Label order is sorted so equivalent selections produce the same snapshot.
+    const firstSnapshot = buildReviewFormStateSnapshot({
+      message: "Please expand the abstract",
+      ratingComment: "Looks good",
+      ratingStars: "4",
+      selectedLabelIds: ["2", "1"],
+      statusId: "approved",
+    });
+    const secondSnapshot = buildReviewFormStateSnapshot({
+      message: "Please expand the abstract",
+      ratingComment: "Looks good",
+      ratingStars: 4,
+      selectedLabelIds: ["1", "2"],
+      statusId: "approved",
+    });
+
+    expect(firstSnapshot).to.equal(secondSnapshot);
+  });
+
+  it("builds approved submission summaries for session editors", () => {
+    // Approved submissions emit a compact session proposal summary.
+    const submission = {
+      cfs_submission_id: 12,
+      session_proposal: {
+        session_proposal_id: 99,
+        title: "Platform Engineering at Scale",
+      },
+      speaker: { username: "ada" },
+    };
+
+    expect(buildApprovedSubmissionSummary(submission, "approved")).to.deep.equal({
+      cfs_submission_id: "12",
+      session_proposal_id: "99",
+      title: "Platform Engineering at Scale",
+      speaker_name: "ada",
+    });
+    expect(buildApprovedSubmissionSummary(submission, "rejected")).to.equal(null);
+    expect(buildApprovedSubmissionSummary({ ...submission, speaker: {} }, "approved")).to.equal(
+      null,
+    );
+  });
+
+  it("builds normalized modal open state", () => {
+    // Opening state normalizes labels, current rating, and linked status.
+    const openState = buildReviewModalOpenState(
+      {
+        action_required_message: "Please expand the abstract",
+        linked_session_id: "session-1",
+        labels: [{ event_cfs_label_id: 4 }, { event_cfs_label_id: "" }],
+        status_id: "not-reviewed",
+      },
+      { comments: "Looks promising", stars: "4" },
+    );
+
+    expect(openState).to.deep.equal({
+      message: "Please expand the abstract",
+      ratingComment: "Looks promising",
+      ratingStars: 4,
+      selectedLabelIds: ["4"],
+      statusId: "approved",
+    });
+  });
+
+  it("formats average rating values for display", () => {
+    // Whole numbers avoid trailing decimals while partial ratings keep one digit.
+    expect(formatAverageRating(4)).to.equal("4");
+    expect(formatAverageRating(3.75)).to.equal("3.8");
+    expect(formatAverageRating(0)).to.equal("0");
   });
 });

@@ -129,3 +129,80 @@ export const normalizeLabels = (labels) => {
     })
     .filter((label) => label.event_cfs_label_id && label.name);
 };
+
+/**
+ * Builds a stable snapshot for mutable review form values.
+ * @param {Object} state Review form state.
+ * @returns {string}
+ */
+export const buildReviewFormStateSnapshot = (state) => {
+  const selectedLabelIds = [...(state.selectedLabelIds || [])].sort();
+  return JSON.stringify({
+    message: state.message || "",
+    ratingComment: state.ratingComment || "",
+    ratingStars: Number(state.ratingStars || 0),
+    selectedLabelIds,
+    statusId: String(state.statusId || ""),
+  });
+};
+
+/**
+ * Builds the approved submission payload emitted to session editors.
+ * @param {Object} submission Submission payload.
+ * @param {string} statusId Selected status id.
+ * @returns {Object|null} Approved submission summary, or null when not approved.
+ */
+export const buildApprovedSubmissionSummary = (submission, statusId) => {
+  const proposal = submission?.session_proposal || {};
+  const speakerName = submission?.speaker?.name || submission?.speaker?.username || "";
+  if (statusId !== "approved" || !proposal?.session_proposal_id || !proposal?.title || !speakerName) {
+    return null;
+  }
+
+  return {
+    cfs_submission_id: String(submission.cfs_submission_id),
+    session_proposal_id: String(proposal.session_proposal_id),
+    title: proposal.title,
+    speaker_name: speakerName,
+  };
+};
+
+/**
+ * Gets selected label ids from a submission payload.
+ * @param {Object} submission Submission payload.
+ * @returns {Array<string>} Selected label ids.
+ */
+export const getSubmissionLabelIds = (submission) =>
+  (submission?.labels || [])
+    .map((label) => String(label?.event_cfs_label_id || ""))
+    .filter((eventCfsLabelId) => eventCfsLabelId.length > 0);
+
+/**
+ * Resolves the editable review status for a submission.
+ * @param {Object} submission Submission payload.
+ * @returns {string} Review status id.
+ */
+export const getSubmissionReviewStatusId = (submission) =>
+  submission?.linked_session_id ? "approved" : String(submission?.status_id || "");
+
+/**
+ * Builds modal state from the submission and current user's rating.
+ * @param {Object} submission Submission payload.
+ * @param {Object|null} currentUserRating Current user's rating payload.
+ * @returns {Object} Review modal state.
+ */
+export const buildReviewModalOpenState = (submission, currentUserRating) => ({
+  message: submission?.action_required_message || "",
+  ratingComment: currentUserRating?.comments || "",
+  ratingStars: Number(currentUserRating?.stars || 0),
+  selectedLabelIds: getSubmissionLabelIds(submission),
+  statusId: getSubmissionReviewStatusId(submission),
+});
+
+/**
+ * Formats the average rating summary for display.
+ * @param {number} averageRating Average rating value.
+ * @returns {string} Display text.
+ */
+export const formatAverageRating = (averageRating) =>
+  Number.isInteger(averageRating) ? String(averageRating) : Number(averageRating || 0).toFixed(1);
