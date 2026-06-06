@@ -1,4 +1,4 @@
-import { html, repeat } from "/static/vendor/js/lit-all.v3.3.1.min.js";
+import { html } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { isElementHidden } from "/static/js/common/dom.js";
 import {
@@ -8,25 +8,37 @@ import {
   getExternalLocationFieldIds,
   getInitialLocationValues,
   getInternalLocationValueUpdates,
+  getLocationFieldConfig,
   hasInternalLocationFields,
 } from "/static/js/common/location-field-config.js";
+import { renderLocationCoordinateInputs } from "/static/js/common/location-coordinate-inputs.js";
 import { searchNominatimLocations } from "/static/js/common/location-search-api.js";
 import { getLocationSearchKeyAction } from "/static/js/common/location-search-keyboard.js";
 import {
   getClearedLocationSearchState,
+  getDefaultLocationSearchInternalState,
+  getDefaultLocationSearchProperties,
+  getFailedLocationSearchState,
+  getFinishedLocationSearchState,
   getHiddenLocationSearchState,
+  getInitialLocationSearchValues,
   getStartedLocationSearchState,
+  getSuccessfulLocationSearchState,
 } from "/static/js/common/location-search-state.js";
 import {
   getLocationInputId,
-  getLocationLegendText,
-  getLocationResultText,
   getLocationDisabledInputClasses,
-  isLocationSearchButtonDisabled,
-  isVenueLocationContext,
-  shouldRenderLocationDropdown,
+  getLocationTextFieldValueKey,
 } from "/static/js/common/location-search-display.js";
+import {
+  renderLocationSearchInterface,
+} from "/static/js/common/location-search-interface-renderer.js";
+import { renderLocationTextFields } from "/static/js/common/location-text-fields-renderer.js";
 import { LocationMapPreview } from "/static/js/common/location-map-preview.js";
+import {
+  getLocationMapPreviewState,
+  renderLocationMapPreview,
+} from "/static/js/common/location-map-preview-renderer.js";
 import {
   DEFAULT_MAP_ZOOM,
   deriveZoomFromFields,
@@ -131,58 +143,18 @@ export class LocationSearchField extends LitWrapper {
 
   constructor() {
     super();
-    this.placeholderText = "Search for a venue or address...";
-    this.venueNameFieldId = "";
-    this.venueAddressFieldId = "";
-    this.venueCityFieldId = "";
-    this.venueZipCodeFieldId = "";
-    this.stateFieldId = "";
-    this.countryFieldId = "";
-    this.latitudeFieldId = "";
-    this.longitudeFieldId = "";
-    this.venueNameFieldName = "";
-    this.venueAddressFieldName = "";
-    this.venueCityFieldName = "";
-    this.venueZipCodeFieldName = "";
-    this.stateFieldName = "";
-    this.countryNameFieldName = "";
-    this.countryCodeFieldName = "";
-    this.latitudeFieldName = "";
-    this.longitudeFieldName = "";
-    this.initialVenueName = "";
-    this.initialVenueAddress = "";
-    this.initialVenueCity = "";
-    this.initialVenueZipCode = "";
-    this.initialState = "";
-    this.initialCountryName = "";
-    this.initialCountryCode = "";
-    this.initialLatitude = "";
-    this.initialLongitude = "";
-
-    this._isSearching = false;
-    this._searchResults = [];
-    this._searchQuery = "";
-    this._highlightedIndex = -1;
-    this._abortController = null;
-    this._outsidePointerHandler = null;
-    this._latitudeValue = "";
-    this._longitudeValue = "";
-    this._venueNameValue = "";
-    this._venueAddressValue = "";
-    this._venueCityValue = "";
-    this._venueZipCodeValue = "";
-    this._stateValue = "";
-    this._countryNameValue = "";
-    this._countryCodeValue = "";
-    this._showDropdown = false;
-    this._mapVisible = false;
+    Object.assign(this, getDefaultLocationSearchProperties());
+    const defaultInternalState = getDefaultLocationSearchInternalState();
+    this._applySearchState(defaultInternalState);
+    this._applyLocationValues(defaultInternalState);
+    this._abortController = defaultInternalState.abortController;
+    this._outsidePointerHandler = defaultInternalState.outsidePointerHandler;
+    this._mapVisible = defaultInternalState.mapVisible;
     this._mapElementId = createMapElementId();
     this._mapZoom = DEFAULT_MAP_ZOOM;
     this._mapBoundingBox = null;
     this._shouldFitBounds = false;
     this._mapPreview = new LocationMapPreview(this._mapElementId);
-    this._searchError = null;
-    this.disabled = false;
   }
 
   get _leafletMap() {
@@ -204,17 +176,7 @@ export class LocationSearchField extends LitWrapper {
   connectedCallback() {
     super.connectedCallback();
     this._applyLocationValues(
-      getInitialLocationValues({
-        initialVenueName: this.initialVenueName,
-        initialVenueAddress: this.initialVenueAddress,
-        initialVenueCity: this.initialVenueCity,
-        initialVenueZipCode: this.initialVenueZipCode,
-        initialState: this.initialState,
-        initialCountryName: this.initialCountryName,
-        initialCountryCode: this.initialCountryCode,
-        initialLatitude: this.initialLatitude,
-        initialLongitude: this.initialLongitude,
-      }),
+      getInitialLocationValues(getInitialLocationSearchValues(this)),
     );
     this._mapZoom = this._deriveZoomFromFields();
 
@@ -366,17 +328,15 @@ export class LocationSearchField extends LitWrapper {
 
     try {
       const results = await searchNominatimLocations(query, this._abortController.signal);
-      this._searchResults = results;
-      this._searchError = null;
+      this._applySearchState(getSuccessfulLocationSearchState(results));
     } catch (err) {
       if (err.name === "AbortError") {
         return;
       }
       console.error("Error searching locations:", err);
-      this._searchResults = [];
-      this._searchError = err?.message || "Unable to search for locations right now.";
+      this._applySearchState(getFailedLocationSearchState(err));
     } finally {
-      this._isSearching = false;
+      this._applySearchState(getFinishedLocationSearchState());
       this._abortController = null;
     }
   }
@@ -560,198 +520,49 @@ export class LocationSearchField extends LitWrapper {
    * @private
    */
   _renderSearchInterface() {
-    const shouldRenderDropdown = shouldRenderLocationDropdown({
-      showDropdown: this._showDropdown,
-      searchQuery: this._searchQuery,
-    });
-    const searchButtonDisabled = isLocationSearchButtonDisabled({
+    return renderLocationSearchInterface({
       disabled: this.disabled,
-      searchQuery: this._searchQuery,
+      highlightedIndex: this._highlightedIndex,
       isSearching: this._isSearching,
+      onClearSearch: () => this._clearSearch(),
+      onFocusOut: () => this._handleFocusOut(),
+      onHighlight: (index) => {
+        this._highlightedIndex = index;
+      },
+      onKeyDown: (event) => this._handleKeyDown(event),
+      onSearchButtonPointerDown: (event) => this._handleSearchButtonPointerDown(event),
+      onSearchInput: (event) => this._handleSearchInput(event),
+      onSelect: (result) => this._selectLocation(result),
+      onTriggerSearch: () => this._triggerSearch(),
+      placeholderText: this.placeholderText,
+      searchError: this._searchError,
+      searchQuery: this._searchQuery,
+      searchResults: this._searchResults,
+      showDropdown: this._showDropdown,
     });
-    const disabledClasses = getLocationDisabledInputClasses(this.disabled);
-
-    return html`
-      <div @focusout=${this._handleFocusOut}>
-        <div class="mt-2 flex gap-2">
-            <div class="relative flex-1">
-              <div class="absolute top-3 start-0 flex items-center ps-3 pointer-events-none">
-                <div class="svg-icon size-4 icon-search bg-stone-300"></div>
-              </div>
-              <input
-                id="location-search-input"
-                type="text"
-                class="input-primary peer ps-9 ${disabledClasses}"
-                placeholder=${this.placeholderText}
-                .value=${this._searchQuery}
-                @input=${this._handleSearchInput}
-                @keydown=${this._handleKeyDown}
-                autocomplete="off"
-                autocorrect="off"
-                autocapitalize="off"
-                spellcheck="false"
-                aria-expanded=${shouldRenderDropdown}
-                aria-haspopup="listbox"
-                aria-autocomplete="list"
-                aria-label="Search for a location"
-                ?disabled=${this.disabled}
-              />
-              ${
-                this._searchQuery
-                  ? html`
-                      <div class="absolute end-1.5 top-1.5">
-                        <button
-                          type="button"
-                          class="cursor-pointer mt-0.5"
-                          @click=${this._clearSearch}
-                          ?disabled=${this.disabled}
-                        >
-                          <div class="svg-icon size-5 bg-stone-400 hover:bg-stone-700 icon-close"></div>
-                        </button>
-                      </div>
-                    `
-                  : ""
-              }
-              ${shouldRenderDropdown ? this._renderDropdown() : ""}
-            </div>
-            <button
-              type="button"
-              class="btn-primary"
-              @pointerdown=${this._handleSearchButtonPointerDown}
-              @click=${this._triggerSearch}
-              ?disabled=${searchButtonDisabled}
-            >
-              Search
-            </button>
-          </div>
-        </div>
-        <p class="form-legend mt-3">
-          If any fields remain empty or incomplete after the search, fill in the missing details manually.
-        </p>
-      </div>
-    `;
   }
 
   /**
-   * Renders the search results dropdown.
-   * @returns {import('lit').TemplateResult} Dropdown template
+   * @param {string} valueKey Component value key.
+   * @param {Event} event Input event.
    * @private
    */
-  _renderDropdown() {
-    return html`
-      <div
-        class="absolute z-50 mt-2 w-full bg-white rounded-lg shadow-lg border border-stone-200 max-h-80 overflow-y-auto"
-        role="listbox"
-      >
-        ${this._isSearching
-          ? html`
-              <div class="p-4 text-center">
-                <div class="inline-flex items-center gap-2 text-stone-600">
-                  <div
-                    class="animate-spin w-4 h-4 border-2 border-stone-300 border-t-stone-600 rounded-full"
-                  ></div>
-                  Searching...
-                </div>
-              </div>
-            `
-          : this._searchError
-            ? html`
-                <div class="p-4 text-center text-stone-500">
-                  <p class="text-sm font-medium text-stone-600">Unable to load locations</p>
-                  <p class="text-sm">${this._searchError}</p>
-                </div>
-              `
-            : this._searchResults.length === 0
-              ? html`
-                  <div class="p-4 text-center text-stone-500">
-                    <p class="text-sm">No locations found for "${this._searchQuery}"</p>
-                  </div>
-                `
-              : html`
-                  <div class="py-1">
-                    ${repeat(
-                      this._searchResults,
-                      (r) => r.place_id,
-                      (r, i) => this._renderResult(r, i),
-                    )}
-                  </div>
-                `}
-      </div>
-    `;
+  _setLocationValueFromInput(valueKey, event) {
+    this[valueKey] = event.target.value;
   }
 
   /**
-   * Handles latitude input change.
-   * @param {Event} event - Input event
+   * @param {string} handlerName Location text field handler name.
+   * @returns {Function}
    * @private
    */
-  _handleLatitudeInput(event) {
-    this._latitudeValue = event.target.value;
-  }
+  _getTextFieldInputHandler(handlerName) {
+    const valueKey = getLocationTextFieldValueKey(handlerName);
+    if (!valueKey) {
+      return () => {};
+    }
 
-  /**
-   * Handles longitude input change.
-   * @param {Event} event - Input event
-   * @private
-   */
-  _handleLongitudeInput(event) {
-    this._longitudeValue = event.target.value;
-  }
-
-  /**
-   * @param {Event} event
-   * @private
-   */
-  _handleVenueNameInput(event) {
-    this._venueNameValue = event.target.value;
-  }
-
-  /**
-   * @param {Event} event
-   * @private
-   */
-  _handleVenueAddressInput(event) {
-    this._venueAddressValue = event.target.value;
-  }
-
-  /**
-   * @param {Event} event
-   * @private
-   */
-  _handleVenueCityInput(event) {
-    this._venueCityValue = event.target.value;
-  }
-
-  /**
-   * @param {Event} event
-   * @private
-   */
-  _handleVenueZipCodeInput(event) {
-    this._venueZipCodeValue = event.target.value;
-  }
-
-  /**
-   * @param {Event} event
-   * @private
-   */
-  _handleStateInput(event) {
-    this._stateValue = event.target.value;
-  }
-
-  /**
-   * @param {Event} event
-   * @private
-   */
-  _handleCountryNameInput(event) {
-    this._countryNameValue = event.target.value;
-  }
-
-  /**
-   * @param {Event} event
-   * @private
-   */
-  _handleCountryCodeInput(event) {
-    this._countryCodeValue = event.target.value;
+    return (event) => this._setLocationValueFromInput(valueKey, event);
   }
 
   /**
@@ -784,23 +595,7 @@ export class LocationSearchField extends LitWrapper {
    * @private
    */
   _getLocationFieldConfig() {
-    return {
-      venueNameFieldId: this.venueNameFieldId,
-      venueAddressFieldId: this.venueAddressFieldId,
-      venueCityFieldId: this.venueCityFieldId,
-      venueZipCodeFieldId: this.venueZipCodeFieldId,
-      stateFieldId: this.stateFieldId,
-      countryFieldId: this.countryFieldId,
-      latitudeFieldId: this.latitudeFieldId,
-      longitudeFieldId: this.longitudeFieldId,
-      venueNameFieldName: this.venueNameFieldName,
-      venueAddressFieldName: this.venueAddressFieldName,
-      venueCityFieldName: this.venueCityFieldName,
-      venueZipCodeFieldName: this.venueZipCodeFieldName,
-      stateFieldName: this.stateFieldName,
-      countryNameFieldName: this.countryNameFieldName,
-      countryCodeFieldName: this.countryCodeFieldName,
-    };
+    return getLocationFieldConfig(this);
   }
 
   /**
@@ -811,27 +606,6 @@ export class LocationSearchField extends LitWrapper {
   _isInsideHiddenContent() {
     const contentSection = this.closest("[data-content]");
     return isElementHidden(contentSection);
-  }
-
-  /**
-   * @returns {boolean}
-   * @private
-   */
-  _isVenueContext() {
-    return isVenueLocationContext({
-      venueNameFieldName: this.venueNameFieldName,
-      venueAddressFieldName: this.venueAddressFieldName,
-      venueZipCodeFieldName: this.venueZipCodeFieldName,
-    });
-  }
-
-  /**
-   * @param {"city" | "zip" | "state" | "country"} kind
-   * @returns {string}
-   * @private
-   */
-  _getLegendText(kind) {
-    return getLocationLegendText(kind, this._isVenueContext());
   }
 
   /**
@@ -850,157 +624,25 @@ export class LocationSearchField extends LitWrapper {
   _renderLocationFields() {
     if (!this._hasInternalFields()) return html``;
 
-    const hiddenCountryCodeInput = this.countryCodeFieldName
-      ? html`
-          <input
-            type="hidden"
-            name="${this.countryCodeFieldName}"
-            id="${this._getInputId(this.countryCodeFieldName)}"
-            .value=${this._countryCodeValue}
-          />
-        `
-      : "";
-    const disabledClasses = getLocationDisabledInputClasses(this.disabled);
-
-    return html`
-      <div class="mt-8 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
-        ${hiddenCountryCodeInput}
-        ${this.venueNameFieldName
-          ? html`
-              <div class="col-span-full lg:col-span-3">
-                <label for="${this._getInputId(this.venueNameFieldName)}" class="form-label"
-                  >Venue Name</label
-                >
-                <div class="mt-2">
-                  <input
-                    type="text"
-                    name="${this.venueNameFieldName}"
-                    id="${this._getInputId(this.venueNameFieldName)}"
-                    class="input-primary ${disabledClasses}"
-                    .value=${this._venueNameValue}
-                    ?disabled=${this.disabled}
-                    @input=${this._handleVenueNameInput}
-                  />
-                </div>
-                <p class="form-legend">Name of the venue where the event takes place.</p>
-              </div>
-            `
-          : ""}
-        ${this.venueAddressFieldName
-          ? html`
-              <div class="col-span-full lg:col-span-4">
-                <label for="${this._getInputId(this.venueAddressFieldName)}" class="form-label"
-                  >Address</label
-                >
-                <div class="mt-2">
-                  <input
-                    type="text"
-                    name="${this.venueAddressFieldName}"
-                    id="${this._getInputId(this.venueAddressFieldName)}"
-                    class="input-primary ${disabledClasses}"
-                    .value=${this._venueAddressValue}
-                    ?disabled=${this.disabled}
-                    @input=${this._handleVenueAddressInput}
-                  />
-                </div>
-                <p class="form-legend">Street address of the venue.</p>
-              </div>
-            `
-          : ""}
-        ${this.venueCityFieldName
-          ? html`
-              <div class="col-span-full lg:col-span-2">
-                <label for="${this._getInputId(this.venueCityFieldName)}" class="form-label">City</label>
-                <div class="mt-2">
-                  <input
-                    type="text"
-                    name="${this.venueCityFieldName}"
-                    id="${this._getInputId(this.venueCityFieldName)}"
-                    class="input-primary ${disabledClasses}"
-                    autocomplete="off"
-                    autocorrect="off"
-                    autocapitalize="off"
-                    spellcheck="false"
-                    .value=${this._venueCityValue}
-                    ?disabled=${this.disabled}
-                    @input=${this._handleVenueCityInput}
-                  />
-                </div>
-                <p class="form-legend">${this._getLegendText("city")}</p>
-              </div>
-            `
-          : ""}
-        ${this.venueZipCodeFieldName
-          ? html`
-              <div class="col-span-full lg:col-span-2">
-                <label for="${this._getInputId(this.venueZipCodeFieldName)}" class="form-label"
-                  >Zip Code</label
-                >
-                <div class="mt-2">
-                  <input
-                    type="text"
-                    name="${this.venueZipCodeFieldName}"
-                    id="${this._getInputId(this.venueZipCodeFieldName)}"
-                    class="input-primary ${disabledClasses}"
-                    .value=${this._venueZipCodeValue}
-                    ?disabled=${this.disabled}
-                    @input=${this._handleVenueZipCodeInput}
-                  />
-                </div>
-                <p class="form-legend">${this._getLegendText("zip")}</p>
-              </div>
-            `
-          : ""}
-        ${this.stateFieldName
-          ? html`
-              <div class="col-span-full lg:col-span-2">
-                <label for="${this._getInputId(this.stateFieldName)}" class="form-label"
-                  >State/Province</label
-                >
-                <div class="mt-2">
-                  <input
-                    type="text"
-                    name="${this.stateFieldName}"
-                    id="${this._getInputId(this.stateFieldName)}"
-                    class="input-primary ${disabledClasses}"
-                    autocomplete="off"
-                    autocorrect="off"
-                    autocapitalize="off"
-                    spellcheck="false"
-                    .value=${this._stateValue}
-                    ?disabled=${this.disabled}
-                    @input=${this._handleStateInput}
-                  />
-                </div>
-                <p class="form-legend">${this._getLegendText("state")}</p>
-              </div>
-            `
-          : ""}
-        ${this.countryNameFieldName
-          ? html`
-              <div class="col-span-full lg:col-span-2">
-                <label for="${this._getInputId(this.countryNameFieldName)}" class="form-label">Country</label>
-                <div class="mt-2">
-                  <input
-                    type="text"
-                    name="${this.countryNameFieldName}"
-                    id="${this._getInputId(this.countryNameFieldName)}"
-                    class="input-primary ${disabledClasses}"
-                    autocomplete="off"
-                    autocorrect="off"
-                    autocapitalize="off"
-                    spellcheck="false"
-                    .value=${this._countryNameValue}
-                    ?disabled=${this.disabled}
-                    @input=${this._handleCountryNameInput}
-                  />
-                </div>
-                <p class="form-legend">${this._getLegendText("country")}</p>
-              </div>
-            `
-          : ""}
-      </div>
-    `;
+    return renderLocationTextFields({
+      componentId: this.id,
+      countryCodeFieldName: this.countryCodeFieldName,
+      countryCodeValue: this._countryCodeValue,
+      disabled: this.disabled,
+      onInput: (handlerName, event) => this._getTextFieldInputHandler(handlerName)(event),
+      venueNameFieldName: this.venueNameFieldName,
+      venueAddressFieldName: this.venueAddressFieldName,
+      venueCityFieldName: this.venueCityFieldName,
+      venueZipCodeFieldName: this.venueZipCodeFieldName,
+      stateFieldName: this.stateFieldName,
+      countryNameFieldName: this.countryNameFieldName,
+      venueNameValue: this._venueNameValue,
+      venueAddressValue: this._venueAddressValue,
+      venueCityValue: this._venueCityValue,
+      venueZipCodeValue: this._venueZipCodeValue,
+      stateValue: this._stateValue,
+      countryNameValue: this._countryNameValue,
+    });
   }
 
   /**
@@ -1019,78 +661,17 @@ export class LocationSearchField extends LitWrapper {
 
     const disabledClasses = getLocationDisabledInputClasses(this.disabled);
 
-    return html`
-      <div class="grid grid-cols-2 gap-4 mt-6">
-        <div>
-          <label for="${this._getInputId(latitudeName)}" class="form-label">Latitude</label>
-          <div class="mt-2">
-            <input
-              type="number"
-              step="any"
-              id="${this._getInputId(latitudeName)}"
-              name="${latitudeName}"
-              class="input-primary ${disabledClasses}"
-              .value=${this._latitudeValue}
-              ?disabled=${this.disabled}
-              @input=${this._handleLatitudeInput}
-            />
-          </div>
-        </div>
-        <div>
-          <label for="${this._getInputId(longitudeName)}" class="form-label">Longitude</label>
-          <div class="mt-2">
-            <input
-              type="number"
-              step="any"
-              id="${this._getInputId(longitudeName)}"
-              name="${longitudeName}"
-              class="input-primary ${disabledClasses}"
-              .value=${this._longitudeValue}
-              ?disabled=${this.disabled}
-              @input=${this._handleLongitudeInput}
-            />
-          </div>
-        </div>
-      </div>
-    `;
-  }
-
-  /**
-   * Renders a single result item in the dropdown list.
-   * @param {Object} result - Nominatim result object to render
-   * @param {number} index - Index of the result in the list
-   * @returns {import('lit').TemplateResult} The result row template
-   * @private
-   */
-  _renderResult(result, index) {
-    const { mainText, secondaryText } = getLocationResultText(result);
-    const isHighlighted = index === this._highlightedIndex;
-    const rowClass = `flex items-start gap-3 px-4 py-3 cursor-pointer ${
-      isHighlighted ? "bg-stone-100" : "hover:bg-stone-50"
-    }`;
-
-    return html`
-      <div
-        class=${rowClass}
-        role="option"
-        aria-selected=${isHighlighted}
-        @pointerdown=${(event) => {
-          event.preventDefault();
-          this._selectLocation(result);
-        }}
-        @mouseenter=${() => {
-          this._highlightedIndex = index;
-        }}
-      >
-        <div class="shrink-0 mt-0.5">
-          <div class="svg-icon size-4 bg-stone-400 icon-marker -mt-px"></div>
-        </div>
-        <div class="flex-1 min-w-0">
-          <h3 class="text-sm font-medium text-stone-900 truncate">${mainText}</h3>
-          <p class="text-xs text-stone-500 line-clamp-2">${secondaryText}</p>
-        </div>
-      </div>
-    `;
+    return renderLocationCoordinateInputs({
+      disabled: this.disabled,
+      disabledClasses,
+      latitudeId: this._getInputId(latitudeName),
+      latitudeName,
+      latitudeValue: this._latitudeValue,
+      longitudeId: this._getInputId(longitudeName),
+      longitudeName,
+      longitudeValue: this._longitudeValue,
+      onInput: (valueKey, event) => this._setLocationValueFromInput(valueKey, event),
+    });
   }
 
   async updated(changedProperties) {
@@ -1124,14 +705,14 @@ export class LocationSearchField extends LitWrapper {
    * @private
    */
   _getMapPreviewState() {
-    return {
+    return getLocationMapPreviewState({
       mapVisible: this._mapVisible,
       latitudeValue: this._latitudeValue,
       longitudeValue: this._longitudeValue,
       mapZoom: this._mapZoom,
       mapBoundingBox: this._mapBoundingBox,
       shouldFitBounds: this._shouldFitBounds,
-    };
+    });
   }
 
   /**
@@ -1141,14 +722,7 @@ export class LocationSearchField extends LitWrapper {
   _renderMapPreview() {
     if (!this._mapVisible || !this._hasValidCoordinates()) return html``;
 
-    return html`
-      <div class="mt-6 max-w-5xl">
-        <label class="form-label">Location Preview</label>
-        <div class="mt-2 rounded-lg border border-stone-200 overflow-hidden h-48">
-          <div id="${this._mapElementId}" class="w-full h-full"></div>
-        </div>
-      </div>
-    `;
+    return renderLocationMapPreview(this._mapElementId);
   }
 
   /**

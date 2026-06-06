@@ -1,4 +1,27 @@
 /**
+ * Builds location field config from component public properties.
+ * @param {Object} component Location search component.
+ * @returns {Object}
+ */
+export const getLocationFieldConfig = (component) => ({
+  venueNameFieldId: component.venueNameFieldId,
+  venueAddressFieldId: component.venueAddressFieldId,
+  venueCityFieldId: component.venueCityFieldId,
+  venueZipCodeFieldId: component.venueZipCodeFieldId,
+  stateFieldId: component.stateFieldId,
+  countryFieldId: component.countryFieldId,
+  latitudeFieldId: component.latitudeFieldId,
+  longitudeFieldId: component.longitudeFieldId,
+  venueNameFieldName: component.venueNameFieldName,
+  venueAddressFieldName: component.venueAddressFieldName,
+  venueCityFieldName: component.venueCityFieldName,
+  venueZipCodeFieldName: component.venueZipCodeFieldName,
+  stateFieldName: component.stateFieldName,
+  countryNameFieldName: component.countryNameFieldName,
+  countryCodeFieldName: component.countryCodeFieldName,
+});
+
+/**
  * Checks whether the component should render any internal location fields.
  * @param {Object} fields Location field configuration.
  * @returns {boolean}

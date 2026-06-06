@@ -5,6 +5,8 @@ import {
   getLocationLegendText,
   getLocationResultText,
   getLocationDisabledInputClasses,
+  getLocationTextFieldDefinitions,
+  getLocationTextFieldValueKey,
   isLocationSearchButtonDisabled,
   isVenueLocationContext,
   shouldRenderLocationDropdown,
@@ -89,5 +91,55 @@ describe("location search display", () => {
       "cursor-not-allowed bg-stone-100 text-stone-500",
     );
     expect(getLocationDisabledInputClasses(false)).to.equal("");
+  });
+
+  it("returns value keys for generated text field handlers", () => {
+    // Handler names map generated inputs to their component value fields.
+    expect(getLocationTextFieldValueKey("venueName")).to.equal("_venueNameValue");
+    expect(getLocationTextFieldValueKey("venueAddress")).to.equal("_venueAddressValue");
+    expect(getLocationTextFieldValueKey("venueCity")).to.equal("_venueCityValue");
+    expect(getLocationTextFieldValueKey("venueZipCode")).to.equal("_venueZipCodeValue");
+    expect(getLocationTextFieldValueKey("state")).to.equal("_stateValue");
+    expect(getLocationTextFieldValueKey("countryName")).to.equal("_countryNameValue");
+    expect(getLocationTextFieldValueKey("unknown")).to.equal("");
+  });
+
+  it("builds visible location text field definitions", () => {
+    // Only configured field names create generated text fields.
+    const fields = getLocationTextFieldDefinitions({
+      venueNameFieldName: "venue_name",
+      venueCityFieldName: "venue_city",
+      countryNameFieldName: "venue_country",
+      venueNameValue: "Main Hall",
+      venueCityValue: "Malaga",
+      countryNameValue: "Spain",
+    });
+
+    // The definitions preserve render order and venue-aware helper text.
+    expect(fields.map((field) => field.fieldName)).to.deep.equal([
+      "venue_name",
+      "venue_city",
+      "venue_country",
+    ]);
+    expect(fields.map((field) => field.handlerName)).to.deep.equal([
+      "venueName",
+      "venueCity",
+      "countryName",
+    ]);
+    expect(fields[0]).to.include({
+      label: "Venue Name",
+      legend: "Name of the venue where the event takes place.",
+      value: "Main Hall",
+    });
+    expect(fields[1]).to.include({
+      autocomplete: false,
+      legend: "City where the venue is located.",
+      value: "Malaga",
+    });
+    expect(fields[2]).to.include({
+      autocomplete: false,
+      legend: "Country where the venue is located.",
+      value: "Spain",
+    });
   });
 });

@@ -7,10 +7,50 @@ import {
   getExternalLocationFieldIds,
   getInitialLocationValues,
   getInternalLocationValueUpdates,
+  getLocationFieldConfig,
   hasInternalLocationFields,
 } from "/static/js/common/location-field-config.js";
 
 describe("location field config", () => {
+  it("builds field config from component properties", () => {
+    // Component config keeps public property access outside the component class.
+    expect(
+      getLocationFieldConfig({
+        venueNameFieldId: "venue-name-id",
+        venueAddressFieldId: "venue-address-id",
+        venueCityFieldId: "venue-city-id",
+        venueZipCodeFieldId: "venue-zip-id",
+        stateFieldId: "state-id",
+        countryFieldId: "country-id",
+        latitudeFieldId: "lat-id",
+        longitudeFieldId: "lng-id",
+        venueNameFieldName: "venue_name",
+        venueAddressFieldName: "venue_address",
+        venueCityFieldName: "venue_city",
+        venueZipCodeFieldName: "venue_zip_code",
+        stateFieldName: "venue_state",
+        countryNameFieldName: "venue_country",
+        countryCodeFieldName: "venue_country_code",
+      }),
+    ).to.deep.equal({
+      venueNameFieldId: "venue-name-id",
+      venueAddressFieldId: "venue-address-id",
+      venueCityFieldId: "venue-city-id",
+      venueZipCodeFieldId: "venue-zip-id",
+      stateFieldId: "state-id",
+      countryFieldId: "country-id",
+      latitudeFieldId: "lat-id",
+      longitudeFieldId: "lng-id",
+      venueNameFieldName: "venue_name",
+      venueAddressFieldName: "venue_address",
+      venueCityFieldName: "venue_city",
+      venueZipCodeFieldName: "venue_zip_code",
+      stateFieldName: "venue_state",
+      countryNameFieldName: "venue_country",
+      countryCodeFieldName: "venue_country_code",
+    });
+  });
+
   it("detects configured internal location fields", () => {
     // Any generated field name means the component should render internal fields.
     expect(hasInternalLocationFields({ venueNameFieldName: "venue_name" })).to.equal(true);
