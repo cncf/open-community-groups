@@ -15,6 +15,7 @@ import { renderLocationCoordinateInputs } from "/static/js/common/location-coord
 import { searchNominatimLocations } from "/static/js/common/location-search-api.js";
 import { getLocationSearchKeyAction } from "/static/js/common/location-search-keyboard.js";
 import {
+  applyLocationSearchValueUpdates,
   getClearedLocationSearchState,
   getDefaultLocationSearchInternalState,
   getDefaultLocationSearchProperties,
@@ -368,20 +369,7 @@ export class LocationSearchField extends LitWrapper {
    * @private
    */
   _applyLocationValues(updates) {
-    const hasUpdate = (key) => Object.prototype.hasOwnProperty.call(updates, key);
-    if (hasUpdate("venueNameValue")) this._venueNameValue = updates.venueNameValue;
-    if (hasUpdate("venueAddressValue")) {
-      this._venueAddressValue = updates.venueAddressValue;
-    }
-    if (hasUpdate("venueCityValue")) this._venueCityValue = updates.venueCityValue;
-    if (hasUpdate("venueZipCodeValue")) {
-      this._venueZipCodeValue = updates.venueZipCodeValue;
-    }
-    if (hasUpdate("stateValue")) this._stateValue = updates.stateValue;
-    if (hasUpdate("countryNameValue")) this._countryNameValue = updates.countryNameValue;
-    if (hasUpdate("countryCodeValue")) this._countryCodeValue = updates.countryCodeValue;
-    if (hasUpdate("latitudeValue")) this._latitudeValue = updates.latitudeValue;
-    if (hasUpdate("longitudeValue")) this._longitudeValue = updates.longitudeValue;
+    applyLocationSearchValueUpdates(this, updates);
   }
 
   /**

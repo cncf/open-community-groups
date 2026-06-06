@@ -18,7 +18,6 @@ import {
   isModalEscapeEvent,
   openModalBodyScroll,
 } from "/static/js/common/modal-lifecycle.js";
-import { parseJsonAttribute } from "/static/js/common/utils.js";
 import {
   buildApprovedSubmissionEventDetail,
   buildReviewModalOpenState,
@@ -32,6 +31,7 @@ import {
   isLinkedToSession,
   isStatusAllowed,
   normalizeLabels,
+  parseReviewAttributeList,
 } from "/static/js/dashboard/event/cfs-submissions-review-utils.js";
 import "/static/js/common/cfs-label-selector.js";
 import "/static/js/common/logo-image.js";
@@ -188,12 +188,8 @@ export class ReviewSubmissionModal extends LitWrapper {
    * Loads statuses from the statuses attribute.
    */
   _loadStatusesFromAttribute() {
-    const statusesAttr = this.getAttribute("statuses");
-    if (!statusesAttr || this.statuses.length > 0) {
-      return;
-    }
-    const parsedStatuses = parseJsonAttribute(statusesAttr, []);
-    if (Array.isArray(parsedStatuses)) {
+    const parsedStatuses = parseReviewAttributeList(this, "statuses", this.statuses);
+    if (parsedStatuses) {
       this.statuses = parsedStatuses;
     }
   }
@@ -202,12 +198,8 @@ export class ReviewSubmissionModal extends LitWrapper {
    * Loads available labels from the labels attribute.
    */
   _loadLabelsFromAttribute() {
-    const labelsAttr = this.getAttribute("labels");
-    if (!labelsAttr || this.labels.length > 0) {
-      return;
-    }
-    const parsedLabels = parseJsonAttribute(labelsAttr, []);
-    if (Array.isArray(parsedLabels)) {
+    const parsedLabels = parseReviewAttributeList(this, "labels", this.labels);
+    if (parsedLabels) {
       this.labels = parsedLabels;
     }
   }
@@ -232,7 +224,7 @@ export class ReviewSubmissionModal extends LitWrapper {
       return;
     }
 
-    this.labels = normalizeLabels(parseJsonAttribute(labelsAttr, []));
+    this.labels = normalizeLabels(parseReviewAttributeList(labelsFilter, "labels", []) || []);
   }
 
   /**

@@ -1,3 +1,5 @@
+import { parseJsonAttribute } from "/static/js/common/utils.js";
+
 /**
  * Returns the ratings list for a submission.
  * @param {Object} submission Submission payload.
@@ -146,6 +148,23 @@ export const normalizeLabels = (labels) => {
       };
     })
     .filter((label) => label.event_cfs_label_id && label.name);
+};
+
+/**
+ * Reads a JSON array attribute unless values are already loaded.
+ * @param {Element} element Source element.
+ * @param {string} attributeName Attribute name.
+ * @param {Array} currentValues Current loaded values.
+ * @returns {Array|null} Parsed attribute values, or null when no load is needed.
+ */
+export const parseReviewAttributeList = (element, attributeName, currentValues) => {
+  const attributeValue = element.getAttribute(attributeName);
+  if (!attributeValue || !Array.isArray(currentValues) || currentValues.length > 0) {
+    return null;
+  }
+
+  const parsedValues = parseJsonAttribute(attributeValue, []);
+  return Array.isArray(parsedValues) ? parsedValues : null;
 };
 
 /**

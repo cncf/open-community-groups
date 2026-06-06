@@ -58,6 +58,32 @@ export const getDefaultLocationSearchInternalState = () => ({
   searchError: null,
 });
 
+const LOCATION_VALUE_PROPERTY_MAP = {
+  venueNameValue: "_venueNameValue",
+  venueAddressValue: "_venueAddressValue",
+  venueCityValue: "_venueCityValue",
+  venueZipCodeValue: "_venueZipCodeValue",
+  stateValue: "_stateValue",
+  countryNameValue: "_countryNameValue",
+  countryCodeValue: "_countryCodeValue",
+  latitudeValue: "_latitudeValue",
+  longitudeValue: "_longitudeValue",
+};
+
+/**
+ * Applies normalized location value updates to a target object.
+ * @param {Object} target Object receiving private location value fields.
+ * @param {Object} updates Location value patch.
+ * @returns {void}
+ */
+export const applyLocationSearchValueUpdates = (target, updates) => {
+  Object.entries(LOCATION_VALUE_PROPERTY_MAP).forEach(([updateKey, propertyKey]) => {
+    if (Object.prototype.hasOwnProperty.call(updates, updateKey)) {
+      target[propertyKey] = updates[updateKey];
+    }
+  });
+};
+
 /**
  * Builds initial value payload from public attributes.
  * @param {Object} state Component state.

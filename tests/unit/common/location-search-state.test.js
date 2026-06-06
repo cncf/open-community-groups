@@ -1,6 +1,7 @@
 import { expect } from "@open-wc/testing";
 
 import {
+  applyLocationSearchValueUpdates,
   getClearedLocationSearchState,
   getDefaultLocationSearchInternalState,
   getDefaultLocationSearchProperties,
@@ -115,6 +116,28 @@ describe("location search state", () => {
       initialCountryCode: "ES",
       initialLatitude: "36.7213",
       initialLongitude: "-4.4214",
+    });
+  });
+
+  it("applies normalized location value updates to private fields", () => {
+    // Start with existing values so missing fields can be verified unchanged.
+    const target = {
+      _venueNameValue: "Old hall",
+      _venueAddressValue: "Old address",
+      _latitudeValue: "36",
+    };
+
+    // Apply a partial normalized location value patch.
+    applyLocationSearchValueUpdates(target, {
+      venueNameValue: "Main hall",
+      latitudeValue: "37",
+    });
+
+    // Only supplied value fields are updated.
+    expect(target).to.deep.equal({
+      _venueNameValue: "Main hall",
+      _venueAddressValue: "Old address",
+      _latitudeValue: "37",
     });
   });
 });

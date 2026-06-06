@@ -20,6 +20,7 @@ import {
   isMessageRequired,
   isStatusAllowed,
   normalizeLabels,
+  parseReviewAttributeList,
 } from "/static/js/dashboard/event/cfs-submissions-review-utils.js";
 
 describe("cfs submissions review utils", () => {
@@ -84,6 +85,21 @@ describe("cfs submissions review utils", () => {
       { event_cfs_label_id: "12", name: "Backend", color: "blue" },
     ]);
     expect(normalizeLabels(null)).to.deep.equal([]);
+  });
+
+  it("parses review attribute lists only when values are not loaded", () => {
+    // Build an element with a JSON array attribute.
+    const element = document.createElement("review-submission-modal");
+    element.setAttribute("labels", JSON.stringify([{ event_cfs_label_id: "1" }]));
+
+    // Empty current values allow parsing, while loaded values skip it.
+    expect(parseReviewAttributeList(element, "labels", [])).to.deep.equal([
+      { event_cfs_label_id: "1" },
+    ]);
+    expect(parseReviewAttributeList(element, "labels", [{ event_cfs_label_id: "loaded" }])).to.equal(
+      null,
+    );
+    expect(parseReviewAttributeList(element, "missing", [])).to.equal(null);
   });
 
   it("builds stable review form snapshots", () => {
