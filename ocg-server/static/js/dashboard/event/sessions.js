@@ -4,9 +4,13 @@ import {
   convertTimestampToDateTimeLocalInTz,
 } from "/static/js/common/common.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
-import { parseJsonAttribute } from "/static/js/common/utils.js";
 import "/static/js/dashboard/event/session-card.js";
 import "/static/js/dashboard/event/session-form-modal.js";
+import {
+  parseArrayAttribute,
+  parseObjectAttribute,
+  parseSessionsAttribute,
+} from "/static/js/dashboard/event/sessions-attributes.js";
 import { extractDatePart, formatDayHeader } from "/static/js/dashboard/event/sessions-datetime.js";
 import {
   computeEventDays,
@@ -82,35 +86,10 @@ export class SessionsSection extends LitWrapper {
    * @private
    */
   _parseAttributes() {
-    this.sessions = parseJsonAttribute(this.sessions, []);
-
-    if (!Array.isArray(this.sessions) && this.sessions && typeof this.sessions === "object") {
-      try {
-        const values = Object.values(this.sessions);
-        this.sessions = values.reduce((acc, v) => {
-          if (Array.isArray(v)) acc.push(...v);
-          return acc;
-        }, []);
-      } catch (_) {
-        this.sessions = [];
-      }
-    }
-    if (!Array.isArray(this.sessions)) this.sessions = [];
-
-    this.sessionKinds = parseJsonAttribute(this.sessionKinds, []);
-    if (!Array.isArray(this.sessionKinds)) this.sessionKinds = [];
-
-    this.approvedSubmissions = parseJsonAttribute(this.approvedSubmissions, []);
-    if (!Array.isArray(this.approvedSubmissions)) this.approvedSubmissions = [];
-
-    this.meetingMaxParticipants = parseJsonAttribute(this.meetingMaxParticipants, {});
-    if (
-      !this.meetingMaxParticipants ||
-      typeof this.meetingMaxParticipants !== "object" ||
-      Array.isArray(this.meetingMaxParticipants)
-    ) {
-      this.meetingMaxParticipants = {};
-    }
+    this.sessions = parseSessionsAttribute(this.sessions);
+    this.sessionKinds = parseArrayAttribute(this.sessionKinds);
+    this.approvedSubmissions = parseArrayAttribute(this.approvedSubmissions);
+    this.meetingMaxParticipants = parseObjectAttribute(this.meetingMaxParticipants);
   }
 
   /**

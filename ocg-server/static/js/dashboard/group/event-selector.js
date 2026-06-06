@@ -4,18 +4,26 @@ import { getNextLoopedIndex, isEscapeEvent } from "/static/js/common/keyboard.js
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { showErrorAlert, showInfoAlert } from "/static/js/common/alerts.js";
 import { focusElementById, getElementById, setElementHidden } from "/static/js/common/dom.js";
+import { parseJsonAttribute } from "/static/js/common/utils.js";
 import {
-  parseJsonAttribute,
-  setImageFieldValue,
-  setSelectValue,
-  setTextValue,
-} from "/static/js/common/utils.js";
-import {
-  formatEventDate,
-  parseEventTimestamp,
-  uniqueEventsById,
+  buildPrimaryEventResults,
+  buildSelectedEventFromDetails,
+  findEventById,
+  getDashboardSelectionContext,
+  getEmptyEventSearchState,
+  getEventSelectorKeyAction,
+  getLoadedPrimaryEventSearchState,
+  getLoadedQueryEventSearchState,
+  getNoGroupEventSearchState,
+  getSelectedEvent,
+  resolveEventSearchContext,
 } from "/static/js/dashboard/group/event-selector-utils.js";
-import * as formHelpers from "/static/js/dashboard/group/event-form-helpers.js";
+import { requestEventSelectorEvents } from "/static/js/dashboard/group/event-selector-api.js";
+import {
+  renderEventSelectorDropdownContent,
+  renderEventSelectorPreview,
+} from "/static/js/dashboard/group/event-selector-dropdown.js";
+import { applyCopiedEventDetails } from "/static/js/dashboard/group/event-selector-copy.js";
 import "/static/js/common/svg-spinner.js";
 
 /**
@@ -134,18 +142,22 @@ class EventSelector extends LitWrapper {
       return;
     }
 
-    const activeIndex = this._activeIndex < 0 ? null : this._activeIndex;
-    if (event.key === "ArrowDown") {
+    const keyAction = getEventSelectorKeyAction({
+      activeIndex: this._activeIndex,
+      getNextIndex: getNextLoopedIndex,
+      isEscape: isEscapeEvent(event),
+      key: event.key,
+      resultsLength: this._results.length,
+    });
+
+    if (keyAction.preventDefault) {
       event.preventDefault();
-      this._activeIndex = getNextLoopedIndex(activeIndex, this._results.length, 1);
-    } else if (event.key === "ArrowUp") {
-      event.preventDefault();
-      this._activeIndex = getNextLoopedIndex(activeIndex, this._results.length, -1, this._results.length - 1);
-    } else if (event.key === "Enter") {
-      event.preventDefault();
+    }
+    if (keyAction.action === "highlight") {
+      this._activeIndex = keyAction.activeIndex;
+    } else if (keyAction.action === "select") {
       this._selectActiveResult();
-    } else if (isEscapeEvent(event)) {
-      event.preventDefault();
+    } else if (keyAction.action === "close") {
       this._closeDropdown();
     }
   }
@@ -279,105 +291,7 @@ class EventSelector extends LitWrapper {
    * @returns {Promise<void>}
    */
   async _applyEventDetails(details) {
-    if (!details || typeof details !== "object") {
-      return;
-    }
-    this._resetMeetingFields();
-    const {
-      appendCopySuffix,
-      setAttendeeApprovalRequired,
-      setCategoryValue,
-      setDiscountCodes,
-      setEventReminderEnabled,
-      setGalleryImages,
-      setTags,
-      setRegistrationQuestions,
-      setRegistrationRequired,
-      setPaymentCurrencyCode,
-      setTicketTypes,
-      setWaitlistEnabled,
-      updateMarkdownContent,
-      updateTimezone,
-      setHosts,
-      setSponsors,
-      setSessions,
-    } = this._getFormHelpers();
-
-    setTextValue("name", appendCopySuffix(details.name));
-    setCategoryValue(details);
-    setSelectValue("kind_id", details.kind);
-    setImageFieldValue("logo_url", details.logo_url);
-    setTextValue("description_short", details.description_short);
-    updateMarkdownContent(details.description);
-    setTextValue("capacity", details.capacity);
-    setEventReminderEnabled(details.event_reminder_enabled !== false);
-    setRegistrationRequired(details.registration_required === true);
-    setRegistrationQuestions(details.registration_questions);
-    // Clear mutually exclusive enrollment state before dependent sync runs
-    setAttendeeApprovalRequired(false);
-    setWaitlistEnabled(false);
-    setTextValue("meetup_url", details.meetup_url);
-    setTextValue("luma_url", details.luma_url);
-    setGalleryImages(details.photos_urls);
-    setTags(details.tags);
-    setPaymentCurrencyCode(details.payment_currency_code);
-    await setTicketTypes(details.ticket_types);
-    setDiscountCodes(details.discount_codes);
-    setWaitlistEnabled(details.waitlist_enabled === true);
-    setAttendeeApprovalRequired(details.attendee_approval_required === true);
-    updateTimezone(details.timezone);
-    setTextValue("venue_name", details.venue_name);
-    setTextValue("venue_address", details.venue_address);
-    setTextValue("venue_city", details.venue_city);
-    setTextValue("venue_zip_code", details.venue_zip_code);
-    this._copyManualMeetingFields(details);
-    setHosts(details.hosts);
-    setSponsors(details.sponsors);
-    setSessions([]);
-  }
-
-  /**
-   * Resets meeting-related fields to avoid copying existing links or sync state.
-   */
-  _resetMeetingFields() {
-    setTextValue("meeting_join_instructions", "");
-    setTextValue("meeting_join_url", "");
-    setTextValue("meeting_recording_url", "");
-    const meetingDetails = document.querySelector("online-event-details");
-    if (meetingDetails && typeof meetingDetails.reset === "function") {
-      meetingDetails.reset();
-    }
-  }
-
-  /**
-   * Copies reusable manual meeting access details into the event form.
-   * @param {object} details Event details payload
-   */
-  _copyManualMeetingFields(details) {
-    if (details.meeting_requested === true) {
-      return;
-    }
-
-    const meetingFields = {
-      meeting_join_instructions: details.meeting_join_instructions || "",
-      meeting_join_url: details.meeting_join_url || "",
-    };
-
-    setTextValue("meeting_join_instructions", meetingFields.meeting_join_instructions);
-    setTextValue("meeting_join_url", meetingFields.meeting_join_url);
-
-    const meetingDetails = document.querySelector("online-event-details");
-    if (meetingDetails && typeof meetingDetails.setManualMeetingDetails === "function") {
-      meetingDetails.setManualMeetingDetails(meetingFields);
-    }
-  }
-
-  /**
-   * Provides form helper utilities.
-   * @returns {typeof formHelpers}
-   */
-  _getFormHelpers() {
-    return formHelpers;
+    await applyCopiedEventDetails(details);
   }
 
   /**
@@ -385,16 +299,12 @@ class EventSelector extends LitWrapper {
    * @param {object} details Copied event details
    */
   _updateSelectorAfterCopy(details) {
-    if (!details) {
+    const selectedEvent = buildSelectedEventFromDetails(details);
+    if (!selectedEvent) {
       return;
     }
-    this.selectedEventId = String(details.event_id ?? "");
-    this.selectedEvent = {
-      event_id: String(details.event_id ?? ""),
-      name: details.name || "",
-      starts_at: parseEventTimestamp(details.starts_at),
-      timezone: String(details.timezone || ""),
-    };
+    this.selectedEventId = selectedEvent.event_id;
+    this.selectedEvent = selectedEvent;
   }
 
   /**
@@ -440,33 +350,7 @@ class EventSelector extends LitWrapper {
    * @returns {{community: string, groupSlug: string}}
    */
   _getDashboardSelection() {
-    const container = this.closest("#dashboard-content") || getElementById(document, "dashboard-content");
-    return {
-      community: container?.dataset?.community || "",
-      groupSlug: container?.dataset?.groupSlug || "",
-    };
-  }
-
-  /**
-   * Gets the community name for search requests.
-   * @returns {string}
-   */
-  _getCommunityName() {
-    if (this.community) {
-      return this.community;
-    }
-    return this._getDashboardSelection().community;
-  }
-
-  /**
-   * Gets the group slug for search requests.
-   * @returns {string}
-   */
-  _getGroupSlug() {
-    if (this.groupSlug) {
-      return this.groupSlug;
-    }
-    return this._getDashboardSelection().groupSlug;
+    return getDashboardSelectionContext(this);
   }
 
   /**
@@ -475,42 +359,15 @@ class EventSelector extends LitWrapper {
    * @returns {Promise<object[]>}
    */
   async _requestEvents(config) {
-    const params = new URLSearchParams();
-    params.set("limit", "10");
-    if (config.dateFrom) {
-      params.set("date_from", config.dateFrom);
-    }
-    if (config.dateTo) {
-      params.set("date_to", config.dateTo);
-    }
-    if (config.sortDirection) {
-      params.set("sort_direction", config.sortDirection);
-    }
-    if (config.query) {
-      params.set("ts_query", config.query);
-    }
-
-    const groupSlug = this._getGroupSlug();
-    const communityName = this._getCommunityName();
-    if (groupSlug) {
-      params.append("group[]", groupSlug);
-    }
-    if (communityName) {
-      params.append("community[]", communityName);
-    }
-    const url = `/explore/events/search?${params.toString()}`;
-
-    const response = await ocgFetch(url, {
-      headers: {
-        Accept: "application/json",
-      },
+    const searchContext = resolveEventSearchContext({
+      community: this.community,
+      dashboardSelection: this._getDashboardSelection(),
+      groupSlug: this.groupSlug,
     });
-    if (!response.ok) {
-      throw new Error("Failed to search events");
-    }
-    const payload = await response.json();
-    const events = Array.isArray(payload?.events) ? payload.events : [];
-    return events;
+    return requestEventSelectorEvents({
+      ...config,
+      ...searchContext,
+    });
   }
 
   /**
@@ -519,18 +376,12 @@ class EventSelector extends LitWrapper {
   async _fetchPrimaryEvents() {
     const groupId = this.groupId ? String(this.groupId) : "";
     if (!groupId) {
-      this._results = [];
-      this._primaryResults = [];
-      this._loading = false;
+      Object.assign(this, getNoGroupEventSearchState());
       return;
     }
 
     if (this._primaryResults.length > 0) {
-      this._results = this._primaryResults;
-      this._error = "";
-      this._loading = false;
-      this._activeIndex = -1;
-      this._hasFetched = true;
+      Object.assign(this, getLoadedPrimaryEventSearchState(this._primaryResults));
       return;
     }
 
@@ -543,9 +394,7 @@ class EventSelector extends LitWrapper {
         this._loading = false;
       }
       if (this._primaryResults.length > 0) {
-        this._results = this._primaryResults;
-        this._activeIndex = -1;
-        this._hasFetched = true;
+        Object.assign(this, getLoadedPrimaryEventSearchState(this._primaryResults));
       }
       return;
     }
@@ -574,26 +423,12 @@ class EventSelector extends LitWrapper {
           return;
         }
 
-        const result = [];
-        result.push(...upcomingEvents.slice(0, 5).reverse());
-        result.push(...pastEvents.slice(0, 5));
-
-        const uniquePrimaryResults = uniqueEventsById(result);
-        if (uniquePrimaryResults.length < 10) {
-          const remainingSlots = 10 - uniquePrimaryResults.length;
-          const extraUpcoming = upcomingEvents.slice(5, 5 + remainingSlots).reverse();
-          const extraPast = pastEvents.slice(5, 5 + remainingSlots);
-          result.push(...extraUpcoming, ...extraPast);
-        }
-
-        this._primaryResults = uniqueEventsById(result).slice(0, 10);
-        this._results = this._primaryResults;
-        this._activeIndex = -1;
-        this._hasFetched = true;
+        const primaryResults = buildPrimaryEventResults({ upcomingEvents, pastEvents });
+        this._primaryResults = primaryResults;
+        Object.assign(this, getLoadedPrimaryEventSearchState(primaryResults));
 
         if (this.selectedEventId) {
-          const selectedId = String(this.selectedEventId);
-          const match = this._primaryResults.find((item) => item.event_id === selectedId);
+          const match = findEventById(this._primaryResults, this.selectedEventId);
           if (match) {
             this.selectedEvent = match;
           }
@@ -622,9 +457,7 @@ class EventSelector extends LitWrapper {
   async _fetchEvents() {
     const groupId = this.groupId ? String(this.groupId) : "";
     if (!groupId) {
-      this._results = [];
-      this._loading = false;
-      this._error = "";
+      Object.assign(this, getNoGroupEventSearchState());
       return;
     }
     const trimmed = this._query.trim();
@@ -642,12 +475,9 @@ class EventSelector extends LitWrapper {
         query: trimmed,
         dateFrom: this.dateFrom,
       });
-      this._results = uniqueEventsById(events);
-      this._activeIndex = -1;
-      this._hasFetched = true;
+      Object.assign(this, getLoadedQueryEventSearchState(events));
       if (this.selectedEventId) {
-        const selectedId = String(this.selectedEventId);
-        const match = this._results.find((item) => item.event_id === selectedId);
+        const match = findEventById(this._results, this.selectedEventId);
         if (match) {
           this.selectedEvent = match;
         }
@@ -664,110 +494,25 @@ class EventSelector extends LitWrapper {
    * @returns {object|null}
    */
   _findSelectedEvent() {
-    const matchesSelected = (event) => {
-      return event.event_id === String(this.selectedEventId ?? "");
-    };
-
-    if (!this.selectedEventId) {
-      return this.selectedEvent;
-    }
-
-    if (this.selectedEvent && matchesSelected(this.selectedEvent)) {
-      return this.selectedEvent;
-    }
-
-    const found = this._results.find((item) => matchesSelected(item));
+    const found = getSelectedEvent({
+      selectedEvent: this.selectedEvent,
+      selectedEventId: this.selectedEventId,
+      results: this._results,
+    });
     if (found) {
       this.selectedEvent = found;
-      return found;
     }
-
-    return this.selectedEvent;
-  }
-
-  /**
-   * Builds the dropdown list content based on loading state.
-   * @returns {import("lit").TemplateResult}
-   */
-  _renderDropdownContent() {
-    if (this._error) {
-      return html`<ul class="max-h-64 overflow-y-auto text-stone-700">
-        <li class="px-4 py-4 text-sm text-stone-500">${this._error}</li>
-      </ul>`;
-    }
-    if (!this._results || this._results.length === 0) {
-      return html`<ul class="max-h-64 overflow-y-auto text-stone-700">
-        <li class="px-4 py-4 text-sm text-stone-500">
-          ${this._hasFetched ? "No events available." : "No events found."}
-        </li>
-      </ul>`;
-    }
-    return html`
-      <ul class="max-h-64 overflow-y-auto text-stone-700">
-        ${this._results.map((event, index) => this._renderEventOption(event, index))}
-      </ul>
-    `;
-  }
-
-  /**
-   * Renders a single event option button.
-   * @param {object} event Event payload
-   * @param {number} index Index in the results list
-   * @returns {import("lit").TemplateResult}
-   */
-  _renderEventOption(event, index) {
-    const isSelected = this.selectedEventId && String(this.selectedEventId) === String(event.event_id);
-    const isActive = index === this._activeIndex;
-    let status = "";
-    if (isActive && !isSelected) {
-      status = "bg-stone-50";
-    }
-    if (isSelected) {
-      status = "bg-stone-100";
-    }
-
-    return html`
-      <li>
-        <button
-          id="select-event-${event.event_id}"
-          type="button"
-          class="event-button cursor-pointer w-full flex items-center justify-between px-4 py-2 text-sm/6 text-left hover:bg-stone-100 ${status}"
-          ?disabled=${isSelected}
-          @click=${(clickEvent) => this._handleEventClick(clickEvent, event)}
-          @mouseenter=${() => {
-            this._activeIndex = index;
-          }}
-        >
-          ${this._renderEventPreview(event)}
-        </button>
-      </li>
-    `;
-  }
-
-  /**
-   * Generates the label block shown for an event.
-   * @param {object} event Event payload
-   * @returns {import("lit").TemplateResult}
-   */
-  _renderEventPreview(event) {
-    const formattedDate = formatEventDate(event);
-    return html`
-      <div class="flex flex-col min-w-0 pe-6 items-start">
-        <div class="max-w-full truncate">${event.name ?? ""}</div>
-        <div class="text-xs ${formattedDate.isPlaceholder ? "text-stone-400" : "text-stone-500"} truncate">
-          ${formattedDate.text}
-        </div>
-      </div>
-    `;
+    return found;
   }
 
   /**
    * Clears the search input and resets local results.
    */
   _clearSearch() {
+    const emptySearchState = getEmptyEventSearchState();
     this._query = "";
-    this._activeIndex = -1;
-    this._error = "";
+    this._activeIndex = emptySearchState.activeIndex;
+    this._error = emptySearchState.error;
     if (this._primaryResults.length > 0) {
       this._results = this._primaryResults;
       this._loading = false;
@@ -816,7 +561,7 @@ class EventSelector extends LitWrapper {
           @click=${(event) => this._toggleDropdown(event)}
         >
           ${selectedEvent
-            ? this._renderEventPreview(selectedEvent)
+            ? renderEventSelectorPreview(selectedEvent)
             : html`<div class="flex flex-col min-w-0">
                 <div class="max-w-full truncate">Select event</div>
                 <div class="text-xs text-stone-500 truncate">Choose an event to copy</div>
@@ -865,7 +610,17 @@ class EventSelector extends LitWrapper {
                 : null}
             </div>
           </div>
-          ${this._renderDropdownContent()}
+          ${renderEventSelectorDropdownContent({
+            activeIndex: this._activeIndex,
+            error: this._error,
+            hasFetched: this._hasFetched,
+            onHighlight: (index) => {
+              this._activeIndex = index;
+            },
+            onSelect: (event, selectedEvent) => this._handleEventClick(event, selectedEvent),
+            results: this._results,
+            selectedEventId: this.selectedEventId,
+          })}
         </div>
       </div>
     `;

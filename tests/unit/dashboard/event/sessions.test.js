@@ -2,6 +2,11 @@ import { expect } from "@open-wc/testing";
 
 import "/static/js/dashboard/event/sessions.js";
 import {
+  parseArrayAttribute,
+  parseObjectAttribute,
+  parseSessionsAttribute,
+} from "/static/js/dashboard/event/sessions-attributes.js";
+import {
   computeEventDays,
   getOutOfRangeSessions,
   groupSessionsByDay,
@@ -108,6 +113,25 @@ describe("sessions-section", () => {
     expect(element.sessionKinds).to.deep.equal([]);
     expect(element.approvedSubmissions).to.deep.equal([]);
     expect(element.meetingMaxParticipants).to.deep.equal({});
+  });
+
+  it("normalizes server session attribute payloads", () => {
+    // Grouped session payloads flatten into one session list.
+    expect(
+      parseSessionsAttribute(
+        JSON.stringify({
+          day_one: [{ name: "Opening" }],
+          day_two: [{ name: "Workshop" }],
+          metadata: { ignored: true },
+        }),
+      ),
+    ).to.deep.equal([{ name: "Opening" }, { name: "Workshop" }]);
+
+    // Array and object helpers reject payloads with the wrong shape.
+    expect(parseSessionsAttribute("{invalid")).to.deep.equal([]);
+    expect(parseArrayAttribute(JSON.stringify({ value: "not-array" }))).to.deep.equal([]);
+    expect(parseObjectAttribute(JSON.stringify([{ value: "not-object" }]))).to.deep.equal({});
+    expect(parseObjectAttribute(JSON.stringify({ zoom: 100 }))).to.deep.equal({ zoom: 100 });
   });
 
   it("computes event days, groups sessions, and isolates out-of-range entries", async () => {
