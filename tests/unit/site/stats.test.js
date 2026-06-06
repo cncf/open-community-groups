@@ -204,7 +204,7 @@ describe("site stats", () => {
     document.body.append(marker);
 
     // Run the page initializer twice to verify duplicate renders are guarded.
-    await initializeSiteStatsFromPage();
+    await initializeSiteStatsFromPage(marker);
     await initializeSiteStatsFromPage();
 
     // Verify the page payload renders the same chart set once.

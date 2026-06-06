@@ -14,11 +14,19 @@ import {
   registerChartResizeHandler,
   renderChart,
 } from "/static/js/common/stats.js";
-import { initializeOnReady, isDatasetReady, markDatasetReady } from "/static/js/common/dom.js";
+import { initializeOnReadyAndHtmxLoad, isDatasetReady, markDatasetReady } from "/static/js/common/dom.js";
 import { parseJsonText } from "/static/js/common/utils.js";
 
 const SITE_STATS_DATA_SELECTOR = "[data-site-stats]";
 const SITE_STATS_READY_KEY = "siteStatsReady";
+
+const getSiteStatsMarker = (root) => {
+  if (root instanceof HTMLElement && root.matches(SITE_STATS_DATA_SELECTOR)) {
+    return root;
+  }
+
+  return root.querySelector?.(SITE_STATS_DATA_SELECTOR);
+};
 
 /**
  * Apply stats-page specific legend styling without affecting dashboard charts.
@@ -142,7 +150,7 @@ export const initSiteStatsCharts = async (stats) => {
  * @returns {Promise<void>} Promise resolved when initialization finishes.
  */
 export const initializeSiteStatsFromPage = async (root = document) => {
-  const marker = root.querySelector(SITE_STATS_DATA_SELECTOR);
+  const marker = getSiteStatsMarker(root);
   if (!marker || isDatasetReady(marker, SITE_STATS_READY_KEY)) {
     return;
   }
@@ -172,4 +180,4 @@ const readSiteStatsPayload = (marker) => {
   });
 };
 
-initializeOnReady(() => initializeSiteStatsFromPage());
+initializeOnReadyAndHtmxLoad(initializeSiteStatsFromPage);

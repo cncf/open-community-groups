@@ -59,6 +59,21 @@ describe("page views", () => {
     expect(fetchMock.calls).to.have.length(0);
   });
 
+  it("tracks a declarative page view marker when the marker is the root", () => {
+    // Build the marker shape HTMX can provide as a loaded root.
+    const marker = document.createElement("span");
+    marker.dataset.pageView = "";
+    marker.dataset.entityId = "group-123";
+    marker.dataset.entityType = "group";
+
+    // Initialize tracking from the marker itself.
+    initializePageViewTracking(marker);
+
+    // The marker sends one page view to the expected endpoint.
+    expect(sendBeaconMock.calls).to.have.length(1);
+    expect(sendBeaconMock.calls[0].endpoint).to.equal("/groups/group-123/views");
+  });
+
   it("falls back to fetch when sendBeacon does not queue the event", async () => {
     // Set the mock return value.
     sendBeaconMock.setReturnValue(false);

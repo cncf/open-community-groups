@@ -1,4 +1,4 @@
-import { markDatasetReady } from "/static/js/common/dom.js";
+import { initializeOnReadyAndHtmxLoad, markDatasetReady } from "/static/js/common/dom.js";
 
 const DAY_TAB_SELECTOR = "[data-day-tab]";
 const DAY_PANEL_SELECTOR = "[data-day-content]";
@@ -43,4 +43,4 @@ export const initializeAgendaTabs = (root = document) => {
   });
 };
 
-initializeAgendaTabs();
+initializeOnReadyAndHtmxLoad(initializeAgendaTabs);

@@ -1,7 +1,17 @@
-import { initializeOnReady, markDatasetReady } from "/static/js/common/dom.js";
+import { initializeOnReadyAndHtmxLoad, markDatasetReady } from "/static/js/common/dom.js";
 
 const PAGE_VIEW_SELECTOR = "[data-page-view]";
 const PAGE_VIEW_READY_KEY = "pageViewReady";
+
+const getPageViewMarkers = (root) => {
+  const markers = [];
+  if (root instanceof HTMLElement && root.matches(PAGE_VIEW_SELECTOR)) {
+    markers.push(root);
+  }
+
+  markers.push(...(root.querySelectorAll?.(PAGE_VIEW_SELECTOR) || []));
+  return markers;
+};
 
 /**
  * Sends a single page view using sendBeacon when possible.
@@ -97,7 +107,7 @@ export const trackPageView = ({ entityId, entityType }) => {
  * @param {Document|Element} root - Root element containing page view markers
  */
 export const initializePageViewTracking = (root = document) => {
-  root.querySelectorAll(PAGE_VIEW_SELECTOR).forEach((marker) => {
+  getPageViewMarkers(root).forEach((marker) => {
     if (!markDatasetReady(marker, PAGE_VIEW_READY_KEY)) {
       return;
     }
@@ -109,7 +119,7 @@ export const initializePageViewTracking = (root = document) => {
   });
 };
 
-initializeOnReady(() => initializePageViewTracking());
+initializeOnReadyAndHtmxLoad(initializePageViewTracking);
 
 /**
  * Resets page view tracker state for isolated browser tests.

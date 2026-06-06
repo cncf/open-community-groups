@@ -1,8 +1,5 @@
 import { scrollToDashboardTop } from "/static/js/common/common.js";
-import {
-  initializeOnReadyAndHtmxLoad,
-  markDatasetReady,
-} from "/static/js/common/dom.js";
+import { initializeOnReadyAndHtmxLoad, markDatasetReady } from "/static/js/common/dom.js";
 
 const PAGE_ALERT_SELECTOR = "[data-page-alert]";
 const PAGE_ALERT_READY_KEY = "pageAlertReady";

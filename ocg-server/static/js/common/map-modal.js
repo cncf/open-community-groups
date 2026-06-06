@@ -1,7 +1,7 @@
 import { loadMap, toggleModalVisibility } from "/static/js/common/common.js";
 import {
   getElementById,
-  initializeOnReady,
+  initializeOnReadyAndHtmxLoad,
   isDatasetReady,
   markDatasetReady,
 } from "/static/js/common/dom.js";
@@ -98,4 +98,4 @@ export const initializeMapModals = (root = document) => {
   });
 };
 
-initializeOnReady(() => initializeMapModals());
+initializeOnReadyAndHtmxLoad(initializeMapModals);
