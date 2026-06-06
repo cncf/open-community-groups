@@ -11,22 +11,14 @@ import {
 import {
   getCategoryLabelInterval,
   getTimeSplitNumber,
+  initializeChartsFromJsonMarker,
   registerChartResizeHandler,
   renderChart,
 } from "/static/js/common/stats.js";
-import { initializeOnReadyAndHtmxLoad, isDatasetReady, markDatasetReady } from "/static/js/common/dom.js";
-import { parseJsonText } from "/static/js/common/utils.js";
+import { initializeOnReadyAndHtmxLoad } from "/static/js/common/dom.js";
 
 const SITE_STATS_DATA_SELECTOR = "[data-site-stats]";
 const SITE_STATS_READY_KEY = "siteStatsReady";
-
-const getSiteStatsMarker = (root) => {
-  if (root instanceof HTMLElement && root.matches(SITE_STATS_DATA_SELECTOR)) {
-    return root;
-  }
-
-  return root.querySelector?.(SITE_STATS_DATA_SELECTOR);
-};
 
 /**
  * Apply stats-page specific legend styling without affecting dashboard charts.
@@ -150,33 +142,13 @@ export const initSiteStatsCharts = async (stats) => {
  * @returns {Promise<void>} Promise resolved when initialization finishes.
  */
 export const initializeSiteStatsFromPage = async (root = document) => {
-  const marker = getSiteStatsMarker(root);
-  if (!marker || isDatasetReady(marker, SITE_STATS_READY_KEY)) {
-    return;
-  }
-
-  const stats = readSiteStatsPayload(marker);
-  if (!stats) {
-    return;
-  }
-
-  markDatasetReady(marker, SITE_STATS_READY_KEY);
-
-  try {
-    await initSiteStatsCharts(stats);
-  } catch (error) {
-    console.error("Failed to initialize site stats charts:", error);
-  }
-};
-
-/**
- * Read the site stats payload from an inert JSON marker.
- * @param {HTMLElement} marker - JSON marker element.
- * @returns {Object|null} Parsed stats payload.
- */
-const readSiteStatsPayload = (marker) => {
-  return parseJsonText(marker.textContent || "{}", null, (error) => {
-    console.error("Failed to parse site stats payload:", error);
+  return initializeChartsFromJsonMarker({
+    root,
+    selector: SITE_STATS_DATA_SELECTOR,
+    readyKey: SITE_STATS_READY_KEY,
+    initialize: initSiteStatsCharts,
+    parseErrorMessage: "Failed to parse site stats payload:",
+    initErrorMessage: "Failed to initialize site stats charts:",
   });
 };
 

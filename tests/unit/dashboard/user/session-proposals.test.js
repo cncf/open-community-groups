@@ -100,6 +100,16 @@ describe("dashboard user session proposals", () => {
       >
         View
       </button>
+      <button
+        type="button"
+        data-action="view-pending-session-proposal"
+        data-session-proposal='${proposalPayload}'
+        data-proposal-description-html='${descriptionPayload}'
+        data-speaker-name="Grace Hopper"
+        data-speaker-photo-url="https://example.com/grace.png"
+      >
+        View pending
+      </button>
     `;
     document.body.prepend(modalComponent);
 
@@ -109,6 +119,7 @@ describe("dashboard user session proposals", () => {
     // Verify opens edit and view modals.
     document.querySelector('[data-action="edit-session-proposal"]')?.click();
     document.querySelector('[data-action="view-session-proposal"]')?.click();
+    document.querySelector('[data-action="view-pending-session-proposal"]')?.click();
 
     // Verify opens edit and view modals with normalized proposal payloads.
     expect(modalComponent.editCalls).to.deep.equal([
@@ -125,6 +136,13 @@ describe("dashboard user session proposals", () => {
         description_html: "<p>Expanded abstract</p>",
         speaker_name: "Ada Lovelace",
         speaker_photo_url: "https://example.com/ada.png",
+      },
+      {
+        session_proposal_id: 12,
+        title: "Platform Engineering at Scale",
+        description_html: "<p>Expanded abstract</p>",
+        speaker_name: "Grace Hopper",
+        speaker_photo_url: "https://example.com/grace.png",
       },
     ]);
   });

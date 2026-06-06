@@ -8,27 +8,16 @@ import {
   hasTimeSeriesData,
 } from "/static/js/common/charts.js";
 import { deferUntilHtmxSettled } from "/static/js/dashboard/common.js";
-import { initializeOnReady, isDatasetReady, markDatasetReady } from "/static/js/common/dom.js";
-import { registerChartResizeHandler, renderChart } from "/static/js/common/stats.js";
-import { parseJsonText } from "/static/js/common/utils.js";
+import { initializeOnReady } from "/static/js/common/dom.js";
+import {
+  addRenderedChart,
+  initializeChartsFromJsonMarker,
+  registerChartResizeHandler,
+  renderChart,
+} from "/static/js/common/stats.js";
 
 const GROUP_ANALYTICS_DATA_SELECTOR = "[data-group-analytics]";
 const GROUP_ANALYTICS_READY_KEY = "groupAnalyticsReady";
-
-/**
- * Adds a rendered chart to the collection when the container has chart data.
- * @param {Array<echarts.ECharts>} charts - Chart collection.
- * @param {string} elementId - Chart container ID.
- * @param {Object} chartOptions - ECharts options.
- * @param {boolean} hasData - Whether chart data is available.
- * @returns {void}
- */
-const addRenderedChart = (charts, elementId, chartOptions, hasData) => {
-  const chart = renderChart(elementId, chartOptions, hasData);
-  if (chart) {
-    charts.push(chart);
-  }
-};
 
 /**
  * Builds a running total area chart and monthly bar chart for one metric.
@@ -250,33 +239,13 @@ export const initAnalyticsCharts = async (stats) => {
  * @returns {Promise<void>} Promise resolved when initialization finishes.
  */
 export const initializeGroupAnalyticsFromPage = async (root = document) => {
-  const marker = root.querySelector(GROUP_ANALYTICS_DATA_SELECTOR);
-  if (!marker || isDatasetReady(marker, GROUP_ANALYTICS_READY_KEY)) {
-    return;
-  }
-
-  const stats = readGroupAnalyticsPayload(marker);
-  if (!stats) {
-    return;
-  }
-
-  markDatasetReady(marker, GROUP_ANALYTICS_READY_KEY);
-
-  try {
-    await initAnalyticsCharts(stats);
-  } catch (error) {
-    console.error("Failed to initialize analytics charts:", error);
-  }
-};
-
-/**
- * Read the group analytics payload from an inert JSON marker.
- * @param {HTMLElement} marker - JSON marker element.
- * @returns {Object|null} Parsed stats payload.
- */
-const readGroupAnalyticsPayload = (marker) => {
-  return parseJsonText(marker.textContent || "{}", null, (error) => {
-    console.error("Failed to parse group analytics payload:", error);
+  return initializeChartsFromJsonMarker({
+    root,
+    selector: GROUP_ANALYTICS_DATA_SELECTOR,
+    readyKey: GROUP_ANALYTICS_READY_KEY,
+    initialize: initAnalyticsCharts,
+    parseErrorMessage: "Failed to parse group analytics payload:",
+    initErrorMessage: "Failed to initialize analytics charts:",
   });
 };
 

@@ -1,6 +1,8 @@
 import "/static/js/common/svg-spinner.js";
 import { clearChartElement, initChart, showChartEmptyState } from "/static/js/common/charts.js";
 import { debounce } from "/static/js/common/common.js";
+import { isDatasetReady, markDatasetReady } from "/static/js/common/dom.js";
+import { parseJsonText } from "/static/js/common/utils.js";
 
 /**
  * Render a chart or show an empty state based on data availability.
@@ -31,6 +33,21 @@ export const renderChart = (elementId, option, hasData, options = {}) => {
 };
 
 /**
+ * Adds a rendered chart to the collection when the container has chart data.
+ * @param {Array<echarts.ECharts>} charts - Chart collection.
+ * @param {string} elementId - Chart container ID.
+ * @param {Object} chartOptions - ECharts options.
+ * @param {boolean} hasData - Whether chart data is available.
+ * @returns {void}
+ */
+export const addRenderedChart = (charts, elementId, chartOptions, hasData) => {
+  const chart = renderChart(elementId, chartOptions, hasData);
+  if (chart) {
+    charts.push(chart);
+  }
+};
+
+/**
  * Register a debounced resize handler for chart instances.
  * @param {Iterable<echarts.ECharts>|Function} chartsSource - Chart list or getter.
  * @param {number} delay - Debounce delay in milliseconds.
@@ -45,6 +62,60 @@ export const registerChartResizeHandler = (chartsSource, delay = 200) => {
 
   window.addEventListener("resize", resizeCharts);
   return resizeCharts;
+};
+
+/**
+ * Finds a stats JSON marker in a root or matching root element.
+ * @param {Document|Element} root - Root element to search from.
+ * @param {string} selector - JSON marker selector.
+ * @returns {Element|null} Matching marker.
+ */
+export const getStatsMarker = (root, selector) => {
+  if (root instanceof Element && root.matches(selector)) {
+    return root;
+  }
+
+  return root.querySelector?.(selector) || null;
+};
+
+/**
+ * Initializes charts from an inert JSON marker once.
+ * @param {Object} config - Initialization configuration.
+ * @param {Document|Element} config.root - Root element to search from.
+ * @param {string} config.selector - JSON marker selector.
+ * @param {string} config.readyKey - Dataset key used to guard initialization.
+ * @param {Function} config.initialize - Chart initializer.
+ * @param {string} config.parseErrorMessage - Payload parse error message.
+ * @param {string} config.initErrorMessage - Chart initialization error message.
+ * @returns {Promise<void>} Promise resolved when initialization finishes.
+ */
+export const initializeChartsFromJsonMarker = async ({
+  root = document,
+  selector,
+  readyKey,
+  initialize,
+  parseErrorMessage,
+  initErrorMessage,
+}) => {
+  const marker = getStatsMarker(root, selector);
+  if (!marker || isDatasetReady(marker, readyKey)) {
+    return;
+  }
+
+  const stats = parseJsonText(marker.textContent || "{}", null, (error) => {
+    console.error(parseErrorMessage, error);
+  });
+  if (!stats) {
+    return;
+  }
+
+  markDatasetReady(marker, readyKey);
+
+  try {
+    await initialize(stats);
+  } catch (error) {
+    console.error(initErrorMessage, error);
+  }
 };
 
 /**

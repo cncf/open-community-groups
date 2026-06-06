@@ -78,6 +78,38 @@ const setScopedModalVisibility = (root, targetModalId, visible) => {
 };
 
 /**
+ * Closes a scoped modal when an event target matches its dismiss controls.
+ * @param {Event} event Event to inspect.
+ * @param {Document|Element} root Query root.
+ * @param {string} closeSelector Close, cancel, and overlay selector.
+ * @param {Function} closeModal Modal close callback.
+ * @returns {boolean} True when the event closed the modal.
+ */
+const closeScopedModalFromEvent = (event, root, closeSelector, closeModal) => {
+  if (!closestElementWithinRoot(event.target, closeSelector, root)) {
+    return false;
+  }
+
+  event.stopPropagation();
+  closeModal(root);
+  return true;
+};
+
+/**
+ * Binds Escape handling for a scoped modal.
+ * @param {Document|Element} root Query root.
+ * @param {Function} closeModal Modal close callback.
+ * @returns {void}
+ */
+const bindScopedModalEscape = (root, closeModal) => {
+  root.addEventListener("keydown", (event) => {
+    if (isModalEscapeEvent(event)) {
+      closeModal(root);
+    }
+  });
+};
+
+/**
  * Show the refund review modal if it is currently hidden.
  * @param {Document|Element} [root=document] Query root.
  * @returns {void}
@@ -657,23 +689,15 @@ const initializeRefundReviewModal = (root = document) => {
       return;
     }
 
-    if (
-      closestElementWithinRoot(
-        event.target,
-        "#close-attendee-refund-modal, #cancel-attendee-refund-modal, #overlay-attendee-refund-modal",
-        root,
-      )
-    ) {
-      event.stopPropagation();
-      closeRefundModal(root);
-    }
+    closeScopedModalFromEvent(
+      event,
+      root,
+      "#close-attendee-refund-modal, #cancel-attendee-refund-modal, #overlay-attendee-refund-modal",
+      closeRefundModal,
+    );
   });
 
-  root.addEventListener("keydown", (event) => {
-    if (isModalEscapeEvent(event)) {
-      closeRefundModal(root);
-    }
-  });
+  bindScopedModalEscape(root, closeRefundModal);
 
   root.addEventListener("htmx:afterRequest", (event) => {
     const requestTarget = event.target;
@@ -708,23 +732,15 @@ const initializeAnswersModal = (root = document) => {
       return;
     }
 
-    if (
-      closestElementWithinRoot(
-        event.target,
-        "#close-attendee-answers-modal, #cancel-attendee-answers-modal, #overlay-attendee-answers-modal",
-        root,
-      )
-    ) {
-      event.stopPropagation();
-      closeAnswersModal(root);
-    }
+    closeScopedModalFromEvent(
+      event,
+      root,
+      "#close-attendee-answers-modal, #cancel-attendee-answers-modal, #overlay-attendee-answers-modal",
+      closeAnswersModal,
+    );
   });
 
-  root.addEventListener("keydown", (event) => {
-    if (isModalEscapeEvent(event)) {
-      closeAnswersModal(root);
-    }
-  });
+  bindScopedModalEscape(root, closeAnswersModal);
 };
 
 /**
@@ -756,16 +772,12 @@ const initializeInvitationModal = (root = document) => {
       return;
     }
 
-    if (
-      closestElementWithinRoot(
-        event.target,
-        "#close-attendee-invitation-modal, #cancel-attendee-invitation, #overlay-attendee-invitation-modal",
-        root,
-      )
-    ) {
-      event.stopPropagation();
-      closeInvitationModal(root);
-    }
+    closeScopedModalFromEvent(
+      event,
+      root,
+      "#close-attendee-invitation-modal, #cancel-attendee-invitation, #overlay-attendee-invitation-modal",
+      closeInvitationModal,
+    );
   });
 
   root.addEventListener("user-selected", (event) => {
@@ -823,11 +835,7 @@ const initializeInvitationModal = (root = document) => {
     }
   });
 
-  root.addEventListener("keydown", (event) => {
-    if (isModalEscapeEvent(event)) {
-      closeInvitationModal(root);
-    }
-  });
+  bindScopedModalEscape(root, closeInvitationModal);
 };
 
 const initializeAttendeesFeatures = (root = document) => {

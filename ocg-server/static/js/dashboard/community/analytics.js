@@ -16,32 +16,16 @@ import {
   hasStackedTimeSeriesData,
 } from "/static/js/common/charts.js";
 import { deferUntilHtmxSettled } from "/static/js/dashboard/common.js";
+import { initializeOnReady, setElementHidden } from "/static/js/common/dom.js";
 import {
-  initializeOnReady,
-  isDatasetReady,
-  markDatasetReady,
-  setElementHidden,
-} from "/static/js/common/dom.js";
-import { registerChartResizeHandler, renderChart } from "/static/js/common/stats.js";
-import { parseJsonText } from "/static/js/common/utils.js";
+  addRenderedChart,
+  initializeChartsFromJsonMarker,
+  registerChartResizeHandler,
+  renderChart,
+} from "/static/js/common/stats.js";
 
 const COMMUNITY_ANALYTICS_DATA_SELECTOR = "[data-community-analytics]";
 const COMMUNITY_ANALYTICS_READY_KEY = "communityAnalyticsReady";
-
-/**
- * Adds a rendered chart to the collection when the container has chart data.
- * @param {Array<echarts.ECharts>} charts - Chart collection.
- * @param {string} elementId - Chart container ID.
- * @param {Object} chartOptions - ECharts options.
- * @param {boolean} hasData - Whether chart data is available.
- * @returns {void}
- */
-const addRenderedChart = (charts, elementId, chartOptions, hasData) => {
-  const chart = renderChart(elementId, chartOptions, hasData);
-  if (chart) {
-    charts.push(chart);
-  }
-};
 
 /**
  * Builds a page-view chart from a small local chart spec.
@@ -719,33 +703,13 @@ export const initAnalyticsCharts = async (stats) => {
  * @returns {Promise<void>} Promise resolved when initialization finishes.
  */
 export const initializeCommunityAnalyticsFromPage = async (root = document) => {
-  const marker = root.querySelector(COMMUNITY_ANALYTICS_DATA_SELECTOR);
-  if (!marker || isDatasetReady(marker, COMMUNITY_ANALYTICS_READY_KEY)) {
-    return;
-  }
-
-  const stats = readCommunityAnalyticsPayload(marker);
-  if (!stats) {
-    return;
-  }
-
-  markDatasetReady(marker, COMMUNITY_ANALYTICS_READY_KEY);
-
-  try {
-    await initAnalyticsCharts(stats);
-  } catch (error) {
-    console.error("Failed to initialize analytics charts:", error);
-  }
-};
-
-/**
- * Read the community analytics payload from an inert JSON marker.
- * @param {HTMLElement} marker - JSON marker element.
- * @returns {Object|null} Parsed stats payload.
- */
-const readCommunityAnalyticsPayload = (marker) => {
-  return parseJsonText(marker.textContent || "{}", null, (error) => {
-    console.error("Failed to parse community analytics payload:", error);
+  return initializeChartsFromJsonMarker({
+    root,
+    selector: COMMUNITY_ANALYTICS_DATA_SELECTOR,
+    readyKey: COMMUNITY_ANALYTICS_READY_KEY,
+    initialize: initAnalyticsCharts,
+    parseErrorMessage: "Failed to parse community analytics payload:",
+    initErrorMessage: "Failed to initialize analytics charts:",
   });
 };
 

@@ -2,6 +2,8 @@ import { expect } from "@open-wc/testing";
 
 import {
   getCategoryLabelInterval,
+  getStatsMarker,
+  initializeChartsFromJsonMarker,
   getTimeSplitNumber,
   registerChartResizeHandler,
 } from "/static/js/common/stats.js";
@@ -60,5 +62,48 @@ describe("stats utilities", () => {
 
     // Set up registers a debounced resize handler for chart instances.
     window.removeEventListener("resize", resizeHandler);
+  });
+
+  it("finds stats markers from matching roots and descendants", () => {
+    // Build the marker fixture.
+    document.body.innerHTML = `
+      <section>
+        <script type="application/json" data-stats>{"total": 1}</script>
+      </section>
+    `;
+    const marker = document.querySelector("[data-stats]");
+
+    // Assert markers resolve from the document, descendants, and the marker itself.
+    expect(getStatsMarker(document, "[data-stats]")).to.equal(marker);
+    expect(getStatsMarker(document.querySelector("section"), "[data-stats]")).to.equal(marker);
+    expect(getStatsMarker(marker, "[data-stats]")).to.equal(marker);
+  });
+
+  it("initializes charts from a JSON marker once", async () => {
+    // Build the marker fixture.
+    document.body.innerHTML = `
+      <script type="application/json" data-stats>{"total": 1}</script>
+    `;
+    const initializedStats = [];
+
+    // Initialize charts twice to verify the ready guard.
+    await initializeChartsFromJsonMarker({
+      selector: "[data-stats]",
+      readyKey: "statsReady",
+      initialize: async (stats) => initializedStats.push(stats),
+      parseErrorMessage: "Failed to parse stats:",
+      initErrorMessage: "Failed to initialize stats:",
+    });
+    await initializeChartsFromJsonMarker({
+      selector: "[data-stats]",
+      readyKey: "statsReady",
+      initialize: async (stats) => initializedStats.push(stats),
+      parseErrorMessage: "Failed to parse stats:",
+      initErrorMessage: "Failed to initialize stats:",
+    });
+
+    // Assert the marker payload initializes charts once.
+    expect(initializedStats).to.deep.equal([{ total: 1 }]);
+    expect(document.querySelector("[data-stats]").dataset.statsReady).to.equal("true");
   });
 });

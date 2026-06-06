@@ -33,6 +33,31 @@ const applyDescriptionHtml = (button, sessionProposal) => {
   }
 };
 
+const applySpeakerDataset = (button, sessionProposal) => {
+  if (button.dataset.speakerName) {
+    sessionProposal.speaker_name = button.dataset.speakerName;
+  }
+  if (button.dataset.speakerPhotoUrl) {
+    sessionProposal.speaker_photo_url = button.dataset.speakerPhotoUrl;
+  }
+};
+
+const bindSessionProposalButtons = (root, selector, handler) => {
+  root.querySelectorAll?.(selector).forEach((button) => {
+    if (!markDatasetReady(button, "bound")) {
+      return;
+    }
+
+    button.addEventListener("click", () => {
+      const sessionProposal = parseSessionProposal(button.dataset.sessionProposal);
+      if (!sessionProposal) {
+        return;
+      }
+      handler(button, sessionProposal);
+    });
+  });
+};
+
 const initializeSessionProposals = (root = document) => {
   const modalComponent = getModalComponent(root) || getModalComponent(document);
 
@@ -45,71 +70,20 @@ const initializeSessionProposals = (root = document) => {
     openButton.addEventListener("click", () => modalComponent.openCreate());
   }
 
-  root.querySelectorAll?.('[data-action="edit-session-proposal"]').forEach((button) => {
-    if (!modalComponent) {
-      return;
-    }
-    if (!markDatasetReady(button, "bound")) {
-      return;
-    }
-
-    button.addEventListener("click", () => {
-      const sessionProposal = parseSessionProposal(button.dataset.sessionProposal);
-      if (!sessionProposal) {
-        return;
-      }
+  if (modalComponent) {
+    bindSessionProposalButtons(root, '[data-action="edit-session-proposal"]', (button, sessionProposal) => {
       applyDescriptionHtml(button, sessionProposal);
       modalComponent.openEdit(sessionProposal);
     });
-  });
 
-  root.querySelectorAll?.('[data-action="view-session-proposal"]').forEach((button) => {
-    if (!modalComponent) {
-      return;
-    }
-    if (!markDatasetReady(button, "bound")) {
-      return;
-    }
-
-    button.addEventListener("click", () => {
-      const sessionProposal = parseSessionProposal(button.dataset.sessionProposal);
-      if (!sessionProposal) {
-        return;
-      }
-      if (button.dataset.speakerName) {
-        sessionProposal.speaker_name = button.dataset.speakerName;
-      }
-      if (button.dataset.speakerPhotoUrl) {
-        sessionProposal.speaker_photo_url = button.dataset.speakerPhotoUrl;
-      }
+    const openView = (button, sessionProposal) => {
+      applySpeakerDataset(button, sessionProposal);
       applyDescriptionHtml(button, sessionProposal);
       modalComponent.openView(sessionProposal);
-    });
-  });
-
-  root.querySelectorAll?.('[data-action="view-pending-session-proposal"]').forEach((button) => {
-    if (!modalComponent) {
-      return;
-    }
-    if (!markDatasetReady(button, "bound")) {
-      return;
-    }
-
-    button.addEventListener("click", () => {
-      const sessionProposal = parseSessionProposal(button.dataset.sessionProposal);
-      if (!sessionProposal) {
-        return;
-      }
-      if (button.dataset.speakerName) {
-        sessionProposal.speaker_name = button.dataset.speakerName;
-      }
-      if (button.dataset.speakerPhotoUrl) {
-        sessionProposal.speaker_photo_url = button.dataset.speakerPhotoUrl;
-      }
-      applyDescriptionHtml(button, sessionProposal);
-      modalComponent.openView(sessionProposal);
-    });
-  });
+    };
+    bindSessionProposalButtons(root, '[data-action="view-session-proposal"]', openView);
+    bindSessionProposalButtons(root, '[data-action="view-pending-session-proposal"]', openView);
+  }
 
   root.querySelectorAll?.('[data-action="delete-session-proposal"]').forEach((button) => {
     if (!markDatasetReady(button, "bound")) {
