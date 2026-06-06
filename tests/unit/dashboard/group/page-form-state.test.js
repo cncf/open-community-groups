@@ -222,6 +222,37 @@ describe("page form state helpers", () => {
     expect(nextButton.disabled).to.equal(true);
   });
 
+  it("binds section tab clicks once per page root", () => {
+    // Render a page root with two sections.
+    document.body.innerHTML = `
+      <div id="page-root">
+        <button data-section="details" data-active="true" class="active">Details</button>
+        <button data-section="sessions" data-active="false">Sessions</button>
+        <section data-content="details">Details content</section>
+        <section data-content="sessions" class="hidden">Sessions content</section>
+      </div>
+    `;
+
+    // Initialize the same root twice with separate section hooks.
+    const pageRoot = document.getElementById("page-root");
+    const visitedSections = [];
+    initializeSectionTabs({
+      root: pageRoot,
+      onSectionChange: (sectionName) => visitedSections.push(sectionName),
+    });
+    initializeSectionTabs({
+      root: pageRoot,
+      onSectionChange: (sectionName) =>
+        visitedSections.push(`again:${sectionName}`),
+    });
+
+    // Click the sessions tab after duplicate initialization.
+    pageRoot.querySelector('[data-section="sessions"]').click();
+
+    // Only the first delegated click handler is bound to the page root.
+    expect(visitedSections).to.deep.equal(["sessions"]);
+  });
+
   it("syncs checkbox toggles into hidden boolean inputs", () => {
     // Render the visible checkbox and the hidden field submitted with the form.
     document.body.innerHTML = `
@@ -246,6 +277,37 @@ describe("page form state helpers", () => {
     toggle.dispatchEvent(new Event("change", { bubbles: true }));
 
     // The hidden field and change callback both receive the enabled state.
+    expect(hiddenInput.value).to.equal("true");
+    expect(seenValues).to.deep.equal([true]);
+  });
+
+  it("binds boolean toggle changes once per checkbox", () => {
+    // Render the visible checkbox and hidden field.
+    document.body.innerHTML = `
+      <input id="toggle_registration_required" type="checkbox" />
+      <input id="registration_required" type="hidden" value="false" />
+    `;
+
+    // Bind the same toggle twice with separate callbacks.
+    const toggle = document.getElementById("toggle_registration_required");
+    const hiddenInput = document.getElementById("registration_required");
+    const seenValues = [];
+    bindBooleanToggle({
+      toggle,
+      hiddenInput,
+      onChange: (enabled) => seenValues.push(enabled),
+    });
+    bindBooleanToggle({
+      toggle,
+      hiddenInput,
+      onChange: (enabled) => seenValues.push(`again:${enabled}`),
+    });
+
+    // Turn the checkbox on and emit the browser change event.
+    toggle.checked = true;
+    toggle.dispatchEvent(new Event("change", { bubbles: true }));
+
+    // Only the first listener runs for duplicate bindings on the same checkbox.
     expect(hiddenInput.value).to.equal("true");
     expect(seenValues).to.deep.equal([true]);
   });

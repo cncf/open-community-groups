@@ -1,4 +1,12 @@
-import { closestElementWithinRoot, getElementById, setElementHidden } from "/static/js/common/dom.js";
+import {
+  closestElementWithinRoot,
+  getElementById,
+  markDatasetReady,
+  setElementHidden,
+} from "/static/js/common/dom.js";
+
+const BOOLEAN_TOGGLE_BOUND_KEY = "booleanToggleBound";
+const SECTION_TABS_BOUND_KEY = "sectionTabsBound";
 
 /**
  * Builds a list of existing form ids for page-level wiring.
@@ -33,7 +41,9 @@ export const bindBooleanToggle = ({ toggle, hiddenInput, onChange = () => {}, sy
     return { sync };
   }
 
-  toggle.addEventListener("change", sync);
+  if (markDatasetReady(toggle, BOOLEAN_TOGGLE_BOUND_KEY)) {
+    toggle.addEventListener("change", sync);
+  }
 
   if (syncOnInit) {
     sync();
@@ -96,45 +106,50 @@ export const initializeSectionTabs = ({ root = document, onSectionChange = () =>
     onSectionChange(sectionName);
   };
 
-  root.addEventListener("click", (event) => {
-    const nextButton = closestElementWithinRoot(event.target, "[data-section-next]", root);
-    if (nextButton) {
-      event.preventDefault();
-      event.stopPropagation();
+  const bindSectionTabsClick =
+    !(root instanceof HTMLElement) || markDatasetReady(root, SECTION_TABS_BOUND_KEY);
 
-      const tabButtons = getTabButtons();
-      const currentIndex = tabButtons.findIndex((button) => button.getAttribute("data-active") === "true");
-      const nextTabButton = tabButtons[currentIndex + 1];
-      const nextSectionName = nextTabButton?.getAttribute("data-section") || "";
+  if (bindSectionTabsClick) {
+    root.addEventListener("click", (event) => {
+      const nextButton = closestElementWithinRoot(event.target, "[data-section-next]", root);
+      if (nextButton) {
+        event.preventDefault();
+        event.stopPropagation();
 
-      if (!nextTabButton || !nextSectionName) {
-        updateNextButtons(tabButtons[currentIndex]?.getAttribute("data-section") || "");
+        const tabButtons = getTabButtons();
+        const currentIndex = tabButtons.findIndex((button) => button.getAttribute("data-active") === "true");
+        const nextTabButton = tabButtons[currentIndex + 1];
+        const nextSectionName = nextTabButton?.getAttribute("data-section") || "";
+
+        if (!nextTabButton || !nextSectionName) {
+          updateNextButtons(tabButtons[currentIndex]?.getAttribute("data-section") || "");
+          return;
+        }
+
+        skipSectionClickActivation = true;
+        try {
+          nextTabButton.click();
+        } finally {
+          skipSectionClickActivation = false;
+        }
+
+        displayActiveSection(nextSectionName);
+        scrollToTop();
         return;
       }
 
-      skipSectionClickActivation = true;
-      try {
-        nextTabButton.click();
-      } finally {
-        skipSectionClickActivation = false;
+      const button = closestElementWithinRoot(event.target, "[data-section]", root);
+      if (!button) {
+        return;
       }
 
-      displayActiveSection(nextSectionName);
-      scrollToTop();
-      return;
-    }
+      if (skipSectionClickActivation) {
+        return;
+      }
 
-    const button = closestElementWithinRoot(event.target, "[data-section]", root);
-    if (!button) {
-      return;
-    }
-
-    if (skipSectionClickActivation) {
-      return;
-    }
-
-    displayActiveSection(button.getAttribute("data-section") || "");
-  });
+      displayActiveSection(button.getAttribute("data-section") || "");
+    });
+  }
 
   const activeSectionName =
     getTabButtons()
