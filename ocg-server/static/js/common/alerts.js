@@ -3,6 +3,8 @@ import { initializeOnReadyAndHtmxLoad, markDatasetReady } from "/static/js/commo
 
 const PAGE_ALERT_SELECTOR = "[data-page-alert]";
 const PAGE_ALERT_READY_KEY = "pageAlertReady";
+const BACKEND_FLASH_REFRESH_TRIGGERS = new Set(["refresh-user-dashboard-content"]);
+const REFRESH_BODY_EVENT = "refresh-body";
 
 /**
  * Returns common configuration options for all alert dialogs.
@@ -183,6 +185,43 @@ const buildForbiddenMessage = (message) => {
 };
 
 /**
+ * Checks whether a successful response should fetch server-rendered flash alerts.
+ * @param {XMLHttpRequest} xhr HTMX response XHR.
+ * @param {string} successMessage Frontend success message.
+ * @returns {boolean} True when a backend flash refresh should run.
+ */
+export const shouldRefreshBodyForBackendFlash = (xhr, successMessage = "") => {
+  if (
+    successMessage ||
+    !xhr ||
+    xhr.status < 200 ||
+    xhr.status >= 300 ||
+    typeof xhr.getResponseHeader !== "function"
+  ) {
+    return false;
+  }
+
+  return (xhr.getResponseHeader("HX-Trigger") || "")
+    .split(",")
+    .map((trigger) => trigger.trim())
+    .some((trigger) => BACKEND_FLASH_REFRESH_TRIGGERS.has(trigger));
+};
+
+/**
+ * Triggers a body refresh after the current HTMX response settles.
+ * @returns {void}
+ */
+export const refreshBodyAfterHtmxSettle = () => {
+  document.addEventListener(
+    "htmx:afterSettle",
+    () => {
+      document.body?.dispatchEvent(new Event(REFRESH_BODY_EVENT, { bubbles: true }));
+    },
+    { once: true },
+  );
+};
+
+/**
  * Handles common HTMX response patterns and displays alerts.
  * Returns true on success (2xx), false otherwise.
  * @param {Object} params
@@ -200,6 +239,8 @@ export const handleHtmxResponse = ({ xhr, successMessage, errorMessage }) => {
   if (xhr.status >= 200 && xhr.status < 300) {
     if (successMessage) {
       showSuccessAlert(successMessage);
+    } else if (shouldRefreshBodyForBackendFlash(xhr, successMessage)) {
+      refreshBodyAfterHtmxSettle();
     }
     return true;
   }

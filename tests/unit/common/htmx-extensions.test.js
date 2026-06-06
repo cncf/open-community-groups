@@ -7,6 +7,7 @@ import {
   handleCommitShaConfigRequest,
   handleDeclarativeHtmxResponse,
   handleNotFoundBeforeSwap,
+  isSuccessfulRefreshBodyResponse,
   registerHtmxNoEmptyValuesExtensions,
   registerHtmxResponseHandlers,
 } from "/static/js/common/htmx-extensions.js";
@@ -21,6 +22,8 @@ import {
 
 // Convert form data into comparable entries.
 const formDataToEntries = (formData) => Array.from(formData.entries());
+const waitForDelay = (delay = 0) =>
+  new Promise((resolve) => setTimeout(resolve, delay));
 
 // Set the loaded commit SHA meta tag for deployment header checks.
 const setLoadedCommitSha = (commitSha) => {
@@ -397,19 +400,72 @@ describe("htmx extensions", () => {
     });
   });
 
+  it("detects successful refresh-body responses", () => {
+    // Build successful and unsuccessful response fixtures.
+    const successfulRefresh = {
+      status: 204,
+      getResponseHeader: (name) => (name === "HX-Trigger" ? "refresh-body" : null),
+    };
+    const successfulOtherRefresh = {
+      status: 204,
+      getResponseHeader: (name) =>
+        name === "HX-Trigger" ? "refresh-sidebar, refresh-body" : null,
+    };
+    const failedRefresh = {
+      status: 500,
+      getResponseHeader: (name) => (name === "HX-Trigger" ? "refresh-body" : null),
+    };
+
+    // Only successful responses that trigger a body refresh match.
+    expect(isSuccessfulRefreshBodyResponse(successfulRefresh)).to.equal(true);
+    expect(isSuccessfulRefreshBodyResponse(successfulOtherRefresh)).to.equal(true);
+    expect(isSuccessfulRefreshBodyResponse(failedRefresh)).to.equal(false);
+    expect(isSuccessfulRefreshBodyResponse({ status: 204 })).to.equal(false);
+  });
+
+  it("delays refresh-body success messages until the body refresh settles", async () => {
+    // Build a form with declarative response messages.
+    const form = document.createElement("form");
+    form.dataset.htmxResponse = "";
+    form.dataset.successMessage = "Saved after refresh.";
+
+    // Dispatch a successful response that will trigger a body refresh.
+    handleDeclarativeHtmxResponse({
+      detail: {
+        elt: form,
+        xhr: {
+          status: 204,
+          responseText: "",
+          getResponseHeader: (name) => (name === "HX-Trigger" ? "refresh-body" : null),
+        },
+      },
+    });
+
+    // The success message waits for the triggered body refresh.
+    expect(swal.calls).to.have.length(0);
+    await waitForDelay();
+    document.dispatchEvent(new CustomEvent("htmx:afterSettle", { bubbles: true }));
+
+    // The delayed message is shown after the refresh settles.
+    expect(swal.calls).to.have.length(1);
+    expect(swal.calls[0]).to.include({
+      text: "Saved after refresh.",
+      icon: "success",
+    });
+  });
+
   it("registers the shared htmx response handlers", () => {
-    // Capture listeners added to the root body.
+    // Capture listeners added to the event root.
     const listeners = [];
     const root = {
-      body: {
-        addEventListener: (name, handler) => listeners.push([name, handler]),
-      },
+      body: {},
+      addEventListener: (name, handler) => listeners.push([name, handler]),
     };
 
     // Register the shared HTMX response handlers.
     registerHtmxResponseHandlers(root);
 
-    // All shared response handlers are registered on the root body.
+    // All shared response handlers are registered on the event root.
     expect(listeners).to.deep.equal([
       ["htmx:configRequest", handleCommitShaConfigRequest],
       ["htmx:beforeOnLoad", handleCommitShaBeforeOnLoad],
@@ -423,9 +479,7 @@ describe("htmx extensions", () => {
     // Capture listeners added during repeated registration.
     const listeners = [];
     const root = {
-      body: {
-        addEventListener: (name, handler) => listeners.push([name, handler]),
-      },
+      addEventListener: (name, handler) => listeners.push([name, handler]),
     };
 
     // Register the shared handlers twice on the same root.
@@ -442,23 +496,42 @@ describe("htmx extensions", () => {
     ]);
   });
 
-  it("registers shared htmx response handlers on roots without a body", () => {
-    // Capture listeners added to a document-like root without a parsed body.
-    const listeners = [];
-    const root = {
-      addEventListener: (name, handler) => listeners.push([name, handler]),
-    };
+  it("keeps shared htmx response handlers active after body replacement", () => {
+    // Build a form with declarative response messages in the current body.
+    document.body.innerHTML = `
+      <form data-htmx-response data-success-message="Saved successfully.">
+        <button type="submit">Save</button>
+      </form>
+    `;
+    registerHtmxResponseHandlers(document);
 
-    // Register the shared handlers on the root itself.
-    registerHtmxResponseHandlers(root);
+    // Replace the body and dispatch a response from a new swapped form.
+    const replacementBody = document.createElement("body");
+    replacementBody.innerHTML = `
+      <form data-htmx-response data-success-message="Saved after swap.">
+        <button type="submit">Save</button>
+      </form>
+    `;
+    document.documentElement.replaceChild(replacementBody, document.body);
+    const form = document.querySelector("[data-htmx-response]");
+    form.dispatchEvent(
+      new CustomEvent("htmx:afterRequest", {
+        bubbles: true,
+        detail: {
+          elt: form,
+          xhr: {
+            status: 204,
+            responseText: "",
+          },
+        },
+      }),
+    );
 
-    // The root receives the shared response handlers.
-    expect(listeners).to.deep.equal([
-      ["htmx:configRequest", handleCommitShaConfigRequest],
-      ["htmx:beforeOnLoad", handleCommitShaBeforeOnLoad],
-      ["htmx:beforeSwap", handleCommitShaBeforeSwap],
-      ["htmx:beforeSwap", handleNotFoundBeforeSwap],
-      ["htmx:afterRequest", handleDeclarativeHtmxResponse],
-    ]);
+    // The document-level listener still handles the swapped form response.
+    expect(swal.calls).to.have.length(1);
+    expect(swal.calls[0]).to.include({
+      text: "Saved after swap.",
+      icon: "success",
+    });
   });
 });

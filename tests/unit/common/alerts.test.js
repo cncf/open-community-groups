@@ -7,6 +7,7 @@ import {
   getCommonAlertOptions,
   handleHtmxResponse,
   initializePageAlerts,
+  shouldRefreshBodyForBackendFlash,
   showConfirmAlert,
   showDeploymentRefreshRetryAlert,
   showErrorAlert,
@@ -179,6 +180,55 @@ describe("alerts", () => {
       { top: 0, behavior: "auto" },
       { top: 0, behavior: "auto" },
     ]);
+  });
+
+  it("detects successful responses that need backend flash refreshes", () => {
+    // Build response fixtures with and without backend flash refresh triggers.
+    const successfulFlashResponse = {
+      status: 204,
+      getResponseHeader: (name) =>
+        name === "HX-Trigger" ? "refresh-user-dashboard-content" : null,
+    };
+    const failedFlashResponse = {
+      status: 500,
+      getResponseHeader: (name) =>
+        name === "HX-Trigger" ? "refresh-user-dashboard-content" : null,
+    };
+
+    // Only successful responses without frontend messages need body refreshes.
+    expect(shouldRefreshBodyForBackendFlash(successfulFlashResponse, "")).to.equal(true);
+    expect(shouldRefreshBodyForBackendFlash(successfulFlashResponse, "Saved")).to.equal(false);
+    expect(shouldRefreshBodyForBackendFlash(failedFlashResponse, "")).to.equal(false);
+    expect(shouldRefreshBodyForBackendFlash({ status: 204 }, "")).to.equal(false);
+  });
+
+  it("refreshes the body for successful backend flash responses", () => {
+    // Track body refresh events emitted after the current HTMX response settles.
+    let refreshBodyEvents = 0;
+    document.body.addEventListener("refresh-body", () => {
+      refreshBodyEvents += 1;
+    });
+
+    // Handle a successful response that stores a backend flash message.
+    expect(
+      handleHtmxResponse({
+        xhr: {
+          status: 204,
+          getResponseHeader: (name) =>
+            name === "HX-Trigger" ? "refresh-user-dashboard-content" : null,
+        },
+        successMessage: "",
+        errorMessage: "Failed",
+      }),
+    ).to.equal(true);
+
+    // The helper waits for HTMX to settle before refreshing the body.
+    expect(refreshBodyEvents).to.equal(0);
+    document.dispatchEvent(new CustomEvent("htmx:afterSettle", { bubbles: true }));
+
+    // The body refresh will fetch and consume the server-rendered flash message.
+    expect(refreshBodyEvents).to.equal(1);
+    expect(env.current.swal.calls).to.have.length(0);
   });
 
   it("binds standard htmx response alerts", () => {

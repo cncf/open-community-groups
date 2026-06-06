@@ -1,4 +1,4 @@
-import { handleHtmxResponse } from "/static/js/common/alerts.js";
+import { handleHtmxResponse, showSuccessAlert } from "/static/js/common/alerts.js";
 import {
   addLoadedCommitShaHeader,
   isDeploymentReloadRequested,
@@ -8,6 +8,7 @@ import {
 // Tracks event roots already wired so repeated initialization stays idempotent.
 const responseHandlerRoots = new WeakSet();
 const htmxResponseSelector = "[data-htmx-response]";
+const REFRESH_BODY_TRIGGER = "refresh-body";
 
 /**
  * Filters HTMX parameters by trimming strings and dropping selected empty values.
@@ -166,11 +167,51 @@ export const handleDeclarativeHtmxResponse = (event) => {
     return;
   }
 
+  const xhr = event.detail?.xhr;
+  const successMessage = responseElement.dataset.successMessage || "";
+  if (isSuccessfulRefreshBodyResponse(xhr) && successMessage) {
+    showSuccessAfterBodyRefresh(successMessage);
+    return;
+  }
+
   handleHtmxResponse({
-    xhr: event.detail?.xhr,
-    successMessage: responseElement.dataset.successMessage || "",
+    xhr,
+    successMessage,
     errorMessage: responseElement.dataset.errorMessage || "Something went wrong. Please try again later.",
   });
+};
+
+/**
+ * Checks whether a successful HTMX response triggers a body refresh.
+ * @param {XMLHttpRequest|undefined|null} xhr HTMX response XHR.
+ * @returns {boolean} True when the response will refresh the body.
+ */
+export const isSuccessfulRefreshBodyResponse = (xhr) => {
+  if (!xhr || xhr.status < 200 || xhr.status >= 300 || typeof xhr.getResponseHeader !== "function") {
+    return false;
+  }
+
+  return (xhr.getResponseHeader("HX-Trigger") || "")
+    .split(",")
+    .map((trigger) => trigger.trim())
+    .includes(REFRESH_BODY_TRIGGER);
+};
+
+/**
+ * Shows success feedback after the triggered body refresh has settled.
+ * @param {string} successMessage Success alert message.
+ * @returns {void}
+ */
+export const showSuccessAfterBodyRefresh = (successMessage) => {
+  window.setTimeout(() => {
+    document.addEventListener(
+      "htmx:afterSettle",
+      () => {
+        showSuccessAlert(successMessage);
+      },
+      { once: true },
+    );
+  }, 0);
 };
 
 /**
@@ -193,7 +234,7 @@ export const registerHtmxNoEmptyValuesExtensions = (htmxInstance) => {
  * @returns {void}
  */
 export const registerHtmxResponseHandlers = (root = document) => {
-  const eventRoot = root?.body || root;
+  const eventRoot = root;
   if (!eventRoot || typeof eventRoot.addEventListener !== "function" || responseHandlerRoots.has(eventRoot)) {
     return;
   }
