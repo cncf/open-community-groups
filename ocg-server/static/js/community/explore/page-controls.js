@@ -64,13 +64,20 @@ const readExplorePayload = (marker) => {
  * @param {Document|Element} root - Root element containing the calendar controls
  * @param {string} id - Button id
  * @param {Function} callback - Calendar action called on click
+ * @param {Object} options - Binding options
+ * @param {boolean} options.force - Whether to bind even when the DOM was marked ready
  */
-const bindCalendarButton = (root, id, callback) => {
+const bindCalendarButton = (root, id, callback, { force = false } = {}) => {
   const button = getElementById(root, id);
-  if (!markDatasetReady(button, EXPLORE_WIDGET_READY_KEY)) {
+  if (!button) {
     return;
   }
 
+  if (!force && !markDatasetReady(button, EXPLORE_WIDGET_READY_KEY)) {
+    return;
+  }
+
+  markDatasetReady(button, EXPLORE_WIDGET_READY_KEY);
   button.addEventListener("click", () => {
     callback();
     button.blur();
@@ -81,11 +88,13 @@ const bindCalendarButton = (root, id, callback) => {
  * Binds calendar navigation controls for a calendar instance.
  * @param {Document|Element} root - Root element containing the calendar controls
  * @param {object} calendar - Calendar instance
+ * @param {Object} options - Binding options
+ * @param {boolean} options.force - Whether to bind even when the DOM was marked ready
  */
-const bindCalendarControls = (root, calendar) => {
-  bindCalendarButton(root, CURRENT_MONTH_BUTTON_ID, () => calendar.currentMonth());
-  bindCalendarButton(root, PREV_MONTH_BUTTON_ID, () => calendar.previousMonth());
-  bindCalendarButton(root, NEXT_MONTH_BUTTON_ID, () => calendar.nextMonth());
+const bindCalendarControls = (root, calendar, options = {}) => {
+  bindCalendarButton(root, CURRENT_MONTH_BUTTON_ID, () => calendar.currentMonth(), options);
+  bindCalendarButton(root, PREV_MONTH_BUTTON_ID, () => calendar.previousMonth(), options);
+  bindCalendarButton(root, NEXT_MONTH_BUTTON_ID, () => calendar.nextMonth(), options);
 };
 
 /**
@@ -118,21 +127,23 @@ export const syncNoResultsPlaceholders = (root = document) => {
 /**
  * Initializes explore calendar and map widgets from declarative payload markers.
  * @param {Document|Element} root - Root element containing widget markers
+ * @param {Object} options - Initialization options
+ * @param {boolean} options.force - Whether to initialize widgets marked ready
  */
-export const initializeExploreWidgets = async (root = document) => {
+export const initializeExploreWidgets = async (root = document, { force = false } = {}) => {
   const calendarMarker = root.querySelector(CALENDAR_DATA_SELECTOR);
-  if (calendarMarker && !isDatasetReady(calendarMarker, EXPLORE_WIDGET_READY_KEY)) {
+  if (calendarMarker && (force || !isDatasetReady(calendarMarker, EXPLORE_WIDGET_READY_KEY))) {
     const data = readExplorePayload(calendarMarker);
     if (data) {
       markDatasetReady(calendarMarker, EXPLORE_WIDGET_READY_KEY);
       const module = await import("/static/js/community/explore/calendar.js");
       const calendar = new module.Calendar(data);
-      bindCalendarControls(root, calendar);
+      bindCalendarControls(root, calendar, { force });
     }
   }
 
   const mapMarker = root.querySelector(MAP_DATA_SELECTOR);
-  if (mapMarker && !isDatasetReady(mapMarker, EXPLORE_WIDGET_READY_KEY)) {
+  if (mapMarker && (force || !isDatasetReady(mapMarker, EXPLORE_WIDGET_READY_KEY))) {
     const data = readExplorePayload(mapMarker);
     const entity = mapMarker.dataset.entity;
     if (data && entity) {
@@ -234,7 +245,7 @@ const handleExploreChange = (event) => {
  * Re-initializes dynamic widgets restored from HTMX history cache.
  */
 const handleExploreHistoryRestore = async () => {
-  await initializeExploreWidgets();
+  await initializeExploreWidgets(document, { force: true });
 };
 
 /**
