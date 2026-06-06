@@ -34,6 +34,7 @@ import { renderLocationSearchInterface } from "/static/js/common/location-search
 import { renderLocationTextFields } from "/static/js/common/location-text-fields-renderer.js";
 import { LocationMapPreview } from "/static/js/common/location-map-preview.js";
 import {
+  getClearedLocationMapPreviewState,
   getLocationMapPreviewState,
   renderLocationMapPreview,
 } from "/static/js/common/location-map-preview-renderer.js";
@@ -423,10 +424,7 @@ export class LocationSearchField extends LitWrapper {
     }
 
     this._mapPreview.reset();
-    this._mapVisible = false;
-    this._mapZoom = DEFAULT_MAP_ZOOM;
-    this._mapBoundingBox = null;
-    this._shouldFitBounds = false;
+    this._applyMapPreviewState(getClearedLocationMapPreviewState());
 
     this._clearSearch();
 
@@ -709,6 +707,18 @@ export class LocationSearchField extends LitWrapper {
       mapBoundingBox: this._mapBoundingBox,
       shouldFitBounds: this._shouldFitBounds,
     });
+  }
+
+  /**
+   * Applies normalized map preview state to the component.
+   * @param {Object} state Map preview state patch.
+   * @private
+   */
+  _applyMapPreviewState(state) {
+    this._mapVisible = state.mapVisible;
+    this._mapZoom = state.mapZoom;
+    this._mapBoundingBox = state.mapBoundingBox;
+    this._shouldFitBounds = state.shouldFitBounds;
   }
 
   /**

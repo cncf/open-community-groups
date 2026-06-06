@@ -1,4 +1,5 @@
 import { html } from "/static/vendor/js/lit-all.v3.3.1.min.js";
+import { DEFAULT_MAP_ZOOM } from "/static/js/common/location-search-utils.js";
 
 /**
  * Builds map preview sync state from component fields.
@@ -12,6 +13,17 @@ export const getLocationMapPreviewState = (state) => ({
   mapZoom: state.mapZoom,
   mapBoundingBox: state.mapBoundingBox,
   shouldFitBounds: state.shouldFitBounds,
+});
+
+/**
+ * Builds cleared map preview state.
+ * @returns {Object}
+ */
+export const getClearedLocationMapPreviewState = () => ({
+  mapVisible: false,
+  mapZoom: DEFAULT_MAP_ZOOM,
+  mapBoundingBox: null,
+  shouldFitBounds: false,
 });
 
 /**

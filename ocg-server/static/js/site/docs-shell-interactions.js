@@ -1,7 +1,8 @@
-import { closestElement } from "/static/js/common/dom.js";
+import { closestElement, getElementById } from "/static/js/common/dom.js";
 
 const DOCSIFY_BODY_CLASSES = ["close", "ready", "sticky"];
 const DOCS_ANCHOR_SCROLL_PADDING_PX = 30;
+const DOCS_SIDEBAR_SELECTOR = ".sidebar-nav";
 
 /**
  * Mirrors docsify body classes to the docs container root.
@@ -125,3 +126,71 @@ export const jumpToElement = (element) => {
     top: Math.max(0, top - DOCS_ANCHOR_SCROLL_PADDING_PX),
   });
 };
+
+/**
+ * Builds the handler that keeps current sidebar page sections expanded.
+ * @param {Object} options Handler dependencies.
+ * @param {Function} options.getCurrentDocsRoute Current route reader.
+ * @param {Function} options.parseDocsRoute Docs route parser.
+ * @param {Function} options.scheduleCurrentSidebarSectionStateSync Sync scheduler.
+ * @returns {(event: MouseEvent) => void} Click handler.
+ */
+export const createCurrentSidebarPageClickHandler =
+  ({ getCurrentDocsRoute, parseDocsRoute, scheduleCurrentSidebarSectionStateSync }) =>
+  (event) => {
+    const link = closestElement(event.target, "a[href]");
+    if (!link || !link.closest(DOCS_SIDEBAR_SELECTOR) || link.closest(".app-sub-sidebar")) {
+      return;
+    }
+
+    const targetRoute = parseDocsRoute(link.getAttribute("href"));
+    if (!targetRoute || targetRoute.id) {
+      return;
+    }
+
+    const currentRoute = getCurrentDocsRoute();
+    if (targetRoute.path !== currentRoute.path || currentRoute.id) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    scheduleCurrentSidebarSectionStateSync();
+  };
+
+/**
+ * Builds the handler that performs instant jumps for same-page docs anchors.
+ * @param {Object} options Handler dependencies.
+ * @param {Function} options.getCurrentDocsRoute Current route reader.
+ * @param {Function} options.parseSamePageAnchor Same-page anchor parser.
+ * @param {Function} options.scheduleCurrentSidebarSectionStateSync Sync scheduler.
+ * @returns {(event: MouseEvent) => void} Click handler.
+ */
+export const createSamePageAnchorClickHandler =
+  ({ getCurrentDocsRoute, parseSamePageAnchor, scheduleCurrentSidebarSectionStateSync }) =>
+  (event) => {
+    const link = closestElement(event.target, "a[href]");
+    if (!link || !link.closest(".markdown-section, .app-sub-sidebar")) {
+      return;
+    }
+
+    const targetRoute = parseSamePageAnchor(link.getAttribute("href"));
+    if (!targetRoute || !targetRoute.id) {
+      return;
+    }
+
+    const currentRoute = getCurrentDocsRoute();
+    if (targetRoute.path !== currentRoute.path) {
+      return;
+    }
+
+    const targetElement = getElementById(document, targetRoute.id);
+    if (!targetElement) {
+      return;
+    }
+
+    event.preventDefault();
+    updateDocsAnchorHash(currentRoute.rawPath, targetRoute.id);
+    jumpToElement(targetElement);
+    scheduleCurrentSidebarSectionStateSync();
+  };

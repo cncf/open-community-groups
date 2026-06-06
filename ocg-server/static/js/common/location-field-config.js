@@ -19,6 +19,8 @@ export const getLocationFieldConfig = (component) => ({
   stateFieldName: component.stateFieldName,
   countryNameFieldName: component.countryNameFieldName,
   countryCodeFieldName: component.countryCodeFieldName,
+  latitudeFieldName: component.latitudeFieldName,
+  longitudeFieldName: component.longitudeFieldName,
 });
 
 /**

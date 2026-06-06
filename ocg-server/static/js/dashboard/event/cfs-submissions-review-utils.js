@@ -7,6 +7,13 @@ export const getSubmissionRatings = (submission) =>
   Array.isArray(submission?.ratings) ? submission.ratings : [];
 
 /**
+ * Normalizes reviewer ids for rating comparisons.
+ * @param {*} reviewerId Reviewer id value.
+ * @returns {string} Normalized reviewer id.
+ */
+const normalizeReviewerId = (reviewerId) => String(reviewerId || "");
+
+/**
  * Finds the rating created by the current user.
  * @param {Object} submission Submission payload.
  * @param {string} currentUserId Current reviewer user id.
@@ -14,12 +21,13 @@ export const getSubmissionRatings = (submission) =>
  */
 export const findCurrentUserRating = (submission, currentUserId) => {
   const ratings = getSubmissionRatings(submission);
-  const normalizedCurrentUserId = String(currentUserId || "");
+  const normalizedCurrentUserId = normalizeReviewerId(currentUserId);
   if (!normalizedCurrentUserId) {
     return null;
   }
   return (
-    ratings.find((rating) => String(rating?.reviewer?.user_id || "") === normalizedCurrentUserId) || null
+    ratings.find((rating) => normalizeReviewerId(rating?.reviewer?.user_id) === normalizedCurrentUserId) ||
+    null
   );
 };
 
@@ -31,11 +39,13 @@ export const findCurrentUserRating = (submission, currentUserId) => {
  */
 export const getOtherTeamRatings = (submission, currentUserId) => {
   const ratings = getSubmissionRatings(submission);
-  const normalizedCurrentUserId = String(currentUserId || "");
+  const normalizedCurrentUserId = normalizeReviewerId(currentUserId);
   if (!normalizedCurrentUserId) {
     return [];
   }
-  return ratings.filter((rating) => String(rating?.reviewer?.user_id || "") !== normalizedCurrentUserId);
+  return ratings.filter(
+    (rating) => normalizeReviewerId(rating?.reviewer?.user_id) !== normalizedCurrentUserId,
+  );
 };
 
 /**
@@ -76,9 +86,17 @@ export const getStatusColor = (statusId) => {
     case "information-requested":
       return { border: "border-orange-600", ring: "ring-2 ring-orange-200", dot: "bg-orange-600" };
     case "approved":
-      return { border: "border-emerald-600", ring: "ring-2 ring-emerald-200", dot: "bg-emerald-600" };
+      return {
+        border: "border-emerald-600",
+        ring: "ring-2 ring-emerald-200",
+        dot: "bg-emerald-600",
+      };
     default:
-      return { border: "border-primary-500", ring: "ring-2 ring-primary-200", dot: "bg-primary-500" };
+      return {
+        border: "border-primary-500",
+        ring: "ring-2 ring-primary-200",
+        dot: "bg-primary-500",
+      };
   }
 };
 
@@ -270,6 +288,15 @@ export const getReviewModalClosedState = (activeTab) => ({
   ...getReviewModalDefaultState(),
   activeTab,
 });
+
+/**
+ * Checks whether a review tab id is known.
+ * @param {string} tabId Candidate tab id.
+ * @param {Object} tabs Review tab ids.
+ * @returns {boolean} True when the tab id is known.
+ */
+export const isKnownReviewTab = (tabId, tabs) =>
+  tabId === tabs.DETAILS || tabId === tabs.DECISION || tabId === tabs.RATINGS;
 
 /**
  * Formats the average rating summary for display.

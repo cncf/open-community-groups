@@ -1,4 +1,4 @@
-import { closestElement, getElementById, loadScriptOnce } from "/static/js/common/dom.js";
+import { loadScriptOnce } from "/static/js/common/dom.js";
 import {
   getCurrentDocsRoute,
   parseDocsRoute,
@@ -7,17 +7,16 @@ import {
   syncCurrentSidebarSectionState,
 } from "/static/js/site/docs-shell-enhancements.js";
 import {
-  jumpToElement,
+  createCurrentSidebarPageClickHandler,
+  createSamePageAnchorClickHandler,
   mirrorDocsifyBodyClasses,
   setupDocsTopOffsetSync,
   setupMobileSidebarOutsideDismiss,
-  updateDocsAnchorHash,
 } from "/static/js/site/docs-shell-interactions.js";
 import { setupDocsScopedStyles } from "/static/js/site/docs-shell-styles.js";
 
 const DOCS_ROOT_SELECTOR = ".ocg-docs-root";
 const DOCS_APP_SELECTOR = "#ocg-docs-app";
-const DOCS_SIDEBAR_SELECTOR = ".sidebar-nav";
 
 const SCRIPT_URLS = {
   copyCode: "/static/vendor/js/docsify-copy-code.v3.0.2.min.js",
@@ -49,65 +48,17 @@ const scheduleCurrentSidebarSectionStateSync = () => {
   });
 };
 
-/**
- * Keeps a repeated click on the current sidebar page link from collapsing its sections.
- * @param {MouseEvent} event Click event.
- */
-const handleCurrentSidebarPageClick = (event) => {
-  const link = closestElement(event.target, "a[href]");
-  if (!link || !link.closest(DOCS_SIDEBAR_SELECTOR) || link.closest(".app-sub-sidebar")) {
-    return;
-  }
+const handleCurrentSidebarPageClick = createCurrentSidebarPageClickHandler({
+  getCurrentDocsRoute,
+  parseDocsRoute,
+  scheduleCurrentSidebarSectionStateSync,
+});
 
-  const targetRoute = parseDocsRoute(link.getAttribute("href"));
-  if (!targetRoute || targetRoute.id) {
-    return;
-  }
-
-  const currentRoute = getCurrentDocsRoute();
-  if (targetRoute.path !== currentRoute.path || currentRoute.id) {
-    return;
-  }
-
-  event.preventDefault();
-  event.stopImmediatePropagation();
-  scheduleCurrentSidebarSectionStateSync();
-};
-
-/**
- * Handles same-page anchor clicks without smooth scroll animation.
- * @param {MouseEvent} event Click event.
- */
-const handleSamePageAnchorClick = (event) => {
-  const link = closestElement(event.target, "a[href]");
-  if (!link) {
-    return;
-  }
-
-  if (!link.closest(".markdown-section, .app-sub-sidebar")) {
-    return;
-  }
-
-  const targetRoute = parseSamePageAnchor(link.getAttribute("href"));
-  if (!targetRoute || !targetRoute.id) {
-    return;
-  }
-
-  const currentRoute = getCurrentDocsRoute();
-  if (targetRoute.path !== currentRoute.path) {
-    return;
-  }
-
-  const targetElement = getElementById(document, targetRoute.id);
-  if (!targetElement) {
-    return;
-  }
-
-  event.preventDefault();
-  updateDocsAnchorHash(currentRoute.rawPath, targetRoute.id);
-  jumpToElement(targetElement);
-  scheduleCurrentSidebarSectionStateSync();
-};
+const handleSamePageAnchorClick = createSamePageAnchorClickHandler({
+  getCurrentDocsRoute,
+  parseSamePageAnchor,
+  scheduleCurrentSidebarSectionStateSync,
+});
 
 /**
  * Initializes docs routing hash when visiting /docs without one.

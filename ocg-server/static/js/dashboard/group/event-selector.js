@@ -9,6 +9,7 @@ import {
   buildPrimaryEventResults,
   buildSelectedEventFromDetails,
   findEventById,
+  getActiveEventResult,
   getDashboardSelectionContext,
   getEmptyEventSearchState,
   getEventSelectorKeyAction,
@@ -16,6 +17,7 @@ import {
   getLoadedQueryEventSearchState,
   getNoGroupEventSearchState,
   getSelectedEvent,
+  normalizeEventId,
   resolveEventSearchContext,
 } from "/static/js/dashboard/group/event-selector-utils.js";
 import { requestEventSelectorEvents } from "/static/js/dashboard/group/event-selector-api.js";
@@ -339,7 +341,7 @@ class EventSelector extends LitWrapper {
       return;
     }
 
-    const eventId = event?.event_id ? String(event.event_id) : "";
+    const eventId = normalizeEventId(event?.event_id);
     if (eventId && eventId !== (this.selectedEventId ?? "")) {
       this.selectedEventId = eventId;
     }
@@ -531,10 +533,7 @@ class EventSelector extends LitWrapper {
    * Triggers selection of the highlighted result.
    */
   _selectActiveResult() {
-    if (this._activeIndex < 0 || this._activeIndex >= this._results.length) {
-      return;
-    }
-    const active = this._results[this._activeIndex];
+    const active = getActiveEventResult(this._results, this._activeIndex);
     if (!active) {
       return;
     }

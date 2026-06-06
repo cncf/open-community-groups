@@ -28,6 +28,7 @@ import {
   getReviewModalDefaultProperties,
   getReviewModalDefaultState,
   handleReviewAfterRequest,
+  isKnownReviewTab,
   isLinkedToSession,
   isStatusAllowed,
   normalizeLabels,
@@ -429,9 +430,7 @@ export class ReviewSubmissionModal extends LitWrapper {
    * @param {string} tabId
    */
   _setActiveTab(tabId) {
-    const isKnownTab =
-      tabId === REVIEW_TABS.DETAILS || tabId === REVIEW_TABS.DECISION || tabId === REVIEW_TABS.RATINGS;
-    if (!isKnownTab) {
+    if (!isKnownReviewTab(tabId, REVIEW_TABS)) {
       return;
     }
     this._activeTab = tabId;

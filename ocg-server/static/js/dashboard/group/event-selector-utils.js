@@ -12,6 +12,18 @@ export const parseEventTimestamp = (value) => {
 };
 
 /**
+ * Normalizes event ids for selector comparisons.
+ * @param {*} eventId Event id value.
+ * @returns {string} Normalized event id.
+ */
+export const normalizeEventId = (eventId) => {
+  if (eventId === null || eventId === undefined) {
+    return "";
+  }
+  return String(eventId);
+};
+
+/**
  * Builds selected-event state from copied event details.
  * @param {Object} details Copied event details.
  * @returns {Object|null} Selected event state, or null when missing.
@@ -22,7 +34,7 @@ export const buildSelectedEventFromDetails = (details) => {
   }
 
   return {
-    event_id: String(details.event_id ?? ""),
+    event_id: normalizeEventId(details.event_id),
     name: details.name || "",
     starts_at: parseEventTimestamp(details.starts_at),
     timezone: String(details.timezone || ""),
@@ -60,8 +72,8 @@ export const getSelectedEvent = ({ selectedEvent, selectedEventId, results }) =>
     return selectedEvent;
   }
 
-  const selectedId = String(selectedEventId ?? "");
-  const matchesSelected = (event) => String(event?.event_id || "") === selectedId;
+  const selectedId = normalizeEventId(selectedEventId);
+  const matchesSelected = (event) => normalizeEventId(event?.event_id) === selectedId;
   if (selectedEvent && matchesSelected(selectedEvent)) {
     return selectedEvent;
   }
@@ -76,9 +88,22 @@ export const getSelectedEvent = ({ selectedEvent, selectedEventId, results }) =>
  * @returns {object|null} Matching event payload.
  */
 export const findEventById = (events, selectedEventId) => {
-  const selectedId = String(selectedEventId || "");
+  const selectedId = normalizeEventId(selectedEventId);
   if (!selectedId) return null;
-  return events.find((event) => String(event?.event_id || "") === selectedId) || null;
+  return events.find((event) => normalizeEventId(event?.event_id) === selectedId) || null;
+};
+
+/**
+ * Gets the active event result when the highlighted index is valid.
+ * @param {object[]} results Event results.
+ * @param {number} activeIndex Active result index.
+ * @returns {object|null} Active event result.
+ */
+export const getActiveEventResult = (results, activeIndex) => {
+  if (activeIndex < 0 || activeIndex >= results.length) {
+    return null;
+  }
+  return results[activeIndex] || null;
 };
 
 /**
@@ -209,8 +234,8 @@ export const buildEventSearchUrl = ({
  * @returns {{isSelected: boolean, statusClass: string}}
  */
 export const getEventOptionState = ({ activeIndex, event, index, selectedEventId }) => {
-  const eventId = String(event?.event_id || "");
-  const isSelected = Boolean(selectedEventId && String(selectedEventId) === eventId);
+  const eventId = normalizeEventId(event?.event_id);
+  const isSelected = Boolean(selectedEventId && normalizeEventId(selectedEventId) === eventId);
   const isActive = index === activeIndex;
   if (isSelected) {
     return { isSelected, statusClass: "bg-stone-100" };

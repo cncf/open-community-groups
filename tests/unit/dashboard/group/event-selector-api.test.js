@@ -4,19 +4,19 @@ import {
   requestEventSelectorEvents,
 } from "/static/js/dashboard/group/event-selector-api.js";
 
-const mockFetchClient = (response) => {
+const mockEventSearchFetch = (response) => {
   const calls = [];
-  const fetchClient = async (...args) => {
+  const eventSearchFetch = async (...args) => {
     calls.push(args);
     return response;
   };
-  return { calls, fetchClient };
+  return { calls, eventSearchFetch };
 };
 
 describe("event selector api", () => {
   it("requests event selector events with search filters", async () => {
     // The API helper owns fetch and response normalization for selector searches.
-    const fetchMock = mockFetchClient({
+    const fetchMock = mockEventSearchFetch({
       headers: new Headers(),
       ok: true,
       async json() {
@@ -34,7 +34,7 @@ describe("event selector api", () => {
         query: "platform",
         sortDirection: "desc",
       },
-      fetchMock.fetchClient,
+      fetchMock.eventSearchFetch,
     );
 
     expect(events).to.deep.equal([{ event_id: "event-1" }]);
@@ -48,7 +48,7 @@ describe("event selector api", () => {
 
   it("returns empty events when the payload has no event list", async () => {
     // Missing event arrays normalize to an empty result set.
-    const fetchMock = mockFetchClient({
+    const fetchMock = mockEventSearchFetch({
       headers: new Headers(),
       ok: true,
       async json() {
@@ -56,12 +56,12 @@ describe("event selector api", () => {
       },
     });
 
-    expect(await requestEventSelectorEvents({}, fetchMock.fetchClient)).to.deep.equal([]);
+    expect(await requestEventSelectorEvents({}, fetchMock.eventSearchFetch)).to.deep.equal([]);
   });
 
   it("throws when event selector search fails", async () => {
     // Failed responses surface a clear selector search error.
-    const fetchMock = mockFetchClient({
+    const fetchMock = mockEventSearchFetch({
       headers: new Headers(),
       ok: false,
       async json() {
@@ -71,7 +71,7 @@ describe("event selector api", () => {
 
     let thrownError = null;
     try {
-      await requestEventSelectorEvents({}, fetchMock.fetchClient);
+      await requestEventSelectorEvents({}, fetchMock.eventSearchFetch);
     } catch (error) {
       thrownError = error;
     }

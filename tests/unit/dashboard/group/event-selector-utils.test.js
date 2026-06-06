@@ -6,6 +6,7 @@ import {
   buildSelectedEventFromDetails,
   findEventById,
   formatEventDate,
+  getActiveEventResult,
   getDashboardSelectionContext,
   getEmptyEventSearchState,
   getEventSelectorKeyAction,
@@ -14,6 +15,7 @@ import {
   getLoadedQueryEventSearchState,
   getNoGroupEventSearchState,
   getSelectedEvent,
+  normalizeEventId,
   parseEventTimestamp,
   resolveEventSearchContext,
   uniqueEventsById,
@@ -89,11 +91,23 @@ describe("event selector utils", () => {
 
   it("finds events by normalized id", () => {
     // Matching accepts numeric and string ids.
+    expect(normalizeEventId(12)).to.equal("12");
+    expect(normalizeEventId(0)).to.equal("0");
+    expect(normalizeEventId(null)).to.equal("");
     expect(findEventById([{ event_id: 12, name: "Event" }], "12")).to.deep.equal({
       event_id: 12,
       name: "Event",
     });
     expect(findEventById([{ event_id: 12 }], "")).to.equal(null);
+  });
+
+  it("gets the active event result when the index is valid", () => {
+    // Active result lookup guards keyboard selection bounds.
+    const results = [{ event_id: "event-1" }, { event_id: "event-2" }];
+
+    expect(getActiveEventResult(results, 1)).to.deep.equal({ event_id: "event-2" });
+    expect(getActiveEventResult(results, -1)).to.equal(null);
+    expect(getActiveEventResult(results, 2)).to.equal(null);
   });
 
   it("builds event search URLs", () => {

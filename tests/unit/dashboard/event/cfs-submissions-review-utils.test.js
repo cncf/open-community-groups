@@ -15,6 +15,7 @@ import {
   getRatingsCount,
   getStatusColor,
   handleReviewAfterRequest,
+  isKnownReviewTab,
   isLinkedToSession,
   isMessageRequired,
   isStatusAllowed,
@@ -228,6 +229,20 @@ describe("cfs submissions review utils", () => {
       initialFormSnapshot: "",
       removeDismissListeners: null,
     });
+  });
+
+  it("checks known review tab ids", () => {
+    // Known review tabs accept only modal navigation ids.
+    const tabs = {
+      DETAILS: "details",
+      DECISION: "decision",
+      RATINGS: "ratings",
+    };
+
+    expect(isKnownReviewTab("details", tabs)).to.equal(true);
+    expect(isKnownReviewTab("decision", tabs)).to.equal(true);
+    expect(isKnownReviewTab("ratings", tabs)).to.equal(true);
+    expect(isKnownReviewTab("unknown", tabs)).to.equal(false);
   });
 
   it("formats average rating values for display", () => {

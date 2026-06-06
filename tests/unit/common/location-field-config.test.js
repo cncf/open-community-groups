@@ -31,6 +31,8 @@ describe("location field config", () => {
         stateFieldName: "venue_state",
         countryNameFieldName: "venue_country",
         countryCodeFieldName: "venue_country_code",
+        latitudeFieldName: "venue_latitude",
+        longitudeFieldName: "venue_longitude",
       }),
     ).to.deep.equal({
       venueNameFieldId: "venue-name-id",
@@ -48,6 +50,8 @@ describe("location field config", () => {
       stateFieldName: "venue_state",
       countryNameFieldName: "venue_country",
       countryCodeFieldName: "venue_country_code",
+      latitudeFieldName: "venue_latitude",
+      longitudeFieldName: "venue_longitude",
     });
   });
 
