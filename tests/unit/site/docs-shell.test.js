@@ -25,7 +25,7 @@ describe("site docs shell", () => {
   const docsHeadSelector = [
     "#ocg-docsify-vue-scoped-style",
     "#ocg-docs-theme-scoped-style",
-    "#ocg-docs-shell-overrides",
+    'link#ocg-docs-shell-overrides[href="/static/docs/assets/shell.css"]',
     'script[src="/static/vendor/js/docsify.v4.13.1.min.js"]',
     'script[src="/static/vendor/js/docsify-copy-code.v3.0.2.min.js"]',
   ].join(", ");
@@ -226,6 +226,7 @@ describe("site docs shell", () => {
 
     // Confirm the docs assets were injected into the document head.
     expect(document.head.querySelectorAll(docsHeadSelector).length).to.equal(5);
+    expect(document.getElementById("ocg-docs-shell-overrides")?.tagName).to.equal("LINK");
 
     // Run the docs head cleanup helper.
     cleanupDocsHead();
