@@ -60,3 +60,15 @@ export const bindModalDismissListeners = ({ onKeydown, onOutsideClick, target = 
     }
   };
 };
+
+/**
+ * Binds the same click handler to modal controls that may or may not exist.
+ * @param {Array<Element|null|undefined>} controls Modal controls.
+ * @param {(event: MouseEvent) => void} handler Click handler.
+ * @returns {void}
+ */
+export const bindModalControlClicks = (controls, handler) => {
+  controls.forEach((control) => {
+    control?.addEventListener?.("click", handler);
+  });
+};

@@ -88,6 +88,45 @@ describe("dashboard group attendees", () => {
     expect(dropdown.classList.contains("hidden")).to.equal(true);
   });
 
+  it("binds attendee outside click cleanup once across swapped roots", () => {
+    // Track document click listener bindings while attendees roots are swapped.
+    const originalAddEventListener = document.addEventListener;
+    let documentClickListeners = 0;
+    document.addEventListener = function (type, listener, options) {
+      if (type === "click") {
+        documentClickListeners += 1;
+      }
+
+      return originalAddEventListener.call(this, type, listener, options);
+    };
+    delete document.documentElement.dataset.attendeeOutsideClickReady;
+
+    try {
+      // Initialize the first attendee root.
+      document.body.innerHTML = `
+        <div id="attendees-content">
+          <button id="attendee-actions-button" type="button">More</button>
+          <div data-attendee-actions-dropdown class="hidden"></div>
+        </div>
+      `;
+      dispatchHtmxLoad(document.getElementById("attendees-content"));
+
+      // Swap in a new attendee root and initialize again.
+      document.body.innerHTML = `
+        <div id="attendees-content">
+          <button id="attendee-actions-button" type="button">More</button>
+          <div data-attendee-actions-dropdown class="hidden"></div>
+        </div>
+      `;
+      dispatchHtmxLoad(document.getElementById("attendees-content"));
+
+      // Only one document listener owns outside-click cleanup for attendees.
+      expect(documentClickListeners).to.equal(1);
+    } finally {
+      document.addEventListener = originalAddEventListener;
+    }
+  });
+
   it("toggles attendee row action menus for pending invitations", () => {
     // Render an attendees row with pending invitation actions.
     document.body.innerHTML = `

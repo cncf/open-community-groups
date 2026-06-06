@@ -1,6 +1,7 @@
 import { expect } from "@open-wc/testing";
 
 import {
+  bindModalControlClicks,
   bindModalDismissListeners,
   closeModalBodyScroll,
   isModalEscapeEvent,
@@ -78,6 +79,24 @@ describe("modal lifecycle", () => {
     target.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
 
     expect(keydownCount).to.equal(1);
+  });
+
+  it("binds modal control clicks and skips missing controls", () => {
+    // Build two controls and include an absent one.
+    const closeButton = document.createElement("button");
+    const overlay = document.createElement("div");
+    let clickCount = 0;
+
+    // Bind the shared click handler to available controls only.
+    bindModalControlClicks([closeButton, null, overlay], () => {
+      clickCount += 1;
+    });
+
+    // Click each available control.
+    closeButton.click();
+    overlay.click();
+
+    expect(clickCount).to.equal(2);
   });
 
   it("locks body scroll only across modal open transitions", () => {

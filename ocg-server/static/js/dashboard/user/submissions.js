@@ -7,6 +7,7 @@ import {
   isElementHidden,
   markDatasetReady,
 } from "/static/js/common/dom.js";
+import { bindModalControlClicks } from "/static/js/common/modal-lifecycle.js";
 
 const ACTION_REQUIRED_MODAL_ID = "action-required-modal";
 const ACTION_REQUIRED_MODAL_MESSAGE_ID = "action-required-modal-message";
@@ -29,9 +30,14 @@ const initializeActionRequiredModal = (root = document) => {
   };
 
   if (markDatasetReady(modal, "bound")) {
-    getElementById(root, ACTION_REQUIRED_MODAL_CLOSE_ID)?.addEventListener("click", closeModal);
-    getElementById(root, ACTION_REQUIRED_MODAL_CANCEL_ID)?.addEventListener("click", closeModal);
-    getElementById(root, ACTION_REQUIRED_MODAL_OVERLAY_ID)?.addEventListener("click", closeModal);
+    bindModalControlClicks(
+      [
+        getElementById(root, ACTION_REQUIRED_MODAL_CLOSE_ID),
+        getElementById(root, ACTION_REQUIRED_MODAL_CANCEL_ID),
+        getElementById(root, ACTION_REQUIRED_MODAL_OVERLAY_ID),
+      ],
+      closeModal,
+    );
   }
 
   root.querySelectorAll?.(ACTION_REQUIRED_TRIGGER_SELECTOR).forEach((button) => {

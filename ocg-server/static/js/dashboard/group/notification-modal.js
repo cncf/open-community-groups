@@ -1,6 +1,7 @@
 import { toggleModalVisibility } from "/static/js/common/common.js";
 import { handleHtmxResponse } from "/static/js/common/alerts.js";
 import { getElementById, markDatasetReady } from "/static/js/common/dom.js";
+import { bindModalControlClicks } from "/static/js/common/modal-lifecycle.js";
 
 const DEFAULT_ERROR_MESSAGE = "Something went wrong while trying to send the email. Please try again later.";
 
@@ -52,17 +53,7 @@ export const createNotificationModal = ({
     });
   }
 
-  if (closeButton) {
-    closeButton.addEventListener("click", toggleModal);
-  }
-
-  if (cancelButton) {
-    cancelButton.addEventListener("click", toggleModal);
-  }
-
-  if (overlay) {
-    overlay.addEventListener("click", toggleModal);
-  }
+  bindModalControlClicks([closeButton, cancelButton, overlay], toggleModal);
 
   if (form) {
     form.addEventListener("htmx:afterRequest", (event) => {

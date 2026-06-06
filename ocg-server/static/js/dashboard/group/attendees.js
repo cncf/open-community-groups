@@ -28,18 +28,19 @@ const refundModalId = "attendee-refund-modal";
 const refundApproveButtonId = "attendee-refund-approve";
 const refundRejectButtonId = "attendee-refund-reject";
 const answersModalId = "attendee-answers-modal";
+const attendeesRootSelector = "#attendees-content";
 const attendeeActionsDropdownSelector = "[data-attendee-actions-dropdown]";
 const attendeeRowActionsMenuSelector = "[data-attendee-row-actions-menu]";
 const invitationModalId = "attendee-invitation-modal";
 const invitationEmailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const resolveAttendeesRoot = (root = document) => {
-  if (root instanceof Element && root.id === "attendees-content") {
+  if (root instanceof Element && root.matches(attendeesRootSelector)) {
     return root;
   }
 
   if (root instanceof Element) {
-    return root.closest("#attendees-content") || getElementById(root, "attendees-content") || root;
+    return root.closest(attendeesRootSelector) || getElementById(root, "attendees-content") || root;
   }
 
   return getElementById(root, "attendees-content") || root.body || root;
@@ -557,14 +558,6 @@ const initializeAttendeeActionsMenu = (root = document) => {
     }
   });
 
-  document.addEventListener("click", (event) => {
-    const target = event.target instanceof Element ? event.target : null;
-    if (target && !root.contains(target)) {
-      closeAttendeeActionsDropdown(root);
-      closeAttendeeRowActionMenus(root);
-    }
-  });
-
   root.addEventListener("keydown", (event) => {
     if (isEscapeEvent(event)) {
       const openRowMenu = root.querySelector(`${attendeeRowActionsMenuSelector}[open]`);
@@ -577,6 +570,29 @@ const initializeAttendeeActionsMenu = (root = document) => {
       }
       getElementById(root, "attendee-actions-button")?.focus();
     }
+  });
+};
+
+/**
+ * Initialize document-level attendee menu cleanup.
+ */
+const initializeAttendeeOutsideClickListener = () => {
+  if (!markDatasetReady(document.documentElement, "attendeeOutsideClickReady")) {
+    return;
+  }
+
+  document.addEventListener("click", (event) => {
+    const target = event.target instanceof Element ? event.target : null;
+    if (!target) {
+      return;
+    }
+
+    document.querySelectorAll(attendeesRootSelector).forEach((root) => {
+      if (!root.contains(target)) {
+        closeAttendeeActionsDropdown(root);
+        closeAttendeeRowActionMenus(root);
+      }
+    });
   });
 };
 
@@ -827,6 +843,7 @@ const initializeAttendeesFeatures = (root = document) => {
   initializeQrCodeModal(attendeesRoot);
   initializeRefundReviewModal(attendeesRoot);
   initCheckInToggles(attendeesRoot);
+  initializeAttendeeOutsideClickListener();
 };
 
 initializeOnReadyAndHtmxLoad(initializeAttendeesFeatures);
