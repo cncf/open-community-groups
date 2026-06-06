@@ -1,28 +1,33 @@
 import { html } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { handleHtmxResponse } from "/static/js/common/alerts.js";
-import { computeUserInitials } from "/static/js/common/common.js";
 import { renderCfsDecisionPanel } from "/static/js/dashboard/event/cfs-submissions-decision.js";
+import {
+  renderCfsDetailsPanel,
+  renderCfsPersonRow,
+} from "/static/js/dashboard/event/cfs-submissions-details.js";
 import { renderCfsRatingsPanel } from "/static/js/dashboard/event/cfs-submissions-ratings.js";
 import {
-  closestElement,
-  getElementById,
-  initializeOnReadyAndHtmxLoad,
-  markDatasetReady,
-} from "/static/js/common/dom.js";
+  renderCfsPendingChangesAlert,
+  renderCfsReviewTabsNavigation,
+} from "/static/js/dashboard/event/cfs-submissions-shell.js";
+import { getElementById } from "/static/js/common/dom.js";
 import {
   bindModalDismissListeners,
   closeModalBodyScroll,
   isModalEscapeEvent,
   openModalBodyScroll,
 } from "/static/js/common/modal-lifecycle.js";
-import { renderTrustedHtml } from "/static/js/common/trusted-lit-html.js";
 import { parseJsonAttribute } from "/static/js/common/utils.js";
 import {
-  buildApprovedSubmissionSummary,
+  buildApprovedSubmissionEventDetail,
   buildReviewModalOpenState,
   buildReviewFormStateSnapshot,
   findCurrentUserRating,
+  getReviewModalClosedState,
+  getReviewModalDefaultProperties,
+  getReviewModalDefaultState,
+  handleReviewAfterRequest,
   isLinkedToSession,
   isStatusAllowed,
   normalizeLabels,
@@ -30,19 +35,26 @@ import {
 import "/static/js/common/cfs-label-selector.js";
 import "/static/js/common/logo-image.js";
 
-const MODAL_ELEMENT_ID = "review-submission-modal";
-const OPEN_ACTION = "open-cfs-submission-modal";
-const DATA_KEY = "cfsSubmissionModalReady";
 const APPROVED_SUBMISSIONS_EVENT = "event-approved-submissions-updated";
-const SUBMISSIONS_CONTENT_ID = "submissions-content";
-const SUBMISSIONS_FILTERS_FORM_ID = "submissions-filters-form";
 const SUBMISSIONS_FILTER_ID = "submissions-label-filter";
-const SUBMISSIONS_FILTERS_SORT_ID = "submissions-sort";
-const SUBMISSIONS_FILTERS_BOUND_KEY = "submissionsFiltersBound";
 const REVIEW_TABS = {
   DETAILS: "details",
   DECISION: "decision",
   RATINGS: "ratings",
+};
+const MODAL_STATE_KEYS = {
+  activeTab: "_activeTab",
+  afterRequestHandler: "_afterRequestHandler",
+  hoverRatingStars: "_hoverRatingStars",
+  initialFormSnapshot: "_initialFormSnapshot",
+  isOpen: "_isOpen",
+  message: "_message",
+  ratingComment: "_ratingComment",
+  ratingStars: "_ratingStars",
+  removeDismissListeners: "_removeDismissListeners",
+  selectedLabelIds: "_selectedLabelIds",
+  statusId: "_statusId",
+  submission: "_submission",
 };
 
 /**
@@ -75,24 +87,10 @@ export class ReviewSubmissionModal extends LitWrapper {
 
   constructor() {
     super();
-    this.currentUserId = "";
-    this.eventId = "";
-    this.labels = [];
-    this.messageMaxLength = 5000;
-    this.statuses = [];
-    this._hoverRatingStars = 0;
-    this._isOpen = false;
-    this._message = "";
-    this._ratingComment = "";
-    this._ratingStars = 0;
+    Object.assign(this, getReviewModalDefaultProperties());
+    this._applyModalState(getReviewModalDefaultState());
     this._activeTab = REVIEW_TABS.DETAILS;
-    this._selectedLabelIds = [];
-    this._statusId = "";
-    this._submission = null;
-    this._initialFormSnapshot = "";
-    this._afterRequestHandler = null;
     this._onKeydown = this._onKeydown.bind(this);
-    this._removeDismissListeners = null;
   }
 
   connectedCallback() {
@@ -141,18 +139,21 @@ export class ReviewSubmissionModal extends LitWrapper {
       return;
     }
     const wasOpen = this._isOpen;
-    this._isOpen = false;
-    this._submission = null;
-    this._hoverRatingStars = 0;
-    this._message = "";
-    this._ratingComment = "";
-    this._ratingStars = 0;
-    this._activeTab = REVIEW_TABS.DETAILS;
-    this._selectedLabelIds = [];
-    this._statusId = "";
-    this._initialFormSnapshot = "";
     this._removeAfterRequestListener();
+    this._applyModalState(getReviewModalClosedState(REVIEW_TABS.DETAILS));
     this._isOpen = closeModalBodyScroll(wasOpen);
+  }
+
+  /**
+   * Applies normalized modal state.
+   * @param {Object} state Modal state patch.
+   */
+  _applyModalState(state) {
+    Object.entries(MODAL_STATE_KEYS).forEach(([stateKey, propertyKey]) => {
+      if (Object.prototype.hasOwnProperty.call(state, stateKey)) {
+        this[propertyKey] = state[stateKey];
+      }
+    });
   }
 
   /**
@@ -255,15 +256,14 @@ export class ReviewSubmissionModal extends LitWrapper {
     }
     this._removeAfterRequestListener();
     this._afterRequestHandler = (event) => {
-      const ok = handleHtmxResponse({
-        xhr: event.detail?.xhr,
-        successMessage: "",
-        errorMessage: "Unable to update this submission. Please try again later.",
+      handleReviewAfterRequest({
+        event,
+        handleResponse: handleHtmxResponse,
+        onSuccess: () => {
+          this._emitApprovedSubmissionsUpdate();
+          this.close();
+        },
       });
-      if (ok) {
-        this._emitApprovedSubmissionsUpdate();
-        this.close();
-      }
     };
     form.addEventListener("htmx:afterRequest", this._afterRequestHandler);
   }
@@ -281,17 +281,11 @@ export class ReviewSubmissionModal extends LitWrapper {
       return;
     }
 
-    const summary = buildApprovedSubmissionSummary(submission, this._statusId);
-
     this.dispatchEvent(
       new CustomEvent(APPROVED_SUBMISSIONS_EVENT, {
         bubbles: true,
         composed: true,
-        detail: {
-          approved: this._statusId === "approved",
-          cfsSubmissionId: String(submission.cfs_submission_id),
-          submission: summary,
-        },
+        detail: buildApprovedSubmissionEventDetail(submission, this._statusId),
       }),
     );
   }
@@ -401,168 +395,17 @@ export class ReviewSubmissionModal extends LitWrapper {
   }
 
   /**
-   * Renders a badge row for a person.
-   * @param {Object} person
-   * @returns {import("lit").TemplateResult}
-   */
-  _renderPersonRow(person) {
-    const name = person?.name || person?.username || "";
-    const photoUrl = person?.photo_url || "";
-    const initials = computeUserInitials(name, person?.username || "", 2);
-
-    return html`
-      <div
-        class="inline-flex items-center gap-2 bg-stone-100 rounded-full ps-1 pe-2 py-1 max-w-full"
-        title=${name}
-      >
-        <logo-image
-          class="shrink-0"
-          image-url=${photoUrl}
-          placeholder=${initials}
-          size="size-[24px]"
-          font-size="text-xs"
-          hide-border
-        ></logo-image>
-        <span class="text-sm text-stone-700 truncate">${name}</span>
-      </div>
-    `;
-  }
-
-  /**
-   * Renders proposal metadata badges.
-   * @param {Object} proposal
-   * @returns {import("lit").TemplateResult}
-   */
-  _renderProposalMeta(proposal) {
-    const level = proposal?.session_proposal_level_name;
-    const duration = proposal?.duration_minutes;
-    return html`
-      ${level
-        ? html`
-            <div>
-              <div class="proposal-section-title">Level</div>
-              <div class="mt-1 text-sm text-stone-700">${level}</div>
-            </div>
-          `
-        : ""}
-      ${duration
-        ? html`
-            <div>
-              <div class="proposal-section-title">Duration</div>
-              <div class="mt-1 text-sm text-stone-700">${duration} min</div>
-            </div>
-          `
-        : ""}
-    `;
-  }
-
-  /**
-   * Renders labels editor for the details tab.
-   * @returns {import("lit").TemplateResult}
-   */
-  _renderDetailsLabels() {
-    if (this.labels.length === 0) {
-      return html``;
-    }
-
-    return html`
-      <div>
-        <label for="cfs-submission-labels" class="form-label">Labels</label>
-        <div class="mt-2">
-          <cfs-label-selector
-            id="cfs-submission-labels"
-            name="label_ids"
-            .labels=${this.labels}
-            .selected=${this._selectedLabelIds}
-            close-on-select
-            max-selected="10"
-            legend="Add labels to categorize this submission for your review team."
-            placeholder="Search labels"
-            @change=${(event) => this._onLabelsChange(event)}
-          ></cfs-label-selector>
-        </div>
-      </div>
-    `;
-  }
-
-  /**
    * Renders submission details panel.
    * @returns {import("lit").TemplateResult}
    */
   _renderDetailsPanel() {
-    const isActive = this._activeTab === REVIEW_TABS.DETAILS;
-    const proposal = this._submission?.session_proposal || {};
-    const coSpeaker = proposal?.co_speaker;
-
-    return html`
-      <section
-        id="cfs-submission-tabpanel-details"
-        role="tabpanel"
-        class="pt-5 space-y-8"
-        ?hidden=${!isActive}
-      >
-        <div class="flex flex-col md:flex-row gap-6">
-          <div class="flex-1 space-y-4 min-w-0">
-            <div>
-              <div class="proposal-section-title">Title</div>
-              <div class="mt-2 text-lg text-stone-800 font-medium">${proposal?.title || ""}</div>
-            </div>
-
-            <div>
-              <div class="proposal-section-title">Description</div>
-              <div class="mt-2 max-h-[200px] overflow-y-auto text-stone-700 text-sm/6 markdown">
-                ${proposal?.description_html
-                  ? renderTrustedHtml(proposal.description_html)
-                  : proposal?.description || ""}
-              </div>
-            </div>
-          </div>
-
-          <div class="w-full md:w-72 shrink-0 space-y-4 md:border-l md:border-stone-100 md:pl-6">
-            ${this._renderProposalMeta(proposal)}
-
-            <div>
-              <div class="proposal-section-title">Speaker</div>
-              <div class="mt-2">
-                ${this._submission?.speaker ? this._renderPersonRow(this._submission.speaker) : ""}
-              </div>
-            </div>
-
-            ${coSpeaker
-              ? html`
-                  <div>
-                    <div class="proposal-section-title">Co-speaker</div>
-                    <div class="mt-2">${this._renderPersonRow(coSpeaker)}</div>
-                  </div>
-                `
-              : ""}
-          </div>
-        </div>
-
-        ${this.labels.length > 0
-          ? html`<div class="border-t border-stone-200 pt-5">${this._renderDetailsLabels()}</div>`
-          : ""}
-      </section>
-    `;
-  }
-
-  /**
-   * Renders pending changes alert.
-   * @returns {import("lit").TemplateResult}
-   */
-  _renderPendingChangesAlert() {
-    if (!this._hasPendingChanges()) {
-      return html``;
-    }
-
-    return html`
-      <div
-        class="inline-flex items-center gap-3 rounded-md border border-primary-200 bg-primary-50 px-3 py-2 text-primary-900"
-      >
-        <div class="svg-icon size-4 bg-primary-700 icon-clock shrink-0"></div>
-        <p class="text-sm">You have pending changes. Click Save to apply these updates.</p>
-      </div>
-    `;
+    return renderCfsDetailsPanel({
+      isActive: this._activeTab === REVIEW_TABS.DETAILS,
+      labels: this.labels,
+      onLabelsChange: (event) => this._onLabelsChange(event),
+      selectedLabelIds: this._selectedLabelIds,
+      submission: this._submission,
+    });
   }
 
   /**
@@ -586,68 +429,12 @@ export class ReviewSubmissionModal extends LitWrapper {
    * @param {string} tabId
    */
   _setActiveTab(tabId) {
-    if (tabId !== REVIEW_TABS.DETAILS && tabId !== REVIEW_TABS.DECISION && tabId !== REVIEW_TABS.RATINGS) {
+    const isKnownTab =
+      tabId === REVIEW_TABS.DETAILS || tabId === REVIEW_TABS.DECISION || tabId === REVIEW_TABS.RATINGS;
+    if (!isKnownTab) {
       return;
     }
     this._activeTab = tabId;
-  }
-
-  /**
-   * Renders the review tabs navigation.
-   * @returns {import("lit").TemplateResult}
-   */
-  _renderReviewTabsNavigation() {
-    const isDetailsActive = this._activeTab === REVIEW_TABS.DETAILS;
-    const isDecisionActive = this._activeTab === REVIEW_TABS.DECISION;
-    const isRatingsActive = this._activeTab === REVIEW_TABS.RATINGS;
-
-    return html`
-      <ul
-        class="flex flex-wrap space-x-2 -mb-px text-sm font-medium text-center border-b border-stone-200"
-        role="tablist"
-        aria-label="Submission review tabs"
-      >
-        <li>
-          <button
-            type="button"
-            role="tab"
-            aria-controls="cfs-submission-tabpanel-details"
-            aria-selected=${isDetailsActive ? "true" : "false"}
-            data-active=${isDetailsActive ? "true" : "false"}
-            class="cursor-pointer inline-flex items-center justify-center p-2 sm:p-3 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 text-nowrap w-32"
-            @click=${() => this._setActiveTab(REVIEW_TABS.DETAILS)}
-          >
-            Details
-          </button>
-        </li>
-        <li>
-          <button
-            type="button"
-            role="tab"
-            aria-controls="cfs-submission-tabpanel-ratings"
-            aria-selected=${isRatingsActive ? "true" : "false"}
-            data-active=${isRatingsActive ? "true" : "false"}
-            class="cursor-pointer inline-flex items-center justify-center p-2 sm:p-3 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 text-nowrap w-32"
-            @click=${() => this._setActiveTab(REVIEW_TABS.RATINGS)}
-          >
-            Ratings
-          </button>
-        </li>
-        <li>
-          <button
-            type="button"
-            role="tab"
-            aria-controls="cfs-submission-tabpanel-decision"
-            aria-selected=${isDecisionActive ? "true" : "false"}
-            data-active=${isDecisionActive ? "true" : "false"}
-            class="cursor-pointer inline-flex items-center justify-center p-2 sm:p-3 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 text-nowrap w-32"
-            @click=${() => this._setActiveTab(REVIEW_TABS.DECISION)}
-          >
-            Decision
-          </button>
-        </li>
-      </ul>
-    `;
   }
 
   _renderDecisionPanel() {
@@ -680,7 +467,7 @@ export class ReviewSubmissionModal extends LitWrapper {
       onRatingStarsLeave: () => this._onRatingStarsLeave(),
       ratingComment: this._ratingComment,
       ratingStars: this._ratingStars,
-      renderPersonRow: (person) => this._renderPersonRow(person),
+      renderPersonRow: renderCfsPersonRow,
       submission: this._submission,
     });
   }
@@ -733,7 +520,13 @@ export class ReviewSubmissionModal extends LitWrapper {
               hx-indicator="#dashboard-spinner"
               hx-disabled-elt="#cfs-submission-submit"
             >
-              <div class="px-8 pt-5 shrink-0">${this._renderReviewTabsNavigation()}</div>
+              <div class="px-8 pt-5 shrink-0">
+                ${renderCfsReviewTabsNavigation({
+                  activeTab: this._activeTab,
+                  onSelect: (tabId) => this._setActiveTab(tabId),
+                  tabs: REVIEW_TABS,
+                })}
+              </div>
 
               <div class="px-8 py-5 min-h-0 flex-1 overflow-y-auto">
                 ${this._renderDetailsPanel()} ${this._renderRatingsPanel()} ${this._renderDecisionPanel()}
@@ -741,7 +534,7 @@ export class ReviewSubmissionModal extends LitWrapper {
 
               <div class="px-8 pb-5 pt-3 border-t border-stone-100 shrink-0">
                 <div class="flex items-center justify-between gap-3">
-                  <div class="min-w-0">${this._renderPendingChangesAlert()}</div>
+                  <div class="min-w-0">${renderCfsPendingChangesAlert(this._hasPendingChanges())}</div>
                   <button
                     id="cfs-submission-submit"
                     type="submit"
@@ -771,83 +564,3 @@ export class ReviewSubmissionModal extends LitWrapper {
 if (!customElements.get("review-submission-modal")) {
   customElements.define("review-submission-modal", ReviewSubmissionModal);
 }
-
-/**
- * Initializes auto-submit behavior for the submissions filters form.
- * @param {Document|Element} root - Root element to search from.
- * @returns {void}
- */
-export const initializeSubmissionFilters = (root = document) => {
-  const form = getElementById(root, SUBMISSIONS_FILTERS_FORM_ID);
-  if (!markDatasetReady(form, SUBMISSIONS_FILTERS_BOUND_KEY)) {
-    return;
-  }
-
-  const sort = getElementById(root, SUBMISSIONS_FILTERS_SORT_ID);
-  const labelFilter = getElementById(root, SUBMISSIONS_FILTER_ID);
-  const submitFilters = () => {
-    window.requestAnimationFrame(() => form.requestSubmit());
-  };
-
-  sort?.addEventListener("change", submitFilters);
-  labelFilter?.addEventListener("change", submitFilters);
-};
-
-const getReviewSubmissionModal = () => getElementById(document, MODAL_ELEMENT_ID);
-
-const bindCfsSubmissionGlobalHandlers = () => {
-  if (!markDatasetReady(document.documentElement, DATA_KEY)) {
-    return;
-  }
-
-  document.addEventListener("htmx:afterSwap", (event) => {
-    const target = event?.detail?.target || event?.detail?.elt;
-    if (!(target instanceof Element) || target.id !== SUBMISSIONS_CONTENT_ID) {
-      return;
-    }
-
-    initializeSubmissionFilters(target);
-
-    const modal = getReviewSubmissionModal();
-    if (!modal || typeof modal.syncLabelsFromFilter !== "function") {
-      return;
-    }
-
-    modal.syncLabelsFromFilter();
-  });
-
-  document.addEventListener("click", (event) => {
-    const button = closestElement(event.target, `[data-action="${OPEN_ACTION}"]`);
-    if (!button) {
-      return;
-    }
-    const payload = button.dataset.submission;
-    if (!payload) {
-      return;
-    }
-    const modal = getReviewSubmissionModal();
-    if (!modal || typeof modal.open !== "function") {
-      return;
-    }
-    const submission = parseJsonAttribute(payload, null);
-    if (!submission || typeof submission !== "object" || Array.isArray(submission)) {
-      console.error("Invalid submission payload");
-      return;
-    }
-    const descriptionHtmlPayload = button.dataset.proposalDescriptionHtml;
-    if (descriptionHtmlPayload && submission?.session_proposal) {
-      const descriptionHtml = parseJsonAttribute(descriptionHtmlPayload, "");
-      if (typeof descriptionHtml === "string") {
-        submission.session_proposal.description_html = descriptionHtml;
-      }
-    }
-    modal.open(submission);
-  });
-};
-
-const initializeCfsSubmissions = (root = document) => {
-  bindCfsSubmissionGlobalHandlers();
-  initializeSubmissionFilters(root);
-};
-
-initializeOnReadyAndHtmxLoad(initializeCfsSubmissions);

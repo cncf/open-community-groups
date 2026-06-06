@@ -156,8 +156,7 @@ export const getLoadedQueryEventSearchState = (events) => ({
  */
 export const getDashboardSelectionContext = (element, documentRoot = document) => {
   const container =
-    element?.closest?.("#dashboard-content") ||
-    documentRoot?.querySelector?.("#dashboard-content");
+    element?.closest?.("#dashboard-content") || documentRoot?.querySelector?.("#dashboard-content");
 
   return {
     community: container?.dataset?.community || "",
@@ -227,13 +226,7 @@ export const getEventOptionState = ({ activeIndex, event, index, selectedEventId
  * @param {Object} state Keyboard state.
  * @returns {Object} Keyboard action and next active index.
  */
-export const getEventSelectorKeyAction = ({
-  activeIndex,
-  getNextIndex,
-  isEscape,
-  key,
-  resultsLength,
-}) => {
+export const getEventSelectorKeyAction = ({ activeIndex, getNextIndex, isEscape, key, resultsLength }) => {
   const currentIndex = activeIndex < 0 ? null : activeIndex;
   if (key === "ArrowDown") {
     return {

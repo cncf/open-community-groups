@@ -30,9 +30,7 @@ import {
   getLocationDisabledInputClasses,
   getLocationTextFieldValueKey,
 } from "/static/js/common/location-search-display.js";
-import {
-  renderLocationSearchInterface,
-} from "/static/js/common/location-search-interface-renderer.js";
+import { renderLocationSearchInterface } from "/static/js/common/location-search-interface-renderer.js";
 import { renderLocationTextFields } from "/static/js/common/location-text-fields-renderer.js";
 import { LocationMapPreview } from "/static/js/common/location-map-preview.js";
 import {
@@ -175,9 +173,7 @@ export class LocationSearchField extends LitWrapper {
 
   connectedCallback() {
     super.connectedCallback();
-    this._applyLocationValues(
-      getInitialLocationValues(getInitialLocationSearchValues(this)),
-    );
+    this._applyLocationValues(getInitialLocationValues(getInitialLocationSearchValues(this)));
     this._mapZoom = this._deriveZoomFromFields();
 
     if (this._hasValidCoordinates() && !this._isInsideHiddenContent()) {

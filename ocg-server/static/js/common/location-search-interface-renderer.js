@@ -48,24 +48,20 @@ export const renderLocationSearchInterface = (state) => {
             aria-label="Search for a location"
             ?disabled=${state.disabled}
           />
-          ${
-            state.searchQuery
-              ? html`
-                  <div class="absolute end-1.5 top-1.5">
-                    <button
-                      type="button"
-                      class="cursor-pointer mt-0.5"
-                      @click=${state.onClearSearch}
-                      ?disabled=${state.disabled}
-                    >
-                      <div
-                        class="svg-icon size-5 bg-stone-400 hover:bg-stone-700 icon-close"
-                      ></div>
-                    </button>
-                  </div>
-                `
-              : ""
-          }
+          ${state.searchQuery
+            ? html`
+                <div class="absolute end-1.5 top-1.5">
+                  <button
+                    type="button"
+                    class="cursor-pointer mt-0.5"
+                    @click=${state.onClearSearch}
+                    ?disabled=${state.disabled}
+                  >
+                    <div class="svg-icon size-5 bg-stone-400 hover:bg-stone-700 icon-close"></div>
+                  </button>
+                </div>
+              `
+            : ""}
           ${shouldRenderDropdown
             ? renderLocationSearchDropdown({
                 highlightedIndex: state.highlightedIndex,
@@ -89,8 +85,7 @@ export const renderLocationSearchInterface = (state) => {
         </button>
       </div>
       <p class="form-legend mt-3">
-        If any fields remain empty or incomplete after the search, fill in the missing
-        details manually.
+        If any fields remain empty or incomplete after the search, fill in the missing details manually.
       </p>
     </div>
   `;

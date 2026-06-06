@@ -4,10 +4,11 @@ import { buildEventSearchUrl } from "/static/js/dashboard/group/event-selector-u
 /**
  * Requests event selector search results.
  * @param {Object} config Event search configuration.
+ * @param {Function} fetchClient Fetch implementation.
  * @returns {Promise<Object[]>}
  */
-export const requestEventSelectorEvents = async (config) => {
-  const response = await ocgFetch(buildEventSearchUrl(config), {
+export const requestEventSelectorEvents = async (config, fetchClient = ocgFetch) => {
+  const response = await fetchClient(buildEventSearchUrl(config), {
     headers: {
       Accept: "application/json",
     },

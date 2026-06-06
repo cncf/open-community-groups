@@ -4,9 +4,7 @@
  * @returns {boolean}
  */
 export const isVenueLocationContext = (fields) =>
-  Boolean(
-    fields.venueNameFieldName || fields.venueAddressFieldName || fields.venueZipCodeFieldName,
-  );
+  Boolean(fields.venueNameFieldName || fields.venueAddressFieldName || fields.venueZipCodeFieldName);
 
 /**
  * Builds a stable id for a location input.
@@ -27,9 +25,7 @@ export const getLocationInputId = (componentId, inputName) => {
  */
 export const getLocationLegendText = (kind, isVenue) => {
   if (kind === "city") {
-    return isVenue
-      ? "City where the venue is located."
-      : "Primary city where the group is located.";
+    return isVenue ? "City where the venue is located." : "Primary city where the group is located.";
   }
   if (kind === "zip") {
     return "Postal/zip code of the venue.";
@@ -52,8 +48,7 @@ export const getLocationLegendText = (kind, isVenue) => {
 export const getLocationResultText = (result) => {
   const addr = result.address || {};
   const secondaryText = result.display_name || "";
-  const mainText =
-    addr.amenity || addr.building || addr.name || addr.road || secondaryText.split(",")[0];
+  const mainText = addr.amenity || addr.building || addr.name || addr.road || secondaryText.split(",")[0];
   return { mainText, secondaryText };
 };
 

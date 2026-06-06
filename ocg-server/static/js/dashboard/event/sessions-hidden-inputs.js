@@ -19,9 +19,7 @@ export const getSessionHiddenInputValues = (session) => {
     automaticMeetingRequested,
     description: isCfsLinkedSession ? "" : session.description || "",
     isCfsLinkedSession,
-    meetingJoinInstructions: automaticMeetingRequested
-      ? ""
-      : session.meeting_join_instructions || "",
+    meetingJoinInstructions: automaticMeetingRequested ? "" : session.meeting_join_instructions || "",
     meetingJoinUrl: automaticMeetingRequested ? "" : session.meeting_join_url || "",
     meetingProviderId,
     meetingRecordingPublished: session.meeting_recording_published === true,
@@ -82,11 +80,7 @@ export const renderSessionHiddenInputs = (session, index) => {
       name="sessions[${index}][meeting_join_instructions]"
       value=${values.meetingJoinInstructions}
     />
-    <input
-      type="hidden"
-      name="sessions[${index}][meeting_join_url]"
-      value=${values.meetingJoinUrl}
-    />
+    <input type="hidden" name="sessions[${index}][meeting_join_url]" value=${values.meetingJoinUrl} />
     <input
       type="hidden"
       name="sessions[${index}][meeting_recording_published]"
@@ -102,11 +96,7 @@ export const renderSessionHiddenInputs = (session, index) => {
       name="sessions[${index}][meeting_requested]"
       value=${session.meeting_requested || false}
     />
-    <input
-      type="hidden"
-      name="sessions[${index}][meeting_provider_id]"
-      value=${values.meetingProviderId}
-    />
+    <input type="hidden" name="sessions[${index}][meeting_provider_id]" value=${values.meetingProviderId} />
     ${renderSessionSpeakerHiddenInputs({ index, session, values })}
   `;
 };

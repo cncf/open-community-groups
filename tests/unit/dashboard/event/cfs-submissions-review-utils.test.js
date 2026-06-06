@@ -1,6 +1,7 @@
 import { expect } from "@open-wc/testing";
 
 import {
+  buildApprovedSubmissionEventDetail,
   buildApprovedSubmissionSummary,
   buildReviewModalOpenState,
   buildReviewFormStateSnapshot,
@@ -8,8 +9,12 @@ import {
   formatAverageRating,
   getAverageRating,
   getOtherTeamRatings,
+  getReviewModalClosedState,
+  getReviewModalDefaultProperties,
+  getReviewModalDefaultState,
   getRatingsCount,
   getStatusColor,
+  handleReviewAfterRequest,
   isLinkedToSession,
   isMessageRequired,
   isStatusAllowed,
@@ -121,6 +126,59 @@ describe("cfs submissions review utils", () => {
     expect(buildApprovedSubmissionSummary({ ...submission, speaker: {} }, "approved")).to.equal(
       null,
     );
+    expect(buildApprovedSubmissionEventDetail(submission, "approved")).to.deep.equal({
+      approved: true,
+      cfsSubmissionId: "12",
+      submission: {
+        cfs_submission_id: "12",
+        session_proposal_id: "99",
+        title: "Platform Engineering at Scale",
+        speaker_name: "ada",
+      },
+    });
+    expect(buildApprovedSubmissionEventDetail(submission, "rejected")).to.deep.equal({
+      approved: false,
+      cfsSubmissionId: "12",
+      submission: null,
+    });
+  });
+
+  it("handles review after-request responses", () => {
+    // Successful responses trigger the success callback after alert handling.
+    const responseCalls = [];
+    let successCalls = 0;
+    const ok = handleReviewAfterRequest({
+      event: { detail: { xhr: { status: 204 } } },
+      handleResponse: (options) => {
+        responseCalls.push(options);
+        return true;
+      },
+      onSuccess: () => {
+        successCalls += 1;
+      },
+    });
+
+    expect(ok).to.equal(true);
+    expect(successCalls).to.equal(1);
+    expect(responseCalls).to.deep.equal([
+      {
+        xhr: { status: 204 },
+        successMessage: "",
+        errorMessage: "Unable to update this submission. Please try again later.",
+      },
+    ]);
+
+    // Failed responses do not trigger the success callback.
+    expect(
+      handleReviewAfterRequest({
+        event: { detail: { xhr: { status: 500 } } },
+        handleResponse: () => false,
+        onSuccess: () => {
+          successCalls += 1;
+        },
+      }),
+    ).to.equal(false);
+    expect(successCalls).to.equal(1);
   });
 
   it("builds normalized modal open state", () => {
@@ -141,6 +199,34 @@ describe("cfs submissions review utils", () => {
       ratingStars: 4,
       selectedLabelIds: ["4"],
       statusId: "approved",
+    });
+  });
+
+  it("builds default and closed modal state", () => {
+    // Default properties keep public attributes explicit.
+    expect(getReviewModalDefaultProperties()).to.deep.equal({
+      currentUserId: "",
+      eventId: "",
+      labels: [],
+      messageMaxLength: 5000,
+      statuses: [],
+    });
+
+    // Closed state resets mutable modal values and restores the requested tab.
+    expect(getReviewModalClosedState("details")).to.deep.include({
+      activeTab: "details",
+      hoverRatingStars: 0,
+      isOpen: false,
+      message: "",
+      ratingComment: "",
+      ratingStars: 0,
+      statusId: "",
+      submission: null,
+    });
+    expect(getReviewModalDefaultState()).to.deep.include({
+      afterRequestHandler: null,
+      initialFormSnapshot: "",
+      removeDismissListeners: null,
     });
   });
 

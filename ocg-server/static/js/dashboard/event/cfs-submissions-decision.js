@@ -6,15 +6,8 @@ import {
   isStatusAllowed,
 } from "/static/js/dashboard/event/cfs-submissions-review-utils.js";
 
-const renderStatusBoxes = ({
-  onStatusCheckChange,
-  statusId: selectedStatusId,
-  statuses,
-  submission,
-}) => {
-  const reviewStatuses = statuses.filter(
-    (status) => status.cfs_submission_status_id !== "not-reviewed",
-  );
+const renderStatusBoxes = ({ onStatusCheckChange, statusId: selectedStatusId, statuses, submission }) => {
+  const reviewStatuses = statuses.filter((status) => status.cfs_submission_status_id !== "not-reviewed");
   const isLinked = isLinkedToSession(submission);
 
   return html`
@@ -45,13 +38,9 @@ const renderStatusBoxes = ({
                   class="relative flex h-4 w-4 items-center justify-center rounded border
                     ${isSelected ? color.border : "border-stone-200"}"
                 >
-                  ${isSelected
-                    ? html`<div class="svg-icon size-3 icon-check ${color.dot}"></div>`
-                    : ""}
+                  ${isSelected ? html`<div class="svg-icon size-3 icon-check ${color.dot}"></div>` : ""}
                 </span>
-                <span class="text-sm font-medium text-stone-700">
-                  ${status?.display_name || ""}
-                </span>
+                <span class="text-sm font-medium text-stone-700"> ${status?.display_name || ""} </span>
               </div>
             </div>
           </label>
@@ -78,9 +67,9 @@ export const renderCfsDecisionPanel = (state) => html`
       role="status"
       class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
     >
-      This is the <span class="font-semibold">group's final decision</span> on this submission,
-      not an individual assessment. Once saved, it is final. The speaker will receive this
-      update and can review it in their Submissions tab.
+      This is the <span class="font-semibold">group's final decision</span> on this submission, not an
+      individual assessment. Once saved, it is final. The speaker will receive this update and can review it
+      in their Submissions tab.
     </div>
 
     <div>
@@ -98,8 +87,7 @@ export const renderCfsDecisionPanel = (state) => html`
 
     <div>
       <label for="cfs-submission-message" class="form-label">
-        Message for speaker
-        ${isMessageRequired(state.statusId) ? html`<span class="asterisk">*</span>` : ""}
+        Message for speaker ${isMessageRequired(state.statusId) ? html`<span class="asterisk">*</span>` : ""}
       </label>
       <div class="mt-2">
         <textarea

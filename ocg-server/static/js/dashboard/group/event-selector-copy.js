@@ -1,8 +1,4 @@
-import {
-  setImageFieldValue,
-  setSelectValue,
-  setTextValue,
-} from "/static/js/common/utils.js";
+import { setImageFieldValue, setSelectValue, setTextValue } from "/static/js/common/utils.js";
 import {
   appendCopySuffix,
   setAttendeeApprovalRequired,

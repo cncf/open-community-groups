@@ -8,8 +8,7 @@ const DOCS_SIDEBAR_SELECTOR = ".sidebar-nav";
  */
 const startsWithAnyPrefix = (value, prefixes) =>
   prefixes.some(
-    (prefix) =>
-      value === prefix || value.startsWith(`${prefix}/`) || value.startsWith(`${prefix}?`),
+    (prefix) => value === prefix || value.startsWith(`${prefix}/`) || value.startsWith(`${prefix}?`),
   );
 
 /**
@@ -19,22 +18,8 @@ const startsWithAnyPrefix = (value, prefixes) =>
  * @returns {string|null} Resolved app path.
  */
 export const resolveAppPath = (href, inMarkdown) => {
-  const hashAppPrefixes = [
-    "#/dashboard",
-    "#/explore",
-    "#/log-in",
-    "#/log-out",
-    "#/sign-up",
-    "#/stats",
-  ];
-  const absoluteAppPrefixes = [
-    "/dashboard",
-    "/explore",
-    "/log-in",
-    "/log-out",
-    "/sign-up",
-    "/stats",
-  ];
+  const hashAppPrefixes = ["#/dashboard", "#/explore", "#/log-in", "#/log-out", "#/sign-up", "#/stats"];
+  const absoluteAppPrefixes = ["/dashboard", "/explore", "/log-in", "/log-out", "/sign-up", "/stats"];
 
   if (!href) {
     return null;

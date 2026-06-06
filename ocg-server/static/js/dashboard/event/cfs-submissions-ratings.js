@@ -65,18 +65,14 @@ const renderRatingEditor = ({
           class="input-primary"
           maxlength=${messageMaxLength}
           rows="3"
-          placeholder=${hasRating
-            ? "Add notes for other admins..."
-            : "Select a star rating to add notes."}
+          placeholder=${hasRating ? "Add notes for other admins..." : "Select a star rating to add notes."}
           aria-label="Your rating notes"
           .value=${ratingComment}
           @input=${onRatingCommentInput}
           ?disabled=${!hasRating}
         ></textarea>
       </div>
-      <p class="form-legend mt-2">
-        Ratings are internal only. Speakers never see ratings or rating notes.
-      </p>
+      <p class="form-legend mt-2">Ratings are internal only. Speakers never see ratings or rating notes.</p>
     </div>
   `;
 };
@@ -108,9 +104,7 @@ const renderRatingsList = ({ currentUserId, renderPersonRow, submission }) => {
                     ? renderPersonRow(rating.reviewer)
                     : html`<div class="text-sm text-stone-500">Unknown reviewer</div>`}
                   ${comments
-                    ? html`<p class="mt-3 text-sm text-stone-700 whitespace-pre-line">
-                        ${comments}
-                      </p>`
+                    ? html`<p class="mt-3 text-sm text-stone-700 whitespace-pre-line">${comments}</p>`
                     : html`<p class="mt-3 text-sm text-stone-400">No notes provided.</p>`}
                 </div>
                 <div class="inline-flex items-center whitespace-nowrap md:shrink-0">
@@ -142,10 +136,7 @@ const renderRatingsSummaryCard = (submission) => {
         <div class="sm:border-l sm:border-stone-200 sm:pl-5 min-w-0 flex flex-col gap-1">
           <div class="form-label text-stone-700">Summary rating</div>
           <div>
-            <rating-stars
-              .averageRating=${ratingsCount > 0 ? averageRating : 0}
-              size="size-5"
-            ></rating-stars>
+            <rating-stars .averageRating=${ratingsCount > 0 ? averageRating : 0} size="size-5"></rating-stars>
           </div>
           <div class="text-sm/6 mt-1 text-stone-600">
             (${ratingsCount} ${ratingsCount === 1 ? "rating" : "ratings"})
@@ -171,8 +162,7 @@ export const renderCfsRatingsPanel = (state) => {
       class="pt-5 space-y-8"
       ?hidden=${!state.isActive}
     >
-      ${renderRatingsSummaryCard(state.submission)}
-      ${renderRatingEditor({ ...state, highlightedStars })}
+      ${renderRatingsSummaryCard(state.submission)} ${renderRatingEditor({ ...state, highlightedStars })}
       ${renderRatingsList(state)}
     </section>
   `;

@@ -168,6 +168,38 @@ export const buildApprovedSubmissionSummary = (submission, statusId) => {
 };
 
 /**
+ * Builds the approved-submissions event detail payload.
+ * @param {Object} submission Submission payload.
+ * @param {string} statusId Selected status id.
+ * @returns {Object}
+ */
+export const buildApprovedSubmissionEventDetail = (submission, statusId) => ({
+  approved: statusId === "approved",
+  cfsSubmissionId: String(submission.cfs_submission_id),
+  submission: buildApprovedSubmissionSummary(submission, statusId),
+});
+
+/**
+ * Handles review form after-request responses.
+ * @param {Object} options Handler options.
+ * @param {Event} options.event HTMX after-request event.
+ * @param {Function} options.handleResponse Response handler.
+ * @param {Function} options.onSuccess Success callback.
+ * @returns {boolean} True when the response was handled as successful.
+ */
+export const handleReviewAfterRequest = ({ event, handleResponse, onSuccess }) => {
+  const ok = handleResponse({
+    xhr: event.detail?.xhr,
+    successMessage: "",
+    errorMessage: "Unable to update this submission. Please try again later.",
+  });
+  if (ok) {
+    onSuccess();
+  }
+  return ok;
+};
+
+/**
  * Gets selected label ids from a submission payload.
  * @param {Object} submission Submission payload.
  * @returns {Array<string>} Selected label ids.
@@ -197,6 +229,46 @@ export const buildReviewModalOpenState = (submission, currentUserRating) => ({
   ratingStars: Number(currentUserRating?.stars || 0),
   selectedLabelIds: getSubmissionLabelIds(submission),
   statusId: getSubmissionReviewStatusId(submission),
+});
+
+/**
+ * Builds default public modal properties.
+ * @returns {Object} Public modal property defaults.
+ */
+export const getReviewModalDefaultProperties = () => ({
+  currentUserId: "",
+  eventId: "",
+  labels: [],
+  messageMaxLength: 5000,
+  statuses: [],
+});
+
+/**
+ * Builds default internal modal state.
+ * @returns {Object} Internal modal state defaults.
+ */
+export const getReviewModalDefaultState = () => ({
+  hoverRatingStars: 0,
+  isOpen: false,
+  message: "",
+  ratingComment: "",
+  ratingStars: 0,
+  selectedLabelIds: [],
+  statusId: "",
+  submission: null,
+  initialFormSnapshot: "",
+  afterRequestHandler: null,
+  removeDismissListeners: null,
+});
+
+/**
+ * Builds internal state for closing the modal.
+ * @param {string} activeTab Default active tab id.
+ * @returns {Object} Closed modal state.
+ */
+export const getReviewModalClosedState = (activeTab) => ({
+  ...getReviewModalDefaultState(),
+  activeTab,
 });
 
 /**

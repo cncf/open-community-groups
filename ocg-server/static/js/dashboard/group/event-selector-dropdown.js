@@ -1,8 +1,5 @@
 import { html } from "/static/vendor/js/lit-all.v3.3.1.min.js";
-import {
-  formatEventDate,
-  getEventOptionState,
-} from "/static/js/dashboard/group/event-selector-utils.js";
+import { formatEventDate, getEventOptionState } from "/static/js/dashboard/group/event-selector-utils.js";
 
 /**
  * Renders the compact event preview label.
