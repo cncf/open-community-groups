@@ -7,6 +7,7 @@ import {
   handleCommitShaConfigRequest,
   handleDeclarativeHtmxResponse,
   handleNotFoundBeforeSwap,
+  getDeclarativeHtmxResponseElement,
   isSuccessfulRefreshBodyResponse,
   registerHtmxNoEmptyValuesExtensions,
   registerHtmxResponseHandlers,
@@ -454,6 +455,93 @@ describe("htmx extensions", () => {
     });
   });
 
+  it("keeps declarative content-refresh success messages immediate", () => {
+    // Build a region/category-style form with declarative response messages.
+    const form = document.createElement("form");
+    form.dataset.htmxResponse = "";
+    form.dataset.successMessage = "You have successfully added the region.";
+    form.dataset.errorMessage = "Something went wrong adding the region.";
+
+    // Dispatch a successful response that refreshes dashboard content.
+    handleDeclarativeHtmxResponse({
+      detail: {
+        elt: form,
+        xhr: {
+          status: 201,
+          responseText: "",
+          getResponseHeader: (name) =>
+            name === "HX-Trigger" ? "refresh-community-dashboard-table" : null,
+        },
+      },
+    });
+
+    // Explicit frontend messages keep the previous immediate toast behavior.
+    expect(swal.calls).to.have.length(1);
+    expect(swal.calls[0]).to.include({
+      text: "You have successfully added the region.",
+      icon: "success",
+    });
+  });
+
+  it("handles declarative responses before swaps without duplicating after request", () => {
+    // Build a form that will be swapped out by a successful HTMX response.
+    const form = document.createElement("form");
+    form.dataset.htmxResponse = "";
+    form.dataset.successMessage = "You have successfully added the group category.";
+    const xhr = {
+      status: 201,
+      responseText: "",
+      getResponseHeader: (name) =>
+        name === "HX-Trigger" ? "refresh-community-dashboard-table" : null,
+    };
+
+    // Handle the response before HTMX removes the source element.
+    handleDeclarativeHtmxResponse({
+      detail: {
+        elt: form,
+        xhr,
+      },
+    });
+    handleDeclarativeHtmxResponse({
+      detail: {
+        elt: form,
+        xhr,
+      },
+    });
+
+    // The success message is shown once for the response.
+    expect(swal.calls).to.have.length(1);
+    expect(swal.calls[0]).to.include({
+      text: "You have successfully added the group category.",
+      icon: "success",
+    });
+  });
+
+  it("finds declarative response config from htmx request config elements", () => {
+    // Build the swap target and original form elements from a beforeSwap event.
+    const target = document.createElement("section");
+    const form = document.createElement("form");
+    form.id = "group-category-form";
+    form.dataset.htmxResponse = "";
+    const button = document.createElement("button");
+    form.append(button);
+
+    // Read the declarative response owner from HTMX request metadata.
+    expect(
+      getDeclarativeHtmxResponseElement({
+        detail: {
+          elt: target,
+          requestConfig: {
+            elt: form,
+            triggeringEvent: {
+              target: button,
+            },
+          },
+        },
+      }),
+    ).to.equal(form);
+  });
+
   it("registers the shared htmx response handlers", () => {
     // Capture listeners added to the event root.
     const listeners = [];
@@ -469,8 +557,10 @@ describe("htmx extensions", () => {
     expect(listeners).to.deep.equal([
       ["htmx:configRequest", handleCommitShaConfigRequest],
       ["htmx:beforeOnLoad", handleCommitShaBeforeOnLoad],
+      ["htmx:beforeOnLoad", handleDeclarativeHtmxResponse],
       ["htmx:beforeSwap", handleCommitShaBeforeSwap],
       ["htmx:beforeSwap", handleNotFoundBeforeSwap],
+      ["htmx:beforeSwap", handleDeclarativeHtmxResponse],
       ["htmx:afterRequest", handleDeclarativeHtmxResponse],
     ]);
   });
@@ -490,8 +580,10 @@ describe("htmx extensions", () => {
     expect(listeners).to.deep.equal([
       ["htmx:configRequest", handleCommitShaConfigRequest],
       ["htmx:beforeOnLoad", handleCommitShaBeforeOnLoad],
+      ["htmx:beforeOnLoad", handleDeclarativeHtmxResponse],
       ["htmx:beforeSwap", handleCommitShaBeforeSwap],
       ["htmx:beforeSwap", handleNotFoundBeforeSwap],
+      ["htmx:beforeSwap", handleDeclarativeHtmxResponse],
       ["htmx:afterRequest", handleDeclarativeHtmxResponse],
     ]);
   });

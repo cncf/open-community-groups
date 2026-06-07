@@ -231,6 +231,36 @@ describe("alerts", () => {
     expect(env.current.swal.calls).to.have.length(0);
   });
 
+  it("keeps explicit frontend success messages immediate during content refreshes", () => {
+    // Track body refresh events to verify explicit frontend messages do not need one.
+    let refreshBodyEvents = 0;
+    document.body.addEventListener("refresh-body", () => {
+      refreshBodyEvents += 1;
+    });
+
+    // Handle an explicit success message with a dashboard-content refresh trigger.
+    expect(
+      handleHtmxResponse({
+        xhr: {
+          status: 204,
+          getResponseHeader: (name) =>
+            name === "HX-Trigger" ? "refresh-community-dashboard-table" : null,
+        },
+        successMessage: "You have successfully added the region.",
+        errorMessage: "Failed",
+      }),
+    ).to.equal(true);
+    document.dispatchEvent(new CustomEvent("htmx:afterSettle", { bubbles: true }));
+
+    // The old frontend-toast behavior is preserved for explicit messages.
+    expect(refreshBodyEvents).to.equal(0);
+    expect(env.current.swal.calls).to.have.length(1);
+    expect(env.current.swal.calls[0]).to.include({
+      text: "You have successfully added the region.",
+      icon: "success",
+    });
+  });
+
   it("binds standard htmx response alerts", () => {
     // Build the element that receives an HTMX after-request event.
     const button = document.createElement("button");

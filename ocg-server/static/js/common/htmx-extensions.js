@@ -7,8 +7,35 @@ import {
 
 // Tracks event roots already wired so repeated initialization stays idempotent.
 const responseHandlerRoots = new WeakSet();
+const handledDeclarativeResponseXhrs = new WeakSet();
 const htmxResponseSelector = "[data-htmx-response]";
 const REFRESH_BODY_TRIGGER = "refresh-body";
+
+/**
+ * Finds the element that owns declarative HTMX response configuration.
+ * @param {CustomEvent} event HTMX lifecycle event.
+ * @returns {Element|null} Declarative response element when present.
+ */
+export const getDeclarativeHtmxResponseElement = (event) => {
+  const candidates = [
+    event.detail?.elt,
+    event.detail?.requestConfig?.elt,
+    event.detail?.requestConfig?.triggeringEvent?.target,
+  ];
+
+  for (const candidate of candidates) {
+    if (!(candidate instanceof Element)) {
+      continue;
+    }
+
+    const responseElement = candidate.closest(htmxResponseSelector);
+    if (responseElement) {
+      return responseElement;
+    }
+  }
+
+  return null;
+};
 
 /**
  * Filters HTMX parameters by trimming strings and dropping selected empty values.
@@ -157,23 +184,28 @@ export const handleCommitShaBeforeSwap = (event, root = document) => {
  * @returns {void}
  */
 export const handleDeclarativeHtmxResponse = (event) => {
-  const source = event.detail?.elt;
-  if (!(source instanceof Element)) {
-    return;
-  }
-
-  const responseElement = source.closest(htmxResponseSelector);
+  const responseElement = getDeclarativeHtmxResponseElement(event);
   if (!responseElement) {
     return;
   }
 
   const xhr = event.detail?.xhr;
+  if (xhr && handledDeclarativeResponseXhrs.has(xhr)) {
+    return;
+  }
+
   const successMessage = responseElement.dataset.successMessage || "";
   if (isSuccessfulRefreshBodyResponse(xhr) && successMessage) {
+    if (xhr) {
+      handledDeclarativeResponseXhrs.add(xhr);
+    }
     showSuccessAfterBodyRefresh(successMessage);
     return;
   }
 
+  if (xhr) {
+    handledDeclarativeResponseXhrs.add(xhr);
+  }
   handleHtmxResponse({
     xhr,
     successMessage,
@@ -241,8 +273,10 @@ export const registerHtmxResponseHandlers = (root = document) => {
 
   eventRoot.addEventListener("htmx:configRequest", handleCommitShaConfigRequest);
   eventRoot.addEventListener("htmx:beforeOnLoad", handleCommitShaBeforeOnLoad);
+  eventRoot.addEventListener("htmx:beforeOnLoad", handleDeclarativeHtmxResponse);
   eventRoot.addEventListener("htmx:beforeSwap", handleCommitShaBeforeSwap);
   eventRoot.addEventListener("htmx:beforeSwap", handleNotFoundBeforeSwap);
+  eventRoot.addEventListener("htmx:beforeSwap", handleDeclarativeHtmxResponse);
   eventRoot.addEventListener("htmx:afterRequest", handleDeclarativeHtmxResponse);
   responseHandlerRoots.add(eventRoot);
 };
