@@ -33,6 +33,8 @@ const EVENT_PREVIEW_SOCIAL_LINKS = [
   },
 ];
 const modalState = new WeakMap();
+const MODAL_WAS_CLOSED = false;
+const MODAL_WAS_OPEN = true;
 
 /**
  * Initializes event preview behavior for an add or update event page.
@@ -168,7 +170,7 @@ export const openEventPreviewModal = (modalRoot, html, pageRoot = document) => {
   setTrustedHtml(modalRoot, html);
   initializeEventPreviewMaps(modalRoot, pageRoot);
   initializeEventPreviewDraftSections(modalRoot, pageRoot);
-  openModalBodyScroll(false);
+  openModalBodyScroll(MODAL_WAS_CLOSED);
 
   const handleClick = (event) => {
     if (closestElement(event.target, "[data-event-preview-close]")) {
@@ -202,7 +204,7 @@ export const closeEventPreviewModal = (modalRoot) => {
   state.removeDismissListeners();
   modalState.delete(modalRoot);
   modalRoot.replaceChildren();
-  closeModalBodyScroll(true);
+  closeModalBodyScroll(MODAL_WAS_OPEN);
 };
 
 /**

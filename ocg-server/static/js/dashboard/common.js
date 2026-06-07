@@ -1,21 +1,4 @@
 /**
- * Dashboard common utilities
- */
-import { getElementById } from "/static/js/common/dom.js";
-
-/**
- * Triggers a change event on the specified form using htmx.
- * @param {string} formId - The ID of the form to trigger change on
- */
-export const triggerChangeOnForm = (formId) => {
-  const form = getElementById(document, formId);
-  if (form) {
-    // Trigger change event using htmx
-    htmx.trigger(form, "change");
-  }
-};
-
-/**
  * Defers work until an HTMX swap settles to avoid acting on stale nodes.
  * This prevents empty-state rendering from targeting elements replaced by a swap.
  * @param {() => Promise<void> | void} task - Work to run after swap settles.

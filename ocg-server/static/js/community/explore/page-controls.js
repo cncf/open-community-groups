@@ -77,7 +77,10 @@ const bindCalendarButton = (root, id, callback, { force = false } = {}) => {
     return;
   }
 
-  markDatasetReady(button, EXPLORE_WIDGET_READY_KEY);
+  if (force) {
+    markDatasetReady(button, EXPLORE_WIDGET_READY_KEY);
+  }
+
   button.addEventListener("click", () => {
     callback();
     button.blur();
