@@ -1,4 +1,4 @@
-import { html } from "/static/vendor/js/lit-all.v3.3.1.min.js";
+import { html, nothing } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import {
   isObjectEmpty,
   MEETING_RECORDING_RAW_URLS_LEGEND,
@@ -11,6 +11,16 @@ import "/static/js/common/speakers-selector.js";
 import "/static/js/common/online-event-details.js";
 import { combineDateAndTime, extractTimePart } from "/static/js/dashboard/event/sessions-datetime.js";
 import { normalizeSpeakers } from "/static/js/dashboard/event/speaker-utils.js";
+
+/**
+ * Returns a valid maxlength attribute value or omits the attribute.
+ * @param {*} value Raw max length value.
+ * @returns {*} Maxlength attribute value.
+ */
+const normalizeMaxLength = (value) => {
+  const maxLength = Number(value);
+  return Number.isFinite(maxLength) && maxLength >= 0 ? maxLength : nothing;
+};
 
 /**
  * Individual session entry component.
@@ -210,8 +220,8 @@ class SessionItem extends LitWrapper {
     const hasPrefilledDate = !!this.prefilledDate;
     const startTime = extractTimePart(this.data.starts_at);
     const endTime = extractTimePart(this.data.ends_at);
-    const sessionNameMaxLength = Number(this.sessionNameMaxLength) || -1;
-    const locationMaxLength = Number(this.locationMaxLength) || -1;
+    const sessionNameMaxLength = normalizeMaxLength(this.sessionNameMaxLength);
+    const locationMaxLength = normalizeMaxLength(this.locationMaxLength);
 
     return html` <div class="grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6 w-full h-full">
       <div class="col-span-full">
@@ -228,7 +238,7 @@ class SessionItem extends LitWrapper {
             autocorrect="off"
             autocapitalize="off"
             spellcheck="false"
-            .maxLength=${sessionNameMaxLength}
+            maxlength=${sessionNameMaxLength}
             ?required=${!this.isObjectEmpty}
             ?disabled=${this.disabled}
           />
@@ -336,7 +346,7 @@ class SessionItem extends LitWrapper {
             autocorrect="off"
             autocapitalize="off"
             spellcheck="false"
-            .maxLength=${locationMaxLength}
+            maxlength=${locationMaxLength}
             ?disabled=${this.disabled}
           />
         </div>

@@ -59,4 +59,27 @@ describe("session-form-modal", () => {
     expect(element._isOpen).to.equal(false);
     expect(document.body.dataset.modalOpenCount).to.equal("0");
   });
+
+  it("renders without max length props", async () => {
+    // Render the session form modal without optional max length properties.
+    const element = await mountLitComponent("session-form-modal", {
+      sessionKinds: [{ session_kind_id: "talk", display_name: "Talk" }],
+    });
+
+    // Open the modal to render the child session item.
+    element.open(null, "2025-05-10");
+    await element.updateComplete;
+    const sessionItem = element.querySelector("session-item");
+    await sessionItem.updateComplete;
+
+    // Missing max length properties omit maxlength instead of setting a negative value.
+    expect(
+      sessionItem.querySelector('input[data-name="name"]').hasAttribute("maxlength"),
+    ).to.equal(false);
+    expect(
+      sessionItem
+        .querySelector('input[data-name="location"]')
+        .hasAttribute("maxlength"),
+    ).to.equal(false);
+  });
 });
