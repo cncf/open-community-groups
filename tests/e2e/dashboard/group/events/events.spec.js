@@ -621,10 +621,12 @@ test.describe("group dashboard events view", () => {
     await expect(previewModal).toBeVisible();
     await expect(previewModal).toContainText(eventName);
     await expect(previewModal).toContainText("Preview coverage");
-    await expect(previewModal.locator(`a[href="${lumaUrl}"]`)).toBeVisible();
+    const lumaLinks = previewModal.locator(`a[href="${lumaUrl}"]`);
+    await expect(lumaLinks).toHaveCount(2);
+    await expect(lumaLinks.first()).toBeVisible();
 
     // Close the modal before leaving the form.
-    await previewModal.locator("[data-event-preview-close]").click();
+    await previewModal.getByRole("button", { name: "Close modal" }).click();
     await expect(previewModal).toHaveCount(0);
   });
 
@@ -1368,7 +1370,7 @@ test.describe("group dashboard events view", () => {
       name: `E2E Rich Event ${Date.now()}`,
       registrationQuestions: [
         {
-          id: "initial-question",
+          id: "99999999-0000-4000-8000-000000000001",
           kind: "free-text",
           options: [],
           prompt: "What do you want to learn?",
@@ -1428,17 +1430,23 @@ test.describe("group dashboard events view", () => {
       name: `E2E Rich Event Updated ${Date.now()}`,
       registrationQuestions: [
         {
-          id: "updated-question",
+          id: "99999999-0000-4000-8000-000000000002",
           kind: "single-select",
           options: [
-            { id: "option-one", label: "Platform engineering" },
-            { id: "option-two", label: "Developer experience" },
+            {
+              id: "99999999-0000-4000-8000-000000000003",
+              label: "Platform engineering",
+            },
+            {
+              id: "99999999-0000-4000-8000-000000000004",
+              label: "Developer experience",
+            },
           ],
           prompt: "Which track are you most interested in?",
           required: true,
         },
       ],
-      registrationRequired: false,
+      registrationRequired: true,
       startsAt: "2030-10-08T14:00",
       speakers: [
         {
@@ -1506,15 +1514,6 @@ test.describe("group dashboard events view", () => {
           .locator("#toggle_test_event")
           .uncheck({ force: true });
       }
-      if (values.attendeeApprovalRequired) {
-        await organizerGroupPage
-          .locator("#toggle_attendee_approval_required")
-          .check({ force: true });
-      } else {
-        await organizerGroupPage
-          .locator("#toggle_attendee_approval_required")
-          .uncheck({ force: true });
-      }
       if (values.waitlistEnabled) {
         await organizerGroupPage
           .locator("#toggle_waitlist_enabled")
@@ -1522,6 +1521,15 @@ test.describe("group dashboard events view", () => {
       } else {
         await organizerGroupPage
           .locator("#toggle_waitlist_enabled")
+          .uncheck({ force: true });
+      }
+      if (values.attendeeApprovalRequired) {
+        await organizerGroupPage
+          .locator("#toggle_attendee_approval_required")
+          .check({ force: true });
+      } else {
+        await organizerGroupPage
+          .locator("#toggle_attendee_approval_required")
           .uncheck({ force: true });
       }
       await organizerGroupPage.locator("#meetup_url").fill(values.meetupUrl);
