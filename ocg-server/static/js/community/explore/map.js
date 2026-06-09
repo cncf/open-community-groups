@@ -68,6 +68,37 @@ const getItemUrl = (entity, item) => {
 };
 
 /**
+ * Normalizes a latitude value to be within the -90 to 90 range.
+ * @param {number} lat - Latitude value to normalize
+ * @returns {number} Normalized latitude value between -90 and 90
+ */
+const normalizeLatitude = (lat) => Math.max(-90, Math.min(90, lat));
+
+/**
+ * Normalizes a longitude value to be within the -180 to 180 range.
+ * Leaflet can return values outside this range when wrapping around the map.
+ * @param {number} lng - Longitude value to normalize
+ * @returns {number} Normalized longitude value between -180 and 180
+ */
+const normalizeLongitude = (lng) => {
+  const normalizedLongitude = ((lng + 180) % 360) - 180;
+  if (normalizedLongitude < -180) {
+    return normalizedLongitude + 360;
+  }
+  return normalizedLongitude;
+};
+
+/**
+ * Checks if a bounding box object contains valid, non-identical coordinates.
+ * @param {object} bbox - Bounding box object with coordinate properties
+ * @returns {boolean} True if bbox is valid (coordinates are not all the same)
+ */
+const checkValidBbox = (bbox) => {
+  const allEqual = new Set(Object.values(bbox)).size === 1;
+  return !allEqual;
+};
+
+/**
  * Fits the map to a valid response bounding box.
  * @param {object} map - Leaflet map instance
  * @param {object|null|undefined} bbox - Optional response bounding box
@@ -370,40 +401,4 @@ export class Map {
     // Hide loading spinner
     hideLoadingSpinner(MAP_LOADING_ID);
   }
-}
-
-/**
- * Normalizes a latitude value to be within the -90 to 90 range.
- * @param {number} lat - Latitude value to normalize
- * @returns {number} Normalized latitude value between -90 and 90
- */
-function normalizeLatitude(lat) {
-  // Clamp latitude to valid range (map projections don't wrap vertically)
-  return Math.max(-90, Math.min(90, lat));
-}
-
-/**
- * Normalizes a longitude value to be within the -180 to 180 range.
- * Leaflet can return values outside this range when wrapping around the map.
- * @param {number} lng - Longitude value to normalize
- * @returns {number} Normalized longitude value between -180 and 180
- */
-function normalizeLongitude(lng) {
-  // Normalize to -180 to 180 range using modulo operation
-  lng = ((lng + 180) % 360) - 180;
-  // Handle negative modulo results
-  if (lng < -180) {
-    lng += 360;
-  }
-  return lng;
-}
-
-/**
- * Checks if a bounding box object contains valid, non-identical coordinates.
- * @param {object} bbox - Bounding box object with coordinate properties
- * @returns {boolean} True if bbox is valid (coordinates are not all the same)
- */
-function checkValidBbox(bbox) {
-  const allEqual = new Set(Object.values(bbox)).size === 1;
-  return !allEqual;
 }

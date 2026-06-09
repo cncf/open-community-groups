@@ -191,6 +191,106 @@ const showNoResultsPlaceholder = (wrapper, fullCalendar) => {
 };
 
 /**
+ * Converts a hexadecimal color to RGB with opacity for calendar events.
+ * @param {string} color - The hexadecimal color string
+ * @returns {string|undefined} The RGBA color string with 0.35 opacity
+ */
+const updateColor = (color) => {
+  if (!color) {
+    return undefined;
+  }
+  return hexToRgb(color, PAST_EVENT_COLOR_ALPHA);
+};
+
+/**
+ * Converts a hexadecimal color value to RGBA format.
+ * @param {string} hex - The hexadecimal color string (with or without #)
+ * @param {number} alpha - The alpha/opacity value (0-1)
+ * @returns {string} The RGBA color string
+ */
+const hexToRgb = (hex, alpha = 1) => {
+  const normalizedHex = hex.replace(/^#/, "");
+  const bigint = parseInt(normalizedHex, 16);
+  const r = (bigint >> 16) & 255;
+  const g = (bigint >> 8) & 255;
+  const b = bigint & 255;
+
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+};
+
+/**
+ * Converts a Date object to ISO format string.
+ * @param {Date} date - The date object to convert
+ * @returns {string} The ISO formatted date string
+ */
+const convertDate = (date) => date.toISOString();
+
+/**
+ * Creates a popover HTML element for displaying event details.
+ * @param {string} id - The unique ID for the popover element
+ * @param {object} event - The event object containing popover_html
+ * @param {string} horizontalAlignment - Horizontal alignment ('left' or 'right')
+ * @param {string} verticalAlignment - Vertical alignment ('top' or 'bottom')
+ * @returns {string} The HTML string for the popover element
+ */
+const newEventPopover = (id, event, horizontalAlignment, verticalAlignment) => {
+  const alignmentClasses = [
+    POPOVER_BASE_CLASSES,
+    horizontalAlignment === "right" ? "end-0" : "",
+    verticalAlignment === "top" ? POPOVER_TOP_CLASSES : POPOVER_BOTTOM_CLASSES,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  // prettier-ignore
+  const popover = `
+  <div
+    id="${id}"
+    role="tooltip"
+    data-popover="true"
+    class="${alignmentClasses}"
+  >
+    <div class="explore-popover-card-shell">
+      ${event.popover_html}
+    </div>
+  </div>
+  `;
+
+  return popover;
+};
+
+/**
+ * Creates the popover DOM if it doesn't already exist.
+ * @param {HTMLElement} parent - The parent element to attach the popover to
+ * @param {object} event - The event object containing popover_html
+ */
+const createPopoverIfNeeded = (parent, event) => {
+  const alignData = readPopoverAlignment(parent);
+  if (!alignData) return;
+
+  // Check if popover already exists
+  if (getElementById(document, alignData.id)) return;
+
+  // Set popovertarget and create popover
+  parent.setAttribute("popovertarget", alignData.id);
+  insertTrustedHtml(
+    parent,
+    "beforeend",
+    newEventPopover(alignData.id, event, alignData.horizontal, alignData.vertical),
+  );
+};
+
+/**
+ * Updates the browser URL to reflect the current calendar filters.
+ * @param {URLSearchParams} params - Query params to write to the URL
+ */
+const updateCalendarUrl = (params) => {
+  const nextUrl = new URL(window.location.href);
+  nextUrl.search = params.toString();
+  window.history.replaceState({}, "", nextUrl);
+};
+
+/**
  * FullCalendar-backed community explore calendar controller.
  */
 export class Calendar {
@@ -424,112 +524,4 @@ export class Calendar {
     this.fullCalendar.prev();
     this.refresh();
   }
-}
-
-/**
- * Converts a hexadecimal color to RGB with opacity for calendar events.
- * @param {string} color - The hexadecimal color string
- * @returns {string|undefined} The RGBA color string with 0.35 opacity
- */
-function updateColor(color) {
-  if (!color) {
-    return;
-  }
-  return hexToRgb(color, PAST_EVENT_COLOR_ALPHA);
-}
-
-/**
- * Converts a hexadecimal color value to RGBA format.
- * @param {string} hex - The hexadecimal color string (with or without #)
- * @param {number} alpha - The alpha/opacity value (0-1)
- * @returns {string} The RGBA color string
- */
-function hexToRgb(hex, alpha = 1) {
-  // Remove the hash sign if it's included
-  hex = hex.replace(/^#/, "");
-
-  // Parse the hex values
-  let bigint = parseInt(hex, 16);
-
-  // Extract RGB components
-  let r = (bigint >> 16) & 255;
-  let g = (bigint >> 8) & 255;
-  let b = bigint & 255;
-
-  // Return the RGBA string
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-}
-
-/**
- * Converts a Date object to ISO format string.
- * @param {Date} date - The date object to convert
- * @returns {string} The ISO formatted date string
- */
-function convertDate(date) {
-  return date.toISOString();
-}
-
-/**
- * Creates a popover HTML element for displaying event details.
- * @param {string} id - The unique ID for the popover element
- * @param {object} event - The event object containing popover_html
- * @param {string} horizontalAlignment - Horizontal alignment ('left' or 'right')
- * @param {string} verticalAlignment - Vertical alignment ('top' or 'bottom')
- * @returns {string} The HTML string for the popover element
- */
-function newEventPopover(id, event, horizontalAlignment, verticalAlignment) {
-  const alignmentClasses = [
-    POPOVER_BASE_CLASSES,
-    horizontalAlignment == "right" ? "end-0" : "",
-    verticalAlignment == "top" ? POPOVER_TOP_CLASSES : POPOVER_BOTTOM_CLASSES,
-  ]
-    .filter(Boolean)
-    .join(" ");
-
-  // prettier-ignore
-  const popover = `
-  <div
-    id="${id}"
-    role="tooltip"
-    data-popover="true"
-    class="${alignmentClasses}"
-  >
-    <div class="explore-popover-card-shell">
-      ${event.popover_html}
-    </div>
-  </div>
-  `;
-
-  return popover;
-}
-
-/**
- * Creates the popover DOM if it doesn't already exist.
- * @param {HTMLElement} parent - The parent element to attach the popover to
- * @param {object} event - The event object containing popover_html
- */
-function createPopoverIfNeeded(parent, event) {
-  const alignData = readPopoverAlignment(parent);
-  if (!alignData) return;
-
-  // Check if popover already exists
-  if (getElementById(document, alignData.id)) return;
-
-  // Set popovertarget and create popover
-  parent.setAttribute("popovertarget", alignData.id);
-  insertTrustedHtml(
-    parent,
-    "beforeend",
-    newEventPopover(alignData.id, event, alignData.horizontal, alignData.vertical),
-  );
-}
-
-/**
- * Updates the browser URL to reflect the current calendar filters.
- * @param {URLSearchParams} params - Query params to write to the URL
- */
-function updateCalendarUrl(params) {
-  const nextUrl = new URL(window.location.href);
-  nextUrl.search = params.toString();
-  window.history.replaceState({}, "", nextUrl);
 }

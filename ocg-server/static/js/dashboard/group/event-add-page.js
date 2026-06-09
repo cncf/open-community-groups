@@ -22,117 +22,6 @@ import { initializeSectionTabs } from "/static/js/dashboard/group/page-form-stat
 const EVENT_ADD_PAGE_SELECTOR = '[data-event-page="add"]';
 
 /**
- * Initializes the event add page behavior for the active form fragment.
- * @param {Document|Element} [root=document] Root page container
- * @returns {void}
- */
-export const initializeEventAddPage = (root = document) => {
-  const pageContext = initializeEventPageContext(root, "add");
-  if (!pageContext) {
-    return;
-  }
-
-  const { pageRoot, queryOne } = pageContext;
-
-  const controls = resolveSharedEventPageControls(pageRoot);
-  const {
-    startsAtInput,
-    endsAtInput,
-    cfsEnabledInput,
-    cfsStartsAtInput,
-    cfsEndsAtInput,
-    onlineEventDetails,
-  } = controls;
-  const addEventButton = getElementById(pageRoot, "add-event-button");
-  const recurrenceAdditionalOccurrencesContainer = getElementById(
-    pageRoot,
-    "recurrence-additional-occurrences-container",
-  );
-  const recurrenceAdditionalOccurrencesInput = getElementById(pageRoot, "recurrence_additional_occurrences");
-  const recurrencePatternSelect = getElementById(pageRoot, "recurrence_pattern");
-
-  const syncSessionsDateRange = createSessionsDateRangeSync({
-    queryOne,
-    startsAtInput,
-    endsAtInput,
-  });
-
-  const { displayActiveSection } = initializeSectionTabs({
-    root: pageRoot,
-    onSectionChange: (sectionName) => {
-      if (sectionName === "sessions") {
-        syncSessionsDateRange();
-      }
-    },
-  });
-
-  const { validateEventForms, validateSessionOnlineDetails, showSessionBoundsError } =
-    initializeSharedEventPageControls({
-      pageRoot,
-      queryOne,
-      displayActiveSection,
-      syncSessionsDateRange,
-      controls,
-      bindDisabledCfsToggle: true,
-    });
-
-  initializeRecurrenceFields({
-    recurrenceAdditionalOccurrencesContainer,
-    recurrenceAdditionalOccurrencesInput,
-    recurrencePatternSelect,
-    startsAtInput,
-  });
-
-  initializeEventPagePendingChanges({
-    pageRoot,
-    confirmMessage:
-      "You have pending changes for this new event. If you continue, this event will not be created.",
-  });
-
-  initializeEventPreview({
-    pageRoot,
-  });
-
-  if (!addEventButton) {
-    return;
-  }
-
-  initializeSessionsRemovalWarning({
-    saveButton: addEventButton,
-  });
-
-  attachEventSaveBeforeRequestValidation({
-    saveButton: addEventButton,
-    saveButtonId: "add-event-button",
-    validateEventForms,
-    validateSessionOnlineDetails,
-    showSessionBoundsError,
-    displayActiveSection,
-    pageRoot,
-    startsAtInput,
-    endsAtInput,
-    cfsEnabledInput,
-    cfsStartsAtInput,
-    cfsEndsAtInput,
-    onlineEventDetails,
-    allowPastDates: false,
-  });
-
-  attachEventSaveConfigRequest({
-    saveButton: addEventButton,
-    saveButtonId: "add-event-button",
-    validateEventForms,
-  });
-
-  attachEventSaveAfterRequest({
-    saveButton: addEventButton,
-    saveButtonId: "add-event-button",
-    successMessage: "You have successfully created the event.",
-    errorMessage: "Something went wrong creating the event. Please try again later.",
-  });
-};
-
-/**
  * Initializes recurrence labels and conditional additional-occurrence validation.
  * @param {Object} config Recurrence control configuration
  * @param {HTMLElement|null} config.recurrenceAdditionalOccurrencesContainer Wrapper element
@@ -242,6 +131,117 @@ const updateRecurrenceAdditionalOccurrencesState = ({
   if (!recurring) {
     recurrenceAdditionalOccurrencesInput.value = "";
   }
+};
+
+/**
+ * Initializes the event add page behavior for the active form fragment.
+ * @param {Document|Element} [root=document] Root page container
+ * @returns {void}
+ */
+export const initializeEventAddPage = (root = document) => {
+  const pageContext = initializeEventPageContext(root, "add");
+  if (!pageContext) {
+    return;
+  }
+
+  const { pageRoot, queryOne } = pageContext;
+
+  const controls = resolveSharedEventPageControls(pageRoot);
+  const {
+    startsAtInput,
+    endsAtInput,
+    cfsEnabledInput,
+    cfsStartsAtInput,
+    cfsEndsAtInput,
+    onlineEventDetails,
+  } = controls;
+  const addEventButton = getElementById(pageRoot, "add-event-button");
+  const recurrenceAdditionalOccurrencesContainer = getElementById(
+    pageRoot,
+    "recurrence-additional-occurrences-container",
+  );
+  const recurrenceAdditionalOccurrencesInput = getElementById(pageRoot, "recurrence_additional_occurrences");
+  const recurrencePatternSelect = getElementById(pageRoot, "recurrence_pattern");
+
+  const syncSessionsDateRange = createSessionsDateRangeSync({
+    queryOne,
+    startsAtInput,
+    endsAtInput,
+  });
+
+  const { displayActiveSection } = initializeSectionTabs({
+    root: pageRoot,
+    onSectionChange: (sectionName) => {
+      if (sectionName === "sessions") {
+        syncSessionsDateRange();
+      }
+    },
+  });
+
+  const { validateEventForms, validateSessionOnlineDetails, showSessionBoundsError } =
+    initializeSharedEventPageControls({
+      pageRoot,
+      queryOne,
+      displayActiveSection,
+      syncSessionsDateRange,
+      controls,
+      bindDisabledCfsToggle: true,
+    });
+
+  initializeRecurrenceFields({
+    recurrenceAdditionalOccurrencesContainer,
+    recurrenceAdditionalOccurrencesInput,
+    recurrencePatternSelect,
+    startsAtInput,
+  });
+
+  initializeEventPagePendingChanges({
+    pageRoot,
+    confirmMessage:
+      "You have pending changes for this new event. If you continue, this event will not be created.",
+  });
+
+  initializeEventPreview({
+    pageRoot,
+  });
+
+  if (!addEventButton) {
+    return;
+  }
+
+  initializeSessionsRemovalWarning({
+    saveButton: addEventButton,
+  });
+
+  attachEventSaveBeforeRequestValidation({
+    saveButton: addEventButton,
+    saveButtonId: "add-event-button",
+    validateEventForms,
+    validateSessionOnlineDetails,
+    showSessionBoundsError,
+    displayActiveSection,
+    pageRoot,
+    startsAtInput,
+    endsAtInput,
+    cfsEnabledInput,
+    cfsStartsAtInput,
+    cfsEndsAtInput,
+    onlineEventDetails,
+    allowPastDates: false,
+  });
+
+  attachEventSaveConfigRequest({
+    saveButton: addEventButton,
+    saveButtonId: "add-event-button",
+    validateEventForms,
+  });
+
+  attachEventSaveAfterRequest({
+    saveButton: addEventButton,
+    saveButtonId: "add-event-button",
+    successMessage: "You have successfully created the event.",
+    errorMessage: "Something went wrong creating the event. Please try again later.",
+  });
 };
 
 /**

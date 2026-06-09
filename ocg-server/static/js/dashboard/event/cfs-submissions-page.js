@@ -17,28 +17,16 @@ const SUBMISSIONS_FILTERS_SORT_ID = "submissions-sort";
 const SUBMISSIONS_FILTERS_BOUND_KEY = "submissionsFiltersBound";
 
 /**
- * Initializes auto-submit behavior for the submissions filters form.
- * @param {Document|Element} root - Root element to search from.
- * @returns {void}
+ * Gets the CFS review modal custom element from the current document.
+ * @returns {Element|null} Review modal element when present.
  */
-export const initializeSubmissionFilters = (root = document) => {
-  const form = getElementById(root, SUBMISSIONS_FILTERS_FORM_ID);
-  if (!markDatasetReady(form, SUBMISSIONS_FILTERS_BOUND_KEY)) {
-    return;
-  }
-
-  const sort = getElementById(root, SUBMISSIONS_FILTERS_SORT_ID);
-  const labelFilter = getElementById(root, SUBMISSIONS_FILTER_ID);
-  const submitFilters = () => {
-    window.requestAnimationFrame(() => form.requestSubmit());
-  };
-
-  sort?.addEventListener("change", submitFilters);
-  labelFilter?.addEventListener("change", submitFilters);
-};
-
 const getReviewSubmissionModal = () => getElementById(document, MODAL_ELEMENT_ID);
 
+/**
+ * Opens the CFS review modal from a submission action button payload.
+ * @param {HTMLElement} button - Button carrying serialized submission data.
+ * @returns {void}
+ */
 const openSubmissionModal = (button) => {
   const payload = button.dataset.submission;
   if (!payload) {
@@ -63,6 +51,10 @@ const openSubmissionModal = (button) => {
   modal.open(submission);
 };
 
+/**
+ * Binds document-level CFS review handlers once for swapped submission lists.
+ * @returns {void}
+ */
 const bindCfsSubmissionGlobalHandlers = () => {
   if (!markDatasetReady(document.documentElement, DATA_KEY)) {
     return;
@@ -92,6 +84,32 @@ const bindCfsSubmissionGlobalHandlers = () => {
   });
 };
 
+/**
+ * Initializes auto-submit behavior for the submissions filters form.
+ * @param {Document|Element} root - Root element to search from.
+ * @returns {void}
+ */
+export const initializeSubmissionFilters = (root = document) => {
+  const form = getElementById(root, SUBMISSIONS_FILTERS_FORM_ID);
+  if (!markDatasetReady(form, SUBMISSIONS_FILTERS_BOUND_KEY)) {
+    return;
+  }
+
+  const sort = getElementById(root, SUBMISSIONS_FILTERS_SORT_ID);
+  const labelFilter = getElementById(root, SUBMISSIONS_FILTER_ID);
+  const submitFilters = () => {
+    window.requestAnimationFrame(() => form.requestSubmit());
+  };
+
+  sort?.addEventListener("change", submitFilters);
+  labelFilter?.addEventListener("change", submitFilters);
+};
+
+/**
+ * Initializes CFS submission filters and shared review modal handlers.
+ * @param {Document|Element} root - Root element to search from.
+ * @returns {void}
+ */
 const initializeCfsSubmissions = (root = document) => {
   bindCfsSubmissionGlobalHandlers();
   initializeSubmissionFilters(root);

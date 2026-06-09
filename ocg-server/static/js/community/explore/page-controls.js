@@ -101,63 +101,6 @@ const bindCalendarControls = (root, calendar, options = {}) => {
 };
 
 /**
- * Syncs the no-results placeholders with the current filter state.
- * @param {Document|Element} root - Root element containing the swapped results
- */
-export const syncNoResultsPlaceholders = (root = document) => {
-  const defaultPlaceholders = root.querySelectorAll(NO_RESULTS_DEFAULT_SELECTOR);
-  const filteredPlaceholders = root.querySelectorAll(NO_RESULTS_FILTERED_SELECTOR);
-  if (defaultPlaceholders.length === 0 && filteredPlaceholders.length === 0) {
-    return;
-  }
-
-  const formId = getExploreFormId();
-  if (!formId) {
-    return;
-  }
-
-  const hasCalendar = Boolean(getElementById(document, CALENDAR_BOX_ID));
-  const filtered = hasCalendar ? hasActiveCalendarFilters(formId) : hasActiveFilters(formId);
-
-  defaultPlaceholders.forEach((placeholder) => {
-    setElementHidden(placeholder, filtered);
-  });
-  filteredPlaceholders.forEach((placeholder) => {
-    setElementHidden(placeholder, !filtered);
-  });
-};
-
-/**
- * Initializes explore calendar and map widgets from declarative payload markers.
- * @param {Document|Element} root - Root element containing widget markers
- * @param {Object} options - Initialization options
- * @param {boolean} options.force - Whether to initialize widgets marked ready
- */
-export const initializeExploreWidgets = async (root = document, { force = false } = {}) => {
-  const calendarMarker = root.querySelector(CALENDAR_DATA_SELECTOR);
-  if (calendarMarker && (force || !isDatasetReady(calendarMarker, EXPLORE_WIDGET_READY_KEY))) {
-    const data = readExplorePayload(calendarMarker);
-    if (data) {
-      markDatasetReady(calendarMarker, EXPLORE_WIDGET_READY_KEY);
-      const module = await import("/static/js/community/explore/calendar.js");
-      const calendar = new module.Calendar(data);
-      bindCalendarControls(root, calendar, { force });
-    }
-  }
-
-  const mapMarker = root.querySelector(MAP_DATA_SELECTOR);
-  if (mapMarker && (force || !isDatasetReady(mapMarker, EXPLORE_WIDGET_READY_KEY))) {
-    const data = readExplorePayload(mapMarker);
-    const entity = mapMarker.dataset.entity;
-    if (data && entity) {
-      markDatasetReady(mapMarker, EXPLORE_WIDGET_READY_KEY);
-      const module = await import("/static/js/community/explore/map.js");
-      new module.Map(entity, data);
-    }
-  }
-};
-
-/**
  * Handles click interactions for explore controls.
  * @param {MouseEvent} event - Click event
  */
@@ -259,6 +202,63 @@ const handleExploreAfterSwap = (event) => {
   if (event.target instanceof Element) {
     syncNoResultsPlaceholders(event.target);
     initializeExploreWidgets(event.target);
+  }
+};
+
+/**
+ * Syncs the no-results placeholders with the current filter state.
+ * @param {Document|Element} root - Root element containing the swapped results
+ */
+export const syncNoResultsPlaceholders = (root = document) => {
+  const defaultPlaceholders = root.querySelectorAll(NO_RESULTS_DEFAULT_SELECTOR);
+  const filteredPlaceholders = root.querySelectorAll(NO_RESULTS_FILTERED_SELECTOR);
+  if (defaultPlaceholders.length === 0 && filteredPlaceholders.length === 0) {
+    return;
+  }
+
+  const formId = getExploreFormId();
+  if (!formId) {
+    return;
+  }
+
+  const hasCalendar = Boolean(getElementById(document, CALENDAR_BOX_ID));
+  const filtered = hasCalendar ? hasActiveCalendarFilters(formId) : hasActiveFilters(formId);
+
+  defaultPlaceholders.forEach((placeholder) => {
+    setElementHidden(placeholder, filtered);
+  });
+  filteredPlaceholders.forEach((placeholder) => {
+    setElementHidden(placeholder, !filtered);
+  });
+};
+
+/**
+ * Initializes explore calendar and map widgets from declarative payload markers.
+ * @param {Document|Element} root - Root element containing widget markers
+ * @param {Object} options - Initialization options
+ * @param {boolean} options.force - Whether to initialize widgets marked ready
+ */
+export const initializeExploreWidgets = async (root = document, { force = false } = {}) => {
+  const calendarMarker = root.querySelector(CALENDAR_DATA_SELECTOR);
+  if (calendarMarker && (force || !isDatasetReady(calendarMarker, EXPLORE_WIDGET_READY_KEY))) {
+    const data = readExplorePayload(calendarMarker);
+    if (data) {
+      markDatasetReady(calendarMarker, EXPLORE_WIDGET_READY_KEY);
+      const module = await import("/static/js/community/explore/calendar.js");
+      const calendar = new module.Calendar(data);
+      bindCalendarControls(root, calendar, { force });
+    }
+  }
+
+  const mapMarker = root.querySelector(MAP_DATA_SELECTOR);
+  if (mapMarker && (force || !isDatasetReady(mapMarker, EXPLORE_WIDGET_READY_KEY))) {
+    const data = readExplorePayload(mapMarker);
+    const entity = mapMarker.dataset.entity;
+    if (data && entity) {
+      markDatasetReady(mapMarker, EXPLORE_WIDGET_READY_KEY);
+      const module = await import("/static/js/community/explore/map.js");
+      new module.Map(entity, data);
+    }
   }
 };
 

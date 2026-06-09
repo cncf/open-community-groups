@@ -134,6 +134,10 @@ const closeAuditLogFiltersModal = () => {
   }
 };
 
+/**
+ * Binds shared audit log click and keyboard handlers once per page lifetime.
+ * @returns {void}
+ */
 const bindAuditLogGlobalHandlers = () => {
   if (auditLogGlobalHandlersBound) {
     return;
