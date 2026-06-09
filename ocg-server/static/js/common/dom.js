@@ -176,8 +176,8 @@ export const initializeOnReady = (callback) => {
 };
 
 /**
- * Covers the initial document and later HTMX fragments with the same callback.
- * @param {(root: Document|Element) => void} callback Initialization callback.
+ * Covers the initial document, HTMX fragments, and restored history snapshots.
+ * @param {(root: Document|Element, context?: object) => void} callback Initialization callback.
  * @returns {void}
  */
 export const initializeOnReadyAndHtmxLoad = (callback) => {
@@ -186,6 +186,11 @@ export const initializeOnReadyAndHtmxLoad = (callback) => {
   document.addEventListener("htmx:load", (event) => {
     const root = event.target instanceof Element ? event.target : document;
     callback(root);
+  });
+
+  document.addEventListener("htmx:historyRestore", (event) => {
+    const root = event.target instanceof Element ? event.target : document;
+    callback(root, { historyRestore: true });
   });
 };
 

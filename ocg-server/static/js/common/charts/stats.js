@@ -87,6 +87,7 @@ export const getStatsMarker = (root, selector) => {
  * @param {Function} config.initialize - Chart initializer.
  * @param {string} config.parseErrorMessage - Payload parse error message.
  * @param {string} config.initErrorMessage - Chart initialization error message.
+ * @param {boolean} config.force - Whether to ignore an existing ready marker.
  * @returns {Promise<void>} Promise resolved when initialization finishes.
  */
 export const initializeChartsFromJsonMarker = async ({
@@ -96,9 +97,10 @@ export const initializeChartsFromJsonMarker = async ({
   initialize,
   parseErrorMessage,
   initErrorMessage,
+  force = false,
 }) => {
   const marker = getStatsMarker(root, selector);
-  if (!marker || isDatasetReady(marker, readyKey)) {
+  if (!marker || (!force && isDatasetReady(marker, readyKey))) {
     return;
   }
 

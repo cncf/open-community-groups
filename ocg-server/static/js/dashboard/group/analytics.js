@@ -236,9 +236,10 @@ export const initAnalyticsCharts = async (stats) => {
 /**
  * Initialize group analytics charts from the page JSON marker.
  * @param {Document|Element} root - Root element to search from.
+ * @param {Object} context - Initialization lifecycle context.
  * @returns {Promise<void>} Promise resolved when initialization finishes.
  */
-export const initializeGroupAnalyticsFromPage = async (root = document) => {
+export const initializeGroupAnalyticsFromPage = async (root = document, context = {}) => {
   return initializeChartsFromJsonMarker({
     root,
     selector: GROUP_ANALYTICS_DATA_SELECTOR,
@@ -246,6 +247,7 @@ export const initializeGroupAnalyticsFromPage = async (root = document) => {
     initialize: initAnalyticsCharts,
     parseErrorMessage: "Failed to parse group analytics payload:",
     initErrorMessage: "Failed to initialize analytics charts:",
+    force: context.historyRestore === true,
   });
 };
 

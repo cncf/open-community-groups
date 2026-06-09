@@ -139,9 +139,10 @@ export const initSiteStatsCharts = async (stats) => {
 /**
  * Initialize site stats charts from the page JSON marker.
  * @param {Document|Element} root - Root element to search from.
+ * @param {Object} context - Initialization lifecycle context.
  * @returns {Promise<void>} Promise resolved when initialization finishes.
  */
-export const initializeSiteStatsFromPage = async (root = document) => {
+export const initializeSiteStatsFromPage = async (root = document, context = {}) => {
   return initializeChartsFromJsonMarker({
     root,
     selector: SITE_STATS_DATA_SELECTOR,
@@ -149,6 +150,7 @@ export const initializeSiteStatsFromPage = async (root = document) => {
     initialize: initSiteStatsCharts,
     parseErrorMessage: "Failed to parse site stats payload:",
     initErrorMessage: "Failed to initialize site stats charts:",
+    force: context.historyRestore === true,
   });
 };
 

@@ -7,6 +7,7 @@ import {
   registerHtmxNoEmptyValuesExtensions,
   registerHtmxResponseHandlers,
 } from "/static/js/common/htmx-extensions.js";
+import { resetRestoredModalState } from "/static/js/common/modals/modal-lifecycle.js";
 
 // Install request filtering before HTMX builds GET query strings.
 registerHtmxNoEmptyValuesExtensions(window.htmx);
@@ -17,3 +18,15 @@ registerHtmxResponseHandlers(document);
 if (consumePendingDeploymentRefreshAlert()) {
   showInfoAlert(DEPLOYMENT_REFRESH_MESSAGE);
 }
+
+// HTMX can restore cached snapshots without running module scripts again.
+document.addEventListener("htmx:historyRestore", () => {
+  resetRestoredModalState(document);
+});
+
+// Native Back/Forward cache restores need the same stale modal cleanup.
+window.addEventListener("pageshow", (event) => {
+  if (event.persisted) {
+    resetRestoredModalState(document);
+  }
+});

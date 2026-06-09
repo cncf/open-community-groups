@@ -1,4 +1,5 @@
-import { lockBodyScroll, unlockBodyScroll } from "/static/js/common/common.js";
+import { lockBodyScroll, resetBodyScrollLock, unlockBodyScroll } from "/static/js/common/common.js";
+import { getElementById, setElementHidden } from "/static/js/common/dom.js";
 
 /**
  * Checks whether an event target is the shared modal overlay.
@@ -63,4 +64,29 @@ export const bindModalControlClicks = (controls, handler) => {
   controls.forEach((control) => {
     control?.addEventListener?.("click", handler);
   });
+};
+
+/**
+ * Closes declarative modals and clears scroll locks after history restoration.
+ * @param {Document|Element} root Root restored by the browser or HTMX.
+ * @returns {void}
+ */
+export const resetRestoredModalState = (root = document) => {
+  const triggers =
+    root instanceof Element && root.matches("[data-modal-toggle]")
+      ? [root, ...root.querySelectorAll("[data-modal-toggle]")]
+      : [...(root.querySelectorAll?.("[data-modal-toggle]") || [])];
+
+  triggers.forEach((trigger) => {
+    const modalId = trigger.dataset.modalToggle;
+    if (!modalId) {
+      return;
+    }
+
+    const modal = getElementById(document, modalId);
+    setElementHidden(modal, true);
+    modal?.setAttribute("aria-hidden", "true");
+  });
+
+  resetBodyScrollLock();
 };

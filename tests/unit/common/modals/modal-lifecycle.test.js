@@ -6,6 +6,7 @@ import {
   closeModalBodyScroll,
   isModalOverlayTarget,
   openModalBodyScroll,
+  resetRestoredModalState,
 } from "/static/js/common/modals/modal-lifecycle.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
 
@@ -108,5 +109,31 @@ describe("modal lifecycle", () => {
     expect(isOpen).to.equal(false);
     expect(document.body.dataset.modalOpenCount).to.equal("0");
     expect(document.body.style.overflow).to.equal("");
+  });
+
+  it("hides declarative modals and clears scroll locks after history restore", () => {
+    // Build a restored server-rendered modal fixture.
+    const root = document.createElement("section");
+    root.innerHTML = `
+      <button data-modal-toggle="details-modal">Close</button>
+      <div id="details-modal" aria-hidden="false"></div>
+    `;
+    root.dataset.modalToggle = "root-modal";
+    document.body.append(root);
+    const rootModal = document.createElement("div");
+    rootModal.id = "root-modal";
+    document.body.append(rootModal);
+    document.body.dataset.modalOpenCount = "1";
+    document.body.style.overflow = "hidden";
+
+    // Reset modal state after a cached history snapshot is restored.
+    resetRestoredModalState(root);
+
+    // The restored modal is closed and body scrolling is available again.
+    expect(document.getElementById("details-modal").classList.contains("hidden")).to.equal(true);
+    expect(document.getElementById("details-modal").getAttribute("aria-hidden")).to.equal("true");
+    expect(rootModal.classList.contains("hidden")).to.equal(true);
+    expect(document.body.style.overflow).to.equal("");
+    expect(document.body.dataset.modalOpenCount).to.equal(undefined);
   });
 });

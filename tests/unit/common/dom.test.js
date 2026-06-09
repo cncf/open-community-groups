@@ -67,24 +67,28 @@ describe("common dom", () => {
     expect(getElementById(root, "ticket:price.window")?.textContent).to.equal("Ticket price");
   });
 
-  it("initializes current content and htmx-loaded fragments", () => {
+  it("initializes current, htmx-loaded, and htmx-restored content", () => {
     // Track the roots passed to the lifecycle initializer.
     const listenerTracker = trackAddedEventListeners();
     const initializedRoots = [];
+    const initializedContexts = [];
 
     try {
       // Initialize once for the current document.
-      initializeOnReadyAndHtmxLoad((root) => {
+      initializeOnReadyAndHtmxLoad((root, context = {}) => {
         initializedRoots.push(root);
+        initializedContexts.push(context);
       });
 
       // Dispatch the lifecycle event used by swapped content.
       const fragment = document.createElement("section");
       document.body.append(fragment);
       fragment.dispatchEvent(new CustomEvent("htmx:load", { bubbles: true }));
+      document.dispatchEvent(new CustomEvent("htmx:historyRestore"));
 
-      // Verify current and swapped roots are initialized.
-      expect(initializedRoots).to.deep.equal([document, fragment]);
+      // Verify current, swapped, and restored roots are initialized.
+      expect(initializedRoots).to.deep.equal([document, fragment, document]);
+      expect(initializedContexts).to.deep.equal([{}, {}, { historyRestore: true }]);
     } finally {
       listenerTracker.restore();
     }

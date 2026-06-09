@@ -106,4 +106,26 @@ describe("stats utilities", () => {
     expect(initializedStats).to.deep.equal([{ total: 1 }]);
     expect(document.querySelector("[data-stats]").dataset.statsReady).to.equal("true");
   });
+
+  it("reinitializes charts from a restored JSON marker when forced", async () => {
+    // Build the restored marker fixture with the previous ready flag.
+    document.body.innerHTML = `
+      <script type="application/json" data-stats data-stats-ready="true">{"total": 2}</script>
+    `;
+    const initializedStats = [];
+
+    // Force initialization for markers restored from cached history snapshots.
+    await initializeChartsFromJsonMarker({
+      selector: "[data-stats]",
+      readyKey: "statsReady",
+      initialize: async (stats) => initializedStats.push(stats),
+      parseErrorMessage: "Failed to parse stats:",
+      initErrorMessage: "Failed to initialize stats:",
+      force: true,
+    });
+
+    // Assert restored markers can hydrate charts again.
+    expect(initializedStats).to.deep.equal([{ total: 2 }]);
+    expect(document.querySelector("[data-stats]").dataset.statsReady).to.equal("true");
+  });
 });

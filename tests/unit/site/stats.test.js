@@ -210,4 +210,40 @@ describe("site stats", () => {
     // Verify the page payload renders the same chart set once.
     expect(initCalls).to.have.length(8);
   });
+
+  it("reinitializes restored page payloads on history restore", async () => {
+    // Prepare a stats payload restored from a cached history snapshot.
+    const marker = document.createElement("script");
+    marker.type = "application/json";
+    marker.dataset.siteStats = "";
+    marker.dataset.siteStatsReady = "true";
+    marker.textContent = JSON.stringify({
+      groups: {
+        running_total: [
+          [1, 1],
+          [2, 2],
+        ],
+        per_month: [["2025-01", 1]],
+      },
+      members: {
+        running_total: [],
+        per_month: [],
+      },
+      events: {
+        running_total: [],
+        per_month: [],
+      },
+      attendees: {
+        running_total: [],
+        per_month: [],
+      },
+    });
+    document.body.append(marker);
+
+    // Force rehydration for cached history restores.
+    await initializeSiteStatsFromPage(document, { historyRestore: true });
+
+    // The restored ready marker still renders its available chart data.
+    expect(initCalls.map(({ element }) => element.id)).to.include("groups-running-chart");
+  });
 });

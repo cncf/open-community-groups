@@ -350,6 +350,18 @@ export const unlockBodyScroll = () => {
 };
 
 /**
+ * Restores body scroll state after a cached page snapshot is restored.
+ */
+export const resetBodyScrollLock = () => {
+  const body = document.body;
+  body.style.overflow = body.dataset.modalOverflow ?? "";
+  body.style.paddingRight = body.dataset.modalPaddingRight ?? "";
+  delete body.dataset.modalOpenCount;
+  delete body.dataset.modalOverflow;
+  delete body.dataset.modalPaddingRight;
+};
+
+/**
  * Toggles the visibility of the mobile navigation bar and its backdrop.
  * Shows/hides both the mobile navbar and backdrop by toggling the 'hidden' class.
  */

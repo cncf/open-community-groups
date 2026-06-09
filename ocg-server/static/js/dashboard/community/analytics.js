@@ -700,9 +700,10 @@ export const initAnalyticsCharts = async (stats) => {
 /**
  * Initialize community analytics charts from the page JSON marker.
  * @param {Document|Element} root - Root element to search from.
+ * @param {Object} context - Initialization lifecycle context.
  * @returns {Promise<void>} Promise resolved when initialization finishes.
  */
-export const initializeCommunityAnalyticsFromPage = async (root = document) => {
+export const initializeCommunityAnalyticsFromPage = async (root = document, context = {}) => {
   return initializeChartsFromJsonMarker({
     root,
     selector: COMMUNITY_ANALYTICS_DATA_SELECTOR,
@@ -710,6 +711,7 @@ export const initializeCommunityAnalyticsFromPage = async (root = document) => {
     initialize: initAnalyticsCharts,
     parseErrorMessage: "Failed to parse community analytics payload:",
     initErrorMessage: "Failed to initialize analytics charts:",
+    force: context.historyRestore === true,
   });
 };
 
