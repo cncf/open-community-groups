@@ -1,5 +1,6 @@
 import { confirmAction, confirmSeriesAction, handleHtmxResponse } from "/static/js/common/alerts.js";
 import {
+  closestElement,
   closestElementWithinRoot,
   initializeMatchingRoots,
   initializeOnReadyAndHtmxLoad,
@@ -8,8 +9,10 @@ import {
 } from "/static/js/common/dom.js";
 
 const initializedRoots = new WeakSet();
+let documentDismissHandlerBound = false;
 const EVENTS_LIST_PAGE_SELECTOR = "[data-events-list-page]";
 const EVENT_ACTION_DROPDOWN_SELECTOR = "[data-event-actions-dropdown]";
+const EVENT_ACTIONS_BUTTON_SELECTOR = ".btn-actions";
 const INVITATION_REQUEST_ACTION_SELECTOR = "[data-invitation-request-action]";
 
 const closeDropdowns = (root, exceptDropdown = null) => {
@@ -89,6 +92,29 @@ const handleInvitationRequestAfterRequest = (button, event) => {
 };
 
 /**
+ * Closes open event action dropdowns when clicking outside all event lists.
+ * @returns {void}
+ */
+const bindDocumentDropdownDismissHandler = () => {
+  if (documentDismissHandlerBound) {
+    return;
+  }
+
+  documentDismissHandlerBound = true;
+  document.addEventListener("click", (event) => {
+    if (
+      closestElement(event.target, EVENTS_LIST_PAGE_SELECTOR) ||
+      closestElement(event.target, EVENT_ACTION_DROPDOWN_SELECTOR) ||
+      closestElement(event.target, EVENT_ACTIONS_BUTTON_SELECTOR)
+    ) {
+      return;
+    }
+
+    closeDropdowns(document);
+  });
+};
+
+/**
  * Initializes scoped events-list actions and invitation request feedback.
  * @param {Document|Element} root Root element containing the events list page.
  * @returns {void}
@@ -99,9 +125,10 @@ export const initializeEventsListPage = (root = document) => {
   }
 
   initializedRoots.add(root);
+  bindDocumentDropdownDismissHandler();
 
   root.addEventListener("click", (event) => {
-    const actionsButton = closestElementWithinRoot(event.target, ".btn-actions", root);
+    const actionsButton = closestElementWithinRoot(event.target, EVENT_ACTIONS_BUTTON_SELECTOR, root);
     if (actionsButton) {
       handleActionsMenuClick(actionsButton, root);
       return;

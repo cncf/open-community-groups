@@ -1,6 +1,6 @@
 import { expect } from "@open-wc/testing";
 
-import { initializeSubmissionFilters } from "/static/js/dashboard/event/cfs-submissions-page.js";
+import { initializeSubmissionFilters } from "/static/js/dashboard/event/cfs-submissions-actions.js";
 import { useDashboardTestEnv } from "/tests/unit/test-utils/env.js";
 import {
   dispatchHtmxAfterRequest,

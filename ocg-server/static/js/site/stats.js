@@ -21,7 +21,7 @@ const SITE_STATS_DATA_SELECTOR = "[data-site-stats]";
 const SITE_STATS_READY_KEY = "siteStatsReady";
 
 /**
- * Apply stats-page specific legend styling without affecting dashboard charts.
+ * Apply public stats page legend styling without affecting dashboard charts.
  * @param {Object} option - ECharts option object.
  * @param {Object} legendOverrides - Legend overrides.
  * @returns {Object} Styled ECharts option.

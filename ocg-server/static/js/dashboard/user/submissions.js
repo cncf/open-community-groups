@@ -16,9 +16,23 @@ const ACTION_REQUIRED_MODAL_CANCEL_ID = "cancel-action-required-modal";
 const ACTION_REQUIRED_MODAL_OVERLAY_ID = "overlay-action-required-modal";
 const ACTION_REQUIRED_TRIGGER_SELECTOR = '[data-action="open-action-required-modal"]';
 
+/**
+ * Gets the action-required modal from the provided root.
+ * @param {Document|Element} root - Root element to search from.
+ * @returns {Element|null} Action-required modal when present.
+ */
+const getActionRequiredModal = (root = document) => getElementById(root, ACTION_REQUIRED_MODAL_ID);
+
+/**
+ * Initializes the action-required modal controls and trigger buttons.
+ * @param {Document|Element} root - Root element to search from.
+ * @returns {void}
+ */
 const initializeActionRequiredModal = (root = document) => {
-  const modal = getElementById(root, ACTION_REQUIRED_MODAL_ID);
-  const message = getElementById(root, ACTION_REQUIRED_MODAL_MESSAGE_ID);
+  const modal = getActionRequiredModal(root) || getActionRequiredModal(document);
+  const message =
+    getElementById(root, ACTION_REQUIRED_MODAL_MESSAGE_ID) ||
+    getElementById(document, ACTION_REQUIRED_MODAL_MESSAGE_ID);
   if (!modal || !message) {
     return;
   }
@@ -32,9 +46,9 @@ const initializeActionRequiredModal = (root = document) => {
   if (markDatasetReady(modal, "bound")) {
     bindModalControlClicks(
       [
-        getElementById(root, ACTION_REQUIRED_MODAL_CLOSE_ID),
-        getElementById(root, ACTION_REQUIRED_MODAL_CANCEL_ID),
-        getElementById(root, ACTION_REQUIRED_MODAL_OVERLAY_ID),
+        getElementById(document, ACTION_REQUIRED_MODAL_CLOSE_ID),
+        getElementById(document, ACTION_REQUIRED_MODAL_CANCEL_ID),
+        getElementById(document, ACTION_REQUIRED_MODAL_OVERLAY_ID),
       ],
       closeModal,
     );

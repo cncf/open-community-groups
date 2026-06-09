@@ -203,16 +203,17 @@ export const updateSortInputsFromSelector = (
  */
 export const searchOnEnter = (e, formId) => {
   if (e.key === "Enter") {
+    const target = "value" in (e.target || {}) ? e.target : e.currentTarget;
     if (formId) {
       triggerChangeOnForm(formId);
     } else {
-      const value = e.currentTarget.value;
+      const value = target?.value || "";
       if (value !== "") {
         const params = new URLSearchParams({ ts_query: value });
         document.location.href = `/explore?${params.toString()}`;
       }
     }
-    e.currentTarget.blur();
+    target?.blur?.();
   }
 };
 

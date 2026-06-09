@@ -1,6 +1,6 @@
 import { expect } from "@open-wc/testing";
 
-import { initializeCommunityGroupsList } from "/static/js/dashboard/community/groups-list-page.js";
+import { initializeCommunityGroupsList } from "/static/js/dashboard/community/groups-list.js";
 import { waitForMicrotask } from "/tests/unit/test-utils/async.js";
 import { useDashboardTestEnv } from "/tests/unit/test-utils/env.js";
 import { dispatchHtmxLoad } from "/tests/unit/test-utils/htmx.js";

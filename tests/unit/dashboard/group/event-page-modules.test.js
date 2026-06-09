@@ -5,11 +5,11 @@ import "/static/js/dashboard/event/ticketing/ticket-types-editor.js";
 import {
   initializeEventAddPage,
   initializeEventAddPageRoots,
-} from "/static/js/dashboard/group/event-add-page.js";
+} from "/static/js/dashboard/group/event-add.js";
 import {
   initializeEventUpdatePage,
   initializeEventUpdatePageRoots,
-} from "/static/js/dashboard/group/event-update-page.js";
+} from "/static/js/dashboard/group/event-update.js";
 import { waitForMicrotask } from "/tests/unit/test-utils/async.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
 import { mockHtmx, mockSwal } from "/tests/unit/test-utils/globals.js";

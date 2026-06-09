@@ -1,6 +1,6 @@
 import { expect } from "@open-wc/testing";
 
-import { initializeCommunitySettings } from "/static/js/dashboard/community/settings-page.js";
+import { initializeCommunitySettings } from "/static/js/dashboard/community/settings-form.js";
 import { dispatchHtmxLoad } from "/tests/unit/test-utils/htmx.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
 

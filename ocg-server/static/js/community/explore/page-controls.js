@@ -1,7 +1,6 @@
 import {
   cleanInputField,
   closeFiltersDrawer,
-  hasActiveCalendarFilters,
   hasActiveFilters,
   openFiltersDrawer,
   resetDateFiltersOnCalendarViewMode,
@@ -216,13 +215,16 @@ export const syncNoResultsPlaceholders = (root = document) => {
     return;
   }
 
+  if (getElementById(root, CALENDAR_BOX_ID)) {
+    return;
+  }
+
   const formId = getExploreFormId();
   if (!formId) {
     return;
   }
 
-  const hasCalendar = Boolean(getElementById(document, CALENDAR_BOX_ID));
-  const filtered = hasCalendar ? hasActiveCalendarFilters(formId) : hasActiveFilters(formId);
+  const filtered = hasActiveFilters(formId);
 
   defaultPlaceholders.forEach((placeholder) => {
     setElementHidden(placeholder, filtered);

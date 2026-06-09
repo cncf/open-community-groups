@@ -1,6 +1,6 @@
 import { expect } from "@open-wc/testing";
 
-import { initializeEventsListPage } from "/static/js/dashboard/group/events-list-page.js";
+import { initializeEventsListPage } from "/static/js/dashboard/group/events-list.js";
 import { waitForMicrotask } from "/tests/unit/test-utils/async.js";
 import { useDashboardTestEnv } from "/tests/unit/test-utils/env.js";
 import { dispatchHtmxLoad } from "/tests/unit/test-utils/htmx.js";
@@ -61,6 +61,12 @@ describe("events list page", () => {
 
     // Click outside the dropdown to close it.
     root.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    expect(dropdown.classList.contains("hidden")).to.equal(true);
+
+    // Reopen and click outside the events list root.
+    actionsButton.click();
+    expect(dropdown.classList.contains("hidden")).to.equal(false);
+    document.body.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     expect(dropdown.classList.contains("hidden")).to.equal(true);
   });
 

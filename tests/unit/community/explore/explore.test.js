@@ -152,6 +152,31 @@ describe("explore helpers", () => {
     );
   });
 
+  it("leaves calendar no-results placeholders hidden for the calendar renderer", () => {
+    // Build the calendar results fixture with inactive filters and hidden placeholders.
+    document.body.innerHTML = `
+      <div id="explore-filters">
+        <form id="events-form" class="filters-form"></form>
+      </div>
+      <div id="calendar-results">
+        <div id="calendar-box"></div>
+        <div class="no-results-default hidden"></div>
+        <div class="no-results-filtered hidden"></div>
+      </div>
+    `;
+
+    // Sync the swapped results root before FullCalendar has finished rendering.
+    syncNoResultsPlaceholders(document.getElementById("calendar-results"));
+
+    // Calendar placeholders remain owned by the async calendar renderer.
+    expect(document.querySelector(".no-results-default")?.classList.contains("hidden")).to.equal(
+      true,
+    );
+    expect(document.querySelector(".no-results-filtered")?.classList.contains("hidden")).to.equal(
+      true,
+    );
+  });
+
   it("initializes calendar widgets from declarative payloads", async () => {
     let calendarApi;
 
