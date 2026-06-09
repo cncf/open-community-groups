@@ -11,7 +11,6 @@ import {
   getLocationFieldConfig,
   hasInternalLocationFields,
 } from "/static/js/common/location-field-config.js";
-import { renderLocationCoordinateInputs } from "/static/js/common/location-coordinate-inputs.js";
 import { searchNominatimLocations } from "/static/js/common/location-search-api.js";
 import { getLocationSearchKeyAction } from "/static/js/common/location-search-keyboard.js";
 import {
@@ -31,8 +30,11 @@ import {
   getLocationDisabledInputClasses,
   getLocationTextFieldValueKey,
 } from "/static/js/common/location-search-display.js";
-import { renderLocationSearchInterface } from "/static/js/common/location-search-interface-renderer.js";
-import { renderLocationTextFields } from "/static/js/common/location-text-fields-renderer.js";
+import {
+  renderLocationCoordinateInputs,
+  renderLocationSearchInterface,
+  renderLocationTextFields,
+} from "/static/js/common/location-search-renderer.js";
 import { LocationMapPreview } from "/static/js/common/location-map-preview.js";
 import {
   getClearedLocationMapPreviewState,

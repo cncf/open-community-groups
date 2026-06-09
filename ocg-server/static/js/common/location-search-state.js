@@ -58,6 +58,10 @@ export const getDefaultLocationSearchInternalState = () => ({
   searchError: null,
 });
 
+/**
+ * Maps public location value patch keys to private component backing fields.
+ * @type {Object<string, string>}
+ */
 const LOCATION_VALUE_PROPERTY_MAP = {
   venueNameValue: "_venueNameValue",
   venueAddressValue: "_venueAddressValue",
