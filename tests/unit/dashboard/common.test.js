@@ -8,7 +8,7 @@ import {
   hasTimeSeriesData,
   showChartEmptyState,
   toTimeSeries,
-} from "/static/js/common/charts.js";
+} from "/static/js/common/charts/charts.js";
 import {
   deferUntilHtmxSettled,
 } from "/static/js/dashboard/common.js";

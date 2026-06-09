@@ -6,7 +6,7 @@ import {
   createMonthlyBarChart,
   hasChartData,
   hasTimeSeriesData,
-} from "/static/js/common/charts.js";
+} from "/static/js/common/charts/charts.js";
 import { deferUntilHtmxSettled } from "/static/js/dashboard/common.js";
 import { initializeOnReady } from "/static/js/common/dom.js";
 import {
@@ -14,7 +14,7 @@ import {
   initializeChartsFromJsonMarker,
   registerChartResizeHandler,
   renderChart,
-} from "/static/js/common/stats.js";
+} from "/static/js/common/charts/stats.js";
 
 const GROUP_ANALYTICS_DATA_SELECTOR = "[data-group-analytics]";
 const GROUP_ANALYTICS_READY_KEY = "groupAnalyticsReady";

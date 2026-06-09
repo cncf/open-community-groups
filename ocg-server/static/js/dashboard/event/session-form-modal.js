@@ -4,7 +4,7 @@ import {
   bindModalDismissListeners,
   closeModalBodyScroll,
   openModalBodyScroll,
-} from "/static/js/common/modal-lifecycle.js";
+} from "/static/js/common/modals/modal-lifecycle.js";
 import { isEscapeEvent } from "/static/js/common/keyboard.js";
 import "/static/js/dashboard/event/session-item.js";
 import { createEmptySession } from "/static/js/dashboard/event/sessions-schedule.js";

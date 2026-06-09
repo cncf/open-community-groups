@@ -1,7 +1,7 @@
 import { resolveEventTimezone } from "/static/js/common/common.js";
 import { getElementById } from "/static/js/common/dom.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
-import { bindModalDismissListeners, closeModalBodyScroll } from "/static/js/common/modal-lifecycle.js";
+import { bindModalDismissListeners, closeModalBodyScroll } from "/static/js/common/modals/modal-lifecycle.js";
 import { isEscapeEvent } from "/static/js/common/keyboard.js";
 import {
   resolveCurrencyInputPlaceholder,

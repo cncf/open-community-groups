@@ -190,6 +190,9 @@ const showNoResultsPlaceholder = (wrapper, fullCalendar) => {
   setElementHidden(wrapper?.querySelector(selector), false);
 };
 
+/**
+ * FullCalendar-backed community explore calendar controller.
+ */
 export class Calendar {
   /**
    * Initializes the calendar with FullCalendar library.

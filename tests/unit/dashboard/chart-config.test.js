@@ -10,7 +10,7 @@ import {
   getVerticalBarCategoryAxisConfig,
   getVerticalBarSeriesStyle,
   toCategorySeries,
-} from "/static/js/common/charts.js";
+} from "/static/js/common/charts/charts.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
 
 describe("dashboard chart config helpers", () => {

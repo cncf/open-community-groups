@@ -7,7 +7,7 @@ import {
   isElementHidden,
   markDatasetReady,
 } from "/static/js/common/dom.js";
-import { bindModalControlClicks } from "/static/js/common/modal-lifecycle.js";
+import { bindModalControlClicks } from "/static/js/common/modals/modal-lifecycle.js";
 
 const ACTION_REQUIRED_MODAL_ID = "action-required-modal";
 const ACTION_REQUIRED_MODAL_MESSAGE_ID = "action-required-modal-message";

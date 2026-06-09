@@ -10,6 +10,7 @@ let pendingHeaderNavLink = null;
 let pendingHeaderNavLinkTimer = null;
 
 const headerNavLinkSelector = "[data-header-nav-link]";
+/** Wait before showing nav loading so quick HTMX requests can finish without flicker. */
 const headerNavLinkPendingDelayMs = 120;
 
 /**

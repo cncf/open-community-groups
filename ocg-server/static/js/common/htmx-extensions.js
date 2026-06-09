@@ -7,6 +7,7 @@ import {
 
 // Tracks event roots already wired so repeated initialization stays idempotent.
 const responseHandlerRoots = new WeakSet();
+// Tracks XHRs whose declarative response message was already displayed.
 const handledDeclarativeResponseXhrs = new WeakSet();
 const htmxResponseSelector = "[data-htmx-response]";
 const REFRESH_BODY_TRIGGER = "refresh-body";

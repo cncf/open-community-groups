@@ -1,7 +1,7 @@
 import { toggleModalVisibility } from "/static/js/common/common.js";
 import { showErrorAlert } from "/static/js/common/alerts.js";
 import { getElementById, markDatasetReady } from "/static/js/common/dom.js";
-import { bindModalControlClicks } from "/static/js/common/modal-lifecycle.js";
+import { bindModalControlClicks } from "/static/js/common/modals/modal-lifecycle.js";
 import { setLinkContent } from "/static/js/common/url-utils.js";
 import { printQrCode } from "/static/js/dashboard/group/qr-code-print.js";
 

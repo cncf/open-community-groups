@@ -1,6 +1,6 @@
 import { html, repeat } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { toDateTimeLocalInTimezone, toUtcIsoInTimezone } from "/static/js/common/common.js";
-import { closeModalBodyScroll, openModalBodyScroll } from "/static/js/common/modal-lifecycle.js";
+import { closeModalBodyScroll, openModalBodyScroll } from "/static/js/common/modals/modal-lifecycle.js";
 import { parseJsonAttribute, toBoolean, toTrimmedString } from "/static/js/common/utils.js";
 import {
   formatMinorUnitsForInput,

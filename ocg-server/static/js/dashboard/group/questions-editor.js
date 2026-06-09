@@ -1,6 +1,6 @@
 import { html } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
-import { closeModalBodyScroll, openModalBodyScroll } from "/static/js/common/modal-lifecycle.js";
+import { closeModalBodyScroll, openModalBodyScroll } from "/static/js/common/modals/modal-lifecycle.js";
 import { parseJsonAttribute } from "/static/js/common/utils.js";
 
 const QUESTION_TYPES = [

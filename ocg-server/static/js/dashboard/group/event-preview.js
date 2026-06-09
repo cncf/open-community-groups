@@ -7,12 +7,12 @@ import {
   bindModalDismissListeners,
   closeModalBodyScroll,
   openModalBodyScroll,
-} from "/static/js/common/modal-lifecycle.js";
+} from "/static/js/common/modals/modal-lifecycle.js";
 import { isEscapeEvent } from "/static/js/common/keyboard.js";
 import { setTrustedHtml } from "/static/js/common/trusted-html.js";
 import { parseJsonAttribute } from "/static/js/common/utils.js";
-import "/static/js/common/images-gallery.js";
-import "/static/js/common/user-chip.js";
+import "/static/js/common/modals/images-gallery.js";
+import "/static/js/common/users/user-chip.js";
 import { EVENT_PAGE_FORM_IDS } from "/static/js/dashboard/group/event-page-shared.js";
 
 const PREVIEW_ENDPOINT = "/dashboard/group/events/preview";

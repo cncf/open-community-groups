@@ -145,6 +145,9 @@ const bindMarkerTooltip = (marker, item, tooltipTimers) => {
   });
 };
 
+/**
+ * Leaflet-backed community explore map controller.
+ */
 export class Map {
   /**
    * Initializes the map with Leaflet.js and marker clustering.

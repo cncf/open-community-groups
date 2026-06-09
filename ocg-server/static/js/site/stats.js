@@ -7,14 +7,14 @@ import {
   hasChartData,
   hasTimeSeriesData,
   loadEChartsScript,
-} from "/static/js/common/charts.js";
+} from "/static/js/common/charts/charts.js";
 import {
   getCategoryLabelInterval,
   getTimeSplitNumber,
   initializeChartsFromJsonMarker,
   registerChartResizeHandler,
   renderChart,
-} from "/static/js/common/stats.js";
+} from "/static/js/common/charts/stats.js";
 import { initializeOnReadyAndHtmxLoad } from "/static/js/common/dom.js";
 
 const SITE_STATS_DATA_SELECTOR = "[data-site-stats]";

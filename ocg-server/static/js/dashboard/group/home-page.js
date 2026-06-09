@@ -21,6 +21,6 @@ import "/static/js/dashboard/group/sponsors.js";
 import "/static/js/dashboard/location-clear.js";
 import "/static/js/dashboard/team-role-form.js";
 import "/static/js/common/online-event-details.js";
-import "/static/js/common/speakers-selector.js";
-import "/static/js/common/user-search-selector.js";
+import "/static/js/common/users/speakers-selector.js";
+import "/static/js/common/users/user-search-selector.js";
 import "/static/js/common/timezone-selector.js";

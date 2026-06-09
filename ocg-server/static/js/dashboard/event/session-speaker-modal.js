@@ -1,13 +1,13 @@
 import { html } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
-import { focusUserSearchField } from "/static/js/common/user-search-field.js";
-import "/static/js/common/logo-image.js";
+import { focusUserSearchField } from "/static/js/common/users/user-search-field.js";
+import "/static/js/common/media/logo-image.js";
 import { computeUserInitials } from "/static/js/common/common.js";
 import {
   bindModalDismissListeners,
   closeModalBodyScroll,
   openModalBodyScroll,
-} from "/static/js/common/modal-lifecycle.js";
+} from "/static/js/common/modals/modal-lifecycle.js";
 import { isEscapeEvent } from "/static/js/common/keyboard.js";
 import { speakerKey } from "/static/js/dashboard/event/speaker-utils.js";
 

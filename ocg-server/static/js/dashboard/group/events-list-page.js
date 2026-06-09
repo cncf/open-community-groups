@@ -88,6 +88,11 @@ const handleInvitationRequestAfterRequest = (button, event) => {
   });
 };
 
+/**
+ * Initializes scoped events-list actions and invitation request feedback.
+ * @param {Document|Element} root Root element containing the events list page.
+ * @returns {void}
+ */
 export const initializeEventsListPage = (root = document) => {
   if (!root || initializedRoots.has(root)) {
     return;

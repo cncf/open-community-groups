@@ -14,7 +14,7 @@ import {
   hasChartData,
   hasTimeSeriesData,
   hasStackedTimeSeriesData,
-} from "/static/js/common/charts.js";
+} from "/static/js/common/charts/charts.js";
 import { deferUntilHtmxSettled } from "/static/js/dashboard/common.js";
 import { initializeOnReady, setElementHidden } from "/static/js/common/dom.js";
 import {
@@ -22,7 +22,7 @@ import {
   initializeChartsFromJsonMarker,
   registerChartResizeHandler,
   renderChart,
-} from "/static/js/common/stats.js";
+} from "/static/js/common/charts/stats.js";
 
 const COMMUNITY_ANALYTICS_DATA_SELECTOR = "[data-community-analytics]";
 const COMMUNITY_ANALYTICS_READY_KEY = "communityAnalyticsReady";

@@ -1,7 +1,7 @@
 import { html } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { computeUserInitials } from "/static/js/common/common.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
-import "/static/js/common/logo-image.js";
+import "/static/js/common/media/logo-image.js";
 import { formatTimeDisplay } from "/static/js/dashboard/event/sessions-datetime.js";
 
 /**
