@@ -4,10 +4,10 @@ import { computeUserInitials } from "/static/js/common/common.js";
 import {
   bindModalDismissListeners,
   closeModalBodyScroll,
-  isModalEscapeEvent,
   isModalOverlayTarget,
   openModalBodyScroll,
 } from "/static/js/common/modal-lifecycle.js";
+import { isEscapeEvent } from "/static/js/common/keyboard.js";
 import { renderTrustedHtml } from "/static/js/common/trusted-lit-html.js";
 import "/static/js/common/logo-image.js";
 
@@ -74,7 +74,7 @@ export class UserInfoModal extends LitWrapper {
   }
 
   _handleKeydown(e) {
-    if (this._isOpen && isModalEscapeEvent(e)) {
+    if (this._isOpen && isEscapeEvent(e)) {
       e.preventDefault();
       this._closeModal();
     }

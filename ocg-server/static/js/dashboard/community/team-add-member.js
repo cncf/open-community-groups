@@ -8,9 +8,9 @@ import { handleHtmxResponse } from "/static/js/common/alerts.js";
 import {
   bindModalDismissListeners,
   closeModalBodyScroll,
-  isModalEscapeEvent,
   openModalBodyScroll,
 } from "/static/js/common/modal-lifecycle.js";
+import { isEscapeEvent } from "/static/js/common/keyboard.js";
 import { parseJsonAttribute } from "/static/js/common/utils.js";
 
 /**
@@ -106,7 +106,7 @@ export class TeamAddMember extends LitWrapper {
    * @private
    */
   _onKeydown(e) {
-    if (isModalEscapeEvent(e) && this._isOpen) {
+    if (isEscapeEvent(e) && this._isOpen) {
       this._close();
     }
   }

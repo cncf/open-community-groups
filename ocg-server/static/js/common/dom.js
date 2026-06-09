@@ -1,5 +1,5 @@
 /**
- * Finds an element by id from a document-like root or an element subtree.
+ * Supports Document.getElementById and element-scoped lookup by id.
  * @param {Document|Element} root Query root.
  * @param {string} id Element id.
  * @returns {Element|null} Matching element when present.
@@ -18,7 +18,7 @@ export const getElementById = (root, id) => {
 };
 
 /**
- * Checks whether an element has already been marked ready for a behavior.
+ * Checks whether this element was already initialized.
  * @param {Element|null|undefined} element Element with a dataset.
  * @param {string} key Dataset key.
  * @returns {boolean} True when the ready flag is set.
@@ -26,7 +26,7 @@ export const getElementById = (root, id) => {
 export const isDatasetReady = (element, key) => element?.dataset?.[key] === "true";
 
 /**
- * Marks an element ready for a behavior when it has not been marked yet.
+ * Marks an element once so repeated HTMX loads do not double-bind behavior.
  * @param {Element|null|undefined} element Element with a dataset.
  * @param {string} key Dataset key.
  * @returns {boolean} True when the element was newly marked.
@@ -41,7 +41,7 @@ export const markDatasetReady = (element, key) => {
 };
 
 /**
- * Shows or hides an element with the shared hidden utility class.
+ * Adds or removes the hidden class on optional UI elements.
  * @param {Element|null|undefined} element Element to update.
  * @param {boolean} hidden Whether the element should be hidden.
  * @returns {void}
@@ -51,14 +51,14 @@ export const setElementHidden = (element, hidden) => {
 };
 
 /**
- * Checks whether an element has the shared hidden utility class.
+ * Checks whether the hidden class is present.
  * @param {Element|null|undefined} element Element to inspect.
  * @returns {boolean} True when the element is hidden.
  */
 export const isElementHidden = (element) => element?.classList?.contains("hidden") === true;
 
 /**
- * Toggles an element's shared hidden utility class.
+ * Toggles the hidden class on optional UI elements.
  * @param {Element|null|undefined} element Element to update.
  * @returns {void}
  */
@@ -67,7 +67,7 @@ export const toggleElementHidden = (element) => {
 };
 
 /**
- * Ensures an element has an id and returns it.
+ * Preserves existing ids and assigns a stable fallback only when needed.
  * @param {Element|null|undefined} element Element that needs an id.
  * @param {string} fallbackId Id to assign when the element has none.
  * @returns {string} Existing or assigned id.
@@ -85,7 +85,7 @@ export const ensureElementId = (element, fallbackId) => {
 };
 
 /**
- * Focuses an element by id when present.
+ * Focuses an optional element and supports text selection for input-like nodes.
  * @param {Document|Element} root Query root.
  * @param {string} id Element id.
  * @param {object} [options={}] Focus options.
@@ -102,7 +102,7 @@ export const focusElementById = (root, id, { select = false } = {}) => {
 };
 
 /**
- * Finds the closest matching element from an event target-like value.
+ * Safely runs closest() on values that might not be Elements.
  * @param {EventTarget|null|undefined} target Event target to inspect.
  * @param {string} selector Selector to match.
  * @returns {Element|null} Matching element when present.
@@ -111,7 +111,7 @@ export const closestElement = (target, selector) =>
   target instanceof Element ? target.closest(selector) : null;
 
 /**
- * Finds the closest matching element when it belongs to the provided root.
+ * Keeps delegated event matches scoped to the HTMX/document root being scanned.
  * @param {EventTarget|null|undefined} target Event target to inspect.
  * @param {string} selector Selector to match.
  * @param {Document|Element} root Root that must contain the match.
@@ -127,7 +127,7 @@ export const closestElementWithinRoot = (target, selector, root = document) => {
 };
 
 /**
- * Checks whether an event happened outside an element.
+ * Checks the full event path before falling back to event.target.
  * @param {Event} event Event to inspect.
  * @param {Element|null|undefined} element Element that owns the interaction.
  * @returns {boolean} True when the event target is outside the element.
@@ -146,7 +146,7 @@ export const isOutsideElementEvent = (event, element) => {
 };
 
 /**
- * Binds a document click listener that only runs for clicks outside an element.
+ * Calls a handler when the document is clicked outside an element.
  * @param {Element} element Element that owns the interaction.
  * @param {(event: MouseEvent) => void} onOutsideClick Outside click callback.
  * @returns {() => void} Cleanup callback that removes the listener.
@@ -163,7 +163,7 @@ export const bindOutsideClickListener = (element, onOutsideClick) => {
 };
 
 /**
- * Initializes current content when the document is ready.
+ * Runs immediately after DOMContentLoaded, or waits for it when still loading.
  * @param {() => void} callback Initialization callback.
  * @returns {void}
  */
@@ -176,7 +176,7 @@ export const initializeOnReady = (callback) => {
 };
 
 /**
- * Initializes current content once and repeats initialization after HTMX loads.
+ * Covers the initial document and later HTMX fragments with the same callback.
  * @param {(root: Document|Element) => void} callback Initialization callback.
  * @returns {void}
  */
@@ -190,7 +190,7 @@ export const initializeOnReadyAndHtmxLoad = (callback) => {
 };
 
 /**
- * Initializes the matching root and any matching descendants.
+ * Handles both a matching fragment root and matching descendants inside it.
  * @param {Document|Element} root Root element to scan from.
  * @param {string} selector Selector for declarative roots.
  * @param {(element: Element) => void} initializer Root initializer.
@@ -207,7 +207,7 @@ export const initializeMatchingRoots = (root = document, selector, initializer) 
 };
 
 /**
- * Loads an external script once and resolves when the script is available.
+ * Loads a script once, or waits for an existing tag with the same src.
  * @param {string} src Script URL.
  * @param {object} options Loader options.
  * @param {() => boolean} options.isLoaded Existing global/library check.

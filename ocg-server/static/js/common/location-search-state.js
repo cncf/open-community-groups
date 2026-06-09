@@ -1,6 +1,6 @@
 /**
- * Builds the component default public property values.
- * @returns {Object}
+ * Default public properties before Lit reflects attributes onto the element.
+ * @returns {Object} Public property defaults.
  */
 export const getDefaultLocationSearchProperties = () => ({
   placeholderText: "Search for a venue or address...",
@@ -34,8 +34,8 @@ export const getDefaultLocationSearchProperties = () => ({
 });
 
 /**
- * Builds the component default internal state.
- * @returns {Object}
+ * Private state for a new location search component instance.
+ * @returns {Object} Internal state defaults.
  */
 export const getDefaultLocationSearchInternalState = () => ({
   isSearching: false,
@@ -71,7 +71,7 @@ const LOCATION_VALUE_PROPERTY_MAP = {
 };
 
 /**
- * Applies normalized location value updates to a target object.
+ * Copies known value keys onto the component's private backing fields.
  * @param {Object} target Object receiving private location value fields.
  * @param {Object} updates Location value patch.
  * @returns {void}
@@ -85,7 +85,7 @@ export const applyLocationSearchValueUpdates = (target, updates) => {
 };
 
 /**
- * Builds initial value payload from public attributes.
+ * Initial values read from public properties before internal state is seeded.
  * @param {Object} state Component state.
  * @returns {Object} Initial location values.
  */
@@ -102,8 +102,8 @@ export const getInitialLocationSearchValues = (state) => ({
 });
 
 /**
- * Builds the component state for a hidden location search dropdown.
- * @returns {Object}
+ * Dropdown state shared by blur, clear, and empty-query flows.
+ * @returns {Object} Hidden dropdown state.
  */
 export const getHiddenLocationSearchState = () => ({
   showDropdown: false,
@@ -113,8 +113,8 @@ export const getHiddenLocationSearchState = () => ({
 });
 
 /**
- * Builds the component state for a new location search request.
- * @returns {Object}
+ * Visible loading state used while an address search request is in flight.
+ * @returns {Object} Started search state.
  */
 export const getStartedLocationSearchState = () => ({
   showDropdown: true,
@@ -125,8 +125,8 @@ export const getStartedLocationSearchState = () => ({
 });
 
 /**
- * Builds the component state for clearing the search input and results.
- * @returns {Object}
+ * Empty query state used when the selected or typed location is reset.
+ * @returns {Object} Cleared search state.
  */
 export const getClearedLocationSearchState = () => ({
   searchQuery: "",
@@ -135,9 +135,9 @@ export const getClearedLocationSearchState = () => ({
 });
 
 /**
- * Builds the component state for successful search results.
+ * Stores fresh result payloads without changing the active search query.
  * @param {Array<Object>} results Search result payloads.
- * @returns {Object}
+ * @returns {Object} Successful search state.
  */
 export const getSuccessfulLocationSearchState = (results) => ({
   searchResults: results,
@@ -145,9 +145,9 @@ export const getSuccessfulLocationSearchState = (results) => ({
 });
 
 /**
- * Builds the component state for failed search results.
+ * Clears stale results and keeps a user-facing failure message.
  * @param {Error} error Search error.
- * @returns {Object}
+ * @returns {Object} Failed search state.
  */
 export const getFailedLocationSearchState = (error) => ({
   searchResults: [],
@@ -155,8 +155,8 @@ export const getFailedLocationSearchState = (error) => ({
 });
 
 /**
- * Builds the component state for a completed search request.
- * @returns {Object}
+ * Common completion patch for request handlers that always unset loading.
+ * @returns {Object} Finished search state.
  */
 export const getFinishedLocationSearchState = () => ({
   isSearching: false,

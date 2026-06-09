@@ -4,7 +4,6 @@ import {
   bindModalControlClicks,
   bindModalDismissListeners,
   closeModalBodyScroll,
-  isModalEscapeEvent,
   isModalOverlayTarget,
   openModalBodyScroll,
 } from "/static/js/common/modal-lifecycle.js";
@@ -19,14 +18,12 @@ describe("modal lifecycle", () => {
     resetDom();
   });
 
-  it("recognizes modal dismissal events", () => {
+  it("recognizes modal overlay targets", () => {
     // Build a modal overlay fixture.
     const overlay = document.createElement("div");
     overlay.className = "modal-overlay";
 
-    // The helpers identify Escape and overlay targets.
-    expect(isModalEscapeEvent(new KeyboardEvent("keydown", { key: "Escape" }))).to.equal(true);
-    expect(isModalEscapeEvent(new KeyboardEvent("keydown", { key: "Enter" }))).to.equal(false);
+    // The helper identifies overlay targets.
     expect(isModalOverlayTarget(overlay)).to.equal(true);
     expect(isModalOverlayTarget(document.createElement("div"))).to.equal(false);
     expect(isModalOverlayTarget(null)).to.equal(false);

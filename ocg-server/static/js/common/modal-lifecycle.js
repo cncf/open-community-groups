@@ -1,12 +1,4 @@
-import { isEscapeEvent } from "/static/js/common/keyboard.js";
 import { lockBodyScroll, unlockBodyScroll } from "/static/js/common/common.js";
-
-/**
- * Checks whether a keyboard event should dismiss a modal.
- * @param {KeyboardEvent|Event} event Keyboard event.
- * @returns {boolean} True when the event is Escape.
- */
-export const isModalEscapeEvent = (event) => isEscapeEvent(event);
 
 /**
  * Checks whether an event target is the shared modal overlay.

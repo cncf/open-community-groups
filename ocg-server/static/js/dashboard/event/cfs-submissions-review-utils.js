@@ -1,22 +1,22 @@
 import { parseJsonAttribute } from "/static/js/common/utils.js";
 
 /**
- * Returns the ratings list for a submission.
+ * Ratings are optional on lightweight submission payloads.
  * @param {Object} submission Submission payload.
- * @returns {Array<Object>} Submission ratings.
+ * @returns {Array<Object>} Submission ratings, or an empty list.
  */
 export const getSubmissionRatings = (submission) =>
   Array.isArray(submission?.ratings) ? submission.ratings : [];
 
 /**
- * Normalizes reviewer ids for rating comparisons.
+ * Reviewer ids may arrive as numbers or strings from different payloads.
  * @param {*} reviewerId Reviewer id value.
  * @returns {string} Normalized reviewer id.
  */
 const normalizeReviewerId = (reviewerId) => String(reviewerId || "");
 
 /**
- * Finds the rating created by the current user.
+ * Matches the current reviewer after normalizing both id formats.
  * @param {Object} submission Submission payload.
  * @param {string} currentUserId Current reviewer user id.
  * @returns {Object|null} Current reviewer rating, if present.
@@ -34,7 +34,7 @@ export const findCurrentUserRating = (submission, currentUserId) => {
 };
 
 /**
- * Returns ratings created by other reviewers.
+ * Omits the current user's rating so team feedback can be shown separately.
  * @param {Object} submission Submission payload.
  * @param {string} currentUserId Current reviewer user id.
  * @returns {Array<Object>} Other reviewer ratings.
@@ -51,7 +51,7 @@ export const getOtherTeamRatings = (submission, currentUserId) => {
 };
 
 /**
- * Resolves ratings count for a submission.
+ * Prefers the server count and falls back to the embedded ratings list.
  * @param {Object} submission Submission payload.
  * @returns {number} Ratings count.
  */
@@ -64,7 +64,7 @@ export const getRatingsCount = (submission) => {
 };
 
 /**
- * Resolves average rating for a submission.
+ * Treats missing or invalid averages as zero for display helpers.
  * @param {Object} submission Submission payload.
  * @returns {number} Average rating.
  */
@@ -77,7 +77,7 @@ export const getAverageRating = (submission) => {
 };
 
 /**
- * Returns the color classes for a status.
+ * Keeps status-specific Tailwind classes in one render-safe lookup.
  * @param {string} statusId Status id.
  * @returns {Object} Status color classes.
  */
@@ -103,21 +103,21 @@ export const getStatusColor = (statusId) => {
 };
 
 /**
- * Checks if the message textarea should be required.
+ * Speaker-facing follow-up text is required only for information requests.
  * @param {string} statusId Status id.
  * @returns {boolean} True when a speaker message is required.
  */
 export const isMessageRequired = (statusId) => statusId === "information-requested";
 
 /**
- * Checks whether the submission is linked to an event session.
+ * Linked submissions are already accepted into the event schedule.
  * @param {Object} submission Submission payload.
  * @returns {boolean} True when linked to a session.
  */
 export const isLinkedToSession = (submission) => Boolean(submission?.linked_session_id);
 
 /**
- * Checks whether a status can be selected for the current submission.
+ * Scheduled submissions cannot be moved back out of approved status here.
  * @param {Object} submission Submission payload.
  * @param {string} statusId Status id.
  * @returns {boolean} True when the status is selectable.
@@ -130,7 +130,7 @@ export const isStatusAllowed = (submission, statusId) => {
 };
 
 /**
- * Normalizes available labels payload.
+ * Drops incomplete labels so option rendering only receives usable values.
  * @param {Array<Object>} labels Label payloads.
  * @returns {Array<Object>} Normalized labels.
  */
@@ -151,7 +151,7 @@ export const normalizeLabels = (labels) => {
 };
 
 /**
- * Reads a JSON array attribute unless values are already loaded.
+ * Attribute payloads are only a fallback before async values are loaded.
  * @param {Element} element Source element.
  * @param {string} attributeName Attribute name.
  * @param {Array} currentValues Current loaded values.
@@ -168,9 +168,9 @@ export const parseReviewAttributeList = (element, attributeName, currentValues) 
 };
 
 /**
- * Builds a stable snapshot for mutable review form values.
+ * Sorts label ids so change detection is independent of selection order.
  * @param {Object} state Review form state.
- * @returns {string}
+ * @returns {string} Serialized form state.
  */
 export const buildReviewFormStateSnapshot = (state) => {
   const selectedLabelIds = [...(state.selectedLabelIds || [])].sort();
@@ -184,7 +184,7 @@ export const buildReviewFormStateSnapshot = (state) => {
 };
 
 /**
- * Builds the approved submission payload emitted to session editors.
+ * Returns the minimal approved submission shape needed by session editors.
  * @param {Object} submission Submission payload.
  * @param {string} statusId Selected status id.
  * @returns {Object|null} Approved submission summary, or null when not approved.
@@ -205,7 +205,7 @@ export const buildApprovedSubmissionSummary = (submission, statusId) => {
 };
 
 /**
- * Builds the approved-submissions event detail payload.
+ * Event detail keeps approval state and summary payload in sync for listeners.
  * @param {Object} submission Submission payload.
  * @param {string} statusId Selected status id.
  * @returns {Object}
@@ -217,7 +217,7 @@ export const buildApprovedSubmissionEventDetail = (submission, statusId) => ({
 });
 
 /**
- * Handles review form after-request responses.
+ * Runs the shared HTMX response handler before applying local success state.
  * @param {Object} options Handler options.
  * @param {Event} options.event HTMX after-request event.
  * @param {Function} options.handleResponse Response handler.
@@ -237,7 +237,7 @@ export const handleReviewAfterRequest = ({ event, handleResponse, onSuccess }) =
 };
 
 /**
- * Gets selected label ids from a submission payload.
+ * Normalizes selected label ids for checkbox state comparisons.
  * @param {Object} submission Submission payload.
  * @returns {Array<string>} Selected label ids.
  */
@@ -247,7 +247,7 @@ export const getSubmissionLabelIds = (submission) =>
     .filter((eventCfsLabelId) => eventCfsLabelId.length > 0);
 
 /**
- * Resolves the editable review status for a submission.
+ * Linked submissions always reopen as approved because other statuses are locked.
  * @param {Object} submission Submission payload.
  * @returns {string} Review status id.
  */
@@ -255,7 +255,7 @@ export const getSubmissionReviewStatusId = (submission) =>
   submission?.linked_session_id ? "approved" : String(submission?.status_id || "");
 
 /**
- * Builds modal state from the submission and current user's rating.
+ * Seeds the editable modal fields from submission state and reviewer rating.
  * @param {Object} submission Submission payload.
  * @param {Object|null} currentUserRating Current user's rating payload.
  * @returns {Object} Review modal state.
@@ -269,7 +269,7 @@ export const buildReviewModalOpenState = (submission, currentUserRating) => ({
 });
 
 /**
- * Builds default public modal properties.
+ * Public defaults used before attributes and async payloads hydrate the modal.
  * @returns {Object} Public modal property defaults.
  */
 export const getReviewModalDefaultProperties = () => ({
@@ -281,7 +281,7 @@ export const getReviewModalDefaultProperties = () => ({
 });
 
 /**
- * Builds default internal modal state.
+ * Internal defaults keep the modal closed and form controls empty.
  * @returns {Object} Internal modal state defaults.
  */
 export const getReviewModalDefaultState = () => ({
@@ -297,7 +297,7 @@ export const getReviewModalDefaultState = () => ({
 });
 
 /**
- * Builds internal state for closing the modal.
+ * Closing resets form state while preserving the active tab requested by caller.
  * @param {string} activeTab Default active tab id.
  * @returns {Object} Closed modal state.
  */
@@ -307,7 +307,7 @@ export const getReviewModalClosedState = (activeTab) => ({
 });
 
 /**
- * Checks whether a review tab id is known.
+ * Accepts only the tab ids rendered by the review modal.
  * @param {string} tabId Candidate tab id.
  * @param {Object} tabs Review tab ids.
  * @returns {boolean} True when the tab id is known.
@@ -316,7 +316,7 @@ export const isKnownReviewTab = (tabId, tabs) =>
   tabId === tabs.DETAILS || tabId === tabs.DECISION || tabId === tabs.RATINGS;
 
 /**
- * Formats the average rating summary for display.
+ * Keeps whole-number averages compact and decimal averages to one place.
  * @param {number} averageRating Average rating value.
  * @returns {string} Display text.
  */

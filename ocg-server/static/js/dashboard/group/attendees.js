@@ -18,7 +18,6 @@ import {
 } from "/static/js/common/dom.js";
 import { ocgFetch } from "/static/js/common/fetch.js";
 import { isEscapeEvent } from "/static/js/common/keyboard.js";
-import { isModalEscapeEvent } from "/static/js/common/modal-lifecycle.js";
 import { readTrustedHtml, setTrustedHtml } from "/static/js/common/trusted-html.js";
 
 const modalId = "attendee-notification-modal";
@@ -103,7 +102,7 @@ const closeScopedModalFromEvent = (event, root, closeSelector, closeModal) => {
  */
 const bindScopedModalEscape = (root, closeModal) => {
   root.addEventListener("keydown", (event) => {
-    if (isModalEscapeEvent(event)) {
+    if (isEscapeEvent(event)) {
       closeModal(root);
     }
   });

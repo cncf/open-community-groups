@@ -3,9 +3,9 @@ import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import {
   bindModalDismissListeners,
   closeModalBodyScroll,
-  isModalEscapeEvent,
   openModalBodyScroll,
 } from "/static/js/common/modal-lifecycle.js";
+import { isEscapeEvent } from "/static/js/common/keyboard.js";
 import "/static/js/dashboard/event/session-item.js";
 import { createEmptySession } from "/static/js/dashboard/event/sessions-schedule.js";
 
@@ -107,7 +107,7 @@ class SessionFormModal extends LitWrapper {
    * @private
    */
   _onKeydown(event) {
-    if (isModalEscapeEvent(event) && this._isOpen) {
+    if (isEscapeEvent(event) && this._isOpen) {
       this.close();
     }
   }

@@ -4,10 +4,10 @@ import { showSuccessAlert, showErrorAlert } from "/static/js/common/alerts.js";
 import {
   bindModalDismissListeners,
   closeModalBodyScroll,
-  isModalEscapeEvent,
   isModalOverlayTarget,
   openModalBodyScroll,
 } from "/static/js/common/modal-lifecycle.js";
+import { isEscapeEvent } from "/static/js/common/keyboard.js";
 import "/static/vendor/js/sharer.v0.5.3.min.js";
 
 /**
@@ -145,7 +145,7 @@ export class ShareModal extends LitWrapper {
    * @param {KeyboardEvent} e - The keyboard event
    */
   _handleKeydown(e) {
-    if (this._isOpen && isModalEscapeEvent(e)) {
+    if (this._isOpen && isEscapeEvent(e)) {
       e.preventDefault();
       this._closeModal();
     }

@@ -1,7 +1,7 @@
 /**
- * Builds location field config from component public properties.
+ * Public property snapshot consumed by field sync helpers.
  * @param {Object} component Location search component.
- * @returns {Object}
+ * @returns {Object} Location field configuration.
  */
 export const getLocationFieldConfig = (component) => ({
   venueNameFieldId: component.venueNameFieldId,
@@ -24,7 +24,7 @@ export const getLocationFieldConfig = (component) => ({
 });
 
 /**
- * Checks whether the component should render any internal location fields.
+ * True when the component should render its own location form fields.
  * @param {Object} fields Location field configuration.
  * @returns {boolean}
  */
@@ -40,7 +40,7 @@ export const hasInternalLocationFields = (fields) =>
   );
 
 /**
- * Gets configured external DOM ids that should be synced or cleared.
+ * External DOM ids that need syncing when selection or clear changes.
  * @param {Object} fields Location field configuration.
  * @returns {Array<string>}
  */
@@ -57,7 +57,7 @@ export const getExternalLocationFieldIds = (fields) =>
   ].filter(Boolean);
 
 /**
- * Builds internal value updates from a selected location and field config.
+ * Only returns value keys backed by internal field names or coordinate targets.
  * @param {Object} fields Location field configuration.
  * @param {Object} location Selected location values.
  * @returns {Object}
@@ -81,7 +81,7 @@ export const getInternalLocationValueUpdates = (fields, location) => {
 };
 
 /**
- * Builds external field updates from a selected location and field config.
+ * Only returns field updates for DOM ids configured by the host template.
  * @param {Object} fields Location field configuration.
  * @param {Object} location Selected location values.
  * @returns {Array<{fieldId: string, value: string}>}
@@ -99,7 +99,7 @@ export const getExternalLocationFieldUpdates = (fields, location) =>
   ].filter((update) => update.fieldId);
 
 /**
- * Builds location value state from initial component properties.
+ * Normalizes reflected initial attributes into mutable location value state.
  * @param {Object} values Initial location values.
  * @returns {Object}
  */
@@ -116,8 +116,8 @@ export const getInitialLocationValues = (values) => ({
 });
 
 /**
- * Builds empty location value state.
- * @returns {Object}
+ * Blank value object used after clearing both search and selection state.
+ * @returns {Object} Empty location values.
  */
 export const getEmptyLocationValues = () => ({
   venueNameValue: "",
@@ -132,7 +132,7 @@ export const getEmptyLocationValues = () => ({
 });
 
 /**
- * Gets coordinate field names and render state from location field config.
+ * Coordinate names can come from rendered fields or synced external inputs.
  * @param {Object} fields Location field configuration.
  * @returns {{hasCoordinateFields: boolean, latitudeName: string, longitudeName: string}}
  */

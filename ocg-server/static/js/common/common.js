@@ -229,7 +229,7 @@ document.addEventListener(
   true,
 );
 
-// Some images can fail before this module registers captured error listeners.
+// Captured error listeners can miss images that failed before this script loaded.
 initializeOnReady(applyBrokenImagePlaceholdersForDocument);
 
 // Re-scan after all resources settle so late or lazy image failures are covered.
@@ -534,12 +534,12 @@ export const isSuccessfulXHRStatus = (status) => {
 };
 
 /**
- * Converts HTML datetime-local input value to PostgreSQL-compatible timestamp format.
+ * Converts a datetime-local value to the timestamp string expected by PostgreSQL.
  * HTML datetime-local format: YYYY-MM-DDTHH:MM
  * PostgreSQL timestamp format: YYYY-MM-DDTHH:MM:SS
  *
- * @param {string} dateTimeLocal - The datetime-local input value (e.g., "2025-08-23T15:00")
- * @returns {string|null} Timestamp formatted string (e.g., "2025-08-23T15:00:00") or null if input is empty
+ * @param {string} dateTimeLocal - Datetime-local value, e.g. "2025-08-23T15:00".
+ * @returns {string|null} Timestamp string, or null when input is empty.
  *
  * @example
  * convertDateTimeLocalToISO("2025-08-23T15:00") // returns "2025-08-23T15:00:00"
@@ -551,15 +551,12 @@ export const convertDateTimeLocalToISO = (dateTimeLocal) => {
 };
 
 /**
- * Converts a Unix timestamp (in seconds) to a datetime-local input value.
+ * Converts Unix seconds into the value used by datetime-local inputs.
  *
- * This function transforms Unix timestamps into the format required by HTML5
- * <input type="datetime-local"> elements. The output uses UTC timezone.
+ * The output uses UTC because event timestamps are stored as absolute instants.
  *
- * @param {number} tsSeconds - Unix timestamp in seconds since epoch (1970-01-01 00:00:00 UTC).
- *                             Must be a finite number.
- * @returns {string} Datetime string in YYYY-MM-DDTHH:MM format (UTC timezone)
- *                   Returns empty string if input is invalid (non-number, NaN, Infinity)
+ * @param {number} tsSeconds - Unix timestamp in seconds. Must be finite.
+ * @returns {string} Datetime string in YYYY-MM-DDTHH:MM format, or "".
  *
  * @example
  * // Valid timestamp

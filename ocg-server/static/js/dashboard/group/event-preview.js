@@ -6,9 +6,9 @@ import { ocgFetch } from "/static/js/common/fetch.js";
 import {
   bindModalDismissListeners,
   closeModalBodyScroll,
-  isModalEscapeEvent,
   openModalBodyScroll,
 } from "/static/js/common/modal-lifecycle.js";
+import { isEscapeEvent } from "/static/js/common/keyboard.js";
 import { setTrustedHtml } from "/static/js/common/trusted-html.js";
 import { parseJsonAttribute } from "/static/js/common/utils.js";
 import "/static/js/common/images-gallery.js";
@@ -178,7 +178,7 @@ export const openEventPreviewModal = (modalRoot, html, pageRoot = document) => {
     }
   };
   const handleKeydown = (event) => {
-    if (isModalEscapeEvent(event)) {
+    if (isEscapeEvent(event)) {
       closeEventPreviewModal(modalRoot);
     }
   };

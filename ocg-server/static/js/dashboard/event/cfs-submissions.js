@@ -15,9 +15,9 @@ import { getElementById } from "/static/js/common/dom.js";
 import {
   bindModalDismissListeners,
   closeModalBodyScroll,
-  isModalEscapeEvent,
   openModalBodyScroll,
 } from "/static/js/common/modal-lifecycle.js";
+import { isEscapeEvent } from "/static/js/common/keyboard.js";
 import {
   buildApprovedSubmissionEventDetail,
   buildReviewModalOpenState,
@@ -179,7 +179,7 @@ export class ReviewSubmissionModal extends LitWrapper {
    * @param {KeyboardEvent} event
    */
   _onKeydown(event) {
-    if (isModalEscapeEvent(event) && this._isOpen) {
+    if (isEscapeEvent(event) && this._isOpen) {
       this.close();
     }
   }

@@ -3,9 +3,9 @@ import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import {
   bindModalDismissListeners,
   closeModalBodyScroll,
-  isModalEscapeEvent,
   openModalBodyScroll,
 } from "/static/js/common/modal-lifecycle.js";
+import { isEscapeEvent } from "/static/js/common/keyboard.js";
 
 /**
  * ImagesGallery component for displaying images with modal carousel.
@@ -75,7 +75,7 @@ export class ImagesGallery extends LitWrapper {
   _handleKeydown(e) {
     if (!this._isModalOpen) return;
 
-    if (isModalEscapeEvent(e)) {
+    if (isEscapeEvent(e)) {
       this._closeModal();
     } else if (e.key === "ArrowRight") {
       this._navigateCarousel("next");

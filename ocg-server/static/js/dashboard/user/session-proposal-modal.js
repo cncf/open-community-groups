@@ -6,9 +6,9 @@ import { getElementById } from "/static/js/common/dom.js";
 import {
   bindModalDismissListeners,
   closeModalBodyScroll,
-  isModalEscapeEvent,
   openModalBodyScroll,
 } from "/static/js/common/modal-lifecycle.js";
+import { isEscapeEvent } from "/static/js/common/keyboard.js";
 import { renderTrustedHtml } from "/static/js/common/trusted-lit-html.js";
 import { parseJsonAttribute } from "/static/js/common/utils.js";
 import "/static/js/common/logo-image.js";
@@ -166,7 +166,7 @@ export class SessionProposalModal extends LitWrapper {
    * @param {KeyboardEvent} event
    */
   _onKeydown(event) {
-    if (isModalEscapeEvent(event) && this._isOpen) {
+    if (isEscapeEvent(event) && this._isOpen) {
       this.close();
     }
   }

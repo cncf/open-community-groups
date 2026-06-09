@@ -6,9 +6,9 @@ import { computeUserInitials } from "/static/js/common/common.js";
 import {
   bindModalDismissListeners,
   closeModalBodyScroll,
-  isModalEscapeEvent,
   openModalBodyScroll,
 } from "/static/js/common/modal-lifecycle.js";
+import { isEscapeEvent } from "/static/js/common/keyboard.js";
 import { speakerKey } from "/static/js/dashboard/event/speaker-utils.js";
 
 /**
@@ -99,7 +99,7 @@ export class SessionSpeakerModal extends LitWrapper {
    * @private
    */
   _onKeydown(event) {
-    if (isModalEscapeEvent(event) && this._isOpen) {
+    if (isEscapeEvent(event) && this._isOpen) {
       this.close();
     }
   }
