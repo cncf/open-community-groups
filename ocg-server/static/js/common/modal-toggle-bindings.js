@@ -3,7 +3,13 @@ import { closestElement } from "/static/js/common/dom.js";
 
 const modalToggleSelector = "[data-modal-toggle]";
 
-document.addEventListener("click", (event) => {
+/**
+ * Delegates clicks for server-rendered controls with data-modal-toggle.
+ * The attribute value must match the id of the modal whose visibility toggles.
+ * @param {MouseEvent} event Click event.
+ * @returns {void}
+ */
+const handleModalToggleClick = (event) => {
   const trigger = closestElement(event.target, modalToggleSelector);
   if (!trigger) {
     return;
@@ -16,4 +22,6 @@ document.addEventListener("click", (event) => {
 
   event.preventDefault();
   toggleModalVisibility(modalId);
-});
+};
+
+document.addEventListener("click", handleModalToggleClick);

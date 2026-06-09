@@ -1,9 +1,9 @@
 import { expect } from "@open-wc/testing";
 
-import "/static/js/common/modal-bindings.js";
+import "/static/js/common/modal-toggle-bindings.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
 
-describe("modal bindings", () => {
+describe("modal toggle bindings", () => {
   beforeEach(() => {
     resetDom();
   });
