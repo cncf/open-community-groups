@@ -16,7 +16,7 @@ import {
   hasStackedTimeSeriesData,
 } from "/static/js/common/charts/charts.js";
 import { deferUntilHtmxSettled } from "/static/js/dashboard/common.js";
-import { initializeOnReady, setElementHidden } from "/static/js/common/dom.js";
+import { initializeOnReadyAndHtmxLoad, setElementHidden } from "/static/js/common/dom.js";
 import {
   addRenderedChart,
   initializeChartsFromJsonMarker,
@@ -713,4 +713,4 @@ export const initializeCommunityAnalyticsFromPage = async (root = document) => {
   });
 };
 
-initializeOnReady(() => initializeCommunityAnalyticsFromPage());
+initializeOnReadyAndHtmxLoad(initializeCommunityAnalyticsFromPage);

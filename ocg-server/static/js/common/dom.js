@@ -67,7 +67,7 @@ export const toggleElementHidden = (element) => {
 };
 
 /**
- * Preserves existing ids and assigns a stable fallback only when needed.
+ * Ensures action controls have a stable id before another behavior references them.
  * @param {Element|null|undefined} element Element that needs an id.
  * @param {string} fallbackId Id to assign when the element has none.
  * @returns {string} Existing or assigned id.

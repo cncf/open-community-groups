@@ -10,6 +10,32 @@ describe("dashboard community analytics", () => {
   const originalEcharts = globalThis.echarts;
   let setOptionCalls;
 
+  const getCommunityAnalyticsPayload = () => ({
+    groups: {
+      running_total: [
+        [1, 1],
+        [2, 2],
+      ],
+      per_month: [["2025-01", 1]],
+      total_by_category: [["Cloud", 3]],
+      total_by_region: [["EU", 2]],
+      running_total_by_category: {
+        Cloud: [
+          [1, 1],
+          [2, 2],
+        ],
+      },
+      running_total_by_region: {
+        EU: [
+          [1, 1],
+          [2, 2],
+        ],
+      },
+      per_month_by_category: { Cloud: [["2025-01", 1]] },
+      per_month_by_region: { EU: [["2025-01", 1]] },
+    },
+  });
+
   beforeEach(() => {
     resetDom();
     setOptionCalls = [];
@@ -73,31 +99,7 @@ describe("dashboard community analytics", () => {
 
   it("initializes the default groups analytics tab", async () => {
     // Verify initializes the default groups analytics tab.
-    await initAnalyticsCharts({
-      groups: {
-        running_total: [
-          [1, 1],
-          [2, 2],
-        ],
-        per_month: [["2025-01", 1]],
-        total_by_category: [["Cloud", 3]],
-        total_by_region: [["EU", 2]],
-        running_total_by_category: {
-          Cloud: [
-            [1, 1],
-            [2, 2],
-          ],
-        },
-        running_total_by_region: {
-          EU: [
-            [1, 1],
-            [2, 2],
-          ],
-        },
-        per_month_by_category: { Cloud: [["2025-01", 1]] },
-        per_month_by_region: { EU: [["2025-01", 1]] },
-      },
-    });
+    await initAnalyticsCharts(getCommunityAnalyticsPayload());
 
     // Verify initializes the default groups analytics tab.
     expect(setOptionCalls).to.have.length(8);
@@ -118,31 +120,7 @@ describe("dashboard community analytics", () => {
     const marker = document.createElement("script");
     marker.type = "application/json";
     marker.dataset.communityAnalytics = "";
-    marker.textContent = JSON.stringify({
-      groups: {
-        running_total: [
-          [1, 1],
-          [2, 2],
-        ],
-        per_month: [["2025-01", 1]],
-        total_by_category: [["Cloud", 3]],
-        total_by_region: [["EU", 2]],
-        running_total_by_category: {
-          Cloud: [
-            [1, 1],
-            [2, 2],
-          ],
-        },
-        running_total_by_region: {
-          EU: [
-            [1, 1],
-            [2, 2],
-          ],
-        },
-        per_month_by_category: { Cloud: [["2025-01", 1]] },
-        per_month_by_region: { EU: [["2025-01", 1]] },
-      },
-    });
+    marker.textContent = JSON.stringify(getCommunityAnalyticsPayload());
     document.body.append(marker);
 
     // Run the page initializer twice to verify duplicate renders are guarded.
@@ -154,6 +132,29 @@ describe("dashboard community analytics", () => {
     expect(
       document.querySelector('[data-analytics-tab="groups"]').dataset.active,
     ).to.equal("true");
+  });
+
+  it("initializes charts when analytics content is swapped by htmx", async () => {
+    // Prepare swapped analytics content with a fresh declarative marker.
+    const swappedRoot = document.createElement("section");
+    const marker = document.createElement("script");
+    marker.type = "application/json";
+    marker.dataset.communityAnalytics = "";
+    marker.textContent = JSON.stringify(getCommunityAnalyticsPayload());
+    swappedRoot.append(marker);
+    document.body.append(swappedRoot);
+
+    // Dispatch the HTMX load event that follows swapped dashboard content.
+    swappedRoot.dispatchEvent(
+      new CustomEvent("htmx:load", {
+        bubbles: true,
+      }),
+    );
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    // Verify the swapped marker initializes the analytics charts.
+    expect(setOptionCalls).to.have.length(8);
+    expect(marker.dataset.communityAnalyticsReady).to.equal("true");
   });
 
   it("uses clearer event, attendee, and total page-view chart titles", async () => {

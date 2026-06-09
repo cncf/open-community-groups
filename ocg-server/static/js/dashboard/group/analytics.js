@@ -8,7 +8,7 @@ import {
   hasTimeSeriesData,
 } from "/static/js/common/charts/charts.js";
 import { deferUntilHtmxSettled } from "/static/js/dashboard/common.js";
-import { initializeOnReady } from "/static/js/common/dom.js";
+import { initializeOnReadyAndHtmxLoad } from "/static/js/common/dom.js";
 import {
   addRenderedChart,
   initializeChartsFromJsonMarker,
@@ -249,4 +249,4 @@ export const initializeGroupAnalyticsFromPage = async (root = document) => {
   });
 };
 
-initializeOnReady(() => initializeGroupAnalyticsFromPage());
+initializeOnReadyAndHtmxLoad(initializeGroupAnalyticsFromPage);

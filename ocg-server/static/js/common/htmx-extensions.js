@@ -13,7 +13,10 @@ const htmxResponseSelector = "[data-htmx-response]";
 const REFRESH_BODY_TRIGGER = "refresh-body";
 
 /**
- * Finds the element that owns declarative HTMX response configuration.
+ * Finds the closest response owner from whichever element HTMX exposes.
+ *
+ * Different HTMX lifecycle events point at the swapped element, the request
+ * element, or the original trigger, so all three are checked for nested controls.
  * @param {CustomEvent} event HTMX lifecycle event.
  * @returns {Element|null} Declarative response element when present.
  */
