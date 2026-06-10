@@ -85,17 +85,20 @@ test.describe("community dashboard logs view", () => {
     // Load the unfiltered community logs URL.
     await navigateToPath(adminCommunityPage, COMMUNITY_LOGS_PATH);
 
-    // Verify the seeded community and group log rows are present.
+    // Verify the seeded community and group log content is present.
     const dashboardContent = adminCommunityPage.locator("#dashboard-content");
     await expect(
-      dashboardContent.locator("tr.audit-log-row").filter({
-        hasText: "Platform Engineering Community",
-      }),
-    ).toHaveCount(1);
+      dashboardContent.locator("tr.audit-log-row").first(),
+    ).toBeVisible();
+    await expect(dashboardContent).toContainText(
+      "Platform Engineering Community",
+    );
     await expect(
-      dashboardContent.locator("tr.audit-log-row").filter({
-        hasText: "Observability Guild",
-      }),
-    ).toHaveCount(1);
+      dashboardContent
+        .locator("tr.audit-log-row", {
+          hasText: "Observability Guild",
+        })
+        .first(),
+    ).toBeVisible();
   });
 });

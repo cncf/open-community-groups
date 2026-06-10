@@ -1,6 +1,8 @@
 import { expect, test } from "../../../fixtures.js";
 
 import {
+  buildE2eUrl,
+  TEST_COMMUNITY_NAME,
   TEST_EVENT_IDS,
   TEST_GROUP_IDS,
   TEST_USER_IDS,
@@ -362,6 +364,12 @@ test.describe("user dashboard invitations view", () => {
         dashboardContent.locator("tr", { hasText: "Upcoming Virtual Event" }),
       ).toHaveCount(0);
     } finally {
+      await pending1Page.request.post(
+        buildE2eUrl(
+          `/${TEST_COMMUNITY_NAME}/event/${TEST_EVENT_IDS.alpha.two}/attend`,
+        ),
+        { form: {} },
+      );
       await clearEventAttendeeState(
         organizerGroupPage,
         TEST_EVENT_IDS.alpha.two,
@@ -372,24 +380,24 @@ test.describe("user dashboard invitations view", () => {
 
   test("rejecting an event invitation removes it from the user dashboard", async ({
     organizerGroupPage,
-    pending2Page,
+    pending1Page,
   }) => {
     // Ensure the seeded event invitation exists before rejecting it.
     await ensureEventInvitation(
       organizerGroupPage,
       TEST_GROUP_IDS.community1.alpha,
       TEST_EVENT_IDS.alpha.two,
-      TEST_USER_IDS.pending2,
+      TEST_USER_IDS.pending1,
     );
 
     // Open the user dashboard page.
     await openUserDashboardPath(
       "/dashboard/user?tab=invitations",
-      pending2Page,
+      pending1Page,
     );
 
     // Find the dashboard content.
-    const dashboardContent = pending2Page.locator("#dashboard-content");
+    const dashboardContent = pending1Page.locator("#dashboard-content");
     const eventInvitationRow = dashboardContent.locator("tr", {
       hasText: "Upcoming Virtual Event",
     });
@@ -405,34 +413,40 @@ test.describe("user dashboard invitations view", () => {
 
       // Click the reject event invitation button.
       await rejectEventInvitationButton.click();
-      await expect(pending2Page.locator(".swal2-popup")).toContainText(
+      await expect(pending1Page.locator(".swal2-popup")).toContainText(
         "Are you sure you would like to reject this invitation?",
       );
 
       // Click Yes.
       await Promise.all([
-        pending2Page.waitForResponse(
+        pending1Page.waitForResponse(
           (response) =>
             response.request().method() === "PUT" &&
             response.ok() &&
             response.url().includes("/dashboard/user/invitations/event/") &&
             response.url().endsWith("/reject"),
         ),
-        pending2Page.getByRole("button", { name: "Yes" }).click(),
+        pending1Page.getByRole("button", { name: "Yes" }).click(),
       ]);
 
       // Reload the invited user dashboard.
-      await pending2Page.reload();
+      await pending1Page.reload();
 
       // Assert how many matching elements are shown.
       await expect(
         dashboardContent.locator("tr", { hasText: "Upcoming Virtual Event" }),
       ).toHaveCount(0);
     } finally {
+      await pending1Page.request.post(
+        buildE2eUrl(
+          `/${TEST_COMMUNITY_NAME}/event/${TEST_EVENT_IDS.alpha.two}/attend`,
+        ),
+        { form: {} },
+      );
       await clearEventAttendeeState(
         organizerGroupPage,
         TEST_EVENT_IDS.alpha.two,
-        TEST_USER_IDS.pending2,
+        TEST_USER_IDS.pending1,
       );
     }
   });

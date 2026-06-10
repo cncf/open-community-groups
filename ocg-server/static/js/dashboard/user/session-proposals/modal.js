@@ -545,7 +545,9 @@ export class SessionProposalModal extends LitWrapper {
             </div>
             <div>
               <div class="proposal-section-title">Description</div>
-              <div class="mt-2 text-stone-700 text-sm/6 markdown">
+              <div
+                class="mt-2 text-stone-700 text-sm/6 markdown whitespace-pre-line [&_p]:whitespace-pre-line [&_li]:whitespace-pre-line"
+              >
                 ${proposal?.description_html
                   ? renderTrustedHtml(proposal.description_html)
                   : proposal?.description || ""}
