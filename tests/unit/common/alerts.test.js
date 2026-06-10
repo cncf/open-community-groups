@@ -97,6 +97,23 @@ describe("alerts", () => {
     });
   });
 
+  it("renders declarative page alerts when the HTMX root is the marker", () => {
+    // Build the DOM fixture with the alert marker as the swapped root itself.
+    document.body.innerHTML = `
+      <span data-page-alert data-alert-level="success" data-alert-message="Saved" hidden></span>
+    `;
+
+    // Dispatch the HTMX load event emitted for a top-level swapped marker.
+    dispatchHtmxLoad(document.querySelector("[data-page-alert]"));
+
+    // Assert the backend flash marker is consumed even when it is the root.
+    expect(env.current.swal.calls).to.have.length(1);
+    expect(env.current.swal.calls[0]).to.include({
+      text: "Saved",
+      icon: "success",
+    });
+  });
+
   it("supports persistent and html error alerts", () => {
     // Show a persistent HTML error alert.
     showErrorAlert("<strong>Broken</strong>", true, true);

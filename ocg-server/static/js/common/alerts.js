@@ -1,5 +1,10 @@
 import { scrollToDashboardTop } from "/static/js/common/common.js";
-import { initializeOnReadyAndHtmxLoad, markDatasetReady } from "/static/js/common/dom.js";
+import {
+  initializeMatchingRoots,
+  initializeOnReadyAndHtmxLoad,
+  markDatasetReady,
+} from "/static/js/common/dom.js";
+import { getHtmxTriggerNames } from "/static/js/common/htmx-triggers.js";
 
 const PAGE_ALERT_SELECTOR = "[data-page-alert]";
 const PAGE_ALERT_READY_KEY = "pageAlertReady";
@@ -50,7 +55,7 @@ export const showSuccessAlert = (message) => {
  * @param {Document|Element} root - Root element containing alert markers
  */
 export const initializePageAlerts = (root = document) => {
-  root.querySelectorAll(PAGE_ALERT_SELECTOR).forEach((alertMarker) => {
+  initializeMatchingRoots(root, PAGE_ALERT_SELECTOR, (alertMarker) => {
     if (!markDatasetReady(alertMarker, PAGE_ALERT_READY_KEY)) {
       return;
     }
@@ -201,10 +206,7 @@ export const shouldRefreshBodyForBackendFlash = (xhr, successMessage = "") => {
     return false;
   }
 
-  return (xhr.getResponseHeader("HX-Trigger") || "")
-    .split(",")
-    .map((trigger) => trigger.trim())
-    .some((trigger) => BACKEND_FLASH_REFRESH_TRIGGERS.has(trigger));
+  return getHtmxTriggerNames(xhr).some((trigger) => BACKEND_FLASH_REFRESH_TRIGGERS.has(trigger));
 };
 
 /**

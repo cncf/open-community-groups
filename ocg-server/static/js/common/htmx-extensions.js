@@ -4,6 +4,7 @@ import {
   isDeploymentReloadRequested,
   reloadIfDeploymentChanged,
 } from "/static/js/common/deployment-version.js";
+import { hasHtmxTrigger } from "/static/js/common/htmx-triggers.js";
 
 // Tracks event roots already wired so repeated initialization stays idempotent.
 const responseHandlerRoots = new WeakSet();
@@ -227,14 +228,12 @@ export const isSuccessfulRefreshBodyResponse = (xhr) => {
     return false;
   }
 
-  return (xhr.getResponseHeader("HX-Trigger") || "")
-    .split(",")
-    .map((trigger) => trigger.trim())
-    .includes(REFRESH_BODY_TRIGGER);
+  return hasHtmxTrigger(xhr, REFRESH_BODY_TRIGGER);
 };
 
 /**
  * Shows success feedback after the triggered body refresh has settled.
+ * Server refresh-body responses are expected to settle a no-content body refresh.
  * @param {string} successMessage Success alert message.
  * @returns {void}
  */
